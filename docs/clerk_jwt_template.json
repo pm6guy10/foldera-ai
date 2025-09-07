@@ -1,0 +1,8 @@
+﻿{
+  \"template\": {
+    \"claims\": {
+      \"role\": \"{{user.public_metadata.role | default: 'viewer'}}\",
+      \"project_ids\": \"{{user.public_metadata.project_ids | default: []}}\"
+    }
+  }
+}
