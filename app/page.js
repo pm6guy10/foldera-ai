@@ -359,6 +359,10 @@ export default function HomePage() {
       </nav>
 
       <header className="relative z-10 text-center py-20 md:py-28 px-6">
+        {/* High-impact hero branding */}
+        <div className="mx-auto mb-8" aria-hidden>
+          <Image src="/foldera-hero.png" alt="Foldera hero" width={160} height={160} className="mx-auto select-none pointer-events-none" />
+        </div>
         <AnimatedText>
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-sm mb-6" role="note">
             <Bell className="w-4 h-4" aria-hidden />
@@ -530,9 +534,8 @@ export default function HomePage() {
       <footer className="border-t border-slate-800/50 py-10 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-3">
-            <div className="relative w-8 h-8">
-              <Image src={logoCandidates[1].src} alt={logoCandidates[1].alt} fill sizes="32px" className="rounded-lg object-contain" onError={(e)=>{const img=e.currentTarget; img.style.display='none';}} />
-            </div>
+            {/* Outline watermark icon for subtle brand */}
+            <Image src="/foldera-glyph.png" alt="Foldera outline glyph" width={32} height={32} className="opacity-80" />
             <span className="text-lg font-light text-white">Foldera</span>
           </div>
           <p className="text-sm text-slate-500">© 2025 Foldera AI. Making AI actually useful.</p>
