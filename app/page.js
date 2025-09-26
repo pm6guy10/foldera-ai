@@ -318,7 +318,7 @@ export default function HomePage() {
 
   // Logo sources with graceful fallback (user-provided assets optional)
   const logoCandidates = useMemo(() => [
-    { src: "/foldera-hero.png", alt: "Foldera hero logo" },
+    { src: "/foldera-logo.png", alt: "Foldera logo" },
     { src: "/foldera-glyph.png", alt: "Foldera glyph" },
   ], []);
 
