@@ -6,8 +6,8 @@ import { Inter } from "next/font/google";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Bulldog PRA Autopilot",
-  description: "Litigation intelligence assistant for PRA enforcement",
+  title: "Foldera – Stop Babysitting Your AI",
+  description: "Foldera remembers, detects, and fixes costly mistakes while you sleep.",
 };
 
 export const viewport = {
