@@ -1,0 +1,13 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Foldera glyph outline">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a21caf"/>
+      <stop offset="50%" stop-color="#6d28d9"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" fill="#0a0a0f"/>
+  <path d="M52 196a8 8 0 0 1-8-8V76a8 8 0 0 1 8-8h62l22 22h68a8 8 0 0 1 8 8v90a8 8 0 0 1-8 8Z" fill="none" stroke="url(#g1)" stroke-width="8" stroke-linejoin="round"/>
+</svg>
+
+
