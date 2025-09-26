@@ -318,8 +318,8 @@ export default function HomePage() {
 
   // Logo sources with graceful fallback (user-provided assets optional)
   const logoCandidates = useMemo(() => [
-    { src: "/foldera-hero.png", alt: "Foldera logo" },
-    { src: "/foldera-outline.png", alt: "Foldera glyph" },
+    { src: "/foldera-hero.svg", alt: "Foldera logo" },
+    { src: "/foldera-outline.svg", alt: "Foldera glyph" },
   ], []);
 
   return (
@@ -361,7 +361,7 @@ export default function HomePage() {
       <header className="relative z-10 text-center py-20 md:py-28 px-6">
         {/* High-impact hero branding */}
         <div className="mx-auto mb-8" aria-hidden>
-          <Image src="/foldera-hero.png" alt="Foldera hero" width={160} height={160} className="mx-auto select-none pointer-events-none" />
+          <Image src="/foldera-hero.svg" alt="Foldera hero" width={160} height={160} className="mx-auto select-none pointer-events-none" />
         </div>
         <AnimatedText>
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-sm mb-6" role="note">
@@ -535,7 +535,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-3">
             {/* Outline watermark icon for subtle brand */}
-            <Image src="/foldera-outline.png" alt="Foldera outline glyph" width={32} height={32} className="opacity-80" />
+            <Image src="/foldera-outline.svg" alt="Foldera outline glyph" width={32} height={32} className="opacity-80" />
             <span className="text-lg font-light text-white">Foldera</span>
           </div>
           <p className="text-sm text-slate-500">© 2025 Foldera AI. Making AI actually useful.</p>

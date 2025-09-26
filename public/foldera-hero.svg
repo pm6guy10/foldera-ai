@@ -1,23 +1,55 @@
-<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Foldera hero">
+<svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#a21caf"/>
-      <stop offset="50%" stop-color="#6d28d9"/>
-      <stop offset="100%" stop-color="#06b6d4"/>
+    <linearGradient id="folderGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff00ff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#0066ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00ffff;stop-opacity:1" />
     </linearGradient>
-    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="12" result="gl"/>
-      <feMerge>
-        <feMergeNode in="gl"/>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
   </defs>
-  <rect width="256" height="256" fill="#0a0a0f"/>
-  <g filter="url(#softGlow)">
-    <path d="M52 196a8 8 0 0 1-8-8V76a8 8 0 0 1 8-8h62l22 22h68a8 8 0 0 1 8 8v90a8 8 0 0 1-8 8Z" fill="url(#g1)" opacity=".18"/>
-    <path d="M52 196a8 8 0 0 1-8-8V76a8 8 0 0 1 8-8h62l22 22h68a8 8 0 0 1 8 8v90a8 8 0 0 1-8 8Z" fill="none" stroke="url(#g1)" stroke-width="8" stroke-linejoin="round"/>
+  
+  <!-- Background -->
+  <rect width="400" height="200" fill="#000000"/>
+  
+  <!-- Folder Icon -->
+  <g transform="translate(200, 80)">
+    <!-- Back of folder -->
+    <path d="M-40,-20 L-20,-20 L-20,20 L-40,20 Z" 
+          fill="none" 
+          stroke="url(#folderGradient)" 
+          stroke-width="3" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"
+          filter="url(#glow)"/>
+    
+    <!-- Front flap of folder -->
+    <path d="M-20,-20 L20,-20 L20,20 L-20,20 Z" 
+          fill="none" 
+          stroke="url(#folderGradient)" 
+          stroke-width="3" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"
+          filter="url(#glow)"/>
+    
+    <!-- Diagonal line -->
+    <line x1="-20" y1="-20" x2="20" y2="20" 
+          stroke="url(#folderGradient)" 
+          stroke-width="3" 
+          stroke-linecap="round"
+          filter="url(#glow)"/>
   </g>
+  
+  <!-- Foldera Text -->
+  <text x="200" y="140" 
+        text-anchor="middle" 
+        font-family="Arial, sans-serif" 
+        font-size="32" 
+        font-weight="normal" 
+        fill="#ffffff">Foldera</text>
 </svg>
-
-
