@@ -4,10 +4,13 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import JSZip from 'jszip';
 import mammoth from 'mammoth';
-import MsgReader from 'node-msg';
+import MsgReader from 'msgreader';
 // pdf-parse is NOT imported at the top.
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+// Initialize Supabase client only if environment variables are available
+const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY 
+  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  : null;
 
 // Dummy Processor Function
 async function processAndSaveChunks(text, metadata) {
@@ -68,7 +71,9 @@ export async function POST(request) {
     
     for (const file of files) {
       const buffer = Buffer.from(await file.arrayBuffer());
-      await supabase.storage.from('case-files').upload(`${caseId}/${file.name}`, buffer, { upsert: true });
+      if (supabase) {
+        await supabase.storage.from('case-files').upload(`${caseId}/${file.name}`, buffer, { upsert: true });
+      }
       await processFile(buffer, { caseId, fileName: file.name });
     }
 

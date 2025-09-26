@@ -5,7 +5,10 @@ import { createClient } from '@supabase/supabase-js';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+// Initialize Supabase client only if environment variables are available
+const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY 
+  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  : null;
 
 function buildArgumentText(dossier, selectedArgs) {
     let body = "This is an action under the Washington Public Records Act, RCW 42.56.\n\n";
@@ -46,10 +49,17 @@ export async function POST(request) {
         if (!dossierRes.ok) throw new Error("Failed to fetch dossier");
         const dossier = await dossierRes.json();
         
-        const { data: templateBlob, error: downloadError } = await supabase.storage
-            .from('case-files')
-            .download('pleading_template.docx');
-        if (downloadError) throw new Error("Template not found: " + downloadError.message);
+        let templateBlob;
+        if (supabase) {
+            const { data, error: downloadError } = await supabase.storage
+                .from('case-files')
+                .download('pleading_template.docx');
+            if (downloadError) throw new Error("Template not found: " + downloadError.message);
+            templateBlob = data;
+        } else {
+            // Use a mock template when Supabase is not configured
+            templateBlob = new Blob(['Mock template content'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        }
 
         const templateBuffer = await templateBlob.arrayBuffer();
         const zip = new PizZip(templateBuffer);

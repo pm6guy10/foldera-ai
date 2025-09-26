@@ -8,16 +8,13 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata = {
   title: "Bulldog PRA Autopilot",
   description: "Litigation intelligence assistant for PRA enforcement",
-  
-  // Instructs the browser UI to be dark
-  themeColor: "#0a0a0f",
+};
 
-  // Tells the app to draw behind the system navigation bar
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    viewportFit: 'cover', // This is essential
-  },
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: "#0a0a0f",
 };
 
 export default function RootLayout({ children }) {

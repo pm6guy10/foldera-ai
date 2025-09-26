@@ -96,6 +96,26 @@ button:hover, .btn:hover {
   box-shadow: 0 0 20px rgba(6, 182, 212, 0.6), 0 0 30px rgba(16, 185, 129, 0.4);
 }
 
+/* Secondary button style */
+.btn-secondary {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  border: 1px solid #334155;
+  background: transparent;
+  color: #e5e7eb;
+  box-shadow: 0 0 8px rgba(51, 65, 85, 0.3);
+}
+
+.btn-secondary:hover {
+  transform: translateY(-1px);
+  border-color: #06b6d4;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+}
+
 /* ... Keep your other utility styles like .glow-text ... */
 .glow-text {
   background: linear-gradient(90deg, #06b6d4, #10b981);
