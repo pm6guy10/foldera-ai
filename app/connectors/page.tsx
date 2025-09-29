@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
@@ -101,7 +101,7 @@ const connectors: Connector[] = [
   }
 ];
 
-export default function ConnectorsPage() {
+function ConnectorsPageContent() {
   const [connectedConnectors, setConnectedConnectors] = useState<Set<string>>(new Set());
   const [calendarInsights, setCalendarInsights] = useState<any>(null);
   const searchParams = useSearchParams();
@@ -499,5 +499,17 @@ export default function ConnectorsPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function ConnectorsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-white text-xl">Loading connectors...</div>
+      </div>
+    }>
+      <ConnectorsPageContent />
+    </Suspense>
   );
 }
