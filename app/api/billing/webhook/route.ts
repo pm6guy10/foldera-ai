@@ -103,13 +103,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
   
   // Update subscription in database
+  const periodEnd = (subscription as any).current_period_end;
   await supabase
     .from('subscriptions')
     .update({
       stripe_subscription_id: subscriptionId,
       plan_name: plan.id,
       status: subscription.status,
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
     })
     .eq('stripe_customer_id', customerId);
   
@@ -127,12 +128,13 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   }
   
   // Update subscription in database
+  const periodEnd = (subscription as any).current_period_end;
   await supabase
     .from('subscriptions')
     .update({
       plan_name: plan.id,
       status: subscription.status,
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
     })
     .eq('stripe_customer_id', customerId);
   

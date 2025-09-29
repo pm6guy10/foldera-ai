@@ -17,6 +17,7 @@
     "docxtemplater": "^3.66.2",
     "dotenv": "^17.2.2",
     "framer-motion": "^12.23.12",
+    "googleapis": "^160.0.0",
     "jspdf": "^3.0.2",
     "jspdf-autotable": "^5.0.2",
     "jszip": "^3.10.1",
