@@ -61,6 +61,7 @@ export default function InstantAuditPage() {
 
   // Check if we just returned from OAuth with results
   useState(() => {
+    if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const auditData = params.get('audit');
     
