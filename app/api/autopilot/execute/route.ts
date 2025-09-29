@@ -33,9 +33,10 @@ export async function POST(request: Request) {
     console.error('Autopilot execution error:', error);
 
     // Log failed executions too
+    const body = await request.json().catch(() => ({}));
     await autopilotEngine.logExecution({
-      actionId: request.body?.actionId,
-      userId: request.body?.userId,
+      actionId: body.actionId,
+      userId: body.userId,
       timestamp: new Date().toISOString(),
       result: 'failed',
       error: error.message
@@ -47,78 +48,3 @@ export async function POST(request: Request) {
     }, { status: 500 });
   }
 }
-
-// Extend the AutopilotEngine with execution methods
-autopilotEngine.executeAction = async function(actionId, parameters) {
-  // Find the action in the queue
-  const action = this.executionQueue.find(a => a.id === actionId);
-
-  if (!action) {
-    throw new Error(`Action ${actionId} not found`);
-  }
-
-  // Execute the action
-  const result = await action.executable();
-
-  // Remove from queue after execution
-  this.executionQueue = this.executionQueue.filter(a => a.id !== actionId);
-
-  return result;
-};
-
-autopilotEngine.logExecution = async function(executionData) {
-  // In production, log to database for compliance and analytics
-  console.log('🚀 AUTOPILOT EXECUTION:', executionData);
-
-  // Track metrics
-  this.executionMetrics = this.executionMetrics || {};
-  this.executionMetrics.totalExecutions = (this.executionMetrics.totalExecutions || 0) + 1;
-  this.executionMetrics.successfulExecutions = (this.executionMetrics.successfulExecutions || 0) + (executionData.result === 'success' ? 1 : 0);
-};
-
-// Add execution methods to the engine
-autopilotEngine.calendarAPI = {
-  moveEvent: async (eventId, newTime) => {
-    console.log(`📅 Moving event ${eventId} to ${newTime}`);
-    return { success: true, newTime };
-  }
-};
-
-autopilotEngine.emailAPI = {
-  send: async (emailData) => {
-    console.log(`📧 Sending email:`, emailData);
-    return { success: true, messageId: 'msg_123' };
-  }
-};
-
-autopilotEngine.slackAPI = {
-  post: async (postData) => {
-    console.log(`💬 Posting to Slack:`, postData);
-    return { success: true, messageId: 'slack_123' };
-  },
-  alert: async (channel, message) => {
-    console.log(`🚨 Alerting ${channel}: ${message}`);
-    return { success: true };
-  }
-};
-
-autopilotEngine.tasksAPI = {
-  create: async (taskData) => {
-    console.log(`✅ Creating task:`, taskData);
-    return { success: true, taskId: 'task_123' };
-  }
-};
-
-autopilotEngine.auditLog = {
-  record: async (logData) => {
-    console.log(`📋 Audit log:`, logData);
-    return { success: true };
-  }
-};
-
-autopilotEngine.stripeAPI = {
-  applyCoupon: async (customerId, couponCode) => {
-    console.log(`💳 Applying coupon ${couponCode} to ${customerId}`);
-    return { success: true };
-  }
-};
