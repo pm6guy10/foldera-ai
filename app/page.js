@@ -426,6 +426,22 @@ export default function HomePage() {
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden />
             </a>
       <a
+        href="/connectors-vs-upload"
+        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-purple-500/30 transform hover:scale-105 transition-all inline-flex items-center gap-2 group"
+        aria-label="Upload vs Connectors Comparison"
+      >
+        ⚡ CONNECTORS VS UPLOAD
+        <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" aria-hidden />
+      </a>
+      <a
+        href="/connectors"
+        className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-500 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-green-500/30 transform hover:scale-105 transition-all inline-flex items-center gap-2 group"
+        aria-label="Connect Live Data Sources"
+      >
+        🔗 LIVE CONNECTORS
+        <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" aria-hidden />
+      </a>
+      <a
         href="/holy-crap"
         className="px-6 py-3 bg-gradient-to-r from-red-600 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-red-500/30 transform hover:scale-105 transition-all inline-flex items-center gap-2 group"
         aria-label="See HOLY CRAP Demo"
