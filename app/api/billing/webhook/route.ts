@@ -5,13 +5,14 @@ import { getPlanByPriceId } from '@/lib/billing/plans';
 import Stripe from 'stripe';
 
 function getSupabaseClient() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return null;
+  }
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 }
-
-const supabase = getSupabaseClient();
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -89,6 +90,12 @@ export async function POST(req: Request) {
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    console.error('Supabase not configured');
+    return;
+  }
+  
   const customerId = session.customer as string;
   const subscriptionId = session.subscription as string;
   
