@@ -1,5 +1,16 @@
 import { NextResponse } from 'next/server';
 
+// Configure API route
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+  },
+};
+
+export const maxDuration = 60; // Maximum execution time in seconds
+
 export async function POST(req) {
   try {
     const formData = await req.formData();

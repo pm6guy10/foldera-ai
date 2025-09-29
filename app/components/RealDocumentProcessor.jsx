@@ -19,6 +19,14 @@ export default function RealDocumentProcessor() {
     setProcessingProgress(0);
     
     try {
+      // Check total file size (Vercel limit is 4.5MB for hobby plan)
+      const totalSize = acceptedFiles.reduce((sum, file) => sum + file.size, 0);
+      const totalSizeMB = totalSize / (1024 * 1024);
+      
+      if (totalSizeMB > 4) {
+        throw new Error(`Total file size (${totalSizeMB.toFixed(1)}MB) exceeds 4MB limit. Please select fewer or smaller files.`);
+      }
+      
       // Actually upload all files
       const formData = new FormData();
       acceptedFiles.forEach(file => {
@@ -40,10 +48,17 @@ export default function RealDocumentProcessor() {
       setProcessingProgress(100);
       
       if (!response.ok) {
-        throw new Error(`Processing failed: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error || errorData.details || `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(errorMsg);
       }
       
       const data = await response.json();
+      
+      if (!data.success && data.error) {
+        throw new Error(data.error);
+      }
+      
       setResults(data);
       
     } catch (err) {
