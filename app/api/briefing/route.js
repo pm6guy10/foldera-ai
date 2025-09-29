@@ -191,6 +191,28 @@ export async function POST(request) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, action: 'record', count: 1 })
           });
+
+          // Send activation email for first-time free users
+          if (usage.planName === 'Free' && usage.current === 1) {
+            try {
+              // Get user's email (would need to fetch from database in production)
+              const userEmail = 'demo@example.com'; // Replace with actual email lookup
+
+              await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/send-activation-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: userEmail,
+                  userName: 'Demo User', // Replace with actual name
+                  insights: ['First briefing completed successfully'],
+                  upgradeUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/pricing`
+                })
+              });
+            } catch (emailError) {
+              console.error('Activation email error:', emailError);
+              // Continue - email failure shouldn't block the briefing
+            }
+          }
         }
       } catch (usageError) {
         console.error('Usage check error:', usageError);
