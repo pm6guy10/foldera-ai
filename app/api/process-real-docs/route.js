@@ -1,15 +1,8 @@
 import { NextResponse } from 'next/server';
 
-// Configure API route
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-  },
-};
-
+// Configure API route for App Router
 export const maxDuration = 60; // Maximum execution time in seconds
+export const dynamic = 'force-dynamic'; // Ensure this route is always dynamic
 
 export async function POST(req) {
   try {
