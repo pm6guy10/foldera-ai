@@ -4,10 +4,14 @@ import { stripe, stripeConfig } from '@/lib/billing/stripe';
 import { getPlanByPriceId } from '@/lib/billing/plans';
 import Stripe from 'stripe';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  );
+}
+
+const supabase = getSupabaseClient();
 
 export async function POST(req: Request) {
   const body = await req.text();

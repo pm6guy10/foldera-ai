@@ -1,15 +1,32 @@
 import Stripe from 'stripe';
 
-// Initialize Stripe with the secret key
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-08-27.basil',
-  typescript: true,
+// Lazy-load Stripe to avoid build-time initialization
+let _stripe: Stripe | null = null;
+
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not set');
+    }
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-08-27.basil',
+      typescript: true,
+    });
+  }
+  return _stripe;
+}
+
+// For backwards compatibility
+export const stripe = new Proxy({} as Stripe, {
+  get(_, prop) {
+    return (getStripe() as any)[prop];
+  }
 });
 
 // Stripe configuration
 export const stripeConfig = {
-  publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+  publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
 };
 
 // Helper function to get or create a Stripe customer
