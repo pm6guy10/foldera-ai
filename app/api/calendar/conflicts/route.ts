@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
+import { autopilotEngine } from '@/lib/autopilot-engine';
 
 export async function POST(request: Request) {
   try {
@@ -39,18 +40,32 @@ export async function POST(request: Request) {
     const conflicts = findCalendarConflicts(events);
     const insights = generateCalendarInsights(events);
 
+    // Generate executable actions using Autopilot Engine
+    const executableActions = await autopilotEngine.generateExecutableActions(conflicts);
+
     return NextResponse.json({
       success: true,
       events_analyzed: events.length,
       time_range: `${timeMin.split('T')[0]} to ${timeMax.split('T')[0]}`,
       calendar_conflicts: conflicts,
       calendar_insights: insights,
+      executable_actions: executableActions,
+      autopilot_ready: {
+        actions_available: executableActions.length,
+        can_execute: executableActions.length > 0,
+        autonomy_level: 'PREPARE', // Start with prepare mode
+        estimated_time_saved: executableActions.reduce((sum, action) => {
+          const time = action.estimated_time?.match(/(\d+)/)?.[1] || '0';
+          return sum + parseInt(time);
+        }, 0)
+      },
       summary: {
         total_conflicts: conflicts.length,
         critical_conflicts: conflicts.filter(c => c.severity === 'critical').length,
         double_bookings: conflicts.filter(c => c.type === 'double_booking').length,
         missed_prep: conflicts.filter(c => c.type === 'missing_prep').length,
-        overloaded_days: insights.filter(i => i.type === 'overloaded_day').length
+        overloaded_days: insights.filter(i => i.type === 'overloaded_day').length,
+        executable_actions: executableActions.length
       }
     });
 

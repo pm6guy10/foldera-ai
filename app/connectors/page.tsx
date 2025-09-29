@@ -122,7 +122,7 @@ export default function ConnectorsPage() {
   const fetchCalendarInsights = async () => {
     try {
       // In production, get access token from stored credentials
-      // For demo, we'll simulate insights
+      // For demo, we'll simulate insights with executable actions
       const mockInsights = {
         events_analyzed: 47,
         calendar_conflicts: [
@@ -142,11 +142,80 @@ export default function ConnectorsPage() {
             description: 'Tuesday has 8 meetings scheduled',
             business_impact: 'Reduced productivity and burnout risk'
           }
+        ],
+        executable_actions: [
+          {
+            id: 'calendar_fix_001',
+            type: 'calendar_reschedule',
+            severity: 'high',
+            title: 'Reschedule Client Call',
+            description: 'Move ABC Corp call from 2pm to 4pm to avoid conflict with team standup',
+            impact: 'Prevent missed stakeholder communication',
+            estimated_time: '2 minutes',
+            estimated_savings: '$300+ in stakeholder relationships',
+            buttons: ['Execute Reschedule', 'Choose Different Time', 'Delegate Meeting']
+          },
+          {
+            id: 'calendar_fix_002',
+            type: 'calendar_reschedule',
+            severity: 'warning',
+            title: 'Add Buffer Time',
+            description: 'Add 30-minute buffer before board meeting for preparation',
+            impact: 'Improve meeting quality and reduce stress',
+            estimated_time: '1 minute',
+            estimated_savings: '$200+ in meeting effectiveness',
+            buttons: ['Block Prep Time', 'Skip Buffer', 'Delegate Prep']
+          }
         ]
       };
       setCalendarInsights(mockInsights);
     } catch (error) {
       console.error('Failed to fetch calendar insights:', error);
+    }
+  };
+
+  const executeAction = async (actionId) => {
+    try {
+      const response = await fetch('/api/autopilot/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionId,
+          userId: 'demo-user-id'
+        })
+      });
+
+      if (response.ok) {
+        // Show success feedback
+        alert('✅ Action executed successfully!');
+        // Refresh insights
+        await fetchCalendarInsights();
+      } else {
+        throw new Error('Execution failed');
+      }
+    } catch (error) {
+      console.error('Action execution error:', error);
+      alert('❌ Failed to execute action. Please try again.');
+    }
+  };
+
+  const executeAllActions = async () => {
+    if (!calendarInsights?.executable_actions?.length) return;
+
+    try {
+      // Execute all actions sequentially
+      for (const action of calendarInsights.executable_actions) {
+        await executeAction(action.id);
+        // Small delay between actions for dramatic effect
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // Show celebration
+      alert('🎉 All actions executed successfully!');
+
+    } catch (error) {
+      console.error('Batch execution error:', error);
+      alert('❌ Some actions failed. Please check individually.');
     }
   };
 
@@ -208,8 +277,8 @@ export default function ConnectorsPage() {
             className="bg-slate-800/30 rounded-lg p-8 mb-8 border border-slate-700"
           >
             <h2 className="text-2xl font-bold text-cyan-400 mb-6 flex items-center">
-              <span className="text-3xl mr-3">📊</span>
-              Live Calendar Insights
+              <span className="text-3xl mr-3">🚀</span>
+              Autopilot Actions Ready
             </h2>
 
             <div className="grid md:grid-cols-3 gap-6 mb-6">
@@ -255,6 +324,71 @@ export default function ConnectorsPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Executable Actions */}
+            {calendarInsights.executable_actions && calendarInsights.executable_actions.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-green-400 mb-3">🚀 Executable Actions</h3>
+                <div className="space-y-3">
+                  {calendarInsights.executable_actions.map((action, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="bg-green-900/20 border border-green-800 rounded-lg p-6"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="font-semibold text-green-400">{action.title}</h4>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                          action.severity === 'critical' ? 'bg-red-800 text-red-200' : 'bg-green-800 text-green-200'
+                        }`}>
+                          {action.severity.toUpperCase()}
+                        </span>
+                      </div>
+
+                      <p className="text-gray-300 text-sm mb-3">{action.description}</p>
+
+                      <div className="bg-slate-900/50 rounded-lg p-3 mb-4">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-400">Estimated Time:</span>
+                            <div className="font-semibold text-cyan-400">{action.estimated_time}</div>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Value:</span>
+                            <div className="font-semibold text-green-400">{action.estimated_savings}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => executeAction(action.id)}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition-colors"
+                        >
+                          {action.buttons?.[0] || 'Execute Action'}
+                        </button>
+                        <button className="px-4 py-2 border border-slate-600 text-gray-300 rounded-lg font-medium hover:bg-slate-700 transition-colors">
+                          Modify
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {calendarInsights.executable_actions.length > 1 && (
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={() => executeAllActions()}
+                      className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-bold hover:from-green-400 hover:to-emerald-400 transition-all transform hover:scale-105"
+                    >
+                      🚀 EXECUTE ALL ACTIONS
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
