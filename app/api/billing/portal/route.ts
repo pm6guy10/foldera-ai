@@ -2,12 +2,21 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createPortalSession } from '@/lib/billing/stripe';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseClient() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return null;
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
 
 export async function POST(req: Request) {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  }
   try {
     const { userId } = await req.json();
     
