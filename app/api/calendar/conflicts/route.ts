@@ -78,8 +78,8 @@ export async function POST(request: Request) {
   }
 }
 
-function findCalendarConflicts(events) {
-  const conflicts = [];
+function findCalendarConflicts(events: any[]) {
+  const conflicts: any[] = [];
 
   // 1. DOUBLE BOOKINGS - Same time, different events
   for (let i = 0; i < events.length; i++) {
@@ -144,21 +144,21 @@ function findCalendarConflicts(events) {
   return conflicts;
 }
 
-function generateCalendarInsights(events) {
-  const insights = [];
+function generateCalendarInsights(events: any[]) {
+  const insights: any[] = [];
 
   // 1. OVERLOADED DAYS - Too many meetings
   const dailyEvents = groupEventsByDay(events);
   Object.entries(dailyEvents).forEach(([date, dayEvents]) => {
-    if (dayEvents.length > 6) { // More than 6 hours of meetings
+    if ((dayEvents as any[]).length > 6) { // More than 6 hours of meetings
       insights.push({
         type: 'overloaded_day',
         severity: 'warning',
         title: `Overloaded Day: ${new Date(date).toLocaleDateString()}`,
-        description: `${dayEvents.length} meetings scheduled - consider rescheduling`,
+        description: `${(dayEvents as any[]).length} meetings scheduled - consider rescheduling`,
         business_impact: 'Reduced productivity, burnout risk, poor work quality',
-        recommended_action: `Move ${dayEvents.length - 4} meetings to other days`,
-        value_saved: `$${Math.round((dayEvents.length - 4) * 100)} in productivity gains`
+        recommended_action: `Move ${(dayEvents as any[]).length - 4} meetings to other days`,
+        value_saved: `$${Math.round(((dayEvents as any[]).length - 4) * 100)} in productivity gains`
       });
     }
   });
@@ -183,7 +183,7 @@ function generateCalendarInsights(events) {
   // 3. MEETING-FREE DAYS - Check for focus time
   const workDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   workDays.forEach(day => {
-    const dayEvents = dailyEvents[new Date().toISOString().split('T')[0]] || [];
+    const dayEvents = (dailyEvents[new Date().toISOString().split('T')[0]] || []) as any[];
     if (dayEvents.length === 0) {
       insights.push({
         type: 'focus_time',
@@ -201,7 +201,7 @@ function generateCalendarInsights(events) {
 }
 
 // Helper functions
-function eventsOverlap(event1, event2) {
+function eventsOverlap(event1: any, event2: any): boolean {
   const start1 = new Date(event1.start.dateTime || event1.start.date);
   const end1 = new Date(event1.end.dateTime || event1.end.date);
   const start2 = new Date(event2.start.dateTime || event2.start.date);
@@ -218,7 +218,7 @@ function eventsAreConsecutive(event1, event2) {
   return diffMinutes >= 0 && diffMinutes <= 15; // Within 15 minutes
 }
 
-function hasBreakTime(event1, event2) {
+function hasBreakTime(event1: any, event2: any): boolean {
   const end1 = new Date(event1.end.dateTime || event1.end.date);
   const start2 = new Date(event2.start.dateTime || event2.start.date);
 
@@ -226,13 +226,13 @@ function hasBreakTime(event1, event2) {
   return diffMinutes >= 15; // At least 15 minutes break
 }
 
-function isHighImportanceEvent(event) {
+function isHighImportanceEvent(event: any): boolean {
   const summary = (event.summary || '').toLowerCase();
   const importantKeywords = ['board', 'client', 'investor', 'executive', 'quarterly', 'annual'];
   return importantKeywords.some(keyword => summary.includes(keyword));
 }
 
-function hasPreparationBuffer(event, allEvents) {
+function hasPreparationBuffer(event: any, allEvents: any[]): boolean {
   const eventStart = new Date(event.start.dateTime || event.start.date);
   const bufferTime = new Date(eventStart.getTime() - 30 * 60 * 1000); // 30 minutes before
 
@@ -246,13 +246,13 @@ function hasPreparationBuffer(event, allEvents) {
   });
 }
 
-function formatEventTime(event) {
+function formatEventTime(event: any): string {
   const start = new Date(event.start.dateTime || event.start.date);
   return start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function groupEventsByDay(events) {
-  const dailyEvents = {};
+function groupEventsByDay(events: any[]): Record<string, any[]> {
+  const dailyEvents: Record<string, any[]> = {};
 
   events.forEach(event => {
     const date = event.start.dateTime ?
