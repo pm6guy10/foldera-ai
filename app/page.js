@@ -412,7 +412,7 @@ export default function HomePage() {
         </AnimatedText>
         <AnimatedText delay={300}>
           <p className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto mb-8">
-            Foldera remembers, detects, and fixes costly mistakes while you sleep.
+            The only AI that actually solves problems instead of just finding them.
           </p>
         </AnimatedText>
         <AnimatedText delay={450}>
