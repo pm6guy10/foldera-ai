@@ -129,6 +129,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    console.error('Supabase not configured');
+    return;
+  }
+  
   const customerId = subscription.customer as string;
   const priceId = subscription.items.data[0].price.id;
   const plan = getPlanByPriceId(priceId);
@@ -153,6 +159,12 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    console.error('Supabase not configured');
+    return;
+  }
+  
   const customerId = subscription.customer as string;
   
   // Downgrade to free plan
