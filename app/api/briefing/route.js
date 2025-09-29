@@ -154,11 +154,48 @@ export async function POST(request) {
       });
     }
     
-    const { projectId, caseId } = requestBody;
+    const { projectId, caseId, userId } = requestBody;
     const identifier = projectId || caseId || 'demo';
 
     if (!identifier) {
       return NextResponse.json({ error: 'Project ID or Case ID is required.' }, { status: 400 });
+    }
+
+    // Check usage limits if userId provided
+    if (userId) {
+      try {
+        const usageResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/billing/usage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, action: 'get' })
+        });
+
+        if (usageResponse.ok) {
+          const usage = await usageResponse.json();
+          if (!usage.canUpload) {
+            return NextResponse.json({
+              whatChanged: `You've reached your monthly limit (${usage.current}/${usage.limit} documents)`,
+              whatMatters: 'Your briefing engine is working but needs more capacity',
+              whatToDoNext: 'Upgrade to Pro for unlimited analysis and advanced features',
+              upgradeRequired: true,
+              plan: usage.planName,
+              current: usage.current,
+              limit: usage.limit,
+              upgradeUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/pricing`
+            });
+          }
+
+          // Record this usage
+          await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/billing/usage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, action: 'record', count: 1 })
+          });
+        }
+      } catch (usageError) {
+        console.error('Usage check error:', usageError);
+        // Continue if usage check fails
+      }
     }
 
     if (!supabase) {
