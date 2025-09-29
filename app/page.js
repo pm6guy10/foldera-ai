@@ -40,6 +40,8 @@ const initialState = {
   email: "",
   isScrolledIntoView: false,
   notifications: [],
+  briefing: null,
+  showingBriefing: false,
 };
 
 function appReducer(currentState, action) {
@@ -98,6 +100,10 @@ function appReducer(currentState, action) {
       return { ...currentState, notifications: [action.payload, ...currentState.notifications] };
     case "REMOVE_NOTIFICATION":
       return { ...currentState, notifications: currentState.notifications.filter((n) => n.id !== action.payload) };
+    case "SHOW_BRIEFING":
+      return { ...currentState, showingBriefing: true, briefing: action.payload };
+    case "HIDE_BRIEFING":
+      return { ...currentState, showingBriefing: false, briefing: null };
     default:
       return currentState;
   }
@@ -132,8 +138,16 @@ function AnimatedText({ children, delay = 0 }) {
 }
 
 function ParticleField() {
+  const [isClient, setIsClient] = useState(false);
   const canvasRef = useRef(null);
+  
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+    
     const start = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -182,7 +196,13 @@ function ParticleField() {
     } else {
       setTimeout(start, 200);
     }
-  }, []);
+  }, [isClient]);
+  
+  // Only render canvas on client side to prevent hydration mismatch
+  if (!isClient) {
+    return null;
+  }
+  
   return <canvas ref={canvasRef} className="fixed inset-0 -z-20 opacity-40" aria-hidden />;
 }
 
@@ -315,6 +335,22 @@ export default function HomePage() {
   }, []);
   const handleRemoveNotification = useCallback((id) => dispatch({ type: "REMOVE_NOTIFICATION", payload: id }), []);
   const handleCloseModals = useCallback(() => dispatch({ type: "CLOSE_MODALS" }), []);
+  
+  const handleDemoBriefing = useCallback(async () => {
+    dispatch({ type: "SHOW_BRIEFING", payload: { 
+      whatChanged: "New contract amendments and compliance updates detected. Key changes include updated payment terms and revised delivery schedules.",
+      whatMatters: "Critical deadline approaching: The new compliance requirements must be implemented by month-end or risk regulatory penalties.",
+      whatToDoNext: "Schedule immediate review meeting with legal team to prioritize compliance actions and assign responsibility for each requirement."
+    }});
+    
+    // Scroll to briefing if it's not visible
+    setTimeout(() => {
+      const briefingElement = document.querySelector('[data-briefing-card]');
+      if (briefingElement) {
+        briefingElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
+  }, []);
 
   // Logo sources with graceful fallback (user-provided assets optional)
   const logoCandidates = useMemo(() => [
@@ -348,12 +384,12 @@ export default function HomePage() {
               <span className="text-2xl font-light text-white">Foldera</span>
               <span className="text-xs text-cyan-400 bg-cyan-400/10 px-2 py-1 rounded-full">AI 2.0</span>
             </div>
-            <button
-              onClick={handleRunScan}
+            <a
+              href="/dashboard"
               className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-cyan-500/30 transform hover:scale-105 transition-all"
             >
-              Run Free Scan
-            </button>
+              View Dashboard
+            </a>
           </div>
         </div>
       </nav>
@@ -380,14 +416,40 @@ export default function HomePage() {
           </p>
         </AnimatedText>
         <AnimatedText delay={450}>
-          <button
-            onClick={handleRunScan}
-            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-2xl font-medium hover:shadow-xl hover:shadow-cyan-500/30 transform hover:scale-105 transition-all inline-flex items-center gap-2 group"
-            aria-label="Run Free Scan"
-          >
-            Run Free Scan
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden />
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <a
+              href="/dashboard"
+              className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-2xl font-medium hover:shadow-xl hover:shadow-cyan-500/30 transform hover:scale-105 transition-all inline-flex items-center gap-2 group"
+              aria-label="View Dashboard"
+            >
+              View Dashboard
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden />
+            </a>
+      <a
+        href="/holy-crap"
+        className="px-6 py-3 bg-gradient-to-r from-red-600 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-red-500/30 transform hover:scale-105 transition-all inline-flex items-center gap-2 group"
+        aria-label="See HOLY CRAP Demo"
+      >
+        🚨 HOLY CRAP DEMO
+        <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" aria-hidden />
+      </a>
+      <a
+        href="/real-processor"
+        className="px-6 py-3 bg-gradient-to-r from-green-600 to-teal-500 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-green-500/30 transform hover:scale-105 transition-all inline-flex items-center gap-2 group"
+        aria-label="Real Document Processor"
+      >
+        🔧 REAL PROCESSOR
+        <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" aria-hidden />
+      </a>
+      <button
+        onClick={handleDemoBriefing}
+        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-purple-500/30 transform hover:scale-105 transition-all inline-flex items-center gap-2 group"
+        aria-label="See AI Briefing Demo"
+      >
+        🧠 See AI Briefing
+        <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" aria-hidden />
+      </button>
+          </div>
         </AnimatedText>
         <AnimatedText delay={600}>
           <div className="mt-6 flex items-center justify-center gap-8 text-sm">
@@ -418,14 +480,19 @@ export default function HomePage() {
         {/* Stats grid (simplified for performance) */}
         <div ref={statsRef} className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
           {[
-            { title: "Active Items", value: state.stats.activeItems, icon: Zap, color: "text-blue-400" },
-            { title: "Value at Risk", value: state.stats.valueAtRisk, icon: AlertTriangle, color: "text-amber-400" },
-            { title: "Saved This Month", value: state.stats.savedThisMonth, icon: Shield, color: "text-green-400" },
-            { title: "Hours Reclaimed", value: `${state.stats.hoursReclaimed}h`, icon: Clock, color: "text-purple-400" },
+            { title: "Active Items", value: state.stats.activeItems, color: "text-blue-400" },
+            { title: "Value at Risk", value: state.stats.valueAtRisk, color: "text-amber-400" },
+            { title: "Saved This Month", value: state.stats.savedThisMonth, color: "text-green-400" },
+            { title: "Hours Reclaimed", value: `${state.stats.hoursReclaimed}h`, color: "text-purple-400" },
           ].map((s, i) => (
             <div key={s.title} className="card-enhanced" style={{ animationDelay: `${i * 80}ms` }}>
               <div className="flex items-center justify-between mb-2">
-                <s.icon className={`w-6 h-6 ${s.color}`} aria-hidden />
+                <Image 
+                  src="/foldera-glyph.svg" 
+                  alt="" 
+                  width={24} 
+                  height={24}
+                />
                 <span className="text-xs text-slate-500 flex items-center gap-1">
                   <span className="w-2 h-2 bg-green-500 rounded-full" aria-hidden />
                   LIVE
@@ -436,6 +503,62 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+
+        {/* Demo Briefing Card */}
+        {state.showingBriefing && state.briefing && (
+          <div data-briefing-card className="animate-fade-in bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border border-cyan-500/30 rounded-xl p-6 shadow-2xl mb-12">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-white">🧠 Executive Briefing</h3>
+              <button
+                onClick={() => dispatch({ type: "HIDE_BRIEFING" })}
+                className="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-gray-800/50 rounded-lg p-4 border-l-4 border-blue-500">
+                <div className="flex items-center gap-2 mb-2">
+                  <Image 
+                    src="/foldera-glyph.svg" 
+                    alt="" 
+                    width={20} 
+                    height={20}
+                  />
+                  <span className="font-semibold text-blue-400">WHAT CHANGED</span>
+                </div>
+                <p className="text-gray-200 text-sm leading-relaxed">{state.briefing.whatChanged}</p>
+              </div>
+              
+              <div className="bg-gray-800/50 rounded-lg p-4 border-l-4 border-yellow-500">
+                <div className="flex items-center gap-2 mb-2">
+                  <Image 
+                    src="/foldera-glyph.svg" 
+                    alt="" 
+                    width={20} 
+                    height={20}
+                  />
+                  <span className="font-semibold text-yellow-400">WHAT MATTERS</span>
+                </div>
+                <p className="text-gray-200 text-sm leading-relaxed">{state.briefing.whatMatters}</p>
+              </div>
+              
+              <div className="bg-gray-800/50 rounded-lg p-4 border-l-4 border-green-500">
+                <div className="flex items-center gap-2 mb-2">
+                  <Image 
+                    src="/foldera-glyph.svg" 
+                    alt="" 
+                    width={20} 
+                    height={20}
+                  />
+                  <span className="font-semibold text-green-400">NEXT MOVE</span>
+                </div>
+                <p className="text-gray-200 text-sm leading-relaxed">{state.briefing.whatToDoNext}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Lists */}
         {state.demoHasRun ? (

@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
-import { FileUpload } from '@/components/FileUpload';
+import { FileUpload } from '../../../components/FileUpload';
 
 export default function YakimaPage() {
   const [metrics, setMetrics] = useState(null);
