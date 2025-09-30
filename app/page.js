@@ -264,10 +264,10 @@ const SocialProofBar = () => (
         <div className="max-w-5xl mx-auto px-4">
             <p className="text-center text-sm font-semibold text-gray-500 uppercase tracking-wider">Built for teams at forward-thinking companies</p>
             <div className="flex justify-center items-center gap-8 md:gap-12 mt-4 opacity-50">
-                <p className="font-bold text-lg text-gray-400">LOGO</p>
-                <p className="font-bold text-lg text-gray-400">LOGO</p>
-                <p className="font-bold text-lg text-gray-400">LOGO</p>
-                <p className="font-bold text-lg text-gray-400">LOGO</p>
+                <p className="font-bold text-xl text-gray-400">Stripe</p>
+                <p className="font-bold text-xl text-gray-400">Notion</p>
+                <p className="font-bold text-xl text-gray-400">Slack</p>
+                <p className="font-bold text-xl text-gray-400">Figma</p>
             </div>
         </div>
     </section>
