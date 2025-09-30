@@ -269,6 +269,20 @@ const HeroSection = () => (
     </section>
 );
 
+const SocialProofBar = () => (
+    <section className="relative z-10 bg-zinc-950/50 py-8 border-y border-zinc-800">
+        <div className="max-w-5xl mx-auto px-4">
+            <p className="text-center text-sm font-semibold text-zinc-500 uppercase tracking-wider">Built for teams at forward-thinking companies</p>
+            <div className="flex justify-center items-center gap-8 md:gap-12 mt-4 opacity-40">
+                <p className="font-bold text-lg text-zinc-400">LOGO</p>
+                <p className="font-bold text-lg text-zinc-400">LOGO</p>
+                <p className="font-bold text-lg text-zinc-400">LOGO</p>
+                <p className="font-bold text-lg text-zinc-400">LOGO</p>
+            </div>
+        </div>
+    </section>
+);
+
 const DashboardCard = ({ title, value, unit, icon: Icon, color }) => {
     const [displayValue, setDisplayValue] = useState(0);
 
@@ -587,6 +601,7 @@ export default function HomePage() {
                 <Header />
                 <main>
                     <HeroSection />
+                    <SocialProofBar />
                     <LiveDemoSection />
                     <PricingSection />
                     <FinalCTA />
