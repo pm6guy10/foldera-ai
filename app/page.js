@@ -23,7 +23,7 @@ const Header = () => (
                 </a>
                 <div className="hidden md:flex items-center space-x-8">
                     <a href="#pricing" className="text-slate-300 hover:text-white transition">Pricing</a>
-                    <a href="/dashboard" className="px-6 py-2.5 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition">
+                    <a href="/dashboard" className="px-6 py-2.5 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(124,58,237,0.4)]">
                         Start Free Trial
                     </a>
                 </div>
@@ -67,18 +67,18 @@ const HeroSection = () => {
             
             <div className="max-w-6xl mx-auto relative z-10">
                 <div className={`text-center mb-16 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                    <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
+                    <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight leading-tight">
                         Wake Up to <span className="text-amber-400">$400K+</span> in Hidden Revenue Every Morning.
                     </h1>
-                    <p className="text-xl md:text-2xl text-slate-300 mb-10 max-w-4xl mx-auto leading-relaxed">
+                    <p className="text-lg md:text-2xl text-slate-300 mb-10 max-w-4xl mx-auto leading-relaxed">
                         Foldera's AI scans your CRM overnight and emails you a briefing of at-risk accounts, cross-sell opportunities, and revenue leaks. No meetings. No manual work. Just money you'd have missed.
                     </p>
                     
-                    <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-8">
-                        <a href="/dashboard" className="px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white text-lg font-semibold rounded-lg shadow-2xl transition-all transform hover:scale-105 inline-flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-center mb-8">
+                        <a href="/dashboard" className="w-full sm:w-auto px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white text-lg font-semibold rounded-lg shadow-2xl transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(124,58,237,0.4)] inline-flex items-center justify-center gap-2">
                             Start Free 14-Day Trial <ArrowRight className="w-5 h-5" />
                         </a>
-                        <a href="#solution" className="px-8 py-4 bg-transparent hover:bg-slate-800 text-white text-lg font-semibold rounded-lg border-2 border-slate-600 hover:border-slate-500 transition-all transform hover:scale-105 inline-block">
+                        <a href="#solution" className="w-full sm:w-auto px-8 py-4 bg-transparent hover:bg-slate-800 text-white text-lg font-semibold rounded-lg border-2 border-slate-600 hover:border-slate-500 transition-all transform hover:scale-105 inline-flex items-center justify-center">
                             See How It Works
                         </a>
                     </div>
@@ -101,8 +101,8 @@ const HeroSection = () => {
 
                 {/* Dashboard Preview */}
                 <div className={`transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                    <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700 shadow-2xl">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-4 md:p-8 border border-slate-700 shadow-2xl overflow-x-auto">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 min-w-[320px]">
                             <MetricCard 
                                 emoji="💰" 
                                 title="$425,121" 
@@ -178,10 +178,10 @@ const ProblemSection = () => {
     return (
         <section ref={sectionRef} className="bg-slate-950 px-6 py-24">
             <div className={`max-w-6xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-4">
+                <h2 className="text-3xl md:text-5xl font-bold text-white text-center mb-4">
                     You're Leaving <span className="text-amber-400">$1M+</span> on the Table
                 </h2>
-                <p className="text-xl text-slate-400 text-center mb-16">(And You Don't Even Know It)</p>
+                <p className="text-lg md:text-xl text-slate-400 text-center mb-16">(And You Don't Even Know It)</p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <ProblemCard 
@@ -259,7 +259,7 @@ const SolutionSection = () => {
     return (
         <section ref={sectionRef} id="solution" className="bg-slate-900 px-6 py-24">
             <div className={`max-w-6xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-16">
+                <h2 className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
                     How Foldera Finds Money While You Sleep
                 </h2>
                 
@@ -318,26 +318,26 @@ const DashboardShowcase = () => {
     return (
         <section ref={sectionRef} className="bg-slate-950 px-6 py-24">
             <div className={`max-w-6xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-16">
+                <h2 className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
                     Your Overnight Opportunity Scan
                 </h2>
                 
-                <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700 shadow-2xl mb-8">
-                    <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-700">
+                <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-4 md:p-8 border border-slate-700 shadow-2xl mb-8 overflow-x-auto">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-6 border-b border-slate-700 gap-4">
                         <div className="flex items-center gap-3">
                             <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                            <span className="text-lg font-semibold text-white">All Systems Healthy</span>
+                            <span className="text-base md:text-lg font-semibold text-white">All Systems Healthy</span>
                         </div>
-                        <span className="text-sm text-slate-400">Last scan: 2:00 AM</span>
+                        <span className="text-xs md:text-sm text-slate-400">Last scan: 2:00 AM</span>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 min-w-[320px]">
                         <div className="bg-slate-900 rounded-xl p-6 border border-slate-700">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="text-2xl">🎯</span>
                                 <span className="text-xs text-slate-400">OPPORTUNITY</span>
                             </div>
-                            <p className="text-3xl font-bold text-green-400 mb-2">$425,121</p>
+                            <p className="text-4xl font-bold text-green-400 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>$425,121</p>
                             <p className="text-sm text-slate-400">Cross-sell Opportunity</p>
                             <p className="text-xs text-slate-500 mt-2">3 customers ready to upgrade</p>
                         </div>
@@ -347,7 +347,7 @@ const DashboardShowcase = () => {
                                 <span className="text-2xl">⚠️</span>
                                 <span className="text-xs text-slate-400">AT RISK</span>
                             </div>
-                            <p className="text-3xl font-bold text-orange-400 mb-2">$589,860</p>
+                            <p className="text-4xl font-bold text-orange-400 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>$589,860</p>
                             <p className="text-sm text-slate-400">At-Risk Revenue</p>
                             <p className="text-xs text-slate-500 mt-2">2 customers declining usage</p>
                         </div>
@@ -357,7 +357,7 @@ const DashboardShowcase = () => {
                                 <span className="text-2xl">💰</span>
                                 <span className="text-xs text-slate-400">RECOVERY</span>
                             </div>
-                            <p className="text-3xl font-bold text-amber-400 mb-2">$156,400</p>
+                            <p className="text-4xl font-bold text-amber-400 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>$156,400</p>
                             <p className="text-sm text-slate-400">Revenue Recovery</p>
                             <p className="text-xs text-slate-500 mt-2">5 billing errors detected</p>
                         </div>
@@ -367,7 +367,7 @@ const DashboardShowcase = () => {
                                 <span className="text-2xl">⏱️</span>
                                 <span className="text-xs text-slate-400">EFFICIENCY</span>
                             </div>
-                            <p className="text-3xl font-bold text-purple-400 mb-2">18 hours</p>
+                            <p className="text-4xl font-bold text-purple-400 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>18 hours</p>
                             <p className="text-sm text-slate-400">Time Saved</p>
                             <p className="text-xs text-slate-500 mt-2">Analysis done overnight</p>
                         </div>
@@ -442,7 +442,7 @@ const TestimonialsSection = () => {
     return (
         <section ref={sectionRef} className="bg-slate-900 px-6 py-24">
             <div className={`max-w-6xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-16">
+                <h2 className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
                     Real Teams Finding Real Revenue
                 </h2>
                 
@@ -503,18 +503,18 @@ const PricingSection = () => {
     return (
         <section ref={sectionRef} id="pricing" className="bg-slate-950 px-6 py-24">
             <div className={`max-w-3xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-4">
+                <h2 className="text-3xl md:text-5xl font-bold text-white text-center mb-4">
                     One Plan. No Surprises. Massive ROI.
                 </h2>
                 
-                <div className="bg-slate-800 rounded-2xl p-10 border border-slate-700 shadow-2xl mt-12">
+                <div className="bg-slate-800 rounded-2xl p-6 md:p-10 border border-slate-700 shadow-2xl mt-12">
                     <div className="text-center mb-8">
-                        <h3 className="text-2xl font-bold text-white mb-4">Overnight Opportunity Scanner</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-white mb-4">Overnight Opportunity Scanner</h3>
                         <div className="flex items-baseline justify-center gap-2 mb-4">
-                            <span className="text-6xl font-bold text-amber-400">$999</span>
-                            <span className="text-2xl text-slate-400">/month</span>
+                            <span className="text-5xl md:text-6xl font-bold text-amber-400">$999</span>
+                            <span className="text-xl md:text-2xl text-slate-400">/month</span>
                         </div>
-                        <p className="text-lg text-slate-300 leading-relaxed max-w-xl mx-auto">
+                        <p className="text-base md:text-lg text-slate-300 leading-relaxed max-w-xl mx-auto">
                             If we find even <span className="text-amber-400 font-semibold">ONE $100K opportunity</span>, you've paid for 8 years. Last month our customers found an average of <span className="text-green-400 font-semibold">$387K each</span>.
                         </p>
                     </div>
@@ -537,7 +537,7 @@ const PricingSection = () => {
                         ))}
                     </div>
                     
-                    <a href="/dashboard" className="w-full block text-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-5 rounded-xl transition-all text-xl transform hover:scale-105 shadow-2xl mb-6">
+                    <a href="/dashboard" className="w-full block text-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-5 rounded-xl transition-all duration-300 ease-in-out text-lg md:text-xl hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(124,58,237,0.4)] shadow-2xl mb-6">
                         Start Your Free 14-Day Trial →
                     </a>
                     
@@ -566,14 +566,14 @@ const FinalCTA = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-orange-900/20 via-transparent to-amber-900/20" />
             
             <div className="max-w-4xl mx-auto text-center relative z-10">
-                <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+                <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight">
                     Your Next <span className="text-amber-300">$400K Opportunity</span> Gets Scanned Tonight
                 </h2>
-                <p className="text-xl text-purple-100 mb-10 leading-relaxed">
+                <p className="text-lg md:text-xl text-purple-100 mb-10 leading-relaxed">
                     Connect your CRM now. Our AI runs its first scan at 2 AM. You'll wake up to opportunities you would have missed.
                 </p>
                 
-                <a href="/dashboard" className="inline-flex items-center gap-3 px-10 py-5 bg-white hover:bg-slate-100 text-purple-900 text-xl font-bold rounded-xl shadow-2xl transition-all transform hover:scale-105 mb-8">
+                <a href="/dashboard" className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-10 py-5 bg-white hover:bg-slate-100 text-purple-900 text-lg md:text-xl font-bold rounded-xl shadow-2xl transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(124,58,237,0.4)] mb-8">
                     Start Finding Hidden Revenue <ArrowRight className="w-6 h-6" />
                 </a>
                 
