@@ -246,15 +246,33 @@ const HeroSection = () => (
     <section className="relative z-10 bg-gradient-to-b from-gray-50 to-white px-6 py-16 md:py-24">
         <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
-                Stop Wasting Mornings Fixing Broken Workflows.
+                Wake Up to $400K+ in Hidden Revenue Every Morning.
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-                Foldera monitors your tools 24/7, finds conflicts, and automatically fixes sync errors while you sleep. Wake up to solutions, not problems.
+                Foldera's AI scans your CRM and finance data overnight—then emails you a briefing of at-risk accounts, cross-sell opportunities, and revenue leaks. No meetings. No manual work. Just opportunities you'd have missed.
             </p>
-            <a href="/dashboard" className="bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold py-4 px-8 rounded-lg shadow-lg transition-all transform hover:scale-105 inline-block">
-                Start My 14-Day Free Trial
-            </a>
-            <p className="text-sm text-gray-500 mt-4">No credit card required • 2-minute setup</p>
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-6">
+                <a href="/dashboard" className="bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold py-4 px-8 rounded-lg shadow-lg transition-all transform hover:scale-105 inline-block">
+                    Start 14-Day Free Trial
+                </a>
+                <a href="#demo" className="bg-white hover:bg-gray-50 text-blue-600 text-lg font-semibold py-4 px-8 rounded-lg border-2 border-blue-600 shadow-lg transition-all transform hover:scale-105 inline-block">
+                    See What You're Missing
+                </a>
+            </div>
+            <div className="max-w-2xl mx-auto space-y-2 text-sm text-gray-600">
+                <p className="flex items-center justify-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    Connects to Salesforce, HubSpot, Stripe in 2 minutes
+                </p>
+                <p className="flex items-center justify-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    Read-only access (we never write or send)
+                </p>
+                <p className="flex items-center justify-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    AI-powered analysis, human-vetted insights
+                </p>
+            </div>
         </div>
     </section>
 );
@@ -273,7 +291,7 @@ const SocialProofBar = () => (
     </section>
 );
 
-const DashboardCard = ({ title, value, unit, icon: Icon, color }) => {
+const DashboardCard = ({ emoji, title, value, subtitle, icon: Icon, color }) => {
     const [displayValue, setDisplayValue] = useState(0);
 
     useEffect(() => {
@@ -298,7 +316,7 @@ const DashboardCard = ({ title, value, unit, icon: Icon, color }) => {
 
     const formatValue = () => {
         if (typeof displayValue !== 'number') return displayValue;
-        if (title.includes('Value') || title.includes('Saved')) {
+        if (title.includes('$')) {
             return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(displayValue);
         }
         return displayValue.toLocaleString();
@@ -307,15 +325,19 @@ const DashboardCard = ({ title, value, unit, icon: Icon, color }) => {
     return (
         <div className="relative bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-                <Icon className={`w-6 h-6 ${color}`} />
+                {emoji ? (
+                    <span className="text-2xl">{emoji}</span>
+                ) : (
+                    <Icon className={`w-6 h-6 ${color}`} />
+                )}
                 <span className="text-xs text-gray-500 flex items-center gap-1">
                     <span className="w-2 h-2 bg-green-500 rounded-full" /> LIVE
                 </span>
             </div>
-            <p className={`text-3xl font-light ${color} tracking-tight`}>
-                {formatValue()}{unit}
+            <p className={`text-3xl font-light ${color} tracking-tight mb-2`}>
+                {title}
             </p>
-            <p className="text-sm text-gray-600 mt-2">{title}</p>
+            <p className="text-sm text-gray-600">{subtitle}</p>
         </div>
     );
 };
@@ -388,11 +410,31 @@ const BriefingDashboard = () => {
     
     return (
         <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 shadow-lg animate-fade-in">
-             <div ref={statsRef} className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-                <DashboardCard title="Active Items" value={state.stats.activeItems} icon={Zap} color="text-blue-600" />
-                <DashboardCard title="Value at Risk" value={state.stats.valueAtRisk} icon={AlertTriangle} color="text-amber-600" />
-                <DashboardCard title="Saved This Month" value={state.stats.savedThisMonth} icon={Shield} color="text-green-600" />
-                <DashboardCard title="Hours Reclaimed" value={state.stats.hoursReclaimed} unit="h" icon={Clock} color="text-purple-600" />
+             <div ref={statsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                <DashboardCard 
+                    emoji="💰" 
+                    title="$425,121 Cross-sell Opportunity" 
+                    subtitle="3 customers ready to upgrade, contracts renewing this month" 
+                    color="text-green-600" 
+                />
+                <DashboardCard 
+                    emoji="⚠️" 
+                    title="$589,860 At-Risk Revenue" 
+                    subtitle="2 customers with declining usage, 1 with support escalations" 
+                    color="text-amber-600" 
+                />
+                <DashboardCard 
+                    emoji="💸" 
+                    title="$156,400 Revenue Recovery" 
+                    subtitle="5 customers undercharged, 2 payment failures" 
+                    color="text-blue-600" 
+                />
+                <DashboardCard 
+                    emoji="⏱️" 
+                    title="18 hours Time Saved" 
+                    subtitle="Manual analysis done overnight" 
+                    color="text-purple-600" 
+                />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -455,7 +497,7 @@ const LiveDemoSection = () => {
         <section ref={demoRef} className="relative z-10 py-20 md:py-24 px-4" id="demo">
              <div className="max-w-3xl mx-auto">
                 <div className="text-center mb-12">
-                    <h2 className="text-3xl font-bold mb-4 tracking-tight text-gray-900">Your Morning Briefing, Solved.</h2>
+                    <h2 className="text-3xl font-bold mb-4 tracking-tight text-gray-900">Your Overnight Opportunity Scan</h2>
                     <p className="text-gray-600 mb-8 max-w-2xl mx-auto">Instead of a list of new problems, Foldera gives you a list of problems it already fixed.</p>
                     <button onClick={handleRunDemo} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-lg transform hover:scale-105 transition-all">
                         {state.demoHasRun ? 'Re-run Demo' : 'Run Live Demo'}
@@ -492,22 +534,25 @@ const PricingSection = () => {
         <section className="py-20 md:py-24 px-4 bg-gray-50" id="pricing">
             <div className="max-w-md mx-auto">
                 <div className="bg-white rounded-2xl p-8 text-center shadow-2xl border border-gray-200">
-                    <h3 className="text-2xl font-bold mb-2 text-gray-900">One Simple Plan.</h3>
+                    <h2 className="text-3xl font-bold mb-4 text-gray-900">One Simple Plan</h2>
+                    <h3 className="text-xl font-semibold mb-2 text-gray-900">Overnight Opportunity Scanner</h3>
                     <p className="text-gray-600 mb-6">Start with a full-featured 14-day trial. See the value, then decide.</p>
-                    <div className="text-5xl font-bold my-4 text-gray-900">$79<span className="text-2xl text-gray-500">/mo</span></div>
+                    <div className="text-5xl font-bold my-4 text-gray-900">$999<span className="text-2xl text-gray-500">/mo</span></div>
                     <p className="text-gray-500 mb-8">After your free trial ends.</p>
                     
                     <ul className="text-left space-y-3 mb-10 text-gray-700">
-                        <li className="flex items-start gap-3"><Check className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-500" /><span>Unlimited connectors</span></li>
-                        <li className="flex items-start gap-3"><Check className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-500" /><span>Real-time monitoring & fixes</span></li>
-                        <li className="flex items-start gap-3"><Check className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-500" /><span>Daily summary reports</span></li>
-                        <li className="flex items-start gap-3"><Check className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-500" /><span>Priority support</span></li>
+                        <li className="flex items-start gap-3"><Check className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-500" /><span>Daily AI analysis of your CRM</span></li>
+                        <li className="flex items-start gap-3"><Check className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-500" /><span>Identifies $400K+ in opportunities monthly</span></li>
+                        <li className="flex items-start gap-3"><Check className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-500" /><span>At-risk account alerts</span></li>
+                        <li className="flex items-start gap-3"><Check className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-500" /><span>Revenue recovery detection</span></li>
+                        <li className="flex items-start gap-3"><Check className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-500" /><span>Morning email briefings</span></li>
+                        <li className="flex items-start gap-3"><Check className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-500" /><span>Connects to Salesforce or HubSpot</span></li>
                     </ul>
                     
                     <a href="/dashboard" className="w-full block text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg transition-all text-lg transform hover:scale-105">
-                        Start My 14-Day Free Trial
+                        Start 14-Day Free Trial
                     </a>
-                    <p className="font-semibold text-gray-500 mt-4 text-sm">No credit card required. Cancel anytime.</p>
+                    <p className="font-semibold text-gray-500 mt-4 text-sm">14-day free trial, cancel anytime</p>
                 </div>
             </div>
         </section>
@@ -518,13 +563,13 @@ const FinalCTA = () => (
     <section className="relative z-10 py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-4xl font-bold mb-6 tracking-tight text-gray-900">
-                Start Your First Problem-Free Morning.
+                Start Finding Hidden Revenue Tomorrow Morning
             </h2>
             <p className="text-xl text-gray-600 mb-8">
-                It takes 2 minutes to connect your tools. Let Foldera catch the first error tonight.
+                Connect your CRM in 2 minutes. Foldera scans it tonight. You'll wake up to opportunities you would have missed.
             </p>
             <a href="/dashboard" className="bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold py-4 px-10 rounded-lg shadow-lg transition-all transform hover:scale-105 inline-block">
-                Claim Your 14-Day Free Trial
+                Start 14-Day Free Trial
             </a>
         </div>
     </section>
