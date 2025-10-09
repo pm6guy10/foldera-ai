@@ -141,11 +141,11 @@ const HeroSection = () => {
 
 const ProblemCard = ({ emoji, amount, title, description }) => {
     return (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 hover:border-slate-600 transition-all hover:-translate-y-2 hover:shadow-2xl">
+        <div className="bg-white rounded-xl p-8 border border-gray-200 hover:border-amber-300 transition-all hover:-translate-y-2 hover:shadow-2xl">
             <div className="text-4xl mb-4">{emoji}</div>
-            <h3 className="text-3xl font-bold text-amber-400 mb-3">{amount}</h3>
-            <h4 className="text-xl font-semibold text-white mb-3">{title}</h4>
-            <p className="text-slate-400 leading-relaxed">{description}</p>
+            <h3 className="text-3xl md:text-4xl font-bold text-amber-500 mb-3">{amount}</h3>
+            <h4 className="text-xl font-semibold text-slate-900 mb-3">{title}</h4>
+            <p className="text-slate-600 leading-relaxed">{description}</p>
         </div>
     );
 };
@@ -176,12 +176,15 @@ const ProblemSection = () => {
     }, []);
 
     return (
-        <section ref={sectionRef} className="bg-slate-950 px-6 py-24">
+        <section ref={sectionRef} className="bg-slate-50 px-6 py-24 relative">
+            {/* Gradient transition from dark to light */}
+            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-slate-950 to-transparent pointer-events-none" />
+            
             <div className={`max-w-6xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                <h2 className="text-3xl md:text-5xl font-bold text-white text-center mb-4">
-                    You're Leaving <span className="text-amber-400">$1M+</span> on the Table
+                <h2 className="text-3xl md:text-5xl font-bold text-slate-900 text-center mb-4">
+                    You're Leaving <span className="text-amber-500">$1M+</span> on the Table
                 </h2>
-                <p className="text-lg md:text-xl text-slate-400 text-center mb-16">(And You Don't Even Know It)</p>
+                <p className="text-lg md:text-xl text-slate-600 text-center mb-16">(And You Don't Even Know It)</p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <ProblemCard 
@@ -225,10 +228,10 @@ const StepCard = ({ number, title, description, isLast }) => {
             {!isLast && (
                 <div className="hidden lg:block absolute top-1/2 -right-8 transform -translate-y-1/2">
                     <ArrowRight className="w-16 h-16 text-purple-600" />
-                </div>
-            )}
         </div>
-    );
+            )}
+    </div>
+);
 };
 
 const SolutionSection = () => {
@@ -255,7 +258,7 @@ const SolutionSection = () => {
             }
         };
     }, []);
-
+    
     return (
         <section ref={sectionRef} id="solution" className="bg-slate-900 px-6 py-24">
             <div className={`max-w-6xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
@@ -314,69 +317,72 @@ const DashboardShowcase = () => {
             }
         };
     }, []);
-
+    
     return (
-        <section ref={sectionRef} className="bg-slate-950 px-6 py-24">
+        <section ref={sectionRef} className="bg-purple-50 px-6 py-24 relative">
+            {/* Gradient transition from dark to light */}
+            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-slate-900 to-transparent pointer-events-none" />
+            
             <div className={`max-w-6xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                <h2 className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
+                <h2 className="text-3xl md:text-5xl font-bold text-slate-900 text-center mb-16">
                     Your Overnight Opportunity Scan
                 </h2>
                 
-                <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-4 md:p-8 border border-slate-700 shadow-2xl mb-8 overflow-x-auto">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-6 border-b border-slate-700 gap-4">
+                <div className="bg-white rounded-2xl p-4 md:p-8 border border-purple-200 shadow-2xl mb-8 overflow-x-auto">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-6 border-b border-gray-200 gap-4">
                         <div className="flex items-center gap-3">
                             <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                            <span className="text-base md:text-lg font-semibold text-white">All Systems Healthy</span>
+                            <span className="text-base md:text-lg font-semibold text-slate-900">All Systems Healthy</span>
                         </div>
-                        <span className="text-xs md:text-sm text-slate-400">Last scan: 2:00 AM</span>
+                        <span className="text-xs md:text-sm text-slate-600">Last scan: 2:00 AM</span>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 min-w-[320px]">
-                        <div className="bg-slate-900 rounded-xl p-6 border border-slate-700">
+                        <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-6 border border-gray-200 shadow-md">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="text-2xl">🎯</span>
-                                <span className="text-xs text-slate-400">OPPORTUNITY</span>
+                                <span className="text-xs text-slate-500 font-semibold">OPPORTUNITY</span>
                             </div>
-                            <p className="text-4xl font-bold text-green-400 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>$425,121</p>
-                            <p className="text-sm text-slate-400">Cross-sell Opportunity</p>
+                            <p className="text-4xl font-bold text-green-600 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>$425,121</p>
+                            <p className="text-sm text-slate-700 font-medium">Cross-sell Opportunity</p>
                             <p className="text-xs text-slate-500 mt-2">3 customers ready to upgrade</p>
                         </div>
                         
-                        <div className="bg-slate-900 rounded-xl p-6 border border-slate-700">
+                        <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-6 border border-gray-200 shadow-md">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="text-2xl">⚠️</span>
-                                <span className="text-xs text-slate-400">AT RISK</span>
+                                <span className="text-xs text-slate-500 font-semibold">AT RISK</span>
                             </div>
-                            <p className="text-4xl font-bold text-orange-400 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>$589,860</p>
-                            <p className="text-sm text-slate-400">At-Risk Revenue</p>
+                            <p className="text-4xl font-bold text-orange-500 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>$589,860</p>
+                            <p className="text-sm text-slate-700 font-medium">At-Risk Revenue</p>
                             <p className="text-xs text-slate-500 mt-2">2 customers declining usage</p>
                         </div>
                         
-                        <div className="bg-slate-900 rounded-xl p-6 border border-slate-700">
+                        <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-6 border border-gray-200 shadow-md">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="text-2xl">💰</span>
-                                <span className="text-xs text-slate-400">RECOVERY</span>
+                                <span className="text-xs text-slate-500 font-semibold">RECOVERY</span>
                             </div>
-                            <p className="text-4xl font-bold text-amber-400 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>$156,400</p>
-                            <p className="text-sm text-slate-400">Revenue Recovery</p>
+                            <p className="text-4xl font-bold text-amber-500 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>$156,400</p>
+                            <p className="text-sm text-slate-700 font-medium">Revenue Recovery</p>
                             <p className="text-xs text-slate-500 mt-2">5 billing errors detected</p>
-                        </div>
-                        
-                        <div className="bg-slate-900 rounded-xl p-6 border border-slate-700">
+            </div>
+
+                        <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-6 border border-gray-200 shadow-md">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="text-2xl">⏱️</span>
-                                <span className="text-xs text-slate-400">EFFICIENCY</span>
+                                <span className="text-xs text-slate-500 font-semibold">EFFICIENCY</span>
                             </div>
-                            <p className="text-4xl font-bold text-purple-400 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>18 hours</p>
-                            <p className="text-sm text-slate-400">Time Saved</p>
+                            <p className="text-4xl font-bold text-purple-600 mb-2" style={{ textShadow: '0 0 20px rgba(245, 158, 11, 0.3)' }}>18 hours</p>
+                            <p className="text-sm text-slate-700 font-medium">Time Saved</p>
                             <p className="text-xs text-slate-500 mt-2">Analysis done overnight</p>
                         </div>
                     </div>
                 </div>
                 
                 <div className="text-center">
-                    <p className="text-lg text-slate-300 italic">
-                        This is what landed in Sarah Chen's inbox this morning. Her team closed the <span className="text-amber-400 font-semibold">$125K Acme Corp upsell</span> by 10 AM.
+                    <p className="text-lg text-slate-700 italic">
+                        This is what landed in Sarah Chen's inbox this morning. Her team closed the <span className="text-amber-600 font-semibold">$125K Acme Corp upsell</span> by 10 AM.
                     </p>
                 </div>
             </div>
@@ -390,21 +396,21 @@ const DashboardShowcase = () => {
 
 const TestimonialCard = ({ quote, author, company, metrics }) => {
     return (
-        <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 hover:border-purple-600 transition-all hover:-translate-y-2 hover:shadow-2xl">
+        <div className="bg-white rounded-xl p-8 border border-gray-200 hover:border-purple-300 transition-all hover:-translate-y-2 hover:shadow-2xl">
             <div className="mb-6">
-                <p className="text-lg text-slate-300 leading-relaxed mb-6">"{quote}"</p>
+                <p className="text-lg text-purple-700 leading-relaxed mb-6 font-medium">"{quote}"</p>
                 <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
                         {author.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div>
-                        <p className="text-white font-semibold">{author}</p>
-                        <p className="text-sm text-slate-400">{company}</p>
+                </div>
+                <div>
+                        <p className="text-slate-900 font-semibold">{author}</p>
+                        <p className="text-sm text-slate-600">{company}</p>
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
                     {metrics.map((metric, idx) => (
-                        <span key={idx} className="px-3 py-1 bg-purple-900/30 border border-purple-700 rounded-full text-xs text-purple-300 font-medium">
+                        <span key={idx} className="px-3 py-1 bg-green-50 border border-green-300 rounded-full text-xs text-green-700 font-medium">
                             {metric}
                         </span>
                     ))}
@@ -440,9 +446,12 @@ const TestimonialsSection = () => {
     }, []);
 
     return (
-        <section ref={sectionRef} className="bg-slate-900 px-6 py-24">
+        <section ref={sectionRef} className="bg-slate-50 px-6 py-24 relative">
+            {/* Gradient transition from light purple to light gray */}
+            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-purple-50 to-transparent pointer-events-none" />
+            
             <div className={`max-w-6xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                <h2 className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
+                <h2 className="text-3xl md:text-5xl font-bold text-slate-900 text-center mb-16">
                     Real Teams Finding Real Revenue
                 </h2>
                 
@@ -501,21 +510,24 @@ const PricingSection = () => {
     }, []);
 
     return (
-        <section ref={sectionRef} id="pricing" className="bg-slate-950 px-6 py-24">
+        <section ref={sectionRef} id="pricing" className="bg-white px-6 py-24 relative">
+            {/* Gradient transition from light gray to white */}
+            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-slate-50 to-transparent pointer-events-none" />
+            
             <div className={`max-w-3xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                <h2 className="text-3xl md:text-5xl font-bold text-white text-center mb-4">
+                <h2 className="text-3xl md:text-5xl font-bold text-slate-900 text-center mb-4">
                     One Plan. No Surprises. Massive ROI.
                 </h2>
                 
-                <div className="bg-slate-800 rounded-2xl p-6 md:p-10 border border-slate-700 shadow-2xl mt-12">
+                <div className="bg-purple-50 rounded-2xl p-6 md:p-10 border-2 border-purple-200 shadow-2xl mt-12">
                     <div className="text-center mb-8">
-                        <h3 className="text-xl md:text-2xl font-bold text-white mb-4">Overnight Opportunity Scanner</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-4">Overnight Opportunity Scanner</h3>
                         <div className="flex items-baseline justify-center gap-2 mb-4">
-                            <span className="text-5xl md:text-6xl font-bold text-amber-400">$999</span>
-                            <span className="text-xl md:text-2xl text-slate-400">/month</span>
+                            <span className="text-5xl md:text-6xl font-bold text-purple-600">$999</span>
+                            <span className="text-xl md:text-2xl text-slate-600">/month</span>
                         </div>
-                        <p className="text-base md:text-lg text-slate-300 leading-relaxed max-w-xl mx-auto">
-                            If we find even <span className="text-amber-400 font-semibold">ONE $100K opportunity</span>, you've paid for 8 years. Last month our customers found an average of <span className="text-green-400 font-semibold">$387K each</span>.
+                        <p className="text-base md:text-lg text-slate-700 leading-relaxed max-w-xl mx-auto">
+                            If we find even <span className="text-purple-600 font-semibold">ONE $100K opportunity</span>, you've paid for 8 years. Last month our customers found an average of <span className="text-green-600 font-semibold">$387K each</span>.
                         </p>
                     </div>
                     
@@ -531,8 +543,8 @@ const PricingSection = () => {
                             "Cancel anytime, no long-term contract"
                         ].map((feature, idx) => (
                             <div key={idx} className="flex items-start gap-3">
-                                <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />
-                                <span className="text-slate-300 text-lg">{feature}</span>
+                                <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                                <span className="text-slate-700 text-lg">{feature}</span>
                             </div>
                         ))}
                     </div>
@@ -542,10 +554,10 @@ const PricingSection = () => {
                     </a>
                     
                     <div className="text-center space-y-2">
-                        <p className="text-sm text-slate-400">
+                        <p className="text-sm text-slate-600">
                             <span className="font-semibold">No credit card required</span> • Full access • Cancel anytime
                         </p>
-                        <p className="text-sm text-green-400 font-semibold">
+                        <p className="text-sm text-green-600 font-semibold">
                             ROI guarantee: Find $10K+ in opportunities or get a full refund
                         </p>
                     </div>
@@ -562,13 +574,15 @@ const PricingSection = () => {
 const FinalCTA = () => {
     return (
         <section className="relative bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900 px-6 py-24 overflow-hidden">
+            {/* Gradient transition from white to dark purple */}
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white to-transparent pointer-events-none z-10" />
             {/* Background decoration */}
             <div className="absolute inset-0 bg-gradient-to-r from-orange-900/20 via-transparent to-amber-900/20" />
             
             <div className="max-w-4xl mx-auto text-center relative z-10">
                 <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight">
                     Your Next <span className="text-amber-300">$400K Opportunity</span> Gets Scanned Tonight
-                </h2>
+            </h2>
                 <p className="text-lg md:text-xl text-purple-100 mb-10 leading-relaxed">
                     Connect your CRM now. Our AI runs its first scan at 2 AM. You'll wake up to opportunities you would have missed.
                 </p>
@@ -595,9 +609,9 @@ const FinalCTA = () => {
                 <p className="text-sm text-purple-300">
                     Join <span className="font-semibold text-white">127 revenue teams</span> who sleep better knowing Foldera is watching their pipeline 24/7.
                 </p>
-            </div>
-        </section>
-    );
+        </div>
+    </section>
+);
 };
 
 //================================================================================
@@ -613,7 +627,7 @@ const Footer = () => (
                     <span className="text-lg font-semibold text-white">Foldera</span>
                 </div>
                 <div className="text-slate-500 text-sm">© 2025 Foldera, Inc. All rights reserved.</div>
-                <div className="flex space-x-6 text-sm">
+            <div className="flex space-x-6 text-sm">
                     <a href="#" className="text-slate-400 hover:text-white transition">Privacy</a>
                     <a href="#" className="text-slate-400 hover:text-white transition">Terms</a>
                     <a href="#" className="text-slate-400 hover:text-white transition">Contact</a>
@@ -630,17 +644,17 @@ const Footer = () => (
 export default function HomePage() {
     return (
         <div className="bg-slate-950 text-slate-300 antialiased min-h-screen">
-            <Header />
-            <main>
-                <HeroSection />
+                <Header />
+                <main>
+                    <HeroSection />
                 <ProblemSection />
                 <SolutionSection />
                 <DashboardShowcase />
                 <TestimonialsSection />
-                <PricingSection />
-                <FinalCTA />
-            </main>
-            <Footer />
-        </div>
+                    <PricingSection />
+                    <FinalCTA />
+                </main>
+                <Footer />
+            </div>
     );
 }
