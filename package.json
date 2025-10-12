@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.65.0",
     "@google-cloud/local-auth": "^3.0.1",
     "@google/generative-ai": "^0.24.1",
     "@stripe/stripe-js": "^7.9.0",
@@ -26,6 +27,7 @@
     "mammoth": "^1.10.0",
     "msgreader": "^1.0.1",
     "next": "^14.2.32",
+    "next-auth": "^4.24.11",
     "node-msg": "^1.2.3",
     "papaparse": "^5.5.3",
     "pdf-parse": "^1.1.1",
