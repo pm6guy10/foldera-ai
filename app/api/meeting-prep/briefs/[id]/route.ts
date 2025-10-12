@@ -27,7 +27,7 @@ export async function GET(
       );
     }
     
-    const userId = session.user.id;
+    const userId = (session.user as any).id || session.user.email;
     const briefId = params.id;
     
     // Fetch brief

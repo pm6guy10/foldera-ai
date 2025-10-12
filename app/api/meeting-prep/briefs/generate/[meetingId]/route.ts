@@ -29,7 +29,7 @@ export async function POST(
       );
     }
     
-    const userId = session.user.id;
+    const userId = (session.user as any).id || session.user.email;
     const meetingId = params.meetingId;
     
     // Check if force regenerate

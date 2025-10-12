@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    const userId = session.user.id;
+    const userId = (session.user as any).id || session.user.email;
     
     // Check Google connection
     const googleConnected = await hasValidGoogleConnection(userId);

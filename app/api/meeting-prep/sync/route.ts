@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Get user ID from session
-    const userId = session.user.id;
+    const userId = (session.user as any).id || session.user.email;
     
     console.log(`[API] Manual sync requested by user ${userId}`);
     
