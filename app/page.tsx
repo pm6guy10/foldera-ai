@@ -42,10 +42,10 @@ const HeroSection = () => {
             <div className="max-w-6xl mx-auto relative z-10 w-full">
                 <div className={`text-center mb-16 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
                     <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-[1.1]">
-                        Walk into every meeting<br />like you already know<br />everything
+                        Your AI Chief of Staff<br />acts while you sleep.
                     </h1>
                     <p className="text-xl md:text-2xl text-gray-400 mb-10 max-w-3xl mx-auto leading-relaxed">
-                        Your AI chief of staff reads everything, connects the dots, and tells you exactly what to say—before you even ask
+                        Monitors your work across email, docs, Slack, and calendar. Spots problems before you do. Drafts solutions. You just approve.
                     </p>
                     
                     <div className="flex flex-col items-center gap-4 mb-6">
@@ -53,7 +53,7 @@ const HeroSection = () => {
                             href="#waitlist" 
                             className="inline-block px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-semibold rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-2xl hover:shadow-indigo-500/50"
                         >
-                            Never look unprepared again
+                            Start with Email + Drive
                         </a>
                         <p className="text-sm text-gray-500">
                             🔒 Your data stays yours. We surface it, never store it.
