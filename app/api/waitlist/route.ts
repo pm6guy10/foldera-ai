@@ -94,13 +94,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Send confirmation email
-    try {
-      const emailSubject = isEarlyBird 
-        ? "You're locked in at $47/mo (forever)"
-        : "You're on the waitlist";
+    // Send confirmation email (only if Resend key is configured)
+    if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 'dummy-key-for-build') {
+      try {
+        const emailSubject = isEarlyBird 
+          ? "You're locked in at $47/mo (forever)"
+          : "You're on the waitlist";
 
-      const emailHtml = isEarlyBird ? `
+        const emailHtml = isEarlyBird ? `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
           <p style="font-size: 16px; line-height: 1.6; color: #333; margin-bottom: 20px;">
             Hey${name ? ' ' + name : ''},
@@ -211,16 +212,19 @@ We'll email you when it's ready to test (next 2-3 weeks).
 
 - Brandon`;
 
-      await resend.emails.send({
-        from: 'Context <onboarding@context.app>',
-        to: email,
-        subject: emailSubject,
-        html: emailHtml,
-        text: emailText,
-      });
-    } catch (emailError) {
-      console.error('Resend email error:', emailError);
-      // Don't fail the request if email fails
+        await resend.emails.send({
+          from: 'Context <onboarding@context.app>',
+          to: email,
+          subject: emailSubject,
+          html: emailHtml,
+          text: emailText,
+        });
+      } catch (emailError) {
+        console.error('Resend email error:', emailError);
+        // Don't fail the request if email fails
+      }
+    } else {
+      console.log('Skipping email - RESEND_API_KEY not configured');
     }
 
     return NextResponse.json({

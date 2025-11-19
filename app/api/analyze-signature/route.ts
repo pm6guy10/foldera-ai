@@ -256,3 +256,4 @@ function calculateDealSizeImpact(score: number, issues: Issue[]) {
 
 
 
+
