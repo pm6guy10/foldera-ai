@@ -1,6 +1,9 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, Calendar, Mail, MessageSquare, Zap, Shield, Clock, User, FileText, Lightbulb, AlertTriangle } from 'lucide-react';
+import { Hero } from './components/Hero';
+import { GeniusSection } from './components/GeniusSection';
+import { PricingSection } from './components/PricingSection';
 
 //================================================================================
 // HEADER
@@ -26,75 +29,6 @@ const Header = () => (
 //================================================================================
 // HERO SECTION
 //================================================================================
-
-const HeroSection = () => {
-    const [isVisible, setIsVisible] = useState(false);
-
-    useEffect(() => {
-        setIsVisible(true);
-    }, []);
-
-    return (
-        <section className="relative bg-black px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
-            <div className="absolute inset-0 bg-gradient-to-b from-purple-950/10 via-black to-black pointer-events-none" />
-            <div className={`max-w-6xl mx-auto relative z-10 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-                    <div className="max-w-xl">
-                        <p className="text-sm font-semibold text-emerald-300 uppercase tracking-widest">Inbox Guard • Email-only</p>
-                        <h1 className="mt-4 text-4xl sm:text-5xl font-semibold tracking-tight text-white">
-                            Your inbox, handled while you sleep.
-                        </h1>
-                        <p className="mt-4 text-base sm:text-lg text-slate-300">
-                            Foldera scans your email, finds the messages you missed, drafts replies, and lets you send them with one click.
-                        </p>
-                        <a
-                            href="#waitlist"
-                            className="mt-6 inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-medium bg-indigo-500 hover:bg-indigo-400 text-white shadow-lg transition"
-                        >
-                            Use Inbox Guard
-                        </a>
-                        <p className="mt-3 text-xs text-slate-400 flex items-center gap-2">
-                            <span role="img" aria-hidden="true">🔒</span>
-                            Your email stays yours. We surface patterns, never resell your data.
-                        </p>
-                    </div>
-
-                    <div className="flex justify-center lg:justify-end">
-                        <div className="rounded-2xl bg-slate-900/60 border border-slate-800/80 shadow-xl p-5 sm:p-6 max-w-md w-full mx-auto lg:mx-0">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-semibold text-white">Inbox Guard – Today’s missed emails</p>
-                                    <p className="text-xs text-slate-400 mt-1">Ready to approve & send</p>
-                                </div>
-                                <span className="text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
-                                    Live scan
-                                </span>
-                            </div>
-
-                            <div className="mt-5 pt-4 border-t border-slate-800 space-y-4">
-                                <div>
-                                    <p className="text-sm font-semibold text-white">Sarah Chen — “Quick question on the proposal”</p>
-                                    <p className="text-xs text-slate-400 mt-1">You promised the updated deck last week. She followed up yesterday, still no reply.</p>
-                                    <p className="text-xs text-emerald-400 mt-1">Draft ready: “Here’s the updated proposal and what changed…”</p>
-                                </div>
-                                <div className="border-t border-slate-800 pt-4">
-                                    <p className="text-sm font-semibold text-white">Finance — “Invoice clarification”</p>
-                                    <p className="text-xs text-slate-400 mt-1">They’re confused about a few line items from last month’s invoice.</p>
-                                    <p className="text-xs text-emerald-400 mt-1">Draft ready: “Here’s a clear breakdown of each item…”</p>
-                                </div>
-                                <div className="border-t border-slate-800 pt-4">
-                                    <p className="text-sm font-semibold text-white">New lead — “Next steps?”</p>
-                                    <p className="text-xs text-slate-400 mt-1">Asked about pricing and timing 5 days ago. No response yet.</p>
-                                    <p className="text-xs text-emerald-400 mt-1">Draft ready: “Here’s how we typically start and what it costs…”</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
-};
 
 //================================================================================
 // SOCIAL PROOF SECTION
@@ -166,6 +100,37 @@ const SocialProofSection = () => {
                         title="CTO at DataFlow"
                     />
                 </div>
+            </div>
+        </section>
+    );
+};
+
+//================================================================================
+// OPS SAFETY SECTION
+//================================================================================
+
+const OpsSafetySection = () => {
+    return (
+        <section className="bg-black px-6 py-24">
+            <div className="max-w-6xl mx-auto">
+                <section className="mt-20 max-w-3xl mx-auto px-4 text-slate-200 space-y-4">
+                    <p className="text-base sm:text-lg text-slate-300 mb-4">
+                        Foldera protects you from the mistakes humans miss:
+                    </p>
+                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm md:text-base">
+                        <li className="flex gap-2">• misaligned dates</li>
+                        <li className="flex gap-2">• conflicting promises</li>
+                        <li className="flex gap-2">• wrong numbers</li>
+                        <li className="flex gap-2">• task drift</li>
+                        <li className="flex gap-2">• buried deadlines</li>
+                        <li className="flex gap-2">• contract inconsistencies</li>
+                        <li className="flex gap-2">• Slack/email contradictions</li>
+                        <li className="flex gap-2">• forgotten obligations</li>
+                    </ul>
+                    <p className="text-base sm:text-lg text-slate-300">
+                        This is the engine that keeps your entire workday from breaking.
+                    </p>
+                </section>
             </div>
         </section>
     );
@@ -386,307 +351,33 @@ const ProactiveSection = () => {
 };
 
 //================================================================================
-// PRICING SECTION
+// ZERO-MISS OPS ENGINE SECTION
 //================================================================================
 
-const PricingSection = () => {
-    const [isVisible, setIsVisible] = useState(false);
-    const [openFaq, setOpenFaq] = useState<number | null>(null);
-    const sectionRef = useRef<HTMLElement>(null);
-
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    setIsVisible(true);
-                }
-            },
-            { threshold: 0.2 }
-        );
-
-        if (sectionRef.current) {
-            observer.observe(sectionRef.current);
-        }
-
-        return () => {
-            if (sectionRef.current) {
-                observer.unobserve(sectionRef.current);
-            }
-        };
-    }, []);
-
-    const faqs = [
-        {
-            q: "Why $97/mo normally?",
-            a: "Because this replaces the work of an executive assistant who costs $6,000+/month. Even at $200/mo you're saving thousands. We're pricing at $97 to make it accessible to individual contributors and leaders alike. First 100 users lock in $47/mo forever as a thank you for believing early."
-        },
-        {
-            q: "Can I pay annually?",
-            a: "Yes. $470/year (vs $564 monthly) = 2 months free. Lock in early-bird pricing for life."
-        },
-        {
-            q: "What if I only have a few meetings a week?",
-            a: "If this saves you from one awkward moment, one forgotten commitment, or one missed opportunity, it's paid for itself. Most users say the first brief alone was worth a month's subscription. Plus you're locking in $47/mo forever - that's one coffee per week."
-        },
-        {
-            q: "Is there a free trial?",
-            a: "Not yet - we're in private beta with waitlist access only. But we offer 30-day money back guarantee once you're in."
-        },
-        {
-            q: "Will the price go up?",
-            a: "Yes. After first 100 users, new customers pay $97/mo. Early adopters are grandfathered at $47/mo forever. Your price never increases."
-        },
-        {
-            q: "What about teams?",
-            a: "Team pricing coming soon. Join waitlist to get early access and team discounts."
-        }
-    ];
-
+const ZeroMissOpsSection = () => {
     return (
-        <section ref={sectionRef} id="pricing" className="bg-gradient-to-b from-gray-950 to-black px-6 py-24">
-            <div className={`max-w-6xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                {/* Header */}
-                <div className="text-center mb-16">
-                    <p className="text-indigo-400 text-sm font-semibold uppercase tracking-wider mb-3">Simple, transparent pricing</p>
-                    <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                        What's 10 minutes of looking<br />brilliant worth to you?
+        <section className="bg-black px-6 py-24">
+            <div className="max-w-6xl mx-auto">
+                <div className="mt-24 mb-8 max-w-2xl mx-auto px-4 text-center space-y-2">
+                    <h2 className="text-lg md:text-2xl font-semibold text-slate-50">
+                        Zero-Miss Ops Engine (Beta)
                     </h2>
-                    <p className="text-xl text-gray-400">
-                        Less than one dinner. More valuable than an executive assistant.
+                    <p className="text-sm md:text-base text-slate-200/80">
+                        Connect Gmail, Drive, and Slack.
                     </p>
-                </div>
-
-                {/* Pricing Card */}
-                <div className="max-w-lg mx-auto mb-20">
-                    <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-indigo-900/20 border-2 border-indigo-500/30 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
-                        {/* Glow effect */}
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl" />
-                        
-                        <div className="relative z-10">
-                            {/* Badge */}
-                            <div className="inline-block px-3 py-1 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/30 rounded-full mb-6">
-                                <span className="text-yellow-400 text-xs font-semibold uppercase tracking-wider">🎯 Early Bird - First 100 Users</span>
-                            </div>
-
-                            <h3 className="text-2xl font-bold text-white mb-6">Overnight Opportunity Scanner</h3>
-
-                            {/* Pricing */}
-                            <div className="mb-6">
-                                <div className="flex items-baseline gap-3 mb-2">
-                                    <span className="text-3xl text-gray-500 line-through">$97</span>
-                                    <span className="text-6xl font-bold text-green-400">$47</span>
-                                    <span className="text-gray-400 text-xl">/month</span>
-                                </div>
-                                <p className="text-base text-white font-semibold mb-1">
-                                    Lock in $47/mo forever
-                                </p>
-                                <p className="text-sm text-gray-400">
-                                    Regular price $97/mo after first 100 users. Early adopters never pay more.
-                                </p>
-                            </div>
-
-                            {/* Features */}
-                            <div className="space-y-3 mb-8">
-                                {[
-                                    "Unlimited meeting briefs",
-                                    "Email + Calendar + Slack integration",
-                                    "30-minute advance prep notifications",
-                                    "Mobile & email alerts",
-                                    "AI-powered context analysis",
-                                    "Relationship history tracking",
-                                    "\"What to say\" & \"What to avoid\" guidance"
-                                ].map((feature, idx) => (
-                                    <div key={idx} className="flex items-start gap-3">
-                                        <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                                        <span className="text-gray-300">{feature}</span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Annual Option */}
-                            <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-6">
-                                <p className="text-white font-semibold mb-1">Pay annually: $470/year</p>
-                                <p className="text-sm text-green-400">Save $94 - 2 months free</p>
-                                <p className="text-xs text-gray-500 mt-1">Billed once per year, cancel anytime</p>
-                            </div>
-
-                            {/* CTA */}
-                            <a 
-                                href="#waitlist"
-                                className="block w-full text-center px-8 py-4 bg-white hover:bg-gray-100 text-black text-lg font-bold rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-2xl mb-3"
-                            >
-                                Join Waitlist - Lock in $47/mo
-                            </a>
-                            <p className="text-center text-sm text-gray-400">
-                                🔒 Your data stays yours. Cancel anytime.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Value Anchors */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
-                    <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-xl p-6 text-center">
-                        <div className="text-4xl mb-4">💼</div>
-                        <h4 className="text-white font-semibold mb-3">Replaces</h4>
-                        <p className="text-gray-400 text-sm leading-relaxed">
-                            Executive Assistant: <span className="text-white font-semibold">$6,600/mo</span><br />
-                            Your prep time: <span className="text-white font-semibold">$2,000/mo</span><br />
-                            <span className="text-green-400 font-semibold">Total: $8,600/mo saved</span>
-                        </p>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-xl p-6 text-center">
-                        <div className="text-4xl mb-4">⚡</div>
-                        <h4 className="text-white font-semibold mb-3">ROI</h4>
-                        <p className="text-gray-400 text-sm leading-relaxed">
-                            One avoided mistake pays for 12+ months<br />
-                            One impressed stakeholder = priceless<br />
-                            <span className="text-green-400 font-semibold">First week or money back</span>
-                        </p>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-xl p-6 text-center">
-                        <div className="text-4xl mb-4">🎯</div>
-                        <h4 className="text-white font-semibold mb-3">Compare</h4>
-                        <p className="text-gray-400 text-sm leading-relaxed">
-                            Fireflies (reactive): $19/mo<br />
-                            Motion (no intel): $34/mo<br />
-                            Actual EA: $6,600/mo<br />
-                            <span className="text-green-400 font-semibold">Foldera: $47/mo</span>
-                        </p>
-                    </div>
-                </div>
-
-                {/* Comparison Table */}
-                <div className="max-w-5xl mx-auto mb-20">
-                    <h3 className="text-3xl md:text-4xl font-bold text-white text-center mb-12">
-                        You're Already Paying For This (Just Badly)
-                    </h3>
-                    
-                    {/* Desktop Table */}
-                    <div className="hidden md:block overflow-x-auto">
-                        <table className="w-full border-collapse">
-                            <thead>
-                                <tr className="border-b border-white/10">
-                                    <th className="text-left py-4 px-4 text-gray-400 font-medium"></th>
-                                    <th className="text-left py-4 px-4 text-gray-400 font-medium">Other AI Tools</th>
-                                    <th className="text-left py-4 px-4 text-gray-400 font-medium">Executive Assistant</th>
-                                    <th className="text-left py-4 px-4 text-white font-semibold bg-gradient-to-br from-indigo-900/30 to-transparent rounded-t-lg">Foldera</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr className="border-b border-white/5">
-                                    <td className="py-4 px-4 text-white font-medium">Cost</td>
-                                    <td className="py-4 px-4 text-gray-400">$50-100/mo across 5 tools</td>
-                                    <td className="py-4 px-4 text-gray-400">$6,600/mo</td>
-                                    <td className="py-4 px-4 text-green-400 font-semibold bg-gradient-to-br from-indigo-900/20 to-transparent">$47/mo</td>
-                                </tr>
-                                <tr className="border-b border-white/5">
-                                    <td className="py-4 px-4 text-white font-medium">Pre-meeting prep</td>
-                                    <td className="py-4 px-4"><span className="text-red-400 text-xl">❌</span> <span className="text-gray-400">Manual</span></td>
-                                    <td className="py-4 px-4"><span className="text-green-400 text-xl">✅</span> <span className="text-gray-400">If you brief them</span></td>
-                                    <td className="py-4 px-4 bg-gradient-to-br from-indigo-900/20 to-transparent"><span className="text-green-400 text-xl">✅</span> <span className="text-white font-medium">Automatic</span></td>
-                                </tr>
-                                <tr className="border-b border-white/5">
-                                    <td className="py-4 px-4 text-white font-medium">Knows context</td>
-                                    <td className="py-4 px-4"><span className="text-red-400 text-xl">❌</span> <span className="text-gray-400">Siloed</span></td>
-                                    <td className="py-4 px-4"><span className="text-yellow-400 text-xl">⚠️</span> <span className="text-gray-400">Only what you tell them</span></td>
-                                    <td className="py-4 px-4 bg-gradient-to-br from-indigo-900/20 to-transparent"><span className="text-green-400 text-xl">✅</span> <span className="text-white font-medium">Reads everything</span></td>
-                                </tr>
-                                <tr className="border-b border-white/5">
-                                    <td className="py-4 px-4 text-white font-medium">Available 24/7</td>
-                                    <td className="py-4 px-4"><span className="text-red-400 text-xl">❌</span> <span className="text-gray-400">You are 24/7</span></td>
-                                    <td className="py-4 px-4"><span className="text-red-400 text-xl">❌</span> <span className="text-gray-400">Work hours only</span></td>
-                                    <td className="py-4 px-4 bg-gradient-to-br from-indigo-900/20 to-transparent"><span className="text-green-400 text-xl">✅</span> <span className="text-white font-medium">Always on</span></td>
-                                </tr>
-                                <tr>
-                                    <td className="py-4 px-4 text-white font-medium">Proactive</td>
-                                    <td className="py-4 px-4"><span className="text-red-400 text-xl">❌</span> <span className="text-gray-400">You search</span></td>
-                                    <td className="py-4 px-4"><span className="text-yellow-400 text-xl">⚠️</span> <span className="text-gray-400">If they remember</span></td>
-                                    <td className="py-4 px-4 bg-gradient-to-br from-indigo-900/20 to-transparent rounded-b-lg"><span className="text-green-400 text-xl">✅</span> <span className="text-white font-medium">Surfaces automatically</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Mobile Simplified Version */}
-                    <div className="md:hidden space-y-6">
-                        <div className="bg-gradient-to-br from-indigo-900/30 to-black border-2 border-indigo-500/30 rounded-xl p-6">
-                            <h4 className="text-white font-bold text-lg mb-4">Foldera</h4>
-                            <div className="space-y-3">
-                                <div className="flex items-start gap-2">
-                                    <span className="text-green-400 text-xl flex-shrink-0">✅</span>
-                                    <span className="text-white"><span className="font-semibold">$47/mo</span> for everything</span>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                    <span className="text-green-400 text-xl flex-shrink-0">✅</span>
-                                    <span className="text-white">Automatic pre-meeting prep</span>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                    <span className="text-green-400 text-xl flex-shrink-0">✅</span>
-                                    <span className="text-white">Reads all your context</span>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                    <span className="text-green-400 text-xl flex-shrink-0">✅</span>
-                                    <span className="text-white">24/7 always on</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-xl p-4">
-                                <h4 className="text-gray-400 font-medium mb-3">Other AI Tools</h4>
-                                <p className="text-white font-semibold mb-2">$50-100/mo</p>
-                                <div className="space-y-2 text-sm">
-                                    <p className="text-gray-400"><span className="text-red-400">❌</span> Manual</p>
-                                    <p className="text-gray-400"><span className="text-red-400">❌</span> Siloed</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-xl p-4">
-                                <h4 className="text-gray-400 font-medium mb-3">Executive Assistant</h4>
-                                <p className="text-white font-semibold mb-2">$6,600/mo</p>
-                                <div className="space-y-2 text-sm">
-                                    <p className="text-gray-400"><span className="text-green-400">✅</span> Does prep</p>
-                                    <p className="text-gray-400"><span className="text-red-400">❌</span> Work hours</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* FAQ */}
-                <div className="max-w-3xl mx-auto">
-                    <h3 className="text-3xl font-bold text-white text-center mb-10">Pricing Questions</h3>
-                    <div className="space-y-4">
-                        {faqs.map((faq, idx) => (
-                            <div 
-                                key={idx}
-                                className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-xl overflow-hidden"
-                            >
-                                <button
-                                    onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                                    className="w-full text-left px-6 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
-                                >
-                                    <span className="text-white font-semibold">{faq.q}</span>
-                                    <span className={`text-gray-400 transition-transform ${openFaq === idx ? 'rotate-180' : ''}`}>
-                                        ▼
-                                    </span>
-                                </button>
-                                {openFaq === idx && (
-                                    <div className="px-6 pb-4 pt-2">
-                                        <p className="text-gray-400 leading-relaxed">{faq.a}</p>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+                    <p className="text-sm md:text-base text-slate-200/80">
+                        Foldera reads your work continuously and protects you from fire-starting mistakes.
+                    </p>
                 </div>
             </div>
         </section>
     );
 };
+
+//================================================================================
+// PRICING SECTION
+//================================================================================
+// PricingSection is now imported from ./components/PricingSection
 
 //================================================================================
 // WAITLIST SECTION
@@ -790,14 +481,21 @@ export default function HomePage() {
     return (
         <div className="bg-black text-white antialiased min-h-screen">
             <Header />
-            <main>
-                <HeroSection />
-                <SocialProofSection />
-                <HowItWorksSection />
-                <WhatYouGetSection />
-                <ProactiveSection />
-                <PricingSection />
-                <WaitlistSection />
+            <main className="min-h-screen bg-slate-950 text-slate-50 antialiased">
+                {/* reserve space for navbar */}
+                <div className="pt-20 md:pt-24">
+                    <div className="mx-auto flex max-w-5xl flex-col gap-14 px-4 pb-20 sm:px-6">
+                        <Hero />
+                        <GeniusSection />
+                        <OpsSafetySection />
+                        <HowItWorksSection />
+                        <WhatYouGetSection />
+                        <ProactiveSection />
+                        <ZeroMissOpsSection />
+                        <PricingSection />
+                        <WaitlistSection />
+                    </div>
+                </div>
             </main>
             <Footer />
         </div>

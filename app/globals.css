@@ -139,3 +139,64 @@ button:hover, .btn:hover {
 .animate-fade-in {
   animation: fadeIn 0.6s ease-out;
 }
+
+/* -----  MOBILE FIRST ELEGANCE RESET  ----- */
+@layer utilities {
+  @media (max-width: 768px) {
+
+    body {
+      font-size: 15px !important;
+      line-height: 1.55 !important;
+      letter-spacing: -0.2px !important;
+    }
+
+    section {
+      padding-left: 1.4rem !important;
+      padding-right: 1.4rem !important;
+      padding-top: 2rem !important;
+      padding-bottom: 2rem !important;
+    }
+
+    h1, h2, h3 {
+      line-height: 1.2 !important;
+      font-weight: 600 !important;
+      letter-spacing: -0.6px !important;
+    }
+
+    h1 {
+      font-size: 1.9rem !important;
+    }
+
+    h2 {
+      font-size: 1.5rem !important;
+    }
+
+    h3 {
+      font-size: 1.2rem !important;
+    }
+
+    /* Collapse all 3-column grids into beautiful vertical stacks */
+    [class*="grid"] {
+      grid-template-columns: 1fr !important;
+      gap: 1.5rem !important;
+    }
+
+    /* Make cards beautiful and roomy */
+    [class*="rounded-xl"],
+    [class*="rounded-2xl"] {
+      padding: 1.25rem !important;
+      border-radius: 1.1rem !important;
+    }
+
+    /* Kill the cramped left/right alignment in multi-line items */
+    p, li {
+      max-width: 100% !important;
+    }
+
+    /* Space out sections to make everything feel luxurious */
+    .section-block {
+      margin-top: 2.5rem !important;
+      margin-bottom: 2.5rem !important;
+    }
+  }
+}

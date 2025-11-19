@@ -9,7 +9,12 @@ import {
   isUserMessage,
   extractEmail,
   fetchThread,
-} from '@/app/api/generate-draft/route';
+} from '@/app/api/generate-draft/utils';
+import {
+  generateDraftResponse,
+  upsertDraft,
+  formatHistoryForPrompt,
+} from '@/app/api/generate-draft/draft-helpers';
 
 export const runtime = 'nodejs';
 
@@ -57,6 +62,9 @@ export async function POST(_request: NextRequest) {
           userName: session.user.name || session.user.email,
           targetId: thread.id || threadRef.id,
           gmailClient: gmail,
+          generateDraft: generateDraftResponse,
+          upsertDraft,
+          formatHistory: formatHistoryForPrompt,
         });
         created += 1;
       } catch (error) {
