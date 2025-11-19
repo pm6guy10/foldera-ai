@@ -35,81 +35,72 @@ const HeroSection = () => {
     }, []);
 
     return (
-        <section className="relative bg-black px-6 pt-32 pb-24 min-h-screen flex items-center">
-            {/* Subtle gradient */}
-            <div className="absolute inset-0 bg-gradient-to-b from-purple-950/20 via-black to-black pointer-events-none" />
-            
-            <div className="max-w-6xl mx-auto relative z-10 w-full">
-                <div className={`text-center mb-16 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                    <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-[1.1]">
-                        Your AI Chief of Staff<br />acts while you sleep.
-                    </h1>
-                    <p className="text-xl md:text-2xl text-gray-400 mb-10 max-w-3xl mx-auto leading-relaxed">
-                        Monitors your work across email, docs, Slack, and calendar. Spots problems before you do. Drafts solutions. You just approve.
-                    </p>
-                    
-                    <div className="flex flex-col items-center gap-4 mb-6">
-                        <a 
-                            href="#waitlist" 
-                            className="inline-block px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-semibold rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-2xl hover:shadow-indigo-500/50"
+        <section className="relative bg-black px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
+            <div className="absolute inset-0 bg-gradient-to-b from-purple-950/10 via-black to-black pointer-events-none" />
+            <div className={`max-w-6xl mx-auto relative z-10 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+                    <div className="max-w-xl">
+                        <p className="text-sm font-semibold text-emerald-300 uppercase tracking-widest">Inbox Guard • Email-only</p>
+                        <h1 className="mt-4 text-4xl sm:text-5xl font-semibold tracking-tight text-white">
+                            Your inbox, handled while you sleep.
+                        </h1>
+                        <p className="mt-4 text-base sm:text-lg text-slate-300">
+                            Foldera scans your email, finds the messages you missed, drafts replies, and lets you send them with one click.
+                        </p>
+                        <p className="mt-4 text-base sm:text-lg text-slate-300">
+                            AI was supposed to lighten your load.
+                        </p>
+                        <p className="mt-2 text-base sm:text-lg text-slate-300">
+                            Instead it dumped everything back on you.
+                        </p>
+                        <p className="mt-4 text-base sm:text-lg text-slate-300">
+                            Never drop a thread again.
+                        </p>
+                        <p className="mt-2 text-base sm:text-lg text-slate-300">
+                            Zero missed commitments. Zero contradictions. Zero surprises.
+                        </p>
+                        <p className="mt-2 text-base sm:text-lg text-slate-300">
+                            Foldera scans Gmail, Drive, and Slack in real-time to prevent operational mistakes before they cost you.
+                        </p>
+                        <a
+                            href="#waitlist"
+                            className="mt-6 inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-medium bg-indigo-500 hover:bg-indigo-400 text-white shadow-lg transition"
                         >
-                            Start with Email + Drive
+                            Use Inbox Guard
                         </a>
-                        <p className="text-sm text-gray-500">
-                            🔒 Your data stays yours. We surface it, never store it.
+                        <p className="mt-3 text-xs text-slate-400 flex items-center gap-2">
+                            <span role="img" aria-hidden="true">🔒</span>
+                            Your email stays yours. We surface patterns, never resell your data.
                         </p>
                     </div>
-                </div>
 
-                {/* Meeting Brief Mockup */}
-                <div className={`max-w-2xl mx-auto transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                    <div className="relative bg-gradient-to-br from-purple-900/40 via-gray-900 to-gray-900 border border-purple-500/30 rounded-2xl p-6 shadow-2xl backdrop-blur-sm">
-                        {/* Glow effect */}
-                        <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-2xl blur-xl" />
-                        
-                        <div className="relative">
-                            {/* Header */}
-                            <div className="flex items-start justify-between mb-6 pb-4 border-b border-white/10">
+                    <div className="flex justify-center lg:justify-end">
+                        <div className="rounded-2xl bg-slate-900/60 border border-slate-800/80 shadow-xl p-5 sm:p-6 max-w-md w-full mx-auto lg:mx-0">
+                            <div className="flex items-center justify-between">
                                 <div>
-                                    <div className="flex items-center gap-2 text-white font-semibold text-lg mb-2">
-                                        <Calendar className="w-5 h-5 text-purple-400" />
-                                        Meeting with Sarah Chen - Q4 Planning Call
-                                    </div>
-                                    <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                        <Clock className="w-4 h-4" />
-                                        Today at 2:30 PM (in 28 minutes)
-                                    </div>
+                                    <p className="text-sm font-semibold text-white">Inbox Guard – Today’s missed emails</p>
+                                    <p className="text-xs text-slate-400 mt-1">Ready to approve & send</p>
                                 </div>
+                                <span className="text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                                    Live scan
+                                </span>
                             </div>
-                            
-                            {/* Key Context */}
-                            <div className="mb-6">
-                                <h3 className="text-yellow-400 text-xs font-bold uppercase tracking-wider mb-3">Key Context:</h3>
-                                <div className="space-y-2 text-sm text-gray-300 leading-relaxed">
-                                    <p>• Sarah mentioned budget constraints in email from Monday</p>
-                                    <p>• You promised her the Q4 roadmap update 2 weeks ago (still pending)</p>
-                                    <p>• Team headcount reduced last week (she's stressed about capacity)</p>
-                                    <p>• Avoid Project Phoenix - she's frustrated by 3-week delay</p>
+
+                            <div className="mt-5 pt-4 border-t border-slate-800 space-y-4">
+                                <div>
+                                    <p className="text-sm font-semibold text-white">Sarah Chen — “Quick question on the proposal”</p>
+                                    <p className="text-xs text-slate-400 mt-1">You promised the updated deck last week. She followed up yesterday, still no reply.</p>
+                                    <p className="text-xs text-emerald-400 mt-1">Draft ready: “Here’s the updated proposal and what changed…”</p>
                                 </div>
-                            </div>
-                            
-                            {/* What to Say */}
-                            <div className="mb-6">
-                                <h3 className="text-green-400 text-xs font-bold uppercase tracking-wider mb-3">What to Say:</h3>
-                                <div className="space-y-2 text-sm text-gray-300 leading-relaxed">
-                                    <p>→ "I know resources are tight - here's how we can help..."</p>
-                                    <p>→ "I have that roadmap update you asked for"</p>
-                                    <p>→ "Given the headcount changes, here's how we're prioritizing"</p>
+                                <div className="border-t border-slate-800 pt-4">
+                                    <p className="text-sm font-semibold text-white">Finance — “Invoice clarification”</p>
+                                    <p className="text-xs text-slate-400 mt-1">They’re confused about a few line items from last month’s invoice.</p>
+                                    <p className="text-xs text-emerald-400 mt-1">Draft ready: “Here’s a clear breakdown of each item…”</p>
                                 </div>
-                            </div>
-                            
-                            {/* What to Avoid */}
-                            <div>
-                                <h3 className="text-red-400 text-xs font-bold uppercase tracking-wider mb-3">What to Avoid:</h3>
-                                <div className="space-y-2 text-sm text-gray-300 leading-relaxed">
-                                    <p>→ Don't bring up Project Phoenix timeline</p>
-                                    <p>→ Don't ask for additional resources</p>
-                                    <p>→ She's sensitive about budget with leadership</p>
+                                <div className="border-t border-slate-800 pt-4">
+                                    <p className="text-sm font-semibold text-white">New lead — “Next steps?”</p>
+                                    <p className="text-xs text-slate-400 mt-1">Asked about pricing and timing 5 days ago. No response yet.</p>
+                                    <p className="text-xs text-emerald-400 mt-1">Draft ready: “Here’s how we typically start and what it costs…”</p>
                                 </div>
                             </div>
                         </div>
@@ -190,6 +181,35 @@ const SocialProofSection = () => {
                         title="CTO at DataFlow"
                     />
                 </div>
+            </div>
+        </section>
+    );
+};
+
+//================================================================================
+// OPS SAFETY SECTION
+//================================================================================
+
+const OpsSafetySection = () => {
+    return (
+        <section className="bg-black px-6 py-24">
+            <div className="max-w-6xl mx-auto">
+                <p className="text-base sm:text-lg text-slate-300 mb-4">
+                    Foldera protects you from the mistakes humans miss:
+                </p>
+                <ul className="text-base sm:text-lg text-slate-300 space-y-2 mb-4">
+                    <li>• misaligned dates</li>
+                    <li>• conflicting promises</li>
+                    <li>• wrong numbers</li>
+                    <li>• task drift</li>
+                    <li>• buried deadlines</li>
+                    <li>• contract inconsistencies</li>
+                    <li>• Slack/email contradictions</li>
+                    <li>• forgotten obligations</li>
+                </ul>
+                <p className="text-base sm:text-lg text-slate-300">
+                    This is the engine that keeps your entire workday from breaking.
+                </p>
             </div>
         </section>
     );
@@ -404,6 +424,28 @@ const ProactiveSection = () => {
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
+    );
+};
+
+//================================================================================
+// ZERO-MISS OPS ENGINE SECTION
+//================================================================================
+
+const ZeroMissOpsSection = () => {
+    return (
+        <section className="bg-black px-6 py-24">
+            <div className="max-w-6xl mx-auto">
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                    Zero-Miss Ops Engine (Beta)
+                </h2>
+                <p className="text-base sm:text-lg text-slate-300 mb-2">
+                    Connect Gmail, Drive, and Slack.
+                </p>
+                <p className="text-base sm:text-lg text-slate-300">
+                    Foldera reads your work continuously and protects you from fire-starting mistakes.
+                </p>
             </div>
         </section>
     );
@@ -680,6 +722,16 @@ const PricingSection = () => {
                     </div>
                 </div>
 
+                {/* Teams CTA */}
+                <div className="max-w-3xl mx-auto text-center mb-20">
+                    <p className="text-xl md:text-2xl font-bold text-white mb-2">
+                        Foldera for Teams — Contact Sales
+                    </p>
+                    <p className="text-base sm:text-lg text-slate-300">
+                        Zero-miss operations for teams of 5–25.
+                    </p>
+                </div>
+
                 {/* FAQ */}
                 <div className="max-w-3xl mx-auto">
                     <h3 className="text-3xl font-bold text-white text-center mb-10">Pricing Questions</h3>
@@ -817,9 +869,11 @@ export default function HomePage() {
             <main>
                 <HeroSection />
                 <SocialProofSection />
+                <OpsSafetySection />
                 <HowItWorksSection />
                 <WhatYouGetSection />
                 <ProactiveSection />
+                <ZeroMissOpsSection />
                 <PricingSection />
                 <WaitlistSection />
             </main>
