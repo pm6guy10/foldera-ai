@@ -4,8 +4,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* === 1. ENHANCED BACKGROUND === */
+/* === GLOBAL TYPOGRAPHY & SPACING === */
 body {
+  font-size: 18px;
+  line-height: 1.6;
   color: #e5e7eb;
   background-color: #0a0a0f; /* Base color */
 
@@ -199,4 +201,19 @@ button:hover, .btn:hover {
       margin-bottom: 2.5rem !important;
     }
   }
+}
+
+/* === CONVERSION-FOCUSED GLOBAL STYLES === */
+section {
+  padding: 120px 0;
+}
+
+h1 {
+  font-size: 56px;
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: 40px;
+  line-height: 1.2;
 }

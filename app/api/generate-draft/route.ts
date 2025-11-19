@@ -1,58 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions, getMeetingPrepUser } from '@/lib/meeting-prep/auth';
-import {
-  generateDraftForThread,
-} from './utils';
-import {
-  generateDraftResponse,
-  upsertDraft,
-  formatHistoryForPrompt,
-} from './draft-helpers';
+// app/api/generate-draft/route.ts
+import { NextResponse } from 'next/server';
+import { generateDraftForThread } from '@/lib/gmail-service'; // Importing from the new file
 
-export const runtime = 'nodejs';
-
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await request.json().catch(() => ({}));
-    const { emailId, threadId } = body || {};
-
-    const targetId: string | undefined = threadId || emailId;
-    if (!targetId) {
-      return NextResponse.json({ error: 'emailId (thread ID) is required' }, { status: 400 });
-    }
-
-    const meetingUser = await getMeetingPrepUser(session.user.email);
-    if (!meetingUser) {
-      return NextResponse.json({ error: 'Linked meeting prep user not found' }, { status: 404 });
-    }
-
-    const result = await generateDraftForThread({
-      userId: meetingUser.id,
-      userEmail: session.user.email,
-      userName: session.user.name || session.user.email,
-      targetId,
-      generateDraft: generateDraftResponse,
-      upsertDraft,
-      formatHistory: formatHistoryForPrompt,
-    });
-
-    return NextResponse.json(result);
-  } catch (error: any) {
-    console.error('[generate-draft] Error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to generate draft' },
-      { status: error.status || 500 }
-    );
+    const { threadId, userId } = await req.json();
+    const draft = await generateDraftForThread(threadId, userId);
+    return NextResponse.json({ success: true, draft });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: 'Failed to generate' }, { status: 500 });
   }
 }
-
-
-
-
