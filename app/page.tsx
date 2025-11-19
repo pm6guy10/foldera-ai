@@ -482,9 +482,8 @@ export default function HomePage() {
         <div className="bg-black text-white antialiased min-h-screen">
             <Header />
             <main className="min-h-screen bg-slate-950 text-slate-50 antialiased">
-                {/* reserve space for navbar */}
                 <div className="pt-20 md:pt-24">
-                    <div className="mx-auto flex max-w-5xl flex-col gap-14 px-4 pb-20 sm:px-6">
+                    <div className="mx-auto flex w-full max-w-screen-xl flex-col gap-28 px-6 sm:px-10 pb-32">
                         <Hero />
                         <GeniusSection />
                         <OpsSafetySection />

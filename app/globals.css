@@ -160,7 +160,7 @@ button:hover, .btn:hover {
     h1, h2, h3 {
       line-height: 1.2 !important;
       font-weight: 600 !important;
-      letter-spacing: -0.6px !important;
+      letter-spacing: -0.5px !important;
     }
 
     h1 {
@@ -168,7 +168,7 @@ button:hover, .btn:hover {
     }
 
     h2 {
-      font-size: 1.5rem !important;
+      font-size: 1.55rem !important;
     }
 
     h3 {
@@ -178,7 +178,7 @@ button:hover, .btn:hover {
     /* Collapse all 3-column grids into beautiful vertical stacks */
     [class*="grid"] {
       grid-template-columns: 1fr !important;
-      gap: 1.5rem !important;
+      gap: 1.75rem !important;
     }
 
     /* Make cards beautiful and roomy */
