@@ -73,6 +73,74 @@ export default function SettingsClient() {
   const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [configError, setConfigError] = useState<string | null>(null);
+  const [envDebugInfo, setEnvDebugInfo] = useState<{ url?: string; keyLength?: number; keyStart?: string }>({});
+
+  // Helper function to mask sensitive data for display
+  const maskValue = (value: string | undefined, maxLength: number = 30): string => {
+    if (!value) return 'undefined';
+    if (value.length <= maxLength) return value;
+    return `${value.substring(0, maxLength)}...`;
+  };
+
+  // Safe initialization of Supabase client - only called at runtime in browser
+  const getSupabaseClient = (): SupabaseClient => {
+    // Ensure we're in the browser (not during SSR/build)
+    if (typeof window === 'undefined') {
+      throw new Error('Supabase client can only be initialized in the browser');
+    }
+    
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    // Check if env vars are defined
+    if (!supabaseUrl) {
+      throw new Error('Missing Env Vars: NEXT_PUBLIC_SUPABASE_URL is not defined');
+    }
+    
+    if (!supabaseAnonKey) {
+      throw new Error('Missing Env Vars: NEXT_PUBLIC_SUPABASE_ANON_KEY is not defined');
+    }
+    
+    // Wrap createClient in try/catch
+    try {
+      return createClient(supabaseUrl, supabaseAnonKey);
+    } catch (error: any) {
+      throw new Error(`Failed to create Supabase client: ${error.message}`);
+    }
+  };
+
+  // Debug: Log env vars on mount
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    const debugInfo = {
+      url: supabaseUrl ? maskValue(supabaseUrl) : undefined,
+      keyLength: supabaseAnonKey?.length,
+      keyStart: supabaseAnonKey ? maskValue(supabaseAnonKey.substring(0, 10)) : undefined,
+    };
+    
+    console.log('[Settings] Env Vars Debug (on mount):', {
+      url: debugInfo.url,
+      keyLength: debugInfo.keyLength,
+      keyStart: debugInfo.keyStart,
+      urlDefined: !!supabaseUrl,
+      keyDefined: !!supabaseAnonKey,
+    });
+    
+    setEnvDebugInfo(debugInfo);
+    
+    // Test Supabase client initialization
+    try {
+      getSupabaseClient();
+      console.log('[Settings] ✅ Supabase client initialization test passed');
+    } catch (error: any) {
+      console.error('[Settings] ❌ Supabase client initialization test failed:', error.message);
+      setConfigError(error.message);
+      setLoading(false);
+    }
+  }, []);
 
   // Handle loading state from NextAuth
   if (status === 'loading') {
@@ -92,22 +160,30 @@ export default function SettingsClient() {
     );
   }
 
-  // Lazy initialization of Supabase client - only called at runtime in browser
-  const getSupabaseClient = (): SupabaseClient => {
-    // Ensure we're in the browser (not during SSR/build)
-    if (typeof window === 'undefined') {
-      throw new Error('Supabase client can only be initialized in the browser');
-    }
-    
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Missing Supabase environment variables. Please check your environment configuration.');
-    }
-    
-    return createClient(supabaseUrl, supabaseAnonKey);
-  };
+  // Handle configuration error
+  if (configError) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-6">
+            <h2 className="text-2xl font-bold text-red-400 mb-4">❌ Configuration Error</h2>
+            <p className="text-red-300 mb-4">{configError}</p>
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 mt-4">
+              <h3 className="text-sm font-semibold text-slate-300 mb-2">Environment Variables Debug Info:</h3>
+              <div className="space-y-1 text-sm font-mono text-slate-400">
+                <div>URL: {envDebugInfo.url || 'undefined'}</div>
+                <div>Key Length: {envDebugInfo.keyLength ?? 'undefined'}</div>
+                <div>Key Start: {envDebugInfo.keyStart || 'undefined'}</div>
+              </div>
+            </div>
+            <p className="text-slate-400 text-sm mt-4">
+              Please check your Vercel environment variables and ensure they are set correctly.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const fetchIntegrations = async () => {
     try {
@@ -120,7 +196,16 @@ export default function SettingsClient() {
       
       console.log('[Settings] NextAuth session user:', session.user.email);
       
-      const supabase = getSupabaseClient();
+      // Get Supabase client with error handling
+      let supabase: SupabaseClient;
+      try {
+        supabase = getSupabaseClient();
+      } catch (error: any) {
+        console.error('[Settings] Failed to get Supabase client:', error.message);
+        setConfigError(error.message);
+        setLoading(false);
+        return;
+      }
       
       // Get user from meeting_prep_users table (since integrations references it)
       // Use NextAuth email to find the user
@@ -183,8 +268,24 @@ export default function SettingsClient() {
   };
 
   useEffect(() => {
+    // Skip if config error exists
+    if (configError) {
+      setLoading(false);
+      return;
+    }
+    
     // Only run data fetching if we have a valid session
     if (!session?.user?.email) {
+      setLoading(false);
+      return;
+    }
+    
+    // Test Supabase client before fetching
+    try {
+      getSupabaseClient();
+    } catch (error: any) {
+      console.error('[Settings] Supabase client error in useEffect:', error.message);
+      setConfigError(error.message);
       setLoading(false);
       return;
     }
@@ -220,7 +321,7 @@ export default function SettingsClient() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [session?.user?.email]);
+  }, [session?.user?.email, configError]);
 
   const getIntegration = (provider: IntegrationProvider): Integration | undefined => {
     const integration = integrations.find((int) => int.provider === provider);
