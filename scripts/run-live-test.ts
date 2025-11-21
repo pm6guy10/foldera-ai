@@ -227,7 +227,15 @@ OUTPUT FORMAT (JSON ONLY):
               
               // Create draft
               const threadId = emailItem.metadata?.threadId || emailItem.id;
-              const replyTo = emailItem.author || emailItem.metadata?.from || toField;
+              // Get the sender (author) for reply - never fall back to recipients
+              const replyTo = emailItem.author || emailItem.metadata?.from;
+              
+              // Safety check: Don't create draft if we can't determine the sender
+              if (!replyTo) {
+                console.error(`❌ Cannot create draft: No sender found for email "${emailItem.title || 'No subject'}"`);
+                console.error(`   Skipping draft creation for this email.\n`);
+                continue;
+              }
               
               // Build email message
               const emailLines = [
