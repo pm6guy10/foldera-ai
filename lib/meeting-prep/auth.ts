@@ -22,6 +22,7 @@ export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/gmail.compose',
+  'https://www.googleapis.com/auth/drive', // Full access for Janitor feature
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
 ].join(' ');
@@ -157,7 +158,57 @@ async function upsertMeetingPrepUser(userData: {
     throw new Error(`Failed to create/update user: ${error.message}`);
   }
   
-  return data as MeetingPrepUser;
+  const meetingPrepUser = data as MeetingPrepUser;
+  
+  // Update integrations table: Gmail and Google Drive are enabled when user logs in with Google
+  try {
+    const now = new Date().toISOString();
+    
+    // Upsert Gmail integration
+    await supabase
+      .from('integrations')
+      .upsert({
+        user_id: meetingPrepUser.id,
+        provider: 'gmail',
+        is_active: true,
+        credentials: {
+          access_token: userData.google_access_token,
+          refresh_token: userData.google_refresh_token,
+          expires_at: userData.google_token_expires_at,
+        },
+        last_synced_at: now,
+        sync_status: 'idle',
+        updated_at: now,
+      }, {
+        onConflict: 'user_id,provider',
+      });
+    
+    // Upsert Google Drive integration
+    await supabase
+      .from('integrations')
+      .upsert({
+        user_id: meetingPrepUser.id,
+        provider: 'google_drive',
+        is_active: true,
+        credentials: {
+          access_token: userData.google_access_token,
+          refresh_token: userData.google_refresh_token,
+          expires_at: userData.google_token_expires_at,
+        },
+        last_synced_at: now,
+        sync_status: 'idle',
+        updated_at: now,
+      }, {
+        onConflict: 'user_id,provider',
+      });
+    
+    console.log('[Auth] Updated integrations for Gmail and Google Drive');
+  } catch (integrationError: any) {
+    // Don't fail the login if integration update fails
+    console.error('[Auth] Error updating integrations:', integrationError);
+  }
+  
+  return meetingPrepUser;
 }
 
 /**

@@ -132,148 +132,151 @@ async function runLiveTest() {
       console.log("------------------------------------------------");
     });
 
-    // AI Analysis
+    // AI Analysis - Hunter-Killer Mode
     if (openai && result.items && result.items.length > 0) {
-      console.log("\n🧠 Analyzing emails with AI...");
+      console.log("\n⚡ HUNTER-KILLER MODE: Proactive Chief of Staff activated...");
       
-      // Format the last 5 emails with 500 char body snippets
+      // Process each email individually for better targeting
       const emailsToAnalyze = result.items.slice(0, 5);
-      const emailsText = emailsToAnalyze.map((item: any, index: number) => {
-        // Get full content (from WorkItem.content) and truncate to 500 chars
-        const bodyContent = item.content || item.metadata?.snippet || item.snippet || item.body || 'No content available';
-        const bodySnippet = bodyContent.length > 500 ? bodyContent.substring(0, 500) + '...' : bodyContent;
-        
-        return `Email ${index + 1}:
-Subject: ${item.title || 'No subject'}
-From: ${item.author || 'Unknown'}
-Date: ${item.timestamp || 'Unknown'}
-Body Snippet: ${bodySnippet}
----`;
-      }).join('\n\n');
-
-      // LOGGING: Show raw email body snippets before sending to AI
-      console.log("\n📋 RAW EMAIL BODY SNIPPETS (for debugging):");
-      console.log("=".repeat(60));
-      emailsToAnalyze.forEach((item: any, index: number) => {
-        const bodyContent = item.content || item.metadata?.snippet || item.snippet || item.body || 'No content available';
-        const bodySnippet = bodyContent.length > 500 ? bodyContent.substring(0, 500) + '...' : bodyContent;
-        console.log(`\nEmail ${index + 1} - ${item.title || 'No subject'}:`);
-        console.log(bodySnippet);
-        console.log("-".repeat(60));
+      
+      // Create Gmail API client once for reuse
+      const oauth2Client = new google.auth.OAuth2();
+      oauth2Client.setCredentials({
+        access_token: user.google_access_token,
+        refresh_token: user.google_refresh_token,
+        expiry_date: new Date(user.google_token_expires_at).getTime(),
       });
-      console.log("=".repeat(60) + "\n");
-
-      try {
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-5.1',
-          messages: [
-            {
-              role: 'system',
-              content: "You are a paranoid Operations Engine. Your job is to detect OBLIGATIONS and generate reply drafts.\n\nScan these emails for:\n\n1. PROMISES made by the sender or recipient (e.g., 'I will', 'I promise', 'I'll send').\n\n2. QUESTIONS that require a reply (e.g., 'Are we good for 2pm?').\n\n3. DEADLINES (e.g., 'by tomorrow').\n\nIf a RISK is detected (like a missing promise or deadline), generate a polite, professional REPLY email body that addresses it.\n\nOutput MUST be valid JSON in this format:\n{\n  \"risk\": \"[The specific promise or deadline found]\",\n  \"hasDraft\": true,\n  \"replyBody\": \"[Professional reply email body addressing the risk]\"\n}\n\nIf no risk is detected, use:\n{\n  \"risk\": \"None\",\n  \"hasDraft\": false,\n  \"replyBody\": \"\"\n}\n\nBe concise and professional in the reply body."
-            },
-            {
-              role: 'user',
-              content: emailsText
-            }
-          ],
-          temperature: 0.7,
-          max_completion_tokens: 1000,
-          response_format: { type: "json_object" }
-        });
-
-        const aiResponse = completion.choices[0]?.message?.content || 'No response from AI';
-        
-        // Display in a formatted box
-        console.log("\n" + "═".repeat(60));
-        console.log("🧠 AI ANALYST REPORT");
-        console.log("═".repeat(60));
-        console.log(aiResponse);
-        console.log("═".repeat(60) + "\n");
-
-        // Parse JSON response
+      const gmailClient = google.gmail({ version: 'v1', auth: oauth2Client });
+      
+      // Process each email
+      for (const emailItem of emailsToAnalyze) {
         try {
-          // Try to extract JSON if response contains markdown code blocks
-          let jsonText = aiResponse.trim();
-          if (jsonText.includes('```json')) {
-            jsonText = jsonText.split('```json')[1].split('```')[0].trim();
-          } else if (jsonText.includes('```')) {
-            jsonText = jsonText.split('```')[1].split('```')[0].trim();
-          }
+          // Get full content and truncate to 1000 chars
+          const bodyContent = emailItem.content || emailItem.metadata?.snippet || 'No content available';
+          const bodySnippet = bodyContent.length > 1000 ? bodyContent.substring(0, 1000) + '...' : bodyContent;
           
-          const analysis = JSON.parse(jsonText);
+          // Get To field from metadata
+          const toEmails = emailItem.metadata?.to || [];
+          const toField = toEmails.length > 0 ? toEmails.join(', ') : emailItem.author || 'Unknown';
           
-          if (analysis.hasDraft && analysis.replyBody && analysis.risk !== "None") {
-            console.log("🔧 SOLVER MODE: Risk detected, creating draft reply...");
-            
-            // Find the email that contains the risk (use first email for now)
-            const riskEmail = emailsToAnalyze[0];
-            const threadId = riskEmail.metadata?.threadId || riskEmail.id;
-            const toEmail = riskEmail.author || riskEmail.metadata?.from;
-            const subject = riskEmail.title?.startsWith('Re:') ? riskEmail.title : `Re: ${riskEmail.title || 'No subject'}`;
-            
-            // Create Gmail API client
-            const oauth2Client = new google.auth.OAuth2();
-            oauth2Client.setCredentials({
-              access_token: user.google_access_token,
-              refresh_token: user.google_refresh_token,
-              expiry_date: new Date(user.google_token_expires_at).getTime(),
-            });
-            
-            const gmailClient = google.gmail({ version: 'v1', auth: oauth2Client });
-            
-            // Build email message
-            const emailLines = [
-              `To: ${toEmail}`,
-              `Subject: ${subject}`,
-              `Content-Type: text/plain; charset=utf-8`,
-              `Content-Transfer-Encoding: 7bit`,
-              '',
-              analysis.replyBody
-            ];
-            
-            const email = emailLines.join('\r\n');
-            const encoded = Buffer.from(email)
-              .toString('base64')
-              .replace(/\+/g, '-')
-              .replace(/\//g, '_')
-              .replace(/=+$/, '');
-            
-            // Create draft
-            try {
-              const draftResponse = await gmailClient.users.drafts.create({
-                userId: 'me',
-                requestBody: {
-                  message: {
-                    raw: encoded,
-                    threadId: threadId,
-                  },
-                },
-              });
-              
-              console.log(`✨ MAGIC: Draft created for email "${riskEmail.title}"! Check your Gmail drafts.`);
-              console.log(`   Draft ID: ${draftResponse.data.id}`);
-              console.log(`   Risk addressed: ${analysis.risk}`);
-            } catch (draftError: any) {
-              console.error("❌ Failed to create draft:", draftError.message);
-              if (draftError.message.includes('insufficient')) {
-                console.error("💡 Make sure you've granted Gmail compose permission and re-authenticated.");
+          // Format email clearly for AI
+          const emailText = `Subject: ${emailItem.title || 'No subject'}
+From: ${emailItem.author || 'Unknown'}
+To: ${toField}
+Body: ${bodySnippet}`;
+
+          // Analyze with God Mode prompt
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-5.1',
+            messages: [
+              {
+                role: 'system',
+                content: `You are Foldera, an autonomous Chief of Staff. Do not just find problems. Fix them.
+
+Analyze the email and categorize it into one of 3 buckets:
+
+TYPE A: MISSING DELIVERABLE (e.g., 'Where is the deck?', 'You promised the contract')
+-> ACTION: Draft a reply that says 'Apologies for the delay, I have attached the file here.' (Simulate that you found it).
+
+TYPE B: SCHEDULING CONFLICT (e.g., 'Can you meet at 2?', 'Are we on?')
+-> ACTION: Draft a reply that asserts control. 'Confirmed for 2pm.' or 'I have a conflict at 2pm, proposing 2:30pm instead.'
+
+TYPE C: OPEN LOOP (e.g., 'Did you see my last email?')
+-> ACTION: Draft a reply that closes the loop. 'Yes, I reviewed it. We are good to go.'
+
+OUTPUT FORMAT (JSON ONLY):
+{
+  "risk_detected": boolean,
+  "category": "DELIVERABLE" | "SCHEDULING" | "OPEN_LOOP" | "NONE",
+  "explanation": "One sentence on why this is a risk.",
+  "draft_subject": "Re: [Original Subject]",
+  "draft_body": "The full, professional email body ready to send. Do not include placeholders like '[Insert name]'. Use the name found in the email or 'there'. Be direct, executive, brief. No AI disclaimers."
+}`
+              },
+              {
+                role: 'user',
+                content: emailText
               }
+            ],
+            temperature: 0.7,
+            max_completion_tokens: 1000,
+            response_format: { type: "json_object" }
+          });
+
+          const aiResponse = completion.choices[0]?.message?.content || 'No response from AI';
+          
+          // Parse JSON response
+          try {
+            let jsonText = aiResponse.trim();
+            if (jsonText.includes('```json')) {
+              jsonText = jsonText.split('```json')[1].split('```')[0].trim();
+            } else if (jsonText.includes('```')) {
+              jsonText = jsonText.split('```')[1].split('```')[0].trim();
             }
             
-          } else {
-            console.log("✅ No risks requiring drafts detected.");
+            const analysis = JSON.parse(jsonText);
+            
+            if (analysis.risk_detected && analysis.category !== "NONE") {
+              // Display proactive fix box
+              console.log("\n" + "═".repeat(60));
+              console.log(`⚡ PROACTIVE FIX: ${analysis.category}`);
+              console.log("═".repeat(60));
+              console.log(`📧 Email: ${emailItem.title || 'No subject'}`);
+              console.log(`📝 Explanation: ${analysis.explanation}`);
+              console.log("═".repeat(60));
+              
+              // Create draft
+              const threadId = emailItem.metadata?.threadId || emailItem.id;
+              const replyTo = emailItem.author || emailItem.metadata?.from || toField;
+              
+              // Build email message
+              const emailLines = [
+                `To: ${replyTo}`,
+                `Subject: ${analysis.draft_subject || `Re: ${emailItem.title || 'No subject'}`}`,
+                `Content-Type: text/plain; charset=utf-8`,
+                `Content-Transfer-Encoding: 7bit`,
+                '',
+                analysis.draft_body
+              ];
+              
+              const email = emailLines.join('\r\n');
+              const encoded = Buffer.from(email)
+                .toString('base64')
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
+              
+              try {
+                const draftResponse = await gmailClient.users.drafts.create({
+                  userId: 'me',
+                  requestBody: {
+                    message: {
+                      raw: encoded,
+                      threadId: threadId,
+                    },
+                  },
+                });
+                
+                console.log(`✨ Draft created in Gmail. ID: ${draftResponse.data.id}`);
+                console.log(`📬 Check your Gmail drafts folder.\n`);
+              } catch (draftError: any) {
+                console.error("❌ Failed to create draft:", draftError.message);
+                if (draftError.message.includes('insufficient')) {
+                  console.error("💡 Make sure you've granted Gmail compose permission and re-authenticated.\n");
+                }
+              }
+            } else {
+              console.log(`✅ ${emailItem.title || 'Email'}: No action needed (${analysis.category || 'NONE'})\n`);
+            }
+          } catch (parseError: any) {
+            console.error(`❌ Failed to parse AI response for "${emailItem.title}":`, parseError.message);
+            console.error("Raw response:", aiResponse.substring(0, 200) + "...\n");
           }
-        } catch (parseError: any) {
-          console.error("❌ Failed to parse AI response as JSON:", parseError.message);
-          console.error("Raw response:", aiResponse);
-        }
-
-      } catch (aiError: any) {
-        console.error("❌ AI Analysis Failed:", aiError.message);
-        if (aiError.message.includes('model')) {
-          console.error("💡 Tip: The model name might be incorrect. Try 'gpt-4o' or 'o1' if 'gpt-5.1' doesn't work.");
+        } catch (emailError: any) {
+          console.error(`❌ Error processing email "${emailItem.title}":`, emailError.message);
         }
       }
+
     } else if (!openai) {
       console.log("\n⚠️  Skipping AI analysis - OPENAI_API_KEY not configured");
     }
