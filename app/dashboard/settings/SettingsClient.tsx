@@ -1,512 +1,183 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { signIn, useSession } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
+import { createClient } from '@supabase/supabase-js';
+import { CheckCircle, AlertCircle, RefreshCw, ExternalLink, Pause, Play } from 'lucide-react';
 
-type IntegrationProvider = 'gmail' | 'google_drive' | 'google_calendar' | 'notion';
-
-interface Integration {
-  id: string;
-  provider: IntegrationProvider;
-  is_active: boolean;
-  last_synced_at: string | null;
-  sync_status: 'idle' | 'syncing' | 'error';
-}
-
-interface ConnectorCard {
-  provider: IntegrationProvider;
-  name: string;
-  description: string;
-  icon: string;
-  isBeta?: boolean;
-}
-
-const CONNECTORS: ConnectorCard[] = [
-  {
-    provider: 'gmail',
-    name: 'Gmail',
-    description: 'Email Intelligence',
-    icon: '📧',
-  },
-  {
-    provider: 'google_calendar',
-    name: 'Google Calendar',
-    description: 'Time & Scheduling',
-    icon: '📅',
-  },
-  {
-    provider: 'google_drive',
-    name: 'Google Drive',
-    description: 'File Organization',
-    icon: '📁',
-  },
-  {
-    provider: 'notion',
-    name: 'Notion',
-    description: 'Second Brain',
-    icon: '🧠',
-    isBeta: true,
-  },
-];
-
-function formatTimeAgo(dateString: string | null): string {
-  if (!dateString) return 'Never';
+// --- SAFE INITIALIZATION ---
+// We do NOT throw errors here. We just return null if keys are missing.
+const getSupabase = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
-}
+  if (!url || !key) return null;
+  
+  try {
+    return createClient(url, key);
+  } catch (e) {
+    console.error("Supabase init failed:", e);
+    return null;
+  }
+};
 
 export default function SettingsClient() {
   const { data: session, status } = useSession();
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
-  const [isPaused, setIsPaused] = useState(false);
+  const [integrations, setIntegrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
-  const [envDebugInfo, setEnvDebugInfo] = useState<{ url?: string; keyLength?: number; keyStart?: string }>({});
 
-  // Helper function to mask sensitive data for display
-  const maskValue = (value: string | undefined, maxLength: number = 30): string => {
-    if (!value) return 'undefined';
-    if (value.length <= maxLength) return value;
-    return `${value.substring(0, maxLength)}...`;
-  };
-
-  // Safe initialization of Supabase client - only called at runtime in browser
-  const getSupabaseClient = (): SupabaseClient => {
-    // Ensure we're in the browser (not during SSR/build)
-    if (typeof window === 'undefined') {
-      throw new Error('Supabase client can only be initialized in the browser');
-    }
-    
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    // Check if env vars are defined
-    if (!supabaseUrl) {
-      throw new Error('Missing Env Vars: NEXT_PUBLIC_SUPABASE_URL is not defined');
-    }
-    
-    if (!supabaseAnonKey) {
-      throw new Error('Missing Env Vars: NEXT_PUBLIC_SUPABASE_ANON_KEY is not defined');
-    }
-    
-    // Wrap createClient in try/catch
-    try {
-      return createClient(supabaseUrl, supabaseAnonKey);
-    } catch (error: any) {
-      throw new Error(`Failed to create Supabase client: ${error.message}`);
-    }
-  };
-
-  // Debug: Log env vars on mount
+  // --- CHECK KEYS ON MOUNT ---
   useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    const debugInfo = {
-      url: supabaseUrl ? maskValue(supabaseUrl) : undefined,
-      keyLength: supabaseAnonKey?.length,
-      keyStart: supabaseAnonKey ? maskValue(supabaseAnonKey.substring(0, 10)) : undefined,
-    };
-    
-    console.log('[Settings] Env Vars Debug (on mount):', {
-      url: debugInfo.url,
-      keyLength: debugInfo.keyLength,
-      keyStart: debugInfo.keyStart,
-      urlDefined: !!supabaseUrl,
-      keyDefined: !!supabaseAnonKey,
-    });
-    
-    setEnvDebugInfo(debugInfo);
-    
-    // Test Supabase client initialization
-    try {
-      getSupabaseClient();
-      console.log('[Settings] ✅ Supabase client initialization test passed');
-    } catch (error: any) {
-      console.error('[Settings] ❌ Supabase client initialization test failed:', error.message);
-      setConfigError(error.message);
-      setLoading(false);
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.error("CRITICAL: Missing Env Vars");
+      setConfigError("Missing API Keys. Check Vercel Settings.");
     }
   }, []);
 
-  // Handle loading state from NextAuth
+  // --- FETCH DATA ---
+  useEffect(() => {
+    if (status !== 'authenticated' || !session?.user?.email) return;
+
+    const fetchIntegrations = async () => {
+      const supabase = getSupabase();
+      if (!supabase) {
+        // If we can't get a client, stop trying to fetch.
+        return; 
+      }
+
+      try {
+        // 1. Get User ID
+        const { data: user } = await supabase
+          .from('meeting_prep_users')
+          .select('id')
+          .eq('email', session.user.email)
+          .single();
+
+        if (!user) {
+          console.log("User not found in DB yet.");
+          setLoading(false);
+          return;
+        }
+
+        // 2. Get Integrations
+        const { data } = await supabase
+          .from('integrations')
+          .select('*')
+          .eq('user_id', user.id);
+
+        setIntegrations(data || []);
+        setLoading(false);
+      } catch (err: any) {
+        console.error("Fetch error:", err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    fetchIntegrations();
+    // Refresh every 5s to catch the "Green Dot" update
+    const interval = setInterval(fetchIntegrations, 5000);
+    return () => clearInterval(interval);
+  }, [session, status]);
+
+
+
+
+  // --- RENDERING ---
+
+  // 1. SESSION LOADING
   if (status === 'loading') {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-slate-400">Loading...</div>
-      </div>
-    );
+    return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading Command Center...</div>;
   }
 
-  // Handle unauthenticated state
-  if (status === 'unauthenticated' || !session?.user) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-slate-400">Please log in to view settings.</div>
-      </div>
-    );
-  }
-
-  // Handle configuration error
+  // 2. CONFIG ERROR (The Red Box)
   if (configError) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-6">
-            <h2 className="text-2xl font-bold text-red-400 mb-4">❌ Configuration Error</h2>
-            <p className="text-red-300 mb-4">{configError}</p>
-            <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 mt-4">
-              <h3 className="text-sm font-semibold text-slate-300 mb-2">Environment Variables Debug Info:</h3>
-              <div className="space-y-1 text-sm font-mono text-slate-400">
-                <div>URL: {envDebugInfo.url || 'undefined'}</div>
-                <div>Key Length: {envDebugInfo.keyLength ?? 'undefined'}</div>
-                <div>Key Start: {envDebugInfo.keyStart || 'undefined'}</div>
-              </div>
-            </div>
-            <p className="text-slate-400 text-sm mt-4">
-              Please check your Vercel environment variables and ensure they are set correctly.
-            </p>
-          </div>
+      <div className="min-h-screen bg-slate-950 text-white p-10 flex flex-col items-center justify-center">
+        <div className="bg-red-900/50 border border-red-500 p-6 rounded-lg max-w-md">
+          <h2 className="text-xl font-bold text-red-200 mb-2">System Config Error</h2>
+          <p className="text-red-100">{configError}</p>
+          <p className="text-xs text-red-300 mt-4 font-mono">NEXT_PUBLIC_SUPABASE_URL: {process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Defined' : 'MISSING'}</p>
+          <p className="text-xs text-red-300 font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Defined' : 'MISSING'}</p>
         </div>
       </div>
     );
   }
 
-  const fetchIntegrations = async () => {
-    try {
-      // Ensure we have a session before fetching
-      if (!session?.user?.email) {
-        console.log('[Settings] No NextAuth session found');
-        setLoading(false);
-        return;
-      }
-      
-      console.log('[Settings] NextAuth session user:', session.user.email);
-      
-      // Get Supabase client with error handling
-      let supabase: SupabaseClient;
-      try {
-        supabase = getSupabaseClient();
-      } catch (error: any) {
-        console.error('[Settings] Failed to get Supabase client:', error.message);
-        setConfigError(error.message);
-        setLoading(false);
-        return;
-      }
-      
-      // Get user from meeting_prep_users table (since integrations references it)
-      // Use NextAuth email to find the user
-      const { data: meetingPrepUser, error: userError } = await supabase
-        .from('meeting_prep_users')
-        .select('id, email')
-        .eq('email', session.user.email)
-        .single();
-
-      if (userError || !meetingPrepUser) {
-        console.error('[Settings] User not found in meeting_prep_users:', userError);
-        setLoading(false);
-        return;
-      }
-
-      console.log('[Settings] Found meeting_prep_user:', { id: meetingPrepUser.id, email: meetingPrepUser.email });
-      setUserId(meetingPrepUser.id);
-
-      // Fetch integrations for this user - check for gmail and google_drive specifically
-      const { data, error } = await supabase
-        .from('integrations')
-        .select('*')
-        .eq('user_id', meetingPrepUser.id);
-
-      // DEBUGGING: Log raw data from Supabase
-      console.log('[Settings] Raw integrations data from Supabase:', {
-        count: data?.length || 0,
-        data: data,
-        error: error
-      });
-
-      if (error) {
-        console.error('[Settings] Error fetching integrations:', error);
-        setIntegrations([]);
-      } else {
-        const integrationsData = (data || []).map((int: any) => ({
-          id: int.id,
-          provider: int.provider as IntegrationProvider,
-          is_active: Boolean(int.is_active),
-          last_synced_at: int.last_synced_at,
-          sync_status: (int.sync_status || 'idle') as 'idle' | 'syncing' | 'error',
-        }));
-        
-        console.log('[Settings] Processed integrations:', integrationsData);
-        
-        // Check specific providers for debugging
-        const gmailIntegration = integrationsData.find(i => i.provider === 'gmail');
-        const driveIntegration = integrationsData.find(i => i.provider === 'google_drive');
-        
-        console.log('[Settings] Gmail integration:', gmailIntegration);
-        console.log('[Settings] Google Drive integration:', driveIntegration);
-        
-        setIntegrations(integrationsData);
-      }
-    } catch (error: any) {
-      console.error('[Settings] Error in fetchIntegrations:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // Skip if config error exists
-    if (configError) {
-      setLoading(false);
-      return;
-    }
-    
-    // Only run data fetching if we have a valid session
-    if (!session?.user?.email) {
-      setLoading(false);
-      return;
-    }
-    
-    // Test Supabase client before fetching
-    try {
-      getSupabaseClient();
-    } catch (error: any) {
-      console.error('[Settings] Supabase client error in useEffect:', error.message);
-      setConfigError(error.message);
-      setLoading(false);
-      return;
-    }
-    
-    // Initial fetch
-    fetchIntegrations();
-    
-    // Refresh integrations when page becomes visible (user returns from OAuth)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[Settings] Page visible, refreshing integrations...');
-        fetchIntegrations();
-      }
-    };
-    
-    // Polling interval: check every 5 seconds
-    const pollInterval = setInterval(() => {
-      console.log('[Settings] Polling for integration updates...');
-      fetchIntegrations();
-    }, 5000);
-    
-    // Window focus listener
-    const handleFocus = () => {
-      console.log('[Settings] Window focused, refreshing integrations...');
-      fetchIntegrations();
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      clearInterval(pollInterval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [session?.user?.email, configError]);
-
-  const getIntegration = (provider: IntegrationProvider): Integration | undefined => {
-    const integration = integrations.find((int) => int.provider === provider);
-    console.log(`[Settings] getIntegration(${provider}):`, integration);
-    return integration;
-  };
-
-  const handleConnect = async (provider: IntegrationProvider) => {
-    console.log(`Connecting ${provider}...`);
-    
-    // Gmail and Google Drive use the same Google OAuth
-    if (provider === 'gmail' || provider === 'google_drive') {
-      // Trigger Google OAuth via NextAuth
-      await signIn('google', { 
-        callbackUrl: '/dashboard/settings',
-        redirect: true 
-      });
-    } else if (provider === 'google_calendar') {
-      // Google Calendar also uses Google OAuth
-      await signIn('google', { 
-        callbackUrl: '/dashboard/settings',
-        redirect: true 
-      });
-    } else if (provider === 'notion') {
-      // TODO: Wire up Notion OAuth
-      console.log('Notion OAuth coming soon');
-      alert('Notion integration coming soon!');
-    }
-  };
-
-  const handleDisconnect = async (provider: IntegrationProvider) => {
-    const integration = getIntegration(provider);
-    if (!integration) return;
-
-    try {
-      const supabase = getSupabaseClient();
-      
-      const { error } = await supabase
-        .from('integrations')
-        .update({ is_active: false })
-        .eq('id', integration.id);
-
-      if (error) {
-        console.error('Error disconnecting:', error);
-        alert('Failed to disconnect. Please try again.');
-      } else {
-        // Update local state
-        setIntegrations((prev) =>
-          prev.map((int) =>
-            int.id === integration.id ? { ...int, is_active: false } : int
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to disconnect. Please try again.');
-    }
-  };
-
-  const handleTogglePause = () => {
-    setIsPaused(!isPaused);
-    console.log(`AI ${isPaused ? 'resumed' : 'paused'}`);
-    // TODO: Implement actual pause logic
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-slate-400">Loading integrations...</div>
-      </div>
-    );
-  }
-
+  // 3. MAIN DASHBOARD
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2">Command Center</h1>
-              <p className="text-slate-400">Manage your integrations and AI controls</p>
-            </div>
-            
-            {/* Kill Switch */}
-            <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
-              <span className="text-sm text-slate-300">PAUSE ALL AI</span>
-              <button
-                onClick={handleTogglePause}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  isPaused ? 'bg-red-600' : 'bg-slate-700'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    isPaused ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-8">
+      <div className="max-w-5xl mx-auto">
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-12">
+          <div>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Command Center</h1>
+            <p className="text-slate-400 mt-2">Manage your integrations and AI controls</p>
           </div>
+          <button className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-full text-sm font-medium transition-colors">
+            PAUSE ALL AI <div className="w-8 h-4 bg-emerald-500 rounded-full relative ml-2"><div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow"></div></div>
+          </button>
         </div>
 
-        {/* Connector Grid */}
+        {/* CONNECTORS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {CONNECTORS.map((connector) => {
-            const integration = getIntegration(connector.provider);
-            const isConnected = integration?.is_active === true;
-            
-            // Debug log for each connector
-            console.log(`[Settings] Connector ${connector.provider}:`, {
-              integration,
-              isConnected,
-              is_active: integration?.is_active,
-            });
-
-            return (
-              <div
-                key={connector.provider}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-slate-700 transition-colors"
-              >
-                {/* Card Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">{connector.icon}</span>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-xl font-semibold text-white">
-                          {connector.name}
-                        </h3>
-                        {connector.isBeta && (
-                          <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded">
-                            BETA
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-slate-400 mt-1">
-                        {connector.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Status Indicator */}
-                  {isConnected && (
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-xs text-green-400 font-medium">Active</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Card Body */}
-                {isConnected ? (
-                  <div className="space-y-4">
-                    <div className="text-sm text-slate-400">
-                      Last synced: {formatTimeAgo(integration?.last_synced_at || null)}
-                    </div>
-                    <button
-                      onClick={() => handleDisconnect(connector.provider)}
-                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => handleConnect(connector.provider)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors font-medium"
-                  >
-                    Connect
-                  </button>
-                )}
-              </div>
-            );
-          })}
+          {/* GOOGLE DRIVE CARD */}
+          <ConnectorCard 
+            name="Google Drive" 
+            description="File Organization" 
+            icon="📁"
+            isConnected={integrations.some(i => i.provider === 'google_drive' && i.is_active)}
+            onConnect={() => signIn('google', { callbackUrl: '/dashboard/settings' })}
+          />
+          
+          {/* GMAIL CARD */}
+          <ConnectorCard 
+            name="Gmail" 
+            description="Email Intelligence" 
+            icon="📧"
+            isConnected={integrations.some(i => i.provider === 'gmail' && i.is_active)}
+            onConnect={() => signIn('google', { callbackUrl: '/dashboard/settings' })}
+          />
         </div>
-
-        {/* Footer Info */}
-        <div className="mt-12 pt-8 border-t border-slate-800">
-          <p className="text-sm text-slate-500 text-center">
-            All integrations are secured with OAuth 2.0. Your credentials are encrypted and never stored in plain text.
-          </p>
-        </div>
+        
+        <p className="text-center text-slate-600 text-xs mt-12">All integrations secured with OAuth 2.0.</p>
       </div>
     </div>
   );
 }
 
+function ConnectorCard({ name, description, icon, isConnected, onConnect }: any) {
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-slate-700 transition-all">
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center text-2xl">{icon}</div>
+          <div>
+            <h3 className="font-semibold text-lg text-white">{name}</h3>
+            <p className="text-slate-400 text-sm">{description}</p>
+          </div>
+        </div>
+        {isConnected ? (
+          <div className="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-medium border border-emerald-500/20">
+            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+            Active
+          </div>
+        ) : (
+          <div className="w-3 h-3 bg-slate-700 rounded-full"></div>
+        )}
+      </div>
+      
+      {isConnected ? (
+        <button className="w-full py-3 rounded-lg bg-slate-800 text-slate-300 text-sm font-medium hover:bg-slate-700 transition-colors">
+          Manage Settings
+        </button>
+      ) : (
+        <button onClick={onConnect} className="w-full py-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-colors shadow-[0_0_20px_-5px_rgba(16,185,129,0.4)]">
+          Connect
+        </button>
+      )}
+    </div>
+  );
+}
