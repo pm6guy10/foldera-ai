@@ -64,8 +64,8 @@ async function testUniversalBrain() {
   try {
     await gmail.initialize(user.id, credentials);
     
-    const result = await gmail.scan(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)); // Last 7 days
-    const emails = result.items.slice(0, 10); // Get last 10
+    const scanResult = await gmail.scan(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)); // Last 7 days
+    const emails = scanResult.items.slice(0, 10); // Get last 10
     
     console.log(`✅ Fetched ${emails.length} emails`);
 
