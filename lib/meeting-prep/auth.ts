@@ -114,6 +114,30 @@ export const authOptions: NextAuthOptions = {
       
       return session;
     },
+    
+    /**
+     * Redirect Callback
+     * Redirect users to /dashboard/settings after successful login
+     * Respects explicit callbackUrl if provided, otherwise defaults to settings
+     */
+    async redirect({ url, baseUrl }) {
+      // If url is the base URL (no specific path) or homepage, redirect to settings
+      if (url === baseUrl || url === `${baseUrl}/`) {
+        return `${baseUrl}/dashboard/settings`;
+      }
+      
+      // If callbackUrl is provided and valid, use it
+      if (url.startsWith(baseUrl) || url.startsWith('/')) {
+        // Resolve relative URLs
+        if (url.startsWith('/')) {
+          return `${baseUrl}${url}`;
+        }
+        return url;
+      }
+      
+      // Default: redirect to settings page
+      return `${baseUrl}/dashboard/settings`;
+    },
   },
   
   session: {
