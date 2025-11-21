@@ -1,13 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { signIn } from 'next-auth/react';
-
-// Supabase client (using anon key for client-side)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 type IntegrationProvider = 'gmail' | 'google_drive' | 'google_calendar' | 'notion';
 
@@ -78,8 +73,27 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
+  // Lazy initialization of Supabase client - only called at runtime in browser
+  const getSupabaseClient = (): SupabaseClient => {
+    // Ensure we're in the browser (not during SSR/build)
+    if (typeof window === 'undefined') {
+      throw new Error('Supabase client can only be initialized in the browser');
+    }
+    
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Missing Supabase environment variables. Please check your environment configuration.');
+    }
+    
+    return createClient(supabaseUrl, supabaseAnonKey);
+  };
+
   const fetchIntegrations = async () => {
     try {
+      const supabase = getSupabaseClient();
+      
       // Get current user from auth
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser?.email) {
@@ -167,6 +181,8 @@ export default function SettingsPage() {
     if (!integration) return;
 
     try {
+      const supabase = getSupabaseClient();
+      
       const { error } = await supabase
         .from('integrations')
         .update({ is_active: false })

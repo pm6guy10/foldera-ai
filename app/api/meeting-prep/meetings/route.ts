@@ -3,6 +3,8 @@
 // Get upcoming meetings for user
 // =====================================================
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/meeting-prep/auth';

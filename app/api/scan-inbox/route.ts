@@ -1,4 +1,6 @@
 // app/api/scan-inbox/route.ts
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { getGmailClient, extractPlainBody } from '@/lib/gmail-service'; // Importing from the new file
 
@@ -15,7 +17,15 @@ export async function GET(req: Request) {
     const results = threads.map(t => ({ id: t.id, snippet: t.snippet }));
 
     return NextResponse.json({ success: true, threads: results });
-  } catch (error) {
+  } catch (error: any) {
+    // Handle missing credentials gracefully during build
+    if (error.message?.includes('No access, refresh token') || error.message?.includes('supabaseKey is required')) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Authentication required',
+        message: 'Please authenticate to use this endpoint'
+      }, { status: 401 });
+    }
     console.error(error);
     return NextResponse.json({ success: false, error: 'Scan failed' }, { status: 500 });
   }
