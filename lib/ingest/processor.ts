@@ -90,7 +90,7 @@ ID: ${signal.id}
 Source: ${signal.source}
 Author: ${signal.author}
 Timestamp: ${signal.timestamp.toISOString()}
-Title: ${signal.title || 'N/A'}
+Summary: ${signal.summary || 'N/A'}
 Content: ${signal.content.substring(0, 500)}${signal.content.length > 500 ? '...' : ''}
 ---
 `;
@@ -262,25 +262,25 @@ export function normalizeSignal(
     author: string;
     timestamp: Date | string;
     content: string;
-    title?: string;
     url?: string;
-    metadata?: Record<string, any>;
+    summary?: string;
+    status?: 'OPEN' | 'CLOSED' | 'WAITING';
+    priority?: 'HIGH' | 'MEDIUM' | 'LOW';
   },
   source: WorkSignalSource
 ): WorkSignal {
   return {
     id: `${source}:${rawSignal.id}`,
     source,
-    originalId: rawSignal.id,
     author: rawSignal.author,
     timestamp: rawSignal.timestamp instanceof Date 
       ? rawSignal.timestamp 
       : new Date(rawSignal.timestamp),
+    url: rawSignal.url || `https://${source}.com/${rawSignal.id}`, // Default URL if not provided
     content: rawSignal.content,
-    title: rawSignal.title,
-    url: rawSignal.url,
-    metadata: rawSignal.metadata,
-    ingestedAt: new Date(),
+    summary: rawSignal.summary || '', // Will be filled by AI
+    status: rawSignal.status || 'OPEN',
+    priority: rawSignal.priority || 'MEDIUM',
   };
 }
 
