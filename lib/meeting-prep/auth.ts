@@ -8,11 +8,25 @@ import GoogleProvider from 'next-auth/providers/google';
 import { createClient } from '@supabase/supabase-js';
 import type { MeetingPrepUser } from '@/types/meeting-prep';
 
+// DEBUG: Log environment variables before creating client
+console.log("DEBUG AUTH KEYS:");
+console.log("URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+console.log("SERVICE KEY LENGTH:", process.env.SUPABASE_SERVICE_ROLE_KEY?.length);
+console.log("SERVICE KEY START:", process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 10));
+
 // Initialize Supabase client with service role (for server-side operations)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+let supabase;
+try {
+  supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  console.log("✅ Supabase client initialized successfully");
+} catch (error: any) {
+  console.error("❌ Failed to initialize Supabase client:", error.message);
+  console.error("Error details:", error);
+  throw error;
+}
 
 /**
  * Google OAuth Scopes Required
@@ -30,21 +44,23 @@ export const GOOGLE_SCOPES = [
 /**
  * NextAuth Configuration
  * Handles Google OAuth and token management
+ * Made dynamic to avoid caching old keys
  */
-export const authOptions: NextAuthOptions = {
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          scope: GOOGLE_SCOPES,
-          access_type: 'offline', // Get refresh token
-          prompt: 'consent', // Force consent screen to get refresh token
+export function getAuthOptions(): NextAuthOptions {
+  return {
+    providers: [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        authorization: {
+          params: {
+            scope: GOOGLE_SCOPES,
+            access_type: 'offline', // Get refresh token
+            prompt: 'consent', // Force consent screen to get refresh token
+          },
         },
-      },
-    }),
-  ],
+      }),
+    ],
   
   callbacks: {
     /**
@@ -146,7 +162,11 @@ export const authOptions: NextAuthOptions = {
   },
   
   secret: process.env.NEXTAUTH_SECRET,
-};
+  };
+}
+
+// Export as constant for backwards compatibility (evaluated on each import)
+export const authOptions = getAuthOptions();
 
 /**
  * Upsert Meeting Prep User
