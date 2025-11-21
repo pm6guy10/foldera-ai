@@ -68,11 +68,29 @@ function formatTimeAgo(dateString: string | null): string {
 }
 
 export default function SettingsPage() {
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session, status } = useSession();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Handle loading state from NextAuth
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-slate-400">Loading...</div>
+      </div>
+    );
+  }
+
+  // Handle unauthenticated state
+  if (status === 'unauthenticated' || !session?.user) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-slate-400">Please log in to view settings.</div>
+      </div>
+    );
+  }
 
   // Lazy initialization of Supabase client - only called at runtime in browser
   const getSupabaseClient = (): SupabaseClient => {
@@ -93,11 +111,7 @@ export default function SettingsPage() {
 
   const fetchIntegrations = async () => {
     try {
-      // Wait for session to be ready
-      if (sessionStatus === 'loading') {
-        return;
-      }
-      
+      // Ensure we have a session before fetching
       if (!session?.user?.email) {
         console.log('[Settings] No NextAuth session found');
         setLoading(false);
@@ -169,8 +183,9 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    // Wait for session to be ready before fetching
-    if (sessionStatus === 'loading') {
+    // Only run data fetching if we have a valid session
+    if (!session?.user?.email) {
+      setLoading(false);
       return;
     }
     
@@ -205,7 +220,7 @@ export default function SettingsPage() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [sessionStatus, session?.user?.email]);
+  }, [session?.user?.email]);
 
   const getIntegration = (provider: IntegrationProvider): Integration | undefined => {
     const integration = integrations.find((int) => int.provider === provider);
@@ -271,18 +286,10 @@ export default function SettingsPage() {
     // TODO: Implement actual pause logic
   };
 
-  if (loading || sessionStatus === 'loading') {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-slate-400">Loading...</div>
-      </div>
-    );
-  }
-  
-  if (!session?.user) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-slate-400">Please sign in to view settings.</div>
+        <div className="text-slate-400">Loading integrations...</div>
       </div>
     );
   }
