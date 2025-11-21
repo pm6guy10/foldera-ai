@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 
 type IntegrationProvider = 'gmail' | 'google_drive' | 'google_calendar' | 'notion';
 
@@ -68,6 +68,7 @@ function formatTimeAgo(dateString: string | null): string {
 }
 
 export default function SettingsPage() {
+  const { data: session, status: sessionStatus } = useSession();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -92,65 +93,124 @@ export default function SettingsPage() {
 
   const fetchIntegrations = async () => {
     try {
-      const supabase = getSupabaseClient();
+      // Wait for session to be ready
+      if (sessionStatus === 'loading') {
+        return;
+      }
       
-      // Get current user from auth
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser?.email) {
-        console.error('No authenticated user found');
+      if (!session?.user?.email) {
+        console.log('[Settings] No NextAuth session found');
         setLoading(false);
         return;
       }
-
+      
+      console.log('[Settings] NextAuth session user:', session.user.email);
+      
+      const supabase = getSupabaseClient();
+      
       // Get user from meeting_prep_users table (since integrations references it)
+      // Use NextAuth email to find the user
       const { data: meetingPrepUser, error: userError } = await supabase
         .from('meeting_prep_users')
         .select('id, email')
-        .eq('email', authUser.email)
+        .eq('email', session.user.email)
         .single();
 
       if (userError || !meetingPrepUser) {
-        console.error('User not found in meeting_prep_users:', userError);
+        console.error('[Settings] User not found in meeting_prep_users:', userError);
         setLoading(false);
         return;
       }
 
+      console.log('[Settings] Found meeting_prep_user:', { id: meetingPrepUser.id, email: meetingPrepUser.email });
       setUserId(meetingPrepUser.id);
 
-      // Fetch integrations for this user
+      // Fetch integrations for this user - check for gmail and google_drive specifically
       const { data, error } = await supabase
         .from('integrations')
         .select('*')
         .eq('user_id', meetingPrepUser.id);
 
+      // DEBUGGING: Log raw data from Supabase
+      console.log('[Settings] Raw integrations data from Supabase:', {
+        count: data?.length || 0,
+        data: data,
+        error: error
+      });
+
       if (error) {
-        console.error('Error fetching integrations:', error);
+        console.error('[Settings] Error fetching integrations:', error);
+        setIntegrations([]);
       } else {
-        setIntegrations(data || []);
+        const integrationsData = (data || []).map((int: any) => ({
+          id: int.id,
+          provider: int.provider as IntegrationProvider,
+          is_active: Boolean(int.is_active),
+          last_synced_at: int.last_synced_at,
+          sync_status: (int.sync_status || 'idle') as 'idle' | 'syncing' | 'error',
+        }));
+        
+        console.log('[Settings] Processed integrations:', integrationsData);
+        
+        // Check specific providers for debugging
+        const gmailIntegration = integrationsData.find(i => i.provider === 'gmail');
+        const driveIntegration = integrationsData.find(i => i.provider === 'google_drive');
+        
+        console.log('[Settings] Gmail integration:', gmailIntegration);
+        console.log('[Settings] Google Drive integration:', driveIntegration);
+        
+        setIntegrations(integrationsData);
       }
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (error: any) {
+      console.error('[Settings] Error in fetchIntegrations:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Wait for session to be ready before fetching
+    if (sessionStatus === 'loading') {
+      return;
+    }
+    
+    // Initial fetch
     fetchIntegrations();
     
     // Refresh integrations when page becomes visible (user returns from OAuth)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        console.log('[Settings] Page visible, refreshing integrations...');
         fetchIntegrations();
       }
     };
     
+    // Polling interval: check every 5 seconds
+    const pollInterval = setInterval(() => {
+      console.log('[Settings] Polling for integration updates...');
+      fetchIntegrations();
+    }, 5000);
+    
+    // Window focus listener
+    const handleFocus = () => {
+      console.log('[Settings] Window focused, refreshing integrations...');
+      fetchIntegrations();
+    };
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [sessionStatus, session?.user?.email]);
 
   const getIntegration = (provider: IntegrationProvider): Integration | undefined => {
-    return integrations.find((int) => int.provider === provider);
+    const integration = integrations.find((int) => int.provider === provider);
+    console.log(`[Settings] getIntegration(${provider}):`, integration);
+    return integration;
   };
 
   const handleConnect = async (provider: IntegrationProvider) => {
@@ -211,10 +271,18 @@ export default function SettingsPage() {
     // TODO: Implement actual pause logic
   };
 
-  if (loading) {
+  if (loading || sessionStatus === 'loading') {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-slate-400">Loading...</div>
+      </div>
+    );
+  }
+  
+  if (!session?.user) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-slate-400">Please sign in to view settings.</div>
       </div>
     );
   }
@@ -254,6 +322,13 @@ export default function SettingsPage() {
           {CONNECTORS.map((connector) => {
             const integration = getIntegration(connector.provider);
             const isConnected = integration?.is_active === true;
+            
+            // Debug log for each connector
+            console.log(`[Settings] Connector ${connector.provider}:`, {
+              integration,
+              isConnected,
+              is_active: integration?.is_active,
+            });
 
             return (
               <div

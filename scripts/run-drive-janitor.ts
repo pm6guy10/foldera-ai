@@ -98,31 +98,31 @@ async function runDriveJanitor() {
       `${i + 1}. ${f.file_name} (${f.mime_type}) - Created: ${f.created_date}`
     ).join('\n');
 
+    // Format files for AI (Name, ID, MimeType)
+    const filesForAI = filesList.map((f) => ({
+      file: f.file_name,
+      id: f.id,
+      mimeType: f.mime_type,
+    }));
+
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5.1',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',
-          content: `You are an expert Digital Organizer (The Janitor).
+          content: `You are an expert File Clerk. Review these loose files. Suggest a folder structure. Group them by project or topic.
 
-Look at these loose files found in the root directory.
-
-Propose a logical folder structure to clean them up.
-
-Group them by context (e.g., 'Financials', 'Legal', 'Images', 'Project Phoenix').
-
-OUTPUT JSON:
+Return JSON:
 {
-  "summary": "I found [X] loose files and organized them into [Y] categories.",
-  "proposed_moves": [
-    { "file_name": "invoice_2024.pdf", "reason": "Finance", "target_folder": "Finance/Invoices" },
+  "plan": [
+    { "file": "invoice_2024.pdf", "move_to": "Finance/Invoices" },
     ...
   ]
 }`
         },
         {
           role: 'user',
-          content: `Here are the loose files in the root directory:\n\n${filesText}`
+          content: `Here are the loose files in the root directory:\n\n${JSON.stringify(filesForAI, null, 2)}`
         }
       ],
       temperature: 0.7,
@@ -142,78 +142,69 @@ OUTPUT JSON:
 
     const janitorPlan = JSON.parse(jsonText);
 
-    console.log(`✅ ${janitorPlan.summary || 'Plan generated'}`);
-
-    // Group moves by folder for display
-    const movesByFolder: Record<string, string[]> = {};
-    janitorPlan.proposed_moves?.forEach((move: any) => {
-      const folder = move.target_folder || 'Uncategorized';
-      if (!movesByFolder[folder]) {
-        movesByFolder[folder] = [];
-      }
-      movesByFolder[folder].push(move.file_name);
-    });
-
-    // 4. THE APPROVER: Construct HTML Email
-    console.log("\n📧 THE APPROVER: Constructing approval email...");
+    console.log(`✅ Plan generated: ${janitorPlan.plan?.length || 0} file moves proposed`);
 
     const fileCount = files.length;
-    const categoryCount = Object.keys(movesByFolder).length;
+    const moves = janitorPlan.plan || [];
 
-    // Build folder list HTML
-    const folderListHtml = Object.entries(movesByFolder)
-      .map(([folder, fileNames]) => {
-        const fileList = fileNames.slice(0, 3).join(', ');
-        const moreCount = fileNames.length > 3 ? ` (+${fileNames.length - 3} more)` : '';
-        return `<p><strong>📂 ${folder}:</strong> ${fileNames.length} files (${fileList}${moreCount})</p>`;
+    // 4. SAVE TO DATABASE: Insert pending action
+    console.log("\n💾 Saving plan to database...");
+    
+    const { data: pendingAction, error: dbError } = await supabase
+      .from('pending_actions')
+      .insert({
+        user_id: user.id,
+        type: 'drive_cleanup',
+        data: {
+          file_moves: moves,
+          file_count: fileCount,
+          created_at: new Date().toISOString(),
+        },
+        status: 'pending',
       })
-      .join('\n');
+      .select()
+      .single();
 
-    const htmlBody = `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .button { display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-    .button:hover { background-color: #0056b3; }
-    .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h2>🧹 Tidy Up: I found ${fileCount} loose files in your Drive</h2>
-    
-    <p>Hi Boss,</p>
-    
-    <p>I noticed your root folder is getting messy. I found <strong>${fileCount} files</strong> that don't belong there.</p>
-    
-    <h3>Here is my cleanup plan:</h3>
-    
-    ${folderListHtml}
-    
-    <a href="https://foldera.ai/api/execute?plan_id=123" class="button">APPROVE CLEANUP</a>
-    
-    <p class="footer">If you don't click approve, I won't touch anything.</p>
-  </div>
-</body>
-</html>
-    `.trim();
+    if (dbError || !pendingAction) {
+      console.error("❌ Failed to save plan to database:", dbError);
+      throw new Error(`Database error: ${dbError?.message || 'Unknown error'}`);
+    }
 
-    // 5. EXECUTION: Send email via Gmail
-    console.log("\n📬 Sending approval email...");
+    console.log(`✅ Plan saved with ID: ${pendingAction.id}`);
+
+    // 5. THE APPROVER: Construct Email Draft with execution link
+    console.log("\n📧 THE APPROVER: Constructing email draft...");
+
+    // Build list of moves
+    const movesList = moves.map((move: any) => 
+      `  • ${move.file} → ${move.move_to}`
+    ).join('\n');
+
+    // Create execution link
+    const executionUrl = `https://www.foldera.ai/janitor/execute/${pendingAction.id}`;
+
+    const plainTextBody = `I can organize your drive. Here is the plan:
+
+${movesList}
+
+📋 Click here to execute this cleanup:
+${executionUrl}
+
+(This is a draft. Click the link above to approve and execute the file moves.)`;
+
+    // 6. EXECUTION: Create Gmail Draft
+    console.log("\n📬 Creating Gmail draft...");
 
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
     // Build email message
     const emailLines = [
       `To: ${user.email}`,
-      `Subject: 🧹 Tidy Up: I found ${fileCount} loose files in your Drive`,
-      `Content-Type: text/html; charset=utf-8`,
+      `Subject: 🧹 Tidy Up: I found ${fileCount} loose files`,
+      `Content-Type: text/plain; charset=utf-8`,
       `Content-Transfer-Encoding: 7bit`,
       '',
-      htmlBody
+      plainTextBody
     ];
 
     const email = emailLines.join('\r\n');
@@ -224,23 +215,27 @@ OUTPUT JSON:
       .replace(/=+$/, '');
 
     try {
-      const sendResponse = await gmail.users.messages.send({
+      const draftResponse = await gmail.users.drafts.create({
         userId: 'me',
         requestBody: {
-          raw: encoded,
+          message: {
+            raw: encoded,
+          },
         },
       });
 
-      console.log(`✨ Janitor Plan Emailed. Waiting for approval.`);
-      console.log(`   Message ID: ${sendResponse.data.id}`);
+      console.log(`✨ Janitor Proposal Drafted`);
+      console.log(`   Draft ID: ${draftResponse.data.id}`);
+      console.log(`   Pending Action ID: ${pendingAction.id}`);
+      console.log(`   Execution URL: ${executionUrl}`);
       console.log(`\n📊 Summary:`);
       console.log(`   - Files found: ${fileCount}`);
-      console.log(`   - Categories proposed: ${categoryCount}`);
-      console.log(`   - Email sent to: ${user.email}`);
+      console.log(`   - Moves proposed: ${moves.length}`);
+      console.log(`   - Draft created for: ${user.email}`);
 
-    } catch (emailError: any) {
-      console.error("❌ Failed to send email:", emailError.message);
-      if (emailError.message.includes('insufficient')) {
+    } catch (draftError: any) {
+      console.error("❌ Failed to create draft:", draftError.message);
+      if (draftError.message.includes('insufficient')) {
         console.error("💡 Make sure you've granted Gmail compose permission and re-authenticated.");
       }
     }
