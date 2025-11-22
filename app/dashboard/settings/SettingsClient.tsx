@@ -106,7 +106,24 @@ export default function SettingsClient() {
     );
   }
 
-  // 3. MAIN DASHBOARD
+  // 3. UNAUTHENTICATED
+  if (status !== 'authenticated') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-400 mb-4">Please sign in to view settings</p>
+          <button
+            onClick={() => signIn('google', { callbackUrl: '/dashboard/settings' })}
+            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium transition-colors"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. MAIN DASHBOARD
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-8">
       <div className="max-w-5xl mx-auto">
