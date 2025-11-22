@@ -15,6 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getSundayNightSignals } from './fixtures/sunday-night-scenario';
 import { processSignals, saveSignalsToDb } from '../lib/ingest/processor';
 import { generateBriefingContent } from '../lib/intelligence/briefing-generator';
+import { solveConflicts } from '../lib/intelligence/conflict-solver';
 import { sendEmail } from '../lib/plugins/gmail-sender';
 
 // Setup: Validate required environment variables
@@ -109,7 +110,7 @@ async function main() {
   try {
     console.log('\n🌙 THE SUNDAY SIMULATOR - Starting End-to-End Test\n');
     console.log('='.repeat(60));
-    console.log('Pipeline: Ingest → Process → Save → Generate → Send');
+    console.log('Pipeline: Ingest → Process → Save → Solve → Brief → Send');
     console.log('='.repeat(60));
     
     // Get or create user
@@ -154,19 +155,127 @@ async function main() {
     console.log(`   - ${saveResult.relationshipsSaved} relationship(s) stored in Knowledge Graph\n`);
 
     // ============================================
-    // STEP 3: ACTION (The Agent)
+    // STEP 3: THE SOLVER (Generate Drafts)
     // ============================================
-    console.log('📧 STEP 3: The Agent - Generating & Sending Briefing...\n');
+    console.log('🔧 STEP 3: The Solver - Generating Resolution Drafts...\n');
+    
+    // Query conflicts to pass to solver
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+    
+    const { data: relationships } = await supabase
+      .from('signal_relationships')
+      .select(`
+        id,
+        relationship_type,
+        reason,
+        created_at,
+        source_signal_id,
+        target_signal_id
+      `)
+      .in('relationship_type', ['contradicts', 'blocks'])
+      .gte('created_at', twentyFourHoursAgo.toISOString());
+    
+    let draftLinks: Array<{ conflictId: string; draftUrl: string; subject: string }> = [];
+    
+    if (relationships && relationships.length > 0) {
+      // Get signal IDs
+      const signalIds = new Set<string>();
+      relationships.forEach((rel: any) => {
+        if (rel.source_signal_id) signalIds.add(rel.source_signal_id);
+        if (rel.target_signal_id) signalIds.add(rel.target_signal_id);
+      });
+      
+      // Fetch signals
+      const { data: allSignals } = await supabase
+        .from('work_signals')
+        .select('id, signal_id, source, author, content, context_tags')
+        .in('id', Array.from(signalIds))
+        .eq('user_id', TEST_USER_ID);
+      
+      if (allSignals && allSignals.length > 0) {
+        const signalMap = new Map<string, any>();
+        allSignals.forEach((signal: any) => {
+          signalMap.set(signal.id, signal);
+        });
+        
+        // Build conflicts array
+        const conflicts = relationships
+          .filter((rel: any) => {
+            const source = signalMap.get(rel.source_signal_id);
+            const target = signalMap.get(rel.target_signal_id);
+            return source && target;
+          })
+          .map((rel: any) => ({
+            id: rel.id,
+            sourceSignal: {
+              id: signalMap.get(rel.source_signal_id).id,
+              signal_id: signalMap.get(rel.source_signal_id).signal_id,
+              source: signalMap.get(rel.source_signal_id).source,
+              author: signalMap.get(rel.source_signal_id).author,
+              content: signalMap.get(rel.source_signal_id).content,
+              context_tags: signalMap.get(rel.source_signal_id).context_tags || [],
+            },
+            targetSignal: {
+              id: signalMap.get(rel.target_signal_id).id,
+              signal_id: signalMap.get(rel.target_signal_id).signal_id,
+              source: signalMap.get(rel.target_signal_id).source,
+              author: signalMap.get(rel.target_signal_id).author,
+              content: signalMap.get(rel.target_signal_id).content,
+              context_tags: signalMap.get(rel.target_signal_id).context_tags || [],
+            },
+            relationship_type: rel.relationship_type,
+            reason: rel.reason,
+            created_at: rel.created_at,
+          }));
+        
+        if (conflicts.length > 0) {
+          console.log(`📝 Generating resolution drafts for ${conflicts.length} conflict(s)...`);
+          const solutions = await solveConflicts(
+            TEST_USER_ID,
+            conflicts,
+            supabase,
+            openai,
+            user.email
+          );
+          
+          draftLinks = solutions
+            .filter(s => s.draftUrl)
+            .map(s => ({
+              conflictId: s.conflictId,
+              draftUrl: s.draftUrl!,
+              subject: s.subject,
+            }));
+          
+          console.log(`✅ Created ${draftLinks.length} draft(s)`);
+          draftLinks.forEach((draft, index) => {
+            console.log(`   ${index + 1}. ${draft.subject}`);
+            console.log(`      ${draft.draftUrl}\n`);
+          });
+        }
+      }
+    }
+
+    // ============================================
+    // STEP 4: THE NARRATOR (Generate Briefing)
+    // ============================================
+    console.log('📧 STEP 4: The Narrator - Generating Briefing...\n');
     
     console.log('📊 Generating briefing content...');
     const briefingContent = await generateBriefingContent(
       TEST_USER_ID,
       supabase,
-      openai
+      openai,
+      draftLinks
     );
     
     console.log(`✅ Briefing generated: "${briefingContent.subject}"`);
     console.log(`   - HTML Body length: ${briefingContent.htmlBody.length} chars\n`);
+    
+    // ============================================
+    // STEP 5: THE COURIER (Send Briefing)
+    // ============================================
+    console.log('📬 STEP 5: The Courier - Sending Briefing...\n');
     
     console.log('📬 Sending email...');
     const messageId = await sendEmail(
@@ -175,11 +284,11 @@ async function main() {
       briefingContent.subject,
       briefingContent.htmlBody
     );
-    
+
     if (!messageId) {
       throw new Error('Failed to send email - no message ID returned');
     }
-    
+
     console.log(`🚀 Email sent successfully!`);
     console.log(`   - Message ID: ${messageId}`);
     console.log(`   - To: ${user.email}`);
@@ -194,10 +303,14 @@ async function main() {
     console.log(`\n✅ All steps completed successfully:`);
     console.log(`   1. ✅ Brain processed ${result.signalsProcessed} signal(s)`);
     console.log(`   2. ✅ Cortex saved signals to Knowledge Graph`);
-    console.log(`   3. ✅ Narrator generated briefing`);
-    console.log(`   4. ✅ Courier delivered email to ${user.email}`);
+    console.log(`   3. ✅ Solver created ${draftLinks.length} resolution draft(s)`);
+    console.log(`   4. ✅ Narrator generated briefing`);
+    console.log(`   5. ✅ Courier delivered email to ${user.email}`);
     console.log(`\n📱 Check your inbox! You should see:`);
     console.log(`   "${briefingContent.subject}"`);
+    if (draftLinks.length > 0) {
+      console.log(`\n📝 Check your Gmail drafts! ${draftLinks.length} resolution draft(s) ready to review.`);
+    }
     console.log('\n');
 
   } catch (error: any) {

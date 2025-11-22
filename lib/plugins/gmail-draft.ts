@@ -1,6 +1,6 @@
 // =====================================================
-// GMAIL SENDER - Briefing Agent
-// Sends emails directly (not drafts)
+// GMAIL DRAFT CREATOR
+// Creates Gmail drafts (not sends)
 // =====================================================
 
 import { google } from 'googleapis';
@@ -39,22 +39,22 @@ function encodeSubjectLine(subject: string): string {
 }
 
 /**
- * Send Email
+ * Create Gmail Draft
  * 
- * Sends an HTML email directly via Gmail API
+ * Creates a draft email in Gmail (not sends)
  * 
  * @param userId - User ID (to get access token)
- * @param to - Recipient email address
+ * @param to - Recipient email address(es)
  * @param subject - Email subject
  * @param htmlBody - HTML email body
- * @returns Message ID if successful, null otherwise
+ * @returns Draft ID if successful, null otherwise
  */
-export async function sendEmail(
+export async function createGmailDraft(
   userId: string,
-  to: string,
+  to: string | string[],
   subject: string,
   htmlBody: string
-): Promise<string | null> {
+): Promise<{ draftId: string; draftUrl: string } | null> {
   try {
     // Get user's access token (refresh if needed)
     const accessToken = await getGoogleAccessToken(userId);
@@ -71,13 +71,17 @@ export async function sendEmail(
     // Encode subject line for emojis and non-ASCII characters (RFC 2047)
     const encodedSubject = encodeSubjectLine(subject);
 
+    // Normalize 'to' field to array
+    const toArray = Array.isArray(to) ? to : [to];
+    const toHeader = toArray.join(', ');
+
     // Build email message (HTML format)
     // Use Base64 encoding for body to handle emojis and special characters
     // Encode the entire HTML body as UTF-8 Base64
     const htmlBodyBase64 = Buffer.from(htmlBody, 'utf-8').toString('base64');
     
     const emailLines = [
-      `To: ${to}`,
+      `To: ${toHeader}`,
       `Subject: ${encodedSubject}`,
       `MIME-Version: 1.0`,
       `Content-Type: text/html; charset=utf-8`,
@@ -93,19 +97,33 @@ export async function sendEmail(
       .replace(/\//g, '_')
       .replace(/=+$/, '');
 
-    // Send email
-    const response = await gmail.users.messages.send({
+    // Create draft
+    const response = await gmail.users.drafts.create({
       userId: 'me',
       requestBody: {
-        raw: encoded,
+        message: {
+          raw: encoded,
+        },
       },
     });
 
-    return response.data.id || null;
+    const draftId = response.data.id;
+    if (!draftId) {
+      return null;
+    }
+
+    // Generate draft URL
+    // Format: https://mail.google.com/mail/u/0/#drafts/{draftId}
+    const draftUrl = `https://mail.google.com/mail/u/0/#drafts/${draftId}`;
+
+    return {
+      draftId,
+      draftUrl,
+    };
 
   } catch (error: any) {
-    console.error('[Gmail Sender] Failed to send email:', error);
-    throw new Error(`Failed to send email: ${error.message}`);
+    console.error('[Gmail Draft] Failed to create draft:', error);
+    throw new Error(`Failed to create draft: ${error.message}`);
   }
 }
 

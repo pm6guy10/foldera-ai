@@ -259,12 +259,14 @@ Be direct and helpful. The user needs to understand what's wrong and how to fix 
  * @param userId - User ID to generate briefing for
  * @param supabaseClient - Supabase client (with service role key)
  * @param openaiClient - OpenAI client
+ * @param draftLinks - Optional array of draft links to include in briefing
  * @returns Email subject and HTML body
  */
 export async function generateBriefingContent(
   userId: string,
   supabaseClient: SupabaseClient,
-  openaiClient: OpenAI
+  openaiClient: OpenAI,
+  draftLinks?: Array<{ conflictId: string; draftUrl: string; subject: string }>
 ): Promise<{ subject: string; htmlBody: string }> {
   try {
     // STEP 1: Query conflicts from last 24 hours
@@ -443,25 +445,46 @@ STRUCTURE (REQUIRED):
 - Section: "The Conflicts" (Bullet points of conflicts)
 - Section: "Recommended Actions" (Specific, actionable steps)
 
+IMPORTANT FORMATTING RULES:
+- Write ONLY clean HTML (no markdown code blocks, no triple backticks)
+- For actions involving email, create mailto links: <a href="mailto:person@example.com?subject=Re: Issue&body=Message">Click to email person@example.com</a>
+- **CRITICAL FOR DRAFT LINKS**: If draft links are provided, include prominent button-style links to Gmail drafts. Use this exact format:
+  <div style="margin: 20px 0;">
+    <a href="https://mail.google.com/mail/u/0/#drafts/DRAFT_ID" target="_blank" style="background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🎯 REVIEW & SEND REPLY: [Subject]</a>
+  </div>
+- Make draft links prominent and actionable (button style, green background #22c55e)
+- For actions involving specific people (from conflict data), extract their email addresses and create mailto links
+- If email address is not available, create mailto links with just the name: <a href="mailto:name@example.com">Contact [Name]</a>
+
 Format the HTML with:
 - Clean, minimalist styling (inline CSS only)
 - Bold headers for sections (use <h2> with inline styles)
 - Easy to read font (sans-serif)
 - Proper spacing and hierarchy
 - Maximum impact, minimal design
+- Mailto links for actionable email steps
+
+CRITICAL: Do NOT wrap your output in markdown code blocks (no \`\`\`html or \`\`\`). Output raw HTML only.
 
 The user needs to understand what's wrong and how to fix it immediately.`
         },
         {
           role: 'user',
-          content: `Analyze these ${userConflicts.length} conflict(s) detected in the last 24 hours:\n\n${conflictsText}`
+          content: `Analyze these ${userConflicts.length} conflict(s) detected in the last 24 hours:\n\n${conflictsText}${draftLinks && draftLinks.length > 0 ? `\n\n⚠️ IMPORTANT: Draft emails have been pre-written for the following conflicts:\n${draftLinks.map((d, idx) => `Draft ${idx + 1}: Subject="${d.subject}" | URL=${d.draftUrl} | Conflict ID=${d.conflictId}`).join('\n')}\n\nFor each draft, include a prominent button-style link using this format:\n<div style="margin: 20px 0;"><a href="${draftLinks[0].draftUrl}" target="_blank" style="background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">🎯 REVIEW & SEND REPLY: ${draftLinks[0].subject}</a></div>\n\nMake these links stand out - they are "one-click" solutions to resolve conflicts. The user clicks the link -> opens Gmail -> hits Send.` : ''}`
         }
       ],
       temperature: 0.4,
       max_tokens: 2000,
     });
 
-    const emailBody = completion.choices[0]?.message?.content || '<p>No briefing available.</p>';
+    let emailBody = completion.choices[0]?.message?.content || '<p>No briefing available.</p>';
+
+    // Strip markdown code blocks (GPT sometimes wraps HTML in ```html or ```markdown blocks)
+    emailBody = emailBody
+      .replace(/```html\s*/gi, '')
+      .replace(/```markdown\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
 
     // Generate subject line based on conflicts
     const conflictCount = userConflicts.length;
