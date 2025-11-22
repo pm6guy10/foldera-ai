@@ -4,7 +4,12 @@
 // Ingest → Process → Save → Generate → Send
 // =====================================================
 
+// CRITICAL: Load .env.local FIRST before any other imports
+// This prevents module-level initialization errors
 import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+
+// Now import everything else
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { getSundayNightSignals } from './fixtures/sunday-night-scenario';
@@ -12,16 +17,13 @@ import { processSignals, saveSignalsToDb } from '../lib/ingest/processor';
 import { generateBriefingContent } from '../lib/intelligence/briefing-generator';
 import { sendEmail } from '../lib/plugins/gmail-sender';
 
-// Load .env.local
-dotenv.config({ path: '.env.local' });
-
 // Setup: Validate required environment variables
 const requiredEnvVars = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
-  'OPENAI_API_KEY',
-  'GOOGLE_CLIENT_ID',
-  'GOOGLE_CLIENT_SECRET'
+  'OPENAI_API_KEY'
+  // Note: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are only needed for sendEmail
+  // They will be validated when sendEmail is called
 ];
 
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);

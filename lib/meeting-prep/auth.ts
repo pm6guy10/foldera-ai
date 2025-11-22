@@ -8,24 +8,25 @@ import GoogleProvider from 'next-auth/providers/google';
 import { createClient } from '@supabase/supabase-js';
 import type { MeetingPrepUser } from '@/types/meeting-prep';
 
-// DEBUG: Log environment variables before creating client
-console.log("DEBUG AUTH KEYS:");
-console.log("URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-console.log("SERVICE KEY LENGTH:", process.env.SUPABASE_SERVICE_ROLE_KEY?.length);
-console.log("SERVICE KEY START:", process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 10));
+// Note: Supabase client is initialized lazily to avoid module-load errors
 
-// Initialize Supabase client with service role (for server-side operations)
-let supabase;
-try {
-  supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-  console.log("✅ Supabase client initialized successfully");
-} catch (error: any) {
-  console.error("❌ Failed to initialize Supabase client:", error.message);
-  console.error("Error details:", error);
-  throw error;
+// Lazy Supabase client initialization (for server-side operations)
+// This prevents module-level initialization errors when env vars aren't loaded yet
+let supabase: ReturnType<typeof createClient> | null = null;
+
+function getSupabaseClient() {
+  if (!supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!url || !key) {
+      throw new Error('Supabase environment variables not loaded. NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.');
+    }
+    
+    supabase = createClient(url, key);
+    console.log("✅ Supabase client initialized successfully");
+  }
+  return supabase;
 }
 
 /**
@@ -197,6 +198,7 @@ async function upsertMeetingPrepUser(userData: {
   // TODO: Encrypt tokens before storing
   // For now, storing as-is (add encryption in production!)
   
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('meeting_prep_users')
     .upsert({
@@ -206,7 +208,7 @@ async function upsertMeetingPrepUser(userData: {
       google_refresh_token: userData.google_refresh_token,
       google_token_expires_at: userData.google_token_expires_at,
       updated_at: new Date().toISOString(),
-    }, {
+    } as any, {
       onConflict: 'email',
     })
     .select()
@@ -238,7 +240,7 @@ async function upsertMeetingPrepUser(userData: {
         last_synced_at: now,
         sync_status: 'idle',
         updated_at: now,
-      }, {
+      } as any, {
         onConflict: 'user_id,provider',
       });
     
@@ -257,7 +259,7 @@ async function upsertMeetingPrepUser(userData: {
         last_synced_at: now,
         sync_status: 'idle',
         updated_at: now,
-      }, {
+      } as any, {
         onConflict: 'user_id,provider',
       });
     
@@ -281,6 +283,7 @@ async function updateUserTokens(
     google_token_expires_at: string;
   }
 ): Promise<void> {
+  const supabase = getSupabaseClient() as any;
   const { error } = await supabase
     .from('meeting_prep_users')
     .update({
@@ -338,7 +341,7 @@ async function refreshGoogleToken(refreshToken: string): Promise<{
  * Fetch user data from database
  */
 export async function getMeetingPrepUser(email: string): Promise<MeetingPrepUser | null> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('meeting_prep_users')
     .select('*')
     .eq('email', email)
@@ -360,7 +363,7 @@ export async function getMeetingPrepUser(email: string): Promise<MeetingPrepUser
  * Get User By ID
  */
 export async function getMeetingPrepUserById(userId: string): Promise<MeetingPrepUser | null> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from('meeting_prep_users')
     .select('*')
     .eq('id', userId)

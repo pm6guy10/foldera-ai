@@ -2,39 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useSession, signIn } from 'next-auth/react';
-import { createClient } from '@supabase/supabase-js';
 import { ClipboardList } from 'lucide-react';
-
-// --- SAFE INITIALIZATION ---
-// We do NOT throw errors here. We just return null if keys are missing.
-const getSupabase = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  
-  if (!url || !key) return null;
-  
-  try {
-    return createClient(url, key);
-  } catch (e) {
-    console.error("Supabase init failed:", e);
-    return null;
-  }
-};
 
 export default function SettingsClient() {
   const { data: session, status } = useSession();
   const [integrations, setIntegrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [configError, setConfigError] = useState<string | null>(null);
-
-  // --- CHECK KEYS ON MOUNT ---
-  useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.error("CRITICAL: Missing Env Vars");
-      setConfigError("Missing API Keys. Check Vercel Settings.");
-    }
-  }, []);
 
   // --- FETCH DATA ---
   useEffect(() => {
@@ -44,33 +18,17 @@ export default function SettingsClient() {
     }
 
     const fetchIntegrations = async () => {
-      const supabase = getSupabase();
-      if (!supabase) {
-        setLoading(false);
-        return; 
-      }
-
       try {
-        // 1. Get User ID
-        const { data: user } = await supabase
-          .from('meeting_prep_users')
-          .select('id')
-          .eq('email', session.user.email)
-          .single();
-
-        if (!user) {
-          console.log("User not found in DB yet.");
-          setLoading(false);
-          return;
+        // Fetch from API route (uses service role to bypass RLS)
+        const response = await fetch('/api/integrations/status');
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch integrations');
         }
 
-        // 2. Get Integrations
-        const { data } = await supabase
-          .from('integrations')
-          .select('*')
-          .eq('user_id', user.id);
-
-        setIntegrations(data || []);
+        const { integrations } = await response.json();
+        setIntegrations(integrations || []);
         setLoading(false);
       } catch (err: any) {
         console.error("Fetch error:", err);
@@ -80,7 +38,7 @@ export default function SettingsClient() {
     };
 
     fetchIntegrations();
-    // Refresh every 5s to catch the "Green Dot" update
+    // Refresh every 5s to catch the "Green Dot" update after OAuth flow
     const interval = setInterval(fetchIntegrations, 5000);
     return () => clearInterval(interval);
   }, [session, status]);
@@ -96,19 +54,6 @@ export default function SettingsClient() {
     );
   }
 
-  // Show config error
-  if (configError) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-white p-10 flex flex-col items-center justify-center">
-        <div className="bg-red-900/50 border border-red-500 p-6 rounded-lg max-w-md">
-          <h2 className="text-xl font-bold text-red-200 mb-2">System Config Error</h2>
-          <p className="text-red-100">{configError}</p>
-          <p className="text-xs text-red-300 mt-4 font-mono">NEXT_PUBLIC_SUPABASE_URL: {process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Defined' : 'MISSING'}</p>
-          <p className="text-xs text-red-300 font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Defined' : 'MISSING'}</p>
-        </div>
-      </div>
-    );
-  }
 
   // Show sign-in prompt if not authenticated
   if (status !== 'authenticated') {
