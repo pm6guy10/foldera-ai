@@ -87,12 +87,16 @@ export default function SettingsClient() {
 
   // --- RENDERING ---
 
-  // 1. SESSION LOADING
+  // Show loading state
   if (status === 'loading') {
-    return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading Command Center...</div>;
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        Loading Command Center...
+      </div>
+    );
   }
 
-  // 2. CONFIG ERROR (The Red Box)
+  // Show config error
   if (configError) {
     return (
       <div className="min-h-screen bg-slate-950 text-white p-10 flex flex-col items-center justify-center">
@@ -106,7 +110,7 @@ export default function SettingsClient() {
     );
   }
 
-  // 3. UNAUTHENTICATED
+  // Show sign-in prompt if not authenticated
   if (status !== 'authenticated') {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
@@ -123,7 +127,7 @@ export default function SettingsClient() {
     );
   }
 
-  // 4. MAIN DASHBOARD
+  // Main dashboard view
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-8">
       <div className="max-w-5xl mx-auto">
