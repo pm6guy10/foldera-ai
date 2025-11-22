@@ -9,6 +9,7 @@ export default function SettingsClient() {
   const [integrations, setIntegrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
   // --- FETCH DATA ---
   useEffect(() => {
@@ -27,9 +28,20 @@ export default function SettingsClient() {
           throw new Error(errorData.error || 'Failed to fetch integrations');
         }
 
-        const { integrations } = await response.json();
-        setIntegrations(integrations || []);
+        const { integrations: fetchedIntegrations } = await response.json();
+        setIntegrations(fetchedIntegrations || []);
+        setLastChecked(new Date());
         setLoading(false);
+        
+        // Debug log to help troubleshoot
+        if (fetchedIntegrations && fetchedIntegrations.length > 0) {
+          console.log('[Settings] Integrations loaded:', fetchedIntegrations.map((i: any) => ({
+            provider: i.provider,
+            is_active: i.is_active
+          })));
+        } else {
+          console.log('[Settings] No integrations found. User may need to sign in again.');
+        }
       } catch (err: any) {
         console.error("Fetch error:", err);
         setError(err.message);
@@ -137,10 +149,13 @@ function ConnectorCard({ name, description, icon, isConnected, onConnect }: any)
         {isConnected ? (
           <div className="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-medium border border-emerald-500/20">
             <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-            Active
+            Connected
           </div>
         ) : (
-          <div className="w-3 h-3 bg-slate-700 rounded-full"></div>
+          <div className="flex items-center gap-2 bg-slate-700/50 text-slate-400 px-3 py-1 rounded-full text-xs font-medium border border-slate-700/50">
+            <div className="w-2 h-2 bg-slate-500 rounded-full"></div>
+            Disconnected
+          </div>
         )}
       </div>
       
