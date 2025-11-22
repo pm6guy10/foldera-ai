@@ -183,9 +183,6 @@ export function getAuthOptions(): NextAuthOptions {
 // Export as getter for backwards compatibility (reads fresh env vars on each access)
 export const authOptions = getAuthOptions();
 
-// Re-export function for dynamic access
-export { getAuthOptions };
-
 /**
  * Upsert Meeting Prep User
  * Creates or updates user in database
