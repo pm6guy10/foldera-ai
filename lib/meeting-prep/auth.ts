@@ -161,12 +161,30 @@ export function getAuthOptions(): NextAuthOptions {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' 
+        ? `__Secure-next-auth.session-token`
+        : `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 30 * 24 * 60 * 60, // 30 days - persist cookie
+      },
+    },
+  },
+  
   secret: process.env.NEXTAUTH_SECRET,
   };
 }
 
-// Export as constant for backwards compatibility (evaluated on each import)
+// Export as getter for backwards compatibility (reads fresh env vars on each access)
 export const authOptions = getAuthOptions();
+
+// Re-export function for dynamic access
+export { getAuthOptions };
 
 /**
  * Upsert Meeting Prep User

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { createClient } from '@supabase/supabase-js';
-import { CheckCircle, AlertCircle, RefreshCw, ExternalLink, Pause, Play } from 'lucide-react';
+import { CheckCircle, AlertCircle, RefreshCw, ExternalLink, Pause, Play, ClipboardList } from 'lucide-react';
 
 // --- SAFE INITIALIZATION ---
 // We do NOT throw errors here. We just return null if keys are missing.
@@ -116,6 +116,14 @@ export default function SettingsClient() {
             <h1 className="text-3xl font-bold text-white tracking-tight">Command Center</h1>
             <p className="text-slate-400 mt-2">Manage your integrations and AI controls</p>
           </div>
+          <div className="flex items-center gap-4">
+            <a
+              href="/dashboard/briefing"
+              className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              <ClipboardList className="w-4 h-4" />
+              Briefing
+            </a>
           <button className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-full text-sm font-medium transition-colors">
             PAUSE ALL AI <div className="w-8 h-4 bg-emerald-500 rounded-full relative ml-2"><div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow"></div></div>
           </button>

@@ -64,12 +64,10 @@ export interface BriefingObject {
  * How signals relate to each other
  */
 export type RelationshipType =
-  | 'BLOCKS'           // Signal A blocks Signal B (dependency)
-  | 'RELATES_TO'       // Signals are related/connected
-  | 'MENTIONS'         // Signal A mentions/references Signal B
-  | 'DUPLICATE'        // Signals describe the same thing
-  | 'FOLLOW_UP'        // Signal B is a follow-up to Signal A
-  | 'SUBTASK'          // Signal B is part of Signal A
+  | 'blocks'           // Signal A blocks Signal B (dependency)
+  | 'relates_to'       // Signals are related/connected
+  | 'contradicts'      // Signal A contradicts Signal B (conflict)
+  | 'duplicates'       // Signals describe the same thing
   | string;            // Allow custom relationship types
 
 /**
@@ -79,8 +77,7 @@ export type RelationshipType =
 export interface SignalRelationship {
   targetId: string;              // ID of the related signal
   type: RelationshipType;        // How they're related
-  confidence?: number;           // AI confidence score (0-1)
-  reason?: string;               // Why they're linked (for debugging)
+  reason: string;                // Why they're linked (required)
 }
 
 /**
@@ -97,18 +94,12 @@ export interface WorkSignal {
   
   // Core content
   author: string;                // Who created it (email, name, handle)
-  timestamp: Date;               // When this was created/modified
-  url: string;                   // Deep link to the original item (required)
-  content: string;               // The raw text content
+  timestamp: string;              // ISO timestamp string (e.g., "2024-01-15T09:00:00Z")
+  content: string;                // The raw text content
   
   // AI-generated fields
-  summary: string;               // AI generated one-liner summary
-  context_tags?: string[];       // Tags like ["Project Phoenix", "Urgent", "Budget"]
-  relationships?: SignalRelationship[];  // Connections to other signals
-  
-  // Status & Priority (can be set by AI or source system)
-  status: SignalStatus;          // Current state (OPEN, CLOSED, WAITING)
-  priority: SignalPriority;      // Importance level (HIGH, MEDIUM, LOW)
+  context_tags: string[];        // Tags like ["Project Phoenix", "Urgent", "Budget"]
+  relationships: SignalRelationship[];  // Connections to other signals
 }
 
 /**

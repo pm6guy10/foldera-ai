@@ -145,7 +145,17 @@ Return JSON:
     console.log(`✅ Plan generated: ${janitorPlan.plan?.length || 0} file moves proposed`);
 
     const fileCount = files.length;
-    const moves = janitorPlan.plan || [];
+    const aiMoves = janitorPlan.plan || [];
+
+    // Match AI plan back to actual file IDs for accurate execution
+    const moves = aiMoves.map((move: any) => {
+      const matchedFile = filesList.find((f) => f.file_name === move.file);
+      return {
+        file: move.file,
+        file_id: matchedFile?.id || null, // Store file ID for accurate matching
+        move_to: move.move_to,
+      };
+    }).filter((move: any) => move.file_id !== null); // Only include files we can find
 
     // 4. SAVE TO DATABASE: Insert pending action
     console.log("\n💾 Saving plan to database...");

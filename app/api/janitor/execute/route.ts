@@ -12,10 +12,17 @@ import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
 import { getGoogleAccessToken } from '@/lib/meeting-prep/auth';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization to avoid build-time errors
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!url || !key) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  
+  return createClient(url, key);
+}
 
 /**
  * POST /api/janitor/execute
@@ -34,14 +41,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { action_id } = body;
+    // Accept both actionId (user requirement) and action_id (backwards compat)
+    const actionId = body.actionId || body.action_id;
 
-    if (!action_id) {
+    if (!actionId) {
       return NextResponse.json(
-        { error: 'action_id is required' },
+        { error: 'actionId is required' },
         { status: 400 }
       );
     }
+
+    // Initialize Supabase client
+    const supabase = getSupabaseClient();
 
     // Fetch the pending action
     const { data: action, error: fetchError } = await supabase
@@ -136,21 +147,51 @@ export async function POST(request: NextRequest) {
     // Execute each move
     for (const move of fileMoves) {
       try {
-        // Find the file by name in root
-        const searchResponse = await drive.files.list({
-          q: `name='${move.file}' and 'root' in parents and trashed=false`,
-          fields: 'files(id, name)',
-        });
+        let fileId: string | null = null;
 
-        if (!searchResponse.data.files || searchResponse.data.files.length === 0) {
-          results.failed.push({
-            file: move.file,
-            error: 'File not found in root directory',
-          });
-          continue;
+        // If file_id is provided (from updated script), use it directly
+        if (move.file_id) {
+          // Verify the file exists and is in root
+          try {
+            const fileResponse = await drive.files.get({
+              fileId: move.file_id,
+              fields: 'id, name, parents',
+            });
+
+            // Check if file is in root (parents should include root)
+            if (fileResponse.data.parents?.includes('root')) {
+              fileId = move.file_id;
+            } else {
+              // File exists but not in root anymore (maybe already moved?)
+              results.failed.push({
+                file: move.file,
+                error: 'File no longer in root directory (may have been moved)',
+              });
+              continue;
+            }
+          } catch (fileError: any) {
+            // File ID invalid, fall back to name search
+            console.warn(`[Janitor] File ID ${move.file_id} not found, falling back to name search`);
+          }
         }
 
-        const fileId = searchResponse.data.files[0].id!;
+        // Fallback: Find the file by name in root (for backwards compatibility)
+        if (!fileId) {
+          const searchResponse = await drive.files.list({
+            q: `name='${move.file}' and 'root' in parents and trashed=false`,
+            fields: 'files(id, name)',
+          });
+
+          if (!searchResponse.data.files || searchResponse.data.files.length === 0) {
+            results.failed.push({
+              file: move.file,
+              error: 'File not found in root directory',
+            });
+            continue;
+          }
+
+          fileId = searchResponse.data.files[0].id!;
+        }
 
         // Get or create target folder
         const targetFolderId = await getOrCreateFolder(move.move_to);
@@ -188,7 +229,7 @@ export async function POST(request: NextRequest) {
         status: 'completed',
         completed_at: new Date().toISOString(),
       })
-      .eq('id', action_id);
+      .eq('id', actionId);
 
     if (updateError) {
       console.error('[Janitor] Error updating action status:', updateError);

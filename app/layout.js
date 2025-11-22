@@ -2,6 +2,7 @@
 
 import "./globals.css";
 import { Inter } from "next/font/google";
+import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -52,7 +53,9 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/foldera-glyph.svg" type="image/svg+xml" />
       </head>
       <body className={inter.className}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

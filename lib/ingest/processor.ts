@@ -39,6 +39,7 @@
 //
 
 import OpenAI from 'openai';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { 
   WorkSignal, 
   SignalRelationship, 
@@ -89,27 +90,28 @@ export async function processSignals(
 ID: ${signal.id}
 Source: ${signal.source}
 Author: ${signal.author}
-Timestamp: ${signal.timestamp.toISOString()}
-Summary: ${signal.summary || 'N/A'}
-Content: ${signal.content.substring(0, 500)}${signal.content.length > 500 ? '...' : ''}
+Timestamp: ${signal.timestamp}
+Content: ${signal.content.substring(0, 1000)}${signal.content.length > 1000 ? '...' : ''}
 ---
 `;
     }).join('\n');
 
     // Build system prompt
-    const systemPrompt = `You are the Foldera Knowledge Graph. Connect the dots.
+    const systemPrompt = `You are a Chief of Staff. Analyze these signals. Identify conflicts (especially Slack vs Calendar).
 
-Look at these disparate items from different sources (Gmail, Slack, Linear, Notion). Link them together.
+CRITICAL: Look for CONTRADICTIONS and CONFLICTS:
+- If a Slack message says a meeting is moved to Tuesday, but Calendar shows Monday → CONTRADICTION
+- If an email promises a deadline, but another signal says it's delayed → CONTRADICTION
+- If signals mention the same event but with different dates/times → CONTRADICTION
 
 RULES:
-1. If a Slack message mentions a bug, and a Linear ticket describes that bug, LINK THEM with type "RELATES_TO"
-2. If an Email mentions a deadline, tag it 'Urgent'
-3. Extract project names, priorities, and topics as context_tags
-4. Identify dependencies (BLOCKS relationships) - if one item must complete before another
-5. Find mentions (MENTIONS relationships) - when one item references another by name/ID
-6. Be concise with tags (max 5 per signal)
+1. Focus on CONFLICTS first, especially between Slack messages and Calendar events
+2. Extract project names, priorities, and topics as context_tags
+3. Identify dependencies (blocks relationships) - if one item must complete before another
+4. Find related items (relates_to relationships) - when signals are about the same topic
+5. Be concise with tags (max 5 per signal)
 
-OUTPUT FORMAT (JSON):
+OUTPUT FORMAT (JSON only, no markdown):
 {
   "signals": [
     {
@@ -118,8 +120,8 @@ OUTPUT FORMAT (JSON):
       "relationships": [
         {
           "targetId": "other_signal_id",
-          "type": "RELATES_TO",
-          "reason": "Both mention the same deadline"
+          "type": "contradicts",
+          "reason": "Slack message says meeting moved to Tuesday, but Calendar shows Monday"
         }
       ]
     }
@@ -128,7 +130,7 @@ OUTPUT FORMAT (JSON):
 
     // Call OpenAI
     const completion = await openaiClient.chat.completions.create({
-      model: 'gpt-5.1',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',
@@ -139,8 +141,8 @@ OUTPUT FORMAT (JSON):
           content: `Analyze these ${signals.length} work signals:\n\n${signalsText}`,
         },
       ],
-      temperature: 0.7,
-      max_completion_tokens: 4000,
+      temperature: 0.3, // Lower temperature for more factual conflict detection
+      max_tokens: 2000,
       response_format: { type: 'json_object' },
     });
 
@@ -166,10 +168,8 @@ OUTPUT FORMAT (JSON):
         relationships: aiData?.relationships?.map((rel: any) => ({
           targetId: rel.targetId,
           type: rel.type,
-          confidence: rel.confidence,
-          reason: rel.reason,
+          reason: rel.reason || 'No reason provided',
         })) || [],
-        processedAt: new Date(),
       };
     });
 
@@ -308,5 +308,184 @@ export function createBatches(
   }
   
   return batches;
+}
+
+/**
+ * Save Signals to Database
+ * 
+ * Phase 3.1: The Cortex (Persistence Layer)
+ * 
+ * Persists WorkSignal nodes and SignalRelationship edges to Supabase.
+ * This gives the AI "memory" - insights are stored in the Knowledge Graph.
+ * 
+ * @param signals - Enriched work signals to persist
+ * @param userId - User ID to associate signals with
+ * @param supabaseClient - Supabase client instance (with service role key)
+ * @returns Success status and counts
+ */
+export async function saveSignalsToDb(
+  signals: WorkSignal[],
+  userId: string,
+  supabaseClient: SupabaseClient
+): Promise<{
+  success: boolean;
+  signalsSaved: number;
+  relationshipsSaved: number;
+  errors?: string[];
+}> {
+  const errors: string[] = [];
+  let signalsSaved = 0;
+  let relationshipsSaved = 0;
+
+  if (!signals || signals.length === 0) {
+    return {
+      success: true,
+      signalsSaved: 0,
+      relationshipsSaved: 0,
+    };
+  }
+
+  try {
+    // STEP 1: Upsert Signals (Nodes)
+    console.log(`[Cortex] Saving ${signals.length} signal(s) to database...`);
+
+    const signalInserts = signals.map((signal) => {
+      // Extract source-specific metadata
+      const rawMetadata: any = {
+        originalId: signal.id,
+        timestamp: signal.timestamp,
+      };
+
+      // Determine raw metadata based on source
+      if (signal.id.includes(':')) {
+        const [source, id] = signal.id.split(':');
+        rawMetadata.sourceId = id;
+      }
+
+      return {
+        user_id: userId,
+        signal_id: signal.id, // Original signal ID (e.g., "calendar:phoenix-kickoff-2024-01-15")
+        source: signal.source,
+        author: signal.author,
+        content: signal.content,
+        context_tags: signal.context_tags || [],
+        raw_metadata: rawMetadata,
+      };
+    });
+
+    // Upsert signals (insert or update if exists)
+    const { data: savedSignals, error: signalsError } = await supabaseClient
+      .from('work_signals')
+      .upsert(signalInserts, {
+        onConflict: 'user_id,signal_id',
+        ignoreDuplicates: false,
+      })
+      .select('id, signal_id');
+
+    if (signalsError) {
+      throw new Error(`Failed to save signals: ${signalsError.message}`);
+    }
+
+    signalsSaved = savedSignals?.length || 0;
+    console.log(`✅ Saved ${signalsSaved} signal(s) to database`);
+
+    // Create a mapping of signal_id -> database id for relationships
+    const signalIdToDbId = new Map<string, string>();
+    if (savedSignals) {
+      for (const savedSignal of savedSignals) {
+        signalIdToDbId.set(savedSignal.signal_id, savedSignal.id);
+      }
+    }
+
+    // STEP 2: Insert Relationships (Edges)
+    console.log(`[Cortex] Saving relationships to database...`);
+
+    const relationshipInserts: Array<{
+      source_signal_id: string;
+      target_signal_id: string;
+      relationship_type: string;
+      reason: string;
+    }> = [];
+
+    for (const signal of signals) {
+      const sourceDbId = signalIdToDbId.get(signal.id);
+      
+      if (!sourceDbId) {
+        console.warn(`[Cortex] Warning: Could not find DB ID for signal ${signal.id}`);
+        continue;
+      }
+
+      if (!signal.relationships || signal.relationships.length === 0) {
+        continue;
+      }
+
+      for (const relationship of signal.relationships) {
+        const targetDbId = signalIdToDbId.get(relationship.targetId);
+
+        if (!targetDbId) {
+          console.warn(`[Cortex] Warning: Could not find DB ID for target signal ${relationship.targetId}`);
+          continue;
+        }
+
+        // Avoid self-references
+        if (sourceDbId === targetDbId) {
+          continue;
+        }
+
+        relationshipInserts.push({
+          source_signal_id: sourceDbId,
+          target_signal_id: targetDbId,
+          relationship_type: relationship.type,
+          reason: relationship.reason || 'No reason provided',
+        });
+      }
+    }
+
+    if (relationshipInserts.length > 0) {
+      // Remove duplicates (same source, target, type)
+      const uniqueRelationships = relationshipInserts.filter((rel, index, self) =>
+        index === self.findIndex((r) =>
+          r.source_signal_id === rel.source_signal_id &&
+          r.target_signal_id === rel.target_signal_id &&
+          r.relationship_type === rel.relationship_type
+        )
+      );
+
+      const { error: relationshipsError } = await supabaseClient
+        .from('signal_relationships')
+        .upsert(uniqueRelationships, {
+          onConflict: 'source_signal_id,target_signal_id,relationship_type',
+          ignoreDuplicates: true,
+        });
+
+      if (relationshipsError) {
+        errors.push(`Failed to save relationships: ${relationshipsError.message}`);
+        console.error(`❌ Error saving relationships:`, relationshipsError);
+      } else {
+        relationshipsSaved = uniqueRelationships.length;
+        console.log(`✅ Saved ${relationshipsSaved} relationship(s) to database`);
+      }
+    } else {
+      console.log(`ℹ️  No relationships to save`);
+    }
+
+    return {
+      success: errors.length === 0,
+      signalsSaved,
+      relationshipsSaved,
+      errors: errors.length > 0 ? errors : undefined,
+    };
+
+  } catch (error: any) {
+    console.error('[Cortex] Error saving signals to database:', error);
+    errors.push(error.message);
+
+    return {
+      success: false,
+      signalsSaved,
+      relationshipsSaved,
+      errors,
+    };
+  }
 }
 
