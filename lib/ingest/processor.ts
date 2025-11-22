@@ -269,18 +269,21 @@ export function normalizeSignal(
   },
   source: WorkSignalSource
 ): WorkSignal {
+  // Convert timestamp to ISO string format
+  const timestamp = rawSignal.timestamp instanceof Date 
+    ? rawSignal.timestamp.toISOString()
+    : typeof rawSignal.timestamp === 'string'
+    ? rawSignal.timestamp
+    : new Date(rawSignal.timestamp).toISOString();
+
   return {
     id: `${source}:${rawSignal.id}`,
     source,
     author: rawSignal.author,
-    timestamp: rawSignal.timestamp instanceof Date 
-      ? rawSignal.timestamp 
-      : new Date(rawSignal.timestamp),
-    url: rawSignal.url || `https://${source}.com/${rawSignal.id}`, // Default URL if not provided
+    timestamp,
     content: rawSignal.content,
-    summary: rawSignal.summary || '', // Will be filled by AI
-    status: rawSignal.status || 'OPEN',
-    priority: rawSignal.priority || 'MEDIUM',
+    context_tags: [], // Will be filled by AI during processing
+    relationships: [], // Will be filled by AI during processing
   };
 }
 

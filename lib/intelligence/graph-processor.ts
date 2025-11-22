@@ -46,9 +46,8 @@ export async function ingestSignals(
 ID: ${signal.id}
 Source: ${signal.source}
 Author: ${signal.author}
-Timestamp: ${signal.timestamp.toISOString()}
+Timestamp: ${signal.timestamp}
 Content: ${signal.content.substring(0, 500)}${signal.content.length > 500 ? '...' : ''}
-URL: ${signal.url}
 ---
 `;
     }).join('\n');
@@ -131,21 +130,9 @@ OUTPUT FORMAT (JSON):
       lastActivity: new Date(bucket.last_activity || Date.now()),
     }));
 
-    // Update signals with AI-generated summaries and status/priority
-    const signalUpdates = analysis.signal_updates || [];
-    const signalMap = new Map<string, WorkSignal>();
-    
-    signals.forEach(signal => signalMap.set(signal.id, signal));
-    
-    // Apply AI updates to signals
-    signalUpdates.forEach((update: any) => {
-      const signal = signalMap.get(update.signal_id);
-      if (signal) {
-        signal.summary = update.summary || signal.summary;
-        signal.status = update.status || signal.status;
-        signal.priority = update.priority || signal.priority;
-      }
-    });
+    // Note: signal_updates are not applied to WorkSignal objects
+    // as WorkSignal interface only contains: id, source, author, timestamp, content, context_tags, relationships
+    // The AI updates are reflected in context_tags which are set during processing
 
     // Build relationships
     const relationships = (analysis.relationships || []).map((rel: any) => ({

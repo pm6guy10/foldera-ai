@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const { data: action, error: fetchError } = await supabase
       .from('pending_actions')
       .select('*')
-      .eq('id', action_id)
+      .eq('id', actionId)
       .single();
 
     if (fetchError || !action) {
