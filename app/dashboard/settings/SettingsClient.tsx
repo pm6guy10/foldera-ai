@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { createClient } from '@supabase/supabase-js';
-import { CheckCircle, AlertCircle, RefreshCw, ExternalLink, Pause, Play, ClipboardList } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 
 // --- SAFE INITIALIZATION ---
 // We do NOT throw errors here. We just return null if keys are missing.
@@ -38,12 +38,15 @@ export default function SettingsClient() {
 
   // --- FETCH DATA ---
   useEffect(() => {
-    if (status !== 'authenticated' || !session?.user?.email) return;
+    if (status !== 'authenticated' || !session?.user?.email) {
+      setLoading(false);
+      return;
+    }
 
     const fetchIntegrations = async () => {
       const supabase = getSupabase();
       if (!supabase) {
-        // If we can't get a client, stop trying to fetch.
+        setLoading(false);
         return; 
       }
 
@@ -82,16 +85,13 @@ export default function SettingsClient() {
     return () => clearInterval(interval);
   }, [session, status]);
 
-
-
-
   // --- RENDERING ---
-
+  
   // Show loading state
-  if (status === 'loading') {
+  if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        Loading Command Center...
+        <div>Loading Command Center...</div>
       </div>
     );
   }
@@ -145,9 +145,10 @@ export default function SettingsClient() {
               <ClipboardList className="w-4 h-4" />
               Briefing
             </a>
-          <button className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-full text-sm font-medium transition-colors">
-            PAUSE ALL AI <div className="w-8 h-4 bg-emerald-500 rounded-full relative ml-2"><div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow"></div></div>
-          </button>
+            <button className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-full text-sm font-medium transition-colors">
+              PAUSE ALL AI <div className="w-8 h-4 bg-emerald-500 rounded-full relative ml-2"><div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow"></div></div>
+            </button>
+          </div>
         </div>
 
         {/* CONNECTORS GRID */}
