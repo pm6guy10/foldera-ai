@@ -28,6 +28,7 @@ export async function getMicrosoftAccessToken(userId: string): Promise<string> {
   const supabase = getSupabaseClient();
   
   // 1. Get credentials from integrations table
+  // Explicitly select credentials to avoid type errors with single()
   const { data: integration, error } = await supabase
     .from('integrations')
     .select('credentials, updated_at')
