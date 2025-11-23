@@ -59,8 +59,8 @@ export async function getMicrosoftAccessToken(userId: string): Promise<string> {
   const refreshed = await refreshMicrosoftToken(credentials.refresh_token);
 
   // 4. Update database
-  await supabase
-    .from('integrations')
+  await (supabase
+    .from('integrations') as any)
     .update({
       credentials: {
         access_token: refreshed.access_token,
