@@ -299,7 +299,7 @@ export async function generateBriefingContent(
       console.log(`[Narrator] No conflicts found in last 24 hours`);
       return {
         subject: '⚡ Monday Briefing: All Clear ✅',
-        htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        htmlBody: `<div style="font-family: Helvetica, sans-serif; font-size: 16px; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #059669; margin-bottom: 20px;">Good morning. Here is your status check.</h1>
           <h2 style="color: #059669; margin-top: 30px; margin-bottom: 15px;">Status: ✅ ALL CLEAR</h2>
           <p>No conflicts or blocking issues detected in the last 24 hours.</p>
@@ -321,7 +321,7 @@ export async function generateBriefingContent(
       console.log(`[Narrator] No signal IDs found in relationships`);
       return {
         subject: '⚡ Monday Briefing: All Clear ✅',
-        htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        htmlBody: `<div style="font-family: Helvetica, sans-serif; font-size: 16px; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #059669; margin-bottom: 20px;">Good morning. Here is your status check.</h1>
           <h2 style="color: #059669; margin-top: 30px; margin-bottom: 15px;">Status: ✅ ALL CLEAR</h2>
           <p>No conflicts or blocking issues detected in the last 24 hours.</p>
@@ -347,7 +347,7 @@ export async function generateBriefingContent(
       console.log(`[Narrator] No signals found for conflicts (user: ${userId})`);
       return {
         subject: '⚡ Monday Briefing: All Clear ✅',
-        htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        htmlBody: `<div style="font-family: Helvetica, sans-serif; font-size: 16px; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #059669; margin-bottom: 20px;">Good morning. Here is your status check.</h1>
           <h2 style="color: #059669; margin-top: 30px; margin-bottom: 15px;">Status: ✅ ALL CLEAR</h2>
           <p>No conflicts or blocking issues detected in the last 24 hours.</p>
@@ -399,8 +399,14 @@ export async function generateBriefingContent(
 
     console.log(`[Narrator] Found ${userConflicts.length} conflict(s) in last 24 hours`);
 
+    // Limit to max 3 conflicts to reduce overwhelm
+    const limitedConflicts = userConflicts.slice(0, 3);
+    if (userConflicts.length > 3) {
+      console.log(`[Narrator] Limiting to 3 conflicts (found ${userConflicts.length} total)`);
+    }
+
     // Format conflicts for AI
-    const conflictsText = userConflicts.map((conflict, index) => {
+    const conflictsText = limitedConflicts.map((conflict, index) => {
       const sourcePreview = conflict.sourceSignal.content.substring(0, 200);
       const targetPreview = conflict.targetSignal.content.substring(0, 200);
       
@@ -470,7 +476,7 @@ The user needs to understand what's wrong and how to fix it immediately.`
         },
         {
           role: 'user',
-          content: `Analyze these ${userConflicts.length} conflict(s) detected in the last 24 hours:\n\n${conflictsText}${draftLinks && draftLinks.length > 0 ? `\n\n⚠️ IMPORTANT: Draft emails have been pre-written for the following conflicts:\n${draftLinks.map((d, idx) => `Draft ${idx + 1}: Subject="${d.subject}" | URL=${d.draftUrl} | Conflict ID=${d.conflictId}`).join('\n')}\n\nFor each draft, include a prominent button-style link using this format:\n<div style="margin: 20px 0;"><a href="${draftLinks[0].draftUrl}" target="_blank" style="background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">🎯 REVIEW & SEND REPLY: ${draftLinks[0].subject}</a></div>\n\nMake these links stand out - they are "one-click" solutions to resolve conflicts. The user clicks the link -> opens Gmail -> hits Send.` : ''}`
+          content: `Analyze these ${limitedConflicts.length} conflict(s) detected in the last 24 hours${userConflicts.length > 3 ? ` (showing top 3 of ${userConflicts.length} total)` : ''}:\n\n${conflictsText}${draftLinks && draftLinks.length > 0 ? `\n\n⚠️ IMPORTANT: Draft emails have been pre-written for the following conflicts:\n${draftLinks.map((d, idx) => `Draft ${idx + 1}: Subject="${d.subject}" | URL=${d.draftUrl} | Conflict ID=${d.conflictId}`).join('\n')}\n\nFor each draft, include a prominent button-style link using this format:\n<div style="margin: 20px 0;"><a href="${draftLinks[0].draftUrl}" target="_blank" style="background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">🎯 REVIEW & SEND REPLY: ${draftLinks[0].subject}</a></div>\n\nMake these links stand out - they are "one-click" solutions to resolve conflicts. The user clicks the link -> opens Gmail -> hits Send.` : ''}`
         }
       ],
       temperature: 0.4,
@@ -486,7 +492,7 @@ The user needs to understand what's wrong and how to fix it immediately.`
       .replace(/```\s*/g, '')
       .trim();
 
-    // Generate subject line based on conflicts
+    // Generate subject line based on conflicts (use full count, not limited)
     const conflictCount = userConflicts.length;
     const criticalCount = userConflicts.filter(c => c.relationship_type === 'blocks').length;
     
@@ -497,11 +503,11 @@ The user needs to understand what's wrong and how to fix it immediately.`
       subject = `⚡ Monday Briefing: ${conflictCount} Conflict${conflictCount > 1 ? 's' : ''}`;
     }
 
-    // Wrap body in email-friendly HTML
-    const htmlBody = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    // Wrap body in email-friendly HTML with updated styling
+    const htmlBody = `<div style="font-family: Helvetica, sans-serif; font-size: 16px; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
 ${emailBody}
 <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-<p style="color: #6b7280; font-size: 14px;">Generated at ${new Date().toLocaleString()} | ${conflictCount} conflict(s) detected</p>
+<p style="color: #6b7280; font-size: 14px;">Generated at ${new Date().toLocaleString()} | ${userConflicts.length} conflict(s) detected${userConflicts.length > 3 ? ' (showing top 3)' : ''}</p>
 </div>`;
 
     return {

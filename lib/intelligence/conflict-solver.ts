@@ -159,9 +159,8 @@ DEEP WORK REQUIREMENTS:
 - Make the recipient feel heard and understood
 
 Format:
-- Write ONLY clean HTML (no markdown code blocks, no triple backticks)
+- Write ONLY plain text (no HTML tags, no markdown code blocks, no triple backticks)
 - Professional email format with greeting and signature
-- Use inline styles for formatting
 - Reference specific details from the conflict (project names, dates, deliverables)
 
 Structure:

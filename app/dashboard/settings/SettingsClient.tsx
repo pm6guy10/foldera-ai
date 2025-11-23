@@ -73,12 +73,20 @@ export default function SettingsClient() {
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 mb-4">Please sign in to view settings</p>
-          <button
-            onClick={() => signIn('google', { callbackUrl: '/dashboard/settings' })}
-            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium transition-colors"
-          >
-            Sign In
-          </button>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => signIn('google', { callbackUrl: '/dashboard/settings' })}
+              className="px-4 py-2 bg-white text-black hover:bg-gray-200 rounded-lg font-medium transition-colors flex items-center gap-2"
+            >
+              Sign in with Google
+            </button>
+            <button
+              onClick={() => signIn('azure-ad', { callbackUrl: '/dashboard/settings' })}
+              className="px-4 py-2 bg-[#00a4ef] text-white hover:bg-[#0078d4] rounded-lg font-medium transition-colors flex items-center gap-2"
+            >
+              Sign in with Microsoft
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -126,6 +134,15 @@ export default function SettingsClient() {
             icon="📧"
             isConnected={integrations.some(i => i.provider === 'gmail' && i.is_active)}
             onConnect={() => signIn('google', { callbackUrl: '/dashboard/settings' })}
+          />
+
+          {/* OUTLOOK CARD */}
+          <ConnectorCard 
+            name="Outlook" 
+            description="Calendar & Email" 
+            icon="📅"
+            isConnected={integrations.some(i => i.provider === 'azure_ad' && i.is_active)}
+            onConnect={() => signIn('azure-ad', { callbackUrl: '/dashboard/settings' })}
           />
         </div>
         

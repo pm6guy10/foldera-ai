@@ -42,18 +42,19 @@ function encodeSubjectLine(subject: string): string {
  * Create Gmail Draft
  * 
  * Creates a draft email in Gmail (not sends)
+ * Supports both plain text and HTML bodies
  * 
  * @param userId - User ID (to get access token)
  * @param to - Recipient email address(es)
  * @param subject - Email subject
- * @param htmlBody - HTML email body
+ * @param body - Email body (plain text or HTML)
  * @returns Draft ID if successful, null otherwise
  */
 export async function createGmailDraft(
   userId: string,
   to: string | string[],
   subject: string,
-  htmlBody: string
+  body: string
 ): Promise<{ draftId: string; draftUrl: string } | null> {
   try {
     // Get user's access token (refresh if needed)
@@ -75,19 +76,24 @@ export async function createGmailDraft(
     const toArray = Array.isArray(to) ? to : [to];
     const toHeader = toArray.join(', ');
 
-    // Build email message (HTML format)
+    // Detect if body is HTML or plain text
+    // Simple heuristic: if it contains HTML tags, treat as HTML
+    const isHTML = /<[a-z][\s\S]*>/i.test(body);
+
+    // Build email message (HTML or plain text format)
     // Use Base64 encoding for body to handle emojis and special characters
-    // Encode the entire HTML body as UTF-8 Base64
-    const htmlBodyBase64 = Buffer.from(htmlBody, 'utf-8').toString('base64');
+    const bodyBase64 = Buffer.from(body, 'utf-8').toString('base64');
+    
+    const contentType = isHTML ? 'text/html' : 'text/plain';
     
     const emailLines = [
       `To: ${toHeader}`,
       `Subject: ${encodedSubject}`,
       `MIME-Version: 1.0`,
-      `Content-Type: text/html; charset=utf-8`,
+      `Content-Type: ${contentType}; charset=utf-8`,
       `Content-Transfer-Encoding: base64`,
       '',
-      htmlBodyBase64
+      bodyBase64
     ];
 
     const email = emailLines.join('\r\n');

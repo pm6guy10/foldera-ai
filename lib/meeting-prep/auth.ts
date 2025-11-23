@@ -5,6 +5,7 @@
 
 import { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
+import AzureADProvider from 'next-auth/providers/azure-ad';
 import { createClient } from '@supabase/supabase-js';
 import type { MeetingPrepUser } from '@/types/meeting-prep';
 
@@ -34,7 +35,7 @@ function getSupabaseClient() {
  * These must match what's configured in Google Cloud Console
  */
 export const GOOGLE_SCOPES = [
-  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/calendar', // Full access for Calendar Actuator
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/gmail.compose',
   'https://www.googleapis.com/auth/drive', // Full access for Janitor feature
@@ -48,20 +49,49 @@ export const GOOGLE_SCOPES = [
  * Made dynamic to avoid caching old keys
  */
 export function getAuthOptions(): NextAuthOptions {
-  return {
-    providers: [
-      GoogleProvider({
-        clientId: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const azureClientId = process.env.AZURE_AD_CLIENT_ID;
+  const azureClientSecret = process.env.AZURE_AD_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    console.error("❌ [Auth] CRITICAL ERROR: Google Keys Missing in lib/meeting-prep/auth.ts");
+    console.error("   - GOOGLE_CLIENT_ID:", clientId ? "✅ Present" : "❌ Missing");
+    console.error("   - GOOGLE_CLIENT_SECRET:", clientSecret ? "✅ Present" : "❌ Missing");
+    // We won't throw here to allow the app to build, but auth will fail.
+  }
+
+  const providers: any[] = [
+    GoogleProvider({
+      clientId: clientId || '',
+      clientSecret: clientSecret || '',
+      authorization: {
+        params: {
+          scope: GOOGLE_SCOPES,
+          access_type: 'offline', // Get refresh token
+          prompt: 'consent', // Force consent screen to get refresh token
+        },
+      },
+    }),
+  ];
+
+  if (azureClientId && azureClientSecret) {
+    providers.push(
+      AzureADProvider({
+        clientId: azureClientId,
+        clientSecret: azureClientSecret,
+        tenantId: process.env.AZURE_AD_TENANT_ID || 'common',
         authorization: {
           params: {
-            scope: GOOGLE_SCOPES,
-            access_type: 'offline', // Get refresh token
-            prompt: 'consent', // Force consent screen to get refresh token
+            scope: "openid profile email offline_access https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/Mail.Read",
           },
         },
-      }),
-    ],
+      })
+    );
+  }
+
+  return {
+    providers,
   
   callbacks: {
     /**
@@ -72,23 +102,44 @@ export function getAuthOptions(): NextAuthOptions {
     async jwt({ token, account, user, profile }) {
       // Initial sign in
       if (account && user) {
-        console.log('[Auth] Initial sign in for', user.email);
+        console.log('[Auth] Initial sign in for', user.email, 'via', account.provider);
         
-        // Store Google tokens
+        // Store tokens
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
         token.expiresAt = account.expires_at; // Unix timestamp
         token.email = user.email;
         token.name = user.name;
+        token.provider = account.provider; // Track provider
         
+        // Safe expiration handling
+        let expiresAtIso = new Date().toISOString();
+        if (account.expires_at) {
+          expiresAtIso = new Date(account.expires_at * 1000).toISOString();
+        } else if (account.expires_in) {
+           // Some providers return expires_in (seconds duration)
+           expiresAtIso = new Date(Date.now() + (account.expires_in as number) * 1000).toISOString();
+        }
+
         // Create or update user in database
         try {
+          // Normalize provider
+          let normalizedProvider: 'google' | 'azure-ad' = 'google';
+          if (account.provider.includes('azure') || account.provider.includes('microsoft')) {
+            normalizedProvider = 'azure-ad';
+          }
+
+          console.log(`[Auth] Upserting user ${user.email} with provider ${normalizedProvider} (raw: ${account.provider})`);
+
           await upsertMeetingPrepUser({
             email: user.email!,
             name: user.name || null,
-            google_access_token: account.access_token!,
-            google_refresh_token: account.refresh_token!,
-            google_token_expires_at: new Date(account.expires_at! * 1000).toISOString(),
+            provider: normalizedProvider,
+            tokens: {
+              access_token: account.access_token!,
+              refresh_token: account.refresh_token!, // might be undefined if not offline
+              expires_at: expiresAtIso,
+            }
           });
         } catch (error) {
           console.error('[Auth] Error upserting user:', error);
@@ -99,15 +150,29 @@ export function getAuthOptions(): NextAuthOptions {
       if (token.expiresAt && Date.now() > (token.expiresAt as number) * 1000) {
         console.log('[Auth] Token expired, refreshing...');
         try {
-          const refreshedToken = await refreshGoogleToken(token.refreshToken as string);
-          token.accessToken = refreshedToken.access_token;
-          token.expiresAt = refreshedToken.expires_at;
-          
-          // Update in database
-          await updateUserTokens(token.email as string, {
-            google_access_token: refreshedToken.access_token,
-            google_token_expires_at: new Date(refreshedToken.expires_at * 1000).toISOString(),
-          });
+          // Choose refresh logic based on provider
+          // Note: NextAuth JWTs don't persist 'account' object, so we rely on token.provider if we saved it,
+          // OR we assume google if not set (legacy)
+          const provider = (token.provider as string) || 'google';
+
+          if (provider === 'google') {
+             const refreshedToken = await refreshGoogleToken(token.refreshToken as string);
+             token.accessToken = refreshedToken.access_token;
+             token.expiresAt = refreshedToken.expires_at;
+             
+             // Update in database
+             await updateUserTokens(token.email as string, {
+               google_access_token: refreshedToken.access_token,
+               google_token_expires_at: new Date(refreshedToken.expires_at * 1000).toISOString(),
+             });
+          } else if (provider === 'azure-ad') {
+             // For Azure, we handle refresh via our helper or similar logic
+             // But for now, let's just log. 
+             // Ideally we should import refreshMicrosoftToken from auth-microsoft.ts
+             // But that might create circular deps if auth-microsoft imports auth.ts (it doesn't currently)
+             console.log('[Auth] Azure token refresh in JWT callback not yet fully implemented - relying on Actuator refresh');
+          }
+
         } catch (error) {
           console.error('[Auth] Error refreshing token:', error);
           // Token refresh failed - user needs to re-authenticate
@@ -191,24 +256,35 @@ export const authOptions = getAuthOptions();
 async function upsertMeetingPrepUser(userData: {
   email: string;
   name: string | null;
-  google_access_token: string;
-  google_refresh_token: string;
-  google_token_expires_at: string;
+  provider: 'google' | 'azure-ad';
+  tokens: {
+    access_token: string;
+    refresh_token: string;
+    expires_at: string;
+  };
 }): Promise<MeetingPrepUser> {
   // TODO: Encrypt tokens before storing
   // For now, storing as-is (add encryption in production!)
   
   const supabase = getSupabaseClient();
+  
+  // Prepare user update data
+  const userUpdate: any = {
+    email: userData.email,
+    name: userData.name,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Only update Google columns if provider is Google
+  if (userData.provider === 'google') {
+    userUpdate.google_access_token = userData.tokens.access_token;
+    userUpdate.google_refresh_token = userData.tokens.refresh_token;
+    userUpdate.google_token_expires_at = userData.tokens.expires_at;
+  }
+
   const { data, error } = await supabase
     .from('meeting_prep_users')
-    .upsert({
-      email: userData.email,
-      name: userData.name,
-      google_access_token: userData.google_access_token,
-      google_refresh_token: userData.google_refresh_token,
-      google_token_expires_at: userData.google_token_expires_at,
-      updated_at: new Date().toISOString(),
-    } as any, {
+    .upsert(userUpdate, {
       onConflict: 'email',
     })
     .select()
@@ -221,49 +297,65 @@ async function upsertMeetingPrepUser(userData: {
   
   const meetingPrepUser = data as MeetingPrepUser;
   
-  // Update integrations table: Gmail and Google Drive are enabled when user logs in with Google
+  // Update integrations table
   try {
     const now = new Date().toISOString();
     
-    // Upsert Gmail integration
-    await supabase
-      .from('integrations')
-      .upsert({
-        user_id: meetingPrepUser.id,
-        provider: 'gmail',
-        is_active: true,
-        credentials: {
-          access_token: userData.google_access_token,
-          refresh_token: userData.google_refresh_token,
-          expires_at: userData.google_token_expires_at,
-        },
-        last_synced_at: now,
-        sync_status: 'idle',
-        updated_at: now,
-      } as any, {
-        onConflict: 'user_id,provider',
-      });
+    // Check if we have tokens (refresh token is critical)
+    if (!userData.tokens.access_token) {
+        console.warn(`[Auth] No access token for ${userData.email}, skipping integration update`);
+        return meetingPrepUser;
+    }
+
+    const credentials = {
+        access_token: userData.tokens.access_token,
+        refresh_token: userData.tokens.refresh_token || '', // Handle missing refresh token
+        expires_at: Math.floor(new Date(userData.tokens.expires_at).getTime() / 1000),
+    };
+
+    if (userData.provider === 'google') {
+      // Upsert Gmail integration
+      await supabase.from('integrations').upsert({
+          user_id: meetingPrepUser.id,
+          provider: 'gmail',
+          is_active: true,
+          credentials,
+          last_synced_at: now,
+          sync_status: 'idle',
+          updated_at: now,
+        } as any, { onConflict: 'user_id,provider' });
+      
+      // Upsert Google Drive integration
+      await supabase.from('integrations').upsert({
+          user_id: meetingPrepUser.id,
+          provider: 'google_drive',
+          is_active: true,
+          credentials,
+          last_synced_at: now,
+          sync_status: 'idle',
+          updated_at: now,
+        } as any, { onConflict: 'user_id,provider' });
+
+    } else if (userData.provider === 'azure-ad') {
+       // Upsert Outlook integration
+       const { error: intError } = await supabase.from('integrations').upsert({
+          user_id: meetingPrepUser.id,
+          provider: 'azure_ad', // Must match check in auth-microsoft.ts
+          is_active: true,
+          credentials,
+          last_synced_at: now,
+          sync_status: 'idle',
+          updated_at: now,
+        } as any, { onConflict: 'user_id,provider' });
+
+        if (intError) {
+            console.error('[Auth] Supabase error updating Azure integration:', intError);
+        } else {
+            console.log('[Auth] Successfully updated Azure integration record');
+        }
+    }
     
-    // Upsert Google Drive integration
-    await supabase
-      .from('integrations')
-      .upsert({
-        user_id: meetingPrepUser.id,
-        provider: 'google_drive',
-        is_active: true,
-        credentials: {
-          access_token: userData.google_access_token,
-          refresh_token: userData.google_refresh_token,
-          expires_at: userData.google_token_expires_at,
-        },
-        last_synced_at: now,
-        sync_status: 'idle',
-        updated_at: now,
-      } as any, {
-        onConflict: 'user_id,provider',
-      });
-    
-    console.log('[Auth] Updated integrations for Gmail and Google Drive');
+    console.log(`[Auth] Updated integrations for ${userData.provider}`);
   } catch (integrationError: any) {
     // Don't fail the login if integration update fails
     console.error('[Auth] Error updating integrations:', integrationError);
