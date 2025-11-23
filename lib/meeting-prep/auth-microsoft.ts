@@ -39,7 +39,8 @@ export async function getMicrosoftAccessToken(userId: string): Promise<string> {
     throw new Error('User has not connected Microsoft Outlook');
   }
 
-  const credentials = integration.credentials as {
+  const record = integration as any;
+  const credentials = record.credentials as {
     access_token: string;
     refresh_token: string;
     expires_at: number; // Unix timestamp (seconds)
