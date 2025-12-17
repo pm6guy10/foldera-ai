@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/meeting-prep/auth';
 
 // Helper: Extract detailed info from URL
 function extractCalendarDetails(url: string) {
@@ -104,6 +106,11 @@ function getBenchmark(score: number) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { url } = await request.json();
     
     if (!url) {

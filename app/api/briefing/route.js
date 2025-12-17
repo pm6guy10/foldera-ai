@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/meeting-prep/auth';
 import { createClient } from '@supabase/supabase-js';
 import JSZip from 'jszip';
 import mammoth from 'mammoth';
@@ -137,6 +139,11 @@ ${documents}`;
 
 export async function POST(request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     let requestBody = {};
     try {
       const text = await request.text();

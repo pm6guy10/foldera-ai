@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripe, getOrCreateCustomer, createCheckoutSession } from '@/lib/billing/stripe';
 import { getPlanByName } from '@/lib/billing/plans';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/meeting-prep/auth';
 
 function getSupabaseClient() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -19,6 +21,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
   try {
+    const authSession = await getServerSession(authOptions);
+    if (!authSession || !authSession.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { userId, email, planName } = await req.json();
     
     if (!userId || !email || !planName) {
@@ -66,7 +73,7 @@ export async function POST(req: Request) {
     
     // Create checkout session
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const session = await createCheckoutSession(
+    const checkoutSession = await createCheckoutSession(
       customerId,
       plan.priceId,
       `${baseUrl}/dashboard?success=true`,
@@ -74,8 +81,8 @@ export async function POST(req: Request) {
     );
     
     return NextResponse.json({
-      sessionId: session.id,
-      url: session.url,
+      sessionId: checkoutSession.id,
+      url: checkoutSession.url,
     });
     
   } catch (error: any) {

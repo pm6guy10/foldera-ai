@@ -2,10 +2,17 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/meeting-prep/auth';
 import { getGmailClient, extractPlainBody } from '@/lib/gmail-service'; // Importing from the new file
 
 export async function GET(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // 1. Get the client (Assuming userId is 'me' for MVP)
     const gmail = await getGmailClient('me');
     

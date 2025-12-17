@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/meeting-prep/auth';
 
 // This function simulates fetching detailed violation records for a case.
 async function getCaseDossier(caseId) {
@@ -17,6 +19,11 @@ async function getCaseDossier(caseId) {
 // This function handles requests to /api/matters/[any-case-id]/dossier
 export async function GET(request, { params }) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user?.email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const caseId = params.caseId;
         const dossier = await getCaseDossier(caseId);
         return NextResponse.json(dossier);

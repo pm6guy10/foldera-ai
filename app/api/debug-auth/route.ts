@@ -1,7 +1,14 @@
 // app/api/debug-auth/route.ts
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/meeting-prep/auth';
 
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   return NextResponse.json({
     nextAuthUrl: process.env.NEXTAUTH_URL || 'NOT SET',
     vercelUrl: process.env.VERCEL_URL || 'NOT SET',

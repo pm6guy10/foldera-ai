@@ -1,6 +1,8 @@
 // File: app/api/upload/route.js (FINAL CORRECTED VERSION)
 
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/meeting-prep/auth';
 import { createClient } from '@supabase/supabase-js';
 import JSZip from 'jszip';
 import mammoth from 'mammoth';
@@ -59,6 +61,11 @@ async function processFile(buffer, metadata) {
 
 export async function POST(request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const formData = await request.formData();
     // === THIS IS THE FIX ===
     // We now correctly get ALL files using the key "files" (plural)

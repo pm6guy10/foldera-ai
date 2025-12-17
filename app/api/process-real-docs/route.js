@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/meeting-prep/auth';
 
 // Configure API route for App Router
 export const maxDuration = 60; // Maximum execution time in seconds
@@ -6,6 +8,11 @@ export const dynamic = 'force-dynamic'; // Ensure this route is always dynamic
 
 export async function POST(req) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const files = formData.getAll('files');
     
