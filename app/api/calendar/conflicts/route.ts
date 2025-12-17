@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         actions_available: executableActions.length,
         can_execute: executableActions.length > 0,
         autonomy_level: 'PREPARE', // Start with prepare mode
-        estimated_time_saved: executableActions.reduce((sum, action) => {
+        estimated_time_saved: executableActions.reduce((sum: number, action: any) => {
           const time = action.estimated_time?.match(/(\d+)/)?.[1] || '0';
           return sum + parseInt(time);
         }, 0)
@@ -217,7 +217,7 @@ function eventsOverlap(event1: any, event2: any): boolean {
   return start1 < end2 && start2 < end1;
 }
 
-function eventsAreConsecutive(event1, event2) {
+function eventsAreConsecutive(event1: any, event2: any) {
   const end1 = new Date(event1.end.dateTime || event1.end.date);
   const start2 = new Date(event2.start.dateTime || event2.start.date);
 

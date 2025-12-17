@@ -61,7 +61,7 @@ export class GmailPlugin implements Plugin {
   
   private userId: string | null = null;
   private credentials: PluginCredentials | null = null;
-  private userEmail: string | null = null;
+  private userEmail: string = 'unknown@example.com';
   
   constructor() {
     this.threadAnalyzer = new ThreadAnalyzer();

@@ -108,7 +108,7 @@ function getHeader(
 ): string | undefined {
   if (!headers) return undefined;
   const header = headers.find((h) => h.name?.toLowerCase() === name.toLowerCase());
-  return header?.value;
+  return header?.value ?? undefined;
 }
 
 function formatDate(internalDate?: string | null): string {

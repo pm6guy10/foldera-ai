@@ -174,7 +174,7 @@ function ConnectorsPageContent() {
     }
   };
 
-  const executeAction = async (actionId) => {
+  const executeAction = async (actionId: string) => {
     try {
       const response = await fetch('/api/autopilot/execute', {
         method: 'POST',
@@ -309,7 +309,7 @@ function ConnectorsPageContent() {
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-red-400 mb-3">🚨 Critical Conflicts</h3>
                 <div className="space-y-3">
-                  {calendarInsights.calendar_conflicts.map((conflict, i) => (
+                  {calendarInsights.calendar_conflicts.map((conflict: any, i: number) => (
                     <div key={i} className="bg-red-900/20 border border-red-800 rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="font-semibold text-red-400">{conflict.title}</h4>
@@ -332,7 +332,7 @@ function ConnectorsPageContent() {
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-green-400 mb-3">🚀 Executable Actions</h3>
                 <div className="space-y-3">
-                  {calendarInsights.executable_actions.map((action, i) => (
+                  {calendarInsights.executable_actions.map((action: any, i: number) => (
                     <motion.div
                       key={i}
                       initial={{ opacity: 0, x: -20 }}
@@ -396,7 +396,7 @@ function ConnectorsPageContent() {
             <div>
               <h3 className="text-lg font-semibold text-cyan-400 mb-3">💡 Optimization Opportunities</h3>
               <div className="space-y-3">
-                {calendarInsights.calendar_insights.map((insight, i) => (
+                {calendarInsights.calendar_insights.map((insight: any, i: number) => (
                   <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
                     <h4 className="font-semibold text-cyan-400 mb-2">{insight.title}</h4>
                     <p className="text-gray-300 text-sm">{insight.description}</p>

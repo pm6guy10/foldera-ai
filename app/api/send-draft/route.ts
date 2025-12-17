@@ -126,7 +126,7 @@ function getHeader(
   name: string
 ): string | undefined {
   if (!headers) return undefined;
-  return headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value;
+  return headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? undefined;
 }
 
 function normalizeSubject(subject?: string | null): string {

@@ -263,14 +263,14 @@ function transformGoogleEventToMeeting(
     user_id: userId,
     google_event_id: event.id!,
     title: event.summary || 'Untitled Meeting',
-    description: event.description || null,
-    location: event.location || null,
+    description: event.description || undefined,
+    location: event.location || undefined,
     attendees: attendees as any, // JSONB type
     start_time: new Date(startTime).toISOString(),
     end_time: new Date(endTime).toISOString(),
     is_cancelled: event.status === 'cancelled',
     is_recurring: !!event.recurringEventId,
-    recurring_event_id: event.recurringEventId || null,
+    recurring_event_id: event.recurringEventId || undefined,
   };
 }
 

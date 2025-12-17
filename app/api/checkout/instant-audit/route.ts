@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/billing/stripe';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/meeting-prep/auth';
 
 export async function POST() {
   try {
+    const authSession = await getServerSession(authOptions);
+    if (!authSession || !authSession.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Create checkout session for $49/mo Guardian plan
-    const session = await stripe.checkout.sessions.create({
+    const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
@@ -28,7 +35,7 @@ export async function POST() {
       allow_promotion_codes: true,
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: checkoutSession.url });
   } catch (error: any) {
     console.error('Checkout error:', error);
     return NextResponse.json(
