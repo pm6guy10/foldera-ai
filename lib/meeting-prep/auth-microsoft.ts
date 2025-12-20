@@ -97,7 +97,7 @@ async function refreshMicrosoftToken(refreshToken: string): Promise<{
         client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
-        scope: 'https://graph.microsoft.com/Calendars.ReadWrite offline_access',
+        scope: 'openid profile email User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite offline_access',
       }),
     });
 

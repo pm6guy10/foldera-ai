@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { ClipboardList, RefreshCw, CheckCircle } from 'lucide-react';
+import { SignalIcon } from '@/components/dashboard/SignalIcon';
 
 export default function BriefingClient() {
   const { data: session, status } = useSession();
@@ -109,6 +110,26 @@ export default function BriefingClient() {
         {briefing && !loading && (
           <>
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 mb-6">
+              {/* Legend for Signal Sources */}
+              <div className="flex gap-4 mb-6 text-sm text-slate-400 border-b border-slate-800 pb-4">
+                <div className="flex items-center gap-2">
+                  <SignalIcon source="outlook" className="w-4 h-4" />
+                  <span>Outlook</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <SignalIcon source="gmail" className="w-4 h-4" />
+                  <span>Gmail</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <SignalIcon source="slack" className="w-4 h-4" />
+                  <span>Slack</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <SignalIcon source="calendar" className="w-4 h-4" />
+                  <span>Calendar</span>
+                </div>
+              </div>
+
               {/* Render Markdown with simple formatting */}
               <div 
                 className="text-slate-300 leading-relaxed whitespace-pre-wrap

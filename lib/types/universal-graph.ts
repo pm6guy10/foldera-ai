@@ -12,7 +12,8 @@ export type WorkSignalSource =
   | 'slack'
   | 'linear'
   | 'notion'
-  | 'calendar';
+  | 'calendar'
+  | 'outlook';
 
 /**
  * Signal Status

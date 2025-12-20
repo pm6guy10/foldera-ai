@@ -65,6 +65,7 @@ export function getAuthOptions(): NextAuthOptions {
     GoogleProvider({
       clientId: clientId || '',
       clientSecret: clientSecret || '',
+      allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
           scope: GOOGLE_SCOPES,
@@ -80,10 +81,11 @@ export function getAuthOptions(): NextAuthOptions {
       AzureADProvider({
         clientId: azureClientId,
         clientSecret: azureClientSecret,
+        allowDangerousEmailAccountLinking: true,
         tenantId: process.env.AZURE_AD_TENANT_ID || 'common',
         authorization: {
           params: {
-            scope: "openid profile email offline_access https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/Mail.Read",
+            scope: "openid profile email User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite offline_access",
           },
         },
       })
@@ -156,13 +158,15 @@ export function getAuthOptions(): NextAuthOptions {
           const provider = (token.provider as string) || 'google';
 
           if (provider === 'google') {
-             const refreshedToken = await refreshGoogleToken(token.refreshToken as string);
+             const { decryptToken, encryptToken } = await import('@/lib/crypto/token-encryption');
+             const decryptedRefreshToken = decryptToken(token.refreshToken as string);
+             const refreshedToken = await refreshGoogleToken(decryptedRefreshToken);
              token.accessToken = refreshedToken.access_token;
              token.expiresAt = refreshedToken.expires_at;
              
-             // Update in database
+             // Encrypt and update in database
              await updateUserTokens(token.email as string, {
-               google_access_token: refreshedToken.access_token,
+               google_access_token: encryptToken(refreshedToken.access_token),
                google_token_expires_at: new Date(refreshedToken.expires_at * 1000).toISOString(),
              });
           } else if (provider === 'azure-ad') {
@@ -263,8 +267,8 @@ async function upsertMeetingPrepUser(userData: {
     expires_at: string;
   };
 }): Promise<MeetingPrepUser> {
-  // TODO: Encrypt tokens before storing
-  // For now, storing as-is (add encryption in production!)
+  // Encrypt tokens before storing
+  const { encryptToken } = await import('@/lib/crypto/token-encryption');
   
   const supabase = getSupabaseClient();
   
@@ -277,8 +281,9 @@ async function upsertMeetingPrepUser(userData: {
 
   // Only update Google columns if provider is Google
   if (userData.provider === 'google') {
-    userUpdate.google_access_token = userData.tokens.access_token;
-    userUpdate.google_refresh_token = userData.tokens.refresh_token;
+    // Encrypt tokens before storing
+    userUpdate.google_access_token = encryptToken(userData.tokens.access_token);
+    userUpdate.google_refresh_token = encryptToken(userData.tokens.refresh_token);
     userUpdate.google_token_expires_at = userData.tokens.expires_at;
   }
 
@@ -371,7 +376,7 @@ async function upsertMeetingPrepUser(userData: {
 async function updateUserTokens(
   email: string,
   tokens: {
-    google_access_token: string;
+    google_access_token: string; // Should already be encrypted when passed
     google_token_expires_at: string;
   }
 ): Promise<void> {
@@ -477,6 +482,8 @@ export async function getMeetingPrepUserById(userId: string): Promise<MeetingPre
  * Returns valid access token (refreshes if needed)
  */
 export async function getGoogleAccessToken(userId: string): Promise<string> {
+  const { decryptToken } = await import('@/lib/crypto/token-encryption');
+  
   const user = await getMeetingPrepUserById(userId);
   
   if (!user) {
@@ -487,6 +494,9 @@ export async function getGoogleAccessToken(userId: string): Promise<string> {
     throw new Error('User has not connected Google account');
   }
   
+  // Decrypt refresh token for use
+  const decryptedRefreshToken = decryptToken(user.google_refresh_token);
+  
   // Check if token is expired
   const expiresAt = new Date(user.google_token_expires_at!);
   const now = new Date();
@@ -494,18 +504,20 @@ export async function getGoogleAccessToken(userId: string): Promise<string> {
   if (expiresAt <= now) {
     // Token expired, refresh it
     console.log('[Auth] Access token expired, refreshing...');
-    const refreshed = await refreshGoogleToken(user.google_refresh_token);
+    const refreshed = await refreshGoogleToken(decryptedRefreshToken);
     
-    // Update in database
+    // Encrypt and update in database
+    const { encryptToken } = await import('@/lib/crypto/token-encryption');
     await updateUserTokens(user.email, {
-      google_access_token: refreshed.access_token,
+      google_access_token: encryptToken(refreshed.access_token),
       google_token_expires_at: new Date(refreshed.expires_at * 1000).toISOString(),
     });
     
     return refreshed.access_token;
   }
   
-  return user.google_access_token;
+  // Decrypt and return access token
+  return decryptToken(user.google_access_token);
 }
 
 /**

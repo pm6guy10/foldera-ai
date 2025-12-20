@@ -16,13 +16,15 @@ import { createClient } from '@supabase/supabase-js';
  * Uses service role to bypass RLS (since NextAuth users don't have Supabase Auth sessions)
  */
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  
   try {
     // Check NextAuth session
     const session = await getServerSession(authOptions);
     
     if (!session || !session.user?.email) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized', requestId },
         { status: 401 }
       );
     }
@@ -43,7 +45,10 @@ export async function GET(request: NextRequest) {
 
     if (userError || !user) {
       // User doesn't exist yet (new sign-up, hasn't been created in DB)
-      return NextResponse.json({ integrations: [] });
+      return NextResponse.json({ 
+        integrations: [],
+        requestId,
+      });
     }
 
     // Get integrations (service role bypasses RLS)
@@ -54,21 +59,41 @@ export async function GET(request: NextRequest) {
       .order('provider', { ascending: true });
 
     if (integrationsError) {
-      console.error('[API] Error fetching integrations:', integrationsError);
+      const { logger } = await import('@/lib/observability/logger');
+      logger.error('Failed to fetch integrations', integrationsError, {
+        requestId,
+        userId: user.id,
+        email: session.user.email,
+      });
+      
       return NextResponse.json(
-        { error: integrationsError.message || 'Failed to fetch integrations' },
+        { 
+          error: 'Failed to fetch integrations',
+          requestId,
+        },
         { status: 500 }
       );
     }
 
     return NextResponse.json({ 
       integrations: integrations || [],
-      user_id: user.id 
+      user_id: user.id,
+      requestId,
     });
   } catch (error: any) {
-    console.error('[API] Integration status error:', error);
+    const { logger } = await import('@/lib/observability/logger');
+    const session = await getServerSession(authOptions).catch(() => null);
+    
+    logger.error('Integration status error', error, {
+      requestId,
+      email: session?.user?.email || 'unknown',
+    });
+    
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch integration status' },
+      { 
+        error: 'Internal server error',
+        requestId,
+      },
       { status: 500 }
     );
   }

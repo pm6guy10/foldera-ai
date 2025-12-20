@@ -26,14 +26,11 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Initialize OpenAI client
 const openaiApiKey = process.env.OPENAI_API_KEY;
-let openai: OpenAI | null = null;
-
-if (openaiApiKey) {
-  openai = new OpenAI({ apiKey: openaiApiKey });
-} else {
+if (!openaiApiKey) {
   console.error("❌ OPENAI_API_KEY not found in .env.local");
   process.exit(1);
 }
+const openai = new OpenAI({ apiKey: openaiApiKey });
 
 interface DraftEmail {
   id: string;

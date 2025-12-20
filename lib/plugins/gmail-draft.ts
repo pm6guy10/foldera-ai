@@ -5,6 +5,8 @@
 
 import { google } from 'googleapis';
 import { getGoogleAccessToken } from '../meeting-prep/auth';
+import { logger } from '../observability/logger';
+import { withRetry } from '../utils/retry';
 
 /**
  * Encode Subject Line (RFC 2047)
@@ -103,18 +105,33 @@ export async function createGmailDraft(
       .replace(/\//g, '_')
       .replace(/=+$/, '');
 
-    // Create draft
-    const response = await gmail.users.drafts.create({
-      userId: 'me',
-      requestBody: {
-        message: {
-          raw: encoded,
-        },
+    // Create draft with retry logic for rate limiting
+    const startTime = Date.now();
+    const response = await withRetry(
+      async () => {
+        return await gmail.users.drafts.create({
+          userId: 'me',
+          requestBody: {
+            message: {
+              raw: encoded,
+            },
+          },
+        });
       },
-    });
+      {
+        retries: 3,
+        minTimeout: 1000,
+        maxTimeout: 10000,
+      }
+    );
 
     const draftId = response.data.id;
     if (!draftId) {
+      logger.warn('Gmail draft creation returned no draft ID', {
+        userId,
+        to: toHeader,
+        subject,
+      });
       return null;
     }
 
@@ -122,13 +139,25 @@ export async function createGmailDraft(
     // Format: https://mail.google.com/mail/u/0/#drafts/{draftId}
     const draftUrl = `https://mail.google.com/mail/u/0/#drafts/${draftId}`;
 
+    logger.info('Gmail draft created successfully', {
+      userId,
+      draftId,
+      to: toHeader,
+      subject,
+      processingTimeMs: Date.now() - startTime,
+    });
+
     return {
       draftId,
       draftUrl,
     };
 
   } catch (error: any) {
-    console.error('[Gmail Draft] Failed to create draft:', error);
+    logger.error('Failed to create Gmail draft', error, {
+      userId,
+      to: Array.isArray(to) ? to.join(', ') : to,
+      subject,
+    });
     throw new Error(`Failed to create draft: ${error.message}`);
   }
 }
