@@ -312,9 +312,11 @@ async function upsertMeetingPrepUser(userData: {
         return meetingPrepUser;
     }
 
+    // Encrypt tokens before storing in credentials JSON
+    const { encryptToken } = await import('@/lib/crypto/token-encryption');
     const credentials = {
-        access_token: userData.tokens.access_token,
-        refresh_token: userData.tokens.refresh_token || '', // Handle missing refresh token
+        access_token: encryptToken(userData.tokens.access_token),
+        refresh_token: userData.tokens.refresh_token ? encryptToken(userData.tokens.refresh_token) : '', // Handle missing refresh token
         expires_at: Math.floor(new Date(userData.tokens.expires_at).getTime() / 1000),
     };
 
