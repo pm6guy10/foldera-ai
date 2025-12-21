@@ -3,7 +3,7 @@
 // Exponential backoff for Gmail/Outlook APIs
 // =====================================================
 
-import pRetry, { FailedAttemptError } from 'p-retry';
+import pRetry, { FailedAttemptError, AbortError } from 'p-retry';
 import { logger } from '../observability/logger';
 
 interface RetryOptions {
@@ -53,7 +53,7 @@ export async function withRetry<T>(
 
         // For 4xx errors (except 429), don't retry
         if (error?.response?.status >= 400 && error?.response?.status < 500) {
-          throw new pRetry.AbortError(error);
+          throw new AbortError(error);
         }
 
         // For network errors, retry
@@ -90,7 +90,7 @@ export async function fetchWithRetry(
       }
 
       if (!response.ok && response.status < 500) {
-        throw new pRetry.AbortError(new Error(`Client error: ${response.status}`));
+        throw new AbortError(new Error(`Client error: ${response.status}`));
       }
 
       return response;
