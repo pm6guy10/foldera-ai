@@ -3,21 +3,21 @@
 // Exponential backoff for Gmail/Outlook APIs
 // =====================================================
 
-import pRetry from 'p-retry';
+import pRetry, { FailedAttemptError } from 'p-retry';
 import { logger } from '../observability/logger';
 
 interface RetryOptions {
   retries?: number;
   minTimeout?: number;
   maxTimeout?: number;
-  onFailedAttempt?: (error: Error) => void;
+  onFailedAttempt?: (error: FailedAttemptError) => void;
 }
 
 const DEFAULT_OPTIONS: Required<RetryOptions> = {
   retries: 5,
   minTimeout: 1000,
   maxTimeout: 30000,
-  onFailedAttempt: (error) => {
+  onFailedAttempt: (error: FailedAttemptError) => {
     logger.warn('API call failed, retrying...', {
       attempt: error.attemptNumber,
       retriesLeft: error.retriesLeft,
