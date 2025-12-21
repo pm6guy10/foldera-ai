@@ -137,8 +137,8 @@ async function fetchGmailMessageDetails(
     const labels = msg.labelIds || [];
     
     // Parse recipients
-    const toList = to.split(',').map(e => e.trim()).filter(Boolean);
-    const ccList = cc.split(',').map(e => e.trim()).filter(Boolean);
+    const toList = to.split(',').map((e: string) => e.trim()).filter(Boolean);
+    const ccList = cc.split(',').map((e: string) => e.trim()).filter(Boolean);
     
     return {
       id: messageId,
