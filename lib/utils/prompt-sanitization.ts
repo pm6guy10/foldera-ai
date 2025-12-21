@@ -55,3 +55,51 @@ export function escapePromptDelimiters(input: string): string {
     .replace(/\}\}/g, '\\}\\}');
 }
 
+/**
+ * Sanitizes email content specifically
+ * Removes signatures, disclaimers, and forwarded content
+ */
+export function sanitizeEmailForPrompt(emailBody: string, maxLength: number = 3000): string {
+  if (!emailBody) return '';
+  
+  let cleaned = emailBody;
+  
+  // Remove common email signatures
+  const signaturePatterns = [
+    /--\s*\n[\s\S]*$/,  // -- signature
+    /Sent from my [\w\s]+$/i,
+    /Get Outlook for [\w\s]+$/i,
+    /\n_{3,}[\s\S]*$/,  // ___ signature line
+    /\nBest,?\n[\s\S]*$/i,
+    /\nRegards,?\n[\s\S]*$/i,
+    /\nThanks,?\n[\s\S]*$/i,
+  ];
+  
+  for (const pattern of signaturePatterns) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  
+  // Remove forwarded/replied content
+  cleaned = cleaned.replace(/\n>+\s.*$/gm, '');
+  cleaned = cleaned.replace(/On .* wrote:[\s\S]*$/i, '');
+  cleaned = cleaned.replace(/From:.*Sent:.*To:.*Subject:[\s\S]*$/i, '');
+  
+  // Remove disclaimers
+  cleaned = cleaned.replace(/CONFIDENTIALITY NOTICE[\s\S]*$/i, '');
+  cleaned = cleaned.replace(/This email and any attachments[\s\S]*$/i, '');
+  
+  return sanitizeForPrompt(cleaned, maxLength);
+}
+
+/**
+ * Creates a safe JSON string for embedding in prompts
+ */
+export function safeJsonForPrompt(obj: unknown): string {
+  try {
+    const json = JSON.stringify(obj, null, 2);
+    return sanitizeForPrompt(json, 8000);
+  } catch {
+    return '{}';
+  }
+}
+
