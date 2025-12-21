@@ -139,7 +139,7 @@ export function getAuthOptions(): NextAuthOptions {
             provider: normalizedProvider,
             tokens: {
               access_token: account.access_token!,
-              refresh_token: account.refresh_token!, // might be undefined if not offline
+              refresh_token: account.refresh_token, // May be undefined if offline_access not granted
               expires_at: expiresAtIso,
             }
           });
@@ -264,7 +264,7 @@ async function upsertMeetingPrepUser(userData: {
   provider: 'google' | 'azure-ad';
   tokens: {
     access_token: string;
-    refresh_token: string;
+    refresh_token?: string; // Optional - not all OAuth flows provide refresh tokens
     expires_at: string;
   };
 }): Promise<MeetingPrepUser> {
@@ -282,9 +282,11 @@ async function upsertMeetingPrepUser(userData: {
 
   // Only update Google columns if provider is Google
   if (userData.provider === 'google') {
-    // Encrypt tokens before storing
+    // Encrypt tokens before storing (handle missing refresh token)
     userUpdate.google_access_token = encryptToken(userData.tokens.access_token);
-    userUpdate.google_refresh_token = encryptToken(userData.tokens.refresh_token);
+    userUpdate.google_refresh_token = userData.tokens.refresh_token 
+      ? encryptToken(userData.tokens.refresh_token)
+      : null; // Store null if no refresh token
     userUpdate.google_token_expires_at = userData.tokens.expires_at;
   }
 
