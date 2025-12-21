@@ -7,7 +7,7 @@ import OpenAI from 'openai';
 import { getPromptVersion } from '../prompts/conflict-detection';
 import { logger } from '../observability/logger';
 import { sanitizeForPrompt } from '../utils/prompt-sanitization';
-import { trackOpenAIUsage } from '../observability/ai-cost-tracker';
+import { trackAIUsage } from '../observability/ai-cost-tracker';
 
 export interface WorkSignal {
   id: string;
