@@ -43,16 +43,18 @@ export async function getMicrosoftAccessToken(userId: string): Promise<string> {
   const record = integration as any;
   const credentials = record.credentials as {
     access_token: string;
-    refresh_token: string;
+    refresh_token: string | null; // Can be null if offline_access not granted
     expires_at: number; // Unix timestamp (seconds)
   };
 
   // 2. Import decryption utility
   const { decryptToken, encryptToken } = await import('@/lib/crypto/token-encryption');
 
-  // 3. Decrypt tokens from database
+  // 3. Decrypt tokens from database (check for null refresh token)
   const decryptedAccessToken = decryptToken(credentials.access_token);
-  const decryptedRefreshToken = decryptToken(credentials.refresh_token);
+  const decryptedRefreshToken = credentials.refresh_token 
+    ? decryptToken(credentials.refresh_token)
+    : null; // Handle missing refresh token
 
   // 4. Check expiration
   const now = Math.floor(Date.now() / 1000);
@@ -63,6 +65,12 @@ export async function getMicrosoftAccessToken(userId: string): Promise<string> {
 
   // 5. Refresh if expired
   console.log('[Auth] Microsoft token expired, refreshing...');
+  
+  // Cannot refresh without a refresh token
+  if (!decryptedRefreshToken) {
+    throw new Error('Cannot refresh token: refresh_token not available. User must re-authenticate.');
+  }
+  
   const refreshed = await refreshMicrosoftToken(decryptedRefreshToken);
 
   // 6. Encrypt refreshed tokens before storing

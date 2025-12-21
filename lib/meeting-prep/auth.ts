@@ -319,7 +319,7 @@ async function upsertMeetingPrepUser(userData: {
     const { encryptToken } = await import('@/lib/crypto/token-encryption');
     const credentials = {
         access_token: encryptToken(userData.tokens.access_token),
-        refresh_token: userData.tokens.refresh_token ? encryptToken(userData.tokens.refresh_token) : '', // Handle missing refresh token
+        refresh_token: userData.tokens.refresh_token ? encryptToken(userData.tokens.refresh_token) : null, // Store null instead of empty string
         expires_at: Math.floor(new Date(userData.tokens.expires_at).getTime() / 1000),
     };
 
