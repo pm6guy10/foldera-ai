@@ -47,24 +47,37 @@ export async function getMicrosoftAccessToken(userId: string): Promise<string> {
     expires_at: number; // Unix timestamp (seconds)
   };
 
-  // 2. Check expiration
+  // 2. Import decryption utility
+  const { decryptToken, encryptToken } = await import('@/lib/crypto/token-encryption');
+
+  // 3. Decrypt tokens from database
+  const decryptedAccessToken = decryptToken(credentials.access_token);
+  const decryptedRefreshToken = decryptToken(credentials.refresh_token);
+
+  // 4. Check expiration
   const now = Math.floor(Date.now() / 1000);
   // Add 5 minute buffer
   if (credentials.expires_at - 300 > now) {
-    return credentials.access_token;
+    return decryptedAccessToken;
   }
 
-  // 3. Refresh if expired
+  // 5. Refresh if expired
   console.log('[Auth] Microsoft token expired, refreshing...');
-  const refreshed = await refreshMicrosoftToken(credentials.refresh_token);
+  const refreshed = await refreshMicrosoftToken(decryptedRefreshToken);
 
-  // 4. Update database
+  // 6. Encrypt refreshed tokens before storing
+  const encryptedAccessToken = encryptToken(refreshed.access_token);
+  const encryptedRefreshToken = refreshed.refresh_token 
+    ? encryptToken(refreshed.refresh_token) 
+    : credentials.refresh_token; // Keep old encrypted token if no new one provided
+
+  // 7. Update database with encrypted tokens
   await (supabase
     .from('integrations') as any)
     .update({
       credentials: {
-        access_token: refreshed.access_token,
-        refresh_token: refreshed.refresh_token || credentials.refresh_token, // Use new one if provided, else keep old
+        access_token: encryptedAccessToken,
+        refresh_token: encryptedRefreshToken,
         expires_at: Math.floor(Date.now() / 1000) + refreshed.expires_in,
       },
       updated_at: new Date().toISOString(),
