@@ -158,13 +158,14 @@ export function getAuthOptions(): NextAuthOptions {
           const provider = (token.provider as string) || 'google';
 
           if (provider === 'google') {
-             const { decryptToken, encryptToken } = await import('@/lib/crypto/token-encryption');
-             const decryptedRefreshToken = decryptToken(token.refreshToken as string);
-             const refreshedToken = await refreshGoogleToken(decryptedRefreshToken);
+             // JWT stores plaintext tokens from OAuth provider, not encrypted ones
+             // No need to decrypt - token.refreshToken is already plaintext
+             const refreshedToken = await refreshGoogleToken(token.refreshToken as string);
              token.accessToken = refreshedToken.access_token;
              token.expiresAt = refreshedToken.expires_at;
              
              // Encrypt and update in database
+             const { encryptToken } = await import('@/lib/crypto/token-encryption');
              await updateUserTokens(token.email as string, {
                google_access_token: encryptToken(refreshedToken.access_token),
                google_token_expires_at: new Date(refreshedToken.expires_at * 1000).toISOString(),
