@@ -8,15 +8,80 @@
 // ╚══════════════════════════════════════════════════════════════════════════════╝
 
 import Anthropic from '@anthropic-ai/sdk';
-import { 
-  Commitment, 
-  CommitmentCategory, 
-  Entity, 
-  Signal,
-  ExtractedDate,
-  ExtractedAmount,
-  RiskFactor 
-} from './temporal-knowledge-graph';
+
+// ============================================================================
+// TYPES (self-contained to avoid circular dependencies)
+// ============================================================================
+
+export type CommitmentCategory = 
+  | 'deliver_document'
+  | 'deliver_artifact'
+  | 'schedule_meeting'
+  | 'provide_information'
+  | 'make_decision'
+  | 'make_introduction'
+  | 'follow_up'
+  | 'review_approve'
+  | 'payment_financial'
+  | 'attend_participate'
+  | 'other';
+
+export type SignalSource = 
+  | 'gmail' 
+  | 'outlook' 
+  | 'google_calendar' 
+  | 'outlook_calendar'
+  | 'slack'
+  | 'notion'
+  | 'drive'
+  | 'dropbox'
+  | 'uploaded_document'
+  | 'manual_entry';
+
+export type SignalType = 
+  | 'email_sent'
+  | 'email_received'
+  | 'calendar_event'
+  | 'calendar_invite'
+  | 'slack_message'
+  | 'document_created'
+  | 'document_modified'
+  | 'document_shared'
+  | 'task_created'
+  | 'task_completed';
+
+export interface Entity {
+  id: string;
+  displayName: string;
+  primaryEmail: string | null;
+  role: string | null;
+  company: string | null;
+}
+
+export interface Signal {
+  id: string;
+  source: SignalSource;
+  type: SignalType;
+  author: string;
+  recipients: string[];
+  content: string;
+  occurredAt: Date;
+  extractedAmounts: any[];
+  extractedDates: any[];
+}
+
+export interface Commitment {
+  id: string;
+  promisor: Entity;
+  promisee: Entity;
+  description: string;
+  dueAt: Date | null;
+  impliedDueAt: Date | null;
+  resolution?: {
+    outcome: 'fulfilled_on_time' | 'fulfilled_late' | 'broken' | 'cancelled';
+    resolvedAt: Date;
+  } | null;
+}
 
 let anthropic: Anthropic | null = null;
 
@@ -508,7 +573,7 @@ Return JSON:
       });
 
     const avgLateness = latenessData.length > 0
-      ? latenessData.reduce((a, b) => a + b, 0) / latenessData.length
+      ? latenessData.reduce((a: number, b: number) => a + b, 0) / latenessData.length
       : 0;
 
     // Calculate response times from signals
@@ -517,7 +582,7 @@ Return JSON:
 
     // Determine communication style
     const avgMessageLength = signalHistory.length > 0
-      ? signalHistory.reduce((sum, s) => sum + s.content.length, 0) / signalHistory.length
+      ? signalHistory.reduce((sum: number, s: Signal) => sum + s.content.length, 0) / signalHistory.length
       : 0;
 
     const style = avgMessageLength < 100 ? 'terse' : avgMessageLength > 500 ? 'verbose' : 'normal';
