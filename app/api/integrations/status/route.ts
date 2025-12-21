@@ -60,10 +60,11 @@ export async function GET(request: NextRequest) {
 
     if (integrationsError) {
       const { logger } = await import('@/lib/observability/logger');
-      logger.error('Failed to fetch integrations', integrationsError, {
+      logger.error('Failed to fetch integrations', {
         requestId,
         userId: user.id,
         email: session.user.email,
+        error: integrationsError
       });
       
       return NextResponse.json(
@@ -84,9 +85,10 @@ export async function GET(request: NextRequest) {
     const { logger } = await import('@/lib/observability/logger');
     const session = await getServerSession(authOptions).catch(() => null);
     
-    logger.error('Integration status error', error, {
+    logger.error('Integration status error', {
       requestId,
       email: session?.user?.email || 'unknown',
+      error
     });
     
     return NextResponse.json(

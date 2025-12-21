@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const cronSecret = process.env.CRON_SECRET;
     
     if (!cronSecret) {
-      logger.error('CRON_SECRET not configured', undefined, { requestId });
+      logger.error('CRON_SECRET not configured', { requestId });
       return NextResponse.json(
         { error: 'Cron secret not configured', requestId },
         { status: 500 }
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     }
     
     if (authHeader !== `Bearer ${cronSecret}`) {
-      logger.warn('Unauthorized cron request', undefined, { requestId });
+      logger.warn('Unauthorized cron request', { requestId });
       return NextResponse.json(
         { error: 'Unauthorized', requestId },
         { status: 401 }
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       .not('google_access_token', 'is', null);
     
     if (usersError) {
-      logger.error('Failed to fetch users', usersError, { requestId });
+      logger.error('Failed to fetch users', { requestId, error: usersError });
       return NextResponse.json(
         { error: 'Failed to fetch users', requestId },
         { status: 500 }
@@ -111,9 +111,10 @@ export async function GET(request: NextRequest) {
           userId: user.id,
         });
       } catch (error: any) {
-        logger.error('Failed to process user', error, {
+        logger.error('Failed to process user', {
           requestId,
           userId: user.id,
+          error
         });
         
         results.push({
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
       processingTimeMs: processingTime,
     });
   } catch (error: any) {
-    logger.error('Daily scan failed', error, { requestId });
+    logger.error('Daily scan failed', { requestId, error });
     
     return NextResponse.json(
       {

@@ -153,10 +153,11 @@ export async function createGmailDraft(
     };
 
   } catch (error: any) {
-    logger.error('Failed to create Gmail draft', error, {
+    logger.error('Failed to create Gmail draft', {
       userId,
       to: Array.isArray(to) ? to.join(', ') : to,
       subject,
+      error
     });
     throw new Error(`Failed to create draft: ${error.message}`);
   }

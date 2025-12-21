@@ -45,7 +45,7 @@ export const analyzeOutlook = inngest.createFunction(
           .eq('status', 'active');
 
         if (error) {
-          logger.error('Failed to fetch Outlook users', error);
+          logger.error('Failed to fetch Outlook users', { error });
           return { processed: 0, error: error.message };
         }
 
@@ -62,7 +62,7 @@ export const analyzeOutlook = inngest.createFunction(
               logger.info('Outlook analysis scheduled', { userId: integration.user_id });
               return { success: true, userId: integration.user_id };
             } catch (error: any) {
-              logger.error('Outlook analysis failed', error, { userId: integration.user_id });
+              logger.error('Outlook analysis failed', { userId: integration.user_id, error });
               return { 
                 success: false, 
                 userId: integration.user_id, 
@@ -75,7 +75,7 @@ export const analyzeOutlook = inngest.createFunction(
 
         return { processed: results.length, results };
       } catch (error: any) {
-        logger.error('Outlook analysis job failed', error);
+        logger.error('Outlook analysis job failed', { error });
         throw error;
       }
     });

@@ -111,9 +111,10 @@ Signal ${idx + 1}:
 
       return conflicts;
     } catch (error: any) {
-      logger.error('Conflict detection failed', error, {
+      logger.error('Conflict detection failed', {
         signalCount: signals.length,
         processingTimeMs: Date.now() - startTime,
+        error
       });
 
       return [];
