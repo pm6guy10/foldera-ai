@@ -13,9 +13,16 @@ import { RelationshipMap } from '@/lib/relationship-intelligence/types';
 import { trackAIUsage } from '@/lib/observability/ai-cost-tracker';
 import { logger } from '@/lib/observability/logger';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialize OpenAI client to avoid build-time errors
+let openai: OpenAI | null = null;
+function getOpenAIClient(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 const SUMMARY_PROMPT = `You are a Chief of Staff writing an executive briefing.
 
@@ -203,7 +210,8 @@ async function generateSummary(
     .replace('{{relationships}}', relationshipSummary);
   
   try {
-    const response = await openai.chat.completions.create({
+    const client = getOpenAIClient();
+    const response = await client.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
