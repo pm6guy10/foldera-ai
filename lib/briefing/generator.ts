@@ -195,7 +195,7 @@ async function generateSummary(
   ).join('; ');
   
   const relationshipSummary = relationshipMap
-    ? `${relationshipMap.stats.atRiskRelationships || 0} at-risk, ${relationshipMap.stats.activeRelationships} active`
+    ? `${relationshipMap.atRisk.length || 0} at-risk, ${relationshipMap.stats.activeRelationships} active`
     : 'No relationship data';
   
   const prompt = SUMMARY_PROMPT
