@@ -323,7 +323,7 @@ Remember: Find the ONE most critical issue. Be specific. Use exact quotes. Make 
       reassurance: analysis.reassurance || null,
       
       // Metadata
-      tokensUsed: (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0),
+      tokensUsed: (response.usage?.prompt_tokens || 0) + (response.usage?.completion_tokens || 0),
     };
 
     return NextResponse.json(result);

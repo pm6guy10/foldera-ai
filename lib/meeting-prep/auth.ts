@@ -112,7 +112,13 @@ export function getAuthOptions(): NextAuthOptions {
         token.expiresAt = account.expires_at; // Unix timestamp
         token.email = user.email;
         token.name = user.name;
-        token.provider = account.provider; // Track provider
+        
+        // Normalize provider BEFORE storing in JWT token
+        let normalizedProvider: 'google' | 'azure-ad' = 'google';
+        if (account.provider.includes('azure') || account.provider.includes('microsoft')) {
+          normalizedProvider = 'azure-ad';
+        }
+        token.provider = normalizedProvider; // Store normalized provider for refresh logic
         
         // Safe expiration handling
         let expiresAtIso = new Date().toISOString();
@@ -125,11 +131,6 @@ export function getAuthOptions(): NextAuthOptions {
 
         // Create or update user in database
         try {
-          // Normalize provider
-          let normalizedProvider: 'google' | 'azure-ad' = 'google';
-          if (account.provider.includes('azure') || account.provider.includes('microsoft')) {
-            normalizedProvider = 'azure-ad';
-          }
 
           console.log(`[Auth] Upserting user ${user.email} with provider ${normalizedProvider} (raw: ${account.provider})`);
 
