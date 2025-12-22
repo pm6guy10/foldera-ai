@@ -7,7 +7,7 @@
 // ║  This is the core intelligence that creates "holy crap" moments.             ║
 // ╚══════════════════════════════════════════════════════════════════════════════╝
 
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
 // ============================================================================
 // TYPES (self-contained to avoid circular dependencies)
@@ -83,15 +83,15 @@ export interface Commitment {
   } | null;
 }
 
-let anthropic: Anthropic | null = null;
+let openai: OpenAI | null = null;
 
-function getAnthropicClient(): Anthropic {
-  if (!anthropic) {
-    anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+function getOpenAIClient(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
     });
   }
-  return anthropic;
+  return openai;
 }
 
 // ============================================================================
@@ -318,15 +318,19 @@ USER EMAIL (to determine direction of commitments): ${userEmail}
 Extract all commitments, amounts, dates, and entities from this signal.`;
 
     try {
-      const client = getAnthropicClient();
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+      const client = getOpenAIClient();
+      const response = await client.chat.completions.create({
+        model: 'gpt-4o', // Latest GPT-4 Omni model
         max_tokens: 4096,
-        system: COMMITMENT_EXTRACTION_SYSTEM,
-        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: COMMITMENT_EXTRACTION_SYSTEM },
+          { role: 'user', content: prompt }
+        ],
       });
 
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const text = response.choices[0].message.content || '';
       
       // Parse JSON response
       const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
@@ -337,7 +341,7 @@ Extract all commitments, amounts, dates, and entities from this signal.`;
         amounts: result.amounts || [],
         dates: result.dates || [],
         entitiesMentioned: result.entities_mentioned || [],
-        tokensUsed: response.usage?.input_tokens + response.usage?.output_tokens || 0,
+        tokensUsed: (response.usage?.prompt_tokens || 0) + (response.usage?.completion_tokens || 0),
       };
 
     } catch (error) {
@@ -396,22 +400,26 @@ USER EMAIL: ${userEmail}
 Analyze this new signal against existing commitments and recent signals. Find any conflicts, contradictions, or impossibilities.`;
 
     try {
-      const client = getAnthropicClient();
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+      const client = getOpenAIClient();
+      const response = await client.chat.completions.create({
+        model: 'gpt-4o',
         max_tokens: 4096,
-        system: CONFLICT_DETECTION_SYSTEM,
-        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: CONFLICT_DETECTION_SYSTEM },
+          { role: 'user', content: prompt }
+        ],
       });
 
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const text = response.choices[0].message.content || '';
       
       const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
       const result = JSON.parse(cleaned);
 
       return {
         conflicts: result.conflicts || [],
-        tokensUsed: response.usage?.input_tokens + response.usage?.output_tokens || 0,
+        tokensUsed: (response.usage?.prompt_tokens || 0) + (response.usage?.completion_tokens || 0),
       };
 
     } catch (error) {
@@ -465,14 +473,15 @@ Bad examples:
 Return ONLY the headline, nothing else.`;
 
     try {
-      const client = getAnthropicClient();
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+      const client = getOpenAIClient();
+      const response = await client.chat.completions.create({
+        model: 'gpt-4o',
         max_tokens: 100,
+        temperature: 0.3,
         messages: [{ role: 'user', content: prompt }],
       });
 
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const text = response.choices[0].message.content || '';
       return text.trim();
 
     } catch (error) {
@@ -521,14 +530,16 @@ Return JSON:
 }`;
 
     try {
-      const client = getAnthropicClient();
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+      const client = getOpenAIClient();
+      const response = await client.chat.completions.create({
+        model: 'gpt-4o',
         max_tokens: 1000,
+        temperature: 0.3,
+        response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: prompt }],
       });
 
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const text = response.choices[0].message.content || '';
       const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
       return JSON.parse(cleaned);
 

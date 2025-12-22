@@ -10,21 +10,21 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/meeting-prep/auth';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
 // Configure API route
 export const maxDuration = 120;  // Allow up to 2 minutes for deep analysis
 export const dynamic = 'force-dynamic';
 
-let anthropic: Anthropic | null = null;
+let openai: OpenAI | null = null;
 
-function getAnthropicClient(): Anthropic {
-  if (!anthropic) {
-    anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+function getOpenAIClient(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
     });
   }
-  return anthropic;
+  return openai;
 }
 
 // ============================================================================
@@ -232,18 +232,22 @@ ${documentContext}
 
 Remember: Find the ONE most critical issue. Be specific. Use exact quotes. Make the headline hit hard.`;
 
-    // Call Claude for intelligent analysis
-    console.log(`[Intelligent] Calling Claude for analysis...`);
+    // Call OpenAI GPT-4o for intelligent analysis
+    console.log(`[Intelligent] Calling OpenAI GPT-4o for analysis...`);
     
-    const client = getAnthropicClient();
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const client = getOpenAIClient();
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o',
       max_tokens: 4096,
-      system: HOLY_CRAP_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: HOLY_CRAP_SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt }
+      ],
     });
 
-    const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
+    const responseText = response.choices[0].message.content || '';
     
     // Parse the JSON response
     let analysis;
