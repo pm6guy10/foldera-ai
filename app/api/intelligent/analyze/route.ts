@@ -143,8 +143,8 @@ async function extractTextFromFile(file: File): Promise<string> {
   
   if (file.type === 'application/pdf') {
     try {
-      const pdf = (await import('pdf-parse')).default;
-      const data = await pdf(Buffer.from(buffer));
+      const pdfParse = (await import('pdf-parse')).default;
+      const data = await pdfParse(Buffer.from(buffer));
       return data.text;
     } catch (error) {
       console.error(`[Intelligent] PDF parsing error:`, error);
