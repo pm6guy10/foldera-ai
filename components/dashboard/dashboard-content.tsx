@@ -25,13 +25,16 @@ export default function DashboardContent() {
   const fetchBriefing = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/briefing/generate', { method: 'POST' });
+      const res = await fetch('/api/briefing/latest');
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setBriefing(data.briefing);
+      } else {
+        setBriefing(null);
       }
     } catch (error) {
       console.error('Failed to fetch briefing:', error);
+      setBriefing(null);
     } finally {
       setIsLoading(false);
     }
