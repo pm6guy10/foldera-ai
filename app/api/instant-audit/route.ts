@@ -111,17 +111,17 @@ export async function POST(request: Request) {
     }
 
     // Call Claude API
-    const claudePrompt = `You are Foldera's Red Team Auditor. Find ONE most career-damaging conflict in this 7-day Gmail+Drive slice. Look for financial mismatches, contradictory promises, or timeline impossibilities. Ignore everything else. Be paranoid and dramatic.
+    const claudePrompt = `You are Foldera's grant compliance drift scanner. Analyze this 7-day Gmail+Drive slice for grant compliance issues. Focus on: budget vs narrative dollar mismatches, KPI inconsistencies, allocation errors, duplicate line items, and timeline conflicts. Find ONE highest-risk compliance drift. Be precise and cite exact sources.
 
 DATA:
 ${allData}
 
 Return ONLY valid JSON in this exact format (no markdown, no code blocks):
 {
-  "headline": "A single terrifying sentence about the conflict.",
+  "headline": "A single clear sentence describing the compliance drift or risk.",
   "evidenceA": { "source": "Exact source name", "snippet": "Exact quote showing first part of conflict" },
   "evidenceB": { "source": "Exact source name", "snippet": "Exact quote showing conflicting information" },
-  "draftedSolution": "Concise ready-to-send email or action fixing it."
+  "draftedSolution": "Concise recommended fix or correction."
 }`;
 
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -132,7 +132,7 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks):
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-sonnet-20240229',
+        model: 'claude-sonnet-4-5',
         max_tokens: 1000,
         messages: [{ role: 'user', content: claudePrompt }],
       }),

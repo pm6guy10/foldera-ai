@@ -16,10 +16,10 @@ export default function HomePage() {
               Login
             </a>
             <a
-              href="#cta"
+              href="/instant-audit"
               className="px-4 py-2 bg-white text-black text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
             >
-              Run a Free Risk Scan
+              Start Free Trial
             </a>
           </div>
         </div>
@@ -30,20 +30,17 @@ export default function HomePage() {
           {/* Hero */}
           <section className="py-24 text-center">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight max-w-3xl mx-auto">
-              Catch compliance drift before the auditor does.
+              No more grant audit surprises.
             </h1>
             <p className="mt-6 text-xl text-gray-300 max-w-2xl mx-auto">
-              Upload your grant draft. Get a structured risk report in 24 hours.
-            </p>
-            <p className="mt-4 text-gray-500 max-w-2xl mx-auto">
-              Budget mismatches. Narrative inconsistencies. Allocation errors. Flagged before submission.
+              Foldera connects to Gmail and Drive and flags budget mismatches, narrative conflicts, and funder amendments automatically — before submission.
             </p>
             <p className="mt-10">
               <a
-                href="#cta"
+                href="/instant-audit"
                 className="inline-block px-8 py-4 bg-white text-black font-semibold rounded-md hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
               >
-                Run a Free Risk Scan
+                Start Your Free 14-Day Trial
               </a>
             </p>
           </section>
@@ -76,26 +73,21 @@ export default function HomePage() {
             </h2>
             <div className="grid md:grid-cols-3 gap-8">
               <article className="border border-white/10 rounded-lg p-6 bg-white/[0.02]">
-                <h3 className="text-lg font-semibold text-white mb-3">Upload your draft</h3>
+                <h3 className="text-lg font-semibold text-white mb-3">Connect once</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  Submit your budget, narrative, and attachments. No integrations required.
+                  Gmail and Drive via secure, read-only OAuth. Takes 60 seconds.
                 </p>
               </article>
               <article className="border border-white/10 rounded-lg p-6 bg-white/[0.02]">
-                <h3 className="text-lg font-semibold text-white mb-3">Structured drift detection</h3>
-                <ul className="text-gray-400 text-sm space-y-2 list-disc list-inside">
-                  <li>Budget total mismatches</li>
-                  <li>Category misalignment</li>
-                  <li>Duplicate allocations</li>
-                  <li>KPI inconsistencies</li>
-                  <li>Timeline conflicts</li>
-                  <li>Narrative vs financial discrepancies</li>
-                </ul>
+                <h3 className="text-lg font-semibold text-white mb-3">Foldera watches in the background</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">
+                  Automatically tracks funder emails, amendments, budget sheets, and narrative drafts.
+                </p>
               </article>
               <article className="border border-white/10 rounded-lg p-6 bg-white/[0.02]">
-                <h3 className="text-lg font-semibold text-white mb-3">Receive a risk report</h3>
+                <h3 className="text-lg font-semibold text-white mb-3">Get alerted early</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  Exact fields in conflict. Clear explanations. Plain-language risk score.
+                  When something drifts out of alignment, Foldera shows the conflict and suggests a fix.
                 </p>
               </article>
             </div>
@@ -141,17 +133,11 @@ export default function HomePage() {
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-12 text-center">
               Pricing
             </h2>
-            <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+            <div className="max-w-md mx-auto">
               <article className="border border-white/10 rounded-lg p-8 bg-white/[0.02] text-center">
-                <h3 className="text-lg font-semibold text-white mb-2">Pre-Submission Risk Scan</h3>
-                <p className="text-2xl font-bold text-white mt-4">$149</p>
-                <p className="text-gray-500 text-sm mt-1">per report</p>
-              </article>
-              <article className="border border-white/10 rounded-lg p-8 bg-white/[0.02] text-center">
-                <h3 className="text-lg font-semibold text-white mb-2">Compliance Guard</h3>
-                <p className="text-2xl font-bold text-white mt-4">$399</p>
+                <p className="text-2xl font-bold text-white">$49</p>
                 <p className="text-gray-500 text-sm mt-1">/month</p>
-                <p className="text-gray-400 text-sm mt-4">Unlimited draft scans + priority turnaround</p>
+                <p className="text-white font-medium mt-6">14 days free. No credit card required.</p>
               </article>
             </div>
           </section>
@@ -159,16 +145,16 @@ export default function HomePage() {
           {/* Final CTA */}
           <section id="cta" className="py-24 border-t border-white/10 text-center">
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-              Run your first scan free
+              Start monitoring free for 14 days.
             </h2>
             <p className="text-gray-400 max-w-xl mx-auto mb-10">
-              Upload a draft. Receive a structured drift report. No commitment required.
+              Connect Gmail and Drive. Foldera handles the rest.
             </p>
             <a
-              href="/api/auth/signin"
+              href="/instant-audit"
               className="inline-block px-8 py-4 bg-white text-black font-semibold rounded-md hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
             >
-              Upload Draft for Free Scan
+              Start Free Trial
             </a>
           </section>
         </div>

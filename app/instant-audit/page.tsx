@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -40,31 +40,11 @@ export default function InstantAuditPage() {
     }
   };
 
-  const handleUnlockSolution = async () => {
-    try {
-      // Create Stripe checkout session
-      const response = await fetch('/api/checkout/instant-audit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      const { url } = await response.json();
-      
-      if (url) {
-        window.location.href = url;
-      }
-    } catch (err) {
-      console.error('Checkout error:', err);
-      alert('Failed to start checkout. Please try again.');
-    }
-  };
-
   // Check if we just returned from OAuth with results
-  useState(() => {
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const auditData = params.get('audit');
-    
     if (auditData) {
       try {
         const decoded = JSON.parse(decodeURIComponent(auditData));
@@ -73,7 +53,7 @@ export default function InstantAuditPage() {
         console.error('Failed to parse audit data:', e);
       }
     }
-  });
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -144,82 +124,45 @@ export default function InstantAuditPage() {
         {result && (
           <div className="space-y-8">
             {/* Headline */}
-            <div className="bg-red-900/20 border-2 border-red-500 rounded-2xl p-8 text-center">
-              <div className="text-6xl mb-4">🚨</div>
-              <h2 className="text-3xl font-bold text-red-400 mb-4">
-                {result.headline}
-              </h2>
-            </div>
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight">
+              {result.headline}
+            </h2>
 
-            {/* Evidence */}
+            {/* Evidence: side-by-side cards with source labels */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-slate-800/50 border border-yellow-500/50 rounded-lg p-6">
-                <h3 className="font-semibold text-yellow-400 mb-3 flex items-center">
-                  <span className="mr-2">📄</span>
-                  Evidence A
-                </h3>
-                <div className="text-sm text-slate-400 mb-2">{result.evidenceA.source}</div>
-                <blockquote className="text-slate-200 italic border-l-2 border-yellow-500 pl-4">
-                  "{result.evidenceA.snippet}"
+              <div className="border border-white/10 rounded-lg p-6 bg-black/40">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                  {result.evidenceA.source}
+                </div>
+                <blockquote className="text-gray-300 text-sm leading-relaxed border-l-2 border-white/20 pl-4">
+                  {result.evidenceA.snippet}
                 </blockquote>
               </div>
-
-              <div className="bg-slate-800/50 border border-yellow-500/50 rounded-lg p-6">
-                <h3 className="font-semibold text-yellow-400 mb-3 flex items-center">
-                  <span className="mr-2">📄</span>
-                  Evidence B
-                </h3>
-                <div className="text-sm text-slate-400 mb-2">{result.evidenceB.source}</div>
-                <blockquote className="text-slate-200 italic border-l-2 border-yellow-500 pl-4">
-                  "{result.evidenceB.snippet}"
+              <div className="border border-white/10 rounded-lg p-6 bg-black/40">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                  {result.evidenceB.source}
+                </div>
+                <blockquote className="text-gray-300 text-sm leading-relaxed border-l-2 border-white/20 pl-4">
+                  {result.evidenceB.snippet}
                 </blockquote>
               </div>
             </div>
 
-            {/* Blurred Solution */}
-            <div className="relative bg-slate-800/50 border border-green-500/50 rounded-lg p-6">
-              <h3 className="font-semibold text-green-400 mb-4">
-                ✅ Drafted Solution
-              </h3>
-              <div className="relative">
-                <div className="text-slate-300 blur-sm select-none">
-                  {result.draftedSolution}
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <button
-                    onClick={handleUnlockSolution}
-                    className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-lg font-bold rounded-xl hover:shadow-2xl hover:shadow-green-500/50 transform hover:scale-105 transition-all"
-                  >
-                    Unlock Solution & Activate 24/7 Guardian
-                    <div className="text-sm font-normal mt-1">$49/month</div>
-                  </button>
-                </div>
+            {/* Drafted solution: distinct box with copy button */}
+            <div className="border border-white/10 rounded-lg p-6 bg-white/[0.02]">
+              <div className="flex items-center justify-between gap-4 mb-3">
+                <span className="text-sm font-medium text-gray-400">Drafted solution</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(result.draftedSolution);
+                  }}
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-white/10 border border-white/10 rounded-md hover:bg-white/15 transition-colors"
+                >
+                  Copy
+                </button>
               </div>
-            </div>
-
-            {/* What You Get */}
-            <div className="bg-slate-900/50 rounded-lg p-8 border border-slate-700">
-              <h3 className="text-2xl font-bold text-white mb-6">
-                What You Get with 24/7 Guardian
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-start space-x-3">
-                  <span className="text-green-400 mt-1">✓</span>
-                  <span className="text-slate-300">Continuous monitoring of all Gmail + Drive</span>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <span className="text-green-400 mt-1">✓</span>
-                  <span className="text-slate-300">Instant alerts when conflicts detected</span>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <span className="text-green-400 mt-1">✓</span>
-                  <span className="text-slate-300">Pre-drafted solutions ready to send</span>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <span className="text-green-400 mt-1">✓</span>
-                  <span className="text-slate-300">Morning briefings with top priorities</span>
-                </div>
-              </div>
+              <p className="text-white leading-relaxed">{result.draftedSolution}</p>
             </div>
           </div>
         )}
