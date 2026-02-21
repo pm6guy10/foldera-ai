@@ -26,6 +26,8 @@ const CATEGORY_ALIASES: Record<string, string> = {
   "mileage": "Travel",
   "transportation": "Travel",
   "equipment": "Equipment",
+  "training": "Training and Curriculum Materials",
+  "curriculum": "Training and Curriculum Materials",
   "indirect": "Indirect Costs",
   "overhead": "Indirect Costs",
   "indirect costs": "Indirect Costs",

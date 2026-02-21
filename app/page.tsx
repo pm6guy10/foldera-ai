@@ -1,23 +1,25 @@
 export default function HomePage() {
   return (
-    <div className="bg-black text-white antialiased min-h-screen">
+    <div style={{ background: "#0f172a", color: "#f8fafc" }} className="antialiased min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-black/80">
+      <header className="sticky top-0 z-50 border-b border-[#1f2937] bg-[#0f172a]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0f172a]/80">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2" aria-label="Foldera home">
+          <a href="/" className="flex items-center gap-2" aria-label="Foldera home" style={{ color: "#f8fafc" }}>
             <img src="/foldera-glyph.svg" alt="" width={28} height={28} />
-            <span className="text-lg font-semibold text-white">Foldera</span>
+            <span className="text-lg font-semibold">Foldera</span>
           </a>
           <div className="flex items-center gap-4">
             <a
               href="/api/auth/signin"
-              className="text-sm font-medium text-gray-400 hover:text-white transition-colors"
+              className="text-sm font-medium transition-colors"
+              style={{ color: "#94a3b8" }}
             >
               Login
             </a>
             <a
               href="/instant-audit"
-              className="px-4 py-2 bg-white text-black text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-md transition-colors"
+              style={{ background: "#f8fafc", color: "#0f172a" }}
             >
               Start Free Trial
             </a>
@@ -25,153 +27,75 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main>
-        <div className="max-w-5xl mx-auto px-6">
-          {/* Hero */}
-          <section className="py-24 text-center">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight max-w-3xl mx-auto">
-              No more grant audit surprises.
-            </h1>
-            <p className="mt-6 text-xl text-gray-300 max-w-2xl mx-auto">
-              Foldera connects to Gmail and Drive and flags budget mismatches, narrative conflicts, and funder amendments automatically — before submission.
-            </p>
-            <p className="mt-10">
-              <a
-                href="/instant-audit"
-                className="inline-block px-8 py-4 bg-white text-black font-semibold rounded-md hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
-              >
-                Start Your Free 14-Day Trial
-              </a>
-            </p>
-          </section>
+      <main style={{ maxWidth: 640, margin: "0 auto", padding: "80px 24px", textAlign: "center", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+        <h1 style={{ fontSize: 42, fontWeight: 700, lineHeight: 1.2, marginBottom: 20, color: "#f8fafc" }}>
+          Catch grant compliance issues before your auditor does.
+        </h1>
 
-          {/* Problem */}
-          <section className="py-24 border-t border-white/10">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-8">
-              Grant reporting is fragile.
-            </h2>
-            <div className="space-y-6 text-gray-400 max-w-3xl">
-              <p>
-                One wrong number can trigger findings. A single misaligned line item between narrative and budget can delay disbursement or invite scrutiny.
-              </p>
-              <p>
-                Narrative and budget must align. Auditors cross-reference every claim. When they don’t match, you spend time in remediation instead of delivery.
-              </p>
-              <p>
-                Manual review is slow and inconsistent. Spreadsheets and Word docs don’t check themselves. Fatigue and turnover make gaps more likely.
-              </p>
-              <p>
-                Audit stress is preventable. Most findings come from drift that could have been caught before submission. The right checks in place reduce last-minute fire drills.
-              </p>
-            </div>
-          </section>
+        <p style={{ fontSize: 18, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12 }}>
+          Paste your grant award letter. Upload your budget spreadsheet.
+          Foldera flags cap overruns, percentage violations, restricted spending,
+          and unrecognized categories in seconds.
+        </p>
 
-          {/* How it works */}
-          <section className="py-24 border-t border-white/10">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-12 text-center">
-              How it works
-            </h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              <article className="border border-white/10 rounded-lg p-6 bg-white/[0.02]">
-                <h3 className="text-lg font-semibold text-white mb-3">Connect once</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  Gmail and Drive via secure, read-only OAuth. Takes 60 seconds.
-                </p>
-              </article>
-              <article className="border border-white/10 rounded-lg p-6 bg-white/[0.02]">
-                <h3 className="text-lg font-semibold text-white mb-3">Foldera watches in the background</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  Automatically tracks funder emails, amendments, budget sheets, and narrative drafts.
-                </p>
-              </article>
-              <article className="border border-white/10 rounded-lg p-6 bg-white/[0.02]">
-                <h3 className="text-lg font-semibold text-white mb-3">Get alerted early</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  When something drifts out of alignment, Foldera shows the conflict and suggests a fix.
-                </p>
-              </article>
-            </div>
-          </section>
+        <p style={{ fontSize: 15, color: "#475569", marginBottom: 40 }}>
+          No account required. No OAuth. Paste two documents, get your compliance report.
+        </p>
 
-          {/* Credibility */}
-          <section className="py-24 border-t border-white/10">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">
-              Built by someone who’s lived it
-            </h2>
-            <p className="text-gray-400 max-w-3xl leading-relaxed">
-              Created by a program operations professional with 9 years in publicly funded programs, Medicaid-adjacent systems, and audit-driven environments. Foldera mirrors the manual compliance checks teams already perform — faster and consistently.
-            </p>
-          </section>
+        <a
+          href="/grant-demo"
+          style={{
+            display: "inline-block",
+            background: "#f8fafc",
+            color: "#0f172a",
+            padding: "14px 32px",
+            borderRadius: 6,
+            fontWeight: 600,
+            fontSize: 16,
+            textDecoration: "none",
+          }}
+        >
+          Run the compliance check →
+        </a>
 
-          {/* What it does not do */}
-          <section className="py-24 border-t border-white/10">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">
-              What it does not do
-            </h2>
-            <ul className="text-gray-400 space-y-3 max-w-2xl">
-              <li className="flex gap-3">
-                <span className="text-gray-500 shrink-0">—</span>
-                Does not auto-submit
-              </li>
-              <li className="flex gap-3">
-                <span className="text-gray-500 shrink-0">—</span>
-                Does not override human judgment
-              </li>
-              <li className="flex gap-3">
-                <span className="text-gray-500 shrink-0">—</span>
-                Does not replace your compliance officer
-              </li>
-              <li className="flex gap-3">
-                <span className="text-gray-500 shrink-0">—</span>
-                Reduces blind spots before review
-              </li>
-            </ul>
-          </section>
+        <div style={{ marginTop: 80, textAlign: "left", borderTop: "1px solid #1f2937", paddingTop: 48 }}>
+          <h2 style={{ fontSize: 22, marginBottom: 24, color: "#f8fafc" }}>What it checks</h2>
+          <div style={{ display: "grid", gap: 16 }}>
+            {[
+              ["Total award exceeded", "Flags when cumulative spend crosses the grant ceiling."],
+              ["Category cap violations", "Catches line items that exceed the funder's approved budget caps."],
+              ["Percentage cap violations", "Enforces percentage limits like 'indirect costs not to exceed 10%'."],
+              ["Restricted categories", "Detects prohibited spending like lobbying or political activity."],
+              ["Unrecognized categories", "Warns on spend categories not defined in the award letter."],
+            ].map(([title, desc]) => (
+              <div key={title} style={{ padding: 20, background: "#111827", border: "1px solid #1f2937", borderRadius: 8 }}>
+                <p style={{ fontWeight: 600, marginBottom: 4, color: "#f8fafc" }}>{title}</p>
+                <p style={{ color: "#94a3b8", fontSize: 14 }}>{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
-          {/* Pricing */}
-          <section className="py-24 border-t border-white/10">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-12 text-center">
-              Pricing
-            </h2>
-            <div className="max-w-md mx-auto">
-              <article className="border border-white/10 rounded-lg p-8 bg-white/[0.02] text-center">
-                <p className="text-2xl font-bold text-white">$49</p>
-                <p className="text-gray-500 text-sm mt-1">/month</p>
-                <p className="text-white font-medium mt-6">14 days free. No credit card required.</p>
-              </article>
-            </div>
-          </section>
-
-          {/* Final CTA */}
-          <section id="cta" className="py-24 border-t border-white/10 text-center">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-              Start monitoring free for 14 days.
-            </h2>
-            <p className="text-gray-400 max-w-xl mx-auto mb-10">
-              Connect Gmail and Drive. Foldera handles the rest.
-            </p>
-            <a
-              href="/instant-audit"
-              className="inline-block px-8 py-4 bg-white text-black font-semibold rounded-md hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
-            >
-              Start Free Trial
-            </a>
-          </section>
+        <div style={{ marginTop: 64, borderTop: "1px solid #1f2937", paddingTop: 48 }}>
+          <p style={{ color: "#475569", fontSize: 14 }}>
+            Built for nonprofit program directors, grants managers, and finance teams
+            who want to catch problems before the auditor does.
+          </p>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-8 px-6">
+      <footer className="py-8 px-6" style={{ borderTop: "1px solid #1f2937" }}>
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
             <img src="/foldera-glyph.svg" alt="" width={24} height={24} />
-            <span className="text-sm font-semibold text-white">Foldera</span>
+            <span className="text-sm font-semibold" style={{ color: "#f8fafc" }}>Foldera</span>
           </div>
-          <div className="text-gray-500 text-sm">© {new Date().getFullYear()} Foldera.</div>
+          <div className="text-sm" style={{ color: "#475569" }}>© {new Date().getFullYear()} Foldera.</div>
           <div className="flex gap-6 text-sm">
-            <a href="#" className="text-gray-500 hover:text-white transition-colors">Privacy</a>
-            <a href="#" className="text-gray-500 hover:text-white transition-colors">Terms</a>
-            <a href="#" className="text-gray-500 hover:text-white transition-colors">Contact</a>
+            <a href="#" className="transition-colors" style={{ color: "#475569" }}>Privacy</a>
+            <a href="#" className="transition-colors" style={{ color: "#475569" }}>Terms</a>
+            <a href="#" className="transition-colors" style={{ color: "#475569" }}>Contact</a>
           </div>
         </div>
       </footer>

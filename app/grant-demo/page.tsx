@@ -111,69 +111,67 @@ export default function GrantDemoPage() {
       )}
 
       {validation && spend && constraints && (
-        <div style={{ marginTop: 24, fontFamily: "monospace" }}>
+        <div style={{ marginTop: 24, fontFamily: "system-ui, -apple-system, sans-serif" }}>
 
-          <p style={{ fontSize: 18, marginBottom: 8 }}>
-            Total Spent: ${spend.totalSpent.toLocaleString()} / ${constraints.total_award.toLocaleString()}
+          <div style={{ marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid #1f2937" }}>
+            <p style={{ fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: 2, marginBottom: 6 }}>
+              Compliance Report
+            </p>
+            <p style={{ fontSize: 15, color: "#94a3b8" }}>
+              Total Award: ${constraints.total_award.toLocaleString()} · Generated: {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            </p>
+          </div>
+
+          <p style={{ fontSize: 17, color: "#f8fafc", marginBottom: 6 }}>
+            Total Spent: <strong>${spend.totalSpent.toLocaleString()}</strong> / ${constraints.total_award.toLocaleString()}
           </p>
 
-          <p style={{
-            fontSize: 20,
-            fontWeight: "bold",
-            color: validation.compliant ? "green" : "red",
-            marginBottom: 16
-          }}>
-            {validation.compliant ? "✅ COMPLIANT" : "🚨 VIOLATIONS FOUND"}
+          <p style={{ fontSize: 16, fontWeight: 600, color: validation.compliant ? "#4ade80" : "#f87171", marginBottom: 20 }}>
+            {validation.compliant ? "✓ Compliant" : "✗ Violations Found"}
           </p>
 
           {validation.violations.length > 0 && (
-            <div style={{
-              background: "#2a0a0a",
-              border: "1px solid #ff4444",
-              borderRadius: 6,
-              padding: 16,
-              marginBottom: 16
-            }}>
-              <p style={{ color: "#ff4444", fontWeight: "bold", marginBottom: 8 }}>
-                VIOLATIONS ({validation.violations.length})
+            <div style={{ background: "#1c0a0a", border: "1px solid #7f1d1d", borderRadius: 8, padding: 20, marginBottom: 16 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#f87171", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+                Violations ({validation.violations.length})
+              </p>
+              <p style={{ fontSize: 14, color: "#fca5a5", marginBottom: 14 }}>
+                {validation.violations.length} issue{validation.violations.length > 1 ? "s" : ""} require attention before submission.
               </p>
               {validation.violations.map((v, i) => (
-                <div key={i} style={{ color: "#ff6666", marginBottom: 6 }}>
-                  <strong>{v.code}</strong>: {v.message}
+                <div key={i} style={{ paddingBottom: 10, marginBottom: 10, borderBottom: i < validation.violations.length - 1 ? "1px solid #3f0f0f" : "none" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#f87171", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    {v.code.replace(/_/g, " ")}
+                  </span>
+                  <p style={{ fontSize: 14, color: "#fca5a5", marginTop: 2 }}>{v.message}</p>
                 </div>
               ))}
             </div>
           )}
 
           {validation.warnings.length > 0 && (
-            <div style={{
-              background: "#1a1200",
-              border: "1px solid #ffaa00",
-              borderRadius: 6,
-              padding: 16,
-              marginBottom: 16
-            }}>
-              <p style={{ color: "#ffaa00", fontWeight: "bold", marginBottom: 8 }}>
-                WARNINGS ({validation.warnings.length})
+            <div style={{ background: "#1a1200", border: "1px solid #78350f", borderRadius: 8, padding: 20, marginBottom: 16 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+                Warnings ({validation.warnings.length})
+              </p>
+              <p style={{ fontSize: 14, color: "#fde68a", marginBottom: 14 }}>
+                {validation.warnings.length} item{validation.warnings.length > 1 ? "s" : ""} flagged for review.
               </p>
               {validation.warnings.map((w, i) => (
-                <div key={i} style={{ color: "#ffcc44", marginBottom: 6 }}>
-                  <strong>{w.code}</strong>: {w.message}
+                <div key={i} style={{ paddingBottom: 10, marginBottom: 10, borderBottom: i < validation.warnings.length - 1 ? "1px solid #3f2a00" : "none" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    {w.code.replace(/_/g, " ")}
+                  </span>
+                  <p style={{ fontSize: 14, color: "#fde68a", marginTop: 2 }}>{w.message}</p>
                 </div>
               ))}
             </div>
           )}
 
           {validation.compliant && (
-            <div style={{
-              background: "#0a2a0a",
-              border: "1px solid #44ff44",
-              borderRadius: 6,
-              padding: 16,
-              marginBottom: 16
-            }}>
-              <p style={{ color: "#44ff44", fontWeight: "bold" }}>
-                ✅ No violations or warnings. Budget is compliant with grant constraints.
+            <div style={{ background: "#0a1f0a", border: "1px solid #14532d", borderRadius: 8, padding: 20, marginBottom: 16 }}>
+              <p style={{ color: "#4ade80", fontWeight: 600 }}>
+                ✓ No violations detected. Budget is compliant with grant constraints.
               </p>
             </div>
           )}
@@ -189,9 +187,7 @@ export default function GrantDemoPage() {
                 warnings: validation.warnings,
                 spend_by_category: spend.categories,
               };
-              const blob = new Blob([JSON.stringify(report, null, 2)], {
-                type: "application/json",
-              });
+              const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
@@ -199,17 +195,7 @@ export default function GrantDemoPage() {
               a.click();
               URL.revokeObjectURL(url);
             }}
-            style={{
-              marginTop: 8,
-              padding: "10px 20px",
-              background: "#1a1a2e",
-              color: "#ffffff",
-              border: "1px solid #444",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontFamily: "monospace",
-              fontSize: 14,
-            }}
+            style={{ marginTop: 8, padding: "10px 20px", background: "#0f172a", color: "#94a3b8", border: "1px solid #1f2937", borderRadius: 6, cursor: "pointer", fontSize: 14 }}
           >
             Export Report JSON
           </button>
