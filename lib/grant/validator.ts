@@ -126,19 +126,22 @@ export function validateBudget(
     }
   }
 
-  // 4. Unknown category warning — catches messy real-world books
-  for (const spentCat of Object.keys(currentSpend.categories)) {
-    const spentCanonical = canonicalizeCategory(spentCat);
+  // Unknown category detection (fuzzy-aware)
+  for (const [k, v] of Object.entries(currentSpend.categories)) {
+    const spentCanonical = canonicalizeCategory(k);
+
+    const capMatch = findCapMatch(spentCanonical, canonicalCaps);
+
     const isRestricted = canonicalRestricted.some((r) =>
       spentCanonical.includes(r)
     );
-    const capMatch = findCapMatch(spentCanonical, canonicalCaps);
+
     if (!capMatch && !isRestricted) {
       warnings.push({
         code: "UNKNOWN_CATEGORY",
-        message: `Unrecognized category in spend: "${spentCat}" not defined in award caps`,
-        category: spentCat,
-        amount: currentSpend.categories[spentCat].spent,
+        message: `Unrecognized category in spend: "${k}" not defined in award caps`,
+        category: k,
+        amount: v.spent,
       });
     }
   }
