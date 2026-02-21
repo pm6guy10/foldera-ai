@@ -4,6 +4,9 @@ import { NormalizedSpend } from "./csv-ingest";
 export interface Violation {
   code: string;
   message: string;
+  category?: string;
+  amount?: number;
+  cap?: number;
 }
 
 export interface Warning {
@@ -11,6 +14,8 @@ export interface Warning {
   message: string;
   category?: string;
   amount?: number;
+  cap?: number;
+  percentUsed?: number;
 }
 
 export interface ValidationResult {
@@ -19,12 +24,30 @@ export interface ValidationResult {
   warnings: Warning[];
 }
 
+function canonicalizeCategory(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\(.*?\)/g, "")
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function validateBudget(
   constraints: ExtractedConstraints,
   currentSpend: NormalizedSpend
 ): ValidationResult {
   const violations: Violation[] = [];
   const warnings: Warning[] = [];
+
+  const canonicalCaps: Record<string, { amount: number; percentage?: number }> = {};
+  for (const key in constraints.category_caps ?? {}) {
+    canonicalCaps[canonicalizeCategory(key)] = constraints.category_caps![key];
+  }
+
+  const canonicalRestricted = (constraints.restricted_categories ?? []).map(
+    canonicalizeCategory
+  );
 
   // 1. Total award check
   if (currentSpend.totalSpent > constraints.total_award) {
@@ -35,13 +58,19 @@ export function validateBudget(
   }
 
   // 2. Category cap checks
-  for (const [cat, cap] of Object.entries(constraints.category_caps ?? {})) {
-    const actual = currentSpend.categories[cat]?.spent ?? 0;
+  for (const [cat, cap] of Object.entries(canonicalCaps)) {
+    const matchedKey = Object.keys(currentSpend.categories).find(
+      (k) => canonicalizeCategory(k) === cat
+    );
+    const actual = matchedKey ? currentSpend.categories[matchedKey].spent : 0;
 
     if (actual > cap.amount) {
       violations.push({
         code: "CATEGORY_CAP_EXCEEDED",
-        message: `${cat}: spent $${actual.toLocaleString()} exceeds cap of $${cap.amount.toLocaleString()}`,
+        message: `${matchedKey ?? cat}: spent $${actual.toLocaleString()} exceeds cap of $${cap.amount.toLocaleString()}`,
+        category: matchedKey ?? cat,
+        amount: actual,
+        cap: cap.amount,
       });
     }
 
@@ -50,39 +79,47 @@ export function validateBudget(
       if (actual > maxAllowed) {
         violations.push({
           code: "PERCENTAGE_CAP_EXCEEDED",
-          message: `${cat}: $${actual.toLocaleString()} exceeds ${cap.percentage}% cap ($${maxAllowed.toLocaleString()})`,
+          message: `${matchedKey ?? cat}: $${actual.toLocaleString()} exceeds ${cap.percentage}% cap ($${maxAllowed.toLocaleString()})`,
+          category: matchedKey ?? cat,
+          amount: actual,
+          cap: maxAllowed,
         });
       }
     }
 
-    // Warning at 90% of cap
     if (actual > cap.amount * 0.9 && actual <= cap.amount) {
+      const percentUsed = Math.round((actual / cap.amount) * 100);
       warnings.push({
         code: "APPROACHING_CAP",
-        message: `${cat}: at ${Math.round((actual / cap.amount) * 100)}% of cap — approaching limit`,
+        message: `${matchedKey ?? cat}: at ${percentUsed}% of cap — approaching limit`,
+        category: matchedKey ?? cat,
+        amount: actual,
+        cap: cap.amount,
+        percentUsed,
       });
     }
   }
 
   // 3. Restricted category check
-  for (const restricted of constraints.restricted_categories ?? []) {
-    for (const spentCat of Object.keys(currentSpend.categories)) {
-      if (spentCat.toLowerCase().includes(restricted.toLowerCase())) {
-        violations.push({
-          code: "RESTRICTED_CATEGORY",
-          message: `Restricted category detected: "${spentCat}" matches restricted term "${restricted}"`,
-        });
-      }
+  for (const spentCat of Object.keys(currentSpend.categories)) {
+    const spentCanonical = canonicalizeCategory(spentCat);
+    if (canonicalRestricted.some((r) => spentCanonical.includes(r))) {
+      violations.push({
+        code: "RESTRICTED_CATEGORY",
+        message: `Restricted category detected: "${spentCat}" matches a restricted term`,
+        category: spentCat,
+        amount: currentSpend.categories[spentCat].spent,
+      });
     }
   }
 
   // 4. Unknown category warning — catches messy real-world books
   for (const spentCat of Object.keys(currentSpend.categories)) {
-    const isRestricted = constraints.restricted_categories?.some((r) =>
-      spentCat.toLowerCase().includes(r.toLowerCase())
+    const spentCanonical = canonicalizeCategory(spentCat);
+    const isRestricted = canonicalRestricted.some((r) =>
+      spentCanonical.includes(r)
     );
-
-    if (!constraints.category_caps?.[spentCat] && !isRestricted) {
+    if (!canonicalCaps[spentCanonical] && !isRestricted) {
       warnings.push({
         code: "UNKNOWN_CATEGORY",
         message: `Unrecognized category in spend: "${spentCat}" not defined in award caps`,

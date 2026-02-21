@@ -19,18 +19,46 @@ export async function POST(request: Request) {
         model: 'claude-sonnet-4-5',
         max_tokens: 1200,
         temperature: 0,
-        system: `You are a grant compliance analyst. Read the following grant award letter or amendment and extract structured constraints. Return strictly valid JSON in this exact format. No markdown. No explanation. No backticks.
+        system: `You are a deterministic grant compliance extraction engine.
+
+Extract structured constraints from the grant award letter.
+
+Return ONLY valid JSON matching this exact shape:
 
 {
-  "total_award": null,
-  "category_caps": {},
+  "total_award": number,
+  "category_caps": {
+    "[Exact Category Name]": {
+      "amount": number,
+      "percentage": number (only if explicitly stated)
+    }
+  },
   "kpi_targets": {},
   "reporting_deadlines": [],
   "restricted_categories": [],
   "amendments": []
 }
 
-If a field is not present, return null or empty arrays. Do not invent values.`,
+Rules:
+
+1. Extract EVERY explicitly prohibited activity into restricted_categories.
+   Examples: lobbying, political activity, religious instruction, worship.
+   Use short lowercase terms only.
+   Do NOT omit restrictions.
+
+2. For category_caps:
+   - Use short canonical category names.
+   - Strip parenthetical qualifiers.
+   Example:
+     "Personnel (salaries and benefits)" → "Personnel"
+   - Do not include parentheses in keys.
+
+3. If a percentage cap is stated, include it.
+   If not stated, omit the percentage field.
+
+4. Return only raw JSON.
+   No markdown.
+   No commentary.`,
         messages: [{ role: 'user', content: `DOCUMENT:\n${text}` }],
       }),
     })
