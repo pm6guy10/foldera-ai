@@ -7,11 +7,6 @@ import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { getMicrosoftAccessToken } from '../lib/meeting-prep/auth-microsoft';
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 // Initialize Supabase (for finding a user)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,6 +43,9 @@ interface Thread {
 }
 
 async function main() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('OPENAI_API_KEY is missing in .env.local');
+  const openai = new OpenAI({ apiKey });
   console.log('🕵️  Outlook Analyst (Shadow Mode) Starting...');
 
   try {

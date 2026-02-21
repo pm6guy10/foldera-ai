@@ -24,13 +24,15 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Initialize OpenAI client
 const openaiApiKey = process.env.OPENAI_API_KEY;
 if (!openaiApiKey) {
   console.error("❌ OPENAI_API_KEY not found in .env.local");
   process.exit(1);
 }
-const openai = new OpenAI({ apiKey: openaiApiKey });
+
+function getOpenAI() {
+  return new OpenAI({ apiKey: openaiApiKey });
+}
 
 interface DraftEmail {
   id: string;
@@ -49,6 +51,7 @@ interface ContractFile {
 }
 
 async function runContradictionScan() {
+  const openai = getOpenAI();
   console.log("🔍 Foldera 3.0: The Contradiction Engine");
   console.log("=".repeat(60));
 

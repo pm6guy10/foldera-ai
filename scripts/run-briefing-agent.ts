@@ -37,9 +37,11 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!
-});
+function getOpenAI() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
+  return new OpenAI({ apiKey });
+}
 
 // Hardcode your userId for testing (replace with your actual Supabase user ID)
 // TODO: In production, this would be passed as an argument or fetched per user
@@ -49,6 +51,7 @@ const TEST_USER_ID = process.env.TEST_USER_ID || '';
  * Main Execution
  */
 async function main() {
+  const openai = getOpenAI();
   try {
     console.log('\n🚀 THE BRIEFING AGENT - Starting execution...\n');
 

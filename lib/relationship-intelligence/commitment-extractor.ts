@@ -5,9 +5,13 @@ import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 import { trackAIUsage } from '@/lib/observability/ai-cost-tracker';
 import { logger } from '@/lib/observability/logger';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAIClient(): OpenAI {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured.');
+  }
+  return new OpenAI({ apiKey });
+}
 
 const COMMITMENT_EXTRACTION_PROMPT = `You are analyzing an email to extract commitments and promises.
 
@@ -134,6 +138,7 @@ async function extractCommitmentsFromEmail(
       .replace('{{date}}', email.date.toISOString())
       .replace('{{body}}', sanitizeForPrompt(email.body, 3000));
     
+    const openai = getOpenAIClient();
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',  // Use mini for cost efficiency
       messages: [

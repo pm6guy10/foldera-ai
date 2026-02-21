@@ -13,9 +13,13 @@ import { sanitizeEmailForPrompt } from '@/lib/utils/prompt-sanitization';
 import { trackAIUsage } from '@/lib/observability/ai-cost-tracker';
 import { logger } from '@/lib/observability/logger';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAIClient(): OpenAI {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured.');
+  }
+  return new OpenAI({ apiKey });
+}
 
 const SHADOW_ANALYST_PROMPT = `You are a Chief of Staff AI analyzing email threads for your executive.
 
@@ -241,6 +245,7 @@ async function analyzeThread(
     .replace('{{messages}}', messagesText);
   
   try {
+    const openai = getOpenAIClient();
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],

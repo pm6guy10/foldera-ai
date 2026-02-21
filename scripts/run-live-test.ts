@@ -22,17 +22,15 @@ const supabase = createClient(
   supabaseKey // MUST use Service Role Key to read user data
 );
 
-// Initialize OpenAI client
 const openaiApiKey = process.env.OPENAI_API_KEY;
-let openai: OpenAI | null = null;
 
-if (openaiApiKey) {
-  openai = new OpenAI({ apiKey: openaiApiKey });
-} else {
-  console.warn("⚠️  OPENAI_API_KEY not found in .env.local - AI analysis will be skipped");
+function getOpenAI(): OpenAI | null {
+  if (!openaiApiKey) return null;
+  return new OpenAI({ apiKey: openaiApiKey });
 }
 
 async function runLiveTest() {
+  const openai = getOpenAI();
   console.log("🕵️ Accessing Database...");
   console.log(`📍 Supabase URL: ${supabaseUrl}`);
 

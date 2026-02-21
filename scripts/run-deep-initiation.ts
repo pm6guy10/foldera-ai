@@ -7,11 +7,6 @@ import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { getMicrosoftAccessToken } from '../lib/meeting-prep/auth-microsoft';
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 // Initialize Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,6 +22,9 @@ interface EmailMessage {
 }
 
 async function main() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('OPENAI_API_KEY is missing in .env.local');
+  const openai = new OpenAI({ apiKey });
   console.log('🧘 Deep Initiation (Psychological & Legal Profile) Starting...');
 
   try {

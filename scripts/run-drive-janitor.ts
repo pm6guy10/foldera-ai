@@ -17,18 +17,18 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Initialize OpenAI client
 const openaiApiKey = process.env.OPENAI_API_KEY;
-let openai: OpenAI | null = null;
-
-if (openaiApiKey) {
-  openai = new OpenAI({ apiKey: openaiApiKey });
-} else {
+if (!openaiApiKey) {
   console.error("❌ OPENAI_API_KEY not found in .env.local");
   process.exit(1);
 }
 
+function getOpenAI() {
+  return new OpenAI({ apiKey: openaiApiKey });
+}
+
 async function runDriveJanitor() {
+  const openai = getOpenAI();
   console.log("🧹 Foldera 2.0: The Autonomous Janitor");
   console.log("=".repeat(60));
 

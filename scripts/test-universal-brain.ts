@@ -12,16 +12,18 @@ import type { WorkSignal } from '../lib/types/universal-graph';
 // Load Environment Variables
 dotenv.config({ path: '.env.local' });
 
-// Initialize OpenAI client
 const openaiApiKey = process.env.OPENAI_API_KEY;
 if (!openaiApiKey) {
   console.error("❌ OPENAI_API_KEY not found in .env.local");
   process.exit(1);
 }
 
-const openai = new OpenAI({ apiKey: openaiApiKey });
+function getOpenAI() {
+  return new OpenAI({ apiKey: openaiApiKey });
+}
 
 async function testUniversalBrain() {
+  const openai = getOpenAI();
   console.log("🧠 Universal Brain Test - Sunday Night Scenario");
   console.log("=".repeat(60));
   console.log("");

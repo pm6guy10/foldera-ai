@@ -41,9 +41,11 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!
-});
+function getOpenAI() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
+  return new OpenAI({ apiKey });
+}
 
 // Get user email (default to b.kapp1010@gmail.com for testing)
 const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL || 'b.kapp1010@gmail.com';
@@ -107,6 +109,7 @@ async function getOrCreateUser(email: string, name: string): Promise<{ id: strin
  * Main Execution: The Sunday Night Cure Pipeline
  */
 async function main() {
+  const openai = getOpenAI();
   try {
     console.log('\n🌙 THE SUNDAY SIMULATOR - Starting End-to-End Test\n');
     console.log('='.repeat(60));
