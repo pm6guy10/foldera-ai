@@ -18,6 +18,10 @@ export async function POST(req: NextRequest) {
   const csvText = await file.text();
   const constraints = JSON.parse(constraintsRaw) as ExtractedConstraints;
   const currentSpend = parseCSV(csvText);
+  console.log(
+    "DEBUG currentSpend.categories:",
+    JSON.stringify(currentSpend.categories, null, 2)
+  );
   const result = validateBudget(constraints, currentSpend);
 
   return NextResponse.json({ spend: currentSpend, validation: result });
