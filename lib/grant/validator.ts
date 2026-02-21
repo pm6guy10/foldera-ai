@@ -33,6 +33,17 @@ function canonicalizeCategory(name: string): string {
     .trim();
 }
 
+// Build a helper to find the best cap match for a spend category
+function findCapMatch(
+  spentCanonical: string,
+  canonicalCaps: Record<string, { amount: number; percentage?: number }>
+): string | undefined {
+  return Object.keys(canonicalCaps).find(
+    (capKey) =>
+      capKey.includes(spentCanonical) || spentCanonical.includes(capKey)
+  );
+}
+
 export function validateBudget(
   constraints: ExtractedConstraints,
   currentSpend: NormalizedSpend
@@ -60,7 +71,9 @@ export function validateBudget(
   // 2. Category cap checks
   for (const [cat, cap] of Object.entries(canonicalCaps)) {
     const matchedKey = Object.keys(currentSpend.categories).find(
-      (k) => canonicalizeCategory(k) === cat
+      (k) => canonicalizeCategory(k) === cat ||
+             cat.includes(canonicalizeCategory(k)) ||
+             canonicalizeCategory(k).includes(cat)
     );
     const actual = matchedKey ? currentSpend.categories[matchedKey].spent : 0;
 
@@ -119,7 +132,8 @@ export function validateBudget(
     const isRestricted = canonicalRestricted.some((r) =>
       spentCanonical.includes(r)
     );
-    if (!canonicalCaps[spentCanonical] && !isRestricted) {
+    const capMatch = findCapMatch(spentCanonical, canonicalCaps);
+    if (!capMatch && !isRestricted) {
       warnings.push({
         code: "UNKNOWN_CATEGORY",
         message: `Unrecognized category in spend: "${spentCat}" not defined in award caps`,
