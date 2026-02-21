@@ -20,6 +20,7 @@
     "@notionhq/client": "^5.4.0",
     "@stripe/stripe-js": "^7.9.0",
     "@supabase/supabase-js": "^2.57.0",
+    "@types/papaparse": "^5.5.2",
     "ai": "^5.0.31",
     "docx": "^9.5.1",
     "docxtemplater": "^3.66.2",
