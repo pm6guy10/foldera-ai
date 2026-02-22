@@ -1,28 +1,7 @@
-import { ExtractedConstraints } from "./types";
+import { ExtractedConstraints, Violation, Warning, ValidationResult } from "./types";
 import { NormalizedSpend } from "./csv-ingest";
 
-export interface Violation {
-  code: string;
-  message: string;
-  category?: string;
-  amount?: number;
-  cap?: number;
-}
-
-export interface Warning {
-  code: string;
-  message: string;
-  category?: string;
-  amount?: number;
-  cap?: number;
-  percentUsed?: number;
-}
-
-export interface ValidationResult {
-  compliant: boolean;
-  violations: Violation[];
-  warnings: Warning[];
-}
+export type { Violation, Warning, ValidationResult };
 
 function canonicalizeCategory(name: string): string {
   return name
@@ -65,6 +44,14 @@ export function validateBudget(
     violations.push({
       code: "TOTAL_EXCEEDED",
       message: `Total spend $${currentSpend.totalSpent.toLocaleString()} exceeds award of $${constraints.total_award.toLocaleString()}`,
+      constraintId: "total_award",
+      computedValue: currentSpend.totalSpent,
+      threshold: constraints.total_award,
+      comparisonOperator: "gt",
+      calculationInputs: [
+        { label: "Total Spent", value: currentSpend.totalSpent },
+        { label: "Award Ceiling", value: constraints.total_award },
+      ],
     });
   }
 
@@ -82,8 +69,14 @@ export function validateBudget(
         code: "CATEGORY_CAP_EXCEEDED",
         message: `${matchedKey ?? cat}: spent $${actual.toLocaleString()} exceeds cap of $${cap.amount.toLocaleString()}`,
         category: matchedKey ?? cat,
-        amount: actual,
-        cap: cap.amount,
+        constraintId: `category_cap.${matchedKey ?? cat}`,
+        computedValue: actual,
+        threshold: cap.amount,
+        comparisonOperator: "gt",
+        calculationInputs: [
+          { label: "Category Spent", value: actual },
+          { label: "Category Cap", value: cap.amount },
+        ],
       });
     }
 
@@ -94,8 +87,16 @@ export function validateBudget(
           code: "PERCENTAGE_CAP_EXCEEDED",
           message: `${matchedKey ?? cat}: $${actual.toLocaleString()} exceeds ${cap.percentage}% cap ($${maxAllowed.toLocaleString()})`,
           category: matchedKey ?? cat,
-          amount: actual,
-          cap: maxAllowed,
+          constraintId: `percentage_cap.${matchedKey ?? cat}`,
+          computedValue: actual,
+          threshold: maxAllowed,
+          comparisonOperator: "gt",
+          calculationInputs: [
+            { label: "Category Spent", value: actual },
+            { label: "Percentage Cap", value: cap.percentage },
+            { label: "Award Total", value: constraints.total_award },
+            { label: "Max Allowed", value: maxAllowed },
+          ],
         });
       }
     }
@@ -106,8 +107,9 @@ export function validateBudget(
         code: "APPROACHING_CAP",
         message: `${matchedKey ?? cat}: at ${percentUsed}% of cap — approaching limit`,
         category: matchedKey ?? cat,
-        amount: actual,
-        cap: cap.amount,
+        constraintId: `category_cap.${matchedKey ?? cat}`,
+        computedValue: actual,
+        threshold: cap.amount,
         percentUsed,
       });
     }
@@ -117,11 +119,18 @@ export function validateBudget(
   for (const spentCat of Object.keys(currentSpend.categories)) {
     const spentCanonical = canonicalizeCategory(spentCat);
     if (canonicalRestricted.some((r) => spentCanonical.includes(r))) {
+      const spent = currentSpend.categories[spentCat].spent;
       violations.push({
         code: "RESTRICTED_CATEGORY",
         message: `Restricted category detected: "${spentCat}" matches a restricted term`,
         category: spentCat,
-        amount: currentSpend.categories[spentCat].spent,
+        constraintId: `restricted.${spentCat}`,
+        computedValue: spent,
+        threshold: 0,
+        comparisonOperator: "gt",
+        calculationInputs: [
+          { label: "Restricted Spend", value: spent },
+        ],
       });
     }
   }
@@ -141,7 +150,9 @@ export function validateBudget(
         code: "UNKNOWN_CATEGORY",
         message: `Unrecognized category in spend: "${k}" not defined in award caps`,
         category: k,
-        amount: v.spent,
+        constraintId: `unknown.${k}`,
+        computedValue: v.spent,
+        threshold: 0,
       });
     }
   }
