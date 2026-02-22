@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseCSV } from "@/lib/grant/csv-ingest";
 import { validateBudget } from "@/lib/grant/validator";
 import { ExtractedConstraintsSchema } from "@/lib/grant/types";
+import { generateReportHash } from "@/lib/grant/report-hash";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
     JSON.stringify(currentSpend.categories, null, 2)
   );
   const result = validateBudget(constraints, currentSpend);
+  const reportHash = generateReportHash(constraints, csvText, result);
 
-  return NextResponse.json({ spend: currentSpend, validation: result });
+  return NextResponse.json({ spend: currentSpend, validation: result, reportHash });
 }
