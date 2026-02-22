@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { ExtractedConstraintsSchema } from '@/lib/grant/types'
 
 export async function POST(request: Request) {
   try {
@@ -73,7 +74,16 @@ Rules:
     const modelText = data.content?.[0]?.text ?? ''
     const cleaned = modelText.replace(/```json\n?|\n?```/g, '').trim()
     const result = JSON.parse(cleaned)
-    return NextResponse.json(result)
+    const validation = ExtractedConstraintsSchema.safeParse(result)
+    if (!validation.success) {
+      console.error('Constraint extraction schema mismatch:', JSON.stringify(validation.error.flatten()))
+      console.error('Raw Claude response was:', modelText)
+      return NextResponse.json(
+        { error: 'Constraint extraction failed validation', detail: validation.error.flatten() },
+        { status: 422 }
+      )
+    }
+    return NextResponse.json(validation.data)
 
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

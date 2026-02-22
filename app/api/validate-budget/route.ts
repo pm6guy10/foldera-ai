@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseCSV } from "@/lib/grant/csv-ingest";
 import { validateBudget } from "@/lib/grant/validator";
-import { ExtractedConstraints } from "@/lib/grant/types";
+import { ExtractedConstraintsSchema } from "@/lib/grant/types";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -16,7 +16,17 @@ export async function POST(req: NextRequest) {
   }
 
   const csvText = await file.text();
-  const constraints = JSON.parse(constraintsRaw) as ExtractedConstraints;
+  let constraints;
+  try {
+    const parsed = JSON.parse(constraintsRaw);
+    const validation = ExtractedConstraintsSchema.safeParse(parsed);
+    if (!validation.success) {
+      return NextResponse.json({ error: 'Invalid constraints object' }, { status: 400 });
+    }
+    constraints = validation.data;
+  } catch {
+    return NextResponse.json({ error: 'Invalid constraints object' }, { status: 400 });
+  }
   const currentSpend = parseCSV(csvText);
   console.log(
     "DEBUG currentSpend.categories:",
