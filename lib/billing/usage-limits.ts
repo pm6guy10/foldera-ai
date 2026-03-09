@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { getDocumentLimit, type PlanName } from './plans';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export interface UsageData {
   userId: string;
@@ -19,7 +21,7 @@ export interface UsageData {
 export async function getUserUsage(userId: string): Promise<UsageData | null> {
   try {
     // Get user's subscription plan
-    const { data: subscription } = await supabase
+    const { data: subscription } = await getSupabase()
       .from('subscriptions')
       .select('plan_name')
       .eq('user_id', userId)
@@ -29,7 +31,7 @@ export async function getUserUsage(userId: string): Promise<UsageData | null> {
     const limit = getDocumentLimit(planName);
     
     // Get usage tracking
-    const { data: usage } = await supabase
+    const { data: usage } = await getSupabase()
       .from('usage_tracking')
       .select('*')
       .eq('user_id', userId)
@@ -38,7 +40,7 @@ export async function getUserUsage(userId: string): Promise<UsageData | null> {
     if (!usage) {
       // Create initial usage record
       const resetDate = getNextResetDate();
-      await supabase
+      await getSupabase()
         .from('usage_tracking')
         .insert({
           user_id: userId,
@@ -62,7 +64,7 @@ export async function getUserUsage(userId: string): Promise<UsageData | null> {
     // Check if we need to reset the count
     if (now > resetDate) {
       const newResetDate = getNextResetDate();
-      await supabase
+      await getSupabase()
         .from('usage_tracking')
         .update({
           document_count: 0,
@@ -117,7 +119,7 @@ export async function incrementDocumentCount(
       return false;
     }
     
-    await supabase
+    await getSupabase()
       .from('usage_tracking')
       .update({ document_count: newCount })
       .eq('user_id', userId);

@@ -1,6 +1,26 @@
 import { ShadowSignal } from '@/lib/shadow-mode/types';
 import { Relationship } from '@/lib/relationship-intelligence/types';
 
+// ---------------------------------------------------------------------------
+// Chief-of-Staff briefing — Phase 1 pivot output
+// Sourced from tkg_signals, tkg_commitments, tkg_entities
+// Written to tkg_briefings
+// ---------------------------------------------------------------------------
+
+export interface ChiefOfStaffBriefing {
+  userId: string;
+  briefingDate: string;         // YYYY-MM-DD
+  generatedAt: Date;
+  topInsight: string;           // The single most important thing right now
+  confidence: number;           // 0-100, traceable to user's own history
+  recommendedAction: string;    // One specific action
+  fullBrief: string;            // Full 3-5 line brief prose
+}
+
+// ---------------------------------------------------------------------------
+// Legacy briefing type — kept for backward compatibility
+// ---------------------------------------------------------------------------
+
 /**
  * A complete briefing for the user
  */
@@ -98,4 +118,3 @@ export const DEFAULT_BRIEFING_CONFIG: BriefingDeliveryConfig = {
   includeContextSection: true,
   maxItemsPerSection: 5,
 };
-

@@ -2,8 +2,8 @@ import { google } from 'googleapis';
 import { Client } from '@microsoft/microsoft-graph-client';
 import { EmailMessage } from './types';
 import { extractEmail } from './utils';
-import { getGoogleAccessToken } from '@/lib/meeting-prep/auth';
-import { getMicrosoftAccessToken } from '@/lib/meeting-prep/auth-microsoft';
+import { getGoogleAccessToken } from '@/lib/auth/auth-options';
+import { getMicrosoftAccessToken } from '@/lib/auth/auth-options';
 import { logger } from '@/lib/observability/logger';
 import { withRetry } from '@/lib/utils/retry';
 

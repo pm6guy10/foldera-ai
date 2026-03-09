@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { google, gmail_v1 } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
-import { authOptions, getMeetingPrepUser, getGoogleAccessToken } from '@/lib/meeting-prep/auth';
+import { authOptions, getMeetingPrepUser, getGoogleAccessToken } from '@/lib/auth/auth-options';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Supabase environment variables are not configured.');
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+
 
 export const runtime = 'nodejs';
 
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Linked meeting prep user not found' }, { status: 404 });
     }
 
-    const { data: draftRecord, error } = await supabase
+    const { data: draftRecord, error } = await getSupabase()
       .from('email_drafts')
       .select('*')
       .eq('id', id)
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    await supabase.from('email_drafts').delete().eq('id', draftRecord.id);
+    await getSupabase().from('email_drafts').delete().eq('id', draftRecord.id);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

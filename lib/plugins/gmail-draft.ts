@@ -4,7 +4,7 @@
 // =====================================================
 
 import { google } from 'googleapis';
-import { getGoogleAccessToken } from '../meeting-prep/auth';
+import { getGoogleAccessToken } from '../auth/auth-options';
 import { logger } from '../observability/logger';
 import { withRetry } from '../utils/retry';
 

@@ -1,7 +1,7 @@
 // app/api/generate-draft/route.ts
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/meeting-prep/auth';
+import { authOptions } from '@/lib/auth/auth-options';
 import { generateDraftForThread } from '@/lib/gmail-service'; // Importing from the new file
 
 export async function POST(req: Request) {

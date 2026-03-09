@@ -2,14 +2,15 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { ThreadHistoryEntry } from './utils';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Supabase environment variables are not configured.');
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+
 
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
 
@@ -154,7 +155,7 @@ export async function upsertDraft({
   senderName?: string;
   subject?: string;
 }) {
-  const { data: existing, error: selectError } = await supabase
+  const { data: existing, error: selectError } = await getSupabase()
     .from('email_drafts')
     .select('id')
     .eq('user_id', userId)
@@ -181,13 +182,13 @@ export async function upsertDraft({
   };
 
   if (existing?.id) {
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('email_drafts')
       .update(payload)
       .eq('id', existing.id);
     if (error) throw new Error(`Failed to update draft: ${error.message}`);
   } else {
-    const { error } = await supabase.from('email_drafts').insert(payload);
+    const { error } = await getSupabase().from('email_drafts').insert(payload);
     if (error) throw new Error(`Failed to save draft: ${error.message}`);
   }
 }

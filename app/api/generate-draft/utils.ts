@@ -1,5 +1,5 @@
 import { google, gmail_v1 } from 'googleapis';
-import { getGoogleAccessToken } from '@/lib/meeting-prep/auth';
+import { getGoogleAccessToken } from '@/lib/auth/auth-options';
 import { extractBody } from '@/lib/plugins/gmail/scanner';
 
 export type ThreadHistoryEntry = {

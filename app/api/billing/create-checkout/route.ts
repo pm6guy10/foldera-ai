@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { stripe, getOrCreateCustomer, createCheckoutSession } from '@/lib/billing/stripe';
 import { getPlanByName } from '@/lib/billing/plans';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/meeting-prep/auth';
+import { authOptions } from '@/lib/auth/auth-options';
 
 function getSupabaseClient() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {

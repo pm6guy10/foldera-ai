@@ -1,283 +1,184 @@
-import OpenAI from 'openai';
-import { 
-  Briefing, 
-  BriefingSection, 
-  BriefingItem, 
-  BriefingStats,
-  RelationshipHealthSummary,
-  BriefingDeliveryConfig,
-  DEFAULT_BRIEFING_CONFIG 
-} from './types';
-import { ShadowScanResult, ShadowSignal } from '@/lib/shadow-mode/types';
-import { RelationshipMap } from '@/lib/relationship-intelligence/types';
-import { trackAIUsage } from '@/lib/observability/ai-cost-tracker';
-import { logger } from '@/lib/observability/logger';
+/**
+ * Chief-of-Staff Briefing Generator — Phase 1 Rewrite
+ *
+ * Data sources: tkg_signals, tkg_commitments, tkg_entities (identity graph)
+ * AI model:     claude-sonnet-4-6
+ * Output:       ChiefOfStaffBriefing + writes to tkg_briefings
+ *
+ * Old signature: generateBriefing(userId, scanResult, relationshipMap, config)
+ * New signature: generateBriefing(userId)
+ */
 
-// Lazy initialize OpenAI client to avoid build-time errors
-let openai: OpenAI | null = null;
-function getOpenAIClient(): OpenAI {
-  if (!openai) {
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
+import type { ChiefOfStaffBriefing } from './types';
+import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
+
+// ---------------------------------------------------------------------------
+// Clients (lazy)
+// ---------------------------------------------------------------------------
+
+let _anthropic: Anthropic | null = null;
+function getAnthropic() {
+  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return _anthropic;
+}
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Chief-of-Staff system prompt (from pivot spec)
+// ---------------------------------------------------------------------------
+
+const COS_SYSTEM = `You are a chief of staff who has been embedded with this person for months. You have read everything. You know their patterns, their goals, their decisions, what has worked and what hasn't.
+
+Your job is to walk in the room and tell them exactly what they need to know today — without being asked.
+
+Write a morning brief: 3-5 lines maximum. Lead with the single most important thing. Include a confidence score (0-100) on your primary recommendation, based on how many times similar decisions have produced similar outcomes in their history. End with one specific action.
+
+Do not hedge. Do not list options. Give a verdict.
+
+Return JSON only:
+{
+  "topInsight": "The single most important thing right now",
+  "confidence": 0,
+  "recommendedAction": "One specific action to take today",
+  "fullBrief": "Full 3-5 line morning brief prose"
+}`;
+
+// ---------------------------------------------------------------------------
+// Main export — kept as generateBriefing to preserve existing route wiring
+// ---------------------------------------------------------------------------
+
+export async function generateBriefing(userId: string): Promise<ChiefOfStaffBriefing> {
+  const supabase = getSupabase();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Query the identity graph in parallel
+  const [signalsRes, commitmentsRes, entityRes] = await Promise.all([
+    supabase
+      .from('tkg_signals')
+      .select('type, source, content, occurred_at')
+      .eq('user_id', userId)
+      .gte('occurred_at', thirtyDaysAgo)
+      .order('occurred_at', { ascending: false })
+      .limit(10),
+
+    supabase
+      .from('tkg_commitments')
+      .select('description, category, status, risk_score, risk_factors, made_at')
+      .eq('user_id', userId)
+      .in('status', ['active', 'at_risk'])
+      .order('risk_score', { ascending: false })
+      .limit(20),
+
+    supabase
+      .from('tkg_entities')
+      .select('patterns, total_interactions')
+      .eq('user_id', userId)
+      .eq('name', 'self')
+      .maybeSingle(),
+  ]);
+
+  const signals = signalsRes.data ?? [];
+  const commitments = commitmentsRes.data ?? [];
+  const patterns = (entityRes.data?.patterns as Record<string, any>) ?? {};
+
+  // Empty graph — return a prompt to feed data
+  if (signals.length === 0 && commitments.length === 0) {
+    return {
+      userId,
+      briefingDate: today(),
+      generatedAt: new Date(),
+      topInsight: 'No conversation history loaded yet.',
+      confidence: 0,
+      recommendedAction: 'Paste a Claude conversation export into POST /api/extraction/ingest to get started.',
+      fullBrief: 'Your identity graph is empty. Feed it your first conversation and check back tomorrow.',
+    };
   }
-  return openai;
-}
 
-const SUMMARY_PROMPT = `You are a Chief of Staff writing an executive briefing.
+  // Build context string for Claude
+  const signalLines = signals
+    .map(s => `[${s.source}] ${(s.occurred_at as string).slice(0, 10)}: ${sanitizeForPrompt((s.content as string).slice(0, 300), 300)}`)
+    .join('\n');
 
-Given the following signals and relationship data, write a 2-3 sentence executive summary that:
-1. Highlights the most important thing to know
-2. Sets the tone for the day (urgent, calm, focused, etc.)
-3. Uses "you" and "your" (second person)
+  const commitmentLines = commitments
+    .map(c => {
+      const stakes = (c.risk_factors as any[])?.[0]?.stakes ?? 'unknown';
+      return `• ${c.description} [${c.status}, risk ${c.risk_score}/100, stakes: ${stakes}]`;
+    })
+    .join('\n');
 
-Be concise, confident, and actionable. No fluff.
+  const patternLines = Object.values(patterns)
+    .map((p: any) => `• ${p.name}: ${p.description} (seen ${p.activation_count}×)`)
+    .join('\n') || 'None extracted yet.';
 
-Signals: {{signals}}
-Relationship Status: {{relationships}}
+  const userPrompt = `RECENT SIGNALS (last 30 days, ${signals.length} total):
+${signalLines || 'None.'}
 
-Write the summary only, no JSON, no formatting.`;
+ACTIVE COMMITMENTS (${commitments.length} total):
+${commitmentLines || 'None.'}
 
-/**
- * Generates a complete briefing from scan results and relationship data
- */
-export async function generateBriefing(
-  userId: string,
-  scanResult: ShadowScanResult,
-  relationshipMap: RelationshipMap | null,
-  config: Partial<BriefingDeliveryConfig> = {}
-): Promise<Briefing> {
-  const briefingConfig = { ...DEFAULT_BRIEFING_CONFIG, ...config };
-  const briefingId = `brief_${Date.now()}`;
-  
-  logger.info('Generating briefing', { userId, briefingId });
-  
-  // Generate sections
-  const criticalAlerts = buildSection(
-    '🚨 Critical Alerts',
-    scanResult.critical,
-    briefingConfig.maxItemsPerSection
-  );
-  
-  const actionRequired = buildSection(
-    '⚡ Action Required',
-    scanResult.actionRequired.filter(s => s.urgency !== 'critical'),
-    briefingConfig.maxItemsPerSection
-  );
-  
-  const relationshipUpdates = buildRelationshipSection(
-    '💼 Relationship Updates',
-    relationshipMap,
-    briefingConfig.maxItemsPerSection
-  );
-  
-  const radarContext = briefingConfig.includeContextSection
-    ? buildSection('📡 Radar (Context)', scanResult.context, briefingConfig.maxItemsPerSection)
-    : { title: '📡 Radar (Context)', items: [], isEmpty: true };
-  
-  // Generate AI summary
-  const summary = await generateSummary(userId, scanResult, relationshipMap);
-  
-  // Build stats
-  const stats = buildStats(scanResult, relationshipMap);
-  
-  // Build relationship summaries
-  const relationships = relationshipMap
-    ? relationshipMap.atRisk.slice(0, 5).map(r => ({
-        contactName: r.contact.name || r.contact.email,
-        contactEmail: r.contact.email,
-        status: r.healthStatus,
-        healthScore: r.healthScore,
-        recommendation: '', // Would come from predictions
-      }))
-    : [];
-  
-  // Determine title
-  const title = getDynamicTitle(scanResult.critical.length, stats.actionItems);
-  const subtitle = getSubtitle();
-  
-  return {
-    id: briefingId,
-    userId,
-    title,
-    subtitle,
-    generatedAt: new Date(),
-    summary,
-    criticalAlerts,
-    actionRequired,
-    relationshipUpdates,
-    radarContext,
-    stats,
-    signals: scanResult.signals,
-    relationships,
-  };
-}
+BEHAVIORAL PATTERNS:
+${patternLines}
 
-/**
- * Builds a section from signals
- */
-function buildSection(
-  title: string,
-  signals: ShadowSignal[],
-  maxItems: number
-): BriefingSection {
-  const items: BriefingItem[] = signals.slice(0, maxItems).map(signal => ({
-    id: signal.id,
-    icon: getSignalIcon(signal.type),
-    title: signal.title,
-    description: signal.description,
-    hasAction: !!signal.draftMessage,
-    actionLabel: signal.draftMessage ? 'Open Draft' : undefined,
-    actionUrl: undefined, // Would be magic link
-    contactName: signal.contactName || undefined,
-    contactEmail: signal.contactEmail,
-    urgency: signal.urgency === 'context' ? 'info' : signal.urgency,
-  }));
-  
-  return {
-    title,
-    items,
-    isEmpty: items.length === 0,
-  };
-}
+Write the morning brief.`;
 
-/**
- * Builds relationship updates section
- */
-function buildRelationshipSection(
-  title: string,
-  relationshipMap: RelationshipMap | null,
-  maxItems: number
-): BriefingSection {
-  if (!relationshipMap) {
-    return { title, items: [], isEmpty: true };
-  }
-  
-  const atRiskItems: BriefingItem[] = relationshipMap.atRisk.slice(0, maxItems).map(r => ({
-    id: r.id,
-    icon: '⚠️',
-    title: `${r.contact.name || r.contact.email} needs attention`,
-    description: `Health score: ${r.healthScore}/100. ${r.openCommitments.length} open commitments.`,
-    hasAction: true,
-    actionLabel: 'View Details',
-    contactName: r.contact.name || undefined,
-    contactEmail: r.contact.email,
-    urgency: r.healthScore < 30 ? 'high' : 'medium',
-  }));
-  
-  return {
-    title,
-    items: atRiskItems,
-    isEmpty: atRiskItems.length === 0,
-  };
-}
+  // Call Claude
+  let parsed: { topInsight: string; confidence: number; recommendedAction: string; fullBrief: string } | null = null;
 
-/**
- * Gets icon for signal type
- */
-function getSignalIcon(type: ShadowSignal['type']): string {
-  const icons: Record<string, string> = {
-    commitment_made: '📝',
-    commitment_received: '📥',
-    deadline_approaching: '⏰',
-    ghosting_risk: '👻',
-    vip_escalation: '🔥',
-    sentiment_shift: '😟',
-    calendar_conflict: '📅',
-    context_update: '💡',
-  };
-  return icons[type] || '📌';
-}
-
-/**
- * Generates AI summary
- */
-async function generateSummary(
-  userId: string,
-  scanResult: ShadowScanResult,
-  relationshipMap: RelationshipMap | null
-): Promise<string> {
-  const signalSummary = scanResult.signals.slice(0, 5).map(s => 
-    `${s.urgency}: ${s.title}`
-  ).join('; ');
-  
-  const relationshipSummary = relationshipMap
-    ? `${relationshipMap.atRisk.length || 0} at-risk, ${relationshipMap.stats.activeRelationships} active`
-    : 'No relationship data';
-  
-  const prompt = SUMMARY_PROMPT
-    .replace('{{signals}}', signalSummary || 'No urgent signals')
-    .replace('{{relationships}}', relationshipSummary);
-  
   try {
-    const client = getOpenAIClient();
-    const response = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
-      max_tokens: 150,
+    const response = await getAnthropic().messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 400,
+      temperature: 0.4 as any,
+      system: COS_SYSTEM,
+      messages: [{ role: 'user', content: userPrompt }],
     });
-    
-    if (response.usage) {
-      await trackAIUsage(userId, 'briefing-summary', 'gpt-4o-mini', response.usage);
-    }
-    
-    return response.choices[0]?.message?.content?.trim() || getDefaultSummary(scanResult);
-  } catch (error) {
-    logger.error('Failed to generate summary', { userId, error });
-    return getDefaultSummary(scanResult);
-  }
-}
 
-/**
- * Default summary when AI fails
- */
-function getDefaultSummary(scanResult: ShadowScanResult): string {
-  if (scanResult.critical.length > 0) {
-    return `You have ${scanResult.critical.length} critical item(s) requiring immediate attention. Review the alerts below before starting your day.`;
+    const raw = response.content[0].type === 'text' ? response.content[0].text : '';
+    parsed = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim());
+  } catch (err) {
+    console.error('[generateBriefing] Claude call/parse failed:', err);
   }
-  if (scanResult.actionRequired.length > 0) {
-    return `${scanResult.actionRequired.length} items need your attention today. Your inbox is under control.`;
-  }
-  return `All clear. No urgent items detected. Your operations are running smoothly.`;
-}
 
-/**
- * Builds stats object
- */
-function buildStats(
-  scanResult: ShadowScanResult,
-  relationshipMap: RelationshipMap | null
-): BriefingStats {
-  return {
-    emailsAnalyzed: scanResult.emailsScanned,
-    threadsScanned: scanResult.threadsAnalyzed,
-    criticalItems: scanResult.critical.length,
-    actionItems: scanResult.actionRequired.length,
-    healthyRelationships: relationshipMap?.stats.activeRelationships || 0,
-    atRiskRelationships: relationshipMap?.atRisk.length || 0,
+  const brief: ChiefOfStaffBriefing = {
+    userId,
+    briefingDate: today(),
+    generatedAt: new Date(),
+    topInsight: parsed?.topInsight ?? 'Generation failed — check ANTHROPIC_API_KEY.',
+    confidence: parsed?.confidence ?? 0,
+    recommendedAction: parsed?.recommendedAction ?? '',
+    fullBrief: parsed?.fullBrief ?? '',
   };
-}
 
-/**
- * Dynamic title based on state
- */
-function getDynamicTitle(criticalCount: number, actionCount: number): string {
-  if (criticalCount > 0) {
-    return `⚠️ ${criticalCount} Critical Alert${criticalCount > 1 ? 's' : ''}`;
+  // Write to tkg_briefings (best-effort — don't throw if write fails)
+  const { error: writeErr } = await supabase.from('tkg_briefings').insert({
+    user_id: userId,
+    briefing_date: brief.briefingDate,
+    generated_at: brief.generatedAt.toISOString(),
+    top_insight: brief.topInsight,
+    confidence: brief.confidence,
+    recommended_action: brief.recommendedAction,
+    stats: {
+      signalsAnalyzed: signals.length,
+      commitmentsReviewed: commitments.length,
+      patternsActive: Object.keys(patterns).length,
+    },
+  });
+
+  if (writeErr) {
+    console.error('[generateBriefing] tkg_briefings write failed:', writeErr.message);
   }
-  if (actionCount > 0) {
-    return `☕ Morning Briefing: ${actionCount} Action Item${actionCount > 1 ? 's' : ''}`;
-  }
-  return '☕ Morning Briefing: All Clear';
+
+  return brief;
 }
 
-/**
- * Gets day-appropriate subtitle
- */
-function getSubtitle(): string {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const now = new Date();
-  return `${days[now.getDay()]}, ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
 }
-

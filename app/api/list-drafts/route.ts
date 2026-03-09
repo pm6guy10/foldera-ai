@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { createClient } from '@supabase/supabase-js';
-import { authOptions, getMeetingPrepUser } from '@/lib/meeting-prep/auth';
+import { authOptions, getMeetingPrepUser } from '@/lib/auth/auth-options';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Supabase environment variables are not configured.');
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Supabase environment variables are not configured.');
+  return createClient(url, key);
 }
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export const runtime = 'nodejs';
 
@@ -40,7 +38,7 @@ async function requireUser() {
 export async function GET(_request: NextRequest) {
   try {
     const user = await requireUser();
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('email_drafts')
       .select('id, draft, sender_email, sender_name, subject, created_at, thread_id, email_id')
       .eq('user_id', user.id)
@@ -69,7 +67,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Draft id and text required' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('email_drafts')
       .update({ draft })
       .eq('id', id)
@@ -101,7 +99,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Draft id required' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('email_drafts')
       .delete()
       .eq('id', id)

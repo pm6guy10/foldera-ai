@@ -1,6 +1,6 @@
 
 import { google, calendar_v3 } from 'googleapis';
-import { getGoogleAccessToken } from '@/lib/meeting-prep/auth';
+import { getGoogleAccessToken } from '@/lib/auth/auth-options';
 
 /**
  * Google Calendar Actuator

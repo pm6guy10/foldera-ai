@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/meeting-prep/auth';
+import { authOptions } from '@/lib/auth/auth-options';
 
 interface Issue {
   severity: 'critical' | 'high' | 'medium' | 'low';

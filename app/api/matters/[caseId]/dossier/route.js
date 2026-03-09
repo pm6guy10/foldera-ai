@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/meeting-prep/auth';
+import { authOptions } from '@/lib/auth/auth-options';
 
 // This function simulates fetching detailed violation records for a case.
 async function getCaseDossier(caseId) {

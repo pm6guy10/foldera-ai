@@ -7,10 +7,10 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/meeting-prep/auth';
+import { authOptions } from '@/lib/auth/auth-options';
 import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
-import { getGoogleAccessToken } from '@/lib/meeting-prep/auth';
+import { getGoogleAccessToken } from '@/lib/auth/auth-options';
 
 // Lazy initialization to avoid build-time errors
 function getSupabaseClient() {

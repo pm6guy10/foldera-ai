@@ -1,7 +1,7 @@
 
 import { Client } from '@microsoft/microsoft-graph-client';
 import 'isomorphic-fetch'; // Required for Graph Client in Node
-import { getMicrosoftAccessToken } from '@/lib/meeting-prep/auth-microsoft';
+import { getMicrosoftAccessToken } from '@/lib/auth/auth-options';
 
 /**
  * Microsoft Outlook Calendar Actuator
