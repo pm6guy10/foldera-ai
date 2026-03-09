@@ -1,69 +1,58 @@
-// =====================================================
-// FOLDERA MEETING PREP - Cron Job: Generate Briefs
-// Automatically generates and sends briefs before meetings
-// =====================================================
+/**
+ * Cron: Generate Chief-of-Staff Briefs
+ * Replaces processMeetingBriefs() with generateBriefing() per pivot spec.
+ * Runs for all users who have a 'self' entity in tkg_entities.
+ *
+ * Vercel cron schedule: see vercel.json
+ * Protected by CRON_SECRET header.
+ */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { processMeetingBriefs } from '@/lib/meeting-prep/orchestrator';
+import { createClient } from '@supabase/supabase-js';
+import { generateBriefing } from '@/lib/briefing/generator';
 
-/**
- * GET/POST /api/cron/generate-briefs
- * Cron job that processes all users and generates/sends briefs
- * Protected by CRON_SECRET
- * 
- * Vercel cron schedule: Every 5 minutes
- */
-export async function GET(request: NextRequest) {
-  return handleCronJob(request);
-}
-
-export async function POST(request: NextRequest) {
-  return handleCronJob(request);
-}
+export const dynamic = 'force-dynamic';
 
 async function handleCronJob(request: NextRequest) {
-  try {
-    // Verify cron secret
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-    
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-      console.error('[Cron] Unauthorized cron request');
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    
-    console.log('[Cron] Starting brief generation job...');
-    
-    // Process all users
-    const result = await processMeetingBriefs();
-    
-    console.log('[Cron] Job complete:', result);
-    
-    return NextResponse.json({
-      success: result.success,
-      summary: {
-        users_processed: result.users_processed,
-        meetings_synced: result.meetings_synced,
-        emails_synced: result.emails_synced,
-        briefs_generated: result.briefs_generated,
-        briefs_sent: result.briefs_sent,
-        duration_ms: result.duration_ms,
-      },
-      errors: result.errors.length > 0 ? result.errors : undefined,
-    });
-  } catch (error: any) {
-    console.error('[Cron] Job failed:', error);
-    
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Cron job failed',
-      },
-      { status: 500 }
-    );
+  const authHeader = request.headers.get('authorization');
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Find all users who have a self entity (have fed data into the graph)
+  const { data: selfEntities, error } = await supabase
+    .from('tkg_entities')
+    .select('user_id')
+    .eq('name', 'self');
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to fetch users', detail: error.message }, { status: 500 });
+  }
+
+  const userIds = [...new Set((selfEntities ?? []).map(e => e.user_id as string))];
+
+  const results: Array<{ userId: string; success: boolean; error?: string }> = [];
+
+  for (const userId of userIds) {
+    try {
+      await generateBriefing(userId);
+      results.push({ userId, success: true });
+    } catch (err: any) {
+      results.push({ userId, success: false, error: err.message });
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    briefs_generated: results.filter(r => r.success).length,
+    errors: results.filter(r => !r.success),
+  });
 }
 
+export const GET = handleCronJob;
+export const POST = handleCronJob;
