@@ -74,3 +74,32 @@ export function getAuthOptions(): NextAuthOptions {
 
 export const authOptions = getAuthOptions();
 
+// ---------------------------------------------------------------------------
+// Legacy stubs — referenced by pre-pivot routes.
+// These routes are not active in the chief-of-staff product; stubs keep the
+// build clean without breaking TypeScript compilation.
+// ---------------------------------------------------------------------------
+
+/** @deprecated Pre-pivot Google OAuth token helper. Returns null — not implemented. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function getGoogleAccessToken(_userId: string): Promise<string | null> {
+  return null;
+}
+
+/** @deprecated Pre-pivot user record lookup. Returns null — not implemented. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function getMeetingPrepUser(_email: string): Promise<{ id: string } | null> {
+  return null;
+}
+
+/** @deprecated Pre-pivot Google connection check. Returns false — not implemented. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function hasValidGoogleConnection(_userId: string): Promise<boolean> {
+  return false;
+}
+
+/** @deprecated Pre-pivot Microsoft OAuth token helper. Returns null — not implemented. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function getMicrosoftAccessToken(_userId: string): Promise<string | null> {
+  return null;
+}

@@ -4,7 +4,7 @@
 // =====================================================
 
 import { google } from 'googleapis';
-import { getGoogleAccessToken } from '../meeting-prep/auth';
+import { getGoogleAccessToken } from '../auth/auth-options';
 
 /**
  * Encode Subject Line (RFC 2047)

@@ -1,9 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 // Pricing per 1M tokens (as of Dec 2024)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
@@ -64,7 +66,7 @@ export async function trackAIUsage(
   console.log(`[AI COST] ${operation} | ${model} | ${usage.prompt_tokens}/${usage.completion_tokens} tokens | $${cost.toFixed(6)}`);
   
   // Fire-and-forget DB insert
-  supabase
+  getSupabase()
     .from('ai_usage')
     .insert(record)
     .then(({ error }) => {
@@ -87,7 +89,7 @@ export async function getUserUsageSummary(
   totalOutputTokens: number;
   operationBreakdown: Record<string, number>;
 }> {
-  let query = supabase
+  let query = getSupabase()
     .from('ai_usage')
     .select('*')
     .eq('user_id', userId);

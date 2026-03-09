@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/meeting-prep/auth';
+import { authOptions } from '@/lib/auth/auth-options';
 import { getGmailClient, extractPlainBody } from '@/lib/gmail-service'; // Importing from the new file
 
 export async function GET(req: Request) {
