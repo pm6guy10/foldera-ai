@@ -17,6 +17,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
+import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 
 // ---------------------------------------------------------------------------
 // Clients
@@ -176,7 +177,7 @@ export async function extractFromConversation(
     max_tokens: 2048,
     temperature: 0.1 as any,
     system: EXTRACTION_SYSTEM,
-    messages: [{ role: 'user', content: text }],
+    messages: [{ role: 'user', content: sanitizeForPrompt(text, 40000) }],
   });
 
   const raw = response.content[0].type === 'text' ? response.content[0].text : '';

@@ -7,7 +7,6 @@ export function getAuthOptions(): NextAuthOptions {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
           scope: [
@@ -28,7 +27,6 @@ export function getAuthOptions(): NextAuthOptions {
       AzureADProvider({
         clientId: process.env.AZURE_AD_CLIENT_ID,
         clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
-        allowDangerousEmailAccountLinking: true,
         tenantId: process.env.AZURE_AD_TENANT_ID || 'common',
         authorization: {
           params: {

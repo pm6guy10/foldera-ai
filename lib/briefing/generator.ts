@@ -12,6 +12,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import type { ChiefOfStaffBriefing } from './types';
+import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 
 // ---------------------------------------------------------------------------
 // Clients (lazy)
@@ -103,7 +104,7 @@ export async function generateBriefing(userId: string): Promise<ChiefOfStaffBrie
 
   // Build context string for Claude
   const signalLines = signals
-    .map(s => `[${s.source}] ${(s.occurred_at as string).slice(0, 10)}: ${(s.content as string).slice(0, 300)}`)
+    .map(s => `[${s.source}] ${(s.occurred_at as string).slice(0, 10)}: ${sanitizeForPrompt((s.content as string).slice(0, 300), 300)}`)
     .join('\n');
 
   const commitmentLines = commitments
