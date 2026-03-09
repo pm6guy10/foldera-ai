@@ -15,7 +15,7 @@ import {
   Briefcase
 } from 'lucide-react';
 // --- CUSTOM HOOKS ---
-const useInView = (options = { threshold: 0.15, triggerOnce: true }) => {
+const useInView = (options = { threshold: 0.05, triggerOnce: true }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
@@ -117,7 +117,7 @@ const tickerItems = [
 ];
 // --- SUB-COMPONENTS ---
 const ScrollReveal = ({ children, delay = 0, slow = false }: { children: React.ReactNode; delay?: number; slow?: boolean }) => {
-  const [divRef, inView] = useInView({ triggerOnce: true, threshold: 0.15 });
+  const [divRef, inView] = useInView({ triggerOnce: true, threshold: 0.05 });
   return (
     <div
       ref={divRef}
@@ -201,7 +201,7 @@ const PatternTimeline = ({ confidence = 87, recommendedAction = "Decide now. Wai
                   {eventsData.map((event, i) => {
                     const isLast = i === eventsData.length - 1;
                     const nodeClass = isLast ? "node-final" : "node-pulse";
-                    const delay = 0.6 + (i * 0.3);
+                    const delay = 0.36 + (i * 0.18);
                     return (
                       <ScrollReveal key={i} delay={delay}>
                         <div className="relative pl-6">
@@ -221,7 +221,7 @@ const PatternTimeline = ({ confidence = 87, recommendedAction = "Decide now. Wai
                     );
                   })}
                 </div>
-                <ScrollReveal delay={1.6}>
+                <ScrollReveal delay={0.96}>
                   <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/5 flex items-start gap-3 relative overflow-hidden">
                     <div className="absolute inset-0 bg-white/5 opacity-0 animate-[fade-in-up_0.4s_ease-out_1.4s_forwards]" />
                     <GitCommit className="w-4 h-4 text-[#777] mt-0.5 shrink-0 relative z-10" />
@@ -234,7 +234,7 @@ const PatternTimeline = ({ confidence = 87, recommendedAction = "Decide now. Wai
                   </div>
                 </ScrollReveal>
               </div>
-              <ScrollReveal delay={1.8}>
+              <ScrollReveal delay={1.08}>
                 <div className="flex-1 w-full md:max-w-sm flex flex-col transform scale-100 md:scale-110 origin-center transition-all duration-700 z-10 md:shadow-[0_0_50px_rgba(0,0,0,0.6)]">
                   <div className="rounded-xl border border-white/10 bg-[#111115] p-6 h-full flex flex-col relative overflow-hidden min-h-[340px]">
 
@@ -245,7 +245,7 @@ const PatternTimeline = ({ confidence = 87, recommendedAction = "Decide now. Wai
                     <p className="text-2xl font-serif text-white mb-3 leading-tight tracking-tight min-h-[64px]">
                       <Typewriter
                         text="The choice you keep postponing is holding you back."
-                        delay={2200}
+                        delay={1320}
                         speed={30}
                         onComplete={() => setShowConfidence(true)}
                       />
@@ -409,7 +409,7 @@ export default function App() {
       <main className="relative z-10 pt-32 md:pt-40 pb-16 max-w-7xl mx-auto px-4 sm:px-6 flex flex-col items-center text-center">
 
         {/* The Confident, Tiny Headline */}
-        <ScrollReveal delay={0.1}>
+        <ScrollReveal delay={0.06}>
           <h1 className="text-xl md:text-2xl font-medium text-white mb-6 tracking-tight flex items-center gap-3">
             Your patterns. Finally visible.
           </h1>
@@ -417,7 +417,7 @@ export default function App() {
         {/* --- THE PROOF (Runs Immediately) --- */}
         <PatternTimeline />
         {/* --- THE EXPLANATION --- */}
-        <ScrollReveal delay={1.4}>
+        <ScrollReveal delay={0.84}>
           <div className="max-w-3xl mx-auto flex flex-col items-center mt-12 md:mt-16">
             <h2 className="text-4xl md:text-6xl font-extrabold text-white mb-6 tracking-tighter" style={{ lineHeight: '0.92' }}>
               You've told Claude everything. <br className="hidden md:block" />
@@ -436,7 +436,7 @@ export default function App() {
         </ScrollReveal>
       </main>
       {/* --- LIVE TELEMETRY TICKER (The Whispers) --- */}
-      <ScrollReveal delay={0.2}>
+      <ScrollReveal delay={0.12}>
         <LiveTicker />
       </ScrollReveal>
       {/* =========================================
@@ -444,7 +444,7 @@ export default function App() {
           ========================================= */}
       <section className="relative z-10 py-48 md:py-64 bg-black flex items-center justify-center">
         <div className="max-w-5xl mx-auto px-6 text-center">
-          <ScrollReveal delay={0.2} slow={true}>
+          <ScrollReveal delay={0.12} slow={true}>
             <h2 className="text-4xl sm:text-6xl md:text-[80px] font-bold tracking-tighter text-white leading-[1.1]">
               What has the last year of your life actually taught you?
             </h2>
@@ -460,7 +460,7 @@ export default function App() {
             {mechanismData.map((m, i) => {
               const Icon = m.icon;
               return (
-                <ScrollReveal key={i} delay={0.2 + i * 0.15}>
+                <ScrollReveal key={i} delay={0.12 + i * 0.09}>
                   <div className="p-8 border border-white/5 rounded-2xl bg-[#0F0F12] hover:bg-white/[0.04] transition-colors h-full flex flex-col items-center text-center md:items-start md:text-left">
                     <Icon className={`w-8 h-8 ${m.color} mb-6`} />
                     <h3 className="text-xl font-semibold mb-3 text-white">{m.title}</h3>
@@ -478,7 +478,7 @@ export default function App() {
       <section className="relative z-10 py-24 md:py-32 border-t border-white/5 bg-[#080809]">
         <div className="max-w-7xl mx-auto px-6">
 
-          <ScrollReveal delay={0.1}>
+          <ScrollReveal delay={0.06}>
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6 text-[#F5F5F5]" style={{ letterSpacing: '-0.03em' }}>
                 Intelligence across every domain.
@@ -492,7 +492,7 @@ export default function App() {
             {domainData.map((d, i) => {
               const Icon = d.icon;
               return (
-                <ScrollReveal key={i} delay={0.2 + i * 0.15}>
+                <ScrollReveal key={i} delay={0.12 + i * 0.09}>
                   <div className="p-8 border border-[#3A6BFF]/10 rounded-2xl bg-[#111115] shadow-[0_0_30px_rgba(0,0,0,0.5)] h-full relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-[#3A6BFF] opacity-50 group-hover:opacity-100 transition-opacity" />
                     <div className="w-12 h-12 rounded-full bg-[#3A6BFF]/10 flex items-center justify-center mb-6">
@@ -510,7 +510,7 @@ export default function App() {
       {/* =========================================
           SECTION 5: HIGH STAKES CTA
           ========================================= */}
-      <ScrollReveal delay={0.2}>
+      <ScrollReveal delay={0.12}>
         <section className="relative z-10 py-32 md:py-40 border-t border-white/5 bg-[#0B0B0C] text-center">
           <div className="absolute inset-0 bg-gradient-to-t from-[#3A6BFF]/5 to-transparent pointer-events-none" />
           <div className="max-w-4xl mx-auto px-6 flex flex-col items-center relative z-10">
