@@ -1,7 +1,53 @@
 // ---------------------------------------------------------------------------
-// Chief-of-Staff briefing — Phase 1 pivot output
-// Sourced from tkg_signals, tkg_commitments, tkg_entities
-// Written to tkg_briefings
+// Conviction engine types — Phase 2
+// The engine outputs one thing: the single highest-leverage action today.
+// ---------------------------------------------------------------------------
+
+export type ActionType =
+  | 'write_document'
+  | 'send_message'
+  | 'make_decision'
+  | 'do_nothing'
+  | 'schedule'
+  | 'research';
+
+export interface EvidenceItem {
+  type: 'signal' | 'commitment' | 'goal' | 'pattern';
+  description: string;
+  date?: string;
+}
+
+/**
+ * The single directive the conviction engine produces.
+ * Everything else is secondary context.
+ */
+export interface ConvictionDirective {
+  // The lead — the only thing that matters
+  directive: string;         // The action in plain English
+  action_type: ActionType;
+  confidence: number;        // 0-100
+  reason: string;            // One sentence, grounded in specific behavioral evidence
+
+  // Secondary context (below the fold)
+  evidence: EvidenceItem[];  // The specific signals/patterns that drove this
+  fullContext?: string;      // Optional longer prose for the detail panel
+}
+
+/**
+ * Persisted to tkg_actions and returned from /api/conviction/generate
+ */
+export interface ConvictionAction extends ConvictionDirective {
+  id: string;
+  userId: string;
+  status: 'pending_approval' | 'approved' | 'rejected' | 'executed' | 'skipped';
+  generatedAt: string;
+  approvedAt?: string;
+  executedAt?: string;
+  executionResult?: Record<string, unknown>;
+}
+
+// ---------------------------------------------------------------------------
+// Chief-of-Staff briefing — Phase 1 output (kept for /api/briefing/latest)
 // ---------------------------------------------------------------------------
 
 export interface ChiefOfStaffBriefing {
@@ -18,31 +64,18 @@ export interface ChiefOfStaffBriefing {
 // Legacy briefing type — kept for backward compatibility
 // ---------------------------------------------------------------------------
 
-/**
- * A complete briefing for the user
- */
 export interface Briefing {
   id: string;
   userId: string;
-  
-  // Header
   title: string;
   subtitle: string;
   generatedAt: Date;
-  
-  // Executive Summary
   summary: string;
-  
-  // Sections
   criticalAlerts: BriefingSection;
   actionRequired: BriefingSection;
   relationshipUpdates: BriefingSection;
   radarContext: BriefingSection;
-  
-  // Stats
   stats: BriefingStats;
-  
-  // Raw data
   signals: unknown[];
   relationships: RelationshipHealthSummary[];
 }
@@ -58,13 +91,9 @@ export interface BriefingItem {
   icon: string;
   title: string;
   description: string;
-  
-  // Action
   hasAction: boolean;
   actionLabel?: string;
-  actionUrl?: string;  // Magic link to draft or action
-  
-  // Context
+  actionUrl?: string;
   contactName?: string;
   contactEmail?: string;
   urgency: 'critical' | 'high' | 'medium' | 'low' | 'info';
@@ -87,22 +116,12 @@ export interface RelationshipHealthSummary {
   recommendation: string;
 }
 
-/**
- * Briefing delivery options
- */
 export interface BriefingDeliveryConfig {
-  // Email
   sendEmail: boolean;
   emailAddress?: string;
-  
-  // Schedule
   timezone: string;
-  preferredTime: string;  // "07:00"
-  
-  // Frequency
+  preferredTime: string;
   frequency: 'daily' | 'weekdays' | 'weekly';
-  
-  // Content
   includeContextSection: boolean;
   maxItemsPerSection: number;
 }

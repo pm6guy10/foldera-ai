@@ -1,6 +1,11 @@
 /**
- * generate-briefing.mjs — direct briefing generation, no HTTP server needed.
- * Mirrors the logic in lib/briefing/generator.ts.
+ * generate-briefing.mjs — Conviction engine, standalone runner.
+ *
+ * Generates the single highest-leverage directive for today.
+ * Reads from tkg_signals, tkg_commitments, tkg_entities, tkg_goals.
+ * Writes result to tkg_actions (status=pending_approval) and tkg_briefings.
+ *
+ * Run after seed-goals.mjs to get the first conviction directive.
  */
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
@@ -39,34 +44,57 @@ const supabase  = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
-const COS_SYSTEM = `You are a chief of staff who has been embedded with this person for months. You have read everything. You know their patterns, their goals, their decisions, what has worked and what hasn't.
+// ---------------------------------------------------------------------------
+// Conviction engine system prompt — one directive, no hedging
+// ---------------------------------------------------------------------------
 
-Your job is to walk in the room and tell them exactly what they need to know today — without being asked.
+const CONVICTION_SYSTEM = `You are a conviction engine embedded inside a personal chief-of-staff system.
 
-Write a morning brief: 3-5 lines maximum. Lead with the single most important thing. Include a confidence score (0-100) on your primary recommendation, based on how many times similar decisions have produced similar outcomes in their history. End with one specific action.
+You have access to this person's complete behavioral history: every decision they have made, every pattern identified in their conversations, every commitment they have taken on, and every goal they have declared.
 
-Do not hedge. Do not list options. Give a verdict.
+Your only job is to identify the single highest-leverage action they should take TODAY.
+
+Not a summary. Not a list. One directive.
+
+Evaluate the full context — goals, active commitments, behavioral patterns, recent signals — and surface the action that will move the needle most given what you know about how this person actually behaves (not just what they say they will do).
+
+The action_type must be one of:
+- write_document: create a document, plan, or written artifact
+- send_message: reach out to a specific person
+- make_decision: commit to one path and stop deliberating
+- do_nothing: the highest-leverage move is to wait and let something resolve
+- schedule: block time or create a calendar commitment
+- research: gather specific information before the next decision point
+
+The reason must be one sentence citing specific behavioral evidence from their history.
+
+The evidence array must contain 2-5 specific items from their graph that directly justify this directive.
 
 Return JSON only:
 {
-  "topInsight": "The single most important thing right now",
+  "directive": "The action in plain English, written as an instruction to the user",
+  "action_type": "write_document | send_message | make_decision | do_nothing | schedule | research",
   "confidence": 0,
-  "recommendedAction": "One specific action to take today",
-  "fullBrief": "Full 3-5 line morning brief prose"
+  "reason": "One sentence citing specific behavioral evidence",
+  "evidence": [
+    { "type": "signal | commitment | goal | pattern", "description": "specific item", "date": "YYYY-MM-DD or null" }
+  ],
+  "fullContext": "2-3 sentences of additional context"
 }`;
 
 const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-console.log('Querying identity graph for user ' + USER_ID + '...');
+console.log('Querying conviction engine data sources for user ' + USER_ID + '...');
 
-const [signalsRes, commitmentsRes, entityRes] = await Promise.all([
+const [signalsRes, commitmentsRes, entityRes, goalsRes] = await Promise.all([
   supabase
     .from('tkg_signals')
     .select('type, source, content, occurred_at')
     .eq('user_id', USER_ID)
     .gte('occurred_at', thirtyDaysAgo)
+    .eq('processed', true)
     .order('occurred_at', { ascending: false })
-    .limit(20),
+    .limit(15),
 
   supabase
     .from('tkg_commitments')
@@ -74,7 +102,7 @@ const [signalsRes, commitmentsRes, entityRes] = await Promise.all([
     .eq('user_id', USER_ID)
     .in('status', ['active', 'at_risk'])
     .order('risk_score', { ascending: false })
-    .limit(30),
+    .limit(25),
 
   supabase
     .from('tkg_entities')
@@ -82,101 +110,166 @@ const [signalsRes, commitmentsRes, entityRes] = await Promise.all([
     .eq('user_id', USER_ID)
     .eq('name', 'self')
     .maybeSingle(),
+
+  supabase
+    .from('tkg_goals')
+    .select('goal_text, goal_category, priority')
+    .eq('user_id', USER_ID)
+    .order('priority', { ascending: false })
+    .limit(10),
 ]);
 
 const signals     = signalsRes.data ?? [];
 const commitments = commitmentsRes.data ?? [];
-const patterns    = (entityRes.data && entityRes.data.patterns) ? entityRes.data.patterns : {};
+const patterns    = (entityRes.data?.patterns) ? entityRes.data.patterns : {};
+const goals       = goalsRes.data ?? [];
 
-console.log('  Signals (last 30d): ' + signals.length);
-console.log('  Active commitments: ' + commitments.length);
-console.log('  Patterns: ' + Object.keys(patterns).length);
+console.log(`  Goals:           ${goals.length}`);
+console.log(`  Signals (30d):   ${signals.length}`);
+console.log(`  Commitments:     ${commitments.length}`);
+console.log(`  Patterns:        ${Object.keys(patterns).length}`);
 
-if (signals.length === 0 && commitments.length === 0) {
-  console.log('\nIdentity graph is empty — nothing to brief on.');
+if (signals.length === 0 && commitments.length === 0 && goals.length === 0) {
+  console.log('\nIdentity graph is empty. Run seed-goals.mjs and run-ingest.mjs first.');
   process.exit(0);
 }
 
-// Build context string
-const signalLines = signals
-  .map(function(s) {
-    return '[' + s.source + '] ' + String(s.occurred_at).slice(0, 10) + ': ' + String(s.content).slice(0, 300);
-  })
-  .join('\n');
+// Build context
+const goalLines = goals.length > 0
+  ? goals.map(g => `• [${g.goal_category}, priority ${g.priority}/5] ${g.goal_text}`).join('\n')
+  : 'No declared goals yet. Run seed-goals.mjs.';
 
 const commitmentLines = commitments
-  .map(function(c) {
+  .map(c => {
     const stakes = (c.risk_factors && c.risk_factors[0]) ? c.risk_factors[0].stakes : 'unknown';
-    return '• ' + c.description + ' [' + c.status + ', stakes: ' + stakes + ']';
+    return `• [${c.status}, risk ${c.risk_score}/100, stakes:${stakes}] ${c.description}`;
   })
   .join('\n');
 
 const patternLines = Object.values(patterns)
-  .map(function(p) {
-    return '• ' + p.name + ': ' + p.description + ' (seen ' + (p.activation_count || 1) + '×)';
-  })
+  .map(p => `• ${p.name} (${p.activation_count || 1}× / domain:${p.domain}): ${p.description}`)
   .join('\n') || 'None extracted yet.';
 
-const userPrompt = `RECENT SIGNALS (last 30 days, ${signals.length} total):
-${signalLines || 'None.'}
+const signalLines = signals
+  .map(s => `[${String(s.occurred_at).slice(0, 10)}] ${String(s.content).slice(0, 250)}`)
+  .join('\n');
+
+const userPrompt = `DECLARED GOALS (${goals.length} total — measure every recommendation against these):
+${goalLines}
 
 ACTIVE COMMITMENTS (${commitments.length} total):
 ${commitmentLines || 'None.'}
 
-BEHAVIORAL PATTERNS:
+BEHAVIORAL PATTERNS (${Object.keys(patterns).length} identified):
 ${patternLines}
 
-Write the morning brief.`;
+RECENT SIGNALS (last 30 days, ${signals.length} total):
+${signalLines || 'None.'}
 
-console.log('\nCalling Claude (chief-of-staff prompt)...\n');
+Identify the single highest-leverage action for today. Return only the JSON directive.`;
+
+console.log('\nCalling Claude (conviction engine)...\n');
 
 const response = await anthropic.messages.create({
   model:      'claude-sonnet-4-6',
-  max_tokens: 500,
-  system:     COS_SYSTEM,
+  max_tokens: 600,
+  temperature: 0.3,
+  system:     CONVICTION_SYSTEM,
   messages:   [{ role: 'user', content: userPrompt }],
 });
 
-const raw = response.content[0] && response.content[0].type === 'text' ? response.content[0].text : '';
+const raw = response.content[0]?.type === 'text' ? response.content[0].text : '';
 let parsed = null;
-try { parsed = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim()); } catch (_) {}
-
-if (!parsed) {
+try {
+  parsed = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim());
+} catch (_) {
   console.error('Failed to parse Claude response:\n' + raw);
   process.exit(1);
 }
 
-// Write to tkg_briefings
+// Write to tkg_actions
+const { data: actionRow, error: actionErr } = await supabase
+  .from('tkg_actions')
+  .insert({
+    user_id:        USER_ID,
+    directive_text: parsed.directive,
+    action_type:    parsed.action_type,
+    confidence:     parsed.confidence,
+    reason:         parsed.reason,
+    evidence:       parsed.evidence ?? [],
+    status:         'pending_approval',
+    generated_at:   new Date().toISOString(),
+  })
+  .select('id')
+  .single();
+
+if (actionErr) {
+  console.error('tkg_actions write failed: ' + actionErr.message);
+  console.error('  (Table may not exist yet — run the migration in Supabase dashboard)');
+} else {
+  console.log(`Directive logged to tkg_actions (id: ${actionRow.id})\n`);
+}
+
+// Also write to tkg_briefings for backwards compat
 const today = new Date().toISOString().slice(0, 10);
-const { error: writeErr } = await supabase.from('tkg_briefings').insert({
-  user_id:          USER_ID,
-  briefing_date:    today,
-  generated_at:     new Date().toISOString(),
-  top_insight:      parsed.topInsight,
-  confidence:       parsed.confidence,
-  recommended_action: parsed.recommendedAction,
+const { error: briefErr } = await supabase.from('tkg_briefings').insert({
+  user_id:            USER_ID,
+  briefing_date:      today,
+  generated_at:       new Date().toISOString(),
+  top_insight:        parsed.reason,
+  confidence:         parsed.confidence,
+  recommended_action: parsed.directive,
   stats: {
-    signalsAnalyzed:    signals.length,
+    signalsAnalyzed:     signals.length,
     commitmentsReviewed: commitments.length,
-    patternsActive:     Object.keys(patterns).length,
-    fullBrief:          parsed.fullBrief,
+    patternsActive:      Object.keys(patterns).length,
+    goalsActive:         goals.length,
+    fullBrief:           parsed.fullContext ?? parsed.reason,
+    directive:           parsed,
   },
 });
 
-if (writeErr) {
-  console.error('tkg_briefings write failed: ' + writeErr.message);
-} else {
-  console.log('Brief written to tkg_briefings.\n');
+if (briefErr) {
+  console.error('tkg_briefings write failed: ' + briefErr.message);
 }
 
-// Print the brief
+// ---------------------------------------------------------------------------
+// Print the single directive
+// ---------------------------------------------------------------------------
+
+const ACTION_EMOJI = {
+  write_document: '📝',
+  send_message:   '📨',
+  make_decision:  '⚖️',
+  do_nothing:     '⏸️',
+  schedule:       '📅',
+  research:       '🔍',
+};
+
 console.log('═'.repeat(60));
-console.log('MORNING BRIEF — ' + today);
+console.log('CONVICTION DIRECTIVE — ' + today);
 console.log('═'.repeat(60));
-console.log('\n' + parsed.fullBrief);
-console.log('\n─'.repeat(60));
-console.log('TOP INSIGHT : ' + parsed.topInsight);
-console.log('CONFIDENCE  : ' + parsed.confidence + '/100');
-console.log('ACTION      : ' + parsed.recommendedAction);
+console.log('');
+console.log(`${ACTION_EMOJI[parsed.action_type] ?? '▶'} [${parsed.action_type.toUpperCase()}]`);
+console.log('');
+console.log(parsed.directive);
+console.log('');
 console.log('─'.repeat(60));
-console.log('\nStats: ' + signals.length + ' signals | ' + commitments.length + ' commitments | ' + Object.keys(patterns).length + ' patterns');
+console.log(`CONFIDENCE : ${parsed.confidence}/100`);
+console.log(`REASON     : ${parsed.reason}`);
+console.log('─'.repeat(60));
+
+if (parsed.evidence && parsed.evidence.length > 0) {
+  console.log('\nEVIDENCE:');
+  parsed.evidence.forEach(e => {
+    console.log(`  [${e.type}] ${e.description}${e.date ? ' (' + e.date + ')' : ''}`);
+  });
+}
+
+if (parsed.fullContext) {
+  console.log('\nCONTEXT:');
+  console.log(parsed.fullContext);
+}
+
+console.log('');
+console.log(`Sources: ${goals.length} goals | ${signals.length} signals | ${commitments.length} commitments | ${Object.keys(patterns).length} patterns`);

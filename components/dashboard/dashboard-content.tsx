@@ -1,48 +1,95 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Zap, Target, Upload, RefreshCw } from 'lucide-react';
+import { Upload, RefreshCw } from 'lucide-react';
+import ConvictionCard from './conviction-card';
+import type { ConvictionAction } from '@/lib/briefing/types';
 
-interface CoSBrief {
-  topInsight: string;
-  confidence: number;
-  recommendedAction: string;
-  fullBrief: string;
-  generatedAt: string;
-  briefingDate: string;
-  graphStats: {
-    signalsTotal: number;
-    commitmentsActive: number;
-    patternsActive: number;
-  };
+// ---------------------------------------------------------------------------
+// Graph stats from /api/briefing/latest
+// ---------------------------------------------------------------------------
+
+interface GraphStats {
+  signalsTotal: number;
+  commitmentsActive: number;
+  patternsActive: number;
 }
+
+// ---------------------------------------------------------------------------
+// Main dashboard
+// ---------------------------------------------------------------------------
 
 export default function DashboardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [brief, setBrief] = useState<CoSBrief | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const [stats, setStats] = useState<GraphStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const [conviction, setConviction] = useState<ConvictionAction | null>(null);
+  const [convictionLoading, setConvictionLoading] = useState(false);
 
   useEffect(() => {
-    if (status === 'authenticated') fetchBrief();
+    if (status === 'authenticated') loadStats();
     if (status === 'unauthenticated') router.push('/api/auth/signin');
   }, [status]);
 
-  const fetchBrief = async () => {
-    setIsLoading(true);
+  const loadStats = async () => {
+    setStatsLoading(true);
     try {
       const res = await fetch('/api/briefing/latest');
-      if (res.ok) setBrief(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data.graphStats ?? null);
+      }
     } catch {
-      // silent — brief panel shows empty state
+      // silent
     } finally {
-      setIsLoading(false);
+      setStatsLoading(false);
     }
   };
 
-  const stats = brief?.graphStats;
+  const generateDirective = useCallback(async () => {
+    setConvictionLoading(true);
+    setConviction(null);
+    try {
+      const res = await fetch('/api/conviction/generate', { method: 'POST' });
+      if (res.ok) setConviction(await res.json());
+    } catch {
+      // silent
+    } finally {
+      setConvictionLoading(false);
+    }
+  }, []);
+
+  const handleApprove = async (actionId: string) => {
+    const res = await fetch('/api/conviction/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action_id: actionId, decision: 'approve' }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Execute failed');
+    }
+    setConviction(prev => prev ? { ...prev, status: 'executed' } : prev);
+  };
+
+  const handleSkip = async (actionId: string) => {
+    const res = await fetch('/api/conviction/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action_id: actionId, decision: 'skip' }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Skip failed');
+    }
+    setConviction(prev => prev ? { ...prev, status: 'skipped' } : prev);
+  };
+
   const isEmpty = stats && stats.signalsTotal === 0 && stats.commitmentsActive === 0;
 
   return (
@@ -51,17 +98,15 @@ export default function DashboardContent() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-zinc-50">{getGreeting()}</h1>
-          <p className="text-zinc-400 text-sm mt-1">
-            {brief?.briefingDate ?? new Date().toISOString().slice(0, 10)}
-          </p>
+          <p className="text-zinc-400 text-sm mt-1">{new Date().toISOString().slice(0, 10)}</p>
         </div>
         <button
-          onClick={fetchBrief}
-          disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
+          onClick={loadStats}
+          disabled={statsLoading}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          {isLoading ? 'Loading...' : 'Refresh'}
+          <RefreshCw className={`w-4 h-4 ${statsLoading ? 'animate-spin' : ''}`} />
+          Refresh
         </button>
       </div>
 
@@ -69,86 +114,41 @@ export default function DashboardContent() {
       <div className="grid grid-cols-3 gap-4">
         <MetricCard
           label="Signals ingested"
-          value={isLoading ? '—' : String(stats?.signalsTotal ?? 0)}
+          value={statsLoading ? '—' : String(stats?.signalsTotal ?? 0)}
         />
         <MetricCard
           label="Active commitments"
-          value={isLoading ? '—' : String(stats?.commitmentsActive ?? 0)}
+          value={statsLoading ? '—' : String(stats?.commitmentsActive ?? 0)}
           highlight={!!stats?.commitmentsActive}
         />
         <MetricCard
           label="Patterns identified"
-          value={isLoading ? '—' : String(stats?.patternsActive ?? 0)}
+          value={statsLoading ? '—' : String(stats?.patternsActive ?? 0)}
         />
       </div>
 
       {/* Main grid */}
       <div className="grid grid-cols-3 gap-6">
 
-        {/* Brief panel */}
-        <div className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl">
-          <div className="p-5 border-b border-zinc-800">
-            <h2 className="text-zinc-50 font-semibold">Today's Brief</h2>
-            <p className="text-zinc-500 text-sm mt-0.5">
-              {brief?.briefingDate ?? '—'}
-            </p>
-          </div>
-          <div className="p-5 space-y-4">
-            {isLoading ? (
-              <div className="space-y-3 animate-pulse">
-                <div className="h-4 bg-zinc-800 rounded w-3/4" />
-                <div className="h-4 bg-zinc-800 rounded w-full" />
-                <div className="h-4 bg-zinc-800 rounded w-2/3" />
-              </div>
-            ) : isEmpty ? (
-              <EmptyState />
-            ) : brief ? (
-              <>
-                {/* Top insight */}
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Zap className="w-4 h-4 text-cyan-400" />
-                    <span className="text-cyan-400 text-xs font-semibold uppercase tracking-wider">
-                      Top Insight
-                    </span>
-                    <span className={`ml-auto text-xs font-mono px-1.5 py-0.5 rounded ${
-                      brief.confidence >= 70
-                        ? 'bg-emerald-900/50 text-emerald-400'
-                        : brief.confidence >= 40
-                        ? 'bg-amber-900/50 text-amber-400'
-                        : 'bg-zinc-800 text-zinc-500'
-                    }`}>
-                      {brief.confidence}%
-                    </span>
-                  </div>
-                  <p className="text-zinc-200 leading-relaxed">{brief.topInsight}</p>
-                </div>
-
-                {/* Recommended action */}
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Target className="w-4 h-4 text-violet-400" />
-                    <span className="text-violet-400 text-xs font-semibold uppercase tracking-wider">
-                      Action
-                    </span>
-                  </div>
-                  <p className="text-zinc-300 leading-relaxed">{brief.recommendedAction}</p>
-                </div>
-              </>
-            ) : (
-              <p className="text-zinc-500 text-sm">No brief available.</p>
-            )}
-          </div>
+        {/* CONVICTION CARD — front and center, full 2/3 width */}
+        <div className="col-span-2">
+          <ConvictionCard
+            action={conviction}
+            isLoading={convictionLoading}
+            onGenerate={generateDirective}
+            onApprove={handleApprove}
+            onSkip={handleSkip}
+          />
         </div>
 
-        {/* Side panel — feed conversation */}
+        {/* Side panel — feed the graph */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl">
           <div className="p-5 border-b border-zinc-800">
             <h2 className="text-zinc-50 font-semibold">Feed the Graph</h2>
             <p className="text-zinc-500 text-sm mt-0.5">Upload a conversation export</p>
           </div>
           <div className="p-5">
-            <FeedPanel onIngested={fetchBrief} />
+            <FeedPanel onIngested={loadStats} />
           </div>
         </div>
       </div>
@@ -157,7 +157,7 @@ export default function DashboardContent() {
 }
 
 // ---------------------------------------------------------------------------
-// Feed Panel — minimal inline ingest UI
+// Feed Panel
 // ---------------------------------------------------------------------------
 
 function FeedPanel({ onIngested }: { onIngested: () => void }) {
@@ -217,16 +217,9 @@ function FeedPanel({ onIngested }: { onIngested: () => void }) {
   );
 }
 
-function EmptyState() {
-  return (
-    <div className="text-center py-8">
-      <p className="text-zinc-400 mb-2">Your identity graph is empty.</p>
-      <p className="text-zinc-500 text-sm">
-        Paste a Claude conversation export in the panel on the right to get started.
-      </p>
-    </div>
-  );
-}
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function MetricCard({
   label,
