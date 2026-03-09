@@ -169,6 +169,7 @@ Write the morning brief.`;
       signalsAnalyzed: signals.length,
       commitmentsReviewed: commitments.length,
       patternsActive: Object.keys(patterns).length,
+      fullBrief: brief.fullBrief,
     },
   });
 
