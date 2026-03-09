@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Foldera — Your past decisions already contain the pattern</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080808;
+  --bg1:#0e0e0e;
+  --bg2:#131313;
+  --bg3:#1a1917;
+  --surface:#161614;
+  --border:#222220;
+  --border-lit:#2e2c28;
+  --ink:#f0ece4;
+  --ink2:#a09890;
+  --ink3:#58534e;
+  --accent:#e8471c;
+  --accent2:#ff6b3d;
+  --accent-dim:rgba(232,71,28,0.12);
+  --serif:'Instrument Serif',Georgia,serif;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Syne',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:400;line-height:1.6;overflow-x:hidden}
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.1rem 2.5rem;
+  background:rgba(8,8,8,0.9);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo{font-family:var(--serif);font-size:1.25rem;color:var(--ink);text-decoration:none}
+.nav-right{display:flex;align-items:center;gap:2rem}
+.nav-link{font-family:var(--mono);font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink3);text-decoration:none;transition:color 0.2s}
+.nav-link:hover{color:var(--ink)}
+.btn-nav{font-family:var(--mono);font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--bg);background:var(--ink);padding:0.55rem 1.25rem;text-decoration:none;transition:background 0.2s}
+.btn-nav:hover{background:var(--accent);color:var(--ink)}
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  padding:9rem 2.5rem 5rem;position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,0.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.018) 1px,transparent 1px);
+  background-size:80px 80px;
+  mask-image:radial-gradient(ellipse 80% 70% at 50% 50%,black 30%,transparent 100%);
+}
+.hero::after{
+  content:'';position:absolute;top:20%;right:-10%;width:60vw;height:60vw;
+  background:radial-gradient(ellipse,rgba(232,71,28,0.07) 0%,transparent 65%);
+  pointer-events:none;
+}
+.hero-inner{position:relative;z-index:1;max-width:1100px}
+.hero-status{
+  display:inline-flex;align-items:center;gap:0.6rem;
+  border:1px solid var(--border-lit);background:var(--bg2);
+  padding:0.4rem 0.85rem;margin-bottom:2.5rem;
+  opacity:0;animation:fadeup 0.6s ease forwards 0.1s;
+}
+.status-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);animation:pulse 2s ease infinite}
+.status-text{font-family:var(--mono);font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink3)}
+.hero-h1{
+  font-family:var(--serif);font-size:clamp(3rem,6.5vw,5.75rem);
+  line-height:1.04;letter-spacing:-0.03em;color:var(--ink);max-width:820px;
+  opacity:0;animation:fadeup 0.8s ease forwards 0.2s;
+}
+.hero-h1 em{font-style:italic;color:var(--accent)}
+.hero-sub{
+  margin-top:2rem;font-size:1.05rem;color:var(--ink2);max-width:480px;line-height:1.8;
+  opacity:0;animation:fadeup 0.8s ease forwards 0.35s;
+}
+.hero-cta{
+  margin-top:2.75rem;display:flex;align-items:center;gap:1.75rem;flex-wrap:wrap;
+  opacity:0;animation:fadeup 0.8s ease forwards 0.5s;
+}
+.btn-primary{
+  font-family:var(--mono);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--ink);background:var(--accent);padding:0.85rem 1.85rem;text-decoration:none;
+  border:none;cursor:pointer;transition:background 0.2s,box-shadow 0.2s;display:inline-block;
+  box-shadow:0 0 30px rgba(232,71,28,0.3);
+}
+.btn-primary:hover{background:var(--accent2);box-shadow:0 0 40px rgba(232,71,28,0.5)}
+.hero-note{font-family:var(--mono);font-size:0.58rem;color:var(--ink3);letter-spacing:0.06em}
+.hero-patterns{margin-top:3.5rem;opacity:0;animation:fadeup 0.8s ease forwards 0.65s}
+.hp-label{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink3);margin-bottom:1rem}
+.hp-items{display:flex;flex-direction:column;border:1px solid var(--border)}
+.hp-item{
+  display:flex;align-items:baseline;gap:1rem;padding:0.85rem 1.25rem;
+  border-bottom:1px solid var(--border);background:var(--bg1);transition:background 0.2s;
+}
+.hp-item:last-child{border-bottom:none}
+.hp-item:hover{background:var(--bg2)}
+.hp-arrow{font-family:var(--mono);font-size:0.6rem;color:var(--accent);flex-shrink:0}
+.hp-text{font-size:0.875rem;color:var(--ink2);line-height:1.5}
+section{position:relative;z-index:1}
+.section-divider{border:none;height:1px;background:linear-gradient(90deg,transparent,var(--border-lit),transparent)}
+.realization{padding:7rem 2.5rem;background:var(--bg)}
+.real-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:7rem;align-items:start}
+.section-kicker{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:1.25rem;display:block}
+.section-h2{font-family:var(--serif);font-size:clamp(2rem,3.5vw,3rem);line-height:1.08;letter-spacing:-0.025em;color:var(--ink);margin-bottom:1.75rem}
+.section-h2 em{font-style:italic;color:var(--accent)}
+.section-p{font-size:0.95rem;color:var(--ink2);line-height:1.85;margin-bottom:1.25rem}
+.signal-feed{border:1px solid var(--border);background:var(--bg1);overflow:hidden}
+.feed-header{padding:0.7rem 1.25rem;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.6rem}
+.feed-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 5px var(--accent)}
+.feed-title{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink3)}
+.signal-item{padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);display:grid;grid-template-columns:3px 1fr;gap:1rem;align-items:start;transition:background 0.2s}
+.signal-item:last-child{border-bottom:none}
+.signal-item:hover{background:var(--bg2)}
+.signal-bar{width:3px;background:var(--border-lit);align-self:stretch}
+.signal-bar.hot{background:var(--accent)}
+.signal-bar.warm{background:#8a6a30}
+.signal-text{font-size:0.85rem;color:var(--ink);line-height:1.55;margin-bottom:0.3rem}
+.signal-meta{display:flex;align-items:center;gap:1rem}
+.signal-source{font-family:var(--mono);font-size:0.52rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink3)}
+.signal-tag{font-family:var(--mono);font-size:0.5rem;letter-spacing:0.08em;text-transform:uppercase;padding:0.15rem 0.5rem;border:1px solid var(--border-lit);color:var(--ink3)}
+.signal-tag.flag{border-color:rgba(232,71,28,0.4);color:var(--accent);background:var(--accent-dim)}
+.brief-section{padding:7rem 2.5rem;background:var(--bg1)}
+.brief-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1.1fr;gap:6rem;align-items:center}
+.brief-copy-p{font-size:0.95rem;color:var(--ink2);line-height:1.85}
+.brief-card{background:var(--bg);border:1px solid var(--border);position:relative;overflow:hidden}
+.brief-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,var(--accent),transparent 60%)}
+.bc-top{padding:1rem 1.5rem;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.bc-date-label{font-family:var(--mono);font-size:0.52rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink3)}
+.bc-live{display:flex;align-items:center;gap:0.4rem;font-family:var(--mono);font-size:0.5rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent)}
+.bc-live-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);box-shadow:0 0 5px var(--accent);animation:pulse 2s ease infinite}
+.bc-body{padding:1.5rem}
+.bc-row-label{font-family:var(--mono);font-size:0.5rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);margin-bottom:0.5rem;display:block}
+.bc-insight{font-family:var(--serif);font-size:1.1rem;line-height:1.5;color:var(--ink);font-style:italic;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.bc-conf-row{display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.bc-conf-label{font-family:var(--mono);font-size:0.5rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink3);white-space:nowrap}
+.bc-track{flex:1;height:2px;background:var(--border)}
+.bc-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:78%}
+.bc-pct{font-family:var(--mono);font-size:0.55rem;color:var(--accent)}
+.bc-action-text{font-size:0.875rem;color:var(--ink2);line-height:1.7;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.bc-basis{font-family:var(--mono);font-size:0.52rem;letter-spacing:0.05em;color:var(--ink3);line-height:1.65}
+.bc-basis span{color:var(--ink2)}
+.pattern-section{padding:7rem 2.5rem;background:var(--bg)}
+.pattern-inner{max-width:1100px;margin:0 auto}
+.pattern-head{margin-bottom:3.5rem}
+.pattern-sub{font-size:0.95rem;color:var(--ink2);max-width:440px;line-height:1.75;margin-top:0.75rem}
+.pattern-grid{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid var(--border);background:var(--border);gap:1px}
+.pattern-card{background:var(--bg1);padding:2rem;position:relative;overflow:hidden;transition:background 0.25s;cursor:default}
+.pattern-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,var(--accent),transparent);transform:scaleX(0);transform-origin:left;transition:transform 0.35s ease}
+.pattern-card:hover{background:var(--bg2)}
+.pattern-card:hover::after{transform:scaleX(1)}
+.pc-tag{font-family:var(--mono);font-size:0.5rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem}
+.pc-tag-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.pc-obs{font-family:var(--serif);font-size:1.1rem;color:var(--ink);line-height:1.35;margin-bottom:0.75rem}
+.pc-detail{font-size:0.825rem;color:var(--ink2);line-height:1.7}
+.how-section{padding:7rem 2.5rem;background:var(--bg1)}
+.how-inner{max-width:1100px;margin:0 auto}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--border);background:var(--border);gap:1px;margin-top:3.5rem}
+.step{background:var(--bg1);padding:2.25rem 1.85rem;position:relative;transition:background 0.2s}
+.step:hover{background:var(--bg2)}
+.step-n{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.12em;color:var(--accent);margin-bottom:1.25rem;display:flex;align-items:center;gap:0.5rem}
+.step-n-line{flex:1;height:1px;background:var(--border)}
+.step-title{font-family:var(--serif);font-size:1.25rem;color:var(--ink);margin-bottom:0.85rem;line-height:1.2}
+.step-body{font-size:0.85rem;color:var(--ink2);line-height:1.75}
+.cta-section{padding:9rem 2.5rem;background:var(--bg);text-align:center;position:relative;overflow:hidden}
+.cta-section::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.cta-section::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,0.015) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.015) 1px,transparent 1px);
+  background-size:60px 60px;
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 20%,transparent 80%);
+}
+.cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:800px;height:800px;background:radial-gradient(ellipse,rgba(232,71,28,0.08) 0%,transparent 65%);pointer-events:none}
+.cta-inner{position:relative;z-index:1}
+.cta-h2{font-family:var(--serif);font-size:clamp(2.5rem,5.5vw,4.75rem);line-height:1.04;letter-spacing:-0.03em;color:var(--ink);margin-bottom:1.25rem}
+.cta-h2 em{font-style:italic;color:var(--accent)}
+.cta-sub{font-size:0.95rem;color:var(--ink2);margin:0 auto 2.75rem;max-width:380px;line-height:1.8}
+.cta-form{display:flex;max-width:420px;margin:0 auto 1rem;border:1px solid var(--border-lit)}
+.cta-input{flex:1;padding:0.85rem 1.1rem;background:var(--bg2);border:none;font-family:var(--sans);font-size:0.875rem;color:var(--ink);outline:none}
+.cta-input::placeholder{color:var(--ink3)}
+.cta-btn{padding:0.85rem 1.5rem;background:var(--accent);color:var(--ink);font-family:var(--mono);font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;border:none;cursor:pointer;transition:background 0.2s;white-space:nowrap}
+.cta-btn:hover{background:var(--accent2)}
+.cta-fine{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.08em;color:var(--ink3)}
+footer{padding:1.5rem 2.5rem;border-top:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:space-between}
+.footer-logo{font-family:var(--serif);font-size:1rem;color:var(--ink3);text-decoration:none}
+.footer-copy{font-family:var(--mono);font-size:0.52rem;letter-spacing:0.06em;color:var(--ink3)}
+.footer-links{display:flex;gap:1.5rem}
+.footer-link{font-family:var(--mono);font-size:0.52rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink3);text-decoration:none;transition:color 0.2s}
+.footer-link:hover{color:var(--ink2)}
+@keyframes fadeup{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.reveal{opacity:0;transform:translateY(24px);transition:opacity 0.65s ease,transform 0.65s ease}
+.reveal.in{opacity:1;transform:translateY(0)}
+@media(max-width:900px){
+  nav{padding:1rem 1.25rem}
+  .nav-link{display:none}
+  .hero,.realization,.brief-section,.pattern-section,.how-section{padding:5rem 1.25rem}
+  .cta-section{padding:6rem 1.25rem}
+  .real-inner,.brief-inner{grid-template-columns:1fr;gap:3rem}
+  .pattern-grid{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr}
+  .cta-form{flex-direction:column}
+  footer{flex-direction:column;gap:1rem;text-align:center;padding:1.25rem}
+}
+</style>
+</head>
+<body>
+<nav>
+  <a href="#" class="nav-logo">Foldera</a>
+  <div class="nav-right">
+    <a href="#how" class="nav-link">How it works</a>
+    <a href="#access" class="btn-nav">Get early access</a>
+  </div>
+</nav>
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-status">
+      <span class="status-dot"></span>
+      <span class="status-text">Private early access</span>
+    </div>
+    <h1 class="hero-h1">Your past decisions<br>already contain<br><em>the pattern.</em></h1>
+    <p class="hero-sub">Foldera reads your AI conversation history, builds a weighted model of how you actually make decisions, and delivers a daily brief — before you ask.</p>
+    <div class="hero-cta">
+      <a href="#access" class="btn-primary">Reveal my decision patterns</a>
+      <span class="hero-note">No credit card &nbsp;·&nbsp; Connect your Claude history in 60 seconds</span>
+    </div>
+    <div class="hero-patterns">
+      <p class="hp-label">Foldera might notice things like</p>
+      <div class="hp-items">
+        <div class="hp-item"><span class="hp-arrow">→</span><span class="hp-text">You explored leaving your role in Oct, Jan, and Feb. All three resolved without action.</span></div>
+        <div class="hp-item"><span class="hp-arrow">→</span><span class="hp-text">You research alternatives when you should wait. It activates under uncertainty.</span></div>
+        <div class="hp-item"><span class="hp-arrow">→</span><span class="hp-text">Waiting resolved 3 of your last 4 high-stakes situations favorably.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+<hr class="section-divider">
+<section class="realization">
+  <div class="real-inner">
+    <div class="real-left reveal">
+      <span class="section-kicker">Signal extraction</span>
+      <h2 class="section-h2">Your decisions<br>leave a <em>trail.</em></h2>
+      <p class="section-p">Every conversation where you worked through a hard call. Every moment you asked yourself what to do next. Every time you committed to something and either followed through or didn't.</p>
+      <p class="section-p">You've already generated thousands of data points about how you operate. They're scattered across history you've never been able to reason with.</p>
+      <p class="section-p">Until now.</p>
+    </div>
+    <div class="signal-feed reveal">
+      <div class="feed-header">
+        <span class="feed-dot"></span>
+        <span class="feed-title">Live signal feed</span>
+      </div>
+      <div class="signal-item">
+        <div class="signal-bar hot"></div>
+        <div>
+          <p class="signal-text">Explored leaving the job. Second time in 14 months. Pattern: exits before credit accrues.</p>
+          <div class="signal-meta"><span class="signal-source">Claude · Feb 18</span><span class="signal-tag flag">Pattern match</span></div>
+        </div>
+      </div>
+      <div class="signal-item">
+        <div class="signal-bar warm"></div>
+        <div>
+          <p class="signal-text">Committed to waiting on the decision. Outcome pending.</p>
+          <div class="signal-meta"><span class="signal-source">Logged decision · Mar 4</span><span class="signal-tag">Committed</span></div>
+        </div>
+      </div>
+      <div class="signal-item">
+        <div class="signal-bar hot"></div>
+        <div>
+          <p class="signal-text">Same-day reference request received. Positive signal. Decision window open.</p>
+          <div class="signal-meta"><span class="signal-source">Extracted · Mar 4</span><span class="signal-tag flag">High signal</span></div>
+        </div>
+      </div>
+      <div class="signal-item">
+        <div class="signal-bar hot"></div>
+        <div>
+          <p class="signal-text">Anxiety spike detected. Started browsing alternate roles. Pattern: pivot impulse under uncertainty.</p>
+          <div class="signal-meta"><span class="signal-source">Claude · Mar 7</span><span class="signal-tag flag">Pattern match</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<hr class="section-divider">
+<section class="brief-section">
+  <div class="brief-inner">
+    <div class="reveal">
+      <span class="section-kicker">Morning brief</span>
+      <h2 class="section-h2">Not a summary.<br><em>A verdict.</em></h2>
+      <p class="brief-copy-p">Foldera runs your current situation against your behavioral history, calculates the highest-probability action, and delivers a single confident read — with a confidence score traceable to your own data. Not the AI's opinion. Arithmetic on your own life.</p>
+    </div>
+    <div class="brief-card reveal">
+      <div class="bc-top">
+        <span class="bc-date-label">Sunday, March 8 · 6:47 AM</span>
+        <span class="bc-live"><span class="bc-live-dot"></span>Live</span>
+      </div>
+      <div class="bc-body">
+        <span class="bc-row-label">Top Insight</span>
+        <p class="bc-insight">"You're in the same spin pattern that preceded three prior exits. The anxiety is not a signal to act — it's a signal that you're in the window before something resolves."</p>
+        <div class="bc-conf-row">
+          <span class="bc-conf-label">Confidence</span>
+          <div class="bc-track"><div class="bc-fill"></div></div>
+          <span class="bc-pct">78%</span>
+        </div>
+        <span class="bc-row-label">Recommended Action</span>
+        <p class="bc-action-text">Stay. The pipeline is full. This is a season of receiving, not building. Every hour spent researching alternatives is a vote of no-confidence in work already done.</p>
+        <p class="bc-basis">Based on: <span>4 similar prior contexts</span> · <span>3 of 4 resolved favorably through waiting</span> · <span>additional action produced no outcome change in 3 of 4</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+<hr class="section-divider">
+<section class="pattern-section">
+  <div class="pattern-inner">
+    <div class="pattern-head">
+      <span class="section-kicker reveal">What Foldera might notice about you</span>
+      <h2 class="section-h2 reveal">The moment it<br><em>reads you.</em></h2>
+      <p class="pattern-sub reveal">Three accurate observations in a row. That's when it stops feeling like software.</p>
+    </div>
+    <div class="pattern-grid reveal">
+      <div class="pattern-card">
+        <p class="pc-tag"><span class="pc-tag-dot"></span>Decision pattern</p>
+        <p class="pc-obs">You leave before credit accrues.</p>
+        <p class="pc-detail">Real contribution in every role. Departure before the system recognized the builder. The pattern has a name now — and knowing it is the first step to breaking it.</p>
+      </div>
+      <div class="pattern-card">
+        <p class="pc-tag"><span class="pc-tag-dot"></span>Behavioral signal</p>
+        <p class="pc-obs">You research when you should wait.</p>
+        <p class="pc-detail">Browsing under pressure is fear dressed as productivity. Foldera tracks when this pattern activates and flags it before the damage is done.</p>
+      </div>
+      <div class="pattern-card">
+        <p class="pc-tag"><span class="pc-tag-dot"></span>Historical outcome</p>
+        <p class="pc-obs">Waiting has worked more than acting.</p>
+        <p class="pc-detail">In three of four high-stakes external decisions, waiting produced the favorable outcome. Additional action changed nothing. That's not advice — that's your own record.</p>
+      </div>
+      <div class="pattern-card">
+        <p class="pc-tag"><span class="pc-tag-dot"></span>Relationship signal</p>
+        <p class="pc-obs">You have a warm door you haven't used.</p>
+        <p class="pc-detail">One person left it open twice in writing. The thread has been quiet for 30 days. The window exists. The brief will tell you when the timing is right.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<hr class="section-divider">
+<section class="how-section" id="how">
+  <div class="how-inner">
+    <span class="section-kicker reveal">How it works</span>
+    <h2 class="section-h2 reveal">Two inputs.<br>One model.<br><em>Everything else is output.</em></h2>
+    <div class="steps reveal">
+      <div class="step">
+        <span class="step-n">01 <span class="step-n-line"></span></span>
+        <h3 class="step-title">Connect your Claude history</h3>
+        <p class="step-body">Your AI conversation history is the richest behavioral dataset that exists about you. Foldera reads it, extracts decisions, patterns, and outcomes, and builds your identity graph. No manual input required.</p>
+      </div>
+      <div class="step">
+        <span class="step-n">02 <span class="step-n-line"></span></span>
+        <h3 class="step-title">The graph learns</h3>
+        <p class="step-body">Decisions, patterns, goals, relationships, outcomes — all weighted by recency and stakes. The model updates with every new signal. Confidence compounds as history accumulates.</p>
+      </div>
+      <div class="step">
+        <span class="step-n">03 <span class="step-n-line"></span></span>
+        <h3 class="step-title">You get the brief</h3>
+        <p class="step-body">Every morning: one insight, one confidence score, one action. Not generic advice. The answer to a question you didn't know to ask, from data you already lived.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<hr class="section-divider">
+<section class="cta-section" id="access">
+  <div class="cta-glow"></div>
+  <div class="cta-inner">
+    <h2 class="cta-h2 reveal">Your life already<br>contains <em>the answers.</em></h2>
+    <p class="cta-sub reveal">Foldera simply reveals them. Get early access and receive your first morning brief.</p>
+    <div class="cta-form reveal">
+      <input type="email" class="cta-input" placeholder="your@email.com" aria-label="Email" id="emailInput">
+      <button class="cta-btn" onclick="handleSubmit()">Reveal my patterns</button>
+    </div>
+    <p class="cta-fine reveal">No credit card &nbsp;·&nbsp; No OAuth &nbsp;·&nbsp; Early access only</p>
+  </div>
+</section>
+<footer>
+  <a href="#" class="footer-logo">Foldera</a>
+  <span class="footer-copy">© 2026 Foldera. Your data. Your model. Your move.</span>
+  <div class="footer-links">
+    <a href="#" class="footer-link">Privacy</a>
+    <a href="#" class="footer-link">Terms</a>
+    <a href="#" class="footer-link">Contact</a>
+  </div>
+</footer>
+<script>
+const io = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('in'), i * 60);
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.07 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+function handleSubmit() {
+  const input = document.getElementById('emailInput');
+  const btn = document.querySelector('.cta-btn');
+  if (!input.value.trim() || !input.value.includes('@')) {
+    input.style.outline = '2px solid #e8471c';
+    setTimeout(() => input.style.outline = '', 1500);
+    return;
+  }
+  btn.textContent = "You're on the list";
+  btn.style.background = '#1a3a1a';
+  btn.style.color = '#3dbb6a';
+  input.disabled = true;
+  btn.disabled = true;
+}
+</script>
+</body>
+</html>
