@@ -4,7 +4,7 @@
 // =====================================================
 
 import pRetry, { FailedAttemptError, AbortError } from 'p-retry';
-import { logger } from '../observability/logger';
+const logger = { warn: console.warn, error: console.error, info: console.info };
 
 interface RetryOptions {
   retries?: number;

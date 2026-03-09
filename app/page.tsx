@@ -16,22 +16,22 @@ import {
 } from 'lucide-react';
 // --- CUSTOM HOOKS ---
 const useInView = (options = { threshold: 0.15, triggerOnce: true }) => {
-  const [ref, setRef] = useState(null);
+  const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
-    if (!ref) return;
+    if (!ref.current) return;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
         setInView(true);
-        if (options.triggerOnce) observer.unobserve(ref);
+        if (options.triggerOnce) observer.unobserve(ref.current!);
       }
     }, options);
-    observer.observe(ref);
+    observer.observe(ref.current);
     return () => observer.disconnect();
-  }, [ref, options.triggerOnce, options.threshold]);
-  return [setRef, inView];
+  }, [options.triggerOnce, options.threshold]);
+  return [ref, inView] as const;
 };
-const Typewriter = ({ text, delay = 0, speed = 35, onComplete }) => {
+const Typewriter = ({ text, delay = 0, speed = 35, onComplete }: { text: string; delay?: number; speed?: number; onComplete?: () => void }) => {
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   useEffect(() => {
@@ -116,11 +116,11 @@ const tickerItems = [
   "You spend 40% of your planning time on scenarios that never happen."
 ];
 // --- SUB-COMPONENTS ---
-const ScrollReveal = ({ children, delay = 0, slow = false }) => {
-  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.15 });
+const ScrollReveal = ({ children, delay = 0, slow = false }: { children: React.ReactNode; delay?: number; slow?: boolean }) => {
+  const [divRef, inView] = useInView({ triggerOnce: true, threshold: 0.15 });
   return (
     <div
-      ref={ref}
+      ref={divRef}
       className={`transition-all ${slow ? 'duration-[1500ms]' : 'duration-1000'} ease-[cubic-bezier(0.16,1,0.3,1)] ${inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
       style={{ transitionDelay: `${delay}s`, willChange: 'opacity, transform' }}
     >
@@ -144,12 +144,12 @@ const LiveTicker = () => {
     </div>
   );
 };
-const PatternTimeline = ({ confidence = 87, recommendedAction = "Decide now. Waiting is the pattern, not the solution." }) => {
+const PatternTimeline = ({ confidence = 87, recommendedAction = "Decide now. Waiting is the pattern, not the solution." }: { confidence?: number; recommendedAction?: string }) => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showConfidence, setShowConfidence] = useState(false);
   const [showAction, setShowAction] = useState(false);
-  const containerRef = useRef(null);
-  const handleMouseMove = (e) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current || window.innerWidth < 768) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;

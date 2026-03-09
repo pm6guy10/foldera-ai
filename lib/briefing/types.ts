@@ -1,6 +1,3 @@
-import { ShadowSignal } from '@/lib/shadow-mode/types';
-import { Relationship } from '@/lib/relationship-intelligence/types';
-
 // ---------------------------------------------------------------------------
 // Chief-of-Staff briefing — Phase 1 pivot output
 // Sourced from tkg_signals, tkg_commitments, tkg_entities
@@ -46,7 +43,7 @@ export interface Briefing {
   stats: BriefingStats;
   
   // Raw data
-  signals: ShadowSignal[];
+  signals: unknown[];
   relationships: RelationshipHealthSummary[];
 }
 
