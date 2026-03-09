@@ -403,16 +403,44 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 function handleSubmit() {
   const input = document.getElementById('emailInput');
   const btn = document.querySelector('.cta-btn');
-  if (!input.value.trim() || !input.value.includes('@')) {
+  const email = input.value.trim();
+
+  if (!email || !email.includes('@')) {
     input.style.outline = '2px solid #e8471c';
     setTimeout(() => input.style.outline = '', 1500);
     return;
   }
-  btn.textContent = "You're on the list";
-  btn.style.background = '#1a3a1a';
-  btn.style.color = '#3dbb6a';
-  input.disabled = true;
+
+  btn.textContent = 'Joining...';
   btn.disabled = true;
+  input.disabled = true;
+
+  fetch('/api/waitlist', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (ok || data.error === "You're already on the list") {
+        btn.textContent = ok ? "You're on the list" : "Already registered";
+        btn.style.background = '#1a3a1a';
+        btn.style.color = '#3dbb6a';
+      } else {
+        btn.textContent = data.error || 'Error — try again';
+        btn.style.background = '#3a1a1a';
+        btn.style.color = '#e87070';
+        btn.disabled = false;
+        input.disabled = false;
+      }
+    })
+    .catch(() => {
+      btn.textContent = 'Error — try again';
+      btn.style.background = '#3a1a1a';
+      btn.style.color = '#e87070';
+      btn.disabled = false;
+      input.disabled = false;
+    });
 }
 </script>
 </body>
