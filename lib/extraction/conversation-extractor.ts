@@ -154,7 +154,7 @@ export async function extractFromConversation(
     .from('tkg_signals')
     .insert({
       user_id: userId,
-      source: 'claude_conversation',
+      source: 'uploaded_document',
       source_id: contentHash.slice(0, 16),
       type: 'document_created',
       content: text,
@@ -191,22 +191,30 @@ export async function extractFromConversation(
     console.error('[conversation-extractor] Failed to parse Claude response:', raw.slice(0, 200));
   }
 
-  // 4. Upsert 'self' entity for the user
-  const { data: selfEntity } = await supabase
+  // 4. Get or create 'self' entity for the user
+  // No unique constraint on (user_id, name) exists yet, so select first to avoid duplicates
+  let { data: selfEntity } = await supabase
     .from('tkg_entities')
-    .upsert(
-      {
+    .select('id')
+    .eq('user_id', userId)
+    .eq('name', 'self')
+    .maybeSingle();
+
+  if (!selfEntity) {
+    const { data: created } = await supabase
+      .from('tkg_entities')
+      .insert({
         user_id: userId,
         type: 'person',
         name: 'self',
         display_name: 'You',
         emails: [],
         patterns: {},
-      },
-      { onConflict: 'user_id,name', ignoreDuplicates: false }
-    )
-    .select('id')
-    .single();
+      })
+      .select('id')
+      .single();
+    selfEntity = created;
+  }
 
   const selfId = selfEntity?.id;
 
@@ -221,7 +229,7 @@ export async function extractFromConversation(
       canonical_form: `DECISION:${d.domain}:${d.description.slice(0, 60).replace(/\s+/g, '_')}`,
       category: 'make_decision',
       made_at: new Date().toISOString(),
-      source: 'claude_conversation',
+      source: 'uploaded_document',
       source_id: signal.id,
       source_context: d.context,
       status: d.outcome ? 'fulfilled' : 'active',

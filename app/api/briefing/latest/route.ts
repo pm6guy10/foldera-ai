@@ -25,13 +25,27 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export async function GET() {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function GET(request: Request) {
+  // Resolve userId — from session or ingest secret (for CLI/script access)
+  let userId: string | undefined;
+  const ingestSecret = (request as any).headers?.get
+    ? (request as any).headers.get('x-ingest-secret')
+    : null;
+  if (ingestSecret) {
+    if (ingestSecret !== process.env.INGEST_API_KEY) {
+      return NextResponse.json({ error: 'Invalid ingest secret' }, { status: 401 });
+    }
+    userId = process.env.INGEST_USER_ID;
+    if (!userId) {
+      return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
+    }
+  } else {
+    const session = await getServerSession(getAuthOptions());
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    userId = session.user.id;
   }
-
-  const userId = session.user.id;
   const supabase = getSupabase();
 
   // Query today's brief + graph stats in parallel

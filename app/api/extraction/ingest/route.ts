@@ -16,9 +16,23 @@ import { extractFromConversation } from '@/lib/extraction/conversation-extractor
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Resolve userId — either from a valid session or from the script-level ingest secret
+  let userId: string | undefined;
+  const ingestSecret = request.headers.get('x-ingest-secret');
+  if (ingestSecret) {
+    if (ingestSecret !== process.env.INGEST_API_KEY) {
+      return NextResponse.json({ error: 'Invalid ingest secret' }, { status: 401 });
+    }
+    userId = process.env.INGEST_USER_ID;
+    if (!userId) {
+      return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
+    }
+  } else {
+    const session = await getServerSession(getAuthOptions());
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    userId = session.user.id;
   }
 
   let body: { text?: unknown };
@@ -34,7 +48,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await extractFromConversation(text, session.user.id);
+    const result = await extractFromConversation(text, userId);
     return NextResponse.json({
       signalId: result.signalId,
       decisionsWritten: result.decisionsWritten,
