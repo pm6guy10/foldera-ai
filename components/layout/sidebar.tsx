@@ -52,7 +52,7 @@ export function Sidebar() {
   const pathname = usePathname();
   
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 border-r border-zinc-800 bg-zinc-950/80 backdrop-blur-xl">
+    <aside className="hidden lg:block fixed left-0 top-0 h-screen w-64 border-r border-zinc-800 bg-zinc-950/80 backdrop-blur-xl">
       {/* Logo */}
       <div className="p-6 border-b border-zinc-800">
         <Link href="/dashboard" className="flex items-center gap-3">

@@ -25,17 +25,17 @@ function DashboardSkeleton() {
         <div className="h-10 w-32 bg-zinc-800 rounded" />
       </div>
       
-      {/* Metrics skeleton */}
-      <div className="grid grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-32 bg-zinc-900 rounded-xl border border-zinc-800" />
+      {/* Metrics skeleton — matches 3-column layout in dashboard-content */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-16 sm:h-20 bg-zinc-900 rounded-xl border border-zinc-800" />
         ))}
       </div>
       
       {/* Main content skeleton */}
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 h-96 bg-zinc-900 rounded-xl border border-zinc-800" />
-        <div className="h-96 bg-zinc-900 rounded-xl border border-zinc-800" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className="col-span-1 lg:col-span-2 h-64 lg:h-96 bg-zinc-900 rounded-xl border border-zinc-800" />
+        <div className="h-64 lg:h-96 bg-zinc-900 rounded-xl border border-zinc-800" />
       </div>
     </div>
   );

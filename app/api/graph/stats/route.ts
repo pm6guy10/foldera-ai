@@ -42,33 +42,41 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'User ID not resolved' }, { status: 500 });
   }
 
-  const supabase = getSupabase();
+  try {
+    const supabase = getSupabase();
 
-  const [signalsRes, commitmentsRes, entityRes] = await Promise.all([
-    supabase
-      .from('tkg_signals')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId),
+    const [signalsRes, commitmentsRes, entityRes] = await Promise.all([
+      supabase
+        .from('tkg_signals')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
 
-    supabase
-      .from('tkg_commitments')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .in('status', ['active', 'at_risk']),
+      supabase
+        .from('tkg_commitments')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .in('status', ['active', 'at_risk']),
 
-    supabase
-      .from('tkg_entities')
-      .select('patterns')
-      .eq('user_id', userId)
-      .eq('name', 'self')
-      .maybeSingle(),
-  ]);
+      supabase
+        .from('tkg_entities')
+        .select('patterns')
+        .eq('user_id', userId)
+        .eq('name', 'self')
+        .maybeSingle(),
+    ]);
 
-  return NextResponse.json({
-    signalsTotal:      signalsRes.count ?? 0,
-    commitmentsActive: commitmentsRes.count ?? 0,
-    patternsActive:    Object.keys(
-      (entityRes.data?.patterns as Record<string, unknown>) ?? {}
-    ).length,
-  });
+    return NextResponse.json({
+      signalsTotal:      signalsRes.count ?? 0,
+      commitmentsActive: commitmentsRes.count ?? 0,
+      patternsActive:    Object.keys(
+        (entityRes.data?.patterns as Record<string, unknown>) ?? {}
+      ).length,
+    });
+  } catch (err: any) {
+    console.error('[/api/graph/stats]', err);
+    return NextResponse.json(
+      { error: err.message || 'Failed to fetch stats' },
+      { status: 500 }
+    );
+  }
 }

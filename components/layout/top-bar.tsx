@@ -18,25 +18,25 @@ export function TopBar() {
           <button
             onClick={() => setShowCommandPalette(true)}
             className={cn(
-              'flex items-center gap-3 px-4 py-2 rounded-lg',
+              'flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 rounded-lg',
               'bg-zinc-900 border border-zinc-800',
               'text-zinc-500 text-sm',
               transitions.base,
               'hover:border-zinc-700 hover:text-zinc-300',
-              'w-72'
+              'w-40 sm:w-72'
             )}
           >
             <SearchIcon />
-            <span>Search or command...</span>
-            <kbd className="ml-auto text-xs bg-zinc-800 px-1.5 py-0.5 rounded">⌘K</kbd>
+            <span className="hidden sm:inline">Search or command...</span>
+            <kbd className="ml-auto text-xs bg-zinc-800 px-1.5 py-0.5 rounded hidden sm:inline">⌘K</kbd>
           </button>
-          
+
           {/* Right side */}
-          <div className="flex items-center gap-4">
-            {/* Status */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Status — label hidden on mobile */}
+            <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800">
               <StatusIndicator status="success" size="sm" />
-              <span className="text-xs text-zinc-400">Shadow Mode Active</span>
+              <span className="text-xs text-zinc-400 hidden sm:inline">Shadow Mode Active</span>
             </div>
             
             {/* Notifications */}

@@ -1,9 +1,9 @@
 /**
  * GET /api/conviction/latest
  *
- * Returns the most recent tkg_actions row for the authenticated user,
- * preferring status=pending_approval, then falling back to the latest row overall.
- * Returns null (204) if no actions exist yet.
+ * Returns the most recent tkg_actions row with status=pending_approval
+ * for the authenticated user. Falls back to the latest row of any status
+ * if nothing is pending. Returns 204 if no actions exist yet.
  */
 
 import { NextResponse } from 'next/server';
@@ -43,38 +43,47 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'User ID not resolved' }, { status: 500 });
   }
 
-  const supabase = getSupabase();
+  try {
+    const supabase = getSupabase();
 
-  // Prefer most recent pending_approval; fall back to any latest action
-  const { data: pending } = await supabase
-    .from('tkg_actions')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', 'pending_approval')
-    .order('generated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    // Prefer most recent pending_approval
+    const { data: action, error } = await supabase
+      .from('tkg_actions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'pending_approval')
+      .order('generated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  const action = pending ?? null;
+    if (error) {
+      throw error;
+    }
 
-  if (!action) {
-    // No actions at all — return 204 so the client knows gracefully
-    return new NextResponse(null, { status: 204 });
+    if (!action) {
+      return new NextResponse(null, { status: 204 });
+    }
+
+    // Map DB row → ConvictionAction shape
+    return NextResponse.json({
+      id:              action.id,
+      userId,
+      directive:       action.directive_text,
+      action_type:     action.action_type,
+      confidence:      action.confidence,
+      reason:          action.reason,
+      evidence:        action.evidence ?? [],
+      status:          action.status,
+      generatedAt:     action.generated_at,
+      approvedAt:      action.approved_at ?? undefined,
+      executedAt:      action.executed_at ?? undefined,
+      executionResult: action.execution_result ?? undefined,
+    });
+  } catch (err: any) {
+    console.error('[/api/conviction/latest]', err);
+    return NextResponse.json(
+      { error: err.message || 'Failed to fetch latest conviction' },
+      { status: 500 }
+    );
   }
-
-  // Map DB row → ConvictionAction shape the card expects
-  return NextResponse.json({
-    id:              action.id,
-    userId,
-    directive:       action.directive_text,
-    action_type:     action.action_type,
-    confidence:      action.confidence,
-    reason:          action.reason,
-    evidence:        action.evidence ?? [],
-    status:          action.status,
-    generatedAt:     action.generated_at,
-    approvedAt:      action.approved_at ?? undefined,
-    executedAt:      action.executed_at ?? undefined,
-    executionResult: action.execution_result ?? undefined,
-  });
 }

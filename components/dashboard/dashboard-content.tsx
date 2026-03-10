@@ -122,27 +122,30 @@ export default function DashboardContent() {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <MetricCard
-          label="Signals ingested"
+          label="Signals"
+          fullLabel="Signals ingested"
           value={statsLoading ? '—' : String(stats?.signalsTotal ?? 0)}
         />
         <MetricCard
-          label="Active commitments"
+          label="Commitments"
+          fullLabel="Active commitments"
           value={statsLoading ? '—' : String(stats?.commitmentsActive ?? 0)}
           highlight={!!stats?.commitmentsActive}
         />
         <MetricCard
-          label="Patterns identified"
+          label="Patterns"
+          fullLabel="Patterns identified"
           value={statsLoading ? '—' : String(stats?.patternsActive ?? 0)}
         />
       </div>
 
-      {/* Main grid */}
-      <div className="grid grid-cols-3 gap-6">
+      {/* Main grid — stacked on mobile, 3-col on lg */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
 
-        {/* CONVICTION CARD — front and center, full 2/3 width */}
-        <div className="col-span-2">
+        {/* CONVICTION CARD — front and center, full 2/3 width on desktop */}
+        <div className="col-span-1 lg:col-span-2">
           <ConvictionCard
             action={conviction}
             isLoading={convictionLoading}
@@ -234,23 +237,29 @@ function FeedPanel({ onIngested }: { onIngested: () => void }) {
 
 function MetricCard({
   label,
+  fullLabel,
   value,
   highlight,
 }: {
   label: string;
+  fullLabel?: string;
   value: string;
   highlight?: boolean;
 }) {
   return (
     <div
-      className={`p-4 rounded-xl border ${
+      className={`p-2.5 sm:p-4 rounded-xl border ${
         highlight
           ? 'bg-violet-900/20 border-violet-700/40'
           : 'bg-zinc-900 border-zinc-800'
       }`}
     >
-      <div className="text-2xl font-bold text-zinc-50">{value}</div>
-      <div className="text-zinc-500 text-xs mt-0.5">{label}</div>
+      <div className="text-xl sm:text-2xl font-bold text-zinc-50 tabular-nums">{value}</div>
+      {/* Short label on small screens, full label on sm+ */}
+      <div className="text-zinc-500 text-[10px] sm:text-xs mt-0.5 leading-tight">
+        <span className="sm:hidden">{label}</span>
+        <span className="hidden sm:inline">{fullLabel ?? label}</span>
+      </div>
     </div>
   );
 }

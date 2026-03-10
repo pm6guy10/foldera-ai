@@ -28,11 +28,11 @@ export function DashboardShell({ children }: DashboardShellProps) {
       />
       
       <div className="flex">
-        {/* Sidebar */}
+        {/* Sidebar — hidden on mobile, visible on lg+ */}
         <Sidebar />
-        
-        {/* Main content */}
-        <div className="flex-1 ml-64">
+
+        {/* Main content — full width on mobile, offset by sidebar on lg+ */}
+        <div className="flex-1 ml-0 lg:ml-64">
           <TopBar />
           <main className={cn(spacing.page.padding, spacing.page.maxWidth)}>
             {children}
