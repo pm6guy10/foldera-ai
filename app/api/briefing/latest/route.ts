@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    userId = session.user.id;
+    userId = process.env.INGEST_USER_ID ?? session.user.id;
   }
   const supabase = getSupabase();
 
