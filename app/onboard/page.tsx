@@ -1,73 +1,10 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const QUESTIONS = [
-  {
-    q: "What's the biggest decision you're wrestling with right now?",
-    placeholder: "E.g. Whether to take the new role, move cities, leave the relationship...",
-    prefix: 'Current decision:',
-    category: 'career',
-    priority: 5,
-  },
-  {
-    q: 'What are you trying to achieve in the next 3–6 months?',
-    placeholder: "Be specific — not 'be healthier', but 'run a half marathon by June'.",
-    prefix: '3–6 month goal:',
-    category: 'other',
-    priority: 4,
-  },
-  {
-    q: 'What keeps pulling you off track?',
-    placeholder: 'The recurring distraction, habit, or anxiety that keeps showing up...',
-    prefix: 'Recurring obstacle:',
-    category: 'other',
-    priority: 3,
-  },
-  {
-    q: 'What would make this week a success?',
-    placeholder: 'One concrete outcome that would feel like a win on Friday.',
-    prefix: "This week's success:",
-    category: 'other',
-    priority: 2,
-  },
-  {
-    q: "What's one thing you keep putting off that you know you should do?",
-    placeholder: "The thing that's lived on your list for too long.",
-    prefix: 'Deferred task:',
-    category: 'other',
-    priority: 1,
-  },
-] as const;
-
-const ACTION_LABELS: Record<string, string> = {
-  write_document: 'Write',
-  send_message: 'Reach Out',
-  make_decision: 'Decide',
-  do_nothing: 'Wait',
-  schedule: 'Schedule',
-  research: 'Research',
-};
-
-const ACTION_COLORS: Record<string, string> = {
-  write_document: 'text-blue-400 border-blue-400/40 bg-blue-400/10',
-  send_message: 'text-emerald-400 border-emerald-400/40 bg-emerald-400/10',
-  make_decision: 'text-amber-400 border-amber-400/40 bg-amber-400/10',
-  do_nothing: 'text-violet-400 border-violet-400/40 bg-violet-400/10',
-  schedule: 'text-cyan-400 border-cyan-400/40 bg-cyan-400/10',
-  research: 'text-rose-400 border-rose-400/40 bg-rose-400/10',
-};
-
-const LOADING_MSGS = [
-  'Reading your history...',
-  'Identifying patterns...',
-  'Weighing the evidence...',
-  'Synthesizing directive...',
-];
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+type Phase = 'intro' | 'q1' | 'q2' | 'q3' | 'generating' | 'directive';
 
 interface Directive {
   directive: string;
@@ -78,14 +15,35 @@ interface Directive {
   fullContext?: string;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const GENERATION_MSGS = [
+  'Finding your patterns...',
+  'Reading between the lines...',
+  'Almost there...',
+];
+
+const ACTION_LABELS: Record<string, string> = {
+  write_document: 'WRITE',
+  send_message: 'REACH OUT',
+  make_decision: 'DECIDE',
+  do_nothing: 'WAIT',
+  schedule: 'SCHEDULE',
+  research: 'RESEARCH',
+};
+
+// ─── Fonts (inline CSS to avoid layout dependency) ───────────────────────────
+
+const FONT_SERIF = '"Instrument Serif", Georgia, "Times New Roman", serif';
+const FONT_MONO = '"JetBrains Mono", "Fira Code", ui-monospace, monospace';
+const FONT_SANS = '"Syne", system-ui, -apple-system, sans-serif';
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getTempUserId(): string {
   const key = 'foldera_onboard_id';
   let id = sessionStorage.getItem(key);
-  if (!id || !UUID_RE.test(id)) {
+  if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
     id = crypto.randomUUID();
     sessionStorage.setItem(key, id);
   }
@@ -95,112 +53,107 @@ function getTempUserId(): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function OnboardPage() {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [phase, setPhase] = useState<Phase>('intro');
+  const [visible, setVisible] = useState(false);
   const [tempUserId, setTempUserId] = useState('');
-  const [uploadText, setUploadText] = useState('');
-  const [answers, setAnswers] = useState<string[]>(['', '', '', '', '']);
-  const [loading, setLoading] = useState(false);
-  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+
+  const [introText, setIntroText] = useState('');
+  const [q1, setQ1] = useState('');
+  const [q2, setQ2] = useState('');
+  const [q3, setQ3] = useState('');
+
   const [directive, setDirective] = useState<Directive | null>(null);
+  const [genMsgIdx, setGenMsgIdx] = useState(0);
+
   const [email, setEmail] = useState('');
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
-  const [showEvidence, setShowEvidence] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [fileUploading, setFileUploading] = useState(false);
 
-  // Init temp user ID on mount (needs browser APIs)
-  useEffect(() => {
-    setTempUserId(getTempUserId());
-  }, []);
+  const ingestRef = useRef<Promise<unknown> | null>(null);
+  const introRef = useRef<HTMLTextAreaElement>(null);
+  const q1Ref = useRef<HTMLTextAreaElement>(null);
+  const q2Ref = useRef<HTMLTextAreaElement>(null);
+  const q3Ref = useRef<HTMLTextAreaElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
 
-  // Cycle loading messages while loading
+  // Init temp user ID on client only
+  useEffect(() => { setTempUserId(getTempUserId()); }, []);
+
+  // Fade-in on phase change
   useEffect(() => {
-    if (loading) {
-      setLoadingMsgIdx(0);
-      intervalRef.current = setInterval(() => {
-        setLoadingMsgIdx(i => (i + 1) % LOADING_MSGS.length);
-      }, 1800);
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+    setVisible(false);
+    const t = setTimeout(() => setVisible(true), 40);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  // Auto-focus on phase change
+  useEffect(() => {
+    const map: Partial<Record<Phase, React.RefObject<HTMLElement | null>>> = {
+      intro: introRef, q1: q1Ref, q2: q2Ref, q3: q3Ref, directive: emailRef,
     };
-  }, [loading]);
+    const ref = map[phase];
+    if (ref?.current) {
+      const t = setTimeout(() => (ref.current as HTMLElement)?.focus(), 120);
+      return () => clearTimeout(t);
+    }
+  }, [phase]);
 
-  // Handle file upload — parse JSON or plain text
+  // Cycle generation messages
+  useEffect(() => {
+    if (phase !== 'generating') return;
+    setGenMsgIdx(0);
+    const t = setInterval(() => setGenMsgIdx(i => (i + 1) % GENERATION_MSGS.length), 2200);
+    return () => clearInterval(t);
+  }, [phase]);
+
+  // Handle file upload — parse and ingest in background while user answers questions
   const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const raw = await file.text();
-    try {
-      const json = JSON.parse(raw);
-      if (Array.isArray(json)) {
-        // Flat message array: [{role, content}]
-        setUploadText(
-          json
-            .map((m: any) => `${m.role || 'user'}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`)
-            .join('\n\n')
-        );
-      } else if (json.conversations) {
-        // Claude project export: {conversations: [{messages: [{role, content}]}]}
-        setUploadText(
-          json.conversations
-            .map((conv: any) =>
-              (conv.messages || [])
-                .map((m: any) => `${m.role}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`)
-                .join('\n')
-            )
-            .join('\n\n---\n\n')
-        );
-      } else {
-        setUploadText(raw);
-      }
-    } catch {
-      setUploadText(raw);
-    }
+    setFileUploading(true);
     e.target.value = '';
-  }, []);
-
-  // ── Step 1: process upload then advance ────────────────────────────────────
-  const handleIngest = async () => {
-    setError('');
-    if (!uploadText.trim()) {
-      setStep(2);
-      return;
-    }
-    setLoading(true);
     try {
-      const res = await fetch('/api/onboard/ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: uploadText, tempUserId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to process export.');
-      setStep(2);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const raw = await file.text();
+      let text = raw;
+      try {
+        const json = JSON.parse(raw);
+        if (Array.isArray(json)) {
+          text = json.map((m: { role?: string; content: unknown }) =>
+            `${m.role ?? 'user'}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`
+          ).join('\n\n');
+        } else if (json.conversations) {
+          text = (json.conversations as { messages?: { role: string; content: unknown }[] }[])
+            .map(c => (c.messages ?? []).map(m => `${m.role}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`).join('\n'))
+            .join('\n\n---\n\n');
+        }
+      } catch { /* plain text — use as-is */ }
 
-  // ── Step 2: save goals then generate directive ─────────────────────────────
+      if (text.trim().length >= 50) {
+        ingestRef.current = fetch('/api/onboard/ingest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, tempUserId }),
+        }).catch(err => console.warn('[onboard] background ingest error', err));
+      }
+    } catch { /* ignore file read errors */ }
+    setFileUploading(false);
+  }, [tempUserId]);
+
+  // ── Step transitions ──────────────────────────────────────────────────────
+
+  const goTo = (p: Phase) => { setError(''); setPhase(p); };
+
   const handleGenerate = async () => {
-    const filled = answers.filter(a => a.trim());
-    if (filled.length === 0) {
-      setError('Answer at least one question first.');
-      return;
-    }
-    setError('');
-    setLoading(true);
-    setStep(3);
+    setPhase('generating');
+    setGenMsgIdx(0);
     try {
+      if (ingestRef.current) { await ingestRef.current; ingestRef.current = null; }
+
       await fetch('/api/onboard/goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers, tempUserId }),
+        body: JSON.stringify({ answers: [introText, q1, q2, q3, ''], tempUserId }),
       });
 
       const res = await fetch('/api/onboard/directive', {
@@ -208,27 +161,19 @@ export default function OnboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tempUserId }),
       });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || 'Directive generation failed.');
-      }
-      const data: Directive = await res.json();
-      setDirective(data);
-    } catch (e: any) {
-      setError(e.message || 'Something went wrong. Try again.');
-    } finally {
-      setLoading(false);
+
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Generation failed.'); }
+      setDirective(await res.json() as Directive);
+      setPhase('directive');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+      setPhase('q3');
     }
   };
 
-  // ── Email capture ──────────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!email.includes('@')) {
-      setError('Enter a valid email address.');
-      return;
-    }
+    if (!email.includes('@')) { setError('Enter a valid email.'); return; }
     setError('');
-    setLoading(true);
     try {
       await fetch('/api/onboard/save', {
         method: 'POST',
@@ -236,332 +181,394 @@ export default function OnboardPage() {
         body: JSON.stringify({ email, tempUserId }),
       });
       setSaved(true);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not save.');
     }
   };
 
-  const updateAnswer = (i: number, val: string) => {
-    setAnswers(prev => {
-      const next = [...prev];
-      next[i] = val;
-      return next;
-    });
+  // ── Shared styles ─────────────────────────────────────────────────────────
+
+  const fade: React.CSSProperties = {
+    opacity: visible ? 1 : 0,
+    transform: visible ? 'translateY(0)' : 'translateY(18px)',
+    transition: 'opacity 0.55s cubic-bezier(0.22,1,0.36,1), transform 0.55s cubic-bezier(0.22,1,0.36,1)',
   };
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  const inputBase: React.CSSProperties = {
+    width: '100%',
+    background: 'transparent',
+    border: 'none',
+    borderBottom: '1px solid #1e1c18',
+    outline: 'none',
+    color: '#f0ece4',
+    fontSize: '1.125rem',
+    fontFamily: FONT_SANS,
+    lineHeight: 1.75,
+    padding: '0.75rem 0',
+    resize: 'none',
+    caretColor: '#e8471c',
+  };
+
+  const ghostBtn: React.CSSProperties = {
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    cursor: 'pointer',
+    fontFamily: FONT_MONO,
+    fontSize: '0.7rem',
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase' as const,
+    transition: 'color 0.25s',
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#080808] text-[#f0ece4] flex flex-col items-center px-6 py-12">
-      {/* Logo */}
-      <a
-        href="/"
-        className="mb-12 font-serif text-xl text-[#f0ece4] hover:text-white transition-colors"
-        style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-      >
-        Foldera
-      </a>
+    <>
+      {/* Load matching fonts */}
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@400;500;600&display=swap');
+        ::placeholder { color: #38342f; }
+        * { box-sizing: border-box; }
+      `}</style>
 
-      {/* Step indicator */}
-      <div className="flex items-center gap-3 mb-10">
-        {([1, 2, 3] as const).map(n => (
-          <div
-            key={n}
-            className="h-px w-10 transition-all duration-500"
-            style={{ background: n <= step ? '#e8471c' : '#222220' }}
-          />
-        ))}
-        <span
-          className="ml-1 text-[10px] uppercase tracking-widest text-[#58534e]"
-          style={{ fontFamily: "'JetBrains Mono', monospace" }}
-        >
-          {step === 1 ? 'Upload' : step === 2 ? 'Goals' : 'Directive'}
-        </span>
-      </div>
+      <div style={{
+        minHeight: '100vh',
+        background: '#080808',
+        color: '#f0ece4',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem 1.5rem',
+        position: 'relative',
+      }}>
+        {/* Logo */}
+        <a href="/" style={{
+          position: 'absolute', top: '2rem', left: '2.5rem',
+          fontFamily: FONT_SERIF, fontSize: '1.1rem',
+          color: '#f0ece4', textDecoration: 'none', opacity: 0.5,
+          transition: 'opacity 0.2s',
+        }}>
+          Foldera
+        </a>
 
-      {/* Card */}
-      <div className="w-full max-w-lg">
+        {/* ── INTRO ─────────────────────────────────────────────────────── */}
+        {phase === 'intro' && (
+          <div style={{ ...fade, width: '100%', maxWidth: '640px', textAlign: 'center' }}>
+            <h1 style={{
+              fontFamily: FONT_SERIF,
+              fontSize: 'clamp(2.25rem, 6vw, 3.75rem)',
+              lineHeight: 1.12,
+              letterSpacing: '-0.02em',
+              marginBottom: '2.75rem',
+              fontWeight: 400,
+            }}>
+              What&rsquo;s been on<br />your mind lately?
+            </h1>
 
-        {/* ── STEP 1: Upload ───────────────────────────────────────────────── */}
-        {step === 1 && (
-          <div className="space-y-6">
-            <div>
-              <h1
-                className="text-2xl leading-snug mb-2"
-                style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+            <textarea
+              ref={introRef}
+              value={introText}
+              onChange={e => setIntroText(e.target.value)}
+              onKeyDown={e => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); if (introText.trim()) goTo('q1'); }
+              }}
+              placeholder="Just type. Foldera figures out the rest."
+              rows={4}
+              style={{ ...inputBase, textAlign: 'center', fontSize: '1.05rem' }}
+            />
+
+            <div style={{ marginTop: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
+              <button
+                onClick={() => introText.trim() && goTo('q1')}
+                style={{
+                  ...ghostBtn,
+                  color: introText.trim() ? '#f0ece4' : '#38342f',
+                  fontSize: '0.75rem',
+                  padding: '0.5rem 1.5rem',
+                }}
               >
-                Drop your Claude export.
-              </h1>
-              <p className="text-sm text-[#a09890] leading-relaxed">
-                Export any conversation from Claude.ai and paste the text below.
-                Foldera extracts your decisions, patterns, and goals automatically.{' '}
-                <span className="text-[#58534e]">Processed server-side, never shared.</span>
-              </p>
-            </div>
+                Show me what you see →
+              </button>
 
-            <div className="relative">
-              <textarea
-                value={uploadText}
-                onChange={e => setUploadText(e.target.value)}
-                rows={8}
-                placeholder="Paste conversation text here..."
-                className="w-full bg-[#0e0e0e] border border-[#222220] p-4 text-sm text-[#f0ece4] placeholder-[#38342f] resize-none focus:outline-none focus:border-[#2e2c28] leading-relaxed"
-                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px' }}
-              />
-              {uploadText && (
-                <button
-                  onClick={() => setUploadText('')}
-                  className="absolute top-3 right-3 text-[#58534e] hover:text-[#a09890] transition-colors text-sm"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label
-                className="cursor-pointer text-[10px] uppercase tracking-widest text-[#58534e] hover:text-[#a09890] transition-colors underline underline-offset-4"
-                style={{ fontFamily: "'JetBrains Mono', monospace" }}
-              >
-                Upload .txt or .json
-                <input type="file" accept=".txt,.json,.md" className="hidden" onChange={handleFile} />
+              <label style={{ cursor: 'pointer', color: '#3a3630', fontSize: '0.7rem', fontFamily: FONT_MONO, letterSpacing: '0.08em', transition: 'color 0.2s' }}>
+                {fileUploading ? 'uploading...' : 'or upload a Claude export'}
+                <input type="file" accept=".txt,.json,.md" style={{ display: 'none' }} onChange={handleFile} />
               </label>
-              {error && <p className="text-[#e8471c] text-xs">{error}</p>}
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
-              <button
-                onClick={() => { setError(''); setStep(2); }}
-                className="text-xs text-[#58534e] hover:text-[#a09890] underline underline-offset-4 transition-colors"
-                style={{ fontFamily: "'JetBrains Mono', monospace" }}
-              >
-                Skip — just answer the questions →
-              </button>
-              <button
-                onClick={handleIngest}
-                disabled={loading}
-                className="text-[10px] uppercase tracking-widest px-6 py-3 bg-[#f0ece4] text-[#080808] hover:bg-[#e8471c] hover:text-[#f0ece4] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ fontFamily: "'JetBrains Mono', monospace" }}
-              >
-                {loading ? 'Processing...' : uploadText ? 'Analyze →' : 'Continue →'}
-              </button>
             </div>
           </div>
         )}
 
-        {/* ── STEP 2: Goals ────────────────────────────────────────────────── */}
-        {step === 2 && (
-          <div className="space-y-6">
-            <div>
-              <h1
-                className="text-2xl leading-snug mb-2"
-                style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-              >
-                Five questions.
-              </h1>
-              <p className="text-sm text-[#a09890]">
-                Answer in plain English. Rough is fine — the engine reads between the lines.
-              </p>
-            </div>
+        {/* ── Q1 ────────────────────────────────────────────────────────── */}
+        {phase === 'q1' && (
+          <QuestionScreen
+            style={fade}
+            num="01" total="03"
+            question={"What are you trying to\nmake happen in the\nnext 90 days?"}
+            value={q1}
+            onChange={setQ1}
+            inputRef={q1Ref}
+            onNext={() => q1.trim() && goTo('q2')}
+            inputBase={inputBase}
+            ghostBtn={ghostBtn}
+            FONT_SERIF={FONT_SERIF}
+            FONT_MONO={FONT_MONO}
+          />
+        )}
 
-            <div className="space-y-5">
-              {QUESTIONS.map((item, i) => (
-                <div key={i} className="space-y-1.5">
-                  <label
-                    className="block text-[10px] uppercase tracking-widest text-[#58534e]"
-                    style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                  >
-                    {String(i + 1).padStart(2, '0')} — {item.q}
-                  </label>
-                  <textarea
-                    value={answers[i]}
-                    onChange={e => updateAnswer(i, e.target.value)}
-                    rows={2}
-                    placeholder={item.placeholder}
-                    className="w-full bg-[#0e0e0e] border border-[#222220] p-3 text-sm text-[#f0ece4] placeholder-[#38342f] resize-none focus:outline-none focus:border-[#2e2c28] leading-relaxed"
-                  />
-                </div>
-              ))}
-            </div>
+        {/* ── Q2 ────────────────────────────────────────────────────────── */}
+        {phase === 'q2' && (
+          <QuestionScreen
+            style={fade}
+            num="02" total="03"
+            question={"What keeps getting\nin your way?"}
+            value={q2}
+            onChange={setQ2}
+            inputRef={q2Ref}
+            onNext={() => q2.trim() && goTo('q3')}
+            inputBase={inputBase}
+            ghostBtn={ghostBtn}
+            FONT_SERIF={FONT_SERIF}
+            FONT_MONO={FONT_MONO}
+          />
+        )}
 
-            {error && <p className="text-[#e8471c] text-xs">{error}</p>}
+        {/* ── Q3 ────────────────────────────────────────────────────────── */}
+        {phase === 'q3' && (
+          <QuestionScreen
+            style={fade}
+            num="03" total="03"
+            question={"What does a win\nlook like for you?"}
+            value={q3}
+            onChange={setQ3}
+            inputRef={q3Ref}
+            onNext={() => q3.trim() && handleGenerate()}
+            isLast
+            error={error}
+            inputBase={inputBase}
+            ghostBtn={ghostBtn}
+            FONT_SERIF={FONT_SERIF}
+            FONT_MONO={FONT_MONO}
+          />
+        )}
 
-            <div className="flex items-center justify-between pt-1">
-              <button
-                onClick={() => { setError(''); setStep(1); }}
-                className="text-xs text-[#58534e] hover:text-[#a09890] underline underline-offset-4 transition-colors"
-                style={{ fontFamily: "'JetBrains Mono', monospace" }}
-              >
-                ← Back
-              </button>
-              <button
-                onClick={handleGenerate}
-                className="text-[10px] uppercase tracking-widest px-6 py-3 bg-[#e8471c] text-[#f0ece4] hover:bg-[#ff6b3d] transition-colors"
-                style={{ fontFamily: "'JetBrains Mono', monospace" }}
-              >
-                Generate my directive →
-              </button>
-            </div>
+        {/* ── GENERATING ────────────────────────────────────────────────── */}
+        {phase === 'generating' && (
+          <div style={{ ...fade, textAlign: 'center' }}>
+            <p style={{
+              fontFamily: FONT_SERIF,
+              fontSize: 'clamp(1.25rem, 3.5vw, 1.75rem)',
+              color: '#58534e',
+              fontStyle: 'italic',
+              fontWeight: 400,
+              letterSpacing: '0.01em',
+            }}>
+              {GENERATION_MSGS[genMsgIdx]}
+            </p>
           </div>
         )}
 
-        {/* ── STEP 3: Loading / Directive ──────────────────────────────────── */}
-        {step === 3 && (
-          <>
-            {loading && (
-              <div className="flex flex-col items-center justify-center py-24 space-y-6">
-                <div
-                  className="w-px bg-gradient-to-b from-transparent to-[#e8471c] animate-pulse"
-                  style={{ height: 64 }}
-                />
-                <p
-                  className="text-[10px] uppercase tracking-widest text-[#58534e] transition-all duration-700"
-                  style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                >
-                  {LOADING_MSGS[loadingMsgIdx]}
+        {/* ── DIRECTIVE ─────────────────────────────────────────────────── */}
+        {phase === 'directive' && directive && (
+          <div style={{ ...fade, width: '100%', maxWidth: '660px' }}>
+            {/* Action + confidence */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem' }}>
+              <span style={{
+                fontFamily: FONT_MONO,
+                fontSize: '0.6rem',
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                color: '#e8471c',
+              }}>
+                {ACTION_LABELS[directive.action_type] ?? directive.action_type}
+              </span>
+              <span style={{
+                fontFamily: FONT_MONO,
+                fontSize: '0.6rem',
+                letterSpacing: '0.12em',
+                color: '#2e2b26',
+              }}>
+                {directive.confidence}%
+              </span>
+            </div>
+
+            {/* The directive — the star of the show */}
+            <p style={{
+              fontFamily: FONT_SERIF,
+              fontSize: 'clamp(1.85rem, 4.5vw, 2.85rem)',
+              lineHeight: 1.2,
+              letterSpacing: '-0.015em',
+              marginBottom: '2rem',
+              fontWeight: 400,
+            }}>
+              {directive.directive}
+            </p>
+
+            {/* Reason */}
+            <p style={{
+              fontSize: '0.975rem',
+              lineHeight: 1.75,
+              color: '#7a7168',
+              marginBottom: '3.5rem',
+              maxWidth: '540px',
+            }}>
+              {directive.reason}
+            </p>
+
+            {/* Separator */}
+            <div style={{ width: '2rem', height: '1px', background: '#1a1917', marginBottom: '2.5rem' }} />
+
+            {/* Email capture — the conversion moment */}
+            {saved ? (
+              <div>
+                <p style={{ fontFamily: FONT_MONO, fontSize: '0.65rem', letterSpacing: '0.12em', color: '#58534e', marginBottom: '0.75rem' }}>
+                  ✓ saved
                 </p>
+                <a
+                  href="/api/auth/signin"
+                  style={{ fontFamily: FONT_SERIF, fontSize: '1.1rem', color: '#a09890', fontStyle: 'italic', textDecoration: 'none', borderBottom: '1px solid #2e2b26' }}
+                >
+                  Sign in to unlock the full dashboard →
+                </a>
               </div>
-            )}
-
-            {!loading && directive && (
-              <div className="space-y-4">
-                {/* Directive card */}
-                <div className="border border-[#222220] bg-[#0e0e0e] p-6 space-y-4">
-                  {/* Header row */}
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[10px] uppercase tracking-widest px-2 py-0.5 border ${ACTION_COLORS[directive.action_type] ?? 'text-[#a09890] border-[#222220] bg-transparent'}`}
-                      style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                    >
-                      {ACTION_LABELS[directive.action_type] ?? directive.action_type}
-                    </span>
-                    <span
-                      className="text-xs text-[#58534e]"
-                      style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                    >
-                      {directive.confidence}% confidence
-                    </span>
-                  </div>
-
-                  {/* Directive text */}
-                  <p
-                    className="text-xl leading-relaxed text-[#f0ece4]"
-                    style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+            ) : (
+              <div>
+                <p style={{
+                  fontFamily: FONT_SERIF,
+                  fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)',
+                  color: '#a09890',
+                  marginBottom: '1.25rem',
+                  fontStyle: 'italic',
+                  fontWeight: 400,
+                }}>
+                  Save this and get tomorrow&rsquo;s directive →
+                </p>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                  <input
+                    ref={emailRef}
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSave()}
+                    placeholder="you@example.com"
+                    style={{
+                      flex: 1,
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: '1px solid #1e1c18',
+                      outline: 'none',
+                      color: '#f0ece4',
+                      fontSize: '1rem',
+                      fontFamily: FONT_SANS,
+                      padding: '0.5rem 0',
+                      caretColor: '#e8471c',
+                    }}
+                  />
+                  <button
+                    onClick={handleSave}
+                    style={{
+                      ...ghostBtn,
+                      color: email.includes('@') ? '#f0ece4' : '#2e2b26',
+                      paddingBottom: '0.5rem',
+                      fontSize: '0.65rem',
+                    }}
                   >
-                    {directive.directive}
-                  </p>
-
-                  {/* Reason */}
-                  <p className="text-sm text-[#a09890] leading-relaxed border-t border-[#1a1917] pt-4">
-                    {directive.reason}
-                  </p>
-
-                  {/* Evidence toggle */}
-                  {directive.evidence?.length > 0 && (
-                    <div>
-                      <button
-                        onClick={() => setShowEvidence(v => !v)}
-                        className="text-[10px] uppercase tracking-widest text-[#58534e] hover:text-[#a09890] transition-colors"
-                        style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                      >
-                        {showEvidence ? 'Hide' : 'Show'} evidence ({directive.evidence.length})
-                      </button>
-                      {showEvidence && (
-                        <ul className="mt-3 space-y-2">
-                          {directive.evidence.map((ev, i) => (
-                            <li key={i} className="flex items-start gap-2 text-xs text-[#58534e]">
-                              <span className="text-[#e8471c] mt-0.5 flex-shrink-0">·</span>
-                              <span>
-                                {ev.date && (
-                                  <span
-                                    className="mr-1 text-[#38342f]"
-                                    style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                                  >
-                                    [{ev.date}]
-                                  </span>
-                                )}
-                                {ev.description}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
+                    →
+                  </button>
                 </div>
-
-                {/* Full context */}
-                {directive.fullContext && (
-                  <p className="text-xs text-[#58534e] leading-relaxed px-1">
-                    {directive.fullContext}
+                {error && (
+                  <p style={{ marginTop: '0.75rem', color: '#e8471c', fontFamily: FONT_MONO, fontSize: '0.65rem', letterSpacing: '0.08em' }}>
+                    {error}
                   </p>
                 )}
-
-                {/* Email capture */}
-                <div className="border border-[#222220] bg-[#0e0e0e] p-6 space-y-4">
-                  {saved ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-[#a09890] flex items-center gap-2">
-                        <span className="text-[#e8471c]">✓</span>
-                        Saved. Your first morning brief is on its way.
-                      </p>
-                      <a
-                        href="/api/auth/signin"
-                        className="text-xs text-[#f0ece4] underline underline-offset-4 hover:text-[#e8471c] transition-colors"
-                        style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                      >
-                        Sign in to unlock the full dashboard →
-                      </a>
-                    </div>
-                  ) : (
-                    <>
-                      <p
-                        className="text-[10px] uppercase tracking-widest text-[#58534e]"
-                        style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                      >
-                        Save this + get a brief every morning
-                      </p>
-                      <div className="flex gap-2">
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={e => setEmail(e.target.value)}
-                          onKeyDown={e => e.key === 'Enter' && handleSave()}
-                          placeholder="you@example.com"
-                          className="flex-1 bg-[#080808] border border-[#222220] px-3 py-2.5 text-sm text-[#f0ece4] placeholder-[#38342f] focus:outline-none focus:border-[#2e2c28]"
-                        />
-                        <button
-                          onClick={handleSave}
-                          disabled={loading}
-                          className="text-[10px] uppercase tracking-widest px-4 py-2.5 bg-[#f0ece4] text-[#080808] hover:bg-[#e8471c] hover:text-[#f0ece4] transition-colors disabled:opacity-40"
-                          style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                        >
-                          {loading ? '...' : 'Save →'}
-                        </button>
-                      </div>
-                      {error && <p className="text-[#e8471c] text-xs">{error}</p>}
-                    </>
-                  )}
-                </div>
               </div>
             )}
-
-            {!loading && !directive && error && (
-              <div className="flex flex-col items-center py-20 space-y-4 text-center">
-                <p className="text-sm text-[#e8471c]">{error}</p>
-                <button
-                  onClick={() => { setStep(2); setError(''); }}
-                  className="text-xs text-[#58534e] underline underline-offset-4 hover:text-[#a09890] transition-colors"
-                  style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                >
-                  ← Go back and try again
-                </button>
-              </div>
-            )}
-          </>
+          </div>
         )}
+      </div>
+    </>
+  );
+}
+
+// ─── QuestionScreen ───────────────────────────────────────────────────────────
+
+interface QProps {
+  style: React.CSSProperties;
+  num: string;
+  total: string;
+  question: string;
+  value: string;
+  onChange: (v: string) => void;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  onNext: () => void;
+  isLast?: boolean;
+  error?: string;
+  inputBase: React.CSSProperties;
+  ghostBtn: React.CSSProperties;
+  FONT_SERIF: string;
+  FONT_MONO: string;
+}
+
+function QuestionScreen({ style, num, total, question, value, onChange, inputRef, onNext, isLast, error, inputBase, ghostBtn, FONT_SERIF, FONT_MONO }: QProps) {
+  const lines = question.split('\n');
+  const ready = value.trim().length > 0;
+
+  return (
+    <div style={{ ...style, width: '100%', maxWidth: '660px' }}>
+      {/* Counter */}
+      <p style={{ fontFamily: FONT_MONO, fontSize: '0.6rem', letterSpacing: '0.2em', color: '#2e2b26', marginBottom: '3rem' }}>
+        {num} / {total}
+      </p>
+
+      {/* Question */}
+      <h2 style={{
+        fontFamily: FONT_SERIF,
+        fontSize: 'clamp(2rem, 5.5vw, 3.5rem)',
+        lineHeight: 1.12,
+        letterSpacing: '-0.02em',
+        marginBottom: '3rem',
+        fontWeight: 400,
+      }}>
+        {lines.map((line, i) => (
+          <span key={i}>{line}{i < lines.length - 1 && <br />}</span>
+        ))}
+      </h2>
+
+      {/* Input */}
+      <textarea
+        ref={inputRef}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (ready) onNext(); }
+        }}
+        placeholder="Answer here..."
+        rows={3}
+        style={{ ...inputBase, display: 'block', marginBottom: '2.5rem' }}
+      />
+
+      {/* Error */}
+      {error && (
+        <p style={{ marginBottom: '1rem', color: '#e8471c', fontFamily: FONT_MONO, fontSize: '0.65rem', letterSpacing: '0.08em' }}>
+          {error}
+        </p>
+      )}
+
+      {/* Next */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          onClick={onNext}
+          style={{
+            ...ghostBtn,
+            color: ready ? '#f0ece4' : '#2e2b26',
+            fontSize: isLast ? '0.7rem' : '1.25rem',
+            letterSpacing: isLast ? '0.12em' : '0',
+          }}
+        >
+          {isLast ? 'Generate my directive →' : '→'}
+        </button>
       </div>
     </div>
   );

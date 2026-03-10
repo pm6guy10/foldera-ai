@@ -5,7 +5,12 @@
  * for a client-generated tempUserId so the conviction engine has data to
  * produce a first directive.
  *
- * Body: { answers: string[5]; tempUserId: string }
+ * Body: { answers: string[]; tempUserId: string }
+ * answers[0] = intro text ("what's on your mind")
+ * answers[1] = 90-day goal
+ * answers[2] = obstacles
+ * answers[3] = what a win looks like
+ * answers[4] = optional (unused in current flow, kept for compat)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -15,13 +20,13 @@ export const dynamic = 'force-dynamic';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Maps each question index to a goal prefix + category + priority
+// Maps each answer index to a goal prefix + category + priority
 const QUESTION_META = [
-  { prefix: 'Current decision:', category: 'career', priority: 5 },
-  { prefix: '3–6 month goal:', category: 'other', priority: 4 },
+  { prefix: "What's on my mind:", category: 'other', priority: 5 },
+  { prefix: '90-day goal:', category: 'career', priority: 4 },
   { prefix: 'Recurring obstacle:', category: 'other', priority: 3 },
-  { prefix: "This week's success:", category: 'other', priority: 2 },
-  { prefix: 'Deferred task:', category: 'other', priority: 1 },
+  { prefix: 'A win looks like:', category: 'other', priority: 2 },
+  { prefix: 'Additional context:', category: 'other', priority: 1 },
 ] as const;
 
 function getSupabase() {
@@ -45,8 +50,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid tempUserId' }, { status: 400 });
   }
 
-  if (!Array.isArray(answers) || answers.length !== 5) {
-    return NextResponse.json({ error: 'answers must be an array of exactly 5 strings' }, { status: 400 });
+  if (!Array.isArray(answers) || answers.length < 1 || answers.length > 5) {
+    return NextResponse.json({ error: 'answers must be an array of 1–5 strings' }, { status: 400 });
   }
 
   const rows = (answers as string[])
