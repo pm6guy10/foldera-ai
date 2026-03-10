@@ -43,6 +43,25 @@ You approve or skip. It learns. It gets more accurate.
       /api/cron/scan-social daily 8 AM; deduplicates via tkg_signals.content_hash;
       outreach drafts appear in DraftQueue for Brandon's one-tap approval (16c233c)
 
+## Agent Layer
+Six specialist agents run on schedule, think like domain experts, and stage all findings
+in DraftQueue for Brandon's one-tap approval. Nothing executes without approval. Skipped
+items train the agent to find better signals next time.
+
+| Agent | Persona | Schedule | Route |
+|-------|---------|----------|-------|
+| UI/UX Critic | Senior Apple product designer | Daily | `/api/cron/agents/uiux-critic` |
+| Pricing Analyst | SaaS pricing expert | Weekly | `/api/cron/agents/pricing-analyst` |
+| GTM Strategist | Growth hacker | Daily | `/api/cron/agents/gtm-strategist` |
+| Retention Analyst | Churn analyst | Weekly | `/api/cron/agents/retention-analyst` |
+| Trust Auditor | Skeptical first-time user | Daily | `/api/cron/agents/trust-auditor` |
+| Distribution Finder | Connector | Daily | `/api/cron/agents/distribution-finder` |
+
+All agents write to `tkg_actions` with `status='draft'` via `lib/agents/base-agent.ts`.
+Brandon approves or skips in DraftQueue. Approved → execute. Skipped → feedback weight -0.5.
+
+---
+
 ## QA Standard — run this automatically
 After EVERY commit, before marking anything done:
 1. Screenshot every affected screen at 390px and 1280px

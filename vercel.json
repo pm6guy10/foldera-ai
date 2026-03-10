@@ -12,25 +12,16 @@
     }
   ],
   "crons": [
-    {
-      "path": "/api/cron/sync-email",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/scan-social",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/daily-brief",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/cron/generate-briefs",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/daily-scan",
-      "schedule": "0 6 * * *"
-    }
+    { "path": "/api/cron/sync-email",                     "schedule": "0 2 * * *"  },
+    { "path": "/api/cron/scan-social",                    "schedule": "0 8 * * *"  },
+    { "path": "/api/cron/daily-brief",                    "schedule": "0 7 * * *"  },
+    { "path": "/api/cron/generate-briefs",                "schedule": "0 6 * * *"  },
+    { "path": "/api/cron/daily-scan",                     "schedule": "0 6 * * *"  },
+    { "path": "/api/cron/agents/uiux-critic",             "schedule": "0 9 * * *"  },
+    { "path": "/api/cron/agents/gtm-strategist",          "schedule": "5 9 * * *"  },
+    { "path": "/api/cron/agents/trust-auditor",           "schedule": "10 9 * * *" },
+    { "path": "/api/cron/agents/distribution-finder",     "schedule": "15 9 * * *" },
+    { "path": "/api/cron/agents/pricing-analyst",         "schedule": "0 10 * * 1" },
+    { "path": "/api/cron/agents/retention-analyst",       "schedule": "10 10 * * 1"}
   ]
 }
