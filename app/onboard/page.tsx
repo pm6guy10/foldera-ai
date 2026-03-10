@@ -225,14 +225,6 @@ export default function OnboardPage() {
 
   return (
     <>
-      {/* Load matching fonts */}
-      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@400;500;600&display=swap');
-        ::placeholder { color: #38342f; }
-        * { box-sizing: border-box; }
-      `}</style>
-
       <div style={{
         minHeight: '100vh',
         background: '#080808',
@@ -277,6 +269,7 @@ export default function OnboardPage() {
               }}
               placeholder="Just type. Foldera figures out the rest."
               rows={4}
+              className="onboard-input"
               style={{ ...inputBase, textAlign: 'center', fontSize: '1.05rem' }}
             />
 
@@ -546,6 +539,7 @@ function QuestionScreen({ style, num, total, question, value, onChange, inputRef
         }}
         placeholder="Answer here..."
         rows={3}
+        className="onboard-input"
         style={{ ...inputBase, display: 'block', marginBottom: '2.5rem' }}
       />
 

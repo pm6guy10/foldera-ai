@@ -6,5 +6,16 @@ export const metadata: Metadata = {
 };
 
 export default function OnboardLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      {/* Fonts — rendered from server component, hoisted to <head> by Next.js */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@400;500;600&display=swap"
+      />
+      {children}
+    </>
+  );
 }

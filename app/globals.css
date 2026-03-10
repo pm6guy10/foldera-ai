@@ -217,3 +217,5 @@ h2 {
   font-size: 40px;
   line-height: 1.2;
 }
+/* Onboard flow — placeholder color */
+.onboard-input::placeholder { color: #38342f; }
