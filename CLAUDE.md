@@ -32,13 +32,19 @@ You approve or skip. It learns. It gets more accurate.
 
 ## Backlog
 - [x] Dynamic onboarding directive — pull from real tkg_patterns instead of hardcoded text
-- [ ] Outcome confirmation UI — one tap to mark a directive as worked or didn't work
+- [x] Outcome confirmation UI — phase state machine on ConvictionCard; ThumbsUp/Down → /api/conviction/outcome;
+      feedback_weight +2.0 worked / -1.5 didn't work (edc2d8b... wait, 2e41901)
 - [x] Email delivery — 7am daily directive via email, no dashboard required
-- [ ] Signal ingestion — Outlook is primary. Azure AD auth and lib/plugins/outlook/ already
-      exist from prior build. Audit what's functional vs graveyard before writing anything new.
-      Point working auth at tkg_signals. Also check Gmail OAuth status. Run both nightly via
-      existing cron infrastructure.
-- [ ] Draft actions layer — stage proposed actions for user approval before executing. User sees
-      "Foldera wants to send this email. Approve?" One tap yes or no. Nothing executes without approval.
-- [ ] User acquisition agent — monitor Twitter and Reddit for pain signal keywords matching
-      Foldera's core problem. Draft outreach messages for Brandon's approval before anything sends.
+- [x] Signal ingestion — token-encryption fail-safe; jwt callback persists OAuth tokens to integrations table;
+      lib/integrations/outlook-client + gmail-client; /api/cron/sync-email nightly 2 AM (edc2d8b)
+- [x] Draft actions layer — tkg_actions status='draft'; /api/drafts/{propose,pending,decide};
+      DraftQueue component on dashboard; approve/reject with optimistic UI (64d841b)
+- [x] User acquisition agent — lib/acquisition/{keywords,reddit-scanner,twitter-scanner};
+      /api/cron/scan-social daily 8 AM; deduplicates via tkg_signals.content_hash;
+      outreach drafts appear in DraftQueue for Brandon's one-tap approval (16c233c)
+
+## Next horizons (post-backlog)
+- Wire real email send on draft approval (Resend for Gmail; Graph API /sendMail for Outlook)
+- Calendar integration — Google Calendar / Outlook Calendar event creation from schedule directives
+- Add ENCRYPTION_KEY + TWITTER_BEARER_TOKEN to Vercel env vars for production
+- Notion signal ingestion — lib/integrations/notion-client, NOTION_API_KEY already set
