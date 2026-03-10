@@ -1,6 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface DirectiveResult {
+  directive:   string;
+  action_type: string;
+  confidence:  number;
+  reason:      string;
+}
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -13,8 +22,9 @@ const GENERATION_MSGS = [
   'Almost there...',
 ];
 
-const DIRECTIVE = {
-  text:        "You already know what to do. You're stalling because doing it makes it real.",
+// Shown if the API fails or hasn't resolved
+const FALLBACK: DirectiveResult = {
+  directive:   "You already know what to do. You're stalling because doing it makes it real.",
   action_type: 'DECIDE',
   confidence:  91,
   reason:      'Every person who lands here is avoiding one specific thing. This is it.',
@@ -28,9 +38,18 @@ const MSG_INTERVAL_MS   = 1350;
 type Phase = 'generating' | 'directive';
 
 export default function OnboardPage() {
-  const [phase, setPhase]       = useState<Phase>('generating');
-  const [visible, setVisible]   = useState(false);
-  const [msgIdx, setMsgIdx]     = useState(0);
+  const [phase, setPhase]         = useState<Phase>('generating');
+  const [visible, setVisible]     = useState(false);
+  const [msgIdx, setMsgIdx]       = useState(0);
+  const [directive, setDirective] = useState<DirectiveResult>(FALLBACK);
+
+  // Kick off the API fetch immediately — runs once on mount
+  const fetchRef = useRef<Promise<DirectiveResult | null> | null>(null);
+  useEffect(() => {
+    fetchRef.current = fetch('/api/onboard/universal-directive')
+      .then(r => r.ok ? (r.json() as Promise<DirectiveResult>) : null)
+      .catch(() => null);
+  }, []);
 
   // Fade in on mount and on phase change
   useEffect(() => {
@@ -39,13 +58,25 @@ export default function OnboardPage() {
     return () => clearTimeout(t);
   }, [phase]);
 
-  // Cycle messages and auto-advance while generating
+  // Cycle messages, then advance once both the timer AND fetch have resolved
   useEffect(() => {
     if (phase !== 'generating') return;
     setMsgIdx(0);
-    const cycle   = setInterval(() => setMsgIdx(i => (i + 1) % GENERATION_MSGS.length), MSG_INTERVAL_MS);
-    const advance = setTimeout(() => setPhase('directive'), GENERATE_DELAY_MS);
-    return () => { clearInterval(cycle); clearTimeout(advance); };
+    const cycle = setInterval(
+      () => setMsgIdx(i => (i + 1) % GENERATION_MSGS.length),
+      MSG_INTERVAL_MS,
+    );
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const result = await (fetchRef.current ?? Promise.resolve(null));
+      if (!cancelled) {
+        setDirective(result ?? FALLBACK);
+        setPhase('directive');
+      }
+    }, GENERATE_DELAY_MS);
+
+    return () => { cancelled = true; clearInterval(cycle); clearTimeout(timer); };
   }, [phase]);
 
   const fade: React.CSSProperties = {
@@ -68,15 +99,15 @@ export default function OnboardPage() {
     }}>
       {/* Logo */}
       <a href="/" style={{
-        position:   'absolute',
-        top:        '2rem',
-        left:       '2.5rem',
-        fontFamily: FONT_SERIF,
-        fontSize:   '1.1rem',
-        color:      '#f0ece4',
-        opacity:    0.4,
+        position:       'absolute',
+        top:            '2rem',
+        left:           '2.5rem',
+        fontFamily:     FONT_SERIF,
+        fontSize:       '1.1rem',
+        color:          '#f0ece4',
+        opacity:        0.4,
         textDecoration: 'none',
-        transition: 'opacity 0.2s',
+        transition:     'opacity 0.2s',
       }}>
         Foldera
       </a>
@@ -85,11 +116,11 @@ export default function OnboardPage() {
       {phase === 'generating' && (
         <p style={{
           ...fade,
-          fontFamily:  FONT_SERIF,
-          fontSize:    'clamp(1.25rem, 3.5vw, 1.75rem)',
-          color:       '#58534e',
-          fontStyle:   'italic',
-          fontWeight:  400,
+          fontFamily:    FONT_SERIF,
+          fontSize:      'clamp(1.25rem, 3.5vw, 1.75rem)',
+          color:         '#58534e',
+          fontStyle:     'italic',
+          fontWeight:    400,
           letterSpacing: '0.01em',
         }}>
           {GENERATION_MSGS[msgIdx]}
@@ -108,7 +139,7 @@ export default function OnboardPage() {
               textTransform: 'uppercase',
               color:         '#e8471c',
             }}>
-              {DIRECTIVE.action_type}
+              {directive.action_type}
             </span>
             <span style={{
               fontFamily:    FONT_MONO,
@@ -116,7 +147,7 @@ export default function OnboardPage() {
               letterSpacing: '0.12em',
               color:         '#2e2b26',
             }}>
-              {DIRECTIVE.confidence}%
+              {directive.confidence}%
             </span>
           </div>
 
@@ -129,7 +160,7 @@ export default function OnboardPage() {
             marginBottom:  '2rem',
             fontWeight:    400,
           }}>
-            {DIRECTIVE.text}
+            {directive.directive}
           </p>
 
           {/* Reason */}
@@ -139,7 +170,7 @@ export default function OnboardPage() {
             color:      '#7a7168',
             maxWidth:   '540px',
           }}>
-            {DIRECTIVE.reason}
+            {directive.reason}
           </p>
         </div>
       )}
