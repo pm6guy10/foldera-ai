@@ -145,9 +145,9 @@ export default function OnboardPage() {
               fontFamily:    FONT_MONO,
               fontSize:      '0.6rem',
               letterSpacing: '0.12em',
-              color:         '#2e2b26',
+              color:         '#8b7355',
             }}>
-              {directive.confidence}%
+              {directive.confidence}% confidence
             </span>
           </div>
 
@@ -169,9 +169,44 @@ export default function OnboardPage() {
             lineHeight: 1.75,
             color:      '#7a7168',
             maxWidth:   '540px',
+            marginBottom: '2.5rem',
           }}>
             {directive.reason}
           </p>
+
+          {/* CTA — the critical missing piece; without this the page is a dead end */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '400px' }}>
+            <a
+              href="/api/auth/signin"
+              style={{
+                display:        'inline-flex',
+                alignItems:     'center',
+                justifyContent: 'center',
+                padding:        '0.875rem 2rem',
+                borderRadius:   '9999px',
+                background:     '#f0ece4',
+                color:          '#0d0b09',
+                fontFamily:     FONT_MONO,
+                fontSize:       '0.75rem',
+                letterSpacing:  '0.1em',
+                fontWeight:     600,
+                textDecoration: 'none',
+                textTransform:  'uppercase',
+                transition:     'opacity 0.2s',
+              }}
+            >
+              Get your dashboard →
+            </a>
+            <p style={{
+              fontFamily:    FONT_MONO,
+              fontSize:      '0.6rem',
+              color:         '#3a352f',
+              letterSpacing: '0.08em',
+              textAlign:     'center',
+            }}>
+              Free · Takes 30 seconds · No card required
+            </p>
+          </div>
         </div>
       )}
     </main>

@@ -26,15 +26,11 @@ const navItems: NavItem[] = [
     label: 'Briefings',
     href: '/dashboard/briefings',
     icon: <BriefingIcon />,
-    badge: 2,
-    status: 'warning',
   },
   {
     label: 'Relationships',
     href: '/dashboard/relationships',
     icon: <RelationshipIcon />,
-    badge: 3,
-    status: 'critical',
   },
   {
     label: 'Signals',

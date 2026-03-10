@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/design-system';
 import { typography } from '@/lib/design-system/typography';
 import { transitions } from '@/lib/design-system/animations';
@@ -39,14 +40,13 @@ export function TopBar() {
               <span className="text-xs text-zinc-400 hidden sm:inline">Shadow Mode Active</span>
             </div>
             
-            {/* Notifications */}
+            {/* Notifications — real dot only shown when there are actual items */}
             <button className={cn(
               'relative p-2 rounded-lg',
               transitions.colors,
               'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800'
             )}>
               <BellIcon />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
             </button>
           </div>
         </div>
@@ -62,6 +62,23 @@ export function TopBar() {
 }
 
 function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const router = useRouter();
+
+  // Close on ESC
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
+  const commands = [
+    { icon: '⚡', label: 'Dashboard',           shortcut: '⌘D', href: '/dashboard' },
+    { icon: '📋', label: 'Briefings',           shortcut: '⌘B', href: '/dashboard/briefings' },
+    { icon: '📊', label: 'Relationships',        shortcut: '⌘R', href: '/dashboard/relationships' },
+    { icon: '⚙️', label: 'Settings',            shortcut: '⌘,', href: '/dashboard/settings' },
+  ];
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -74,14 +91,14 @@ function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             onClick={onClose}
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
           />
-          
+
           {/* Palette */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="fixed top-[20%] left-1/2 -translate-x-1/2 z-50 w-full max-w-xl"
+            className="fixed top-[20%] left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4"
           >
             <div className="bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl shadow-black/40 overflow-hidden">
               {/* Search input */}
@@ -89,26 +106,22 @@ function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 <SearchIcon className="text-zinc-500" />
                 <input
                   type="text"
-                  placeholder="Type a command or search..."
+                  placeholder="Navigate to..."
                   className="flex-1 bg-transparent text-zinc-50 placeholder:text-zinc-500 outline-none"
                   autoFocus
                 />
                 <kbd className="text-xs text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded">ESC</kbd>
               </div>
-              
+
               {/* Commands */}
               <div className="p-2 max-h-80 overflow-auto">
                 <p className={cn(typography.label, 'text-zinc-500 px-3 py-2')}>
-                  Quick Actions
+                  Quick Navigation
                 </p>
-                {[
-                  { icon: '⚡', label: 'Generate Briefing', shortcut: '⌘B' },
-                  { icon: '🔍', label: 'Run Shadow Scan', shortcut: '⌘S' },
-                  { icon: '📊', label: 'View Relationships', shortcut: '⌘R' },
-                  { icon: '⚙️', label: 'Settings', shortcut: '⌘,' },
-                ].map((cmd) => (
+                {commands.map((cmd) => (
                   <button
                     key={cmd.label}
+                    onClick={() => { router.push(cmd.href); onClose(); }}
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg',
                       'text-left text-zinc-300',

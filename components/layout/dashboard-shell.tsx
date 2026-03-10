@@ -4,6 +4,7 @@ import { cn } from '@/lib/design-system';
 import { spacing } from '@/lib/design-system/spacing';
 import { Sidebar } from './sidebar';
 import { TopBar } from './top-bar';
+import { MobileNav } from './mobile-nav';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -34,11 +35,15 @@ export function DashboardShell({ children }: DashboardShellProps) {
         {/* Main content — full width on mobile, offset by sidebar on lg+ */}
         <div className="flex-1 ml-0 lg:ml-64">
           <TopBar />
-          <main className={cn(spacing.page.padding, spacing.page.maxWidth)}>
+          {/* pb-20 on mobile = room for the fixed bottom tab bar */}
+          <main className={cn(spacing.page.padding, spacing.page.maxWidth, 'pb-20 lg:pb-6')}>
             {children}
           </main>
         </div>
       </div>
+
+      {/* Mobile bottom nav — only renders on < lg */}
+      <MobileNav />
     </div>
   );
 }

@@ -396,10 +396,10 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4 md:gap-6">
-            <button className="text-sm font-medium text-[#A0A0A0] hover:text-white transition-colors hidden sm:block">Log in</button>
-            <button className="px-4 py-2 md:px-5 md:py-2.5 rounded-full bg-white text-black text-xs md:text-sm font-semibold hover:bg-gray-200 transition-all">
+            <a href="/api/auth/signin" className="text-sm font-medium text-[#A0A0A0] hover:text-white transition-colors hidden sm:block">Log in</a>
+            <a href="/onboard" className="px-4 py-2 md:px-5 md:py-2.5 rounded-full bg-white text-black text-xs md:text-sm font-semibold hover:bg-gray-200 transition-all">
               Get Early Access
-            </button>
+            </a>
           </div>
         </div>
       </nav>
@@ -427,10 +427,10 @@ export default function App() {
               Every decision you wrestled with, every pattern you repeated, every moment you almost sent a message but didn't. Foldera reads your history and tells you what it means.
             </p>
             <div className="flex flex-col items-center w-full sm:w-auto">
-              <button className="w-full sm:w-auto px-8 py-4 rounded-full bg-[#3A6BFF] text-white font-semibold text-base md:text-lg hover:bg-[#1F3FD6] transition-all flex items-center justify-center gap-2 group shadow-[0_0_20px_rgba(58,107,255,0.2)] md:shadow-[0_0_30px_rgba(58,107,255,0.2)] hover:shadow-[0_0_40px_rgba(58,107,255,0.35)] active:scale-95">
-                Connect your history
+              <a href="/onboard" className="w-full sm:w-auto px-8 py-4 rounded-full bg-[#3A6BFF] text-white font-semibold text-base md:text-lg hover:bg-[#1F3FD6] transition-all flex items-center justify-center gap-2 group shadow-[0_0_20px_rgba(58,107,255,0.2)] md:shadow-[0_0_30px_rgba(58,107,255,0.2)] hover:shadow-[0_0_40px_rgba(58,107,255,0.35)] active:scale-95">
+                See your patterns
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
+              </a>
             </div>
           </div>
         </ScrollReveal>
@@ -517,9 +517,9 @@ export default function App() {
             <h2 className="text-4xl md:text-5xl font-bold text-[#F5F5F5] mb-12 tracking-tight" style={{ letterSpacing: '-0.03em' }}>
               Your life already knows the answer.
             </h2>
-            <button className="px-10 py-5 rounded-full bg-white text-black font-bold text-lg md:text-xl transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:shadow-[0_0_50px_rgba(255,255,255,0.25)] hover:bg-gray-100 active:scale-95">
+            <a href="/onboard" className="px-10 py-5 rounded-full bg-white text-black font-bold text-lg md:text-xl transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:shadow-[0_0_50px_rgba(255,255,255,0.25)] hover:bg-gray-100 active:scale-95">
               Find out what your history already knows about you
-            </button>
+            </a>
             <p className="mt-6 text-[#555] text-sm font-mono tracking-wide">
               Private by default. Takes 60 seconds to index.
             </p>

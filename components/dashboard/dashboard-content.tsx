@@ -122,7 +122,7 @@ export default function DashboardContent() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-zinc-50">{getGreeting()}</h1>
-          <p className="text-zinc-400 text-sm mt-1">{new Date().toISOString().slice(0, 10)}</p>
+          <p className="text-zinc-400 text-sm mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         </div>
         <button
           onClick={loadStats}
@@ -140,6 +140,7 @@ export default function DashboardContent() {
           label="Signals"
           fullLabel="Signals ingested"
           value={statsLoading ? '—' : String(stats?.signalsTotal ?? 0)}
+          emptyHint="Feed text to start"
         />
         <MetricCard
           label="Commitments"
@@ -151,6 +152,7 @@ export default function DashboardContent() {
           label="Patterns"
           fullLabel="Patterns identified"
           value={statsLoading ? '—' : String(stats?.patternsActive ?? 0)}
+          emptyHint="Appears after 1st ingest"
         />
       </div>
 
@@ -175,8 +177,8 @@ export default function DashboardContent() {
         {/* Side panel — feed the graph */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl">
           <div className="p-5 border-b border-zinc-800">
-            <h2 className="text-zinc-50 font-semibold">Feed the Graph</h2>
-            <p className="text-zinc-500 text-sm mt-0.5">Upload a conversation export</p>
+            <h2 className="text-zinc-50 font-semibold">Teach Foldera</h2>
+            <p className="text-zinc-500 text-sm mt-0.5">Paste any conversation or notes</p>
           </div>
           <div className="p-5">
             <FeedPanel onIngested={loadStats} />
@@ -208,7 +210,7 @@ function FeedPanel({ onIngested }: { onIngested: () => void }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Ingest failed');
-      setResult(`✓ ${data.decisionsWritten} decisions · ${data.patternsUpdated} patterns`);
+      setResult(`✓ Foldera extracted ${data.decisionsWritten} insight${data.decisionsWritten !== 1 ? 's' : ''} and ${data.patternsUpdated} pattern${data.patternsUpdated !== 1 ? 's' : ''}.`);
       setStatus('done');
       setText('');
       onIngested();
@@ -221,13 +223,13 @@ function FeedPanel({ onIngested }: { onIngested: () => void }) {
   return (
     <div className="space-y-3">
       <p className="text-zinc-500 text-xs leading-relaxed">
-        Paste a Claude conversation export. The extraction engine will pull decisions,
-        patterns, and goals into your identity graph.
+        Paste any conversation, email thread, or notes. Foldera will read it and update
+        what it knows about your decisions, patterns, and priorities.
       </p>
       <textarea
         value={text}
         onChange={e => setText(e.target.value)}
-        placeholder="Paste conversation text here..."
+        placeholder="Paste text here — an email, a conversation, meeting notes..."
         rows={8}
         className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-violet-500 transition-colors"
       />
@@ -237,7 +239,7 @@ function FeedPanel({ onIngested }: { onIngested: () => void }) {
         className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
       >
         <Upload className="w-4 h-4" />
-        {status === 'loading' ? 'Processing...' : 'Ingest Conversation'}
+        {status === 'loading' ? 'Reading...' : 'Learn from this'}
       </button>
       {result && (
         <p className={`text-xs font-mono ${status === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
@@ -257,12 +259,15 @@ function MetricCard({
   fullLabel,
   value,
   highlight,
+  emptyHint,
 }: {
   label: string;
   fullLabel?: string;
   value: string;
   highlight?: boolean;
+  emptyHint?: string;
 }) {
+  const isEmpty = value === '0';
   return (
     <div
       className={`p-2.5 sm:p-4 rounded-xl border ${
@@ -271,11 +276,16 @@ function MetricCard({
           : 'bg-zinc-900 border-zinc-800'
       }`}
     >
-      <div className="text-xl sm:text-2xl font-bold text-zinc-50 tabular-nums">{value}</div>
-      {/* Short label on small screens, full label on sm+ */}
+      <div className={`text-xl sm:text-2xl font-bold tabular-nums ${isEmpty ? 'text-zinc-600' : 'text-zinc-50'}`}>{value}</div>
       <div className="text-zinc-500 text-[10px] sm:text-xs mt-0.5 leading-tight">
-        <span className="sm:hidden">{label}</span>
-        <span className="hidden sm:inline">{fullLabel ?? label}</span>
+        {isEmpty && emptyHint ? (
+          <span className="text-zinc-600">{emptyHint}</span>
+        ) : (
+          <>
+            <span className="sm:hidden">{label}</span>
+            <span className="hidden sm:inline">{fullLabel ?? label}</span>
+          </>
+        )}
       </div>
     </div>
   );
