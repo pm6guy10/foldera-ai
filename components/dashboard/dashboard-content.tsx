@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Upload, RefreshCw } from 'lucide-react';
 import ConvictionCard from './conviction-card';
+import DraftQueue from './draft-queue';
 import type { ConvictionAction } from '@/lib/briefing/types';
 
 // ---------------------------------------------------------------------------
@@ -152,6 +153,9 @@ export default function DashboardContent() {
           value={statsLoading ? '—' : String(stats?.patternsActive ?? 0)}
         />
       </div>
+
+      {/* Draft Queue — only renders if there are pending proposals */}
+      <DraftQueue onDecided={loadStats} />
 
       {/* Main grid — stacked on mobile, 3-col on lg */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">

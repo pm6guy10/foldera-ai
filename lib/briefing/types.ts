@@ -39,11 +39,43 @@ export interface ConvictionDirective {
 export interface ConvictionAction extends ConvictionDirective {
   id: string;
   userId: string;
-  status: 'pending_approval' | 'approved' | 'rejected' | 'executed' | 'skipped';
+  status: 'pending_approval' | 'approved' | 'rejected' | 'executed' | 'skipped' | 'draft' | 'draft_rejected';
   generatedAt: string;
   approvedAt?: string;
   executedAt?: string;
   executionResult?: Record<string, unknown>;
+}
+
+// ---------------------------------------------------------------------------
+// Draft proposals — Foldera proposes a concrete action; user approves/rejects
+// ---------------------------------------------------------------------------
+
+/**
+ * The payload stored in tkg_actions.execution_result for draft rows.
+ * Flexible JSONB — shape varies by draft_type.
+ */
+export interface DraftPayload {
+  draft_type: 'email_reply' | 'email_compose' | 'schedule_event' | 'generic';
+  /** Email-specific fields */
+  to?: string;
+  subject?: string;
+  body?: string;
+  /** Source context (e.g. which email triggered this) */
+  source?: string;
+  source_id?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * A draft action returned from /api/drafts/pending
+ */
+export interface DraftAction {
+  id: string;
+  title: string;          // Short human label: "Reply to Alice about proposal"
+  description: string;    // One-sentence description of what Foldera will do
+  action_type: ActionType;
+  draft: DraftPayload;
+  generatedAt: string;
 }
 
 // ---------------------------------------------------------------------------
