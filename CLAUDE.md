@@ -43,6 +43,18 @@ You approve or skip. It learns. It gets more accurate.
       /api/cron/scan-social daily 8 AM; deduplicates via tkg_signals.content_hash;
       outreach drafts appear in DraftQueue for Brandon's one-tap approval (16c233c)
 
+## QA Standard — run this automatically
+After EVERY commit, before marking anything done:
+1. Screenshot every affected screen at 390px and 1280px
+2. Hit every affected API endpoint and confirm real data returns
+3. Walk the full user journey touching the changed code as a first-time user
+4. Fix anything that looks broken, confusing, or unpolished before reporting back
+5. Never say "done" until you've verified it yourself
+
+Brandon should never discover a bug. You should find it first.
+
+---
+
 ## Next horizons (post-backlog)
 - Wire real email send on draft approval (Resend for Gmail; Graph API /sendMail for Outlook)
 - Calendar integration — Google Calendar / Outlook Calendar event creation from schedule directives
