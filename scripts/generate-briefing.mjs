@@ -1,11 +1,14 @@
 /**
- * generate-briefing.mjs — Conviction engine, standalone runner.
+ * generate-briefing.mjs — Conviction engine + feedback learning, standalone runner.
  *
  * Generates the single highest-leverage directive for today.
- * Reads from tkg_signals, tkg_commitments, tkg_entities, tkg_goals.
- * Writes result to tkg_actions (status=pending_approval) and tkg_briefings.
+ * Reads:  tkg_signals, tkg_commitments, tkg_entities, tkg_goals, tkg_actions (feedback)
+ * Writes: tkg_actions (status=pending_approval), tkg_briefings
  *
- * Run after seed-goals.mjs to get the first conviction directive.
+ * Feedback learning:
+ *   - Queries all tkg_actions rows where feedback_weight IS NOT NULL
+ *   - Injects penalize/boost section into Claude prompt
+ *   - Prints before/after comparison so you can see whether learning shifted the directive
  */
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
@@ -45,7 +48,7 @@ const supabase  = createClient(
 );
 
 // ---------------------------------------------------------------------------
-// Conviction engine system prompt — one directive, no hedging
+// Conviction system prompt — one directive, feedback-aware
 // ---------------------------------------------------------------------------
 
 const CONVICTION_SYSTEM = `You are a conviction engine embedded inside a personal chief-of-staff system.
@@ -70,6 +73,12 @@ The reason must be one sentence citing specific behavioral evidence from their h
 
 The evidence array must contain 2-5 specific items from their graph that directly justify this directive.
 
+FEEDBACK LEARNING RULES — when FEEDBACK HISTORY is provided:
+- action_types with a negative net weight have been rejected by this person before. Strongly avoid recommending them unless evidence is qualitatively different from prior rejected cases.
+- action_types with a positive net weight have been confirmed effective. Favor them when the evidence supports.
+- If the REJECTED section shows a similar directive text or reasoning pattern to what you were about to recommend, pivot to a different action type or framing.
+- Repeated skips on the same pattern are a behavioral signal — lower your confidence if recommending a pattern the user has skipped before.
+
 Return JSON only:
 {
   "directive": "The action in plain English, written as an instruction to the user",
@@ -82,11 +91,54 @@ Return JSON only:
   "fullContext": "2-3 sentences of additional context"
 }`;
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function buildFeedbackSection(rows) {
+  if (!rows || rows.length === 0) return '';
+
+  const positive = rows.filter(r => (r.feedback_weight ?? 0) > 0);
+  const negative = rows.filter(r => (r.feedback_weight ?? 0) < 0);
+
+  const netByType = {};
+  for (const r of rows) {
+    netByType[r.action_type] = (netByType[r.action_type] ?? 0) + (r.feedback_weight ?? 0);
+  }
+
+  const netLines = Object.entries(netByType)
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, weight]) => `  • ${type}: ${weight > 0 ? '+' : ''}${weight.toFixed(1)}`)
+    .join('\n');
+
+  const positiveLines = positive
+    .slice(0, 5)
+    .map(r => `  • [${r.action_type}] "${r.directive_text.slice(0, 120)}" — ${r.reason.slice(0, 100)} (weight: +${r.feedback_weight})`)
+    .join('\n');
+
+  const negativeLines = negative
+    .slice(0, 5)
+    .map(r => `  • [${r.action_type}] "${r.directive_text.slice(0, 120)}" — ${r.reason.slice(0, 100)} (weight: ${r.feedback_weight})`)
+    .join('\n');
+
+  return `
+FEEDBACK HISTORY (${rows.length} prior directives with user feedback — penalize negatives, boost positives):
+
+NET WEIGHT BY ACTION_TYPE:
+${netLines}
+${positive.length > 0 ? '\nEXECUTED (positive — user approved and ran):\n' + positiveLines : ''}
+${negative.length > 0 ? '\nSKIPPED/REJECTED (negative — avoid similar patterns):\n' + negativeLines : ''}`;
+}
+
+// ---------------------------------------------------------------------------
+// Load all data sources
+// ---------------------------------------------------------------------------
+
 const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
 console.log('Querying conviction engine data sources for user ' + USER_ID + '...');
 
-const [signalsRes, commitmentsRes, entityRes, goalsRes] = await Promise.all([
+const [signalsRes, commitmentsRes, entityRes, goalsRes, feedbackRes, prevDirectiveRes] = await Promise.all([
   supabase
     .from('tkg_signals')
     .select('type, source, content, occurred_at')
@@ -117,24 +169,114 @@ const [signalsRes, commitmentsRes, entityRes, goalsRes] = await Promise.all([
     .eq('user_id', USER_ID)
     .order('priority', { ascending: false })
     .limit(10),
+
+  // Feedback rows — all evaluated directives (column may not exist yet)
+  supabase
+    .from('tkg_actions')
+    .select('id, action_type, directive_text, reason, status, feedback_weight, generated_at')
+    .eq('user_id', USER_ID)
+    .not('feedback_weight', 'is', null)
+    .order('generated_at', { ascending: false })
+    .limit(30)
+    .then(r => r), // catch column-missing error below
+
+  // Previous directive — for before/after comparison
+  supabase
+    .from('tkg_actions')
+    .select('id, action_type, directive_text, confidence, status, generated_at')
+    .eq('user_id', USER_ID)
+    .order('generated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle(),
 ]);
 
 const signals     = signalsRes.data ?? [];
 const commitments = commitmentsRes.data ?? [];
-const patterns    = (entityRes.data?.patterns) ? entityRes.data.patterns : {};
+const patterns    = entityRes.data?.patterns ? entityRes.data.patterns : {};
 const goals       = goalsRes.data ?? [];
+const prevDirective = prevDirectiveRes.data ?? null;
+
+// feedback_weight column may not exist yet in the DB — degrade gracefully
+let feedback = [];
+let feedbackColMissing = false;
+if (feedbackRes.error && feedbackRes.error.code === '42703') {
+  feedbackColMissing = true;
+} else {
+  feedback = feedbackRes.data ?? [];
+}
 
 console.log(`  Goals:           ${goals.length}`);
 console.log(`  Signals (30d):   ${signals.length}`);
 console.log(`  Commitments:     ${commitments.length}`);
 console.log(`  Patterns:        ${Object.keys(patterns).length}`);
+console.log(`  Feedback rows:   ${feedback.length} (${feedback.filter(r => r.feedback_weight > 0).length} positive, ${feedback.filter(r => r.feedback_weight < 0).length} negative)`);
+
+// ---------------------------------------------------------------------------
+// Print feedback summary
+// ---------------------------------------------------------------------------
+
+console.log('\n' + '═'.repeat(60));
+console.log('FEEDBACK HISTORY');
+console.log('═'.repeat(60));
+
+if (feedbackColMissing) {
+  console.log('  ⚠  feedback_weight column not yet in DB.');
+  console.log('  Run this SQL in Supabase Dashboard → SQL Editor to activate learning:');
+  console.log('');
+  console.log('    ALTER TABLE tkg_actions');
+  console.log('      ADD COLUMN IF NOT EXISTS feedback_weight FLOAT DEFAULT NULL;');
+  console.log('');
+  console.log('  After running the SQL, approve or skip a directive from the dashboard,');
+  console.log('  then re-run this script to see learning in action.');
+} else if (feedback.length === 0) {
+  console.log('  No evaluated directives yet (no approvals or skips recorded).');
+  console.log('  Approve or skip a directive from the dashboard, then re-run this script.');
+} else {
+  const netByType = {};
+  for (const r of feedback) {
+    netByType[r.action_type] = (netByType[r.action_type] ?? 0) + r.feedback_weight;
+  }
+  console.log('  Net weight by action_type:');
+  for (const [type, weight] of Object.entries(netByType).sort((a, b) => b[1] - a[1])) {
+    const bar = weight > 0
+      ? '+'.repeat(Math.min(10, Math.round(weight * 5)))
+      : '-'.repeat(Math.min(10, Math.round(Math.abs(weight) * 5)));
+    console.log(`    ${type.padEnd(16)} ${(weight > 0 ? '+' : '') + weight.toFixed(1)}  ${bar}`);
+  }
+  console.log('');
+  console.log('  Recent evaluated directives:');
+  for (const r of feedback.slice(0, 5)) {
+    const label = r.feedback_weight > 0 ? '✓ EXECUTED' : (r.status === 'rejected' ? '✗ REJECTED' : '⊘ SKIPPED');
+    console.log(`    [${label}] [${r.action_type}] ${r.directive_text.slice(0, 80)}...`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Previous directive
+// ---------------------------------------------------------------------------
+
+console.log('\n' + '─'.repeat(60));
+console.log('PREVIOUS DIRECTIVE (before this run):');
+if (prevDirective) {
+  const prevStatus = prevDirective.status ?? 'unknown';
+  console.log(`  Action type: ${prevDirective.action_type.toUpperCase()}`);
+  console.log(`  Confidence:  ${prevDirective.confidence}/100`);
+  console.log(`  Status:      ${prevStatus}`);
+  console.log(`  Text:        ${String(prevDirective.directive_text).slice(0, 100)}...`);
+  console.log(`  Generated:   ${String(prevDirective.generated_at).slice(0, 10)}`);
+} else {
+  console.log('  No prior directive found.');
+}
+
+// ---------------------------------------------------------------------------
+// Build prompt
+// ---------------------------------------------------------------------------
 
 if (signals.length === 0 && commitments.length === 0 && goals.length === 0) {
   console.log('\nIdentity graph is empty. Run seed-goals.mjs and run-ingest.mjs first.');
   process.exit(0);
 }
 
-// Build context
 const goalLines = goals.length > 0
   ? goals.map(g => `• [${g.goal_category}, priority ${g.priority}/5] ${g.goal_text}`).join('\n')
   : 'No declared goals yet. Run seed-goals.mjs.';
@@ -154,6 +296,8 @@ const signalLines = signals
   .map(s => `[${String(s.occurred_at).slice(0, 10)}] ${String(s.content).slice(0, 250)}`)
   .join('\n');
 
+const feedbackSection = buildFeedbackSection(feedback);
+
 const userPrompt = `DECLARED GOALS (${goals.length} total — measure every recommendation against these):
 ${goalLines}
 
@@ -165,10 +309,15 @@ ${patternLines}
 
 RECENT SIGNALS (last 30 days, ${signals.length} total):
 ${signalLines || 'None.'}
-
+${feedbackSection}
 Identify the single highest-leverage action for today. Return only the JSON directive.`;
 
-console.log('\nCalling Claude (conviction engine)...\n');
+console.log('\n' + '─'.repeat(60));
+console.log('Calling Claude (conviction engine + feedback)...\n');
+
+// ---------------------------------------------------------------------------
+// Claude call
+// ---------------------------------------------------------------------------
 
 const response = await anthropic.messages.create({
   model:      'claude-sonnet-4-6',
@@ -187,7 +336,10 @@ try {
   process.exit(1);
 }
 
+// ---------------------------------------------------------------------------
 // Write to tkg_actions
+// ---------------------------------------------------------------------------
+
 const { data: actionRow, error: actionErr } = await supabase
   .from('tkg_actions')
   .insert({
@@ -212,7 +364,7 @@ if (actionErr) {
 
 // Also write to tkg_briefings for backwards compat
 const today = new Date().toISOString().slice(0, 10);
-const { error: briefErr } = await supabase.from('tkg_briefings').insert({
+await supabase.from('tkg_briefings').insert({
   user_id:            USER_ID,
   briefing_date:      today,
   generated_at:       new Date().toISOString(),
@@ -224,17 +376,14 @@ const { error: briefErr } = await supabase.from('tkg_briefings').insert({
     commitmentsReviewed: commitments.length,
     patternsActive:      Object.keys(patterns).length,
     goalsActive:         goals.length,
+    feedbackSignals:     feedback.length,
     fullBrief:           parsed.fullContext ?? parsed.reason,
     directive:           parsed,
   },
 });
 
-if (briefErr) {
-  console.error('tkg_briefings write failed: ' + briefErr.message);
-}
-
 // ---------------------------------------------------------------------------
-// Print the single directive
+// Print the directive
 // ---------------------------------------------------------------------------
 
 const ACTION_EMOJI = {
@@ -271,5 +420,65 @@ if (parsed.fullContext) {
   console.log(parsed.fullContext);
 }
 
+// ---------------------------------------------------------------------------
+// Before / after delta
+// ---------------------------------------------------------------------------
+
+console.log('\n' + '═'.repeat(60));
+console.log('DELTA — did feedback learning change the directive?');
+console.log('═'.repeat(60));
+
+if (!prevDirective) {
+  console.log('  No prior directive to compare against. This is the first run.');
+} else {
+  const prevType    = prevDirective.action_type;
+  const prevConf    = prevDirective.confidence;
+  const newType     = parsed.action_type;
+  const newConf     = parsed.confidence;
+  const typeChanged = prevType !== newType;
+  const confDelta   = newConf - prevConf;
+
+  console.log(`  Previous: [${prevType.toUpperCase()}] at ${prevConf}% confidence`);
+  console.log(`  New:      [${newType.toUpperCase()}] at ${newConf}% confidence`);
+  console.log('');
+
+  if (typeChanged) {
+    console.log(`  ✓ ACTION TYPE CHANGED: ${prevType} → ${newType}`);
+  } else {
+    console.log(`  — Action type unchanged: ${newType}`);
+  }
+
+  if (Math.abs(confDelta) >= 3) {
+    const direction = confDelta > 0 ? '▲' : '▼';
+    console.log(`  ${direction} Confidence shifted ${confDelta > 0 ? '+' : ''}${confDelta} points`);
+  } else {
+    console.log(`  — Confidence within ±3 points (${confDelta > 0 ? '+' : ''}${confDelta})`);
+  }
+
+  if (feedback.length === 0) {
+    console.log('');
+    console.log('  Note: No feedback history yet — scores reflect behavioral data only.');
+    console.log('  To activate learning: approve or skip a directive from the dashboard,');
+    console.log('  then re-run this script. The feedback_weight column will shift future directives.');
+  } else {
+    const negativeTypes = feedback
+      .filter(r => r.feedback_weight < 0)
+      .map(r => r.action_type);
+    const positiveTypes = feedback
+      .filter(r => r.feedback_weight > 0)
+      .map(r => r.action_type);
+
+    if (typeChanged && negativeTypes.includes(prevType) && !negativeTypes.includes(newType)) {
+      console.log(`  ✓ LEARNING SIGNAL APPLIED: pivoted away from ${prevType} (previously penalized)`);
+    }
+    if (!typeChanged && negativeTypes.includes(newType)) {
+      console.log(`  ⚠  Warning: recommended ${newType} despite negative feedback history. Check reasoning.`);
+    }
+    if (positiveTypes.includes(newType)) {
+      console.log(`  ✓ Boosted: ${newType} has positive feedback history`);
+    }
+  }
+}
+
 console.log('');
-console.log(`Sources: ${goals.length} goals | ${signals.length} signals | ${commitments.length} commitments | ${Object.keys(patterns).length} patterns`);
+console.log(`Sources: ${goals.length} goals | ${signals.length} signals | ${commitments.length} commitments | ${Object.keys(patterns).length} patterns | ${feedback.length} feedback signals`);

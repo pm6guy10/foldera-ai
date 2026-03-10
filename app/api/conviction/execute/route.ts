@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   if (decision === 'skip') {
     await supabase
       .from('tkg_actions')
-      .update({ status: 'skipped' })
+      .update({ status: 'skipped', feedback_weight: -0.5 })
       .eq('id', action_id);
     return NextResponse.json({ status: 'skipped', action_id });
   }
@@ -88,13 +88,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Stub failed: ${err.message}` }, { status: 500 });
   }
 
-  // Mark executed
+  // Mark executed — positive learning signal
   await supabase
     .from('tkg_actions')
     .update({
       status:           'executed',
       executed_at:      new Date().toISOString(),
       execution_result: executionResult,
+      feedback_weight:  1.0,
     })
     .eq('id', action_id);
 

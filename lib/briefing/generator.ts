@@ -2,8 +2,16 @@
  * Conviction Engine — generates the single highest-leverage action today.
  *
  * Data sources: tkg_signals, tkg_commitments, tkg_entities, tkg_goals
+ * Feedback:     tkg_actions (feedback_weight IS NOT NULL — prior approvals/skips)
  * AI model:     claude-sonnet-4-6
  * Output:       ConvictionDirective (one directive, not a report)
+ *
+ * Learning loop:
+ *   executed rows  → feedback_weight  +1.0 → positive signal
+ *   skipped rows   → feedback_weight  -0.5 → negative signal
+ *   rejected rows  → feedback_weight  -1.0 → strong negative signal
+ *   The feedback section in the user prompt penalizes repeated rejects
+ *   and boosts patterns that have worked before.
  *
  * Also exports generateBriefing() for backwards compat with
  * /api/briefing/latest (wraps the conviction directive into the old shape).
@@ -34,6 +42,7 @@ function getSupabase() {
 // ---------------------------------------------------------------------------
 // Conviction engine system prompt
 // One directive. No hedging. No lists.
+// Includes feedback-loop instructions.
 // ---------------------------------------------------------------------------
 
 const CONVICTION_SYSTEM = `You are a conviction engine embedded inside a personal chief-of-staff system.
@@ -60,6 +69,12 @@ The evidence array must contain 2-5 specific items from their graph (signal date
 
 The confidence score reflects how many times this pattern has appeared and produced a known outcome. 90+ means you have seen this exact scenario resolve this exact way multiple times. Below 50 means the evidence is suggestive but thin.
 
+FEEDBACK LEARNING RULES — when FEEDBACK HISTORY is provided:
+- action_types with a negative net weight have been rejected by this person before. Strongly avoid recommending them again unless the behavioral evidence is overwhelming and qualitatively different from the prior rejected cases.
+- action_types with a positive net weight have been confirmed effective. Favor them when the evidence supports.
+- Look beyond action_type: if the REJECTED section shows a similar directive text or reasoning pattern to what you were about to recommend, that is a strong signal to pivot to a different action type or framing.
+- A history of repeated skips on the same pattern is itself a behavioral signal — factor it into your confidence score.
+
 Return JSON only — no prose outside the JSON:
 {
   "directive": "The action in plain English, written as an instruction to the user",
@@ -73,16 +88,71 @@ Return JSON only — no prose outside the JSON:
 }`;
 
 // ---------------------------------------------------------------------------
+// Build feedback section from prior evaluated directives
+// ---------------------------------------------------------------------------
+
+interface FeedbackRow {
+  id: string;
+  action_type: string;
+  directive_text: string;
+  reason: string;
+  status: string;
+  feedback_weight: number;
+  generated_at: string;
+}
+
+function buildFeedbackSection(rows: FeedbackRow[]): string {
+  if (rows.length === 0) return '';
+
+  const positive = rows.filter(r => (r.feedback_weight ?? 0) > 0);
+  const negative = rows.filter(r => (r.feedback_weight ?? 0) < 0);
+
+  // Net weight per action_type
+  const netByType: Record<string, number> = {};
+  for (const r of rows) {
+    netByType[r.action_type] = (netByType[r.action_type] ?? 0) + (r.feedback_weight ?? 0);
+  }
+
+  const netLines = Object.entries(netByType)
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, weight]) => {
+      const sign = weight > 0 ? '+' : '';
+      return `  • ${type}: ${sign}${weight.toFixed(1)}`;
+    })
+    .join('\n');
+
+  const positiveLines = positive
+    .slice(0, 5)
+    .map(r => `  • [${r.action_type}] "${r.directive_text.slice(0, 120)}" — ${r.reason.slice(0, 100)} (weight: +${r.feedback_weight})`)
+    .join('\n');
+
+  const negativeLines = negative
+    .slice(0, 5)
+    .map(r => {
+      const label = r.status === 'rejected' ? 'REJECTED' : 'SKIPPED';
+      return `  • [${r.action_type}] "${r.directive_text.slice(0, 120)}" — ${r.reason.slice(0, 100)} (weight: ${r.feedback_weight})`;
+    })
+    .join('\n');
+
+  return `
+FEEDBACK HISTORY (${rows.length} prior directives with user feedback — use to penalize/boost):
+
+NET WEIGHT BY ACTION_TYPE (negative = user has rejected this pattern; positive = confirmed effective):
+${netLines}
+${positive.length > 0 ? `\nEXECUTED — user approved and ran these directives (positive signal):\n${positiveLines}` : ''}
+${negative.length > 0 ? `\nSKIPPED/REJECTED — user passed on these (negative signal — avoid similar patterns):\n${negativeLines}` : ''}`;
+}
+
+// ---------------------------------------------------------------------------
 // Main export — generateDirective
 // ---------------------------------------------------------------------------
 
 export async function generateDirective(userId: string): Promise<ConvictionDirective> {
   const supabase = getSupabase();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Pull all four data sources in parallel
-  const [signalsRes, commitmentsRes, entityRes, goalsRes] = await Promise.all([
+  // Pull all data sources in parallel — including feedback history
+  const [signalsRes, commitmentsRes, entityRes, goalsRes, feedbackRes] = await Promise.all([
     supabase
       .from('tkg_signals')
       .select('type, source, content, occurred_at')
@@ -113,12 +183,22 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       .eq('user_id', userId)
       .order('priority', { ascending: false })
       .limit(10),
+
+    // Feedback: all rows that have been evaluated (feedback_weight IS NOT NULL)
+    supabase
+      .from('tkg_actions')
+      .select('id, action_type, directive_text, reason, status, feedback_weight, generated_at')
+      .eq('user_id', userId)
+      .not('feedback_weight', 'is', null)
+      .order('generated_at', { ascending: false })
+      .limit(30),
   ]);
 
   const signals     = signalsRes.data ?? [];
   const commitments = commitmentsRes.data ?? [];
   const patterns    = (entityRes.data?.patterns as Record<string, any>) ?? {};
   const goals       = goalsRes.data ?? [];
+  const feedback    = (feedbackRes.data ?? []) as FeedbackRow[];
 
   // Empty graph
   if (signals.length === 0 && commitments.length === 0 && goals.length === 0) {
@@ -151,6 +231,9 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     ? goals.map((g: any) => `• [${g.goal_category}, priority ${g.priority}/5] ${g.goal_text}`).join('\n')
     : 'No declared goals yet.';
 
+  // Feedback section (empty string if no history — no noise added)
+  const feedbackSection = buildFeedbackSection(feedback);
+
   const userPrompt = `DECLARED GOALS (${goals.length} total — measure every recommendation against these):
 ${goalLines}
 
@@ -162,7 +245,7 @@ ${patternLines}
 
 RECENT SIGNALS (last 30 days, ${signals.length} total):
 ${signalLines || 'None.'}
-
+${feedbackSection}
 Identify the single highest-leverage action for today. Return only the JSON directive.`;
 
   // Call Claude
@@ -178,7 +261,7 @@ Identify the single highest-leverage action for today. Return only the JSON dire
   try {
     const response = await getAnthropic().messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 600,
+      max_tokens: 1000,
       temperature: 0.3 as any,
       system: CONVICTION_SYSTEM,
       messages: [{ role: 'user', content: userPrompt }],
