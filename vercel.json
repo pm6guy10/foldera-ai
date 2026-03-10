@@ -17,6 +17,10 @@
       "schedule": "0 2 * * *"
     },
     {
+      "path": "/api/cron/scan-social",
+      "schedule": "0 8 * * *"
+    },
+    {
       "path": "/api/cron/daily-brief",
       "schedule": "0 7 * * *"
     },
