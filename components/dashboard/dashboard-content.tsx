@@ -8,7 +8,7 @@ import ConvictionCard from './conviction-card';
 import type { ConvictionAction } from '@/lib/briefing/types';
 
 // ---------------------------------------------------------------------------
-// Graph stats from /api/briefing/latest
+// Graph stats from /api/graph/stats
 // ---------------------------------------------------------------------------
 
 interface GraphStats {
@@ -32,18 +32,19 @@ export default function DashboardContent() {
   const [convictionLoading, setConvictionLoading] = useState(false);
 
   useEffect(() => {
-    if (status === 'authenticated') loadStats();
+    if (status === 'authenticated') {
+      loadStats();
+      loadLatestConviction();
+    }
     if (status === 'unauthenticated') router.push('/api/auth/signin');
   }, [status]);
 
+  // -- Stats: pure DB counts, no Claude call --
   const loadStats = async () => {
     setStatsLoading(true);
     try {
-      const res = await fetch('/api/briefing/latest');
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data.graphStats ?? null);
-      }
+      const res = await fetch('/api/graph/stats');
+      if (res.ok) setStats(await res.json());
     } catch {
       // silent
     } finally {
@@ -51,6 +52,18 @@ export default function DashboardContent() {
     }
   };
 
+  // -- Load most recent pending directive (auto-populates card on mount) --
+  const loadLatestConviction = async () => {
+    try {
+      const res = await fetch('/api/conviction/latest');
+      if (res.status === 204) return; // no actions yet — leave card in empty state
+      if (res.ok) setConviction(await res.json());
+    } catch {
+      // silent
+    }
+  };
+
+  // -- Generate a fresh directive --
   const generateDirective = useCallback(async () => {
     setConvictionLoading(true);
     setConviction(null);
@@ -89,8 +102,6 @@ export default function DashboardContent() {
     }
     setConviction(prev => prev ? { ...prev, status: 'skipped' } : prev);
   };
-
-  const isEmpty = stats && stats.signalsTotal === 0 && stats.commitmentsActive === 0;
 
   return (
     <div className="space-y-6">

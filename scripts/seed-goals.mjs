@@ -142,7 +142,9 @@ ${signalSamples || 'None.'}
 
 Extract the goals vector from this behavioral history.`;
 
-console.log('\nCalling Claude to extract goals from behavioral history...');
+console.log('\nWaiting 2s before API call...');
+await new Promise(r => setTimeout(r, 2000));
+console.log('Calling Claude to extract goals from behavioral history (max 5 for pilot run)...');
 
 const response = await anthropic.messages.create({
   model:      'claude-sonnet-4-6',
@@ -160,7 +162,7 @@ try {
   process.exit(1);
 }
 
-const goals = parsed.goals ?? [];
+const goals = (parsed.goals ?? []).slice(0, 5);
 if (goals.length === 0) {
   console.log('No goals extracted. Behavioral history may be too sparse.');
   process.exit(0);
