@@ -48,6 +48,34 @@ export function getAuthOptions(): NextAuthOptions {
           token.email = user.email;
           token.name = user.name;
           token.provider = account.provider;
+
+          // Persist OAuth tokens to the `integrations` table so background
+          // cron jobs (sync-email, etc.) can retrieve them without a session.
+          try {
+            const { saveTokens } = await import('@/lib/auth/token-store');
+            const resolvedUserId = process.env.INGEST_USER_ID ?? token.sub ?? (user as any).id;
+            if (resolvedUserId && account.access_token && account.refresh_token) {
+              if (account.provider === 'google') {
+                await saveTokens(resolvedUserId, 'google', {
+                  access_token: account.access_token,
+                  refresh_token: account.refresh_token,
+                  // expires_at from NextAuth is in seconds; GoogleTokens.expiry_date is ms
+                  expiry_date: account.expires_at
+                    ? account.expires_at * 1000
+                    : Date.now() + 3_600_000,
+                });
+              } else if (account.provider === 'azure-ad') {
+                await saveTokens(resolvedUserId, 'azure_ad', {
+                  access_token: account.access_token,
+                  refresh_token: account.refresh_token,
+                  expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
+                });
+              }
+            }
+          } catch (err) {
+            // Non-fatal — JWT still works; log and move on
+            console.error('[auth] Failed to persist OAuth tokens:', err);
+          }
         }
         return token;
       },

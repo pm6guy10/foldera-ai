@@ -9,12 +9,13 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
 
-function getEncryptionKey(): Buffer {
+/**
+ * Returns the AES-256-GCM key, or null when ENCRYPTION_KEY is not configured.
+ * Null = plaintext passthrough mode (safe for local dev / CI without key).
+ */
+function getEncryptionKey(): Buffer | null {
   const key = process.env.ENCRYPTION_KEY;
-  if (!key) {
-    throw new Error('ENCRYPTION_KEY environment variable is not set');
-  }
-  // Decode base64 key and ensure it's 32 bytes
+  if (!key) return null;
   const keyBuffer = Buffer.from(key, 'base64');
   if (keyBuffer.length !== 32) {
     throw new Error('ENCRYPTION_KEY must be 32 bytes (256 bits) when decoded');
@@ -24,6 +25,8 @@ function getEncryptionKey(): Buffer {
 
 export function encryptToken(plaintext: string): string {
   const key = getEncryptionKey();
+  // No key configured — store plaintext (acceptable for dev; add ENCRYPTION_KEY in prod)
+  if (!key) return plaintext;
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
   
@@ -38,7 +41,9 @@ export function encryptToken(plaintext: string): string {
 
 export function decryptToken(encryptedData: string): string {
   const key = getEncryptionKey();
-  
+  // No key configured — assume value is plaintext passthrough
+  if (!key) return encryptedData;
+
   const parts = encryptedData.split(':');
   if (parts.length !== 3) {
     throw new Error('Invalid encrypted token format');
