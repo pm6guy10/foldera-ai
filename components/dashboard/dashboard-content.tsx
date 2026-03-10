@@ -103,6 +103,18 @@ export default function DashboardContent() {
     setConviction(prev => prev ? { ...prev, status: 'skipped' } : prev);
   };
 
+  const handleOutcome = async (actionId: string, outcome: 'worked' | 'didnt_work') => {
+    const res = await fetch('/api/conviction/outcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action_id: actionId, outcome }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Could not save outcome');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -152,6 +164,7 @@ export default function DashboardContent() {
             onGenerate={generateDirective}
             onApprove={handleApprove}
             onSkip={handleSkip}
+            onOutcome={handleOutcome}
           />
         </div>
 
