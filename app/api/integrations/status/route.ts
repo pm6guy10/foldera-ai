@@ -2,12 +2,13 @@
  * GET /api/integrations/status
  *
  * Returns the list of connected OAuth integrations for the authenticated user.
- * Stub: returns empty array until real integration tables are wired.
+ * Queries the `integrations` table (service role bypasses RLS).
  */
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,25 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // TODO: query tkg_integrations when the table is created
-  // For now, return an empty array so SettingsClient renders cleanly
-  return NextResponse.json({ integrations: [] });
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data, error } = await supabase
+      .from('integrations')
+      .select('provider, is_active, connected_at')
+      .eq('user_id', session.user.id);
+
+    if (error) {
+      console.error('[integrations/status] query failed:', error.message);
+      return NextResponse.json({ integrations: [] });
+    }
+
+    return NextResponse.json({ integrations: data || [] });
+  } catch (err: any) {
+    console.error('[integrations/status] unexpected error:', err.message);
+    return NextResponse.json({ integrations: [] });
+  }
 }

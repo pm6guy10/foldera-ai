@@ -106,7 +106,7 @@ export default function SettingsClient() {
           name="Gmail"
           description="Email intelligence"
           icon="📧"
-          isConnected={integrations.some(i => i.provider === 'gmail' && i.is_active)}
+          isConnected={integrations.some(i => i.provider === 'google' && i.is_active)}
           onConnect={() => signIn('google', { callbackUrl: '/dashboard/settings' })}
         />
 

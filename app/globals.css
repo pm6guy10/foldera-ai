@@ -4,43 +4,30 @@
 @tailwind components;
 @tailwind utilities;
 
-/* === GLOBAL TYPOGRAPHY & SPACING === */
+/* === BASE BODY === */
 body {
-  font-size: 18px;
-  line-height: 1.6;
   color: #e5e7eb;
-  background-color: #0a0a0f; /* Base color */
-
-  /* 
-    This creates a "spotlight" effect from the top, layered on top of a 
-    subtle linear gradient. This adds a huge amount of depth.
-  */
-  background-image: 
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(6, 182, 212, 0.1), transparent),
-    linear-gradient(135deg, #0a0a0f, #111827, #0a0a0f);
-  
-  background-attachment: fixed;
+  background-color: #0a0a0f;
   min-height: 100vh;
   min-height: -webkit-fill-available;
+  overflow-x: hidden;
 }
 
-/* === 2. ENHANCED GRID OVERLAY === */
+/* === GRID OVERLAY (subtle depth) === */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
-  /* Made the grid slightly more visible with a lighter color */
-  background-image: 
+  background-image:
     linear-gradient(rgba(45, 55, 72, 0.5) 1px, transparent 1px),
     linear-gradient(90deg, rgba(45, 55, 72, 0.5) 1px, transparent 1px);
   background-size: 60px 60px;
-  opacity: 0.15; /* Increased opacity slightly */
+  opacity: 0.1;
   pointer-events: none;
 }
 
-/* === 3. HIGH-TECH PANELS (The "Node.js" effect) === */
-/* Keep your original .card style as a fallback or for less important cards */
+/* === OPT-IN CARD STYLES (dashboard only) === */
 .card {
   background: #111827;
   border: 1px solid #334155;
@@ -50,55 +37,34 @@ body::before {
   margin-bottom: 1rem;
 }
 
-/* 
-  This new class will be for our main panels. It creates a subtle 
-  glowing gradient border effect that looks very professional.
-*/
 .card-enhanced {
   position: relative;
-  background-color: #111827; /* Main panel color */
-  background-clip: padding-box; /* Important: keeps background inside the border */
-  border: 1px solid transparent; /* Start with a transparent border */
-  border-radius: 0.85rem; /* Slightly larger radius */
+  background-color: #111827;
+  background-clip: padding-box;
+  border: 1px solid transparent;
+  border-radius: 0.85rem;
   padding: 1.25rem;
   margin-bottom: 1rem;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Deeper shadow for more depth */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-/* This pseudo-element creates the gradient border */
 .card-enhanced::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
-  margin: -1px; /* Must be -1px to sit behind the border */
-  border-radius: inherit; /* Inherit the parent's border radius */
+  margin: -1px;
+  border-radius: inherit;
   background: linear-gradient(135deg, #06b6d4, #1f2937, #10b981);
 }
 
-/* === 4. POLISHED BUTTONS === */
-/* Your existing button style is great, we'll just add a glow on hover */
-button, .btn {
-  display: inline-block;
-  padding: 0.75rem 1.5rem; /* Slightly larger padding */
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out; /* Smoother transition */
-  border: none;
-  background: linear-gradient(135deg, #06b6d4, #10b981);
-  color: #0a0a0f !important;
-  /* Initial subtle shadow */
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+/* === OPT-IN UTILITY CLASSES === */
+.glow-text {
+  background: linear-gradient(90deg, #06b6d4, #10b981);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-button:hover, .btn:hover {
-  transform: translateY(-2px);
-  /* Brighter, more focused glow on hover */
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.6), 0 0 30px rgba(16, 185, 129, 0.4);
-}
-
-/* Secondary button style */
 .btn-secondary {
   display: inline-block;
   padding: 0.75rem 1.5rem;
@@ -109,113 +75,22 @@ button:hover, .btn:hover {
   border: 1px solid #334155;
   background: transparent;
   color: #e5e7eb;
-  box-shadow: 0 0 8px rgba(51, 65, 85, 0.3);
 }
 
 .btn-secondary:hover {
-  transform: translateY(-1px);
   border-color: #06b6d4;
   box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
 }
 
-/* ... Keep your other utility styles like .glow-text ... */
-.glow-text {
-  background: linear-gradient(90deg, #06b6d4, #10b981);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
-}
-
-/* === 5. BRIEFING CARD ANIMATIONS === */
+/* === ANIMATIONS === */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
   animation: fadeIn 0.6s ease-out;
 }
 
-/* -----  MOBILE FIRST ELEGANCE RESET  ----- */
-@layer utilities {
-  @media (max-width: 768px) {
-
-    body {
-      font-size: 15px !important;
-      line-height: 1.55 !important;
-      letter-spacing: -0.2px !important;
-    }
-
-    section {
-      padding-left: 1.4rem !important;
-      padding-right: 1.4rem !important;
-      padding-top: 2rem !important;
-      padding-bottom: 2rem !important;
-    }
-
-    h1, h2, h3 {
-      line-height: 1.2 !important;
-      font-weight: 600 !important;
-      letter-spacing: -0.5px !important;
-    }
-
-    h1 {
-      font-size: 1.9rem !important;
-    }
-
-    h2 {
-      font-size: 1.55rem !important;
-    }
-
-    h3 {
-      font-size: 1.2rem !important;
-    }
-
-    /* Collapse all 3-column grids into beautiful vertical stacks */
-    [class*="grid"] {
-      grid-template-columns: 1fr !important;
-      gap: 1.75rem !important;
-    }
-
-    /* Make cards beautiful and roomy */
-    [class*="rounded-xl"],
-    [class*="rounded-2xl"] {
-      padding: 1.25rem !important;
-      border-radius: 1.1rem !important;
-    }
-
-    /* Kill the cramped left/right alignment in multi-line items */
-    p, li {
-      max-width: 100% !important;
-    }
-
-    /* Space out sections to make everything feel luxurious */
-    .section-block {
-      margin-top: 2.5rem !important;
-      margin-bottom: 2.5rem !important;
-    }
-  }
-}
-
-/* === CONVERSION-FOCUSED GLOBAL STYLES === */
-section {
-  padding: 120px 0;
-}
-
-h1 {
-  font-size: 56px;
-  line-height: 1.1;
-}
-
-h2 {
-  font-size: 40px;
-  line-height: 1.2;
-}
-/* Onboard flow — placeholder color */
+/* Onboard flow */
 .onboard-input::placeholder { color: #38342f; }

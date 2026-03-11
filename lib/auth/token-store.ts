@@ -214,12 +214,7 @@ export async function saveTokens(
     encryptedCredentials.expires_at = (credentials as MicrosoftTokens).expires_at;
   }
 
-  const row = {
-    user_id: userId,
-    provider,
-    credentials: encryptedCredentials,
-    connected_at: new Date().toISOString(),
-  };
+  const now = new Date().toISOString();
 
   // Check for existing row first (works with or without a unique constraint)
   const { data: existing, error: selectErr } = await supabase
@@ -237,7 +232,11 @@ export async function saveTokens(
   if (existing) {
     const { error: updateErr } = await supabase
       .from('integrations')
-      .update({ credentials: encryptedCredentials, connected_at: row.connected_at })
+      .update({
+        credentials: encryptedCredentials,
+        is_active: true,
+        connected_at: now,
+      })
       .eq('user_id', userId)
       .eq('provider', provider);
     if (updateErr) {
@@ -248,7 +247,13 @@ export async function saveTokens(
   } else {
     const { error: insertErr } = await supabase
       .from('integrations')
-      .insert(row);
+      .insert({
+        user_id: userId,
+        provider,
+        credentials: encryptedCredentials,
+        is_active: true,
+        connected_at: now,
+      });
     if (insertErr) {
       console.error(`[token-store] insert failed for ${provider}:`, insertErr.message);
       throw new Error(`Failed to insert integration: ${insertErr.message}`);
