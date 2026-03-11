@@ -135,7 +135,7 @@ export default function ConvictionCard({
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-violet-400" />
           <span className="text-zinc-200 font-semibold text-sm uppercase tracking-wider">
-            Today's Directive
+            Today's Read
           </span>
         </div>
         <button
@@ -159,7 +159,7 @@ export default function ConvictionCard({
             onOutcome={handleOutcome}
             confirming={confirming}
             error={error}
-            onSkipOutcome={() => { setDoneMsg('Directive executed.'); setPhase('done'); }}
+            onSkipOutcome={() => { setDoneMsg('Done — Foldera executed that.'); setPhase('done'); }}
           />
         ) : phase === 'done' ? (
           <DoneState message={doneMsg} onReset={() => { setPhase('idle'); onGenerate(); }} />
@@ -173,7 +173,7 @@ export default function ConvictionCard({
               </div>
             )}
 
-            {/* THE DIRECTIVE — front and center */}
+            {/* THE ACTION — front and center */}
             <p className="text-zinc-50 text-lg font-semibold leading-snug mb-3">
               {action.directive}
             </p>
@@ -315,7 +315,7 @@ function DoneState({ message, onReset }: { message: string; onReset: () => void 
         onClick={onReset}
         className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
       >
-        Generate new directive →
+        Generate new read →
       </button>
     </div>
   );
@@ -365,12 +365,12 @@ function EmptyState({ onGenerate }: { onGenerate: () => void }) {
   return (
     <div className="text-center py-6">
       <Shield className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-      <p className="text-zinc-400 text-sm mb-4">No directive generated yet.</p>
+      <p className="text-zinc-400 text-sm mb-4">No read generated yet for today.</p>
       <button
         onClick={onGenerate}
         className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors"
       >
-        Generate Today's Directive
+        Generate today's read
       </button>
     </div>
   );

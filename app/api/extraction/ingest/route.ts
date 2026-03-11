@@ -32,7 +32,10 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    userId = session.user.id;
+    // Single-user app: prefer INGEST_USER_ID (a valid Supabase UUID) over
+    // session.user.id, which could be a Google sub string if the JWT callback
+    // hasn't been refreshed since the fix was deployed.
+    userId = process.env.INGEST_USER_ID ?? session.user.id;
   }
 
   let body: { text?: unknown };

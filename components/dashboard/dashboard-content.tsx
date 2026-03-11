@@ -183,8 +183,8 @@ export default function DashboardContent() {
       {/* Metrics */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <MetricCard
-          label="Inputs"
-          fullLabel="Emails read"
+          label="Activity"
+          fullLabel="Things Foldera has processed"
           value={statsLoading ? '—' : String(stats?.signalsTotal ?? 0)}
           emptyHint="Feed text to start"
         />
@@ -246,9 +246,13 @@ function FeedPanel({ onIngested }: { onIngested: () => void }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Ingest failed');
-      setResult(`✓ Foldera extracted ${data.decisionsWritten} insight${data.decisionsWritten !== 1 ? 's' : ''} and ${data.patternsUpdated} pattern${data.patternsUpdated !== 1 ? 's' : ''}.`);
+      setResult(`Foldera read it — ${data.decisionsWritten} commitment${data.decisionsWritten !== 1 ? 's' : ''} and ${data.patternsUpdated} pattern${data.patternsUpdated !== 1 ? 's' : ''} updated.`);
       setStatus('done'); setText(''); onIngested();
-    } catch (err: any) { setResult(err.message); setStatus('error'); }
+    } catch (err: any) {
+      // Show a friendly message — raw DB/server errors should never reach the user
+      setResult('Something went wrong. Please try again in a moment.');
+      setStatus('error');
+    }
   };
 
   return (
