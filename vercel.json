@@ -23,6 +23,7 @@
     { "path": "/api/cron/agents/distribution-finder",       "schedule": "15 9 * * *" },
     { "path": "/api/cron/agents/pricing-analyst",           "schedule": "0 10 * * 1" },
     { "path": "/api/cron/agents/retention-analyst",         "schedule": "10 10 * * 1"},
-    { "path": "/api/cron/agents/outreach-learner",          "schedule": "0 23 * * 0" }
+    { "path": "/api/cron/agents/outreach-learner",          "schedule": "0 23 * * 0" },
+    { "path": "/api/cron/cleanup-trials",                   "schedule": "0 4 * * *"  }
   ]
 }
