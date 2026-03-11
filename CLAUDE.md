@@ -49,6 +49,22 @@ You approve or skip. It learns. It gets more accurate.
 - Real email send on artifact approval via Gmail/Outlook
 - Stripe Pro $99/month with webhook endpoint
 - Six specialist agents on scheduled crons
+- Continuous ingest pipeline: /api/ingest/conversation + scripts/ingest-recent.mjs
+
+## Graph feeding — required for accurate reads
+The identity graph requires regular feeding to stay useful. The initial 127-conversation
+batch is the baseline; every week of new work should be added.
+
+**Mechanism**: Export Claude project conversations as text files → drop in a folder → run the script.
+
+```bash
+CRON_SECRET=<secret> node scripts/ingest-recent.mjs ./conversations/
+```
+
+- The script reads `.txt` and `.md` files from the directory
+- Tracks processed files in `.ingested.json` (safe to re-run)
+- POSTs each new file to `/api/ingest/conversation` (Bearer CRON_SECRET auth)
+- Daily-brief cron surfaces a DraftQueue warning if graph hasn't been fed in 48+ hours
 
 ## Agent Layer
 Six specialist agents run on schedule, think like domain experts, and stage all findings
