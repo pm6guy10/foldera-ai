@@ -30,18 +30,25 @@ You approve or skip. It learns. It gets more accurate.
 
 ---
 
-## Backlog
-- [x] Dynamic onboarding directive — pull from real tkg_patterns instead of hardcoded text
-- [x] Outcome confirmation UI — phase state machine on ConvictionCard; ThumbsUp/Down → /api/conviction/outcome;
-      feedback_weight +2.0 worked / -1.5 didn't work (edc2d8b... wait, 2e41901)
-- [x] Email delivery — 7am daily directive via email, no dashboard required
-- [x] Signal ingestion — token-encryption fail-safe; jwt callback persists OAuth tokens to integrations table;
-      lib/integrations/outlook-client + gmail-client; /api/cron/sync-email nightly 2 AM (edc2d8b)
-- [x] Draft actions layer — tkg_actions status='draft'; /api/drafts/{propose,pending,decide};
-      DraftQueue component on dashboard; approve/reject with optimistic UI (64d841b)
-- [x] User acquisition agent — lib/acquisition/{keywords,reddit-scanner,twitter-scanner};
-      /api/cron/scan-social daily 8 AM; deduplicates via tkg_signals.content_hash;
-      outreach drafts appear in DraftQueue for Brandon's one-tap approval (16c233c)
+## Completed (March 10-11, 2026)
+- Identity graph: 315 patterns, 207 commitments, 122 signals from 127 ingested conversations
+- Conviction engine: daily reads at 91% confidence with feedback loop weighted by action_type history
+- Artifact generation: 2-4 finished work items daily
+- DraftQueue: approve/dismiss UI with email deep-links
+- Daily email: action cards with approve/skip buttons, progressive subject lines days 1-7
+- Zero-auth demo at /try
+- 14-day free trial, $99/month after, no $29 tier
+- Onboarding walkthrough on /start/result
+- Vocabulary scrub across all user-facing UI
+- Landing page rewritten for strangers
+- Distribution system: daily Reddit/Twitter scan, top 5 in DraftQueue, creator watchlist
+- Waitlist nurture: Tuesday emails, open tracking, auto-status lifecycle
+- Health monitoring: 6:50am daily, Sunday graph quality
+- Security: cron auth, svix webhook verification, Gmail token cleanup, 30-day data deletion
+- Retry logic on daily cron
+- Real email send on artifact approval via Gmail/Outlook
+- Stripe Pro $99/month with webhook endpoint
+- Six specialist agents on scheduled crons
 
 ## Agent Layer
 Six specialist agents run on schedule, think like domain experts, and stage all findings
@@ -84,8 +91,19 @@ Brandon should never discover a bug. You should find it first.
 
 ---
 
-## Next horizons (post-backlog)
-- Wire real email send on draft approval (Resend for Gmail; Graph API /sendMail for Outlook)
-- Calendar integration — Google Calendar / Outlook Calendar event creation from schedule directives
-- Add ENCRYPTION_KEY + TWITTER_BEARER_TOKEN to Vercel env vars for production
-- Notion signal ingestion — lib/integrations/notion-client, NOTION_API_KEY already set
+## Next horizons
+- Anthropic API cost monitoring
+- Calendar integration (Google Calendar / Outlook)
+- Notion signal ingestion
+- Supabase Pro upgrade before 30 users
+- Landing page real screenshots once artifacts impressive
+- First stranger test of onboarding flow
+
+## Env vars required in Vercel
+ANTHROPIC_API_KEY, CRON_SECRET, DAILY_BRIEF_TO_EMAIL,
+GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, INGEST_USER_ID,
+NEXTAUTH_SECRET, NEXTAUTH_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+NEXT_PUBLIC_SUPABASE_URL, RESEND_API_KEY, RESEND_FROM_EMAIL,
+RESEND_WEBHOOK_SECRET, STRIPE_PRO_PRICE_ID,
+STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+SUPABASE_SERVICE_ROLE_KEY
