@@ -188,8 +188,8 @@ export default function App() {
               Connect your history
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
-            <a href="/api/auth/signin" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
-              Already have an account? Log in →
+            <a href="/try" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+              Try it now — no signup required →
             </a>
           </div>
         </Reveal>
@@ -289,63 +289,43 @@ export default function App() {
             </div>
           </Reveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            {/* Starter */}
-            <Reveal delay={0}>
-              <div className="p-7 rounded-2xl border border-white/8 bg-[#111115] h-full flex flex-col">
-                <div className="mb-6">
-                  <p className="text-zinc-400 text-sm font-medium mb-1">Starter</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">$29</span>
-                    <span className="text-zinc-600 text-sm">/month</span>
-                  </div>
-                </div>
-                <ul className="space-y-2.5 text-sm text-zinc-400 flex-1 mb-7">
-                  {['Gmail or Outlook', 'Daily action drafts', '30-day history', 'Approve / skip queue'].map(f => (
-                    <li key={f} className="flex items-center gap-2.5">
-                      <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <a href="/onboard" className="block text-center py-2.5 rounded-xl border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 text-sm font-medium transition-colors">
-                  Start free trial
-                </a>
-              </div>
-            </Reveal>
+          <Reveal delay={0}>
+            <div className="max-w-md mx-auto p-8 rounded-2xl border border-violet-500/30 bg-violet-600/5 flex flex-col relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
 
-            {/* Pro */}
-            <Reveal delay={80}>
-              <div className="p-7 rounded-2xl border border-violet-500/30 bg-violet-600/5 h-full flex flex-col relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-violet-300 text-sm font-medium">Pro</p>
-                    <span className="text-[10px] font-semibold bg-violet-600 text-white px-1.5 py-0.5 rounded-full">Popular</span>
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">$99</span>
-                    <span className="text-zinc-600 text-sm">/month</span>
-                  </div>
+              <div className="text-center mb-7">
+                <p className="text-zinc-400 text-sm mb-1">14 days free. Then</p>
+                <div className="flex items-baseline gap-1 justify-center">
+                  <span className="text-5xl font-bold text-white">$99</span>
+                  <span className="text-zinc-500 text-base">/month</span>
                 </div>
-                <ul className="space-y-2.5 text-sm text-zinc-300 flex-1 mb-7">
-                  {['Everything in Starter', 'Gmail + Outlook + Calendar', 'Unlimited history', 'Six specialist AI agents', 'Custom action types', 'Priority support'].map(f => (
-                    <li key={f} className="flex items-center gap-2.5">
-                      <Check className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <a href="/onboard" className="block text-center py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors">
-                  Start free trial
-                </a>
+                <p className="text-zinc-600 text-sm mt-2">Cancel anytime.</p>
               </div>
-            </Reveal>
-          </div>
 
-          <Reveal delay={160}>
+              <ul className="space-y-3 text-sm text-zinc-300 mb-8">
+                {[
+                  'Gmail + Outlook + Calendar',
+                  'Daily action drafts — delivered at 7 AM',
+                  'Approve / skip queue',
+                  'Six specialist AI agents',
+                  'Unlimited history',
+                ].map(f => (
+                  <li key={f} className="flex items-center gap-2.5">
+                    <Check className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              <a href="/onboard" className="block text-center py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors">
+                Start free trial
+              </a>
+            </div>
+          </Reveal>
+
+          <Reveal delay={80}>
             <p className="text-center text-zinc-600 text-sm mt-6">
-              First directive free — no credit card required to start.
+              No credit card required to start.
             </p>
           </Reveal>
         </div>
