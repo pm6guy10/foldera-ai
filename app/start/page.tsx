@@ -20,7 +20,7 @@ export default function StartPage() {
 
         <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-5">
           Connect your history.<br />
-          Get your first directive<br />
+          Get your first read<br />
           in 60 seconds.
         </h1>
 

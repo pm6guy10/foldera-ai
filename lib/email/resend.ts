@@ -4,7 +4,7 @@
  * Required env vars:
  *   RESEND_API_KEY        — from resend.com dashboard
  *   RESEND_FROM_EMAIL     — verified sender, e.g. "Foldera <brief@foldera.ai>"
- *   (optional fallback:  onboarding@resend.dev works on Resend free tier)
+ *   NEXTAUTH_URL          — base URL for approve/skip deep-links
  */
 
 import { Resend } from 'resend';
@@ -17,34 +17,22 @@ function getResend(): Resend {
   return _resend;
 }
 
-// ─── Action label map ─────────────────────────────────────────────────────────
-
-const ACTION_LABELS: Record<string, string> = {
-  write_document: 'WRITE',
-  send_message:   'REACH OUT',
-  make_decision:  'DECIDE',
-  do_nothing:     'WAIT',
-  schedule:       'SCHEDULE',
-  research:       'RESEARCH',
-};
-
-function actionLabel(action_type: string): string {
-  return ACTION_LABELS[action_type] ?? action_type.toUpperCase();
-}
-
 // ─── Directive item type ──────────────────────────────────────────────────────
 
 export interface DirectiveItem {
+  id?:         string;  // tkg_actions row ID for approve/skip deep-links
   directive:   string;
   action_type: string;
   confidence:  number;
   reason:      string;
+  summary?:    string;  // Short one-sentence summary for email card (falls back to directive)
 }
 
 // ─── Email: daily directive ───────────────────────────────────────────────────
 //
-// Accepts an array of directives (1 for early days, 2+ for later days).
-// subject is optional — defaults to "Your directive for {date}".
+// Renders individual action cards, one per artifact.
+// Each card has a one-sentence summary, Approve button, and Skip link.
+// Subject = the most specific artifact summary.
 
 export async function sendDailyDirective({
   to,
@@ -57,37 +45,51 @@ export async function sendDailyDirective({
   date:        string; // YYYY-MM-DD
   subject?:    string; // override default
 }) {
-  const formatted = new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month:   'long',
-    day:     'numeric',
-  });
+  const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
 
-  const emailSubject = subject ?? `Your directive for ${formatted}`;
+  // Subject: use override, or derive from the most specific artifact
+  const emailSubject = subject ?? (
+    directives.length > 0
+      ? (directives[0].summary ?? directives[0].directive)
+      : `Your morning read — ${date}`
+  );
 
-  const directiveBlocks = directives.map((d, i) => {
-    const label   = actionLabel(d.action_type);
+  const cards = directives.map((d, i) => {
+    const summaryText = d.summary ?? d.directive;
     const divider = i > 0
-      ? `<tr><td style="padding:28px 0;"><hr style="border:none;border-top:1px solid #e8e3df;margin:0;" /></td></tr>`
+      ? `<tr><td style="padding:0 0 28px 0;"><hr style="border:none;border-top:1px solid #e8e3df;margin:0;" /></td></tr>`
       : '';
+
+    const approveHref = d.id
+      ? `${baseUrl}/dashboard?action=approve&id=${d.id}`
+      : `${baseUrl}/dashboard`;
+    const skipHref = d.id
+      ? `${baseUrl}/dashboard?action=skip&id=${d.id}`
+      : `${baseUrl}/dashboard`;
+
     return `
 ${divider}
-          <tr>
-            <td style="padding-bottom:28px;">
-              <span style="font-family:'Courier New',Courier,monospace;font-size:10px;letter-spacing:0.2em;color:#e8471c;text-transform:uppercase;">${label}</span>
-              <span style="font-family:'Courier New',Courier,monospace;font-size:10px;letter-spacing:0.12em;color:#c4bdb5;margin-left:16px;">${d.confidence}%</span>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding-bottom:24px;">
-              <p style="margin:0;font-size:26px;line-height:1.25;letter-spacing:-0.01em;color:#1a1814;font-weight:400;">${d.directive}</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding-bottom:0;">
-              <p style="margin:0;font-size:14px;line-height:1.7;color:#8a8178;font-family:Georgia,'Times New Roman',serif;">${d.reason}</p>
-            </td>
-          </tr>`;
+        <tr>
+          <td style="padding-bottom:12px;">
+            <p style="margin:0;font-size:18px;line-height:1.4;color:#1a1814;font-weight:500;font-family:Georgia,'Times New Roman',serif;">${summaryText}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom:8px;">
+            <a href="${approveHref}"
+               style="display:inline-block;padding:10px 24px;background:#16a34a;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
+              Approve
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom:28px;">
+            <a href="${skipHref}"
+               style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#8a8178;text-decoration:underline;">
+              Skip
+            </a>
+          </td>
+        </tr>`;
   }).join('\n');
 
   const html = `<!DOCTYPE html>
@@ -101,8 +103,20 @@ ${divider}
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:48px 24px;">
     <tr>
       <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
-${directiveBlocks}
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+          <tr>
+            <td style="padding-bottom:32px;">
+              <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;letter-spacing:0.15em;color:#c4bdb5;text-transform:uppercase;">Foldera · ${date}</p>
+            </td>
+          </tr>
+${cards}
+          <tr>
+            <td style="padding-top:8px;border-top:1px solid #e8e3df;">
+              <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#c4bdb5;">
+                <a href="${baseUrl}/dashboard" style="color:#c4bdb5;text-decoration:none;">Open dashboard</a>
+              </p>
+            </td>
+          </tr>
         </table>
       </td>
     </tr>
