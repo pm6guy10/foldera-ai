@@ -76,6 +76,9 @@ After EVERY commit, before marking anything done:
    A broken local build means a broken Vercel deploy. Never push a build that fails locally.
 8. When creating new lib/ modules that are imported by existing routes, always create
    the file in the same session. Never leave an import pointing to a file that doesn't exist.
+9. After all changes are complete and local build passes, merge your branch to main,
+   push main to origin, and verify the Vercel deployment succeeds. Never stop or report
+   done on a branch. Always finish on main with a successful Vercel deploy.
 
 Brandon should never discover a bug. You should find it first.
 
