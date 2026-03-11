@@ -186,7 +186,7 @@ export default function DashboardContent() {
           label="Activity"
           fullLabel="Things Foldera has processed"
           value={statsLoading ? '—' : String(stats?.signalsTotal ?? 0)}
-          emptyHint="Feed text to start"
+          emptyHint="Paste text to begin"
         />
         <MetricCard
           label="Commitments"
@@ -246,7 +246,7 @@ function FeedPanel({ onIngested }: { onIngested: () => void }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Ingest failed');
-      setResult(`Foldera read it — ${data.decisionsWritten} commitment${data.decisionsWritten !== 1 ? 's' : ''} and ${data.patternsUpdated} pattern${data.patternsUpdated !== 1 ? 's' : ''} updated.`);
+      setResult(`Foldera read it — ${data.decisionsWritten} commitment${data.decisionsWritten !== 1 ? 's' : ''} recorded and ${data.patternsUpdated} new insight${data.patternsUpdated !== 1 ? 's' : ''} found.`);
       setStatus('done'); setText(''); onIngested();
     } catch (err: any) {
       // Show a friendly message — raw DB/server errors should never reach the user

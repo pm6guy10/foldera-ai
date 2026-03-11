@@ -191,35 +191,70 @@ async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens): 
 }
 
 /**
- * Saves tokens after OAuth callback
+ * Saves tokens after OAuth callback.
+ * Uses select + update/insert instead of upsert to avoid requiring a
+ * unique constraint on (user_id, provider).
  */
 export async function saveTokens(
   userId: string,
   provider: 'google' | 'azure_ad',
   credentials: GoogleTokens | MicrosoftTokens
 ): Promise<void> {
+  const supabase = getSupabase();
+
   // Encrypt tokens before storing
   const encryptedCredentials: any = {
     access_token: encryptToken(credentials.access_token),
     refresh_token: encryptToken(credentials.refresh_token),
   };
-  
+
   if (provider === 'google') {
     encryptedCredentials.expires_at = (credentials as GoogleTokens).expiry_date;
   } else {
     encryptedCredentials.expires_at = (credentials as MicrosoftTokens).expires_at;
   }
-  
-  await getSupabase()
+
+  const row = {
+    user_id: userId,
+    provider,
+    credentials: encryptedCredentials,
+    connected_at: new Date().toISOString(),
+  };
+
+  // Check for existing row first (works with or without a unique constraint)
+  const { data: existing, error: selectErr } = await supabase
     .from('integrations')
-    .upsert({
-      user_id: userId,
-      provider,
-      credentials: encryptedCredentials,
-      connected_at: new Date().toISOString(),
-    }, {
-      onConflict: 'user_id,provider',
-    });
+    .select('id')
+    .eq('user_id', userId)
+    .eq('provider', provider)
+    .maybeSingle();
+
+  if (selectErr) {
+    console.error(`[token-store] select failed for ${provider}:`, selectErr.message);
+    throw new Error(`Failed to check existing integration: ${selectErr.message}`);
+  }
+
+  if (existing) {
+    const { error: updateErr } = await supabase
+      .from('integrations')
+      .update({ credentials: encryptedCredentials, connected_at: row.connected_at })
+      .eq('user_id', userId)
+      .eq('provider', provider);
+    if (updateErr) {
+      console.error(`[token-store] update failed for ${provider}:`, updateErr.message);
+      throw new Error(`Failed to update integration: ${updateErr.message}`);
+    }
+    console.log(`[token-store] Updated ${provider} tokens for user ${userId}`);
+  } else {
+    const { error: insertErr } = await supabase
+      .from('integrations')
+      .insert(row);
+    if (insertErr) {
+      console.error(`[token-store] insert failed for ${provider}:`, insertErr.message);
+      throw new Error(`Failed to insert integration: ${insertErr.message}`);
+    }
+    console.log(`[token-store] Inserted ${provider} tokens for user ${userId}`);
+  }
 }
 
 /**

@@ -161,9 +161,9 @@ export default function BriefingClient() {
             {/* Graph stats */}
             {brief.graphStats && (
               <div className="grid grid-cols-3 gap-3">
-                <StatPill label="Signals" value={brief.graphStats.signalsTotal} />
+                <StatPill label="Activity" value={brief.graphStats.signalsTotal} />
                 <StatPill label="Active commitments" value={brief.graphStats.commitmentsActive} />
-                <StatPill label="Patterns" value={brief.graphStats.patternsActive} />
+                <StatPill label="Insights" value={brief.graphStats.patternsActive} />
               </div>
             )}
 

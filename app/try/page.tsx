@@ -77,7 +77,7 @@ export default function TryPage() {
           <span className="text-lg font-semibold tracking-tight">Foldera</span>
         </a>
         <a
-          href="/onboard"
+          href="/start"
           className="px-4 py-2 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
         >
           Get started
@@ -182,7 +182,7 @@ export default function TryPage() {
                 Imagine what Foldera does with 30 days of your actual history.
               </p>
               <a
-                href="/onboard"
+                href="/start"
                 className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-white text-black font-semibold text-sm hover:bg-zinc-100 transition-colors group"
               >
                 Connect your history

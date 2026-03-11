@@ -13,6 +13,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
+import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import type { ActionType } from '@/lib/briefing/types';
 
 // ─── Clients ──────────────────────────────────────────────────────────────────
@@ -74,6 +75,23 @@ export async function createDraft(
     console.error(`[${agentName}] draft insert failed:`, error.message);
     return null;
   }
+
+  // Self-feeding loop: pipe the agent's analysis back through extraction
+  // so future directives can build on agent insights.
+  try {
+    const feedText = [
+      `[Agent Insight — ${agentName} — ${new Date().toISOString().slice(0, 10)}]`,
+      `Title: ${draft.title}`,
+      `Analysis: ${draft.description}`,
+      draft.payload ? `Details: ${JSON.stringify(draft.payload).slice(0, 1000)}` : null,
+    ].filter(Boolean).join('\n');
+    await extractFromConversation(feedText, userId);
+  } catch (feedErr: any) {
+    if (!feedErr.message?.includes('already ingested')) {
+      console.warn(`[${agentName}] self-feed extraction failed:`, feedErr.message);
+    }
+  }
+
   return data.id;
 }
 

@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 type Stage =
-  | 'connecting'   // calling gmail-sync
-  | 'thin'         // show paste textarea
-  | 'ingesting'    // calling thin-ingest
-  | 'generating'   // calling free-directive
-  | 'very_thin'    // show email capture
-  | 'thankyou'     // done — very thin path
+  | 'connecting'
+  | 'thin'
+  | 'ingesting'
+  | 'generating'
+  | 'very_thin'
+  | 'thankyou'
   | 'error';
 
 const STATUS_MESSAGES = [
@@ -32,24 +32,21 @@ export default function ProcessingPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const hasRun = useRef(false);
 
-  // Redirect to /start if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.replace('/start');
     }
   }, [status, router]);
 
-  // Kick off the sync once session is ready
   useEffect(() => {
     if (status !== 'authenticated' || hasRun.current) return;
     hasRun.current = true;
-    runGmailSync();
+    runEmailSync();
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function runGmailSync() {
+  async function runEmailSync() {
     setStage('connecting');
 
-    // Rotate status messages while the API works
     let msgIdx = 0;
     const ticker = setInterval(() => {
       msgIdx = (msgIdx + 1) % STATUS_MESSAGES.length;
@@ -57,7 +54,8 @@ export default function ProcessingPage() {
     }, 3500);
 
     try {
-      const res = await fetch('/api/onboard/gmail-sync', { method: 'POST' });
+      // Unified email sync endpoint — detects provider from session token
+      const res = await fetch('/api/onboard/email-sync', { method: 'POST' });
       clearInterval(ticker);
 
       if (!res.ok) {
@@ -118,7 +116,6 @@ export default function ProcessingPage() {
     const res = await fetch('/api/onboard/free-directive', { method: 'POST' });
 
     if (res.status === 409) {
-      // Already generated — go show the existing one
       router.replace('/start/result');
       return;
     }
@@ -129,7 +126,6 @@ export default function ProcessingPage() {
     }
 
     const data = await res.json();
-    // Stash in sessionStorage so /start/result can display without an extra fetch
     try {
       sessionStorage.setItem('foldera_directive', JSON.stringify(data.directive));
     } catch {}
@@ -159,7 +155,7 @@ export default function ProcessingPage() {
         <div className="text-center max-w-md">
           <p className="text-red-400 mb-6">{errorMsg}</p>
           <button
-            onClick={() => { hasRun.current = false; runGmailSync(); }}
+            onClick={() => { hasRun.current = false; runEmailSync(); }}
             className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-sm font-semibold transition-colors"
           >
             Try again
@@ -208,11 +204,10 @@ export default function ProcessingPage() {
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
         <div className="max-w-lg w-full">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
-            <p className="text-4xl mb-5">📭</p>
             <h2 className="text-2xl font-bold mb-3">Foldera needs more history</h2>
             <p className="text-slate-400 mb-6 leading-relaxed">
               We found {counts.patterns} pattern{counts.patterns !== 1 ? 's' : ''} so far — not enough
-              for an accurate read. We&apos;ll email you when we can generate your first directive.
+              for an accurate read. We&apos;ll email you when we can generate your first read.
             </p>
             <input
               type="email"
@@ -238,7 +233,6 @@ export default function ProcessingPage() {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
         <div className="max-w-lg w-full text-center">
-          <p className="text-4xl mb-5">✓</p>
           <h2 className="text-2xl font-bold mb-3">You&apos;re on the list.</h2>
           <p className="text-slate-400 leading-relaxed">
             We&apos;ll reach out as soon as we have enough to generate your first read.

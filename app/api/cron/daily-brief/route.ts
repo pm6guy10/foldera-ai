@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient }              from '@supabase/supabase-js';
 import { generateDirective }         from '@/lib/briefing/generator';
 import { sendDailyDirective }        from '@/lib/email/resend';
+import { extractFromConversation }   from '@/lib/extraction/conversation-extractor';
 import type { DirectiveItem }        from '@/lib/email/resend';
 
 export const dynamic = 'force-dynamic';
@@ -185,6 +186,24 @@ async function handler(request: NextRequest) {
           confidence: result.value.confidence,
           reason: result.value.reason,
         });
+
+        // Self-feeding loop: pipe the directive back through extraction
+        // so future directives can build on past outputs.
+        try {
+          const d = result.value;
+          const feedText = [
+            `[Foldera Directive — ${new Date().toISOString().slice(0, 10)}]`,
+            `Action: ${d.action_type}`,
+            `Directive: ${d.directive}`,
+            `Reason: ${d.reason}`,
+            d.evidence?.length ? `Evidence: ${d.evidence.map((e: any) => e.description).join('; ')}` : null,
+          ].filter(Boolean).join('\n');
+          await extractFromConversation(feedText, userId);
+        } catch (feedErr: any) {
+          if (!feedErr.message?.includes('already ingested')) {
+            console.warn('[daily-brief] self-feed extraction failed:', feedErr.message);
+          }
+        }
       }
 
       if (generationFailed || directiveItems.length === 0) {

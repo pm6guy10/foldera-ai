@@ -151,7 +151,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4">
             <a href="/api/auth/signin" className="text-sm text-zinc-400 hover:text-white transition-colors hidden sm:block">Log in</a>
-            <a href="/onboard" className="px-4 py-2 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors">
+            <a href="/start" className="px-4 py-2 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors">
               Get started free
             </a>
           </div>
@@ -182,7 +182,7 @@ export default function App() {
         <Reveal delay={180}>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <a
-              href="/onboard"
+              href="/start"
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-white text-black font-semibold text-base hover:bg-zinc-100 transition-colors group"
             >
               Connect your history
@@ -317,7 +317,7 @@ export default function App() {
                 ))}
               </ul>
 
-              <a href="/onboard" className="block text-center py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors">
+              <a href="/start" className="block text-center py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors">
                 Start free trial
               </a>
             </div>
@@ -346,7 +346,7 @@ export default function App() {
           </Reveal>
           <Reveal delay={160}>
             <a
-              href="/onboard"
+              href="/start"
               className="inline-flex items-center gap-2 px-10 py-4 rounded-full bg-white text-black font-bold text-lg hover:bg-zinc-100 transition-colors group"
             >
               Connect your history. First read free.

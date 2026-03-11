@@ -66,6 +66,18 @@ export async function POST(request: Request) {
       .from('tkg_actions')
       .update({ status: 'skipped', feedback_weight: -0.5 })
       .eq('id', action_id);
+
+    // Self-feeding loop: write skip as a behavioral signal
+    await supabase.from('tkg_signals').insert({
+      user_id: userId,
+      source: 'user_feedback',
+      type: 'rejection',
+      content: `Skipped: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`,
+      occurred_at: new Date().toISOString(),
+    }).then(({ error: sigErr }) => {
+      if (sigErr) console.warn('[conviction/execute] feedback signal insert failed:', sigErr.message);
+    });
+
     return NextResponse.json({ status: 'skipped', action_id });
   }
 
@@ -112,6 +124,17 @@ export async function POST(request: Request) {
       feedback_weight:  1.0,
     })
     .eq('id', action_id);
+
+  // Self-feeding loop: write approval as a behavioral signal
+  await supabase.from('tkg_signals').insert({
+    user_id: userId,
+    source: 'user_feedback',
+    type: 'approval',
+    content: `Approved: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`,
+    occurred_at: new Date().toISOString(),
+  }).then(({ error: sigErr }) => {
+    if (sigErr) console.warn('[conviction/execute] feedback signal insert failed:', sigErr.message);
+  });
 
   return NextResponse.json({ status: 'executed', action_id, result: executionResult });
 }
