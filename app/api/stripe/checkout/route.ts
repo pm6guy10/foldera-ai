@@ -1,13 +1,12 @@
 /**
  * POST /api/stripe/checkout
  *
- * Creates a Stripe Checkout Session for the selected plan and returns the URL.
- * Body: { plan: "pro" | "starter" }
+ * Creates a Stripe Checkout Session for the Pro plan and returns the URL.
+ * Starter tier removed — only pro plan exists.
  *
  * Required env vars:
  *   STRIPE_SECRET_KEY
  *   STRIPE_PRO_PRICE_ID
- *   STRIPE_STARTER_PRICE_ID
  *   NEXTAUTH_URL (for success/cancel redirect URLs)
  */
 
@@ -19,23 +18,16 @@ import { authOptions } from '@/lib/auth/auth-options';
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error('STRIPE_SECRET_KEY not configured');
-  // Use type assertion — the exact version string is enforced by the installed Stripe SDK
   return new Stripe(key, { apiVersion: '2025-08-27.basil' as any });
 }
 
-const PRICE_IDS: Record<string, string | undefined> = {
-  pro:     process.env.STRIPE_PRO_PRICE_ID,
-  starter: process.env.STRIPE_STARTER_PRICE_ID,
-};
-
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
-  const plan: string = body.plan ?? 'starter';
+  await req.json().catch(() => ({})); // consume body; plan param ignored — always pro
 
-  const priceId = PRICE_IDS[plan];
+  const priceId = process.env.STRIPE_PRO_PRICE_ID;
   if (!priceId) {
     return NextResponse.json(
-      { error: `No price configured for plan "${plan}"` },
+      { error: 'STRIPE_PRO_PRICE_ID not configured' },
       { status: 400 },
     );
   }

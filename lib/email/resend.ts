@@ -32,22 +32,30 @@ function actionLabel(action_type: string): string {
   return ACTION_LABELS[action_type] ?? action_type.toUpperCase();
 }
 
-// ─── Email: daily directive ───────────────────────────────────────────────────
+// ─── Directive item type ──────────────────────────────────────────────────────
 
-export async function sendDailyDirective({
-  to,
-  directive,
-  action_type,
-  confidence,
-  reason,
-  date,
-}: {
-  to:          string;
+export interface DirectiveItem {
   directive:   string;
   action_type: string;
   confidence:  number;
   reason:      string;
+}
+
+// ─── Email: daily directive ───────────────────────────────────────────────────
+//
+// Accepts an array of directives (1 for early days, 2+ for later days).
+// subject is optional — defaults to "Your directive for {date}".
+
+export async function sendDailyDirective({
+  to,
+  directives,
+  date,
+  subject,
+}: {
+  to:          string;
+  directives:  DirectiveItem[];
   date:        string; // YYYY-MM-DD
+  subject?:    string; // override default
 }) {
   const formatted = new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -55,43 +63,46 @@ export async function sendDailyDirective({
     day:     'numeric',
   });
 
-  const label = actionLabel(action_type);
+  const emailSubject = subject ?? `Your directive for ${formatted}`;
+
+  const directiveBlocks = directives.map((d, i) => {
+    const label   = actionLabel(d.action_type);
+    const divider = i > 0
+      ? `<tr><td style="padding:28px 0;"><hr style="border:none;border-top:1px solid #e8e3df;margin:0;" /></td></tr>`
+      : '';
+    return `
+${divider}
+          <tr>
+            <td style="padding-bottom:28px;">
+              <span style="font-family:'Courier New',Courier,monospace;font-size:10px;letter-spacing:0.2em;color:#e8471c;text-transform:uppercase;">${label}</span>
+              <span style="font-family:'Courier New',Courier,monospace;font-size:10px;letter-spacing:0.12em;color:#c4bdb5;margin-left:16px;">${d.confidence}%</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-bottom:24px;">
+              <p style="margin:0;font-size:26px;line-height:1.25;letter-spacing:-0.01em;color:#1a1814;font-weight:400;">${d.directive}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-bottom:0;">
+              <p style="margin:0;font-size:14px;line-height:1.7;color:#8a8178;font-family:Georgia,'Times New Roman',serif;">${d.reason}</p>
+            </td>
+          </tr>`;
+  }).join('\n');
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your directive for ${formatted}</title>
+  <title>${emailSubject}</title>
 </head>
 <body style="margin:0;padding:0;background:#f9f7f4;font-family:Georgia,'Times New Roman',serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:48px 24px;">
     <tr>
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
-
-          <!-- Label + confidence -->
-          <tr>
-            <td style="padding-bottom:28px;">
-              <span style="font-family:'Courier New',Courier,monospace;font-size:10px;letter-spacing:0.2em;color:#e8471c;text-transform:uppercase;">${label}</span>
-              <span style="font-family:'Courier New',Courier,monospace;font-size:10px;letter-spacing:0.12em;color:#c4bdb5;margin-left:16px;">${confidence}%</span>
-            </td>
-          </tr>
-
-          <!-- Directive -->
-          <tr>
-            <td style="padding-bottom:24px;">
-              <p style="margin:0;font-size:26px;line-height:1.25;letter-spacing:-0.01em;color:#1a1814;font-weight:400;">${directive}</p>
-            </td>
-          </tr>
-
-          <!-- Reason -->
-          <tr>
-            <td>
-              <p style="margin:0;font-size:14px;line-height:1.7;color:#8a8178;font-family:Georgia,'Times New Roman',serif;">${reason}</p>
-            </td>
-          </tr>
-
+${directiveBlocks}
         </table>
       </td>
     </tr>
@@ -102,7 +113,7 @@ export async function sendDailyDirective({
   return getResend().emails.send({
     from:    process.env.RESEND_FROM_EMAIL ?? 'Foldera <onboarding@resend.dev>',
     to,
-    subject: `Your directive for ${formatted}`,
+    subject: emailSubject,
     html,
   });
 }

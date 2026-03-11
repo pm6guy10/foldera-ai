@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js Dev",
+      "runtimeExecutable": "C:/nodejs/node.exe",
+      "runtimeArgs": ["C:/Users/b-kap/foldera-ai/node_modules/next/dist/bin/next", "dev", "--port", "3001"],
+      "port": 3001,
+      "autoPort": false
+    },
+    {
+      "name": "Vitest UI",
+      "runtimeExecutable": "C:/nodejs/node.exe",
+      "runtimeArgs": ["C:/Users/b-kap/AppData/Roaming/npm/node_modules/pnpm/bin/pnpm.cjs", "run", "test:ui"],
+      "port": 51204
+    }
+  ]
+}

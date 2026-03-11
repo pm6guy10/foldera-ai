@@ -88,6 +88,75 @@ Return JSON only — no prose outside the JSON:
 }`;
 
 // ---------------------------------------------------------------------------
+// Build approval-rate section (per-type suppression / boosting)
+// Uses status counts — separate from the weight-based feedback section.
+// ---------------------------------------------------------------------------
+
+interface ApprovalRow {
+  action_type:  string;
+  status:       string;
+  generated_at: string;
+}
+
+function buildApprovalRateSection(rows: ApprovalRow[]): string {
+  if (rows.length === 0) return '';
+
+  const byType: Record<string, ApprovalRow[]> = {};
+  for (const r of rows) {
+    if (!byType[r.action_type]) byType[r.action_type] = [];
+    byType[r.action_type].push(r);
+  }
+
+  const suppressed: string[] = [];
+  const boosted:    string[] = [];
+  const consecutive: string[] = [];
+  const rateLines:  string[] = [];
+
+  for (const [type, actions] of Object.entries(byType)) {
+    const total    = actions.length;
+    const approved = actions.filter(a => a.status === 'executed').length;
+    const rate     = total > 0 ? approved / total : 0;
+
+    rateLines.push(`  • ${type}: ${approved}/${total} approved (${Math.round(rate * 100)}%)`);
+
+    if (rate < 0.3 && total >= 3) suppressed.push(type);
+    if (rate > 0.6 && total >= 2) boosted.push(type);
+
+    const sorted = [...actions].sort(
+      (a, b) => new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime()
+    );
+    const last3 = sorted.slice(0, 3);
+    if (
+      last3.length === 3 &&
+      last3.every(a =>
+        a.status === 'skipped' || a.status === 'draft_rejected' || a.status === 'rejected'
+      )
+    ) {
+      consecutive.push(type);
+    }
+  }
+
+  const allSuppressed = [...new Set([...suppressed, ...consecutive])];
+
+  let section = '\nAPPROVAL RATES BY ACTION TYPE (last 30 days):';
+  section += '\n' + rateLines.join('\n');
+
+  if (boosted.length > 0) {
+    section += `\n\nHIGH-APPROVAL TYPES (>60%): ${boosted.join(', ')} — favor these when evidence supports`;
+  }
+  if (allSuppressed.length > 0) {
+    section += `\n\nSUPPRESSED TYPES (approval <30% OR 3 consecutive dismissals): ${allSuppressed.join(', ')}`;
+    section += '\n  → DO NOT generate these unless evidence is overwhelming and qualitatively different from prior dismissed cases.';
+  }
+  if (consecutive.length > 0) {
+    section += `\n\nHARD-SUPPRESSED (3 dismissals in a row): ${consecutive.join(', ')}`;
+    section += '\n  → HARD SUPPRESS until user signals or behavioral context changes significantly.';
+  }
+
+  return section;
+}
+
+// ---------------------------------------------------------------------------
 // Build feedback section from prior evaluated directives
 // ---------------------------------------------------------------------------
 
@@ -151,8 +220,8 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
   const supabase = getSupabase();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Pull all data sources in parallel — including feedback history
-  const [signalsRes, commitmentsRes, entityRes, goalsRes, feedbackRes] = await Promise.all([
+  // Pull all data sources in parallel — including feedback history and approval rates
+  const [signalsRes, commitmentsRes, entityRes, goalsRes, feedbackRes, approvalStatsRes] = await Promise.all([
     supabase
       .from('tkg_signals')
       .select('type, source, content, occurred_at')
@@ -192,13 +261,24 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       .not('feedback_weight', 'is', null)
       .order('generated_at', { ascending: false })
       .limit(30),
+
+    // Approval rates: all acted-on rows (status not pending/draft) for rate calculation
+    supabase
+      .from('tkg_actions')
+      .select('action_type, status, generated_at')
+      .eq('user_id', userId)
+      .not('status', 'in', '("pending_approval","draft")')
+      .gte('generated_at', thirtyDaysAgo)
+      .order('generated_at', { ascending: false })
+      .limit(100),
   ]);
 
   const signals     = signalsRes.data ?? [];
   const commitments = commitmentsRes.data ?? [];
   const patterns    = (entityRes.data?.patterns as Record<string, any>) ?? {};
   const goals       = goalsRes.data ?? [];
-  const feedback    = (feedbackRes.data ?? []) as FeedbackRow[];
+  const feedback     = (feedbackRes.data    ?? []) as FeedbackRow[];
+  const approvalRows = (approvalStatsRes.data ?? []) as ApprovalRow[];
 
   // Empty graph
   if (signals.length === 0 && commitments.length === 0 && goals.length === 0) {
@@ -232,7 +312,8 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     : 'No declared goals yet.';
 
   // Feedback section (empty string if no history — no noise added)
-  const feedbackSection = buildFeedbackSection(feedback);
+  const feedbackSection    = buildFeedbackSection(feedback);
+  const approvalRateSection = buildApprovalRateSection(approvalRows);
 
   const userPrompt = `DECLARED GOALS (${goals.length} total — measure every recommendation against these):
 ${goalLines}
@@ -245,6 +326,7 @@ ${patternLines}
 
 RECENT SIGNALS (last 30 days, ${signals.length} total):
 ${signalLines || 'None.'}
+${approvalRateSection}
 ${feedbackSection}
 Identify the single highest-leverage action for today. Return only the JSON directive.`;
 

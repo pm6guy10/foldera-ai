@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Upload, RefreshCw } from 'lucide-react';
+import { Upload, RefreshCw, AlertCircle } from 'lucide-react';
 import ConvictionCard from './conviction-card';
 import DraftQueue from './draft-queue';
 import type { ConvictionAction } from '@/lib/briefing/types';
@@ -32,13 +32,46 @@ export default function DashboardContent() {
   const [conviction, setConviction] = useState<ConvictionAction | null>(null);
   const [convictionLoading, setConvictionLoading] = useState(false);
 
+  const [trialExpired, setTrialExpired] = useState(false);
+  const [checkingOut, setCheckingOut]   = useState(false);
+
   useEffect(() => {
     if (status === 'authenticated') {
       loadStats();
       loadLatestConviction();
+      checkSubscription();
     }
     if (status === 'unauthenticated') router.push('/api/auth/signin');
   }, [status]);
+
+  const checkSubscription = async () => {
+    try {
+      const res = await fetch('/api/subscription/status');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'expired') setTrialExpired(true);
+      }
+    } catch {
+      // silent — don't block dashboard
+    }
+  };
+
+  const handleUpgrade = async () => {
+    setCheckingOut(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ plan: 'pro' }),
+      });
+      const { url } = await res.json();
+      if (url) window.location.href = url;
+    } catch {
+      // ignore
+    } finally {
+      setCheckingOut(false);
+    }
+  };
 
   // -- Stats: pure DB counts, no Claude call --
   const loadStats = async () => {
@@ -118,6 +151,25 @@ export default function DashboardContent() {
 
   return (
     <div className="space-y-6">
+      {/* Trial expired banner */}
+      {trialExpired && (
+        <div className="flex items-center justify-between gap-4 px-5 py-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <p className="text-amber-200 text-sm">
+              Your trial ended. Keep getting daily artifacts for $99/month.
+            </p>
+          </div>
+          <button
+            onClick={handleUpgrade}
+            disabled={checkingOut}
+            className="shrink-0 px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold transition-colors disabled:opacity-60"
+          >
+            {checkingOut ? 'Redirecting...' : 'Upgrade'}
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
