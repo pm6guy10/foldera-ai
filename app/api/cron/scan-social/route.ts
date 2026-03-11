@@ -1,23 +1,30 @@
 /**
  * GET /api/cron/scan-social
  *
- * Daily (8 AM) — scans Reddit and Twitter/X for posts matching Foldera pain
- * keywords, deduplicates against tkg_signals, then creates a draft outreach
- * proposal (via tkg_actions status='draft') for each new high-signal post.
+ * Daily (8 AM) — scans Reddit + Twitter/X for pain signal posts, scores each
+ * post 0-100, and surfaces only 70+ posts as Claude-personalized outreach drafts
+ * in DraftQueue. Nothing is sent without Brandon's explicit one-tap approval.
  *
- * Brandon reviews and approves outreach in the DraftQueue on the dashboard.
- * Nothing is sent without his explicit one-tap approval.
+ * Scoring breakdown:
+ *   Keyword density     (0-60): GROWTH.md keyword groups, normalized
+ *   ICP fit             (0-25): founder/exec/ADHD language
+ *   Emotional intensity (0-15): urgency and frustration signals
+ *
+ * Each qualifying post gets a unique Claude-drafted opening that references
+ * something specific from what they said — never a template.
  *
  * Auth: CRON_SECRET Bearer token.
  */
 
-import { NextResponse }           from 'next/server';
-import { createClient }           from '@supabase/supabase-js';
-import { createHash }             from 'crypto';
-import { scanReddit }             from '@/lib/acquisition/reddit-scanner';
-import { scanTwitter }            from '@/lib/acquisition/twitter-scanner';
-import type { SocialPost as RedditPost } from '@/lib/acquisition/reddit-scanner';
-import type { SocialPost as TwitterPost } from '@/lib/acquisition/twitter-scanner';
+import { NextResponse }                             from 'next/server';
+import { createClient }                             from '@supabase/supabase-js';
+import { scanReddit }                               from '@/lib/acquisition/reddit-scanner';
+import { scanTwitter }                              from '@/lib/acquisition/twitter-scanner';
+import { score100, meetsThreshold }                 from '@/lib/acquisition/scorer';
+import { draftPersonalizedOutreach, fallbackDraft } from '@/lib/acquisition/outreach-drafter';
+import { loadCurrentWeights }                       from '@/lib/acquisition/learning-loop';
+import type { SocialPost as RedditPost }            from '@/lib/acquisition/reddit-scanner';
+import type { SocialPost as TwitterPost }           from '@/lib/acquisition/twitter-scanner';
 
 export const dynamic     = 'force-dynamic';
 export const maxDuration = 300;
@@ -31,35 +38,8 @@ function getSupabase() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Outreach draft templates — personalised but not spammy
-// ---------------------------------------------------------------------------
-
-function buildOutreachBody(post: AnyPost, matchedLabels: string[]): string {
-  const painLabel = matchedLabels[0] ?? 'productivity challenges';
-  const platform  = post.platform === 'reddit'
-    ? `r/${(post as RedditPost).subreddit}`
-    : 'Twitter';
-
-  return (
-    `Hey ${post.author},\n\n` +
-    `I came across your post on ${platform} about ${painLabel} and it resonated — ` +
-    `this is exactly the problem I'm building Foldera to solve.\n\n` +
-    `Foldera is an AI that acts as your personal chief of staff: it reads your emails ` +
-    `and conversations overnight, identifies what needs to happen, and surfaces one clear ` +
-    `action each morning for your approval. You tap yes or no — it does the rest.\n\n` +
-    `Happy to show you what it looks like. No pitch, just a quick demo.\n\n` +
-    `— Brandon\n\n` +
-    `P.S. Your post: ${post.url}`
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Main cron handler
-// ---------------------------------------------------------------------------
-
 export async function GET(request: Request) {
-  // ── Auth ────────────────────────────────────────────────────────────────────
+  // ── Auth ──────────────────────────────────────────────────────────────────
   const authHeader = request.headers.get('authorization') ?? '';
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && authHeader.replace('Bearer ', '') !== cronSecret) {
@@ -71,11 +51,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
   }
 
-  const supabase = getSupabase();
+  const supabase      = getSupabase();
   const log: string[] = [];
-  let newDrafts = 0;
+  let scanned         = 0;
+  let passed70        = 0;
+  let newDrafts       = 0;
+  let skippedDupe     = 0;
 
-  // ── Scan both platforms ─────────────────────────────────────────────────────
+  // Load current learned weights (defaults if no model trained yet)
+  const weights = await loadCurrentWeights(userId);
+  log.push(`model v${weights.version} loaded`);
+
+  // ── Scan both platforms in parallel ────────────────────────────────────────
   const [redditPosts, twitterPosts] = await Promise.all([
     scanReddit('day').catch(err => {
       log.push(`reddit error: ${err.message}`);
@@ -87,15 +74,15 @@ export async function GET(request: Request) {
     }),
   ]);
 
-  log.push(`reddit: ${redditPosts.length} scored posts`);
-  log.push(`twitter: ${twitterPosts.length} scored posts`);
+  log.push(`reddit: ${redditPosts.length} pre-filtered | twitter: ${twitterPosts.length} pre-filtered`);
 
   const allPosts: AnyPost[] = [...redditPosts, ...twitterPosts];
+  scanned = allPosts.length;
 
-  // ── Process each post ───────────────────────────────────────────────────────
+  // ── Process each post ──────────────────────────────────────────────────────
   for (const post of allPosts) {
     try {
-      // Deduplicate: check if we've already seen this post
+      // Deduplicate: skip if we have already seen this post
       const { data: existing } = await supabase
         .from('tkg_signals')
         .select('id')
@@ -103,18 +90,24 @@ export async function GET(request: Request) {
         .eq('content_hash', post.contentHash)
         .maybeSingle();
 
-      if (existing) continue; // already processed
+      if (existing) {
+        skippedDupe++;
+        continue;
+      }
 
-      // Record in tkg_signals for dedup tracking (source: social_scan)
-      const contentText = `${post.platform}:${post.id} | ${post.title}\n${post.body}`;
-      const signalHash  = createHash('sha256').update(contentText).digest('hex');
+      // Apply 0-100 scoring with current learned weights
+      const scoreDetail = score100(post.title, post.body, weights);
+      const subreddit   = post.platform === 'reddit'
+        ? (post as RedditPost).subreddit
+        : undefined;
 
+      // Always store in tkg_signals for dedup (even if below threshold)
       await supabase.from('tkg_signals').insert({
         user_id:      userId,
         source:       'social_scan',
         source_id:    `${post.platform}:${post.id}`,
         type:         'social_post',
-        content:      contentText,
+        content:      `${post.platform}:${post.id} | ${post.title}\n${post.body}`,
         content_hash: post.contentHash,
         author:       post.author,
         recipients:   [],
@@ -122,17 +115,47 @@ export async function GET(request: Request) {
         processed:    true,
       });
 
-      // Draft outreach proposal → stored as tkg_actions status='draft'
-      const body    = buildOutreachBody(post, post.matchedLabels);
-      const subject = `Re: ${post.title.slice(0, 80)}`;
-      const title   = `Outreach to @${post.author} on ${post.platform} (${post.matchedLabels[0] ?? 'pain signal'})`;
+      // ── Gate at 70/100 ─────────────────────────────────────────────────────
+      if (!meetsThreshold(scoreDetail)) {
+        log.push(`below-70 (${scoreDetail.score_100}): @${post.author}`);
+        continue;
+      }
 
+      passed70++;
+
+      // ── Ask Claude to write a personalized, post-specific opening ──────────
+      const postForDraft = {
+        platform:      post.platform,
+        author:        post.author,
+        url:           post.url,
+        title:         post.title,
+        body:          post.body,
+        subreddit,
+        matchedLabels: scoreDetail.matched_labels,
+      };
+
+      const claudeDraft = await draftPersonalizedOutreach(postForDraft, scoreDetail)
+        .catch(err => {
+          log.push(`claude failed for @${post.author}: ${err.message}`);
+          return null;
+        });
+
+      const outreach = claudeDraft ?? fallbackDraft({
+        ...postForDraft,
+        subreddit: subreddit ?? '',
+      });
+
+      const draftTitle =
+        `[${scoreDetail.score_100}/100] Outreach → @${post.author}` +
+        ` on ${post.platform}${subreddit ? ` r/${subreddit}` : ''}`;
+
+      // ── Store in DraftQueue ────────────────────────────────────────────────
       await supabase.from('tkg_actions').insert({
         user_id:        userId,
-        directive_text: `Foldera found a pain signal post and drafted outreach to @${post.author}`,
+        directive_text: `Pain signal (${scoreDetail.score_100}/100): ${post.title.slice(0, 120)}`,
         action_type:    'send_message',
-        confidence:     0,
-        reason:         title,
+        confidence:     scoreDetail.score_100,
+        reason:         draftTitle,
         evidence:       [{
           type:        'signal',
           description: `${post.platform} post by @${post.author}: "${post.title.slice(0, 100)}"`,
@@ -141,32 +164,60 @@ export async function GET(request: Request) {
         status:         'draft',
         generated_at:   new Date().toISOString(),
         execution_result: {
-          draft_type:  'social_outreach',
-          platform:    post.platform,
-          to:          `@${post.author} (${post.platform})`,
-          subject,
-          body,
-          post_url:    post.url,
-          score:       post.score,
-          matched:     post.matchedLabels,
-          _title:      title,
-          _source:     'scan-social',
+          // DraftQueue display fields
+          _title:        draftTitle,
+          _source:       'scan-social',
+          draft_type:    'social_outreach',
+
+          // Delivery context
+          platform:      post.platform,
+          subreddit:     subreddit ?? null,
+          to:            `@${post.author} (${post.platform})`,
+          post_url:      post.url,
+          subject:       outreach.subject,
+          body:          outreach.opening,
+          platform_note: outreach.platform_note,
+
+          // Full score breakdown — stored for learning loop
+          score_100:           scoreDetail.score_100,
+          keyword_raw:         scoreDetail.keyword_raw,
+          keyword_component:   scoreDetail.keyword_component,
+          icp_component:       scoreDetail.icp_component,
+          intensity_component: scoreDetail.intensity_component,
+          matched_labels:      scoreDetail.matched_labels,
+          icp_signals:         scoreDetail.icp_signals,
+          intensity_signals:   scoreDetail.intensity_signals,
+
+          // Post context — stored for learning loop analysis
+          post_title:    post.title,
+          post_preview:  post.body.slice(0, 300),
+          draft_angle:   outreach.angle,
+          draft_opening: outreach.opening,
+          model_version: weights.version,
         },
       });
 
       newDrafts++;
-      log.push(`drafted: @${post.author} on ${post.platform} (score ${post.score})`);
+      log.push(
+        `drafted (${scoreDetail.score_100}/100 = ` +
+        `kw${scoreDetail.keyword_component}+icp${scoreDetail.icp_component}+int${scoreDetail.intensity_component}) ` +
+        `@${post.author} — angle: "${outreach.angle}"`,
+      );
     } catch (err: any) {
-      log.push(`error processing ${post.platform}:${post.id}: ${err.message}`);
+      log.push(`error ${post.platform}:${post.id}: ${err.message}`);
     }
   }
 
-  console.log('[scan-social]', log.join(' | '));
-
-  return NextResponse.json({
-    ok:        true,
-    scanned:   allPosts.length,
-    newDrafts,
+  const summary = {
+    ok:            true,
+    scanned,
+    passed_70:     passed70,
+    new_drafts:    newDrafts,
+    deduped:       skippedDupe,
+    model_version: weights.version,
     log,
-  });
+  };
+
+  console.log('[scan-social]', JSON.stringify({ scanned, passed70, newDrafts }));
+  return NextResponse.json(summary);
 }

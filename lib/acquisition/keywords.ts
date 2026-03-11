@@ -1,94 +1,165 @@
 /**
  * Pain signal keywords for Foldera user acquisition.
  *
- * These match the core problem Foldera solves: feeling overwhelmed by email,
- * commitments, decisions, and professional obligations without support.
+ * Three tiers exactly matching GROWTH.md — updated as we learn what resonates.
+ * Weights feed into scorer.ts for the 0-100 scoring system.
  *
- * Each keyword group has a weight. Posts accumulate a score based on how
- * many groups match (not raw keyword count). Only posts above MIN_SCORE
- * are drafted for outreach.
+ * Tier 1 (weight 3): ICP is actively searching for a chief of staff / assistant
+ * Tier 2 (weight 2): ICP is experiencing core pains Foldera directly solves
+ * Tier 3 (weight 1): Adjacent productivity pain — lower signal, still trackable
  */
 
 export interface KeywordGroup {
-  label:    string;    // Descriptive label for this pain cluster
-  keywords: string[];  // Lowercase match strings (partial match, case-insensitive)
-  weight:   number;    // Score contribution per match
+  label:    string;
+  keywords: string[];
+  weight:   number;
+  tier:     1 | 2 | 3;
 }
 
 export const KEYWORD_GROUPS: KeywordGroup[] = [
+
+  // Tier 1: Highest signal (weight 3)
   {
-    label: 'overwhelmed by email',
+    label: 'chief of staff / executive assistant',
+    tier: 1,
     keywords: [
-      'overwhelmed by email', 'inbox zero', 'email overload', 'email overwhelm',
-      'drowning in emails', 'can\'t keep up with email', 'email management',
-      'too many emails', 'email anxiety',
-    ],
-    weight: 2,
-  },
-  {
-    label: 'tracking commitments',
-    keywords: [
-      'can\'t track everything', 'dropping the ball', 'forget to follow up',
-      'missed commitments', 'track my commitments', 'follow-up system',
-      'staying on top of everything', 'lost track',
-    ],
-    weight: 2,
-  },
-  {
-    label: 'chief of staff / exec assistant',
-    keywords: [
-      'chief of staff', 'executive assistant', 'personal assistant',
-      'need an assistant', 'virtual assistant', 'chief of staff for me',
+      'chief of staff',
+      'executive assistant',
+      'personal assistant',
+      'need an assistant',
+      'virtual assistant',
+      'ai chief of staff',
+      'chief of staff for me',
+      'hire an ea',
+      "can't afford an ea",
+      'no executive assistant',
     ],
     weight: 3,
   },
+
+  // Tier 2: High signal (weight 2)
+  {
+    label: 'overwhelmed by email',
+    tier: 2,
+    keywords: [
+      'overwhelmed by email',
+      'email overload',
+      'email overwhelm',
+      'drowning in emails',
+      "can't keep up with email",
+      'too many emails',
+      'email anxiety',
+      'inbox zero',
+      'inbox overflowing',
+    ],
+    weight: 2,
+  },
+  {
+    label: 'dropping the ball / missed commitments',
+    tier: 2,
+    keywords: [
+      'dropping the ball',
+      'forget to follow up',
+      'missed commitments',
+      'lost track',
+      "can't track everything",
+      'track my commitments',
+      'follow-up system',
+      'staying on top of everything',
+      'falling through the cracks',
+      'things falling through the cracks',
+    ],
+    weight: 2,
+  },
   {
     label: 'decision fatigue',
+    tier: 2,
     keywords: [
-      'decision fatigue', 'too many decisions', 'decision paralysis',
-      'analysis paralysis', 'can\'t decide', 'overwhelmed with decisions',
+      'decision fatigue',
+      'too many decisions',
+      'decision paralysis',
+      'analysis paralysis',
+      "can't decide",
+      'overwhelmed with decisions',
+      'so many decisions',
     ],
     weight: 2,
   },
   {
-    label: 'personal AI agent / automation',
+    label: 'personal ai agent / automation',
+    tier: 2,
     keywords: [
-      'personal ai agent', 'ai assistant', 'ai chief of staff',
-      'automate my email', 'automate follow-ups', 'ai for productivity',
-      'proactive ai', 'autonomous agent for',
+      'personal ai agent',
+      'ai assistant',
+      'automate my email',
+      'automate follow-ups',
+      'ai for productivity',
+      'proactive ai',
+      'autonomous agent',
+      'ai that manages',
+      'ai that handles',
     ],
     weight: 2,
   },
+
+  // Tier 3: Medium signal (weight 1)
   {
-    label: 'productivity tools / GTD',
+    label: 'second brain / productivity system',
+    tier: 3,
     keywords: [
-      'gtd system', 'getting things done', 'second brain',
-      'capture system', 'productivity system', 'life admin',
+      'second brain',
+      'getting things done',
+      'gtd system',
+      'capture system',
+      'productivity system',
+      'life admin',
+      'personal operating system',
     ],
     weight: 1,
   },
   {
     label: 'relationship / outreach management',
+    tier: 3,
     keywords: [
-      'keep in touch', 'staying in touch', 'follow up with people',
-      'networking crm', 'personal crm', 'relationship management',
-      'outreach is hard', 'cold outreach',
+      'personal crm',
+      'keep in touch',
+      'staying in touch',
+      'follow up with people',
+      'networking crm',
+      'relationship management',
+      'outreach is hard',
     ],
     weight: 1,
   },
 ];
 
-/** Minimum accumulated score required to draft outreach for a post */
+// Tier 1 subreddits from GROWTH.md
+export const TARGET_SUBREDDITS = [
+  'Entrepreneur',
+  'ADHD',
+  'startups',
+  'productivity',
+  'ExecAssistants',
+  'BusinessOwners',
+  'lifehacks',
+  'selfimprovement',
+];
+
+// Keep low — scanner pre-filters only; scorer.ts applies the 0-100 real threshold
 export const MIN_SCORE = 2;
 
+// Max possible raw score (all groups match): 3+2+2+2+2+1+1 = 13
+export const MAX_RAW_SCORE = KEYWORD_GROUPS.reduce((sum, g) => sum + g.weight, 0);
+
 /**
- * Score a post title + body against the keyword groups.
- * Returns total score (0 = no match).
+ * Score a post against keyword groups.
+ * Returns raw weight sum + matched labels.
+ * For 0-100 scoring use scorer.ts.
  */
-export function scorePost(title: string, body: string): {
-  score: number;
-  matchedLabels: string[];
-} {
+export function scorePost(
+  title: string,
+  body:  string,
+): { score: number; matchedLabels: string[] } {
   const text = `${title} ${body}`.toLowerCase();
   let score = 0;
   const matchedLabels: string[] = [];
@@ -103,17 +174,3 @@ export function scorePost(title: string, body: string): {
 
   return { score, matchedLabels };
 }
-
-/**
- * Subreddits to search across — pain is concentrated here.
- */
-export const TARGET_SUBREDDITS = [
-  'productivity',
-  'Entrepreneur',
-  'startups',
-  'ADHD',
-  'lifehacks',
-  'selfimprovement',
-  'ExecAssistants',
-  'BusinessOwners',
-];

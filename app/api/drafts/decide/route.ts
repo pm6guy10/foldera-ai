@@ -6,19 +6,20 @@
  * Body: { draft_id: string, decision: "approve" | "reject" }
  *
  * - approve → status: 'approved', feedback_weight: +1.0
- *             (execution of the actual action — email send, etc. — will be
- *              wired here when integrations are live; for now we mark approved)
  * - reject  → status: 'draft_rejected', feedback_weight: -0.5
  *
- * Returns: { draft_id, decision, status }
+ * When the draft is a social_outreach type, the decision is logged for the
+ * learning loop. After 20 accumulated decisions, the scoring model is updated
+ * automatically via /api/acquisition/analyze (fire-and-forget).
  *
  * Auth: session OR x-ingest-secret header.
  */
 
-import { NextResponse }     from 'next/server';
-import { getServerSession } from 'next-auth';
-import { createClient }     from '@supabase/supabase-js';
-import { getAuthOptions }   from '@/lib/auth/auth-options';
+import { NextResponse }      from 'next/server';
+import { getServerSession }  from 'next-auth';
+import { createClient }      from '@supabase/supabase-js';
+import { getAuthOptions }    from '@/lib/auth/auth-options';
+import { shouldRunAnalysis } from '@/lib/acquisition/learning-loop';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +82,10 @@ export async function POST(request: Request) {
     );
   }
 
+  const execResult  = (row.execution_result as Record<string, unknown>) ?? {};
+  const draftType   = execResult.draft_type as string | undefined;
+  const isOutreach  = draftType === 'social_outreach';
+
   // ── Apply decision ──────────────────────────────────────────────────────────
   if (decision === 'reject') {
     await supabase
@@ -88,20 +93,24 @@ export async function POST(request: Request) {
       .update({ status: 'draft_rejected', feedback_weight: -0.5 })
       .eq('id', draft_id);
 
-    console.log(`[drafts/decide] ${draft_id} rejected`);
+    console.log(`[drafts/decide] ${draft_id} rejected (${draftType ?? 'non-outreach'})`);
+
+    // Trigger learning loop check after outreach skip
+    if (isOutreach) {
+      triggerAnalysisIfReady(userId).catch(() => {});
+    }
+
     return NextResponse.json({ draft_id, decision: 'reject', status: 'draft_rejected' });
   }
 
-  // approve — mark approved + (stub) execution
-  // When real integrations exist, fire the actual action here based on action_type.
-  // For now: mark approved + update execution_result with approval note.
+  // ── Approve ─────────────────────────────────────────────────────────────────
   const now = new Date().toISOString();
   const updatedResult = {
-    ...((row.execution_result as Record<string, unknown>) ?? {}),
-    approved_at:  now,
-    executed_at:  now,
-    execution:    'stub — approval recorded; real execution pending integration wiring',
-    stub:         true,
+    ...execResult,
+    approved_at: now,
+    executed_at: now,
+    execution:   'stub — approval recorded; real execution pending integration wiring',
+    stub:        true,
   };
 
   await supabase
@@ -115,6 +124,41 @@ export async function POST(request: Request) {
     })
     .eq('id', draft_id);
 
-  console.log(`[drafts/decide] ${draft_id} approved (${row.action_type})`);
+  console.log(`[drafts/decide] ${draft_id} approved (${draftType ?? row.action_type})`);
+
+  // Trigger learning loop check after outreach approval
+  if (isOutreach) {
+    triggerAnalysisIfReady(userId).catch(() => {});
+  }
+
   return NextResponse.json({ draft_id, decision: 'approve', status: 'approved' });
+}
+
+// ─── Learning loop trigger ───────────────────────────────────────────────────
+
+/**
+ * Fire-and-forget: check if we have 20+ decisions and kick off analysis.
+ * Non-blocking — the decide response returns immediately regardless.
+ */
+async function triggerAnalysisIfReady(userId: string): Promise<void> {
+  try {
+    const ready = await shouldRunAnalysis(userId);
+    if (!ready) return;
+
+    const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+    // Fire without waiting — analysis runs in its own request lifecycle
+    fetch(`${baseUrl}/api/acquisition/analyze`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':    'application/json',
+        'x-ingest-secret': process.env.INGEST_API_KEY ?? '',
+      },
+    }).catch(err => {
+      console.warn('[drafts/decide] could not trigger analysis:', err.message);
+    });
+
+    console.log('[drafts/decide] analysis triggered (20+ outreach decisions)');
+  } catch (err: any) {
+    console.warn('[drafts/decide] analysis trigger check failed:', err.message);
+  }
 }
