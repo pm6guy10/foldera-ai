@@ -134,7 +134,7 @@ function looksLikeRequest(body: string): boolean {
 
 function getHeader(message: gmail_v1.Schema$Message, name: string): string | undefined {
   const headers = message.payload?.headers || [];
-  return headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value;
+  return headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? undefined;
 }
 
 
