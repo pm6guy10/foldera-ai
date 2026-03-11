@@ -72,3 +72,47 @@ export async function fetchOutlookEmails(
     );
   });
 }
+
+/**
+ * Send an email via Microsoft Graph on behalf of a user.
+ * Returns { success, messageId?, error? }.
+ */
+export async function sendOutlookEmail(
+  userId: string,
+  { to, subject, body }: { to: string; subject: string; body: string },
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const tokens = await getMicrosoftTokens(userId);
+  if (!tokens) return { success: false, error: 'No Microsoft tokens for user' };
+
+  const payload = {
+    message: {
+      subject,
+      body: { contentType: 'Text', content: body },
+      toRecipients: [{ emailAddress: { address: to } }],
+    },
+    saveToSentItems: true,
+  };
+
+  try {
+    const res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+      method:  'POST',
+      headers: {
+        Authorization:  `Bearer ${tokens.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.status === 202) {
+      return { success: true };
+    }
+
+    const text = await res.text().catch(() => '');
+    console.error('[outlook] send failed:', res.status, text);
+    return { success: false, error: `Graph ${res.status}: ${text.slice(0, 200)}` };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[outlook] send failed:', msg);
+    return { success: false, error: msg };
+  }
+}

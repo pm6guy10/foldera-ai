@@ -2,19 +2,17 @@
  * POST /api/conviction/execute
  * Body: { action_id: string, decision: "approve" | "skip" }
  *
- * If decision === "approve":
- *   - Sets tkg_actions status → approved, approved_at → now
- *   - Routes to the correct action stub based on action_type
- *   - Sets status → executed on success
- *
- * If decision === "skip":
- *   - Sets tkg_actions status → skipped (negative training signal)
+ * On approve of email_compose / email_reply actions, sends the email via
+ * Gmail or Outlook based on the user's connected provider.
  */
 
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { createClient } from '@supabase/supabase-js';
-import { getAuthOptions } from '@/lib/auth/auth-options';
+import { NextResponse }      from 'next/server';
+import { getServerSession }  from 'next-auth';
+import { createClient }      from '@supabase/supabase-js';
+import { getAuthOptions }    from '@/lib/auth/auth-options';
+import { sendGmailEmail }    from '@/lib/integrations/gmail-client';
+import { sendOutlookEmail }  from '@/lib/integrations/outlook-client';
+import { hasIntegration }    from '@/lib/auth/token-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +24,6 @@ function getSupabase() {
 }
 
 export async function POST(request: Request) {
-  // Auth
   let userId: string | undefined;
   const ingestSecret = request.headers.get('x-ingest-secret');
   if (ingestSecret) {
@@ -53,7 +50,6 @@ export async function POST(request: Request) {
 
   const supabase = getSupabase();
 
-  // Fetch the action
   const { data: action, error: fetchErr } = await supabase
     .from('tkg_actions')
     .select('*')
@@ -73,13 +69,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: 'skipped', action_id });
   }
 
-  // Approve → mark approved
   await supabase
     .from('tkg_actions')
     .update({ status: 'approved', approved_at: new Date().toISOString() })
     .eq('id', action_id);
 
-  // Route to stub
   let executionResult: Record<string, unknown> = {};
   try {
     executionResult = await runStub(action.action_type as string, action);
@@ -88,7 +82,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Stub failed: ${err.message}` }, { status: 500 });
   }
 
-  // Mark executed — positive learning signal
+  // Wire email send for email_compose / email_reply action types
+  const execResult = (action.execution_result as Record<string, unknown>) ?? {};
+  const draftType  = execResult.draft_type as string | undefined;
+  if (draftType === 'email_compose' || draftType === 'email_reply') {
+    const to      = execResult.to as string | undefined;
+    const subject = execResult.subject as string | undefined;
+    const msgBody = execResult.body as string | undefined;
+
+    if (to && subject && msgBody && /^[^@]+@[^@]+\.[^@]+$/.test(to)) {
+      const useGoogle = await hasIntegration(userId, 'google');
+      const result = useGoogle
+        ? await sendGmailEmail(userId, { to, subject, body: msgBody })
+        : await sendOutlookEmail(userId, { to, subject, body: msgBody });
+
+      const now = new Date().toISOString();
+      executionResult = result.success
+        ? { ...executionResult, sent: true, sent_at: now }
+        : { ...executionResult, sent: false, send_error: result.error };
+    }
+  }
+
   await supabase
     .from('tkg_actions')
     .update({
@@ -103,97 +117,34 @@ export async function POST(request: Request) {
 }
 
 // ---------------------------------------------------------------------------
-// Stub router — calls the appropriate action handler
-// ---------------------------------------------------------------------------
 
-async function runStub(
-  action_type: string,
-  action: Record<string, unknown>
-): Promise<Record<string, unknown>> {
+async function runStub(action_type: string, action: Record<string, unknown>): Promise<Record<string, unknown>> {
   switch (action_type) {
-    case 'write_document':
-      return stubWriteDocument(action);
-    case 'send_message':
-      return stubSendMessage(action);
+    case 'write_document': {
+      const title = String(action.directive_text ?? 'Untitled Document');
+      return { action_type: 'write_document', document_title: title, document_url: null, stub: true };
+    }
+    case 'send_message': {
+      const directive = String(action.directive_text ?? '');
+      const evidence = (action.evidence as any[]) ?? [];
+      return {
+        action_type: 'send_message',
+        draft: directive,
+        recipient_hint: evidence.find((e: any) => e.type === 'signal')?.description ?? null,
+        stub: true,
+      };
+    }
     case 'make_decision':
-      return stubMakeDecision(action);
-    case 'do_nothing':
-      return stubDoNothing(action);
+      return { action_type: 'make_decision', decision_prompt: action.directive_text, stub: true };
+    case 'do_nothing': {
+      const recheckDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      return { action_type: 'do_nothing', recheck_date: recheckDate, stub: true };
+    }
     case 'schedule':
-      return stubSchedule(action);
+      return { action_type: 'schedule', task: action.directive_text, calendar_url: null, stub: true };
     case 'research':
-      return stubResearch(action);
+      return { action_type: 'research', research_prompt: action.directive_text, stub: true };
     default:
       return { message: `No stub for action_type: ${action_type}` };
   }
-}
-
-// ---------------------------------------------------------------------------
-// Action stubs — each does something visible, logs outcome
-// ---------------------------------------------------------------------------
-
-async function stubWriteDocument(action: Record<string, unknown>) {
-  const title = String(action.directive_text ?? 'Untitled Document');
-  // In production: create a Google Doc / Notion page and return URL.
-  // Stub: return the title + a placeholder URL so the UI can open it.
-  return {
-    action_type: 'write_document',
-    document_title: title,
-    document_url: null, // would be populated by real integration
-    message: `Document stub created: "${title}". Connect Google Docs or Notion to open automatically.`,
-    stub: true,
-  };
-}
-
-async function stubSendMessage(action: Record<string, unknown>) {
-  const directive = String(action.directive_text ?? '');
-  const evidence = (action.evidence as any[]) ?? [];
-  // Surface the drafted message text for user review before sending.
-  return {
-    action_type: 'send_message',
-    draft: directive,
-    recipient_hint: evidence.find(e => e.type === 'signal')?.description ?? null,
-    message: 'Message drafted for review. Connect Gmail or Slack to send directly.',
-    stub: true,
-  };
-}
-
-async function stubMakeDecision(action: Record<string, unknown>) {
-  const evidence = (action.evidence as any[]) ?? [];
-  return {
-    action_type: 'make_decision',
-    decision_prompt: action.directive_text,
-    historical_evidence: evidence,
-    message: `Decision logged: "${action.directive_text}". The engine has committed you to this path. Revisit tkg_actions if you change course.`,
-    stub: true,
-  };
-}
-
-async function stubDoNothing(action: Record<string, unknown>) {
-  const recheckDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  return {
-    action_type: 'do_nothing',
-    recheck_date: recheckDate,
-    message: `Approved: do nothing. Recheck scheduled for ${recheckDate}. The engine will resurface this if the situation changes.`,
-    stub: true,
-  };
-}
-
-async function stubSchedule(action: Record<string, unknown>) {
-  return {
-    action_type: 'schedule',
-    task: action.directive_text,
-    calendar_url: null, // would be Google Calendar event URL
-    message: `Calendar block stub: "${action.directive_text}". Connect Google Calendar to create the event automatically.`,
-    stub: true,
-  };
-}
-
-async function stubResearch(action: Record<string, unknown>) {
-  return {
-    action_type: 'research',
-    research_prompt: action.directive_text,
-    message: `Research task logged: "${action.directive_text}". The engine is waiting for you to return with findings before recommending the next action.`,
-    stub: true,
-  };
 }

@@ -6,7 +6,7 @@ export default function BriefingsPage() {
       <FileText className="w-10 h-10 text-zinc-700 mb-4" />
       <h2 className="text-zinc-200 font-semibold text-lg mb-2">Briefings</h2>
       <p className="text-zinc-500 text-sm max-w-xs">
-        Daily conviction directives will appear here once the engine has been running for a few days.
+        Your daily reads will appear here once Foldera has been running for a few days.
       </p>
     </div>
   );

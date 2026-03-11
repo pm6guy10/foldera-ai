@@ -8,32 +8,53 @@ import ConvictionCard from './conviction-card';
 import DraftQueue from './draft-queue';
 import type { ConvictionAction } from '@/lib/briefing/types';
 
-// ---------------------------------------------------------------------------
-// Graph stats from /api/graph/stats
-// ---------------------------------------------------------------------------
-
 interface GraphStats {
-  signalsTotal: number;
+  signalsTotal:      number;
   commitmentsActive: number;
-  patternsActive: number;
+  patternsActive:    number;
 }
-
-// ---------------------------------------------------------------------------
-// Main dashboard
-// ---------------------------------------------------------------------------
 
 export default function DashboardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const [stats, setStats] = useState<GraphStats | null>(null);
+  const [stats, setStats]               = useState<GraphStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
-
-  const [conviction, setConviction] = useState<ConvictionAction | null>(null);
+  const [conviction, setConviction]     = useState<ConvictionAction | null>(null);
   const [convictionLoading, setConvictionLoading] = useState(false);
-
   const [trialExpired, setTrialExpired] = useState(false);
   const [checkingOut, setCheckingOut]   = useState(false);
+  const [emailActionMsg, setEmailActionMsg] = useState<string | null>(null);
+
+  // Handle email deep-link: /dashboard?action=approve&id=XXX
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    const id     = params.get('id');
+    if (!action || !id) return;
+
+    // Clear the query string without triggering a re-render loop
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, '', cleanUrl);
+
+    const endpoint = '/api/conviction/execute';
+    const body     = { action_id: id, decision: action === 'approve' ? 'approve' : 'skip' };
+
+    fetch(endpoint, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'executed' || data.status === 'skipped') {
+          setEmailActionMsg(action === 'approve' ? 'Done — Foldera executed that.' : 'Skipped.');
+          setTimeout(() => setEmailActionMsg(null), 4000);
+        }
+      })
+      .catch(() => {});
+  }, [status]);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -51,114 +72,87 @@ export default function DashboardContent() {
         const data = await res.json();
         if (data.status === 'expired') setTrialExpired(true);
       }
-    } catch {
-      // silent — don't block dashboard
-    }
+    } catch { /* silent */ }
   };
 
   const handleUpgrade = async () => {
     setCheckingOut(true);
     try {
       const res = await fetch('/api/stripe/checkout', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ plan: 'pro' }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'pro' }),
       });
       const { url } = await res.json();
       if (url) window.location.href = url;
-    } catch {
-      // ignore
-    } finally {
-      setCheckingOut(false);
-    }
+    } catch { /* ignore */ } finally { setCheckingOut(false); }
   };
 
-  // -- Stats: pure DB counts, no Claude call --
   const loadStats = async () => {
     setStatsLoading(true);
     try {
       const res = await fetch('/api/graph/stats');
       if (res.ok) setStats(await res.json());
-    } catch {
-      // silent
-    } finally {
-      setStatsLoading(false);
-    }
+    } catch { /* silent */ } finally { setStatsLoading(false); }
   };
 
-  // -- Load most recent pending directive (auto-populates card on mount) --
   const loadLatestConviction = async () => {
     try {
       const res = await fetch('/api/conviction/latest');
-      if (res.status === 204) return; // no actions yet — leave card in empty state
+      if (res.status === 204) return;
       if (res.ok) setConviction(await res.json());
-    } catch {
-      // silent
-    }
+    } catch { /* silent */ }
   };
 
-  // -- Generate a fresh directive --
   const generateDirective = useCallback(async () => {
     setConvictionLoading(true);
     setConviction(null);
     try {
       const res = await fetch('/api/conviction/generate', { method: 'POST' });
       if (res.ok) setConviction(await res.json());
-    } catch {
-      // silent
-    } finally {
-      setConvictionLoading(false);
-    }
+    } catch { /* silent */ } finally { setConvictionLoading(false); }
   }, []);
 
   const handleApprove = async (actionId: string) => {
     const res = await fetch('/api/conviction/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action_id: actionId, decision: 'approve' }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Execute failed');
-    }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Execute failed'); }
     setConviction(prev => prev ? { ...prev, status: 'executed' } : prev);
   };
 
   const handleSkip = async (actionId: string) => {
     const res = await fetch('/api/conviction/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action_id: actionId, decision: 'skip' }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Skip failed');
-    }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Skip failed'); }
     setConviction(prev => prev ? { ...prev, status: 'skipped' } : prev);
   };
 
   const handleOutcome = async (actionId: string, outcome: 'worked' | 'didnt_work') => {
     const res = await fetch('/api/conviction/outcome', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action_id: actionId, outcome }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Could not save outcome');
-    }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Could not save outcome'); }
   };
 
   return (
     <div className="space-y-6">
+      {/* Email action confirmation banner */}
+      {emailActionMsg && (
+        <div className="px-5 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+          <p className="text-emerald-300 text-sm">{emailActionMsg}</p>
+        </div>
+      )}
+
       {/* Trial expired banner */}
       {trialExpired && (
         <div className="flex items-center justify-between gap-4 px-5 py-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-            <p className="text-amber-200 text-sm">
-              Your trial ended. Keep getting daily artifacts for $99/month.
-            </p>
+            <p className="text-amber-200 text-sm">Your trial ended. Keep getting daily reads for $99/month.</p>
           </div>
           <button
             onClick={handleUpgrade}
@@ -189,32 +183,30 @@ export default function DashboardContent() {
       {/* Metrics */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <MetricCard
-          label="Signals"
-          fullLabel="Signals ingested"
+          label="Inputs"
+          fullLabel="Emails read"
           value={statsLoading ? '—' : String(stats?.signalsTotal ?? 0)}
           emptyHint="Feed text to start"
         />
         <MetricCard
           label="Commitments"
-          fullLabel="Active commitments"
+          fullLabel="Things you said you'd do"
           value={statsLoading ? '—' : String(stats?.commitmentsActive ?? 0)}
           highlight={!!stats?.commitmentsActive}
         />
         <MetricCard
-          label="Patterns"
-          fullLabel="Patterns identified"
+          label="Noticed"
+          fullLabel="Things Foldera noticed"
           value={statsLoading ? '—' : String(stats?.patternsActive ?? 0)}
           emptyHint="Appears after 1st ingest"
         />
       </div>
 
-      {/* Draft Queue — only renders if there are pending proposals */}
+      {/* Draft Queue */}
       <DraftQueue onDecided={loadStats} />
 
-      {/* Main grid — stacked on mobile, 3-col on lg */}
+      {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-
-        {/* CONVICTION CARD — front and center, full 2/3 width on desktop */}
         <div className="col-span-1 lg:col-span-2">
           <ConvictionCard
             action={conviction}
@@ -225,8 +217,6 @@ export default function DashboardContent() {
             onOutcome={handleOutcome}
           />
         </div>
-
-        {/* Side panel — feed the graph */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl">
           <div className="p-5 border-b border-zinc-800">
             <h2 className="text-zinc-50 font-semibold">Teach Foldera</h2>
@@ -241,42 +231,30 @@ export default function DashboardContent() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Feed Panel
-// ---------------------------------------------------------------------------
-
 function FeedPanel({ onIngested }: { onIngested: () => void }) {
-  const [text, setText] = useState('');
+  const [text, setText]     = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [result, setResult] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!text.trim()) return;
-    setStatus('loading');
-    setResult(null);
+    setStatus('loading'); setResult(null);
     try {
       const res = await fetch('/api/extraction/ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Ingest failed');
       setResult(`✓ Foldera extracted ${data.decisionsWritten} insight${data.decisionsWritten !== 1 ? 's' : ''} and ${data.patternsUpdated} pattern${data.patternsUpdated !== 1 ? 's' : ''}.`);
-      setStatus('done');
-      setText('');
-      onIngested();
-    } catch (err: any) {
-      setResult(err.message);
-      setStatus('error');
-    }
+      setStatus('done'); setText(''); onIngested();
+    } catch (err: any) { setResult(err.message); setStatus('error'); }
   };
 
   return (
     <div className="space-y-3">
       <p className="text-zinc-500 text-xs leading-relaxed">
-        Paste any conversation, email thread, or notes. Foldera will read it and update
-        what it knows about your decisions, patterns, and priorities.
+        Paste any conversation, email thread, or notes. Foldera will read it and update what it knows about your decisions and priorities.
       </p>
       <textarea
         value={text}
@@ -302,32 +280,16 @@ function FeedPanel({ onIngested }: { onIngested: () => void }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function MetricCard({
-  label,
-  fullLabel,
-  value,
-  highlight,
-  emptyHint,
-}: {
-  label: string;
+function MetricCard({ label, fullLabel, value, highlight, emptyHint }: {
+  label:     string;
   fullLabel?: string;
-  value: string;
+  value:     string;
   highlight?: boolean;
   emptyHint?: string;
 }) {
   const isEmpty = value === '0';
   return (
-    <div
-      className={`p-2.5 sm:p-4 rounded-xl border ${
-        highlight
-          ? 'bg-violet-900/20 border-violet-700/40'
-          : 'bg-zinc-900 border-zinc-800'
-      }`}
-    >
+    <div className={`p-2.5 sm:p-4 rounded-xl border ${highlight ? 'bg-violet-900/20 border-violet-700/40' : 'bg-zinc-900 border-zinc-800'}`}>
       <div className={`text-xl sm:text-2xl font-bold tabular-nums ${isEmpty ? 'text-zinc-600' : 'text-zinc-50'}`}>{value}</div>
       <div className="text-zinc-500 text-[10px] sm:text-xs mt-0.5 leading-tight">
         {isEmpty && emptyHint ? (

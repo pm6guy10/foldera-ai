@@ -163,7 +163,7 @@ export default function App() {
         <Reveal>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-600/10 text-violet-300 text-xs font-medium mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-violet-400 pulse-slow" />
-            First directive free
+            First read free
           </div>
         </Reveal>
 
@@ -341,7 +341,7 @@ export default function App() {
           </Reveal>
           <Reveal delay={80}>
             <p className="text-zinc-500 text-lg mb-10">
-              Connect your inbox. Foldera handles the first directive free.
+              Connect your inbox. Foldera handles the first read free.
             </p>
           </Reveal>
           <Reveal delay={160}>
@@ -349,7 +349,7 @@ export default function App() {
               href="/onboard"
               className="inline-flex items-center gap-2 px-10 py-4 rounded-full bg-white text-black font-bold text-lg hover:bg-zinc-100 transition-colors group"
             >
-              Connect your history. First directive free.
+              Connect your history. First read free.
               <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
             </a>
           </Reveal>

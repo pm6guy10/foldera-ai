@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check, ChevronRight } from 'lucide-react';
 
 interface EvidenceItem {
   type: string;
@@ -38,6 +38,24 @@ const ACTION_COLORS: Record<string, string> = {
   research:       'bg-blue-500/20 text-blue-300 border-blue-500/30',
 };
 
+const WALKTHROUGH_STEPS = [
+  {
+    label: '1 of 3',
+    heading: 'This is your daily read.',
+    body: 'Every morning Foldera surfaces the one thing worth doing today, based on what it read in your inbox overnight.',
+  },
+  {
+    label: '2 of 3',
+    heading: 'These are things Foldera did for you.',
+    body: 'The evidence below comes from your actual emails and conversations. Foldera found them so you didn\'t have to.',
+  },
+  {
+    label: '3 of 3',
+    heading: 'Every morning this arrives by email.',
+    body: 'Approve, dismiss, or ignore. 90 seconds. Foldera learns from every choice and gets more accurate over time.',
+  },
+];
+
 export default function ResultPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -45,6 +63,9 @@ export default function ResultPage() {
   const [usedDate, setUsedDate]   = useState<string | null>(null);
   const [loading, setLoading]     = useState(true);
   const [starting, setStarting]   = useState(false);
+
+  // Walkthrough state: null = not started, 0/1/2 = step index, 'done' = finished
+  const [walkStep, setWalkStep] = useState<number | 'done' | null>(null);
 
   useEffect(() => {
     try {
@@ -69,6 +90,32 @@ export default function ResultPage() {
       setLoading(false);
     }
   }, [status]);
+
+  // Check if walkthrough has been seen
+  useEffect(() => {
+    if (!loading && directive) {
+      try {
+        const seen = localStorage.getItem('foldera_onboarding_seen');
+        if (!seen) {
+          setWalkStep(0);
+        } else {
+          setWalkStep('done');
+        }
+      } catch {
+        setWalkStep('done');
+      }
+    }
+  }, [loading, directive]);
+
+  function advanceWalk() {
+    if (walkStep === null || walkStep === 'done') return;
+    if (walkStep < WALKTHROUGH_STEPS.length - 1) {
+      setWalkStep(walkStep + 1);
+    } else {
+      try { localStorage.setItem('foldera_onboarding_seen', '1'); } catch {}
+      setWalkStep('done');
+    }
+  }
 
   async function handleStartTrial() {
     setStarting(true);
@@ -98,11 +145,11 @@ export default function ResultPage() {
         <div className="max-w-md text-center space-y-4">
           {usedDate && (
             <p className="text-slate-400 text-sm">
-              Your first directive was generated on{' '}
+              Your first read was generated on{' '}
               <span className="text-white">{new Date(usedDate).toLocaleDateString()}</span>.
             </p>
           )}
-          <p className="text-slate-500 text-sm">Start your 14-day free trial to get daily directives.</p>
+          <p className="text-slate-500 text-sm">Start your 14-day free trial to get today&apos;s read every morning.</p>
           <button
             onClick={handleStartTrial}
             disabled={starting}
@@ -120,18 +167,19 @@ export default function ResultPage() {
 
   const actionLabel = ACTION_LABELS[directive.action_type] ?? directive.action_type;
   const actionColor = ACTION_COLORS[directive.action_type] ?? ACTION_COLORS.research;
+  const showCTA     = walkStep === 'done';
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="border-b border-slate-800/60 px-6 py-4 flex items-center justify-between">
         <span className="text-slate-400 text-sm font-medium tracking-widest uppercase">Foldera</span>
-        <span className="text-slate-600 text-xs">Your first directive</span>
+        <span className="text-slate-600 text-xs">Your first read</span>
       </div>
 
       <div className="max-w-2xl mx-auto px-6 py-12">
 
         {/* Directive card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 mb-8">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 mb-6">
 
           <div className="flex items-center justify-between mb-7">
             <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${actionColor}`}>
@@ -153,7 +201,7 @@ export default function ResultPage() {
 
           {directive.evidence.length > 0 && (
             <div className="border-t border-slate-800 pt-5">
-              <p className="text-slate-500 text-xs font-semibold tracking-widest uppercase mb-3">Evidence</p>
+              <p className="text-slate-500 text-xs font-semibold tracking-widest uppercase mb-3">Found in your history</p>
               <ul className="space-y-2.5">
                 {directive.evidence.map((item, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm text-slate-400">
@@ -176,33 +224,72 @@ export default function ResultPage() {
           )}
         </div>
 
-        {/* Trial CTA */}
-        <div className="text-center mb-6">
-          <h2 className="text-xl font-bold mb-1">Get this every morning.</h2>
-          <p className="text-slate-400 text-sm">Foldera reads your signals overnight and surfaces one directive at 7 AM.</p>
-        </div>
-
-        <button
-          onClick={handleStartTrial}
-          disabled={starting}
-          className="w-full flex items-center justify-center gap-2 py-4 bg-violet-600 hover:bg-violet-500 disabled:opacity-60 rounded-xl font-bold text-lg transition-all group"
-        >
-          {starting ? <Spinner /> : (
-            <>
-              Start 14-day free trial
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-            </>
-          )}
-        </button>
-
-        <div className="mt-4 text-center space-y-1.5">
-          {['No credit card required', '$99/month after your trial', 'Cancel anytime'].map(line => (
-            <p key={line} className="flex items-center justify-center gap-1.5 text-slate-600 text-xs">
-              <Check className="w-3 h-3 text-slate-700" />
-              {line}
+        {/* ── Walkthrough ─────────────────────────────────────────────────── */}
+        {walkStep !== null && walkStep !== 'done' && (
+          <div className="mb-6 bg-slate-900 border border-violet-500/30 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-violet-400 text-xs font-semibold tracking-widest uppercase">
+                {WALKTHROUGH_STEPS[walkStep].label}
+              </span>
+              <div className="flex gap-1.5">
+                {WALKTHROUGH_STEPS.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`w-1.5 h-1.5 rounded-full ${i <= walkStep ? 'bg-violet-400' : 'bg-slate-700'}`}
+                  />
+                ))}
+              </div>
+            </div>
+            <h3 className="text-white font-semibold text-lg mb-2">
+              {WALKTHROUGH_STEPS[walkStep].heading}
+            </h3>
+            <p className="text-slate-400 text-sm leading-relaxed mb-5">
+              {WALKTHROUGH_STEPS[walkStep].body}
             </p>
-          ))}
-        </div>
+            <button
+              onClick={advanceWalk}
+              className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 rounded-xl text-sm font-semibold transition-colors"
+            >
+              {walkStep < WALKTHROUGH_STEPS.length - 1 ? (
+                <>Next <ChevronRight className="w-4 h-4" /></>
+              ) : (
+                <>Got it — show me pricing <ChevronRight className="w-4 h-4" /></>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* ── Trial CTA — only after walkthrough ──────────────────────────── */}
+        {showCTA && (
+          <>
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-bold mb-1">Get this every morning.</h2>
+              <p className="text-slate-400 text-sm">Foldera reads your inbox overnight and surfaces today&apos;s read at 7 AM.</p>
+            </div>
+
+            <button
+              onClick={handleStartTrial}
+              disabled={starting}
+              className="w-full flex items-center justify-center gap-2 py-4 bg-violet-600 hover:bg-violet-500 disabled:opacity-60 rounded-xl font-bold text-lg transition-all group"
+            >
+              {starting ? <Spinner /> : (
+                <>
+                  Start 14-day free trial
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+                </>
+              )}
+            </button>
+
+            <div className="mt-4 text-center space-y-1.5">
+              {['No credit card required', '$99/month after your trial', 'Cancel anytime'].map(line => (
+                <p key={line} className="flex items-center justify-center gap-1.5 text-slate-600 text-xs">
+                  <Check className="w-3 h-3 text-slate-700" />
+                  {line}
+                </p>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </main>
   );

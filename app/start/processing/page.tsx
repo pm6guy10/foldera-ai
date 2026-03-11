@@ -16,8 +16,8 @@ type Stage =
 const STATUS_MESSAGES = [
   'Reading your sent mail...',
   'Identifying decisions...',
-  'Mapping behavioral patterns...',
-  'Building your identity graph...',
+  'Looking for things that matter...',
+  'Building your profile...',
 ];
 
 export default function ProcessingPage() {
@@ -113,7 +113,7 @@ export default function ProcessingPage() {
 
   async function generateAndRedirect() {
     setStage('generating');
-    setStatusMsg('Generating your first directive...');
+    setStatusMsg('Getting your first read ready...');
 
     const res = await fetch('/api/onboard/free-directive', { method: 'POST' });
 
@@ -241,7 +241,7 @@ export default function ProcessingPage() {
           <p className="text-4xl mb-5">✓</p>
           <h2 className="text-2xl font-bold mb-3">You&apos;re on the list.</h2>
           <p className="text-slate-400 leading-relaxed">
-            We&apos;ll reach out as soon as we have enough signal to generate an accurate directive.
+            We&apos;ll reach out as soon as we have enough to generate your first read.
           </p>
         </div>
       </div>
