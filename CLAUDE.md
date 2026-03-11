@@ -69,6 +69,13 @@ After EVERY commit, before marking anything done:
 3. Walk the full user journey touching the changed code as a first-time user
 4. Fix anything that looks broken, confusing, or unpolished before reporting back
 5. Never say "done" until you've verified it yourself
+6. After every push to main, fetch the Vercel build logs and fix any build failures
+   before stopping. Do not mark anything done until foldera.ai shows a successful
+   deployment. Never stop at a broken Vercel build.
+7. After merging any branch, run `npm run build` locally before pushing to main.
+   A broken local build means a broken Vercel deploy. Never push a build that fails locally.
+8. When creating new lib/ modules that are imported by existing routes, always create
+   the file in the same session. Never leave an import pointing to a file that doesn't exist.
 
 Brandon should never discover a bug. You should find it first.
 
