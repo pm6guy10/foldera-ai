@@ -1,15 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { ThreadHistoryEntry } from './utils';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Supabase environment variables are not configured.');
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Supabase environment variables are not configured.');
+  return createClient(url, key);
 }
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
 
@@ -154,6 +152,7 @@ export async function upsertDraft({
   senderName?: string;
   subject?: string;
 }) {
+  const supabase = getSupabase();
   const { data: existing, error: selectError } = await supabase
     .from('email_drafts')
     .select('id')
