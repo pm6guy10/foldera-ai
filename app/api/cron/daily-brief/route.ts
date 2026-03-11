@@ -117,6 +117,49 @@ async function handler(request: NextRequest) {
         .from('user_subscriptions').select('created_at, status').eq('user_id', userId).maybeSingle();
       if (sub?.status === 'expired') { results.push({ userId, success: false, error: 'trial expired' }); continue; }
 
+      // Check for stale graph (no ingest in 48+ hours) and surface a DraftQueue warning once per day
+      const { data: latestSignal } = await supabase
+        .from('tkg_signals')
+        .select('created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestSignal?.created_at) {
+        const hoursSinceIngest = (Date.now() - new Date(latestSignal.created_at).getTime()) / (1000 * 60 * 60);
+        if (hoursSinceIngest > 48) {
+          const daysSinceIngest = Math.floor(hoursSinceIngest / 24);
+          // Only add the warning if there isn't already a health_alert from today
+          const todayStart = new Date();
+          todayStart.setUTCHours(0, 0, 0, 0);
+          const { data: existingAlert } = await supabase
+            .from('tkg_actions')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('draft_type', 'health_alert')
+            .eq('status', 'draft')
+            .gte('generated_at', todayStart.toISOString())
+            .limit(1)
+            .maybeSingle();
+
+          if (!existingAlert) {
+            await supabase.from('tkg_actions').insert({
+              user_id: userId,
+              action_type: 'do_nothing',
+              draft_type: 'health_alert',
+              directive_text: `Your graph hasn't been updated in ${daysSinceIngest} day${daysSinceIngest !== 1 ? 's' : ''}. Foldera's reads are based on older data. Ingest recent conversations to improve accuracy.`,
+              reason: `Last signal ingested ${daysSinceIngest} day${daysSinceIngest !== 1 ? 's' : ''} ago. Export your recent Claude conversations as text files and run: node scripts/ingest-recent.mjs ./conversations/`,
+              status: 'draft',
+              confidence: 100,
+              evidence: [],
+              generated_at: new Date().toISOString(),
+            });
+            console.log(`[daily-brief] Stale graph alert added for ${userId} (${daysSinceIngest}d since last ingest)`);
+          }
+        }
+      }
+
       let daysSinceSignup = 999;
       if (sub?.created_at) {
         daysSinceSignup = Math.floor((Date.now() - new Date(sub.created_at).getTime()) / (1000 * 60 * 60 * 24));
