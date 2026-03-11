@@ -118,13 +118,15 @@ export async function countDecisionsSinceLastAnalysis(userId: string): Promise<n
     ? new Date(0).toISOString()
     : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(); // last 90 days
 
-  const { count } = await supabase
+  // Cast to any to break deep type instantiation from chained Supabase generics
+  const q: any = supabase
     .from('tkg_actions')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
     .in('status', ['approved', 'draft_rejected'])
-    .eq('execution_result->>draft_type' as any, 'social_outreach')
+    .eq('execution_result->>draft_type', 'social_outreach')
     .gte('generated_at', sinceDate);
+  const { count } = (await q) as { count: number | null };
 
   return count ?? 0;
 }
@@ -135,14 +137,15 @@ export async function countDecisionsSinceLastAnalysis(userId: string): Promise<n
  */
 async function fetchOutreachDecisions(userId: string): Promise<OutreachDecision[]> {
   const supabase = getSupabase();
-  const { data } = await supabase
+  const q2: any = supabase
     .from('tkg_actions')
     .select('id, status, execution_result, generated_at')
     .eq('user_id', userId)
     .in('status', ['approved', 'draft_rejected'])
-    .eq('execution_result->>draft_type' as any, 'social_outreach')
+    .eq('execution_result->>draft_type', 'social_outreach')
     .order('generated_at', { ascending: false })
     .limit(50); // analyze up to last 50 decisions
+  const { data } = (await q2) as { data: { id: string; status: string; execution_result: unknown; generated_at: string }[] | null };
 
   if (!data?.length) return [];
 
@@ -240,9 +243,9 @@ ${approved.slice(0, 20).map((d, i) => `
   Platform: ${d.platform}${d.subreddit ? ` r/${d.subreddit}` : ''}
   Post title: "${d.post_title}"
   Post preview: "${d.post_preview}"
-  Matched labels: ${d.matched_labels.join(', ') || 'none'}
-  ICP signals: ${d.icp_signals.join(', ') || 'none'}
-  Intensity signals: ${d.intensity_signals.join(', ') || 'none'}
+  Matched labels: ${(d.matched_labels ?? []).join(', ') || 'none'}
+  ICP signals: ${(d.icp_signals ?? []).join(', ') || 'none'}
+  Intensity signals: ${(d.intensity_signals ?? []).join(', ') || 'none'}
   Draft angle: "${d.draft_angle}"
 `).join('\n')}
 
@@ -253,9 +256,9 @@ ${skipped.slice(0, 20).map((d, i) => `
   Platform: ${d.platform}${d.subreddit ? ` r/${d.subreddit}` : ''}
   Post title: "${d.post_title}"
   Post preview: "${d.post_preview}"
-  Matched labels: ${d.matched_labels.join(', ') || 'none'}
-  ICP signals: ${d.icp_signals.join(', ') || 'none'}
-  Intensity signals: ${d.intensity_signals.join(', ') || 'none'}
+  Matched labels: ${(d.matched_labels ?? []).join(', ') || 'none'}
+  ICP signals: ${(d.icp_signals ?? []).join(', ') || 'none'}
+  Intensity signals: ${(d.intensity_signals ?? []).join(', ') || 'none'}
   Draft angle: "${d.draft_angle}"
 `).join('\n')}
 
