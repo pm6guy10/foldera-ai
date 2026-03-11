@@ -102,8 +102,18 @@ After EVERY commit, before marking anything done:
 9. After all changes are complete and local build passes, merge your branch to main,
    push main to origin, and verify the Vercel deployment succeeds. Never stop or report
    done on a branch. Always finish on main with a successful Vercel deploy.
-
-Brandon should never discover a bug. You should find it first.
+10. Before pushing any code, review all changes through these professional lenses and fix
+    issues proactively. Do not wait for Brandon to find them:
+    - UX: Is the user journey clear? Can a stranger use this without instructions?
+    - Visual: Does every screen look like a $99/month product? No raw errors, no broken
+      animations, no dev artifacts visible.
+    - Copy: Does any user-facing text use internal jargon? Fix it.
+    - Consistency: Do all pages use the same design language, spacing, and component styles?
+    - Error handling: Does every user action have a graceful failure state? No raw error
+      messages ever reach the user.
+    - Dead UI: Is there any button, link, or feature that doesn't work? Remove it or fix it.
+    Brandon should never discover a visual bug, a broken button, or an inconsistency.
+    Find them yourself before reporting done.
 
 ---
 

@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
     icon: <RelationshipIcon />,
   },
   {
-    label: 'Signals',
+    label: 'Activity',
     href: '/dashboard/signals',
     icon: <SignalIcon />,
   },

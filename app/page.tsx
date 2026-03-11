@@ -162,7 +162,7 @@ export default function App() {
       <main className="pt-36 pb-20 max-w-4xl mx-auto px-5 text-center">
         <Reveal>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-600/10 text-violet-300 text-xs font-medium mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 pulse-slow" />
+            <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
             First read free
           </div>
         </Reveal>

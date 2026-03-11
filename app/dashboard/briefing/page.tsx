@@ -1,12 +1,6 @@
-import dynamic from 'next/dynamic';
+import { redirect } from 'next/navigation';
 
-// This tells Next.js: "Do NOT try to render this on the server. Wait for the browser."
-const BriefingClient = dynamic(
-  () => import('./BriefingClient'),
-  { ssr: false }
-);
-
+// The briefing content is now shown directly on the dashboard.
 export default function BriefingPage() {
-  return <BriefingClient />;
+  redirect('/dashboard');
 }
-

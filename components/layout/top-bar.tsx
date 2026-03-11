@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/design-system';
 import { typography } from '@/lib/design-system/typography';
 import { transitions } from '@/lib/design-system/animations';
-import { StatusIndicator } from '@/components/ui/status-indicator';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function TopBar() {
@@ -34,13 +33,7 @@ export function TopBar() {
 
           {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Status — label hidden on mobile */}
-            <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800">
-              <StatusIndicator status="success" size="sm" />
-              <span className="text-xs text-zinc-400 hidden sm:inline">Shadow Mode Active</span>
-            </div>
-            
-            {/* Notifications — real dot only shown when there are actual items */}
+            {/* Notifications */}
             <button className={cn(
               'relative p-2 rounded-lg',
               transitions.colors,

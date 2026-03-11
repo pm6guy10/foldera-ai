@@ -49,11 +49,17 @@ export function getAuthOptions(): NextAuthOptions {
           token.name = user.name;
           token.provider = account.provider;
 
+          // Single-user app: always resolve to INGEST_USER_ID (a valid Supabase UUID).
+          // Fallback to token.sub (Google's numeric sub) only if not configured.
+          // This prevents the "invalid input syntax for type uuid" error when session.user.id
+          // is passed to Postgres — Google subs are not UUIDs.
+          const resolvedUserId = process.env.INGEST_USER_ID ?? token.sub ?? (user as any).id;
+          token.userId = resolvedUserId;
+
           // Persist OAuth tokens to the `integrations` table so background
           // cron jobs (sync-email, etc.) can retrieve them without a session.
           try {
             const { saveTokens } = await import('@/lib/auth/token-store');
-            const resolvedUserId = process.env.INGEST_USER_ID ?? token.sub ?? (user as any).id;
             if (resolvedUserId && account.access_token && account.refresh_token) {
               if (account.provider === 'google') {
                 await saveTokens(resolvedUserId, 'google', {
@@ -80,7 +86,9 @@ export function getAuthOptions(): NextAuthOptions {
         return token;
       },
       async session({ session, token }) {
-        session.user.id = token.sub!;
+        // Use the resolved Supabase UUID (stored in token.userId during sign-in).
+        // Falls back to token.sub for any edge case where userId was not stored.
+        session.user.id = (token.userId as string | undefined) ?? token.sub!;
         session.user.email = token.email as string;
         session.user.name = token.name as string;
         return session;

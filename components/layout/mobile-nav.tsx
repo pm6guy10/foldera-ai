@@ -11,7 +11,7 @@ import { usePathname } from 'next/navigation';
 const tabs = [
   { label: 'Home',      href: '/dashboard',               icon: HomeIcon },
   { label: 'Briefings', href: '/dashboard/briefings',     icon: BriefIcon },
-  { label: 'Signals',   href: '/dashboard/signals',       icon: SignalIcon },
+  { label: 'Activity',  href: '/dashboard/signals',       icon: SignalIcon },
   { label: 'Settings',  href: '/dashboard/settings',      icon: GearIcon },
 ] as const;
 
