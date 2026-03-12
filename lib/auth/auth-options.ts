@@ -130,6 +130,9 @@ export function getAuthOptions(): NextAuthOptions {
         return `${baseUrl}/dashboard`;
       },
     },
+    pages: {
+      signIn: '/start',
+    },
     session: {
       strategy: 'jwt',
       maxAge: 30 * 24 * 60 * 60,

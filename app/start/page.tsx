@@ -25,7 +25,7 @@ const ACTION_COLORS: Record<string, string> = {
   write_document: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
   send_message: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
   make_decision: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  do_nothing: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+  do_nothing: 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
   schedule: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
   research: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
 };
@@ -71,33 +71,33 @@ export default function StartPage() {
     const actionColor = ACTION_COLORS[result.action_type] ?? ACTION_COLORS.research;
 
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center px-6 py-16">
+      <main className="min-h-screen bg-[#0B0B0C] text-white flex flex-col items-center justify-center px-6 py-16" style={{ fontFamily: "'Inter', sans-serif" }}>
         <div className="max-w-2xl w-full">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 mb-8">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-8">
             <div className="flex items-center justify-between mb-6">
               <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${actionColor}`}>
                 {actionLabel}
               </span>
               <div className="flex items-center gap-2">
-                <div className="h-1.5 w-24 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-1.5 w-24 bg-zinc-800 rounded-full overflow-hidden">
                   <div className="h-full bg-violet-500 rounded-full" style={{ width: `${result.confidence}%` }} />
                 </div>
-                <span className="text-slate-500 text-xs">{result.confidence}%</span>
+                <span className="text-zinc-500 text-xs">{result.confidence}%</span>
               </div>
             </div>
             <p className="text-2xl font-semibold leading-snug text-white mb-5">{result.directive}</p>
-            <p className="text-slate-400 text-sm leading-relaxed border-l-2 border-slate-700 pl-4 italic mb-5">
+            <p className="text-zinc-400 text-sm leading-relaxed border-l-2 border-zinc-700 pl-4 italic mb-5">
               {result.reason}
             </p>
             {result.evidence.length > 0 && (
-              <div className="border-t border-slate-800 pt-5">
-                <p className="text-slate-500 text-xs font-semibold tracking-widest uppercase mb-3">
+              <div className="border-t border-zinc-800 pt-5">
+                <p className="text-zinc-500 text-xs font-semibold tracking-widest uppercase mb-3">
                   Evidence from your text
                 </p>
                 <ul className="space-y-2">
                   {result.evidence.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-slate-400">
-                      <span className="text-slate-600 mt-0.5 shrink-0">&bull;</span>
+                    <li key={i} className="flex items-start gap-2 text-sm text-zinc-400">
+                      <span className="text-zinc-600 mt-0.5 shrink-0">&bull;</span>
                       {item.description}
                     </li>
                   ))}
@@ -106,8 +106,8 @@ export default function StartPage() {
             )}
           </div>
 
-          <div className="bg-slate-900/60 border border-slate-800/60 rounded-2xl p-8 text-center space-y-5">
-            <p className="text-slate-400 text-base leading-relaxed">
+          <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-8 text-center space-y-5">
+            <p className="text-zinc-400 text-base leading-relaxed">
               That was based on one paragraph.<br />
               Imagine what Foldera does with 30 days of your actual history.
             </p>
@@ -115,7 +115,7 @@ export default function StartPage() {
               <button
                 onClick={() => handleOAuth('google')}
                 disabled={!!loadingProvider}
-                className="flex items-center justify-center gap-3 bg-white text-slate-900 hover:bg-slate-100 font-semibold py-3 px-6 rounded-xl transition-all disabled:opacity-60"
+                className="flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-3 px-6 rounded-xl transition-all disabled:opacity-60"
               >
                 <GoogleIcon />
                 Connect with Google
@@ -129,12 +129,12 @@ export default function StartPage() {
                 Connect with Microsoft
               </button>
             </div>
-            <p className="text-slate-600 text-xs">14 days free. No credit card required.</p>
+            <p className="text-zinc-600 text-xs">14 days free. No credit card required.</p>
           </div>
 
           <button
             onClick={() => { setResult(null); setError(null); setText(''); }}
-            className="w-full text-slate-600 hover:text-slate-400 text-sm transition-colors mt-6 text-center"
+            className="w-full text-zinc-600 hover:text-zinc-400 text-sm transition-colors mt-6 text-center"
           >
             Try a different paragraph
           </button>
@@ -145,7 +145,7 @@ export default function StartPage() {
 
   // ── Main view: OAuth buttons + paste option ───────────────────────────────
   return (
-    <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center px-6">
+    <main className="min-h-screen bg-[#0B0B0C] text-white flex flex-col items-center justify-center px-6" style={{ fontFamily: "'Inter', sans-serif" }}>
       <div className="max-w-lg w-full text-center">
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-violet-600 to-violet-400 flex items-center justify-center">
@@ -160,7 +160,7 @@ export default function StartPage() {
           in 60 seconds.
         </h1>
 
-        <p className="text-slate-400 text-lg leading-relaxed mb-10">
+        <p className="text-zinc-400 text-lg leading-relaxed mb-10">
           Your patterns are already in your email.<br />
           We just make them visible.
         </p>
@@ -169,7 +169,7 @@ export default function StartPage() {
           <button
             onClick={() => handleOAuth('google')}
             disabled={!!loadingProvider}
-            className="w-full max-w-sm mx-auto flex items-center justify-center gap-3 bg-white text-slate-900 hover:bg-slate-100 font-semibold py-4 px-8 rounded-xl text-lg transition-all shadow-lg disabled:opacity-60"
+            className="w-full max-w-sm mx-auto flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-4 px-8 rounded-xl text-lg transition-all shadow-lg disabled:opacity-60"
           >
             {loadingProvider === 'google' ? <LoadingSpinner /> : (
               <>
@@ -193,7 +193,7 @@ export default function StartPage() {
           </button>
         </div>
 
-        <p className="text-slate-500 text-sm leading-relaxed mb-8">
+        <p className="text-zinc-500 text-sm leading-relaxed mb-8">
           We read your last 30 days of sent email.<br />
           Nothing is stored permanently until you subscribe.
         </p>
@@ -201,7 +201,7 @@ export default function StartPage() {
         {!showPaste ? (
           <button
             onClick={() => setShowPaste(true)}
-            className="text-sm text-slate-600 hover:text-slate-400 transition-colors"
+            className="text-sm text-zinc-600 hover:text-zinc-400 transition-colors"
           >
             or paste a conversation to try it free &darr;
           </button>
@@ -212,7 +212,7 @@ export default function StartPage() {
               onChange={e => setText(e.target.value)}
               placeholder="Paste a paragraph about what you're working on or struggling with..."
               rows={5}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600 resize-none focus:outline-none focus:border-violet-500/50 transition-colors"
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-violet-500/50 transition-colors"
             />
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button

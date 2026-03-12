@@ -150,7 +150,7 @@ export default function App() {
             <span className="text-lg font-semibold tracking-tight">Foldera</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href="/api/auth/signin" className="text-sm text-zinc-400 hover:text-white transition-colors hidden sm:block">Log in</a>
+            <a href="/start" className="text-sm text-zinc-400 hover:text-white transition-colors hidden sm:block">Log in</a>
             <a href="/start" className="px-4 py-2 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors">
               Get started free
             </a>

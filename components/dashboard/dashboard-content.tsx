@@ -77,7 +77,7 @@ export default function DashboardContent() {
       loadLatestConviction();
       checkSubscription();
     }
-    if (status === 'unauthenticated') router.push('/api/auth/signin');
+    if (status === 'unauthenticated') router.push('/start');
   }, [status]);
 
   const checkSubscription = async () => {
