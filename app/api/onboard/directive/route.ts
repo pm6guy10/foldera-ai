@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generateDirective } from '@/lib/briefing/generator';
+import { generateArtifact } from '@/lib/conviction/artifact-generator';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,8 +40,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const directive = await generateDirective(tempUserId);
+    let artifact: Awaited<ReturnType<typeof generateArtifact>> | null = null;
+    try {
+      artifact = await generateArtifact(tempUserId, directive);
+    } catch {
+      // Fallback handled inside generateArtifact; persist with or without artifact
+    }
 
-    // Persist to tkg_actions — survives if user signs up later
     const supabase = getSupabase();
     await supabase.from('tkg_actions').insert({
       user_id: tempUserId,
@@ -50,11 +56,13 @@ export async function POST(request: NextRequest) {
       reason: directive.reason,
       evidence: directive.evidence,
       status: 'pending_approval',
+      execution_result: artifact ? { artifact } : null,
     });
 
     return NextResponse.json(directive);
-  } catch (err: any) {
-    console.error('[/api/onboard/directive]', err.message);
-    return NextResponse.json({ error: err.message || 'Generation failed' }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Generation failed';
+    console.error('[/api/onboard/directive]', msg);
+    return NextResponse.json({ error: String(msg) }, { status: 500 });
   }
 }

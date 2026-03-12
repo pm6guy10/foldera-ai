@@ -1,33 +1,23 @@
 /**
  * POST /api/drafts/decide
+ * Body: { draft_id: string, decision: "approve" | "reject" }
  *
- * Approves or rejects a pending draft action.
- * On approval of email_compose / email_reply drafts, sends the email via
- * Gmail or Outlook based on the user's connected provider.
+ * Unified execution layer: delegates to executeAction().
+ * Approve = artifact fully executed (email, document, calendar, research, etc.).
+ * Reject = skip with feedback; both paths write to tkg_signals for learning.
  *
  * Auth: session OR x-ingest-secret header.
  */
 
-import { NextResponse }          from 'next/server';
-import { getServerSession }      from 'next-auth';
-import { createClient }          from '@supabase/supabase-js';
-import { getAuthOptions }        from '@/lib/auth/auth-options';
-import { shouldRunAnalysis }     from '@/lib/acquisition/learning-loop';
-import { sendGmailEmail }        from '@/lib/integrations/gmail-client';
-import { sendOutlookEmail }      from '@/lib/integrations/outlook-client';
-import { hasIntegration }        from '@/lib/auth/token-store';
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { getAuthOptions } from '@/lib/auth/auth-options';
+import { executeAction } from '@/lib/conviction/execute-action';
+import { shouldRunAnalysis } from '@/lib/acquisition/learning-loop';
 
 export const dynamic = 'force-dynamic';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
-
 export async function POST(request: Request) {
-  // -- Auth ---------------------------------------------------------------
   let userId: string | undefined;
   const ingestSecret = request.headers.get('x-ingest-secret');
   if (ingestSecret) {
@@ -44,7 +34,6 @@ export async function POST(request: Request) {
   }
   if (!userId) return NextResponse.json({ error: 'User ID not resolved' }, { status: 500 });
 
-  // -- Parse body ---------------------------------------------------------
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const { draft_id, decision } = body;
 
@@ -55,95 +44,54 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'decision must be "approve" or "reject"' }, { status: 400 });
   }
 
-  const supabase = getSupabase();
+  const result = await executeAction({
+    userId,
+    actionId: draft_id,
+    decision: decision === 'reject' ? 'reject' : 'approve',
+  });
 
-  // -- Verify ownership and current status --------------------------------
-  const { data: row, error: fetchErr } = await supabase
-    .from('tkg_actions')
-    .select('id, status, action_type, execution_result')
-    .eq('id', draft_id)
-    .eq('user_id', userId)
-    .single();
-
-  if (fetchErr || !row) return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
-  if (row.status !== 'draft') {
-    return NextResponse.json({ error: `Cannot decide on action with status: ${row.status}` }, { status: 409 });
+  if (result.error && result.status === 'skipped') {
+    return NextResponse.json(
+      { error: result.error },
+      { status: result.error.includes('Cannot execute') ? 409 : 404 },
+    );
+  }
+  if (result.status === 'draft_rejected') {
+    return NextResponse.json({ draft_id: result.action_id, decision: 'reject', status: 'draft_rejected' });
   }
 
-  const execResult = (row.execution_result as Record<string, unknown>) ?? {};
-  const draftType  = execResult.draft_type as string | undefined;
-  const isOutreach = draftType === 'social_outreach';
-  const isEmail    = draftType === 'email_compose' || draftType === 'email_reply';
-
-  // -- Reject -------------------------------------------------------------
-  if (decision === 'reject') {
-    await supabase
-      .from('tkg_actions')
-      .update({ status: 'draft_rejected', feedback_weight: -0.5 })
-      .eq('id', draft_id);
-
-    console.log(`[drafts/decide] ${draft_id} rejected (${draftType ?? 'non-outreach'})`);
-    if (isOutreach) triggerAnalysisIfReady(userId).catch(() => {});
-    return NextResponse.json({ draft_id, decision: 'reject', status: 'draft_rejected' });
-  }
-
-  // -- Approve ------------------------------------------------------------
-  const now = new Date().toISOString();
-  let emailSendResult: { sent: boolean; sent_at?: string; send_error?: string } = { sent: false };
-
-  if (isEmail) {
-    const to      = execResult.to as string | undefined;
-    const subject = execResult.subject as string | undefined;
-    const msgBody = execResult.body as string | undefined;
-
-    if (to && subject && msgBody && /^[^@]+@[^@]+\.[^@]+$/.test(to)) {
-      // Determine provider
-      const useGoogle    = await hasIntegration(userId, 'google');
-      const useMicrosoft = !useGoogle && await hasIntegration(userId, 'azure_ad');
-
-      let result: { success: boolean; messageId?: string; error?: string } = { success: false, error: 'No email integration found' };
-
-      if (useGoogle) {
-        result = await sendGmailEmail(userId, { to, subject, body: msgBody });
-      } else if (useMicrosoft) {
-        result = await sendOutlookEmail(userId, { to, subject, body: msgBody });
-      }
-
-      if (result.success) {
-        emailSendResult = { sent: true, sent_at: now };
-        console.log(`[drafts/decide] email sent for ${draft_id} via ${useGoogle ? 'gmail' : 'outlook'}`);
-      } else {
-        emailSendResult = { sent: false, send_error: result.error };
-        console.warn(`[drafts/decide] email send failed for ${draft_id}: ${result.error}`);
-      }
-    }
-  }
-
-  const updatedResult = {
-    ...execResult,
-    approved_at: now,
-    executed_at: now,
-    ...emailSendResult,
-  };
-
-  await supabase
-    .from('tkg_actions')
-    .update({
-      status:           'approved',
-      approved_at:      now,
-      executed_at:      now,
-      feedback_weight:  1.0,
-      execution_result: updatedResult,
-    })
-    .eq('id', draft_id);
-
-  console.log(`[drafts/decide] ${draft_id} approved (${draftType ?? row.action_type})`);
+  const isOutreach = await checkIsOutreach(draft_id, userId);
   if (isOutreach) triggerAnalysisIfReady(userId).catch(() => {});
 
-  return NextResponse.json({ draft_id, decision: 'approve', status: 'approved', email_sent: emailSendResult.sent });
+  return NextResponse.json({
+    draft_id: result.action_id,
+    decision: decision === 'reject' ? 'reject' : 'approve',
+    status: result.status,
+    result: result.result,
+    email_sent: result.result?.sent === true,
+  });
 }
 
-// -- Learning loop trigger ------------------------------------------------
+async function checkIsOutreach(draftId: string, userId: string): Promise<boolean> {
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+    const { data } = await supabase
+      .from('tkg_actions')
+      .select('execution_result')
+      .eq('id', draftId)
+      .eq('user_id', userId)
+      .single();
+    const exec = (data?.execution_result as Record<string, unknown>) ?? {};
+    const draftType = exec.draft_type as string | undefined;
+    return draftType === 'social_outreach';
+  } catch {
+    return false;
+  }
+}
 
 async function triggerAnalysisIfReady(userId: string): Promise<void> {
   try {
@@ -154,8 +102,7 @@ async function triggerAnalysisIfReady(userId: string): Promise<void> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-ingest-secret': process.env.INGEST_API_KEY ?? '' },
     }).catch(err => console.warn('[drafts/decide] could not trigger analysis:', err.message));
-    console.log('[drafts/decide] analysis triggered');
-  } catch (err: any) {
-    console.warn('[drafts/decide] analysis trigger check failed:', err.message);
+  } catch (err: unknown) {
+    console.warn('[drafts/decide] analysis trigger check failed:', err instanceof Error ? err.message : err);
   }
 }

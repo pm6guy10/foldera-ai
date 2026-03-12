@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth-options';
 import { generateDirective } from '@/lib/briefing/generator';
+import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { createClient } from '@supabase/supabase-js';
 
 function getSupabase() {
@@ -45,21 +46,28 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── Generate directive ───────────────────────────────────────────────────
+  // ── Generate directive + artifact (no directive-only to-dos) ─────────────
   const directive = await generateDirective(userId);
+  let artifact: Awaited<ReturnType<typeof generateArtifact>> | null = null;
+  try {
+    artifact = await generateArtifact(userId, directive);
+  } catch (err) {
+    console.warn('[free-directive] artifact generation failed:', err);
+  }
 
-  // ── Persist to tkg_actions ───────────────────────────────────────────────
+  // ── Persist to tkg_actions with execution_result.artifact ────────────────
   const { data: action } = await supabase
     .from('tkg_actions')
     .insert({
-      user_id:       userId,
+      user_id:        userId,
       directive_text: directive.directive,
-      action_type:   directive.action_type,
-      confidence:    directive.confidence,
-      reason:        directive.reason,
-      evidence:      directive.evidence,
-      status:        'pending_approval',
-      generated_at:  new Date().toISOString(),
+      action_type:    directive.action_type,
+      confidence:     directive.confidence,
+      reason:         directive.reason,
+      evidence:       directive.evidence,
+      status:         'pending_approval',
+      generated_at:   new Date().toISOString(),
+      execution_result: artifact ? { artifact } : null,
     })
     .select('id')
     .single();

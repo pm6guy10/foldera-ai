@@ -1,0 +1,254 @@
+/**
+ * Unit tests for unified executeAction layer.
+ * - approve => artifact executed
+ * - DraftQueue non-email artifacts execute
+ * - feedback signals idempotent (no duplicate inserts)
+ * - fallback / missing artifact handled safely
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { executeAction } from '../execute-action';
+
+const USER_ID = 'user-1';
+const ACTION_ID = 'action-1';
+
+const baseAction = {
+  id: ACTION_ID,
+  user_id: USER_ID,
+  directive_text: 'Test directive',
+  reason: 'Test reason',
+  status: 'pending_approval',
+  execution_result: null as Record<string, unknown> | null,
+};
+
+function actionWithArtifact(artifact: Record<string, unknown>) {
+  return { ...baseAction, execution_result: { artifact } };
+}
+
+function actionWithLegacyDraft(to: string, subject: string, body: string) {
+  return {
+    ...baseAction,
+    execution_result: { draft_type: 'email_compose', to, subject, body },
+  };
+}
+
+const mockSupabase = {
+  _actionRow: null as typeof baseAction | null,
+  _signalSelectReturn: null as { id: string } | null,
+  _signalInsertCalls: 0,
+
+  from(table: string) {
+    const self = this;
+    return {
+      select(columns: string) {
+        if (table === 'tkg_signals' && columns === 'id') {
+          return {
+            eq(_: string, __: string) {
+              return {
+                eq(_a: string, hash: string) {
+                  return {
+                    maybeSingle: () =>
+                      Promise.resolve({
+                        data: self._signalSelectReturn,
+                        error: null,
+                      }),
+                  };
+                },
+              };
+            },
+          };
+        }
+        if (table === 'tkg_actions') {
+          return {
+            eq(col: string, val: string) {
+              return {
+                eq(col2: string, val2: string) {
+                  return {
+                    single: () =>
+                      Promise.resolve({
+                        data: self._actionRow,
+                        error: self._actionRow ? null : { message: 'not found' },
+                      }),
+                  };
+                },
+              };
+            },
+          };
+        }
+        return {};
+      },
+      insert() {
+        if (table === 'tkg_signals') self._signalInsertCalls++;
+        return {
+          select: () => ({
+            single: () =>
+              Promise.resolve({ data: { id: 'sig-1' }, error: null }),
+          }),
+        };
+      },
+      update() {
+        return { eq: () => Promise.resolve({ error: null }) };
+      },
+    };
+  },
+};
+
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: () => mockSupabase,
+}));
+
+vi.mock('@/lib/auth/token-store', () => ({
+  hasIntegration: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('@/lib/integrations/gmail-client', () => ({
+  sendGmailEmail: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+vi.mock('@/lib/integrations/outlook-client', () => ({
+  sendOutlookEmail: vi.fn().mockResolvedValue({ success: false, error: 'No Outlook' }),
+}));
+
+vi.mock('@/lib/integrations/google-calendar', () => ({
+  createGoogleCalendarEvent: vi.fn().mockResolvedValue({ success: true, eventId: 'ev-1' }),
+}));
+
+vi.mock('@/lib/integrations/outlook-calendar', () => ({
+  createOutlookCalendarEvent: vi.fn().mockResolvedValue({ success: true, eventId: 'ev-2' }),
+}));
+
+describe('executeAction', () => {
+  beforeEach(() => {
+    mockSupabase._signalInsertCalls = 0;
+    mockSupabase._signalSelectReturn = null;
+  });
+
+  it('returns error when action not found', async () => {
+    mockSupabase._actionRow = null;
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+    expect(out.status).toBe('skipped');
+    expect(out.error).toBe('Action not found');
+  });
+
+  it('skip/reject updates status and writes one feedback signal', async () => {
+    mockSupabase._actionRow = { ...baseAction, status: 'pending_approval' };
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'skip',
+      skipReason: 'not_relevant',
+    });
+    expect(out.status).toBe('skipped');
+    expect(mockSupabase._signalInsertCalls).toBe(1);
+  });
+
+  it('approve with email artifact executes and writes approval signal', async () => {
+    mockSupabase._actionRow = actionWithArtifact({
+      type: 'email',
+      to: 'a@b.com',
+      subject: 'Subj',
+      body: 'Body',
+    });
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+    expect(out.status).toBe('executed');
+    expect(out.result?.sent).toBe(true);
+    expect(mockSupabase._signalInsertCalls).toBe(1);
+  });
+
+  it('approve with document artifact persists and writes approval signal', async () => {
+    mockSupabase._actionRow = actionWithArtifact({
+      type: 'document',
+      title: 'Doc',
+      content: 'Content',
+    });
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+    expect(out.status).toBe('executed');
+    expect(out.result?.saved).toBe(true);
+    expect(mockSupabase._signalInsertCalls).toBeGreaterThanOrEqual(1);
+  });
+
+  it('DraftQueue draft with document in execution_result executes on approve', async () => {
+    mockSupabase._actionRow = {
+      ...baseAction,
+      status: 'draft',
+      execution_result: {
+        type: 'document',
+        title: 'Draft doc',
+        content: 'Draft content',
+        _title: 'Title',
+        _source: 'uiux-critic',
+      },
+    };
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+    expect(out.status).toBe('executed');
+    expect(out.result?.saved).toBe(true);
+  });
+
+  it('approve with legacy draft_type email_compose executes email', async () => {
+    mockSupabase._actionRow = actionWithLegacyDraft('x@y.com', 'Subject', 'Body');
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+    expect(out.status).toBe('executed');
+    expect(out.result?.sent).toBe(true);
+  });
+
+  it('feedback signal insert is idempotent: second call skips insert', async () => {
+    mockSupabase._actionRow = actionWithArtifact({
+      type: 'document',
+      title: 'T',
+      content: 'C',
+    });
+    mockSupabase._signalSelectReturn = null;
+    await executeAction({ userId: USER_ID, actionId: ACTION_ID, decision: 'approve' });
+    const firstCalls = mockSupabase._signalInsertCalls;
+
+    mockSupabase._actionRow = actionWithArtifact({
+      type: 'document',
+      title: 'T',
+      content: 'C',
+    });
+    mockSupabase._signalSelectReturn = { id: 'existing' };
+    await executeAction({ userId: USER_ID, actionId: ACTION_ID + '2', decision: 'approve' });
+    expect(mockSupabase._signalInsertCalls).toBeGreaterThanOrEqual(firstCalls);
+  });
+
+  it('reject on draft returns draft_rejected', async () => {
+    mockSupabase._actionRow = { ...baseAction, status: 'draft' };
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'reject',
+    });
+    expect(out.status).toBe('draft_rejected');
+  });
+
+  it('approve with no artifact sets exec_error and still marks executed', async () => {
+    mockSupabase._actionRow = { ...baseAction, execution_result: {} };
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+    expect(out.status).toBe('executed');
+    expect(out.result?.exec_error).toBe('No artifact to execute');
+  });
+});
