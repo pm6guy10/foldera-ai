@@ -31,7 +31,66 @@ export interface ConvictionDirective {
   // Secondary context (below the fold)
   evidence: EvidenceItem[];  // The specific signals/patterns that drove this
   fullContext?: string;      // Optional longer prose for the detail panel
+
+  // Search hints — set by the engine when the artifact needs current info
+  requires_search?: boolean;
+  search_context?: string;   // What to search for (e.g. "WA DOT job posting 2024-12345")
 }
+
+// ---------------------------------------------------------------------------
+// Artifact types — the finished work product attached to a directive.
+// The directive without an artifact is a to-do list.
+// The artifact is the product.
+// ---------------------------------------------------------------------------
+
+export interface EmailArtifact {
+  type: 'email';
+  to: string;
+  subject: string;
+  body: string;
+  draft_type: 'email_compose' | 'email_reply';
+}
+
+export interface DocumentArtifact {
+  type: 'document';
+  title: string;
+  content: string;
+}
+
+export interface CalendarEventArtifact {
+  type: 'calendar_event';
+  title: string;
+  start: string;      // ISO 8601
+  end: string;         // ISO 8601
+  description: string;
+}
+
+export interface ResearchBriefArtifact {
+  type: 'research_brief';
+  findings: string;
+  sources: string[];
+  recommended_action: string;
+}
+
+export interface DecisionFrameArtifact {
+  type: 'decision_frame';
+  options: Array<{ option: string; weight: number; rationale: string }>;
+  recommendation: string;
+}
+
+export interface AffirmationArtifact {
+  type: 'affirmation';
+  context: string;
+  evidence: string;
+}
+
+export type ConvictionArtifact =
+  | EmailArtifact
+  | DocumentArtifact
+  | CalendarEventArtifact
+  | ResearchBriefArtifact
+  | DecisionFrameArtifact
+  | AffirmationArtifact;
 
 /**
  * Persisted to tkg_actions and returned from /api/conviction/generate

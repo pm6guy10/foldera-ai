@@ -20,12 +20,17 @@ function getResend(): Resend {
 // ─── Directive item type ──────────────────────────────────────────────────────
 
 export interface DirectiveItem {
-  id?:         string;  // tkg_actions row ID for approve/skip deep-links
-  directive:   string;
-  action_type: string;
-  confidence:  number;
-  reason:      string;
-  summary?:    string;  // Short one-sentence summary for email card (falls back to directive)
+  id?:              string;  // tkg_actions row ID for approve/skip deep-links
+  directive:        string;
+  action_type:      string;
+  confidence:       number;
+  reason:           string;
+  summary?:         string;  // Short one-sentence summary for email card (falls back to directive)
+  artifactPreview?: string;  // Short artifact preview text for the email
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ─── Email: daily directive ───────────────────────────────────────────────────
@@ -67,13 +72,26 @@ export async function sendDailyDirective({
       ? `${baseUrl}/dashboard?action=skip&id=${d.id}`
       : `${baseUrl}/dashboard`;
 
+    // Artifact preview snippet for the email
+    let artifactHtml = '';
+    if (d.artifactPreview) {
+      artifactHtml = `
+        <tr>
+          <td style="padding:8px 0 16px 0;">
+            <div style="background:#f3f1ee;border-radius:8px;padding:12px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#4a453e;line-height:1.5;">
+              ${escapeHtml(d.artifactPreview)}
+            </div>
+          </td>
+        </tr>`;
+    }
+
     return `
 ${divider}
         <tr>
           <td style="padding-bottom:12px;">
-            <p style="margin:0;font-size:18px;line-height:1.4;color:#1a1814;font-weight:500;font-family:Georgia,'Times New Roman',serif;">${summaryText}</p>
+            <p style="margin:0;font-size:18px;line-height:1.4;color:#1a1814;font-weight:500;font-family:Georgia,'Times New Roman',serif;">${escapeHtml(summaryText)}</p>
           </td>
-        </tr>
+        </tr>${artifactHtml}
         <tr>
           <td style="padding-bottom:8px;">
             <a href="${approveHref}"

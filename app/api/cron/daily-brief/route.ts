@@ -9,9 +9,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient }              from '@supabase/supabase-js';
 import { generateDirective }         from '@/lib/briefing/generator';
+import { generateArtifact }          from '@/lib/conviction/artifact-generator';
 import { sendDailyDirective }        from '@/lib/email/resend';
 import { extractFromConversation }   from '@/lib/extraction/conversation-extractor';
 import type { DirectiveItem }        from '@/lib/email/resend';
+import type { ConvictionArtifact }   from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +86,46 @@ async function saveDirectiveAction(
   if (!error) return data?.id ?? null;
   const { data: d2 } = await supabase.from('tkg_actions').insert(base).select('id').single();
   return d2?.id ?? null;
+}
+
+function artifactSummary(artifact: ConvictionArtifact | null): string | undefined {
+  if (!artifact) return undefined;
+  switch (artifact.type) {
+    case 'email':
+      return `Email to ${artifact.to}: "${artifact.subject}"`;
+    case 'document':
+      return `Document: "${artifact.title}"`;
+    case 'calendar_event':
+      return `Event: "${artifact.title}" on ${new Date(artifact.start).toLocaleDateString()}`;
+    case 'research_brief':
+      return artifact.recommended_action || 'Research brief ready';
+    case 'decision_frame':
+      return artifact.recommendation || 'Decision frame ready';
+    case 'affirmation':
+      return artifact.context.slice(0, 100) || 'No action needed right now';
+    default:
+      return undefined;
+  }
+}
+
+function artifactEmailPreview(artifact: ConvictionArtifact | null): string | undefined {
+  if (!artifact) return undefined;
+  switch (artifact.type) {
+    case 'email':
+      return `To: ${artifact.to} | Subject: ${artifact.subject}`;
+    case 'document':
+      return `"${artifact.title}" — ${artifact.content.slice(0, 120)}${artifact.content.length > 120 ? '...' : ''}`;
+    case 'calendar_event':
+      return `${artifact.title} — ${new Date(artifact.start).toLocaleDateString()} ${new Date(artifact.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    case 'research_brief':
+      return artifact.findings.slice(0, 150) + (artifact.findings.length > 150 ? '...' : '');
+    case 'decision_frame':
+      return artifact.options.slice(0, 2).map(o => o.option).join(' vs ');
+    case 'affirmation':
+      return artifact.context.slice(0, 150);
+    default:
+      return undefined;
+  }
 }
 
 async function handler(request: NextRequest) {
@@ -179,12 +221,30 @@ async function handler(request: NextRequest) {
           generationFailed = true; break;
         }
         const actionId = await saveDirectiveAction(supabase, userId, result.value, result.attempts);
+
+        // Generate the artifact — the finished work product
+        let artifact: ConvictionArtifact | null = null;
+        try {
+          artifact = await generateArtifact(userId, result.value);
+          // Save artifact to the action's execution_result
+          if (actionId && artifact) {
+            await supabase
+              .from('tkg_actions')
+              .update({ execution_result: { artifact } })
+              .eq('id', actionId);
+          }
+        } catch (artErr: any) {
+          console.warn(`[daily-brief] artifact generation failed for directive ${i}:`, artErr.message);
+        }
+
         directiveItems.push({
           id: actionId ?? undefined,
           directive: result.value.directive,
           action_type: result.value.action_type,
           confidence: result.value.confidence,
           reason: result.value.reason,
+          summary: artifactSummary(artifact),
+          artifactPreview: artifactEmailPreview(artifact),
         });
 
         // Self-feeding loop: pipe the directive back through extraction

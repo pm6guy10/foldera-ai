@@ -13,6 +13,7 @@ import { getServerSession } from 'next-auth';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { generateDirective } from '@/lib/briefing/generator';
+import { generateArtifact } from '@/lib/conviction/artifact-generator';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,41 +50,51 @@ export async function POST(request: Request) {
     // Generate the directive
     const directive = await generateDirective(userId);
 
+    // Generate the artifact (finished work product)
+    let artifact = null;
+    try {
+      artifact = await generateArtifact(userId, directive);
+    } catch (artErr: any) {
+      console.warn('[conviction/generate] artifact generation failed:', artErr.message);
+    }
+
     // Log to tkg_actions
     const supabase = getSupabase();
     const { data: action, error } = await supabase
       .from('tkg_actions')
       .insert({
-        user_id:        userId,
-        directive_text: directive.directive,
-        action_type:    directive.action_type,
-        confidence:     directive.confidence,
-        reason:         directive.reason,
-        evidence:       directive.evidence,
-        status:         'pending_approval',
-        generated_at:   new Date().toISOString(),
+        user_id:          userId,
+        directive_text:   directive.directive,
+        action_type:      directive.action_type,
+        confidence:       directive.confidence,
+        reason:           directive.reason,
+        evidence:         directive.evidence,
+        status:           'pending_approval',
+        generated_at:     new Date().toISOString(),
+        execution_result: artifact ? { artifact } : null,
       })
-      .select('id, generated_at, status')
+      .select('id, generated_at, status, execution_result')
       .single();
 
     if (error) {
       console.error('[conviction/generate] tkg_actions insert failed:', error.message);
-      // Return directive even if logging fails
       return NextResponse.json({
         ...directive,
         id: null,
         userId,
         status: 'pending_approval',
         generatedAt: new Date().toISOString(),
+        executionResult: artifact ? { artifact } : null,
       });
     }
 
     return NextResponse.json({
       ...directive,
-      id:          action.id,
+      id:              action.id,
       userId,
-      status:      action.status,
-      generatedAt: action.generated_at,
+      status:          action.status,
+      generatedAt:     action.generated_at,
+      executionResult: action.execution_result,
     });
   } catch (err: any) {
     console.error('[conviction/generate]', err);

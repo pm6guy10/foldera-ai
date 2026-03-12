@@ -17,7 +17,7 @@ import {
   ChevronUp,
   Shield,
 } from 'lucide-react';
-import type { ConvictionAction, ActionType, EvidenceItem } from '@/lib/briefing/types';
+import type { ConvictionAction, ActionType, EvidenceItem, ConvictionArtifact } from '@/lib/briefing/types';
 
 // ---------------------------------------------------------------------------
 // Action type metadata
@@ -185,6 +185,11 @@ export default function ConvictionCard({
               </span>
               <p className="text-zinc-400 text-sm leading-relaxed">{action.reason}</p>
             </div>
+
+            {/* Artifact preview */}
+            {action.executionResult && (action.executionResult as any).artifact && (
+              <ArtifactPreview artifact={(action.executionResult as any).artifact as ConvictionArtifact} />
+            )}
 
             {/* Error */}
             {error && (
@@ -372,6 +377,114 @@ function EmptyState({ onGenerate }: { onGenerate: () => void }) {
       >
         Generate today's read
       </button>
+    </div>
+  );
+}
+
+function ArtifactPreview({ artifact }: { artifact: ConvictionArtifact }) {
+  return (
+    <div className="mb-4 rounded-lg border border-zinc-700/60 bg-zinc-800/50 overflow-hidden">
+      <div className="px-4 py-2 border-b border-zinc-700/40 flex items-center gap-2">
+        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-500">
+          {artifact.type === 'email' ? 'Draft Email' :
+           artifact.type === 'document' ? 'Document' :
+           artifact.type === 'calendar_event' ? 'Calendar Event' :
+           artifact.type === 'research_brief' ? 'Research Brief' :
+           artifact.type === 'decision_frame' ? 'Decision Frame' :
+           'Affirmation'}
+        </span>
+      </div>
+      <div className="p-4">
+        {artifact.type === 'email' && (
+          <div className="space-y-2">
+            <div className="flex gap-2 text-xs">
+              <span className="text-zinc-500 shrink-0">To:</span>
+              <span className="text-zinc-300">{artifact.to}</span>
+            </div>
+            <div className="flex gap-2 text-xs">
+              <span className="text-zinc-500 shrink-0">Subject:</span>
+              <span className="text-zinc-300 font-medium">{artifact.subject}</span>
+            </div>
+            <div className="mt-2 text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
+              {artifact.body}
+            </div>
+          </div>
+        )}
+        {artifact.type === 'document' && (
+          <div className="space-y-2">
+            <p className="text-zinc-200 text-sm font-medium">{artifact.title}</p>
+            <div className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+              {artifact.content.slice(0, 2000)}{artifact.content.length > 2000 ? '...' : ''}
+            </div>
+          </div>
+        )}
+        {artifact.type === 'calendar_event' && (
+          <div className="space-y-2">
+            <p className="text-zinc-200 text-sm font-medium">{artifact.title}</p>
+            <div className="flex gap-4 text-xs text-zinc-400">
+              <span>{new Date(artifact.start).toLocaleString()}</span>
+              <span>→</span>
+              <span>{new Date(artifact.end).toLocaleString()}</span>
+            </div>
+            {artifact.description && (
+              <p className="text-sm text-zinc-400 leading-relaxed">{artifact.description}</p>
+            )}
+          </div>
+        )}
+        {artifact.type === 'research_brief' && (
+          <div className="space-y-2">
+            <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+              {artifact.findings.slice(0, 2000)}{artifact.findings.length > 2000 ? '...' : ''}
+            </div>
+            {artifact.sources.length > 0 && (
+              <div className="pt-2 border-t border-zinc-700/40">
+                <p className="text-[10px] font-mono text-zinc-500 uppercase mb-1">Sources</p>
+                <div className="space-y-0.5">
+                  {artifact.sources.slice(0, 5).map((s, i) => (
+                    <p key={i} className="text-xs text-cyan-400 truncate">{s}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+            {artifact.recommended_action && (
+              <div className="pt-2 border-t border-zinc-700/40">
+                <p className="text-[10px] font-mono text-zinc-500 uppercase mb-1">Next Step</p>
+                <p className="text-sm text-emerald-400">{artifact.recommended_action}</p>
+              </div>
+            )}
+          </div>
+        )}
+        {artifact.type === 'decision_frame' && (
+          <div className="space-y-2">
+            {artifact.options.map((opt, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm">
+                <span className={`shrink-0 font-mono font-bold text-xs px-1.5 py-0.5 rounded ${
+                  i === 0 ? 'text-emerald-400 bg-emerald-900/30' : 'text-zinc-400 bg-zinc-800'
+                }`}>
+                  {Math.round(opt.weight * 100)}%
+                </span>
+                <div>
+                  <p className="text-zinc-200">{opt.option}</p>
+                  <p className="text-zinc-500 text-xs">{opt.rationale}</p>
+                </div>
+              </div>
+            ))}
+            {artifact.recommendation && (
+              <div className="pt-2 border-t border-zinc-700/40">
+                <p className="text-sm text-emerald-400">{artifact.recommendation}</p>
+              </div>
+            )}
+          </div>
+        )}
+        {artifact.type === 'affirmation' && (
+          <div className="space-y-2">
+            <p className="text-sm text-zinc-300 leading-relaxed">{artifact.context}</p>
+            {artifact.evidence && (
+              <p className="text-xs text-zinc-500 italic">{artifact.evidence}</p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

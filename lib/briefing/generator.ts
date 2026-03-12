@@ -75,6 +75,10 @@ FEEDBACK LEARNING RULES — when FEEDBACK HISTORY is provided:
 - Look beyond action_type: if the REJECTED section shows a similar directive text or reasoning pattern to what you were about to recommend, that is a strong signal to pivot to a different action type or framing.
 - A history of repeated skips on the same pattern is itself a behavioral signal — factor it into your confidence score.
 
+SEARCH FLAGS — set these when the artifact will need current external information:
+- requires_search: true if the artifact needs current data from the web (job postings, prices, availability, deadlines, reviews, contact info, event details). False if the artifact can be fully produced from the user's graph data alone.
+- search_context: if requires_search is true, describe specifically what to search for (e.g. "WA DOT engineer job posting", "Italian restaurants near downtown Seattle with outdoor seating", "ESD unemployment claim follow-up process Washington state").
+
 Return JSON only — no prose outside the JSON:
 {
   "directive": "The action in plain English, written as an instruction to the user",
@@ -84,7 +88,9 @@ Return JSON only — no prose outside the JSON:
   "evidence": [
     { "type": "signal | commitment | goal | pattern", "description": "specific item", "date": "YYYY-MM-DD or null" }
   ],
-  "fullContext": "2-3 sentences of additional context the user can read if they want more detail"
+  "fullContext": "2-3 sentences of additional context the user can read if they want more detail",
+  "requires_search": false,
+  "search_context": null
 }`;
 
 // ---------------------------------------------------------------------------
@@ -338,6 +344,8 @@ Identify the single highest-leverage action for today. Return only the JSON dire
     reason: string;
     evidence: EvidenceItem[];
     fullContext?: string;
+    requires_search?: boolean;
+    search_context?: string | null;
   } | null = null;
 
   try {
@@ -356,12 +364,14 @@ Identify the single highest-leverage action for today. Return only the JSON dire
   }
 
   return {
-    directive:   parsed?.directive   ?? 'Generation failed — check ANTHROPIC_API_KEY.',
-    action_type: parsed?.action_type ?? 'research',
-    confidence:  parsed?.confidence  ?? 0,
-    reason:      parsed?.reason      ?? '',
-    evidence:    parsed?.evidence    ?? [],
-    fullContext:  parsed?.fullContext,
+    directive:       parsed?.directive       ?? 'Generation failed — check ANTHROPIC_API_KEY.',
+    action_type:     parsed?.action_type     ?? 'research',
+    confidence:      parsed?.confidence      ?? 0,
+    reason:          parsed?.reason          ?? '',
+    evidence:        parsed?.evidence        ?? [],
+    fullContext:      parsed?.fullContext,
+    requires_search: parsed?.requires_search ?? false,
+    search_context:  parsed?.search_context  ?? undefined,
   };
 }
 
