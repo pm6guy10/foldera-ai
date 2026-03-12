@@ -17,6 +17,7 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
+import { resolveCronUser } from '@/lib/auth/resolve-user';
 import { NextResponse }                             from 'next/server';
 import { scanReddit }                               from '@/lib/acquisition/reddit-scanner';
 import { scanTwitter }                              from '@/lib/acquisition/twitter-scanner';
@@ -34,16 +35,9 @@ type AnyPost = RedditPost | TwitterPost;
 
 export async function GET(request: Request) {
   // ── Auth ──────────────────────────────────────────────────────────────────
-  const authHeader = request.headers.get('authorization') ?? '';
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const userId = process.env.INGEST_USER_ID;
-  if (!userId) {
-    return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
-  }
+  const auth = resolveCronUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
 
   const supabase      = createServerClient();
   const log: string[] = [];

@@ -7,6 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { createServerClient, type SupabaseClient } from '@/lib/db/client';
 import { generateDirective, generateMultipleDirectives } from '@/lib/briefing/generator';
 import { generateArtifact, getFallbackArtifact } from '@/lib/conviction/artifact-generator';
@@ -123,10 +124,8 @@ function artifactEmailPreview(artifact: ConvictionArtifact | null): string | und
 }
 
 async function handler(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authErr = validateCronAuth(request);
+  if (authErr) return authErr;
 
   const to = process.env.DAILY_BRIEF_TO_EMAIL;
   if (!to) return NextResponse.json({ error: 'DAILY_BRIEF_TO_EMAIL is not set' }, { status: 500 });

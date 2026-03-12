@@ -12,6 +12,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { resolveCronUser } from '@/lib/auth/resolve-user';
 import { runLearningLoop, countDecisionsSinceLastAnalysis } from '@/lib/acquisition/learning-loop';
 import { createServerClient } from '@/lib/db/client';
 
@@ -19,15 +20,9 @@ export const maxDuration = 120;
 
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization');
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const userId = process.env.INGEST_USER_ID;
-  if (!userId) {
-    return NextResponse.json({ error: 'INGEST_USER_ID not set' }, { status: 500 });
-  }
+  const auth = resolveCronUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
 
   const decisionCount = await countDecisionsSinceLastAnalysis(userId);
 

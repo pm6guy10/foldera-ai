@@ -14,6 +14,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { resolveCronUser } from '@/lib/auth/resolve-user';
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
 import { randomUUID } from 'crypto';
@@ -29,13 +30,6 @@ function getAnthropic() {
 }
 
 // ---------------------------------------------------------------------------
-// Auth
-// ---------------------------------------------------------------------------
-
-function isAuthorized(request: Request): boolean {
-  const auth = request.headers.get('authorization') ?? '';
-  return auth === `Bearer ${process.env.CRON_SECRET}`;
-}
 
 // ---------------------------------------------------------------------------
 // Relationship staleness check — no API call needed
@@ -146,15 +140,11 @@ Search for current opportunities matching each goal. Return JSON only.`;
 // ---------------------------------------------------------------------------
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = resolveCronUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
 
   const supabase = createServerClient();
-  const userId = process.env.INGEST_USER_ID;
-  if (!userId) {
-    return NextResponse.json({ error: 'INGEST_USER_ID not set' }, { status: 500 });
-  }
 
   // 1. Fetch current priority goals
   const { data: priorities } = await supabase
