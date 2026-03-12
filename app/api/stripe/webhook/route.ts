@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as Stripe.Subscription;
-    const customerId   = subscription.customer as string;
+    const customerId   = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
     const supabase     = getSupabase();
 
     // Find user by Stripe customer ID (stored as stripe_customer_id in user_subscriptions)

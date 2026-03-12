@@ -7,7 +7,7 @@ Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env
 
 ## Stack notes
 - App Router only — no Pages Router
-- All DB access via `lib/supabase.ts` (server-side client)
+- All DB access via inline `createClient()` calls (no centralized supabase.ts module)
 - Directives live in `tkg_actions`, signals in `tkg_signals`, patterns in `tkg_entities.patterns`, goals in `tkg_goals`
 - `/api/conviction/latest` and `/api/graph/stats` are the two dashboard data routes
 - Public onboard routes under `/api/onboard/*` use `tempUserId` (UUID), no session required
@@ -76,44 +76,40 @@ Two is interesting. Three is "take my money."
 
 ---
 
-## Current state (accurate as of March 11, 2026)
+## Current state (accurate as of March 12, 2026)
 
 ### Working
 - Identity graph: 315 patterns, 207 commitments, 122 signals from 127 ingested conversations
 - Conviction engine: generates directives with confidence scores, feedback loop weighted by action_type history
+- Artifact generation: all 6 types live (email, document, calendar_event, research_brief, decision_frame, affirmation) via lib/conviction/artifact-generator.ts with web search integration
+- Self-feeding loop: approvals/skips write back to tkg_signals as behavioral signals; next cycle is informed
 - DraftQueue: approve/dismiss UI with email deep-links
 - Daily email: action cards with approve/skip buttons, progressive subject lines days 1-7
+- Dashboard: current priorities (3 slots), quick capture, full artifact preview in conviction card
+- Relationship tracker: lib/relationships/tracker.ts — analyzeRelationships + getCoolingRelationships
+- Extraction pipeline: lib/extraction/conversation-extractor.ts — full extractFromConversation (not a stub)
+- Email sync cron: /api/cron/sync-email — inbox + sent mail + drafts + relationship updates
 - Zero-auth demo at /try
 - 14-day free trial, $99/month after
 - Landing page rewritten for strangers
 - Waitlist with email capture
 - Health monitoring: stale graph alert if no ingest in 48+ hours
-- Security: cron auth, svix webhook verification, token encryption, 30-day data deletion
+- Security: cron auth, svix webhook verification, token encryption, 30-day data deletion, sanitized error responses
 - Retry logic on daily cron
 - Email send on approval via Gmail/Outlook (outlook-client.ts and gmail-client.ts)
 - Stripe Pro $99/month with webhook endpoint
 - Six specialist agents on scheduled crons (disabled until first public user)
 - Continuous ingest pipeline: /api/ingest/conversation + scripts/ingest-recent.mjs
+- Proactive scanner: lib/acquisition/briefing-scanner.ts, briefing-scorer.ts, reply-drafter.ts
+- Skip feedback: skip_reason captured and used for suppression in next generation cycle
 
 ### NOT working — must be built
-- Artifact generation: execution layer is ALL STUBS. runStub() returns { stub: true } for every
-  action type except email send. Directives exist but no finished work products are generated.
-  This is the #1 build priority. See "Core Product Loop" above.
-- Calendar sync: no cron, no route, no client. Auth scopes request calendar access but nothing reads it.
-- Self-feeding loop: engine outputs and agent outputs do not feed back through extractFromConversation().
-  Graph is static unless manually ingested.
-- Outlook connection: Azure AD env vars are configured. Code is complete. Whether the OAuth flow
-  actually works end-to-end has not been verified by the current user. Test it.
-- Unified onboarding: three competing paths exist (/onboard, /start, /try). Should be one.
-- /start page only shows Google sign-in. No Microsoft button.
+- Calendar sync execution: cron route exists but calendar API clients are not wired to create events on approval
+- Outlook OAuth: Azure AD env vars configured, code complete, but not verified end-to-end by current user
+- Agent crons: code complete but disabled in vercel.json until first public user
 
-### Dead code — delete on next cleanup
-- app/api/scan-inbox/ (meeting-prep era)
-- app/api/generate-draft/ (entire directory)
-- lib/meeting-prep/ (entire directory)
-- lib/plugins/ (entire directory)
-- Legacy stubs at bottom of lib/auth/auth-options.ts
-- 15+ unused npm dependencies (see audit notes)
+### Dead code — cleaned
+All previously identified dead code directories have been deleted (scan-inbox, generate-draft, meeting-prep, plugins). Unused npm dependencies (pdf-parse, react-dropzone, @vitest/ui) removed.
 
 ---
 
@@ -186,13 +182,9 @@ After EVERY commit, before marking anything done:
 ---
 
 ## Build priority (in order)
-1. Delete dead code and unused dependencies (see "Dead code" section above)
-2. Unify onboarding into one path at /start with both Google and Microsoft buttons
-3. Build artifact generation layer (lib/conviction/artifact-generator.ts)
-4. Build calendar sync cron for Outlook and Google Calendar
-5. Deploy self-feeding loop (engine + agent outputs piped through extractFromConversation)
-6. Verify Outlook OAuth flow end-to-end
-7. Disable agent crons in vercel.json until first public user
+1. Wire calendar event creation on artifact approval (Google Calendar + Outlook Calendar API clients)
+2. Verify Outlook OAuth flow end-to-end with a real user
+3. Enable agent crons in vercel.json when first public user arrives
 
 ## Env vars required in Vercel
 ANTHROPIC_API_KEY, AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET,

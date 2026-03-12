@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
+import { rateLimit } from '@/lib/utils/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,15 @@ export async function POST(request: NextRequest) {
     userId = process.env.INGEST_USER_ID ?? session.user.id;
   }
 
+  // Rate limit: 10 requests per 60 seconds per user
+  const rl = await rateLimit(`ingest:${userId}`, { limit: 10, window: 60 });
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000)) } },
+    );
+  }
+
   let body: { text?: unknown };
   try {
     body = await request.json();
@@ -61,7 +71,7 @@ export async function POST(request: NextRequest) {
   } catch (err: any) {
     console.error('[/api/extraction/ingest]', err);
     return NextResponse.json(
-      { error: err.message || 'Extraction failed' },
+      { error: 'Internal server error during extraction' },
       { status: 500 }
     );
   }

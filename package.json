@@ -8,7 +8,6 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
-    "test:ui": "vitest --ui",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -22,10 +21,8 @@
     "next": "^14.2.32",
     "next-auth": "^4.24.11",
     "p-retry": "^6.2.1",
-    "pdf-parse": "^1.1.1",
     "react": "^18",
     "react-dom": "^18",
-    "react-dropzone": "^14.3.8",
     "recharts": "^3.1.2",
     "resend": "^6.1.2",
     "stripe": "^18.5.0",
@@ -35,9 +32,7 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/node": "^24.6.0",
-    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19.1.15",
-    "@vitest/ui": "^2.1.8",
     "autoprefixer": "^10.4.21",
     "eslint": "^8",
     "eslint-config-next": "14.2.3",

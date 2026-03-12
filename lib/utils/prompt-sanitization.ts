@@ -92,6 +92,20 @@ export function sanitizeEmailForPrompt(emailBody: string, maxLength: number = 30
 }
 
 /**
+ * Wraps user-provided content in XML boundary tags for safer prompt construction.
+ * Instructs the model to treat the enclosed text as inert data, not instructions.
+ * Use this in system/user prompts when embedding untrusted content.
+ *
+ * Example:
+ *   const prompt = `Analyze this email:\n${wrapInXmlBoundary('user_email', emailText)}`;
+ */
+export function wrapInXmlBoundary(tag: string, content: string): string {
+  // Escape any closing tags inside the content to prevent boundary breakout
+  const escaped = content.replace(new RegExp(`</${tag}>`, 'gi'), `&lt;/${tag}&gt;`);
+  return `<${tag}>\n${escaped}\n</${tag}>`;
+}
+
+/**
  * Creates a safe JSON string for embedding in prompts
  */
 export function safeJsonForPrompt(obj: unknown): string {
