@@ -13,6 +13,7 @@
  * Stores outcome in execution_result JSONB so it's queryable.
  */
 
+import { createHash }        from 'crypto';
 import { createServerClient } from '@/lib/db/client';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { NextResponse }      from 'next/server';
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
   // ── Fetch the action ────────────────────────────────────────────────────────
   const { data: action, error: fetchErr } = await supabase
     .from('tkg_actions')
-    .select('id, status, execution_result')
+    .select('id, status, execution_result, action_type, directive_text')
     .eq('id', action_id)
     .eq('user_id', userId)
     .single();
@@ -86,6 +87,32 @@ export async function POST(request: Request) {
 
   if (updateErr) {
     return apiError(updateErr, 'conviction/outcome');
+  }
+
+  // ── Write outcome signal to tkg_signals ─────────────────────────────────────
+  // This makes confirmed outcomes visible in the signal stream for prompt injection.
+  const outcomeLabel = outcome === 'worked' ? 'CONFIRMED_WORKED' : 'CONFIRMED_DIDNT_WORK';
+  const signalContent = `Outcome confirmed: ${outcomeLabel} — ${action.action_type ?? 'action'}: ${(action.directive_text as string ?? '').slice(0, 200)}`;
+
+  const { error: signalErr } = await supabase
+    .from('tkg_signals')
+    .insert({
+      user_id:      userId,
+      source:       'user_feedback',
+      source_id:    action_id,
+      type:         'outcome_feedback',
+      content:      signalContent,
+      content_hash: createHash('sha256').update(`outcome:${action_id}:${outcome}`).digest('hex'),
+      author:       'user',
+      recipients:   [],
+      occurred_at:  new Date().toISOString(),
+      processed:    true,
+      outcome_label: outcomeLabel,
+    });
+
+  if (signalErr) {
+    // Non-fatal — log but don't fail the response
+    console.warn(`[conviction/outcome] signal write failed: ${signalErr.message}`);
   }
 
   console.log(`[conviction/outcome] ${action_id} → ${outcome} (weight ${WEIGHTS[outcome as Outcome]})`);

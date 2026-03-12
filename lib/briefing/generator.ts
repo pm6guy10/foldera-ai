@@ -247,7 +247,7 @@ export async function generateDirective(userId: string, count: number = 1): Prom
   const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   // Pull all data sources in parallel — including feedback history, approval rates, and current priorities
-  const [signalsRes, commitmentsRes, entityRes, goalsRes, currentPrioritiesRes, feedbackRes, approvalStatsRes, calendarRes, avoidanceRes] = await Promise.all([
+  const [signalsRes, commitmentsRes, entityRes, goalsRes, currentPrioritiesRes, feedbackRes, approvalStatsRes, calendarRes, avoidanceRes, activeGoalsRes, recentOutcomesRes] = await Promise.all([
     supabase
       .from('tkg_signals')
       .select('type, source, content, occurred_at')
@@ -326,6 +326,24 @@ export async function generateDirective(userId: string, count: number = 1): Prom
       .gte('occurred_at', thirtyDaysAgo)
       .order('occurred_at', { ascending: false })
       .limit(5),
+
+    // Active goals from extraction pipeline (status='active', most recently updated)
+    supabase
+      .from('tkg_goals')
+      .select('goal_text, goal_type')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('updated_at', { ascending: false })
+      .limit(5),
+
+    // Confirmed outcomes from tkg_signals (outcome_label set by /api/conviction/outcome)
+    supabase
+      .from('tkg_signals')
+      .select('outcome_label, content, created_at')
+      .eq('user_id', userId)
+      .not('outcome_label', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(10),
   ]);
 
   const signals          = signalsRes.data ?? [];
@@ -337,6 +355,8 @@ export async function generateDirective(userId: string, count: number = 1): Prom
   const approvalRows     = (approvalStatsRes.data ?? []) as ApprovalRow[];
   const calendarEvents   = calendarRes.data ?? [];
   const avoidanceSignals = avoidanceRes.data ?? [];
+  const activeGoals      = activeGoalsRes.data ?? [];
+  const recentOutcomes   = recentOutcomesRes.data ?? [];
 
   // Empty graph
   if (signals.length === 0 && commitments.length === 0 && goals.length === 0) {
@@ -413,6 +433,22 @@ ${milestonesFromGoals ? `MILESTONES:\n${milestonesFromGoals}` : ''}`;
     ? `\nAVOIDANCE SIGNALS (drafts sitting unsent >48h — decisions being avoided):\n${avoidanceLines}`
     : '';
 
+  // Active goals block — omit entirely if none exist (no noise for empty graph)
+  const activeGoalsBlock = activeGoals.length > 0
+    ? `\nACTIVE GOALS (extracted from your conversations — measured against every directive):\n` +
+      activeGoals.map((g: any) => `- ${g.goal_text}${g.goal_type ? ` (${g.goal_type})` : ''}`).join('\n')
+    : '';
+
+  // Recent outcomes block — omit entirely if none exist
+  const recentOutcomesBlock = recentOutcomes.length > 0
+    ? `\nRECENT OUTCOMES (what you confirmed worked or didn't — use to weight similar directives):\n` +
+      recentOutcomes.map((o: any) => {
+        // Strip "Outcome confirmed: LABEL — " prefix to get the action summary
+        const summary = (o.content as string).replace(/^Outcome confirmed: [A-Z_]+ — /, '').slice(0, 150);
+        return `- ${o.outcome_label}: ${summary}`;
+      }).join('\n')
+    : '';
+
   // Build count instruction
   const countInstruction = count > 1
     ? `Identify the top ${count} highest-leverage actions for today, ranked by confidence. Return a JSON array of ${count} directive objects.`
@@ -438,6 +474,8 @@ ${coolingSection}
 ${avoidanceSection}
 ${approvalRateSection}
 ${feedbackSection}
+${activeGoalsBlock}
+${recentOutcomesBlock}
 ${countInstruction}`;
 
   // Call Claude

@@ -318,7 +318,79 @@ export async function extractFromConversation(
     else console.error('[conversation-extractor] Pattern write error:', patternError.message);
   }
 
-  // 7. Mark signal as processed
+  // 7. Persist extracted goals → tkg_goals (upsert by user_id + goal_text match)
+  if (payload.goals.length > 0) {
+    for (const g of payload.goals) {
+      if (!g.description?.trim()) continue;
+
+      // Derive goal_type from time_horizon string
+      const th = (g.time_horizon ?? '').toLowerCase();
+      let goal_type: 'short_term' | 'long_term' | 'recurring' = 'long_term';
+      if (/recurring|weekly|monthly|every|daily|annual/.test(th)) {
+        goal_type = 'recurring';
+      } else if (/week|month|quarter|next |soon|immediate|30 day|60 day|90 day/.test(th)) {
+        goal_type = 'short_term';
+      }
+
+      // Check if this goal already exists for this user
+      const { data: existing } = await supabase
+        .from('tkg_goals')
+        .select('id, status')
+        .eq('user_id', userId)
+        .eq('goal_text', g.description)
+        .maybeSingle();
+
+      if (existing) {
+        // Update metadata but never overwrite status (user may have marked it achieved/abandoned)
+        await supabase
+          .from('tkg_goals')
+          .update({
+            goal_type,
+            time_horizon: g.time_horizon ?? null,
+            source_conversation_id: signal.id,
+            entity_id: selfId ?? null,
+            confidence: Math.min(100, ((await supabase
+              .from('tkg_goals')
+              .select('confidence')
+              .eq('id', existing.id)
+              .single()).data?.confidence ?? 50) + 5),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+      } else {
+        // Insert new goal — map extractor domain to allowed goal_category values
+        const domainMap: Record<string, string> = {
+          career: 'career',
+          financial: 'financial',
+          finances: 'financial',
+          relationship: 'relationship',
+          relationships: 'relationship',
+          health: 'health',
+          project: 'project',
+        };
+        const goal_category = domainMap[g.domain?.toLowerCase() ?? ''] ?? 'other';
+
+        await supabase
+          .from('tkg_goals')
+          .insert({
+            user_id: userId,
+            goal_text: g.description,
+            goal_category,
+            goal_type,
+            time_horizon: g.time_horizon ?? null,
+            source_conversation_id: signal.id,
+            entity_id: selfId ?? null,
+            status: 'active',
+            confidence: 60,
+            priority: 3,
+            source: 'extracted',
+            updated_at: new Date().toISOString(),
+          });
+      }
+    }
+  }
+
+  // 8. Mark signal as processed
   await supabase
     .from('tkg_signals')
     .update({ processed: true })
