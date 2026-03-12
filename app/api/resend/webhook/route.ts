@@ -10,16 +10,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 
 export const dynamic = 'force-dynamic';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 export async function POST(request: NextRequest) {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
@@ -54,7 +48,7 @@ export async function POST(request: NextRequest) {
       ?? '';
 
     if (toEmail) {
-      const supabase = getSupabase();
+      const supabase = createServerClient();
       const { data: row } = await supabase
         .from('waitlist')
         .select('id, open_count')

@@ -10,12 +10,18 @@ const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
 
 /**
- * Returns the AES-256-GCM key, or null when ENCRYPTION_KEY is not configured.
- * Null = plaintext passthrough mode (safe for local dev / CI without key).
+ * Returns the AES-256-GCM key, or null in non-production environments.
+ * In production, throws if ENCRYPTION_KEY is absent — tokens must be encrypted at rest.
+ * Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
  */
 function getEncryptionKey(): Buffer | null {
   const key = process.env.ENCRYPTION_KEY;
-  if (!key) return null;
+  if (!key) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ENCRYPTION_KEY must be set in production (32-byte base64 value)');
+    }
+    return null;
+  }
   const keyBuffer = Buffer.from(key, 'base64');
   if (keyBuffer.length !== 32) {
     throw new Error('ENCRYPTION_KEY must be 32 bytes (256 bits) when decoded');

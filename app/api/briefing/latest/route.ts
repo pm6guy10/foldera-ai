@@ -7,20 +7,13 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { createClient } from '@supabase/supabase-js';
-import { getAuthOptions } from '@/lib/auth/auth-options';
+import { resolveUser } from '@/lib/auth/resolve-user';
+import { createServerClient } from '@/lib/db/client';
 import { apiError } from '@/lib/utils/api-error';
 import { generateBriefing } from '@/lib/briefing/generator';
 
 export const dynamic = 'force-dynamic';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -28,26 +21,10 @@ function today(): string {
 
 export async function GET(request: Request) {
   // Resolve userId — from session or ingest secret (for CLI/script access)
-  let userId: string | undefined;
-  const ingestSecret = (request as any).headers?.get
-    ? (request as any).headers.get('x-ingest-secret')
-    : null;
-  if (ingestSecret) {
-    if (ingestSecret !== process.env.INGEST_API_KEY) {
-      return NextResponse.json({ error: 'Invalid ingest secret' }, { status: 401 });
-    }
-    userId = process.env.INGEST_USER_ID;
-    if (!userId) {
-      return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
-    }
-  } else {
-    const session = await getServerSession(getAuthOptions());
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    userId = process.env.INGEST_USER_ID ?? session.user.id;
-  }
-  const supabase = getSupabase();
+  const auth = await resolveUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
+  const supabase = createServerClient();
 
   // Query today's brief + graph stats in parallel
   const [briefRow, signalsCount, commitmentsCount, entityRow] = await Promise.all([

@@ -7,7 +7,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient }              from '@supabase/supabase-js';
+import { validateCronAuth } from '@/lib/auth/resolve-user';
+import { createServerClient, type SupabaseClient } from '@/lib/db/client';
 import { generateDirective, generateMultipleDirectives } from '@/lib/briefing/generator';
 import { generateArtifact, getFallbackArtifact } from '@/lib/conviction/artifact-generator';
 import { sendDailyDirective }        from '@/lib/email/resend';
@@ -18,13 +19,6 @@ import type { ConvictionArtifact }   from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
-
 function getProgressiveConfig(daysSinceSignup: number): { artifactCount: number; subject: string | null } {
   if (daysSinceSignup <= 1) return { artifactCount: 1, subject: 'Your first read from Foldera' };
   if (daysSinceSignup === 2) return { artifactCount: 1, subject: 'Foldera noticed something' };
@@ -34,7 +28,7 @@ function getProgressiveConfig(daysSinceSignup: number): { artifactCount: number;
   return { artifactCount: 2, subject: null };
 }
 
-async function getWeekStats(supabase: ReturnType<typeof getSupabase>, userId: string): Promise<string> {
+async function getWeekStats(supabase: SupabaseClient, userId: string): Promise<string> {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { data } = await supabase
     .from('tkg_actions').select('status').eq('user_id', userId).gte('generated_at', sevenDaysAgo);
@@ -68,7 +62,7 @@ async function withRetry<T>(
 type GeneratedDirective = Awaited<ReturnType<typeof generateDirective>>;
 
 async function saveDirectiveAction(
-  supabase: ReturnType<typeof getSupabase>,
+  supabase: SupabaseClient,
   userId: string,
   d: GeneratedDirective,
   attempts: number,
@@ -130,16 +124,14 @@ function artifactEmailPreview(artifact: ConvictionArtifact | null): string | und
 }
 
 async function handler(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authErr = validateCronAuth(request);
+  if (authErr) return authErr;
 
   const to = process.env.DAILY_BRIEF_TO_EMAIL;
   if (!to) return NextResponse.json({ error: 'DAILY_BRIEF_TO_EMAIL is not set' }, { status: 500 });
 
   const date = new Date().toISOString().slice(0, 10);
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   await supabase.from('user_subscriptions').update({ status: 'expired' })
     .eq('plan', 'trial').eq('status', 'active').lte('current_period_end', new Date().toISOString());

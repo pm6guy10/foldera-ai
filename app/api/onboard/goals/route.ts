@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -30,12 +30,6 @@ const QUESTION_META = [
   { prefix: 'Additional context:', category: 'other', priority: 1 },
 ] as const;
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function POST(request: NextRequest) {
   let body: { answers?: unknown; tempUserId?: unknown };
@@ -70,7 +64,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ goalsWritten: 0 });
   }
 
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const { error } = await supabase.from('tkg_goals').insert(rows);
 
   if (error) {

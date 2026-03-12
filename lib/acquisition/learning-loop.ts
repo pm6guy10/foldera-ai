@@ -13,17 +13,11 @@
  */
 
 import Anthropic     from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { DEFAULT_WEIGHTS, type LearnedWeights } from './scorer';
 
 // ─── Clients ─────────────────────────────────────────────────────────────────
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 function getAnthropic() {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -67,7 +61,7 @@ const CONFIG_TYPE   = 'config';
  * Falls back to DEFAULT_WEIGHTS if no model has been trained yet.
  */
 export async function loadCurrentWeights(userId: string): Promise<LearnedWeights> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const { data } = await supabase
     .from('tkg_signals')
     .select('content')
@@ -93,7 +87,7 @@ export async function loadCurrentWeights(userId: string): Promise<LearnedWeights
  * Stores as a new row so we have a full history of model versions.
  */
 async function saveWeights(userId: string, weights: LearnedWeights): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   await supabase.from('tkg_signals').insert({
     user_id:      userId,
     source:       CONFIG_SOURCE,
@@ -112,7 +106,7 @@ async function saveWeights(userId: string, weights: LearnedWeights): Promise<voi
  * Count outreach decisions (approve + skip) since the last model analysis.
  */
 export async function countDecisionsSinceLastAnalysis(userId: string): Promise<number> {
-  const supabase  = getSupabase();
+  const supabase  = createServerClient();
   const weights   = await loadCurrentWeights(userId);
   const sinceDate = weights.version === 0
     ? new Date(0).toISOString()
@@ -136,7 +130,7 @@ export async function countDecisionsSinceLastAnalysis(userId: string): Promise<n
  * Returns both approved and skipped, with their full context.
  */
 async function fetchOutreachDecisions(userId: string): Promise<OutreachDecision[]> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const q2: any = supabase
     .from('tkg_actions')
     .select('id, status, execution_result, generated_at')

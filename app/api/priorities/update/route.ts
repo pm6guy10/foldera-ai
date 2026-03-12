@@ -6,19 +6,13 @@
  * Max 3 priorities. Each stored in tkg_goals with current_priority=true.
  */
 
+import { createServerClient } from '@/lib/db/client';
 import { NextResponse }     from 'next/server';
 import { getServerSession }  from 'next-auth';
-import { createClient }      from '@supabase/supabase-js';
 import { getAuthOptions }    from '@/lib/auth/auth-options';
 
 export const dynamic = 'force-dynamic';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 interface PriorityInput {
   text: string;
@@ -50,7 +44,7 @@ export async function POST(request: Request) {
       category: VALID_CATEGORIES.includes(p.category ?? '') ? p.category! : 'other',
     }));
 
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   // Clear existing current priorities
   await supabase
@@ -91,7 +85,7 @@ export async function GET() {
   }
   const userId = process.env.INGEST_USER_ID ?? session.user.id;
 
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const { data, error } = await supabase
     .from('tkg_goals')
     .select('id, goal_text, goal_category')

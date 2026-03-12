@@ -9,35 +9,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { getAuthOptions } from '@/lib/auth/auth-options';
+import { resolveUser } from '@/lib/auth/resolve-user';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import { rateLimit } from '@/lib/utils/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  // Resolve userId — either from a valid session or from the script-level ingest secret
-  let userId: string | undefined;
-  const ingestSecret = request.headers.get('x-ingest-secret');
-  if (ingestSecret) {
-    if (ingestSecret !== process.env.INGEST_API_KEY) {
-      return NextResponse.json({ error: 'Invalid ingest secret' }, { status: 401 });
-    }
-    userId = process.env.INGEST_USER_ID;
-    if (!userId) {
-      return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
-    }
-  } else {
-    const session = await getServerSession(getAuthOptions());
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    // Single-user app: prefer INGEST_USER_ID (a valid Supabase UUID) over
-    // session.user.id, which could be a Google sub string if the JWT callback
-    // hasn't been refreshed since the fix was deployed.
-    userId = process.env.INGEST_USER_ID ?? session.user.id;
-  }
+  const auth = await resolveUser(request as unknown as Request);
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
 
   // Rate limit: 10 requests per 60 seconds per user
   const rl = await rateLimit(`ingest:${userId}`, { limit: 10, window: 60 });

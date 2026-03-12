@@ -14,19 +14,14 @@
  */
 
 import { NextResponse } from 'next/server';
+import { resolveCronUser } from '@/lib/auth/resolve-user';
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { randomUUID } from 'crypto';
 
 export const dynamic  = 'force-dynamic';
 export const maxDuration = 60;
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 let _anthropic: Anthropic | null = null;
 function getAnthropic() {
@@ -35,13 +30,6 @@ function getAnthropic() {
 }
 
 // ---------------------------------------------------------------------------
-// Auth
-// ---------------------------------------------------------------------------
-
-function isAuthorized(request: Request): boolean {
-  const auth = request.headers.get('authorization') ?? '';
-  return auth === `Bearer ${process.env.CRON_SECRET}`;
-}
 
 // ---------------------------------------------------------------------------
 // Relationship staleness check — no API call needed
@@ -54,7 +42,7 @@ interface StaleContact {
 }
 
 async function findStaleContacts(userId: string): Promise<StaleContact[]> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: entities } = await supabase
@@ -152,15 +140,11 @@ Search for current opportunities matching each goal. Return JSON only.`;
 // ---------------------------------------------------------------------------
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = resolveCronUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
 
-  const supabase = getSupabase();
-  const userId = process.env.INGEST_USER_ID;
-  if (!userId) {
-    return NextResponse.json({ error: 'INGEST_USER_ID not set' }, { status: 500 });
-  }
+  const supabase = createServerClient();
 
   // 1. Fetch current priority goals
   const { data: priorities } = await supabase

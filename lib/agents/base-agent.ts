@@ -12,7 +12,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import type { ActionType } from '@/lib/briefing/types';
 
@@ -24,12 +24,7 @@ export function getAnthropicClient(): Anthropic {
   return new Anthropic({ apiKey: key });
 }
 
-export function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
+export { createServerClient as getSupabase };
 
 // ─── Draft creation ───────────────────────────────────────────────────────────
 
@@ -49,7 +44,7 @@ export async function createDraft(
   agentName: string,
   draft: AgentDraft,
 ): Promise<string | null> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const { data, error } = await supabase
     .from('tkg_actions')
     .insert({
@@ -135,7 +130,7 @@ export async function agentThink(
 
 /** Basic snapshot of the app's current tkg_ state */
 export async function getAppSnapshot(userId: string) {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   const [signals, actions, patterns] = await Promise.all([
     supabase.from('tkg_signals').select('id, source, type, occurred_at').eq('user_id', userId).order('occurred_at', { ascending: false }).limit(20),

@@ -10,8 +10,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { getAuthOptions } from '@/lib/auth/auth-options';
+import { resolveUser } from '@/lib/auth/resolve-user';
 import { executeAction } from '@/lib/conviction/execute-action';
 import { shouldRunAnalysis } from '@/lib/acquisition/learning-loop';
 import { validationError } from '@/lib/utils/api-error';
@@ -20,21 +19,9 @@ import { draftsDecideBodySchema } from '@/lib/utils/api-schemas';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
-  let userId: string | undefined;
-  const ingestSecret = request.headers.get('x-ingest-secret');
-  if (ingestSecret) {
-    if (ingestSecret !== process.env.INGEST_API_KEY) {
-      return NextResponse.json({ error: 'Invalid ingest secret' }, { status: 401 });
-    }
-    userId = process.env.INGEST_USER_ID;
-  } else {
-    const session = await getServerSession(getAuthOptions());
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    userId = process.env.INGEST_USER_ID ?? session.user.id;
-  }
-  if (!userId) return NextResponse.json({ error: 'User ID not resolved' }, { status: 500 });
+  const auth = await resolveUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
 
   const raw = await request.json().catch(() => ({}));
   const parsed = draftsDecideBodySchema.safeParse(raw);

@@ -93,8 +93,8 @@ const mockSupabase = {
   },
 };
 
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: () => mockSupabase,
+vi.mock('@/lib/db/client', () => ({
+  createServerClient: () => mockSupabase,
 }));
 
 vi.mock('@/lib/auth/token-store', () => ({

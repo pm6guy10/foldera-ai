@@ -12,28 +12,17 @@
  */
 
 import { NextResponse } from 'next/server';
+import { resolveCronUser } from '@/lib/auth/resolve-user';
 import { runLearningLoop, countDecisionsSinceLastAnalysis } from '@/lib/acquisition/learning-loop';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 
 export const maxDuration = 120;
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization');
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const userId = process.env.INGEST_USER_ID;
-  if (!userId) {
-    return NextResponse.json({ error: 'INGEST_USER_ID not set' }, { status: 500 });
-  }
+  const auth = resolveCronUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
 
   const decisionCount = await countDecisionsSinceLastAnalysis(userId);
 
@@ -58,7 +47,7 @@ export async function GET(request: Request) {
   }
 
   // Surface model update as a DraftQueue item so Brandon sees what changed
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const title    = `[Learning Loop] Scoring model updated to v${result.updated_weights.version}`;
 
   await supabase.from('tkg_actions').insert({

@@ -13,17 +13,11 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth-options';
 import { apiError } from '@/lib/utils/api-error';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 async function checkDensity(userId: string): Promise<{ patterns: number; commitments: number }> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   const [entityRes, commitmentsRes] = await Promise.all([
     supabase

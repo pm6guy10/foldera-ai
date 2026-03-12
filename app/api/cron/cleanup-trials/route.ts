@@ -13,26 +13,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { validateCronAuth } from '@/lib/auth/resolve-user';
+import { createServerClient } from '@/lib/db/client';
 import { apiError } from '@/lib/utils/api-error';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
   // Verify cron secret (Vercel sets this header automatically)
-  const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authErr = validateCronAuth(req as Request);
+  if (authErr) return authErr;
 
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const now = new Date().toISOString();
 
   // Find expired trial user IDs

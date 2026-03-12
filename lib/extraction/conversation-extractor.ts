@@ -15,7 +15,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { createHash } from 'crypto';
 import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 
@@ -27,13 +27,6 @@ function getAnthropicClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
   return new Anthropic({ apiKey });
-}
-
-function getSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Supabase env vars not configured');
-  return createClient(url, key);
 }
 
 // ---------------------------------------------------------------------------
@@ -181,7 +174,7 @@ export async function extractFromConversation(
   userId: string,
   source_type: SourceType = 'conversation',
 ): Promise<ExtractionResult> {
-  const supabase = getSupabaseClient();
+  const supabase = createServerClient();
   const anthropic = getAnthropicClient();
 
   // 1. Deduplicate by content hash

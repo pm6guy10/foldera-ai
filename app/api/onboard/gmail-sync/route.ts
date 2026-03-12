@@ -15,14 +15,8 @@ import { getToken } from 'next-auth/jwt';
 import { google } from 'googleapis';
 import { authOptions } from '@/lib/auth/auth-options';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 /** Recursively search MIME parts for text/plain body content. */
 function extractEmailBody(payload: any): string {
@@ -60,7 +54,7 @@ function extractEmailBody(payload: any): string {
 
 /** Count patterns (JSONB keys) and commitments for a user. */
 async function checkDensity(userId: string): Promise<{ patterns: number; commitments: number }> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   const [entityRes, commitmentsRes] = await Promise.all([
     supabase

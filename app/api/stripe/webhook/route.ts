@@ -11,16 +11,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 
 export const dynamic = 'force-dynamic';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-08-27.basil' as any });
@@ -51,7 +45,7 @@ export async function POST(request: NextRequest) {
   if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId   = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
-    const supabase     = getSupabase();
+    const supabase     = createServerClient();
 
     // Find user by Stripe customer ID (stored as stripe_customer_id in user_subscriptions)
     const { data: sub } = await supabase

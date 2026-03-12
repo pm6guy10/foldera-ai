@@ -16,8 +16,9 @@
  * Auth: CRON_SECRET Bearer token.
  */
 
+import { createServerClient } from '@/lib/db/client';
+import { resolveCronUser } from '@/lib/auth/resolve-user';
 import { NextResponse }                             from 'next/server';
-import { createClient }                             from '@supabase/supabase-js';
 import { scanReddit }                               from '@/lib/acquisition/reddit-scanner';
 import { scanTwitter }                              from '@/lib/acquisition/twitter-scanner';
 import { score100, meetsThreshold }                 from '@/lib/acquisition/scorer';
@@ -31,27 +32,14 @@ export const maxDuration = 300;
 
 type AnyPost = RedditPost | TwitterPost;
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 export async function GET(request: Request) {
   // ── Auth ──────────────────────────────────────────────────────────────────
-  const authHeader = request.headers.get('authorization') ?? '';
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = resolveCronUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
 
-  const userId = process.env.INGEST_USER_ID;
-  if (!userId) {
-    return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
-  }
-
-  const supabase      = getSupabase();
+  const supabase      = createServerClient();
   const log: string[] = [];
   let scanned         = 0;
   let passed70        = 0;

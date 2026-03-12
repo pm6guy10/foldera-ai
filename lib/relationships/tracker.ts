@@ -7,14 +7,8 @@
  * Called from sync-email after extraction completes.
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 export interface RelationshipMetrics {
   name: string;
@@ -30,7 +24,7 @@ export interface RelationshipMetrics {
  * and upsert relationship metadata into tkg_entities.
  */
 export async function analyzeRelationships(userId: string): Promise<RelationshipMetrics[]> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -198,7 +192,7 @@ export async function analyzeRelationships(userId: string): Promise<Relationship
  * Returns formatted string ready for CONVICTION_SYSTEM.
  */
 export async function getCoolingRelationships(userId: string, limit = 5): Promise<string> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: entities } = await supabase

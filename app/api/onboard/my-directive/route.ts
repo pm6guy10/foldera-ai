@@ -9,14 +9,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth-options';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -24,7 +18,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
   const userId = session.user.id;
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   const [actionRes, metaRes] = await Promise.all([
     supabase

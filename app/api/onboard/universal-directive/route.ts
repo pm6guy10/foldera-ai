@@ -15,7 +15,7 @@
  */
 
 import { NextResponse }   from 'next/server';
-import { createClient }   from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import Anthropic          from '@anthropic-ai/sdk';
 
 export const dynamic = 'force-dynamic';
@@ -51,15 +51,6 @@ let cached: DirectiveResult | null = null;
 let cachedAt = 0;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// ─── Clients ─────────────────────────────────────────────────────────────────
-
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
-
 let _anthropic: Anthropic | null = null;
 function getAnthropic() {
   if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -89,7 +80,7 @@ export async function GET() {
   if (!userId) return NextResponse.json(FALLBACK);
 
   try {
-    const supabase = getSupabase();
+    const supabase = createServerClient();
 
     // Pull the identity graph patterns for the ingest user
     const { data: entity, error } = await supabase
