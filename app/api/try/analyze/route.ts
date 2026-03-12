@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { rateLimit } from '@/lib/utils/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,18 @@ Return JSON only, no prose:
 }`;
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 5 requests per IP per hour
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? request.headers.get('x-real-ip')
+    ?? 'unknown';
+  const rl = await rateLimit(`try:analyze:${ip}`, { limit: 5, window: 3600 });
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Too many requests — please wait before trying again.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000)) } }
+    );
+  }
+
   let body: { text?: unknown };
   try {
     body = await request.json();

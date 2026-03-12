@@ -45,12 +45,18 @@ export default function DashboardContent() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ action_id: id, outcome: result }),
       })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error('failed');
+          return res.json();
+        })
         .then(() => {
           setEmailActionMsg(result === 'worked' ? "Recorded — it worked." : "Recorded — we'll adjust.");
           setTimeout(() => setEmailActionMsg(null), 4000);
         })
-        .catch(() => {});
+        .catch(() => {
+          setEmailActionMsg("Couldn't record that — please try again.");
+          setTimeout(() => setEmailActionMsg(null), 4000);
+        });
       return;
     }
 

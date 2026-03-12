@@ -50,8 +50,9 @@ interface DraftQueueProps {
 }
 
 export default function DraftQueue({ onDecided }: DraftQueueProps) {
-  const [drafts, setDrafts]   = useState<DraftAction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts]         = useState<DraftAction[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [decideError, setDecideError] = useState<string | null>(null);
 
   const loadDrafts = useCallback(async () => {
     try {
@@ -69,16 +70,25 @@ export default function DraftQueue({ onDecided }: DraftQueueProps) {
   const decide = async (draftId: string, decision: 'approve' | 'reject') => {
     // Optimistically remove from list
     setDrafts(prev => prev.filter(d => d.id !== draftId));
+    setDecideError(null);
 
     try {
-      await fetch('/api/drafts/decide', {
+      const res = await fetch('/api/drafts/decide', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ draft_id: draftId, decision }),
       });
+      if (!res.ok) {
+        setDecideError("Something went wrong — please try again.");
+        setTimeout(() => setDecideError(null), 4000);
+        loadDrafts(); // restore optimistic removal
+        return;
+      }
       onDecided?.();
     } catch {
       // Reload on failure — optimistic update may have been wrong
+      setDecideError("Something went wrong — please try again.");
+      setTimeout(() => setDecideError(null), 4000);
       loadDrafts();
     }
   };
@@ -104,6 +114,13 @@ export default function DraftQueue({ onDecided }: DraftQueueProps) {
           {drafts.length}
         </span>
       </div>
+
+      {/* Error banner */}
+      {decideError && (
+        <div className="px-5 py-2 text-sm text-red-400 bg-red-950/30 border-b border-red-900/40">
+          {decideError}
+        </div>
+      )}
 
       {/* Draft list */}
       <ul className="divide-y divide-zinc-800">
