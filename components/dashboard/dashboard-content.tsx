@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Upload, RefreshCw, AlertCircle } from 'lucide-react';
+import { Upload, RefreshCw, AlertCircle, Sparkles, Check as CheckIcon } from 'lucide-react';
 import ConvictionCard from './conviction-card';
+import type { SkipReason } from './conviction-card';
 import DraftQueue from './draft-queue';
 import type { ConvictionAction } from '@/lib/briefing/types';
 
@@ -121,10 +122,13 @@ export default function DashboardContent() {
     setConviction(prev => prev ? { ...prev, status: 'executed' } : prev);
   };
 
-  const handleSkip = async (actionId: string) => {
+  const handleSkip = async (actionId: string, reason?: SkipReason) => {
+    const payload: Record<string, string | undefined> = { action_id: actionId, decision: 'skip' };
+    if (reason) payload.skip_reason = reason;
+
     const res = await fetch('/api/conviction/execute', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action_id: actionId, decision: 'skip' }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Skip failed'); }
     setConviction(prev => prev ? { ...prev, status: 'skipped' } : prev);
@@ -201,6 +205,9 @@ export default function DashboardContent() {
           emptyHint="Appears after 1st ingest"
         />
       </div>
+
+      {/* Current Priorities */}
+      <CurrentPriorities />
 
       {/* Draft Queue */}
       <DraftQueue onDecided={loadStats} />
@@ -304,6 +311,123 @@ function MetricCard({ label, fullLabel, value, highlight, emptyHint }: {
             <span className="hidden sm:inline">{fullLabel ?? label}</span>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function CurrentPriorities() {
+  const [priorities, setPriorities] = useState<string[]>([]);
+  const [editing, setEditing]       = useState(false);
+  const [drafts, setDrafts]         = useState<string[]>(['', '', '']);
+  const [saving, setSaving]         = useState(false);
+  const [loaded, setLoaded]         = useState(false);
+
+  // Load on mount
+  useEffect(() => {
+    fetch('/api/priorities/update')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.priorities) {
+          const texts = data.priorities.map((p: any) => p.text);
+          setPriorities(texts);
+          setDrafts([texts[0] ?? '', texts[1] ?? '', texts[2] ?? '']);
+        }
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const cleaned = drafts.filter(d => d.trim().length > 0).map(d => ({ text: d.trim() }));
+    try {
+      const res = await fetch('/api/priorities/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priorities: cleaned }),
+      });
+      if (res.ok) {
+        setPriorities(cleaned.map(c => c.text));
+        setEditing(false);
+      }
+    } catch { /* silent */ } finally { setSaving(false); }
+  };
+
+  if (!loaded) return null;
+
+  // Compact display when not editing
+  if (!editing) {
+    return (
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <Sparkles className="w-4 h-4 text-violet-400 shrink-0" />
+            <span className="text-zinc-500 text-xs font-medium shrink-0">Right now:</span>
+            {priorities.length === 0 ? (
+              <span className="text-zinc-600 text-sm">Tell Foldera what matters most</span>
+            ) : (
+              <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                {priorities.map((p, i) => (
+                  <span key={i} className="text-zinc-200 text-sm truncate">
+                    {i > 0 && <span className="text-zinc-700 mx-1">/</span>}{p}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setEditing(true)}
+            className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors shrink-0 ml-3"
+          >
+            {priorities.length === 0 ? 'Set' : 'Edit'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Editing mode
+  return (
+    <div className="bg-zinc-900 border border-violet-700/40 rounded-xl p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles className="w-4 h-4 text-violet-400" />
+        <span className="text-zinc-200 text-sm font-semibold">What matters most right now?</span>
+      </div>
+      <div className="space-y-2 mb-3">
+        {[0, 1, 2].map(i => (
+          <input
+            key={i}
+            type="text"
+            value={drafts[i]}
+            onChange={e => {
+              const next = [...drafts];
+              next[i] = e.target.value;
+              setDrafts(next);
+            }}
+            placeholder={i === 0 ? 'e.g. Land a WSDOT role' : i === 1 ? 'e.g. Save $2k by April' : 'e.g. Reconnect with Alex'}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
+          />
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          <CheckIcon className="w-3.5 h-3.5" />
+          {saving ? 'Saving...' : 'Save'}
+        </button>
+        <button
+          onClick={() => {
+            setDrafts([priorities[0] ?? '', priorities[1] ?? '', priorities[2] ?? '']);
+            setEditing(false);
+          }}
+          className="px-4 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm transition-colors"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );

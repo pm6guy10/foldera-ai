@@ -53,7 +53,11 @@ Your only job is to identify the single highest-leverage action they should take
 
 Not a summary. Not a list. One directive.
 
-Evaluate the full context — goals, active commitments, behavioral patterns, recent signals — and surface the action that will move the needle most given what you know about how this person actually behaves (not just what they say they will do).
+CURRENT PRIORITIES — the user has explicitly stated what matters most right now.
+Weight every recommendation against these current priorities.
+If a directive doesn't serve one of these, it should have overwhelming evidence to justify itself.
+
+Evaluate the full context — current priorities first, then goals, active commitments, behavioral patterns, recent signals — and surface the action that will move the needle most given what you know about how this person actually behaves (not just what they say they will do).
 
 The action_type must be one of:
 - write_document: create a document, plan, or written artifact
@@ -74,6 +78,11 @@ FEEDBACK LEARNING RULES — when FEEDBACK HISTORY is provided:
 - action_types with a positive net weight have been confirmed effective. Favor them when the evidence supports.
 - Look beyond action_type: if the REJECTED section shows a similar directive text or reasoning pattern to what you were about to recommend, that is a strong signal to pivot to a different action type or framing.
 - A history of repeated skips on the same pattern is itself a behavioral signal — factor it into your confidence score.
+
+SKIP REASON LEARNING — when skip reasons are present in feedback:
+- "not_relevant": the user's priorities have shifted or the directive missed what matters. Check CURRENT PRIORITIES and avoid similar topics unless priorities change.
+- "already_handled": the user already took care of this. Check for duplicate patterns and avoid recommending actions the user tends to handle proactively.
+- "wrong_approach": the action type or framing was wrong. The underlying need may be real but needs a different action_type or angle. Try a different approach.
 
 SEARCH FLAGS — set these when the artifact will need current external information:
 - requires_search: true if the artifact needs current data from the web (job postings, prices, availability, deadlines, reviews, contact info, event details). False if the artifact can be fully produced from the user's graph data alone.
@@ -174,6 +183,7 @@ interface FeedbackRow {
   status: string;
   feedback_weight: number;
   generated_at: string;
+  skip_reason?: string | null;
 }
 
 function buildFeedbackSection(rows: FeedbackRow[]): string {
@@ -205,7 +215,8 @@ function buildFeedbackSection(rows: FeedbackRow[]): string {
     .slice(0, 5)
     .map(r => {
       const label = r.status === 'rejected' ? 'REJECTED' : 'SKIPPED';
-      return `  • [${r.action_type}] "${r.directive_text.slice(0, 120)}" — ${r.reason.slice(0, 100)} (weight: ${r.feedback_weight})`;
+      const skipInfo = r.skip_reason ? ` reason: ${r.skip_reason}` : '';
+      return `  • ${label} [${r.action_type}]${skipInfo} "${r.directive_text.slice(0, 120)}" — ${r.reason.slice(0, 100)} (weight: ${r.feedback_weight})`;
     })
     .join('\n');
 
@@ -226,8 +237,8 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
   const supabase = getSupabase();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Pull all data sources in parallel — including feedback history and approval rates
-  const [signalsRes, commitmentsRes, entityRes, goalsRes, feedbackRes, approvalStatsRes] = await Promise.all([
+  // Pull all data sources in parallel — including feedback history, approval rates, and current priorities
+  const [signalsRes, commitmentsRes, entityRes, goalsRes, currentPrioritiesRes, feedbackRes, approvalStatsRes] = await Promise.all([
     supabase
       .from('tkg_signals')
       .select('type, source, content, occurred_at')
@@ -259,10 +270,18 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       .order('priority', { ascending: false })
       .limit(10),
 
+    // Current priorities: user-declared "what matters most right now"
+    supabase
+      .from('tkg_goals')
+      .select('goal_text, goal_category')
+      .eq('user_id', userId)
+      .eq('current_priority', true)
+      .limit(3),
+
     // Feedback: all rows that have been evaluated (feedback_weight IS NOT NULL)
     supabase
       .from('tkg_actions')
-      .select('id, action_type, directive_text, reason, status, feedback_weight, generated_at')
+      .select('id, action_type, directive_text, reason, status, feedback_weight, generated_at, skip_reason')
       .eq('user_id', userId)
       .not('feedback_weight', 'is', null)
       .order('generated_at', { ascending: false })
@@ -279,12 +298,13 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       .limit(100),
   ]);
 
-  const signals     = signalsRes.data ?? [];
-  const commitments = commitmentsRes.data ?? [];
-  const patterns    = (entityRes.data?.patterns as Record<string, any>) ?? {};
-  const goals       = goalsRes.data ?? [];
-  const feedback     = (feedbackRes.data    ?? []) as FeedbackRow[];
-  const approvalRows = (approvalStatsRes.data ?? []) as ApprovalRow[];
+  const signals          = signalsRes.data ?? [];
+  const commitments      = commitmentsRes.data ?? [];
+  const patterns         = (entityRes.data?.patterns as Record<string, any>) ?? {};
+  const goals            = goalsRes.data ?? [];
+  const currentPriorities = currentPrioritiesRes.data ?? [];
+  const feedback         = (feedbackRes.data    ?? []) as FeedbackRow[];
+  const approvalRows     = (approvalStatsRes.data ?? []) as ApprovalRow[];
 
   // Empty graph
   if (signals.length === 0 && commitments.length === 0 && goals.length === 0) {
@@ -321,7 +341,15 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
   const feedbackSection    = buildFeedbackSection(feedback);
   const approvalRateSection = buildApprovalRateSection(approvalRows);
 
-  const userPrompt = `DECLARED GOALS (${goals.length} total — measure every recommendation against these):
+  // Current priorities — at the very top, above goals
+  const currentPriorityLines = currentPriorities.length > 0
+    ? currentPriorities.map((p: any) => `• [${p.goal_category}] ${p.goal_text}`).join('\n')
+    : 'None set — use all goals equally.';
+
+  const userPrompt = `CURRENT PRIORITIES — what matters most right now (${currentPriorities.length}):
+${currentPriorityLines}
+
+DECLARED GOALS (${goals.length} total — measure every recommendation against these):
 ${goalLines}
 
 ACTIVE COMMITMENTS (${commitments.length} total):

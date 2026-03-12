@@ -42,12 +42,14 @@ type Phase = 'idle' | 'outcome' | 'done';
 // Props
 // ---------------------------------------------------------------------------
 
+export type SkipReason = 'not_relevant' | 'already_handled' | 'wrong_approach';
+
 interface ConvictionCardProps {
   action:     ConvictionAction | null;
   isLoading:  boolean;
   onGenerate: () => void;
   onApprove:  (id: string) => Promise<void>;
-  onSkip:     (id: string) => Promise<void>;
+  onSkip:     (id: string, reason?: SkipReason) => Promise<void>;
   onOutcome:  (id: string, outcome: 'worked' | 'didnt_work') => Promise<void>;
 }
 
@@ -63,13 +65,14 @@ export default function ConvictionCard({
   onSkip,
   onOutcome,
 }: ConvictionCardProps) {
-  const [approving, setApproving]       = useState(false);
-  const [skipping, setSkipping]         = useState(false);
-  const [confirming, setConfirming]     = useState<'worked' | 'didnt_work' | null>(null);
-  const [phase, setPhase]               = useState<Phase>('idle');
-  const [doneMsg, setDoneMsg]           = useState('');
-  const [error, setError]               = useState<string | null>(null);
-  const [showEvidence, setShowEvidence] = useState(false);
+  const [approving, setApproving]             = useState(false);
+  const [skipping, setSkipping]               = useState(false);
+  const [confirming, setConfirming]           = useState<'worked' | 'didnt_work' | null>(null);
+  const [phase, setPhase]                     = useState<Phase>('idle');
+  const [doneMsg, setDoneMsg]                 = useState('');
+  const [error, setError]                     = useState<string | null>(null);
+  const [showEvidence, setShowEvidence]       = useState(false);
+  const [showSkipReason, setShowSkipReason]   = useState(false);
 
   const meta = action ? ACTION_META[action.action_type] ?? ACTION_META.research : null;
   const Icon = meta?.icon ?? Search;
@@ -88,12 +91,17 @@ export default function ConvictionCard({
     }
   };
 
-  const handleSkip = async () => {
+  const handleSkipClick = () => {
+    setShowSkipReason(true);
+  };
+
+  const handleSkipWithReason = async (reason: SkipReason) => {
     if (!action?.id) return;
     setError(null);
     setSkipping(true);
+    setShowSkipReason(false);
     try {
-      await onSkip(action.id);
+      await onSkip(action.id, reason);
       setDoneMsg('Skipped. The engine will recalibrate.');
       setPhase('done');
     } catch (err: unknown) {
@@ -197,7 +205,7 @@ export default function ConvictionCard({
             )}
 
             {/* Approve / Skip buttons */}
-            {action.status === 'pending_approval' && (
+            {action.status === 'pending_approval' && !showSkipReason && (
               <div className="flex gap-3 mb-4">
                 <button
                   onClick={handleApprove}
@@ -208,7 +216,7 @@ export default function ConvictionCard({
                   {approving ? 'Executing...' : 'Approve'}
                 </button>
                 <button
-                  onClick={handleSkip}
+                  onClick={handleSkipClick}
                   disabled={approving || skipping}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors disabled:opacity-50"
                 >
@@ -216,6 +224,15 @@ export default function ConvictionCard({
                   {skipping ? 'Logging...' : 'Skip'}
                 </button>
               </div>
+            )}
+
+            {/* Skip reason popup */}
+            {showSkipReason && (
+              <SkipReasonPopup
+                onSelect={handleSkipWithReason}
+                onCancel={() => setShowSkipReason(false)}
+                disabled={skipping}
+              />
             )}
 
             {/* Already executed — show outcome prompt if no outcome yet */}
@@ -376,6 +393,46 @@ function EmptyState({ onGenerate }: { onGenerate: () => void }) {
         className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors"
       >
         Generate today's read
+      </button>
+    </div>
+  );
+}
+
+function SkipReasonPopup({
+  onSelect,
+  onCancel,
+  disabled,
+}: {
+  onSelect: (reason: SkipReason) => void;
+  onCancel: () => void;
+  disabled: boolean;
+}) {
+  const reasons: { value: SkipReason; label: string }[] = [
+    { value: 'not_relevant',    label: 'Not relevant right now' },
+    { value: 'already_handled', label: 'Already handled' },
+    { value: 'wrong_approach',  label: 'Wrong approach' },
+  ];
+
+  return (
+    <div className="mb-4 p-3 rounded-lg border border-zinc-700 bg-zinc-800/80">
+      <p className="text-zinc-400 text-xs mb-2.5">Why are you skipping?</p>
+      <div className="flex flex-col gap-2">
+        {reasons.map(r => (
+          <button
+            key={r.value}
+            onClick={() => onSelect(r.value)}
+            disabled={disabled}
+            className="text-left px-3 py-2 rounded-lg bg-zinc-700/60 hover:bg-zinc-700 text-zinc-200 text-sm transition-colors disabled:opacity-50"
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={onCancel}
+        className="mt-2 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+      >
+        Cancel
       </button>
     </div>
   );

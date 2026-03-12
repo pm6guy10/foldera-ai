@@ -41,7 +41,11 @@ export async function POST(request: Request) {
   if (!userId) return NextResponse.json({ error: 'User ID not resolved' }, { status: 500 });
 
   const body = await request.json().catch(() => ({}));
-  const { action_id, decision } = body as { action_id?: string; decision?: string };
+  const { action_id, decision, skip_reason } = body as {
+    action_id?: string;
+    decision?: string;
+    skip_reason?: 'not_relevant' | 'already_handled' | 'wrong_approach';
+  };
 
   if (!action_id) return NextResponse.json({ error: 'action_id required' }, { status: 400 });
   if (!['approve', 'skip'].includes(decision ?? '')) {
@@ -62,17 +66,27 @@ export async function POST(request: Request) {
   }
 
   if (decision === 'skip') {
+    const skipUpdate: Record<string, unknown> = { status: 'skipped', feedback_weight: -0.5 };
+    if (skip_reason) skipUpdate.skip_reason = skip_reason;
+
     await supabase
       .from('tkg_actions')
-      .update({ status: 'skipped', feedback_weight: -0.5 })
+      .update(skipUpdate)
       .eq('id', action_id);
 
     // Self-feeding loop: write skip as a behavioral signal
+    const skipContent = skip_reason
+      ? `Skipped (${skip_reason}): ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`
+      : `Skipped: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`;
+
     await supabase.from('tkg_signals').insert({
       user_id: userId,
       source: 'user_feedback',
+      source_id: `skip-${action_id}`,
       type: 'rejection',
-      content: `Skipped: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`,
+      content: skipContent,
+      content_hash: `skip-${action_id}`,
+      author: 'user',
       occurred_at: new Date().toISOString(),
     }).then(({ error: sigErr }) => {
       if (sigErr) console.warn('[conviction/execute] feedback signal insert failed:', sigErr.message);
@@ -200,8 +214,11 @@ export async function POST(request: Request) {
   await supabase.from('tkg_signals').insert({
     user_id: userId,
     source: 'user_feedback',
+    source_id: `approve-${action_id}`,
     type: 'approval',
     content: `Approved: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`,
+    content_hash: `approve-${action_id}`,
+    author: 'user',
     occurred_at: new Date().toISOString(),
   }).then(({ error: sigErr }) => {
     if (sigErr) console.warn('[conviction/execute] feedback signal insert failed:', sigErr.message);
