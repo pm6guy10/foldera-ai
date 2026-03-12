@@ -7,7 +7,7 @@ Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env
 
 ## Stack notes
 - App Router only — no Pages Router
-- All DB access via inline `createClient()` calls (no centralized supabase.ts module)
+- All DB access via `createServerClient()` from `lib/db/client.ts` (centralized factory)
 - Directives live in `tkg_actions`, signals in `tkg_signals`, patterns in `tkg_entities.patterns`, goals in `tkg_goals`
 - `/api/conviction/latest` and `/api/graph/stats` are the two dashboard data routes
 - Public onboard routes under `/api/onboard/*` use `tempUserId` (UUID), no session required
@@ -189,9 +189,19 @@ After EVERY commit, before marking anything done:
 ## Env vars required in Vercel
 ANTHROPIC_API_KEY, AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET,
 CRON_SECRET, DAILY_BRIEF_TO_EMAIL,
-GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, INGEST_USER_ID,
+ENCRYPTION_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, INGEST_USER_ID,
 NEXTAUTH_SECRET, NEXTAUTH_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
 NEXT_PUBLIC_SUPABASE_URL, RESEND_API_KEY, RESEND_FROM_EMAIL,
 RESEND_WEBHOOK_SECRET, STRIPE_PRO_PRICE_ID,
 STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
 SUPABASE_SERVICE_ROLE_KEY
+
+### ENCRYPTION_KEY
+Required in production. 32-byte AES-256 key, base64-encoded.
+Encrypts OAuth tokens before storage in the `integrations` table.
+App throws at startup if absent in `NODE_ENV=production`.
+
+Generate:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
