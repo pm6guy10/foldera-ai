@@ -21,6 +21,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import type { ChiefOfStaffBriefing, ConvictionDirective, ActionType, EvidenceItem } from './types';
 import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
+import { getCoolingRelationships } from '@/lib/relationships/tracker';
 
 // ---------------------------------------------------------------------------
 // Clients (lazy)
@@ -83,6 +84,19 @@ SKIP REASON LEARNING — when skip reasons are present in feedback:
 - "not_relevant": the user's priorities have shifted or the directive missed what matters. Check CURRENT PRIORITIES and avoid similar topics unless priorities change.
 - "already_handled": the user already took care of this. Check for duplicate patterns and avoid recommending actions the user tends to handle proactively.
 - "wrong_approach": the action type or framing was wrong. The underlying need may be real but needs a different action_type or angle. Try a different approach.
+
+TEMPORAL AWARENESS — use the provided date, day of week, and upcoming events to weight urgency and timing of directives.
+Directives that are time-sensitive should get higher confidence. Deadlines within 7 days are urgent.
+
+RELATIONSHIP INTELLIGENCE — when COOLING RELATIONSHIPS are provided:
+- These are people whose engagement is declining. Consider reaching out.
+- If a current priority involves relationships, cooling contacts are high-priority directive candidates.
+- Don't spam send_message directives — only recommend outreach when the relationship serves a goal.
+
+AVOIDANCE SIGNALS — when DRAFT AVOIDANCE data is present:
+- Drafts sitting unsent for >48h indicate decisions the user is avoiding.
+- Consider surfacing these as high-priority directives with a different framing.
+- Avoidance is itself a behavioral pattern — factor it into your confidence score.
 
 SEARCH FLAGS — set these when the artifact will need current external information:
 - requires_search: true if the artifact needs current data from the web (job postings, prices, availability, deadlines, reviews, contact info, event details). False if the artifact can be fully produced from the user's graph data alone.
@@ -233,12 +247,13 @@ ${negative.length > 0 ? `\nSKIPPED/REJECTED — user passed on these (negative s
 // Main export — generateDirective
 // ---------------------------------------------------------------------------
 
-export async function generateDirective(userId: string): Promise<ConvictionDirective> {
+export async function generateDirective(userId: string, count: number = 1): Promise<ConvictionDirective> {
   const supabase = getSupabase();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   // Pull all data sources in parallel — including feedback history, approval rates, and current priorities
-  const [signalsRes, commitmentsRes, entityRes, goalsRes, currentPrioritiesRes, feedbackRes, approvalStatsRes] = await Promise.all([
+  const [signalsRes, commitmentsRes, entityRes, goalsRes, currentPrioritiesRes, feedbackRes, approvalStatsRes, calendarRes, avoidanceRes] = await Promise.all([
     supabase
       .from('tkg_signals')
       .select('type, source, content, occurred_at')
@@ -265,7 +280,7 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
 
     supabase
       .from('tkg_goals')
-      .select('goal_text, goal_category, priority')
+      .select('goal_text, goal_category, priority, time_horizon')
       .eq('user_id', userId)
       .order('priority', { ascending: false })
       .limit(10),
@@ -296,6 +311,27 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       .gte('generated_at', thirtyDaysAgo)
       .order('generated_at', { ascending: false })
       .limit(100),
+
+    // Calendar events in the next 7 days
+    supabase
+      .from('tkg_signals')
+      .select('content, occurred_at')
+      .eq('user_id', userId)
+      .in('source', ['google_calendar', 'outlook_calendar', 'calendar_sync'])
+      .gte('occurred_at', new Date().toISOString())
+      .lte('occurred_at', sevenDaysFromNow)
+      .order('occurred_at', { ascending: true })
+      .limit(10),
+
+    // Avoidance signals: drafts sitting unsent for >48h
+    supabase
+      .from('tkg_signals')
+      .select('content, occurred_at')
+      .eq('user_id', userId)
+      .eq('type', 'draft_avoidance')
+      .gte('occurred_at', thirtyDaysAgo)
+      .order('occurred_at', { ascending: false })
+      .limit(5),
   ]);
 
   const signals          = signalsRes.data ?? [];
@@ -305,6 +341,8 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
   const currentPriorities = currentPrioritiesRes.data ?? [];
   const feedback         = (feedbackRes.data    ?? []) as FeedbackRow[];
   const approvalRows     = (approvalStatsRes.data ?? []) as ApprovalRow[];
+  const calendarEvents   = calendarRes.data ?? [];
+  const avoidanceSignals = avoidanceRes.data ?? [];
 
   // Empty graph
   if (signals.length === 0 && commitments.length === 0 && goals.length === 0) {
@@ -346,7 +384,49 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     ? currentPriorities.map((p: any) => `• [${p.goal_category}] ${p.goal_text}`).join('\n')
     : 'None set — use all goals equally.';
 
-  const userPrompt = `CURRENT PRIORITIES — what matters most right now (${currentPriorities.length}):
+  // Temporal context — date, day of week, upcoming events, milestones
+  const now = new Date();
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const todayStr = `${dayNames[now.getDay()]} ${monthNames[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+
+  const calendarLines = calendarEvents.length > 0
+    ? calendarEvents.map((e: any) => `  • ${(e.content as string).slice(0, 120)} (${new Date(e.occurred_at as string).toLocaleDateString()})`).join('\n')
+    : '  No upcoming events synced.';
+
+  // Pull milestones from goals with time horizons
+  const milestonesFromGoals = goals
+    .filter((g: any) => g.time_horizon)
+    .map((g: any) => `  • ${g.goal_text} (${g.time_horizon})`)
+    .join('\n');
+
+  const temporalBlock = `TODAY: ${todayStr}
+Calendar next 7 days:
+${calendarLines}
+${milestonesFromGoals ? `MILESTONES:\n${milestonesFromGoals}` : ''}`;
+
+  // Cooling relationships
+  let coolingSection = '';
+  try {
+    coolingSection = await getCoolingRelationships(userId);
+  } catch { /* silent */ }
+
+  // Avoidance signals
+  const avoidanceLines = avoidanceSignals.length > 0
+    ? avoidanceSignals.map((s: any) => `  • ${(s.content as string).slice(0, 150)}`).join('\n')
+    : '';
+  const avoidanceSection = avoidanceLines
+    ? `\nAVOIDANCE SIGNALS (drafts sitting unsent >48h — decisions being avoided):\n${avoidanceLines}`
+    : '';
+
+  // Build count instruction
+  const countInstruction = count > 1
+    ? `Identify the top ${count} highest-leverage actions for today, ranked by confidence. Return a JSON array of ${count} directive objects.`
+    : 'Identify the single highest-leverage action for today. Return only the JSON directive.';
+
+  const userPrompt = `${temporalBlock}
+
+CURRENT PRIORITIES — what matters most right now (${currentPriorities.length}):
 ${currentPriorityLines}
 
 DECLARED GOALS (${goals.length} total — measure every recommendation against these):
@@ -360,12 +440,14 @@ ${patternLines}
 
 RECENT SIGNALS (last 30 days, ${signals.length} total):
 ${signalLines || 'None.'}
+${coolingSection}
+${avoidanceSection}
 ${approvalRateSection}
 ${feedbackSection}
-Identify the single highest-leverage action for today. Return only the JSON directive.`;
+${countInstruction}`;
 
   // Call Claude
-  let parsed: {
+  type ParsedDirective = {
     directive: string;
     action_type: ActionType;
     confidence: number;
@@ -374,19 +456,29 @@ Identify the single highest-leverage action for today. Return only the JSON dire
     fullContext?: string;
     requires_search?: boolean;
     search_context?: string | null;
-  } | null = null;
+  };
+
+  let parsed: ParsedDirective | null = null;
 
   try {
     const response = await getAnthropic().messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
+      max_tokens: count > 1 ? 3000 : 1000,
       temperature: 0.3 as any,
       system: CONVICTION_SYSTEM,
       messages: [{ role: 'user', content: userPrompt }],
     });
 
     const raw = response.content[0].type === 'text' ? response.content[0].text : '';
-    parsed = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim());
+    const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
+    const result = JSON.parse(cleaned);
+
+    // Handle both single object and array responses
+    if (Array.isArray(result)) {
+      parsed = result[0] ?? null;
+    } else {
+      parsed = result;
+    }
   } catch (err) {
     console.error('[generateDirective] Claude call/parse failed:', err);
   }
@@ -401,6 +493,28 @@ Identify the single highest-leverage action for today. Return only the JSON dire
     requires_search: parsed?.requires_search ?? false,
     search_context:  parsed?.search_context  ?? undefined,
   };
+}
+
+/**
+ * Generate multiple directives in one batch call.
+ * Returns an array of ConvictionDirective, ranked by confidence.
+ */
+export async function generateMultipleDirectives(
+  userId: string,
+  count: number = 3,
+): Promise<ConvictionDirective[]> {
+  const directives: ConvictionDirective[] = [];
+  for (let i = 0; i < count; i++) {
+    try {
+      const d = await generateDirective(userId);
+      directives.push(d);
+    } catch (err) {
+      console.error(`[generateMultipleDirectives] directive ${i} failed:`, err);
+    }
+  }
+  // Sort by confidence descending
+  directives.sort((a, b) => b.confidence - a.confidence);
+  return directives;
 }
 
 // ---------------------------------------------------------------------------

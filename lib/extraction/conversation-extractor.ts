@@ -80,14 +80,9 @@ export interface ExtractionResult {
 // Claude extraction prompt (verbatim from pivot spec)
 // ---------------------------------------------------------------------------
 
-const EXTRACTION_SYSTEM = `You are building an identity graph for a personal chief of staff system.
+export type SourceType = 'conversation' | 'email' | 'calendar' | 'agent_output' | 'user_feedback';
 
-Read this conversation and extract:
-(1) Decisions made — what choice was made, what domain, what context, what stakes.
-(2) Outcomes confirmed — results of past decisions, positive or negative.
-(3) Behavioral patterns — recurring tendencies, named if possible.
-(4) Active goals — stated desired outcomes with time horizons.
-
+const EXTRACTION_JSON_SCHEMA = `
 Return JSON matching this schema exactly:
 {
   "decisions": [
@@ -124,13 +119,67 @@ Return JSON matching this schema exactly:
 
 Extract only what is explicit or clearly implied. Do not infer. If nothing relevant, return empty arrays.`;
 
+const SOURCE_PROMPTS: Record<SourceType, string> = {
+  conversation: `You are building an identity graph for a personal chief of staff system.
+
+Read this conversation and extract:
+(1) Decisions made — what choice was made, what domain, what context, what stakes.
+(2) Outcomes confirmed — results of past decisions, positive or negative.
+(3) Behavioral patterns — recurring tendencies, named if possible.
+(4) Active goals — stated desired outcomes with time horizons.
+${EXTRACTION_JSON_SCHEMA}`,
+
+  email: `You are building an identity graph for a personal chief of staff system.
+
+Read this email thread and extract:
+(1) Commitments made — "I'll send by Friday", "Let's meet next week", promises to others.
+(2) Response patterns — how quickly does this person reply? Do they avoid certain topics?
+(3) Relationship signals — tone, formality level, frequency of contact.
+(4) Delegation signals — tasks assigned to or by this person.
+(5) Avoidance patterns — long reply delays, vague responses, topic dodging.
+(6) Decisions and outcomes — choices made, results confirmed.
+(7) Goals mentioned or implied.
+${EXTRACTION_JSON_SCHEMA}`,
+
+  calendar: `You are building an identity graph for a personal chief of staff system.
+
+Read this calendar data and extract:
+(1) Time allocation patterns — what does this person spend time on?
+(2) Priority conflicts — overlapping commitments, over-scheduled days.
+(3) Cancellation frequency — how often are events cancelled or rescheduled?
+(4) Recurring commitments — weekly standups, regular 1:1s, habits.
+(5) Goals implied by scheduling patterns.
+${EXTRACTION_JSON_SCHEMA}`,
+
+  agent_output: `You are building an identity graph for a personal chief of staff system.
+
+Read this agent-generated output and extract ONLY actionable findings:
+(1) Decisions that were recommended and whether they were executed.
+(2) Outcomes from prior agent recommendations.
+(3) Patterns in what the user approves vs skips.
+Do NOT extract the agent's reasoning or meta-commentary — only concrete user-relevant data.
+${EXTRACTION_JSON_SCHEMA}`,
+
+  user_feedback: `You are building an identity graph for a personal chief of staff system.
+
+Read this user feedback (approve/skip patterns) and extract:
+(1) Preference signals — what types of actions does this user value?
+(2) Avoidance patterns — what types of suggestions get consistently skipped?
+(3) Decision patterns — how quickly does the user decide? Do they skip then come back?
+(4) Priority shifts — has the user's focus changed based on recent approvals?
+${EXTRACTION_JSON_SCHEMA}`,
+};
+
+const EXTRACTION_SYSTEM = SOURCE_PROMPTS.conversation;
+
 // ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
 
 export async function extractFromConversation(
   text: string,
-  userId: string
+  userId: string,
+  source_type: SourceType = 'conversation',
 ): Promise<ExtractionResult> {
   const supabase = getSupabaseClient();
   const anthropic = getAnthropicClient();
@@ -171,12 +220,13 @@ export async function extractFromConversation(
     throw new Error(`Failed to write signal: ${signalError?.message}`);
   }
 
-  // 3. Extract with Claude
+  // 3. Extract with Claude (source-specific prompt)
+  const systemPrompt = SOURCE_PROMPTS[source_type] ?? EXTRACTION_SYSTEM;
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2048,
     temperature: 0.1 as any,
-    system: EXTRACTION_SYSTEM,
+    system: systemPrompt,
     messages: [{ role: 'user', content: sanitizeForPrompt(text, 40000) }],
   });
 

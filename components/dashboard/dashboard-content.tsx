@@ -212,6 +212,9 @@ export default function DashboardContent() {
       {/* Draft Queue */}
       <DraftQueue onDecided={loadStats} />
 
+      {/* Quick Capture */}
+      <QuickCapture />
+
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         <div className="col-span-1 lg:col-span-2">
@@ -429,6 +432,57 @@ function CurrentPriorities() {
           Cancel
         </button>
       </div>
+    </div>
+  );
+}
+
+function QuickCapture() {
+  const [text, setText]     = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle');
+
+  const handleSubmit = async () => {
+    if (!text.trim()) return;
+    setStatus('sending');
+    try {
+      const res = await fetch('/api/extraction/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.trim() }),
+      });
+      if (res.ok) {
+        setText('');
+        setStatus('done');
+        setTimeout(() => setStatus('idle'), 2000);
+      } else {
+        setStatus('idle');
+      }
+    } catch {
+      setStatus('idle');
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="text"
+        value={text}
+        onChange={e => setText(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+        placeholder="Quick note — tell Foldera something it should remember"
+        disabled={status === 'sending'}
+        className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors disabled:opacity-50"
+      />
+      {status === 'done' ? (
+        <span className="text-emerald-400 text-sm font-medium shrink-0 px-3">Got it.</span>
+      ) : (
+        <button
+          onClick={handleSubmit}
+          disabled={!text.trim() || status === 'sending'}
+          className="shrink-0 px-4 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors disabled:opacity-40"
+        >
+          {status === 'sending' ? 'Saving...' : 'Save'}
+        </button>
+      )}
     </div>
   );
 }

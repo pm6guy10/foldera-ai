@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient }              from '@supabase/supabase-js';
-import { generateDirective }         from '@/lib/briefing/generator';
+import { generateDirective, generateMultipleDirectives } from '@/lib/briefing/generator';
 import { generateArtifact }          from '@/lib/conviction/artifact-generator';
 import { sendDailyDirective }        from '@/lib/email/resend';
 import { extractFromConversation }   from '@/lib/extraction/conversation-extractor';
@@ -208,11 +208,13 @@ async function handler(request: NextRequest) {
         daysSinceSignup = Math.floor((Date.now() - new Date(sub.created_at).getTime()) / (1000 * 60 * 60 * 24));
       }
 
-      const { artifactCount, subject: progressiveSubject } = getProgressiveConfig(daysSinceSignup);
+      const { artifactCount: progressiveCount, subject: progressiveSubject } = getProgressiveConfig(daysSinceSignup);
+      // Generate 3 directives per cycle (or progressive count for first week)
+      const directiveCount = daysSinceSignup <= 7 ? progressiveCount : 3;
       const directiveItems: DirectiveItem[] = [];
       let generationFailed = false;
 
-      for (let i = 0; i < artifactCount; i++) {
+      for (let i = 0; i < directiveCount; i++) {
         const result = await withRetry(() => generateDirective(userId), `generateDirective[${i}]`);
         if ('error' in result) {
           await saveDirectiveAction(supabase, userId,
@@ -264,6 +266,35 @@ async function handler(request: NextRequest) {
             console.warn('[daily-brief] self-feed extraction failed:', feedErr.message);
           }
         }
+      }
+
+      // ── Outcome follow-ups: check for actions approved 7+ days ago ──────────
+      try {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: pendingOutcomes } = await supabase
+          .from('tkg_actions')
+          .select('id, directive_text, action_type, executed_at, execution_result')
+          .eq('user_id', userId)
+          .eq('status', 'executed')
+          .lte('executed_at', sevenDaysAgo)
+          .limit(3);
+
+        for (const action of pendingOutcomes ?? []) {
+          const execResult = (action.execution_result as Record<string, unknown>) ?? {};
+          // Skip if outcome already confirmed
+          if (execResult.outcome) continue;
+
+          // Add outcome follow-up as a directive item in the email
+          directiveItems.push({
+            id: action.id,
+            directive: `7 days ago you approved: "${action.directive_text}". Did it work?`,
+            action_type: 'confirm_outcome' as any,
+            confidence: 100,
+            reason: `Executed on ${new Date(action.executed_at).toLocaleDateString()}. Tap to close the loop.`,
+          });
+        }
+      } catch (outcomeErr: any) {
+        console.warn('[daily-brief] outcome check failed:', outcomeErr.message);
       }
 
       if (generationFailed || directiveItems.length === 0) {
