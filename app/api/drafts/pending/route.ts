@@ -14,6 +14,7 @@ import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
 import { createClient }     from '@supabase/supabase-js';
 import { getAuthOptions }   from '@/lib/auth/auth-options';
+import { apiError }        from '@/lib/utils/api-error';
 import type { DraftAction, ActionType } from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
@@ -54,8 +55,7 @@ export async function GET(request: Request) {
     .limit(20);
 
   if (error) {
-    console.error('[drafts/pending]', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError(error, 'drafts/pending');
   }
 
   // ── Map rows → DraftAction ──────────────────────────────────────────────────

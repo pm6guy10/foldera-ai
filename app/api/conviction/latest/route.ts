@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthOptions } from '@/lib/auth/auth-options';
+import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,11 +80,7 @@ export async function GET(request: Request) {
       executedAt:      action.executed_at ?? undefined,
       executionResult: action.execution_result ?? undefined,
     });
-  } catch (err: any) {
-    console.error('[/api/conviction/latest]', err);
-    return NextResponse.json(
-      { error: err.message || 'Failed to fetch latest conviction' },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    return apiError(err, 'conviction/latest');
   }
 }

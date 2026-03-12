@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthOptions } from '@/lib/auth/auth-options';
+import { apiError } from '@/lib/utils/api-error';
 import { generateBriefing } from '@/lib/briefing/generator';
 
 export const dynamic = 'force-dynamic';
@@ -113,11 +114,7 @@ export async function GET(request: Request) {
       briefingDate: brief.briefingDate,
       graphStats,
     });
-  } catch (err: any) {
-    console.error('[/api/briefing/latest]', err);
-    return NextResponse.json(
-      { error: err.message || 'Failed to generate briefing' },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    return apiError(err, 'briefing/latest');
   }
 }

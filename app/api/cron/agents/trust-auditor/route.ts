@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/utils/api-error';
 import { runTrustAuditor } from '@/lib/agents/trust-auditor';
 
 export const maxDuration = 60;
@@ -24,8 +25,7 @@ export async function GET(request: Request) {
     const drafted = await runTrustAuditor(userId);
     console.log(`[cron/trust-auditor] drafted ${drafted} findings`);
     return NextResponse.json({ ok: true, agent: 'trust-auditor', drafted });
-  } catch (err: any) {
-    console.error('[cron/trust-auditor] failed:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return apiError(err, 'cron/trust-auditor');
   }
 }

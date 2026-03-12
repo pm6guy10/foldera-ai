@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
+import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,12 +40,11 @@ export async function POST(request: NextRequest) {
       decisionsWritten: result.decisionsWritten,
       patternsUpdated: result.patternsUpdated,
     });
-  } catch (err: any) {
-    console.error('[/api/onboard/ingest]', err.message);
-    // Let duplicate ingests pass through silently
-    if (err.message?.includes('already ingested')) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '';
+    if (msg.includes('already ingested')) {
       return NextResponse.json({ signalId: null, decisionsWritten: 0, patternsUpdated: 0 });
     }
-    return NextResponse.json({ error: err.message || 'Extraction failed' }, { status: 500 });
+    return apiError(err, 'onboard/ingest');
   }
 }

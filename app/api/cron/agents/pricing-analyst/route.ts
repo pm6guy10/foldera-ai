@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/utils/api-error';
 import { runPricingAnalyst } from '@/lib/agents/pricing-analyst';
 
 export const maxDuration = 60;
@@ -24,8 +25,7 @@ export async function GET(request: Request) {
     const drafted = await runPricingAnalyst(userId);
     console.log(`[cron/pricing-analyst] drafted ${drafted} findings`);
     return NextResponse.json({ ok: true, agent: 'pricing-analyst', drafted });
-  } catch (err: any) {
-    console.error('[cron/pricing-analyst] failed:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return apiError(err, 'cron/pricing-analyst');
   }
 }

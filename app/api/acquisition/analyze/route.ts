@@ -14,6 +14,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/utils/api-error';
 import { runLearningLoop, shouldRunAnalysis } from '@/lib/acquisition/learning-loop';
 
 export const dynamic     = 'force-dynamic';
@@ -79,9 +80,8 @@ export async function POST(request: Request) {
       recommendations:  result.recommendations,
       new_version:      result.updated_weights.version,
     });
-  } catch (err: any) {
-    console.error('[acquisition/analyze] failed:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return apiError(err, 'acquisition/analyze');
   }
 }
 

@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/utils/api-error';
 import { runDistributionFinder } from '@/lib/agents/distribution-finder';
 
 export const maxDuration = 60;
@@ -24,8 +25,7 @@ export async function GET(request: Request) {
     const drafted = await runDistributionFinder(userId);
     console.log(`[cron/distribution-finder] drafted ${drafted} opportunities`);
     return NextResponse.json({ ok: true, agent: 'distribution-finder', drafted });
-  } catch (err: any) {
-    console.error('[cron/distribution-finder] failed:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return apiError(err, 'cron/distribution-finder');
   }
 }

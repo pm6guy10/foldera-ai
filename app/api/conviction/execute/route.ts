@@ -11,6 +11,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { executeAction } from '@/lib/conviction/execute-action';
+import { validationError } from '@/lib/utils/api-error';
+import { executeBodySchema } from '@/lib/utils/api-schemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,17 +33,13 @@ export async function POST(request: Request) {
   }
   if (!userId) return NextResponse.json({ error: 'User ID not resolved' }, { status: 500 });
 
-  const body = await request.json().catch(() => ({}));
-  const { action_id, decision, skip_reason } = body as {
-    action_id?: string;
-    decision?: string;
-    skip_reason?: 'not_relevant' | 'already_handled' | 'wrong_approach';
-  };
-
-  if (!action_id) return NextResponse.json({ error: 'action_id required' }, { status: 400 });
-  if (!['approve', 'skip'].includes(decision ?? '')) {
-    return NextResponse.json({ error: 'decision must be "approve" or "skip"' }, { status: 400 });
+  const raw = await request.json().catch(() => ({}));
+  const parsed = executeBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    const msg = parsed.error.issues[0]?.message ?? 'Invalid request';
+    return validationError(msg);
   }
+  const { action_id, decision, skip_reason } = parsed.data;
 
   const result = await executeAction({
     userId,

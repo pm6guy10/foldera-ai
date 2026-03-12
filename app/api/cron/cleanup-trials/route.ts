@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { apiError } from '@/lib/utils/api-error';
 
 function getSupabase() {
   return createClient(
@@ -42,8 +43,7 @@ export async function GET(req: NextRequest) {
     .lte('graph_expires_at', now);
 
   if (metaErr) {
-    console.error('[cleanup-trials] meta query failed:', metaErr.message);
-    return NextResponse.json({ error: metaErr.message }, { status: 500 });
+    return apiError(metaErr, 'cron/cleanup-trials');
   }
 
   if (!expired || expired.length === 0) {
@@ -88,6 +88,6 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     deleted: userIds.length,
-    errors: errors.length > 0 ? errors : undefined,
+    errorCount: errors.length,
   });
 }

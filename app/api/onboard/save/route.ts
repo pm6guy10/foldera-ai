@@ -9,10 +9,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { apiError, validationError } from '@/lib/utils/api-error';
+import { onboardSaveBodySchema } from '@/lib/utils/api-schemas';
 
 export const dynamic = 'force-dynamic';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function getSupabase() {
   return createClient(
@@ -22,35 +22,31 @@ function getSupabase() {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { email?: unknown; tempUserId?: unknown };
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return validationError('Invalid JSON');
   }
 
-  const { email, tempUserId } = body;
-
-  if (typeof email !== 'string' || !email.includes('@') || email.length < 5) {
-    return NextResponse.json({ error: 'Valid email required' }, { status: 400 });
+  const parsed = onboardSaveBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    const msg = parsed.error.issues[0]?.message ?? 'Invalid request';
+    return validationError(msg);
   }
-
-  if (typeof tempUserId !== 'string' || !UUID_RE.test(tempUserId)) {
-    return NextResponse.json({ error: 'Invalid tempUserId' }, { status: 400 });
-  }
+  const { email, tempUserId } = parsed.data;
 
   const supabase = getSupabase();
 
   const { error } = await supabase
     .from('waitlist')
     .upsert(
-      { email: email.toLowerCase().trim() },
+      { email },
       { onConflict: 'email', ignoreDuplicates: true }
     );
 
   if (error) {
-    console.error('[/api/onboard/save]', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError(error, 'onboard/save');
   }
 
   return NextResponse.json({ saved: true });

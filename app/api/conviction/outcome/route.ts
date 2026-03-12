@@ -17,6 +17,7 @@ import { NextResponse }      from 'next/server';
 import { getServerSession }  from 'next-auth';
 import { createClient }      from '@supabase/supabase-js';
 import { getAuthOptions }    from '@/lib/auth/auth-options';
+import { apiError }         from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,8 +104,7 @@ export async function POST(request: Request) {
     .eq('id', action_id);
 
   if (updateErr) {
-    console.error('[conviction/outcome]', updateErr.message);
-    return NextResponse.json({ error: updateErr.message }, { status: 500 });
+    return apiError(updateErr, 'conviction/outcome');
   }
 
   console.log(`[conviction/outcome] ${action_id} → ${outcome} (weight ${WEIGHTS[outcome as Outcome]})`);

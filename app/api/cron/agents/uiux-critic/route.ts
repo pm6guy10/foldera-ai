@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/utils/api-error';
 import { runUiUxCritic } from '@/lib/agents/uiux-critic';
 
 export const maxDuration = 60;
@@ -25,8 +26,7 @@ export async function GET(request: Request) {
     const drafted = await runUiUxCritic(userId);
     console.log(`[cron/uiux-critic] drafted ${drafted} findings`);
     return NextResponse.json({ ok: true, agent: 'uiux-critic', drafted });
-  } catch (err: any) {
-    console.error('[cron/uiux-critic] failed:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return apiError(err, 'cron/uiux-critic');
   }
 }

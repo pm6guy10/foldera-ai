@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/utils/api-error';
 import { runRetentionAnalyst } from '@/lib/agents/retention-analyst';
 
 export const maxDuration = 60;
@@ -24,8 +25,7 @@ export async function GET(request: Request) {
     const drafted = await runRetentionAnalyst(userId);
     console.log(`[cron/retention-analyst] drafted ${drafted} findings`);
     return NextResponse.json({ ok: true, agent: 'retention-analyst', drafted });
-  } catch (err: any) {
-    console.error('[cron/retention-analyst] failed:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return apiError(err, 'cron/retention-analyst');
   }
 }

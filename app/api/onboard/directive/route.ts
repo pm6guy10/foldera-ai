@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generateDirective } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
+import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,8 +62,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(directive);
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Generation failed';
-    console.error('[/api/onboard/directive]', msg);
-    return NextResponse.json({ error: String(msg) }, { status: 500 });
+    return apiError(err, 'onboard/directive');
   }
 }

@@ -12,6 +12,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthOptions } from '@/lib/auth/auth-options';
+import { apiError } from '@/lib/utils/api-error';
 import { generateDirective } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 
@@ -77,15 +78,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error('[conviction/generate] tkg_actions insert failed:', error.message);
-      return NextResponse.json({
-        ...directive,
-        id: null,
-        userId,
-        status: 'pending_approval',
-        generatedAt: new Date().toISOString(),
-        executionResult: artifact ? { artifact } : null,
-      });
+      return apiError(error, 'conviction/generate');
     }
 
     return NextResponse.json({
@@ -96,11 +89,7 @@ export async function POST(request: Request) {
       generatedAt:     action.generated_at,
       executionResult: action.execution_result,
     });
-  } catch (err: any) {
-    console.error('[conviction/generate]', err);
-    return NextResponse.json(
-      { error: err.message || 'Failed to generate directive' },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    return apiError(err, 'conviction/generate');
   }
 }

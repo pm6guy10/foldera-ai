@@ -14,6 +14,8 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { executeAction } from '@/lib/conviction/execute-action';
 import { shouldRunAnalysis } from '@/lib/acquisition/learning-loop';
+import { validationError } from '@/lib/utils/api-error';
+import { draftsDecideBodySchema } from '@/lib/utils/api-schemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,15 +36,13 @@ export async function POST(request: Request) {
   }
   if (!userId) return NextResponse.json({ error: 'User ID not resolved' }, { status: 500 });
 
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-  const { draft_id, decision } = body;
-
-  if (!draft_id || typeof draft_id !== 'string') {
-    return NextResponse.json({ error: 'draft_id required' }, { status: 400 });
+  const raw = await request.json().catch(() => ({}));
+  const parsed = draftsDecideBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    const msg = parsed.error.issues[0]?.message ?? 'Invalid request';
+    return validationError(msg);
   }
-  if (!['approve', 'reject'].includes(decision as string)) {
-    return NextResponse.json({ error: 'decision must be "approve" or "reject"' }, { status: 400 });
-  }
+  const { draft_id, decision } = parsed.data;
 
   const result = await executeAction({
     userId,

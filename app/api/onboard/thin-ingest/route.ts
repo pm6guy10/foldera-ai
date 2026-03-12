@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth-options';
+import { apiError } from '@/lib/utils/api-error';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import { createClient } from '@supabase/supabase-js';
 
@@ -62,10 +63,10 @@ export async function POST(req: NextRequest) {
   // Extract — ignore dedup errors (user may resubmit the same paste)
   try {
     await extractFromConversation(text, userId);
-  } catch (err: any) {
-    if (!err.message?.includes('already ingested')) {
-      console.error('[thin-ingest] extraction error:', err.message);
-      return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '';
+    if (!msg.includes('already ingested')) {
+      return apiError(err, 'onboard/thin-ingest');
     }
   }
 

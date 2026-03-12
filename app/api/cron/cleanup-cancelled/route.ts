@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -39,8 +40,7 @@ export async function GET(req: NextRequest) {
     .lte('data_deletion_scheduled_at', now);
 
   if (error) {
-    console.error('[cleanup-cancelled] query failed:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError(error, 'cron/cleanup-cancelled');
   }
 
   if (!expired || expired.length === 0) {
@@ -105,5 +105,5 @@ export async function GET(req: NextRequest) {
 
   if (errors.length > 0) console.error('[cleanup-cancelled] some steps failed:', errors);
 
-  return NextResponse.json({ deleted: userIds.length, errors: errors.length > 0 ? errors : undefined });
+  return NextResponse.json({ deleted: userIds.length, errorCount: errors.length });
 }

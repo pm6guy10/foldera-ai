@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,8 +74,7 @@ export async function POST(request: NextRequest) {
   const { error } = await supabase.from('tkg_goals').insert(rows);
 
   if (error) {
-    console.error('[/api/onboard/goals]', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError(error, 'onboard/goals');
   }
 
   return NextResponse.json({ goalsWritten: rows.length });

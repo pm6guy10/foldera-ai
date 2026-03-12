@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import Stripe from 'stripe';
 import { authOptions } from '@/lib/auth/auth-options';
+import { apiError } from '@/lib/utils/api-error';
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -51,8 +52,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ url: checkout.url });
-  } catch (err: any) {
-    console.error('[stripe/checkout]', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return apiError(err, 'stripe/checkout');
   }
 }

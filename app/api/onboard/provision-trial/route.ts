@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthOptions } from '@/lib/auth/auth-options';
+import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,8 +64,7 @@ export async function POST() {
     .single();
 
   if (error) {
-    console.error('[provision-trial]', error.message);
-    return NextResponse.json({ error: 'Could not provision trial' }, { status: 500 });
+    return apiError(error, 'onboard/provision-trial');
   }
 
   return NextResponse.json({

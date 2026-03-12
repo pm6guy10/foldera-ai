@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/utils/api-error';
 import { runGtmStrategist } from '@/lib/agents/gtm-strategist';
 
 export const maxDuration = 60;
@@ -24,8 +25,7 @@ export async function GET(request: Request) {
     const drafted = await runGtmStrategist(userId);
     console.log(`[cron/gtm-strategist] drafted ${drafted} actions`);
     return NextResponse.json({ ok: true, agent: 'gtm-strategist', drafted });
-  } catch (err: any) {
-    console.error('[cron/gtm-strategist] failed:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return apiError(err, 'cron/gtm-strategist');
   }
 }
