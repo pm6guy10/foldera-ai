@@ -27,34 +27,48 @@ export default function DashboardContent() {
   const [checkingOut, setCheckingOut]   = useState(false);
   const [emailActionMsg, setEmailActionMsg] = useState<string | null>(null);
 
-  // Handle email deep-link: /dashboard?action=approve&id=XXX
+  // Handle email deep-link: approve/skip → execute; outcome (worked/didnt_work) → conviction/outcome
   useEffect(() => {
     if (status !== 'authenticated') return;
     const params = new URLSearchParams(window.location.search);
     const action = params.get('action');
     const id     = params.get('id');
+    const result = params.get('result');
     if (!action || !id) return;
 
-    // Clear the query string without triggering a re-render loop
     const cleanUrl = window.location.pathname;
     window.history.replaceState({}, '', cleanUrl);
 
-    const endpoint = '/api/conviction/execute';
-    const body     = { action_id: id, decision: action === 'approve' ? 'approve' : 'skip' };
-
-    fetch(endpoint, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body),
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'executed' || data.status === 'skipped') {
-          setEmailActionMsg(action === 'approve' ? 'Done — Foldera executed that.' : 'Skipped.');
-          setTimeout(() => setEmailActionMsg(null), 4000);
-        }
+    if (action === 'outcome' && (result === 'worked' || result === 'didnt_work')) {
+      fetch('/api/conviction/outcome', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ action_id: id, outcome: result }),
       })
-      .catch(() => {});
+        .then(res => res.json())
+        .then(() => {
+          setEmailActionMsg(result === 'worked' ? "Recorded — it worked." : "Recorded — we'll adjust.");
+          setTimeout(() => setEmailActionMsg(null), 4000);
+        })
+        .catch(() => {});
+      return;
+    }
+
+    if (action === 'approve' || action === 'skip') {
+      fetch('/api/conviction/execute', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ action_id: id, decision: action }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'executed' || data.status === 'skipped') {
+            setEmailActionMsg(action === 'approve' ? 'Done — Foldera executed that.' : 'Skipped.');
+            setTimeout(() => setEmailActionMsg(null), 4000);
+          }
+        })
+        .catch(() => {});
+    }
   }, [status]);
 
   useEffect(() => {

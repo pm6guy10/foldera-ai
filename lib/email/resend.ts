@@ -20,13 +20,14 @@ function getResend(): Resend {
 // ─── Directive item type ──────────────────────────────────────────────────────
 
 export interface DirectiveItem {
-  id?:              string;  // tkg_actions row ID for approve/skip deep-links
-  directive:        string;
-  action_type:      string;
-  confidence:       number;
-  reason:           string;
-  summary?:         string;  // Short one-sentence summary for email card (falls back to directive)
-  artifactPreview?: string;  // Short artifact preview text for the email
+  id?:                 string;  // tkg_actions row ID for approve/skip deep-links
+  directive:           string;
+  action_type:         string;
+  confidence:          number;
+  reason:              string;
+  summary?:            string;  // Short one-sentence summary for email card (falls back to directive)
+  artifactPreview?:    string;  // Short artifact preview text for the email
+  isOutcomeFollowUp?:  boolean; // When true, email uses "It worked" / "Didn't work" links → conviction/outcome
 }
 
 function escapeHtml(s: string): string {
@@ -65,12 +66,15 @@ export async function sendDailyDirective({
       ? `<tr><td style="padding:0 0 28px 0;"><hr style="border:none;border-top:1px solid #e8e3df;margin:0;" /></td></tr>`
       : '';
 
+    const isOutcome = d.isOutcomeFollowUp && d.id;
     const approveHref = d.id
-      ? `${baseUrl}/dashboard?action=approve&id=${d.id}`
+      ? (isOutcome ? `${baseUrl}/dashboard?action=outcome&id=${d.id}&result=worked` : `${baseUrl}/dashboard?action=approve&id=${d.id}`)
       : `${baseUrl}/dashboard`;
     const skipHref = d.id
-      ? `${baseUrl}/dashboard?action=skip&id=${d.id}`
+      ? (isOutcome ? `${baseUrl}/dashboard?action=outcome&id=${d.id}&result=didnt_work` : `${baseUrl}/dashboard?action=skip&id=${d.id}`)
       : `${baseUrl}/dashboard`;
+    const approveLabel = isOutcome ? 'It worked' : 'Approve';
+    const skipLabel = isOutcome ? "Didn't work" : 'Skip';
 
     // Artifact preview snippet for the email
     let artifactHtml = '';
@@ -96,7 +100,7 @@ ${divider}
           <td style="padding-bottom:8px;">
             <a href="${approveHref}"
                style="display:inline-block;padding:10px 24px;background:#16a34a;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
-              Approve
+              ${escapeHtml(approveLabel)}
             </a>
           </td>
         </tr>
@@ -104,7 +108,7 @@ ${divider}
           <td style="padding-bottom:28px;">
             <a href="${skipHref}"
                style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#8a8178;text-decoration:underline;">
-              Skip
+              ${escapeHtml(skipLabel)}
             </a>
           </td>
         </tr>`;

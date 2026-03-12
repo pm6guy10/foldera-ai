@@ -347,10 +347,10 @@ export async function generateDirective(userId: string, count: number = 1): Prom
   // Empty graph
   if (signals.length === 0 && commitments.length === 0 && goals.length === 0) {
     return {
-      directive: 'Paste your first Claude conversation export into the dashboard to feed the graph.',
+      directive: 'Your graph is empty. Add conversation or email data to get personalized actions.',
       action_type: 'write_document',
       confidence: 0,
-      reason: 'The identity graph is empty — no behavioral history to analyze yet.',
+      reason: 'No behavioral history yet — add data to unlock suggestions.',
       evidence: [],
     };
   }

@@ -353,7 +353,7 @@ export async function generateArtifact(
     return validateArtifact(directive.action_type, parsed);
   } catch (err) {
     console.error('[generateArtifact] failed:', err);
-    return fallbackArtifact(directive);
+    return getFallbackArtifact(directive);
   }
 }
 
@@ -424,10 +424,10 @@ function validateArtifact(
 }
 
 // ---------------------------------------------------------------------------
-// Fallback — if generation fails, return a minimal artifact
+// Fallback — if generation fails, return a minimal artifact (exported for daily-brief)
 // ---------------------------------------------------------------------------
 
-function fallbackArtifact(directive: ConvictionDirective): ConvictionArtifact {
+export function getFallbackArtifact(directive: ConvictionDirective): ConvictionArtifact {
   switch (directive.action_type) {
     case 'send_message':
       return { type: 'email', to: '', subject: '', body: directive.directive, draft_type: 'email_compose' };

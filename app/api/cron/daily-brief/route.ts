@@ -9,8 +9,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient }              from '@supabase/supabase-js';
 import { generateDirective, generateMultipleDirectives } from '@/lib/briefing/generator';
-import { generateArtifact }          from '@/lib/conviction/artifact-generator';
+import { generateArtifact, getFallbackArtifact } from '@/lib/conviction/artifact-generator';
 import { sendDailyDirective }        from '@/lib/email/resend';
+import { apiError }                  from '@/lib/utils/api-error';
 import { extractFromConversation }   from '@/lib/extraction/conversation-extractor';
 import type { DirectiveItem }        from '@/lib/email/resend';
 import type { ConvictionArtifact }   from '@/lib/briefing/types';
@@ -145,8 +146,7 @@ async function handler(request: NextRequest) {
 
   const { data: entities, error } = await supabase.from('tkg_entities').select('user_id').eq('name', 'self');
   if (error) {
-    console.error('[daily-brief] tkg_entities query failed:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError(error, 'cron/daily-brief');
   }
 
   const userIds = [...new Set((entities ?? []).map((e: { user_id: string }) => e.user_id))];
@@ -224,19 +224,19 @@ async function handler(request: NextRequest) {
         }
         const actionId = await saveDirectiveAction(supabase, userId, result.value, result.attempts);
 
-        // Generate the artifact — the finished work product
+        // Generate the artifact — the finished work product; on failure attach fallback so approve still runs
         let artifact: ConvictionArtifact | null = null;
         try {
           artifact = await generateArtifact(userId, result.value);
-          // Save artifact to the action's execution_result
-          if (actionId && artifact) {
-            await supabase
-              .from('tkg_actions')
-              .update({ execution_result: { artifact } })
-              .eq('id', actionId);
-          }
-        } catch (artErr: any) {
-          console.warn(`[daily-brief] artifact generation failed for directive ${i}:`, artErr.message);
+        } catch (artErr: unknown) {
+          console.warn(`[daily-brief] artifact generation failed for directive ${i}:`, artErr instanceof Error ? artErr.message : artErr);
+          artifact = getFallbackArtifact(result.value);
+        }
+        if (actionId && artifact) {
+          await supabase
+            .from('tkg_actions')
+            .update({ execution_result: { artifact } })
+            .eq('id', actionId);
         }
 
         directiveItems.push({
@@ -284,13 +284,14 @@ async function handler(request: NextRequest) {
           // Skip if outcome already confirmed
           if (execResult.outcome) continue;
 
-          // Add outcome follow-up as a directive item in the email
+          // Add outcome follow-up as a directive item; isOutcomeFollowUp → email uses "It worked" / "Didn't work" links
           directiveItems.push({
             id: action.id,
             directive: `7 days ago you approved: "${action.directive_text}". Did it work?`,
             action_type: 'confirm_outcome' as any,
             confidence: 100,
             reason: `Executed on ${new Date(action.executed_at).toLocaleDateString()}. Tap to close the loop.`,
+            isOutcomeFollowUp: true,
           });
         }
       } catch (outcomeErr: any) {
