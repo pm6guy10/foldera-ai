@@ -1,14 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { google } from 'googleapis';
 import { decryptToken, isEncrypted } from '@/lib/crypto/token-encryption';
 import { encryptToken } from '@/lib/crypto/token-encryption';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 interface GoogleTokens {
   access_token: string;
@@ -26,7 +20,7 @@ interface MicrosoftTokens {
  * Retrieves and refreshes Google tokens for a user
  */
 export async function getGoogleTokens(userId: string): Promise<GoogleTokens | null> {
-  const { data, error } = await getSupabase()
+  const { data, error } = await createServerClient()
     .from('integrations')
     .select('credentials')
     .eq('user_id', userId)
@@ -90,7 +84,7 @@ async function refreshGoogleTokens(userId: string, tokens: GoogleTokens): Promis
       expires_at: newTokens.expiry_date,
     };
     
-    await getSupabase()
+    await createServerClient()
       .from('integrations')
       .update({ credentials: encryptedCredentials })
       .eq('user_id', userId)
@@ -107,7 +101,7 @@ async function refreshGoogleTokens(userId: string, tokens: GoogleTokens): Promis
  * Retrieves and refreshes Microsoft tokens for a user
  */
 export async function getMicrosoftTokens(userId: string): Promise<MicrosoftTokens | null> {
-  const { data, error } = await getSupabase()
+  const { data, error } = await createServerClient()
     .from('integrations')
     .select('credentials')
     .eq('user_id', userId)
@@ -177,7 +171,7 @@ async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens): 
       expires_at: newTokens.expires_at,
     };
     
-    await getSupabase()
+    await createServerClient()
       .from('integrations')
       .update({ credentials: encryptedCredentials })
       .eq('user_id', userId)
@@ -200,7 +194,7 @@ export async function saveTokens(
   provider: 'google' | 'azure_ad',
   credentials: GoogleTokens | MicrosoftTokens
 ): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   // Encrypt tokens before storing
   const encryptedCredentials: any = {
@@ -266,7 +260,7 @@ export async function saveTokens(
  * Checks if a user has connected a specific provider
  */
 export async function hasIntegration(userId: string, provider: 'google' | 'azure_ad'): Promise<boolean> {
-  const { data, error } = await getSupabase()
+  const { data, error } = await createServerClient()
     .from('integrations')
     .select('user_id')
     .eq('user_id', userId)

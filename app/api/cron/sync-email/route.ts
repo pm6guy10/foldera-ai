@@ -14,7 +14,7 @@
  */
 
 import { NextResponse }                from 'next/server';
-import { createClient }                from '@supabase/supabase-js';
+import { createServerClient }          from '@/lib/db/client';
 import { fetchOutlookEmails }          from '@/lib/integrations/outlook-client';
 import { fetchGmailEmails }            from '@/lib/integrations/gmail-client';
 import { extractFromConversation }     from '@/lib/extraction/conversation-extractor';
@@ -191,7 +191,7 @@ async function fetchGmailSentMail(userId: string, hoursBack: number): Promise<st
 // ---------------------------------------------------------------------------
 
 async function flagStaleDrafts(userId: string): Promise<number> {
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const supabase = createServerClient();
   let found = 0;
 
   // Outlook drafts

@@ -13,9 +13,9 @@
  * Stores outcome in execution_result JSONB so it's queryable.
  */
 
+import { createServerClient } from '@/lib/db/client';
 import { NextResponse }      from 'next/server';
 import { getServerSession }  from 'next-auth';
-import { createClient }      from '@supabase/supabase-js';
 import { getAuthOptions }    from '@/lib/auth/auth-options';
 import { apiError }         from '@/lib/utils/api-error';
 
@@ -24,12 +24,6 @@ export const dynamic = 'force-dynamic';
 const WEIGHTS = { worked: 2.0, didnt_work: -1.5 } as const;
 type Outcome = keyof typeof WEIGHTS;
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 export async function POST(request: Request) {
   // ── Auth ────────────────────────────────────────────────────────────────────
@@ -67,7 +61,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   // ── Fetch the action ────────────────────────────────────────────────────────
   const { data: action, error: fetchErr } = await supabase

@@ -16,8 +16,8 @@
  * Auth: CRON_SECRET Bearer token.
  */
 
+import { createServerClient } from '@/lib/db/client';
 import { NextResponse }                             from 'next/server';
-import { createClient }                             from '@supabase/supabase-js';
 import { scanReddit }                               from '@/lib/acquisition/reddit-scanner';
 import { scanTwitter }                              from '@/lib/acquisition/twitter-scanner';
 import { score100, meetsThreshold }                 from '@/lib/acquisition/scorer';
@@ -31,12 +31,6 @@ export const maxDuration = 300;
 
 type AnyPost = RedditPost | TwitterPost;
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 export async function GET(request: Request) {
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -51,7 +45,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
   }
 
-  const supabase      = getSupabase();
+  const supabase      = createServerClient();
   const log: string[] = [];
   let scanned         = 0;
   let passed70        = 0;

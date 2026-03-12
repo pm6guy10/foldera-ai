@@ -8,19 +8,13 @@
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { apiError } from '@/lib/utils/api-error';
 import { generateBriefing } from '@/lib/briefing/generator';
 
 export const dynamic = 'force-dynamic';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -47,7 +41,7 @@ export async function GET(request: Request) {
     }
     userId = process.env.INGEST_USER_ID ?? session.user.id;
   }
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   // Query today's brief + graph stats in parallel
   const [briefRow, signalsCount, commitmentsCount, entityRow] = await Promise.all([

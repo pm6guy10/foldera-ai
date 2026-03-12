@@ -18,7 +18,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import type { ChiefOfStaffBriefing, ConvictionDirective, ActionType, EvidenceItem } from './types';
 import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 import { getCoolingRelationships } from '@/lib/relationships/tracker';
@@ -33,12 +33,6 @@ function getAnthropic() {
   return _anthropic;
 }
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Conviction engine system prompt
@@ -248,7 +242,7 @@ ${negative.length > 0 ? `\nSKIPPED/REJECTED — user passed on these (negative s
 // ---------------------------------------------------------------------------
 
 export async function generateDirective(userId: string, count: number = 1): Promise<ConvictionDirective> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -522,7 +516,7 @@ export async function generateMultipleDirectives(
 // ---------------------------------------------------------------------------
 
 export async function generateBriefing(userId: string): Promise<ChiefOfStaffBriefing> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const directive = await generateDirective(userId);
 
   const brief: ChiefOfStaffBriefing = {

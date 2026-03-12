@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 
 export async function GET() {
   if (process.env.NODE_ENV === 'production') {
@@ -15,14 +15,7 @@ export async function GET() {
   }
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json({ error: 'Configuration error' }, { status: 500 });
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createServerClient();
     const { error } = await supabase.from('waitlist').select('id').limit(1);
 
     if (error) {

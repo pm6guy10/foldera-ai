@@ -15,18 +15,12 @@
 
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { randomUUID } from 'crypto';
 
 export const dynamic  = 'force-dynamic';
 export const maxDuration = 60;
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 let _anthropic: Anthropic | null = null;
 function getAnthropic() {
@@ -54,7 +48,7 @@ interface StaleContact {
 }
 
 async function findStaleContacts(userId: string): Promise<StaleContact[]> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: entities } = await supabase
@@ -156,7 +150,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const userId = process.env.INGEST_USER_ID;
   if (!userId) {
     return NextResponse.json({ error: 'INGEST_USER_ID not set' }, { status: 500 });

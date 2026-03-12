@@ -10,7 +10,7 @@
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { apiError } from '@/lib/utils/api-error';
 import { generateDirective } from '@/lib/briefing/generator';
@@ -18,12 +18,6 @@ import { generateArtifact } from '@/lib/conviction/artifact-generator';
 
 export const dynamic = 'force-dynamic';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function POST(request: Request) {
   // Auth — session or ingest secret
@@ -60,7 +54,7 @@ export async function POST(request: Request) {
     }
 
     // Log to tkg_actions
-    const supabase = getSupabase();
+    const supabase = createServerClient();
     const { data: action, error } = await supabase
       .from('tkg_actions')
       .insert({

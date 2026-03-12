@@ -4,7 +4,7 @@
  * Approve = artifact fully executed; feedback written to tkg_signals with idempotent keys.
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient, type SupabaseClient } from '@/lib/db/client';
 import { hasIntegration } from '@/lib/auth/token-store';
 import { sendGmailEmail } from '@/lib/integrations/gmail-client';
 import { sendOutlookEmail } from '@/lib/integrations/outlook-client';
@@ -29,12 +29,6 @@ export interface ExecuteActionResult {
   error?: string;
 }
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 /** Resolve artifact from action row: execution_result.artifact or legacy draft_type fields. */
 function resolveArtifact(action: Record<string, unknown>): Record<string, unknown> | null {
@@ -78,7 +72,7 @@ function resolveArtifact(action: Record<string, unknown>): Record<string, unknow
 
 /** Idempotent feedback signal insert. Skips if content_hash already exists for user. */
 async function insertFeedbackSignalIdempotent(
-  supabase: ReturnType<typeof getSupabase>,
+  supabase: SupabaseClient,
   userId: string,
   actionId: string,
   kind: 'approve' | 'skip',
@@ -117,7 +111,7 @@ async function executeArtifact(
   userId: string,
   artifact: Record<string, unknown>,
   actionId: string,
-  supabase: ReturnType<typeof getSupabase>,
+  supabase: SupabaseClient,
 ): Promise<Record<string, unknown>> {
   const type = (artifact.type as string) ?? '';
   const now = new Date().toISOString();
@@ -288,7 +282,7 @@ async function executeArtifact(
  */
 export async function executeAction(input: ExecuteActionInput): Promise<ExecuteActionResult> {
   const { userId, actionId, decision, skipReason } = input;
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   const { data: action, error: fetchErr } = await supabase
     .from('tkg_actions')

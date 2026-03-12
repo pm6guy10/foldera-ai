@@ -13,16 +13,10 @@
 
 import { NextResponse } from 'next/server';
 import { runLearningLoop, countDecisionsSinceLastAnalysis } from '@/lib/acquisition/learning-loop';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 
 export const maxDuration = 120;
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -58,7 +52,7 @@ export async function GET(request: Request) {
   }
 
   // Surface model update as a DraftQueue item so Brandon sees what changed
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const title    = `[Learning Loop] Scoring model updated to v${result.updated_weights.version}`;
 
   await supabase.from('tkg_actions').insert({

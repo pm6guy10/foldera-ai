@@ -17,7 +17,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import type {
   ConvictionDirective,
   ConvictionArtifact,
@@ -39,19 +39,13 @@ function getAnthropic() {
   return _anthropic;
 }
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Context loaders — pull graph data relevant to the artifact
 // ---------------------------------------------------------------------------
 
 async function loadRelationshipContext(userId: string, directive: string): Promise<string> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   // Pull entities with interaction history
   const { data: entities } = await supabase
@@ -74,7 +68,7 @@ async function loadRelationshipContext(userId: string, directive: string): Promi
 }
 
 async function loadRecentSignals(userId: string, limit = 10): Promise<string> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: signals } = await supabase
@@ -93,7 +87,7 @@ async function loadRecentSignals(userId: string, limit = 10): Promise<string> {
 }
 
 async function loadGoals(userId: string): Promise<string> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const { data: goals } = await supabase
     .from('tkg_goals')
     .select('goal_text, goal_category, priority')
@@ -109,7 +103,7 @@ async function loadGoals(userId: string): Promise<string> {
 }
 
 async function loadPatterns(userId: string): Promise<string> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const { data: entity } = await supabase
     .from('tkg_entities')
     .select('patterns')

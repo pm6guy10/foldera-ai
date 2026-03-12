@@ -8,18 +8,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { apiError, validationError } from '@/lib/utils/api-error';
 import { onboardSaveBodySchema } from '@/lib/utils/api-schemas';
 
 export const dynamic = 'force-dynamic';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function POST(request: NextRequest) {
   let raw: unknown;
@@ -36,7 +30,7 @@ export async function POST(request: NextRequest) {
   }
   const { email, tempUserId } = parsed.data;
 
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   const { error } = await supabase
     .from('waitlist')

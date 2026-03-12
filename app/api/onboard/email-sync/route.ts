@@ -17,14 +17,8 @@ import { getToken } from 'next-auth/jwt';
 import { google } from 'googleapis';
 import { authOptions } from '@/lib/auth/auth-options';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 function extractEmailBody(payload: any): string {
   if (!payload) return '';
@@ -54,7 +48,7 @@ function extractEmailBody(payload: any): string {
 }
 
 async function checkDensity(userId: string): Promise<{ patterns: number; commitments: number }> {
-  const supabase = getSupabase();
+  const supabase = createServerClient();
   const [entityRes, commitmentsRes] = await Promise.all([
     supabase.from('tkg_entities').select('patterns').eq('user_id', userId).eq('name', 'self').maybeSingle(),
     supabase.from('tkg_commitments').select('id', { count: 'exact', head: true }).eq('user_id', userId),

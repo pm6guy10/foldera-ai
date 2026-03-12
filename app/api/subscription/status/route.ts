@@ -9,17 +9,11 @@
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 
 export const dynamic = 'force-dynamic';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 export async function GET() {
   const session = await getServerSession(getAuthOptions());
@@ -28,7 +22,7 @@ export async function GET() {
   }
 
   const userId = session.user.id;
-  const supabase = getSupabase();
+  const supabase = createServerClient();
 
   const { data } = await supabase
     .from('user_subscriptions')

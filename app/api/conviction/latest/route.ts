@@ -8,18 +8,12 @@
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/db/client';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function GET(request: Request) {
   // Auth
@@ -45,7 +39,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const supabase = getSupabase();
+    const supabase = createServerClient();
 
     // Prefer most recent pending_approval
     const { data: action, error } = await supabase
