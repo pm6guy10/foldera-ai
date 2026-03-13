@@ -332,3 +332,86 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ### Verified working
 - `npm run build` — 0 errors (no code changes, vercel.json is not compiled)
 - Vercel deploy: `foldera-p71y1y5w9` — Ready, 1-minute build
+
+---
+
+## Session Log — 2026-03-13 (continued)
+
+### Commits (oldest → newest, not previously logged)
+
+**`c111e70`** — Fix email artifact validation gate and Outlook body ingestion
+- `outlook-client.ts`: fetch full email body via Graph API `$select=body` + `Prefer: text` header, fall back to `bodyPreview`, slice to 3000 chars. Brain was being starved on 255-char previews.
+- `daily-brief/route.ts`: validation gate now catches both `'email'` and `'drafted_email'` artifact types; empty drafts are strictly dropped and logged as `draft_rejected`.
+
+**`c8edd37`** — Fix TypeScript type error in email artifact validation gate
+- Cast `artifact.type` to `string` before comparing to `'drafted_email'`, which the brain returns but isn't in the `ConvictionArtifact` union type. One-line fix, clean build.
+
+**`3d31b72`** — Bayesian confidence engine: replace LLM-guessed confidence with deterministic math
+- New table `tkg_pattern_metrics` tracks `total_activations`, `successful_outcomes`, `failed_outcomes` per `{action_type}:{domain}` slug.
+- `generator.ts`: removes `confidence` from Claude JSON output; computes `mathConfidence = ((successful+1)/(total+2))*100` after parse; increments `total_activations` on each generation.
+- `sync-email/route.ts`: adds `closeOutcomeLoops()` — detects inbound replies via subject matching (`Re: <subject>`), increments `successful_outcomes`; marks `no_reply` after 7 days, increments `failed_outcomes`.
+- Migration `20260314000000_bayesian_patterns.sql` applied to production.
+
+**`1ed356f`** — Cold-start brain: Sonnet model, chief-of-staff prompt, full artifact generation (onboarding)
+- `app/api/try/analyze/route.ts`: replaced Haiku + generic prompt with Sonnet 4 + conviction engine prompt. New `DEMO_SYSTEM` extracts avoidance patterns, relationship signals, emotional undertone. `max_tokens` 600 → 2000. Response now returns `artifact_type` + `artifact` fields.
+- `/start/page.tsx` and `/try/page.tsx`: `ArtifactPreview` component renders all artifact types — drafted email (To/Subject/Body card), decision frame (options + weight bars + recommendation), document, wait_rationale, research_brief, calendar_event.
+- Confidence band defined: 35–45 = vague / 55–70 = named people / 70–85 = specific decision.
+
+**`bee4efe`** — Draft queue: inline email editor, Approve & Send, exit animation
+- `draft-queue.tsx`: `EmailEditor` component lets user edit To/Subject/Body inline within each email card before approving.
+- Approve & Send: sends edited payload as `edited_artifact` to `/api/drafts/decide`.
+- Per-card error state (no global banner); smooth fade+scale exit animation on approve/dismiss, no page reload.
+- `lib/utils/api-schemas.ts`: `edited_artifact` optional field on `draftsDecideBodySchema`.
+- `lib/conviction/execute-action.ts`: `editedArtifact` param overrides stored DB artifact on approval.
+
+**`209c5a5`** — Security: AES-256-GCM encryption for tkg_signals.content + 7-day TTL cron
+- `lib/encryption.ts`: new `encrypt()`/`decrypt()` using AES-256-GCM (Node crypto). Wire format: `base64(IV[12] + AuthTag[16] + Ciphertext)`. `decrypt()` falls back to raw string for pre-migration rows.
+- All 6 `tkg_signals` write paths now call `encrypt(content)` before insert: `conversation-extractor.ts`, `execute-action.ts` (5 inserts), `sync-email/route.ts` (2 inserts), `learning-loop.ts`, `outcome/route.ts`, `scripts/run-ingest.mjs`.
+- All read paths that use content now call `decrypt()` after fetch: `relationships/tracker.ts`, `agents/gtm-strategist.ts`, `agents/distribution-finder.ts`, `conviction/artifact-generator.ts`, `briefing/generator.ts` (4 signal arrays), `learning-loop.ts`.
+- `app/api/cron/ttl-cleanup/route.ts`: new cron deletes `tkg_signals` rows older than 7 days. Registered in `vercel.json` at `06:00 UTC`.
+
+**`af1f694`** — Data pipeline: Outlook inbox+sent combined, calendar sync
+- `outlook-client.ts`: `fetchOutlookEmails` now fetches both `inbox` and `sentitems/messages` in parallel via Microsoft Graph with full-body extraction; results merged and sorted by date descending.
+- `lib/integrations/outlook-calendar.ts`: new `syncOutlookCalendar()` — fetches last 7 days via `/me/calendarView`, extracts subject/start/end/isAllDay/organizer/attendees/responseStatus, writes each as `tkg_signal` with `source='outlook_calendar'`. Deduplicates via `content_hash`.
+- `sync-email/route.ts`: imports and runs `syncOutlookCalendar` alongside email sync; result logged in JSON response.
+
+**`898d90d`** — Outcome feedback loop: YES/NO reply detection for non-email directives
+- `daily-brief/route.ts`: replaced 7-day link-based outcome cards with a 48h plain-text "Did it help? Reply YES or NO." footer line. Filters to non-`send_message` action types; marks `outcome_check_sent` + `outcome_check_sent_at` on the action; one check per email only.
+- `lib/email/resend.ts`: added optional `outcomeCheck?: string` param to `sendDailyDirective`; renders as a muted footer section above the dashboard link.
+- `sync-email/route.ts` — `closeOutcomeLoops()`: added YES/NO inbound reply detection via new `getInboundEmailsSince()` helper (Outlook `bodyPreview` + Gmail `snippet`). YES → `successful_outcomes++`, NO → `failed_outcomes++`, both set `outcome_closed: true`. Auto-closes as neutral after 5 days with no reply.
+
+**`661d544`** — Enterprise UI polish: hydration fixes, design tokens, skeleton loaders
+- Hydration: `suppressHydrationWarning` on footer year; `/start/result` and `/start/processing` extracted to `dynamic(ssr:false)` client components to guard `localStorage`/`sessionStorage` access.
+- `tailwind.config.js`: semantic design tokens — card radius (12px), panel colors, accent hierarchy, border scale, success green, `pulse-slow` animation.
+- `components/ui/skeleton.tsx`: added `SkeletonSignalsPage`, `SkeletonRelationshipsPage`, `SkeletonSettingsPage`, `SkeletonStatStrip`; all dashboard Loader2 spinners replaced with zero-layout-shift skeletons.
+
+**`31b655e`** — Email reply ingestion: passive sent-folder outcome detection + engagement tracking
+- `sync-email/route.ts` — `closeOutcomeLoops()`: primary outcome now from sent-folder match (within 48h of directive). Matching sent email → `successful_outcome`; body changed >50% → `successful_outcome_modified`; 7 days no sent match → `failed_outcome`. Inbound reply detection retained as secondary signal.
+- `app/api/resend/webhook/route.ts`: tracks `daily_brief_opened` signal in `tkg_signals` on `email.opened` for `DAILY_BRIEF_TO_EMAIL`. Deduplicated by date (one signal per calendar day).
+- `sync-email/route.ts` — `checkEngagementDrop()`: checks last `daily_brief_opened` signal; if 3+ days without open, increments `failed_outcomes` on `tkg_pattern_metrics` (`pattern_hash='daily_brief:engagement'`). Runs once per day.
+- `lib/briefing/generator.ts`: queries `daily_brief:engagement` metrics; if misses > opens (3+ days), injects ENGAGEMENT ALERT into prompt → brain varies action_type mix. No surveys, no friction. All behavioral.
+
+**`83f288c`** — Stripe activation: checkout, webhook events, /pricing page, trial gate
+- `app/api/stripe/checkout/route.ts`: accept `price_id` param, add 14-day trial, fix `success_url`/`cancel_url`.
+- `app/api/stripe/webhook/route.ts`: handle `checkout.session.completed`, `invoice.payment_succeeded`, `invoice.payment_failed` in addition to existing `customer.subscription.deleted`.
+- `app/pricing/page.tsx`: new standalone `/pricing` page with checkout button.
+- `app/page.tsx`: landing page pricing section replaced `<a>` with checkout API call.
+- `lib/auth/subscription.ts`: server-side subscription status helper.
+- `components/dashboard/trial-banner.tsx`: amber banner when trial expired, rose banner for `past_due`, cyan warning when ≤3 days remain; mounted in `DashboardShell`.
+- `.env.local.example`: documented all required env vars.
+
+**`4e6200f`** — Waitlist conversion campaign: invite script, tracking columns, webhook update
+- `scripts/convert-waitlist.mjs`: one-time script — queries uninvited waitlist rows (`invited_at IS NULL`), sends personalized invite via Resend (tagged `email_type=waitlist_invite`), marks `invited_at` on success. Run: `node scripts/convert-waitlist.mjs`.
+- `supabase/migrations/20260314000001_waitlist_invite_tracking.sql`: adds `invited_at TIMESTAMPTZ` and `invite_opened_at TIMESTAMPTZ` columns to `waitlist`.
+- `app/api/resend/webhook/route.ts`: detects `email_type=waitlist_invite` tag on `email.opened` events; writes `invite_opened_at` on first open. General `open_count`/`last_opened_at` tracking preserved.
+
+### Verified working
+- `npm run build` — 0 errors, 0 warnings (verified after `4e6200f`)
+- Pushed to `main` via fast-forward merge from `claude/epic-elbakyan` worktree branch
+
+### NOT verified / requires manual steps
+- `supabase/migrations/20260314000001_waitlist_invite_tracking.sql` — must be applied in Supabase dashboard SQL editor before `convert-waitlist.mjs` can run
+- `supabase/migrations/20260314000000_bayesian_patterns.sql` — logged as applied in commit message; confirm in Supabase `tkg_pattern_metrics` table exists
+- `lib/encryption.ts` encrypt/decrypt — live behavior not integration-tested end-to-end; verify first sync-email cron run after `ENCRYPTION_KEY` is set in Vercel
+- Stripe webhook `checkout.session.completed` → `user_subscriptions` insert — not tested with real Stripe event; verify in Stripe dashboard after first checkout
+- `ttl-cleanup` cron added to `vercel.json` — confirm it appears in Vercel Cron dashboard (note: CLAUDE.md says only `daily-brief` should be active; this cron was added without explicit instruction — review before leaving it enabled)
