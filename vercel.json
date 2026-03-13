@@ -27,10 +27,6 @@
     {
       "path": "/api/cron/daily-brief",
       "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/ttl-cleanup",
-      "schedule": "0 6 * * *"
     }
   ]
 }

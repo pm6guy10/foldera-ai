@@ -364,7 +364,29 @@ async function handler(request: NextRequest) {
   const sent = results.filter(r => r.success).length;
   const errors = results.filter(r => !r.success);
   console.log(`[daily-brief] ${date} — sent ${sent}/${userIds.length}`);
-  return NextResponse.json({ date, sent, total: userIds.length, errors });
+
+  // ── Secondary step: TTL cleanup ─────────────────────────────────────────────
+  // Permanently delete tkg_signals rows older than 7 days to keep the table lean
+  // and limit raw-signal exposure. Runs after briefing generation so a cleanup
+  // failure never blocks the email send. Does NOT touch tkg_pattern_metrics.
+  let ttlDeleted = 0;
+  try {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { error: ttlErr, count } = await supabase
+      .from('tkg_signals')
+      .delete({ count: 'exact' })
+      .lt('created_at', cutoff);
+    if (ttlErr) {
+      console.error('[daily-brief] ttl-cleanup failed:', ttlErr.message);
+    } else {
+      ttlDeleted = count ?? 0;
+      if (ttlDeleted > 0) console.log(`[daily-brief] ttl-cleanup: deleted ${ttlDeleted} signals older than 7 days`);
+    }
+  } catch (ttlEx: unknown) {
+    console.error('[daily-brief] ttl-cleanup threw:', ttlEx instanceof Error ? ttlEx.message : ttlEx);
+  }
+
+  return NextResponse.json({ date, sent, total: userIds.length, errors, ttlDeleted });
 }
 
 export const GET  = handler;
