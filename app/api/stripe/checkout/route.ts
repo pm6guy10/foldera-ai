@@ -2,7 +2,8 @@
  * POST /api/stripe/checkout
  *
  * Creates a Stripe Checkout Session for the Pro plan and returns the URL.
- * Starter tier removed — only pro plan exists.
+ * Accepts an optional price_id parameter; defaults to STRIPE_PRO_PRICE_ID.
+ * Includes a 14-day free trial on every new subscription.
  *
  * Required env vars:
  *   STRIPE_SECRET_KEY
@@ -23,9 +24,10 @@ function getStripe() {
 }
 
 export async function POST(req: NextRequest) {
-  await req.json().catch(() => ({})); // consume body; plan param ignored — always pro
+  const body = await req.json().catch(() => ({}));
+  const requestedPriceId: string | undefined = body?.price_id;
 
-  const priceId = process.env.STRIPE_PRO_PRICE_ID;
+  const priceId = requestedPriceId || process.env.STRIPE_PRO_PRICE_ID;
   if (!priceId) {
     return NextResponse.json(
       { error: 'STRIPE_PRO_PRICE_ID not configured' },
@@ -45,8 +47,11 @@ export async function POST(req: NextRequest) {
     const checkout = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${baseUrl}/dashboard?subscribed=1`,
-      cancel_url:  `${baseUrl}/start/result`,
+      subscription_data: {
+        trial_period_days: 14,
+      },
+      success_url: `${baseUrl}/dashboard?upgraded=true`,
+      cancel_url:  `${baseUrl}/pricing`,
       ...(email ? { customer_email: email } : {}),
       ...(userId ? { client_reference_id: userId } : {}),
     });
