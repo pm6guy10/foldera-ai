@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowRight, Brain } from 'lucide-react';
+import { ArrowRight, Layers } from 'lucide-react';
 
 const ACTION_LABELS: Record<string, string> = {
   write_document: 'Write',
@@ -65,22 +65,20 @@ export default function TryPage() {
 
   return (
     <div
-      className="min-h-screen bg-[#0B0B0C] text-[#F5F5F5]"
+      className="min-h-[100dvh] bg-[#000] text-white antialiased"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      <style dangerouslySetInnerHTML={{ __html: `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');` }} />
-
       {/* Nav */}
-      <nav className="px-5 py-5 flex items-center justify-between max-w-3xl mx-auto">
-        <a href="/" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-500 to-emerald-400 flex items-center justify-center">
-            <Brain className="w-3.5 h-3.5 text-white" />
+      <nav className="px-6 py-6 flex items-center justify-between max-w-3xl mx-auto">
+        <a href="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+            <Layers className="w-5 h-5 fill-black" aria-hidden="true" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">Foldera</span>
+          <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
         </a>
         <a
           href="/start"
-          className="px-4 py-2 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-semibold transition-colors"
+          className="px-7 py-3 rounded-full bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]"
         >
           Get started
         </a>
@@ -90,11 +88,11 @@ export default function TryPage() {
 
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-3" style={{ letterSpacing: '-0.02em' }}>
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-white mb-4">
             Get your read
           </h1>
-          <p className="text-zinc-500 text-base">
-            Paste a paragraph about what you're working on or struggling with right now.
+          <p className="text-zinc-400 text-base font-medium">
+            Paste a paragraph about what you&apos;re working on or struggling with right now.
           </p>
         </div>
 
@@ -106,7 +104,7 @@ export default function TryPage() {
               onChange={e => setText(e.target.value)}
               placeholder="E.g. I've been going back and forth on whether to leave my job. I have a competing offer that pays 30% more but means relocating. I've been sitting on this for two weeks and haven't told my manager yet..."
               rows={7}
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors leading-relaxed"
+              className="w-full bg-zinc-950/80 border border-white/10 rounded-2xl px-5 py-4 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors leading-relaxed backdrop-blur-sm"
             />
             {error && (
               <p className="text-red-400 text-sm font-mono">{error}</p>
@@ -114,7 +112,7 @@ export default function TryPage() {
             <button
               type="submit"
               disabled={!text.trim() || loading}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-white text-black font-semibold text-base hover:bg-zinc-100 transition-colors disabled:opacity-40"
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all disabled:opacity-40 shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:scale-[1.01] active:scale-95"
             >
               {loading ? (
                 <>
@@ -131,7 +129,7 @@ export default function TryPage() {
         {/* Result card */}
         {result && (
           <div className="space-y-8">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-7">
+            <div className="bg-zinc-950/80 border border-white/10 rounded-[2rem] p-7 backdrop-blur-sm">
 
               {/* Action badge + confidence */}
               <div className="flex items-center justify-between mb-6">
@@ -186,19 +184,19 @@ export default function TryPage() {
             </p>
 
             {/* CTA */}
-            <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-7 text-center space-y-5">
-              <p className="text-zinc-400 text-base leading-relaxed">
+            <div className="bg-zinc-950/60 border border-white/5 rounded-[2rem] p-8 text-center space-y-6 backdrop-blur-sm">
+              <p className="text-zinc-400 text-base leading-relaxed font-medium">
                 That was based on one paragraph.<br />
                 Imagine what Foldera does with 30 days of your actual history.
               </p>
               <a
                 href="/start"
-                className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-white text-black font-semibold text-sm hover:bg-zinc-100 transition-colors group"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all group shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95"
               >
                 Connect your history
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </a>
-              <p className="text-zinc-700 text-xs">14 days free · No credit card required</p>
+              <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">14 days free · No credit card required</p>
             </div>
 
             {/* Try again */}

@@ -2,7 +2,7 @@
 
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
-import { ArrowRight, Brain } from 'lucide-react';
+import { ArrowRight, Layers } from 'lucide-react';
 
 interface Directive {
   directive: string;
@@ -73,9 +73,9 @@ export default function StartPage() {
     const actionColor = ACTION_COLORS[result.action_type] ?? ACTION_COLORS.research;
 
     return (
-      <main className="min-h-screen bg-[#0B0B0C] text-white flex flex-col items-center justify-center px-6 py-16" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <main className="min-h-[100dvh] bg-[#000] text-white flex flex-col items-center justify-center px-6 py-16 antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
         <div className="max-w-2xl w-full">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-8">
+          <div className="bg-zinc-950/80 border border-white/10 rounded-[2rem] p-8 mb-8 backdrop-blur-sm">
             <div className="flex items-center justify-between mb-6">
               <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${actionColor}`}>
                 {actionLabel}
@@ -111,7 +111,7 @@ export default function StartPage() {
             )}
           </div>
 
-          <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-8 text-center space-y-5">
+          <div className="bg-zinc-950/60 border border-white/5 rounded-[2rem] p-8 text-center space-y-5 backdrop-blur-sm">
             <p className="text-zinc-400 text-base leading-relaxed">
               That was based on one paragraph.<br />
               Imagine what Foldera does with 30 days of your actual history.
@@ -120,7 +120,7 @@ export default function StartPage() {
               <button
                 onClick={() => handleOAuth('google')}
                 disabled={!!loadingProvider}
-                className="flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-3 px-6 rounded-xl transition-all disabled:opacity-60"
+                className="flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-3 px-6 rounded-2xl transition-all disabled:opacity-60"
               >
                 <GoogleIcon />
                 Connect with Google
@@ -128,7 +128,7 @@ export default function StartPage() {
               <button
                 onClick={() => handleOAuth('azure-ad')}
                 disabled={!!loadingProvider}
-                className="flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0078d4] font-semibold py-3 px-6 rounded-xl transition-all disabled:opacity-60"
+                className="flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0078d4] font-semibold py-3 px-6 rounded-2xl transition-all disabled:opacity-60"
               >
                 <MicrosoftIcon />
                 Connect with Microsoft
@@ -154,22 +154,22 @@ export default function StartPage() {
 
   // ── Main view: OAuth buttons + paste option ───────────────────────────────
   return (
-    <main className="min-h-screen bg-[#0B0B0C] text-white flex flex-col items-center justify-center px-6" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <main className="min-h-[100dvh] bg-[#000] text-white flex flex-col items-center justify-center px-6 antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
       <div className="max-w-lg w-full text-center">
-        <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-500 to-emerald-400 flex items-center justify-center">
-            <Brain className="w-3.5 h-3.5 text-white" />
+        <div className="flex items-center justify-center gap-3 mb-10">
+          <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+            <Layers className="w-5 h-5 fill-black" aria-hidden="true" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">Foldera</span>
+          <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-5">
+        <h1 className="text-4xl sm:text-5xl font-black tracking-tighter leading-tight mb-5">
           Connect your history.<br />
           Get your first read<br />
           in 60 seconds.
         </h1>
 
-        <p className="text-zinc-400 text-lg leading-relaxed mb-10">
+        <p className="text-zinc-400 text-lg leading-relaxed mb-10 font-medium">
           Your patterns are already in your email.<br />
           We just make them visible.
         </p>
@@ -178,7 +178,7 @@ export default function StartPage() {
           <button
             onClick={() => handleOAuth('google')}
             disabled={!!loadingProvider}
-            className="w-full max-w-sm mx-auto flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-4 px-8 rounded-xl text-lg transition-all shadow-lg disabled:opacity-60"
+            className="w-full max-w-sm mx-auto flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-4 px-8 rounded-2xl transition-all shadow-lg disabled:opacity-60"
           >
             {loadingProvider === 'google' ? <LoadingSpinner /> : (
               <>
@@ -191,7 +191,7 @@ export default function StartPage() {
           <button
             onClick={() => handleOAuth('azure-ad')}
             disabled={!!loadingProvider}
-            className="w-full max-w-sm mx-auto flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0078d4] font-semibold py-4 px-8 rounded-xl text-lg transition-all shadow-lg disabled:opacity-60"
+            className="w-full max-w-sm mx-auto flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0078d4] font-semibold py-4 px-8 rounded-2xl transition-all shadow-lg disabled:opacity-60"
           >
             {loadingProvider === 'azure-ad' ? <LoadingSpinner /> : (
               <>
@@ -221,13 +221,13 @@ export default function StartPage() {
               onChange={e => setText(e.target.value)}
               placeholder="Paste a paragraph about what you're working on or struggling with..."
               rows={5}
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors"
+              className="w-full bg-zinc-950/80 border border-white/10 rounded-2xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors backdrop-blur-sm"
             />
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button
               type="submit"
               disabled={!text.trim() || analyzing}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black disabled:opacity-40 font-semibold text-sm transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white hover:bg-zinc-200 text-black disabled:opacity-40 font-black uppercase tracking-[0.15em] text-xs transition-all"
             >
               {analyzing ? (
                 <>

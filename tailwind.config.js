@@ -48,10 +48,12 @@ module.exports = {
 
       // ─── Animations ────────────────────────────────────────────────────
       animation: {
-        'shimmer':    'shimmer 2s linear infinite',
-        'fade-in':    'fadeIn 0.2s ease-out',
-        'slide-up':   'slideUp 0.2s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'shimmer':      'shimmer 2s linear infinite',
+        'fade-in':      'fadeIn 0.2s ease-out',
+        'slide-up':     'slideUp 0.2s ease-out',
+        'pulse-slow':   'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'pulse-fast':   'pulseFast 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'gradient-x':   'gradientX 10s ease infinite',
       },
       keyframes: {
         shimmer: {
@@ -65,6 +67,15 @@ module.exports = {
         slideUp: {
           '0%':   { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        pulseFast: {
+          '0%, 100%': { opacity: '0.8', transform: 'scale(1)' },
+          '50%':      { opacity: '1',   transform: 'scale(1.02)' },
+        },
+        gradientX: {
+          '0%':   { backgroundPosition: '0% 50%' },
+          '50%':  { backgroundPosition: '100% 50%' },
+          '100%': { backgroundPosition: '0% 50%' },
         },
       },
     },

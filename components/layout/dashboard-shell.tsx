@@ -13,19 +13,16 @@ interface DashboardShellProps {
 
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-50">
-      {/* Gradient background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 -z-10" />
-      
+    <div className="min-h-screen bg-[#000] text-zinc-50">
       {/* Subtle grid pattern */}
-      <div 
-        className="fixed inset-0 -z-10 opacity-[0.02]"
+      <div
+        className="fixed inset-0 -z-10"
         style={{
           backgroundImage: `
-            linear-gradient(to right, rgb(255 255 255 / 0.1) 1px, transparent 1px),
-            linear-gradient(to bottom, rgb(255 255 255 / 0.1) 1px, transparent 1px)
+            linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)
           `,
-          backgroundSize: '64px 64px',
+          backgroundSize: '40px 40px',
         }}
       />
       

@@ -7,30 +7,30 @@
 /* === BASE BODY === */
 body {
   color: #e5e7eb;
-  background-color: #0a0a0f;
+  background-color: #000;
   min-height: 100vh;
   min-height: -webkit-fill-available;
   overflow-x: hidden;
 }
 
-/* === GRID OVERLAY (subtle depth) === */
+/* === GRID OVERLAY (subtle depth — dashboard only) === */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   background-image:
-    linear-gradient(rgba(45, 55, 72, 0.5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(45, 55, 72, 0.5) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 60px 60px;
-  opacity: 0.1;
+  opacity: 0.5;
   pointer-events: none;
 }
 
 /* === OPT-IN CARD STYLES (dashboard only) === */
 .card {
   background: #111827;
-  border: 1px solid #334155;
+  border: 1px solid #27272a;
   border-radius: 0.75rem;
   padding: 1.25rem;
   box-shadow: 0 2px 6px rgba(0,0,0,0.4);
@@ -72,7 +72,7 @@ body::before {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
-  border: 1px solid #334155;
+  border: 1px solid #3f3f46;
   background: transparent;
   color: #e5e7eb;
 }
