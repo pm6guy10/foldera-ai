@@ -1,20 +1,20 @@
 /**
- * Conviction Engine — generates the single highest-leverage action today.
+ * Conviction Engine — the brain.
  *
- * Data sources: tkg_signals, tkg_commitments, tkg_entities, tkg_goals
- * Feedback:     tkg_actions (feedback_weight IS NOT NULL — prior approvals/skips)
- * AI model:     claude-sonnet-4-6
- * Output:       ConvictionDirective (one directive, not a report)
+ * Generates the single highest-leverage action today.
+ * Not a summary. Not a recommendation. A specific directive with a finished artifact.
+ *
+ * Data sources: tkg_signals, tkg_commitments, tkg_entities, tkg_goals, tkg_actions (feedback)
+ * AI model:     directive = claude-sonnet-4-20250514
+ *               artifact  = claude-haiku-4-5-20251001 (via artifact-generator.ts)
+ * Output:       ConvictionDirective (one directive + embedded artifact)
  *
  * Learning loop:
  *   executed rows  → feedback_weight  +1.0 → positive signal
  *   skipped rows   → feedback_weight  -0.5 → negative signal
  *   rejected rows  → feedback_weight  -1.0 → strong negative signal
- *   The feedback section in the user prompt penalizes repeated rejects
- *   and boosts patterns that have worked before.
  *
- * Also exports generateBriefing() for backwards compat with
- * /api/briefing/latest (wraps the conviction directive into the old shape).
+ * Also exports generateBriefing() for backwards compat with /api/briefing/latest.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -22,6 +22,7 @@ import { createServerClient } from '@/lib/db/client';
 import type { ChiefOfStaffBriefing, ConvictionDirective, ActionType, EvidenceItem } from './types';
 import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 import { getCoolingRelationships } from '@/lib/relationships/tracker';
+import { trackApiCall, isOverDailyLimit } from '@/lib/utils/api-tracker';
 
 // ---------------------------------------------------------------------------
 // Clients (lazy)
@@ -33,86 +34,49 @@ function getAnthropic() {
   return _anthropic;
 }
 
-
 // ---------------------------------------------------------------------------
-// Conviction engine system prompt
-// One directive. No hedging. No lists.
-// Includes feedback-loop instructions.
+// Chief-of-Staff system prompt
+// Replaced: summarizer → strategic thinker
 // ---------------------------------------------------------------------------
 
-const CONVICTION_SYSTEM = `You are a conviction engine embedded inside a personal chief-of-staff system.
+const CONVICTION_SYSTEM = `You are a chief of staff who knows everything about this person. You have their goals, behavioral patterns, commitments, approval/skip history, and current signals.
 
-You have access to this person's complete behavioral history: every decision they have made, every pattern identified in their conversations, every commitment they have taken on, and every goal they have declared.
+Your job is NOT to summarize. Your job is to find the ONE thing they should do today that they haven't thought of yet.
 
-Your only job is to identify the single highest-leverage action they should take TODAY.
+Rules:
+- NEVER repeat a directive the user already approved. If they approved "wait on MAS3" yesterday, find the next thing.
+- NEVER produce a directive the user obviously knows. "Be present with family" is a greeting card, not insight.
+- Every directive MUST include a concrete artifact: drafted email, specific task with deadline, document to review, decision with two options. No artifact = not a directive.
+- Confidence score reflects SPECIFICITY not CERTAINTY. Vague but true = 30%. Specific with evidence = 85%+.
+- Scan ALL data sources not just the loudest signal. Check: approaching deadlines, unanswered threads, commitments not acted on, patterns predicting failure, calendar gaps, financial triggers, relationship maintenance.
+- Before outputting, test: "Would a $200/hr chief of staff say this or be embarrassed?" If embarrassed, go deeper.
+- When the strategic answer is "do nothing today," surface a DIFFERENT domain. Career quiet? Surface family, financial, health, or project task. Never go dark because one thread paused.
 
-Not a summary. Not a list. One directive.
+ALREADY APPROVED (last 7 days) — do not repeat or rephrase these:
+{APPROVED_SECTION}
 
-CURRENT PRIORITIES — the user has explicitly stated what matters most right now.
-Weight every recommendation against these current priorities.
-If a directive doesn't serve one of these, it should have overwhelming evidence to justify itself.
+SKIPPED (last 7 days) — do not regenerate similar unless new evidence:
+{SKIPPED_SECTION}
 
-Evaluate the full context — current priorities first, then goals, active commitments, behavioral patterns, recent signals — and surface the action that will move the needle most given what you know about how this person actually behaves (not just what they say they will do).
+ACTIVE GOALS — every directive must connect to one:
+{GOALS_SECTION}
 
-The action_type must be one of:
-- write_document: create a document, plan, or written artifact
-- send_message: reach out to a specific person
-- make_decision: commit to one path and stop deliberating
-- do_nothing: the highest-leverage move is to wait and let something resolve
-- schedule: block time or create a calendar commitment
-- research: gather specific information before the next decision point
+CONFIRMED PATTERNS (detection_count >= 3) — predictive inputs:
+{PATTERNS_SECTION}
 
-The reason must be one sentence citing specific behavioral evidence from their history (e.g., "You have asked Claude about this job three times in 90 days without acting, and your pattern data shows you stall on high-stakes career decisions when clarity is available").
-
-The evidence array must contain 2-5 specific items from their graph (signal dates, commitment descriptions, pattern names, or goal text) that directly justify this directive.
-
-The confidence score reflects how many times this pattern has appeared and produced a known outcome. 90+ means you have seen this exact scenario resolve this exact way multiple times. Below 50 means the evidence is suggestive but thin.
-
-FEEDBACK LEARNING RULES — when FEEDBACK HISTORY is provided:
-- action_types with a negative net weight have been rejected by this person before. Strongly avoid recommending them again unless the behavioral evidence is overwhelming and qualitatively different from the prior rejected cases.
-- action_types with a positive net weight have been confirmed effective. Favor them when the evidence supports.
-- Look beyond action_type: if the REJECTED section shows a similar directive text or reasoning pattern to what you were about to recommend, that is a strong signal to pivot to a different action type or framing.
-- A history of repeated skips on the same pattern is itself a behavioral signal — factor it into your confidence score.
-
-SKIP REASON LEARNING — when skip reasons are present in feedback:
-- "not_relevant": the user's priorities have shifted or the directive missed what matters. Check CURRENT PRIORITIES and avoid similar topics unless priorities change.
-- "already_handled": the user already took care of this. Check for duplicate patterns and avoid recommending actions the user tends to handle proactively.
-- "wrong_approach": the action type or framing was wrong. The underlying need may be real but needs a different action_type or angle. Try a different approach.
-
-TEMPORAL AWARENESS — use the provided date, day of week, and upcoming events to weight urgency and timing of directives.
-Directives that are time-sensitive should get higher confidence. Deadlines within 7 days are urgent.
-
-RELATIONSHIP INTELLIGENCE — when COOLING RELATIONSHIPS are provided:
-- These are people whose engagement is declining. Consider reaching out.
-- If a current priority involves relationships, cooling contacts are high-priority directive candidates.
-- Don't spam send_message directives — only recommend outreach when the relationship serves a goal.
-
-AVOIDANCE SIGNALS — when DRAFT AVOIDANCE data is present:
-- Drafts sitting unsent for >48h indicate decisions the user is avoiding.
-- Consider surfacing these as high-priority directives with a different framing.
-- Avoidance is itself a behavioral pattern — factor it into your confidence score.
-
-SEARCH FLAGS — set these when the artifact will need current external information:
-- requires_search: true if the artifact needs current data from the web (job postings, prices, availability, deadlines, reviews, contact info, event details). False if the artifact can be fully produced from the user's graph data alone.
-- search_context: if requires_search is true, describe specifically what to search for (e.g. "WA DOT engineer job posting", "Italian restaurants near downtown Seattle with outdoor seating", "ESD unemployment claim follow-up process Washington state").
-
-Return JSON only — no prose outside the JSON:
+Output JSON only — no prose outside the JSON:
 {
-  "directive": "The action in plain English, written as an instruction to the user",
-  "action_type": "write_document | send_message | make_decision | do_nothing | schedule | research",
+  "directive": "one sentence imperative",
+  "artifact_type": "drafted_email | document | decision | calendar_event | research_brief | wait_rationale",
+  "artifact": <the actual finished work product as a JSON object — for drafted_email: {"to":"...","subject":"...","body":"..."}, for document: {"title":"...","content":"..."}, for calendar_event: {"title":"...","start":"ISO8601","end":"ISO8601","description":"..."}, for research_brief: {"findings":"...","sources":[],"recommended_action":"..."}, for decision: {"options":[{"option":"...","weight":0.0,"rationale":"..."}],"recommendation":"..."}, for wait_rationale: {"context":"...","evidence":"..."}>,
   "confidence": 0,
-  "reason": "One sentence citing specific behavioral evidence",
-  "evidence": [
-    { "type": "signal | commitment | goal | pattern", "description": "specific item", "date": "YYYY-MM-DD or null" }
-  ],
-  "fullContext": "2-3 sentences of additional context the user can read if they want more detail",
-  "requires_search": false,
-  "search_context": null
+  "evidence": "one sentence citing specific data",
+  "domain": "career | family | financial | health | project",
+  "why_now": "one sentence why today"
 }`;
 
 // ---------------------------------------------------------------------------
-// Build approval-rate section (per-type suppression / boosting)
-// Uses status counts — separate from the weight-based feedback section.
+// Approval rate section builder
 // ---------------------------------------------------------------------------
 
 interface ApprovalRow {
@@ -180,7 +144,7 @@ function buildApprovalRateSection(rows: ApprovalRow[]): string {
 }
 
 // ---------------------------------------------------------------------------
-// Build feedback section from prior evaluated directives
+// Feedback section builder
 // ---------------------------------------------------------------------------
 
 interface FeedbackRow {
@@ -200,7 +164,6 @@ function buildFeedbackSection(rows: FeedbackRow[]): string {
   const positive = rows.filter(r => (r.feedback_weight ?? 0) > 0);
   const negative = rows.filter(r => (r.feedback_weight ?? 0) < 0);
 
-  // Net weight per action_type
   const netByType: Record<string, number> = {};
   for (const r of rows) {
     netByType[r.action_type] = (netByType[r.action_type] ?? 0) + (r.feedback_weight ?? 0);
@@ -238,16 +201,49 @@ ${negative.length > 0 ? `\nSKIPPED/REJECTED — user passed on these (negative s
 }
 
 // ---------------------------------------------------------------------------
+// Map artifact_type → action_type for backwards compat
+// ---------------------------------------------------------------------------
+
+const ARTIFACT_TYPE_TO_ACTION_TYPE: Record<string, ActionType> = {
+  drafted_email:   'send_message',
+  document:        'write_document',
+  decision:        'make_decision',
+  calendar_event:  'schedule',
+  research_brief:  'research',
+  wait_rationale:  'do_nothing',
+};
+
+// ---------------------------------------------------------------------------
 // Main export — generateDirective
 // ---------------------------------------------------------------------------
 
 export async function generateDirective(userId: string, count: number = 1): Promise<ConvictionDirective> {
+  // Check daily spend cap before any generation
+  const overLimit = await isOverDailyLimit();
+  if (overLimit) {
+    console.warn('[generateDirective] Daily spend cap reached — skipping generation');
+    return {
+      directive: 'Daily AI budget reached. Foldera will resume tomorrow.',
+      action_type: 'do_nothing',
+      confidence: 0,
+      reason: 'Daily spend cap of $1.50 reached. Generation paused until UTC midnight.',
+      evidence: [],
+    };
+  }
+
   const supabase = createServerClient();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysAgo  = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000).toISOString();
   const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Pull all data sources in parallel — including feedback history, approval rates, and current priorities
-  const [signalsRes, commitmentsRes, entityRes, goalsRes, currentPrioritiesRes, feedbackRes, approvalStatsRes, calendarRes, avoidanceRes, activeGoalsRes, recentOutcomesRes] = await Promise.all([
+  // Pull all data sources in parallel
+  const [
+    signalsRes, commitmentsRes, entityRes, goalsRes,
+    currentPrioritiesRes, feedbackRes, approvalStatsRes,
+    calendarRes, avoidanceRes, activeGoalsRes, recentOutcomesRes,
+    // New: approved last 7d, skipped last 7d, confirmed patterns
+    approvedRecentRes, skippedRecentRes, confirmedPatternsGoalsRes,
+  ] = await Promise.all([
     supabase
       .from('tkg_signals')
       .select('type, source, content, occurred_at')
@@ -279,7 +275,6 @@ export async function generateDirective(userId: string, count: number = 1): Prom
       .order('priority', { ascending: false })
       .limit(10),
 
-    // Current priorities: user-declared "what matters most right now"
     supabase
       .from('tkg_goals')
       .select('goal_text, goal_category')
@@ -287,7 +282,6 @@ export async function generateDirective(userId: string, count: number = 1): Prom
       .eq('current_priority', true)
       .limit(3),
 
-    // Feedback: all rows that have been evaluated (feedback_weight IS NOT NULL)
     supabase
       .from('tkg_actions')
       .select('id, action_type, directive_text, reason, status, feedback_weight, generated_at, skip_reason')
@@ -296,7 +290,6 @@ export async function generateDirective(userId: string, count: number = 1): Prom
       .order('generated_at', { ascending: false })
       .limit(30),
 
-    // Approval rates: all acted-on rows (status not pending/draft) for rate calculation
     supabase
       .from('tkg_actions')
       .select('action_type, status, generated_at')
@@ -306,7 +299,6 @@ export async function generateDirective(userId: string, count: number = 1): Prom
       .order('generated_at', { ascending: false })
       .limit(100),
 
-    // Calendar events in the next 7 days
     supabase
       .from('tkg_signals')
       .select('content, occurred_at')
@@ -317,7 +309,6 @@ export async function generateDirective(userId: string, count: number = 1): Prom
       .order('occurred_at', { ascending: true })
       .limit(10),
 
-    // Avoidance signals: drafts sitting unsent for >48h
     supabase
       .from('tkg_signals')
       .select('content, occurred_at')
@@ -327,7 +318,6 @@ export async function generateDirective(userId: string, count: number = 1): Prom
       .order('occurred_at', { ascending: false })
       .limit(5),
 
-    // Active goals from extraction pipeline (status='active', most recently updated)
     supabase
       .from('tkg_goals')
       .select('goal_text, goal_type')
@@ -336,13 +326,41 @@ export async function generateDirective(userId: string, count: number = 1): Prom
       .order('updated_at', { ascending: false })
       .limit(5),
 
-    // Confirmed outcomes from tkg_signals (outcome_label set by /api/conviction/outcome)
     supabase
       .from('tkg_signals')
       .select('outcome_label, content, created_at')
       .eq('user_id', userId)
       .not('outcome_label', 'is', null)
       .order('created_at', { ascending: false })
+      .limit(10),
+
+    // ALREADY APPROVED last 7 days — pass to Claude: do not repeat
+    supabase
+      .from('tkg_actions')
+      .select('directive_text, action_type, generated_at')
+      .eq('user_id', userId)
+      .eq('status', 'executed')
+      .gte('generated_at', sevenDaysAgo)
+      .order('generated_at', { ascending: false })
+      .limit(10),
+
+    // SKIPPED last 7 days — pass to Claude: do not repeat similar
+    supabase
+      .from('tkg_actions')
+      .select('directive_text, action_type, skip_reason, generated_at')
+      .eq('user_id', userId)
+      .in('status', ['skipped', 'draft_rejected', 'rejected'])
+      .gte('generated_at', sevenDaysAgo)
+      .order('generated_at', { ascending: false })
+      .limit(10),
+
+    // Active goals — every directive must connect to one
+    supabase
+      .from('tkg_goals')
+      .select('goal_text, goal_category, priority')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('priority', { ascending: false })
       .limit(10),
   ]);
 
@@ -357,6 +375,9 @@ export async function generateDirective(userId: string, count: number = 1): Prom
   const avoidanceSignals = avoidanceRes.data ?? [];
   const activeGoals      = activeGoalsRes.data ?? [];
   const recentOutcomes   = recentOutcomesRes.data ?? [];
+  const approvedRecent   = approvedRecentRes.data ?? [];
+  const skippedRecent    = skippedRecentRes.data ?? [];
+  const confirmedGoals   = confirmedPatternsGoalsRes.data ?? [];
 
   // Empty graph
   if (signals.length === 0 && commitments.length === 0 && goals.length === 0) {
@@ -381,24 +402,23 @@ export async function generateDirective(userId: string, count: number = 1): Prom
     })
     .join('\n');
 
-  const patternLines = Object.values(patterns)
-    .map((p: any) => `• ${p.name} (${p.activation_count}× across domains: ${p.domain}): ${p.description}`)
-    .join('\n') || 'None extracted yet.';
+  // Confirmed patterns (detection_count >= 3 via activation_count in stored JSON)
+  const confirmedPatternLines = Object.values(patterns)
+    .filter((p: any) => (p.activation_count ?? 0) >= 3)
+    .map((p: any) => `• ${p.name} (${p.activation_count}× / domain:${p.domain}): ${p.description}`)
+    .join('\n') || 'None with 3+ confirmations yet.';
 
   const goalLines = goals.length > 0
     ? goals.map((g: any) => `• [${g.goal_category}, priority ${g.priority}/5] ${g.goal_text}`).join('\n')
     : 'No declared goals yet.';
 
-  // Feedback section (empty string if no history — no noise added)
-  const feedbackSection    = buildFeedbackSection(feedback);
+  const feedbackSection     = buildFeedbackSection(feedback);
   const approvalRateSection = buildApprovalRateSection(approvalRows);
 
-  // Current priorities — at the very top, above goals
   const currentPriorityLines = currentPriorities.length > 0
     ? currentPriorities.map((p: any) => `• [${p.goal_category}] ${p.goal_text}`).join('\n')
     : 'None set — use all goals equally.';
 
-  // Temporal context — date, day of week, upcoming events, milestones
   const now = new Date();
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -408,7 +428,6 @@ export async function generateDirective(userId: string, count: number = 1): Prom
     ? calendarEvents.map((e: any) => `  • ${(e.content as string).slice(0, 120)} (${new Date(e.occurred_at as string).toLocaleDateString()})`).join('\n')
     : '  No upcoming events synced.';
 
-  // Pull milestones from goals with time horizons
   const milestonesFromGoals = goals
     .filter((g: any) => g.time_horizon)
     .map((g: any) => `  • ${g.goal_text} (${g.time_horizon})`)
@@ -433,23 +452,44 @@ ${milestonesFromGoals ? `MILESTONES:\n${milestonesFromGoals}` : ''}`;
     ? `\nAVOIDANCE SIGNALS (drafts sitting unsent >48h — decisions being avoided):\n${avoidanceLines}`
     : '';
 
-  // Active goals block — omit entirely if none exist (no noise for empty graph)
   const activeGoalsBlock = activeGoals.length > 0
     ? `\nACTIVE GOALS (extracted from your conversations — measured against every directive):\n` +
       activeGoals.map((g: any) => `- ${g.goal_text}${g.goal_type ? ` (${g.goal_type})` : ''}`).join('\n')
     : '';
 
-  // Recent outcomes block — omit entirely if none exist
   const recentOutcomesBlock = recentOutcomes.length > 0
     ? `\nRECENT OUTCOMES (what you confirmed worked or didn't — use to weight similar directives):\n` +
       recentOutcomes.map((o: any) => {
-        // Strip "Outcome confirmed: LABEL — " prefix to get the action summary
         const summary = (o.content as string).replace(/^Outcome confirmed: [A-Z_]+ — /, '').slice(0, 150);
         return `- ${o.outcome_label}: ${summary}`;
       }).join('\n')
     : '';
 
-  // Build count instruction
+  // NEW: Already approved last 7 days
+  const approvedSection = approvedRecent.length > 0
+    ? approvedRecent.map((a: any) => `  • [${a.action_type}] ${a.directive_text.slice(0, 120)}`).join('\n')
+    : '  None in last 7 days.';
+
+  // NEW: Skipped last 7 days
+  const skippedSection = skippedRecent.length > 0
+    ? skippedRecent.map((a: any) => {
+        const reason = a.skip_reason ? ` (${a.skip_reason})` : '';
+        return `  • [${a.action_type}]${reason} ${a.directive_text.slice(0, 120)}`;
+      }).join('\n')
+    : '  None in last 7 days.';
+
+  // NEW: Active goals for patterns section
+  const confirmedGoalsSection = confirmedGoals.length > 0
+    ? confirmedGoals.map((g: any) => `  • [${g.goal_category}, p${g.priority}] ${g.goal_text}`).join('\n')
+    : '  No active goals.';
+
+  // Build the system prompt with injected sections
+  const systemPrompt = CONVICTION_SYSTEM
+    .replace('{APPROVED_SECTION}', approvedSection)
+    .replace('{SKIPPED_SECTION}', skippedSection)
+    .replace('{GOALS_SECTION}', confirmedGoalsSection)
+    .replace('{PATTERNS_SECTION}', confirmedPatternLines);
+
   const countInstruction = count > 1
     ? `Identify the top ${count} highest-leverage actions for today, ranked by confidence. Return a JSON array of ${count} directive objects.`
     : 'Identify the single highest-leverage action for today. Return only the JSON directive.';
@@ -465,8 +505,8 @@ ${goalLines}
 ACTIVE COMMITMENTS (${commitments.length} total):
 ${commitmentLines || 'None.'}
 
-BEHAVIORAL PATTERNS (from ${Object.keys(patterns).length} identified patterns):
-${patternLines}
+BEHAVIORAL PATTERNS (${Object.keys(patterns).length} identified):
+${Object.values(patterns).map((p: any) => `• ${p.name} (${p.activation_count}×): ${p.description}`).join('\n') || 'None extracted yet.'}
 
 RECENT SIGNALS (last 30 days, ${signals.length} total):
 ${signalLines || 'None.'}
@@ -478,13 +518,20 @@ ${activeGoalsBlock}
 ${recentOutcomesBlock}
 ${countInstruction}`;
 
-  // Call Claude
+  // Call Claude — sonnet-4-20250514 for the final directive
+  const MODEL = 'claude-sonnet-4-20250514';
+
   type ParsedDirective = {
     directive: string;
-    action_type: ActionType;
+    artifact_type: string;
+    artifact?: any;
     confidence: number;
-    reason: string;
-    evidence: EvidenceItem[];
+    evidence: string;
+    domain?: string;
+    why_now?: string;
+    // Legacy fields (fallback compat)
+    action_type?: ActionType;
+    reason?: string;
     fullContext?: string;
     requires_search?: boolean;
     search_context?: string | null;
@@ -494,18 +541,26 @@ ${countInstruction}`;
 
   try {
     const response = await getAnthropic().messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: count > 1 ? 3000 : 1000,
+      model: MODEL,
+      max_tokens: count > 1 ? 4000 : 2000,
       temperature: 0.3 as any,
-      system: CONVICTION_SYSTEM,
+      system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    // Track API usage
+    await trackApiCall({
+      userId,
+      model: MODEL,
+      inputTokens:  response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      callType: 'directive',
     });
 
     const raw = response.content[0].type === 'text' ? response.content[0].text : '';
     const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
     const result = JSON.parse(cleaned);
 
-    // Handle both single object and array responses
     if (Array.isArray(result)) {
       parsed = result[0] ?? null;
     } else {
@@ -515,16 +570,42 @@ ${countInstruction}`;
     console.error('[generateDirective] Claude call/parse failed:', err);
   }
 
+  if (!parsed) {
+    return {
+      directive: 'Generation failed — check ANTHROPIC_API_KEY.',
+      action_type: 'research',
+      confidence: 0,
+      reason: '',
+      evidence: [],
+    };
+  }
+
+  // Map artifact_type → action_type for backwards compat
+  const actionType: ActionType =
+    parsed.action_type ??
+    ARTIFACT_TYPE_TO_ACTION_TYPE[parsed.artifact_type] ??
+    'research';
+
+  // Normalise evidence — new format is a string, old format is an array
+  const evidenceItems: EvidenceItem[] = typeof parsed.evidence === 'string'
+    ? [{ type: 'signal', description: parsed.evidence, date: null as any }]
+    : (Array.isArray(parsed.evidence) ? parsed.evidence : []);
+
   return {
-    directive:       parsed?.directive       ?? 'Generation failed — check ANTHROPIC_API_KEY.',
-    action_type:     parsed?.action_type     ?? 'research',
-    confidence:      parsed?.confidence      ?? 0,
-    reason:          parsed?.reason          ?? '',
-    evidence:        parsed?.evidence        ?? [],
-    fullContext:      parsed?.fullContext,
-    requires_search: parsed?.requires_search ?? false,
-    search_context:  parsed?.search_context  ?? undefined,
-  };
+    directive:       parsed.directive       ?? 'Generation failed.',
+    action_type:     actionType,
+    confidence:      parsed.confidence      ?? 0,
+    reason:          parsed.reason          ?? parsed.why_now ?? parsed.evidence ?? '',
+    evidence:        evidenceItems,
+    fullContext:      parsed.why_now ?? parsed.fullContext,
+    // Embed the artifact inline so callers can skip a separate artifact-generator call
+    embeddedArtifact: parsed.artifact       ?? undefined,
+    embeddedArtifactType: parsed.artifact_type ?? undefined,
+    domain:          parsed.domain          ?? undefined,
+    why_now:         parsed.why_now         ?? undefined,
+    requires_search: parsed.requires_search ?? false,
+    search_context:  parsed.search_context  ?? undefined,
+  } as ConvictionDirective & { embeddedArtifact?: any; embeddedArtifactType?: string; domain?: string; why_now?: string };
 }
 
 /**
@@ -544,7 +625,6 @@ export async function generateMultipleDirectives(
       console.error(`[generateMultipleDirectives] directive ${i} failed:`, err);
     }
   }
-  // Sort by confidence descending
   directives.sort((a, b) => b.confidence - a.confidence);
   return directives;
 }
@@ -567,7 +647,6 @@ export async function generateBriefing(userId: string): Promise<ChiefOfStaffBrie
     fullBrief:    directive.fullContext ?? directive.reason,
   };
 
-  // Write to tkg_briefings (best-effort)
   const { error: writeErr } = await supabase.from('tkg_briefings').insert({
     user_id:            userId,
     briefing_date:      brief.briefingDate,

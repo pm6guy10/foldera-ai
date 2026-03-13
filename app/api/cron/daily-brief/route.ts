@@ -224,6 +224,31 @@ async function handler(request: NextRequest) {
           console.warn(`[daily-brief] artifact generation failed for directive ${i}:`, artErr instanceof Error ? artErr.message : artErr);
           artifact = getFallbackArtifact(result.value);
         }
+        // Fix 1: Validate email artifacts — do not stage empty drafts
+        if (artifact && artifact.type === 'email') {
+          const emailArtifact = artifact as import('@/lib/briefing/types').EmailArtifact;
+          const missingFields: string[] = [];
+          if (!emailArtifact.to?.trim())      missingFields.push('recipient');
+          if (!emailArtifact.subject?.trim()) missingFields.push('subject');
+          if (!emailArtifact.body?.trim())    missingFields.push('body');
+
+          if (missingFields.length > 0) {
+            const errorMsg = `Email artifact validation failed: missing ${missingFields.join(', ')}`;
+            console.warn(`[daily-brief] ${errorMsg} — not staging directive`);
+            // Log as generation_error instead of staging
+            if (actionId) {
+              await supabase
+                .from('tkg_actions')
+                .update({
+                  status: 'draft_rejected',
+                  execution_result: { generation_error: errorMsg, artifact_type: 'email' },
+                })
+                .eq('id', actionId);
+            }
+            continue; // Skip staging this directive
+          }
+        }
+
         if (actionId && artifact) {
           await supabase
             .from('tkg_actions')

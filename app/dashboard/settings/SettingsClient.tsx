@@ -3,9 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 
+interface SpendSummary {
+  todayUSD: number;
+  monthUSD: number;
+  dailyCapUSD: number;
+  capPct: number;
+}
+
 export default function SettingsClient() {
   const { data: session, status } = useSession();
   const [integrations, setIntegrations] = useState<any[]>([]);
+  const [spend, setSpend] = useState<SpendSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
@@ -17,46 +25,40 @@ export default function SettingsClient() {
       return;
     }
 
-    const fetchIntegrations = async () => {
+    const fetchData = async () => {
       try {
-        // Fetch from API route (uses service role to bypass RLS)
-        const response = await fetch('/api/integrations/status');
-        
-        if (!response.ok) {
-          const errorData = await response.json();
+        const [intRes, spendRes] = await Promise.all([
+          fetch('/api/integrations/status'),
+          fetch('/api/settings/spend'),
+        ]);
+
+        if (!intRes.ok) {
+          const errorData = await intRes.json();
           throw new Error(errorData.error || 'Failed to fetch integrations');
         }
 
-        const { integrations: fetchedIntegrations } = await response.json();
+        const { integrations: fetchedIntegrations } = await intRes.json();
         setIntegrations(fetchedIntegrations || []);
         setLastChecked(new Date());
-        setLoading(false);
-        
-        // Debug log to help troubleshoot
-        if (fetchedIntegrations && fetchedIntegrations.length > 0) {
-          console.log('[Settings] Integrations loaded:', fetchedIntegrations.map((i: any) => ({
-            provider: i.provider,
-            is_active: i.is_active
-          })));
-        } else {
-          console.log('[Settings] No integrations found. User may need to sign in again.');
+
+        if (spendRes.ok) {
+          const spendData = await spendRes.json();
+          setSpend(spendData);
         }
+
+        setLoading(false);
       } catch (err: any) {
-        console.error("Fetch error:", err);
+        console.error('Fetch error:', err);
         setError(err.message);
         setLoading(false);
       }
     };
 
-    fetchIntegrations();
-    // Refresh every 5s to catch the "Green Dot" update after OAuth flow
-    const interval = setInterval(fetchIntegrations, 5000);
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, [session, status]);
 
-  // --- RENDERING ---
-  
-  // Show loading state
   if (status === 'loading' || loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -65,7 +67,6 @@ export default function SettingsClient() {
     );
   }
 
-  // Show sign-in prompt if not authenticated
   if (status !== 'authenticated') {
     return (
       <div className="flex items-center justify-center py-20">
@@ -90,7 +91,6 @@ export default function SettingsClient() {
     );
   }
 
-  // Main view — no full-page wrapper; the dashboard shell provides the background
   return (
     <div className="space-y-8">
       {/* HEADER */}
@@ -101,7 +101,6 @@ export default function SettingsClient() {
 
       {/* CONNECTORS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* GMAIL CARD */}
         <ConnectorCard
           name="Gmail"
           description="Email intelligence"
@@ -109,8 +108,6 @@ export default function SettingsClient() {
           isConnected={integrations.some(i => i.provider === 'google' && i.is_active)}
           onConnect={() => signIn('google', { callbackUrl: '/dashboard/settings' })}
         />
-
-        {/* OUTLOOK CARD */}
         <ConnectorCard
           name="Outlook"
           description="Calendar & email"
@@ -119,6 +116,38 @@ export default function SettingsClient() {
           onConnect={() => signIn('azure-ad', { callbackUrl: '/dashboard/settings' })}
         />
       </div>
+
+      {/* API SPEND */}
+      {spend !== null && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-zinc-300 mb-4">AI Usage</h2>
+          <div className="space-y-3">
+            {/* Daily cap bar */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-xs text-zinc-400">Today</span>
+                <span className="text-xs text-zinc-400">
+                  ${spend.todayUSD.toFixed(4)} / ${spend.dailyCapUSD.toFixed(2)} cap
+                </span>
+              </div>
+              <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    spend.capPct >= 90 ? 'bg-red-500' : spend.capPct >= 70 ? 'bg-amber-500' : 'bg-cyan-500'
+                  }`}
+                  style={{ width: `${spend.capPct}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Month total */}
+            <div className="flex justify-between items-center pt-1">
+              <span className="text-xs text-zinc-500">This month</span>
+              <span className="text-xs text-zinc-400">${spend.monthUSD.toFixed(4)}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <p className="text-zinc-600 text-xs">All integrations secured with OAuth 2.0.</p>
     </div>

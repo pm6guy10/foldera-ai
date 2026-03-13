@@ -28,6 +28,7 @@ import type {
   DecisionFrameArtifact,
   AffirmationArtifact,
 } from '@/lib/briefing/types';
+import { trackApiCall } from '@/lib/utils/api-tracker';
 
 // ---------------------------------------------------------------------------
 // Clients (lazy)
@@ -295,10 +296,24 @@ Explain why waiting is correct. Return JSON only.`,
 // Main export
 // ---------------------------------------------------------------------------
 
+// Use haiku for artifact generation (data retrieval and context assembly)
+// Sonnet reserved for final directive generation only
+const ARTIFACT_MODEL = 'claude-haiku-4-5-20251001';
+
 export async function generateArtifact(
   userId: string,
   directive: ConvictionDirective,
 ): Promise<ConvictionArtifact> {
+  // If the directive already contains an embedded artifact (from new brain), use it directly
+  const d = directive as ConvictionDirective & { embeddedArtifact?: any; embeddedArtifactType?: string };
+  if (d.embeddedArtifact) {
+    try {
+      return validateArtifact(directive.action_type, d.embeddedArtifact);
+    } catch {
+      // Fall through to generation
+    }
+  }
+
   // Load context in parallel
   const [relationships, signals, goals, patterns] = await Promise.all([
     loadRelationshipContext(userId, directive.directive),
@@ -325,12 +340,21 @@ export async function generateArtifact(
 
   try {
     const response = await getAnthropic().messages.create({
-      model: 'claude-sonnet-4-6',
+      model: ARTIFACT_MODEL,
       max_tokens: 4000,
       temperature: 0.3 as any,
       system,
       messages: [{ role: 'user', content: user }],
       ...(tools.length > 0 ? { tools } : {}),
+    });
+
+    // Track API usage
+    await trackApiCall({
+      userId,
+      model: ARTIFACT_MODEL,
+      inputTokens:  response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      callType: 'artifact',
     });
 
     // Extract text from response — may contain web_search_tool_result blocks too

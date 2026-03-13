@@ -25,7 +25,12 @@ function loadEnv(filePath) {
     const eq = trimmed.indexOf('=');
     if (eq === -1) continue;
     const key = trimmed.slice(0, eq).trim();
-    const val = trimmed.slice(eq + 1).trim();
+    let val = trimmed.slice(eq + 1).trim();
+    // Strip surrounding quotes (single or double)
+    if ((val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
     if (!process.env[key]) process.env[key] = val;
   }
 }
@@ -48,47 +53,31 @@ const supabase  = createClient(
 );
 
 // ---------------------------------------------------------------------------
-// Conviction system prompt — one directive, feedback-aware
+// Chief-of-Staff system prompt — v2 brain
 // ---------------------------------------------------------------------------
 
-const CONVICTION_SYSTEM = `You are a conviction engine embedded inside a personal chief-of-staff system.
+const CONVICTION_SYSTEM = `You are a chief of staff who knows everything about this person. You have their goals, behavioral patterns, commitments, approval/skip history, and current signals.
 
-You have access to this person's complete behavioral history: every decision they have made, every pattern identified in their conversations, every commitment they have taken on, and every goal they have declared.
+Your job is NOT to summarize. Your job is to find the ONE thing they should do today that they haven't thought of yet.
 
-Your only job is to identify the single highest-leverage action they should take TODAY.
+Rules:
+- NEVER repeat a directive the user already approved. If they approved "wait on MAS3" yesterday, find the next thing.
+- NEVER produce a directive the user obviously knows. "Be present with family" is a greeting card, not insight.
+- Every directive MUST include a concrete artifact: drafted email, specific task with deadline, document to review, decision with two options. No artifact = not a directive.
+- Confidence score reflects SPECIFICITY not CERTAINTY. Vague but true = 30%. Specific with evidence = 85%+.
+- Scan ALL data sources not just the loudest signal. Check: approaching deadlines, unanswered threads, commitments not acted on, patterns predicting failure, calendar gaps, financial triggers, relationship maintenance.
+- Before outputting, test: "Would a $200/hr chief of staff say this or be embarrassed?" If embarrassed, go deeper.
+- When the strategic answer is "do nothing today," surface a DIFFERENT domain. Career quiet? Surface family, financial, health, or project task. Never go dark because one thread paused.
 
-Not a summary. Not a list. One directive.
-
-Evaluate the full context — goals, active commitments, behavioral patterns, recent signals — and surface the action that will move the needle most given what you know about how this person actually behaves (not just what they say they will do).
-
-The action_type must be one of:
-- write_document: create a document, plan, or written artifact
-- send_message: reach out to a specific person
-- make_decision: commit to one path and stop deliberating
-- do_nothing: the highest-leverage move is to wait and let something resolve
-- schedule: block time or create a calendar commitment
-- research: gather specific information before the next decision point
-
-The reason must be one sentence citing specific behavioral evidence from their history.
-
-The evidence array must contain 2-5 specific items from their graph that directly justify this directive.
-
-FEEDBACK LEARNING RULES — when FEEDBACK HISTORY is provided:
-- action_types with a negative net weight have been rejected by this person before. Strongly avoid recommending them unless evidence is qualitatively different from prior rejected cases.
-- action_types with a positive net weight have been confirmed effective. Favor them when the evidence supports.
-- If the REJECTED section shows a similar directive text or reasoning pattern to what you were about to recommend, pivot to a different action type or framing.
-- Repeated skips on the same pattern are a behavioral signal — lower your confidence if recommending a pattern the user has skipped before.
-
-Return JSON only:
+Output JSON only — no prose outside the JSON:
 {
-  "directive": "The action in plain English, written as an instruction to the user",
-  "action_type": "write_document | send_message | make_decision | do_nothing | schedule | research",
+  "directive": "one sentence imperative",
+  "artifact_type": "drafted_email | document | decision | calendar_event | research_brief | wait_rationale",
+  "artifact": <the actual finished work product as a JSON object — for drafted_email: {"to":"...","subject":"...","body":"..."}, for document: {"title":"...","content":"..."}, for calendar_event: {"title":"...","start":"ISO8601","end":"ISO8601","description":"..."}, for research_brief: {"findings":"...","sources":[],"recommended_action":"..."}, for decision: {"options":[{"option":"...","weight":0.0,"rationale":"..."}],"recommendation":"..."}, for wait_rationale: {"context":"...","evidence":"..."}>,
   "confidence": 0,
-  "reason": "One sentence citing specific behavioral evidence",
-  "evidence": [
-    { "type": "signal | commitment | goal | pattern", "description": "specific item", "date": "YYYY-MM-DD or null" }
-  ],
-  "fullContext": "2-3 sentences of additional context"
+  "evidence": "one sentence citing specific data",
+  "domain": "career | family | financial | health | project",
+  "why_now": "one sentence why today"
 }`;
 
 // ---------------------------------------------------------------------------
@@ -320,8 +309,8 @@ console.log('Calling Claude (conviction engine + feedback)...\n');
 // ---------------------------------------------------------------------------
 
 const response = await anthropic.messages.create({
-  model:      'claude-sonnet-4-6',
-  max_tokens: 1000,
+  model:      'claude-sonnet-4-20250514',
+  max_tokens: 2000,
   temperature: 0.3,
   system:     CONVICTION_SYSTEM,
   messages:   [{ role: 'user', content: userPrompt }],
@@ -340,17 +329,32 @@ try {
 // Write to tkg_actions
 // ---------------------------------------------------------------------------
 
+// Map artifact_type → action_type for storage
+const ARTIFACT_TO_ACTION = {
+  drafted_email:   'send_message',
+  document:        'write_document',
+  decision:        'make_decision',
+  calendar_event:  'schedule',
+  research_brief:  'research',
+  wait_rationale:  'do_nothing',
+};
+const actionType = parsed.action_type ?? ARTIFACT_TO_ACTION[parsed.artifact_type] ?? 'research';
+const evidenceArr = typeof parsed.evidence === 'string'
+  ? [{ type: 'signal', description: parsed.evidence, date: null }]
+  : (parsed.evidence ?? []);
+
 const { data: actionRow, error: actionErr } = await supabase
   .from('tkg_actions')
   .insert({
     user_id:        USER_ID,
     directive_text: parsed.directive,
-    action_type:    parsed.action_type,
+    action_type:    actionType,
     confidence:     parsed.confidence,
-    reason:         parsed.reason,
-    evidence:       parsed.evidence ?? [],
+    reason:         parsed.why_now ?? parsed.reason ?? parsed.evidence ?? '',
+    evidence:       evidenceArr,
     status:         'pending_approval',
     generated_at:   new Date().toISOString(),
+    execution_result: parsed.artifact ? { artifact: parsed.artifact } : null,
   })
   .select('id')
   .single();
@@ -395,24 +399,32 @@ const ACTION_EMOJI = {
   research:       '🔍',
 };
 
+// Support both old action_type and new artifact_type
+const displayType = parsed.artifact_type ?? parsed.action_type ?? 'unknown';
+
 console.log('═'.repeat(60));
 console.log('CONVICTION DIRECTIVE — ' + today);
 console.log('═'.repeat(60));
 console.log('');
-console.log(`${ACTION_EMOJI[parsed.action_type] ?? '▶'} [${parsed.action_type.toUpperCase()}]`);
+console.log(`${ACTION_EMOJI[displayType] ?? ACTION_EMOJI[parsed.action_type] ?? '▶'} [${displayType.toUpperCase()}]`);
+if (parsed.domain) console.log(`DOMAIN     : ${parsed.domain}`);
 console.log('');
 console.log(parsed.directive);
 console.log('');
 console.log('─'.repeat(60));
 console.log(`CONFIDENCE : ${parsed.confidence}/100`);
-console.log(`REASON     : ${parsed.reason}`);
+console.log(`EVIDENCE   : ${typeof parsed.evidence === 'string' ? parsed.evidence : JSON.stringify(parsed.evidence)}`);
+if (parsed.why_now) console.log(`WHY NOW    : ${parsed.why_now}`);
+if (parsed.reason)  console.log(`REASON     : ${parsed.reason}`);
 console.log('─'.repeat(60));
 
-if (parsed.evidence && parsed.evidence.length > 0) {
-  console.log('\nEVIDENCE:');
-  parsed.evidence.forEach(e => {
-    console.log(`  [${e.type}] ${e.description}${e.date ? ' (' + e.date + ')' : ''}`);
-  });
+if (parsed.artifact) {
+  console.log('\nARTIFACT:');
+  if (typeof parsed.artifact === 'object') {
+    console.log(JSON.stringify(parsed.artifact, null, 2));
+  } else {
+    console.log(parsed.artifact);
+  }
 }
 
 if (parsed.fullContext) {
@@ -433,7 +445,7 @@ if (!prevDirective) {
 } else {
   const prevType    = prevDirective.action_type;
   const prevConf    = prevDirective.confidence;
-  const newType     = parsed.action_type;
+  const newType     = parsed.artifact_type ?? parsed.action_type ?? 'unknown';
   const newConf     = parsed.confidence;
   const typeChanged = prevType !== newType;
   const confDelta   = newConf - prevConf;

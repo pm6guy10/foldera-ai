@@ -228,7 +228,7 @@ function getTypeIndicator(type: ChaosElement['type']) {
     case 'notification':
       return { color: 'bg-red-500/80', label: 'Error' };
     case 'document':
-      return { color: 'bg-violet-500/80', label: 'Doc' };
+      return { color: 'bg-cyan-500/80', label: 'Doc' };
     case 'message':
       return { color: 'bg-green-500/80', label: 'Message' };
     case 'calendar':
@@ -243,7 +243,7 @@ function getTypeIndicator(type: ChaosElement['type']) {
 // ─── Action type metadata ────────────────────────────────────────────────────
 
 const ACTION_META: Record<ActionTypeBadge, { label: string; icon: React.ElementType; color: string }> = {
-  write_document: { label: 'Write', icon: FileText, color: 'text-violet-400' },
+  write_document: { label: 'Write', icon: FileText, color: 'text-cyan-400' },
   schedule: { label: 'Schedule', icon: CalendarIcon, color: 'text-emerald-400' },
 };
 
@@ -321,7 +321,7 @@ export default function ChaosToClarity() {
         Foldera doesn&apos;t give advice.
         <br className="hidden sm:block" />
         {' '}
-        <span className="bg-gradient-to-r from-violet-400 to-violet-300 bg-clip-text text-transparent">
+        <span className="bg-gradient-to-r from-cyan-400 to-cyan-300 bg-clip-text text-transparent">
           It does the work.
         </span>
       </motion.h1>
@@ -348,16 +348,16 @@ export default function ChaosToClarity() {
                     onClick={() => startScenario(scenario)}
                     className="group relative flex items-center gap-3 px-6 py-5 rounded-2xl
                       border border-white/10 bg-white/[0.03] backdrop-blur-xl
-                      hover:border-violet-500/40 hover:bg-violet-600/[0.06]
+                      hover:border-cyan-500/40 hover:bg-cyan-600/[0.06]
                       transition-all duration-300 cursor-pointer
                       min-h-[64px] sm:flex-1"
                   >
                     {/* Hover glow */}
-                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-600/0 to-violet-400/0 group-hover:from-violet-600/5 group-hover:to-violet-400/5 transition-all duration-300" />
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-cyan-600/0 to-cyan-400/0 group-hover:from-cyan-600/5 group-hover:to-cyan-400/5 transition-all duration-300" />
 
                     <div className="relative flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-violet-600/15 flex items-center justify-center shrink-0">
-                        <Icon className="w-5 h-5 text-violet-400" />
+                      <div className="w-10 h-10 rounded-xl bg-cyan-600/15 flex items-center justify-center shrink-0">
+                        <Icon className="w-5 h-5 text-cyan-400" />
                       </div>
                       <span className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors text-left">
                         {scenario.label}
@@ -432,7 +432,7 @@ export default function ChaosToClarity() {
                 animate={{ opacity: 1, x: '-50%' }}
                 transition={{ delay: 1.5, duration: 0.3 }}
               >
-                <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-violet-600 to-violet-400 flex items-center justify-center">
+                <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-cyan-600 to-cyan-400 flex items-center justify-center">
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
@@ -459,7 +459,7 @@ export default function ChaosToClarity() {
 
                 {/* Card header */}
                 <div className="px-5 py-3 border-b border-zinc-800 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-violet-400" />
+                  <Shield className="w-4 h-4 text-cyan-400" />
                   <span className="text-zinc-200 font-semibold text-sm uppercase tracking-wider">
                     Today&apos;s Read
                   </span>
