@@ -18,9 +18,27 @@ Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env
 
 ## Build Status
 - Phase 1: done
-- Phase 2: not started
+- Phase 2: in progress
 - Phase 3: not started
 - Phase 4: not started
+
+---
+
+## Product Spec — the whole thing
+
+Foldera has one user flow that matters:
+
+1. **Nightly:** cron runs, ingests signals from connected sources, updates identity graph
+2. **Morning:** generator runs, queries goals + patterns + action history, produces single directive with artifact via chief-of-staff prompt
+3. **Email:** directive + full artifact delivered to user inbox at 7am. **This is the primary product surface.**
+4. **Dashboard:** user opens only if they want to approve/skip, review history, or teach Foldera something new. Secondary surface.
+5. **Approve:** artifact executes (send email, create doc, log decision). Logged as positive signal.
+6. **Skip:** logged as negative signal. Terminal message shown. No regeneration until tomorrow.
+7. **Learn:** approval and skip history feed back into next generation cycle. Engine gets smarter.
+
+Every feature must serve this loop. If it doesn't, cut it.
+
+Every CC session starts by reading this spec. If a task contradicts the spec, flag it and ask.
 
 ---
 
