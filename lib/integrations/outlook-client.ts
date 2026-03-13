@@ -14,6 +14,7 @@ interface GraphMessage {
   id: string;
   subject: string;
   bodyPreview: string;
+  body?: { content: string; contentType: string };
   receivedDateTime: string;
   from: { emailAddress: { name: string; address: string } } | null;
 }
@@ -39,7 +40,7 @@ export async function fetchOutlookEmails(
   const url =
     `https://graph.microsoft.com/v1.0/me/messages` +
     `?$filter=receivedDateTime ge ${since}` +
-    `&$select=id,subject,bodyPreview,from,receivedDateTime` +
+    `&$select=id,subject,bodyPreview,body,from,receivedDateTime` +
     `&$top=50` +
     `&$orderby=receivedDateTime desc`;
 
@@ -47,6 +48,7 @@ export async function fetchOutlookEmails(
     headers: {
       Authorization: `Bearer ${tokens.access_token}`,
       'Content-Type': 'application/json',
+      'Prefer': 'outlook.body-content-type="text"',
     },
   });
 
@@ -64,11 +66,12 @@ export async function fetchOutlookEmails(
     const from = m.from?.emailAddress
       ? `${m.from.emailAddress.name} <${m.from.emailAddress.address}>`
       : 'unknown';
+    const cleanBody = (m.body?.content ?? m.bodyPreview ?? '').slice(0, 3000);
     return (
       `[Email received: ${m.receivedDateTime}]\n` +
       `From: ${from}\n` +
       `Subject: ${m.subject ?? '(no subject)'}\n` +
-      `Preview: ${m.bodyPreview ?? ''}`
+      `Body:\n${cleanBody}`
     );
   });
 }

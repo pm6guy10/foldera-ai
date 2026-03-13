@@ -225,27 +225,25 @@ async function handler(request: NextRequest) {
           artifact = getFallbackArtifact(result.value);
         }
         // Fix 1: Validate email artifacts — do not stage empty drafts
-        if (artifact && artifact.type === 'email') {
-          const emailArtifact = artifact as import('@/lib/briefing/types').EmailArtifact;
+        if (artifact && (artifact.type === 'email' || artifact.type === 'drafted_email')) {
+          const emailArtifact = artifact as any;
           const missingFields: string[] = [];
           if (!emailArtifact.to?.trim())      missingFields.push('recipient');
           if (!emailArtifact.subject?.trim()) missingFields.push('subject');
           if (!emailArtifact.body?.trim())    missingFields.push('body');
-
           if (missingFields.length > 0) {
             const errorMsg = `Email artifact validation failed: missing ${missingFields.join(', ')}`;
             console.warn(`[daily-brief] ${errorMsg} — not staging directive`);
-            // Log as generation_error instead of staging
             if (actionId) {
               await supabase
                 .from('tkg_actions')
                 .update({
                   status: 'draft_rejected',
-                  execution_result: { generation_error: errorMsg, artifact_type: 'email' },
+                  execution_result: { generation_error: errorMsg, artifact_type: artifact.type },
                 })
                 .eq('id', actionId);
             }
-            continue; // Skip staging this directive
+            continue; // STRICT DROP: Do not push this to the queue
           }
         }
 
