@@ -20,7 +20,7 @@ Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env
 - Phase 1: done
 - Phase 2: done
 - Phase 3: done
-- Phase 4: not started
+- Phase 4: done
 
 ---
 
@@ -307,6 +307,15 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 - `npm run build` — 0 errors, 0 warnings
 - Vercel deploy `foldera-51f33nfg0` — Ready, 1-minute build
 
+### Phase 4 — UX audit (first-time visitor)
+- Audited: landing page (390px + 1280px), /try, /start, /start/processing, /start/result, dashboard placeholder pages
+- Fixes:
+  - Migrated `slate-*` → `zinc-*` in /start/processing and /start/result (design consistency)
+  - Updated uiux-critic APP_DESCRIPTION: removed stale `/onboard` route, updated to current /start flow
+  - Fixed signals page: "Sources connected" no longer hardcoded to 1 when no sources active
+
 ### NOT verified
-- api_usage migration still needs applying in Supabase dashboard
-- Phase 4 (full UX audit) not started
+- api_usage migration still needs applying in Supabase dashboard (run in Supabase SQL editor)
+
+### Final Vercel deploy
+- `foldera-72jpqizy2` — Ready, 1-minute build
