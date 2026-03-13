@@ -18,8 +18,8 @@ Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env
 
 ## Build Status
 - Phase 1: done
-- Phase 2: in progress
-- Phase 3: not started
+- Phase 2: done
+- Phase 3: done
 - Phase 4: not started
 
 ---
@@ -285,3 +285,28 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 ### Commits
 - `d90f8a4` — Brain rewrite, API cost control, empty draft validation, violet cleanup
+
+---
+
+## Session Log — 2026-03-13 (continued)
+
+### Phase 2 — Stress test + rate limit fix
+- Pattern cap added: top 20 patterns by activation_count to avoid 30K TPM rate limit on sonnet-4-20250514
+- 5 stress-test runs completed; root cause (605 patterns → rate limit) identified and fixed
+- Commit: `7d93d18`
+
+### Phase 3 — Dashboard cleanup
+- Removed 3 vanity MetricCard components (Activity/Commitments/Noticed)
+- Replaced with single signal line: `{N} signals · {N} commitments · {N} patterns detected`
+- Fixed post-skip DoneState: `terminal=true` prop suppresses "Generate new read →" link
+  - Skip → terminal message: "Next read generates tomorrow morning."
+  - Approve → outcome flow → DoneState with regenerate link (unchanged)
+- Added QA Standard item #11: ML/AI generation check (graceful failure, no raw stack traces)
+
+### Verified working
+- `npm run build` — 0 errors, 0 warnings
+- Vercel deploy `foldera-51f33nfg0` — Ready, 1-minute build
+
+### NOT verified
+- api_usage migration still needs applying in Supabase dashboard
+- Phase 4 (full UX audit) not started
