@@ -47,7 +47,6 @@ Rules:
 - NEVER repeat a directive the user already approved. If they approved "wait on MAS3" yesterday, find the next thing.
 - NEVER produce a directive the user obviously knows. "Be present with family" is a greeting card, not insight.
 - Every directive MUST include a concrete artifact: drafted email, specific task with deadline, document to review, decision with two options. No artifact = not a directive.
-- Confidence score reflects SPECIFICITY not CERTAINTY. Vague but true = 30%. Specific with evidence = 85%+.
 - Scan ALL data sources not just the loudest signal. Check: approaching deadlines, unanswered threads, commitments not acted on, patterns predicting failure, calendar gaps, financial triggers, relationship maintenance.
 - Before outputting, test: "Would a $200/hr chief of staff say this or be embarrassed?" If embarrassed, go deeper.
 - When the strategic answer is "do nothing today," surface a DIFFERENT domain. Career quiet? Surface family, financial, health, or project task. Never go dark because one thread paused.
@@ -69,7 +68,6 @@ Output JSON only — no prose outside the JSON:
   "directive": "one sentence imperative",
   "artifact_type": "drafted_email | document | decision | calendar_event | research_brief | wait_rationale",
   "artifact": <the actual finished work product as a JSON object — for drafted_email: {"to":"...","subject":"...","body":"..."}, for document: {"title":"...","content":"..."}, for calendar_event: {"title":"...","start":"ISO8601","end":"ISO8601","description":"..."}, for research_brief: {"findings":"...","sources":[],"recommended_action":"..."}, for decision: {"options":[{"option":"...","weight":0.0,"rationale":"..."}],"recommendation":"..."}, for wait_rationale: {"context":"...","evidence":"..."}>,
-  "confidence": 0,
   "evidence": "one sentence citing specific data",
   "domain": "career | family | financial | health | project",
   "why_now": "one sentence why today"
@@ -594,10 +592,49 @@ ${countInstruction}`;
     ? [{ type: 'signal', description: parsed.evidence, date: null as any }]
     : (Array.isArray(parsed.evidence) ? parsed.evidence : []);
 
+  // ---------------------------------------------------------------------------
+  // Bayesian confidence: deterministic math, not LLM guess
+  // Formula: ((successful_outcomes + 1) / (total_activations + 2)) * 100
+  // Laplace smoothing → 50% cold start, improves with each outcome signal
+  // ---------------------------------------------------------------------------
+  const bDomain = parsed.domain ?? 'general';
+  const patternHash = `${actionType}:${bDomain}`;
+  let mathConfidence = 50; // Laplace prior before any data
+
+  try {
+    const { data: pm } = await supabase
+      .from('tkg_pattern_metrics')
+      .select('total_activations, successful_outcomes, failed_outcomes')
+      .eq('user_id', userId)
+      .eq('pattern_hash', patternHash)
+      .maybeSingle();
+
+    const successes  = pm?.successful_outcomes ?? 0;
+    const total      = pm?.total_activations   ?? 0;
+    mathConfidence   = Math.round(((successes + 1) / (total + 2)) * 100);
+
+    // Increment total_activations: each generated directive is an activation
+    await supabase.from('tkg_pattern_metrics').upsert(
+      {
+        user_id:             userId,
+        pattern_hash:        patternHash,
+        category:            actionType,
+        domain:              bDomain,
+        total_activations:   (pm?.total_activations   ?? 0) + 1,
+        successful_outcomes: pm?.successful_outcomes  ?? 0,
+        failed_outcomes:     pm?.failed_outcomes      ?? 0,
+        updated_at:          new Date().toISOString(),
+      },
+      { onConflict: 'user_id,pattern_hash' },
+    );
+  } catch (pmErr: any) {
+    console.warn('[generateDirective] pattern_metrics unavailable, using prior 50:', pmErr.message);
+  }
+
   return {
     directive:       parsed.directive       ?? 'Generation failed.',
     action_type:     actionType,
-    confidence:      parsed.confidence      ?? 0,
+    confidence:      mathConfidence,
     reason:          parsed.reason          ?? parsed.why_now ?? parsed.evidence ?? '',
     evidence:        evidenceItems,
     fullContext:      parsed.why_now ?? parsed.fullContext,

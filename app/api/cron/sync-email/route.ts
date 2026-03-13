@@ -69,10 +69,18 @@ export async function GET(request: Request) {
     console.warn('[sync-email] relationship analysis failed:', relErr.message);
   }
 
+  // ── Close outcome loops: detect replies, update Bayesian metrics ───────────
+  let outcomesClosed = 0;
+  try {
+    outcomesClosed = await closeOutcomeLoops(userId);
+  } catch (loopErr: any) {
+    console.warn('[sync-email] outcome loop close failed:', loopErr.message);
+  }
+
   console.log(
     '[sync-email] done —',
     results.map(r => `${r.source}: ${r.emails} emails → ${r.decisions} decisions${r.error ? ` (err: ${r.error})` : ''}`).join(' | '),
-    `| drafts flagged: ${draftsFound} | relationships: ${relationshipsAnalyzed}`,
+    `| drafts flagged: ${draftsFound} | relationships: ${relationshipsAnalyzed} | outcomes closed: ${outcomesClosed}`,
   );
 
   return NextResponse.json({
@@ -82,6 +90,7 @@ export async function GET(request: Request) {
     sources:   results,
     drafts_flagged: draftsFound,
     relationships_analyzed: relationshipsAnalyzed,
+    outcomes_closed: outcomesClosed,
   });
 }
 
@@ -253,4 +262,149 @@ async function flagStaleDrafts(userId: string): Promise<number> {
   } catch { /* silent */ }
 
   return found;
+}
+
+// ---------------------------------------------------------------------------
+// Outcome loops: detect replies to Foldera-sent emails, update Bayesian metrics
+// ---------------------------------------------------------------------------
+
+/** Fetch inbox subject lines for the last 7 days from all connected providers. */
+async function getInboundSubjects(userId: string): Promise<Set<string>> {
+  const subjects = new Set<string>();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+  // Outlook inbox
+  try {
+    const { getMicrosoftTokens } = await import('@/lib/auth/token-store');
+    const tokens = await getMicrosoftTokens(userId);
+    if (tokens) {
+      const since = new Date(Date.now() - sevenDaysMs).toISOString();
+      const url =
+        `https://graph.microsoft.com/v1.0/me/mailFolders/Inbox/messages` +
+        `?$filter=receivedDateTime ge ${since}&$select=subject&$top=50`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${tokens.access_token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        for (const m of data.value ?? []) {
+          if (m.subject) subjects.add((m.subject as string).toLowerCase().trim());
+        }
+      }
+    }
+  } catch { /* silent */ }
+
+  // Gmail inbox
+  try {
+    const { google } = await import('googleapis');
+    const { getGoogleTokens } = await import('@/lib/auth/token-store');
+    const tokens = await getGoogleTokens(userId);
+    if (tokens) {
+      const oauth2 = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
+      oauth2.setCredentials({ access_token: tokens.access_token, refresh_token: tokens.refresh_token, expiry_date: tokens.expiry_date });
+      const gmail = google.gmail({ version: 'v1', auth: oauth2 });
+      const afterSec = Math.floor((Date.now() - sevenDaysMs) / 1000);
+      const list = await gmail.users.messages.list({ userId: 'me', q: `in:inbox after:${afterSec}`, maxResults: 50 });
+      for (const { id } of list.data.messages ?? []) {
+        if (!id) continue;
+        try {
+          const msg = await gmail.users.messages.get({ userId: 'me', id, format: 'metadata', metadataHeaders: ['Subject'] });
+          const subj = msg.data.payload?.headers?.find((h: any) => h.name?.toLowerCase() === 'subject')?.value;
+          if (subj) subjects.add((subj as string).toLowerCase().trim());
+        } catch { /* skip */ }
+      }
+    }
+  } catch { /* silent */ }
+
+  return subjects;
+}
+
+/**
+ * For each executed send_message action without an outcome:
+ * - If an inbound "Re: <subject>" is found → success → increment successful_outcomes
+ * - If 7 days passed with no reply → failure → increment failed_outcomes
+ * Marks action outcome_closed in execution_result so it isn't reprocessed.
+ */
+async function closeOutcomeLoops(userId: string): Promise<number> {
+  const supabase = createServerClient();
+  let closed = 0;
+
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysAgo  = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: sentActions } = await supabase
+    .from('tkg_actions')
+    .select('id, action_type, generated_at, execution_result')
+    .eq('user_id', userId)
+    .eq('status', 'executed')
+    .eq('action_type', 'send_message')
+    .gte('generated_at', thirtyDaysAgo);
+
+  if (!sentActions || sentActions.length === 0) return 0;
+
+  // Only process actions that sent successfully and haven't been outcome-closed yet
+  const pending = sentActions.filter((a: any) => {
+    const er = (a.execution_result as Record<string, any>) ?? {};
+    return !er.outcome_closed && er.sent === true;
+  });
+
+  if (pending.length === 0) return 0;
+
+  const inboundSubjects = await getInboundSubjects(userId);
+
+  for (const action of pending) {
+    const execResult = (action.execution_result as Record<string, any>) ?? {};
+    const artifact   = execResult.artifact as Record<string, any> | undefined;
+    const sentSubject = ((artifact?.subject as string) ?? '').toLowerCase().trim();
+
+    const hasReply = sentSubject
+      ? inboundSubjects.has(`re: ${sentSubject}`) || inboundSubjects.has(sentSubject)
+      : false;
+    const isStale = action.generated_at < sevenDaysAgo;
+
+    if (!hasReply && !isStale) continue; // outcome not determinable yet
+
+    const domain      = (execResult.domain as string) ?? 'general';
+    const patternHash = `send_message:${domain}`;
+
+    try {
+      const { data: pm } = await supabase
+        .from('tkg_pattern_metrics')
+        .select('total_activations, successful_outcomes, failed_outcomes')
+        .eq('user_id', userId)
+        .eq('pattern_hash', patternHash)
+        .maybeSingle();
+
+      await supabase.from('tkg_pattern_metrics').upsert(
+        {
+          user_id:             userId,
+          pattern_hash:        patternHash,
+          category:            'send_message',
+          domain,
+          total_activations:   pm?.total_activations   ?? 0,
+          successful_outcomes: (pm?.successful_outcomes ?? 0) + (hasReply ? 1 : 0),
+          failed_outcomes:     (pm?.failed_outcomes     ?? 0) + (hasReply ? 0 : 1),
+          updated_at:          new Date().toISOString(),
+        },
+        { onConflict: 'user_id,pattern_hash' },
+      );
+    } catch (pmErr: any) {
+      console.warn('[sync-email/closeOutcomeLoops] metrics upsert failed:', pmErr.message);
+    }
+
+    await supabase
+      .from('tkg_actions')
+      .update({
+        execution_result: {
+          ...execResult,
+          outcome_closed:    true,
+          outcome:           hasReply ? 'success' : 'no_reply',
+          outcome_closed_at: new Date().toISOString(),
+        },
+      })
+      .eq('id', action.id);
+
+    console.log(`[sync-email/closeOutcomeLoops] ${action.id} → ${hasReply ? 'success (reply detected)' : 'no_reply (7d elapsed)'}`);
+    closed++;
+  }
+
+  return closed;
 }
