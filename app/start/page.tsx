@@ -10,6 +10,8 @@ interface Directive {
   confidence: number;
   reason: string;
   evidence: Array<{ type: string; description: string; date: string | null }>;
+  artifact_type?: string;
+  artifact?: any;
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -104,6 +106,9 @@ export default function StartPage() {
                 </ul>
               </div>
             )}
+            {result.artifact && result.artifact_type && (
+              <ArtifactPreview artifactType={result.artifact_type} artifact={result.artifact} />
+            )}
           </div>
 
           <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-8 text-center space-y-5">
@@ -131,6 +136,10 @@ export default function StartPage() {
             </div>
             <p className="text-zinc-600 text-xs">14 days free. No credit card required.</p>
           </div>
+
+          <p className="text-zinc-500 text-sm text-center leading-relaxed">
+            That&apos;s a finished draft from one paragraph. Imagine what Foldera does with 30 days of your actual history.
+          </p>
 
           <button
             onClick={() => { setResult(null); setError(null); setText(''); }}
@@ -237,6 +246,124 @@ export default function StartPage() {
       </div>
     </main>
   );
+}
+
+function ArtifactPreview({ artifactType, artifact }: { artifactType: string; artifact: any }) {
+  const baseCard = 'mt-6 border-t border-zinc-800 pt-5';
+  const label = (
+    <p className="text-zinc-500 text-xs font-semibold tracking-widest uppercase mb-3">
+      Draft ready
+    </p>
+  );
+
+  if (artifactType === 'drafted_email' && artifact) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-3 text-sm">
+          <div className="flex gap-2">
+            <span className="text-zinc-500 w-14 shrink-0">To</span>
+            <span className="text-zinc-200 truncate">{artifact.to ?? '—'}</span>
+          </div>
+          <div className="flex gap-2 border-t border-zinc-700/40 pt-3">
+            <span className="text-zinc-500 w-14 shrink-0">Subject</span>
+            <span className="text-zinc-200">{artifact.subject ?? '—'}</span>
+          </div>
+          <div className="border-t border-zinc-700/40 pt-3 text-zinc-300 leading-relaxed whitespace-pre-wrap break-words">
+            {artifact.body ?? ''}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (artifactType === 'decision' && artifact?.options) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="space-y-3">
+          {artifact.options.map((opt: any, i: number) => (
+            <div key={i} className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-zinc-200 text-sm font-medium">{opt.option}</span>
+                <span className="text-zinc-500 text-xs">{Math.round((opt.weight ?? 0) * 100)}%</span>
+              </div>
+              <div className="h-1 bg-zinc-700 rounded-full overflow-hidden mb-2">
+                <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${Math.round((opt.weight ?? 0) * 100)}%` }} />
+              </div>
+              {opt.rationale && <p className="text-zinc-500 text-xs">{opt.rationale}</p>}
+            </div>
+          ))}
+          {artifact.recommendation && (
+            <p className="text-zinc-400 text-sm border-l-2 border-cyan-500/40 pl-3 italic">{artifact.recommendation}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (artifactType === 'document' && artifact) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
+          <p className="text-zinc-200 text-sm font-semibold mb-2">{artifact.title ?? 'Document'}</p>
+          <p className="text-zinc-400 text-sm leading-relaxed line-clamp-4">{artifact.content ?? ''}</p>
+          <p className="text-zinc-600 text-xs mt-3">Full document ready on approval</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (artifactType === 'wait_rationale' && artifact) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-2">
+          <p className="text-zinc-300 text-sm leading-relaxed">{artifact.context ?? ''}</p>
+          {artifact.evidence && (
+            <p className="text-zinc-500 text-sm border-l-2 border-zinc-700 pl-3 italic">{artifact.evidence}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (artifactType === 'research_brief' && artifact) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
+          <p className="text-zinc-300 text-sm leading-relaxed mb-2">{artifact.findings ?? ''}</p>
+          {artifact.recommended_action && (
+            <p className="text-zinc-500 text-xs border-l-2 border-zinc-700 pl-3 italic">{artifact.recommended_action}</p>
+          )}
+          {Array.isArray(artifact.sources) && artifact.sources.length > 0 && (
+            <p className="text-zinc-600 text-xs mt-2">{artifact.sources.length} source{artifact.sources.length !== 1 ? 's' : ''} identified</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (artifactType === 'calendar_event' && artifact) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-2">
+          <p className="text-zinc-200 text-sm font-semibold">{artifact.title ?? 'Event'}</p>
+          {artifact.start && (
+            <p className="text-zinc-500 text-xs">{new Date(artifact.start).toLocaleString()} — {artifact.end ? new Date(artifact.end).toLocaleString() : ''}</p>
+          )}
+          {artifact.description && (
+            <p className="text-zinc-400 text-sm">{artifact.description}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function LoadingSpinner() {
