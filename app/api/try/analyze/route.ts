@@ -48,6 +48,9 @@ Then generate a FINISHED ARTIFACT. Not a suggestion. The actual work product.
 - Best move is to wait → explain why with evidence from their specific text
 
 ARTIFACT SPECIFICITY RULES:
+- Name the specific job title, company, person, decision, or constraint they mentioned. If they said "my manager at Acme" — the artifact says "your manager at Acme." If they said "the $120k offer" — the artifact says "$120k offer." Never strip specifics out.
+- NEVER use placeholders in artifacts: [Company], [Name], [Role], [Amount], [Date], [Contact]. A placeholder means the artifact is incomplete and worthless.
+- The artifact must be COMPLETE. No checkboxes. No "[Add your reason here]". No "[Choose one]". If you cannot complete it from what they told you, use wait_rationale and explain exactly what information is missing and why it matters.
 - For decision artifacts: options MUST name their actual variables, not generic "Option A / Option B"
   Example for job/toxic manager: {"option": "Leave in 60 days with a target role defined", "weight": 0.6, "rationale": "3 months of drift has a cost; a deadline converts paralysis into a plan"}
   NOT: {"option": "Leave the job", "weight": 0.6, "rationale": "Toxic environment is harmful"}

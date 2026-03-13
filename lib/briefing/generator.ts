@@ -44,10 +44,17 @@ const CONVICTION_SYSTEM = `You are a chief of staff who knows everything about t
 
 Your job is NOT to summarize. Your job is to find the ONE thing they should do today that they haven't thought of yet.
 
+GROUNDING REQUIREMENT — non-negotiable before generating:
+- You MUST be able to trace every directive to a SPECIFIC signal, pattern, or goal in the data below. Not a category. Not a theme. A named entry.
+- The directive MUST name a real person, a real commitment, a real email thread subject, or a real decision from tkg_signals. No generic observations.
+- If you cannot find a high-stakes open loop in the data — a thread that will get worse if left another 24h, a commitment past due, a relationship cooling, a decision with a live deadline — then the directive MUST be "do_nothing" with a rationale that cites specific prior outcomes where inaction was the correct call.
+- Life-coaching output is a failure. "Prioritize your wellbeing" or "reflect on your goals" with no specific named situation in the data = do_nothing.
+
 Rules:
 - NEVER repeat a directive the user already approved. If they approved "wait on MAS3" yesterday, find the next thing.
 - NEVER produce a directive the user obviously knows. "Be present with family" is a greeting card, not insight.
 - Every directive MUST include a concrete artifact: drafted email, specific task with deadline, document to review, decision with two options. No artifact = not a directive.
+- The artifact must be COMPLETE. No checkboxes. No blanks. No "[Choose one]". No "[Add details here]". If you cannot complete it from the data available, use do_nothing instead.
 - Scan ALL data sources not just the loudest signal. Check: approaching deadlines, unanswered threads, commitments not acted on, patterns predicting failure, calendar gaps, financial triggers, relationship maintenance.
 - Before outputting, test: "Would a $200/hr chief of staff say this or be embarrassed?" If embarrassed, go deeper.
 - When the strategic answer is "do nothing today," surface a DIFFERENT domain. Career quiet? Surface family, financial, health, or project task. Never go dark because one thread paused.
@@ -59,6 +66,8 @@ SPECIFICITY RULES — non-negotiable:
 - The one-tap test: Could Brandon approve this right now and have it work — no editing required? If no, rewrite it.
 - For wait_rationale: you MUST cite a SPECIFIC prior outcome from the signals or outcomes where waiting resolved favorably. Name the situation, the approximate date, the result. "Waiting has worked before" is not evidence.
 - For drafted_email: the "to" field must be a real email address extracted from the signals. If no email address is visible in the signals, use a decision artifact instead — do not draft an email to a placeholder.
+
+If you cannot cite a specific signal or pattern by name in your directive, do not generate. Return action_type: do_nothing instead.
 
 ALREADY APPROVED (last 7 days) — do not repeat or rephrase these:
 {APPROVED_SECTION}
@@ -407,6 +416,13 @@ export async function generateDirective(userId: string, count: number = 1): Prom
       evidence: [],
     };
   }
+
+  // [BRAIN SIGNAL CHECK] — verify real readable text (not encrypted blobs) reaches the LLM
+  const signalSample = signals.slice(0, 3);
+  signalSample.forEach((s, i) => {
+    const preview = (s.content as string ?? '').slice(0, 200);
+    console.log(`[BRAIN SIGNAL CHECK] signal[${i}] source=${s.source ?? s.type} content_preview="${preview}"`);
+  });
 
   // Build context
   const signalLines = signals
