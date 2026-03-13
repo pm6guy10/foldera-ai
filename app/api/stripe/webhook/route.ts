@@ -1,9 +1,11 @@
 /**
  * POST /api/stripe/webhook
  *
- * Handles Stripe webhook events.
- * Processes customer.subscription.deleted to mark subscriptions cancelled
- * and schedule data deletion in 30 days.
+ * Handles Stripe webhook events:
+ *   checkout.session.completed  → create user_subscriptions row
+ *   invoice.payment_succeeded   → update status to active
+ *   invoice.payment_failed      → update status to past_due
+ *   customer.subscription.deleted → update status to cancelled + schedule deletion
  *
  * Env vars:
  *   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
@@ -42,12 +44,85 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  if (event.type === 'customer.subscription.deleted') {
+  const supabase = createServerClient();
+
+  // ── checkout.session.completed ──────────────────────────────────────────
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const userId     = session.client_reference_id;
+    const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+    const subId      = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+
+    if (!userId) {
+      console.warn('[stripe/webhook] checkout.session.completed missing client_reference_id');
+    } else {
+      // Trial ends 14 days from now (matches trial_period_days in checkout)
+      const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+      const { error } = await supabase
+        .from('user_subscriptions')
+        .upsert(
+          {
+            user_id:                userId,
+            stripe_customer_id:     customerId ?? null,
+            stripe_subscription_id: subId ?? null,
+            plan:                   'pro',
+            status:                 'active',
+            current_period_end:     trialEnd,
+          },
+          { onConflict: 'user_id' }
+        );
+
+      if (error) {
+        console.error('[stripe/webhook] upsert failed:', error.message);
+      } else {
+        console.log('[stripe/webhook] subscription created for', userId);
+      }
+    }
+  }
+
+  // ── invoice.payment_succeeded ────────────────────────────────────────────
+  else if (event.type === 'invoice.payment_succeeded') {
+    const invoice    = event.data.object as Stripe.Invoice;
+    const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+    // invoice.period_end is a Unix timestamp (seconds)
+    const periodEnd  = invoice.lines?.data?.[0]?.period?.end
+      ? new Date((invoice.lines.data[0].period.end as number) * 1000).toISOString()
+      : null;
+
+    if (customerId) {
+      const update: Record<string, string> = { status: 'active', plan: 'pro' };
+      if (periodEnd) update.current_period_end = periodEnd;
+
+      await supabase
+        .from('user_subscriptions')
+        .update(update)
+        .eq('stripe_customer_id', customerId);
+
+      console.log('[stripe/webhook] payment succeeded for customer', customerId);
+    }
+  }
+
+  // ── invoice.payment_failed ───────────────────────────────────────────────
+  else if (event.type === 'invoice.payment_failed') {
+    const invoice    = event.data.object as Stripe.Invoice;
+    const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+
+    if (customerId) {
+      await supabase
+        .from('user_subscriptions')
+        .update({ status: 'past_due' })
+        .eq('stripe_customer_id', customerId);
+
+      console.log('[stripe/webhook] payment failed for customer', customerId);
+    }
+  }
+
+  // ── customer.subscription.deleted ───────────────────────────────────────
+  else if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId   = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
-    const supabase     = createServerClient();
 
-    // Find user by Stripe customer ID (stored as stripe_customer_id in user_subscriptions)
     const { data: sub } = await supabase
       .from('user_subscriptions')
       .select('user_id')
@@ -60,7 +135,7 @@ export async function POST(request: NextRequest) {
       await supabase
         .from('user_subscriptions')
         .update({
-          status:                    'cancelled',
+          status:                     'cancelled',
           data_deletion_scheduled_at: deletionAt,
         })
         .eq('user_id', sub.user_id);

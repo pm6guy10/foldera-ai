@@ -469,6 +469,43 @@ function Navigation({ scrolled }: NavigationProps) {
   );
 }
 
+// ─── Checkout Button ─────────────────────────────────────────────────────────
+function StartTrialButton({ className = '' }: { className?: string }) {
+  const [loading, setLoading] = React.useState(false);
+
+  async function handleCheckout() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price_id: 'price_1T9coR2NLOgC3SAaVxcM0rEn' }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleCheckout}
+      disabled={loading}
+      className={`w-full py-4 rounded-xl bg-white text-black font-semibold hover:bg-zinc-200 transition-all flex items-center justify-center gap-2 group disabled:opacity-60 disabled:cursor-not-allowed ${className}`}
+    >
+      {loading ? (
+        <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+      ) : (
+        <>
+          Start free trial
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+        </>
+      )}
+    </button>
+  );
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function App() {
   const [scrolled, setScrolled] = useState(false);
@@ -730,13 +767,7 @@ export default function App() {
                     ))}
                   </div>
 
-                  <a
-                    href="/start"
-                    className="w-full py-4 rounded-xl bg-white text-black font-semibold hover:bg-zinc-200 transition-all flex items-center justify-center gap-2 group"
-                  >
-                    Start free trial
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </a>
+                  <StartTrialButton />
 
                   <p className="text-center text-zinc-500 text-xs mt-4">
                     No credit card required. Cancel in one click.
