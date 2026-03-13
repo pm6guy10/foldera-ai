@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Radio, Mail, MessageSquare, Calendar, FileText, Loader2 } from 'lucide-react';
+import { Radio, Mail, MessageSquare, Calendar, FileText } from 'lucide-react';
+import { SkeletonSignalsPage } from '@/components/ui/skeleton';
 
 interface Signal {
   id: string;
@@ -52,22 +53,40 @@ export default function SignalsPage() {
 
       {/* Stats strip */}
       <div className="grid grid-cols-3 gap-3 mb-8">
-        {[
-          { label: 'Items processed', value: loading ? '—' : String(total) },
-          { label: 'Sources connected', value: total > 0 ? '1' : '0' },
-          { label: 'Updated', value: 'Tonight' },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-            <div className="text-xl font-bold text-zinc-50 tabular-nums">{stat.value}</div>
-            <div className="text-zinc-500 text-xs mt-0.5">{stat.label}</div>
-          </div>
-        ))}
+        {loading ? (
+          [0, 1, 2].map(i => (
+            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 animate-pulse">
+              <div className="h-7 w-12 bg-zinc-800 rounded mb-1" />
+              <div className="h-3 w-16 bg-zinc-800 rounded" />
+            </div>
+          ))
+        ) : (
+          [
+            { label: 'Items processed',  value: String(total)          },
+            { label: 'Sources connected', value: total > 0 ? '1' : '0' },
+            { label: 'Updated',           value: 'Tonight'             },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+              <div className="text-xl font-bold text-zinc-50 tabular-nums">{stat.value}</div>
+              <div className="text-zinc-500 text-xs mt-0.5">{stat.label}</div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Main content */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-5 h-5 text-zinc-600 animate-spin" />
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 animate-pulse space-y-5">
+          <div className="h-3 w-24 bg-zinc-800 rounded" />
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="flex items-center gap-4">
+              <div className="w-8 h-8 rounded-lg bg-zinc-800 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-24 bg-zinc-800 rounded" />
+                <div className="h-1.5 bg-zinc-800 rounded-full" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : total === 0 ? (
         <EmptyState />

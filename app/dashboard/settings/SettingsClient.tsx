@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import { SkeletonSettingsPage } from '@/components/ui/skeleton';
 
 interface SpendSummary {
   todayUSD: number;
@@ -60,11 +61,7 @@ export default function SettingsClient() {
   }, [session, status]);
 
   if (status === 'loading' || loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-zinc-400 text-sm">Loading...</div>
-      </div>
-    );
+    return <SkeletonSettingsPage />;
   }
 
   if (status !== 'authenticated') {

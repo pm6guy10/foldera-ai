@@ -9,39 +9,64 @@ module.exports = {
   ],
   theme: {
     extend: {
+      // ─── Color palette — DO NOT CHANGE. Cyan/emerald accent decided. ───────
       colors: {
-        bg: "#020617",          // dark background
-        panel: "#0f172a",       // slightly lighter panels
-        border: "#334155",      // slate border
-        text: {
-          primary: "#f1f5f9",   // main text
-          secondary: "#94a3b8", // muted text
+        bg: "#020617",             // zinc-950 — page background
+        panel: "#18181b",          // zinc-900 — card/panel background
+        'panel-raised': "#27272a", // zinc-800 — elevated panels, hover states
+        border: {
+          DEFAULT: "#3f3f46",      // zinc-700 — default border
+          subtle:  "#27272a",      // zinc-800 — subtle separator
+          strong:  "#52525b",      // zinc-600 — prominent border
         },
-        accent: "#22d3ee",      // cyan accent
+        text: {
+          primary:   "#fafafa",    // zinc-50 — headings
+          secondary: "#a1a1aa",    // zinc-400 — body / labels
+          muted:     "#52525b",    // zinc-600 — placeholder / disabled
+        },
+        accent: {
+          DEFAULT: "#22d3ee",      // cyan-400 — primary interactive accent
+          hover:   "#67e8f9",      // cyan-300 — hover state
+          dim:     "#0e7490",      // cyan-700 — dark accent bg
+        },
+        success: "#10b981",        // emerald-500 — approve / positive
       },
+
+      // ─── Border radius — use rounded-xl (card) everywhere ──────────────
+      borderRadius: {
+        card:   '12px',   // rounded-xl  — all cards and panels
+        badge:  '6px',    // rounded-md  — badges, chips
+        button: '8px',    // rounded-lg  — buttons
+        pill:   '9999px', // rounded-full — pills, avatars
+      },
+
+      // ─── Typography ────────────────────────────────────────────────────
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['GeistMono', 'Menlo', 'monospace'],
       },
+
+      // ─── Animations ────────────────────────────────────────────────────
       animation: {
-        'shimmer': 'shimmer 2s linear infinite',
-        'fade-in': 'fadeIn 0.2s ease-out',
-        'slide-up': 'slideUp 0.2s ease-out',
+        'shimmer':    'shimmer 2s linear infinite',
+        'fade-in':    'fadeIn 0.2s ease-out',
+        'slide-up':   'slideUp 0.2s ease-out',
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
         shimmer: {
-          '0%': { backgroundPosition: '-200% 0' },
+          '0%':   { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
         fadeIn: {
-          '0%': { opacity: '0' },
+          '0%':   { opacity: '0' },
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '0%':   { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-      }
+      },
     },
   },
   plugins: [],

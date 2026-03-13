@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, TrendingDown, Clock, Loader2, Mail } from 'lucide-react';
+import { Users, TrendingDown, Clock, Mail } from 'lucide-react';
+import { SkeletonRelationshipsPage } from '@/components/ui/skeleton';
 
 interface RelationshipData {
   coolingRelationships?: Array<{
@@ -32,6 +33,8 @@ export default function RelationshipsPage() {
 
   const cooling = data?.coolingRelationships ?? [];
 
+  if (loading) return <SkeletonRelationshipsPage />;
+
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
@@ -47,11 +50,7 @@ export default function RelationshipsPage() {
         </p>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-5 h-5 text-zinc-600 animate-spin" />
-        </div>
-      ) : cooling.length > 0 ? (
+      {cooling.length > 0 ? (
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-4">
             <TrendingDown className="w-4 h-4 text-amber-400" />

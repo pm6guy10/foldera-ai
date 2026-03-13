@@ -791,7 +791,7 @@ export default function App() {
             <a href="#" className="hover:text-white transition-colors">Support</a>
           </div>
 
-          <p className="text-xs text-zinc-600">
+          <p className="text-xs text-zinc-600" suppressHydrationWarning>
             © {new Date().getFullYear()} Foldera AI
           </p>
         </div>
