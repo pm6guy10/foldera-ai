@@ -50,6 +50,12 @@ export async function POST(request: NextRequest) {
     if (toEmail) {
       const supabase = createServerClient();
 
+      // Detect invite emails by the tag set during send
+      const tags = event.data?.tags as Array<{ name: string; value: string }> | undefined;
+      const isInviteOpen = tags?.some(
+        t => t.name === 'email_type' && t.value === 'waitlist_invite'
+      ) ?? false;
+
       // ── 1. Waitlist open tracking ───────────────────────────────────────────
       const { data: row } = await supabase
         .from('waitlist')
@@ -58,15 +64,25 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (row) {
+        const update: Record<string, unknown> = {
+          open_count:     (row.open_count ?? 0) + 1,
+          last_opened_at: new Date().toISOString(),
+        };
+
+        // First open of the invite email — capture the timestamp
+        if (isInviteOpen) {
+          update.invite_opened_at = new Date().toISOString();
+        }
+
         await supabase
           .from('waitlist')
-          .update({
-            open_count:     (row.open_count ?? 0) + 1,
-            last_opened_at: new Date().toISOString(),
-          })
+          .update(update)
           .eq('id', row.id);
 
-        console.log('[resend/webhook] email.opened tracked for', toEmail);
+        console.log(
+          '[resend/webhook] email.opened tracked for', toEmail,
+          isInviteOpen ? '(invite)' : ''
+        );
       }
 
       // ── 2. Daily brief open tracking ────────────────────────────────────────
