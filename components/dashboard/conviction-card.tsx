@@ -170,7 +170,11 @@ export default function ConvictionCard({
             onSkipOutcome={() => { setDoneMsg('Done — Foldera executed that.'); setPhase('done'); }}
           />
         ) : phase === 'done' ? (
-          <DoneState message={doneMsg} onReset={() => { setPhase('idle'); onGenerate(); }} />
+          <DoneState
+            message={doneMsg}
+            terminal={doneMsg.startsWith('Skipped')}
+            onReset={() => { setPhase('idle'); onGenerate(); }}
+          />
         ) : (
           <>
             {/* Action type badge */}
@@ -329,16 +333,21 @@ function OutcomePrompt({
   );
 }
 
-function DoneState({ message, onReset }: { message: string; onReset: () => void }) {
+function DoneState({ message, terminal, onReset }: { message: string; terminal: boolean; onReset: () => void }) {
   return (
     <div className="text-center py-4">
       <p className="text-zinc-300 text-sm mb-4">{message}</p>
-      <button
-        onClick={onReset}
-        className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-      >
-        Generate new read →
-      </button>
+      {!terminal && (
+        <button
+          onClick={onReset}
+          className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          Generate new read →
+        </button>
+      )}
+      {terminal && (
+        <p className="text-zinc-600 text-xs">Next read generates tomorrow morning.</p>
+      )}
     </div>
   );
 }
