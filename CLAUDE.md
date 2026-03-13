@@ -15,6 +15,7 @@ Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env
 - **Email is the primary product**, dashboard is secondary. Done.
 - **All pushes go to main.** No feature branches.
 - **Session logs** appended to CLAUDE.md after every session.
+- **Only one cron active:** daily-brief at `0 14 * * *` (7am Pacific). All others disabled until their features are verified working. Do NOT re-add removed crons without explicit instruction. Done.
 
 ## Build Status
 - Phase 1: done
@@ -319,3 +320,15 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 ### Final Vercel deploy
 - `foldera-72jpqizy2` — Ready, 1-minute build
+
+---
+
+## Session Log — 2026-03-13 (continued)
+
+### Changes
+- `vercel.json` — Removed 5 cron jobs (sync-email, sync-calendar, scan-opportunities, cleanup-trials, cleanup-cancelled). Only `daily-brief` remains, rescheduled from `0 7 * * *` (UTC) to `0 14 * * *` (7am Pacific).
+- `CLAUDE.md` — Added cron decision to Decided section.
+
+### Verified working
+- `npm run build` — 0 errors (no code changes, vercel.json is not compiled)
+- Vercel deploy: pending push

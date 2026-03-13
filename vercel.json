@@ -25,28 +25,8 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/sync-email",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/sync-calendar",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/scan-opportunities",
-      "schedule": "0 6 * * *"
-    },
-    {
       "path": "/api/cron/daily-brief",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/cron/cleanup-trials",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/cleanup-cancelled",
-      "schedule": "0 5 * * *"
+      "schedule": "0 14 * * *"
     }
   ]
 }
