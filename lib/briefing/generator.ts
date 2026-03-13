@@ -52,6 +52,14 @@ Rules:
 - Before outputting, test: "Would a $200/hr chief of staff say this or be embarrassed?" If embarrassed, go deeper.
 - When the strategic answer is "do nothing today," surface a DIFFERENT domain. Career quiet? Surface family, financial, health, or project task. Never go dark because one thread paused.
 
+SPECIFICITY RULES — non-negotiable:
+- Mine the RECENT SIGNALS below for real names, real email addresses, real subject lines, real company names, real dates. They are there. Find them.
+- The artifact MUST use the actual data you found. If a signal contains "from: sarah@acme.com re: Q2 proposal" → the drafted email goes to sarah@acme.com with that subject context.
+- NEVER use placeholders in artifacts: [Name], [email@example.com], [Contact], [Person], [Company], [Date]. A placeholder means the artifact is not executable and fails the one-tap test.
+- The one-tap test: Could Brandon approve this right now and have it work — no editing required? If no, rewrite it.
+- For wait_rationale: you MUST cite a SPECIFIC prior outcome from the signals or outcomes where waiting resolved favorably. Name the situation, the approximate date, the result. "Waiting has worked before" is not evidence.
+- For drafted_email: the "to" field must be a real email address extracted from the signals. If no email address is visible in the signals, use a decision artifact instead — do not draft an email to a placeholder.
+
 ALREADY APPROVED (last 7 days) — do not repeat or rephrase these:
 {APPROVED_SECTION}
 
@@ -68,8 +76,8 @@ Output JSON only — no prose outside the JSON:
 {
   "directive": "one sentence imperative",
   "artifact_type": "drafted_email | document | decision | calendar_event | research_brief | wait_rationale",
-  "artifact": <the actual finished work product as a JSON object — for drafted_email: {"to":"...","subject":"...","body":"..."}, for document: {"title":"...","content":"..."}, for calendar_event: {"title":"...","start":"ISO8601","end":"ISO8601","description":"..."}, for research_brief: {"findings":"...","sources":[],"recommended_action":"..."}, for decision: {"options":[{"option":"...","weight":0.0,"rationale":"..."}],"recommendation":"..."}, for wait_rationale: {"context":"...","evidence":"..."}>,
-  "evidence": "one sentence citing specific data",
+  "artifact": <the actual finished work product as a JSON object — for drafted_email: {"to":"real@email.com","subject":"exact subject","body":"full email body"}, for document: {"title":"...","content":"..."}, for calendar_event: {"title":"...","start":"ISO8601","end":"ISO8601","description":"..."}, for research_brief: {"findings":"...","sources":[],"recommended_action":"..."}, for decision: {"options":[{"option":"...","weight":0.0,"rationale":"..."}],"recommendation":"..."}, for wait_rationale: {"context":"specific situation from signals","evidence":"specific prior outcome with date and result"}>,
+  "evidence": "one sentence citing specific data — name the person, date, or thread",
   "domain": "career | family | financial | health | project",
   "why_now": "one sentence why today"
 }`;
@@ -402,7 +410,7 @@ export async function generateDirective(userId: string, count: number = 1): Prom
 
   // Build context
   const signalLines = signals
-    .map(s => `[${(s.occurred_at as string).slice(0, 10)}] ${sanitizeForPrompt((s.content as string).slice(0, 250), 250)}`)
+    .map(s => `[${(s.occurred_at as string).slice(0, 10)}] [${s.source ?? s.type}] ${sanitizeForPrompt((s.content as string).slice(0, 400), 400)}`)
     .join('\n');
 
   const commitmentLines = commitments

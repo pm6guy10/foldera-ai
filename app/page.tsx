@@ -765,9 +765,6 @@ export default function App() {
           <div className="mt-20 pt-10 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex items-center justify-center gap-6">
               <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/[0.02] border border-white/10 text-[10px] text-zinc-400 font-black tracking-widest uppercase shadow-inner">
-                <Shield className="w-3.5 h-3.5" aria-hidden="true" /> SOC 2 TYPE II
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/[0.02] border border-white/10 text-[10px] text-zinc-400 font-black tracking-widest uppercase shadow-inner">
                 <Lock className="w-3.5 h-3.5" aria-hidden="true" /> AES-256
               </div>
             </div>
