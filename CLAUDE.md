@@ -178,6 +178,8 @@ After EVERY commit, before marking anything done:
     - Dead UI: Is there any button, link, or feature that doesn't work? Remove it or fix it.
     Brandon should never discover a visual bug, a broken button, or an inconsistency.
     Find them yourself before reporting done.
+11. ML/AI generation checks:
+    - [ ] If any generation call fails, the system recovers gracefully. No infinite loops, no crashed dashboard, no raw stack traces to the user.
 
 ---
 
@@ -205,3 +207,44 @@ Generate:
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
+
+---
+
+## Session Log — 2026-03-13
+
+### Files changed
+- `lib/briefing/generator.ts` — Brain rewrite: new chief-of-staff system prompt, claude-sonnet-4-20250514 model, pre-call queries for approved/skipped (7d), active goals, confirmed patterns (3+). Output format now includes artifact_type + inline artifact + evidence (string) + domain + why_now. API spend cap check before generation.
+- `lib/conviction/artifact-generator.ts` — Model changed to claude-haiku-4-5-20251001. Skips generation if directive contains embedded artifact. API usage tracked.
+- `lib/utils/api-tracker.ts` — NEW. trackApiCall(), getDailySpend(), isOverDailyLimit(), getSpendSummary(). $1.50/day cap.
+- `supabase/migrations/20260313000002_api_usage.sql` — NEW. api_usage table: model, input_tokens, output_tokens, estimated_cost, call_type.
+- `app/api/cron/daily-brief/route.ts` — Fix 1: email artifact validation before staging. Missing to/subject/body → log generation_error, skip staging.
+- `app/api/settings/spend/route.ts` — NEW. GET /api/settings/spend returns daily/monthly spend summary.
+- `app/dashboard/settings/SettingsClient.tsx` — Added AI usage section: daily spend bar vs cap, monthly total.
+- `components/landing/chaos-to-clarity.tsx` — 9 violet references → cyan (bg-cyan-500/80, text-cyan-400, from-cyan-400, border-cyan-500/40, bg-cyan-600/15, etc.)
+- `lib/agents/uiux-critic.ts` — System prompt updated: "violet" → "cyan/emerald accent colors"
+- `scripts/generate-briefing.mjs` — Updated system prompt, model (claude-sonnet-4-20250514), output parsing (artifact_type, artifact, evidence string, domain, why_now), delta display fix, loadEnv() quote stripping.
+
+### Verified working
+- `npm run build` passed locally: 0 errors, 0 warnings
+- `generate-briefing.mjs` produced a real directive:
+  - Type: `drafted_email` / domain: `relationships`
+  - Confidence: 87/100
+  - Artifact: complete email with real to/subject/body (not empty)
+  - Evidence: single sentence, specific and grounded
+  - why_now: clear temporal reason
+- Vercel deploy: `foldera-l2vdlmd5m-brandons-projects-5552f226.vercel.app` — **Ready**, 1-minute build
+- Commit: `d90f8a4`
+- Violet grep: 0 matches across all .ts/.tsx/.css files
+
+### NOT verified or incomplete
+- `api_usage` table: migration written but NOT applied in Supabase yet. Must run via Supabase dashboard SQL editor before spend tracking is live.
+- Settings spend bar: will show $0.00 until migration is applied and generation runs.
+- Email artifact validation (Fix 1): logic is in place but cannot be integration-tested without running the full daily-brief cron. Unit behavior confirmed by code review.
+- `claude-sonnet-4-20250514` model ID: used as instructed. If this model ID is invalid in Anthropic API, generation will fall back to an error state. Should be verified on first cron run.
+- generate-briefing.mjs delta section: minor TypeError for `newType.toUpperCase()` was fixed after the run shown — the fix is in the commit.
+
+### API spend today
+- api_usage table not yet created in Supabase. Estimate: ~$0.015 for one generate-briefing.mjs test run (2000 input + 500 output tokens on claude-sonnet-4-20250514).
+
+### Commits
+- `d90f8a4` — Brain rewrite, API cost control, empty draft validation, violet cleanup

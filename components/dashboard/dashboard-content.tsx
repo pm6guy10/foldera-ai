@@ -204,27 +204,12 @@ export default function DashboardContent() {
         </button>
       </div>
 
-      {/* Metrics */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        <MetricCard
-          label="Activity"
-          fullLabel="Things Foldera has processed"
-          value={statsLoading ? '—' : String(stats?.signalsTotal ?? 0)}
-          emptyHint="Paste text to begin"
-        />
-        <MetricCard
-          label="Commitments"
-          fullLabel="Things you said you'd do"
-          value={statsLoading ? '—' : String(stats?.commitmentsActive ?? 0)}
-          highlight={!!stats?.commitmentsActive}
-        />
-        <MetricCard
-          label="Noticed"
-          fullLabel="Things Foldera noticed"
-          value={statsLoading ? '—' : String(stats?.patternsActive ?? 0)}
-          emptyHint="Appears after 1st ingest"
-        />
-      </div>
+      {/* Signal line */}
+      {!statsLoading && stats && (
+        <p className="text-zinc-500 text-xs font-mono">
+          {stats.signalsTotal} signals · {stats.commitmentsActive} commitments · {stats.patternsActive} patterns detected
+        </p>
+      )}
 
       {/* Current Priorities */}
       <CurrentPriorities />
@@ -314,30 +299,6 @@ function FeedPanel({ onIngested }: { onIngested: () => void }) {
   );
 }
 
-function MetricCard({ label, fullLabel, value, highlight, emptyHint }: {
-  label:     string;
-  fullLabel?: string;
-  value:     string;
-  highlight?: boolean;
-  emptyHint?: string;
-}) {
-  const isEmpty = value === '0';
-  return (
-    <div className={`p-2.5 sm:p-4 rounded-xl border ${highlight ? 'bg-cyan-900/20 border-cyan-700/40' : 'bg-zinc-900 border-zinc-800'}`}>
-      <div className={`text-xl sm:text-2xl font-bold tabular-nums ${isEmpty ? 'text-zinc-600' : 'text-zinc-50'}`}>{value}</div>
-      <div className="text-zinc-500 text-[10px] sm:text-xs mt-0.5 leading-tight">
-        {isEmpty && emptyHint ? (
-          <span className="text-zinc-600">{emptyHint}</span>
-        ) : (
-          <>
-            <span className="sm:hidden">{label}</span>
-            <span className="hidden sm:inline">{fullLabel ?? label}</span>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function CurrentPriorities() {
   const [priorities, setPriorities] = useState<string[]>([]);
