@@ -5,6 +5,25 @@ Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env
 
 ---
 
+## Decided — never relitigate
+- **Accent color:** cyan/emerald. Not violet. Done.
+- **Brain prompt:** chief of staff model, not summarizer. Artifact required on every directive. Done.
+- **Cost model:** haiku for artifact assembly, sonnet for final directive generation. Daily cap $1.50. Done.
+- **Empty drafts:** validation gate required before staging — missing to/subject/body logs error and skips. Done.
+- **Dashboard stats:** remove vanity cards, replace with single signal line. Done.
+- **Post-skip state:** terminal message, not empty card. Done.
+- **Email is the primary product**, dashboard is secondary. Done.
+- **All pushes go to main.** No feature branches.
+- **Session logs** appended to CLAUDE.md after every session.
+
+## Build Status
+- Phase 1: done
+- Phase 2: not started
+- Phase 3: not started
+- Phase 4: not started
+
+---
+
 ## Stack notes
 - App Router only — no Pages Router
 - All DB access via `createServerClient()` from `lib/db/client.ts` (centralized factory)
