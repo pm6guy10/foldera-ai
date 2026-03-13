@@ -54,7 +54,7 @@ export default function SignalsPage() {
       <div className="grid grid-cols-3 gap-3 mb-8">
         {[
           { label: 'Items processed', value: loading ? '—' : String(total) },
-          { label: 'Sources connected', value: '1' },
+          { label: 'Sources connected', value: total > 0 ? '1' : '0' },
           { label: 'Updated', value: 'Tonight' },
         ].map((stat) => (
           <div key={stat.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">

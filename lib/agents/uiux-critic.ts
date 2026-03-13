@@ -46,45 +46,50 @@ interface CriticOutput {
 
 /** Current app description — updated manually when major screens change */
 const APP_DESCRIPTION = `
-Foldera App — Current State (as of 2026-03-10):
+Foldera App — Current State (as of 2026-03-13):
 
 LANDING PAGE (app/page.tsx):
-- Dark hero (#0B0B0C bg) with "Your patterns. Finally visible." headline
-- Live Cognition Engine card showing animated historical evidence timeline + pattern card
-- Three CTAs: "See your patterns" → /onboard; "Log in" → signin; bottom CTA → /onboard
-- Sections: mechanism (3 steps), domain cards (Career/Relationships/Decisions), big CTA
-- Live ticker with behavioral insights scrolling horizontally
-- No mobile hamburger menu; nav has Log in + Get Early Access
+- Dark hero (zinc-950 bg) with "The work is done before you ask." headline
+- Interactive Chaos→Clarity demo: 3 scenario tabs (Job Hunt, Founder Overload, Life Admin)
+  Each shows: chaotic inbox items on left → conviction card with Approve button on right
+- CTAs: "Get started" → /start; "Sign in" → /start; nav has Product/Security/Pricing links
+- Sections: features grid (6 cards), 3-step loop, artifact demo, security/pricing, footer
+- Nav: Product/Security/Pricing hidden on mobile (md:flex), Sign in hidden on sm, Get started always visible
+- Pricing: single $99/month plan, 14-day free trial, no credit card
 
-ONBOARDING (/onboard):
-- Minimal dark page, shows "Finding your patterns..." then a directive
-- Action type (e.g. DECIDE), confidence % (now visible at #8b7355), directive text, reason
-- CTA: "Get your dashboard →" → /api/auth/signin
-- Tagline: "Free · Takes 30 seconds · No card required"
+ONBOARDING (/start, /start/processing, /start/result):
+- /start: "Connect with Google" + "Connect with Microsoft" OAuth buttons + paste fallback
+- /start/processing: animated spinner → syncs email → if thin history, offers paste textarea
+  Edge cases: very_thin (email capture), thankyou (waitlisted), error (retry button)
+- /start/result: full directive card (action badge, confidence %, directive text, evidence)
+  3-step walkthrough overlay for first-time users (localStorage-gated), then trial CTA
+  CTA: "Start 14-day free trial" → /dashboard
 
 DASHBOARD (/dashboard):
 - Greeting + human-readable date
-- 3 metric cards (Signals, Commitments, Patterns) — zeros show context hints
-- DraftQueue (hidden when empty): shows pending agent proposals with Approve/Reject
-- ConvictionCard (2/3 width): Today's Directive with action type badge, directive text,
-  confidence %, reason, Approve/Skip buttons → leads to "Did it work?" ThumbsUp/ThumbsDown
+- Signal line (compact): "N signals · N commitments · N patterns detected"
+- DraftQueue (hidden when empty): shows pending agent proposals with Approve/Dismiss
+- ConvictionCard (2/3 width): Today's Read — action type badge, directive, confidence %,
+  reason, artifact preview, Approve/Skip buttons
+  Post-skip state: terminal message "Skipped. The engine will recalibrate." + "Next read generates tomorrow morning." (no regenerate)
+  Post-approve state: "Did it work?" thumbs up/down → outcome logged → done message
 - Teach Foldera panel (1/3 width): textarea to paste conversations
 - Mobile: bottom 4-tab nav (Home/Briefings/Signals/Settings)
 
 SIDEBAR (desktop):
 - Foldera logo, 5 nav items (Dashboard, Briefings, Relationships, Signals, Settings)
-- Bottom: Brandon + Pro Plan avatar section
+- Bottom: user name + Pro Plan avatar section
 
 TOP BAR:
 - Search/command button (⌘K) → command palette with 4 navigation items
-- "Shadow Mode Active" status indicator
-- Bell icon (no red dot currently)
+- Bell icon
 
-DASHBOARD PAGES (mostly placeholder):
-- /dashboard/briefings — empty state message
-- /dashboard/relationships — empty state message
-- /dashboard/signals — empty state message
-- /dashboard/settings — integration connect page (Gmail, Outlook, Google Drive)
+DASHBOARD PAGES:
+- /dashboard/briefings — empty state with FileText icon, message about future reads
+- /dashboard/relationships — live: fetches cooling relationships from /api/briefing/latest
+- /dashboard/signals — live: Activity header, stats strip (items processed, sources, updated),
+  empty state with connect-inbox CTA or activity list with source breakdown bars
+- /dashboard/settings — integration connect page (Gmail, Outlook, Google Drive) + AI spend bar
 `;
 
 export async function runUiUxCritic(userId: string): Promise<number> {
