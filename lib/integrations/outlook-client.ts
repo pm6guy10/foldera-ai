@@ -19,8 +19,24 @@ interface GraphMessage {
   from: { emailAddress: { name: string; address: string } } | null;
 }
 
+interface GraphSentMessage {
+  id: string;
+  subject: string;
+  bodyPreview: string;
+  body?: { content: string; contentType: string };
+  sentDateTime: string;
+  toRecipients?: Array<{ emailAddress: { name: string; address: string } }>;
+}
+
+const GRAPH_HEADERS = (token: string) => ({
+  Authorization: `Bearer ${token}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'outlook.body-content-type="text"',
+});
+
 /**
  * Fetch emails from the last `hoursBack` hours via Microsoft Graph.
+ * Fetches both inbox and sent items, combines them sorted by date descending.
  * Returns an array of plain-text snippets (one per email).
  * Returns empty array if no tokens are available or on non-fatal errors.
  */
@@ -36,44 +52,77 @@ export async function fetchOutlookEmails(
 
   const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString();
 
-  // Microsoft Graph — inbox messages since `since`, ordered newest first
-  const url =
-    `https://graph.microsoft.com/v1.0/me/messages` +
-    `?$filter=receivedDateTime ge ${since}` +
-    `&$select=id,subject,bodyPreview,body,from,receivedDateTime` +
-    `&$top=50` +
-    `&$orderby=receivedDateTime desc`;
+  const [inboxRes, sentRes] = await Promise.all([
+    fetch(
+      `https://graph.microsoft.com/v1.0/me/messages` +
+      `?$filter=receivedDateTime ge ${since}` +
+      `&$select=id,subject,bodyPreview,body,from,receivedDateTime` +
+      `&$top=50&$orderby=receivedDateTime desc`,
+      { headers: GRAPH_HEADERS(tokens.access_token) },
+    ),
+    fetch(
+      `https://graph.microsoft.com/v1.0/me/mailFolders/SentItems/messages` +
+      `?$filter=sentDateTime ge ${since}` +
+      `&$select=id,subject,bodyPreview,body,toRecipients,sentDateTime` +
+      `&$top=50&$orderby=sentDateTime desc`,
+      { headers: GRAPH_HEADERS(tokens.access_token) },
+    ),
+  ]);
 
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'outlook.body-content-type="text"',
-    },
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`Microsoft Graph ${res.status}: ${body}`);
+  if (!inboxRes.ok) {
+    const body = await inboxRes.text().catch(() => '');
+    throw new Error(`Microsoft Graph inbox ${inboxRes.status}: ${body}`);
   }
 
-  const data = await res.json() as { value: GraphMessage[] };
-  const messages = data.value ?? [];
+  const inboxData = await inboxRes.json() as { value: GraphMessage[] };
+  const inboxMessages = inboxData.value ?? [];
 
-  if (messages.length === 0) return [];
+  let sentMessages: GraphSentMessage[] = [];
+  if (sentRes.ok) {
+    const sentData = await sentRes.json() as { value: GraphSentMessage[] };
+    sentMessages = sentData.value ?? [];
+  } else {
+    console.warn('[outlook] sent items fetch failed:', sentRes.status);
+  }
 
-  return messages.map(m => {
+  type Item = { dateStr: string; text: string };
+  const items: Item[] = [];
+
+  for (const m of inboxMessages) {
     const from = m.from?.emailAddress
       ? `${m.from.emailAddress.name} <${m.from.emailAddress.address}>`
       : 'unknown';
     const cleanBody = (m.body?.content ?? m.bodyPreview ?? '').slice(0, 3000);
-    return (
-      `[Email received: ${m.receivedDateTime}]\n` +
-      `From: ${from}\n` +
-      `Subject: ${m.subject ?? '(no subject)'}\n` +
-      `Body:\n${cleanBody}`
-    );
-  });
+    items.push({
+      dateStr: m.receivedDateTime,
+      text: (
+        `[Email received: ${m.receivedDateTime}]\n` +
+        `From: ${from}\n` +
+        `Subject: ${m.subject ?? '(no subject)'}\n` +
+        `Body:\n${cleanBody}`
+      ),
+    });
+  }
+
+  for (const m of sentMessages) {
+    const to = (m.toRecipients ?? [])
+      .map(r => `${r.emailAddress?.name ?? ''} <${r.emailAddress?.address ?? ''}>`)
+      .join(', ');
+    const cleanBody = (m.body?.content ?? m.bodyPreview ?? '').slice(0, 3000);
+    items.push({
+      dateStr: m.sentDateTime,
+      text: (
+        `[Email sent: ${m.sentDateTime}]\n` +
+        `To: ${to}\n` +
+        `Subject: ${m.subject ?? '(no subject)'}\n` +
+        `Body:\n${cleanBody}`
+      ),
+    });
+  }
+
+  items.sort((a, b) => new Date(b.dateStr).getTime() - new Date(a.dateStr).getTime());
+
+  return items.map(i => i.text);
 }
 
 /**

@@ -18,6 +18,7 @@ import { resolveCronUser } from '@/lib/auth/resolve-user';
 import { createServerClient }          from '@/lib/db/client';
 import { fetchOutlookEmails }          from '@/lib/integrations/outlook-client';
 import { fetchGmailEmails }            from '@/lib/integrations/gmail-client';
+import { syncOutlookCalendar }         from '@/lib/integrations/outlook-calendar';
 import { extractFromConversation }     from '@/lib/extraction/conversation-extractor';
 import { analyzeRelationships }        from '@/lib/relationships/tracker';
 import { encrypt }                     from '@/lib/encryption';
@@ -53,6 +54,14 @@ export async function GET(request: Request) {
   const totalSignals   = results.reduce((s, r) => s + r.signals,   0);
   const totalDecisions = results.reduce((s, r) => s + r.decisions, 0);
 
+  // ── Outlook calendar sync ────────────────────────────────────────────────
+  let calendarEvents = 0;
+  try {
+    calendarEvents = await syncOutlookCalendar(userId);
+  } catch (calErr: any) {
+    console.warn('[sync-email] calendar sync failed:', calErr.message);
+  }
+
   // ── Fetch and flag stale drafts (>48h = avoidance signal) ─────────────────
   let draftsFound = 0;
   try {
@@ -81,7 +90,7 @@ export async function GET(request: Request) {
   console.log(
     '[sync-email] done —',
     results.map(r => `${r.source}: ${r.emails} emails → ${r.decisions} decisions${r.error ? ` (err: ${r.error})` : ''}`).join(' | '),
-    `| drafts flagged: ${draftsFound} | relationships: ${relationshipsAnalyzed} | outcomes closed: ${outcomesClosed}`,
+    `| calendar: ${calendarEvents} | drafts flagged: ${draftsFound} | relationships: ${relationshipsAnalyzed} | outcomes closed: ${outcomesClosed}`,
   );
 
   return NextResponse.json({
@@ -89,6 +98,7 @@ export async function GET(request: Request) {
     signals:   totalSignals,
     decisions: totalDecisions,
     sources:   results,
+    calendar_events: calendarEvents,
     drafts_flagged: draftsFound,
     relationships_analyzed: relationshipsAnalyzed,
     outcomes_closed: outcomesClosed,
