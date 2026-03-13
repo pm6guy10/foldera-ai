@@ -328,6 +328,69 @@ async function getInboundSubjects(userId: string): Promise<Set<string>> {
   return subjects;
 }
 
+interface InboundEmail { subject: string; bodySnippet: string; receivedAt: string; }
+
+/**
+ * Fetch subject + body snippet of inbox emails received since `sinceIso`.
+ * Used to detect YES/NO replies to Foldera outcome-check emails.
+ */
+async function getInboundEmailsSince(userId: string, sinceIso: string): Promise<InboundEmail[]> {
+  const emails: InboundEmail[] = [];
+
+  // Outlook
+  try {
+    const { getMicrosoftTokens } = await import('@/lib/auth/token-store');
+    const tokens = await getMicrosoftTokens(userId);
+    if (tokens) {
+      const url =
+        `https://graph.microsoft.com/v1.0/me/mailFolders/Inbox/messages` +
+        `?$filter=receivedDateTime ge ${sinceIso}` +
+        `&$select=subject,bodyPreview,receivedDateTime&$top=50`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${tokens.access_token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        for (const m of data.value ?? []) {
+          emails.push({
+            subject:     (m.subject as string) ?? '',
+            bodySnippet: (m.bodyPreview as string) ?? '',
+            receivedAt:  (m.receivedDateTime as string) ?? '',
+          });
+        }
+      }
+    }
+  } catch { /* silent */ }
+
+  // Gmail
+  try {
+    const { google } = await import('googleapis');
+    const { getGoogleTokens } = await import('@/lib/auth/token-store');
+    const tokens = await getGoogleTokens(userId);
+    if (tokens) {
+      const oauth2 = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
+      oauth2.setCredentials({ access_token: tokens.access_token, refresh_token: tokens.refresh_token, expiry_date: tokens.expiry_date });
+      const gmail = google.gmail({ version: 'v1', auth: oauth2 });
+      const afterSec = Math.floor(new Date(sinceIso).getTime() / 1000);
+      const list = await gmail.users.messages.list({ userId: 'me', q: `in:inbox after:${afterSec}`, maxResults: 50 });
+      for (const { id } of list.data.messages ?? []) {
+        if (!id) continue;
+        try {
+          const msg = await gmail.users.messages.get({ userId: 'me', id, format: 'metadata', metadataHeaders: ['Subject', 'Date'] });
+          const headers = msg.data.payload?.headers ?? [];
+          const subj    = headers.find((h: any) => h.name?.toLowerCase() === 'subject')?.value ?? '';
+          const dateStr = headers.find((h: any) => h.name?.toLowerCase() === 'date')?.value ?? '';
+          emails.push({
+            subject:     subj,
+            bodySnippet: msg.data.snippet ?? '',
+            receivedAt:  dateStr,
+          });
+        } catch { /* skip */ }
+      }
+    }
+  } catch { /* silent */ }
+
+  return emails;
+}
+
 /**
  * For each executed send_message action without an outcome:
  * - If an inbound "Re: <subject>" is found → success → increment successful_outcomes
@@ -415,6 +478,96 @@ async function closeOutcomeLoops(userId: string): Promise<number> {
 
     console.log(`[sync-email/closeOutcomeLoops] ${action.id} → ${hasReply ? 'success (reply detected)' : 'no_reply (7d elapsed)'}`);
     closed++;
+  }
+
+  // ── YES/NO reply detection for non-email outcome checks ───────────────────
+  // Covers directives that had "Reply YES or NO." appended to the daily email.
+  const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: checkActions } = await supabase
+    .from('tkg_actions')
+    .select('id, action_type, execution_result')
+    .eq('user_id', userId)
+    .eq('status', 'executed')
+    .neq('action_type', 'send_message') // handled above
+    .gte('executed_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+
+  const pendingChecks = (checkActions ?? []).filter((a: any) => {
+    const er = (a.execution_result as Record<string, any>) ?? {};
+    return er.outcome_check_sent === true && !er.outcome_closed;
+  });
+
+  if (pendingChecks.length > 0) {
+    // Fetch inbox emails since the earliest check was sent
+    const earliestCheckAt = pendingChecks.reduce((min: string, a: any) => {
+      const t = (a.execution_result as Record<string, any>).outcome_check_sent_at as string ?? '';
+      return t < min ? t : min;
+    }, new Date().toISOString());
+
+    const inboundEmails = await getInboundEmailsSince(userId, earliestCheckAt);
+
+    for (const action of pendingChecks) {
+      const execResult      = (action.execution_result as Record<string, any>) ?? {};
+      const checkSentAt     = (execResult.outcome_check_sent_at as string) ?? '';
+      const isAutoCloseTime = checkSentAt < fiveDaysAgo;
+
+      // Look for a YES or NO reply received after the check was sent
+      const yesNoReply = inboundEmails.find(email => {
+        if (email.receivedAt && email.receivedAt < checkSentAt) return false;
+        const snippet = email.bodySnippet.trim().toLowerCase();
+        return /^(yes|no)[\s.,!?]*$/.test(snippet);
+      });
+
+      if (!yesNoReply && !isAutoCloseTime) continue; // not yet determinable
+
+      const isYes    = yesNoReply ? /^yes/i.test(yesNoReply.bodySnippet.trim()) : null;
+      const outcome  = isYes === null ? 'neutral' : (isYes ? 'yes' : 'no');
+
+      // Update pattern metrics (YES → success, NO → failure, neutral → no change)
+      if (isYes !== null) {
+        const domain      = (execResult.domain as string) ?? 'general';
+        const patternHash = `${action.action_type}:${domain}`;
+        try {
+          const { data: pm } = await supabase
+            .from('tkg_pattern_metrics')
+            .select('total_activations, successful_outcomes, failed_outcomes')
+            .eq('user_id', userId)
+            .eq('pattern_hash', patternHash)
+            .maybeSingle();
+
+          await supabase.from('tkg_pattern_metrics').upsert(
+            {
+              user_id:             userId,
+              pattern_hash:        patternHash,
+              category:            action.action_type,
+              domain,
+              total_activations:   pm?.total_activations   ?? 0,
+              successful_outcomes: (pm?.successful_outcomes ?? 0) + (isYes ? 1 : 0),
+              failed_outcomes:     (pm?.failed_outcomes     ?? 0) + (isYes ? 0 : 1),
+              updated_at:          new Date().toISOString(),
+            },
+            { onConflict: 'user_id,pattern_hash' },
+          );
+        } catch (pmErr: any) {
+          console.warn('[sync-email/closeOutcomeLoops] YES/NO metrics upsert failed:', pmErr.message);
+        }
+      }
+
+      await supabase
+        .from('tkg_actions')
+        .update({
+          execution_result: {
+            ...execResult,
+            outcome_closed:    true,
+            outcome,
+            outcome_closed_at: new Date().toISOString(),
+          },
+        })
+        .eq('id', action.id);
+
+      console.log(`[sync-email/closeOutcomeLoops] ${action.id} YES/NO → ${outcome} (${isYes === null ? '5d auto-close' : 'reply detected'})`);
+      closed++;
+    }
   }
 
   return closed;

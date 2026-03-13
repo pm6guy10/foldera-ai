@@ -284,31 +284,45 @@ async function handler(request: NextRequest) {
         }
       }
 
-      // ── Outcome follow-ups: check for actions approved 7+ days ago ──────────
+      // ── Outcome follow-up: check for non-email directives approved ~48h ago ──
+      // Appends a plain-text "Did it help? Reply YES or NO." line to the email.
+      // Reply detection + metric update happens in sync-email closeOutcomeLoops.
+      let outcomeCheckLine: string | undefined;
       try {
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+        const fiveDaysAgo        = new Date(Date.now() -  5 * 24 * 60 * 60 * 1000).toISOString();
+
         const { data: pendingOutcomes } = await supabase
           .from('tkg_actions')
           .select('id, directive_text, action_type, executed_at, execution_result')
           .eq('user_id', userId)
           .eq('status', 'executed')
-          .lte('executed_at', sevenDaysAgo)
-          .limit(3);
+          .neq('action_type', 'send_message')   // email outcomes handled separately
+          .lte('executed_at', fortyEightHoursAgo)
+          .gte('executed_at', fiveDaysAgo)
+          .limit(5);
 
         for (const action of pendingOutcomes ?? []) {
           const execResult = (action.execution_result as Record<string, unknown>) ?? {};
-          // Skip if outcome already confirmed
-          if (execResult.outcome) continue;
+          if (execResult.outcome_closed)      continue; // already resolved
+          if (execResult.outcome_check_sent)  continue; // already asked
 
-          // Add outcome follow-up as a directive item; isOutcomeFollowUp → email uses "It worked" / "Didn't work" links
-          directiveItems.push({
-            id: action.id,
-            directive: `7 days ago you approved: "${action.directive_text}". Did it work?`,
-            action_type: 'confirm_outcome' as any,
-            confidence: 100,
-            reason: `Executed on ${new Date(action.executed_at).toLocaleDateString()}. Tap to close the loop.`,
-            isOutcomeFollowUp: true,
-          });
+          const truncated = (action.directive_text as string ?? '').slice(0, 120);
+          outcomeCheckLine = `Two days ago I suggested: "${truncated}". Did it help? Reply YES or NO.`;
+
+          // Mark that we've sent the outcome check so we don't ask again tomorrow
+          await supabase
+            .from('tkg_actions')
+            .update({
+              execution_result: {
+                ...execResult,
+                outcome_check_sent:    true,
+                outcome_check_sent_at: new Date().toISOString(),
+              },
+            })
+            .eq('id', action.id);
+
+          break; // only one outcome check per email
         }
       } catch (outcomeErr: any) {
         console.warn('[daily-brief] outcome check failed:', outcomeErr.message);
@@ -332,7 +346,7 @@ async function handler(request: NextRequest) {
       }
 
       const sendResult = await withRetry(
-        () => sendDailyDirective({ to, directives: directiveItems, date, subject }),
+        () => sendDailyDirective({ to, directives: directiveItems, date, subject, outcomeCheck: outcomeCheckLine }),
         `sendDailyDirective for ${userId}`,
       );
       if ('error' in sendResult) {

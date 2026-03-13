@@ -45,11 +45,13 @@ export async function sendDailyDirective({
   directives,
   date,
   subject,
+  outcomeCheck,
 }: {
-  to:          string;
-  directives:  DirectiveItem[];
-  date:        string; // YYYY-MM-DD
-  subject?:    string; // override default
+  to:            string;
+  directives:    DirectiveItem[];
+  date:          string; // YYYY-MM-DD
+  subject?:      string; // override default
+  outcomeCheck?: string; // "Two days ago I suggested: …. Did it help? Reply YES or NO."
 }) {
   const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
 
@@ -114,6 +116,13 @@ ${divider}
         </tr>`;
   }).join('\n');
 
+  const outcomeCheckHtml = outcomeCheck ? `
+          <tr>
+            <td style="padding-top:24px;border-top:1px solid #e8e3df;">
+              <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#6b6259;line-height:1.6;">${escapeHtml(outcomeCheck)}</p>
+            </td>
+          </tr>` : '';
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -132,6 +141,7 @@ ${divider}
             </td>
           </tr>
 ${cards}
+${outcomeCheckHtml}
           <tr>
             <td style="padding-top:8px;border-top:1px solid #e8e3df;">
               <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#c4bdb5;">
