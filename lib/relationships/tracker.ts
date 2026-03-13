@@ -8,6 +8,7 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
+import { decrypt } from '@/lib/encryption';
 
 
 export interface RelationshipMetrics {
@@ -51,7 +52,7 @@ export async function analyzeRelationships(userId: string): Promise<Relationship
   }>();
 
   for (const signal of signals) {
-    const content = (signal.content as string) || '';
+    const content = decrypt((signal.content as string) || '');
     const occurredAt = new Date(signal.occurred_at as string);
 
     // Extract "From: Name <email>" pattern

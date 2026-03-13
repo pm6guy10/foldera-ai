@@ -19,7 +19,19 @@
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { createHash } from 'crypto';
+import { createHash, createCipheriv, randomBytes } from 'crypto';
+
+/** AES-256-GCM encrypt matching lib/encryption.ts. Returns raw value if ENCRYPTION_KEY not set. */
+function encryptContent(plaintext) {
+  const raw = process.env.ENCRYPTION_KEY;
+  if (!raw) return plaintext;
+  const key = Buffer.from(raw, 'base64');
+  const iv  = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, encrypted]).toString('base64');
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -147,7 +159,7 @@ async function extractConversation(text) {
       source:       'uploaded_document',
       source_id:    hash.slice(0, 16),
       type:         'document_created',
-      content:      text,
+      content:      encryptContent(text),
       content_hash: hash,
       author:       'user',
       recipients:   [],

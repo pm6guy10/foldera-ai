@@ -23,6 +23,7 @@ import type { ChiefOfStaffBriefing, ConvictionDirective, ActionType, EvidenceIte
 import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 import { getCoolingRelationships } from '@/lib/relationships/tracker';
 import { trackApiCall, isOverDailyLimit } from '@/lib/utils/api-tracker';
+import { decrypt } from '@/lib/encryption';
 
 // ---------------------------------------------------------------------------
 // Clients (lazy)
@@ -362,17 +363,17 @@ export async function generateDirective(userId: string, count: number = 1): Prom
       .limit(10),
   ]);
 
-  const signals          = signalsRes.data ?? [];
+  const signals          = (signalsRes.data ?? []).map((s: any) => ({ ...s, content: decrypt(s.content as string ?? '') }));
   const commitments      = commitmentsRes.data ?? [];
   const patterns         = (entityRes.data?.patterns as Record<string, any>) ?? {};
   const goals            = goalsRes.data ?? [];
   const currentPriorities = currentPrioritiesRes.data ?? [];
   const feedback         = (feedbackRes.data    ?? []) as FeedbackRow[];
   const approvalRows     = (approvalStatsRes.data ?? []) as ApprovalRow[];
-  const calendarEvents   = calendarRes.data ?? [];
-  const avoidanceSignals = avoidanceRes.data ?? [];
+  const calendarEvents   = (calendarRes.data ?? []).map((s: any) => ({ ...s, content: decrypt(s.content as string ?? '') }));
+  const avoidanceSignals = (avoidanceRes.data ?? []).map((s: any) => ({ ...s, content: decrypt(s.content as string ?? '') }));
   const activeGoals      = activeGoalsRes.data ?? [];
-  const recentOutcomes   = recentOutcomesRes.data ?? [];
+  const recentOutcomes   = (recentOutcomesRes.data ?? []).map((s: any) => ({ ...s, content: decrypt(s.content as string ?? '') }));
   const approvedRecent   = approvedRecentRes.data ?? [];
   const skippedRecent    = skippedRecentRes.data ?? [];
   const confirmedGoals   = confirmedPatternsGoalsRes.data ?? [];
