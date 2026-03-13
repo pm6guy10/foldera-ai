@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Check, X, Mail, Calendar, MessageSquare, Zap, Brain } from 'lucide-react';
+import ChaosToClarity from '@/components/landing/chaos-to-clarity';
 
 // ─── Scroll reveal ────────────────────────────────────────────────────────────
 const useInView = (threshold = 0.08) => {
@@ -158,41 +159,9 @@ export default function App() {
         </div>
       </nav>
 
-      {/* ── SECTION 1: HERO ── */}
-      <main className="pt-36 pb-20 max-w-4xl mx-auto px-5 text-center">
-        <Reveal>
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-600/10 text-violet-300 text-xs font-medium mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-            First read free
-          </div>
-        </Reveal>
-
-        <Reveal delay={60}>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white leading-[1.1] mb-6" style={{ letterSpacing: '-0.03em' }}>
-            Foldera handles things<br className="hidden sm:block" /> for you.
-          </h1>
-        </Reveal>
-
-        <Reveal delay={120}>
-          <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed font-light">
-            Every night, Foldera reads your inbox, calendar, and conversations — figures out what needs to happen — then drafts the actions and hands them to you. One tap approves. One tap skips. Nothing happens without you.
-          </p>
-        </Reveal>
-
-        <Reveal delay={180}>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a
-              href="/start"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-white text-black font-semibold text-base hover:bg-zinc-100 transition-colors group"
-            >
-              Connect your history
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </a>
-            <a href="/try" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
-              Try it now — no signup required →
-            </a>
-          </div>
-        </Reveal>
+      {/* ── SECTION 1: HERO — Chaos to Clarity Demo ── */}
+      <main className="pt-32 sm:pt-36 pb-20">
+        <ChaosToClarity />
       </main>
 
       {/* ── SECTION 2: HOW IT WORKS ── */}
