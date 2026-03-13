@@ -242,6 +242,8 @@ export async function generateDirective(userId: string, count: number = 1): Prom
     calendarRes, avoidanceRes, activeGoalsRes, recentOutcomesRes,
     // New: approved last 7d, skipped last 7d, confirmed patterns
     approvedRecentRes, skippedRecentRes, confirmedPatternsGoalsRes,
+    // Engagement: has the user been opening the daily brief?
+    engagementRes,
   ] = await Promise.all([
     supabase
       .from('tkg_signals')
@@ -361,6 +363,14 @@ export async function generateDirective(userId: string, count: number = 1): Prom
       .eq('status', 'active')
       .order('priority', { ascending: false })
       .limit(10),
+
+    // Daily brief engagement: successful_outcomes = opens, failed_outcomes = missed days
+    supabase
+      .from('tkg_pattern_metrics')
+      .select('successful_outcomes, failed_outcomes, updated_at')
+      .eq('user_id', userId)
+      .eq('pattern_hash', 'daily_brief:engagement')
+      .maybeSingle(),
   ]);
 
   const signals          = (signalsRes.data ?? []).map((s: any) => ({ ...s, content: decrypt(s.content as string ?? '') }));
@@ -377,6 +387,7 @@ export async function generateDirective(userId: string, count: number = 1): Prom
   const approvedRecent   = approvedRecentRes.data ?? [];
   const skippedRecent    = skippedRecentRes.data ?? [];
   const confirmedGoals   = confirmedPatternsGoalsRes.data ?? [];
+  const engagementRow    = engagementRes.data as { successful_outcomes: number; failed_outcomes: number; updated_at: string } | null;
 
   // Empty graph
   if (signals.length === 0 && commitments.length === 0 && goals.length === 0) {
@@ -454,6 +465,17 @@ ${milestonesFromGoals ? `MILESTONES:\n${milestonesFromGoals}` : ''}`;
     ? `\nAVOIDANCE SIGNALS (drafts sitting unsent >48h — decisions being avoided):\n${avoidanceLines}`
     : '';
 
+  // Engagement: warn the brain if opens are dropping
+  let engagementBlock = '';
+  if (engagementRow) {
+    const opens    = engagementRow.successful_outcomes ?? 0;
+    const misses   = engagementRow.failed_outcomes     ?? 0;
+    const total    = opens + misses;
+    if (total >= 3 && misses > opens) {
+      engagementBlock = `\nENGAGEMENT ALERT: User has not been opening the daily brief consistently (${misses} missed days vs ${opens} opens). Vary the action_type — try something different from recent directives. Consider a simpler, more immediately actionable type.`;
+    }
+  }
+
   const activeGoalsBlock = activeGoals.length > 0
     ? `\nACTIVE GOALS (extracted from your conversations — measured against every directive):\n` +
       activeGoals.map((g: any) => `- ${g.goal_text}${g.goal_type ? ` (${g.goal_type})` : ''}`).join('\n')
@@ -518,6 +540,7 @@ ${approvalRateSection}
 ${feedbackSection}
 ${activeGoalsBlock}
 ${recentOutcomesBlock}
+${engagementBlock}
 ${countInstruction}`;
 
   // Call Claude — sonnet-4-20250514 for the final directive
