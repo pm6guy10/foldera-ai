@@ -30,7 +30,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ACTION_COLORS: Record<string, string> = {
-  write_document: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+  write_document: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
   send_message:   'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
   make_decision:  'bg-amber-500/20 text-amber-300 border-amber-500/30',
   do_nothing:     'bg-slate-500/20 text-slate-300 border-slate-500/30',
@@ -132,7 +132,7 @@ export default function ResultPage() {
   if (loading || status === 'loading') {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -153,7 +153,7 @@ export default function ResultPage() {
           <button
             onClick={handleStartTrial}
             disabled={starting}
-            className="w-full py-4 bg-violet-600 hover:bg-violet-500 disabled:opacity-60 rounded-xl font-bold text-lg transition-all"
+            className="w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-black disabled:opacity-60 rounded-xl font-bold text-lg transition-all"
           >
             {starting ? <Spinner /> : 'Start 14-day free trial'}
           </button>
@@ -187,7 +187,7 @@ export default function ResultPage() {
             </span>
             <div className="flex items-center gap-2">
               <div className="h-1.5 w-24 bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-violet-500 rounded-full" style={{ width: `${directive.confidence}%` }} />
+                <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${directive.confidence}%` }} />
               </div>
               <span className="text-slate-500 text-xs">{directive.confidence}%</span>
             </div>
@@ -226,16 +226,16 @@ export default function ResultPage() {
 
         {/* ── Walkthrough ─────────────────────────────────────────────────── */}
         {walkStep !== null && walkStep !== 'done' && (
-          <div className="mb-6 bg-slate-900 border border-violet-500/30 rounded-2xl p-6">
+          <div className="mb-6 bg-slate-900 border border-cyan-500/30 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-violet-400 text-xs font-semibold tracking-widest uppercase">
+              <span className="text-cyan-400 text-xs font-semibold tracking-widest uppercase">
                 {WALKTHROUGH_STEPS[walkStep].label}
               </span>
               <div className="flex gap-1.5">
                 {WALKTHROUGH_STEPS.map((_, i) => (
                   <span
                     key={i}
-                    className={`w-1.5 h-1.5 rounded-full ${i <= walkStep ? 'bg-violet-400' : 'bg-slate-700'}`}
+                    className={`w-1.5 h-1.5 rounded-full ${i <= walkStep ? 'bg-cyan-400' : 'bg-slate-700'}`}
                   />
                 ))}
               </div>
@@ -248,7 +248,7 @@ export default function ResultPage() {
             </p>
             <button
               onClick={advanceWalk}
-              className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 rounded-xl text-sm font-semibold transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-black rounded-xl text-sm font-semibold transition-colors"
             >
               {walkStep < WALKTHROUGH_STEPS.length - 1 ? (
                 <>Next <ChevronRight className="w-4 h-4" /></>
@@ -270,7 +270,7 @@ export default function ResultPage() {
             <button
               onClick={handleStartTrial}
               disabled={starting}
-              className="w-full flex items-center justify-center gap-2 py-4 bg-violet-600 hover:bg-violet-500 disabled:opacity-60 rounded-xl font-bold text-lg transition-all group"
+              className="w-full flex items-center justify-center gap-2 py-4 bg-cyan-500 hover:bg-cyan-400 text-black disabled:opacity-60 rounded-xl font-bold text-lg transition-all group"
             >
               {starting ? <Spinner /> : (
                 <>

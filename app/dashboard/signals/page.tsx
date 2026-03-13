@@ -14,7 +14,7 @@ interface Signal {
 const SOURCE_META: Record<string, { icon: React.ElementType; label: string; color: string }> = {
   gmail:         { icon: Mail,          label: 'Gmail',        color: 'text-red-400'    },
   outlook:       { icon: Mail,          label: 'Outlook',      color: 'text-blue-400'   },
-  conversation:  { icon: MessageSquare, label: 'Conversation', color: 'text-violet-400' },
+  conversation:  { icon: MessageSquare, label: 'Conversation', color: 'text-cyan-400'   },
   calendar:      { icon: Calendar,      label: 'Calendar',     color: 'text-emerald-400'},
   notion:        { icon: FileText,      label: 'Notion',       color: 'text-zinc-400'   },
   manual:        { icon: MessageSquare, label: 'Manual',       color: 'text-amber-400'  },
@@ -40,10 +40,10 @@ export default function SignalsPage() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-9 h-9 rounded-xl bg-violet-600/20 flex items-center justify-center">
-            <Radio className="w-4.5 h-4.5 text-violet-400" style={{ width: 18, height: 18 }} />
+          <div className="w-9 h-9 rounded-xl bg-cyan-600/20 flex items-center justify-center">
+            <Radio className="w-4.5 h-4.5 text-cyan-400" style={{ width: 18, height: 18 }} />
           </div>
-          <h1 className="text-2xl font-bold text-zinc-50">Activity</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">Activity</h1>
         </div>
         <p className="text-zinc-500 text-sm ml-12">
           Everything Foldera has read and processed from your connected sources.
@@ -92,7 +92,7 @@ function EmptyState() {
         {[
           { icon: Mail, label: 'Gmail processed', color: 'text-red-400' },
           { icon: Calendar, label: 'Calendar read', color: 'text-emerald-400' },
-          { icon: MessageSquare, label: 'Conversations analyzed', color: 'text-violet-400' },
+          { icon: MessageSquare, label: 'Conversations analyzed', color: 'text-cyan-400' },
         ].map(({ icon: Icon, label, color }) => (
           <div key={label} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-800 text-sm text-zinc-400">
             <Icon className={`w-4 h-4 ${color}`} />
@@ -125,7 +125,7 @@ function ActivityList({ total }: { total: number }) {
                   </div>
                   <div className="h-1.5 bg-zinc-800 rounded-full mt-2 overflow-hidden">
                     <div
-                      className="h-full bg-violet-600/60 rounded-full"
+                      className="h-full bg-cyan-500/60 rounded-full"
                       style={{ width: key === 'gmail' || key === 'outlook' ? '70%' : key === 'conversation' ? '45%' : '20%' }}
                     />
                   </div>

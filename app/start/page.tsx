@@ -22,7 +22,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ACTION_COLORS: Record<string, string> = {
-  write_document: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+  write_document: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
   send_message: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
   make_decision: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   do_nothing: 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
@@ -80,7 +80,7 @@ export default function StartPage() {
               </span>
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-24 bg-zinc-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-violet-500 rounded-full" style={{ width: `${result.confidence}%` }} />
+                  <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${result.confidence}%` }} />
                 </div>
                 <span className="text-zinc-500 text-xs">{result.confidence}%</span>
               </div>
@@ -148,7 +148,7 @@ export default function StartPage() {
     <main className="min-h-screen bg-[#0B0B0C] text-white flex flex-col items-center justify-center px-6" style={{ fontFamily: "'Inter', sans-serif" }}>
       <div className="max-w-lg w-full text-center">
         <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-violet-600 to-violet-400 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-500 to-emerald-400 flex items-center justify-center">
             <Brain className="w-3.5 h-3.5 text-white" />
           </div>
           <span className="text-lg font-semibold tracking-tight">Foldera</span>
@@ -212,13 +212,13 @@ export default function StartPage() {
               onChange={e => setText(e.target.value)}
               placeholder="Paste a paragraph about what you're working on or struggling with..."
               rows={5}
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-violet-500/50 transition-colors"
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors"
             />
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button
               type="submit"
               disabled={!text.trim() || analyzing}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 font-semibold text-sm transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black disabled:opacity-40 font-semibold text-sm transition-colors"
             >
               {analyzing ? (
                 <>

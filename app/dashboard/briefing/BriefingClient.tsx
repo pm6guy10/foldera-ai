@@ -135,8 +135,8 @@ export default function BriefingClient() {
             {/* Recommended Action */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
               <div className="flex items-center gap-2 mb-3">
-                <Target className="w-5 h-5 text-violet-400" />
-                <span className="text-violet-400 text-sm font-semibold uppercase tracking-wider">
+                <Target className="w-5 h-5 text-cyan-400" />
+                <span className="text-cyan-400 text-sm font-semibold uppercase tracking-wider">
                   Recommended Action
                 </span>
               </div>

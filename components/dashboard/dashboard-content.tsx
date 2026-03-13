@@ -191,7 +191,7 @@ export default function DashboardContent() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-50">{getGreeting()}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{getGreeting()}</h1>
           <p className="text-zinc-400 text-sm mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         </div>
         <button
@@ -249,7 +249,7 @@ export default function DashboardContent() {
         </div>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl">
           <div className="p-5 border-b border-zinc-800">
-            <h2 className="text-zinc-50 font-semibold">Teach Foldera</h2>
+            <h2 className="text-zinc-50 font-semibold tracking-tight">Teach Foldera</h2>
             <p className="text-zinc-500 text-sm mt-0.5">Paste any conversation or notes</p>
           </div>
           <div className="p-5">
@@ -295,12 +295,12 @@ function FeedPanel({ onIngested }: { onIngested: () => void }) {
         onChange={e => setText(e.target.value)}
         placeholder="Paste text here — an email, a conversation, meeting notes..."
         rows={8}
-        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-violet-500 transition-colors"
+        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-cyan-500 transition-colors"
       />
       <button
         onClick={handleSubmit}
         disabled={!text.trim() || status === 'loading'}
-        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors disabled:opacity-50"
       >
         <Upload className="w-4 h-4" />
         {status === 'loading' ? 'Reading...' : 'Learn from this'}
@@ -323,7 +323,7 @@ function MetricCard({ label, fullLabel, value, highlight, emptyHint }: {
 }) {
   const isEmpty = value === '0';
   return (
-    <div className={`p-2.5 sm:p-4 rounded-xl border ${highlight ? 'bg-violet-900/20 border-violet-700/40' : 'bg-zinc-900 border-zinc-800'}`}>
+    <div className={`p-2.5 sm:p-4 rounded-xl border ${highlight ? 'bg-cyan-900/20 border-cyan-700/40' : 'bg-zinc-900 border-zinc-800'}`}>
       <div className={`text-xl sm:text-2xl font-bold tabular-nums ${isEmpty ? 'text-zinc-600' : 'text-zinc-50'}`}>{value}</div>
       <div className="text-zinc-500 text-[10px] sm:text-xs mt-0.5 leading-tight">
         {isEmpty && emptyHint ? (
@@ -385,7 +385,7 @@ function CurrentPriorities() {
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            <Sparkles className="w-4 h-4 text-violet-400 shrink-0" />
+            <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
             <span className="text-zinc-500 text-xs font-medium shrink-0">Right now:</span>
             {priorities.length === 0 ? (
               <span className="text-zinc-600 text-sm">Tell Foldera what matters most</span>
@@ -412,9 +412,9 @@ function CurrentPriorities() {
 
   // Editing mode
   return (
-    <div className="bg-zinc-900 border border-violet-700/40 rounded-xl p-5">
+    <div className="bg-zinc-900 border border-cyan-700/40 rounded-xl p-5">
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="w-4 h-4 text-violet-400" />
+        <Sparkles className="w-4 h-4 text-cyan-400" />
         <span className="text-zinc-200 text-sm font-semibold">What matters most right now?</span>
       </div>
       <div className="space-y-2 mb-3">
@@ -429,7 +429,7 @@ function CurrentPriorities() {
               setDrafts(next);
             }}
             placeholder={i === 0 ? 'e.g. Land a WSDOT role' : i === 1 ? 'e.g. Save $2k by April' : 'e.g. Reconnect with Alex'}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500 transition-colors"
           />
         ))}
       </div>
@@ -437,7 +437,7 @@ function CurrentPriorities() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors disabled:opacity-50"
         >
           <CheckIcon className="w-3.5 h-3.5" />
           {saving ? 'Saving...' : 'Save'}
@@ -490,7 +490,7 @@ function QuickCapture() {
         onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
         placeholder="Quick note — tell Foldera something it should remember"
         disabled={status === 'sending'}
-        className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 transition-colors disabled:opacity-50"
+        className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500 transition-colors disabled:opacity-50"
       />
       {status === 'done' ? (
         <span className="text-emerald-400 text-sm font-medium shrink-0 px-3">Got it.</span>

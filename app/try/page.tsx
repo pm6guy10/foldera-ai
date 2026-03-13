@@ -13,7 +13,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ACTION_COLORS: Record<string, string> = {
-  write_document: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+  write_document: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
   send_message:   'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
   make_decision:  'bg-amber-500/20 text-amber-300 border-amber-500/30',
   do_nothing:     'bg-slate-500/20 text-slate-300 border-slate-500/30',
@@ -71,14 +71,14 @@ export default function TryPage() {
       {/* Nav */}
       <nav className="px-5 py-5 flex items-center justify-between max-w-3xl mx-auto">
         <a href="/" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-violet-600 to-violet-400 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-500 to-emerald-400 flex items-center justify-center">
             <Brain className="w-3.5 h-3.5 text-white" />
           </div>
           <span className="text-lg font-semibold tracking-tight">Foldera</span>
         </a>
         <a
           href="/start"
-          className="px-4 py-2 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
+          className="px-4 py-2 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-semibold transition-colors"
         >
           Get started
         </a>
@@ -104,7 +104,7 @@ export default function TryPage() {
               onChange={e => setText(e.target.value)}
               placeholder="E.g. I've been going back and forth on whether to leave my job. I have a competing offer that pays 30% more but means relocating. I've been sitting on this for two weeks and haven't told my manager yet..."
               rows={7}
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-violet-500/50 transition-colors leading-relaxed"
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors leading-relaxed"
             />
             {error && (
               <p className="text-red-400 text-sm font-mono">{error}</p>
@@ -139,7 +139,7 @@ export default function TryPage() {
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-24 bg-zinc-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-violet-500 rounded-full"
+                      className="h-full bg-cyan-500 rounded-full"
                       style={{ width: `${result.confidence}%` }}
                     />
                   </div>
