@@ -215,6 +215,8 @@ After EVERY commit, before marking anything done:
     - Dead UI: Is there any button, link, or feature that doesn't work? Remove it or fix it.
     Brandon should never discover a visual bug, a broken button, or an inconsistency.
     Find them yourself before reporting done.
+11. ML/AI generation checks:
+    - [ ] If any generation call fails, the system recovers gracefully. No infinite loops, no crashed dashboard, no raw stack traces to the user.
 
 ---
 
