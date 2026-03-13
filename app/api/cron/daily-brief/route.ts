@@ -225,7 +225,8 @@ async function handler(request: NextRequest) {
           artifact = getFallbackArtifact(result.value);
         }
         // Fix 1: Validate email artifacts — do not stage empty drafts
-        if (artifact && (artifact.type === 'email' || artifact.type === 'drafted_email')) {
+        // Cast to string to handle 'drafted_email' which the brain returns but isn't in the union type
+        if (artifact && (['email', 'drafted_email'].includes((artifact as any).type as string))) {
           const emailArtifact = artifact as any;
           const missingFields: string[] = [];
           if (!emailArtifact.to?.trim())      missingFields.push('recipient');
