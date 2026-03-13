@@ -277,7 +277,10 @@ const commitmentLines = commitments
   })
   .join('\n');
 
+// Cap at 20 to stay under token limits (graph has 600+ patterns)
 const patternLines = Object.values(patterns)
+  .sort((a, b) => (b.activation_count || 0) - (a.activation_count || 0))
+  .slice(0, 20)
   .map(p => `• ${p.name} (${p.activation_count || 1}× / domain:${p.domain}): ${p.description}`)
   .join('\n') || 'None extracted yet.';
 

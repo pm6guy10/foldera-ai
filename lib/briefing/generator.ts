@@ -403,8 +403,11 @@ export async function generateDirective(userId: string, count: number = 1): Prom
     .join('\n');
 
   // Confirmed patterns (detection_count >= 3 via activation_count in stored JSON)
+  // Cap at 20 to keep prompt size manageable
   const confirmedPatternLines = Object.values(patterns)
     .filter((p: any) => (p.activation_count ?? 0) >= 3)
+    .sort((a: any, b: any) => (b.activation_count ?? 0) - (a.activation_count ?? 0))
+    .slice(0, 20)
     .map((p: any) => `• ${p.name} (${p.activation_count}× / domain:${p.domain}): ${p.description}`)
     .join('\n') || 'None with 3+ confirmations yet.';
 
@@ -505,8 +508,8 @@ ${goalLines}
 ACTIVE COMMITMENTS (${commitments.length} total):
 ${commitmentLines || 'None.'}
 
-BEHAVIORAL PATTERNS (${Object.keys(patterns).length} identified):
-${Object.values(patterns).map((p: any) => `• ${p.name} (${p.activation_count}×): ${p.description}`).join('\n') || 'None extracted yet.'}
+BEHAVIORAL PATTERNS (top 20 of ${Object.keys(patterns).length} by frequency):
+${Object.values(patterns).sort((a: any, b: any) => (b.activation_count ?? 0) - (a.activation_count ?? 0)).slice(0, 20).map((p: any) => `• ${p.name} (${p.activation_count}×): ${p.description}`).join('\n') || 'None extracted yet.'}
 
 RECENT SIGNALS (last 30 days, ${signals.length} total):
 ${signalLines || 'None.'}
