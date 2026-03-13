@@ -151,7 +151,7 @@ export default function ProcessingPage() {
 
   if (stage === 'error') {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center px-6">
         <div className="text-center max-w-md">
           <p className="text-red-400 mb-6">{errorMsg}</p>
           <button
@@ -167,9 +167,9 @@ export default function ProcessingPage() {
 
   if (stage === 'thin') {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center px-6">
         <div className="max-w-xl w-full">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
             <p className="text-cyan-400 text-xs font-semibold tracking-widest uppercase mb-4">
               Almost there
             </p>
@@ -177,14 +177,14 @@ export default function ProcessingPage() {
               Foldera found {counts.commitments} commitment{counts.commitments !== 1 ? 's' : ''} and{' '}
               {counts.patterns} pattern{counts.patterns !== 1 ? 's' : ''} in your recent email.
             </h2>
-            <p className="text-slate-400 mb-6">
+            <p className="text-zinc-400 mb-6">
               For a stronger read, connect your Claude conversation history too.
             </p>
             <textarea
               value={paste}
               onChange={e => setPaste(e.target.value)}
               placeholder="Paste a Claude conversation export here..."
-              className="w-full h-40 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-500 resize-none focus:outline-none focus:border-cyan-600 mb-4"
+              className="w-full h-40 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-500 resize-none focus:outline-none focus:border-cyan-600 mb-4"
             />
             <button
               onClick={handlePasteSubmit}
@@ -201,11 +201,11 @@ export default function ProcessingPage() {
 
   if (stage === 'very_thin') {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center px-6">
         <div className="max-w-lg w-full">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center">
             <h2 className="text-2xl font-bold mb-3">Foldera needs more history</h2>
-            <p className="text-slate-400 mb-6 leading-relaxed">
+            <p className="text-zinc-400 mb-6 leading-relaxed">
               We found {counts.patterns} pattern{counts.patterns !== 1 ? 's' : ''} so far — not enough
               for an accurate read. We&apos;ll email you when we can generate your first read.
             </p>
@@ -214,7 +214,7 @@ export default function ProcessingPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-600 mb-4"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-cyan-600 mb-4"
             />
             <button
               onClick={handleEmailCapture}
@@ -231,10 +231,10 @@ export default function ProcessingPage() {
 
   if (stage === 'thankyou') {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center px-6">
         <div className="max-w-lg w-full text-center">
           <h2 className="text-2xl font-bold mb-3">You&apos;re on the list.</h2>
-          <p className="text-slate-400 leading-relaxed">
+          <p className="text-zinc-400 leading-relaxed">
             We&apos;ll reach out as soon as we have enough to generate your first read.
           </p>
         </div>
@@ -247,9 +247,9 @@ export default function ProcessingPage() {
 
 function Spinner({ message }: { message: string }) {
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-6">
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-6">
       <div className="w-10 h-10 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin" />
-      <p className="text-slate-300 text-base">{message}</p>
+      <p className="text-zinc-300 text-base">{message}</p>
     </div>
   );
 }

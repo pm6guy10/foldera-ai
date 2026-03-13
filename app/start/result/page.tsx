@@ -33,7 +33,7 @@ const ACTION_COLORS: Record<string, string> = {
   write_document: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
   send_message:   'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
   make_decision:  'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  do_nothing:     'bg-slate-500/20 text-slate-300 border-slate-500/30',
+  do_nothing:     'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
   schedule:       'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
   research:       'bg-blue-500/20 text-blue-300 border-blue-500/30',
 };
@@ -131,7 +131,7 @@ export default function ResultPage() {
 
   if (loading || status === 'loading') {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -141,15 +141,15 @@ export default function ResultPage() {
 
   if (!directive) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center px-6">
         <div className="max-w-md text-center space-y-4">
           {usedDate && (
-            <p className="text-slate-400 text-sm">
+            <p className="text-zinc-400 text-sm">
               Your first read was generated on{' '}
               <span className="text-white">{new Date(usedDate).toLocaleDateString()}</span>.
             </p>
           )}
-          <p className="text-slate-500 text-sm">Start your 14-day free trial to get today&apos;s read every morning.</p>
+          <p className="text-zinc-500 text-sm">Start your 14-day free trial to get today&apos;s read every morning.</p>
           <button
             onClick={handleStartTrial}
             disabled={starting}
@@ -157,7 +157,7 @@ export default function ResultPage() {
           >
             {starting ? <Spinner /> : 'Start 14-day free trial'}
           </button>
-          <p className="text-slate-700 text-xs">No credit card required. $99/month after trial.</p>
+          <p className="text-zinc-700 text-xs">No credit card required. $99/month after trial.</p>
         </div>
       </div>
     );
@@ -170,44 +170,44 @@ export default function ResultPage() {
   const showCTA     = walkStep === 'done';
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="border-b border-slate-800/60 px-6 py-4 flex items-center justify-between">
-        <span className="text-slate-400 text-sm font-medium tracking-widest uppercase">Foldera</span>
-        <span className="text-slate-600 text-xs">Your first read</span>
+    <main className="min-h-screen bg-zinc-950 text-white">
+      <div className="border-b border-zinc-800/60 px-6 py-4 flex items-center justify-between">
+        <span className="text-zinc-400 text-sm font-medium tracking-widest uppercase">Foldera</span>
+        <span className="text-zinc-600 text-xs">Your first read</span>
       </div>
 
       <div className="max-w-2xl mx-auto px-6 py-12">
 
         {/* Directive card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 mb-6">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-6">
 
           <div className="flex items-center justify-between mb-7">
             <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${actionColor}`}>
               {actionLabel}
             </span>
             <div className="flex items-center gap-2">
-              <div className="h-1.5 w-24 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-1.5 w-24 bg-zinc-800 rounded-full overflow-hidden">
                 <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${directive.confidence}%` }} />
               </div>
-              <span className="text-slate-500 text-xs">{directive.confidence}%</span>
+              <span className="text-zinc-500 text-xs">{directive.confidence}%</span>
             </div>
           </div>
 
           <p className="text-2xl font-semibold leading-snug mb-6 text-white">{directive.directive}</p>
 
-          <p className="text-slate-400 text-sm leading-relaxed mb-6 border-l-2 border-slate-700 pl-4 italic">
+          <p className="text-zinc-400 text-sm leading-relaxed mb-6 border-l-2 border-zinc-700 pl-4 italic">
             {directive.reason}
           </p>
 
           {directive.evidence.length > 0 && (
-            <div className="border-t border-slate-800 pt-5">
-              <p className="text-slate-500 text-xs font-semibold tracking-widest uppercase mb-3">Found in your history</p>
+            <div className="border-t border-zinc-800 pt-5">
+              <p className="text-zinc-500 text-xs font-semibold tracking-widest uppercase mb-3">Found in your history</p>
               <ul className="space-y-2.5">
                 {directive.evidence.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-slate-400">
-                    <span className="text-slate-600 mt-0.5 shrink-0">•</span>
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-zinc-400">
+                    <span className="text-zinc-600 mt-0.5 shrink-0">•</span>
                     <span>
-                      {item.date && <span className="text-slate-600 text-xs mr-2 font-mono">{item.date}</span>}
+                      {item.date && <span className="text-zinc-600 text-xs mr-2 font-mono">{item.date}</span>}
                       {item.description}
                     </span>
                   </li>
@@ -217,16 +217,16 @@ export default function ResultPage() {
           )}
 
           {directive.fullContext && (
-            <div className="border-t border-slate-800 pt-5 mt-5">
-              <p className="text-slate-500 text-xs font-semibold tracking-widest uppercase mb-2">More context</p>
-              <p className="text-slate-400 text-sm leading-relaxed">{directive.fullContext}</p>
+            <div className="border-t border-zinc-800 pt-5 mt-5">
+              <p className="text-zinc-500 text-xs font-semibold tracking-widest uppercase mb-2">More context</p>
+              <p className="text-zinc-400 text-sm leading-relaxed">{directive.fullContext}</p>
             </div>
           )}
         </div>
 
         {/* ── Walkthrough ─────────────────────────────────────────────────── */}
         {walkStep !== null && walkStep !== 'done' && (
-          <div className="mb-6 bg-slate-900 border border-cyan-500/30 rounded-2xl p-6">
+          <div className="mb-6 bg-zinc-900 border border-cyan-500/30 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <span className="text-cyan-400 text-xs font-semibold tracking-widest uppercase">
                 {WALKTHROUGH_STEPS[walkStep].label}
@@ -235,7 +235,7 @@ export default function ResultPage() {
                 {WALKTHROUGH_STEPS.map((_, i) => (
                   <span
                     key={i}
-                    className={`w-1.5 h-1.5 rounded-full ${i <= walkStep ? 'bg-cyan-400' : 'bg-slate-700'}`}
+                    className={`w-1.5 h-1.5 rounded-full ${i <= walkStep ? 'bg-cyan-400' : 'bg-zinc-700'}`}
                   />
                 ))}
               </div>
@@ -243,7 +243,7 @@ export default function ResultPage() {
             <h3 className="text-white font-semibold text-lg mb-2">
               {WALKTHROUGH_STEPS[walkStep].heading}
             </h3>
-            <p className="text-slate-400 text-sm leading-relaxed mb-5">
+            <p className="text-zinc-400 text-sm leading-relaxed mb-5">
               {WALKTHROUGH_STEPS[walkStep].body}
             </p>
             <button
@@ -264,7 +264,7 @@ export default function ResultPage() {
           <>
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold mb-1">Get this every morning.</h2>
-              <p className="text-slate-400 text-sm">Foldera reads your inbox overnight and surfaces today&apos;s read at 7 AM.</p>
+              <p className="text-zinc-400 text-sm">Foldera reads your inbox overnight and surfaces today&apos;s read at 7 AM.</p>
             </div>
 
             <button
@@ -282,8 +282,8 @@ export default function ResultPage() {
 
             <div className="mt-4 text-center space-y-1.5">
               {['No credit card required', '$99/month after your trial', 'Cancel anytime'].map(line => (
-                <p key={line} className="flex items-center justify-center gap-1.5 text-slate-600 text-xs">
-                  <Check className="w-3 h-3 text-slate-700" />
+                <p key={line} className="flex items-center justify-center gap-1.5 text-zinc-600 text-xs">
+                  <Check className="w-3 h-3 text-zinc-700" />
                   {line}
                 </p>
               ))}
