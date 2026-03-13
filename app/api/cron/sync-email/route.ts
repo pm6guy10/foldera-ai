@@ -87,6 +87,13 @@ export async function GET(request: Request) {
     console.warn('[sync-email] outcome loop close failed:', loopErr.message);
   }
 
+  // ── Engagement drop: flag if user hasn't opened daily brief in 3+ days ─────
+  try {
+    await checkEngagementDrop(userId);
+  } catch (engErr: any) {
+    console.warn('[sync-email] engagement drop check failed:', engErr.message);
+  }
+
   console.log(
     '[sync-email] done —',
     results.map(r => `${r.source}: ${r.emails} emails → ${r.decisions} decisions${r.error ? ` (err: ${r.error})` : ''}`).join(' | '),
@@ -329,6 +336,71 @@ async function getInboundSubjects(userId: string): Promise<Set<string>> {
 }
 
 interface InboundEmail { subject: string; bodySnippet: string; receivedAt: string; }
+interface SentEmail    { to: string; subject: string; bodySnippet: string; sentAt: string; }
+
+/** Jaccard word-overlap similarity — 0..1. */
+function wordSimilarity(a: string, b: string): number {
+  const tok = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean));
+  const A = tok(a), B = tok(b);
+  if (A.size === 0 && B.size === 0) return 1;
+  const intersection = [...A].filter(w => B.has(w)).length;
+  const union = new Set([...A, ...B]).size;
+  return union === 0 ? 1 : intersection / union;
+}
+
+/** Structured sent mail for artifact outcome matching (to/subject/body). */
+async function getSentEmailsStructured(userId: string, sinceIso: string): Promise<SentEmail[]> {
+  const emails: SentEmail[] = [];
+
+  // Outlook
+  try {
+    const { getMicrosoftTokens } = await import('@/lib/auth/token-store');
+    const tokens = await getMicrosoftTokens(userId);
+    if (tokens) {
+      const url =
+        `https://graph.microsoft.com/v1.0/me/mailFolders/SentItems/messages` +
+        `?$filter=sentDateTime ge ${sinceIso}` +
+        `&$select=id,subject,bodyPreview,toRecipients,sentDateTime&$top=50`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${tokens.access_token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        for (const m of data.value ?? []) {
+          const to = (m.toRecipients ?? [])
+            .map((r: any) => r.emailAddress?.address ?? '')
+            .filter(Boolean)
+            .join(',');
+          emails.push({ to, subject: m.subject ?? '', bodySnippet: m.bodyPreview ?? '', sentAt: m.sentDateTime ?? '' });
+        }
+      }
+    }
+  } catch { /* silent */ }
+
+  // Gmail
+  try {
+    const { google } = await import('googleapis');
+    const { getGoogleTokens } = await import('@/lib/auth/token-store');
+    const tokens = await getGoogleTokens(userId);
+    if (tokens) {
+      const oauth2 = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
+      oauth2.setCredentials({ access_token: tokens.access_token, refresh_token: tokens.refresh_token, expiry_date: tokens.expiry_date });
+      const gmail = google.gmail({ version: 'v1', auth: oauth2 });
+      const afterSec = Math.floor(new Date(sinceIso).getTime() / 1000);
+      const list = await gmail.users.messages.list({ userId: 'me', q: `in:sent after:${afterSec}`, maxResults: 50 });
+      for (const { id } of list.data.messages ?? []) {
+        if (!id) continue;
+        try {
+          const msg = await gmail.users.messages.get({ userId: 'me', id, format: 'metadata', metadataHeaders: ['Subject', 'To', 'Date'] });
+          const headers = msg.data.payload?.headers ?? [];
+          const get = (n: string) => headers.find((h: any) => h.name?.toLowerCase() === n.toLowerCase())?.value ?? '';
+          const toEmails = (get('To').match(/[\w.+-]+@[\w.-]+/g) ?? []).join(',');
+          emails.push({ to: toEmails, subject: get('Subject'), bodySnippet: msg.data.snippet ?? '', sentAt: get('Date') });
+        } catch { /* skip */ }
+      }
+    }
+  } catch { /* silent */ }
+
+  return emails;
+}
 
 /**
  * Fetch subject + body snippet of inbox emails received since `sinceIso`.
@@ -422,19 +494,66 @@ async function closeOutcomeLoops(userId: string): Promise<number> {
 
   if (pending.length === 0) return 0;
 
-  const inboundSubjects = await getInboundSubjects(userId);
+  // Fetch both inbound subjects (reply detection) and structured sent mail (artifact matching)
+  const [inboundSubjects, sentEmails] = await Promise.all([
+    getInboundSubjects(userId),
+    getSentEmailsStructured(userId, thirtyDaysAgo),
+  ]);
 
   for (const action of pending) {
-    const execResult = (action.execution_result as Record<string, any>) ?? {};
-    const artifact   = execResult.artifact as Record<string, any> | undefined;
-    const sentSubject = ((artifact?.subject as string) ?? '').toLowerCase().trim();
+    const execResult  = (action.execution_result as Record<string, any>) ?? {};
+    const artifact    = execResult.artifact as Record<string, any> | undefined;
+    const artifactTo  = ((artifact?.to  as string) ?? '').toLowerCase();
+    const artifactSubj = ((artifact?.subject as string) ?? '').toLowerCase().trim();
+    const artifactBody = (artifact?.body as string) ?? '';
 
-    const hasReply = sentSubject
-      ? inboundSubjects.has(`re: ${sentSubject}`) || inboundSubjects.has(sentSubject)
+    const generatedAt        = new Date(action.generated_at).getTime();
+    const fortyEightHoursAfter = generatedAt + 48 * 60 * 60 * 1000;
+
+    // ── 1. Sent-folder match: did user send a matching email within 48h? ──────
+    let sentMatch: SentEmail | undefined;
+    let isModified = false;
+
+    if (artifactTo || artifactSubj) {
+      const artifactToEmail = (artifactTo.match(/[\w.+-]+@[\w.-]+/) ?? [])[0] ?? artifactTo;
+      sentMatch = sentEmails.find(sent => {
+        const sentTime = new Date(sent.sentAt).getTime();
+        if (isNaN(sentTime) || sentTime < generatedAt || sentTime > fortyEightHoursAfter) return false;
+        const recipientMatch = artifactToEmail && sent.to.toLowerCase().includes(artifactToEmail);
+        const subjectSim     = wordSimilarity(artifactSubj, sent.subject);
+        return recipientMatch || subjectSim >= 0.4;
+      });
+
+      if (sentMatch) {
+        const subjectSim = wordSimilarity(artifactSubj, sentMatch.subject);
+        const bodySim    = artifactBody.length > 50
+          ? wordSimilarity(artifactBody.slice(0, 500), sentMatch.bodySnippet)
+          : 1;
+        // "Modified" = both subject AND body changed significantly
+        isModified = subjectSim < 0.5 && bodySim < 0.5;
+      }
+    }
+
+    // ── 2. Fall back: inbound reply detection ─────────────────────────────────
+    const hasReply = artifactSubj
+      ? inboundSubjects.has(`re: ${artifactSubj}`) || inboundSubjects.has(artifactSubj)
       : false;
+
     const isStale = action.generated_at < sevenDaysAgo;
 
-    if (!hasReply && !isStale) continue; // outcome not determinable yet
+    // Outcome determinable only if we found a sent match, a reply, or 7 days elapsed
+    if (!sentMatch && !hasReply && !isStale) continue;
+
+    // ── 3. Determine outcome ──────────────────────────────────────────────────
+    let outcome: string;
+    if (sentMatch) {
+      outcome = isModified ? 'successful_outcome_modified' : 'successful_outcome';
+    } else if (hasReply) {
+      outcome = 'successful_outcome';
+    } else {
+      outcome = 'failed_outcome'; // 7 days — no evidence of use
+    }
+    const isSuccess = outcome.startsWith('successful');
 
     const domain      = (execResult.domain as string) ?? 'general';
     const patternHash = `send_message:${domain}`;
@@ -454,8 +573,8 @@ async function closeOutcomeLoops(userId: string): Promise<number> {
           category:            'send_message',
           domain,
           total_activations:   pm?.total_activations   ?? 0,
-          successful_outcomes: (pm?.successful_outcomes ?? 0) + (hasReply ? 1 : 0),
-          failed_outcomes:     (pm?.failed_outcomes     ?? 0) + (hasReply ? 0 : 1),
+          successful_outcomes: (pm?.successful_outcomes ?? 0) + (isSuccess ? 1 : 0),
+          failed_outcomes:     (pm?.failed_outcomes     ?? 0) + (isSuccess ? 0 : 1),
           updated_at:          new Date().toISOString(),
         },
         { onConflict: 'user_id,pattern_hash' },
@@ -470,13 +589,17 @@ async function closeOutcomeLoops(userId: string): Promise<number> {
         execution_result: {
           ...execResult,
           outcome_closed:    true,
-          outcome:           hasReply ? 'success' : 'no_reply',
+          outcome,
+          outcome_modified:  isModified || undefined,
           outcome_closed_at: new Date().toISOString(),
         },
       })
       .eq('id', action.id);
 
-    console.log(`[sync-email/closeOutcomeLoops] ${action.id} → ${hasReply ? 'success (reply detected)' : 'no_reply (7d elapsed)'}`);
+    const detail = sentMatch
+      ? `sent-folder match${isModified ? ' (modified)' : ''}`
+      : hasReply ? 'reply detected' : '7d elapsed';
+    console.log(`[sync-email/closeOutcomeLoops] ${action.id} → ${outcome} (${detail})`);
     closed++;
   }
 
@@ -571,4 +694,65 @@ async function closeOutcomeLoops(userId: string): Promise<number> {
   }
 
   return closed;
+}
+
+// ---------------------------------------------------------------------------
+// Engagement drop: detect if user stopped opening the daily brief
+// ---------------------------------------------------------------------------
+
+/**
+ * Checks tkg_signals for the most recent daily_brief_opened event.
+ * If 3+ consecutive days without an open → increments failed_outcomes in
+ * tkg_pattern_metrics (pattern_hash = 'daily_brief:engagement').
+ * Runs at most once per day (guards on updated_at).
+ * The briefing generator reads this to vary action_type mix or reduce frequency.
+ */
+async function checkEngagementDrop(userId: string): Promise<void> {
+  const supabase   = createServerClient();
+  const todayStr   = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const patternHash = 'daily_brief:engagement';
+
+  // Guard: already processed today
+  const { data: existing } = await supabase
+    .from('tkg_pattern_metrics')
+    .select('id, successful_outcomes, failed_outcomes, updated_at')
+    .eq('user_id', userId)
+    .eq('pattern_hash', patternHash)
+    .maybeSingle();
+
+  if (existing?.updated_at && (existing.updated_at as string).slice(0, 10) === todayStr) return;
+
+  // Fetch the most recent daily_brief_opened signal
+  const { data: lastOpen } = await supabase
+    .from('tkg_signals')
+    .select('occurred_at')
+    .eq('user_id', userId)
+    .eq('type', 'daily_brief_opened')
+    .order('occurred_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  const isDropping   = !lastOpen || (lastOpen.occurred_at as string) < threeDaysAgo;
+
+  await supabase.from('tkg_pattern_metrics').upsert(
+    {
+      user_id:             userId,
+      pattern_hash:        patternHash,
+      category:            'engagement',
+      domain:              'daily_brief',
+      total_activations:   (existing?.successful_outcomes ?? 0) + (existing?.failed_outcomes ?? 0) + 1,
+      successful_outcomes: (existing?.successful_outcomes ?? 0) + (isDropping ? 0 : 1),
+      failed_outcomes:     (existing?.failed_outcomes     ?? 0) + (isDropping ? 1 : 0),
+      updated_at:          new Date().toISOString(),
+    },
+    { onConflict: 'user_id,pattern_hash' },
+  );
+
+  if (isDropping) {
+    const daysSince = lastOpen
+      ? Math.floor((Date.now() - new Date(lastOpen.occurred_at as string).getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+    console.log(`[sync-email/checkEngagementDrop] engagement_drop flagged — last open ${daysSince != null ? `${daysSince}d ago` : 'never'}`);
+  }
 }

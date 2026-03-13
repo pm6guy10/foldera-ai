@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
-  // Handle email.opened — increment waitlist open tracking
+  // Handle email.opened
   if (event.type === 'email.opened') {
     const toEmail = (event.data?.to as string[] | undefined)?.[0]
       ?? (event.data?.to as string | undefined)
@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
 
     if (toEmail) {
       const supabase = createServerClient();
+
+      // ── 1. Waitlist open tracking ───────────────────────────────────────────
       const { data: row } = await supabase
         .from('waitlist')
         .select('id, open_count')
@@ -65,6 +67,35 @@ export async function POST(request: NextRequest) {
           .eq('id', row.id);
 
         console.log('[resend/webhook] email.opened tracked for', toEmail);
+      }
+
+      // ── 2. Daily brief open tracking ────────────────────────────────────────
+      // If the recipient is the primary user (DAILY_BRIEF_TO_EMAIL), record a
+      // daily_brief_opened signal so the engagement-drop check stays current.
+      const briefEmail = process.env.DAILY_BRIEF_TO_EMAIL ?? '';
+      const userId     = process.env.INGEST_USER_ID ?? '';
+
+      if (briefEmail && userId && toEmail.toLowerCase() === briefEmail.toLowerCase()) {
+        const todayStr   = new Date().toISOString().slice(0, 10);
+        const contentHash = `daily_brief_opened:${todayStr}`;
+
+        // Deduplicated by content_hash (one signal per calendar day)
+        const { error: sigErr } = await supabase.from('tkg_signals').insert({
+          user_id:      userId,
+          source:       'resend_webhook',
+          source_id:    contentHash,
+          type:         'daily_brief_opened',
+          content:      `Daily brief opened on ${todayStr}`,
+          content_hash: contentHash,
+          author:       'foldera-system',
+          occurred_at:  new Date().toISOString(),
+          processed:    true,
+        });
+
+        if (!sigErr) {
+          console.log('[resend/webhook] daily_brief_opened signal recorded for', todayStr);
+        }
+        // Silently ignore duplicate-hash conflicts — that's expected on multiple opens
       }
     }
   }
