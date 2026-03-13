@@ -20,6 +20,7 @@ import { fetchOutlookEmails }          from '@/lib/integrations/outlook-client';
 import { fetchGmailEmails }            from '@/lib/integrations/gmail-client';
 import { extractFromConversation }     from '@/lib/extraction/conversation-extractor';
 import { analyzeRelationships }        from '@/lib/relationships/tracker';
+import { encrypt }                     from '@/lib/encryption';
 
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 300; // 5 min — email + extraction can be slow
@@ -215,7 +216,7 @@ async function flagStaleDrafts(userId: string): Promise<number> {
             await supabase.from('tkg_signals').insert({
               user_id: userId, source: 'proactive_scan', source_id: draft.id,
               type: 'draft_avoidance',
-              content: `Unsent draft (${Math.floor(ageHours / 24)} days old): "${draft.subject ?? '(no subject)'}"`,
+              content: encrypt(`Unsent draft (${Math.floor(ageHours / 24)} days old): "${draft.subject ?? '(no subject)'}"`) ,
               content_hash: hash, author: 'foldera-scanner',
               occurred_at: new Date().toISOString(), processed: true,
             }).then(({ error }) => { if (!error) found++; });
@@ -250,7 +251,7 @@ async function flagStaleDrafts(userId: string): Promise<number> {
               await supabase.from('tkg_signals').insert({
                 user_id: userId, source: 'proactive_scan', source_id: draft.id,
                 type: 'draft_avoidance',
-                content: `Unsent Gmail draft (${Math.floor(ageHours / 24)} days old): "${subject}"`,
+                content: encrypt(`Unsent Gmail draft (${Math.floor(ageHours / 24)} days old): "${subject}"`),
                 content_hash: hash, author: 'foldera-scanner',
                 occurred_at: new Date().toISOString(), processed: true,
               }).then(({ error }) => { if (!error) found++; });

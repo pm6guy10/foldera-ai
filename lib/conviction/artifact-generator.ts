@@ -18,6 +18,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
+import { decrypt } from '@/lib/encryption';
 import type {
   ConvictionDirective,
   ConvictionArtifact,
@@ -83,7 +84,7 @@ async function loadRecentSignals(userId: string, limit = 10): Promise<string> {
   if (!signals || signals.length === 0) return 'No recent signals.';
 
   return signals
-    .map((s: any) => `[${(s.occurred_at as string).slice(0, 10)}] ${(s.content as string).slice(0, 200)}`)
+    .map((s: any) => `[${(s.occurred_at as string).slice(0, 10)}] ${decrypt(s.content as string).slice(0, 200)}`)
     .join('\n');
 }
 

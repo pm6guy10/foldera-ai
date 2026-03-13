@@ -15,6 +15,7 @@
 import Anthropic     from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
 import { DEFAULT_WEIGHTS, type LearnedWeights } from './scorer';
+import { encrypt, decrypt } from '@/lib/encryption';
 
 // ─── Clients ─────────────────────────────────────────────────────────────────
 
@@ -75,7 +76,7 @@ export async function loadCurrentWeights(userId: string): Promise<LearnedWeights
   if (!data?.content) return { ...DEFAULT_WEIGHTS };
 
   try {
-    const parsed = JSON.parse(String(data.content)) as LearnedWeights;
+    const parsed = JSON.parse(decrypt(String(data.content))) as LearnedWeights;
     return { ...DEFAULT_WEIGHTS, ...parsed };
   } catch {
     return { ...DEFAULT_WEIGHTS };
@@ -92,7 +93,7 @@ async function saveWeights(userId: string, weights: LearnedWeights): Promise<voi
     user_id:      userId,
     source:       CONFIG_SOURCE,
     type:         CONFIG_TYPE,
-    content:      JSON.stringify(weights),
+    content:      encrypt(JSON.stringify(weights)),
     content_hash: `scoring_model_v${weights.version}`,
     occurred_at:  new Date().toISOString(),
     processed:    true,

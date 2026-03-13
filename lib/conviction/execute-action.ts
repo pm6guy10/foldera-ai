@@ -10,6 +10,7 @@ import { sendGmailEmail } from '@/lib/integrations/gmail-client';
 import { sendOutlookEmail } from '@/lib/integrations/outlook-client';
 import { createGoogleCalendarEvent } from '@/lib/integrations/google-calendar';
 import { createOutlookCalendarEvent } from '@/lib/integrations/outlook-calendar';
+import { encrypt } from '@/lib/encryption';
 
 export type ExecuteDecision = 'approve' | 'skip' | 'reject';
 
@@ -97,7 +98,7 @@ async function insertFeedbackSignalIdempotent(
     source: 'user_feedback',
     source_id: `${kind}-${actionId}`,
     type: kind === 'approve' ? 'approval' : 'rejection',
-    content,
+    content: encrypt(content),
     content_hash: contentHash,
     author: 'user',
     occurred_at: new Date().toISOString(),
@@ -157,7 +158,7 @@ async function executeArtifact(
             user_id: userId,
             source: 'artifact',
             type: 'document',
-            content: `Document: ${title}\n\n${content.slice(0, 50000)}`,
+            content: encrypt(`Document: ${title}\n\n${content.slice(0, 50000)}`),
             content_hash: contentHash,
             author: 'foldera',
             occurred_at: now,
@@ -207,7 +208,7 @@ async function executeArtifact(
             user_id: userId,
             source: 'artifact',
             type: 'research',
-            content: `Research: ${recommended}\n\nFindings: ${findings.slice(0, 50000)}`,
+            content: encrypt(`Research: ${recommended}\n\nFindings: ${findings.slice(0, 50000)}`),
             content_hash: contentHash,
             author: 'foldera',
             occurred_at: now,
@@ -234,7 +235,7 @@ async function executeArtifact(
           user_id: userId,
           source: 'artifact',
           type: 'document',
-          content: `Decision: ${recommendation}\n\nOptions: ${JSON.stringify(options).slice(0, 4000)}`,
+          content: encrypt(`Decision: ${recommendation}\n\nOptions: ${JSON.stringify(options).slice(0, 4000)}`),
           content_hash: contentHash,
           author: 'foldera',
           occurred_at: now,
@@ -254,7 +255,7 @@ async function executeArtifact(
           user_id: userId,
           source: 'artifact',
           type: 'document',
-          content: `Affirmation: ${context}\n\nEvidence: ${evidence.slice(0, 4000)}`,
+          content: encrypt(`Affirmation: ${context}\n\nEvidence: ${evidence.slice(0, 4000)}`),
           content_hash: contentHash,
           author: 'foldera',
           occurred_at: now,

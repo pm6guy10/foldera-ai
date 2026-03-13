@@ -9,6 +9,7 @@
 
 import { agentThink, createDraft, getSupabase, type AgentDraft } from './base-agent';
 import type { ActionType } from '@/lib/briefing/types';
+import { decrypt } from '@/lib/encryption';
 
 const AGENT_NAME = 'gtm-strategist';
 
@@ -64,7 +65,7 @@ async function getRecentSignals(): Promise<string> {
   if (!data?.length) return 'No recent pain signals captured yet.';
 
   return data.map((s, i) =>
-    `${i + 1}. [${s.type}] ${String(s.content).slice(0, 150)}`,
+    `${i + 1}. [${s.type}] ${decrypt(String(s.content)).slice(0, 150)}`,
   ).join('\n');
 }
 

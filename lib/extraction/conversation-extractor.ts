@@ -18,6 +18,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
 import { createHash } from 'crypto';
 import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
+import { encrypt } from '@/lib/encryption';
 
 // ---------------------------------------------------------------------------
 // Clients
@@ -199,7 +200,7 @@ export async function extractFromConversation(
       source: 'uploaded_document',
       source_id: contentHash.slice(0, 16),
       type: 'document_created',
-      content: text,
+      content: encrypt(text),
       content_hash: contentHash,
       author: 'user',
       recipients: [],

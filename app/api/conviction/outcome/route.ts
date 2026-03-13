@@ -18,6 +18,7 @@ import { createServerClient } from '@/lib/db/client';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { NextResponse }      from 'next/server';
 import { apiError }         from '@/lib/utils/api-error';
+import { encrypt }          from '@/lib/encryption';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,7 +102,7 @@ export async function POST(request: Request) {
       source:       'user_feedback',
       source_id:    action_id,
       type:         'outcome_feedback',
-      content:      signalContent,
+      content:      encrypt(signalContent),
       content_hash: createHash('sha256').update(`outcome:${action_id}:${outcome}`).digest('hex'),
       author:       'user',
       recipients:   [],

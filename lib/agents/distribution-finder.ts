@@ -9,6 +9,7 @@
 
 import { agentThink, createDraft, getSupabase, type AgentDraft } from './base-agent';
 import type { ActionType } from '@/lib/briefing/types';
+import { decrypt } from '@/lib/encryption';
 
 const AGENT_NAME = 'distribution-finder';
 
@@ -67,7 +68,7 @@ async function getTopPainSignals(): Promise<string> {
   }
 
   return signals.map((s, i) => {
-    const content = String(s.content ?? '');
+    const content = decrypt(String(s.content ?? ''));
     return `${i + 1}. [${s.type ?? 'signal'}] ${content.slice(0, 200)}`;
   }).join('\n');
 }
