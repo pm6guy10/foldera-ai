@@ -20,6 +20,8 @@ export interface ExecuteActionInput {
   actionId: string;
   decision: ExecuteDecision;
   skipReason?: SkipReason;
+  /** Optional caller-supplied artifact that overrides the one stored in the DB row. */
+  editedArtifact?: Record<string, unknown>;
 }
 
 export interface ExecuteActionResult {
@@ -281,7 +283,7 @@ async function executeArtifact(
  * Call from /api/conviction/execute and /api/drafts/decide.
  */
 export async function executeAction(input: ExecuteActionInput): Promise<ExecuteActionResult> {
-  const { userId, actionId, decision, skipReason } = input;
+  const { userId, actionId, decision, skipReason, editedArtifact } = input;
   const supabase = createServerClient();
 
   const { data: action, error: fetchErr } = await supabase
@@ -325,7 +327,8 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
     .eq('id', actionId);
 
   const execResult = (action.execution_result as Record<string, unknown>) ?? {};
-  const artifact = resolveArtifact(action as Record<string, unknown>);
+  // Prefer caller-supplied edited artifact over the stored one
+  const artifact = editedArtifact ?? resolveArtifact(action as Record<string, unknown>);
   let executionResult: Record<string, unknown> = { ...execResult };
 
   if (artifact) {

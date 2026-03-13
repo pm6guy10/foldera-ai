@@ -29,12 +29,13 @@ export async function POST(request: Request) {
     const msg = parsed.error.issues[0]?.message ?? 'Invalid request';
     return validationError(msg);
   }
-  const { draft_id, decision } = parsed.data;
+  const { draft_id, decision, edited_artifact } = parsed.data;
 
   const result = await executeAction({
     userId,
     actionId: draft_id,
     decision: decision === 'reject' ? 'reject' : 'approve',
+    ...(edited_artifact ? { editedArtifact: edited_artifact as Record<string, unknown> } : {}),
   });
 
   if (result.error && result.status === 'skipped') {

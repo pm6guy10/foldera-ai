@@ -6,10 +6,11 @@
  * Displays pending draft actions proposed by Foldera and waits for
  * one-tap approval or rejection from the user.
  *
- * - Polls /api/drafts/pending on mount and after each decision
- * - Each card shows what Foldera wants to do + a preview of the content
- * - Approve → POST /api/drafts/decide { decision: 'approve' }
- * - Reject  → POST /api/drafts/decide { decision: 'reject' }
+ * - Polls /api/drafts/pending on mount
+ * - Email-type drafts render a fully editable inline composer
+ * - "Approve & Send" POSTs the edited payload to /api/drafts/decide
+ * - Cards exit with a smooth fade+scale animation (no page reload)
+ * - Per-card inline error state on API failure
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -24,6 +25,7 @@ import {
   X,
   Loader2,
   Inbox,
+  AlertCircle,
 } from 'lucide-react';
 import type { DraftAction, ActionType } from '@/lib/briefing/types';
 
@@ -41,7 +43,7 @@ const ACTION_ICON: Record<ActionType, React.ElementType> = {
 };
 
 // ---------------------------------------------------------------------------
-// DraftQueue
+// DraftQueue — manages the list; each card manages itself
 // ---------------------------------------------------------------------------
 
 interface DraftQueueProps {
@@ -50,16 +52,15 @@ interface DraftQueueProps {
 }
 
 export default function DraftQueue({ onDecided }: DraftQueueProps) {
-  const [drafts, setDrafts]         = useState<DraftAction[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [decideError, setDecideError] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<DraftAction[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const loadDrafts = useCallback(async () => {
     try {
       const res = await fetch('/api/drafts/pending');
       if (res.ok) setDrafts(await res.json());
     } catch {
-      // silent
+      // silent — don't crash the dashboard on network hiccup
     } finally {
       setLoading(false);
     }
@@ -67,34 +68,13 @@ export default function DraftQueue({ onDecided }: DraftQueueProps) {
 
   useEffect(() => { loadDrafts(); }, [loadDrafts]);
 
-  const decide = async (draftId: string, decision: 'approve' | 'reject') => {
-    // Optimistically remove from list
-    setDrafts(prev => prev.filter(d => d.id !== draftId));
-    setDecideError(null);
+  const removeDraft = useCallback((id: string) => {
+    setDrafts(prev => prev.filter(d => d.id !== id));
+    onDecided?.();
+  }, [onDecided]);
 
-    try {
-      const res = await fetch('/api/drafts/decide', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ draft_id: draftId, decision }),
-      });
-      if (!res.ok) {
-        setDecideError("Something went wrong — please try again.");
-        setTimeout(() => setDecideError(null), 4000);
-        loadDrafts(); // restore optimistic removal
-        return;
-      }
-      onDecided?.();
-    } catch {
-      // Reload on failure — optimistic update may have been wrong
-      setDecideError("Something went wrong — please try again.");
-      setTimeout(() => setDecideError(null), 4000);
-      loadDrafts();
-    }
-  };
-
-  if (loading) return null; // Don't flash a skeleton; only render when data ready
-  if (drafts.length === 0) return null; // Zero drafts = hidden section
+  if (loading) return null;
+  if (drafts.length === 0) return null;
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl">
@@ -109,24 +89,15 @@ export default function DraftQueue({ onDecided }: DraftQueueProps) {
             {drafts.length} action{drafts.length !== 1 ? 's' : ''} waiting for approval
           </p>
         </div>
-        {/* Badge */}
         <span className="text-xs font-semibold bg-cyan-500 text-black px-2 py-0.5 rounded-full">
           {drafts.length}
         </span>
-
       </div>
-
-      {/* Error banner */}
-      {decideError && (
-        <div className="px-5 py-2 text-sm text-red-400 bg-red-950/30 border-b border-red-900/40">
-          {decideError}
-        </div>
-      )}
 
       {/* Draft list */}
       <ul className="divide-y divide-zinc-800">
         {drafts.map(draft => (
-          <DraftCard key={draft.id} draft={draft} onDecide={decide} />
+          <DraftCard key={draft.id} draft={draft} onRemove={removeDraft} />
         ))}
       </ul>
     </div>
@@ -134,27 +105,107 @@ export default function DraftQueue({ onDecided }: DraftQueueProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Single draft card
+// Single draft card — owns its own state, API calls, and animation
 // ---------------------------------------------------------------------------
 
 interface DraftCardProps {
   draft:    DraftAction;
-  onDecide: (id: string, decision: 'approve' | 'reject') => Promise<void>;
+  onRemove: (id: string) => void;
 }
 
-function DraftCard({ draft, onDecide }: DraftCardProps) {
+function DraftCard({ draft, onRemove }: DraftCardProps) {
   const [deciding, setDeciding] = useState<'approve' | 'reject' | null>(null);
+  const [exiting, setExiting]   = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
 
-  const handleDecide = async (decision: 'approve' | 'reject') => {
-    setDeciding(decision);
-    await onDecide(draft.id, decision);
-    setDeciding(null);
+  const isEmail = isEmailDraft(draft);
+
+  // Editable fields — seeded from the draft payload
+  const [editedTo, setEditedTo]           = useState(String(draft.draft?.to ?? ''));
+  const [editedSubject, setEditedSubject] = useState(String(draft.draft?.subject ?? ''));
+  const [editedBody, setEditedBody]       = useState(String(draft.draft?.body ?? ''));
+
+  /** Trigger the exit animation then remove the card from the parent list */
+  const exitAndRemove = () => {
+    setExiting(true);
+    setTimeout(() => onRemove(draft.id), 280);
+  };
+
+  const handleApprove = async () => {
+    setDeciding('approve');
+    setCardError(null);
+
+    const body: Record<string, unknown> = {
+      draft_id: draft.id,
+      decision: 'approve',
+    };
+
+    if (isEmail) {
+      body.edited_artifact = {
+        type:    'email',
+        to:      editedTo.trim(),
+        subject: editedSubject.trim(),
+        body:    editedBody,
+      };
+    }
+
+    try {
+      const res = await fetch('/api/drafts/decide', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        setCardError((payload as { error?: string }).error ?? 'Failed to send — please try again.');
+        setDeciding(null);
+        return;
+      }
+
+      exitAndRemove();
+    } catch {
+      setCardError('Network error — please try again.');
+      setDeciding(null);
+    }
+  };
+
+  const handleReject = async () => {
+    setDeciding('reject');
+    setCardError(null);
+
+    try {
+      const res = await fetch('/api/drafts/decide', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ draft_id: draft.id, decision: 'reject' }),
+      });
+
+      if (!res.ok) {
+        setCardError('Failed to dismiss — please try again.');
+        setDeciding(null);
+        return;
+      }
+
+      exitAndRemove();
+    } catch {
+      setCardError('Network error — please try again.');
+      setDeciding(null);
+    }
   };
 
   const Icon = ACTION_ICON[draft.action_type] ?? Send;
 
   return (
-    <li className="p-4 sm:p-5 space-y-3">
+    <li
+      className={[
+        'p-4 sm:p-5 space-y-3',
+        'transition-all duration-[280ms] ease-out',
+        exiting
+          ? 'opacity-0 -translate-y-1 scale-[0.97] pointer-events-none'
+          : 'opacity-100 translate-y-0 scale-100',
+      ].join(' ')}
+    >
       {/* Title row */}
       <div className="flex items-start gap-3">
         <div className="mt-0.5 p-1.5 rounded-lg bg-zinc-800 shrink-0">
@@ -166,13 +217,33 @@ function DraftCard({ draft, onDecide }: DraftCardProps) {
         </div>
       </div>
 
-      {/* Draft payload preview */}
-      <DraftPreview draft={draft} />
+      {/* Editable composer for email types, static preview otherwise */}
+      {isEmail ? (
+        <EmailEditor
+          to={editedTo}
+          subject={editedSubject}
+          body={editedBody}
+          onToChange={setEditedTo}
+          onSubjectChange={setEditedSubject}
+          onBodyChange={setEditedBody}
+          disabled={!!deciding}
+        />
+      ) : (
+        <DraftPreview draft={draft} />
+      )}
+
+      {/* Inline error — shown inside the card, not as a banner */}
+      {cardError && (
+        <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          {cardError}
+        </div>
+      )}
 
       {/* Approve / Reject */}
       <div className="flex gap-2 pt-1">
         <button
-          onClick={() => handleDecide('approve')}
+          onClick={handleApprove}
           disabled={!!deciding}
           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors disabled:opacity-60"
         >
@@ -181,10 +252,10 @@ function DraftCard({ draft, onDecide }: DraftCardProps) {
           ) : (
             <Check className="w-3.5 h-3.5" />
           )}
-          Approve
+          {isEmail ? 'Approve & Send' : 'Approve'}
         </button>
         <button
-          onClick={() => handleDecide('reject')}
+          onClick={handleReject}
           disabled={!!deciding}
           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition-colors disabled:opacity-60"
         >
@@ -193,7 +264,7 @@ function DraftCard({ draft, onDecide }: DraftCardProps) {
           ) : (
             <X className="w-3.5 h-3.5" />
           )}
-          Reject
+          Dismiss
         </button>
       </div>
     </li>
@@ -201,29 +272,92 @@ function DraftCard({ draft, onDecide }: DraftCardProps) {
 }
 
 // ---------------------------------------------------------------------------
-// DraftPreview — renders the draft payload as a readable block
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** True when the draft payload is an email type */
+function isEmailDraft(draft: DraftAction): boolean {
+  const dt = draft.draft?.draft_type;
+  return dt === 'email_compose' || dt === 'email_reply' || !!(draft.draft?.to && draft.draft?.subject);
+}
+
+// ---------------------------------------------------------------------------
+// EmailEditor — clean inline WYSIWYG for email artifacts
+// ---------------------------------------------------------------------------
+
+interface EmailEditorProps {
+  to:              string;
+  subject:         string;
+  body:            string;
+  onToChange:      (v: string) => void;
+  onSubjectChange: (v: string) => void;
+  onBodyChange:    (v: string) => void;
+  disabled:        boolean;
+}
+
+function EmailEditor({
+  to, subject, body,
+  onToChange, onSubjectChange, onBodyChange,
+  disabled,
+}: EmailEditorProps) {
+  const inputClass =
+    'w-full bg-transparent text-zinc-200 text-xs outline-none placeholder:text-zinc-600 disabled:opacity-50';
+
+  return (
+    <div className="bg-zinc-800/60 rounded-lg divide-y divide-zinc-700/50 text-xs">
+      {/* To */}
+      <div className="flex items-center gap-3 px-3 py-2">
+        <span className="text-zinc-500 w-14 shrink-0">To</span>
+        <input
+          type="email"
+          value={to}
+          onChange={e => onToChange(e.target.value)}
+          disabled={disabled}
+          className={inputClass}
+          placeholder="recipient@example.com"
+          autoComplete="off"
+        />
+      </div>
+
+      {/* Subject */}
+      <div className="flex items-center gap-3 px-3 py-2">
+        <span className="text-zinc-500 w-14 shrink-0">Subject</span>
+        <input
+          type="text"
+          value={subject}
+          onChange={e => onSubjectChange(e.target.value)}
+          disabled={disabled}
+          className={inputClass}
+          placeholder="Subject"
+        />
+      </div>
+
+      {/* Body */}
+      <div className="px-3 py-2">
+        <textarea
+          value={body}
+          onChange={e => onBodyChange(e.target.value)}
+          disabled={disabled}
+          rows={7}
+          className={
+            'w-full bg-transparent text-zinc-200 text-xs leading-relaxed outline-none ' +
+            'resize-none placeholder:text-zinc-600 disabled:opacity-50'
+          }
+          placeholder="Email body…"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DraftPreview — static readable view for non-email artifact types
 // ---------------------------------------------------------------------------
 
 function DraftPreview({ draft }: { draft: DraftAction }) {
   const { draft: payload } = draft;
   if (!payload) return null;
 
-  // Email-like drafts
-  if (payload.to || payload.subject) {
-    return (
-      <div className="bg-zinc-800/60 rounded-lg p-3 text-xs font-mono space-y-1 text-zinc-400">
-        {payload.to      && <div><span className="text-zinc-500">To: </span>{String(payload.to)}</div>}
-        {payload.subject && <div><span className="text-zinc-500">Subject: </span>{String(payload.subject)}</div>}
-        {payload.body    && (
-          <div className="mt-1.5 text-zinc-300 leading-relaxed whitespace-pre-wrap line-clamp-4">
-            {String(payload.body)}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Generic — show any non-private keys
   const entries = Object.entries(payload).filter(
     ([k]) => !k.startsWith('_') && k !== 'draft_type' && k !== 'source' && k !== 'source_id',
   );

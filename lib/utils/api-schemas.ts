@@ -13,9 +13,17 @@ export const executeBodySchema = z.object({
   skip_reason: z.enum(['not_relevant', 'already_handled', 'wrong_approach']).optional(),
 });
 
+const editedArtifactSchema = z.object({
+  type: z.string(),
+  to: z.string().optional(),
+  subject: z.string().optional(),
+  body: z.string().optional(),
+}).passthrough();
+
 export const draftsDecideBodySchema = z.object({
   draft_id: z.string().min(1, 'draft_id required'),
   decision: z.enum(['approve', 'reject']),
+  edited_artifact: editedArtifactSchema.optional(),
 });
 
 export const onboardSaveBodySchema = z.object({
