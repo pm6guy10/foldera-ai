@@ -24,7 +24,7 @@ import type { ConvictionAction, ActionType, EvidenceItem, ConvictionArtifact } f
 // ---------------------------------------------------------------------------
 
 const ACTION_META: Record<ActionType, { label: string; icon: React.ElementType; color: string }> = {
-  write_document: { label: 'Write',    icon: FileText, color: 'text-violet-400' },
+  write_document: { label: 'Write',    icon: FileText, color: 'text-cyan-400'   },
   send_message:   { label: 'Send',     icon: Send,     color: 'text-cyan-400'   },
   make_decision:  { label: 'Decide',   icon: GitFork,  color: 'text-amber-400'  },
   do_nothing:     { label: 'Wait',     icon: Pause,    color: 'text-zinc-400'   },
@@ -141,8 +141,8 @@ export default function ConvictionCard({
       {/* Header */}
       <div className="px-5 py-3 border-b border-zinc-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-violet-400" />
-          <span className="text-zinc-200 font-semibold text-sm uppercase tracking-wider">
+          <Shield className="w-4 h-4 text-cyan-400" />
+          <span className="text-zinc-200 font-semibold text-xs uppercase tracking-widest font-mono">
             Today's Read
           </span>
         </div>
@@ -346,7 +346,7 @@ function DoneState({ message, onReset }: { message: string; onReset: () => void 
 function EvidencePanel({ items }: { items: EvidenceItem[] }) {
   const typeColor: Record<string, string> = {
     signal:     'text-cyan-500',
-    commitment: 'text-violet-500',
+    commitment: 'text-cyan-500',
     goal:       'text-emerald-500',
     pattern:    'text-amber-500',
   };
@@ -390,7 +390,7 @@ function EmptyState({ onGenerate }: { onGenerate: () => void }) {
       <p className="text-zinc-400 text-sm mb-4">No read generated yet for today.</p>
       <button
         onClick={onGenerate}
-        className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors"
+        className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors"
       >
         Generate today's read
       </button>

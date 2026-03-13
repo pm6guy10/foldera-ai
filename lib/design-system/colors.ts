@@ -57,10 +57,10 @@ export const colors = {
   
   // Accent (use sparingly)
   accent: {
-    primary: 'bg-violet-600',
-    primaryHover: 'hover:bg-violet-500',
-    secondary: 'bg-violet-600/10',
-    text: 'text-violet-400',
+    primary: 'bg-cyan-500',
+    primaryHover: 'hover:bg-cyan-400',
+    secondary: 'bg-cyan-500/10',
+    text: 'text-cyan-400',
   },
   
   // Borders

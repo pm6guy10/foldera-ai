@@ -101,8 +101,8 @@ export default function DraftQueue({ onDecided }: DraftQueueProps) {
       {/* Header */}
       <div className="p-5 border-b border-zinc-800 flex items-center justify-between">
         <div>
-          <h2 className="text-zinc-50 font-semibold flex items-center gap-2">
-            <Inbox className="w-4 h-4 text-violet-400" />
+          <h2 className="text-zinc-50 font-semibold tracking-tight flex items-center gap-2">
+            <Inbox className="w-4 h-4 text-cyan-400" />
             Foldera wants to act
           </h2>
           <p className="text-zinc-500 text-sm mt-0.5">
@@ -110,9 +110,10 @@ export default function DraftQueue({ onDecided }: DraftQueueProps) {
           </p>
         </div>
         {/* Badge */}
-        <span className="text-xs font-semibold bg-violet-600 text-white px-2 py-0.5 rounded-full">
+        <span className="text-xs font-semibold bg-cyan-500 text-black px-2 py-0.5 rounded-full">
           {drafts.length}
         </span>
+
       </div>
 
       {/* Error banner */}
@@ -157,7 +158,7 @@ function DraftCard({ draft, onDecide }: DraftCardProps) {
       {/* Title row */}
       <div className="flex items-start gap-3">
         <div className="mt-0.5 p-1.5 rounded-lg bg-zinc-800 shrink-0">
-          <Icon className="w-3.5 h-3.5 text-violet-400" />
+          <Icon className="w-3.5 h-3.5 text-cyan-400" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-zinc-50 text-sm font-medium leading-snug">{draft.title}</p>

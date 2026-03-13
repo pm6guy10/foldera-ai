@@ -52,7 +52,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="p-6 border-b border-zinc-800">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center">
             <span className="text-white font-bold text-sm">F</span>
           </div>
           <span className={cn(typography.h3, 'text-zinc-50')}>Foldera</span>
@@ -76,7 +76,7 @@ export function Sidebar() {
                   : 'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/50'
               )}
             >
-              <span className={cn(isActive ? 'text-violet-400' : '')}>
+              <span className={cn(isActive ? 'text-cyan-400' : '')}>
                 {item.icon}
               </span>
               <span className="flex-1 text-sm font-medium">{item.label}</span>

@@ -25,7 +25,7 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
     const glowStyles = {
       none: '',
       subtle: 'shadow-lg shadow-zinc-900/50',
-      accent: 'shadow-lg shadow-violet-500/10 border-violet-500/20',
+      accent: 'shadow-lg shadow-cyan-500/10 border-cyan-500/20',
     };
     
     const Component = (animate ? motion.div : 'div') as any;
