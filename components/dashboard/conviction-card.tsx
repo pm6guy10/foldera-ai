@@ -214,7 +214,7 @@ export default function ConvictionCard({
                 <button
                   onClick={handleApprove}
                   disabled={approving || skipping}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors disabled:opacity-50"
                 >
                   {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   {approving ? 'Executing...' : 'Approve'}
@@ -222,7 +222,7 @@ export default function ConvictionCard({
                 <button
                   onClick={handleSkipClick}
                   disabled={approving || skipping}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   {skipping ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                   {skipping ? 'Logging...' : 'Skip'}
@@ -346,7 +346,7 @@ function DoneState({ message, terminal, onReset }: { message: string; terminal: 
         </button>
       )}
       {terminal && (
-        <p className="text-zinc-600 text-xs">Next read generates tomorrow morning.</p>
+        <p className="text-zinc-600 text-xs">Your next read arrives tomorrow morning.</p>
       )}
     </div>
   );
@@ -396,13 +396,13 @@ function EmptyState({ onGenerate }: { onGenerate: () => void }) {
   return (
     <div className="text-center py-6">
       <Shield className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-      <p className="text-zinc-300 text-sm font-medium mb-1">Your next directive arrives at 7am tomorrow.</p>
-      <p className="text-zinc-500 text-xs mb-4">Foldera is learning your patterns. Or generate one now.</p>
+      <p className="text-zinc-300 text-sm font-medium mb-1">Your next read arrives at 7am tomorrow.</p>
+      <p className="text-zinc-500 text-xs mb-4">Foldera is learning your patterns. The more you use it, the sharper it gets.</p>
       <button
         onClick={onGenerate}
         className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors"
       >
-        Generate now
+        Generate one now
       </button>
     </div>
   );

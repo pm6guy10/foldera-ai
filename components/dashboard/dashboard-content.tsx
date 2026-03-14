@@ -69,7 +69,7 @@ export default function DashboardContent() {
         .then(res => res.json())
         .then(data => {
           if (data.status === 'executed' || data.status === 'skipped') {
-            setEmailActionMsg(action === 'approve' ? 'Done — Foldera executed that.' : 'Skipped.');
+            setEmailActionMsg(action === 'approve' ? 'Done — Foldera executed that.' : 'Skipped. Foldera will adjust.');
             setTimeout(() => setEmailActionMsg(null), 4000);
           }
         })
@@ -207,9 +207,22 @@ export default function DashboardContent() {
       {/* Signal line */}
       {!statsLoading && stats && (
         <p className="text-zinc-500 text-xs font-mono">
-          {stats.signalsTotal} signals · {stats.commitmentsActive} commitments · {stats.patternsActive} patterns detected
+          {stats.signalsTotal === 0 && stats.patternsActive === 0
+            ? 'Foldera is building your identity graph. Your first read arrives tomorrow at 7am.'
+            : `${stats.signalsTotal} signals · ${stats.commitmentsActive} commitments · ${stats.patternsActive} patterns detected`
+          }
         </p>
       )}
+
+      {/* Hero: Today's Read */}
+      <ConvictionCard
+        action={conviction}
+        isLoading={convictionLoading}
+        onGenerate={generateDirective}
+        onApprove={handleApprove}
+        onSkip={handleSkip}
+        onOutcome={handleOutcome}
+      />
 
       {/* Current Priorities */}
       <CurrentPriorities />
@@ -217,21 +230,14 @@ export default function DashboardContent() {
       {/* Draft Queue */}
       <DraftQueue onDecided={loadStats} />
 
-      {/* Quick Capture */}
-      <QuickCapture />
-
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        <div className="col-span-1 lg:col-span-2">
-          <ConvictionCard
-            action={conviction}
-            isLoading={convictionLoading}
-            onGenerate={generateDirective}
-            onApprove={handleApprove}
-            onSkip={handleSkip}
-            onOutcome={handleOutcome}
-          />
+      {/* Secondary grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        {/* Quick Capture */}
+        <div>
+          <QuickCapture />
         </div>
+
+        {/* Teach Foldera */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl">
           <div className="p-5 border-b border-zinc-800">
             <h2 className="text-zinc-50 font-semibold tracking-tight">Teach Foldera</h2>

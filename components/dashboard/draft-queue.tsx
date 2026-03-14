@@ -117,6 +117,7 @@ function DraftCard({ draft, onRemove }: DraftCardProps) {
   const [deciding, setDeciding] = useState<'approve' | 'reject' | null>(null);
   const [exiting, setExiting]   = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   const isEmail = isEmailDraft(draft);
 
@@ -125,10 +126,13 @@ function DraftCard({ draft, onRemove }: DraftCardProps) {
   const [editedSubject, setEditedSubject] = useState(String(draft.draft?.subject ?? ''));
   const [editedBody, setEditedBody]       = useState(String(draft.draft?.body ?? ''));
 
-  /** Trigger the exit animation then remove the card from the parent list */
-  const exitAndRemove = () => {
-    setExiting(true);
-    setTimeout(() => onRemove(draft.id), 280);
+  /** Show feedback message, then trigger exit animation */
+  const exitWithFeedback = (msg: string) => {
+    setFeedback(msg);
+    setTimeout(() => {
+      setExiting(true);
+      setTimeout(() => onRemove(draft.id), 280);
+    }, 1200);
   };
 
   const handleApprove = async () => {
@@ -163,7 +167,7 @@ function DraftCard({ draft, onRemove }: DraftCardProps) {
         return;
       }
 
-      exitAndRemove();
+      exitWithFeedback('Logged. Similar actions weighted higher.');
     } catch {
       setCardError('Network error — please try again.');
       setDeciding(null);
@@ -187,7 +191,7 @@ function DraftCard({ draft, onRemove }: DraftCardProps) {
         return;
       }
 
-      exitAndRemove();
+      exitWithFeedback('Noted. Deprioritized.');
     } catch {
       setCardError('Network error — please try again.');
       setDeciding(null);
@@ -232,6 +236,14 @@ function DraftCard({ draft, onRemove }: DraftCardProps) {
         <DraftPreview draft={draft} />
       )}
 
+      {/* Feedback toast — shown briefly after approve/dismiss */}
+      {feedback && (
+        <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/30 border border-emerald-900/40 rounded-lg px-3 py-2">
+          <Check className="w-3.5 h-3.5 shrink-0" />
+          {feedback}
+        </div>
+      )}
+
       {/* Inline error — shown inside the card, not as a banner */}
       {cardError && (
         <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">
@@ -241,11 +253,11 @@ function DraftCard({ draft, onRemove }: DraftCardProps) {
       )}
 
       {/* Approve / Reject */}
-      <div className="flex gap-2 pt-1">
+      {!feedback && <div className="flex gap-2 pt-1">
         <button
           onClick={handleApprove}
           disabled={!!deciding}
-          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors disabled:opacity-60"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors disabled:opacity-60"
         >
           {deciding === 'approve' ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -257,7 +269,7 @@ function DraftCard({ draft, onRemove }: DraftCardProps) {
         <button
           onClick={handleReject}
           disabled={!!deciding}
-          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition-colors disabled:opacity-60"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition-colors disabled:opacity-60"
         >
           {deciding === 'reject' ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -266,7 +278,7 @@ function DraftCard({ draft, onRemove }: DraftCardProps) {
           )}
           Dismiss
         </button>
-      </div>
+      </div>}
     </li>
   );
 }

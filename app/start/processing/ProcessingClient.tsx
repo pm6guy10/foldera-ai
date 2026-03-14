@@ -13,11 +13,12 @@ type Stage =
   | 'thankyou'
   | 'error';
 
-const STATUS_MESSAGES = [
-  'Reading your sent mail...',
-  'Identifying decisions...',
-  'Looking for things that matter...',
-  'Building your profile...',
+const GRAPH_STAGES = [
+  { label: 'Scanning your sent mail...', sub: 'Looking at the last 30 days' },
+  { label: 'Found active threads', sub: 'Identifying who you talk to most' },
+  { label: 'Detecting communication patterns...', sub: 'Decisions, commitments, follow-ups' },
+  { label: 'Building your identity graph...', sub: 'Connecting the dots' },
+  { label: 'Getting your first read ready...', sub: 'Almost there' },
 ];
 
 export default function ProcessingPage() {
@@ -25,7 +26,7 @@ export default function ProcessingPage() {
   const router = useRouter();
 
   const [stage, setStage] = useState<Stage>('connecting');
-  const [statusMsg, setStatusMsg] = useState(STATUS_MESSAGES[0]);
+  const [graphStep, setGraphStep] = useState(0);
   const [counts, setCounts] = useState({ patterns: 0, commitments: 0 });
   const [paste, setPaste] = useState('');
   const [email, setEmail] = useState('');
@@ -46,15 +47,18 @@ export default function ProcessingPage() {
 
   async function runEmailSync() {
     setStage('connecting');
+    setGraphStep(0);
 
-    let msgIdx = 0;
+    // Progress through stages at a natural pace
     const ticker = setInterval(() => {
-      msgIdx = (msgIdx + 1) % STATUS_MESSAGES.length;
-      setStatusMsg(STATUS_MESSAGES[msgIdx]);
-    }, 3500);
+      setGraphStep(prev => {
+        // Don't go past stage 3 during sync — save 4 for generating
+        if (prev < 3) return prev + 1;
+        return prev;
+      });
+    }, 3000);
 
     try {
-      // Unified email sync endpoint — detects provider from session token
       const res = await fetch('/api/onboard/email-sync', { method: 'POST' });
       clearInterval(ticker);
 
@@ -81,7 +85,7 @@ export default function ProcessingPage() {
   async function handlePasteSubmit() {
     if (!paste.trim()) return;
     setStage('ingesting');
-    setStatusMsg('Analyzing conversation history...');
+    setGraphStep(2); // Jump to pattern detection stage
 
     try {
       const res = await fetch('/api/onboard/thin-ingest', {
@@ -111,7 +115,7 @@ export default function ProcessingPage() {
 
   async function generateAndRedirect() {
     setStage('generating');
-    setStatusMsg('Getting your first read ready...');
+    setGraphStep(4); // Final stage
 
     const res = await fetch('/api/onboard/free-directive', { method: 'POST' });
 
@@ -146,7 +150,7 @@ export default function ProcessingPage() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   if (status === 'loading' || stage === 'connecting' || stage === 'ingesting' || stage === 'generating') {
-    return <Spinner message={statusMsg} />;
+    return <GraphBuildingScreen step={graphStep} />;
   }
 
   if (stage === 'error') {
@@ -242,14 +246,74 @@ export default function ProcessingPage() {
     );
   }
 
-  return <Spinner message="Redirecting..." />;
+  return <GraphBuildingScreen step={4} />;
 }
 
-function Spinner({ message }: { message: string }) {
+function GraphBuildingScreen({ step }: { step: number }) {
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-6">
-      <div className="w-10 h-10 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin" />
-      <p className="text-zinc-300 text-base">{message}</p>
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
+      <div className="max-w-md w-full">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <h1 className="text-2xl font-bold text-white mb-2">Building your graph</h1>
+          <p className="text-zinc-500 text-sm">This takes about 30 seconds</p>
+        </div>
+
+        {/* Progress stages */}
+        <div className="space-y-4">
+          {GRAPH_STAGES.map((s, i) => {
+            const isActive = i === step;
+            const isDone = i < step;
+            const isPending = i > step;
+
+            return (
+              <div
+                key={i}
+                className={[
+                  'flex items-start gap-4 transition-all duration-500',
+                  isPending ? 'opacity-30' : 'opacity-100',
+                ].join(' ')}
+              >
+                {/* Step indicator */}
+                <div className="shrink-0 mt-0.5">
+                  {isDone ? (
+                    <div className="w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center">
+                      <svg className="w-3 h-3 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  ) : isActive ? (
+                    <div className="w-6 h-6 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full border border-zinc-700" />
+                  )}
+                </div>
+
+                {/* Label */}
+                <div className="min-w-0">
+                  <p className={[
+                    'text-sm font-medium transition-colors duration-300',
+                    isActive ? 'text-white' : isDone ? 'text-zinc-400' : 'text-zinc-600',
+                  ].join(' ')}>
+                    {s.label}
+                  </p>
+                  {(isActive || isDone) && (
+                    <p className="text-xs text-zinc-600 mt-0.5">{s.sub}</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Progress bar */}
+        <div className="mt-10 h-1 bg-zinc-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full transition-all duration-1000 ease-out"
+            style={{ width: `${((step + 1) / GRAPH_STAGES.length) * 100}%` }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
