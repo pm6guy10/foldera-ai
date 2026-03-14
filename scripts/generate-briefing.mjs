@@ -3,8 +3,12 @@
  *
  * Flow:
  *   1. Score all open loops (commitments, signals, relationships) with math
- *   2. Pass ONLY the winning loop + context to Claude
- *   3. Claude writes the artifact — it does NOT choose what to work on
+ *   2. Check emergent patterns (repeat cycles, approval gaps, commitment decay)
+ *   3. Pass ONLY the winning loop + context to Claude
+ *   4. Claude writes the artifact — it does NOT choose what to work on
+ *
+ * v2: freshness decay, skip penalties, emergent pattern detection,
+ *     relationship enrichment, self-feed signal filtering
  *
  * Usage: node scripts/generate-briefing.mjs
  */
@@ -73,7 +77,7 @@ function decrypt(ciphertext) {
 }
 
 // ---------------------------------------------------------------------------
-// Scorer — deterministic open-loop ranker (mirrors lib/briefing/scorer.ts)
+// Scorer — deterministic open-loop ranker (mirrors lib/briefing/scorer.ts v2)
 // ---------------------------------------------------------------------------
 
 const STOPWORDS = new Set([
@@ -107,12 +111,13 @@ function matchGoal(text, goals) {
   return best;
 }
 
+// v2: sigmoid midpoint at 5 days, slope 1.0
 function deadlineUrgency(dueAt, impliedDueAt) {
   const deadline = dueAt || impliedDueAt;
   if (!deadline) return 0.3;
   const daysUntilDue = (new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
   if (daysUntilDue < 0) return 1.0;
-  return 1 / (1 + Math.exp(3 * (daysUntilDue - 2)));
+  return 1 / (1 + Math.exp(1.0 * (daysUntilDue - 5)));
 }
 
 function relationshipUrgency(daysSinceContact) {
@@ -147,6 +152,222 @@ function inferDomain(matchedGoal, text) {
   return 'career';
 }
 
+// v2: freshness — penalize recently-surfaced loops
+async function getFreshness(loopTitle) {
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const { data: recentActions } = await supabase
+      .from('tkg_actions')
+      .select('directive_text, generated_at, status')
+      .eq('user_id', USER_ID)
+      .gte('generated_at', threeDaysAgo)
+      .in('status', ['pending_approval', 'executed', 'skipped', 'draft_rejected'])
+      .limit(30);
+
+    if (!recentActions || recentActions.length === 0) return 1.0;
+
+    const titleWords = new Set(
+      loopTitle.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 4)
+    );
+    if (titleWords.size === 0) return 1.0;
+
+    let similarCount = 0;
+    let anySkipped = false;
+    for (const a of recentActions) {
+      const dirText = (a.directive_text ?? '').toLowerCase();
+      const overlap = [...titleWords].filter(w => dirText.includes(w)).length;
+      if (overlap >= 2 || (overlap >= 1 && titleWords.size <= 2)) {
+        similarCount++;
+        if (a.status === 'skipped' || a.status === 'draft_rejected') anySkipped = true;
+      }
+    }
+
+    if (similarCount === 0) return 1.0;
+    let freshness = Math.max(0.3, 1.0 - (similarCount * 0.2));
+    if (anySkipped) freshness *= 0.5;
+    return Math.max(0.1, freshness);
+  } catch {
+    return 1.0;
+  }
+}
+
+// v2: relationship enrichment
+async function enrichRelationshipContext(entityName, entityPatterns) {
+  const parts = [];
+
+  if (entityPatterns && typeof entityPatterns === 'object') {
+    const patterns = Array.isArray(entityPatterns) ? entityPatterns : [entityPatterns];
+    const patternText = patterns
+      .map(p => typeof p === 'string' ? p : p.pattern ?? p.description ?? '')
+      .filter(s => s.length > 0)
+      .slice(0, 3);
+    if (patternText.length > 0) parts.push('Known patterns: ' + patternText.join('; '));
+  }
+
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const { data: signals } = await supabase
+      .from('tkg_signals')
+      .select('content, source, occurred_at')
+      .eq('user_id', USER_ID)
+      .eq('processed', true)
+      .gte('occurred_at', thirtyDaysAgo)
+      .order('occurred_at', { ascending: false })
+      .limit(100);
+
+    if (signals && signals.length > 0) {
+      const nameLower = entityName.toLowerCase();
+      const firstName = nameLower.split(/\s+/)[0];
+      const mentioning = signals
+        .filter(s => {
+          const content = decrypt(s.content ?? '').toLowerCase();
+          return content.includes(nameLower) || content.includes(firstName);
+        })
+        .slice(0, 3);
+
+      if (mentioning.length > 0) {
+        parts.push('Recent mentions:');
+        for (const s of mentioning) {
+          const content = decrypt(s.content ?? '');
+          const date = (s.occurred_at ?? '').slice(0, 10);
+          parts.push('  [' + date + '] ' + content.slice(0, 300));
+        }
+      }
+    }
+  } catch { /* non-critical */ }
+
+  return parts.join('\n');
+}
+
+// v2: emergent pattern detection
+async function detectEmergentPatterns() {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const patterns = [];
+
+  try {
+    const { data: actions } = await supabase
+      .from('tkg_actions')
+      .select('id, directive_text, action_type, status, generated_at, executed_at, execution_result, feedback_weight, skip_reason')
+      .eq('user_id', USER_ID)
+      .gte('generated_at', thirtyDaysAgo)
+      .order('generated_at', { ascending: false })
+      .limit(100);
+
+    if (!actions || actions.length < 3) return patterns;
+
+    // 1. REPEAT CYCLE: same topic surfaced 3+ times without approval
+    const topicClusters = {};
+    for (const a of actions) {
+      const text = (a.directive_text ?? '').toLowerCase();
+      const keywords = text.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 5);
+      const keyPair = keywords.slice(0, 3).sort().join('+');
+      if (!keyPair) continue;
+      if (!topicClusters[keyPair]) topicClusters[keyPair] = [];
+      topicClusters[keyPair].push({
+        text: a.directive_text ?? '',
+        status: a.status ?? '',
+        date: (a.generated_at ?? '').slice(0, 10),
+      });
+    }
+
+    for (const [topic, items] of Object.entries(topicClusters)) {
+      const pending = items.filter(i => i.status === 'pending_approval');
+      if (pending.length >= 3) {
+        const approvedCount = items.filter(i => i.status === 'executed').length;
+        patterns.push({
+          type: 'repeat_cycle',
+          title: 'Repeating directive: "' + pending[0].text.slice(0, 60) + '"',
+          insight: 'This topic has been generated ' + pending.length + ' times without action (' + approvedCount + ' ever approved). The system keeps suggesting it but you haven\'t engaged. Either approve one version, skip it to teach the system, or the underlying situation needs a different approach.',
+          dataPoints: pending.map(p => '[' + p.date + '] ' + p.text.slice(0, 100)),
+          score: 3.0 + (pending.length * 0.3),
+          suggestedActionType: 'make_decision',
+        });
+      }
+    }
+
+    // 2. APPROVAL WITHOUT EXECUTION
+    const approvedNoExec = [];
+    for (const a of actions) {
+      if (a.status !== 'executed') continue;
+      const execResult = a.execution_result ?? {};
+      const artifact = execResult.artifact;
+      if (!artifact) continue;
+      if (artifact.type === 'email' && !execResult.sent && !execResult.sent_at) {
+        approvedNoExec.push('[' + (a.generated_at ?? '').slice(0, 10) + '] ' + (a.directive_text ?? '').slice(0, 100));
+      }
+    }
+
+    if (approvedNoExec.length >= 2) {
+      patterns.push({
+        type: 'approval_without_execution',
+        title: approvedNoExec.length + ' approved directives may not have executed',
+        insight: 'You approved ' + approvedNoExec.length + ' email directives but the system couldn\'t confirm they were sent.',
+        dataPoints: approvedNoExec.slice(0, 5),
+        score: 3.5,
+        suggestedActionType: 'research',
+      });
+    }
+
+    // 3. COMMITMENT DECAY: high skip rate on specific action types
+    const typeStats = {};
+    for (const a of actions) {
+      const aType = a.action_type ?? 'unknown';
+      if (!typeStats[aType]) typeStats[aType] = { total: 0, skipped: 0, approved: 0 };
+      typeStats[aType].total++;
+      if (a.status === 'skipped' || a.status === 'draft_rejected') typeStats[aType].skipped++;
+      if (a.status === 'executed') typeStats[aType].approved++;
+    }
+
+    for (const [aType, stats] of Object.entries(typeStats)) {
+      if (stats.total >= 5 && stats.skipped / stats.total > 0.7) {
+        patterns.push({
+          type: 'commitment_decay',
+          title: aType + ' directives are being ignored (' + Math.round(stats.skipped / stats.total * 100) + '% skip rate)',
+          insight: 'Of ' + stats.total + ' ' + aType + ' directives, ' + stats.skipped + ' were skipped and only ' + stats.approved + ' approved.',
+          dataPoints: ['Total: ' + stats.total, 'Approved: ' + stats.approved, 'Skipped: ' + stats.skipped],
+          score: 2.5,
+          suggestedActionType: 'do_nothing',
+        });
+      }
+    }
+
+    // 4. TEMPORAL CLUSTER
+    const dayOfWeekApprovals = {};
+    const dayOfWeekSkips = {};
+    for (const a of actions) {
+      const day = new Date(a.generated_at).getDay();
+      if (a.status === 'executed') dayOfWeekApprovals[day] = (dayOfWeekApprovals[day] ?? 0) + 1;
+      if (a.status === 'skipped' || a.status === 'draft_rejected') dayOfWeekSkips[day] = (dayOfWeekSkips[day] ?? 0) + 1;
+    }
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    for (let day = 0; day < 7; day++) {
+      const approvals = dayOfWeekApprovals[day] ?? 0;
+      const skips = dayOfWeekSkips[day] ?? 0;
+      const total = approvals + skips;
+      if (total >= 3 && approvals > 0 && approvals / total > 0.7) {
+        patterns.push({
+          type: 'temporal_cluster',
+          title: 'You\'re most receptive on ' + dayNames[day] + 's',
+          insight: dayNames[day] + 's have a ' + Math.round(approvals / total * 100) + '% approval rate.',
+          dataPoints: [dayNames[day] + ': ' + approvals + ' approved, ' + skips + ' skipped'],
+          score: 1.5,
+          suggestedActionType: 'do_nothing',
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[scorer] detectEmergentPatterns error:', err.message ?? err);
+  }
+
+  patterns.sort((a, b) => b.score - a.score);
+  return patterns;
+}
+
+// ---------------------------------------------------------------------------
+// Main scorer
+// ---------------------------------------------------------------------------
+
 async function scoreOpenLoops() {
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -176,7 +397,6 @@ async function scoreOpenLoops() {
   const entities = entitiesRes.data ?? [];
   const goals = goalsRes.data ?? [];
 
-  // Fetch all recent signals for context enrichment
   const { data: allRecentSignals } = await supabase.from('tkg_signals')
     .select('content, source, occurred_at').eq('user_id', USER_ID)
     .gte('occurred_at', fourteenDaysAgo).eq('processed', true)
@@ -187,7 +407,7 @@ async function scoreOpenLoops() {
   const candidates = [];
 
   for (const c of commitments) {
-    const text = `${c.description}${c.source_context ? ' — ' + c.source_context : ''}`;
+    const text = c.description + (c.source_context ? ' — ' + c.source_context : '');
     const mg = matchGoal(text, goals);
     candidates.push({
       id: c.id, type: 'commitment', title: c.description, content: text,
@@ -200,6 +420,8 @@ async function scoreOpenLoops() {
   for (const s of signals) {
     const text = String(s.content ?? '');
     if (text.length < 20) continue;
+    // v2: skip self-fed directive signals
+    if (text.startsWith('[Foldera Directive')) continue;
     const mg = matchGoal(text, goals);
     candidates.push({
       id: s.id, type: 'signal', title: text.slice(0, 120), content: text,
@@ -211,36 +433,41 @@ async function scoreOpenLoops() {
 
   for (const e of entities) {
     const daysSince = Math.floor((Date.now() - new Date(e.last_interaction).getTime()) / (1000 * 60 * 60 * 24));
-    const text = `${e.name}: last contact ${daysSince} days ago, ${e.total_interactions} total interactions`;
+    const text = e.name + ': last contact ' + daysSince + ' days ago, ' + e.total_interactions + ' total interactions';
     const mg = matchGoal(text, goals);
     candidates.push({
-      id: e.id, type: 'relationship', title: `Follow up with ${e.name}`, content: text,
+      id: e.id, type: 'relationship', title: 'Follow up with ' + e.name, content: text,
       actionType: 'send_message',
       urgency: relationshipUrgency(daysSince),
       matchedGoal: mg, domain: inferDomain(mg, text),
+      entityPatterns: e.patterns, entityName: e.name,
     });
   }
 
-  if (candidates.length === 0) return null;
-
-  // Score and rank
+  // Score and rank (v2: includes freshness + emergent patterns)
   const scored = [];
+
   for (const c of candidates) {
     const stakes = c.matchedGoal ? c.matchedGoal.priority : 1.0;
 
-    // Tractability from tkg_pattern_metrics
+    // Tractability from tkg_pattern_metrics (v2: includes failed_outcomes)
     let tractability = 0.5;
     try {
       const { data: pm } = await supabase.from('tkg_pattern_metrics')
-        .select('total_activations, successful_outcomes')
-        .eq('user_id', USER_ID).eq('pattern_hash', `${c.actionType}:${c.domain}`)
+        .select('total_activations, successful_outcomes, failed_outcomes')
+        .eq('user_id', USER_ID).eq('pattern_hash', c.actionType + ':' + c.domain)
         .maybeSingle();
       if (pm) {
-        tractability = Math.max(0.1, (pm.successful_outcomes + 1) / (pm.total_activations + 2));
+        const successes = pm.successful_outcomes ?? 0;
+        const failures = pm.failed_outcomes ?? 0;
+        tractability = Math.max(0.1, (successes + 1) / (successes + failures + 2));
       }
     } catch { /* use default */ }
 
-    const score = stakes * c.urgency * tractability;
+    // v2: freshness
+    const freshness = await getFreshness(c.title);
+
+    const score = stakes * c.urgency * tractability * freshness;
 
     // Related signals by keyword overlap
     const loopWords = new Set(
@@ -253,12 +480,35 @@ async function scoreOpenLoops() {
       })
       .slice(0, 5);
 
+    // v2: relationship enrichment
+    let relationshipContext;
+    if (c.type === 'relationship' && c.entityName) {
+      relationshipContext = await enrichRelationshipContext(c.entityName, c.entityPatterns);
+    }
+
     scored.push({
       id: c.id, type: c.type, title: c.title, content: c.content,
       suggestedActionType: c.actionType,
       matchedGoal: c.matchedGoal, score,
-      breakdown: { stakes, urgency: c.urgency, tractability },
+      breakdown: { stakes, urgency: c.urgency, tractability, freshness },
       relatedSignals: related,
+      relationshipContext,
+    });
+  }
+
+  // v2: emergent patterns compete with regular candidates
+  const emergent = await detectEmergentPatterns();
+  for (const ep of emergent) {
+    scored.push({
+      id: 'emergent-' + ep.type,
+      type: 'emergent',
+      title: ep.title,
+      content: ep.insight + '\n\nData:\n' + ep.dataPoints.join('\n'),
+      suggestedActionType: ep.suggestedActionType,
+      matchedGoal: null,
+      score: ep.score,
+      breakdown: { stakes: ep.score, urgency: 1.0, tractability: 1.0, freshness: 1.0 },
+      relatedSignals: [],
     });
   }
 
@@ -267,8 +517,9 @@ async function scoreOpenLoops() {
   // Print top 5
   console.log('\n[scorer] Top 5 candidates:');
   for (const s of scored.slice(0, 5)) {
+    const f = s.breakdown.freshness !== undefined ? ' * ' + s.breakdown.freshness.toFixed(2) + 'F' : '';
     console.log(
-      `  ${s.score.toFixed(2)} = ${s.breakdown.stakes}S * ${s.breakdown.urgency.toFixed(2)}U * ${s.breakdown.tractability.toFixed(2)}T | [${s.type}] ${s.title.slice(0, 80)}`
+      '  ' + s.score.toFixed(2) + ' = ' + s.breakdown.stakes + 'S * ' + s.breakdown.urgency.toFixed(2) + 'U * ' + s.breakdown.tractability.toFixed(2) + 'T' + f + ' | [' + s.type + '] ' + s.title.slice(0, 80)
     );
   }
 
@@ -291,6 +542,12 @@ RULES:
 - For document: every value must be filled from the data. Any blank = use decision artifact instead.
 - For decision: pre-fill every option with specifics from the signal data. "Leave in 60 days targeting $X+" not "Option A: leave."
 - For wait_rationale: cite a SPECIFIC prior outcome with date and result.
+
+ALREADY APPROVED (do not repeat):
+{APPROVED_SECTION}
+
+SKIPPED (do not regenerate similar):
+{SKIPPED_SECTION}
 
 Output JSON only:
 {
@@ -328,15 +585,15 @@ console.log('Scoring open loops for user ' + USER_ID + '...\n');
 
 const winner = await scoreOpenLoops();
 
-if (!winner || winner.score < 2.0) {
+if (!winner || winner.score < 0.5) {
   const reason = winner
-    ? `Highest scorer: "${winner.title.slice(0, 80)}" at ${winner.score.toFixed(2)} — below 2.0 threshold`
+    ? 'Highest scorer: "' + winner.title.slice(0, 80) + '" at ' + winner.score.toFixed(2) + ' — below 0.5 threshold'
     : 'No open loops found';
-  console.log(`\ndo_nothing — ${reason}`);
+  console.log('\ndo_nothing — ' + reason);
   process.exit(0);
 }
 
-console.log(`\nWinner: "${winner.title.slice(0, 80)}" score=${winner.score.toFixed(2)} type=${winner.suggestedActionType}`);
+console.log('\nWinner: "' + winner.title.slice(0, 80) + '" score=' + winner.score.toFixed(2) + ' type=' + winner.suggestedActionType);
 
 // Query approved/skipped for dedup
 const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -352,12 +609,12 @@ const [approvedRes, skippedRes] = await Promise.all([
 ]);
 
 const approvedSection = (approvedRes.data ?? []).length > 0
-  ? (approvedRes.data ?? []).map(a => `  - [${a.action_type}] ${a.directive_text.slice(0, 120)}`).join('\n')
+  ? (approvedRes.data ?? []).map(a => '  - [' + a.action_type + '] ' + a.directive_text.slice(0, 120)).join('\n')
   : '  None.';
 const skippedSection = (skippedRes.data ?? []).length > 0
   ? (skippedRes.data ?? []).map(a => {
-      const reason = a.skip_reason ? ` (${a.skip_reason})` : '';
-      return `  - [${a.action_type}]${reason} ${a.directive_text.slice(0, 120)}`;
+      const reason = a.skip_reason ? ' (' + a.skip_reason + ')' : '';
+      return '  - [' + a.action_type + ']' + reason + ' ' + a.directive_text.slice(0, 120);
     }).join('\n')
   : '  None.';
 
@@ -368,30 +625,20 @@ const systemPrompt = FOCUSED_SYSTEM
 const suggestedArtifact = ACTION_TYPE_HINTS[winner.suggestedActionType] ?? 'decision';
 
 const now = new Date();
-const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const dayNamesArr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const todayStr = `${dayNames[now.getDay()]} ${monthNames[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+const todayStr = dayNamesArr[now.getDay()] + ' ' + monthNames[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
 
-const userPrompt = `TODAY: ${todayStr}
+// v2: relationship context and emergent pattern sections
+const relationshipSection = winner.relationshipContext
+  ? '\nRELATIONSHIP CONTEXT:\n' + winner.relationshipContext + '\n'
+  : '';
 
-THE SITUATION (selected by scoring algorithm — score ${winner.score.toFixed(2)}/5.0):
-Type: ${winner.type}
-Title: ${winner.title}
-Full context: ${winner.content}
-${winner.matchedGoal ? `\nMATCHED GOAL (priority ${winner.matchedGoal.priority}/5): ${winner.matchedGoal.text}` : ''}
+const emergentSection = winner.type === 'emergent'
+  ? '\nEMERGENT PATTERN DETECTED — this is a meta-observation about the user\'s behavior, not a regular open loop. Draft an insight artifact that surfaces this pattern with specific data. The user should feel seen, not judged.\n'
+  : '';
 
-SCORE BREAKDOWN:
-- Stakes: ${winner.breakdown.stakes} (${winner.matchedGoal ? `matched goal priority ${winner.matchedGoal.priority}` : 'no goal match, default 1.0'})
-- Urgency: ${winner.breakdown.urgency.toFixed(2)}
-- Tractability: ${winner.breakdown.tractability.toFixed(2)}
-
-SUGGESTED ARTIFACT TYPE: ${suggestedArtifact}
-(You may override if the data supports a different type, but justify.)
-
-RELATED SIGNAL DATA (${winner.relatedSignals.length} signals with keyword overlap):
-${winner.relatedSignals.length > 0 ? winner.relatedSignals.map((s, i) => `--- Signal ${i + 1} ---\n${s.slice(0, 600)}`).join('\n\n') : 'No related signals found. Use the situation context above.'}
-
-Draft the artifact now. Use real names and details from the data above.`;
+const userPrompt = 'TODAY: ' + todayStr + '\n\nTHE SITUATION (selected by scoring algorithm — score ' + winner.score.toFixed(2) + '/5.0):\nType: ' + winner.type + '\nTitle: ' + winner.title + '\nFull context: ' + winner.content + (winner.matchedGoal ? '\n\nMATCHED GOAL (priority ' + winner.matchedGoal.priority + '/5): ' + winner.matchedGoal.text : '') + '\n\nSCORE BREAKDOWN:\n- Stakes: ' + winner.breakdown.stakes + ' (' + (winner.matchedGoal ? 'matched goal priority ' + winner.matchedGoal.priority : 'no goal match, default 1.0') + ')\n- Urgency: ' + winner.breakdown.urgency.toFixed(2) + '\n- Tractability: ' + winner.breakdown.tractability.toFixed(2) + '\n- Freshness: ' + (winner.breakdown.freshness?.toFixed(2) ?? '1.00') + ' (1.0 = never surfaced, lower = recently generated)' + relationshipSection + emergentSection + '\n\nSUGGESTED ARTIFACT TYPE: ' + suggestedArtifact + '\n(You may override if the data supports a different type, but justify.)\n\nRELATED SIGNAL DATA (' + winner.relatedSignals.length + ' signals with keyword overlap):\n' + (winner.relatedSignals.length > 0 ? winner.relatedSignals.map((s, i) => '--- Signal ' + (i + 1) + ' ---\n' + s.slice(0, 600)).join('\n\n') : 'No related signals found. Use the situation context above.') + '\n\nDraft the artifact now. Use real names and details from the data above.';
 
 // ---------------------------------------------------------------------------
 // Claude call
@@ -455,7 +702,8 @@ const evidenceArr = typeof parsed.evidence === 'string'
   ? [{ type: 'signal', description: parsed.evidence, date: null }]
   : (parsed.evidence ?? []);
 
-const scoreEvidence = `[score=${winner.score.toFixed(2)}: ${winner.breakdown.stakes}S*${winner.breakdown.urgency.toFixed(2)}U*${winner.breakdown.tractability.toFixed(2)}T]`;
+const freshnessStr = winner.breakdown.freshness?.toFixed(2) ?? '1.00';
+const scoreEvidence = '[score=' + winner.score.toFixed(2) + ': ' + winner.breakdown.stakes + 'S*' + winner.breakdown.urgency.toFixed(2) + 'U*' + winner.breakdown.tractability.toFixed(2) + 'T*' + freshnessStr + 'F]';
 
 const { data: actionRow, error: actionErr } = await supabase
   .from('tkg_actions')
@@ -464,7 +712,7 @@ const { data: actionRow, error: actionErr } = await supabase
     directive_text: parsed.directive,
     action_type:    actionType,
     confidence:     50, // Bayesian default
-    reason:         `${parsed.why_now ?? parsed.evidence ?? ''} ${scoreEvidence}`,
+    reason:         (parsed.why_now ?? parsed.evidence ?? '') + ' ' + scoreEvidence,
     evidence:       evidenceArr,
     status:         'pending_approval',
     generated_at:   new Date().toISOString(),
@@ -476,7 +724,7 @@ const { data: actionRow, error: actionErr } = await supabase
 if (actionErr) {
   console.error('tkg_actions write failed: ' + actionErr.message);
 } else {
-  console.log(`Directive logged to tkg_actions (id: ${actionRow.id})\n`);
+  console.log('Directive logged to tkg_actions (id: ' + actionRow.id + ')\n');
 }
 
 // Also write to tkg_briefings
@@ -502,28 +750,29 @@ await supabase.from('tkg_briefings').insert({
 // ---------------------------------------------------------------------------
 
 const ACTION_EMOJI = {
-  write_document: '📝', send_message: '📨', make_decision: '⚖️',
-  do_nothing: '⏸️', schedule: '📅', research: '🔍',
+  write_document: '\u{1f4dd}', send_message: '\u{1f4e8}', make_decision: '\u2696\ufe0f',
+  do_nothing: '\u23f8\ufe0f', schedule: '\u{1f4c5}', research: '\u{1f50d}',
 };
 
 const displayType = parsed.artifact_type ?? parsed.action_type ?? 'unknown';
 
-console.log('═'.repeat(60));
-console.log('CONVICTION DIRECTIVE — ' + today);
-console.log('═'.repeat(60));
+console.log('\u2550'.repeat(60));
+console.log('CONVICTION DIRECTIVE \u2014 ' + today);
+console.log('\u2550'.repeat(60));
 console.log('');
-console.log(`${ACTION_EMOJI[actionType] ?? '▶'} [${displayType.toUpperCase()}]`);
-if (parsed.domain) console.log(`DOMAIN     : ${parsed.domain}`);
+console.log((ACTION_EMOJI[actionType] ?? '\u25b6') + ' [' + displayType.toUpperCase() + ']');
+if (parsed.domain) console.log('DOMAIN     : ' + parsed.domain);
 console.log('');
 console.log(parsed.directive);
 console.log('');
-console.log('─'.repeat(60));
-console.log(`SCORE      : ${winner.score.toFixed(2)}/5.0`);
-console.log(`BREAKDOWN  : stakes=${winner.breakdown.stakes} urgency=${winner.breakdown.urgency.toFixed(2)} tractability=${winner.breakdown.tractability.toFixed(2)}`);
-if (winner.matchedGoal) console.log(`GOAL MATCH : [p${winner.matchedGoal.priority}] ${winner.matchedGoal.text.slice(0, 100)}`);
-console.log(`EVIDENCE   : ${typeof parsed.evidence === 'string' ? parsed.evidence : JSON.stringify(parsed.evidence)}`);
-if (parsed.why_now) console.log(`WHY NOW    : ${parsed.why_now}`);
-console.log('─'.repeat(60));
+console.log('\u2500'.repeat(60));
+console.log('SCORE      : ' + winner.score.toFixed(2) + '/5.0');
+console.log('BREAKDOWN  : stakes=' + winner.breakdown.stakes + ' urgency=' + winner.breakdown.urgency.toFixed(2) + ' tractability=' + winner.breakdown.tractability.toFixed(2) + ' freshness=' + (winner.breakdown.freshness?.toFixed(2) ?? '1.00'));
+if (winner.matchedGoal) console.log('GOAL MATCH : [p' + winner.matchedGoal.priority + '] ' + winner.matchedGoal.text.slice(0, 100));
+console.log('EVIDENCE   : ' + (typeof parsed.evidence === 'string' ? parsed.evidence : JSON.stringify(parsed.evidence)));
+if (parsed.why_now) console.log('WHY NOW    : ' + parsed.why_now);
+if (winner.type === 'emergent') console.log('TYPE       : EMERGENT PATTERN (proactive intelligence)');
+console.log('\u2500'.repeat(60));
 
 if (parsed.artifact) {
   console.log('\nARTIFACT:');

@@ -114,9 +114,9 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
 
   const winner = await scoreOpenLoops(userId);
 
-  if (!winner || winner.score < 2.0) {
+  if (!winner || winner.score < 0.5) {
     const reason = winner
-      ? `Highest scorer: "${winner.title.slice(0, 80)}" at ${winner.score.toFixed(2)} (${winner.breakdown.stakes}S * ${winner.breakdown.urgency.toFixed(2)}U * ${winner.breakdown.tractability.toFixed(2)}T) — below 2.0 threshold`
+      ? `Highest scorer: "${winner.title.slice(0, 80)}" at ${winner.score.toFixed(2)} (${winner.breakdown.stakes}S * ${winner.breakdown.urgency.toFixed(2)}U * ${winner.breakdown.tractability.toFixed(2)}T * ${(winner.breakdown as any).freshness?.toFixed(2) ?? '1.00'}F) — below 0.5 threshold`
       : 'No open loops found in the graph';
     console.log(`[generateDirective] do_nothing — ${reason}`);
     return {
@@ -184,6 +184,16 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const todayStr = `${dayNames[now.getDay()]} ${monthNames[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
 
+  // Build relationship context section if available
+  const relationshipSection = (winner as any).relationshipContext
+    ? `\nRELATIONSHIP CONTEXT:\n${(winner as any).relationshipContext}\n`
+    : '';
+
+  // Build emergent pattern section if this is an emergent winner
+  const emergentSection = winner.type === 'emergent'
+    ? `\nEMERGENT PATTERN DETECTED — this is a meta-observation about the user's behavior, not a regular open loop. Draft an insight artifact that surfaces this pattern with specific data. The user should feel seen, not judged.\n`
+    : '';
+
   const userPrompt = `TODAY: ${todayStr}
 
 THE SITUATION (selected by scoring algorithm — score ${winner.score.toFixed(2)}/5.0):
@@ -196,7 +206,8 @@ SCORE BREAKDOWN:
 - Stakes: ${winner.breakdown.stakes} (${winner.matchedGoal ? `matched goal priority ${winner.matchedGoal.priority}` : 'no goal match, default 1.0'})
 - Urgency: ${winner.breakdown.urgency.toFixed(2)}
 - Tractability: ${winner.breakdown.tractability.toFixed(2)}
-
+- Freshness: ${(winner.breakdown as any).freshness?.toFixed(2) ?? '1.00'} (1.0 = never surfaced, lower = recently generated)
+${relationshipSection}${emergentSection}
 SUGGESTED ARTIFACT TYPE: ${suggestedArtifact}
 (You may override if the data supports a different type, but justify.)
 
@@ -310,7 +321,8 @@ Draft the artifact now. Use real names and details from the data above.`;
     'research';
 
   // Append score breakdown to evidence
-  const scoreEvidence = `[score=${winner.score.toFixed(2)}: ${winner.breakdown.stakes}S*${winner.breakdown.urgency.toFixed(2)}U*${winner.breakdown.tractability.toFixed(2)}T]`;
+  const freshnessStr = (winner.breakdown as any).freshness?.toFixed(2) ?? '1.00';
+  const scoreEvidence = `[score=${winner.score.toFixed(2)}: ${winner.breakdown.stakes}S*${winner.breakdown.urgency.toFixed(2)}U*${winner.breakdown.tractability.toFixed(2)}T*${freshnessStr}F]`;
   const evidenceStr = typeof parsed.evidence === 'string'
     ? `${parsed.evidence} ${scoreEvidence}`
     : scoreEvidence;
