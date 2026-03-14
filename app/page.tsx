@@ -5,9 +5,13 @@ import {
   ArrowRight, Check, Mail, Calendar, MessageSquare,
   Zap, Brain, Briefcase, Code, Coffee, Database, Shield,
   Globe, Layers, Terminal, FileText, AlertCircle,
-  Lock, ChevronRight, Eye,
+  Lock, ChevronRight, ChevronDown, Eye,
 } from 'lucide-react';
 import { RefTracker } from '@/components/growth/ref-tracker';
+import {
+  getVisitorContext, generateColdRead, FALLBACK_COLD_READ,
+  type VisitorContext, type ColdRead,
+} from '@/lib/cold-read';
 
 // ============================================================================
 // TYPES
@@ -46,6 +50,34 @@ interface NavigationProps {
   scrolled: boolean;
 }
 
+interface Directive {
+  directive: string;
+  action_type: string;
+  confidence: number;
+  reason: string;
+  evidence: Array<{ type: string; description: string; date: string | null }>;
+  artifact_type?: string;
+  artifact?: any;
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  write_document: 'Write',
+  send_message: 'Reach Out',
+  make_decision: 'Decide',
+  do_nothing: 'Wait',
+  schedule: 'Schedule',
+  research: 'Research',
+};
+
+const ACTION_COLORS: Record<string, string> = {
+  write_document: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  send_message: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  make_decision: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  do_nothing: 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
+  schedule: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  research: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+};
+
 // ============================================================================
 // DATA
 // ============================================================================
@@ -55,10 +87,10 @@ const SCENARIOS: Scenario[] = [
     icon: Briefcase,
     label: 'The job you keep almost taking',
     chaos: [
-      { type: 'doc', text: '"I keep second-guessing this decision"' },
+      { type: 'doc', text: '\u201cI keep second-guessing this decision\u201d' },
       { type: 'email', text: 'Recruiter follow-up (3 days old, unread)' },
       { type: 'tab', text: 'Glassdoor: same company, 4th time this month' },
-      { type: 'message', text: '"Maybe I should just wait and see"' },
+      { type: 'message', text: '\u201cMaybe I should just wait and see\u201d' },
     ],
     clarity: {
       action: 'Decision Frame Ready',
@@ -72,10 +104,10 @@ const SCENARIOS: Scenario[] = [
     icon: Code,
     label: 'The feature you\u2019re hiding behind',
     chaos: [
-      { type: 'doc', text: '"One more feature before I launch"' },
+      { type: 'doc', text: '\u201cOne more feature before I launch\u201d' },
       { type: 'tab', text: '12 open tabs: competitors, not customers' },
       { type: 'error', text: '0 users. 47 commits this week.' },
-      { type: 'message', text: '"Nobody\u2019s going to use this"' },
+      { type: 'message', text: '\u201cNobody\u2019s going to use this\u201d' },
     ],
     clarity: {
       action: 'Distribution Email Drafted',
@@ -90,7 +122,7 @@ const SCENARIOS: Scenario[] = [
     label: 'The 47 open tabs',
     chaos: [
       { type: 'email', text: 'Registration deadline: tomorrow (opened, not acted on)' },
-      { type: 'message', text: 'Lease renewal \u2014 "I\u2019ll do it this weekend"' },
+      { type: 'message', text: 'Lease renewal \u2014 \u201cI\u2019ll do it this weekend\u201d' },
       { type: 'tab', text: 'Cart with 6 items, idle since Tuesday' },
       { type: 'calendar', text: 'Dentist (unconfirmed, 3rd reschedule)' },
     ],
@@ -147,6 +179,39 @@ const useInView = (threshold = 0.15): [React.MutableRefObject<HTMLDivElement | n
   return [ref, inView];
 };
 
+function useTypingEffect(text: string, speed: number = 25, startDelay: number = 500) {
+  const [displayed, setDisplayed] = useState('');
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (!text) { setDisplayed(''); setDone(false); return; }
+    setDisplayed('');
+    setDone(false);
+    let i = 0;
+    let timeout: ReturnType<typeof setTimeout>;
+    let interval: ReturnType<typeof setInterval>;
+
+    timeout = setTimeout(() => {
+      interval = setInterval(() => {
+        if (i < text.length) {
+          setDisplayed(text.slice(0, i + 1));
+          i++;
+        } else {
+          clearInterval(interval);
+          setDone(true);
+        }
+      }, speed);
+    }, startDelay);
+
+    return () => {
+      clearTimeout(timeout);
+      if (interval) clearInterval(interval);
+    };
+  }, [text, speed, startDelay]);
+
+  return { displayed, done };
+}
+
 // ============================================================================
 // ATOMIC COMPONENTS
 // ============================================================================
@@ -196,9 +261,474 @@ const NeuralStream = () => (
 );
 
 // ============================================================================
-// HERO ENGINE
+// ARTIFACT PREVIEW (shared with /try)
 // ============================================================================
-function HeroDemo() {
+function ArtifactPreview({ artifactType, artifact }: { artifactType: string; artifact: any }) {
+  const baseCard = 'mt-6 border-t border-zinc-800 pt-5';
+  const label = (
+    <p className="text-zinc-600 text-[10px] font-semibold tracking-widest uppercase mb-3">
+      Draft ready
+    </p>
+  );
+
+  if (artifactType === 'drafted_email' && artifact) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-3 text-sm">
+          <div className="flex gap-2">
+            <span className="text-zinc-500 w-14 shrink-0">To</span>
+            <span className="text-zinc-300 truncate">{artifact.to ?? '\u2014'}</span>
+          </div>
+          <div className="flex gap-2 border-t border-zinc-700/40 pt-3">
+            <span className="text-zinc-500 w-14 shrink-0">Subject</span>
+            <span className="text-zinc-300">{artifact.subject ?? '\u2014'}</span>
+          </div>
+          <div className="border-t border-zinc-700/40 pt-3 text-zinc-400 leading-relaxed whitespace-pre-wrap break-words">
+            {artifact.body ?? ''}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (artifactType === 'decision' && artifact?.options) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="space-y-3">
+          {artifact.options.map((opt: any, i: number) => (
+            <div key={i} className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-zinc-300 text-sm font-medium">{opt.option}</span>
+                <span className="text-zinc-500 text-xs">{Math.round((opt.weight ?? 0) * 100)}%</span>
+              </div>
+              <div className="h-1 bg-zinc-700 rounded-full overflow-hidden mb-2">
+                <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${Math.round((opt.weight ?? 0) * 100)}%` }} />
+              </div>
+              {opt.rationale && <p className="text-zinc-500 text-xs">{opt.rationale}</p>}
+            </div>
+          ))}
+          {artifact.recommendation && (
+            <p className="text-zinc-500 text-sm border-l-2 border-cyan-500/40 pl-3 italic">{artifact.recommendation}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (artifactType === 'document' && artifact) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
+          <p className="text-zinc-300 text-sm font-semibold mb-2">{artifact.title ?? 'Document'}</p>
+          <p className="text-zinc-500 text-sm leading-relaxed line-clamp-4">{artifact.content ?? ''}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (artifactType === 'wait_rationale' && artifact) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-2">
+          <p className="text-zinc-400 text-sm leading-relaxed">{artifact.context ?? ''}</p>
+          {artifact.evidence && (
+            <p className="text-zinc-600 text-sm border-l-2 border-zinc-700 pl-3 italic">{artifact.evidence}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (artifactType === 'research_brief' && artifact) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
+          <p className="text-zinc-400 text-sm leading-relaxed mb-2">{artifact.findings ?? ''}</p>
+          {artifact.recommended_action && (
+            <p className="text-zinc-600 text-xs border-l-2 border-zinc-700 pl-3 italic">{artifact.recommended_action}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (artifactType === 'calendar_event' && artifact) {
+    return (
+      <div className={baseCard}>
+        {label}
+        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-2">
+          <p className="text-zinc-300 text-sm font-semibold">{artifact.title ?? 'Event'}</p>
+          {artifact.start && (
+            <p className="text-zinc-500 text-xs">{new Date(artifact.start).toLocaleString()} \u2014 {artifact.end ? new Date(artifact.end).toLocaleString() : ''}</p>
+          )}
+          {artifact.description && (
+            <p className="text-zinc-500 text-sm">{artifact.description}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// ============================================================================
+// LIVING HERO — cold read on page load
+// ============================================================================
+function LivingHero() {
+  const [coldRead, setColdRead] = useState<ColdRead | null>(null);
+  const [ctx, setCtx] = useState<VisitorContext | null>(null);
+  const [showInput, setShowInput] = useState(false);
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<Directive | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    try {
+      const visitorCtx = getVisitorContext();
+      setCtx(visitorCtx);
+      setColdRead(generateColdRead(visitorCtx));
+    } catch {
+      setColdRead(FALLBACK_COLD_READ);
+    }
+    // Brief shimmer before text appears
+    const t = setTimeout(() => setReady(true), 200);
+    return () => clearTimeout(t);
+  }, []);
+
+  const observationTyping = useTypingEffect(
+    ready && coldRead ? coldRead.observation : '',
+    30,
+    300,
+  );
+
+  const subtextTyping = useTypingEffect(
+    ready && coldRead ? coldRead.subtext : '',
+    18,
+    (coldRead?.observation.length ?? 0) * 30 + 800,
+  );
+
+  useEffect(() => {
+    if (showInput && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [showInput]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim() || loading) return;
+    setLoading(true);
+    setResult(null);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/try/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          context: ctx ? {
+            timeOfDay: ctx.timeOfDay,
+            dayOfWeek: ctx.dayOfWeek,
+            isWeekend: ctx.isWeekend,
+            scenario: ctx.scenario,
+            device: ctx.device,
+          } : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Analysis failed');
+      setResult(data as Directive);
+    } catch {
+      setError('Foldera is thinking... try again in a moment.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEmailCapture(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || emailLoading) return;
+    setEmailLoading(true);
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (res.ok || res.status === 409) {
+        setEmailSubmitted(true);
+      }
+    } catch {
+      setEmailSubmitted(true);
+    } finally {
+      setEmailLoading(false);
+    }
+  }
+
+  const actionLabel = result ? (ACTION_LABELS[result.action_type] ?? result.action_type) : '';
+  const actionColor = result ? (ACTION_COLORS[result.action_type] ?? ACTION_COLORS.research) : '';
+
+  return (
+    <div className="w-full max-w-3xl mx-auto relative z-10 pt-8 px-5">
+      <NeuralStream />
+
+      {/* ── COLD READ PHASE ── */}
+      {!result && !showInput && (
+        <div className="space-y-10 relative z-10">
+          {/* Loading shimmer */}
+          {!ready && (
+            <div className="space-y-4 animate-pulse">
+              <div className="h-8 bg-zinc-900/60 rounded-xl w-3/4" />
+              <div className="h-4 bg-zinc-900/40 rounded-lg w-full" />
+              <div className="h-4 bg-zinc-900/40 rounded-lg w-5/6" />
+            </div>
+          )}
+
+          {ready && coldRead && (
+            <>
+              {/* System observation label */}
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400/60">
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                System observation
+              </div>
+
+              {/* The cold read text IS the headline */}
+              <p className="text-2xl sm:text-3xl md:text-4xl font-semibold leading-snug text-white tracking-tight min-h-[3.5rem]">
+                {observationTyping.displayed}
+                {!observationTyping.done && <span className="inline-block w-[2px] h-[1.2em] bg-cyan-400 ml-0.5 animate-pulse align-text-bottom" />}
+              </p>
+
+              <div className={`transition-opacity duration-1000 ${observationTyping.done ? 'opacity-100' : 'opacity-0'}`}>
+                <p className="text-zinc-400 text-base md:text-lg leading-relaxed">
+                  {subtextTyping.displayed}
+                  {observationTyping.done && !subtextTyping.done && <span className="inline-block w-[2px] h-[1em] bg-zinc-500 ml-0.5 animate-pulse align-text-bottom" />}
+                </p>
+              </div>
+
+              {/* Confidence badge */}
+              <div className={`transition-all duration-700 ${subtextTyping.done ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-zinc-900/60 border border-white/5">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1 w-12 bg-zinc-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-cyan-500/50 rounded-full" style={{ width: `${coldRead.confidence}%` }} />
+                    </div>
+                    <span className="text-zinc-600 text-[10px] font-mono">{coldRead.confidence}% confidence</span>
+                  </div>
+                  <span className="text-zinc-700 text-[10px]">|</span>
+                  <span className="text-zinc-600 text-[10px]">Based on: time, day{ctx?.scenario ? ', scenario' : ''}{ctx?.referrer ? ', referrer' : ''}</span>
+                </div>
+              </div>
+
+              {/* Go deeper CTA */}
+              <div className={`space-y-4 transition-all duration-700 delay-300 ${subtextTyping.done ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                <div className="h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent" />
+
+                <button
+                  onClick={() => setShowInput(true)}
+                  className="w-full group flex items-center justify-between p-5 rounded-2xl bg-zinc-950/80 border border-white/5 hover:border-cyan-500/20 transition-all"
+                >
+                  <div className="text-left">
+                    <p className="text-white font-semibold text-sm">Want to go deeper?</p>
+                    <p className="text-zinc-500 text-xs mt-1">Tell me what you&apos;re actually dealing with. I&apos;ll show you what Foldera does with real context.</p>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-zinc-600 group-hover:text-cyan-400 transition-colors shrink-0 ml-4" />
+                </button>
+
+                <div className="text-center pt-2">
+                  <a
+                    href="/start"
+                    className="inline-flex items-center gap-2 text-zinc-500 hover:text-white text-sm transition-colors group"
+                  >
+                    Or skip ahead and connect your real data
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </a>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── TEXT INPUT PHASE ── */}
+      {!result && showInput && (
+        <div className="space-y-6 relative z-10">
+          {/* Collapsed cold read */}
+          <div className="p-4 rounded-xl bg-zinc-950/60 border border-white/5">
+            <p className="text-zinc-500 text-sm leading-relaxed">{coldRead?.observation}</p>
+          </div>
+
+          <div className="text-center">
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tighter text-white mb-2">
+              Go deeper
+            </h2>
+            <p className="text-zinc-500 text-sm">
+              Paste a paragraph about what you&apos;re working on or struggling with right now.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <textarea
+              ref={inputRef}
+              value={text}
+              onChange={e => setText(e.target.value)}
+              placeholder="E.g. I've been going back and forth on whether to leave my job. I have a competing offer that pays 30% more but means relocating..."
+              rows={6}
+              className="w-full bg-zinc-950/80 border border-white/10 rounded-2xl px-5 py-4 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors leading-relaxed backdrop-blur-sm"
+            />
+            {error && (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/60 border border-white/5">
+                <p className="text-zinc-400 text-sm">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="text-cyan-400 text-xs font-semibold hover:text-cyan-300 transition-colors shrink-0 ml-3"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={!text.trim() || loading}
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all disabled:opacity-40 shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:scale-[1.01] active:scale-95"
+            >
+              {loading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-black/40 border-t-black rounded-full animate-spin" />
+                  Reading...
+                </>
+              ) : (
+                <>Get your read</>
+              )}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ── RESULT CARD ── */}
+      {result && (
+        <div className="space-y-8 relative z-10">
+          <div className="bg-zinc-950/80 border border-white/10 rounded-[2rem] p-7 backdrop-blur-sm">
+            {/* Action badge + confidence */}
+            <div className="flex items-center justify-between mb-6">
+              <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${actionColor}`}>
+                {actionLabel}
+              </span>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-24 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-cyan-500 rounded-full"
+                    style={{ width: `${result.confidence}%` }}
+                  />
+                </div>
+                <span className="text-zinc-600 text-xs font-mono">{result.confidence}%</span>
+              </div>
+            </div>
+
+            {/* Directive */}
+            <p className="text-xl sm:text-2xl font-semibold leading-snug text-white mb-5">
+              {result.directive}
+            </p>
+
+            {/* Reason */}
+            <p className="text-zinc-500 text-sm leading-relaxed border-l-2 border-zinc-800 pl-4 italic mb-5">
+              {result.reason}
+            </p>
+
+            {/* Evidence */}
+            {result.evidence.length > 0 && (
+              <div className="border-t border-zinc-800 pt-5">
+                <p className="text-zinc-600 text-[10px] font-semibold tracking-widest uppercase mb-3">
+                  Evidence from your text
+                </p>
+                <ul className="space-y-2">
+                  {result.evidence.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-zinc-500">
+                      <span className="text-zinc-700 mt-0.5 shrink-0">&#8226;</span>
+                      {item.description}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {result.artifact && result.artifact_type && (
+              <ArtifactPreview artifactType={result.artifact_type} artifact={result.artifact} />
+            )}
+          </div>
+
+          {/* Email capture */}
+          <div className="bg-zinc-950/60 border border-white/5 rounded-[2rem] p-8 text-center space-y-6 backdrop-blur-sm">
+            <p className="text-zinc-400 text-base leading-relaxed font-medium">
+              That was one paragraph.<br />
+              Imagine what Foldera does with 30 days of your actual history.
+            </p>
+
+            {!emailSubmitted ? (
+              <div className="space-y-4">
+                <p className="text-white font-semibold text-lg">Get this every morning.</p>
+                <form onSubmit={handleEmailCapture} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="you@email.com"
+                    required
+                    className="flex-1 bg-zinc-950/80 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    disabled={emailLoading}
+                    className="px-6 py-3.5 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 whitespace-nowrap"
+                  >
+                    {emailLoading ? 'Saving...' : 'Start free'}
+                  </button>
+                </form>
+                <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">14 days free &middot; No credit card required</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-cyan-400 font-semibold">You&apos;re in.</p>
+                <p className="text-zinc-500 text-sm">Your first read arrives tomorrow morning.</p>
+                <a
+                  href="/start"
+                  className="inline-flex items-center gap-2 text-zinc-400 hover:text-white text-sm transition-colors group mt-2"
+                >
+                  Or connect your email now for a deeper read
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Try again */}
+          <button
+            onClick={() => { setResult(null); setError(null); setShowInput(true); }}
+            className="w-full text-zinc-600 hover:text-zinc-400 text-sm transition-colors"
+          >
+            Try a different paragraph
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// SCENARIO DEMOS (moved below hero)
+// ============================================================================
+function ScenarioDemos() {
   const [activeTab, setActiveTab] = useState(0);
   const [phase, setPhase] = useState<'chaos' | 'clarity'>('chaos');
   const [progress, setProgress] = useState(0);
@@ -245,21 +775,7 @@ function HeroDemo() {
   const isProcessing = phase === 'chaos' && progress > 40;
 
   return (
-    <div className="w-full max-w-5xl mx-auto relative z-10 pt-12 px-4">
-      <NeuralStream />
-      <div className="text-center mb-16 space-y-8 relative z-10">
-        <h1 className="text-5xl md:text-7xl lg:text-[6rem] font-black tracking-tighter text-white leading-[0.9]">
-          You&apos;ve told Claude<br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 animate-gradient-x">
-            everything.
-          </span>
-        </h1>
-        <p className="text-lg md:text-2xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed tracking-tight">
-          127 conversations. Every decision you wrestled with, every pattern you repeated.{' '}<br className="hidden md:inline" />
-          Now it&apos;s finally listening.
-        </p>
-      </div>
-
+    <div className="w-full max-w-5xl mx-auto relative z-10 px-4">
       <div className={`relative w-full aspect-[4/3] md:aspect-[21/10] rounded-[2rem] bg-black/40 backdrop-blur-3xl border transition-all duration-1000 overflow-hidden shadow-2xl ${
         isProcessing ? 'border-cyan-500/50 shadow-[0_0_100px_-20px_rgba(6,182,212,0.4)]' : 'border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,1)]'
       }`}>
@@ -375,17 +891,6 @@ function HeroDemo() {
             />
           );
         })}
-      </div>
-
-      {/* Try it link — passes active scenario */}
-      <div className="text-center mt-8 relative z-10">
-        <a
-          href={`/try?s=${current.id}`}
-          className="text-zinc-500 hover:text-cyan-400 text-sm transition-colors group inline-flex items-center gap-2"
-        >
-          See what Foldera sees in you
-          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-        </a>
       </div>
     </div>
   );
@@ -504,7 +1009,7 @@ const MathConsole = memo(() => {
               <div>
                 <span className="text-cyan-400 font-bold">$</span> compute_bayesian_prior --node=relationship_marcus
                 <br />
-                <span className="text-zinc-600 font-bold mt-2 inline-block">→ Loading 127 historical signal nodes...</span>
+                <span className="text-zinc-600 font-bold mt-2 inline-block">{'\u2192'} Loading 127 historical signal nodes...</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '500ms' }}>
@@ -643,9 +1148,30 @@ export default function App() {
 
       <Navigation scrolled={scrolled} />
 
-      {/* ── HERO ── */}
-      <section className="relative pt-48 pb-32 overflow-hidden">
-        <Reveal><HeroDemo /></Reveal>
+      {/* ── LIVING HERO — cold read on page load ── */}
+      <section className="relative pt-40 pb-24 overflow-hidden">
+        <LivingHero />
+      </section>
+
+      {/* ── SCENARIO DEMOS — "with a month of your data" ── */}
+      <section className="py-32 relative bg-[#000] border-t border-white/5 overflow-hidden">
+        <AmbientGrid />
+        <div className="relative z-10">
+          <Reveal className="text-center mb-16 px-6">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white mb-6">
+              Now imagine a month of<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 animate-gradient-x">
+                your real data.
+              </span>
+            </h2>
+            <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed">
+              That cold read used time and day. Here&apos;s what Foldera does with your email, calendar, and conversations.
+            </p>
+          </Reveal>
+          <Reveal delay={150}>
+            <ScenarioDemos />
+          </Reveal>
+        </div>
       </section>
 
       {/* ── HOW IT WORKS ── */}
@@ -782,7 +1308,7 @@ export default function App() {
               </div>
             </div>
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 text-center md:text-right" suppressHydrationWarning>
-              © {new Date().getFullYear()} Foldera AI • Built for execution
+              &copy; {new Date().getFullYear()} Foldera AI &bull; Built for execution
             </p>
           </div>
         </div>
