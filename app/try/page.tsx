@@ -100,76 +100,79 @@ interface ColdRead {
 }
 
 function generateColdRead(ctx: VisitorContext): ColdRead {
-  // Late night browsing
-  if (ctx.timeOfDay === 'late_night') {
-    if (ctx.scenario === 'job') {
+  const displayHour = ctx.hour > 12 ? ctx.hour - 12 : ctx.hour || 12;
+  const ampm = ctx.hour >= 12 ? 'pm' : 'am';
+
+  // Scenario-specific reads (these take priority over time — the scenario tells us more)
+  if (ctx.scenario === 'job') {
+    if (ctx.timeOfDay === 'late_night') {
       return {
-        observation: `It's ${ctx.hour > 12 ? ctx.hour - 12 : ctx.hour}${ctx.hour >= 12 ? 'pm' : 'am'} on a ${ctx.dayOfWeek} and you're looking at a productivity tool after clicking on a job search scenario.`,
-        subtext: "That's not casual browsing. Something about how you're running your search isn't working, and you know it. The system you have — or don't have — is costing you energy you can't afford to lose right now.",
-        confidence: 38,
-      };
-    }
-    if (ctx.scenario === 'builder') {
-      return {
-        observation: `Late-night ${ctx.dayOfWeek}. You clicked the founder scenario.`,
-        subtext: "Founders don't browse productivity tools at this hour unless the current system is failing. Too many plates spinning, not enough of them landing. The chaos isn't the problem — the lack of a triage system is.",
-        confidence: 35,
+        observation: `It's ${displayHour}${ampm} and you're looking at job search tools instead of sleeping.`,
+        subtext: "That's not research. That's the 2am anxiety loop: refresh LinkedIn, check email, wonder if you should have worded that cover letter differently. The silence between submitting and hearing back is louder at night. You're not lazy — you're exhausted from applying into a void and getting nothing back but form rejections and silence.",
+        confidence: 39,
       };
     }
     return {
-      observation: `It's ${ctx.hour > 12 ? ctx.hour - 12 : ctx.hour}${ctx.hour >= 12 ? 'pm' : 'am'} on a ${ctx.dayOfWeek} and you're looking at a productivity tool.`,
-      subtext: "That's not casual browsing. Something specific is keeping you up. A decision you haven't made, a thing you said you'd do, or a growing pile that's getting harder to ignore.",
-      confidence: 33,
+      observation: `${ctx.dayOfWeek}. You clicked the job hunt scenario.`,
+      subtext: "Here's what that pattern usually looks like from the outside: dozens of applications, a few callbacks that went nowhere, and a growing suspicion that the problem isn't your resume. The 'one more application' compulsion is a coping mechanism — it feels productive but it's keeping you from the harder question of whether you're targeting the right role at all. Meanwhile, the recruiter emails pile up unanswered because none of them feel quite right.",
+      confidence: 41,
+    };
+  }
+
+  if (ctx.scenario === 'builder' || ctx.scenario === 'founder') {
+    if (ctx.timeOfDay === 'late_night') {
+      return {
+        observation: `Late-night ${ctx.dayOfWeek}. Building alone.`,
+        subtext: "The gap between building and shipping is where solo founders go to die. You've got commits but no users. Features but no feedback. The loneliness isn't about being alone — it's about not knowing if what you're building matters to anyone besides you. 'One more feature before I launch' is the lie that feels like progress.",
+        confidence: 38,
+      };
+    }
+    return {
+      observation: `You clicked the founder scenario.`,
+      subtext: "Here's what I'd bet: you have a product that works, or close to it. But instead of showing it to people, you're adding features. Instead of writing the cold email, you're tweaking the landing page. Instead of asking 'will anyone use this,' you're asking 'is it good enough yet.' It's never good enough yet. That's the point. The question you're avoiding isn't about the product — it's about whether anyone will care.",
+      confidence: 40,
+    };
+  }
+
+  if (ctx.scenario === 'life' || ctx.scenario === 'admin') {
+    if (ctx.isWeekend) {
+      return {
+        observation: `${ctx.dayOfWeek}. The day you were supposed to catch up.`,
+        subtext: "The registration that closes Monday. The lease reply you've been drafting in your head for two weeks. The dentist appointment you've rescheduled three times. None of it is hard. That's the problem — it's too boring to prioritize and too important to ignore. So it sits in the back of your mind, taking up space, making everything else feel heavier than it should. You're not behind. You're just carrying 47 invisible tasks that nobody sees.",
+        confidence: 40,
+      };
+    }
+    return {
+      observation: `You clicked the life admin scenario.`,
+      subtext: "Invisible mental load. That's the phrase for it, but the phrase doesn't capture what it actually feels like: nothing is urgent, everything is overdue, and the list in your head is longer than any list you've ever written down. You're not forgetting things — you're drowning in the gap between knowing what needs to happen and having the energy to make it happen. Life is running you instead of the reverse.",
+      confidence: 39,
+    };
+  }
+
+  // Late night, no scenario
+  if (ctx.timeOfDay === 'late_night') {
+    return {
+      observation: `It's ${displayHour}${ampm} on a ${ctx.dayOfWeek}. You're still up.`,
+      subtext: "Something specific is keeping you awake. A decision you haven't made, a conversation you're avoiding, or a pile that got so big it crossed the line from manageable to paralyzing. People don't browse tools like this at this hour out of curiosity. They do it because the current system — whatever it is — stopped working.",
+      confidence: 34,
     };
   }
 
   // Early morning
   if (ctx.timeOfDay === 'early_morning') {
     return {
-      observation: `Early ${ctx.dayOfWeek} morning. You're here before most people are awake.`,
-      subtext: "Early risers who look at tools like this are usually the ones carrying the most. Not because they're disorganized — because they're managing more than one system can hold. The gap between what you're tracking and what you're actually doing is probably wider than you'd like.",
+      observation: `Early ${ctx.dayOfWeek}. You're here before most people are awake.`,
+      subtext: "Early risers who look at tools like this are usually carrying more than anyone around them realizes. Not because you're disorganized — because the volume of decisions you're managing has outgrown any system you could run manually. The gap between what you're tracking in your head and what's actually getting done is probably wider than you'd like to admit.",
       confidence: 36,
     };
   }
 
-  // Weekend
+  // Weekend, no scenario
   if (ctx.isWeekend) {
-    if (ctx.scenario === 'life') {
-      return {
-        observation: `${ctx.dayOfWeek} — the day you were supposed to catch up on life admin.`,
-        subtext: "Registrations, renewals, appointments, that email you keep putting off. The list isn't long, but it feels heavy because none of it is hard — it's just boring and easy to postpone. That's exactly the pattern an AI chief of staff handles best.",
-        confidence: 40,
-      };
-    }
     return {
-      observation: `It's ${ctx.dayOfWeek}. You're spending part of your weekend looking at this.`,
-      subtext: "Weekdays didn't leave enough room to deal with whatever this is. That means either your weeks are overloaded, or something specific is nagging you that doesn't fit into work hours. Both are solvable — but not by adding another app to check.",
+      observation: `${ctx.dayOfWeek}. You're spending part of your weekend on this.`,
+      subtext: "The week didn't leave enough room. That means either your days are overloaded, or something specific has been nagging you that doesn't fit into work hours. Either way — the fact that you're here means the current approach isn't working. Not because you're bad at it. Because there's more to manage than one person can hold.",
       confidence: 34,
-    };
-  }
-
-  // Scenario-specific weekday reads
-  if (ctx.scenario === 'job') {
-    return {
-      observation: "You clicked the job hunt scenario.",
-      subtext: "The system is designed for exactly this pattern: high application volume, low signal on what's working, decision fatigue about what to do next. Most people in an active search are spending 60% of their energy on logistics and 40% on the actual work. Foldera inverts that ratio.",
-      confidence: 42,
-    };
-  }
-
-  if (ctx.scenario === 'builder') {
-    return {
-      observation: "You clicked the founder scenario.",
-      subtext: "Founders don't need more task management. They need something that looks at the 42 things screaming for attention and says: 'This one. Do this one now. I already drafted the email.' The bottleneck isn't effort — it's the cost of deciding what effort to spend.",
-      confidence: 40,
-    };
-  }
-
-  if (ctx.scenario === 'life') {
-    return {
-      observation: "You clicked the life admin scenario.",
-      subtext: "Life admin is the tax on being a functioning adult. It's never urgent enough to prioritize and never unimportant enough to ignore. So it piles up until Saturday morning feels like Monday. Foldera treats these exactly like a chief of staff would — handle them before you have to think about them.",
-      confidence: 39,
     };
   }
 
@@ -177,7 +180,7 @@ function generateColdRead(ctx: VisitorContext): ColdRead {
   if (ctx.referrer === 'reddit') {
     return {
       observation: "You came here from Reddit.",
-      subtext: "Someone's post about overwhelm, dropping balls, or needing a system resonated enough to click a link. That's not idle curiosity — that's recognition. The fact that you're still here means the pain is real, not theoretical.",
+      subtext: "Someone's post about overwhelm, dropping balls, or needing a system resonated enough to click. That's not idle curiosity — that's recognition. Whatever they described, you saw yourself in it. The fact that you're still reading means the pain is real, not theoretical.",
       confidence: 37,
     };
   }
@@ -185,7 +188,7 @@ function generateColdRead(ctx: VisitorContext): ColdRead {
   if (ctx.referrer === 'twitter') {
     return {
       observation: "You came here from X.",
-      subtext: "Twitter to productivity tool is a specific pipeline: someone said something that hit close, and you want to see if there's a real solution behind it. Most of the time there isn't. This time might be different.",
+      subtext: "Someone said something that hit close enough to click a link. Most of the time, the tool behind the link is vaporware. You're checking whether this one is different. Short answer: it reads your actual history and does the work. No chat interface. No prompting.",
       confidence: 35,
     };
   }
@@ -193,23 +196,23 @@ function generateColdRead(ctx: VisitorContext): ColdRead {
   if (ctx.referrer === 'hackernews') {
     return {
       observation: "You came here from Hacker News.",
-      subtext: "HN visitors evaluate tools differently. You're not looking for features — you're looking for whether the architecture is real. Short answer: Bayesian confidence scoring on your own behavioral history, deterministic math, not LLM opinions. The rest is artifact generation.",
+      subtext: "You're evaluating architecture, not features. The short version: Bayesian confidence scoring on your own behavioral history. Deterministic math, not LLM opinions. The engine gets smarter from your approvals and skips, not from a training run. Everything is encrypted, nothing trains a global model.",
       confidence: 41,
     };
   }
 
-  // Default — afternoon/evening weekday, no scenario
+  // Default weekday
   if (ctx.timeOfDay === 'afternoon') {
     return {
       observation: `${ctx.dayOfWeek} afternoon. Middle of the workday.`,
-      subtext: "Most people who look at new tools during work hours are doing it because the current approach just failed them — a ball dropped, a follow-up was missed, or the to-do list got so long it became useless. Sound familiar?",
+      subtext: "People who look at new tools during work hours are usually doing it because something just failed — a ball dropped, a follow-up was missed, or the to-do list got so long it became useless. The urge to find a better system is a signal. The question is whether you'll act on it or close this tab and forget about it until the next ball drops.",
       confidence: 34,
     };
   }
 
   return {
     observation: `${ctx.dayOfWeek} ${ctx.timeOfDay === 'evening' ? 'evening' : 'morning'}. You found your way here.`,
-    subtext: "People who search for tools like Foldera aren't disorganized. They're carrying too much. The gap isn't capability — it's that there are more decisions to make than hours to make them. That's exactly the problem this solves.",
+    subtext: "People who find tools like Foldera aren't disorganized. They're carrying too much. The gap isn't capability — it's that there are more decisions to make than hours to make them in. You don't need another app. You need something that does the work before you wake up and lets you say yes or no.",
     confidence: 35,
   };
 }
@@ -263,6 +266,9 @@ export default function TryPage() {
   const [showInput, setShowInput] = useState(false);
   const [coldRead, setColdRead] = useState<ColdRead | null>(null);
   const [ctx, setCtx] = useState<VisitorContext | null>(null);
+  const [email, setEmail] = useState('');
+  const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Generate cold read on mount
@@ -316,9 +322,30 @@ export default function TryPage() {
       if (!res.ok) throw new Error(data.error || 'Analysis failed');
       setResult(data as Directive);
     } catch (err: any) {
-      setError(err.message);
+      setError('Foldera is thinking... try again in a moment.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleEmailCapture(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || emailLoading) return;
+    setEmailLoading(true);
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (res.ok || res.status === 409) {
+        setEmailSubmitted(true);
+      }
+    } catch {
+      // Still show success — email capture shouldn't block the experience
+      setEmailSubmitted(true);
+    } finally {
+      setEmailLoading(false);
     }
   }
 
@@ -440,7 +467,16 @@ export default function TryPage() {
                 className="w-full bg-zinc-950/80 border border-white/10 rounded-2xl px-5 py-4 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors leading-relaxed backdrop-blur-sm"
               />
               {error && (
-                <p className="text-red-400 text-sm font-mono">{error}</p>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/60 border border-white/5">
+                  <p className="text-zinc-400 text-sm">{error}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setError(null); }}
+                    className="text-cyan-400 text-xs font-semibold hover:text-cyan-300 transition-colors shrink-0 ml-3"
+                  >
+                    Retry
+                  </button>
+                </div>
               )}
               <button
                 type="submit"
@@ -512,20 +548,48 @@ export default function TryPage() {
               )}
             </div>
 
-            {/* CTA */}
+            {/* Email capture */}
             <div className="bg-zinc-950/60 border border-white/5 rounded-[2rem] p-8 text-center space-y-6 backdrop-blur-sm">
               <p className="text-zinc-400 text-base leading-relaxed font-medium">
                 That was one paragraph.<br />
                 Imagine what Foldera does with 30 days of your actual history.
               </p>
-              <a
-                href="/start"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all group shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95"
-              >
-                Connect your history
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </a>
-              <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">14 days free &middot; No credit card required</p>
+
+              {!emailSubmitted ? (
+                <div className="space-y-4">
+                  <p className="text-white font-semibold text-lg">Get this every morning.</p>
+                  <form onSubmit={handleEmailCapture} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="you@email.com"
+                      required
+                      className="flex-1 bg-zinc-950/80 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                    />
+                    <button
+                      type="submit"
+                      disabled={emailLoading}
+                      className="px-6 py-3.5 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 whitespace-nowrap"
+                    >
+                      {emailLoading ? 'Saving...' : 'Start free'}
+                    </button>
+                  </form>
+                  <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">14 days free &middot; No credit card required</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-cyan-400 font-semibold">You&apos;re in.</p>
+                  <p className="text-zinc-500 text-sm">Your first read arrives tomorrow morning.</p>
+                  <a
+                    href="/start"
+                    className="inline-flex items-center gap-2 text-zinc-400 hover:text-white text-sm transition-colors group mt-2"
+                  >
+                    Or connect your email now for a deeper read
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* Try again */}

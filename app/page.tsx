@@ -53,63 +53,63 @@ const SCENARIOS: Scenario[] = [
   {
     id: 'job',
     icon: Briefcase,
-    label: 'The Job Hunt',
+    label: 'The job you keep almost taking',
     chaos: [
-      { type: 'email', text: 'Rejection: ACME Corp Senior PM' },
-      { type: 'tab', text: 'State Government Careers Portal' },
-      { type: 'doc', text: 'Resume_v4_Final_FINAL.pdf' },
-      { type: 'calendar', text: 'Overlapping coffee chats' },
+      { type: 'doc', text: '"I keep second-guessing this decision"' },
+      { type: 'email', text: 'Recruiter follow-up (3 days old, unread)' },
+      { type: 'tab', text: 'Glassdoor: same company, 4th time this month' },
+      { type: 'message', text: '"Maybe I should just wait and see"' },
     ],
     clarity: {
-      action: 'Drafted Outreach',
-      subject: 'Business Analyst Role',
-      desc: 'Stop spinning wheels on generic apps. I found a BA role matching your profile. I drafted a direct email to the hiring manager and blocked 30m tomorrow to review it.',
-      button: 'Approve & Schedule',
+      action: 'Decision Frame Ready',
+      subject: 'The hesitation isn\u2019t about the role',
+      desc: 'You\u2019ve researched this company 4 times without applying. The pattern says you want it but you\u2019re afraid of rejection. I drafted the email to the recruiter and blocked 20 minutes tomorrow to hit send.',
+      button: 'Approve & Send',
     },
   },
   {
     id: 'builder',
     icon: Code,
-    label: 'Founder Overload',
+    label: 'The feature you\u2019re hiding behind',
     chaos: [
-      { type: 'error', text: 'Vercel Deployment Failed (x3)' },
-      { type: 'tab', text: 'ClickUp: 42 overdue tasks' },
-      { type: 'doc', text: 'Landing_Page_Copy_Draft.txt' },
-      { type: 'email', text: 'Stripe: Action Required' },
+      { type: 'doc', text: '"One more feature before I launch"' },
+      { type: 'tab', text: '12 open tabs: competitors, not customers' },
+      { type: 'error', text: '0 users. 47 commits this week.' },
+      { type: 'message', text: '"Nobody\u2019s going to use this"' },
     ],
     clarity: {
-      action: 'QA Prompt Ready',
-      subject: 'Fix Broken UI First',
-      desc: 'Stop building new features. I wrote the CC prompt to run a complete UI sweep and fix broken buttons first.',
-      button: 'Execute CC Prompt',
+      action: 'Distribution Email Drafted',
+      subject: 'Ship what you have. Today.',
+      desc: 'You\u2019ve built for 6 weeks without showing anyone. That\u2019s not perfectionism \u2014 it\u2019s avoidance. I found 3 people in your network who fit your ICP and drafted a personal email to each.',
+      button: 'Send All Three',
     },
   },
   {
     id: 'life',
     icon: Coffee,
-    label: 'Life Admin',
+    label: 'The 47 open tabs',
     chaos: [
-      { type: 'email', text: 'URGENT: Youth Soccer Registration' },
-      { type: 'message', text: 'Landlord: Lease renewal attached' },
-      { type: 'tab', text: 'Instacart Checkout (idle)' },
-      { type: 'calendar', text: 'Dentist 2:00 PM (Unconfirmed)' },
+      { type: 'email', text: 'Registration deadline: tomorrow (opened, not acted on)' },
+      { type: 'message', text: 'Lease renewal \u2014 "I\u2019ll do it this weekend"' },
+      { type: 'tab', text: 'Cart with 6 items, idle since Tuesday' },
+      { type: 'calendar', text: 'Dentist (unconfirmed, 3rd reschedule)' },
     ],
     clarity: {
-      action: 'Forms & Emails Drafted',
-      subject: 'Soccer & Lease Renewal',
-      desc: 'Soccer registration closes in 48 hours. I filled out the form and drafted the email to the landlord requesting a 12-month extension.',
-      button: 'Submit Both',
+      action: 'Three Things Handled',
+      subject: 'None of this is hard. It\u2019s just boring.',
+      desc: 'Registration submitted. Lease reply drafted with a 12-month counter. Dentist confirmed for Thursday. You were never going to do these voluntarily. Now they\u2019re done.',
+      button: 'Approve All',
     },
   },
 ];
 
 const FEATURES: FeatureItem[] = [
-  { icon: Database, title: 'Continuous Ingestion', desc: 'Email, calendar, and docs. Automatically ingested and understood 24/7.' },
-  { icon: Brain, title: 'Conviction Engine', desc: 'Bayesian reasoning on your own historical outcomes. Computed confidence.' },
-  { icon: Zap, title: 'Zero-Prompt Execution', desc: 'No chatting. Finished work appears in your queue, ready to ship.' },
-  { icon: Shield, title: 'Private by Design', desc: 'Your data never trains global models. AES-256 encryption.' },
-  { icon: Terminal, title: 'Command Center', desc: 'Run multi-step sweeps across your entire history instantly.' },
-  { icon: Layers, title: 'Action Templates', desc: 'From complex outreach cadences to routine follow-ups. Ready.' },
+  { icon: Database, title: 'It reads your history', desc: 'Email, calendar, conversations. Foldera ingests what you\u2019ve already written and finds the patterns you can\u2019t see from inside them.' },
+  { icon: Brain, title: 'It does the math', desc: 'Not AI opinions. Bayesian confidence scores computed from your own outcomes. Every recommendation is backed by your actual track record.' },
+  { icon: Zap, title: 'It does the work', desc: 'No prompting. No chatting. You wake up to finished drafts, ready to approve with one tap.' },
+  { icon: Shield, title: 'It stays private', desc: 'Your data never trains anyone else\u2019s model. AES-256 encryption. Delete everything anytime.' },
+  { icon: Terminal, title: 'It gets smarter', desc: 'Every approval and every skip teaches the engine what matters to you. Day 30 is unrecognizable from day 1.' },
+  { icon: Layers, title: 'It replaces the system', desc: 'Not another app to check. The whole point is that you stop managing and start deciding yes or no.' },
 ];
 
 // ============================================================================
@@ -249,13 +249,14 @@ function HeroDemo() {
       <NeuralStream />
       <div className="text-center mb-16 space-y-8 relative z-10">
         <h1 className="text-5xl md:text-7xl lg:text-[6rem] font-black tracking-tighter text-white leading-[0.9]">
-          The work is done<br />
+          You&apos;ve told Claude<br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 animate-gradient-x">
-            before you ask.
+            everything.
           </span>
         </h1>
         <p className="text-lg md:text-2xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed tracking-tight">
-          Ingest the chaos. Compute the math. Execute the action.
+          127 conversations. Every decision you wrestled with, every pattern you repeated.{' '}<br className="hidden md:inline" />
+          Now it&apos;s finally listening.
         </p>
       </div>
 
@@ -652,8 +653,8 @@ export default function App() {
         <AmbientGrid />
         <div className="max-w-6xl mx-auto px-6 relative z-10">
           <Reveal className="mb-24 text-center">
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">Work faster than<br />humanly possible.</h2>
-            <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed">The continuous autonomous loop that replaces manual management.</p>
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">You decide yes or no.<br />Foldera does the rest.</h2>
+            <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed">Three steps. No prompting. No managing. Just finished work, every morning.</p>
           </Reveal>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -667,9 +668,9 @@ export default function App() {
                     {title}
                   </h3>
                   <p className="text-zinc-400 text-base md:text-lg leading-relaxed relative z-10 font-medium group-hover:text-zinc-300 transition-colors">
-                    {i === 0 && 'Link your stack. Foldera silently builds a real-time identity graph from your behavior.'}
-                    {i === 1 && 'Agents read new data overnight, map it to your goals, and draft the exact work product needed.'}
-                    {i === 2 && 'Wake up to a queue of finished work. One tap to approve. The system learns from every decision.'}
+                    {i === 0 && 'Connect your email. Foldera reads your sent folder, your calendar, your conversations \u2014 and starts finding the patterns you can\u2019t see from inside them.'}
+                    {i === 1 && 'Overnight, the engine maps what it found to what matters. By morning, the work is done: emails drafted, decisions framed, follow-ups queued.'}
+                    {i === 2 && 'One tap to approve. One tap to skip. Either way, the engine learns. Day 7 is smarter than day 1. Day 30 is a different product.'}
                   </p>
                 </div>
               </Reveal>
@@ -686,8 +687,8 @@ export default function App() {
         <AmbientGrid />
         <div className="max-w-6xl mx-auto px-6 relative z-10">
           <Reveal className="mb-24 text-center">
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">Built for the way<br />you actually work.</h2>
-            <p className="text-zinc-400 text-xl md:text-2xl font-medium">No templates. No chat interfaces. Just infrastructure.</p>
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">Not another app<br />to check.</h2>
+            <p className="text-zinc-400 text-xl md:text-2xl font-medium">Foldera replaces the system, not adds to it.</p>
           </Reveal>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {FEATURES.map((feature, i) => {
@@ -766,7 +767,7 @@ export default function App() {
                 </div>
                 <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
               </div>
-              <p className="text-zinc-500 text-[11px] uppercase tracking-[0.2em] font-black max-w-sm leading-relaxed text-left">The autonomous intelligence layer for high-output operators.</p>
+              <p className="text-zinc-500 text-[11px] uppercase tracking-[0.2em] font-black max-w-sm leading-relaxed text-left">Built by one person solving his own problem.</p>
             </div>
             <nav className="flex flex-wrap justify-center items-center gap-x-12 gap-y-6 text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">
               <a href="#product" className="hover:text-white transition-colors">Platform</a>
