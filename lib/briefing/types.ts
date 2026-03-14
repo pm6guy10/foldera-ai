@@ -98,7 +98,7 @@ export type ConvictionArtifact =
 export interface ConvictionAction extends ConvictionDirective {
   id: string;
   userId: string;
-  status: 'pending_approval' | 'approved' | 'rejected' | 'executed' | 'skipped' | 'draft' | 'draft_rejected';
+  status: 'pending_approval' | 'approved' | 'rejected' | 'executed' | 'skipped' | 'draft' | 'draft_rejected' | 'generated' | 'sent';
   generatedAt: string;
   approvedAt?: string;
   executedAt?: string;
