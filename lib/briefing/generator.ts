@@ -222,7 +222,28 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     : '';
 
   // Build emergent pattern section if this is an emergent winner
-  const emergentSection = winner.type === 'emergent'
+  const isAntiPattern = winner.id.startsWith('antipattern-');
+  const isDivergence = winner.id.startsWith('divergence-');
+  const emergentSection = isAntiPattern
+    ? `\nANTI-PATTERN INTERCEPT — Normal task generation has been SUSPENDED. The scoring algorithm detected a behavioral anti-pattern that must be addressed before any more tasks are served. This is not a suggestion; it is a system override.
+
+Your artifact MUST:
+1. Name the anti-pattern directly and plainly. No hedging.
+2. Present the specific numbers from the data (signal counts, approval rates, ratios).
+3. End with a single forced-choice decision. Not "consider" — DECIDE.
+4. The tone is direct, not cruel. A chief of staff who respects the principal enough to say the uncomfortable thing.
+
+Do NOT generate a regular task. The user does not need another task. They need to see what they are actually doing.\n`
+    : isDivergence
+    ? `\nPREFERENCE DIVERGENCE DETECTED — The user's stated goals and their actual behavior have diverged significantly. This is a meta-observation, not a task.
+
+Your artifact MUST:
+1. State what the user SAID their priority is (with their exact goal text and priority number).
+2. State what their BEHAVIOR shows (with signal counts and specific examples).
+3. Frame this as a decision artifact with two options: "Change the goal to match reality" vs "Recommit to the stated goal and redirect effort."
+4. Be specific about what redirecting would look like (concrete next actions).
+5. Never judge — just hold up the mirror with data.\n`
+    : winner.type === 'emergent'
     ? `\nEMERGENT PATTERN DETECTED — this is a meta-observation about the user's behavior, not a regular open loop. Draft an insight artifact that surfaces this pattern with specific data. The user should feel seen, not judged.\n`
     : '';
 

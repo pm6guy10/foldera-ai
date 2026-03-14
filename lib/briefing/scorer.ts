@@ -96,6 +96,48 @@ export interface EmergentPattern {
 }
 
 // ---------------------------------------------------------------------------
+// Session 2: Revealed vs. Stated Preference
+// ---------------------------------------------------------------------------
+
+export interface RevealedGoalDivergence {
+  /** The stated goal that's being contradicted */
+  statedGoal: { text: string; priority: number; category: string };
+  /** The domain where actual signal density is concentrated */
+  revealedDomain: string;
+  /** Signal count in the revealed domain over 14 days */
+  revealedSignalCount: number;
+  /** Signal count in the stated goal's domain over 14 days */
+  statedSignalCount: number;
+  /** 0-1: how far apart the stated and revealed preferences are */
+  divergenceScore: number;
+  /** Specific signals driving the revealed preference */
+  topSignals: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Session 3: Anti-Pattern Archetypes
+// ---------------------------------------------------------------------------
+
+export type AntiPatternType = 'spinner' | 'approver' | 'browser';
+
+export interface AntiPattern {
+  type: AntiPatternType;
+  title: string;
+  insight: string;
+  dataPoints: string[];
+  /** How severe is the anti-pattern? 0-1 */
+  severity: number;
+  /** How much data backs this up? 0-1 */
+  dataConfidence: number;
+  /** Competition score: severity * dataConfidence */
+  score: number;
+  /** The specific topic/domain where the anti-pattern is active */
+  focusDomain: string;
+  suggestedActionType: ActionType;
+  mirrorQuestion: string;
+}
+
+// ---------------------------------------------------------------------------
 // Keyword matching — stakes
 // ---------------------------------------------------------------------------
 
@@ -346,6 +388,439 @@ function inferDomain(matchedGoal: MatchedGoal | null, text: string): string {
   if (/\b(family|wife|children|baby|pregnancy|health)\b/.test(lower)) return 'family';
   if (/\b(foldera|build|code|deploy|feature|bug)\b/.test(lower)) return 'project';
   return 'career';
+}
+
+// ---------------------------------------------------------------------------
+// Session 2: Revealed vs. Stated Preference — inferRevealedGoals()
+// ---------------------------------------------------------------------------
+
+/**
+ * Calculate signal density per domain over 14 days, then compare against
+ * explicit tkg_goals. If a domain has massive signal velocity but zero goal
+ * alignment — or contradicts a stated goal — calculate Preference_Divergence.
+ *
+ * High divergence overrides standard open loop EV.
+ */
+export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDivergence[]> {
+  const supabase = createServerClient();
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [signalsRes, goalsRes] = await Promise.all([
+    supabase
+      .from('tkg_signals')
+      .select('content, source, type, occurred_at')
+      .eq('user_id', userId)
+      .gte('occurred_at', fourteenDaysAgo)
+      .eq('processed', true)
+      .order('occurred_at', { ascending: false })
+      .limit(500),
+    supabase
+      .from('tkg_goals')
+      .select('goal_text, priority, goal_category')
+      .eq('user_id', userId)
+      .gte('priority', 1)
+      .order('priority', { ascending: false })
+      .limit(20),
+  ]);
+
+  const signals = signalsRes.data ?? [];
+  const goals = (goalsRes.data ?? []) as Array<{ goal_text: string; priority: number; goal_category: string }>;
+
+  if (signals.length < 10 || goals.length === 0) return [];
+
+  // Step 1: Calculate Signal_Density per domain
+  // Classify each signal into a domain using keyword matching
+  const domainKeywords: Record<string, RegExp> = {
+    career: /\b(job|career|application|interview|hire|position|resume|salary|offer|role|employer|recruiting|linkedin|applied|posting)\b/i,
+    financial: /\b(money|financial|income|payment|budget|invest|savings|debt|expense|revenue|profit|cost|price)\b/i,
+    relationship: /\b(family|wife|husband|partner|children|friend|parent|marriage|dating|relationship)\b/i,
+    health: /\b(health|exercise|doctor|medical|fitness|sleep|diet|weight|mental|therapy|anxiety)\b/i,
+    project: /\b(build|code|deploy|feature|bug|launch|product|startup|release|ship|develop|design)\b/i,
+  };
+
+  const domainSignalCounts: Record<string, { count: number; signals: string[] }> = {};
+  let totalClassified = 0;
+
+  for (const s of signals) {
+    const content = decrypt(s.content as string ?? '');
+    if (content.length < 20) continue;
+
+    for (const [domain, regex] of Object.entries(domainKeywords)) {
+      const matches = content.match(regex);
+      if (matches && matches.length > 0) {
+        if (!domainSignalCounts[domain]) domainSignalCounts[domain] = { count: 0, signals: [] };
+        domainSignalCounts[domain].count++;
+        if (domainSignalCounts[domain].signals.length < 5) {
+          domainSignalCounts[domain].signals.push(content.slice(0, 200));
+        }
+        totalClassified++;
+      }
+    }
+  }
+
+  if (totalClassified < 5) return [];
+
+  // Step 2: Compare densest domains against explicit goals
+  const divergences: RevealedGoalDivergence[] = [];
+
+  // Sort domains by signal count descending
+  const rankedDomains = Object.entries(domainSignalCounts)
+    .sort(([, a], [, b]) => b.count - a.count);
+
+  for (const [revealedDomain, data] of rankedDomains) {
+    const densityRatio = data.count / totalClassified;
+    if (densityRatio < 0.25) continue; // needs to be a dominant domain (25%+ of signals)
+
+    // Find stated goals in this domain
+    const goalsInDomain = goals.filter(g => g.goal_category === revealedDomain);
+
+    // Find the highest-priority stated goal that is NOT in this domain
+    const goalsElsewhere = goals.filter(g =>
+      g.goal_category !== revealedDomain && g.priority >= 3,
+    );
+
+    for (const statedGoal of goalsElsewhere) {
+      // Count signals in the stated goal's domain
+      const statedDomainData = domainSignalCounts[statedGoal.goal_category];
+      const statedSignalCount = statedDomainData?.count ?? 0;
+
+      // Divergence: revealed domain has way more signal velocity than the stated goal domain
+      // AND the stated goal is high priority (user says it matters)
+      if (data.count >= statedSignalCount * 3 && statedGoal.priority >= 3) {
+        // Calculate divergence score:
+        // ratio component: how much more signal density in revealed vs stated (0-0.5)
+        const ratio = statedSignalCount > 0
+          ? Math.min(0.5, (data.count / statedSignalCount - 1) / 20)
+          : 0.5; // no signals in stated domain at all = max divergence
+
+        // priority component: higher stated priority = more surprising divergence (0-0.5)
+        const priorityWeight = (statedGoal.priority / 5) * 0.5;
+
+        const divergenceScore = ratio + priorityWeight;
+
+        // Only surface if there's no explicit goal in the revealed domain
+        // or the explicit goal is lower priority
+        const revealedGoalPriority = goalsInDomain.length > 0
+          ? Math.max(...goalsInDomain.map(g => g.priority))
+          : 0;
+
+        if (revealedGoalPriority < statedGoal.priority && divergenceScore >= 0.4) {
+          divergences.push({
+            statedGoal: {
+              text: statedGoal.goal_text,
+              priority: statedGoal.priority,
+              category: statedGoal.goal_category,
+            },
+            revealedDomain,
+            revealedSignalCount: data.count,
+            statedSignalCount,
+            divergenceScore,
+            topSignals: data.signals,
+          });
+        }
+      }
+    }
+  }
+
+  // Sort by divergence score descending
+  divergences.sort((a, b) => b.divergenceScore - a.divergenceScore);
+  return divergences.slice(0, 3); // max 3 divergences
+}
+
+// ---------------------------------------------------------------------------
+// Session 3: Anti-Pattern Matrix — detectAntiPatterns()
+// ---------------------------------------------------------------------------
+
+/**
+ * Detect behavioral anti-patterns that indicate the user is caught in a loop.
+ * Runs BEFORE standard EV scoring. If a threshold is breached, normal task
+ * generation is suspended and a mirror artifact is generated instead.
+ *
+ * Three archetypes:
+ * 1. The Spinner: signal velocity 3x baseline on a topic + 0 make_decision approvals
+ * 2. The Approver: approval rate >90% but outcome_closed rate <20% after 72h
+ * 3. The Browser: new open loops to closed loops ratio > 4:1 over 7 days
+ */
+export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]> {
+  const supabase = createServerClient();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+  const antiPatterns: AntiPattern[] = [];
+
+  try {
+    const [actionsRes, signalsRes, commitmentsRes] = await Promise.all([
+      supabase
+        .from('tkg_actions')
+        .select('id, directive_text, action_type, status, generated_at, executed_at, outcome_closed, feedback_weight')
+        .eq('user_id', userId)
+        .gte('generated_at', thirtyDaysAgo)
+        .order('generated_at', { ascending: false })
+        .limit(300),
+      supabase
+        .from('tkg_signals')
+        .select('id, content, source, type, occurred_at')
+        .eq('user_id', userId)
+        .gte('occurred_at', thirtyDaysAgo)
+        .eq('processed', true)
+        .order('occurred_at', { ascending: false })
+        .limit(500),
+      supabase
+        .from('tkg_commitments')
+        .select('id, description, status, created_at, due_at, updated_at')
+        .eq('user_id', userId)
+        .gte('created_at', thirtyDaysAgo)
+        .order('created_at', { ascending: false })
+        .limit(200),
+    ]);
+
+    const actions = actionsRes.data ?? [];
+    const signals = signalsRes.data ?? [];
+    const commitments = commitmentsRes.data ?? [];
+
+    // Need minimum data for meaningful detection
+    if (actions.length < 5) return antiPatterns;
+
+    // -------------------------------------------------------------------
+    // 1. THE SPINNER
+    //    Signal velocity on a specific topic is 3x baseline,
+    //    but make_decision approvals on that topic are 0.
+    //    Researching instead of deciding.
+    // -------------------------------------------------------------------
+
+    if (signals.length >= 15) {
+      // Group signals by domain (keyword classification)
+      const domainBuckets: Record<string, { count: number; signals: string[] }> = {};
+
+      for (const s of signals) {
+        const content = decrypt(s.content as string ?? '');
+        if (content.length < 20) continue;
+
+        const lower = content.toLowerCase();
+        let domain = 'other';
+        if (/\b(job|career|application|interview|hire|position|resume|salary|offer|role)\b/.test(lower)) domain = 'career';
+        else if (/\b(money|financial|income|payment|budget|invest)\b/.test(lower)) domain = 'financial';
+        else if (/\b(build|code|deploy|feature|product|startup)\b/.test(lower)) domain = 'project';
+        else if (/\b(family|wife|children|health|therapy)\b/.test(lower)) domain = 'personal';
+
+        if (domain === 'other') continue;
+
+        if (!domainBuckets[domain]) domainBuckets[domain] = { count: 0, signals: [] };
+        domainBuckets[domain].count++;
+        if (domainBuckets[domain].signals.length < 5) {
+          domainBuckets[domain].signals.push(content.slice(0, 150));
+        }
+      }
+
+      const domainCounts = Object.values(domainBuckets).map(b => b.count);
+      if (domainCounts.length >= 2) {
+        const totalSignals = domainCounts.reduce((a, b) => a + b, 0);
+        const baseline = totalSignals / domainCounts.length;
+
+        for (const [domain, data] of Object.entries(domainBuckets)) {
+          if (data.count < baseline * 3) continue; // must be 3x baseline
+
+          // Check: how many make_decision actions were APPROVED in this domain?
+          const decisionApprovals = actions.filter(a =>
+            (a.action_type as string) === 'make_decision' &&
+            ((a.status as string) === 'executed' || (a.status as string) === 'approved') &&
+            (a.directive_text as string ?? '').toLowerCase().match(
+              domain === 'career' ? /\b(job|career|offer|position|role)\b/ :
+              domain === 'financial' ? /\b(money|financial|budget|invest)\b/ :
+              domain === 'project' ? /\b(build|code|product|launch)\b/ :
+              /\b(family|health|personal)\b/,
+            ),
+          );
+
+          if (decisionApprovals.length === 0) {
+            // Also count research actions on this topic for more evidence
+            const researchActions = actions.filter(a =>
+              (a.action_type as string) === 'research' &&
+              (a.directive_text as string ?? '').toLowerCase().match(
+                domain === 'career' ? /\b(job|career|offer|position|role)\b/ :
+                domain === 'financial' ? /\b(money|financial|budget|invest)\b/ :
+                domain === 'project' ? /\b(build|code|product|launch)\b/ :
+                /\b(family|health|personal)\b/,
+              ),
+            );
+
+            const velocityMultiple = data.count / baseline;
+            const severity = Math.min(1.0, (velocityMultiple - 3) / 5 + 0.6); // 3x=0.6, 8x=1.0
+            const dataConfidence = Math.min(1.0, data.count / 20);
+
+            antiPatterns.push({
+              type: 'spinner',
+              title: `Spinner: ${data.count} signals on ${domain} in 30 days, 0 decisions made`,
+              insight: `You have ${data.count} signals about ${domain} — ${velocityMultiple.toFixed(1)}x the baseline of ${baseline.toFixed(0)} per topic. ${researchActions.length > 0 ? `You've generated ${researchActions.length} research actions on this topic. ` : ''}But you have approved zero decisions about ${domain} in 30 days. You are researching instead of deciding. The next signal will not help. The decision will.`,
+              dataPoints: [
+                `Signal velocity: ${data.count} signals (${velocityMultiple.toFixed(1)}x baseline of ${baseline.toFixed(0)})`,
+                `Decisions approved in ${domain}: 0`,
+                `Research actions on ${domain}: ${researchActions.length}`,
+                `Days of data: 30`,
+                ...data.signals.slice(0, 3).map((s, i) => `Recent signal ${i + 1}: "${s.slice(0, 100)}"`),
+              ],
+              severity,
+              dataConfidence,
+              score: severity * dataConfidence,
+              focusDomain: domain,
+              suggestedActionType: 'make_decision',
+              mirrorQuestion: `You are in Spinner mode on ${domain}. You've researched ${data.count} data points in 30 days. Pick one.`,
+            });
+          }
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------
+    // 2. THE APPROVER
+    //    Approval rate >90% but outcome_closed rate <20% after 72 hours.
+    //    Saying yes to feel productive, but not executing.
+    // -------------------------------------------------------------------
+
+    const recentActions = actions.filter(a =>
+      (a.generated_at as string) >= sevenDaysAgo,
+    );
+
+    if (recentActions.length >= 5) {
+      const approvedOrExecuted = recentActions.filter(a =>
+        (a.status as string) === 'executed' || (a.status as string) === 'approved',
+      );
+      const skippedOrRejected = recentActions.filter(a =>
+        (a.status as string) === 'skipped' || (a.status as string) === 'draft_rejected' || (a.status as string) === 'rejected',
+      );
+      const totalDecided = approvedOrExecuted.length + skippedOrRejected.length;
+      const approvalRate = totalDecided > 0 ? approvedOrExecuted.length / totalDecided : 0;
+
+      if (approvalRate > 0.90 && approvedOrExecuted.length >= 5) {
+        // Check outcome_closed rate for actions older than 72 hours
+        const oldEnoughActions = approvedOrExecuted.filter(a => {
+          const executedAt = a.executed_at as string | null;
+          const generatedAt = a.generated_at as string;
+          const actionDate = executedAt || generatedAt;
+          return actionDate < seventyTwoHoursAgo;
+        });
+
+        if (oldEnoughActions.length >= 3) {
+          const closedOutcomes = oldEnoughActions.filter(a =>
+            (a.outcome_closed as boolean) === true,
+          );
+          const outcomeRate = closedOutcomes.length / oldEnoughActions.length;
+
+          if (outcomeRate < 0.20) {
+            // Find the most common action type being approved without execution
+            const typeFreq: Record<string, number> = {};
+            for (const a of oldEnoughActions) {
+              const t = a.action_type as string ?? 'unknown';
+              typeFreq[t] = (typeFreq[t] ?? 0) + 1;
+            }
+            const topType = Object.entries(typeFreq).sort(([, a], [, b]) => b - a)[0]?.[0] ?? 'unknown';
+
+            const severity = Math.min(1.0, (approvalRate - 0.90) * 10 + (1 - outcomeRate) * 0.5);
+            const dataConfidence = Math.min(1.0, oldEnoughActions.length / 10);
+
+            antiPatterns.push({
+              type: 'approver',
+              title: `Approver: ${Math.round(approvalRate * 100)}% approval rate, ${Math.round(outcomeRate * 100)}% follow-through`,
+              insight: `In the last 7 days, you approved ${approvedOrExecuted.length} of ${totalDecided} directives (${Math.round(approvalRate * 100)}% approval rate). But of the ${oldEnoughActions.length} actions old enough to have outcomes, only ${closedOutcomes.length} (${Math.round(outcomeRate * 100)}%) have confirmed results. Most approved: ${topType} actions. You are saying yes to feel productive, but the work isn't landing. Approval is not execution.`,
+              dataPoints: [
+                `Approval rate (7 days): ${Math.round(approvalRate * 100)}% (${approvedOrExecuted.length}/${totalDecided})`,
+                `Outcome confirmed rate (72h+): ${Math.round(outcomeRate * 100)}% (${closedOutcomes.length}/${oldEnoughActions.length})`,
+                `Most approved type: ${topType} (${typeFreq[topType]} times)`,
+                `Gap: ${oldEnoughActions.length - closedOutcomes.length} approvals with no confirmed outcome`,
+                ...oldEnoughActions.filter(a => !(a.outcome_closed as boolean)).slice(0, 3).map(a =>
+                  `Unconfirmed: "${(a.directive_text as string ?? '').slice(0, 80)}" (${a.action_type})`,
+                ),
+              ],
+              severity,
+              dataConfidence,
+              score: severity * dataConfidence,
+              focusDomain: topType,
+              suggestedActionType: 'make_decision',
+              mirrorQuestion: `You approved ${approvedOrExecuted.length} actions this week. ${oldEnoughActions.length - closedOutcomes.length} have no confirmed result. Are you approving to feel busy, or are you doing the work?`,
+            });
+          }
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------
+    // 3. THE BROWSER
+    //    Ratio of new open loops to closed loops exceeds 4:1 over 7 days.
+    //    Seeking novelty instead of finishing.
+    // -------------------------------------------------------------------
+
+    if (commitments.length >= 5) {
+      const recentCommitments = commitments.filter(c =>
+        (c.created_at as string) >= sevenDaysAgo,
+      );
+      const newLoops = recentCommitments.filter(c =>
+        (c.status as string) === 'active' || (c.status as string) === 'at_risk',
+      ).length;
+
+      // Closed loops: commitments that moved to done/fulfilled/cancelled in last 7 days
+      const closedLoops = commitments.filter(c => {
+        const status = c.status as string;
+        const updatedAt = c.updated_at as string | null;
+        return (status === 'done' || status === 'fulfilled' || status === 'cancelled') &&
+          updatedAt && updatedAt >= sevenDaysAgo;
+      }).length;
+
+      // Also count action completions as closed loops
+      const completedActions = recentActions.filter(a =>
+        (a.status as string) === 'executed' && (a.outcome_closed as boolean) === true,
+      ).length;
+
+      const totalClosed = closedLoops + completedActions;
+      const ratio = totalClosed > 0 ? newLoops / totalClosed : (newLoops > 0 ? newLoops : 0); // avoid division by zero
+
+      if (ratio > 4 && newLoops >= 5) {
+        // Get the specific new commitments for evidence
+        const newCommitmentTexts = recentCommitments
+          .filter(c => (c.status as string) === 'active' || (c.status as string) === 'at_risk')
+          .slice(0, 5)
+          .map(c => (c.description as string).slice(0, 100));
+
+        // Count domains of new commitments to find where novelty-seeking is concentrated
+        const noveltyDomains: Record<string, number> = {};
+        for (const c of recentCommitments) {
+          const lower = (c.description as string ?? '').toLowerCase();
+          let domain = 'other';
+          if (/\b(job|career|application|interview)\b/.test(lower)) domain = 'career';
+          else if (/\b(build|code|product|feature)\b/.test(lower)) domain = 'project';
+          else if (/\b(money|financial|invest)\b/.test(lower)) domain = 'financial';
+          noveltyDomains[domain] = (noveltyDomains[domain] ?? 0) + 1;
+        }
+        const topNoveltyDomain = Object.entries(noveltyDomains).sort(([, a], [, b]) => b - a)[0]?.[0] ?? 'general';
+
+        const severity = Math.min(1.0, (ratio - 4) / 8 + 0.6); // 4:1=0.6, 12:1=1.0
+        const dataConfidence = Math.min(1.0, newLoops / 10);
+
+        antiPatterns.push({
+          type: 'browser',
+          title: `Browser: ${newLoops} new loops opened, ${totalClosed} closed (${ratio.toFixed(1)}:1 ratio)`,
+          insight: `In 7 days you opened ${newLoops} new commitments but only closed ${totalClosed}. That's a ${ratio.toFixed(1)}:1 ratio of starting to finishing. ${topNoveltyDomain !== 'other' ? `Most new loops are in ${topNoveltyDomain}. ` : ''}You are collecting options instead of executing on the ones you have. Every new loop you open dilutes the ones already there. Close something before opening anything new.`,
+          dataPoints: [
+            `New open loops (7 days): ${newLoops}`,
+            `Closed loops (7 days): ${totalClosed} (${closedLoops} commitments + ${completedActions} confirmed actions)`,
+            `Ratio: ${ratio.toFixed(1)}:1 (threshold: 4:1)`,
+            `Top novelty domain: ${topNoveltyDomain}`,
+            ...newCommitmentTexts.map((t, i) => `New loop ${i + 1}: "${t}"`),
+          ],
+          severity,
+          dataConfidence,
+          score: severity * dataConfidence,
+          focusDomain: topNoveltyDomain,
+          suggestedActionType: 'make_decision',
+          mirrorQuestion: `You opened ${newLoops} new loops this week and closed ${totalClosed}. Are you making progress, or are you browsing?`,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[scorer] detectAntiPatterns error:', err instanceof Error ? err.message : err);
+  }
+
+  antiPatterns.sort((a, b) => b.score - a.score);
+  return antiPatterns;
 }
 
 // ---------------------------------------------------------------------------
@@ -926,6 +1401,61 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
+  // -----------------------------------------------------------------------
+  // PRE-SCORING: Anti-Pattern Detection (Session 3)
+  // If an anti-pattern threshold is breached, suspend normal task generation.
+  // The winning anti-pattern becomes the directive — a mirror, not a task.
+  // -----------------------------------------------------------------------
+
+  const antiPatterns = await detectAntiPatterns(userId);
+
+  if (antiPatterns.length > 0 && antiPatterns[0].score >= 0.5) {
+    const ap = antiPatterns[0];
+    console.log(`[scorer] ANTI-PATTERN DETECTED: ${ap.type} (score=${ap.score.toFixed(2)}) — suspending normal scoring`);
+
+    const mirrorContent = [
+      ap.insight,
+      '',
+      'Evidence:',
+      ...ap.dataPoints,
+      '',
+      ap.mirrorQuestion,
+    ].join('\n');
+
+    const winner: ScoredLoop = {
+      id: `antipattern-${ap.type}`,
+      type: 'emergent',
+      title: ap.title,
+      content: mirrorContent,
+      suggestedActionType: ap.suggestedActionType,
+      matchedGoal: null,
+      score: ap.score + 5.0, // force above all normal loops
+      breakdown: {
+        stakes: ap.severity * 5,
+        urgency: ap.dataConfidence,
+        tractability: 1.0,
+        freshness: 1.0,
+      },
+      relatedSignals: [],
+    };
+
+    // Include secondary anti-patterns as deprioritized
+    const deprioritized: DeprioritizedLoop[] = antiPatterns.slice(1, 4).map(secondary => ({
+      title: secondary.title,
+      score: secondary.score,
+      breakdown: {
+        stakes: secondary.severity * 5,
+        urgency: secondary.dataConfidence,
+        tractability: 1.0,
+        freshness: 1.0,
+      },
+      killReason: 'not_now' as KillReason,
+      killExplanation: `Secondary anti-pattern (${secondary.type}): ${secondary.mirrorQuestion}`,
+    }));
+
+    return { winner, deprioritized };
+  }
+
   // Parallel data fetch
   const [commitmentsRes, signalsRes, entitiesRes, goalsRes] = await Promise.all([
     // Open commitments (last 14 days or no deadline)
@@ -1157,6 +1687,51 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       `[scorer] Cross-loop connection: ${compound.connectionType} — "${compound.connectionReason}"`,
     );
     scored.push(compound);
+  }
+
+  // -----------------------------------------------------------------------
+  // Revealed Goal Divergence (Session 2) — check if behavior contradicts stated goals
+  // High divergence overrides standard open loop EV
+  // -----------------------------------------------------------------------
+
+  const divergences = await inferRevealedGoals(userId);
+  for (const div of divergences) {
+    if (div.divergenceScore >= 0.5) {
+      const divergenceContent = [
+        `You stated your top goal is "${div.statedGoal.text}" (priority ${div.statedGoal.priority}/5, category: ${div.statedGoal.category}).`,
+        `But ${Math.round((div.revealedSignalCount / (div.revealedSignalCount + div.statedSignalCount)) * 100)}% of your signal velocity this fortnight is focused on ${div.revealedDomain} (${div.revealedSignalCount} signals vs ${div.statedSignalCount} in ${div.statedGoal.category}).`,
+        '',
+        'What the signals show:',
+        ...div.topSignals.map((s, i) => `  ${i + 1}. "${s.slice(0, 150)}"`),
+        '',
+        `Are we changing the goal, or are you avoiding the work?`,
+      ].join('\n');
+
+      const divergenceScore = div.divergenceScore * 5; // scale to compete with normal loops (max 5)
+
+      scored.push({
+        id: `divergence-${div.revealedDomain}-${div.statedGoal.category}`,
+        type: 'emergent',
+        title: `Preference divergence: stated "${div.statedGoal.text}" but signal velocity is on ${div.revealedDomain}`,
+        content: divergenceContent,
+        suggestedActionType: 'make_decision',
+        matchedGoal: {
+          text: div.statedGoal.text,
+          priority: div.statedGoal.priority,
+          category: div.statedGoal.category,
+        },
+        score: divergenceScore,
+        breakdown: {
+          stakes: div.statedGoal.priority,
+          urgency: div.divergenceScore,
+          tractability: 1.0,
+          freshness: 1.0,
+        },
+        relatedSignals: div.topSignals.slice(0, 3),
+      });
+
+      console.log(`[scorer] REVEALED PREFERENCE DIVERGENCE: stated=${div.statedGoal.category} revealed=${div.revealedDomain} score=${divergenceScore.toFixed(2)}`);
+    }
   }
 
   // -----------------------------------------------------------------------
