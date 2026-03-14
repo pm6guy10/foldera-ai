@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import { SkeletonSettingsPage } from '@/components/ui/skeleton';
 
 interface SpendSummary {
@@ -11,10 +11,17 @@ interface SpendSummary {
   capPct: number;
 }
 
+interface SubscriptionInfo {
+  status: string;
+  plan?: string;
+  daysRemaining?: number;
+}
+
 export default function SettingsClient() {
   const { data: session, status } = useSession();
   const [integrations, setIntegrations] = useState<any[]>([]);
   const [spend, setSpend] = useState<SpendSummary | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
@@ -28,9 +35,10 @@ export default function SettingsClient() {
 
     const fetchData = async () => {
       try {
-        const [intRes, spendRes] = await Promise.all([
+        const [intRes, spendRes, subRes] = await Promise.all([
           fetch('/api/integrations/status'),
           fetch('/api/settings/spend'),
+          fetch('/api/subscription/status'),
         ]);
 
         if (!intRes.ok) {
@@ -45,6 +53,11 @@ export default function SettingsClient() {
         if (spendRes.ok) {
           const spendData = await spendRes.json();
           setSpend(spendData);
+        }
+
+        if (subRes.ok) {
+          const subData = await subRes.json();
+          setSubscription(subData);
         }
 
         setLoading(false);
@@ -145,6 +158,51 @@ export default function SettingsClient() {
           </div>
         </div>
       )}
+
+      {/* SUBSCRIPTION */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-zinc-300 mb-4">Subscription</h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-zinc-200 text-sm font-medium">
+              {subscription?.plan === 'pro' ? 'Pro' : 'Free'}
+              {subscription?.status === 'active_trial' && subscription.daysRemaining != null
+                ? ` — ${subscription.daysRemaining} day${subscription.daysRemaining !== 1 ? 's' : ''} left in trial`
+                : subscription?.status === 'active' ? ' — Active'
+                : subscription?.status === 'past_due' ? ' — Payment past due'
+                : subscription?.status === 'expired' ? ' — Expired'
+                : ''}
+            </p>
+          </div>
+          {subscription?.status !== 'active' && (
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/stripe/checkout', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan: 'pro' }),
+                  });
+                  const { url } = await res.json();
+                  if (url) window.location.href = url;
+                } catch { /* silent */ }
+              }}
+              className="px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors"
+            >
+              Upgrade
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* SIGN OUT */}
+      <div className="pt-2">
+        <button
+          onClick={() => signOut({ callbackUrl: '/' })}
+          className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          Sign out
+        </button>
+      </div>
 
       <p className="text-zinc-600 text-xs">All integrations secured with OAuth 2.0.</p>
     </div>
