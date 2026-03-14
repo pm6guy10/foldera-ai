@@ -54,6 +54,22 @@ export interface ScoredLoop {
   connectionReason?: string;
 }
 
+export type KillReason = 'noise' | 'not_now' | 'trap';
+
+export interface DeprioritizedLoop {
+  title: string;
+  score: number;
+  breakdown: ScoreBreakdown;
+  killReason: KillReason;
+  /** Human-readable explanation of why this multiplier killed it */
+  killExplanation: string;
+}
+
+export interface ScorerResult {
+  winner: ScoredLoop;
+  deprioritized: DeprioritizedLoop[];
+}
+
 export interface CrossLoopConnection {
   loopA: ScoredLoop;
   loopB: ScoredLoop;
@@ -860,7 +876,52 @@ function mergeLoops(conn: CrossLoopConnection): ScoredLoop {
 // Main export — scoreOpenLoops
 // ---------------------------------------------------------------------------
 
-export async function scoreOpenLoops(userId: string): Promise<ScoredLoop | null> {
+/**
+ * Classify why a loop lost to the winner.
+ * - Noise: High Urgency but Low Stakes (no goal alignment → feels urgent but doesn't matter)
+ * - Not Now: High Stakes but Low Urgency (important but the deadline is far out)
+ * - Trap: High Stakes + Urgency but Low Tractability (history says you won't follow through)
+ */
+function classifyKillReason(loop: ScoredLoop, winnerScore: number): DeprioritizedLoop {
+  const { stakes, urgency, tractability } = loop.breakdown;
+
+  let killReason: KillReason;
+  let killExplanation: string;
+
+  if (stakes <= 1.5 && urgency >= 0.5) {
+    // High urgency, low stakes = noise
+    killReason = 'noise';
+    killExplanation = `Urgency ${urgency.toFixed(2)} but stakes only ${stakes} (no goal alignment). Feels pressing but doesn't move a priority forward.`;
+  } else if (stakes >= 2.0 && urgency < 0.4) {
+    // High stakes, low urgency = not now
+    killReason = 'not_now';
+    killExplanation = `Stakes ${stakes} but urgency only ${urgency.toFixed(2)}. Important, but the window is far enough out that today isn't the day.`;
+  } else if (tractability < 0.4 && stakes >= 1.5 && urgency >= 0.3) {
+    // Decent stakes/urgency but low tractability = trap
+    killReason = 'trap';
+    killExplanation = `Tractability only ${tractability.toFixed(2)} — historical data shows low follow-through on this type. High effort, low payoff.`;
+  } else if (stakes <= 1.5) {
+    // Default to noise if stakes are still the weakest factor
+    killReason = 'noise';
+    killExplanation = `Stakes ${stakes} dragged the score to ${loop.score.toFixed(2)} vs winner at ${winnerScore.toFixed(2)}. No aligned goal to justify acting.`;
+  } else if (urgency < 0.4) {
+    killReason = 'not_now';
+    killExplanation = `Urgency ${urgency.toFixed(2)} is too low. This matters but not today.`;
+  } else {
+    killReason = 'trap';
+    killExplanation = `Tractability ${tractability.toFixed(2)} is the drag. Past outcomes on ${loop.suggestedActionType} actions in this domain are weak.`;
+  }
+
+  return {
+    title: loop.title,
+    score: loop.score,
+    breakdown: loop.breakdown,
+    killReason,
+    killExplanation,
+  };
+}
+
+export async function scoreOpenLoops(userId: string): Promise<ScorerResult | null> {
   const supabase = createServerClient();
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -1018,15 +1079,18 @@ export async function scoreOpenLoops(userId: string): Promise<ScoredLoop | null>
         ep.mirrorQuestion,
       ].join('\n');
       return {
-        id: 'emergent-0',
-        type: 'emergent',
-        title: ep.title,
-        content: mirrorContent,
-        suggestedActionType: ep.suggestedActionType,
-        matchedGoal: null,
-        score: ep.surpriseValue * ep.dataConfidence,
-        breakdown: { stakes: ep.surpriseValue, urgency: ep.dataConfidence, tractability: 1.0, freshness: 1.0 },
-        relatedSignals: [],
+        winner: {
+          id: 'emergent-0',
+          type: 'emergent',
+          title: ep.title,
+          content: mirrorContent,
+          suggestedActionType: ep.suggestedActionType,
+          matchedGoal: null,
+          score: ep.surpriseValue * ep.dataConfidence,
+          breakdown: { stakes: ep.surpriseValue, urgency: ep.dataConfidence, tractability: 1.0, freshness: 1.0 },
+          relatedSignals: [],
+        },
+        deprioritized: [],
       };
     }
     return null;
@@ -1147,5 +1211,20 @@ export async function scoreOpenLoops(userId: string): Promise<ScoredLoop | null>
     );
   }
 
-  return scored[0] ?? null;
+  const winner = scored[0];
+  if (!winner) return null;
+
+  // Build deprioritized loops: top 3 runner-ups with kill reasons
+  const runnerUps = scored.slice(1, 4);
+  const deprioritized = runnerUps.map(loop => classifyKillReason(loop, winner.score));
+
+  // Log kill reasons
+  if (deprioritized.length > 0) {
+    console.log('[scorer] Deprioritized (killed):');
+    for (const d of deprioritized) {
+      console.log(`  [${d.killReason.toUpperCase()}] ${d.title.slice(0, 60)} — ${d.killExplanation.slice(0, 80)}`);
+    }
+  }
+
+  return { winner, deprioritized };
 }

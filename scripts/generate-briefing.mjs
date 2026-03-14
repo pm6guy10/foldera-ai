@@ -523,7 +523,56 @@ async function scoreOpenLoops() {
     );
   }
 
-  return scored[0] ?? null;
+  const winner = scored[0];
+  if (!winner) return null;
+
+  // Classify kill reasons for top 3 runner-ups
+  const runnerUps = scored.slice(1, 4);
+  const deprioritized = runnerUps.map(loop => classifyKillReason(loop, winner.score));
+
+  if (deprioritized.length > 0) {
+    console.log('\n[scorer] Deprioritized (killed):');
+    for (const d of deprioritized) {
+      console.log('  [' + d.killReason.toUpperCase() + '] ' + d.title.slice(0, 60) + ' \u2014 ' + d.killExplanation.slice(0, 80));
+    }
+  }
+
+  return { winner, deprioritized };
+}
+
+function classifyKillReason(loop, winnerScore) {
+  const { stakes, urgency, tractability } = loop.breakdown;
+
+  let killReason;
+  let killExplanation;
+
+  if (stakes <= 1.5 && urgency >= 0.5) {
+    killReason = 'noise';
+    killExplanation = 'Urgency ' + urgency.toFixed(2) + ' but stakes only ' + stakes + ' (no goal alignment). Feels pressing but doesn\'t move a priority forward.';
+  } else if (stakes >= 2.0 && urgency < 0.4) {
+    killReason = 'not_now';
+    killExplanation = 'Stakes ' + stakes + ' but urgency only ' + urgency.toFixed(2) + '. Important, but the window is far enough out that today isn\'t the day.';
+  } else if (tractability < 0.4 && stakes >= 1.5 && urgency >= 0.3) {
+    killReason = 'trap';
+    killExplanation = 'Tractability only ' + tractability.toFixed(2) + ' \u2014 historical data shows low follow-through on this type. High effort, low payoff.';
+  } else if (stakes <= 1.5) {
+    killReason = 'noise';
+    killExplanation = 'Stakes ' + stakes + ' dragged the score to ' + loop.score.toFixed(2) + ' vs winner at ' + winnerScore.toFixed(2) + '. No aligned goal to justify acting.';
+  } else if (urgency < 0.4) {
+    killReason = 'not_now';
+    killExplanation = 'Urgency ' + urgency.toFixed(2) + ' is too low. This matters but not today.';
+  } else {
+    killReason = 'trap';
+    killExplanation = 'Tractability ' + tractability.toFixed(2) + ' is the drag. Past outcomes on ' + loop.suggestedActionType + ' actions in this domain are weak.';
+  }
+
+  return {
+    title: loop.title,
+    score: loop.score,
+    breakdown: loop.breakdown,
+    killReason,
+    killExplanation,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -549,6 +598,14 @@ ALREADY APPROVED (do not repeat):
 SKIPPED (do not regenerate similar):
 {SKIPPED_SECTION}
 
+CUTTING ROOM FLOOR:
+Below the main artifact, you MUST include a "cutting_room_floor" array in your JSON output. This section lists things the user does NOT need to worry about today — the system already evaluated and killed them. For each item, translate the mathematical kill reason into a ruthless, plainly worded one-sentence justification. Be specific: name the person, topic, or commitment. The user should feel RELIEF reading this list, not guilt.
+
+Kill reason types:
+- NOISE: High urgency but low stakes. Feels pressing but doesn't move a priority forward.
+- NOT NOW: High stakes but low urgency. Important but today isn't the day.
+- TRAP: High stakes and urgency but low tractability. History shows low follow-through on this type.
+
 Output JSON only:
 {
   "directive": "one sentence imperative naming a specific person or commitment",
@@ -556,7 +613,10 @@ Output JSON only:
   "artifact": <the finished work product as JSON>,
   "evidence": "one sentence citing specific data from below",
   "domain": "career | family | financial | health | project",
-  "why_now": "one sentence why today"
+  "why_now": "one sentence why today",
+  "cutting_room_floor": [
+    {"title": "short label", "kill_reason": "NOISE | NOT_NOW | TRAP", "justification": "one ruthless sentence why this doesn't deserve attention today"}
+  ]
 }`;
 
 const ACTION_TYPE_HINTS = {
@@ -583,15 +643,18 @@ const ARTIFACT_TO_ACTION = {
 
 console.log('Scoring open loops for user ' + USER_ID + '...\n');
 
-const winner = await scoreOpenLoops();
+const scorerResult = await scoreOpenLoops();
 
-if (!winner || winner.score < 0.5) {
-  const reason = winner
-    ? 'Highest scorer: "' + winner.title.slice(0, 80) + '" at ' + winner.score.toFixed(2) + ' — below 0.5 threshold'
+if (!scorerResult || scorerResult.winner.score < 0.5) {
+  const w = scorerResult?.winner;
+  const reason = w
+    ? 'Highest scorer: "' + w.title.slice(0, 80) + '" at ' + w.score.toFixed(2) + ' — below 0.5 threshold'
     : 'No open loops found';
   console.log('\ndo_nothing — ' + reason);
   process.exit(0);
 }
+
+const { winner, deprioritized } = scorerResult;
 
 console.log('\nWinner: "' + winner.title.slice(0, 80) + '" score=' + winner.score.toFixed(2) + ' type=' + winner.suggestedActionType);
 
@@ -638,7 +701,12 @@ const emergentSection = winner.type === 'emergent'
   ? '\nEMERGENT PATTERN DETECTED — this is a meta-observation about the user\'s behavior, not a regular open loop. Draft an insight artifact that surfaces this pattern with specific data. The user should feel seen, not judged.\n'
   : '';
 
-const userPrompt = 'TODAY: ' + todayStr + '\n\nTHE SITUATION (selected by scoring algorithm — score ' + winner.score.toFixed(2) + '/5.0):\nType: ' + winner.type + '\nTitle: ' + winner.title + '\nFull context: ' + winner.content + (winner.matchedGoal ? '\n\nMATCHED GOAL (priority ' + winner.matchedGoal.priority + '/5): ' + winner.matchedGoal.text : '') + '\n\nSCORE BREAKDOWN:\n- Stakes: ' + winner.breakdown.stakes + ' (' + (winner.matchedGoal ? 'matched goal priority ' + winner.matchedGoal.priority : 'no goal match, default 1.0') + ')\n- Urgency: ' + winner.breakdown.urgency.toFixed(2) + '\n- Tractability: ' + winner.breakdown.tractability.toFixed(2) + '\n- Freshness: ' + (winner.breakdown.freshness?.toFixed(2) ?? '1.00') + ' (1.0 = never surfaced, lower = recently generated)' + relationshipSection + emergentSection + '\n\nSUGGESTED ARTIFACT TYPE: ' + suggestedArtifact + '\n(You may override if the data supports a different type, but justify.)\n\nRELATED SIGNAL DATA (' + winner.relatedSignals.length + ' signals with keyword overlap):\n' + (winner.relatedSignals.length > 0 ? winner.relatedSignals.map((s, i) => '--- Signal ' + (i + 1) + ' ---\n' + s.slice(0, 600)).join('\n\n') : 'No related signals found. Use the situation context above.') + '\n\nDraft the artifact now. Use real names and details from the data above.';
+// Build deprioritized section for the LLM
+const deprioritizedPromptSection = deprioritized.length > 0
+  ? '\n\nDEPRIORITIZED LOOPS (include these in cutting_room_floor — translate kill reasons into plain language):\n' + deprioritized.map((d, i) => (i + 1) + '. [' + d.killReason.toUpperCase() + '] "' + d.title.slice(0, 100) + '" (score ' + d.score.toFixed(2) + ') \u2014 ' + d.killExplanation).join('\n') + '\n'
+  : '';
+
+const userPrompt = 'TODAY: ' + todayStr + '\n\nTHE SITUATION (selected by scoring algorithm — score ' + winner.score.toFixed(2) + '/5.0):\nType: ' + winner.type + '\nTitle: ' + winner.title + '\nFull context: ' + winner.content + (winner.matchedGoal ? '\n\nMATCHED GOAL (priority ' + winner.matchedGoal.priority + '/5): ' + winner.matchedGoal.text : '') + '\n\nSCORE BREAKDOWN:\n- Stakes: ' + winner.breakdown.stakes + ' (' + (winner.matchedGoal ? 'matched goal priority ' + winner.matchedGoal.priority : 'no goal match, default 1.0') + ')\n- Urgency: ' + winner.breakdown.urgency.toFixed(2) + '\n- Tractability: ' + winner.breakdown.tractability.toFixed(2) + '\n- Freshness: ' + (winner.breakdown.freshness?.toFixed(2) ?? '1.00') + ' (1.0 = never surfaced, lower = recently generated)' + relationshipSection + emergentSection + '\n\nSUGGESTED ARTIFACT TYPE: ' + suggestedArtifact + '\n(You may override if the data supports a different type, but justify.)\n\nRELATED SIGNAL DATA (' + winner.relatedSignals.length + ' signals with keyword overlap):\n' + (winner.relatedSignals.length > 0 ? winner.relatedSignals.map((s, i) => '--- Signal ' + (i + 1) + ' ---\n' + s.slice(0, 600)).join('\n\n') : 'No related signals found. Use the situation context above.') + deprioritizedPromptSection + '\n\nDraft the artifact now. Use real names and details from the data above.';
 
 // ---------------------------------------------------------------------------
 // Claude call
@@ -777,6 +845,20 @@ console.log('\u2500'.repeat(60));
 if (parsed.artifact) {
   console.log('\nARTIFACT:');
   console.log(typeof parsed.artifact === 'object' ? JSON.stringify(parsed.artifact, null, 2) : parsed.artifact);
+}
+
+// Display cutting room floor
+if (parsed.cutting_room_floor && parsed.cutting_room_floor.length > 0) {
+  console.log('\n' + '\u2500'.repeat(60));
+  console.log('CUTTING ROOM FLOOR \u2014 what you don\'t need to worry about today');
+  console.log('\u2500'.repeat(60));
+  const KILL_EMOJI = { NOISE: '\u{1f507}', NOT_NOW: '\u23f3', TRAP: '\u26a0\ufe0f' };
+  for (const item of parsed.cutting_room_floor) {
+    const reason = (item.kill_reason ?? '').toUpperCase().replace(' ', '_');
+    const emoji = KILL_EMOJI[reason] ?? '\u2716';
+    console.log(emoji + ' [' + reason + '] ' + item.title);
+    console.log('  ' + item.justification);
+  }
 }
 
 console.log('');

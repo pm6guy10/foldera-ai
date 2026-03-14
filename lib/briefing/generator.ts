@@ -19,7 +19,7 @@ import { createServerClient } from '@/lib/db/client';
 import type { ChiefOfStaffBriefing, ConvictionDirective, ActionType, EvidenceItem } from './types';
 import { trackApiCall, isOverDailyLimit } from '@/lib/utils/api-tracker';
 import { scoreOpenLoops } from './scorer';
-import type { ScoredLoop } from './scorer';
+import type { ScoredLoop, ScorerResult, DeprioritizedLoop } from './scorer';
 
 // ---------------------------------------------------------------------------
 // Clients (lazy)
@@ -57,6 +57,14 @@ ALREADY APPROVED (do not repeat):
 SKIPPED (do not regenerate similar):
 {SKIPPED_SECTION}
 
+CUTTING ROOM FLOOR:
+Below the main artifact, you MUST include a "cutting_room_floor" array in your JSON output. This section lists things the user does NOT need to worry about today — the system already evaluated and killed them. For each item, translate the mathematical kill reason into a ruthless, plainly worded one-sentence justification. Be specific: name the person, topic, or commitment. The user should feel RELIEF reading this list, not guilt.
+
+Kill reason types:
+- NOISE: High urgency but low stakes. Feels pressing but doesn't move a priority forward.
+- NOT NOW: High stakes but low urgency. Important but today isn't the day.
+- TRAP: High stakes and urgency but low tractability. History shows low follow-through on this type.
+
 Output JSON only:
 {
   "directive": "one sentence imperative naming a specific person or commitment",
@@ -64,7 +72,10 @@ Output JSON only:
   "artifact": <the finished work product as JSON>,
   "evidence": "one sentence citing specific data from below",
   "domain": "career | family | financial | health | project",
-  "why_now": "one sentence why today"
+  "why_now": "one sentence why today",
+  "cutting_room_floor": [
+    {"title": "short label", "kill_reason": "NOISE | NOT_NOW | TRAP", "justification": "one ruthless sentence why this doesn't deserve attention today"}
+  ]
 }`;
 
 // ---------------------------------------------------------------------------
@@ -115,11 +126,12 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
   // 1. SCORER PICKS
   // -----------------------------------------------------------------------
 
-  const winner = await scoreOpenLoops(userId);
+  const scorerResult = await scoreOpenLoops(userId);
 
-  if (!winner || winner.score < 0.5) {
+  if (!scorerResult || scorerResult.winner.score < 0.5) {
+    const winner = scorerResult?.winner;
     const reason = winner
-      ? `Highest scorer: "${winner.title.slice(0, 80)}" at ${winner.score.toFixed(2)} (${winner.breakdown.stakes}S * ${winner.breakdown.urgency.toFixed(2)}U * ${winner.breakdown.tractability.toFixed(2)}T * ${(winner.breakdown as any).freshness?.toFixed(2) ?? '1.00'}F) — below 0.5 threshold`
+      ? `Highest scorer: "${winner.title.slice(0, 80)}" at ${winner.score.toFixed(2)} (${winner.breakdown.stakes}S * ${winner.breakdown.urgency.toFixed(2)}U * ${winner.breakdown.tractability.toFixed(2)}T * ${winner.breakdown.freshness?.toFixed(2) ?? '1.00'}F) — below 0.5 threshold`
       : 'No open loops found in the graph';
     console.log(`[generateDirective] do_nothing — ${reason}`);
     return {
@@ -132,6 +144,8 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       evidence: [],
     };
   }
+
+  const { winner, deprioritized } = scorerResult;
 
   console.log(`[generateDirective] Winner: "${winner.title.slice(0, 80)}" score=${winner.score.toFixed(2)} type=${winner.suggestedActionType}`);
 
@@ -224,6 +238,12 @@ Your artifact MUST address BOTH loops in a single action. Examples:
 The user should see ONE directive that handles BOTH situations. This is the output no other product can generate because it requires the full identity graph to see the connection.\n`
     : '';
 
+  // Build deprioritized section for the LLM
+  const deprioritizedSection = deprioritized.length > 0
+    ? `\nDEPRIORITIZED LOOPS (include these in cutting_room_floor — translate kill reasons into plain language):
+${deprioritized.map((d, i) => `${i + 1}. [${d.killReason.toUpperCase()}] "${d.title.slice(0, 100)}" (score ${d.score.toFixed(2)}) — ${d.killExplanation}`).join('\n')}\n`
+    : '';
+
   const userPrompt = `TODAY: ${todayStr}
 
 THE SITUATION (selected by scoring algorithm — score ${winner.score.toFixed(2)}/5.0):
@@ -236,14 +256,14 @@ SCORE BREAKDOWN:
 - Stakes: ${winner.breakdown.stakes} (${winner.matchedGoal ? `matched goal priority ${winner.matchedGoal.priority}` : 'no goal match, default 1.0'})
 - Urgency: ${winner.breakdown.urgency.toFixed(2)}
 - Tractability: ${winner.breakdown.tractability.toFixed(2)}
-- Freshness: ${(winner.breakdown as any).freshness?.toFixed(2) ?? '1.00'} (1.0 = never surfaced, lower = recently generated)
+- Freshness: ${winner.breakdown.freshness?.toFixed(2) ?? '1.00'} (1.0 = never surfaced, lower = recently generated)
 ${relationshipSection}${emergentSection}${compoundSection}
 SUGGESTED ARTIFACT TYPE: ${suggestedArtifact}
 (You may override if the data supports a different type, but justify.)
 
 RELATED SIGNAL DATA (${winner.relatedSignals.length} signals with keyword overlap):
 ${winner.relatedSignals.length > 0 ? winner.relatedSignals.map((s, i) => `--- Signal ${i + 1} ---\n${s.slice(0, 600)}`).join('\n\n') : 'No related signals found. Use the situation context above.'}
-
+${deprioritizedSection}
 Draft the artifact now. Use real names and details from the data above.`;
 
   // -----------------------------------------------------------------------
@@ -251,6 +271,12 @@ Draft the artifact now. Use real names and details from the data above.`;
   // -----------------------------------------------------------------------
 
   const MODEL = 'claude-sonnet-4-20250514';
+
+  type CuttingRoomFloorItem = {
+    title: string;
+    kill_reason: string;
+    justification: string;
+  };
 
   type ParsedDirective = {
     directive: string;
@@ -261,6 +287,7 @@ Draft the artifact now. Use real names and details from the data above.`;
     why_now?: string;
     action_type?: ActionType;
     reason?: string;
+    cutting_room_floor?: CuttingRoomFloorItem[];
   };
 
   function hasBlankPlaceholders(text: string): boolean {
@@ -403,9 +430,10 @@ Draft the artifact now. Use real names and details from the data above.`;
     embeddedArtifactType: parsed.artifact_type ?? undefined,
     domain: parsed.domain ?? bDomain,
     why_now: parsed.why_now ?? undefined,
+    cutting_room_floor: parsed.cutting_room_floor ?? [],
     requires_search: false,
     search_context: undefined,
-  } as ConvictionDirective & { embeddedArtifact?: any; embeddedArtifactType?: string; domain?: string; why_now?: string };
+  } as ConvictionDirective & { embeddedArtifact?: any; embeddedArtifactType?: string; domain?: string; why_now?: string; cutting_room_floor?: any[] };
 }
 
 /**
