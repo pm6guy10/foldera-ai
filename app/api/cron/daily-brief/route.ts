@@ -352,9 +352,9 @@ async function handler(request: NextRequest) {
       let subject = progressiveSubject;
       if (!subject) {
         const first = directiveItems[0];
-        subject = directiveItems.length > 1
-          ? `${directiveItems.length} items ready for your review`
-          : (first.directive.length > 60 ? first.directive.slice(0, 57) + '...' : first.directive);
+        // Subject IS the directive in miniature — never generic "X items ready"
+        const subjectBase = first.summary ?? first.directive;
+        subject = `Foldera: ${subjectBase.length > 55 ? subjectBase.slice(0, 52) + '...' : subjectBase}`;
       }
 
       if (daysSinceSignup === 7) {

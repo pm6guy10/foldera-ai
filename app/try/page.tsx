@@ -512,15 +512,10 @@ export default function TryPage() {
               )}
             </div>
 
-            {/* Conversion line */}
-            <p className="text-zinc-500 text-sm text-center leading-relaxed">
-              That&apos;s a finished draft from one paragraph. Imagine what Foldera does with 30 days of your actual history.
-            </p>
-
             {/* CTA */}
             <div className="bg-zinc-950/60 border border-white/5 rounded-[2rem] p-8 text-center space-y-6 backdrop-blur-sm">
               <p className="text-zinc-400 text-base leading-relaxed font-medium">
-                That was based on one paragraph.<br />
+                That was one paragraph.<br />
                 Imagine what Foldera does with 30 days of your actual history.
               </p>
               <a

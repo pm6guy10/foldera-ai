@@ -88,7 +88,7 @@ async function triggerAnalysisIfReady(userId: string): Promise<void> {
     const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
     fetch(`${baseUrl}/api/acquisition/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-ingest-secret': process.env.INGEST_API_KEY ?? '' },
+      headers: { 'Content-Type': 'application/json', 'x-ingest-secret': process.env.CRON_SECRET ?? '' },
     }).catch(err => console.warn('[drafts/decide] could not trigger analysis:', err.message));
   } catch (err: unknown) {
     console.warn('[drafts/decide] analysis trigger check failed:', err instanceof Error ? err.message : err);

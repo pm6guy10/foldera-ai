@@ -56,7 +56,7 @@ export default function SettingsClient() {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 5000);
+    const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
   }, [session, status]);
 
@@ -176,7 +176,7 @@ function ConnectorCard({ name, description, icon, isConnected, onConnect }: any)
       </div>
 
       {isConnected ? (
-        <button className="w-full py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors">
+        <button onClick={onConnect} className="w-full py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors">
           Reconnect
         </button>
       ) : (

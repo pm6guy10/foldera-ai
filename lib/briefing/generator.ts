@@ -39,6 +39,15 @@ const FOCUSED_SYSTEM = `You are drafting ONE artifact for ONE specific situation
 
 Do not choose what to work on. That decision is already made.
 
+CURRENT SEASON (March 2026): User is unemployed, waiting on MAS3 decision at HCA.
+Active pipeline: MAS3 at HCA (primary), DSHS HCLA CI Specialist (secondary).
+DO NOT reference: Kapp Advisory, consulting work, case studies, Bloomreach, Paty, Kayna,
+Justworks, visual disconnect methodology, category lockout, fractional work, e-commerce,
+storytelling engine. These are from a past era and no longer relevant.
+DO NOT use placeholder text. If you lack specific data, state what data is needed or omit.
+DO NOT present option menus. Generate one directive with one clear action or justified inaction.
+Locked decisions: one-page resume, no methodology name-dropping, Nicole Vreeland is never a reference.
+
 RULES:
 - Use REAL names, email addresses, dates, and details from the SIGNAL DATA below. They are there.
 - NEVER use placeholders: [Name], [email@example.com], [Company], [Date], TBD, $____. If you cannot find a specific value in the data, use a decision artifact instead.
@@ -427,6 +436,38 @@ Draft the artifact now. Use real names and details from the data above.`;
       confidence: 0,
       reason: '',
       evidence: [],
+    };
+  }
+
+  // -----------------------------------------------------------------------
+  // 4b. POST-GENERATION VALIDATION — stale context + placeholder scan
+  // -----------------------------------------------------------------------
+
+  const STALE_TERMS = /kapp\s*advisory|bloomreach|visual\s*disconnect|category\s*lockout|storytelling\s*engine|fractional\s*(cmo|cro|coo|work)|kayna|justworks|paty/i;
+  const PLACEHOLDER_RE = /\$\[.*?\]|\$\{.*?\}|\[AMOUNT\]|\[NAME\]|\[DATE\]|\[TODO\]|INSERT\s+\w+\s+HERE|\[email@|\[Company\]/i;
+
+  const fullJson = JSON.stringify(parsed);
+  const hasStale = STALE_TERMS.test(fullJson);
+  const hasPlaceholder = PLACEHOLDER_RE.test(fullJson);
+
+  if (hasStale || hasPlaceholder) {
+    const violations = [];
+    if (hasStale) violations.push('stale context references');
+    if (hasPlaceholder) violations.push('unfilled placeholders');
+    console.warn(`[generateDirective] Validation failed: ${violations.join(', ')} — falling back to safe do_nothing`);
+
+    parsed = {
+      directive: 'Hold the line today. No high-confidence action available with current-season data.',
+      artifact_type: 'wait_rationale',
+      artifact: {
+        type: 'wait_rationale',
+        context: 'The generation system detected stale or incomplete data in the output. Rather than serve an inaccurate directive, Foldera is waiting for cleaner signal data.',
+        evidence: `Validation caught: ${violations.join(', ')}. This is a guardrail, not a failure.`,
+        tripwires: ['New signal data ingested', 'MAS3 decision received', 'Next generation cycle'],
+      },
+      evidence: `Blocked by validation: ${violations.join(', ')}`,
+      domain: 'career',
+      why_now: 'Stale data guardrail activated — next cycle will use cleaner inputs.',
     };
   }
 

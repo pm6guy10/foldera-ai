@@ -137,10 +137,6 @@ export default function StartPage() {
             <p className="text-zinc-600 text-xs">14 days free. No credit card required.</p>
           </div>
 
-          <p className="text-zinc-500 text-sm text-center leading-relaxed">
-            That&apos;s a finished draft from one paragraph. Imagine what Foldera does with 30 days of your actual history.
-          </p>
-
           <button
             onClick={() => { setResult(null); setError(null); setText(''); }}
             className="w-full text-zinc-600 hover:text-zinc-400 text-sm transition-colors mt-6 text-center"

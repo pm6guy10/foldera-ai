@@ -396,12 +396,13 @@ function EmptyState({ onGenerate }: { onGenerate: () => void }) {
   return (
     <div className="text-center py-6">
       <Shield className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-      <p className="text-zinc-400 text-sm mb-4">No read generated yet for today.</p>
+      <p className="text-zinc-300 text-sm font-medium mb-1">Your next directive arrives at 7am tomorrow.</p>
+      <p className="text-zinc-500 text-xs mb-4">Foldera is learning your patterns. Or generate one now.</p>
       <button
         onClick={onGenerate}
         className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors"
       >
-        Generate today's read
+        Generate now
       </button>
     </div>
   );

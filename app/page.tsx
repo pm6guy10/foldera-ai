@@ -770,9 +770,8 @@ export default function App() {
             </div>
             <nav className="flex flex-wrap justify-center items-center gap-x-12 gap-y-6 text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">
               <a href="#product" className="hover:text-white transition-colors">Platform</a>
-              <a href="#" className="hover:text-white transition-colors">Security</a>
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white transition-colors">Support</a>
+              <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+              <a href="/login" className="hover:text-white transition-colors">Sign in</a>
             </nav>
           </div>
           <div className="mt-20 pt-10 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-8">

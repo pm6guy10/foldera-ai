@@ -74,6 +74,7 @@ export async function sendDailyDirective({
 
   const cards = directives.map((d, i) => {
     const summaryText = d.summary ?? d.directive;
+    const reasonText = d.reason ?? '';
     const divider = i > 0
       ? `<tr><td style="padding:0 0 28px 0;"><hr style="border:none;border-top:1px solid #e8e3df;margin:0;" /></td></tr>`
       : '';
@@ -87,6 +88,16 @@ export async function sendDailyDirective({
       : `${baseUrl}/dashboard`;
     const approveLabel = isOutcome ? 'It worked' : 'Approve';
     const skipLabel = isOutcome ? "Didn't work" : 'Skip';
+
+    // Confidence as subtle badge (not the hero element)
+    const confidenceBadge = d.confidence > 0
+      ? `<span style="display:inline-block;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;color:#a39e97;background:#f3f1ee;border-radius:4px;padding:2px 8px;margin-left:8px;vertical-align:middle;">${d.confidence}% confidence</span>`
+      : '';
+
+    // Reason line (one sentence why)
+    const reasonHtml = reasonText
+      ? `<tr><td style="padding:4px 0 12px 0;"><p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#6b6259;line-height:1.5;">${escapeHtml(reasonText.split('[score=')[0].trim().slice(0, 200))}</p></td></tr>`
+      : '';
 
     // Artifact preview snippet for the email
     let artifactHtml = '';
@@ -104,14 +115,14 @@ export async function sendDailyDirective({
     return `
 ${divider}
         <tr>
-          <td style="padding-bottom:12px;">
-            <p style="margin:0;font-size:18px;line-height:1.4;color:#1a1814;font-weight:500;font-family:Georgia,'Times New Roman',serif;">${escapeHtml(summaryText)}</p>
+          <td style="padding-bottom:8px;">
+            <p style="margin:0;font-size:20px;line-height:1.3;color:#1a1814;font-weight:600;font-family:Georgia,'Times New Roman',serif;">${escapeHtml(summaryText)}${confidenceBadge}</p>
           </td>
-        </tr>${artifactHtml}
+        </tr>${reasonHtml}${artifactHtml}
         <tr>
           <td style="padding-bottom:8px;">
             <a href="${approveHref}"
-               style="display:inline-block;padding:10px 24px;background:#16a34a;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
+               style="display:inline-block;padding:12px 28px;background:#0d9488;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
               ${escapeHtml(approveLabel)}
             </a>
           </td>

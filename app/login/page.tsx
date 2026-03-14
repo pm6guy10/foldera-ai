@@ -34,9 +34,9 @@ export default function LoginPage() {
       <main className="flex-1 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-md">
           <div className="text-center mb-12">
-            <h1 className="text-5xl font-black tracking-tighter text-white mb-4">Welcome back.</h1>
+            <h1 className="text-5xl font-black tracking-tighter text-white mb-4">Sign in.</h1>
             <p className="text-zinc-400 text-lg font-medium leading-relaxed">
-              Sign in to continue to Foldera.
+              Your morning reads are waiting.
             </p>
           </div>
 
