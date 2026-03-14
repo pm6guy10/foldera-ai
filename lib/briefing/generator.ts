@@ -194,6 +194,18 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     ? `\nEMERGENT PATTERN DETECTED — this is a meta-observation about the user's behavior, not a regular open loop. Draft an insight artifact that surfaces this pattern with specific data. The user should feel seen, not judged.\n`
     : '';
 
+  // Build compound directive section if this is a cross-loop merge
+  const compoundSection = winner.type === 'compound' && winner.connectionType
+    ? `\nCROSS-LOOP COMPOUND DIRECTIVE — The scoring algorithm found a CONNECTION between two separate loops. Connection type: ${winner.connectionType}. Reason: ${winner.connectionReason ?? 'linked loops'}.
+
+Your artifact MUST address BOTH loops in a single action. Examples:
+- same_person: "Finish the proposal today so you can send it to Sarah tomorrow as promised."
+- temporal_dependency: "Do X first because Y depends on it being done."
+- resource_conflict: "Prioritize X over Y because [reason from data]."
+
+The user should see ONE directive that handles BOTH situations. This is the output no other product can generate because it requires the full identity graph to see the connection.\n`
+    : '';
+
   const userPrompt = `TODAY: ${todayStr}
 
 THE SITUATION (selected by scoring algorithm — score ${winner.score.toFixed(2)}/5.0):
@@ -207,7 +219,7 @@ SCORE BREAKDOWN:
 - Urgency: ${winner.breakdown.urgency.toFixed(2)}
 - Tractability: ${winner.breakdown.tractability.toFixed(2)}
 - Freshness: ${(winner.breakdown as any).freshness?.toFixed(2) ?? '1.00'} (1.0 = never surfaced, lower = recently generated)
-${relationshipSection}${emergentSection}
+${relationshipSection}${emergentSection}${compoundSection}
 SUGGESTED ARTIFACT TYPE: ${suggestedArtifact}
 (You may override if the data supports a different type, but justify.)
 

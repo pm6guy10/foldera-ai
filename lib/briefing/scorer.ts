@@ -38,7 +38,7 @@ export interface MatchedGoal {
 
 export interface ScoredLoop {
   id: string;
-  type: 'commitment' | 'signal' | 'relationship' | 'emergent';
+  type: 'commitment' | 'signal' | 'relationship' | 'emergent' | 'compound';
   title: string;
   content: string;
   suggestedActionType: ActionType;
@@ -48,6 +48,19 @@ export interface ScoredLoop {
   relatedSignals: string[];
   /** For relationship loops: enriched context from entity patterns + recent signals */
   relationshipContext?: string;
+  /** For compound loops: the merged loops and connection type */
+  compoundLoops?: ScoredLoop[];
+  connectionType?: 'same_person' | 'temporal_dependency' | 'resource_conflict';
+  connectionReason?: string;
+}
+
+export interface CrossLoopConnection {
+  loopA: ScoredLoop;
+  loopB: ScoredLoop;
+  connectionType: 'same_person' | 'temporal_dependency' | 'resource_conflict';
+  reason: string;
+  /** Shared person name (for same_person connections) */
+  sharedPerson?: string;
 }
 
 export interface EmergentPattern {
@@ -644,6 +657,206 @@ export async function detectEmergentPatterns(userId: string): Promise<EmergentPa
 }
 
 // ---------------------------------------------------------------------------
+// Cross-Loop Inference — Session 3
+// ---------------------------------------------------------------------------
+
+/** Extract person names from text (capitalized words, filter common non-names) */
+function extractPersonNames(text: string): string[] {
+  const nonNames = new Set([
+    'Follow', 'Send', 'Draft', 'Reply', 'Email', 'Schedule', 'Research',
+    'Review', 'Write', 'Check', 'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+    'Friday', 'Saturday', 'Sunday', 'January', 'February', 'March', 'April',
+    'May', 'June', 'July', 'August', 'September', 'October', 'November',
+    'December', 'Foldera', 'Google', 'Microsoft', 'Outlook', 'Gmail',
+    'Calendar', 'Stripe', 'The', 'This', 'That', 'Your', 'Our', 'Their',
+    'Option', 'Decision', 'Document', 'Meeting', 'Project', 'None',
+  ]);
+  const matches = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g) ?? [];
+  return [...new Set(
+    matches.filter(w => !nonNames.has(w.split(' ')[0]) && w.length > 2),
+  )];
+}
+
+/** Extract deadline dates from text, return as timestamps */
+function extractDeadlines(text: string): number[] {
+  const dates: number[] = [];
+  // ISO dates
+  const isoMatches = text.match(/\d{4}-\d{2}-\d{2}/g) ?? [];
+  for (const m of isoMatches) {
+    const t = new Date(m).getTime();
+    if (!isNaN(t)) dates.push(t);
+  }
+  // Relative: "today", "tomorrow", "this week"
+  const lower = text.toLowerCase();
+  if (/\btoday\b/.test(lower)) dates.push(Date.now());
+  if (/\btomorrow\b/.test(lower)) dates.push(Date.now() + 24 * 60 * 60 * 1000);
+  if (/\bthis week\b/.test(lower)) dates.push(Date.now() + 5 * 24 * 60 * 60 * 1000);
+  return dates;
+}
+
+/**
+ * Detect connections between the top scored loops.
+ *
+ * Three connection types:
+ * 1. Same person appears in two loops (relationship + commitment involving them)
+ * 2. Temporal dependency (one loop blocks another — deadline ordering)
+ * 3. Resource conflict (two loops compete for the same time window)
+ */
+function detectCrossLoopConnections(topLoops: ScoredLoop[]): CrossLoopConnection[] {
+  if (topLoops.length < 2) return [];
+
+  const connections: CrossLoopConnection[] = [];
+
+  for (let i = 0; i < topLoops.length; i++) {
+    for (let j = i + 1; j < topLoops.length; j++) {
+      const a = topLoops[i];
+      const b = topLoops[j];
+
+      // 1. SAME PERSON — a person name appears in both loops
+      const namesA = extractPersonNames(`${a.title} ${a.content}`);
+      const namesB = extractPersonNames(`${b.title} ${b.content}`);
+      const sharedNames = namesA.filter(n => {
+        const firstName = n.split(' ')[0].toLowerCase();
+        return namesB.some(nb => nb.toLowerCase().includes(firstName) || firstName.length > 2 && nb.toLowerCase().startsWith(firstName));
+      });
+
+      if (sharedNames.length > 0) {
+        connections.push({
+          loopA: a,
+          loopB: b,
+          connectionType: 'same_person',
+          reason: `${sharedNames[0]} appears in both: "${a.title.slice(0, 60)}" and "${b.title.slice(0, 60)}"`,
+          sharedPerson: sharedNames[0],
+        });
+        continue; // one connection per pair
+      }
+
+      // 2. TEMPORAL DEPENDENCY — one loop has a deadline that precedes the other
+      const deadlinesA = extractDeadlines(`${a.title} ${a.content}`);
+      const deadlinesB = extractDeadlines(`${b.title} ${b.content}`);
+
+      if (deadlinesA.length > 0 && deadlinesB.length > 0) {
+        const earliestA = Math.min(...deadlinesA);
+        const earliestB = Math.min(...deadlinesB);
+        const daysBetween = Math.abs(earliestA - earliestB) / (24 * 60 * 60 * 1000);
+
+        // Within 3 days of each other — potential dependency
+        if (daysBetween <= 3 && daysBetween > 0) {
+          const first = earliestA < earliestB ? a : b;
+          const second = earliestA < earliestB ? b : a;
+          connections.push({
+            loopA: first,
+            loopB: second,
+            connectionType: 'temporal_dependency',
+            reason: `"${first.title.slice(0, 60)}" has an earlier deadline and may block "${second.title.slice(0, 60)}"`,
+          });
+          continue;
+        }
+      }
+
+      // 3. RESOURCE CONFLICT — two loops both need time (schedule, send_message, write_document)
+      //    in the same domain or involve the same relationship
+      const timeIntensiveTypes: ActionType[] = ['schedule', 'write_document', 'send_message'];
+      if (
+        timeIntensiveTypes.includes(a.suggestedActionType) &&
+        timeIntensiveTypes.includes(b.suggestedActionType) &&
+        a.matchedGoal && b.matchedGoal &&
+        a.matchedGoal.category === b.matchedGoal.category
+      ) {
+        connections.push({
+          loopA: a,
+          loopB: b,
+          connectionType: 'resource_conflict',
+          reason: `Both "${a.title.slice(0, 50)}" and "${b.title.slice(0, 50)}" compete for time in ${a.matchedGoal.category}`,
+        });
+      }
+    }
+  }
+
+  // Sort by combined score of the two loops (best connections first)
+  connections.sort((a, b) => {
+    const scoreA = a.loopA.score + a.loopB.score;
+    const scoreB = b.loopA.score + b.loopB.score;
+    return scoreB - scoreA;
+  });
+
+  return connections;
+}
+
+/**
+ * Merge two connected loops into a single compound ScoredLoop.
+ * The compound loop gets the higher score of the two (+ 10% boost)
+ * and combines both contexts for the LLM.
+ */
+function mergeLoops(conn: CrossLoopConnection): ScoredLoop {
+  const { loopA, loopB, connectionType, reason, sharedPerson } = conn;
+
+  // Build compound title based on connection type
+  let title: string;
+  switch (connectionType) {
+    case 'same_person':
+      title = `${sharedPerson}: ${loopA.title.slice(0, 50)} + ${loopB.title.slice(0, 50)}`;
+      break;
+    case 'temporal_dependency':
+      title = `${loopA.title.slice(0, 50)} → then ${loopB.title.slice(0, 50)}`;
+      break;
+    case 'resource_conflict':
+      title = `Prioritize: ${loopA.title.slice(0, 45)} vs ${loopB.title.slice(0, 45)}`;
+      break;
+  }
+
+  // Build compound content with both loops' context
+  const content = [
+    `CONNECTION: ${reason}`,
+    '',
+    `--- Loop 1 (score ${loopA.score.toFixed(2)}) ---`,
+    `Type: ${loopA.type} | Action: ${loopA.suggestedActionType}`,
+    loopA.content,
+    loopA.relationshipContext ? `\nRelationship context:\n${loopA.relationshipContext}` : '',
+    '',
+    `--- Loop 2 (score ${loopB.score.toFixed(2)}) ---`,
+    `Type: ${loopB.type} | Action: ${loopB.suggestedActionType}`,
+    loopB.content,
+    loopB.relationshipContext ? `\nRelationship context:\n${loopB.relationshipContext}` : '',
+  ].filter(Boolean).join('\n');
+
+  // Use the higher-scoring loop's action type, unless it's a temporal dependency (use first loop's type)
+  const suggestedActionType = connectionType === 'temporal_dependency'
+    ? loopA.suggestedActionType
+    : (loopA.score >= loopB.score ? loopA.suggestedActionType : loopB.suggestedActionType);
+
+  // Use the higher-priority goal match
+  const matchedGoal = (loopA.matchedGoal && loopB.matchedGoal)
+    ? (loopA.matchedGoal.priority >= loopB.matchedGoal.priority ? loopA.matchedGoal : loopB.matchedGoal)
+    : loopA.matchedGoal ?? loopB.matchedGoal;
+
+  // Combined score: max of the two + 10% boost for the cross-loop insight
+  const baseScore = Math.max(loopA.score, loopB.score);
+  const compoundScore = baseScore * 1.1;
+
+  return {
+    id: `compound-${loopA.id}-${loopB.id}`,
+    type: 'compound',
+    title,
+    content,
+    suggestedActionType,
+    matchedGoal,
+    score: compoundScore,
+    breakdown: {
+      stakes: Math.max(loopA.breakdown.stakes, loopB.breakdown.stakes),
+      urgency: Math.max(loopA.breakdown.urgency, loopB.breakdown.urgency),
+      tractability: Math.min(loopA.breakdown.tractability, loopB.breakdown.tractability),
+      freshness: Math.min(loopA.breakdown.freshness, loopB.breakdown.freshness),
+    },
+    relatedSignals: [...new Set([...loopA.relatedSignals, ...loopB.relatedSignals])].slice(0, 8),
+    relationshipContext: [loopA.relationshipContext, loopB.relationshipContext].filter(Boolean).join('\n---\n') || undefined,
+    compoundLoops: [loopA, loopB],
+    connectionType,
+    connectionReason: reason,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Main export — scoreOpenLoops
 // ---------------------------------------------------------------------------
 
@@ -865,9 +1078,28 @@ export async function scoreOpenLoops(userId: string): Promise<ScoredLoop | null>
   }
 
   // -----------------------------------------------------------------------
+  // Cross-loop inference — find connections in top 5, merge if found
+  // -----------------------------------------------------------------------
+
+  scored.sort((a, b) => b.score - a.score);
+  const top5 = scored.slice(0, 5);
+  const connections = detectCrossLoopConnections(top5);
+
+  if (connections.length > 0) {
+    // Take the strongest connection and merge into a compound loop
+    const bestConnection = connections[0];
+    const compound = mergeLoops(bestConnection);
+    console.log(
+      `[scorer] Cross-loop connection: ${compound.connectionType} — "${compound.connectionReason}"`,
+    );
+    scored.push(compound);
+  }
+
+  // -----------------------------------------------------------------------
   // Check emergent patterns — wins when surprise_value * data_confidence > top loop EV
   // -----------------------------------------------------------------------
 
+  scored.sort((a, b) => b.score - a.score);
   const topLoopEV = scored.length > 0 ? scored[0].score : 0;
   const emergent = await detectEmergentPatterns(userId);
   for (const ep of emergent) {
