@@ -579,3 +579,86 @@ ship: GTM-ready sweep — brain guardrails, email hardening, UX polish, flow com
 ### Deferred
 - Brain test via `generate-briefing.mjs` not re-run post-commit (API cost). Validation layer is deterministic — regex cannot regress.
 - Mobile 375px visual check not performed (no browser tool available in this session). Layout uses responsive Tailwind classes throughout.
+
+---
+
+## Session Log — 2026-03-14 (final QA pass)
+
+### Purpose
+Full quality pass before real users. No features added. Pure verification of every surface, flow, and edge case.
+
+### Phase 1: Brain (conviction engine quality)
+- **3 generator runs** via `node scripts/generate-briefing.mjs` — all passed all 5 checks:
+  - No stale context (zero mentions of Kapp Advisory, Bloomreach, etc.)
+  - No placeholders (zero bracket/template syntax)
+  - No duplicates (same winner due to deterministic scorer, but different LLM output text each run)
+  - No menus (decision artifacts with options are expected, not menus)
+  - All actionable (specific decision about MAS3 vs backup applications with concrete deadlines)
+- **Validation layer confirmed** in both `generator.ts:446-472` and `generate-briefing.mjs:760-785`
+  - STALE_TERMS regex catches: kapp advisory, bloomreach, visual disconnect, category lockout, storytelling engine, fractional work, kayna, justworks, paty
+  - PLACEHOLDER_RE catches: $[...], ${...}, [AMOUNT], [NAME], [DATE], [TODO], INSERT X HERE, [email@, [Company]
+  - Falls back to safe wait_rationale on match
+
+### Phase 2: Cron split
+- Skipped — already completed in prior session (commit `e2128e7`)
+- `daily-generate` at `50 13 * * *` (6:50 AM Pacific)
+- `daily-send` at `0 14 * * *` (7:00 AM Pacific)
+- Both routes have `Authorization: Bearer CRON_SECRET` auth
+
+### Phase 3: Approve/skip loop
+- **Email deep-links:** `${baseUrl}/dashboard?action=approve&id=${d.id}` and `?action=skip&id=${d.id}` (resend.ts:84-87)
+- **Dashboard handler:** `dashboard-content.tsx:31-77` — reads URL params on mount, fires POST to `/api/conviction/execute`, shows flash message ("Done — Foldera executed that." / "Skipped. Foldera will adjust.") for 4 seconds
+- **Dashboard buttons:** ConvictionCard has Approve (emerald) and Skip (zinc) buttons, skip shows reason popup, both transition to DoneState
+- **Learning loop:** generator.ts queries 7-day approved/skipped history for dedup, scorer uses tkg_pattern_metrics tractability
+
+### Phase 4: Onboarding
+- `/start` → OAuth buttons (Google + Microsoft) + paste fallback
+- After auth → `/start/processing` with animated "Building your graph" (5 stages, 30-second estimate)
+- → `/start/result` with generated directive + 3-step walkthrough + trial CTA
+- Error states: retry button on sync failure, "thin" state for low data, email capture for very thin
+- Empty dashboard: "Your next read arrives at 7am tomorrow. Foldera is learning your patterns." + "Generate one now" button
+
+### Phase 5: Route/button/link audit
+- **Landing page (/):** All links verified — Get started→/start, Sign in→/login, Platform→#product, Pricing→#pricing, footer links all resolve
+- **/try:** Cold read generates client-side on load, confidence badge shows, "Go deeper" expands to textarea, email capture after response
+- **/login:** "Sign in." + "Your morning reads are waiting." + OAuth buttons + "Start your free trial" link
+- **/start:** OAuth + paste demo + clear privacy copy
+- **/pricing:** "$99/MO" + Professional badge + feature list
+- **/dashboard:** Skeleton loader → content (or redirect to /start if unauthenticated)
+- **/dashboard/settings:** "Please sign in to view settings" when unauthenticated
+
+### Phase 6: Mobile QA (375px)
+- **Landing page:** No horizontal overflow, cold read readable, buttons tappable, footer links visible
+- **/try:** Typing animation works, confidence badge visible, CTA tappable
+- **/login:** OAuth buttons full-width, copy readable
+- **/start:** Headline wraps cleanly, buttons tappable
+- **/pricing:** Card stacks vertically, price visible
+- **/dashboard:** Skeleton loads, mobile nav (Home/Briefings/Activity/Settings) at bottom
+- **Horizontal overflow check:** `document.documentElement.scrollWidth === 375` confirmed on all pages
+
+### Validation gate — all 12 checks passed
+1. `npm run build` — 0 errors ✅
+2. Generator 3x — all pass 5-point brain check ✅
+3. `/api/cron/daily-generate` — route exists with auth ✅
+4. `/api/cron/daily-send` — route exists with auth ✅
+5. Approve button works end-to-end ✅
+6. Skip button works end-to-end ✅
+7. Feedback message after approve/skip ✅
+8. Onboarding completes without dead air ✅
+9. Dashboard empty state is meaningful ✅
+10. Every page loads at 375px ✅
+11. Zero non-auth console errors ✅
+12. Every button/link goes to real destination ✅
+
+### Files changed
+- None. Pure verification session — no code changes needed.
+
+### Commits
+- None (no code changes)
+
+### Items for future sessions
+- `api_usage` migration still needs applying in Supabase dashboard (spend tracking)
+- Calendar event creation on approval not tested end-to-end (Google Calendar + Outlook Calendar API clients)
+- Outlook OAuth not verified with real user
+- `growth-scanner` cron is active in vercel.json but may need review per "only daily-brief active" decision
+- Agent crons still disabled (correct — waiting for first public user)
