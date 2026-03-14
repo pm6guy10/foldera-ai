@@ -14,7 +14,7 @@ import { generateArtifact, getFallbackArtifact } from '@/lib/conviction/artifact
 import { sendDailyDirective }        from '@/lib/email/resend';
 import { apiError }                  from '@/lib/utils/api-error';
 import { extractFromConversation }   from '@/lib/extraction/conversation-extractor';
-import type { DirectiveItem }        from '@/lib/email/resend';
+import type { DirectiveItem, CuttingRoomFloorItem } from '@/lib/email/resend';
 import type { ConvictionArtifact }   from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
@@ -216,6 +216,7 @@ async function handler(request: NextRequest) {
       const directiveCount = daysSinceSignup <= 7 ? progressiveCount : 3;
       const directiveItems: DirectiveItem[] = [];
       let generationFailed = false;
+      let cuttingRoomFloor: CuttingRoomFloorItem[] = [];
 
       for (let i = 0; i < directiveCount; i++) {
         const result = await withRetry(() => generateDirective(userId), `generateDirective[${i}]`);
@@ -225,6 +226,11 @@ async function handler(request: NextRequest) {
             result.attempts, result.error);
           generationFailed = true; break;
         }
+        // Capture cutting room floor from the first directive (it has the best context)
+        if (i === 0 && (result.value as any).cutting_room_floor?.length > 0) {
+          cuttingRoomFloor = (result.value as any).cutting_room_floor;
+        }
+
         const actionId = await saveDirectiveAction(supabase, userId, result.value, result.attempts);
 
         // Generate the artifact — the finished work product; on failure attach fallback so approve still runs
@@ -356,8 +362,63 @@ async function handler(request: NextRequest) {
         if (weekStats && directiveItems[0]) directiveItems[0].reason += weekStats;
       }
 
+      // ── Learning signal: show approval rate so user sees the system learning ──
+      let learningSignal: string | undefined;
+      try {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: allActions } = await supabase
+          .from('tkg_actions')
+          .select('action_type, status')
+          .eq('user_id', userId)
+          .gte('generated_at', thirtyDaysAgo)
+          .in('status', ['executed', 'skipped', 'draft_rejected']);
+
+        if (allActions && allActions.length >= 5) {
+          const executed = allActions.filter((a: any) => a.status === 'executed');
+          const total = allActions.length;
+          const rate = Math.round((executed.length / total) * 100);
+
+          // Find the best-performing action type
+          const typeStats: Record<string, { approved: number; total: number }> = {};
+          for (const a of allActions) {
+            const t = a.action_type as string;
+            if (!typeStats[t]) typeStats[t] = { approved: 0, total: 0 };
+            typeStats[t].total++;
+            if (a.status === 'executed') typeStats[t].approved++;
+          }
+
+          let bestType = '';
+          let bestRate = 0;
+          for (const [t, s] of Object.entries(typeStats)) {
+            if (s.total >= 3) {
+              const r = s.approved / s.total;
+              if (r > bestRate) { bestRate = r; bestType = t; }
+            }
+          }
+
+          const typeLabel: Record<string, string> = {
+            send_message: 'email drafts', write_document: 'documents',
+            make_decision: 'decision frames', do_nothing: 'wait calls',
+            schedule: 'calendar events', research: 'research briefs',
+          };
+
+          if (bestType && bestRate > 0.5) {
+            learningSignal = `Your overall approval rate: ${rate}%. ${typeLabel[bestType] ?? bestType} land ${Math.round(bestRate * 100)}% of the time — I'm weighting those higher.`;
+          } else if (rate > 0) {
+            learningSignal = `${executed.length} of ${total} items approved (${rate}%). Every approve and skip teaches me what to surface next.`;
+          }
+        }
+      } catch (lsErr: any) {
+        console.warn('[daily-brief] learning signal failed:', lsErr.message);
+      }
+
       const sendResult = await withRetry(
-        () => sendDailyDirective({ to, directives: directiveItems, date, subject, outcomeCheck: outcomeCheckLine }),
+        () => sendDailyDirective({
+          to, directives: directiveItems, date, subject,
+          outcomeCheck: outcomeCheckLine,
+          cuttingRoomFloor: cuttingRoomFloor.length > 0 ? cuttingRoomFloor : undefined,
+          learningSignal,
+        }),
         `sendDailyDirective for ${userId}`,
       );
       if ('error' in sendResult) {

@@ -40,18 +40,28 @@ function escapeHtml(s: string): string {
 // Each card has a one-sentence summary, Approve button, and Skip link.
 // Subject = the most specific artifact summary.
 
+export interface CuttingRoomFloorItem {
+  title: string;
+  kill_reason: string;
+  justification: string;
+}
+
 export async function sendDailyDirective({
   to,
   directives,
   date,
   subject,
   outcomeCheck,
+  cuttingRoomFloor,
+  learningSignal,
 }: {
   to:            string;
   directives:    DirectiveItem[];
   date:          string; // YYYY-MM-DD
   subject?:      string; // override default
   outcomeCheck?: string; // "Two days ago I suggested: …. Did it help? Reply YES or NO."
+  cuttingRoomFloor?: CuttingRoomFloorItem[];
+  learningSignal?:   string; // e.g. "Your approval rate for emails: 80%. I'm weighting those higher."
 }) {
   const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
 
@@ -116,6 +126,52 @@ ${divider}
         </tr>`;
   }).join('\n');
 
+  // ── "What I killed today" section ──
+  const killReasonIcon: Record<string, string> = {
+    NOISE: '&#128264;',   // muted speaker
+    NOT_NOW: '&#9203;',   // hourglass
+    TRAP: '&#9888;&#65039;', // warning
+  };
+
+  let cuttingRoomHtml = '';
+  if (cuttingRoomFloor && cuttingRoomFloor.length > 0) {
+    const items = cuttingRoomFloor.slice(0, 5).map(item => {
+      const reason = (item.kill_reason ?? '').toUpperCase().replace(' ', '_');
+      const icon = killReasonIcon[reason] ?? '&#10006;';
+      return `
+            <tr>
+              <td style="padding:6px 0;">
+                <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#8a8178;line-height:1.5;">
+                  ${icon} <span style="color:#6b6259;font-weight:600;">${escapeHtml(item.title)}</span>
+                </p>
+                <p style="margin:2px 0 0 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#a39e97;line-height:1.4;">
+                  ${escapeHtml(item.justification)}
+                </p>
+              </td>
+            </tr>`;
+    }).join('\n');
+
+    cuttingRoomHtml = `
+          <tr>
+            <td style="padding-top:24px;border-top:1px solid #e8e3df;">
+              <p style="margin:0 0 12px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;letter-spacing:0.15em;color:#c4bdb5;text-transform:uppercase;font-weight:700;">What I deprioritized today</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+${items}
+              </table>
+            </td>
+          </tr>`;
+  }
+
+  // ── Learning signal line ──
+  const learningHtml = learningSignal ? `
+          <tr>
+            <td style="padding-top:16px;">
+              <div style="background:#f0ede8;border-radius:6px;padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#6b6259;line-height:1.5;">
+                &#9889; ${escapeHtml(learningSignal)}
+              </div>
+            </td>
+          </tr>` : '';
+
   const outcomeCheckHtml = outcomeCheck ? `
           <tr>
             <td style="padding-top:24px;border-top:1px solid #e8e3df;">
@@ -141,6 +197,8 @@ ${divider}
             </td>
           </tr>
 ${cards}
+${cuttingRoomHtml}
+${learningHtml}
 ${outcomeCheckHtml}
           <tr>
             <td style="padding-top:8px;border-top:1px solid #e8e3df;">

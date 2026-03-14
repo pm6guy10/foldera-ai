@@ -375,6 +375,17 @@ function HeroDemo() {
           );
         })}
       </div>
+
+      {/* Try it link — passes active scenario */}
+      <div className="text-center mt-8 relative z-10">
+        <a
+          href={`/try?s=${current.id}`}
+          className="text-zinc-500 hover:text-cyan-400 text-sm transition-colors group inline-flex items-center gap-2"
+        >
+          See what Foldera sees in you
+          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+        </a>
+      </div>
     </div>
   );
 }
