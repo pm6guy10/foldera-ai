@@ -1101,6 +1101,9 @@ export async function detectEmergentPatterns(userId: string): Promise<EmergentPa
     const topicClusters: Record<string, Array<{ text: string; status: string; date: string; reason: string | null }>> = {};
     for (const a of actions) {
       const text = (a.directive_text as string ?? '').toLowerCase();
+      // Skip self-referential meta-observations to prevent emergent pattern runaway
+      if (/\b(approved|approval|pattern|skip rate|skipped every time|acknowledged?)\b/.test(text) &&
+          /\b(directive|observation|meta|system)\b/.test(text)) continue;
       const keywords = text.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length >= 5);
       const keyPair = keywords.slice(0, 3).sort().join('+');
       if (!keyPair) continue;
@@ -1744,8 +1747,11 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const emergent = await detectEmergentPatterns(userId);
   for (const ep of emergent) {
     const emergentEV = ep.surpriseValue * ep.dataConfidence;
+    // Apply freshness to emergent patterns to prevent runaway loops
+    const emergentFreshness = await getFreshness(userId, ep.title, 'emergent');
+    const adjustedEV = emergentEV * emergentFreshness;
     // Emergent pattern must beat the top open loop to compete
-    if (emergentEV > topLoopEV || scored.length === 0) {
+    if (adjustedEV > topLoopEV || scored.length === 0) {
       // Build mirror content: specific data + "Is this true?"
       const mirrorContent = [
         ep.insight,
@@ -1763,12 +1769,12 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         content: mirrorContent,
         suggestedActionType: ep.suggestedActionType,
         matchedGoal: null,
-        score: emergentEV + 0.01, // tiny bump to ensure it wins over the loop it beat
+        score: adjustedEV + 0.01, // tiny bump to ensure it wins over the loop it beat
         breakdown: {
           stakes: ep.surpriseValue,
           urgency: ep.dataConfidence,
           tractability: 1.0,
-          freshness: 1.0,
+          freshness: emergentFreshness,
         },
         relatedSignals: [],
       });

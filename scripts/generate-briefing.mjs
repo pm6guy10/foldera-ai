@@ -256,9 +256,13 @@ async function detectEmergentPatterns() {
     if (!actions || actions.length < 3) return patterns;
 
     // 1. REPEAT CYCLE: same topic surfaced 3+ times without approval
+    //    IMPORTANT: exclude emergent/meta-observations to prevent runaway feedback loops
     const topicClusters = {};
     for (const a of actions) {
       const text = (a.directive_text ?? '').toLowerCase();
+      // Skip self-referential meta-observations (emergent pattern outputs)
+      if (/\b(approved|approval|pattern|skip rate|skipped every time|acknowledged?)\b/.test(text) &&
+          /\b(directive|observation|meta|system)\b/.test(text)) continue;
       const keywords = text.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 5);
       const keyPair = keywords.slice(0, 3).sort().join('+');
       if (!keyPair) continue;
@@ -279,7 +283,7 @@ async function detectEmergentPatterns() {
           title: 'Repeating directive: "' + pending[0].text.slice(0, 60) + '"',
           insight: 'This topic has been generated ' + pending.length + ' times without action (' + approvedCount + ' ever approved). The system keeps suggesting it but you haven\'t engaged. Either approve one version, skip it to teach the system, or the underlying situation needs a different approach.',
           dataPoints: pending.map(p => '[' + p.date + '] ' + p.text.slice(0, 100)),
-          score: 3.0 + (pending.length * 0.3),
+          score: Math.min(3.0, 2.0 + (pending.length * 0.2)),  // CAPPED at 3.0
           suggestedActionType: 'make_decision',
         });
       }
@@ -497,19 +501,31 @@ async function scoreOpenLoops() {
   }
 
   // v2: emergent patterns compete with regular candidates
-  const emergent = await detectEmergentPatterns();
-  for (const ep of emergent) {
-    scored.push({
-      id: 'emergent-' + ep.type,
-      type: 'emergent',
-      title: ep.title,
-      content: ep.insight + '\n\nData:\n' + ep.dataPoints.join('\n'),
-      suggestedActionType: ep.suggestedActionType,
-      matchedGoal: null,
-      score: ep.score,
-      breakdown: { stakes: ep.score, urgency: 1.0, tractability: 1.0, freshness: 1.0 },
-      relatedSignals: [],
-    });
+  // Emergent patterns are a fallback — real content always takes priority unless there's
+  // genuinely nothing actionable. Max 1 emergent pattern per 3 days.
+  const topRealScore = scored.length > 0 ? scored.reduce((max, s) => Math.max(max, s.score), 0) : 0;
+
+  // Only consider emergent if real candidates are weak (< 0.5 = below threshold)
+  if (topRealScore < 0.5) {
+    const emergent = await detectEmergentPatterns();
+    if (emergent.length > 0) {
+      const ep = emergent[0]; // take only the top emergent
+      const emergentFreshness = await getFreshness(ep.title);
+      const cappedScore = Math.min(ep.score, 2.0) * emergentFreshness;
+      if (cappedScore > 0.3) {
+        scored.push({
+          id: 'emergent-' + ep.type,
+          type: 'emergent',
+          title: ep.title,
+          content: ep.insight + '\n\nData:\n' + ep.dataPoints.join('\n'),
+          suggestedActionType: ep.suggestedActionType,
+          matchedGoal: null,
+          score: cappedScore,
+          breakdown: { stakes: Math.min(ep.score, 2.0), urgency: 1.0, tractability: 1.0, freshness: emergentFreshness },
+          relatedSignals: [],
+        });
+      }
+    }
   }
 
   scored.sort((a, b) => b.score - a.score);
