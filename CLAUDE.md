@@ -218,6 +218,9 @@ After EVERY commit, before marking anything done:
     Find them yourself before reporting done.
 11. ML/AI generation checks:
     - [ ] If any generation call fails, the system recovers gracefully. No infinite loops, no crashed dashboard, no raw stack traces to the user.
+12. Before ending any session, append a session log to CLAUDE.md with every commit hash,
+    every file changed, and every Supabase migration requiring manual application. This is
+    the final action of every session, no exceptions.
 
 ---
 
