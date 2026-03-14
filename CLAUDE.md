@@ -25,6 +25,53 @@ Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env
 
 ---
 
+## STATUS — MARCH 14, 2026
+Product is GTM-ready. All 12 QA checks passed
+(commit c16ab2a). No open blockers for first
+user testing.
+
+### What's live and working:
+- Living hero: cold read generates on LP load
+  (client-side, no API cost)
+- /try: scenario-specific cold reads + Haiku
+  "go deeper" flow + email capture
+- Brain: stale context guardrails + placeholder
+  validation on every generation
+- Cron split: daily-generate at 6:50am UTC,
+  daily-send at 7:00am UTC (Hobby-safe)
+- Approve/skip: email deep-links + dashboard
+  buttons, feedback messages, learning loop wired
+- Onboarding: "Building your graph" animation,
+  OAuth + paste fallback, first directive in
+  processing flow
+- Dashboard: directive card, DraftQueue, stats,
+  meaningful empty states
+- Settings: connected accounts, subscription
+  status, logout
+- Auth: Google + Microsoft OAuth, session
+  management, logout
+- Mobile: all pages verified at 375px, zero
+  overflow
+
+### What's deferred (post-first-user):
+- api_usage Supabase migration
+- Calendar event creation on approval
+- Outlook OAuth real-user verification
+- growth-scanner cron review
+- Agent crons (disabled, waiting for users)
+- Resend domain verification (for inbox
+  delivery vs spam)
+- Gemini LP design pass (visual polish,
+  not structural)
+
+### DO NOT TOUCH until first user feedback:
+- Landing page structure (living hero is working)
+- Generator system prompt (brain is clean)
+- Cron split architecture (email pipeline works)
+- Approve/skip flow (end-to-end verified)
+
+---
+
 ## Product Spec — the whole thing
 
 Foldera has one user flow that matters:
