@@ -8,8 +8,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://foldera.ai'),
-  title: "Foldera – Stop Babysitting Your AI",
-  description: "Foldera remembers, detects, and fixes costly mistakes while you sleep.",
+  title: "Foldera — Finished work, every morning",
+  description: "Foldera ingests your chaos, computes conviction, and delivers executable actions. You just approve or skip.",
   icons: {
     icon: [
       { url: '/foldera-glyph.svg', type: 'image/svg+xml' },
@@ -19,8 +19,8 @@ export const metadata = {
     ],
   },
   openGraph: {
-    title: "Foldera – Stop Babysitting Your AI",
-    description: "Foldera remembers, detects, and fixes costly mistakes while you sleep.",
+    title: "Foldera — Finished work, every morning",
+    description: "Foldera ingests your chaos, computes conviction, and delivers executable actions. You just approve or skip.",
     images: [
       {
         url: '/foldera-hero.svg',
@@ -33,8 +33,8 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: "Foldera – Stop Babysitting Your AI",
-    description: "Foldera remembers, detects, and fixes costly mistakes while you sleep.",
+    title: "Foldera — Finished work, every morning",
+    description: "Foldera ingests your chaos, computes conviction, and delivers executable actions. You just approve or skip.",
     images: ['/foldera-hero.svg'],
   },
 };
