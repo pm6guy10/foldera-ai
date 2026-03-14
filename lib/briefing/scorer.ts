@@ -51,12 +51,19 @@ export interface ScoredLoop {
 }
 
 export interface EmergentPattern {
-  type: 'repeat_cycle' | 'approval_without_execution' | 'commitment_decay' | 'temporal_cluster';
+  type: 'approval_without_execution' | 'skip_cluster' | 'commitment_decay' | 'signal_velocity' | 'repetition_suppression';
   title: string;
   insight: string;
   dataPoints: string[];
+  /** Raw surprise: how unexpected is this pattern? 0-1 */
+  surpriseValue: number;
+  /** How much data backs this up? 0-1 */
+  dataConfidence: number;
+  /** Competition score: surpriseValue * dataConfidence */
   score: number;
   suggestedActionType: ActionType;
+  /** Mirror ending — always "Is this true?" */
+  mirrorQuestion: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,28 +326,277 @@ function inferDomain(matchedGoal: MatchedGoal | null, text: string): string {
 export async function detectEmergentPatterns(userId: string): Promise<EmergentPattern[]> {
   const supabase = createServerClient();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const patterns: EmergentPattern[] = [];
 
   try {
-    // Fetch all actions from last 30 days for analysis
-    const { data: actions } = await supabase
-      .from('tkg_actions')
-      .select('id, directive_text, action_type, status, generated_at, executed_at, execution_result, feedback_weight, skip_reason')
-      .eq('user_id', userId)
-      .gte('generated_at', thirtyDaysAgo)
-      .order('generated_at', { ascending: false })
-      .limit(100);
+    // Parallel data fetch for all analyses
+    const [actionsRes, commitmentsRes, signalsRes] = await Promise.all([
+      // All actions from last 30 days
+      supabase
+        .from('tkg_actions')
+        .select('id, directive_text, action_type, status, generated_at, executed_at, execution_result, skip_reason, outcome_closed')
+        .eq('user_id', userId)
+        .gte('generated_at', thirtyDaysAgo)
+        .order('generated_at', { ascending: false })
+        .limit(200),
+      // All commitments (active + done for follow-through comparison)
+      supabase
+        .from('tkg_commitments')
+        .select('id, description, status, created_at, due_at')
+        .eq('user_id', userId)
+        .gte('created_at', thirtyDaysAgo)
+        .order('created_at', { ascending: false })
+        .limit(200),
+      // All signals for velocity analysis (30 days)
+      supabase
+        .from('tkg_signals')
+        .select('id, occurred_at, source, type')
+        .eq('user_id', userId)
+        .gte('occurred_at', thirtyDaysAgo)
+        .order('occurred_at', { ascending: false })
+        .limit(500),
+    ]);
 
-    if (!actions || actions.length < 3) return patterns;
+    const actions = actionsRes.data ?? [];
+    const commitments = commitmentsRes.data ?? [];
+    const signals = signalsRes.data ?? [];
+
+    if (actions.length < 3 && commitments.length < 3 && signals.length < 5) return patterns;
 
     // -----------------------------------------------------------------------
-    // 1. REPEAT CYCLE: same topic surfaced 3+ times without approval
+    // 1. APPROVAL WITHOUT EXECUTION
+    //    status = approved/executed AND outcome_closed = false after 48 hours
+    //    Surface specific counts, names, and dates.
     // -----------------------------------------------------------------------
-    const topicClusters: Record<string, Array<{ text: string; status: string; date: string }>> = {};
+    const approvedStale: Array<{ text: string; type: string; date: string; id: string }> = [];
+    for (const a of actions) {
+      const status = a.status as string;
+      if (status !== 'executed') continue;
+      // Approved but outcome never closed, and it's been >48 hours
+      const executedAt = a.executed_at as string | null;
+      const generatedAt = a.generated_at as string;
+      const actionDate = executedAt || generatedAt;
+      if (actionDate > fortyEightHoursAgo) continue; // too recent
+      const outcomeClosed = a.outcome_closed as boolean | null;
+      if (outcomeClosed === true) continue; // properly closed
+      approvedStale.push({
+        text: (a.directive_text as string ?? '').slice(0, 120),
+        type: a.action_type as string,
+        date: actionDate.slice(0, 10),
+        id: a.id as string,
+      });
+    }
+
+    if (approvedStale.length >= 1) {
+      // Extract names from directive text
+      const nameMatches = approvedStale.flatMap(a => {
+        const words = a.text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g) ?? [];
+        return words.filter(w => !['Follow', 'Send', 'Draft', 'Reply', 'Email', 'Schedule', 'Research', 'Review', 'Write', 'Check'].includes(w.split(' ')[0]));
+      });
+      const uniqueNames = [...new Set(nameMatches)].slice(0, 5);
+      const nameStr = uniqueNames.length > 0 ? ` involving ${uniqueNames.join(', ')}` : '';
+
+      const dataConfidence = Math.min(1.0, approvedStale.length / 5); // 5+ items = full confidence
+      const surpriseValue = 0.8; // approving but not following through is surprising
+      patterns.push({
+        type: 'approval_without_execution',
+        title: `${approvedStale.length} approved action${approvedStale.length > 1 ? 's' : ''} with no confirmed outcome`,
+        insight: `You approved ${approvedStale.length} directive${approvedStale.length > 1 ? 's' : ''}${nameStr} but none have a confirmed outcome after 48+ hours. Either these executed and the system didn't detect it, or you approved with the intention to act but didn't. This is the gap between deciding and doing.`,
+        dataPoints: approvedStale.slice(0, 6).map(a => `[${a.date}] (${a.type}) ${a.text}`),
+        surpriseValue,
+        dataConfidence,
+        score: surpriseValue * dataConfidence,
+        suggestedActionType: 'make_decision',
+        mirrorQuestion: 'Is this true?',
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // 2. SKIP CLUSTERING
+    //    Group skipped actions by day_of_week × action_type.
+    //    Find behavioral signatures: "You skip all schedule directives on Mondays"
+    // -----------------------------------------------------------------------
+    const skipGrid: Record<string, { day: number; type: string; count: number; dates: string[]; reasons: string[] }> = {};
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    for (const a of actions) {
+      if (a.status !== 'skipped' && a.status !== 'draft_rejected') continue;
+      const day = new Date(a.generated_at as string).getDay();
+      const aType = a.action_type as string ?? 'unknown';
+      const key = `${day}:${aType}`;
+      if (!skipGrid[key]) skipGrid[key] = { day, type: aType, count: 0, dates: [], reasons: [] };
+      skipGrid[key].count++;
+      skipGrid[key].dates.push((a.generated_at as string).slice(0, 10));
+      if (a.skip_reason) skipGrid[key].reasons.push(a.skip_reason as string);
+    }
+
+    // Also compute total skips and approvals per action_type for baseline
+    const typeBaseline: Record<string, { skipped: number; total: number }> = {};
+    for (const a of actions) {
+      const aType = a.action_type as string ?? 'unknown';
+      if (!typeBaseline[aType]) typeBaseline[aType] = { skipped: 0, total: 0 };
+      typeBaseline[aType].total++;
+      if (a.status === 'skipped' || a.status === 'draft_rejected') typeBaseline[aType].skipped++;
+    }
+
+    for (const [, cluster] of Object.entries(skipGrid)) {
+      if (cluster.count < 3) continue; // need 3+ to be a real pattern
+      const baseline = typeBaseline[cluster.type];
+      if (!baseline || baseline.total < 5) continue;
+
+      // Is the skip rate on this day significantly higher than baseline?
+      const daySkipRate = cluster.count / Math.max(1, actions.filter(a => new Date(a.generated_at as string).getDay() === cluster.day).length);
+      const baselineSkipRate = baseline.skipped / baseline.total;
+      if (daySkipRate <= baselineSkipRate * 1.3) continue; // not significantly different
+
+      const reasonSummary = cluster.reasons.length > 0
+        ? ` Reasons given: ${[...new Set(cluster.reasons)].slice(0, 3).join(', ')}.`
+        : '';
+
+      const surpriseValue = Math.min(1.0, (daySkipRate - baselineSkipRate) * 2); // how far above baseline
+      const dataConfidence = Math.min(1.0, cluster.count / 5);
+      patterns.push({
+        type: 'skip_cluster',
+        title: `You skip ${cluster.type} directives on ${dayNames[cluster.day]}s`,
+        insight: `${cluster.count} ${cluster.type} directives skipped on ${dayNames[cluster.day]}s (${Math.round(daySkipRate * 100)}% skip rate vs ${Math.round(baselineSkipRate * 100)}% overall).${reasonSummary} ${dayNames[cluster.day]}s might not be the right day for ${cluster.type} actions.`,
+        dataPoints: cluster.dates.slice(0, 5).map(d => `[${d}] ${cluster.type} skipped on ${dayNames[cluster.day]}`),
+        surpriseValue,
+        dataConfidence,
+        score: surpriseValue * dataConfidence,
+        suggestedActionType: 'do_nothing',
+        mirrorQuestion: 'Is this true?',
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // 3. COMMITMENT DECAY
+    //    Compare tkg_commitments created vs tkg_actions executed.
+    //    Calculate real follow-through rate.
+    // -----------------------------------------------------------------------
+    if (commitments.length >= 3) {
+      const totalCommitments = commitments.length;
+      const doneCommitments = commitments.filter(c => (c.status as string) === 'done').length;
+      const activeCommitments = commitments.filter(c => (c.status as string) === 'active' || (c.status as string) === 'at_risk').length;
+      const overdueCommitments = commitments.filter(c => {
+        const due = c.due_at as string | null;
+        return due && new Date(due) < new Date() && (c.status as string) !== 'done';
+      });
+
+      // Count actions that actually executed
+      const executedActions = actions.filter(a => (a.status as string) === 'executed').length;
+
+      const followThroughRate = totalCommitments > 0 ? doneCommitments / totalCommitments : 0;
+      const executionRatio = totalCommitments > 0 ? executedActions / totalCommitments : 0;
+
+      // Only surface if follow-through is concerning
+      if (followThroughRate < 0.5 && totalCommitments >= 5) {
+        const overdueNames = overdueCommitments.slice(0, 3).map(c => {
+          const desc = (c.description as string).slice(0, 80);
+          const due = (c.due_at as string).slice(0, 10);
+          return `"${desc}" (due ${due})`;
+        });
+
+        const surpriseValue = Math.min(1.0, (1 - followThroughRate) * 0.8); // worse rate = more surprising
+        const dataConfidence = Math.min(1.0, totalCommitments / 10);
+        patterns.push({
+          type: 'commitment_decay',
+          title: `${Math.round(followThroughRate * 100)}% follow-through on commitments (${doneCommitments}/${totalCommitments})`,
+          insight: `In the last 30 days: ${totalCommitments} commitments created, ${doneCommitments} completed, ${activeCommitments} still open, ${overdueCommitments.length} overdue. The system generated ${executedActions} executed actions against those commitments. ${overdueCommitments.length > 0 ? `Overdue: ${overdueNames.join('; ')}.` : ''} Either the commitments are too ambitious, or something is blocking execution.`,
+          dataPoints: [
+            `Commitments created: ${totalCommitments}`,
+            `Completed: ${doneCommitments} (${Math.round(followThroughRate * 100)}%)`,
+            `Still active: ${activeCommitments}`,
+            `Overdue: ${overdueCommitments.length}`,
+            `Actions executed: ${executedActions}`,
+            `Execution-to-commitment ratio: ${executionRatio.toFixed(1)}:1`,
+          ],
+          surpriseValue,
+          dataConfidence,
+          score: surpriseValue * dataConfidence,
+          suggestedActionType: 'make_decision',
+          mirrorQuestion: 'Is this true?',
+        });
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // 4. SIGNAL VELOCITY
+    //    Signals-per-hour over rolling windows.
+    //    Spikes above 2 std dev from baseline → "stop and look."
+    // -----------------------------------------------------------------------
+    if (signals.length >= 10) {
+      // Bucket signals into 6-hour windows over the last 30 days
+      const windowMs = 6 * 60 * 60 * 1000; // 6 hours
+      const buckets: Record<number, { count: number; sources: Set<string> }> = {};
+
+      for (const s of signals) {
+        const t = new Date(s.occurred_at as string).getTime();
+        const bucket = Math.floor(t / windowMs);
+        if (!buckets[bucket]) buckets[bucket] = { count: 0, sources: new Set() };
+        buckets[bucket].count++;
+        buckets[bucket].sources.add(s.source as string ?? 'unknown');
+      }
+
+      const counts = Object.values(buckets).map(b => b.count);
+      if (counts.length >= 4) {
+        const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+        const variance = counts.reduce((sum, c) => sum + (c - mean) ** 2, 0) / counts.length;
+        const stdDev = Math.sqrt(variance);
+        const spikeThreshold = mean + 2 * stdDev;
+
+        // Find spike windows
+        const spikes: Array<{ bucket: number; count: number; sources: string[] }> = [];
+        for (const [bucketStr, data] of Object.entries(buckets)) {
+          if (data.count > spikeThreshold && spikeThreshold > mean) {
+            spikes.push({
+              bucket: parseInt(bucketStr),
+              count: data.count,
+              sources: [...data.sources],
+            });
+          }
+        }
+
+        // Only report the most recent spike
+        if (spikes.length > 0) {
+          spikes.sort((a, b) => b.bucket - a.bucket);
+          const latest = spikes[0];
+          const spikeDate = new Date(latest.bucket * windowMs);
+          const spikeDateStr = spikeDate.toISOString().slice(0, 16).replace('T', ' ');
+
+          const surpriseValue = Math.min(1.0, (latest.count - mean) / (stdDev * 3)); // how many std devs above
+          const dataConfidence = Math.min(1.0, counts.length / 20); // more windows = more confident
+          patterns.push({
+            type: 'signal_velocity',
+            title: `Signal spike: ${latest.count} signals in 6 hours (baseline: ${mean.toFixed(1)})`,
+            insight: `Around ${spikeDateStr}, ${latest.count} signals arrived in a single 6-hour window — ${(latest.count / mean).toFixed(1)}x the baseline of ${mean.toFixed(1)} per window (2+ standard deviations above normal). Sources: ${latest.sources.join(', ')}. ${spikes.length > 1 ? `${spikes.length} total spike windows detected in 30 days.` : 'This is the only spike in 30 days.'} Something happened that generated unusual activity.`,
+            dataPoints: [
+              `Spike: ${latest.count} signals at ${spikeDateStr}`,
+              `Baseline: ${mean.toFixed(1)} signals per 6-hour window`,
+              `Std dev: ${stdDev.toFixed(1)}`,
+              `Threshold (2σ): ${spikeThreshold.toFixed(1)}`,
+              `Sources: ${latest.sources.join(', ')}`,
+              `Total spikes in 30 days: ${spikes.length}`,
+            ],
+            surpriseValue,
+            dataConfidence,
+            score: surpriseValue * dataConfidence,
+            suggestedActionType: 'research',
+            mirrorQuestion: 'Is this true?',
+          });
+        }
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // 5. REPETITION SUPPRESSION
+    //    Same loop generated 3+ times AND skipped each time.
+    //    Suppress it and surface the meta-pattern.
+    // -----------------------------------------------------------------------
+    const topicClusters: Record<string, Array<{ text: string; status: string; date: string; reason: string | null }>> = {};
     for (const a of actions) {
       const text = (a.directive_text as string ?? '').toLowerCase();
       const keywords = text.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length >= 5);
-      // Group by dominant keyword pair
       const keyPair = keywords.slice(0, 3).sort().join('+');
       if (!keyPair) continue;
       if (!topicClusters[keyPair]) topicClusters[keyPair] = [];
@@ -348,105 +604,35 @@ export async function detectEmergentPatterns(userId: string): Promise<EmergentPa
         text: a.directive_text as string ?? '',
         status: a.status as string ?? '',
         date: (a.generated_at as string ?? '').slice(0, 10),
+        reason: a.skip_reason as string | null,
       });
     }
 
-    for (const [topic, items] of Object.entries(topicClusters)) {
-      const pending = items.filter(i => i.status === 'pending_approval');
-      if (pending.length >= 3) {
-        const approvedCount = items.filter(i => i.status === 'executed').length;
-        patterns.push({
-          type: 'repeat_cycle',
-          title: `Repeating directive: "${pending[0].text.slice(0, 60)}"`,
-          insight: `This topic has been generated ${pending.length} times without action (${approvedCount} ever approved). The system keeps suggesting it but you haven't engaged. Either approve one version, skip it to teach the system, or the underlying situation needs a different approach.`,
-          dataPoints: pending.map(p => `[${p.date}] ${p.text.slice(0, 100)}`),
-          score: 3.0 + (pending.length * 0.3), // high score — this IS the problem
-          suggestedActionType: 'make_decision',
-        });
-      }
-    }
+    for (const [, items] of Object.entries(topicClusters)) {
+      const skipped = items.filter(i => i.status === 'skipped' || i.status === 'draft_rejected');
+      if (skipped.length < 3) continue;
+      const approved = items.filter(i => i.status === 'executed');
+      // If it's been approved at least once recently, skip this pattern
+      if (approved.length > 0) continue;
 
-    // -----------------------------------------------------------------------
-    // 2. APPROVAL WITHOUT EXECUTION: approved but artifact never executed
-    // -----------------------------------------------------------------------
-    const approvedNoExec: string[] = [];
-    for (const a of actions) {
-      if (a.status !== 'executed') continue;
-      const execResult = (a.execution_result as Record<string, unknown>) ?? {};
-      const artifact = execResult.artifact as Record<string, unknown> | undefined;
-      if (!artifact) continue;
+      const reasons = [...new Set(skipped.map(s => s.reason).filter(Boolean))];
+      const reasonStr = reasons.length > 0
+        ? ` Your skip reasons: "${reasons.slice(0, 3).join('", "')}".`
+        : ' No skip reason was given any of those times.';
 
-      const type = (artifact.type as string) ?? '';
-      if (type === 'email') {
-        // Check if email was actually sent
-        if (!execResult.sent && !execResult.sent_at) {
-          approvedNoExec.push(`[${(a.generated_at as string ?? '').slice(0, 10)}] ${(a.directive_text as string ?? '').slice(0, 100)}`);
-        }
-      }
-    }
-
-    if (approvedNoExec.length >= 2) {
+      const surpriseValue = 0.9; // repeated failure to engage is very surprising
+      const dataConfidence = Math.min(1.0, skipped.length / 4);
       patterns.push({
-        type: 'approval_without_execution',
-        title: `${approvedNoExec.length} approved directives may not have executed`,
-        insight: `You approved ${approvedNoExec.length} email directives but the system couldn't confirm they were sent. This could mean emails aren't reaching recipients, or the send integration needs attention.`,
-        dataPoints: approvedNoExec.slice(0, 5),
-        score: 3.5,
-        suggestedActionType: 'research',
+        type: 'repetition_suppression',
+        title: `Suggested ${skipped.length} times, skipped every time`,
+        insight: `"${skipped[0].text.slice(0, 80)}" has been generated ${skipped.length} times between ${skipped[skipped.length - 1].date} and ${skipped[0].date}. You skipped it every time.${reasonStr} The system will suppress this topic. But first: is this something you actually want to do but something is blocking it? Or is this genuinely not relevant?`,
+        dataPoints: skipped.slice(0, 5).map(s => `[${s.date}] Skipped${s.reason ? ` (${s.reason})` : ''}: "${s.text.slice(0, 80)}"`),
+        surpriseValue,
+        dataConfidence,
+        score: surpriseValue * dataConfidence,
+        suggestedActionType: 'make_decision',
+        mirrorQuestion: 'Is this true?',
       });
-    }
-
-    // -----------------------------------------------------------------------
-    // 3. COMMITMENT DECAY: high skip rate on specific action types
-    // -----------------------------------------------------------------------
-    const typeStats: Record<string, { total: number; skipped: number; approved: number }> = {};
-    for (const a of actions) {
-      const aType = a.action_type as string ?? 'unknown';
-      if (!typeStats[aType]) typeStats[aType] = { total: 0, skipped: 0, approved: 0 };
-      typeStats[aType].total++;
-      if (a.status === 'skipped' || a.status === 'draft_rejected') typeStats[aType].skipped++;
-      if (a.status === 'executed') typeStats[aType].approved++;
-    }
-
-    for (const [aType, stats] of Object.entries(typeStats)) {
-      if (stats.total >= 5 && stats.skipped / stats.total > 0.7) {
-        patterns.push({
-          type: 'commitment_decay',
-          title: `${aType} directives are being ignored (${Math.round(stats.skipped / stats.total * 100)}% skip rate)`,
-          insight: `Of ${stats.total} ${aType} directives in the last 30 days, ${stats.skipped} were skipped and only ${stats.approved} approved. The system should generate fewer ${aType} actions or approach them differently.`,
-          dataPoints: [`Total: ${stats.total}`, `Approved: ${stats.approved}`, `Skipped: ${stats.skipped}`, `Skip rate: ${Math.round(stats.skipped / stats.total * 100)}%`],
-          score: 2.5,
-          suggestedActionType: 'do_nothing',
-        });
-      }
-    }
-
-    // -----------------------------------------------------------------------
-    // 4. TEMPORAL CLUSTER: day-of-week behavioral patterns
-    // -----------------------------------------------------------------------
-    const dayOfWeekApprovals: Record<number, number> = {};
-    const dayOfWeekSkips: Record<number, number> = {};
-    for (const a of actions) {
-      const day = new Date(a.generated_at as string).getDay();
-      if (a.status === 'executed') dayOfWeekApprovals[day] = (dayOfWeekApprovals[day] ?? 0) + 1;
-      if (a.status === 'skipped' || a.status === 'draft_rejected') dayOfWeekSkips[day] = (dayOfWeekSkips[day] ?? 0) + 1;
-    }
-
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    for (let day = 0; day < 7; day++) {
-      const approvals = dayOfWeekApprovals[day] ?? 0;
-      const skips = dayOfWeekSkips[day] ?? 0;
-      const total = approvals + skips;
-      if (total >= 3 && approvals > 0 && approvals / total > 0.7) {
-        patterns.push({
-          type: 'temporal_cluster',
-          title: `You're most receptive on ${dayNames[day]}s`,
-          insight: `${dayNames[day]}s have a ${Math.round(approvals / total * 100)}% approval rate (${approvals}/${total}). Consider scheduling high-stakes directives for ${dayNames[day]}s.`,
-          dataPoints: [`${dayNames[day]}: ${approvals} approved, ${skips} skipped of ${total} total`],
-          score: 1.5, // informational, doesn't compete with urgent items
-          suggestedActionType: 'do_nothing',
-        });
-      }
     }
   } catch (err) {
     console.warn('[scorer] detectEmergentPatterns error:', err instanceof Error ? err.message : err);
@@ -607,18 +793,26 @@ export async function scoreOpenLoops(userId: string): Promise<ScoredLoop | null>
 
   if (candidates.length === 0) {
     // Even with no candidates, check emergent patterns
-    const emergent = await detectEmergentPatterns(userId);
-    if (emergent.length > 0) {
-      const ep = emergent[0];
+    const emergentFallback = await detectEmergentPatterns(userId);
+    if (emergentFallback.length > 0) {
+      const ep = emergentFallback[0];
+      const mirrorContent = [
+        ep.insight,
+        '',
+        'Evidence:',
+        ...ep.dataPoints,
+        '',
+        ep.mirrorQuestion,
+      ].join('\n');
       return {
         id: 'emergent-0',
         type: 'emergent',
         title: ep.title,
-        content: `${ep.insight}\n\nData:\n${ep.dataPoints.join('\n')}`,
+        content: mirrorContent,
         suggestedActionType: ep.suggestedActionType,
         matchedGoal: null,
-        score: ep.score,
-        breakdown: { stakes: ep.score, urgency: 1.0, tractability: 1.0, freshness: 1.0 },
+        score: ep.surpriseValue * ep.dataConfidence,
+        breakdown: { stakes: ep.surpriseValue, urgency: ep.dataConfidence, tractability: 1.0, freshness: 1.0 },
         relatedSignals: [],
       };
     }
@@ -671,22 +865,42 @@ export async function scoreOpenLoops(userId: string): Promise<ScoredLoop | null>
   }
 
   // -----------------------------------------------------------------------
-  // Check emergent patterns — if one scores higher, it wins
+  // Check emergent patterns — wins when surprise_value * data_confidence > top loop EV
   // -----------------------------------------------------------------------
 
+  const topLoopEV = scored.length > 0 ? scored[0].score : 0;
   const emergent = await detectEmergentPatterns(userId);
   for (const ep of emergent) {
-    scored.push({
-      id: `emergent-${ep.type}`,
-      type: 'emergent',
-      title: ep.title,
-      content: `${ep.insight}\n\nData:\n${ep.dataPoints.join('\n')}`,
-      suggestedActionType: ep.suggestedActionType,
-      matchedGoal: null,
-      score: ep.score,
-      breakdown: { stakes: ep.score, urgency: 1.0, tractability: 1.0, freshness: 1.0 },
-      relatedSignals: [],
-    });
+    const emergentEV = ep.surpriseValue * ep.dataConfidence;
+    // Emergent pattern must beat the top open loop to compete
+    if (emergentEV > topLoopEV || scored.length === 0) {
+      // Build mirror content: specific data + "Is this true?"
+      const mirrorContent = [
+        ep.insight,
+        '',
+        'Evidence:',
+        ...ep.dataPoints,
+        '',
+        ep.mirrorQuestion,
+      ].join('\n');
+
+      scored.push({
+        id: `emergent-${ep.type}`,
+        type: 'emergent',
+        title: ep.title,
+        content: mirrorContent,
+        suggestedActionType: ep.suggestedActionType,
+        matchedGoal: null,
+        score: emergentEV + 0.01, // tiny bump to ensure it wins over the loop it beat
+        breakdown: {
+          stakes: ep.surpriseValue,
+          urgency: ep.dataConfidence,
+          tractability: 1.0,
+          freshness: 1.0,
+        },
+        relatedSignals: [],
+      });
+    }
   }
 
   // Sort by score descending
