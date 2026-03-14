@@ -48,6 +48,9 @@ RULES:
 - For decision: pre-fill every option with specifics from the signal data. "Leave in 60 days targeting $X+" not "Option A: leave."
 - For wait_rationale: cite a SPECIFIC prior outcome with date and result.
 
+LONG-TERM MEMORY (weekly summaries of past signals — use for context, patterns, and relationship history):
+{MEMORY_SECTION}
+
 ALREADY APPROVED (do not repeat):
 {APPROVED_SECTION}
 
@@ -139,7 +142,7 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
   const supabase = createServerClient();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [approvedRecentRes, skippedRecentRes] = await Promise.all([
+  const [approvedRecentRes, skippedRecentRes, signalSummariesRes] = await Promise.all([
     supabase
       .from('tkg_actions')
       .select('directive_text, action_type')
@@ -156,6 +159,12 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       .gte('generated_at', sevenDaysAgo)
       .order('generated_at', { ascending: false })
       .limit(10),
+    supabase
+      .from('signal_summaries')
+      .select('week_start, signal_count, summary, emotional_tone, themes, people')
+      .eq('user_id', userId)
+      .order('week_start', { ascending: false })
+      .limit(12),
   ]);
 
   const approvedSection = (approvedRecentRes.data ?? []).length > 0
@@ -169,11 +178,20 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       }).join('\n')
     : '  None.';
 
+  const memorySection = (signalSummariesRes.data ?? []).length > 0
+    ? (signalSummariesRes.data ?? []).map((s: any) => {
+        const themes = Array.isArray(s.themes) && s.themes.length > 0 ? ` Themes: ${s.themes.join(', ')}.` : '';
+        const people = Array.isArray(s.people) && s.people.length > 0 ? ` People: ${s.people.join(', ')}.` : '';
+        return `  - ${s.summary}${themes}${people}`;
+      }).join('\n')
+    : '  No long-term memory yet.';
+
   // -----------------------------------------------------------------------
   // 3. BUILD FOCUSED PROMPT
   // -----------------------------------------------------------------------
 
   const systemPrompt = FOCUSED_SYSTEM
+    .replace('{MEMORY_SECTION}', memorySection)
     .replace('{APPROVED_SECTION}', approvedSection)
     .replace('{SKIPPED_SECTION}', skippedSection);
 
