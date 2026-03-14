@@ -1,14 +1,12 @@
 /**
- * generate-briefing.mjs — Conviction engine + feedback learning, standalone runner.
+ * generate-briefing.mjs — Scorer-first conviction engine, standalone runner.
  *
- * Generates the single highest-leverage directive for today.
- * Reads:  tkg_signals, tkg_commitments, tkg_entities, tkg_goals, tkg_actions (feedback)
- * Writes: tkg_actions (status=pending_approval), tkg_briefings
+ * Flow:
+ *   1. Score all open loops (commitments, signals, relationships) with math
+ *   2. Pass ONLY the winning loop + context to Claude
+ *   3. Claude writes the artifact — it does NOT choose what to work on
  *
- * Feedback learning:
- *   - Queries all tkg_actions rows where feedback_weight IS NOT NULL
- *   - Injects penalize/boost section into Claude prompt
- *   - Prints before/after comparison so you can see whether learning shifted the directive
+ * Usage: node scripts/generate-briefing.mjs
  */
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
@@ -26,7 +24,6 @@ function loadEnv(filePath) {
     if (eq === -1) continue;
     const key = trimmed.slice(0, eq).trim();
     let val = trimmed.slice(eq + 1).trim();
-    // Strip surrounding quotes (single or double)
     if ((val.startsWith('"') && val.endsWith('"')) ||
         (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
@@ -54,13 +51,13 @@ const supabase  = createClient(
 );
 
 // ---------------------------------------------------------------------------
-// Decrypt signal content (AES-256-GCM — matches lib/encryption.ts)
+// Decrypt (AES-256-GCM — matches lib/encryption.ts)
 // ---------------------------------------------------------------------------
 
 function decrypt(ciphertext) {
   if (!ciphertext || typeof ciphertext !== 'string') return ciphertext ?? '';
   const key = process.env.ENCRYPTION_KEY;
-  if (!key) return ciphertext; // no key → assume plaintext (dev env)
+  if (!key) return ciphertext;
   try {
     const buf     = Buffer.from(ciphertext, 'base64');
     const iv      = buf.subarray(0, 12);
@@ -71,299 +68,342 @@ function decrypt(ciphertext) {
     decipher.setAuthTag(authTag);
     return decipher.update(data, undefined, 'utf8') + decipher.final('utf8');
   } catch {
-    return ciphertext; // pre-migration row — pass through as-is
+    return ciphertext;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Chief-of-Staff system prompt — synced with lib/briefing/generator.ts
+// Scorer — deterministic open-loop ranker (mirrors lib/briefing/scorer.ts)
 // ---------------------------------------------------------------------------
 
-const CONVICTION_SYSTEM = `You are a chief of staff who knows everything about this person. You have their goals, behavioral patterns, commitments, approval/skip history, and current signals.
+const STOPWORDS = new Set([
+  'that', 'this', 'with', 'from', 'into', 'through', 'about', 'after',
+  'before', 'during', 'between', 'under', 'over', 'have', 'been', 'will',
+  'would', 'should', 'could', 'their', 'them', 'they', 'than', 'then',
+  'when', 'what', 'which', 'where', 'while', 'also', 'each', 'only',
+  'other', 'some', 'such', 'more', 'most', 'very', 'just', 'does',
+]);
 
-Your job is NOT to summarize. Your job is to find the ONE thing they should do today that they haven't thought of yet.
+function goalKeywords(goalText) {
+  return goalText
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length >= 4 && !STOPWORDS.has(w));
+}
 
-GROUNDING REQUIREMENT — non-negotiable before generating:
-- You MUST be able to trace every directive to a SPECIFIC signal, pattern, or goal in the data below. Not a category. Not a theme. A named entry.
-- The directive MUST name a real person, a real commitment, a real email thread subject, or a real decision from tkg_signals. No generic observations.
-- If you cannot find a high-stakes open loop in the data — a thread that will get worse if left another 24h, a commitment past due, a relationship cooling, a decision with a live deadline — then the directive MUST be "do_nothing" with a rationale that cites specific prior outcomes where inaction was the correct call.
-- Life-coaching output is a failure. "Prioritize your wellbeing" or "reflect on your goals" with no specific named situation in the data = do_nothing.
+function matchGoal(text, goals) {
+  const lower = text.toLowerCase();
+  let best = null;
+  for (const g of goals) {
+    const kws = goalKeywords(g.goal_text);
+    const matched = kws.filter(kw => lower.includes(kw));
+    if (matched.length >= 2 || (matched.length === 1 && kws.length <= 3)) {
+      if (!best || g.priority > best.priority) {
+        best = { text: g.goal_text, priority: g.priority, category: g.goal_category };
+      }
+    }
+  }
+  return best;
+}
 
-Rules:
-- NEVER repeat a directive the user already approved. If they approved "wait on MAS3" yesterday, find the next thing.
-- NEVER produce a directive the user obviously knows. "Be present with family" is a greeting card, not insight.
-- Every directive MUST include a concrete artifact: drafted email, specific task with deadline, document to review, decision with two options. No artifact = not a directive.
-- The artifact must be COMPLETE. No checkboxes. No blanks. No "[Choose one]". No "[Add details here]". If you cannot complete it from the data available, use do_nothing instead.
-- Confidence score reflects SPECIFICITY not CERTAINTY. Vague but true = 30%. Specific with evidence = 85%+.
-- Scan ALL data sources not just the loudest signal. Check: approaching deadlines, unanswered threads, commitments not acted on, patterns predicting failure, calendar gaps, financial triggers, relationship maintenance.
-- Before outputting, test: "Would a $200/hr chief of staff say this or be embarrassed?" If embarrassed, go deeper.
-- When the strategic answer is "do nothing today," surface a DIFFERENT domain. Career quiet? Surface family, financial, health, or project task. Never go dark because one thread paused.
+function deadlineUrgency(dueAt, impliedDueAt) {
+  const deadline = dueAt || impliedDueAt;
+  if (!deadline) return 0.3;
+  const daysUntilDue = (new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+  if (daysUntilDue < 0) return 1.0;
+  return 1 / (1 + Math.exp(3 * (daysUntilDue - 2)));
+}
 
-SPECIFICITY RULES — non-negotiable:
-- Mine the RECENT SIGNALS below for real names, real email addresses, real subject lines, real company names, real dates. They are there. Find them.
-- The artifact MUST use the actual data you found. If a signal contains "from: sarah@acme.com re: Q2 proposal" → the drafted email goes to sarah@acme.com with that subject context.
-- NEVER use placeholders in artifacts: [Name], [email@example.com], [Contact], [Person], [Company], [Date]. A placeholder means the artifact is not executable and fails the one-tap test.
-- The one-tap test: Could Brandon approve this right now and have it work — no editing required? If no, rewrite it.
-- For wait_rationale: you MUST cite a SPECIFIC prior outcome from the signals or outcomes where waiting resolved favorably. Name the situation, the approximate date, the result. "Waiting has worked before" is not evidence.
-- For drafted_email: the "to" field must be a real email address extracted from the signals. If no email address is visible in the signals, use a decision artifact instead — do not draft an email to a placeholder.
-- For document artifacts: the document must be COMPLETE with real values extracted from the signal data. FORBIDDEN in any document artifact: "$______", "__ weeks", "__/__/2026", "[fill in]", "TBD", "[date]", "[amount]", "N/A", or any other blank/placeholder. If the document would require a number or date that is NOT explicitly stated in the signal data below, you MUST use a decision artifact instead. A decision frame can be completed from situational context alone. A document template with blanks is not a finished artifact — it is homework you are assigning to the user, which violates the zero-lift promise.
-- For decision artifacts: pre-fill every option with the specific situation from signals. "Leave in 60 days and target roles at $X+" not "Option A: leave." Options must be actionable right now.
+function relationshipUrgency(daysSinceContact) {
+  return 1 / (1 + Math.exp(-0.5 * (daysSinceContact - 10)));
+}
 
-If you cannot cite a specific signal or pattern by name in your directive, do not generate. Return action_type: do_nothing instead.
+function signalUrgency(occurredAt) {
+  const daysSince = (Date.now() - new Date(occurredAt).getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSince <= 1) return 0.9;
+  if (daysSince <= 3) return 0.6;
+  return 0.3;
+}
 
-Output JSON only — no prose outside the JSON:
+function inferActionType(text, loopType) {
+  if (loopType === 'relationship') return 'send_message';
+  const lower = text.toLowerCase();
+  if (/\b(email|reply|respond|send|follow.?up|reach out|contact)\b/.test(lower)) return 'send_message';
+  if (/\b(decide|decision|choose|option|weigh)\b/.test(lower)) return 'make_decision';
+  if (/\b(schedule|calendar|meeting|call|appointment)\b/.test(lower)) return 'schedule';
+  if (/\b(research|investigate|look into|find out)\b/.test(lower)) return 'research';
+  if (/\b(wait|hold|pause|defer|delay)\b/.test(lower)) return 'do_nothing';
+  return 'make_decision';
+}
+
+function inferDomain(matchedGoal, text) {
+  if (matchedGoal) return matchedGoal.category;
+  const lower = text.toLowerCase();
+  if (/\b(salary|money|financial|income|runway|payment|budget)\b/.test(lower)) return 'financial';
+  if (/\b(job|career|role|application|interview|hire|position)\b/.test(lower)) return 'career';
+  if (/\b(family|wife|children|baby|pregnancy|health)\b/.test(lower)) return 'family';
+  if (/\b(foldera|build|code|deploy|feature|bug)\b/.test(lower)) return 'project';
+  return 'career';
+}
+
+async function scoreOpenLoops() {
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [commitmentsRes, signalsRes, entitiesRes, goalsRes] = await Promise.all([
+    supabase.from('tkg_commitments')
+      .select('id, description, category, status, risk_score, due_at, implied_due_at, source_context, updated_at')
+      .eq('user_id', USER_ID).in('status', ['active', 'at_risk'])
+      .order('risk_score', { ascending: false }).limit(50),
+    supabase.from('tkg_signals')
+      .select('id, content, source, occurred_at, author, type')
+      .eq('user_id', USER_ID).gte('occurred_at', sevenDaysAgo).eq('processed', true)
+      .order('occurred_at', { ascending: false }).limit(30),
+    supabase.from('tkg_entities')
+      .select('id, name, last_interaction, total_interactions, patterns')
+      .eq('user_id', USER_ID).neq('name', 'self')
+      .lt('last_interaction', fourteenDaysAgo)
+      .order('last_interaction', { ascending: true }).limit(10),
+    supabase.from('tkg_goals')
+      .select('goal_text, priority, goal_category')
+      .eq('user_id', USER_ID).gte('priority', 3)
+      .order('priority', { ascending: false }).limit(10),
+  ]);
+
+  const commitments = commitmentsRes.data ?? [];
+  const signals = (signalsRes.data ?? []).map(s => ({ ...s, content: decrypt(s.content ?? '') }));
+  const entities = entitiesRes.data ?? [];
+  const goals = goalsRes.data ?? [];
+
+  // Fetch all recent signals for context enrichment
+  const { data: allRecentSignals } = await supabase.from('tkg_signals')
+    .select('content, source, occurred_at').eq('user_id', USER_ID)
+    .gte('occurred_at', fourteenDaysAgo).eq('processed', true)
+    .order('occurred_at', { ascending: false }).limit(50);
+  const decryptedSignals = (allRecentSignals ?? []).map(s => decrypt(s.content ?? ''));
+
+  // Build candidates
+  const candidates = [];
+
+  for (const c of commitments) {
+    const text = `${c.description}${c.source_context ? ' — ' + c.source_context : ''}`;
+    const mg = matchGoal(text, goals);
+    candidates.push({
+      id: c.id, type: 'commitment', title: c.description, content: text,
+      actionType: inferActionType(text, 'commitment'),
+      urgency: deadlineUrgency(c.due_at, c.implied_due_at),
+      matchedGoal: mg, domain: inferDomain(mg, text),
+    });
+  }
+
+  for (const s of signals) {
+    const text = String(s.content ?? '');
+    if (text.length < 20) continue;
+    const mg = matchGoal(text, goals);
+    candidates.push({
+      id: s.id, type: 'signal', title: text.slice(0, 120), content: text,
+      actionType: inferActionType(text, 'signal'),
+      urgency: signalUrgency(s.occurred_at),
+      matchedGoal: mg, domain: inferDomain(mg, text),
+    });
+  }
+
+  for (const e of entities) {
+    const daysSince = Math.floor((Date.now() - new Date(e.last_interaction).getTime()) / (1000 * 60 * 60 * 24));
+    const text = `${e.name}: last contact ${daysSince} days ago, ${e.total_interactions} total interactions`;
+    const mg = matchGoal(text, goals);
+    candidates.push({
+      id: e.id, type: 'relationship', title: `Follow up with ${e.name}`, content: text,
+      actionType: 'send_message',
+      urgency: relationshipUrgency(daysSince),
+      matchedGoal: mg, domain: inferDomain(mg, text),
+    });
+  }
+
+  if (candidates.length === 0) return null;
+
+  // Score and rank
+  const scored = [];
+  for (const c of candidates) {
+    const stakes = c.matchedGoal ? c.matchedGoal.priority : 1.0;
+
+    // Tractability from tkg_pattern_metrics
+    let tractability = 0.5;
+    try {
+      const { data: pm } = await supabase.from('tkg_pattern_metrics')
+        .select('total_activations, successful_outcomes')
+        .eq('user_id', USER_ID).eq('pattern_hash', `${c.actionType}:${c.domain}`)
+        .maybeSingle();
+      if (pm) {
+        tractability = Math.max(0.1, (pm.successful_outcomes + 1) / (pm.total_activations + 2));
+      }
+    } catch { /* use default */ }
+
+    const score = stakes * c.urgency * tractability;
+
+    // Related signals by keyword overlap
+    const loopWords = new Set(
+      c.content.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 5)
+    );
+    const related = decryptedSignals
+      .filter(sig => {
+        const sigWords = sig.toLowerCase().split(/\s+/);
+        return sigWords.filter(w => loopWords.has(w)).length >= 3;
+      })
+      .slice(0, 5);
+
+    scored.push({
+      id: c.id, type: c.type, title: c.title, content: c.content,
+      suggestedActionType: c.actionType,
+      matchedGoal: c.matchedGoal, score,
+      breakdown: { stakes, urgency: c.urgency, tractability },
+      relatedSignals: related,
+    });
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+
+  // Print top 5
+  console.log('\n[scorer] Top 5 candidates:');
+  for (const s of scored.slice(0, 5)) {
+    console.log(
+      `  ${s.score.toFixed(2)} = ${s.breakdown.stakes}S * ${s.breakdown.urgency.toFixed(2)}U * ${s.breakdown.tractability.toFixed(2)}T | [${s.type}] ${s.title.slice(0, 80)}`
+    );
+  }
+
+  return scored[0] ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// System prompt — focused
+// ---------------------------------------------------------------------------
+
+const FOCUSED_SYSTEM = `You are drafting ONE artifact for ONE specific situation. The situation has already been selected by a scoring algorithm. Your job is to write the artifact using the real names, dates, and details from the data below.
+
+Do not choose what to work on. That decision is already made.
+
+RULES:
+- Use REAL names, email addresses, dates, and details from the SIGNAL DATA below. They are there.
+- NEVER use placeholders: [Name], [email@example.com], [Company], [Date], TBD, $____. If you cannot find a specific value in the data, use a decision artifact instead.
+- The one-tap test: Could the user approve this right now with zero editing? If no, rewrite.
+- For drafted_email: "to" must be a real email address from the signals. No email visible? Use decision artifact instead.
+- For document: every value must be filled from the data. Any blank = use decision artifact instead.
+- For decision: pre-fill every option with specifics from the signal data. "Leave in 60 days targeting $X+" not "Option A: leave."
+- For wait_rationale: cite a SPECIFIC prior outcome with date and result.
+
+Output JSON only:
 {
-  "directive": "one sentence imperative",
+  "directive": "one sentence imperative naming a specific person or commitment",
   "artifact_type": "drafted_email | document | decision | calendar_event | research_brief | wait_rationale",
-  "artifact": <the actual finished work product as a JSON object — for drafted_email: {"to":"real@email.com","subject":"exact subject","body":"full email body"}, for document: {"title":"...","content":"..."}, for calendar_event: {"title":"...","start":"ISO8601","end":"ISO8601","description":"..."}, for research_brief: {"findings":"...","sources":[],"recommended_action":"..."}, for decision: {"options":[{"option":"...","weight":0.0,"rationale":"..."}],"recommendation":"..."}, for wait_rationale: {"context":"specific situation from signals","evidence":"specific prior outcome with date and result"}>,
-  "confidence": 0,
-  "evidence": "one sentence citing specific data — name the person, date, or thread",
+  "artifact": <the finished work product as JSON>,
+  "evidence": "one sentence citing specific data from below",
   "domain": "career | family | financial | health | project",
   "why_now": "one sentence why today"
 }`;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+const ACTION_TYPE_HINTS = {
+  send_message:   'drafted_email',
+  write_document: 'document',
+  make_decision:  'decision',
+  schedule:       'calendar_event',
+  research:       'research_brief',
+  do_nothing:     'wait_rationale',
+};
 
-function buildFeedbackSection(rows) {
-  if (!rows || rows.length === 0) return '';
-
-  const positive = rows.filter(r => (r.feedback_weight ?? 0) > 0);
-  const negative = rows.filter(r => (r.feedback_weight ?? 0) < 0);
-
-  const netByType = {};
-  for (const r of rows) {
-    netByType[r.action_type] = (netByType[r.action_type] ?? 0) + (r.feedback_weight ?? 0);
-  }
-
-  const netLines = Object.entries(netByType)
-    .sort((a, b) => b[1] - a[1])
-    .map(([type, weight]) => `  • ${type}: ${weight > 0 ? '+' : ''}${weight.toFixed(1)}`)
-    .join('\n');
-
-  const positiveLines = positive
-    .slice(0, 5)
-    .map(r => `  • [${r.action_type}] "${r.directive_text.slice(0, 120)}" — ${r.reason.slice(0, 100)} (weight: +${r.feedback_weight})`)
-    .join('\n');
-
-  const negativeLines = negative
-    .slice(0, 5)
-    .map(r => `  • [${r.action_type}] "${r.directive_text.slice(0, 120)}" — ${r.reason.slice(0, 100)} (weight: ${r.feedback_weight})`)
-    .join('\n');
-
-  return `
-FEEDBACK HISTORY (${rows.length} prior directives with user feedback — penalize negatives, boost positives):
-
-NET WEIGHT BY ACTION_TYPE:
-${netLines}
-${positive.length > 0 ? '\nEXECUTED (positive — user approved and ran):\n' + positiveLines : ''}
-${negative.length > 0 ? '\nSKIPPED/REJECTED (negative — avoid similar patterns):\n' + negativeLines : ''}`;
-}
+const ARTIFACT_TO_ACTION = {
+  drafted_email:   'send_message',
+  document:        'write_document',
+  decision:        'make_decision',
+  calendar_event:  'schedule',
+  research_brief:  'research',
+  wait_rationale:  'do_nothing',
+};
 
 // ---------------------------------------------------------------------------
-// Load all data sources
+// Main
 // ---------------------------------------------------------------------------
 
-const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+console.log('Scoring open loops for user ' + USER_ID + '...\n');
 
-console.log('Querying conviction engine data sources for user ' + USER_ID + '...');
+const winner = await scoreOpenLoops();
 
-const [signalsRes, commitmentsRes, entityRes, goalsRes, feedbackRes, prevDirectiveRes] = await Promise.all([
-  supabase
-    .from('tkg_signals')
-    .select('type, source, content, occurred_at')
-    .eq('user_id', USER_ID)
-    .gte('occurred_at', thirtyDaysAgo)
-    .eq('processed', true)
-    .order('occurred_at', { ascending: false })
-    .limit(15),
-
-  supabase
-    .from('tkg_commitments')
-    .select('description, category, status, risk_score, risk_factors, made_at')
-    .eq('user_id', USER_ID)
-    .in('status', ['active', 'at_risk'])
-    .order('risk_score', { ascending: false })
-    .limit(25),
-
-  supabase
-    .from('tkg_entities')
-    .select('patterns, total_interactions')
-    .eq('user_id', USER_ID)
-    .eq('name', 'self')
-    .maybeSingle(),
-
-  supabase
-    .from('tkg_goals')
-    .select('goal_text, goal_category, priority')
-    .eq('user_id', USER_ID)
-    .order('priority', { ascending: false })
-    .limit(10),
-
-  // Feedback rows — all evaluated directives (column may not exist yet)
-  supabase
-    .from('tkg_actions')
-    .select('id, action_type, directive_text, reason, status, feedback_weight, generated_at')
-    .eq('user_id', USER_ID)
-    .not('feedback_weight', 'is', null)
-    .order('generated_at', { ascending: false })
-    .limit(30)
-    .then(r => r), // catch column-missing error below
-
-  // Previous directive — for before/after comparison
-  supabase
-    .from('tkg_actions')
-    .select('id, action_type, directive_text, confidence, status, generated_at')
-    .eq('user_id', USER_ID)
-    .order('generated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle(),
-]);
-
-const signals     = (signalsRes.data ?? []).map(s => ({ ...s, content: decrypt(s.content ?? '') }));
-const commitments = commitmentsRes.data ?? [];
-const patterns    = entityRes.data?.patterns ? entityRes.data.patterns : {};
-const goals       = goalsRes.data ?? [];
-const prevDirective = prevDirectiveRes.data ?? null;
-
-// [BRAIN SIGNAL CHECK] — verify real readable text (not encrypted blobs) reaches the LLM
-signals.slice(0, 3).forEach((s, i) => {
-  const preview = String(s.content ?? '').slice(0, 200);
-  console.log(`[BRAIN SIGNAL CHECK] signal[${i}] source=${s.source ?? s.type} preview="${preview}"`);
-});
-
-// feedback_weight column may not exist yet in the DB — degrade gracefully
-let feedback = [];
-let feedbackColMissing = false;
-if (feedbackRes.error && feedbackRes.error.code === '42703') {
-  feedbackColMissing = true;
-} else {
-  feedback = feedbackRes.data ?? [];
-}
-
-console.log(`  Goals:           ${goals.length}`);
-console.log(`  Signals (30d):   ${signals.length}`);
-console.log(`  Commitments:     ${commitments.length}`);
-console.log(`  Patterns:        ${Object.keys(patterns).length}`);
-console.log(`  Feedback rows:   ${feedback.length} (${feedback.filter(r => r.feedback_weight > 0).length} positive, ${feedback.filter(r => r.feedback_weight < 0).length} negative)`);
-
-// ---------------------------------------------------------------------------
-// Print feedback summary
-// ---------------------------------------------------------------------------
-
-console.log('\n' + '═'.repeat(60));
-console.log('FEEDBACK HISTORY');
-console.log('═'.repeat(60));
-
-if (feedbackColMissing) {
-  console.log('  ⚠  feedback_weight column not yet in DB.');
-  console.log('  Run this SQL in Supabase Dashboard → SQL Editor to activate learning:');
-  console.log('');
-  console.log('    ALTER TABLE tkg_actions');
-  console.log('      ADD COLUMN IF NOT EXISTS feedback_weight FLOAT DEFAULT NULL;');
-  console.log('');
-  console.log('  After running the SQL, approve or skip a directive from the dashboard,');
-  console.log('  then re-run this script to see learning in action.');
-} else if (feedback.length === 0) {
-  console.log('  No evaluated directives yet (no approvals or skips recorded).');
-  console.log('  Approve or skip a directive from the dashboard, then re-run this script.');
-} else {
-  const netByType = {};
-  for (const r of feedback) {
-    netByType[r.action_type] = (netByType[r.action_type] ?? 0) + r.feedback_weight;
-  }
-  console.log('  Net weight by action_type:');
-  for (const [type, weight] of Object.entries(netByType).sort((a, b) => b[1] - a[1])) {
-    const bar = weight > 0
-      ? '+'.repeat(Math.min(10, Math.round(weight * 5)))
-      : '-'.repeat(Math.min(10, Math.round(Math.abs(weight) * 5)));
-    console.log(`    ${type.padEnd(16)} ${(weight > 0 ? '+' : '') + weight.toFixed(1)}  ${bar}`);
-  }
-  console.log('');
-  console.log('  Recent evaluated directives:');
-  for (const r of feedback.slice(0, 5)) {
-    const label = r.feedback_weight > 0 ? '✓ EXECUTED' : (r.status === 'rejected' ? '✗ REJECTED' : '⊘ SKIPPED');
-    console.log(`    [${label}] [${r.action_type}] ${r.directive_text.slice(0, 80)}...`);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Previous directive
-// ---------------------------------------------------------------------------
-
-console.log('\n' + '─'.repeat(60));
-console.log('PREVIOUS DIRECTIVE (before this run):');
-if (prevDirective) {
-  const prevStatus = prevDirective.status ?? 'unknown';
-  console.log(`  Action type: ${prevDirective.action_type.toUpperCase()}`);
-  console.log(`  Confidence:  ${prevDirective.confidence}/100`);
-  console.log(`  Status:      ${prevStatus}`);
-  console.log(`  Text:        ${String(prevDirective.directive_text).slice(0, 100)}...`);
-  console.log(`  Generated:   ${String(prevDirective.generated_at).slice(0, 10)}`);
-} else {
-  console.log('  No prior directive found.');
-}
-
-// ---------------------------------------------------------------------------
-// Build prompt
-// ---------------------------------------------------------------------------
-
-if (signals.length === 0 && commitments.length === 0 && goals.length === 0) {
-  console.log('\nIdentity graph is empty. Run seed-goals.mjs and run-ingest.mjs first.');
+if (!winner || winner.score < 2.0) {
+  const reason = winner
+    ? `Highest scorer: "${winner.title.slice(0, 80)}" at ${winner.score.toFixed(2)} — below 2.0 threshold`
+    : 'No open loops found';
+  console.log(`\ndo_nothing — ${reason}`);
   process.exit(0);
 }
 
-const goalLines = goals.length > 0
-  ? goals.map(g => `• [${g.goal_category}, priority ${g.priority}/5] ${g.goal_text}`).join('\n')
-  : 'No declared goals yet. Run seed-goals.mjs.';
+console.log(`\nWinner: "${winner.title.slice(0, 80)}" score=${winner.score.toFixed(2)} type=${winner.suggestedActionType}`);
 
-const commitmentLines = commitments
-  .map(c => {
-    const stakes = (c.risk_factors && c.risk_factors[0]) ? c.risk_factors[0].stakes : 'unknown';
-    return `• [${c.status}, risk ${c.risk_score}/100, stakes:${stakes}] ${c.description}`;
-  })
-  .join('\n');
+// Query approved/skipped for dedup
+const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+const [approvedRes, skippedRes] = await Promise.all([
+  supabase.from('tkg_actions')
+    .select('directive_text, action_type').eq('user_id', USER_ID)
+    .eq('status', 'executed').gte('generated_at', sevenDaysAgo)
+    .order('generated_at', { ascending: false }).limit(10),
+  supabase.from('tkg_actions')
+    .select('directive_text, action_type, skip_reason').eq('user_id', USER_ID)
+    .in('status', ['skipped', 'draft_rejected', 'rejected']).gte('generated_at', sevenDaysAgo)
+    .order('generated_at', { ascending: false }).limit(10),
+]);
 
-// Cap at 20 to stay under token limits (graph has 600+ patterns)
-const patternLines = Object.values(patterns)
-  .sort((a, b) => (b.activation_count || 0) - (a.activation_count || 0))
-  .slice(0, 20)
-  .map(p => `• ${p.name} (${p.activation_count || 1}× / domain:${p.domain}): ${p.description}`)
-  .join('\n') || 'None extracted yet.';
+const approvedSection = (approvedRes.data ?? []).length > 0
+  ? (approvedRes.data ?? []).map(a => `  - [${a.action_type}] ${a.directive_text.slice(0, 120)}`).join('\n')
+  : '  None.';
+const skippedSection = (skippedRes.data ?? []).length > 0
+  ? (skippedRes.data ?? []).map(a => {
+      const reason = a.skip_reason ? ` (${a.skip_reason})` : '';
+      return `  - [${a.action_type}]${reason} ${a.directive_text.slice(0, 120)}`;
+    }).join('\n')
+  : '  None.';
 
-const signalLines = signals
-  .map(s => `[${String(s.occurred_at).slice(0, 10)}] [${s.source ?? s.type}] ${String(s.content).slice(0, 400)}`)
-  .join('\n');
+const systemPrompt = FOCUSED_SYSTEM
+  .replace('{APPROVED_SECTION}', approvedSection)
+  .replace('{SKIPPED_SECTION}', skippedSection);
 
-const feedbackSection = buildFeedbackSection(feedback);
+const suggestedArtifact = ACTION_TYPE_HINTS[winner.suggestedActionType] ?? 'decision';
 
-const userPrompt = `DECLARED GOALS (${goals.length} total — measure every recommendation against these):
-${goalLines}
+const now = new Date();
+const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const todayStr = `${dayNames[now.getDay()]} ${monthNames[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
 
-ACTIVE COMMITMENTS (${commitments.length} total):
-${commitmentLines || 'None.'}
+const userPrompt = `TODAY: ${todayStr}
 
-BEHAVIORAL PATTERNS (${Object.keys(patterns).length} identified):
-${patternLines}
+THE SITUATION (selected by scoring algorithm — score ${winner.score.toFixed(2)}/5.0):
+Type: ${winner.type}
+Title: ${winner.title}
+Full context: ${winner.content}
+${winner.matchedGoal ? `\nMATCHED GOAL (priority ${winner.matchedGoal.priority}/5): ${winner.matchedGoal.text}` : ''}
 
-RECENT SIGNALS (last 30 days, ${signals.length} total):
-${signalLines || 'None.'}
-${feedbackSection}
-Identify the single highest-leverage action for today. Return only the JSON directive.`;
+SCORE BREAKDOWN:
+- Stakes: ${winner.breakdown.stakes} (${winner.matchedGoal ? `matched goal priority ${winner.matchedGoal.priority}` : 'no goal match, default 1.0'})
+- Urgency: ${winner.breakdown.urgency.toFixed(2)}
+- Tractability: ${winner.breakdown.tractability.toFixed(2)}
 
-console.log('\n' + '─'.repeat(60));
-console.log('Calling Claude (conviction engine + feedback)...\n');
+SUGGESTED ARTIFACT TYPE: ${suggestedArtifact}
+(You may override if the data supports a different type, but justify.)
+
+RELATED SIGNAL DATA (${winner.relatedSignals.length} signals with keyword overlap):
+${winner.relatedSignals.length > 0 ? winner.relatedSignals.map((s, i) => `--- Signal ${i + 1} ---\n${s.slice(0, 600)}`).join('\n\n') : 'No related signals found. Use the situation context above.'}
+
+Draft the artifact now. Use real names and details from the data above.`;
 
 // ---------------------------------------------------------------------------
 // Claude call
 // ---------------------------------------------------------------------------
 
+console.log('\nCalling Claude (scorer-first mode)...\n');
+
 const response = await anthropic.messages.create({
   model:      'claude-sonnet-4-20250514',
   max_tokens: 2000,
   temperature: 0.3,
-  system:     CONVICTION_SYSTEM,
+  system:     systemPrompt,
   messages:   [{ role: 'user', content: userPrompt }],
 });
 
@@ -376,7 +416,7 @@ try {
   process.exit(1);
 }
 
-// Post-generation validation: if document artifact has blank placeholders, retry as decision
+// Post-generation: retry document with placeholders as decision
 function hasBlankPlaceholders(text) {
   return /\$_{2,}|_{4,}|\[.*?\]|TBD|\?{3,}|__\/__|\(\s*date\s*\)|\(\s*amount\s*\)/i.test(text);
 }
@@ -384,29 +424,22 @@ function hasBlankPlaceholders(text) {
 if (
   parsed &&
   (parsed.artifact_type === 'document' || parsed.artifact_type === 'write_document') &&
-  parsed.artifact?.content &&
+  parsed.artifact &&
   hasBlankPlaceholders(JSON.stringify(parsed.artifact))
 ) {
-  console.log('[RETRY] Document artifact has blank placeholders — retrying as decision artifact...');
+  console.log('[RETRY] Document has placeholders — retrying as decision...');
   const retryResponse = await anthropic.messages.create({
-    model:      'claude-sonnet-4-20250514',
-    max_tokens: 2000,
-    temperature: 0.3,
-    system:     CONVICTION_SYSTEM,
-    messages:   [
-      { role: 'user',      content: userPrompt },
+    model: 'claude-sonnet-4-20250514', max_tokens: 2000, temperature: 0.3,
+    system: systemPrompt,
+    messages: [
+      { role: 'user', content: userPrompt },
       { role: 'assistant', content: raw },
-      { role: 'user',      content: `Your document artifact contains blank placeholders (e.g. $______, __ weeks, [date]). This violates the COMPLETE artifact rule — you are assigning work back to the user.
-
-You do not have the specific financial numbers in the signal data, so a document is not completable. You MUST use a "decision" artifact instead.
-
-Frame the highest-stakes choice the user faces RIGHT NOW. Pre-fill every option with specifics from the signal data (names, dates, roles, situations). Return the JSON directive only.` },
+      { role: 'user', content: 'Your document has blank placeholders. Use a "decision" artifact instead. Frame the choice with specifics from the data. Return JSON only.' },
     ],
   });
   try {
     const retryRaw = retryResponse.content[0]?.type === 'text' ? retryResponse.content[0].text : '';
-    const retryParsed = JSON.parse(retryRaw.replace(/```json\n?|\n?```/g, '').trim());
-    parsed = retryParsed;
+    parsed = JSON.parse(retryRaw.replace(/```json\n?|\n?```/g, '').trim());
     console.log('[RETRY] Produced artifact_type:', parsed.artifact_type);
   } catch {
     console.log('[RETRY] Parse failed — keeping original');
@@ -417,19 +450,12 @@ Frame the highest-stakes choice the user faces RIGHT NOW. Pre-fill every option 
 // Write to tkg_actions
 // ---------------------------------------------------------------------------
 
-// Map artifact_type → action_type for storage
-const ARTIFACT_TO_ACTION = {
-  drafted_email:   'send_message',
-  document:        'write_document',
-  decision:        'make_decision',
-  calendar_event:  'schedule',
-  research_brief:  'research',
-  wait_rationale:  'do_nothing',
-};
 const actionType = parsed.action_type ?? ARTIFACT_TO_ACTION[parsed.artifact_type] ?? 'research';
 const evidenceArr = typeof parsed.evidence === 'string'
   ? [{ type: 'signal', description: parsed.evidence, date: null }]
   : (parsed.evidence ?? []);
+
+const scoreEvidence = `[score=${winner.score.toFixed(2)}: ${winner.breakdown.stakes}S*${winner.breakdown.urgency.toFixed(2)}U*${winner.breakdown.tractability.toFixed(2)}T]`;
 
 const { data: actionRow, error: actionErr } = await supabase
   .from('tkg_actions')
@@ -437,8 +463,8 @@ const { data: actionRow, error: actionErr } = await supabase
     user_id:        USER_ID,
     directive_text: parsed.directive,
     action_type:    actionType,
-    confidence:     parsed.confidence,
-    reason:         parsed.why_now ?? parsed.reason ?? parsed.evidence ?? '',
+    confidence:     50, // Bayesian default
+    reason:         `${parsed.why_now ?? parsed.evidence ?? ''} ${scoreEvidence}`,
     evidence:       evidenceArr,
     status:         'pending_approval',
     generated_at:   new Date().toISOString(),
@@ -449,136 +475,59 @@ const { data: actionRow, error: actionErr } = await supabase
 
 if (actionErr) {
   console.error('tkg_actions write failed: ' + actionErr.message);
-  console.error('  (Table may not exist yet — run the migration in Supabase dashboard)');
 } else {
   console.log(`Directive logged to tkg_actions (id: ${actionRow.id})\n`);
 }
 
-// Also write to tkg_briefings for backwards compat
+// Also write to tkg_briefings
 const today = new Date().toISOString().slice(0, 10);
 await supabase.from('tkg_briefings').insert({
   user_id:            USER_ID,
   briefing_date:      today,
   generated_at:       new Date().toISOString(),
-  top_insight:        parsed.reason,
-  confidence:         parsed.confidence,
+  top_insight:        parsed.evidence,
+  confidence:         50,
   recommended_action: parsed.directive,
   stats: {
-    signalsAnalyzed:     signals.length,
-    commitmentsReviewed: commitments.length,
-    patternsActive:      Object.keys(patterns).length,
-    goalsActive:         goals.length,
-    feedbackSignals:     feedback.length,
-    fullBrief:           parsed.fullContext ?? parsed.reason,
-    directive:           parsed,
+    goalsActive:  0,
+    fullBrief:    parsed.why_now ?? parsed.evidence,
+    directive:    parsed,
+    score:        winner.score,
+    breakdown:    winner.breakdown,
   },
 });
 
 // ---------------------------------------------------------------------------
-// Print the directive
+// Print output
 // ---------------------------------------------------------------------------
 
 const ACTION_EMOJI = {
-  write_document: '📝',
-  send_message:   '📨',
-  make_decision:  '⚖️',
-  do_nothing:     '⏸️',
-  schedule:       '📅',
-  research:       '🔍',
+  write_document: '📝', send_message: '📨', make_decision: '⚖️',
+  do_nothing: '⏸️', schedule: '📅', research: '🔍',
 };
 
-// Support both old action_type and new artifact_type
 const displayType = parsed.artifact_type ?? parsed.action_type ?? 'unknown';
 
 console.log('═'.repeat(60));
 console.log('CONVICTION DIRECTIVE — ' + today);
 console.log('═'.repeat(60));
 console.log('');
-console.log(`${ACTION_EMOJI[displayType] ?? ACTION_EMOJI[parsed.action_type] ?? '▶'} [${displayType.toUpperCase()}]`);
+console.log(`${ACTION_EMOJI[actionType] ?? '▶'} [${displayType.toUpperCase()}]`);
 if (parsed.domain) console.log(`DOMAIN     : ${parsed.domain}`);
 console.log('');
 console.log(parsed.directive);
 console.log('');
 console.log('─'.repeat(60));
-console.log(`CONFIDENCE : ${parsed.confidence}/100`);
+console.log(`SCORE      : ${winner.score.toFixed(2)}/5.0`);
+console.log(`BREAKDOWN  : stakes=${winner.breakdown.stakes} urgency=${winner.breakdown.urgency.toFixed(2)} tractability=${winner.breakdown.tractability.toFixed(2)}`);
+if (winner.matchedGoal) console.log(`GOAL MATCH : [p${winner.matchedGoal.priority}] ${winner.matchedGoal.text.slice(0, 100)}`);
 console.log(`EVIDENCE   : ${typeof parsed.evidence === 'string' ? parsed.evidence : JSON.stringify(parsed.evidence)}`);
 if (parsed.why_now) console.log(`WHY NOW    : ${parsed.why_now}`);
-if (parsed.reason)  console.log(`REASON     : ${parsed.reason}`);
 console.log('─'.repeat(60));
 
 if (parsed.artifact) {
   console.log('\nARTIFACT:');
-  if (typeof parsed.artifact === 'object') {
-    console.log(JSON.stringify(parsed.artifact, null, 2));
-  } else {
-    console.log(parsed.artifact);
-  }
-}
-
-if (parsed.fullContext) {
-  console.log('\nCONTEXT:');
-  console.log(parsed.fullContext);
-}
-
-// ---------------------------------------------------------------------------
-// Before / after delta
-// ---------------------------------------------------------------------------
-
-console.log('\n' + '═'.repeat(60));
-console.log('DELTA — did feedback learning change the directive?');
-console.log('═'.repeat(60));
-
-if (!prevDirective) {
-  console.log('  No prior directive to compare against. This is the first run.');
-} else {
-  const prevType    = prevDirective.action_type;
-  const prevConf    = prevDirective.confidence;
-  const newType     = parsed.artifact_type ?? parsed.action_type ?? 'unknown';
-  const newConf     = parsed.confidence;
-  const typeChanged = prevType !== newType;
-  const confDelta   = newConf - prevConf;
-
-  console.log(`  Previous: [${prevType.toUpperCase()}] at ${prevConf}% confidence`);
-  console.log(`  New:      [${newType.toUpperCase()}] at ${newConf}% confidence`);
-  console.log('');
-
-  if (typeChanged) {
-    console.log(`  ✓ ACTION TYPE CHANGED: ${prevType} → ${newType}`);
-  } else {
-    console.log(`  — Action type unchanged: ${newType}`);
-  }
-
-  if (Math.abs(confDelta) >= 3) {
-    const direction = confDelta > 0 ? '▲' : '▼';
-    console.log(`  ${direction} Confidence shifted ${confDelta > 0 ? '+' : ''}${confDelta} points`);
-  } else {
-    console.log(`  — Confidence within ±3 points (${confDelta > 0 ? '+' : ''}${confDelta})`);
-  }
-
-  if (feedback.length === 0) {
-    console.log('');
-    console.log('  Note: No feedback history yet — scores reflect behavioral data only.');
-    console.log('  To activate learning: approve or skip a directive from the dashboard,');
-    console.log('  then re-run this script. The feedback_weight column will shift future directives.');
-  } else {
-    const negativeTypes = feedback
-      .filter(r => r.feedback_weight < 0)
-      .map(r => r.action_type);
-    const positiveTypes = feedback
-      .filter(r => r.feedback_weight > 0)
-      .map(r => r.action_type);
-
-    if (typeChanged && negativeTypes.includes(prevType) && !negativeTypes.includes(newType)) {
-      console.log(`  ✓ LEARNING SIGNAL APPLIED: pivoted away from ${prevType} (previously penalized)`);
-    }
-    if (!typeChanged && negativeTypes.includes(newType)) {
-      console.log(`  ⚠  Warning: recommended ${newType} despite negative feedback history. Check reasoning.`);
-    }
-    if (positiveTypes.includes(newType)) {
-      console.log(`  ✓ Boosted: ${newType} has positive feedback history`);
-    }
-  }
+  console.log(typeof parsed.artifact === 'object' ? JSON.stringify(parsed.artifact, null, 2) : parsed.artifact);
 }
 
 console.log('');
-console.log(`Sources: ${goals.length} goals | ${signals.length} signals | ${commitments.length} commitments | ${Object.keys(patterns).length} patterns | ${feedback.length} feedback signals`);
