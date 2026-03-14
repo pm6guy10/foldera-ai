@@ -226,6 +226,54 @@ After EVERY commit, before marking anything done:
 2. Verify Outlook OAuth flow end-to-end with a real user
 3. Enable agent crons in vercel.json when first public user arrives
 
+## Intelligence Backlog (in priority order)
+
+### Session 2: Emergent Pattern Detection
+Build detectEmergentPatterns() in scorer.ts.
+Competes with open loop scorer for directive slot.
+Analyzes: approval-without-execution, skip
+clustering by day/type, commitment decay rates,
+signal velocity spikes, repetition suppression.
+Artifact is a mirror, not a task. Ends with
+"Is this true?"
+
+### Session 3: Cross-Loop Reasoning
+Second pass on top 5 scored loops looking for
+connections: same person in two loops, temporal
+dependencies, resource conflicts. Merge connected
+loops into compound directives. This is the
+"can't leave" output.
+
+### Session 4: Extend TTL + Signal Summaries
+Change tkg_signals TTL from 7 days to 90 days.
+Add signal_summary table compressing old signals
+into weekly digests with themes and tone.
+Summaries persist permanently as long-term context.
+
+### Session 5: Feedback Loop Completion
+- Skip reason feeds into scorer math (not just
+  LLM prompt). not_relevant vs wrong_approach
+  have different effects.
+- Edit distance telemetry: Levenshtein on
+  edited_artifact vs original. 0% edit = +1.0,
+  10-30% = +0.5, 50%+ = -0.5 failure.
+- Time-of-day preference learning from
+  approval timestamps.
+- Outcome quality scoring beyond binary yes/no.
+
+### Blindspots (build when triggered)
+1. Cold start warmup: synthetic scoring bypass
+   for users with <10 actions. Sent folder scan
+   to bootstrap relationships. Build before
+   first public user.
+2. Emergent pattern framing: never declarative,
+   always "Is this true?" with observable data.
+3. Goal completion detection: resolution language
+   triggers archive prompt. Post-launch.
+4. Network effect layer: anonymized aggregate
+   outcome data to improve cold-start scoring.
+   Post-10 users.
+
 ## Env vars required in Vercel
 ANTHROPIC_API_KEY, AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET,
 CRON_SECRET, DAILY_BRIEF_TO_EMAIL,
