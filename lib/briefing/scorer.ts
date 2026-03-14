@@ -38,7 +38,7 @@ export interface MatchedGoal {
 
 export interface ScoredLoop {
   id: string;
-  type: 'commitment' | 'signal' | 'relationship' | 'emergent' | 'compound';
+  type: 'commitment' | 'signal' | 'relationship' | 'emergent' | 'compound' | 'growth';
   title: string;
   content: string;
   suggestedActionType: ActionType;
@@ -383,6 +383,7 @@ function inferDomain(matchedGoal: MatchedGoal | null, text: string): string {
   if (matchedGoal) return matchedGoal.category;
 
   const lower = text.toLowerCase();
+  if (/\bgrowth.signal\b|growth_reddit|growth_twitter|growth_hackernews|acquire.*user|paying.*user|customer.*base|growth.*scanner|convert.*visitor/.test(lower)) return 'growth';
   if (/\b(salary|money|financial|income|runway|payment|budget)\b/.test(lower)) return 'financial';
   if (/\b(job|career|role|application|interview|hire|position)\b/.test(lower)) return 'career';
   if (/\b(family|wife|children|baby|pregnancy|health)\b/.test(lower)) return 'family';

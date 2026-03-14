@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/db/client';
+import { logGrowthVisit } from '@/lib/growth/conversion-tracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,12 @@ export async function POST(req: NextRequest) {
     console.error('[POST /api/waitlist]', error);
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
+
+  // Log waitlist signup as a growth signal (non-blocking)
+  logGrowthVisit({
+    ref:  'waitlist-signup',
+    path: '/waitlist',
+  }).catch(() => { /* non-critical */ });
 
   return NextResponse.json({ success: true });
 }

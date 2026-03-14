@@ -7,6 +7,7 @@ import {
   Globe, Layers, Terminal, FileText, AlertCircle,
   Lock, ChevronRight, Eye,
 } from 'lucide-react';
+import { RefTracker } from '@/components/growth/ref-tracker';
 
 // ============================================================================
 // TYPES
@@ -597,6 +598,7 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] bg-[#000] text-zinc-50 selection:bg-cyan-500/30 selection:text-white font-sans antialiased overflow-x-hidden">
+      <RefTracker />
       <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap');
         html { scroll-behavior: smooth; background: #000; }

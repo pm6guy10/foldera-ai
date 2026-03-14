@@ -68,10 +68,10 @@ Kill reason types:
 Output JSON only:
 {
   "directive": "one sentence imperative naming a specific person or commitment",
-  "artifact_type": "drafted_email | document | decision | calendar_event | research_brief | wait_rationale",
+  "artifact_type": "drafted_email | document | decision | calendar_event | research_brief | wait_rationale | growth_reply",
   "artifact": <the finished work product as JSON>,
   "evidence": "one sentence citing specific data from below",
-  "domain": "career | family | financial | health | project",
+  "domain": "career | family | financial | health | project | growth",
   "why_now": "one sentence why today",
   "cutting_room_floor": [
     {"title": "short label", "kill_reason": "NOISE | NOT_NOW | TRAP", "justification": "one ruthless sentence why this doesn't deserve attention today"}
@@ -84,6 +84,7 @@ Output JSON only:
 
 const ARTIFACT_TYPE_TO_ACTION_TYPE: Record<string, ActionType> = {
   drafted_email:   'send_message',
+  growth_reply:    'send_message',
   document:        'write_document',
   decision:        'make_decision',
   calendar_event:  'schedule',
@@ -103,6 +104,16 @@ const ACTION_TYPE_HINTS: Record<string, string> = {
   research:       'research_brief',
   do_nothing:     'wait_rationale',
 };
+
+// ---------------------------------------------------------------------------
+// Growth domain detection (mirrors scorer.ts inferDomain for growth)
+// ---------------------------------------------------------------------------
+
+function inferDomainFromContent(text: string): string {
+  const lower = text.toLowerCase();
+  if (/\bgrowth.signal\b|growth_reddit|growth_twitter|growth_hackernews|acquire.*user|paying.*user|customer.*base|growth.*scanner|convert.*visitor/.test(lower)) return 'growth';
+  return '';
+}
 
 // ---------------------------------------------------------------------------
 // Main export — generateDirective
@@ -247,6 +258,36 @@ Your artifact MUST:
     ? `\nEMERGENT PATTERN DETECTED — this is a meta-observation about the user's behavior, not a regular open loop. Draft an insight artifact that surfaces this pattern with specific data. The user should feel seen, not judged.\n`
     : '';
 
+  // Build growth artifact section if this is a growth signal
+  const isGrowthSignal = winner.matchedGoal?.category === 'growth' ||
+    inferDomainFromContent(winner.content) === 'growth';
+  const growthSection = isGrowthSignal
+    ? `\nGROWTH ACTION — This signal is a user acquisition opportunity. The conviction engine scored this growth action higher than any personal action today. Your artifact is a COMPLETE REPLY ready to paste.
+
+RULES (from GROWTH.md — non-negotiable):
+1. Reference something SPECIFIC from their post. Quote or paraphrase what they said.
+2. Lead with empathy, not product. Make them feel seen first.
+3. NO PITCH in the first message. Zero mention of Foldera by name.
+4. The CTA is a question or shared experience — not a link, not a demo request.
+5. Maximum 3 sentences. Sound like a human, not a startup founder.
+6. For Reddit: write as a Reddit comment reply.
+7. For Twitter/X: write as a reply tweet (under 280 chars).
+8. For Hacker News: write as an HN comment.
+
+Use artifact_type "growth_reply" with this JSON shape:
+{
+  "type": "growth_reply",
+  "platform": "reddit | twitter | hackernews",
+  "post_url": "<URL from the signal data>",
+  "post_author": "<author from the signal data>",
+  "reply_text": "<the complete 2-3 sentence reply ready to paste>",
+  "angle": "<one sentence: what empathy angle you used>",
+  "ref_tag": "<platform>-<post_id> (for conversion tracking)"
+}
+
+Brandon will copy-paste this reply. It must be perfect on first read.\n`
+    : '';
+
   // Build compound directive section if this is a cross-loop merge
   const compoundSection = winner.type === 'compound' && winner.connectionType
     ? `\nCROSS-LOOP COMPOUND DIRECTIVE — The scoring algorithm found a CONNECTION between two separate loops. Connection type: ${winner.connectionType}. Reason: ${winner.connectionReason ?? 'linked loops'}.
@@ -278,7 +319,7 @@ SCORE BREAKDOWN:
 - Urgency: ${winner.breakdown.urgency.toFixed(2)}
 - Tractability: ${winner.breakdown.tractability.toFixed(2)}
 - Freshness: ${winner.breakdown.freshness?.toFixed(2) ?? '1.00'} (1.0 = never surfaced, lower = recently generated)
-${relationshipSection}${emergentSection}${compoundSection}
+${relationshipSection}${emergentSection}${compoundSection}${growthSection}
 SUGGESTED ARTIFACT TYPE: ${suggestedArtifact}
 (You may override if the data supports a different type, but justify.)
 

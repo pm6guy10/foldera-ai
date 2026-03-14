@@ -27,6 +27,10 @@
     {
       "path": "/api/cron/daily-brief",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/growth-scanner",
+      "schedule": "0 15 * * *"
     }
   ]
 }

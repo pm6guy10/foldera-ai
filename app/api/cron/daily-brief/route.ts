@@ -98,8 +98,14 @@ function artifactSummary(artifact: ConvictionArtifact | null): string | undefine
       return artifact.recommendation || 'Decision frame ready';
     case 'affirmation':
       return artifact.context.slice(0, 100) || 'No action needed right now';
-    default:
+    default: {
+      // Handle growth_reply and other dynamic artifact types
+      const a = artifact as any;
+      if (a.type === 'growth_reply') {
+        return `Reply on ${a.platform}: "${(a.reply_text ?? '').slice(0, 80)}..."`;
+      }
       return undefined;
+    }
   }
 }
 
@@ -118,8 +124,13 @@ function artifactEmailPreview(artifact: ConvictionArtifact | null): string | und
       return artifact.options.slice(0, 2).map(o => o.option).join(' vs ');
     case 'affirmation':
       return artifact.context.slice(0, 150);
-    default:
+    default: {
+      const a = artifact as any;
+      if (a.type === 'growth_reply') {
+        return `${a.platform} reply to @${a.post_author}: ${(a.reply_text ?? '').slice(0, 120)}`;
+      }
       return undefined;
+    }
   }
 }
 

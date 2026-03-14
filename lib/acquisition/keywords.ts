@@ -143,6 +143,7 @@ export const TARGET_SUBREDDITS = [
   'BusinessOwners',
   'lifehacks',
   'selfimprovement',
+  'DecidingToBeBetter',
 ];
 
 // Keep low — scanner pre-filters only; scorer.ts applies the 0-100 real threshold
