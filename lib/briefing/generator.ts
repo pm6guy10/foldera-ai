@@ -66,6 +66,8 @@ SPECIFICITY RULES — non-negotiable:
 - The one-tap test: Could Brandon approve this right now and have it work — no editing required? If no, rewrite it.
 - For wait_rationale: you MUST cite a SPECIFIC prior outcome from the signals or outcomes where waiting resolved favorably. Name the situation, the approximate date, the result. "Waiting has worked before" is not evidence.
 - For drafted_email: the "to" field must be a real email address extracted from the signals. If no email address is visible in the signals, use a decision artifact instead — do not draft an email to a placeholder.
+- For document artifacts: the document must be COMPLETE with real values extracted from the signal data. FORBIDDEN in any document artifact: "$______", "__ weeks", "__/__/2026", "[fill in]", "TBD", "[date]", "[amount]", "N/A", or any other blank/placeholder. If the document would require a number or date that is NOT explicitly stated in the signal data below, you MUST use a decision artifact instead. A decision frame can be completed from situational context alone. A document template with blanks is not a finished artifact — it is homework you are assigning to the user, which violates the zero-lift promise.
+- For decision artifacts: pre-fill every option with the specific situation from signals. "Leave in 60 days and target roles at $X+" not "Option A: leave." Options must be actionable right now.
 
 If you cannot cite a specific signal or pattern by name in your directive, do not generate. Return action_type: do_nothing instead.
 
@@ -586,6 +588,11 @@ ${countInstruction}`;
     search_context?: string | null;
   };
 
+  /** Returns true if an artifact string contains blank/placeholder patterns that make it incomplete */
+  function hasBlankPlaceholders(text: string): boolean {
+    return /\$_{2,}|_{4,}|\[.*?\]|TBD|\?{3,}|__\/__|\(\s*date\s*\)|\(\s*amount\s*\)/i.test(text);
+  }
+
   let parsed: ParsedDirective | null = null;
 
   try {
@@ -614,6 +621,54 @@ ${countInstruction}`;
       parsed = result[0] ?? null;
     } else {
       parsed = result;
+    }
+
+    // Post-generation validation: if document artifact has blank placeholders, retry as decision
+    if (
+      parsed &&
+      (parsed.artifact_type === 'document' || parsed.artifact_type === 'write_document') &&
+      parsed.artifact?.content &&
+      hasBlankPlaceholders(JSON.stringify(parsed.artifact))
+    ) {
+      console.log('[generateDirective] Document artifact has blank placeholders — retrying as decision artifact');
+      const retryMessages = [
+        { role: 'user' as const, content: userPrompt },
+        { role: 'assistant' as const, content: raw },
+        {
+          role: 'user' as const,
+          content: `Your document artifact contains blank placeholders (e.g. $______, __ weeks, [date]). This violates the COMPLETE artifact rule and assigns work back to the user.
+
+You do not have the specific financial numbers in the signal data, so a document is not completable. You MUST use a "decision" artifact instead.
+
+The decision should frame the highest-stakes choice the user faces RIGHT NOW based on the situation in the signals. Pre-fill every option with specifics from the data (names, dates, roles, situations mentioned). Return the JSON directive only.`,
+        },
+      ];
+
+      const retryResponse = await getAnthropic().messages.create({
+        model: MODEL,
+        max_tokens: 2000,
+        temperature: 0.3 as any,
+        system: systemPrompt,
+        messages: retryMessages,
+      });
+
+      await trackApiCall({
+        userId,
+        model: MODEL,
+        inputTokens:  retryResponse.usage.input_tokens,
+        outputTokens: retryResponse.usage.output_tokens,
+        callType: 'directive_retry',
+      });
+
+      try {
+        const retryRaw = retryResponse.content[0].type === 'text' ? retryResponse.content[0].text : '';
+        const retryCleaned = retryRaw.replace(/```json\n?|\n?```/g, '').trim();
+        const retryResult = JSON.parse(retryCleaned);
+        parsed = Array.isArray(retryResult) ? retryResult[0] ?? parsed : retryResult;
+        console.log('[generateDirective] Retry produced artifact_type:', parsed?.artifact_type);
+      } catch {
+        console.log('[generateDirective] Retry parse failed — keeping original');
+      }
     }
   } catch (err) {
     console.error('[generateDirective] Claude call/parse failed:', err);

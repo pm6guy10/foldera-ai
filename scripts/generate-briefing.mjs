@@ -43,8 +43,9 @@ for (const k of REQUIRED) {
 
 const USER_ID = process.env.INGEST_USER_ID;
 
-const { default: Anthropic } = await import('@anthropic-ai/sdk');
-const { createClient }       = await import('@supabase/supabase-js');
+const { default: Anthropic }  = await import('@anthropic-ai/sdk');
+const { createClient }        = await import('@supabase/supabase-js');
+const { createDecipheriv }    = await import('crypto');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase  = createClient(
@@ -53,17 +54,46 @@ const supabase  = createClient(
 );
 
 // ---------------------------------------------------------------------------
-// Chief-of-Staff system prompt — v2 brain
+// Decrypt signal content (AES-256-GCM — matches lib/encryption.ts)
+// ---------------------------------------------------------------------------
+
+function decrypt(ciphertext) {
+  if (!ciphertext || typeof ciphertext !== 'string') return ciphertext ?? '';
+  const key = process.env.ENCRYPTION_KEY;
+  if (!key) return ciphertext; // no key → assume plaintext (dev env)
+  try {
+    const buf     = Buffer.from(ciphertext, 'base64');
+    const iv      = buf.subarray(0, 12);
+    const authTag = buf.subarray(12, 28);
+    const data    = buf.subarray(28);
+    const keyBuf  = Buffer.from(key, 'base64');
+    const decipher = createDecipheriv('aes-256-gcm', keyBuf, iv);
+    decipher.setAuthTag(authTag);
+    return decipher.update(data, undefined, 'utf8') + decipher.final('utf8');
+  } catch {
+    return ciphertext; // pre-migration row — pass through as-is
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Chief-of-Staff system prompt — synced with lib/briefing/generator.ts
 // ---------------------------------------------------------------------------
 
 const CONVICTION_SYSTEM = `You are a chief of staff who knows everything about this person. You have their goals, behavioral patterns, commitments, approval/skip history, and current signals.
 
 Your job is NOT to summarize. Your job is to find the ONE thing they should do today that they haven't thought of yet.
 
+GROUNDING REQUIREMENT — non-negotiable before generating:
+- You MUST be able to trace every directive to a SPECIFIC signal, pattern, or goal in the data below. Not a category. Not a theme. A named entry.
+- The directive MUST name a real person, a real commitment, a real email thread subject, or a real decision from tkg_signals. No generic observations.
+- If you cannot find a high-stakes open loop in the data — a thread that will get worse if left another 24h, a commitment past due, a relationship cooling, a decision with a live deadline — then the directive MUST be "do_nothing" with a rationale that cites specific prior outcomes where inaction was the correct call.
+- Life-coaching output is a failure. "Prioritize your wellbeing" or "reflect on your goals" with no specific named situation in the data = do_nothing.
+
 Rules:
 - NEVER repeat a directive the user already approved. If they approved "wait on MAS3" yesterday, find the next thing.
 - NEVER produce a directive the user obviously knows. "Be present with family" is a greeting card, not insight.
 - Every directive MUST include a concrete artifact: drafted email, specific task with deadline, document to review, decision with two options. No artifact = not a directive.
+- The artifact must be COMPLETE. No checkboxes. No blanks. No "[Choose one]". No "[Add details here]". If you cannot complete it from the data available, use do_nothing instead.
 - Confidence score reflects SPECIFICITY not CERTAINTY. Vague but true = 30%. Specific with evidence = 85%+.
 - Scan ALL data sources not just the loudest signal. Check: approaching deadlines, unanswered threads, commitments not acted on, patterns predicting failure, calendar gaps, financial triggers, relationship maintenance.
 - Before outputting, test: "Would a $200/hr chief of staff say this or be embarrassed?" If embarrassed, go deeper.
@@ -76,6 +106,10 @@ SPECIFICITY RULES — non-negotiable:
 - The one-tap test: Could Brandon approve this right now and have it work — no editing required? If no, rewrite it.
 - For wait_rationale: you MUST cite a SPECIFIC prior outcome from the signals or outcomes where waiting resolved favorably. Name the situation, the approximate date, the result. "Waiting has worked before" is not evidence.
 - For drafted_email: the "to" field must be a real email address extracted from the signals. If no email address is visible in the signals, use a decision artifact instead — do not draft an email to a placeholder.
+- For document artifacts: the document must be COMPLETE with real values extracted from the signal data. FORBIDDEN in any document artifact: "$______", "__ weeks", "__/__/2026", "[fill in]", "TBD", "[date]", "[amount]", "N/A", or any other blank/placeholder. If the document would require a number or date that is NOT explicitly stated in the signal data below, you MUST use a decision artifact instead. A decision frame can be completed from situational context alone. A document template with blanks is not a finished artifact — it is homework you are assigning to the user, which violates the zero-lift promise.
+- For decision artifacts: pre-fill every option with the specific situation from signals. "Leave in 60 days and target roles at $X+" not "Option A: leave." Options must be actionable right now.
+
+If you cannot cite a specific signal or pattern by name in your directive, do not generate. Return action_type: do_nothing instead.
 
 Output JSON only — no prose outside the JSON:
 {
@@ -187,11 +221,17 @@ const [signalsRes, commitmentsRes, entityRes, goalsRes, feedbackRes, prevDirecti
     .maybeSingle(),
 ]);
 
-const signals     = signalsRes.data ?? [];
+const signals     = (signalsRes.data ?? []).map(s => ({ ...s, content: decrypt(s.content ?? '') }));
 const commitments = commitmentsRes.data ?? [];
 const patterns    = entityRes.data?.patterns ? entityRes.data.patterns : {};
 const goals       = goalsRes.data ?? [];
 const prevDirective = prevDirectiveRes.data ?? null;
+
+// [BRAIN SIGNAL CHECK] — verify real readable text (not encrypted blobs) reaches the LLM
+signals.slice(0, 3).forEach((s, i) => {
+  const preview = String(s.content ?? '').slice(0, 200);
+  console.log(`[BRAIN SIGNAL CHECK] signal[${i}] source=${s.source ?? s.type} preview="${preview}"`);
+});
 
 // feedback_weight column may not exist yet in the DB — degrade gracefully
 let feedback = [];
@@ -334,6 +374,43 @@ try {
 } catch (_) {
   console.error('Failed to parse Claude response:\n' + raw);
   process.exit(1);
+}
+
+// Post-generation validation: if document artifact has blank placeholders, retry as decision
+function hasBlankPlaceholders(text) {
+  return /\$_{2,}|_{4,}|\[.*?\]|TBD|\?{3,}|__\/__|\(\s*date\s*\)|\(\s*amount\s*\)/i.test(text);
+}
+
+if (
+  parsed &&
+  (parsed.artifact_type === 'document' || parsed.artifact_type === 'write_document') &&
+  parsed.artifact?.content &&
+  hasBlankPlaceholders(JSON.stringify(parsed.artifact))
+) {
+  console.log('[RETRY] Document artifact has blank placeholders — retrying as decision artifact...');
+  const retryResponse = await anthropic.messages.create({
+    model:      'claude-sonnet-4-20250514',
+    max_tokens: 2000,
+    temperature: 0.3,
+    system:     CONVICTION_SYSTEM,
+    messages:   [
+      { role: 'user',      content: userPrompt },
+      { role: 'assistant', content: raw },
+      { role: 'user',      content: `Your document artifact contains blank placeholders (e.g. $______, __ weeks, [date]). This violates the COMPLETE artifact rule — you are assigning work back to the user.
+
+You do not have the specific financial numbers in the signal data, so a document is not completable. You MUST use a "decision" artifact instead.
+
+Frame the highest-stakes choice the user faces RIGHT NOW. Pre-fill every option with specifics from the signal data (names, dates, roles, situations). Return the JSON directive only.` },
+    ],
+  });
+  try {
+    const retryRaw = retryResponse.content[0]?.type === 'text' ? retryResponse.content[0].text : '';
+    const retryParsed = JSON.parse(retryRaw.replace(/```json\n?|\n?```/g, '').trim());
+    parsed = retryParsed;
+    console.log('[RETRY] Produced artifact_type:', parsed.artifact_type);
+  } catch {
+    console.log('[RETRY] Parse failed — keeping original');
+  }
 }
 
 // ---------------------------------------------------------------------------
