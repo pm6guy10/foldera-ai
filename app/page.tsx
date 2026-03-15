@@ -137,7 +137,7 @@ const SCENARIOS: Scenario[] = [
 
 const FEATURES: FeatureItem[] = [
   { icon: Database, title: 'It reads your history', desc: 'Email, calendar, conversations. Foldera ingests what you\u2019ve already written and finds the patterns you can\u2019t see from inside them.' },
-  { icon: Brain, title: 'It does the math', desc: 'Not AI opinions. Bayesian confidence scores computed from your own outcomes. Every recommendation is backed by your actual track record.' },
+  { icon: Brain, title: 'It does the math', desc: 'Every recommendation is scored against what actually worked for you. Your track record, not AI opinions.' },
   { icon: Zap, title: 'It does the work', desc: 'No prompting. No chatting. You wake up to finished drafts, ready to approve with one tap.' },
   { icon: Shield, title: 'It stays private', desc: 'Your data never trains anyone else\u2019s model. AES-256 encryption. Delete everything anytime.' },
   { icon: Terminal, title: 'It gets smarter', desc: 'Every approval and every skip teaches the engine what matters to you. Day 30 is unrecognizable from day 1.' },
@@ -903,7 +903,7 @@ const FlipSection = memo(() => {
   const [ref, inView] = useInView(0.2);
 
   return (
-    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-40 px-6 bg-[#000] relative overflow-hidden border-t border-white/5">
+    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-40 px-6 bg-[#07070c] relative overflow-hidden border-t border-white/5">
       <AmbientGrid />
       <div className="max-w-6xl mx-auto relative z-10">
         <Reveal>
@@ -917,7 +917,7 @@ const FlipSection = memo(() => {
           <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent" aria-hidden="true" />
 
           {/* Left — what you see */}
-          <div className={`bg-zinc-950/50 backdrop-blur-xl rounded-[2rem] p-8 md:p-12 border border-white/5 transition-all duration-1000 text-left ${inView ? 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0' : 'opacity-0 -translate-x-12'}`}>
+          <div className={`bg-zinc-950/50 backdrop-blur-xl rounded-[2rem] p-8 md:p-12 border border-white/5 transition-all duration-1000 text-left ${inView ? 'opacity-40 grayscale' : 'opacity-0 -translate-x-12'}`}>
             <div className="flex items-center gap-2 mb-10 text-zinc-500 text-[11px] font-black uppercase tracking-widest">
               <Eye className="w-4 h-4" /> What you see
             </div>
@@ -936,7 +936,7 @@ const FlipSection = memo(() => {
           </div>
 
           {/* Right — what Foldera sees */}
-          <div className={`bg-zinc-950/80 backdrop-blur-2xl rounded-[2rem] p-8 md:p-12 border border-cyan-500/20 relative overflow-hidden shadow-[0_0_100px_rgba(6,182,212,0.1)] transition-all duration-1000 delay-150 text-left ${inView ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12'}`}>
+          <div className={`bg-zinc-950/80 backdrop-blur-2xl rounded-[2rem] p-8 md:p-12 border border-cyan-500/30 relative overflow-hidden shadow-[0_0_120px_rgba(6,182,212,0.15)] transition-all duration-1000 delay-150 text-left ${inView ? 'opacity-100 translate-x-0 -translate-y-2' : 'opacity-0 translate-x-12'}`}>
             <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 blur-[120px] pointer-events-none" aria-hidden="true" />
             <div className="flex items-center gap-3 mb-10 text-cyan-400 text-[11px] font-black uppercase tracking-widest relative z-10">
               <Brain className="w-5 h-5" /> What Foldera sees
@@ -977,19 +977,19 @@ const MathConsole = memo(() => {
   const [ref, inView] = useInView(0.2);
 
   return (
-    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-40 px-6 bg-[#000] border-y border-white/5 relative overflow-hidden">
+    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-40 px-6 bg-[#07070c] border-y border-white/5 relative overflow-hidden">
       <AmbientGrid />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.1),transparent_60%)] pointer-events-none" aria-hidden="true" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(6,182,212,0.08),transparent_60%)] pointer-events-none" aria-hidden="true" />
 
       <div className="max-w-4xl mx-auto relative z-10">
         <Reveal>
           <div className="text-center mb-20">
             <h2 className="text-5xl md:text-6xl font-black tracking-tighter text-white mb-8">
               Not AI opinions.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">Your exact math.</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">Your track record.</span>
             </h2>
             <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed">
-              Bayesian confidence scores computed deterministically from your actual history.
+              Every recommendation is scored against what actually worked for you before.
             </p>
           </div>
         </Reveal>
@@ -1066,6 +1066,60 @@ const MathConsole = memo(() => {
 MathConsole.displayName = 'MathConsole';
 
 // ============================================================================
+// FEATURE CAROUSEL
+// ============================================================================
+function FeatureCarousel() {
+  const [featured, setFeatured] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFeatured((prev) => (prev + 1) % FEATURES.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <section id="product" className="py-40 relative bg-[#07070c] border-t border-white/5">
+      <AmbientGrid />
+      <div className="max-w-6xl mx-auto px-6 relative z-10">
+        <Reveal className="mb-24 text-center">
+          <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">Not another app<br />to check.</h2>
+          <p className="text-zinc-400 text-xl md:text-2xl font-medium">Foldera replaces the system, not adds to it.</p>
+        </Reveal>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {FEATURES.map((feature, i) => {
+            const Icon = feature.icon;
+            const isFeatured = i === featured;
+            return (
+              <Reveal key={feature.title} delay={i * 100}>
+                <div
+                  className={`p-10 rounded-[2rem] bg-zinc-950/80 backdrop-blur-xl border transition-all duration-700 h-full relative overflow-hidden text-left ${
+                    isFeatured
+                      ? 'border-cyan-500/40 shadow-[0_0_60px_rgba(6,182,212,0.2)] -translate-y-2 scale-[1.03]'
+                      : 'border-white/[0.08] shadow-2xl shadow-black/40 hover:border-cyan-500/30 hover:shadow-[0_0_50px_rgba(6,182,212,0.15)] hover:-translate-y-2'
+                  }`}
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent transition-opacity duration-700 ${isFeatured ? 'opacity-100' : 'opacity-0'}`} />
+                  <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center mb-8 transition-all duration-500 shadow-inner ${
+                    isFeatured
+                      ? 'bg-cyan-500/10 border-cyan-500/30 scale-110'
+                      : 'bg-black border-white/10'
+                  }`}>
+                    <Icon className={`w-7 h-7 transition-colors duration-500 ${isFeatured ? 'text-cyan-400' : 'text-zinc-500'}`} />
+                  </div>
+                  <h3 className="text-xl font-black text-white mb-4 tracking-tight relative z-10">{feature.title}</h3>
+                  <p className={`text-base leading-relaxed font-medium relative z-10 transition-colors duration-500 ${isFeatured ? 'text-zinc-300' : 'text-zinc-400'}`}>{feature.desc}</p>
+                </div>
+              </Reveal>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
 // NAVIGATION
 // ============================================================================
 function Navigation({ scrolled }: NavigationProps) {
@@ -1114,14 +1168,14 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-[100dvh] bg-[#000] text-zinc-50 selection:bg-cyan-500/30 selection:text-white font-sans antialiased overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-[#07070c] text-zinc-50 selection:bg-cyan-500/30 selection:text-white font-sans antialiased overflow-x-hidden">
       <RefTracker />
       <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap');
-        html { scroll-behavior: smooth; background: #000; }
+        html { scroll-behavior: smooth; background: #07070c; }
         ::-webkit-scrollbar { width: 10px; }
-        ::-webkit-scrollbar-track { background: #000; }
-        ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; border: 2px solid #000; }
+        ::-webkit-scrollbar-track { background: #07070c; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; border: 2px solid #07070c; }
         .perspective-1000 { perspective: 1000px; }
         .rotate-y-12 { transform: rotateY(12deg); }
         .rotate-y-0 { transform: rotateY(0deg); }
@@ -1140,7 +1194,7 @@ export default function App() {
           50% { background-position: 100% 50%; }
           100% { background-position: 0% 50%; }
         }
-        .animate-gradient-x { background-size: 200% 200%; animation: gradient-x 10s ease infinite; }
+        .animate-gradient-x { background-size: 200% 200%; animation: gradient-x 8s ease infinite; filter: drop-shadow(0 0 20px rgba(6,182,212,0.4)); }
         @media (prefers-reduced-motion: reduce) {
           *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
         }
@@ -1154,13 +1208,13 @@ export default function App() {
       </section>
 
       {/* ── SCENARIO DEMOS — "with a month of your data" ── */}
-      <section className="py-32 relative bg-[#000] border-t border-white/5 overflow-hidden">
+      <section className="py-32 relative bg-[#07070c] border-t border-white/5 overflow-hidden">
         <AmbientGrid />
         <div className="relative z-10">
           <Reveal className="text-center mb-16 px-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white mb-6">
               Now imagine a month of<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 animate-gradient-x">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-400 to-cyan-300 animate-gradient-x">
                 your real data.
               </span>
             </h2>
@@ -1175,7 +1229,7 @@ export default function App() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section className="py-40 relative bg-[#000] border-t border-white/5">
+      <section className="py-40 relative bg-[#07070c] border-t border-white/5">
         <AmbientGrid />
         <div className="max-w-6xl mx-auto px-6 relative z-10">
           <Reveal className="mb-24 text-center">
@@ -1186,7 +1240,7 @@ export default function App() {
           <div className="grid md:grid-cols-3 gap-8">
             {(['Connect', 'Synthesize', 'Execute'] as const).map((title, i) => (
               <Reveal key={i} delay={i * 100}>
-                <div className="relative p-10 md:p-12 rounded-[2rem] bg-zinc-950/50 backdrop-blur-xl border border-white/5 group hover:border-cyan-500/40 transition-all duration-700 h-full overflow-hidden shadow-2xl hover:shadow-[0_0_60px_rgba(6,182,212,0.15)] hover:-translate-y-2 text-left">
+                <div className="relative p-10 md:p-12 rounded-[2rem] bg-zinc-950/80 backdrop-blur-xl border border-white/[0.08] group hover:border-cyan-500/40 transition-all duration-700 h-full overflow-hidden shadow-2xl shadow-black/40 hover:shadow-[0_0_60px_rgba(6,182,212,0.15)] hover:-translate-y-2 text-left">
                   <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                   <div className="absolute -right-6 -bottom-10 text-[180px] font-black text-white/[0.02] leading-none pointer-events-none transition-all duration-700 group-hover:text-cyan-500/[0.05] group-hover:scale-110">{`0${i + 1}`}</div>
                   <h3 className="text-2xl font-black text-white mb-6 flex flex-col items-start gap-4 tracking-tight">
@@ -1209,35 +1263,10 @@ export default function App() {
       <MathConsole />
 
       {/* ── FEATURES ── */}
-      <section id="product" className="py-40 relative bg-[#000] border-t border-white/5">
-        <AmbientGrid />
-        <div className="max-w-6xl mx-auto px-6 relative z-10">
-          <Reveal className="mb-24 text-center">
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">Not another app<br />to check.</h2>
-            <p className="text-zinc-400 text-xl md:text-2xl font-medium">Foldera replaces the system, not adds to it.</p>
-          </Reveal>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {FEATURES.map((feature, i) => {
-              const Icon = feature.icon;
-              return (
-                <Reveal key={feature.title} delay={i * 100}>
-                  <div className="group p-10 rounded-[2rem] bg-zinc-950/50 backdrop-blur-xl border border-white/5 hover:border-blue-500/30 transition-all duration-700 h-full relative overflow-hidden shadow-2xl hover:shadow-[0_0_50px_rgba(59,130,246,0.15)] hover:-translate-y-2 text-left">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                    <div className="w-14 h-14 rounded-2xl bg-black border border-white/10 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:bg-blue-500/10 group-hover:border-blue-500/30 transition-all duration-500 shadow-inner">
-                      <Icon className="w-7 h-7 text-zinc-500 group-hover:text-blue-400 transition-colors" />
-                    </div>
-                    <h3 className="text-xl font-black text-white mb-4 tracking-tight relative z-10">{feature.title}</h3>
-                    <p className="text-zinc-400 text-base leading-relaxed font-medium relative z-10 group-hover:text-zinc-300 transition-colors">{feature.desc}</p>
-                  </div>
-                </Reveal>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <FeatureCarousel />
 
       {/* ── PRICING ── */}
-      <section id="pricing" className="py-48 border-t border-white/5 relative bg-[#000] overflow-hidden">
+      <section id="pricing" className="py-48 border-t border-white/5 relative bg-[#07070c] overflow-hidden">
         <AmbientGrid />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.1)_0%,transparent_50%)] pointer-events-none" aria-hidden="true" />
         <Reveal className="max-w-5xl mx-auto px-6 relative z-10">
@@ -1252,7 +1281,7 @@ export default function App() {
                 <div className="mb-14 relative z-10">
                   <p className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-6 bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 rounded-lg inline-block shadow-inner">Professional</p>
                   <div className="flex items-baseline justify-center gap-2">
-                    <span className="text-8xl font-black text-white tracking-tighter">$99</span>
+                    <span className="text-8xl font-black text-white tracking-tighter">$19</span>
                     <span className="text-zinc-500 font-bold tracking-widest uppercase text-xs">/mo</span>
                   </div>
                 </div>
@@ -1282,7 +1311,7 @@ export default function App() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="border-t border-white/5 py-20 bg-[#000] relative overflow-hidden">
+      <footer className="border-t border-white/5 py-20 bg-[#07070c] relative overflow-hidden">
         <AmbientGrid />
         <div className="max-w-6xl mx-auto px-6 relative z-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-12">

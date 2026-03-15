@@ -451,7 +451,7 @@ function ArtifactPreview({ artifact }: { artifact: ConvictionArtifact }) {
            artifact.type === 'calendar_event' ? 'Calendar Event' :
            artifact.type === 'research_brief' ? 'Research Brief' :
            artifact.type === 'decision_frame' ? 'Decision Frame' :
-           'Affirmation'}
+           'Insight'}
         </span>
       </div>
       <div className="p-4">

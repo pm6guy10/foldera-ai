@@ -237,6 +237,24 @@ User approves or skips in DraftQueue. Approved = execute. Skipped = feedback wei
 
 ---
 
+## Verification Standard (NON-NEGOTIABLE)
+- NEVER mark a task done based on localhost or dev build
+- After every push to main, wait for Vercel deployment
+  to show READY, then fetch the PRODUCTION URL
+  (https://www.foldera.ai) and verify changes are
+  visible on the live site
+- If you cannot access the production URL, explicitly
+  say "I cannot verify production" instead of claiming
+  the task is complete
+- Screenshots from localhost do not count as verification
+- Playwright tests must run against the production URL,
+  not localhost
+- "Vercel deployment green" means the build compiled.
+  It does NOT mean the feature works. Always verify
+  the actual rendered page.
+- Any session that ends with "all checks pass" based
+  on localhost screenshots is a FAILED session.
+
 ## QA Standard — run this automatically
 After EVERY commit, before marking anything done:
 1. Screenshot every affected screen at 390px and 1280px

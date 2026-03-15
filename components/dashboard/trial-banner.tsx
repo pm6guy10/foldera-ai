@@ -67,7 +67,7 @@ export function TrialBanner() {
             onClick={handleUpgrade}
             className="shrink-0 px-4 py-1.5 rounded-lg bg-amber-500 text-black text-sm font-semibold hover:bg-amber-400 transition-colors"
           >
-            Subscribe — $99/mo
+            Subscribe — $19/mo
           </button>
         </div>
       </div>

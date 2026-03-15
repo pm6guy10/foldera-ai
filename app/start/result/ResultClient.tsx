@@ -157,7 +157,7 @@ export default function ResultPage() {
           >
             {starting ? <Spinner /> : 'Start 14-day free trial'}
           </button>
-          <p className="text-zinc-700 text-xs">No credit card required. $99/month after trial.</p>
+          <p className="text-zinc-700 text-xs">No credit card required. $19/month after trial.</p>
         </div>
       </div>
     );
@@ -281,7 +281,7 @@ export default function ResultPage() {
             </button>
 
             <div className="mt-4 text-center space-y-1.5">
-              {['No credit card required', '$99/month after your trial', 'Cancel anytime'].map(line => (
+              {['No credit card required', '$19/month after your trial', 'Cancel anytime'].map(line => (
                 <p key={line} className="flex items-center justify-center gap-1.5 text-zinc-600 text-xs">
                   <Check className="w-3 h-3 text-zinc-700" />
                   {line}

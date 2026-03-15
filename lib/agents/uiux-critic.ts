@@ -55,7 +55,7 @@ LANDING PAGE (app/page.tsx):
 - CTAs: "Get started" → /start; "Sign in" → /start; nav has Product/Security/Pricing links
 - Sections: features grid (6 cards), 3-step loop, artifact demo, security/pricing, footer
 - Nav: Product/Security/Pricing hidden on mobile (md:flex), Sign in hidden on sm, Get started always visible
-- Pricing: single $99/month plan, 14-day free trial, no credit card
+- Pricing: single $19/month plan, 14-day free trial, no credit card
 
 ONBOARDING (/start, /start/processing, /start/result):
 - /start: "Connect with Google" + "Connect with Microsoft" OAuth buttons + paste fallback
