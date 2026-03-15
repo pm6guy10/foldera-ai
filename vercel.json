@@ -38,7 +38,7 @@
     },
     {
       "path": "/api/cron/sync-google",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 2 * * *"
     }
   ]
 }
