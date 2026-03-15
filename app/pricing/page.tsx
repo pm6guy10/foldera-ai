@@ -105,7 +105,7 @@ export default function PricingPage() {
               <div className="relative z-10">
                 <CheckoutButton />
                 <p className="text-center text-zinc-500 text-[10px] uppercase tracking-[0.2em] font-black mt-6 leading-relaxed">
-                  14 days free. Cancel anytime.<br />No credit card required.
+                  14 days free. Cancel anytime.
                 </p>
               </div>
             </div>

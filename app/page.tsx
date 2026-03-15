@@ -1302,7 +1302,7 @@ export default function App() {
                   Start 14-day free trial <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </a>
                 <p className="text-center text-zinc-500 text-[10px] uppercase tracking-[0.2em] font-black mt-8 leading-relaxed relative z-10">
-                  14 days free. Cancel anytime.<br />No credit card required.
+                  14 days free. Cancel anytime.
                 </p>
               </div>
             </div>
@@ -1322,7 +1322,7 @@ export default function App() {
                 </div>
                 <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
               </div>
-              <p className="text-zinc-500 text-[11px] uppercase tracking-[0.2em] font-black max-w-sm leading-relaxed text-left">Built by one person solving his own problem.</p>
+              <p className="text-zinc-500 text-[11px] uppercase tracking-[0.2em] font-black max-w-sm leading-relaxed text-left">Finished work, every morning.</p>
             </div>
             <nav className="flex flex-wrap justify-center items-center gap-x-12 gap-y-6 text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">
               <a href="#product" className="hover:text-white transition-colors">Platform</a>
