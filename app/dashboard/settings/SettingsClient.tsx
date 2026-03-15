@@ -4,13 +4,6 @@ import { useState, useEffect } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { SkeletonSettingsPage } from '@/components/ui/skeleton';
 
-interface SpendSummary {
-  todayUSD: number;
-  monthUSD: number;
-  dailyCapUSD: number;
-  capPct: number;
-}
-
 interface SubscriptionInfo {
   status: string;
   plan?: string;
@@ -20,11 +13,9 @@ interface SubscriptionInfo {
 export default function SettingsClient() {
   const { data: session, status } = useSession();
   const [integrations, setIntegrations] = useState<any[]>([]);
-  const [spend, setSpend] = useState<SpendSummary | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
   // --- FETCH DATA ---
   useEffect(() => {
@@ -35,9 +26,8 @@ export default function SettingsClient() {
 
     const fetchData = async () => {
       try {
-        const [intRes, spendRes, subRes] = await Promise.all([
+        const [intRes, subRes] = await Promise.all([
           fetch('/api/integrations/status'),
-          fetch('/api/settings/spend'),
           fetch('/api/subscription/status'),
         ]);
 
@@ -48,12 +38,6 @@ export default function SettingsClient() {
 
         const { integrations: fetchedIntegrations } = await intRes.json();
         setIntegrations(fetchedIntegrations || []);
-        setLastChecked(new Date());
-
-        if (spendRes.ok) {
-          const spendData = await spendRes.json();
-          setSpend(spendData);
-        }
 
         if (subRes.ok) {
           const subData = await subRes.json();
@@ -126,38 +110,6 @@ export default function SettingsClient() {
           onConnect={() => signIn('azure-ad', { callbackUrl: '/dashboard/settings' })}
         />
       </div>
-
-      {/* API SPEND */}
-      {spend !== null && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-zinc-300 mb-4">AI Usage</h2>
-          <div className="space-y-3">
-            {/* Daily cap bar */}
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs text-zinc-400">Today</span>
-                <span className="text-xs text-zinc-400">
-                  ${spend.todayUSD.toFixed(4)} / ${spend.dailyCapUSD.toFixed(2)} cap
-                </span>
-              </div>
-              <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    spend.capPct >= 90 ? 'bg-red-500' : spend.capPct >= 70 ? 'bg-amber-500' : 'bg-cyan-500'
-                  }`}
-                  style={{ width: `${spend.capPct}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Month total */}
-            <div className="flex justify-between items-center pt-1">
-              <span className="text-xs text-zinc-500">This month</span>
-              <span className="text-xs text-zinc-400">${spend.monthUSD.toFixed(4)}</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* SUBSCRIPTION */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">

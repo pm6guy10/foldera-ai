@@ -129,12 +129,8 @@ export default function ConvictionCard({
     }
   };
 
-  const confidenceColor =
-    (action?.confidence ?? 0) >= 70
-      ? 'text-emerald-400 bg-emerald-900/30 border-emerald-700/40'
-      : (action?.confidence ?? 0) >= 45
-      ? 'text-amber-400 bg-amber-900/30 border-amber-700/40'
-      : 'text-zinc-400 bg-zinc-800 border-zinc-700';
+  // Strip score breakdown from reason text before display
+  const cleanReason = action?.reason?.split('[score=')[0].trim() ?? '';
 
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden">
@@ -190,13 +186,10 @@ export default function ConvictionCard({
               {action.directive}
             </p>
 
-            {/* Confidence + reason */}
-            <div className="flex items-start gap-3 mb-5">
-              <span className={`shrink-0 text-xs font-mono font-bold px-2 py-0.5 rounded border ${confidenceColor}`}>
-                {action.confidence}%
-              </span>
-              <p className="text-zinc-400 text-sm leading-relaxed">{action.reason}</p>
-            </div>
+            {/* Reason (no confidence score, no score breakdown) */}
+            {cleanReason && (
+              <p className="text-zinc-400 text-sm leading-relaxed mb-5">{cleanReason}</p>
+            )}
 
             {/* Artifact preview */}
             {action.executionResult && (action.executionResult as any).artifact && (

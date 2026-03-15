@@ -29,7 +29,15 @@ export interface SubscriptionInfo {
   isReadOnly: boolean;
 }
 
+// Owner account — exempt from trial/payment gates
+const OWNER_USER_ID = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+
 export async function getSubscriptionStatus(userId: string): Promise<SubscriptionInfo> {
+  // Owner is always active pro
+  if (userId === OWNER_USER_ID) {
+    return { status: 'active', plan: 'pro', daysRemaining: 999, isReadOnly: false };
+  }
+
   const supabase = createServerClient();
 
   const { data } = await supabase

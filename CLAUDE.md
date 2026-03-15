@@ -16,6 +16,9 @@ Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env
 - **All pushes go to main.** No feature branches.
 - **Session logs** appended to CLAUDE.md after every session.
 - **Only one cron active:** daily-brief at `0 14 * * *` (7am Pacific). All others disabled until their features are verified working. Do NOT re-add removed crons without explicit instruction. Done.
+- **Dashboard is for users, not developers.** If it wouldn't make sense to a stranger, it doesn't belong on the main screen. No API usage, token counts, health monitors, or debug info on the dashboard. Done.
+- **One directive per email.** No multi-directive emails. Nothing below 70% confidence. No deprioritized/guilt section. No surveys. No learning signals. Done.
+- **Owner account (e40b7cd8) is always pro.** Never show trial/expired banners to the product owner. Done.
 
 ## Build Status
 - Phase 1: done

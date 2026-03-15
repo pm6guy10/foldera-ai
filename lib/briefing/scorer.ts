@@ -198,11 +198,31 @@ function relationshipUrgency(daysSinceContact: number): number {
 }
 
 /** Signal urgency: based on recency (7 days window) */
+/**
+ * Signal urgency with time-based decay.
+ * < 7 days: full weight (1.0x base urgency)
+ * 7-30 days: 0.75x
+ * 30-90 days: 0.5x
+ * 90-180 days: 0.25x
+ * > 180 days: excluded at query level
+ */
 function signalUrgency(occurredAt: string): number {
   const daysSince = (Date.now() - new Date(occurredAt).getTime()) / (1000 * 60 * 60 * 24);
-  if (daysSince <= 1) return 0.9;
-  if (daysSince <= 3) return 0.6;
-  return 0.3;
+  // Base urgency from recency
+  let base: number;
+  if (daysSince <= 1) base = 0.9;
+  else if (daysSince <= 3) base = 0.6;
+  else base = 0.3;
+
+  // Decay multiplier
+  let decay: number;
+  if (daysSince < 7) decay = 1.0;
+  else if (daysSince < 30) decay = 0.75;
+  else if (daysSince < 90) decay = 0.5;
+  else if (daysSince < 180) decay = 0.25;
+  else decay = 0; // should not reach here — excluded at query level
+
+  return base * decay;
 }
 
 // ---------------------------------------------------------------------------
@@ -1403,7 +1423,7 @@ function classifyKillReason(loop: ScoredLoop, winnerScore: number): Deprioritize
 export async function scoreOpenLoops(userId: string): Promise<ScorerResult | null> {
   const supabase = createServerClient();
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const oneHundredEightyDaysAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
 
   // -----------------------------------------------------------------------
   // PRE-SCORING: Anti-Pattern Detection (Session 3)
@@ -1471,15 +1491,15 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       .order('risk_score', { ascending: false })
       .limit(50),
 
-    // Recent signals (last 7 days)
+    // Signals (last 180 days — decay applied during scoring)
     supabase
       .from('tkg_signals')
       .select('id, content, source, occurred_at, author, type')
       .eq('user_id', userId)
-      .gte('occurred_at', sevenDaysAgo)
+      .gte('occurred_at', oneHundredEightyDaysAgo)
       .eq('processed', true)
       .order('occurred_at', { ascending: false })
-      .limit(30),
+      .limit(50),
 
     // Cooling relationships (last interaction > 14 days ago)
     supabase

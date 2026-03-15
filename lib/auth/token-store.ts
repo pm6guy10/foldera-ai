@@ -140,6 +140,11 @@ export async function getMicrosoftTokens(userId: string): Promise<MicrosoftToken
  * Refreshes Microsoft tokens
  */
 async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens): Promise<MicrosoftTokens | null> {
+  if (!tokens.refresh_token) {
+    console.error('[token-store] No refresh token available for Microsoft — user must re-authenticate');
+    return null;
+  }
+
   try {
     const response = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
       method: 'POST',
@@ -149,37 +154,52 @@ async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens): 
         client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
         refresh_token: tokens.refresh_token,
         grant_type: 'refresh_token',
+        scope: 'openid profile email offline_access Mail.Read Mail.Send Calendars.Read User.Read',
       }),
     });
-    
+
     if (!response.ok) {
-      throw new Error(`Token refresh failed: ${response.status}`);
+      const errorBody = await response.text().catch(() => '');
+      console.error(`[token-store] Microsoft token refresh failed (${response.status}): ${errorBody}`);
+
+      // If refresh token is expired/revoked, mark integration as needing re-auth
+      if (response.status === 400 || response.status === 401) {
+        console.error('[token-store] Refresh token expired or revoked — marking integration inactive');
+        await createServerClient()
+          .from('integrations')
+          .update({ is_active: false })
+          .eq('user_id', userId)
+          .eq('provider', 'azure_ad');
+      }
+      return null;
     }
-    
+
     const data = await response.json();
-    
+
     const newTokens: MicrosoftTokens = {
       access_token: data.access_token,
+      // Azure AD may or may not return a new refresh token — always prefer new one
       refresh_token: data.refresh_token || tokens.refresh_token,
-      expires_at: Math.floor(Date.now() / 1000) + data.expires_in,
+      expires_at: Math.floor(Date.now() / 1000) + (data.expires_in ?? 3600),
     };
-    
+
     // Encrypt and update in database
     const encryptedCredentials = {
       access_token: encryptToken(newTokens.access_token),
       refresh_token: encryptToken(newTokens.refresh_token),
       expires_at: newTokens.expires_at,
     };
-    
+
     await createServerClient()
       .from('integrations')
       .update({ credentials: encryptedCredentials })
       .eq('user_id', userId)
       .eq('provider', 'azure_ad');
-    
+
+    console.log(`[token-store] Microsoft tokens refreshed for user ${userId}`);
     return newTokens;
   } catch (error) {
-    console.error('Failed to refresh Microsoft tokens:', error);
+    console.error('[token-store] Failed to refresh Microsoft tokens:', error);
     return null;
   }
 }

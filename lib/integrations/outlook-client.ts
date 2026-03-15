@@ -52,20 +52,33 @@ export async function fetchOutlookEmails(
 
   const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString();
 
+  let currentToken = tokens.access_token;
+
+  async function fetchWithRetry(url: string): Promise<Response> {
+    const res = await fetch(url, { headers: GRAPH_HEADERS(currentToken) });
+    if (res.status === 401) {
+      // Token expired mid-request — force refresh and retry once
+      console.log('[outlook] 401 received — forcing token refresh');
+      const refreshed = await getMicrosoftTokens(userId);
+      if (!refreshed) throw new Error('Token refresh failed on 401');
+      currentToken = refreshed.access_token;
+      return fetch(url, { headers: GRAPH_HEADERS(currentToken) });
+    }
+    return res;
+  }
+
   const [inboxRes, sentRes] = await Promise.all([
-    fetch(
+    fetchWithRetry(
       `https://graph.microsoft.com/v1.0/me/messages` +
       `?$filter=receivedDateTime ge ${since}` +
       `&$select=id,subject,bodyPreview,body,from,receivedDateTime` +
       `&$top=50&$orderby=receivedDateTime desc`,
-      { headers: GRAPH_HEADERS(tokens.access_token) },
     ),
-    fetch(
+    fetchWithRetry(
       `https://graph.microsoft.com/v1.0/me/mailFolders/SentItems/messages` +
       `?$filter=sentDateTime ge ${since}` +
       `&$select=id,subject,bodyPreview,body,toRecipients,sentDateTime` +
       `&$top=50&$orderby=sentDateTime desc`,
-      { headers: GRAPH_HEADERS(tokens.access_token) },
     ),
   ]);
 
@@ -146,14 +159,26 @@ export async function sendOutlookEmail(
   };
 
   try {
-    const res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
-      method:  'POST',
-      headers: {
-        Authorization:  `Bearer ${tokens.access_token}`,
-        'Content-Type': 'application/json',
-      },
+    let currentToken = tokens.access_token;
+
+    let res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+
+    // Retry once on 401 with refreshed token
+    if (res.status === 401) {
+      console.log('[outlook] send 401 — forcing token refresh');
+      const refreshed = await getMicrosoftTokens(userId);
+      if (!refreshed) return { success: false, error: 'Token refresh failed' };
+      currentToken = refreshed.access_token;
+      res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    }
 
     if (res.status === 202) {
       return { success: true };
