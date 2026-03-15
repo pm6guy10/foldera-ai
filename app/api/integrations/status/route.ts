@@ -21,17 +21,36 @@ export async function GET() {
   try {
     const supabase = createServerClient();
 
-    const { data, error } = await supabase
-      .from('integrations')
-      .select('provider, is_active, connected_at')
-      .eq('user_id', session.user.id);
+    const [intResult, tokenResult] = await Promise.all([
+      supabase
+        .from('integrations')
+        .select('provider, is_active, connected_at')
+        .eq('user_id', session.user.id),
+      supabase
+        .from('user_tokens')
+        .select('provider, email, last_synced_at')
+        .eq('user_id', session.user.id),
+    ]);
 
-    if (error) {
-      console.error('[integrations/status] query failed:', error.message);
-      return NextResponse.json({ integrations: [] });
+    if (intResult.error) {
+      console.error('[integrations/status] query failed:', intResult.error.message);
     }
 
-    return NextResponse.json({ integrations: data || [] });
+    // Merge user_tokens data into integrations
+    const integrations = (intResult.data || []).map((int: any) => {
+      const token = (tokenResult.data || []).find((t: any) => {
+        if (int.provider === 'google' && t.provider === 'google') return true;
+        if (int.provider === 'azure_ad' && t.provider === 'microsoft') return true;
+        return false;
+      });
+      return {
+        ...int,
+        sync_email: token?.email ?? null,
+        last_synced_at: token?.last_synced_at ?? null,
+      };
+    });
+
+    return NextResponse.json({ integrations });
   } catch (err: any) {
     console.error('[integrations/status] unexpected error:', err.message);
     return NextResponse.json({ integrations: [] });

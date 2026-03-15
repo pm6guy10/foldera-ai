@@ -91,6 +91,19 @@ export function getAuthOptions(): NextAuthOptions {
                       ? account.expires_at * 1000
                       : Date.now() + 3_600_000,
                   });
+                  // Also persist to user_tokens for background sync jobs
+                  try {
+                    const { saveUserToken } = await import('@/lib/auth/user-tokens');
+                    await saveUserToken(resolvedUserId, 'google', {
+                      access_token: account.access_token,
+                      refresh_token: account.refresh_token,
+                      expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
+                      email: user.email ?? undefined,
+                      scopes: (account as any).scope ?? '',
+                    });
+                  } catch (utErr) {
+                    console.error('[auth] Failed to persist to user_tokens:', utErr);
+                  }
                 } else if (account.provider === 'azure-ad') {
                   await saveTokens(resolvedUserId, 'azure_ad', {
                     access_token: account.access_token,

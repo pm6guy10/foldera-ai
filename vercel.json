@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/growth-scanner",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/sync-google",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
