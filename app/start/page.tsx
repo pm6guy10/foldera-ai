@@ -2,153 +2,16 @@
 
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
-import { ArrowRight, Layers } from 'lucide-react';
-
-interface Directive {
-  directive: string;
-  action_type: string;
-  confidence: number;
-  reason: string;
-  evidence: Array<{ type: string; description: string; date: string | null }>;
-  artifact_type?: string;
-  artifact?: any;
-}
-
-const ACTION_LABELS: Record<string, string> = {
-  write_document: 'Write',
-  send_message: 'Reach Out',
-  make_decision: 'Decide',
-  do_nothing: 'Wait',
-  schedule: 'Schedule',
-  research: 'Research',
-};
-
-const ACTION_COLORS: Record<string, string> = {
-  write_document: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-  send_message: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-  make_decision: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  do_nothing: 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
-  schedule: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  research: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-};
+import { Layers } from 'lucide-react';
 
 export default function StartPage() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
-  const [showPaste, setShowPaste] = useState(false);
-  const [text, setText] = useState('');
-  const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<Directive | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleOAuth(provider: 'google' | 'azure-ad') {
     setLoadingProvider(provider);
     await signIn(provider, { callbackUrl: '/start/processing' });
   }
 
-  async function handlePasteSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!text.trim() || analyzing) return;
-    setAnalyzing(true);
-    setError(null);
-
-    try {
-      const res = await fetch('/api/try/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Analysis failed');
-      setResult(data as Directive);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setAnalyzing(false);
-    }
-  }
-
-  // ── Result view: show the directive + CTA to sign up ──────────────────────
-  if (result) {
-    const actionLabel = ACTION_LABELS[result.action_type] ?? result.action_type;
-    const actionColor = ACTION_COLORS[result.action_type] ?? ACTION_COLORS.research;
-
-    return (
-      <main className="min-h-[100dvh] bg-[#000] text-white flex flex-col items-center justify-center px-6 py-16 antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div className="max-w-2xl w-full">
-          <div className="bg-zinc-950/80 border border-white/10 rounded-[2rem] p-8 mb-8 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-6">
-              <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${actionColor}`}>
-                {actionLabel}
-              </span>
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 w-24 bg-zinc-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${result.confidence}%` }} />
-                </div>
-                <span className="text-zinc-500 text-xs">{result.confidence}%</span>
-              </div>
-            </div>
-            <p className="text-2xl font-semibold leading-snug text-white mb-5">{result.directive}</p>
-            <p className="text-zinc-400 text-sm leading-relaxed border-l-2 border-zinc-700 pl-4 italic mb-5">
-              {result.reason}
-            </p>
-            {result.evidence.length > 0 && (
-              <div className="border-t border-zinc-800 pt-5">
-                <p className="text-zinc-500 text-xs font-semibold tracking-widest uppercase mb-3">
-                  Evidence from your text
-                </p>
-                <ul className="space-y-2">
-                  {result.evidence.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-zinc-400">
-                      <span className="text-zinc-600 mt-0.5 shrink-0">&bull;</span>
-                      {item.description}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {result.artifact && result.artifact_type && (
-              <ArtifactPreview artifactType={result.artifact_type} artifact={result.artifact} />
-            )}
-          </div>
-
-          <div className="bg-zinc-950/60 border border-white/5 rounded-[2rem] p-8 text-center space-y-5 backdrop-blur-sm">
-            <p className="text-zinc-400 text-base leading-relaxed">
-              That was based on one paragraph.<br />
-              Imagine what Foldera does with 30 days of your actual history.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => handleOAuth('google')}
-                disabled={!!loadingProvider}
-                className="flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-3 px-6 rounded-2xl transition-all disabled:opacity-60"
-              >
-                <GoogleIcon />
-                Connect with Google
-              </button>
-              <button
-                onClick={() => handleOAuth('azure-ad')}
-                disabled={!!loadingProvider}
-                className="flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0078d4] font-semibold py-3 px-6 rounded-2xl transition-all disabled:opacity-60"
-              >
-                <MicrosoftIcon />
-                Connect with Microsoft
-              </button>
-            </div>
-            <p className="text-zinc-600 text-xs">14 days free. No credit card required.</p>
-          </div>
-
-          <button
-            onClick={() => { setResult(null); setError(null); setText(''); }}
-            className="w-full text-zinc-600 hover:text-zinc-400 text-sm transition-colors mt-6 text-center"
-          >
-            Try a different paragraph
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  // ── Main view: OAuth buttons + paste option ───────────────────────────────
   return (
     <main className="min-h-[100dvh] bg-[#000] text-white flex flex-col items-center justify-center px-6 antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
       <div className="max-w-lg w-full text-center">
@@ -161,8 +24,7 @@ export default function StartPage() {
 
         <h1 className="text-4xl sm:text-5xl font-black tracking-tighter leading-tight mb-5">
           Connect your history.<br />
-          Get your first read<br />
-          in 60 seconds.
+          Foldera does the rest.
         </h1>
 
         <p className="text-zinc-400 text-lg leading-relaxed mb-10 font-medium">
@@ -198,168 +60,13 @@ export default function StartPage() {
           </button>
         </div>
 
-        <p className="text-zinc-500 text-sm leading-relaxed mb-8">
+        <p className="text-zinc-500 text-sm leading-relaxed">
           We read your last 30 days of sent email.<br />
           Nothing is stored permanently until you subscribe.
         </p>
-
-        {!showPaste ? (
-          <button
-            onClick={() => setShowPaste(true)}
-            className="text-sm text-zinc-600 hover:text-zinc-400 transition-colors"
-          >
-            or paste a conversation to try it free &darr;
-          </button>
-        ) : (
-          <form onSubmit={handlePasteSubmit} className="max-w-sm mx-auto space-y-3 mt-2">
-            <textarea
-              value={text}
-              onChange={e => setText(e.target.value)}
-              placeholder="Paste a paragraph about what you're working on or struggling with..."
-              rows={5}
-              className="w-full bg-zinc-950/80 border border-white/10 rounded-2xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors backdrop-blur-sm"
-            />
-            {error && <p className="text-red-400 text-sm">{error}</p>}
-            <button
-              type="submit"
-              disabled={!text.trim() || analyzing}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white hover:bg-zinc-200 text-black disabled:opacity-40 font-black uppercase tracking-[0.15em] text-xs transition-all"
-            >
-              {analyzing ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  Reading...
-                </>
-              ) : (
-                <>
-                  Get your read
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-        )}
       </div>
     </main>
   );
-}
-
-function ArtifactPreview({ artifactType, artifact }: { artifactType: string; artifact: any }) {
-  const baseCard = 'mt-6 border-t border-zinc-800 pt-5';
-  const label = (
-    <p className="text-zinc-500 text-xs font-semibold tracking-widest uppercase mb-3">
-      Draft ready
-    </p>
-  );
-
-  if (artifactType === 'drafted_email' && artifact) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-3 text-sm">
-          <div className="flex gap-2">
-            <span className="text-zinc-500 w-14 shrink-0">To</span>
-            <span className="text-zinc-200 truncate">{artifact.to ?? '—'}</span>
-          </div>
-          <div className="flex gap-2 border-t border-zinc-700/40 pt-3">
-            <span className="text-zinc-500 w-14 shrink-0">Subject</span>
-            <span className="text-zinc-200">{artifact.subject ?? '—'}</span>
-          </div>
-          <div className="border-t border-zinc-700/40 pt-3 text-zinc-300 leading-relaxed whitespace-pre-wrap break-words">
-            {artifact.body ?? ''}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (artifactType === 'decision' && artifact?.options) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="space-y-3">
-          {artifact.options.map((opt: any, i: number) => (
-            <div key={i} className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-zinc-200 text-sm font-medium">{opt.option}</span>
-                <span className="text-zinc-500 text-xs">{Math.round((opt.weight ?? 0) * 100)}%</span>
-              </div>
-              <div className="h-1 bg-zinc-700 rounded-full overflow-hidden mb-2">
-                <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${Math.round((opt.weight ?? 0) * 100)}%` }} />
-              </div>
-              {opt.rationale && <p className="text-zinc-500 text-xs">{opt.rationale}</p>}
-            </div>
-          ))}
-          {artifact.recommendation && (
-            <p className="text-zinc-400 text-sm border-l-2 border-cyan-500/40 pl-3 italic">{artifact.recommendation}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (artifactType === 'document' && artifact) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
-          <p className="text-zinc-200 text-sm font-semibold mb-2">{artifact.title ?? 'Document'}</p>
-          <p className="text-zinc-400 text-sm leading-relaxed line-clamp-4">{artifact.content ?? ''}</p>
-          <p className="text-zinc-600 text-xs mt-3">Full document ready on approval</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (artifactType === 'wait_rationale' && artifact) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-2">
-          <p className="text-zinc-300 text-sm leading-relaxed">{artifact.context ?? ''}</p>
-          {artifact.evidence && (
-            <p className="text-zinc-500 text-sm border-l-2 border-zinc-700 pl-3 italic">{artifact.evidence}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (artifactType === 'research_brief' && artifact) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
-          <p className="text-zinc-300 text-sm leading-relaxed mb-2">{artifact.findings ?? ''}</p>
-          {artifact.recommended_action && (
-            <p className="text-zinc-500 text-xs border-l-2 border-zinc-700 pl-3 italic">{artifact.recommended_action}</p>
-          )}
-          {Array.isArray(artifact.sources) && artifact.sources.length > 0 && (
-            <p className="text-zinc-600 text-xs mt-2">{artifact.sources.length} source{artifact.sources.length !== 1 ? 's' : ''} identified</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (artifactType === 'calendar_event' && artifact) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-2">
-          <p className="text-zinc-200 text-sm font-semibold">{artifact.title ?? 'Event'}</p>
-          {artifact.start && (
-            <p className="text-zinc-500 text-xs">{new Date(artifact.start).toLocaleString()} — {artifact.end ? new Date(artifact.end).toLocaleString() : ''}</p>
-          )}
-          {artifact.description && (
-            <p className="text-zinc-400 text-sm">{artifact.description}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
 }
 
 function LoadingSpinner() {
