@@ -32,6 +32,7 @@ export function getAuthOptions(): NextAuthOptions {
         authorization: {
           params: {
             scope: 'openid profile email User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read offline_access',
+            prompt: 'consent',
           },
         },
       })
@@ -81,52 +82,59 @@ export function getAuthOptions(): NextAuthOptions {
             // cron jobs (sync-email, etc.) can retrieve them without a session.
             try {
               const { saveTokens } = await import('@/lib/auth/token-store');
-              if (resolvedUserId && account.access_token && account.refresh_token) {
+              if (resolvedUserId && account.access_token) {
                 if (account.provider === 'google') {
-                  await saveTokens(resolvedUserId, 'google', {
-                    access_token: account.access_token,
-                    refresh_token: account.refresh_token,
-                    // expires_at from NextAuth is in seconds; GoogleTokens.expiry_date is ms
-                    expiry_date: account.expires_at
-                      ? account.expires_at * 1000
-                      : Date.now() + 3_600_000,
-                  });
+                  if (account.refresh_token) {
+                    await saveTokens(resolvedUserId, 'google', {
+                      access_token: account.access_token,
+                      refresh_token: account.refresh_token,
+                      expiry_date: account.expires_at
+                        ? account.expires_at * 1000
+                        : Date.now() + 3_600_000,
+                    });
+                  }
                   // Also persist to user_tokens for background sync jobs
                   try {
                     const { saveUserToken } = await import('@/lib/auth/user-tokens');
                     await saveUserToken(resolvedUserId, 'google', {
                       access_token: account.access_token,
-                      refresh_token: account.refresh_token,
+                      refresh_token: account.refresh_token ?? '',
                       expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
                       email: user.email ?? undefined,
                       scopes: (account as any).scope ?? '',
                     });
+                    console.log(`[auth] user_tokens upsert OK for google, user ${resolvedUserId}`);
                   } catch (utErr) {
-                    console.error('[auth] Failed to persist to user_tokens:', utErr);
+                    console.error('[auth] Failed to persist to user_tokens (google):', utErr);
                   }
                 } else if (account.provider === 'azure-ad') {
-                  await saveTokens(resolvedUserId, 'azure_ad', {
-                    access_token: account.access_token,
-                    refresh_token: account.refresh_token,
-                    expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
-                  });
+                  if (account.refresh_token) {
+                    await saveTokens(resolvedUserId, 'azure_ad', {
+                      access_token: account.access_token,
+                      refresh_token: account.refresh_token,
+                      expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
+                    });
+                  } else {
+                    console.warn(`[auth] Microsoft sign-in missing refresh_token — prompt=consent should force it. Saving access_token only.`);
+                  }
                   // Also persist to user_tokens for background sync jobs
                   try {
                     const { saveUserToken } = await import('@/lib/auth/user-tokens');
                     await saveUserToken(resolvedUserId, 'microsoft', {
                       access_token: account.access_token,
-                      refresh_token: account.refresh_token,
+                      refresh_token: account.refresh_token ?? '',
                       expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
                       email: user.email ?? undefined,
                       scopes: (account as any).scope ?? '',
                     });
+                    console.log(`[auth] user_tokens upsert OK for microsoft, user ${resolvedUserId}, has_refresh=${!!account.refresh_token}`);
                   } catch (utErr) {
                     console.error('[auth] Failed to persist Microsoft to user_tokens:', utErr);
                   }
                 }
                 console.log(`[auth] Tokens persisted for ${account.provider}`);
               } else {
-                console.warn(`[auth] Skipped token persist — missing: userId=${!!resolvedUserId} access=${!!account.access_token} refresh=${!!account.refresh_token}`);
+                console.warn(`[auth] Skipped token persist — missing: userId=${!!resolvedUserId} access=${!!account.access_token}`);
               }
             } catch (err) {
               // Non-fatal — JWT still works; log and move on
