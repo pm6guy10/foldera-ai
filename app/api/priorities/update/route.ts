@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const userId = process.env.INGEST_USER_ID ?? session.user.id;
+  const userId = session.user.id;
 
   const body = await request.json().catch(() => ({}));
   const { priorities } = body as { priorities?: PriorityInput[] };
@@ -83,7 +83,7 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const userId = process.env.INGEST_USER_ID ?? session.user.id;
+  const userId = session.user.id;
 
   const supabase = createServerClient();
   const { data, error } = await supabase

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', baseUrl));
   }
 
-  const userId = process.env.INGEST_USER_ID ?? session.user.id;
+  const userId = session.user.id;
 
   // 2. Check for errors from Google
   const { searchParams } = request.nextUrl;

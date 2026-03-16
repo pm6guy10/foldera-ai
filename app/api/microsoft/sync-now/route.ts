@@ -12,7 +12,7 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = process.env.INGEST_USER_ID ?? session.user.id;
+  const userId = session.user.id;
 
   try {
     const result = await syncMicrosoft(userId);

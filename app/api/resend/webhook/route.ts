@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { createServerClient } from '@/lib/db/client';
+import { encrypt } from '@/lib/encryption';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,22 +87,22 @@ export async function POST(request: NextRequest) {
       }
 
       // ── 2. Daily brief open tracking ────────────────────────────────────────
-      // If the recipient is the primary user (DAILY_BRIEF_TO_EMAIL), record a
-      // daily_brief_opened signal so the engagement-drop check stays current.
-      const briefEmail = process.env.DAILY_BRIEF_TO_EMAIL ?? '';
-      const userId     = process.env.INGEST_USER_ID ?? '';
+      // If this was a daily brief email, record a daily_brief_opened signal
+      // for the tagged user so the engagement-drop check stays current.
+      const dailyBriefUserId = tags?.find((tag) => tag.name === 'user_id')?.value ?? '';
+      const emailType = tags?.find((tag) => tag.name === 'email_type')?.value ?? '';
 
-      if (briefEmail && userId && toEmail.toLowerCase() === briefEmail.toLowerCase()) {
+      if (emailType === 'daily_brief' && dailyBriefUserId) {
         const todayStr   = new Date().toISOString().slice(0, 10);
         const contentHash = `daily_brief_opened:${todayStr}`;
 
         // Deduplicated by content_hash (one signal per calendar day)
         const { error: sigErr } = await supabase.from('tkg_signals').insert({
-          user_id:      userId,
+          user_id:      dailyBriefUserId,
           source:       'resend_webhook',
           source_id:    contentHash,
           type:         'daily_brief_opened',
-          content:      `Daily brief opened on ${todayStr}`,
+          content:      encrypt(`Daily brief opened on ${todayStr}`),
           content_hash: contentHash,
           author:       'foldera-system',
           occurred_at:  new Date().toISOString(),

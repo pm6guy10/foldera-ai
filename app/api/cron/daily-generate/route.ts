@@ -13,6 +13,7 @@ import { createServerClient } from '@/lib/db/client';
 import { generateDirective } from '@/lib/briefing/generator';
 import { generateArtifact, getFallbackArtifact } from '@/lib/conviction/artifact-generator';
 import { apiError } from '@/lib/utils/api-error';
+import { filterDailyBriefEligibleUserIds } from '@/lib/auth/daily-brief-users';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
@@ -28,25 +29,28 @@ async function handler(request: NextRequest) {
   const date = new Date().toISOString().slice(0, 10);
 
   // Expire trials
-  await supabase.from('user_subscriptions').update({ status: 'expired' })
-    .eq('plan', 'trial').eq('status', 'active').lte('current_period_end', new Date().toISOString());
+  const { error: expireError } = await supabase
+    .from('user_subscriptions')
+    .update({ status: 'expired' })
+    .eq('plan', 'trial')
+    .eq('status', 'active')
+    .lte('current_period_end', new Date().toISOString());
+  if (expireError) return apiError(expireError, 'cron/daily-generate');
 
   const { data: entities, error } = await supabase.from('tkg_entities').select('user_id').eq('name', 'self');
   if (error) return apiError(error, 'cron/daily-generate');
 
   const userIds = [...new Set((entities ?? []).map((e: { user_id: string }) => e.user_id))];
   if (userIds.length === 0) return NextResponse.json({ generated: 0, message: 'No users with graph data' });
+  const eligibleUserIds = await filterDailyBriefEligibleUserIds(userIds, supabase);
+  if (eligibleUserIds.length === 0) {
+    return NextResponse.json({ generated: 0, message: 'No eligible users with graph data' });
+  }
 
   const results: Array<{ userId: string; success: boolean; error?: string }> = [];
 
-  for (const userId of userIds) {
+  for (const userId of eligibleUserIds) {
     try {
-      const { data: sub } = await supabase
-        .from('user_subscriptions').select('created_at, status').eq('user_id', userId).maybeSingle();
-      if (sub?.status === 'expired' && userId !== 'e40b7cd8-4925-42f7-bc99-5022969f1d22') {
-        results.push({ userId, success: false, error: 'trial expired' }); continue;
-      }
-
       // Summarize old signals into weekly digests (before generation so summaries are available as context)
       try {
         const summariesCreated = await summarizeSignals(userId);

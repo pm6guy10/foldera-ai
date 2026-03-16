@@ -12,6 +12,10 @@ import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { sendDailyDirective } from '@/lib/email/resend';
 import { apiError } from '@/lib/utils/api-error';
+import {
+  filterDailyBriefEligibleUserIds,
+  getVerifiedDailyBriefRecipientEmail,
+} from '@/lib/auth/daily-brief-users';
 import type { DirectiveItem } from '@/lib/email/resend';
 
 export const dynamic = 'force-dynamic';
@@ -22,9 +26,6 @@ async function handler(request: NextRequest) {
   const authErr = validateCronAuth(request);
   if (authErr) return authErr;
 
-  const to = process.env.DAILY_BRIEF_TO_EMAIL;
-  if (!to) return NextResponse.json({ error: 'DAILY_BRIEF_TO_EMAIL is not set' }, { status: 500 });
-
   const supabase = createServerClient();
   const date = new Date().toISOString().slice(0, 10);
 
@@ -33,21 +34,23 @@ async function handler(request: NextRequest) {
   if (error) return apiError(error, 'cron/daily-send');
 
   const userIds = [...new Set((entities ?? []).map((e: { user_id: string }) => e.user_id))];
-  if (userIds.length === 0) return NextResponse.json({ sent: 0, message: 'No users' });
+  const eligibleUserIds = await filterDailyBriefEligibleUserIds(userIds, supabase);
+  if (eligibleUserIds.length === 0) {
+    return NextResponse.json({ sent: 0, message: 'No eligible users' });
+  }
 
   const results: Array<{ userId: string; success: boolean; error?: string }> = [];
 
-  for (const userId of userIds) {
+  for (const userId of eligibleUserIds) {
     try {
-      // Check subscription (exempt owner)
-      const { data: sub } = await supabase
-        .from('user_subscriptions').select('created_at, status').eq('user_id', userId).maybeSingle();
-      if (sub?.status === 'expired' && userId !== 'e40b7cd8-4925-42f7-bc99-5022969f1d22') {
-        results.push({ userId, success: false, error: 'trial expired' }); continue;
+      const to = await getVerifiedDailyBriefRecipientEmail(userId, supabase);
+      if (!to) {
+        results.push({ userId, success: false, error: 'no verified email' });
+        continue;
       }
 
       // Fetch today's generated directives — pick the SINGLE highest confidence
-      const { data: actions } = await supabase
+      const { data: actions, error: actionsError } = await supabase
         .from('tkg_actions')
         .select('id, action_type, directive_text, reason, confidence')
         .eq('user_id', userId)
@@ -55,6 +58,11 @@ async function handler(request: NextRequest) {
         .gte('generated_at', todayStart.toISOString())
         .order('confidence', { ascending: false })
         .limit(1);
+
+      if (actionsError) {
+        results.push({ userId, success: false, error: actionsError.message });
+        continue;
+      }
 
       const action = actions?.[0];
 
@@ -67,7 +75,13 @@ async function handler(request: NextRequest) {
 
       // Below threshold → "Nothing today"
       if (confidence < CONFIDENCE_THRESHOLD) {
-        await sendDailyDirective({ to, date, subject: 'Foldera: Nothing today', directives: [] });
+        await sendDailyDirective({
+          to,
+          date,
+          subject: 'Foldera: Nothing today',
+          directives: [],
+          userId,
+        });
         results.push({ userId, success: true });
         continue;
       }
@@ -85,10 +99,18 @@ async function handler(request: NextRequest) {
       const subject = `Foldera: ${words.length > 50 ? words.slice(0, 47) + '...' : words}`;
 
       // Send ONE email
-      await sendDailyDirective({ to, directives: [directiveItem], date, subject });
+      await sendDailyDirective({ to, directives: [directiveItem], date, subject, userId });
 
       // Update status
-      await supabase.from('tkg_actions').update({ status: 'pending_approval' }).eq('id', action.id);
+      const { error: updateError } = await supabase
+        .from('tkg_actions')
+        .update({ status: 'pending_approval' })
+        .eq('id', action.id);
+
+      if (updateError) {
+        results.push({ userId, success: false, error: updateError.message });
+        continue;
+      }
 
       results.push({ userId, success: true });
       console.log(`[daily-send] ${userId}: directive sent (confidence ${confidence}%)`);
@@ -100,7 +122,7 @@ async function handler(request: NextRequest) {
   }
 
   const sent = results.filter(r => r.success).length;
-  return NextResponse.json({ date, sent, total: userIds.length, results });
+  return NextResponse.json({ date, sent, total: eligibleUserIds.length, results });
 }
 
 export const GET = handler;

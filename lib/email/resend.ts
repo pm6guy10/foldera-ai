@@ -40,14 +40,21 @@ export async function sendDailyDirective({
   directives,
   date,
   subject,
+  userId,
 }: {
   to:            string;
   directives:    DirectiveItem[];
   date:          string;
   subject?:      string;
+  userId:        string;
 }) {
   const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
   const d = directives[0]; // Single directive or none
+  const tags = [
+    { name: 'email_type', value: 'daily_brief' },
+    { name: 'user_id', value: userId },
+    ...(d?.id ? [{ name: 'action_id', value: d.id }] : []),
+  ];
 
   // "Nothing today" email
   if (!d) {
@@ -82,6 +89,7 @@ export async function sendDailyDirective({
       to,
       subject: nothingSubject,
       html,
+      tags,
     });
   }
 
@@ -143,5 +151,6 @@ export async function sendDailyDirective({
     to,
     subject: emailSubject,
     html,
+    tags,
   });
 }
