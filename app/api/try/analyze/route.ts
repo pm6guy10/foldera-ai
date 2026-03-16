@@ -11,7 +11,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { rateLimit } from '@/lib/utils/rate-limit';
-import { logGrowthOnboard } from '@/lib/growth/conversion-tracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,10 +124,6 @@ export async function POST(request: NextRequest) {
 
     const raw = response.content[0].type === 'text' ? response.content[0].text : '';
     const parsed = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim());
-
-    // Log /try completion as a growth signal (non-blocking)
-    const refCookie = request.cookies.get('foldera_ref')?.value;
-    logGrowthOnboard({ ref: refCookie, path: '/try' }).catch(() => { /* non-critical */ });
 
     return NextResponse.json({
       directive:     String(parsed.directive     ?? ''),

@@ -14,7 +14,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createServerClient } from '@/lib/db/client';
-import { logGrowthConversion } from '@/lib/growth/conversion-tracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,12 +77,6 @@ export async function POST(request: NextRequest) {
         console.error('[stripe/webhook] upsert failed:', error.message);
       } else {
         console.log('[stripe/webhook] subscription created for', userId);
-
-        // Log as growth conversion signal (non-blocking)
-        logGrowthConversion({
-          email:          session.customer_email ?? undefined,
-          stripeCustomer: customerId ?? undefined,
-        }).catch(() => { /* non-critical */ });
       }
     }
   }

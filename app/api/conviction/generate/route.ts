@@ -50,6 +50,14 @@ export async function POST(request: Request) {
     // Generate the directive
     const directive = await generateDirective(userId);
 
+    // Check for generation failure sentinel
+    if (directive.directive === '__GENERATION_FAILED__') {
+      return NextResponse.json(
+        { error: 'Directive generation failed' },
+        { status: 500 },
+      );
+    }
+
     // Generate the artifact (finished work product)
     let artifact = null;
     try {
