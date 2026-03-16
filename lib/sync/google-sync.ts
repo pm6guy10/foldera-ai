@@ -10,7 +10,7 @@
 
 import { google } from 'googleapis';
 import { createServerClient } from '@/lib/db/client';
-import { getUserToken, updateSyncTimestamp } from '@/lib/auth/user-tokens';
+import { getUserToken, updateSyncTimestamp, saveUserToken } from '@/lib/auth/user-tokens';
 import { encrypt } from '@/lib/encryption';
 import { createHash } from 'crypto';
 
@@ -18,7 +18,10 @@ function hash(content: string): string {
   return createHash('sha256').update(content).digest('hex');
 }
 
-function getOAuth2Client(tokens: { access_token: string; refresh_token: string; expires_at: number }) {
+function getOAuth2Client(
+  userId: string,
+  tokens: { access_token: string; refresh_token: string; expires_at: number },
+) {
   const oauth2 = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -29,6 +32,23 @@ function getOAuth2Client(tokens: { access_token: string; refresh_token: string; 
     // expires_at is in seconds; expiry_date is in ms
     expiry_date: tokens.expires_at * 1000,
   });
+
+  // Persist refreshed tokens back to user_tokens when googleapis auto-refreshes
+  oauth2.on('tokens', async (newCredentials) => {
+    try {
+      await saveUserToken(userId, 'google', {
+        access_token: newCredentials.access_token ?? tokens.access_token,
+        refresh_token: newCredentials.refresh_token ?? tokens.refresh_token,
+        expires_at: newCredentials.expiry_date
+          ? Math.floor(newCredentials.expiry_date / 1000)
+          : tokens.expires_at,
+      });
+      console.log(`[google-sync] Persisted refreshed Google tokens for user ${userId}`);
+    } catch (err: any) {
+      console.error(`[google-sync] Failed to persist refreshed tokens:`, err.message);
+    }
+  });
+
   return oauth2;
 }
 
@@ -202,7 +222,7 @@ export async function syncGoogle(userId: string): Promise<GoogleSyncResult> {
     ? Date.now() - 30 * 24 * 60 * 60 * 1000 // 30 days ago
     : new Date(token.last_synced_at!).getTime();
 
-  const oauth2 = getOAuth2Client(token);
+  const oauth2 = getOAuth2Client(userId, token);
 
   let gmailSignals = 0;
   let calendarSignals = 0;

@@ -11,8 +11,7 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import { getUserToken, updateSyncTimestamp } from '@/lib/auth/user-tokens';
-import { getMicrosoftTokens } from '@/lib/auth/token-store';
+import { getUserToken, updateSyncTimestamp, saveUserToken } from '@/lib/auth/user-tokens';
 import { encrypt } from '@/lib/encryption';
 import { createHash } from 'crypto';
 
@@ -21,6 +20,69 @@ function hash(content: string): string {
 }
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
+
+const MS_TOKEN_SCOPES = 'openid profile email offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read';
+
+/**
+ * Refresh the Microsoft access token using the refresh_token from user_tokens,
+ * then persist the new tokens back to user_tokens.
+ */
+async function refreshMicrosoftAccessToken(
+  userId: string,
+  refreshToken: string,
+): Promise<{ access_token: string; refresh_token: string; expires_at: number } | null> {
+  const response = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: process.env.AZURE_AD_CLIENT_ID!,
+      client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+      scope: MS_TOKEN_SCOPES,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    console.error(`[microsoft-sync] Token refresh failed (${response.status}): ${errorBody.slice(0, 200)}`);
+    return null;
+  }
+
+  const data = await response.json();
+  const newTokens = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || refreshToken,
+    expires_at: Math.floor(Date.now() / 1000) + (data.expires_in ?? 3600),
+  };
+
+  // Persist refreshed tokens back to user_tokens
+  await saveUserToken(userId, 'microsoft', newTokens);
+  console.log(`[microsoft-sync] Refreshed and saved Microsoft tokens for user ${userId}`);
+  return newTokens;
+}
+
+/**
+ * Get a valid Microsoft access token from user_tokens, refreshing if expired.
+ */
+async function getValidMicrosoftToken(
+  userId: string,
+): Promise<{ access_token: string; refresh_token: string; expires_at: number } | null> {
+  const token = await getUserToken(userId, 'microsoft');
+  if (!token) return null;
+
+  // Check if token needs refresh (5-minute buffer)
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (token.expires_at && token.expires_at < nowSec + 5 * 60) {
+    if (!token.refresh_token) {
+      console.error('[microsoft-sync] No refresh token — user must re-authenticate');
+      return null;
+    }
+    return refreshMicrosoftAccessToken(userId, token.refresh_token);
+  }
+
+  return token;
+}
 
 /**
  * Fetch with Microsoft Graph, retrying once on 401 with refreshed token.
@@ -39,8 +101,10 @@ async function graphFetch(
   });
 
   if (res.status === 401) {
-    // Token may have expired mid-sync — refresh and retry
-    const refreshed = await getMicrosoftTokens(userId);
+    // Token expired mid-sync — refresh from user_tokens and retry
+    const token = await getUserToken(userId, 'microsoft');
+    if (!token?.refresh_token) throw new Error('Token refresh failed on 401 — no refresh token');
+    const refreshed = await refreshMicrosoftAccessToken(userId, token.refresh_token);
     if (!refreshed) throw new Error('Token refresh failed on 401');
     res = await fetch(url, {
       headers: {
@@ -334,23 +398,21 @@ export interface MicrosoftSyncResult {
  * pulls 30 days. On subsequent runs, pulls since last sync.
  */
 export async function syncMicrosoft(userId: string): Promise<MicrosoftSyncResult> {
-  const token = await getUserToken(userId, 'microsoft');
-  if (!token) {
+  // Get token from user_tokens, refreshing if expired
+  const validToken = await getValidMicrosoftToken(userId);
+  if (!validToken) {
     return { mail_signals: 0, calendar_signals: 0, file_signals: 0, task_signals: 0, is_first_sync: false, error: 'no_token' };
   }
 
-  const isFirstSync = !token.last_synced_at;
+  // Read last_synced_at separately (getValidMicrosoftToken may have refreshed)
+  const tokenMeta = await getUserToken(userId, 'microsoft');
+  const isFirstSync = !tokenMeta?.last_synced_at;
   const sinceMs = isFirstSync
     ? Date.now() - 30 * 24 * 60 * 60 * 1000 // 30 days ago
-    : new Date(token.last_synced_at!).getTime();
+    : new Date(tokenMeta!.last_synced_at!).getTime();
   const sinceIso = new Date(sinceMs).toISOString();
 
-  // Token may need refresh — get fresh access token from integrations table
-  const msTokens = await getMicrosoftTokens(userId);
-  if (!msTokens) {
-    return { mail_signals: 0, calendar_signals: 0, file_signals: 0, task_signals: 0, is_first_sync: false, error: 'token_refresh_failed' };
-  }
-  const accessToken = msTokens.access_token;
+  const accessToken = validToken.access_token;
 
   let mailSignals = 0;
   let calendarSignals = 0;
