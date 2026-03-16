@@ -114,13 +114,36 @@ Before writing any code, trace the full data path:
 8. What RLS policies exist on the target tables?
 If any answer is "I don't know," read the code before writing new code.
 
+## Discovery phase — BEFORE writing any code
+Every session begins with discovery. Before making any changes:
+1. Read every file you are about to modify.
+2. Trace the data path: where does the data come from, what transforms it, what reads it?
+3. Run `git log --oneline -10` to see what shipped recently. If a file was modified in the last 3 commits, read the diff before editing it.
+4. List any dependencies, surprises, or conflicts with recent changes.
+5. If you discover something that changes the approach, say so BEFORE writing code. Propose the adjusted approach and proceed.
+
+This phase takes 2-5 minutes. It is not optional. Every pipeline bug in this project was predictable from skipping this step.
+
+## Time-saving rules — stop wasting tokens
+1. **Backend-only changes skip preview.** If no .tsx or .css files were modified, do NOT start the dev server, take screenshots, or check the landing page. Build pass + Vercel deploy is sufficient verification.
+2. **Read once, execute once.** In multi-task sessions, read all relevant files during discovery. Do not re-read the same file for each task.
+3. **Git push pattern (worktree-safe):**
+   ```
+   cd /path/to/main/repo
+   git merge claude/branch-name --no-edit
+   git push origin main
+   ```
+   Do NOT try `git checkout main` from inside a worktree. It will fail every time. Use the merge pattern above directly.
+4. **Deploy verification:** After pushing, check deployment status ONCE via Vercel MCP. If it shows BUILDING or QUEUED, say "Pushed to main, deploy building" and move on. Do not poll repeatedly. Only wait for READY if the task requires runtime verification (API routes, data pipeline changes).
+5. **Migrations are not homework.** If a migration file is created, apply it immediately via Supabase MCP (`apply_migration` or `execute_sql`). Never say "needs manual application." You have Supabase MCP. Use it.
+
 ## Session completion sequence — MANDATORY ORDER
 Every session ends with these steps IN THIS ORDER. Do not skip steps. Do not reorder. Do not report "done" until step 6 passes.
 
 1. `npm run build` — must pass with 0 errors
 2. Apply any Supabase migrations via Supabase MCP (`apply_migration` or `execute_sql`). Do NOT leave migrations as "needs manual application." You have Supabase MCP access. Use it.
 3. Verify the data state: run a SELECT query via Supabase MCP to confirm the migration produced the expected rows/columns/values.
-4. Push to main (`git push`, not feature branch).
+4. Push to main (`git push`, not feature branch). Do not leave code on a feature branch. Every session must end with code merged to main and pushed. If you cannot push, say why.
 5. Verify Vercel deploy status is READY via Vercel MCP.
 6. If the change affects an API route or data pipeline, call the route or query the database to confirm the deployed code produces correct results.
 
