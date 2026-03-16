@@ -102,6 +102,18 @@ Every CC session starts by reading this spec. If a task contradicts the spec, fl
 - Auth providers: Google OAuth + Azure AD (Outlook). Both configured in `lib/auth/auth-options.ts`
 - OAuth tokens persist to `integrations` table via `lib/auth/token-store.ts` for background cron use
 
+## Pre-build checklist — before every CC session
+Before writing any code, trace the full data path:
+1. Where does the data come from?
+2. What table does it write to?
+3. What reads from that table?
+4. What format does the reader expect?
+5. Is there a processing step between write and read?
+6. What encryption module touches this data?
+7. What env vars are required?
+8. What RLS policies exist on the target tables?
+If any answer is "I don't know," read the code before writing new code. Every pipeline bug in March 2026 was predictable from this checklist.
+
 ## Product logic — don't violate these
 - Email is captured on the landing page. Never ask for it again inside the app.
 - Never ask the user a question Foldera should be able to answer itself.

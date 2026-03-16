@@ -14,6 +14,7 @@ import { generateDirective } from '@/lib/briefing/generator';
 import { generateArtifact, getFallbackArtifact } from '@/lib/conviction/artifact-generator';
 import { apiError } from '@/lib/utils/api-error';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
+import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import type { ConvictionArtifact } from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
@@ -43,6 +44,21 @@ async function handler(request: NextRequest) {
         .from('user_subscriptions').select('created_at, status').eq('user_id', userId).maybeSingle();
       if (sub?.status === 'expired' && userId !== 'e40b7cd8-4925-42f7-bc99-5022969f1d22') {
         results.push({ userId, success: false, error: 'trial expired' }); continue;
+      }
+
+      // Extract entities/commitments/topics from unprocessed sync signals
+      try {
+        const extraction = await processUnextractedSignals(userId);
+        if (extraction.signals_processed > 0) {
+          console.log(
+            `[daily-generate] signal extraction for ${userId}: ` +
+            `${extraction.signals_processed} signals, ${extraction.entities_upserted} entities, ` +
+            `${extraction.commitments_created} commitments, ${extraction.topics_merged} topics`,
+          );
+        }
+      } catch (extractErr: unknown) {
+        // Non-fatal — directive generation can still proceed with existing data
+        console.warn('[daily-generate] signal extraction failed:', extractErr instanceof Error ? extractErr.message : extractErr);
       }
 
       // Generate ONE directive
