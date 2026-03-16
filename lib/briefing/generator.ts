@@ -20,7 +20,7 @@ import type { ChiefOfStaffBriefing, ConvictionDirective, ActionType, EvidenceIte
 import { trackApiCall, isOverDailyLimit } from '@/lib/utils/api-tracker';
 import { scoreOpenLoops } from './scorer';
 import type { ScorerResult } from './scorer';
-import { buildContextBlock } from './context-builder';
+import { buildContextBlock, buildContextGreeting } from './context-builder';
 
 // ---------------------------------------------------------------------------
 // Clients (lazy)
@@ -214,10 +214,13 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
   // 3. BUILD FOCUSED PROMPT (with dynamic context)
   // -----------------------------------------------------------------------
 
-  const contextBlock = await buildContextBlock(userId);
+  const [contextBlock, contextGreeting] = await Promise.all([
+    buildContextBlock(userId),
+    buildContextGreeting(userId),
+  ]);
 
   const systemPrompt = FOCUSED_SYSTEM
-    .replace('{CONTEXT_BLOCK}', contextBlock)
+    .replace('{CONTEXT_BLOCK}', `${contextBlock}\n* Dashboard greeting: ${contextGreeting}`)
     .replace('{MEMORY_SECTION}', memorySection)
     .replace('{APPROVED_SECTION}', approvedSection)
     .replace('{SKIPPED_SECTION}', skippedSection);

@@ -7,6 +7,13 @@
 
 import { createServerClient } from '@/lib/db/client';
 
+type GreetingSnapshot = {
+  dayName: string;
+  timeWord: string;
+  activeCommitmentCount: number;
+  topGoalText: string | null;
+};
+
 // ---------------------------------------------------------------------------
 // Season + time-of-day helpers
 // ---------------------------------------------------------------------------
@@ -41,6 +48,42 @@ function getTimeBlock(hour: number): string {
   if (hour < 12) return 'morning — strategy and high-leverage decisions';
   if (hour < 17) return 'afternoon — execution and follow-through';
   return 'evening — reflection and preparation for tomorrow';
+}
+
+function getTimeWord(hour: number): string {
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+}
+
+async function getGreetingSnapshot(userId: string): Promise<GreetingSnapshot> {
+  const supabase = createServerClient();
+  const now = new Date();
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  const [commitmentsRes, goalsRes] = await Promise.all([
+    supabase
+      .from('tkg_commitments')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'active'),
+    supabase
+      .from('tkg_goals')
+      .select('goal_text, priority, current_priority')
+      .eq('user_id', userId)
+      .order('current_priority', { ascending: false })
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  return {
+    dayName: dayNames[now.getDay()],
+    timeWord: getTimeWord(now.getHours()),
+    activeCommitmentCount: commitmentsRes.count ?? 0,
+    topGoalText: goalsRes.data?.goal_text?.trim() || null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -123,74 +166,12 @@ ${goalLines}
 // ---------------------------------------------------------------------------
 
 export async function buildContextGreeting(userId: string): Promise<string> {
-  const supabase = createServerClient();
-  const now = new Date();
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const day = dayNames[now.getDay()];
-  const hour = now.getHours();
-  const timeWord = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-
-  // Parallel: commitments count + last action + urgent commitments
-  const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  const [commitmentsRes, lastActionRes, urgentRes] = await Promise.all([
-    supabase
-      .from('tkg_commitments')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('status', 'active'),
-    supabase
-      .from('tkg_actions')
-      .select('directive_text, action_type, status')
-      .eq('user_id', userId)
-      .order('generated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from('tkg_commitments')
-      .select('description, due_at')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .lte('due_at', sevenDaysFromNow)
-      .order('due_at', { ascending: true })
-      .limit(1)
-      .maybeSingle(),
-  ]);
-
-  const activeCount = commitmentsRes.count ?? 0;
-  const lastAction = lastActionRes.data;
-  const urgentCommitment = urgentRes.data;
-
-  // Build a short, contextual line
-  const parts: string[] = [`${day} ${timeWord}.`];
-
-  if (activeCount > 0) {
-    parts.push(`${activeCount} commitment${activeCount === 1 ? '' : 's'} active.`);
-  }
-
-  if (urgentCommitment?.due_at) {
-    const daysUntil = Math.ceil((new Date(urgentCommitment.due_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    if (daysUntil <= 0) {
-      parts.push(`${urgentCommitment.description.slice(0, 50)} is overdue.`);
-    } else if (daysUntil <= 2) {
-      parts.push(`${urgentCommitment.description.slice(0, 50)} due in ${daysUntil} day${daysUntil === 1 ? '' : 's'}.`);
-    }
-  } else if (lastAction) {
-    const verb = lastAction.status === 'executed' ? 'approved' :
-      lastAction.status === 'skipped' || lastAction.status === 'draft_rejected' ? 'skipped' : 'pending';
-    if (verb !== 'pending') {
-      // Extract the key noun from the directive for continuity
-      const shortDirective = lastAction.directive_text?.slice(0, 40) ?? '';
-      parts.push(`Last read ${verb}.`);
-      if (shortDirective && activeCount === 0) {
-        parts.push('Nothing urgent. Good day to build.');
-      }
-    }
-  }
-
-  if (activeCount === 0 && !urgentCommitment && !lastAction) {
-    parts.push('Nothing tracked yet.');
-  }
+  const snapshot = await getGreetingSnapshot(userId);
+  const parts = [
+    `${snapshot.dayName} ${snapshot.timeWord}.`,
+    `${snapshot.activeCommitmentCount} active commitment${snapshot.activeCommitmentCount === 1 ? '' : 's'}.`,
+    snapshot.topGoalText ? `Top priority: ${snapshot.topGoalText}.` : 'Top priority: None set.',
+  ];
 
   return parts.join(' ');
 }

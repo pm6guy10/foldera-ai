@@ -156,7 +156,7 @@ export default function DashboardContent() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{contextGreeting ?? getGreeting()}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{contextGreeting ?? 'Loading context...'}</h1>
           <p className="text-zinc-400 text-sm mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         </div>
         <button
@@ -197,13 +197,6 @@ export default function DashboardContent() {
       />
     </div>
   );
-}
-
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
 }
 
 function formatTimeAgo(iso: string): string {

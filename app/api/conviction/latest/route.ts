@@ -43,9 +43,7 @@ export async function GET(request: Request) {
     try {
       contextGreeting = await buildContextGreeting(userId);
     } catch {
-      // Fallback to basic greeting if DB queries fail
-      const h = new Date().getHours();
-      contextGreeting = h < 12 ? 'Good morning.' : h < 17 ? 'Good afternoon.' : 'Good evening.';
+      contextGreeting = 'Today. 0 active commitments. Top priority: None set.';
     }
 
     if (!action) {
