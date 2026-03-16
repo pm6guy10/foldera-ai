@@ -24,25 +24,26 @@ function getStripe() {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
-  const requestedPriceId: string | undefined = body?.price_id;
-
-  const priceId = requestedPriceId || process.env.STRIPE_PRO_PRICE_ID;
-  if (!priceId) {
-    return NextResponse.json(
-      { error: 'STRIPE_PRO_PRICE_ID not configured' },
-      { status: 400 },
-    );
-  }
-
-  // Get user email for Stripe pre-fill (optional — does not block checkout)
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
-  const userId = session?.user?.id;
-
-  const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
-
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const requestedPriceId = typeof body?.price_id === 'string' ? body.price_id : undefined;
+    const priceId = requestedPriceId || process.env.STRIPE_PRO_PRICE_ID;
+    if (!priceId) {
+      return NextResponse.json(
+        { error: 'STRIPE_PRO_PRICE_ID not configured' },
+        { status: 400 },
+      );
+    }
+
+    const email = session.user.email;
+    const userId = session.user.id;
+    const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+
     const stripe = getStripe();
     const checkout = await stripe.checkout.sessions.create({
       mode: 'subscription',

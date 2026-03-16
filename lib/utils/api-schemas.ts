@@ -32,12 +32,12 @@ export const onboardSaveBodySchema = z.object({
 });
 
 export const ingestBodySchema = z.object({
-  text: z.string().min(50, 'text must be at least 50 characters'),
+  text: z.string().trim().min(50, 'text must be at least 50 characters'),
   tempUserId: UUID,
 });
 
 export const onboardGoalsBodySchema = z.object({
-  answers: z.array(z.string()).min(1).max(5),
+  answers: z.array(z.string().trim()).min(1).max(5),
   tempUserId: UUID,
 });
 

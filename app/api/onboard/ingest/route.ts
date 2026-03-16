@@ -9,42 +9,60 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
-import { apiError } from '@/lib/utils/api-error';
+import { apiError, validationError } from '@/lib/utils/api-error';
+import { ingestBodySchema } from '@/lib/utils/api-schemas';
+import { rateLimit } from '@/lib/utils/rate-limit';
+import { getRequestIp } from '@/lib/utils/request-ip';
 
 export const dynamic = 'force-dynamic';
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ONBOARD_RATE_LIMIT = { limit: 10, window: 3600 } as const;
 
 export async function POST(request: NextRequest) {
-  let body: { text?: unknown; tempUserId?: unknown };
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-  }
-
-  const { text, tempUserId } = body;
-
-  if (typeof tempUserId !== 'string' || !UUID_RE.test(tempUserId)) {
-    return NextResponse.json({ error: 'Invalid tempUserId' }, { status: 400 });
-  }
-
-  if (typeof text !== 'string' || text.trim().length < 50) {
-    return NextResponse.json({ error: 'text must be at least 50 characters' }, { status: 400 });
-  }
-
-  try {
-    const result = await extractFromConversation(text, tempUserId);
-    return NextResponse.json({
-      signalId: result.signalId,
-      decisionsWritten: result.decisionsWritten,
-      patternsUpdated: result.patternsUpdated,
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : '';
-    if (msg.includes('already ingested')) {
-      return NextResponse.json({ signalId: null, decisionsWritten: 0, patternsUpdated: 0 });
+    const ip = getRequestIp(request);
+    const rl = await rateLimit(`onboard:ingest:${ip}`, ONBOARD_RATE_LIMIT);
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: 'Too many requests — please wait before trying again.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.max(1, Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000))),
+          },
+        },
+      );
     }
+
+    let raw: unknown;
+    try {
+      raw = await request.json();
+    } catch {
+      return validationError('Invalid JSON');
+    }
+
+    const parsed = ingestBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message ?? 'Invalid request';
+      return validationError(msg);
+    }
+
+    const { text, tempUserId } = parsed.data;
+    try {
+      const result = await extractFromConversation(text, tempUserId);
+      return NextResponse.json({
+        signalId: result.signalId,
+        decisionsWritten: result.decisionsWritten,
+        patternsUpdated: result.patternsUpdated,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('already ingested')) {
+        return NextResponse.json({ signalId: null, decisionsWritten: 0, patternsUpdated: 0 });
+      }
+      return apiError(err, 'onboard/ingest');
+    }
+  } catch (err: unknown) {
     return apiError(err, 'onboard/ingest');
   }
 }
