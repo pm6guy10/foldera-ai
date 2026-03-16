@@ -11,8 +11,8 @@
 |---|-------|--------|--------|
 | C1 | INGEST_USER_ID routing all user data to owner account (google callback, ms sync-now, priorities) | Codex | DONE — Session 1, commit 47e2c17 |
 | C2 | Unencrypted webhook signal content in resend webhook | Codex | DONE — Session 1, commit 47e2c17 |
-| C3 | Dual token storage: integrations vs user_tokens tables don't communicate. Sync reads user_tokens, refresh reads integrations. Token expires hourly, sync breaks silently. | Codebase audit #1 | OPEN |
-| C4 | Dual encryption: lib/encryption.ts uses 12-byte IV, lib/crypto/token-encryption.ts uses 16-byte IV. Same key, incompatible output. | Codebase audit #2 | OPEN |
+| C3 | Dual token storage: integrations vs user_tokens tables don't communicate. Sync reads user_tokens, refresh reads integrations. Token expires hourly, sync breaks silently. | Codebase audit #1 | DONE — March 16, commit ffc5f28 |
+| C4 | Dual encryption: lib/encryption.ts uses 12-byte IV, lib/crypto/token-encryption.ts uses 16-byte IV. Same key, incompatible output. | Codebase audit #2 | DONE — March 16, commit c3ff5db |
 
 ## HIGH — Fix before inviting waitlist
 
@@ -22,17 +22,17 @@
 | H2 | __GENERATION_FAILED__ sentinel not caught in onboard routes | Codex | DONE — Session 2, commit b8a1406 |
 | H3 | executeAction() unwrapped in execute and drafts/decide routes | Codex | DONE — Session 2, commit b8a1406 |
 | H4 | Briefing cached even on generation failure | Codex | DONE — Session 2, commit b8a1406 |
-| H5 | Unauthenticated spend endpoint | Codex | IN PROGRESS — Session 3 |
-| H6 | Unauthenticated stripe checkout | Codex | IN PROGRESS — Session 3 |
-| H7 | Unvalidated/unrated onboard goals and ingest endpoints | Codex | IN PROGRESS — Session 3 |
+| H5 | Unauthenticated spend endpoint | Codex | DONE — March 16, commit e228ee9 |
+| H6 | Unauthenticated stripe checkout | Codex | DONE — March 16, commit e228ee9 |
+| H7 | Unvalidated/unrated onboard goals and ingest endpoints | Codex | DONE — March 16, commit e228ee9 |
 | H8 | daily-send emails all directives to single DAILY_BRIEF_TO_EMAIL address | Codex | DONE — Session 1, commit 47e2c17 |
 | H9 | daily-generate runs for temp onboarding users, expanding cost | Codex | DONE — Session 1, commit 47e2c17 |
 | H10 | Decrypt failures crash scorer (lines 369, 379, 476, 628, 1537, 1554) | Codex | OPEN — Session 4 |
 | H11 | Production logs contain directive titles, scores, behavioral content | Codex | OPEN — Session 4 |
 | H12 | Hardcoded user-specific blacklist in generator prompt | Codex | OPEN — Session 4 |
-| H13 | Google OAuth can't connect alongside Microsoft (swaps provider instead of adding) | Codebase audit #3 | OPEN |
-| H14 | 5,254 lines dead agent/acquisition/growth code | Codebase audit #5 | OPEN |
-| H15 | Onboarding flow doesn't use new sync pipeline, tries to generate from nothing | Codebase audit #6, GTM audit | OPEN |
+| H13 | Google OAuth can't connect alongside Microsoft (swaps provider instead of adding) | Codebase audit #3 | DONE — March 16, commit 3a8e107 |
+| H14 | 5,254 lines dead agent/acquisition/growth code | Codebase audit #5 | DONE — March 16, commit 27d8665 |
+| H15 | Onboarding flow doesn't use new sync pipeline, tries to generate from nothing | Codebase audit #6, GTM audit | DONE — March 16, commit 1d0df69 |
 | H16 | Resend sending from onboarding@resend.dev (shared domain, spam risk) | Codebase audit #8, GTM audit | OPEN — manual task |
 | H17 | Relationships page expects briefing.cooling_relationships that API never returns | Codex | OPEN |
 | H18 | Pricing mismatch: LP says $19, Stripe says $29/$99 | GTM audit | OPEN — manual task |
@@ -54,9 +54,9 @@
 | M10 | Dashboard conviction loading has no skeleton state | Codex | OPEN |
 | M11 | Email deep-link approve/skip doesn't check response status | Codex | OPEN |
 | M12 | Signals dashboard shows hardcoded data instead of real API values | Codex | OPEN |
-| M13 | growth-scanner cron still active in vercel.json | Codebase audit #7 | OPEN |
-| M14 | Dashboard doesn't show Microsoft data freshness | Codebase audit #9 | OPEN |
-| M15 | Signal summaries not being generated (no long-term memory) | Codebase audit #10 | OPEN |
+| M13 | growth-scanner cron still active in vercel.json | Codebase audit #7 | DONE — March 16, commit 27d8665 |
+| M14 | Dashboard doesn't show Microsoft data freshness | Codebase audit #9 | DONE — March 16, commit f1f09aa |
+| M15 | Signal summaries not being generated (no long-term memory) | Codebase audit #10 | DONE — March 16, commit f1f09aa |
 | M16 | Goals not seeded from current real data | Codebase audit #11 | OPEN |
 | M17 | Encryption verification needed after C4 fix | Codebase audit #12 | BLOCKED by C4 |
 | M18 | No rate limiting on sync-now endpoints | Codebase audit #18 | OPEN |
@@ -71,10 +71,10 @@
 | L2 | Draft queue returns null while loading (no skeleton) | Codex | OPEN |
 | L3 | Trial banner checkout failure goes to console.error only | Codex | OPEN |
 | L4 | Settings fetch failures logged with console.error in production | Codex | OPEN |
-| L5 | Stale Supabase edge functions in supabase/functions/ | Codebase audit #13 | OPEN |
-| L6 | Orphaned migration scripts in scripts/ | Codebase audit #14 | OPEN |
-| L7 | Duplicate PostCSS configs | Codebase audit #15 | OPEN |
-| L8 | Dead dashboard/briefing redirect page | Codebase audit #16 | OPEN |
+| L5 | Stale Supabase edge functions in supabase/functions/ | Codebase audit #13 | DONE — March 16, commit b062a28 |
+| L6 | Orphaned migration scripts in scripts/ | Codebase audit #14 | DONE — March 16, commit b062a28 |
+| L7 | Duplicate PostCSS configs | Codebase audit #15 | DONE — March 16, commit b062a28 |
+| L8 | Dead dashboard/briefing redirect page | Codebase audit #16 | DONE — March 16, commit b062a28 |
 | L9 | Test infrastructure incomplete, not in CI | Codebase audit #17 | OPEN |
 
 ---
