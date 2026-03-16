@@ -264,9 +264,31 @@ function GoogleSourceCard({ integration, onConnect }: { integration: any; onConn
 
 function MicrosoftSourceCard({ integration, onConnect }: { integration: any; onConnect: () => void }) {
   const [disconnecting, setDisconnecting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ total: number; mail_signals: number; calendar_signals: number; file_signals: number; task_signals: number } | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const isConnected = integration?.is_active;
   const email = integration?.sync_email;
   const lastSynced = integration?.last_synced_at;
+
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    setSyncError(null);
+    try {
+      const res = await fetch('/api/microsoft/sync-now', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        setSyncError(data.error ?? 'Sync failed');
+      } else {
+        setSyncResult(data);
+      }
+    } catch {
+      setSyncError('Sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleDisconnect = async () => {
     setDisconnecting(true);
@@ -341,20 +363,42 @@ function MicrosoftSourceCard({ integration, onConnect }: { integration: any; onC
       )}
 
       {isConnected ? (
-        <div className="flex gap-2">
-          <button
-            onClick={onConnect}
-            className="flex-1 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
-          >
-            Reconnect
-          </button>
-          <button
-            onClick={handleDisconnect}
-            disabled={disconnecting}
-            className="px-4 py-2.5 rounded-lg bg-zinc-800 hover:bg-red-900/30 text-zinc-400 hover:text-red-400 text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {disconnecting ? 'Disconnecting...' : 'Disconnect'}
-          </button>
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <button
+              onClick={handleSyncNow}
+              disabled={syncing}
+              className="flex-1 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {syncing ? 'Syncing...' : 'Sync now'}
+            </button>
+            <button
+              onClick={onConnect}
+              className="px-4 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
+            >
+              Reconnect
+            </button>
+            <button
+              onClick={handleDisconnect}
+              disabled={disconnecting}
+              className="px-4 py-2.5 rounded-lg bg-zinc-800 hover:bg-red-900/30 text-zinc-400 hover:text-red-400 text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {disconnecting ? 'Disconnecting...' : 'Disconnect'}
+            </button>
+          </div>
+          {syncResult && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
+              <p className="text-emerald-400 text-xs font-medium">
+                {syncResult.total} signal{syncResult.total !== 1 ? 's' : ''} synced
+              </p>
+              <p className="text-emerald-400/70 text-xs mt-0.5">
+                {syncResult.mail_signals} mail · {syncResult.calendar_signals} calendar · {syncResult.file_signals} files · {syncResult.task_signals} tasks
+              </p>
+            </div>
+          )}
+          {syncError && (
+            <p className="text-red-400 text-xs">{syncError}</p>
+          )}
         </div>
       ) : (
         <button
