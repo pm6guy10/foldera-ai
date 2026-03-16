@@ -390,6 +390,7 @@ function LivingHero() {
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -424,6 +425,18 @@ function LivingHero() {
     }
   }, [showInput]);
 
+  function getAnalyzeErrorMessage(status: number): string {
+    if (status === 429) return 'Too many demo reads right now. Try again in an hour.';
+    if (status === 503) return 'Foldera is temporarily unavailable. Try again later.';
+    return 'Foldera could not finish that read. Try again.';
+  }
+
+  function getWaitlistErrorMessage(status: number): string {
+    if (status === 429) return 'Too many signups from this connection. Try again later.';
+    if (status === 503) return 'Waitlist capture is temporarily unavailable. Retry shortly.';
+    return 'Could not save your spot. Try again.';
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim() || loading) return;
@@ -446,11 +459,14 @@ function LivingHero() {
           } : undefined,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Analysis failed');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(getAnalyzeErrorMessage(res.status));
+        return;
+      }
       setResult(data as Directive);
     } catch {
-      setError('Foldera is thinking... try again in a moment.');
+      setError('Network error — check your connection and retry.');
     } finally {
       setLoading(false);
     }
@@ -460,6 +476,7 @@ function LivingHero() {
     e.preventDefault();
     if (!email.trim() || emailLoading) return;
     setEmailLoading(true);
+    setEmailError(null);
     try {
       const res = await fetch('/api/waitlist', {
         method: 'POST',
@@ -468,9 +485,11 @@ function LivingHero() {
       });
       if (res.ok || res.status === 409) {
         setEmailSubmitted(true);
+        return;
       }
+      setEmailError(getWaitlistErrorMessage(res.status));
     } catch {
-      setEmailSubmitted(true);
+      setEmailError('Network error — retry to join the waitlist.');
     } finally {
       setEmailLoading(false);
     }
@@ -676,7 +695,7 @@ function LivingHero() {
 
             {!emailSubmitted ? (
               <div className="space-y-4">
-                <p className="text-white font-semibold text-lg">Get this every morning.</p>
+                <p className="text-white font-semibold text-lg">Finished work, every morning.</p>
                 <form onSubmit={handleEmailCapture} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
                   <input
                     type="email"
@@ -691,15 +710,16 @@ function LivingHero() {
                     disabled={emailLoading}
                     className="px-6 py-3.5 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 whitespace-nowrap"
                   >
-                    {emailLoading ? 'Saving...' : 'Start free'}
+                    {emailLoading ? 'Saving...' : emailError ? 'Retry' : 'Start free'}
                   </button>
                 </form>
+                {emailError && <p className="text-sm text-amber-300">{emailError}</p>}
                 <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">14 days free &middot; No credit card required</p>
               </div>
             ) : (
               <div className="space-y-3">
                 <p className="text-cyan-400 font-semibold">You&apos;re in.</p>
-                <p className="text-zinc-500 text-sm">Your first read arrives tomorrow morning.</p>
+                <p className="text-zinc-500 text-sm">Your first finished read arrives tomorrow morning.</p>
                 <a
                   href="/start"
                   className="inline-flex items-center gap-2 text-zinc-400 hover:text-white text-sm transition-colors group mt-2"
@@ -1270,7 +1290,7 @@ export default function App() {
         <Reveal className="max-w-5xl mx-auto px-6 relative z-10">
           <div className="text-center mb-24">
             <h2 className="text-6xl md:text-[8rem] font-black tracking-tighter text-white mb-8 leading-none">One plan.<br />Full power.</h2>
-            <p className="text-zinc-400 text-xl md:text-3xl font-medium tracking-tight">Stop managing. Start executing.</p>
+            <p className="text-zinc-400 text-xl md:text-3xl font-medium tracking-tight">Finished work, every morning.</p>
           </div>
           <div className="max-w-lg mx-auto perspective-1000">
             <div className="rounded-[3rem] p-[1px] bg-gradient-to-b from-cyan-400/50 via-blue-500/10 to-transparent shadow-[0_0_150px_rgba(6,182,212,0.2)] hover:shadow-[0_0_200px_rgba(6,182,212,0.3)] transition-shadow duration-1000 group">

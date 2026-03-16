@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { createServerClient } from '@/lib/db/client';
+import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +33,9 @@ export async function GET() {
         .eq('user_id', session.user.id),
     ]);
 
-    if (intResult.error) {
-      console.error('[integrations/status] query failed:', intResult.error.message);
+    const queryError = intResult.error ?? tokenResult.error;
+    if (queryError) {
+      throw queryError;
     }
 
     // Merge user_tokens data into integrations
@@ -51,8 +53,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ integrations });
-  } catch (err: any) {
-    console.error('[integrations/status] unexpected error:', err.message);
-    return NextResponse.json({ integrations: [] });
+  } catch (err: unknown) {
+    return apiError(err, 'integrations/status');
   }
 }

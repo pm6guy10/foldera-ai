@@ -5,7 +5,7 @@ import { getAuthOptions } from '@/lib/auth/auth-options';
 /**
  * Resolves the authenticated userId for routes that accept either:
  *   1. x-ingest-secret header  → INGEST_USER_ID
- *   2. NextAuth session         → INGEST_USER_ID ?? session.user.id
+ *   2. NextAuth session         → session.user.id
  *
  * Returns { userId } on success, or a ready-to-return NextResponse on failure.
  */
@@ -29,8 +29,7 @@ export async function resolveUser(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = process.env.INGEST_USER_ID ?? session.user.id;
-  return { userId };
+  return { userId: session.user.id };
 }
 
 /**

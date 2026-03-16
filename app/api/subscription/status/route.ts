@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { getSubscriptionStatus } from '@/lib/auth/subscription';
+import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,11 +22,15 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const info = await getSubscriptionStatus(session.user.id);
+  try {
+    const info = await getSubscriptionStatus(session.user.id);
 
-  return NextResponse.json({
-    plan:          info.plan,
-    status:        info.status,
-    daysRemaining: info.daysRemaining,
-  });
+    return NextResponse.json({
+      plan:          info.plan,
+      status:        info.status,
+      daysRemaining: info.daysRemaining,
+    });
+  } catch (err: unknown) {
+    return apiError(err, 'subscription/status');
+  }
 }

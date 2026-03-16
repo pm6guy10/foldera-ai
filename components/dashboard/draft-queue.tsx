@@ -73,7 +73,7 @@ export default function DraftQueue({ onDecided }: DraftQueueProps) {
     onDecided?.();
   }, [onDecided]);
 
-  if (loading) return null;
+  if (loading) return <DraftQueueSkeleton />;
   if (drafts.length === 0) return null;
 
   return (
@@ -100,6 +100,42 @@ export default function DraftQueue({ onDecided }: DraftQueueProps) {
           <DraftCard key={draft.id} draft={draft} onRemove={removeDraft} />
         ))}
       </ul>
+    </div>
+  );
+}
+
+function DraftQueueSkeleton() {
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl animate-pulse">
+      <div className="p-5 border-b border-zinc-800 flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-4 w-40 bg-zinc-800 rounded" />
+          <div className="h-3 w-32 bg-zinc-800 rounded" />
+        </div>
+        <div className="h-6 w-8 rounded-full bg-zinc-800" />
+      </div>
+      <div className="divide-y divide-zinc-800">
+        {[0, 1].map((item) => (
+          <div key={item} className="p-4 sm:p-5 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 w-7 h-7 rounded-lg bg-zinc-800 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-2/3 bg-zinc-800 rounded" />
+                <div className="h-3 w-1/2 bg-zinc-800 rounded" />
+              </div>
+            </div>
+            <div className="bg-zinc-800/60 rounded-lg p-3 space-y-2">
+              <div className="h-3 w-1/4 bg-zinc-800 rounded" />
+              <div className="h-3 w-3/4 bg-zinc-800 rounded" />
+              <div className="h-3 w-full bg-zinc-800 rounded" />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <div className="h-10 flex-1 rounded-lg bg-zinc-800" />
+              <div className="h-10 flex-1 rounded-lg bg-zinc-800" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

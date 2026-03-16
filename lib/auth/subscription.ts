@@ -40,11 +40,15 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
 
   const supabase = createServerClient();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('user_subscriptions')
     .select('plan, status, current_period_end')
     .eq('user_id', userId)
     .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
 
   if (!data) {
     return { status: 'none', plan: null, daysRemaining: 0, isReadOnly: true };

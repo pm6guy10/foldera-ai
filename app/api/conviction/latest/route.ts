@@ -2,8 +2,8 @@
  * GET /api/conviction/latest
  *
  * Returns the most recent tkg_actions row with status=pending_approval
- * for the authenticated user. Falls back to the latest row of any status
- * if nothing is pending. Returns 204 if no actions exist yet.
+ * for the authenticated user. If nothing is pending, returns 200 with
+ * a context greeting only so the dashboard can render its empty state.
  */
 
 import { NextResponse } from 'next/server';

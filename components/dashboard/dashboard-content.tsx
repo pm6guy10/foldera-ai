@@ -16,6 +16,11 @@ interface GraphStats {
   lastSignalSource:  string | null;
 }
 
+interface EmailActionFeedback {
+  tone: 'success' | 'error';
+  text: string;
+}
+
 export default function DashboardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -23,9 +28,14 @@ export default function DashboardContent() {
   const [stats, setStats]               = useState<GraphStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [conviction, setConviction]     = useState<ConvictionAction | null>(null);
-  const [convictionLoading, setConvictionLoading] = useState(false);
-  const [emailActionMsg, setEmailActionMsg] = useState<string | null>(null);
+  const [convictionLoading, setConvictionLoading] = useState(true);
+  const [emailActionMsg, setEmailActionMsg] = useState<EmailActionFeedback | null>(null);
   const [contextGreeting, setContextGreeting] = useState<string | null>(null);
+
+  const showEmailActionFeedback = useCallback((tone: EmailActionFeedback['tone'], text: string) => {
+    setEmailActionMsg({ tone, text });
+    window.setTimeout(() => setEmailActionMsg(null), 4000);
+  }, []);
 
   // Handle email deep-link: approve/skip → execute; outcome (worked/didnt_work) → conviction/outcome
   useEffect(() => {
@@ -50,12 +60,10 @@ export default function DashboardContent() {
           return res.json();
         })
         .then(() => {
-          setEmailActionMsg(result === 'worked' ? "Recorded — it worked." : "Recorded — we'll adjust.");
-          setTimeout(() => setEmailActionMsg(null), 4000);
+          showEmailActionFeedback('success', result === 'worked' ? "Recorded — it worked." : "Recorded — we'll adjust.");
         })
         .catch(() => {
-          setEmailActionMsg("Couldn't record that — please try again.");
-          setTimeout(() => setEmailActionMsg(null), 4000);
+          showEmailActionFeedback('error', "Couldn't record that — please try again.");
         });
       return;
     }
@@ -66,16 +74,28 @@ export default function DashboardContent() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ action_id: id, decision: action }),
       })
-        .then(res => res.json())
+        .then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error((data as { error?: string }).error ?? 'Could not update that action.');
+          }
+          return data;
+        })
         .then(data => {
           if (data.status === 'executed' || data.status === 'skipped') {
-            setEmailActionMsg(action === 'approve' ? 'Done — Foldera executed that.' : 'Skipped. Foldera will adjust.');
-            setTimeout(() => setEmailActionMsg(null), 4000);
+            showEmailActionFeedback('success', action === 'approve' ? 'Done — Foldera executed that.' : 'Skipped. Foldera will adjust.');
+            return;
           }
+          throw new Error('Unexpected response from Foldera.');
         })
-        .catch(() => {});
+        .catch((error: unknown) => {
+          showEmailActionFeedback(
+            'error',
+            error instanceof Error ? error.message : 'Could not update that action.',
+          );
+        });
     }
-  }, [status]);
+  }, [showEmailActionFeedback, status]);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -94,16 +114,16 @@ export default function DashboardContent() {
   };
 
   const loadLatestConviction = async () => {
+    setConvictionLoading(true);
     try {
       const res = await fetch('/api/conviction/latest');
-      if (res.status === 204) return;
       if (res.ok) {
         const data = await res.json();
         if (data.context_greeting) setContextGreeting(data.context_greeting);
         // Only set conviction if there's an actual action (has an id)
-        if (data.id) setConviction(data);
+        setConviction(data.id ? data : null);
       }
-    } catch { /* silent */ }
+    } catch { /* silent */ } finally { setConvictionLoading(false); }
   };
 
   const generateDirective = useCallback(async () => {
@@ -148,8 +168,14 @@ export default function DashboardContent() {
     <div className="space-y-6">
       {/* Email action confirmation banner */}
       {emailActionMsg && (
-        <div className="px-5 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-          <p className="text-emerald-300 text-sm">{emailActionMsg}</p>
+        <div className={`px-5 py-3 rounded-xl border ${
+          emailActionMsg.tone === 'success'
+            ? 'bg-emerald-500/10 border-emerald-500/30'
+            : 'bg-rose-500/10 border-rose-500/30'
+        }`}>
+          <p className={`text-sm ${
+            emailActionMsg.tone === 'success' ? 'text-emerald-300' : 'text-rose-300'
+          }`}>{emailActionMsg.text}</p>
         </div>
       )}
 

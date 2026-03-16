@@ -17,6 +17,17 @@ export default function SettingsClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const logRouteFailure = (route: string, details: Record<string, unknown>) => {
+    console.warn('[settings/client]', { route, ...details });
+  };
+
+  const readErrorMessage = async (response: Response, fallback: string) => {
+    const data = await response.json().catch(() => ({}));
+    return typeof (data as { error?: unknown }).error === 'string'
+      ? ((data as { error: string }).error)
+      : fallback;
+  };
+
   // --- FETCH DATA ---
   useEffect(() => {
     if (status !== 'authenticated' || !session?.user?.email) {
@@ -25,6 +36,7 @@ export default function SettingsClient() {
     }
 
     const fetchData = async () => {
+      setError(null);
       try {
         const [intRes, subRes] = await Promise.all([
           fetch('/api/integrations/status'),
@@ -32,8 +44,11 @@ export default function SettingsClient() {
         ]);
 
         if (!intRes.ok) {
-          const errorData = await intRes.json();
-          throw new Error(errorData.error || 'Failed to fetch integrations');
+          const message = await readErrorMessage(intRes, 'Failed to fetch integrations');
+          logRouteFailure('/api/integrations/status', { status: intRes.status, error: message });
+          setError('Could not load integrations right now.');
+          setLoading(false);
+          return;
         }
 
         const { integrations: fetchedIntegrations } = await intRes.json();
@@ -42,12 +57,19 @@ export default function SettingsClient() {
         if (subRes.ok) {
           const subData = await subRes.json();
           setSubscription(subData);
+        } else {
+          const message = await readErrorMessage(subRes, 'Failed to fetch subscription');
+          logRouteFailure('/api/subscription/status', { status: subRes.status, error: message });
+          setError('Could not load subscription status right now.');
         }
 
         setLoading(false);
-      } catch (err: any) {
-        console.error('Fetch error:', err);
-        setError(err.message);
+      } catch (err: unknown) {
+        logRouteFailure('settings/fetch', {
+          type: 'network',
+          error: err instanceof Error ? err.message : String(err),
+        });
+        setError('Could not load settings right now.');
         setLoading(false);
       }
     };
@@ -93,6 +115,12 @@ export default function SettingsClient() {
         <p className="text-zinc-400 text-sm mt-1">Manage your connected accounts</p>
       </div>
 
+      {error && (
+        <div className="px-4 py-3 rounded-xl border border-rose-500/30 bg-rose-500/10">
+          <p className="text-sm text-rose-300">{error}</p>
+        </div>
+      )}
+
       {/* DATA SOURCES */}
       <div className="space-y-4">
         <h2 className="text-sm font-semibold text-zinc-300">Data Sources</h2>
@@ -124,14 +152,27 @@ export default function SettingsClient() {
           {subscription?.status !== 'active' && (
             <button
               onClick={async () => {
+                setError(null);
                 try {
                   const res = await fetch('/api/stripe/checkout', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plan: 'pro' }),
+                    body: JSON.stringify({}),
                   });
-                  const { url } = await res.json();
-                  if (url) window.location.href = url;
-                } catch { /* silent */ }
+                  const data = await res.json().catch(() => ({}));
+                  if (!res.ok || !data.url) {
+                    const message = typeof data.error === 'string' ? data.error : 'Checkout unavailable';
+                    logRouteFailure('/api/stripe/checkout', { status: res.status, error: message });
+                    setError('Could not start checkout right now.');
+                    return;
+                  }
+                  window.location.href = data.url;
+                } catch (err: unknown) {
+                  logRouteFailure('/api/stripe/checkout', {
+                    type: 'network',
+                    error: err instanceof Error ? err.message : String(err),
+                  });
+                  setError('Could not start checkout right now.');
+                }
               }}
               className="px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors"
             >

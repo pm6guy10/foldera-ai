@@ -87,6 +87,7 @@ export default function TryPage() {
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Generate cold read on mount
@@ -118,6 +119,18 @@ export default function TryPage() {
     }
   }, [showInput]);
 
+  function getAnalyzeErrorMessage(status: number): string {
+    if (status === 429) return 'Too many demo reads right now. Try again in an hour.';
+    if (status === 503) return 'Foldera is temporarily unavailable. Try again later.';
+    return 'Foldera could not finish that read. Try again.';
+  }
+
+  function getWaitlistErrorMessage(status: number): string {
+    if (status === 429) return 'Too many signups from this connection. Try again later.';
+    if (status === 503) return 'Waitlist capture is temporarily unavailable. Retry shortly.';
+    return 'Could not save your spot. Try again.';
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim() || loading) return;
@@ -140,11 +153,14 @@ export default function TryPage() {
           } : undefined,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Analysis failed');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(getAnalyzeErrorMessage(res.status));
+        return;
+      }
       setResult(data as Directive);
-    } catch (err: any) {
-      setError('Foldera is thinking... try again in a moment.');
+    } catch {
+      setError('Network error — check your connection and retry.');
     } finally {
       setLoading(false);
     }
@@ -154,6 +170,7 @@ export default function TryPage() {
     e.preventDefault();
     if (!email.trim() || emailLoading) return;
     setEmailLoading(true);
+    setEmailError(null);
     try {
       const res = await fetch('/api/waitlist', {
         method: 'POST',
@@ -162,10 +179,11 @@ export default function TryPage() {
       });
       if (res.ok || res.status === 409) {
         setEmailSubmitted(true);
+        return;
       }
+      setEmailError(getWaitlistErrorMessage(res.status));
     } catch {
-      // Still show success — email capture shouldn't block the experience
-      setEmailSubmitted(true);
+      setEmailError('Network error — retry to join the waitlist.');
     } finally {
       setEmailLoading(false);
     }
@@ -379,7 +397,7 @@ export default function TryPage() {
 
               {!emailSubmitted ? (
                 <div className="space-y-4">
-                  <p className="text-white font-semibold text-lg">Get this every morning.</p>
+                  <p className="text-white font-semibold text-lg">Finished work, every morning.</p>
                   <form onSubmit={handleEmailCapture} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
                     <input
                       type="email"
@@ -394,15 +412,16 @@ export default function TryPage() {
                       disabled={emailLoading}
                       className="px-6 py-3.5 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 whitespace-nowrap"
                     >
-                      {emailLoading ? 'Saving...' : 'Start free'}
+                      {emailLoading ? 'Saving...' : emailError ? 'Retry' : 'Start free'}
                     </button>
                   </form>
+                  {emailError && <p className="text-sm text-amber-300">{emailError}</p>}
                   <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">14 days free &middot; No credit card required</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <p className="text-cyan-400 font-semibold">You&apos;re in.</p>
-                  <p className="text-zinc-500 text-sm">Your first read arrives tomorrow morning.</p>
+                  <p className="text-zinc-500 text-sm">Your first finished read arrives tomorrow morning.</p>
                   <a
                     href="/start"
                     className="inline-flex items-center gap-2 text-zinc-400 hover:text-white text-sm transition-colors group mt-2"

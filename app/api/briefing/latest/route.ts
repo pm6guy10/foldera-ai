@@ -26,61 +26,70 @@ export async function GET(request: Request) {
   const { userId } = auth;
   const supabase = createServerClient();
 
-  // Query today's brief + graph stats in parallel
-  const [briefRow, signalsCount, commitmentsCount, entityRow] = await Promise.all([
-    supabase
-      .from('tkg_briefings')
-      .select('top_insight, confidence, recommended_action, stats, generated_at, briefing_date')
-      .eq('user_id', userId)
-      .eq('briefing_date', today())
-      .order('generated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-
-    supabase
-      .from('tkg_signals')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId),
-
-    supabase
-      .from('tkg_commitments')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .in('status', ['active', 'at_risk']),
-
-    supabase
-      .from('tkg_entities')
-      .select('patterns')
-      .eq('user_id', userId)
-      .eq('name', 'self')
-      .maybeSingle(),
-  ]);
-
-  const graphStats = {
-    signalsTotal: signalsCount.count ?? 0,
-    commitmentsActive: commitmentsCount.count ?? 0,
-    patternsActive: Object.keys(
-      (entityRow.data?.patterns as Record<string, unknown>) ?? {}
-    ).length,
-  };
-
-  // Return cached brief if available
-  if (briefRow.data) {
-    const row = briefRow.data;
-    const statsJson = row.stats as Record<string, unknown> | null;
-    return NextResponse.json({
-      topInsight: row.top_insight,
-      confidence: row.confidence,
-      recommendedAction: row.recommended_action,
-      fullBrief: (statsJson?.fullBrief as string) ?? '',
-      generatedAt: row.generated_at,
-      briefingDate: row.briefing_date,
-      graphStats,
-    });
-  }
-
-  // Nothing cached — generate fresh
   try {
+    // Query today's brief + graph stats in parallel
+    const [briefRow, signalsCount, commitmentsCount, entityRow] = await Promise.all([
+      supabase
+        .from('tkg_briefings')
+        .select('top_insight, confidence, recommended_action, stats, generated_at, briefing_date')
+        .eq('user_id', userId)
+        .eq('briefing_date', today())
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+
+      supabase
+        .from('tkg_signals')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
+
+      supabase
+        .from('tkg_commitments')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .in('status', ['active', 'at_risk']),
+
+      supabase
+        .from('tkg_entities')
+        .select('patterns')
+        .eq('user_id', userId)
+        .eq('name', 'self')
+        .maybeSingle(),
+    ]);
+
+    const queryError = briefRow.error
+      ?? signalsCount.error
+      ?? commitmentsCount.error
+      ?? entityRow.error;
+
+    if (queryError) {
+      throw queryError;
+    }
+
+    const graphStats = {
+      signalsTotal: signalsCount.count ?? 0,
+      commitmentsActive: commitmentsCount.count ?? 0,
+      patternsActive: Object.keys(
+        (entityRow.data?.patterns as Record<string, unknown>) ?? {}
+      ).length,
+    };
+
+    // Return cached brief if available
+    if (briefRow.data) {
+      const row = briefRow.data;
+      const statsJson = row.stats as Record<string, unknown> | null;
+      return NextResponse.json({
+        topInsight: row.top_insight,
+        confidence: row.confidence,
+        recommendedAction: row.recommended_action,
+        fullBrief: (statsJson?.fullBrief as string) ?? '',
+        generatedAt: row.generated_at,
+        briefingDate: row.briefing_date,
+        graphStats,
+      });
+    }
+
+    // Nothing cached — generate fresh
     const brief = await generateBriefing(userId);
     return NextResponse.json({
       topInsight: brief.topInsight,

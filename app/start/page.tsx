@@ -23,13 +23,13 @@ export default function StartPage() {
         </div>
 
         <h1 className="text-4xl sm:text-5xl font-black tracking-tighter leading-tight mb-5">
-          Connect your history.<br />
-          Foldera does the rest.
+          Finished work,<br />
+          every morning.
         </h1>
 
         <p className="text-zinc-400 text-lg leading-relaxed mb-10 font-medium">
-          Your patterns are already in your email.<br />
-          We just make them visible.
+          Connect your history.<br />
+          Foldera drafts the work before you wake up.
         </p>
 
         <div className="space-y-3 mb-6">

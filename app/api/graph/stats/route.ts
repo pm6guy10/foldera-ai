@@ -50,6 +50,15 @@ export async function GET(request: Request) {
         .maybeSingle(),
     ]);
 
+    const queryError = signalsRes.error
+      ?? commitmentsRes.error
+      ?? entityRes.error
+      ?? latestSignalRes.error;
+
+    if (queryError) {
+      throw queryError;
+    }
+
     return NextResponse.json({
       signalsTotal:      signalsRes.count ?? 0,
       commitmentsActive: commitmentsRes.count ?? 0,

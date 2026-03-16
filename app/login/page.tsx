@@ -36,7 +36,7 @@ export default function LoginPage() {
           <div className="text-center mb-12">
             <h1 className="text-5xl font-black tracking-tighter text-white mb-4">Sign in.</h1>
             <p className="text-zinc-400 text-lg font-medium leading-relaxed">
-              Your morning reads are waiting.
+              Finished work, every morning.
             </p>
           </div>
 

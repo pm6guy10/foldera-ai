@@ -1,6 +1,7 @@
 import { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import AzureADProvider from 'next-auth/providers/azure-ad';
+import { resolveSupabaseAuthUserId } from '@/lib/auth/supabase-auth-user';
 
 export function getAuthOptions(): NextAuthOptions {
   const providers: any[] = [
@@ -70,11 +71,15 @@ export function getAuthOptions(): NextAuthOptions {
             token.name = user.name;
             token.provider = account.provider;
 
-            // Single-user app: always resolve to INGEST_USER_ID (a valid Supabase UUID).
-            // Fallback to token.sub (Google's numeric sub) only if not configured.
-            // This prevents the "invalid input syntax for type uuid" error when session.user.id
-            // is passed to Postgres — Google subs are not UUIDs.
-            const resolvedUserId = process.env.INGEST_USER_ID ?? token.sub ?? (user as any).id;
+            if (!user.email) {
+              throw new Error('OAuth profile missing email');
+            }
+
+            // Session-backed routes rely on session.user.id being a real auth.users UUID.
+            const resolvedUserId = await resolveSupabaseAuthUserId(
+              user.email,
+              user.name,
+            );
             token.userId = resolvedUserId;
             console.log(`[auth] resolved userId: ${resolvedUserId}`);
 
@@ -150,9 +155,8 @@ export function getAuthOptions(): NextAuthOptions {
         }
       },
       async session({ session, token }) {
-        // Use the resolved Supabase UUID (stored in token.userId during sign-in).
-        // Falls back to token.sub for any edge case where userId was not stored.
-        session.user.id = (token.userId as string | undefined) ?? token.sub!;
+        // Use the resolved Supabase UUID stored during sign-in.
+        session.user.id = typeof token.userId === 'string' ? token.userId : '';
         session.user.email = token.email as string;
         session.user.name = token.name as string;
         return session;

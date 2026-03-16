@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
-import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
+import { syncGoogle } from '@/lib/sync/google-sync';
 import { rateLimit } from '@/lib/utils/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,7 @@ export async function POST() {
 
   const userId = session.user.id;
 
-  const rl = await rateLimit(`sync-now:microsoft:${userId}`, { limit: 3, window: 3600 });
+  const rl = await rateLimit(`sync-now:google:${userId}`, { limit: 3, window: 3600 });
   if (!rl.success) {
     return NextResponse.json(
       { error: 'Sync rate limit exceeded. Try again later.' },
@@ -29,24 +29,20 @@ export async function POST() {
   }
 
   try {
-    const result = await syncMicrosoft(userId);
+    const result = await syncGoogle(userId);
 
     if (result.error === 'no_token') {
       return NextResponse.json(
-        { error: 'Microsoft account not connected' },
+        { error: 'Google account not connected' },
         { status: 400 },
       );
     }
 
-    const total =
-      result.mail_signals +
-      result.calendar_signals +
-      result.file_signals +
-      result.task_signals;
+    const total = result.gmail_signals + result.calendar_signals;
 
     return NextResponse.json({ ok: true, total, ...result });
   } catch (err: any) {
-    console.error('[microsoft/sync-now] error:', err instanceof Error ? err.message : err);
+    console.error('[google/sync-now] error:', err instanceof Error ? err.message : err);
     return NextResponse.json(
       { error: err.message ?? 'Sync failed' },
       { status: 500 },

@@ -263,8 +263,8 @@ export default function ResultPage() {
         {showCTA && (
           <>
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold mb-1">Get this every morning.</h2>
-              <p className="text-zinc-400 text-sm">Foldera reads your inbox overnight and surfaces today&apos;s read at 7 AM.</p>
+              <h2 className="text-xl font-bold mb-1">Finished work, every morning.</h2>
+              <p className="text-zinc-400 text-sm">Foldera reads your inbox overnight and delivers finished work at 7 AM.</p>
             </div>
 
             <button

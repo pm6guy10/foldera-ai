@@ -5,39 +5,47 @@ import { Check, ArrowRight, Layers } from 'lucide-react';
 
 function CheckoutButton() {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleCheckout() {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ price_id: 'price_1T9coR2NLOgC3SAaVxcM0rEn' }),
+        body: JSON.stringify({}),
       });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || 'Checkout unavailable');
       }
+      window.location.href = data.url;
     } catch {
+      setError('Checkout is unavailable right now. Try again in a moment.');
+    } finally {
       setLoading(false);
     }
   }
 
   return (
-    <button
-      onClick={handleCheckout}
-      disabled={loading}
-      className="w-full py-5 rounded-2xl bg-white text-black font-black uppercase tracking-[0.2em] text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
-    >
-      {loading ? (
-        <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-      ) : (
-        <>
-          Start 14-day free trial
-          <ArrowRight className="w-4 h-4" />
-        </>
-      )}
-    </button>
+    <div className="space-y-3">
+      <button
+        onClick={handleCheckout}
+        disabled={loading}
+        className="w-full py-5 rounded-2xl bg-white text-black font-black uppercase tracking-[0.2em] text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
+      >
+        {loading ? (
+          <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+        ) : (
+          <>
+            Start 14-day free trial
+            <ArrowRight className="w-4 h-4" />
+          </>
+        )}
+      </button>
+      {error && <p className="text-sm text-rose-300">{error}</p>}
+    </div>
   );
 }
 
@@ -68,7 +76,7 @@ export default function PricingPage() {
               One plan.<br />Full power.
             </h1>
             <p className="text-zinc-400 text-xl font-medium">
-              Stop managing. Start executing.
+              Finished work, every morning.
             </p>
           </div>
 

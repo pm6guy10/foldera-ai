@@ -128,10 +128,14 @@ export async function deleteUserToken(
   provider: 'google' | 'microsoft',
 ): Promise<void> {
   const supabase = createServerClient();
-  await supabase
+  const { error } = await supabase
     .from('user_tokens')
     .delete()
     .eq('user_id', userId)
     .eq('provider', provider);
+  if (error) {
+    console.error(`[user-tokens] delete failed:`, error.message);
+    throw error;
+  }
   console.log(`[user-tokens] deleted ${provider} token for user ${userId}`);
 }

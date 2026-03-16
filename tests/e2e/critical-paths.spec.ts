@@ -5,50 +5,63 @@
  * Run: npx playwright test tests/e2e/critical-paths.spec.ts
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+async function waitForColdRead(page: Page, path: string) {
+  await page.goto(path);
+  await expect(page).toHaveTitle(/Foldera/i);
+  await expect(page.getByText(/system observation/i)).toBeVisible();
+  const goDeeper = page.getByRole('button', { name: /want to go deeper/i });
+  await expect(goDeeper).toBeVisible({ timeout: 15000 });
+  return goDeeper;
+}
+
+async function openTryComposer(page: Page, path: string) {
+  const goDeeper = await waitForColdRead(page, path);
+  await goDeeper.click();
+  const textbox = page.getByRole('textbox');
+  await expect(textbox).toBeVisible();
+  return {
+    textbox,
+    submit: page.getByRole('button', { name: /get your read/i }),
+  };
+}
 
 // ── Test 1: Landing page loads and CTA works ──────────────────────────────────
 test.describe('Landing page', () => {
-  test('loads with title and headline', async ({ page }) => {
-    await page.goto('/');
-    await expect(page).toHaveTitle(/Foldera/i);
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Foldera handles things');
+  test('loads with title and cold-read hero', async ({ page }) => {
+    const goDeeper = await waitForColdRead(page, '/');
+    await expect(goDeeper).toBeVisible();
   });
 
   test('primary CTA exists and navigates to /start', async ({ page }) => {
     await page.goto('/');
-    const cta = page.getByRole('link', { name: /connect your history/i }).first();
+    const cta = page.getByRole('link', { name: /get started/i }).first();
     await expect(cta).toBeVisible();
     await cta.click();
     await expect(page).toHaveURL(/\/start/);
   });
 
-  test('secondary CTA links to /try', async ({ page }) => {
-    await page.goto('/');
-    const tryLink = page.getByRole('link', { name: /try it now/i });
-    await expect(tryLink).toBeVisible();
-    await tryLink.click();
-    await expect(page).toHaveURL(/\/try/);
+  test('inline demo expands to a textarea on landing', async ({ page }) => {
+    const { textbox, submit } = await openTryComposer(page, '/');
+    await expect(textbox).toBeVisible();
+    await expect(submit).toBeDisabled();
   });
 
-  test('"Log in" link goes to /start, not raw NextAuth page', async ({ page }) => {
+  test('"Sign in" link goes to /login, not raw NextAuth page', async ({ page }) => {
     await page.goto('/');
     await page.setViewportSize({ width: 1280, height: 800 });
-    const loginLink = page.getByRole('link', { name: /log in/i });
+    const loginLink = page.getByRole('link', { name: /sign in/i }).first();
     await expect(loginLink).toBeVisible();
     const href = await loginLink.getAttribute('href');
-    expect(href).toBe('/start');
+    expect(href).toBe('/login');
     expect(href).not.toContain('/api/auth/signin');
   });
 
-  test('example card approve/skip interaction works', async ({ page }) => {
-    await page.goto('/');
-    await page.evaluate(() => window.scrollTo(0, 1200));
-    await page.waitForTimeout(500);
-    const approveBtn = page.getByRole('button', { name: /approve & send/i });
-    await expect(approveBtn).toBeVisible();
-    await approveBtn.click();
-    await expect(page.getByText(/foldera sends the email/i)).toBeVisible();
+  test('landing demo submit enables after typing', async ({ page }) => {
+    const { textbox, submit } = await openTryComposer(page, '/');
+    await textbox.fill('I have been struggling with a big career decision for weeks now and cannot decide.');
+    await expect(submit).toBeEnabled();
   });
 
   test('no horizontal overflow at 390px', async ({ page }) => {
@@ -81,12 +94,10 @@ test.describe('Start page (onboarding)', () => {
     await expect(page.getByRole('button', { name: /connect with microsoft/i })).toBeVisible();
   });
 
-  test('paste-to-try toggle reveals textarea', async ({ page }) => {
+  test('headline uses the unified tagline', async ({ page }) => {
     await page.goto('/start');
-    const toggle = page.getByRole('button', { name: /paste a conversation/i });
-    await expect(toggle).toBeVisible();
-    await toggle.click();
-    await expect(page.getByRole('textbox')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Finished work,\s*every morning\./);
+    await expect(page.getByText(/Foldera drafts the work before you wake up\./i)).toBeVisible();
   });
 
   test('no horizontal overflow at 390px', async ({ page }) => {
@@ -100,20 +111,16 @@ test.describe('Start page (onboarding)', () => {
 // ── Test 3: /try demo flow (unauthenticated) ──────────────────────────────────
 test.describe('/try demo page', () => {
   test('loads with textarea and disabled submit', async ({ page }) => {
-    await page.goto('/try');
-    await expect(page.getByRole('heading', { name: /get your read/i })).toBeVisible();
-    const textarea = page.getByRole('textbox');
-    await expect(textarea).toBeVisible();
-    const btn = page.getByRole('button', { name: /get your read/i });
-    await expect(btn).toBeDisabled();
+    const { textbox, submit } = await openTryComposer(page, '/try');
+    await expect(textbox).toBeVisible();
+    await expect(submit).toBeDisabled();
   });
 
   test('submit button enables after typing', async ({ page }) => {
-    await page.goto('/try');
-    const textarea = page.getByRole('textbox');
+    const { textbox, submit } = await openTryComposer(page, '/try');
+    const textarea = textbox;
     await textarea.fill('I have been struggling with a big career decision for weeks now and cannot decide.');
-    const btn = page.getByRole('button', { name: /get your read/i });
-    await expect(btn).toBeEnabled();
+    await expect(submit).toBeEnabled();
   });
 
   test('unauthenticated user redirected to /start from dashboard', async ({ page }) => {
@@ -178,10 +185,7 @@ test.describe('Mobile viewport (390px)', () => {
 
   test('landing page - all interactive elements meet 44px minimum', async ({ page }) => {
     await page.goto('/');
-    const buttons = page.getByRole('button');
-    const links = page.getByRole('link');
-    // Primary CTA buttons should be at least 44px tall
-    const ctaLink = page.getByRole('link', { name: /connect your history/i }).first();
+    const ctaLink = page.getByRole('link', { name: /get started/i }).first();
     const box = await ctaLink.boundingBox();
     if (box) {
       expect(box.height).toBeGreaterThanOrEqual(40); // 40px minimum (slightly relaxed for links)
@@ -202,9 +206,8 @@ test.describe('Mobile viewport (390px)', () => {
   });
 
   test('/try page - textarea is visible and usable', async ({ page }) => {
-    await page.goto('/try');
-    const textarea = page.getByRole('textbox');
-    await expect(textarea).toBeVisible();
+    const { textbox } = await openTryComposer(page, '/try');
+    const textarea = textbox;
     const box = await textarea.boundingBox();
     expect(box?.width).toBeGreaterThan(300);
   });
@@ -225,7 +228,7 @@ test.describe('Navigation', () => {
 
   test('pricing CTA links to /start', async ({ page }) => {
     await page.goto('/');
-    const trialBtn = page.getByRole('link', { name: /start free trial/i });
+    const trialBtn = page.getByRole('link', { name: /start.*trial/i });
     await expect(trialBtn).toBeVisible();
     const href = await trialBtn.getAttribute('href');
     expect(href).toBe('/start');

@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', baseUrl));
   }
 
+  // Session-backed route: never fall back to INGEST_USER_ID.
   const userId = session.user.id;
 
   // 2. Check for errors from Google
