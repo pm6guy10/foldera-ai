@@ -26,9 +26,16 @@ export async function POST(request: Request) {
 
   try {
     // Extract entities/commitments/topics from unprocessed sync signals
+    // Race with 7s timeout so we never blow the Hobby tier 10s limit
     try {
-      const extraction = await processUnextractedSignals(userId);
-      if (extraction.signals_processed > 0) {
+      const SIGNAL_TIMEOUT_MS = 7000;
+      const extraction = await Promise.race([
+        processUnextractedSignals(userId),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), SIGNAL_TIMEOUT_MS)),
+      ]);
+      if (extraction === null) {
+        console.warn('[conviction/generate] signal extraction timed out after 7s, proceeding with existing data');
+      } else if (extraction.signals_processed > 0) {
         console.log(
           `[conviction/generate] signal extraction: ` +
           `${extraction.signals_processed} signals, ${extraction.entities_upserted} entities, ` +

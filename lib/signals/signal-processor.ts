@@ -11,8 +11,8 @@
  * After extraction, marks each signal processed=true with extracted_entity_ids
  * and extracted_commitment_ids populated.
  *
- * Fetches up to 100 signals per batch and loops until all unprocessed
- * signals are consumed.
+ * Fetches up to 5 signals per invocation (Hobby tier 10s limit).
+ * Called on every Regenerate click and daily cron run.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -22,8 +22,8 @@ import { trackApiCall } from '@/lib/utils/api-tracker';
 import { isOverDailyLimit } from '@/lib/utils/api-tracker';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
-const BATCH_SIZE = 10;
-const FETCH_LIMIT = 100;
+const BATCH_SIZE = 5;
+const FETCH_LIMIT = 5;
 
 // Sources that write raw signals without entity extraction
 const EXTRACTABLE_SOURCES = [
@@ -147,76 +147,45 @@ export async function processUnextractedSignals(userId: string): Promise<Process
 
   const selfId = selfEntity?.id;
   const anthropic = getAnthropicClient();
-  let batchCount = 0;
 
-  // Loop in sequential batches of FETCH_LIMIT until all unprocessed signals are consumed
-  while (true) {
-    // Re-check spend cap before each fetch batch
-    if (batchCount > 0 && await isOverDailyLimit()) {
-      console.log('[signal-processor] Daily spend cap reached mid-run, stopping');
-      break;
-    }
+  // Fetch at most FETCH_LIMIT signals per invocation (Hobby tier: 10s limit)
+  const { data: signals, error: fetchErr } = await supabase
+    .from('tkg_signals')
+    .select('id, user_id, source, type, content, author, occurred_at')
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .in('source', EXTRACTABLE_SOURCES)
+    .order('occurred_at', { ascending: true })
+    .limit(FETCH_LIMIT);
 
-    const { data: signals, error: fetchErr } = await supabase
-      .from('tkg_signals')
-      .select('id, user_id, source, type, content, author, occurred_at')
-      .eq('user_id', userId)
-      .eq('processed', false)
-      .in('source', EXTRACTABLE_SOURCES)
-      .order('occurred_at', { ascending: true })
-      .limit(FETCH_LIMIT);
-
-    if (fetchErr) {
-      result.errors.push(`fetch: ${fetchErr.message}`);
-      break;
-    }
-
-    if (!signals || signals.length === 0) break;
-
-    console.log(`[signal-processor] Batch ${batchCount + 1}: ${signals.length} unprocessed signals for user ${userId}`);
-    batchCount++;
-
-    // Process in sub-batches of BATCH_SIZE (for Claude API calls)
-    for (let i = 0; i < signals.length; i += BATCH_SIZE) {
-      // Re-check spend cap between sub-batches
-      if (i > 0 && await isOverDailyLimit()) {
-        console.log('[signal-processor] Daily spend cap reached mid-run, stopping');
-        break;
-      }
-
-      const batch = signals.slice(i, i + BATCH_SIZE);
-      try {
-        const batchResult = await processBatch(anthropic, supabase, batch, userId, selfId, selfEntity?.patterns);
-        result.signals_processed += batchResult.signals_processed;
-        result.entities_upserted += batchResult.entities_upserted;
-        result.commitments_created += batchResult.commitments_created;
-        result.topics_merged += batchResult.topics_merged;
-
-        // Update selfEntity patterns in memory for next batch
-        if (batchResult.topics_merged > 0 && selfId) {
-          const { data: updated } = await supabase
-            .from('tkg_entities')
-            .select('patterns')
-            .eq('id', selfId)
-            .single();
-          if (updated) selfEntity = { ...selfEntity!, patterns: updated.patterns };
-        }
-      } catch (batchErr: unknown) {
-        const msg = batchErr instanceof Error ? batchErr.message : String(batchErr);
-        console.error(`[signal-processor] batch ${i}-${i + batch.length} failed:`, msg);
-        result.errors.push(msg);
-        // Mark these signals as processed anyway so we don't retry forever
-        await markSignalsProcessed(supabase, batch.map(s => s.id));
-        result.signals_processed += batch.length;
-      }
-    }
-
-    // If we got fewer than FETCH_LIMIT, there are no more to process
-    if (signals.length < FETCH_LIMIT) break;
+  if (fetchErr) {
+    result.errors.push(`fetch: ${fetchErr.message}`);
+    return result;
   }
 
-  const totalProcessed = result.signals_processed;
-  console.log(`Signal processor: ${totalProcessed} signals processed in ${batchCount} batches`);
+  if (!signals || signals.length === 0) {
+    console.log('[signal-processor] No unprocessed signals');
+    return result;
+  }
+
+  console.log(`[signal-processor] Processing ${signals.length} signals for user ${userId}`);
+
+  try {
+    const batchResult = await processBatch(anthropic, supabase, signals, userId, selfId, selfEntity?.patterns);
+    result.signals_processed += batchResult.signals_processed;
+    result.entities_upserted += batchResult.entities_upserted;
+    result.commitments_created += batchResult.commitments_created;
+    result.topics_merged += batchResult.topics_merged;
+  } catch (batchErr: unknown) {
+    const msg = batchErr instanceof Error ? batchErr.message : String(batchErr);
+    console.error(`[signal-processor] batch failed:`, msg);
+    result.errors.push(msg);
+    // Mark signals processed so we don't retry forever
+    await markSignalsProcessed(supabase, signals.map(s => s.id));
+    result.signals_processed += signals.length;
+  }
+
+  console.log(`Signal processor: ${result.signals_processed} signals processed`);
 
   return result;
 }
