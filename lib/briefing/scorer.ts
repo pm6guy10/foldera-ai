@@ -20,6 +20,14 @@ import { decrypt } from '@/lib/encryption';
 import type { ActionType } from './types';
 
 // ---------------------------------------------------------------------------
+// Self-referential signal filter — excludes Foldera's own directive outputs
+// ---------------------------------------------------------------------------
+
+function isSelfReferentialSignal(content: string): boolean {
+  return content.startsWith('[Foldera Directive') || content.startsWith('[Foldera \u00b7 20');
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -358,8 +366,10 @@ async function enrichRelationshipContext(
       const firstName = nameLower.split(/\s+/)[0];
       const mentioning = signals
         .filter((s: any) => {
-          const content = decrypt(s.content as string ?? '').toLowerCase();
-          return content.includes(nameLower) || content.includes(firstName);
+          const content = decrypt(s.content as string ?? '');
+          if (isSelfReferentialSignal(content)) return false;
+          const lower = content.toLowerCase();
+          return lower.includes(nameLower) || lower.includes(firstName);
         })
         .slice(0, 3);
 
@@ -465,6 +475,7 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
   for (const s of signals) {
     const content = decrypt(s.content as string ?? '');
     if (content.length < 20) continue;
+    if (isSelfReferentialSignal(content)) continue;
 
     for (const [domain, regex] of Object.entries(domainKeywords)) {
       const matches = content.match(regex);
@@ -616,6 +627,7 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
       for (const s of signals) {
         const content = decrypt(s.content as string ?? '');
         if (content.length < 20) continue;
+        if (isSelfReferentialSignal(content)) continue;
 
         const lower = content.toLowerCase();
         let domain = 'other';
@@ -1525,7 +1537,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const signals = (signalsRes.data ?? []).map((s: any) => ({
     ...s,
     content: decrypt(s.content as string ?? ''),
-  }));
+  })).filter((s: any) => !isSelfReferentialSignal(s.content));
   const entities = entitiesRes.data ?? [];
   const goals = (goalsRes.data ?? []) as Array<{ goal_text: string; priority: number; goal_category: string }>;
 
@@ -1539,7 +1551,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     .order('occurred_at', { ascending: false })
     .limit(50);
 
-  const decryptedSignals = (allRecentSignals ?? []).map((s: any) => decrypt(s.content as string ?? ''));
+  const decryptedSignals = (allRecentSignals ?? []).map((s: any) => decrypt(s.content as string ?? '')).filter((c: string) => !isSelfReferentialSignal(c));
 
   // -----------------------------------------------------------------------
   // Build candidate loops
@@ -1581,7 +1593,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     const text = s.content as string;
     if (!text || text.length < 20) continue;
     // Skip signals that are Foldera's own self-fed directives
-    if (text.startsWith('[Foldera Directive')) continue;
+    if (isSelfReferentialSignal(text)) continue;
     const mg = matchGoal(text, goals);
     const actionType = inferActionType(text, 'signal');
 

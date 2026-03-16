@@ -307,13 +307,27 @@ async function processBatch(
       }
     }
 
-    // Mark signal processed with extracted IDs
+    // Build extracted data arrays for write-back
+    const extractedEntities = extraction
+      ? (extraction.persons ?? []).filter(p => p.name?.trim()).map(p => p.name.trim())
+      : [];
+    const extractedCommitments = extraction
+      ? (extraction.commitments ?? []).filter(c => c.description?.trim()).map(c => c.description.trim())
+      : [];
+    const extractedDates = extraction
+      ? (extraction.commitments ?? [])
+          .filter(c => c.due)
+          .map(c => ({ description: c.description, due: c.due }))
+      : [];
+
+    // Mark signal processed with extracted data persisted to columns
     await supabase
       .from('tkg_signals')
       .update({
         processed: true,
-        extracted_entity_ids: entityIds.length > 0 ? entityIds : null,
-        extracted_commitment_ids: commitmentIds.length > 0 ? commitmentIds : null,
+        extracted_entities: extractedEntities.length > 0 ? extractedEntities : [],
+        extracted_commitments: extractedCommitments.length > 0 ? extractedCommitments : [],
+        extracted_dates: extractedDates.length > 0 ? extractedDates : null,
       })
       .eq('id', signal.id);
 

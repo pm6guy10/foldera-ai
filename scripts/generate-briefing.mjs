@@ -220,8 +220,10 @@ async function enrichRelationshipContext(entityName, entityPatterns) {
       const firstName = nameLower.split(/\s+/)[0];
       const mentioning = signals
         .filter(s => {
-          const content = decrypt(s.content ?? '').toLowerCase();
-          return content.includes(nameLower) || content.includes(firstName);
+          const content = decrypt(s.content ?? '');
+          if (content.startsWith('[Foldera Directive') || content.startsWith('[Foldera \u00b7 20')) return false;
+          const lower = content.toLowerCase();
+          return lower.includes(nameLower) || lower.includes(firstName);
         })
         .slice(0, 3);
 
@@ -405,7 +407,7 @@ async function scoreOpenLoops() {
     .select('content, source, occurred_at').eq('user_id', USER_ID)
     .gte('occurred_at', fourteenDaysAgo).eq('processed', true)
     .order('occurred_at', { ascending: false }).limit(50);
-  const decryptedSignals = (allRecentSignals ?? []).map(s => decrypt(s.content ?? ''));
+  const decryptedSignals = (allRecentSignals ?? []).map(s => decrypt(s.content ?? '')).filter(c => !c.startsWith('[Foldera Directive') && !c.startsWith('[Foldera \u00b7 20'));
 
   // Build candidates
   const candidates = [];
@@ -425,7 +427,7 @@ async function scoreOpenLoops() {
     const text = String(s.content ?? '');
     if (text.length < 20) continue;
     // v2: skip self-fed directive signals
-    if (text.startsWith('[Foldera Directive')) continue;
+    if (text.startsWith('[Foldera Directive') || text.startsWith('[Foldera \u00b7 20')) continue;
     const mg = matchGoal(text, goals);
     candidates.push({
       id: s.id, type: 'signal', title: text.slice(0, 120), content: text,
