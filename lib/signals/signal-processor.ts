@@ -237,20 +237,37 @@ async function processBatch(
     errors: [],
   };
 
-  // Build prompt with decrypted signal content
-  const signalTexts = batch.map(s => {
+  // Build prompt with decrypted signal content, skipping signals that are still ciphertext
+  const skippedIds: string[] = [];
+  const decryptedBatch: RawSignal[] = [];
+  const signalTexts: string[] = [];
+
+  for (const s of batch) {
     const content = decrypt(s.content);
-    // Truncate long signals to save tokens
+    if (looksLikeCiphertext(content)) {
+      // decrypt() fell through — ENCRYPTION_KEY missing or wrong. Skip so it can be retried later.
+      skippedIds.push(s.id);
+      continue;
+    }
+    decryptedBatch.push(s);
     const trimmed = content.length > 2000 ? content.slice(0, 2000) + '...' : content;
-    return `--- Signal ID: ${s.id} | Source: ${s.source} | Type: ${s.type} ---\n${trimmed}`;
-  }).join('\n\n');
+    signalTexts.push(`--- Signal ID: ${s.id} | Source: ${s.source} | Type: ${s.type} ---\n${trimmed}`);
+  }
+
+  // If all signals were ciphertext, nothing to extract
+  if (decryptedBatch.length === 0) {
+    console.warn(`[signal-processor] All ${batch.length} signals still encrypted — skipping batch`);
+    return result;
+  }
+
+  const promptText = signalTexts.join('\n\n');
 
   const response = await anthropic.messages.create({
     model: HAIKU_MODEL,
     max_tokens: 2048,
     temperature: 0,
     system: EXTRACTION_PROMPT,
-    messages: [{ role: 'user', content: signalTexts }],
+    messages: [{ role: 'user', content: promptText }],
   });
 
   // Track API cost
@@ -285,7 +302,7 @@ async function processBatch(
   // Collect all topics for a single patterns merge at end of batch
   const allTopics: ExtractedTopic[] = [];
 
-  for (const signal of batch) {
+  for (const signal of decryptedBatch) {
     const extraction = extractionMap.get(signal.id);
     const entityIds: string[] = [];
     const commitmentIds: string[] = [];
@@ -484,6 +501,20 @@ async function insertCommitment(
     return null;
   }
   return created?.id ?? null;
+}
+
+/**
+ * Detects whether a string is still AES-256-GCM ciphertext (base64-encoded,
+ * no spaces, no natural language). Used to catch cases where decrypt() fell
+ * through because ENCRYPTION_KEY was missing or wrong.
+ */
+function looksLikeCiphertext(content: string): boolean {
+  // Natural language has spaces; ciphertext base64 never does
+  if (content.includes(' ')) return false;
+  // Must be long enough to be IV + Tag + at least 1 byte of ciphertext (29+ base64 chars)
+  if (content.length < 40) return false;
+  // Base64 pattern: only A-Z, a-z, 0-9, +, /, = and no whitespace
+  return /^[A-Za-z0-9+/=]+$/.test(content);
 }
 
 async function markSignalsProcessed(
