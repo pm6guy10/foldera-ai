@@ -1,0 +1,265 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e4]:
+        - link "Foldera" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - img [ref=e7]
+          - generic [ref=e11]: Foldera
+        - generic [ref=e12]:
+          - link "Platform" [ref=e13] [cursor=pointer]:
+            - /url: "#product"
+          - link "Pricing" [ref=e14] [cursor=pointer]:
+            - /url: "#pricing"
+        - generic [ref=e15]:
+          - link "Sign in" [ref=e16] [cursor=pointer]:
+            - /url: /login
+          - link "Get started" [ref=e17] [cursor=pointer]:
+            - /url: /start
+            - text: Get started
+            - img [ref=e18]
+    - generic [ref=e22]:
+      - generic [ref=e335]: System observation
+      - paragraph [ref=e337]: Monday afternoon. Middle of the workday.
+      - paragraph [ref=e339]: People who look at new tools during work hours are usually doing it because something just failed — a ball dropped, a follow-up was missed, or the to-do list got so long it became useless. The urge to find a better system is a signal. The question is whether you'll act on it or close this tab and forget about it until the next ball drops.
+      - generic [ref=e341]:
+        - generic [ref=e345]: 34% confidence
+        - generic [ref=e346]: "|"
+        - generic [ref=e347]: "Based on: time, day"
+      - generic [ref=e348]:
+        - button "Want to go deeper? Tell me what you're actually dealing with. I'll show you what Foldera does with real context." [ref=e350] [cursor=pointer]:
+          - generic [ref=e351]:
+            - paragraph [ref=e352]: Want to go deeper?
+            - paragraph [ref=e353]: Tell me what you're actually dealing with. I'll show you what Foldera does with real context.
+          - img [ref=e354]
+        - link "Or skip ahead and connect your real data" [ref=e357] [cursor=pointer]:
+          - /url: /start
+          - text: Or skip ahead and connect your real data
+          - img [ref=e358]
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - heading "Now imagine a month of your real data." [level=2] [ref=e30]:
+          - text: Now imagine a month of
+          - text: your real data.
+        - paragraph [ref=e31]: That cold read used time and day. Here's what Foldera does with your email, calendar, and conversations.
+      - generic [ref=e33]:
+        - generic [ref=e34]:
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - text: foldera.engine
+          - generic [ref=e45]:
+            - generic:
+              - generic [ref=e360]:
+                - img [ref=e362]
+                - generic [ref=e365]: "Registration deadline: tomorrow (opened, not acted on)"
+              - generic [ref=e367]:
+                - img [ref=e369]
+                - generic [ref=e371]: Lease renewal — “I’ll do it this weekend”
+              - generic [ref=e373]:
+                - img [ref=e375]
+                - generic [ref=e379]: Cart with 6 items, idle since Tuesday
+              - generic [ref=e381]:
+                - img [ref=e383]
+                - generic [ref=e388]: Dentist (unconfirmed, 3rd reschedule)
+          - generic [ref=e391]:
+            - img [ref=e393]
+            - generic [ref=e402]:
+              - generic [ref=e403]: Synthesizing Intent
+              - paragraph [ref=e407]: MAP_REDUCE // EXTRACTING PATTERNS
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - img
+                - generic:
+                  - paragraph: Three Things Handled
+                  - paragraph: None of this is hard. It’s just boring.
+              - generic:
+                - paragraph: Registration submitted. Lease reply drafted with a 12-month counter. Dentist confirmed for Thursday. You were never going to do these voluntarily. Now they’re done.
+                - button "Approve All":
+                  - img
+                  - text: Approve All
+                  - img
+        - generic [ref=e77]:
+          - 'button "Scenario 1: The job you keep almost taking" [ref=e78] [cursor=pointer]'
+          - 'button "Scenario 2: The feature you’re hiding behind" [ref=e79] [cursor=pointer]'
+          - 'button "Scenario 3: The 47 open tabs" [ref=e80] [cursor=pointer]'
+    - generic [ref=e82]:
+      - generic [ref=e83]:
+        - heading "You decide yes or no. Foldera does the rest." [level=2] [ref=e84]:
+          - text: You decide yes or no.
+          - text: Foldera does the rest.
+        - paragraph [ref=e85]: Three steps. No prompting. No managing. Just finished work, every morning.
+      - generic [ref=e86]:
+        - generic [ref=e88]:
+          - generic: "01"
+          - heading "Step 01 Connect" [level=3] [ref=e90]:
+            - generic [ref=e91]: Step 01
+            - text: Connect
+          - paragraph [ref=e92]: Connect your email. Foldera reads your sent folder, your calendar, your conversations — and starts finding the patterns you can’t see from inside them.
+        - generic [ref=e94]:
+          - generic: "02"
+          - heading "Step 02 Synthesize" [level=3] [ref=e96]:
+            - generic [ref=e97]: Step 02
+            - text: Synthesize
+          - paragraph [ref=e98]: "Overnight, the engine maps what it found to what matters. By morning, the work is done: emails drafted, decisions framed, follow-ups queued."
+        - generic [ref=e100]:
+          - generic: "03"
+          - heading "Step 03 Execute" [level=3] [ref=e102]:
+            - generic [ref=e103]: Step 03
+            - text: Execute
+          - paragraph [ref=e104]: One tap to approve. One tap to skip. Either way, the engine learns. Day 7 is smarter than day 1. Day 30 is a different product.
+    - generic [ref=e106]:
+      - generic [ref=e108]:
+        - heading "The Flip" [level=2] [ref=e109]
+        - paragraph [ref=e110]: Same data. Different intelligence.
+      - generic [ref=e111]:
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - img [ref=e115]
+            - text: What you see
+          - generic [ref=e118]:
+            - generic [ref=e119]:
+              - generic [ref=e120]: Unread emails
+              - generic [ref=e121]: "47"
+            - generic [ref=e122]:
+              - generic [ref=e123]: Overdue tasks
+              - generic [ref=e124]: "12"
+            - generic [ref=e125]:
+              - generic [ref=e126]: Pending decisions
+              - generic [ref=e127]: "8"
+        - generic [ref=e128]:
+          - generic [ref=e129]:
+            - img [ref=e130]
+            - text: What Foldera sees
+          - generic [ref=e138]:
+            - generic [ref=e139]:
+              - generic [ref=e140]:
+                - generic [ref=e141]: Signal Confidence
+                - generic [ref=e142]: ACTIVE
+              - generic [ref=e145]: Matching historic nodes... 92% Accuracy
+            - generic [ref=e146]:
+              - generic [ref=e148]: Pattern Extracted
+              - generic [ref=e149]: "“Marcus prioritizes Friday terms. Always CC legal. Historic response latency: 22m.”"
+    - generic [ref=e151]:
+      - generic [ref=e153]:
+        - heading "Not AI opinions. Your track record." [level=2] [ref=e154]:
+          - text: Not AI opinions.
+          - text: Your track record.
+        - paragraph [ref=e155]: Every recommendation is scored against what actually worked for you before.
+      - generic [ref=e157]:
+        - generic [ref=e163]: engine_core_v2.1.sh
+        - generic [ref=e164]:
+          - generic [ref=e165]:
+            - text: $ compute_bayesian_prior --node=relationship_marcus
+            - generic [ref=e166]: → Loading 127 historical signal nodes...
+          - generic [ref=e168]:
+            - generic [ref=e169]: "Similar nodes analyzed:"
+            - generic [ref=e170]: "8"
+            - generic [ref=e171]: "Verified success outcomes:"
+            - generic [ref=e172]: "6"
+            - generic [ref=e173]: "Base Prior Probability:"
+            - generic [ref=e174]: 75.0%
+          - generic [ref=e175]:
+            - text: $ apply_context_weights --current_state
+            - generic [ref=e176]:
+              - generic [ref=e178]:
+                - generic [ref=e179]: Temporal Match
+                - generic [ref=e180]: 92%
+              - generic [ref=e184]:
+                - generic [ref=e185]: Tone Match
+                - generic [ref=e186]: 88%
+              - generic [ref=e190]:
+                - generic [ref=e191]: Stakes Assessment
+                - generic [ref=e192]: 95%
+          - generic [ref=e195]:
+            - text: $ result
+            - generic [ref=e197]: "FINAL CERTAINTY: 89.4% -> DIRECTIVE READY"
+    - generic [ref=e199]:
+      - generic [ref=e200]:
+        - heading "Not another app to check." [level=2] [ref=e201]:
+          - text: Not another app
+          - text: to check.
+        - paragraph [ref=e202]: Foldera replaces the system, not adds to it.
+      - generic [ref=e203]:
+        - generic [ref=e205]:
+          - img [ref=e208]
+          - heading "It reads your history" [level=3] [ref=e212]
+          - paragraph [ref=e213]: Email, calendar, conversations. Foldera ingests what you’ve already written and finds the patterns you can’t see from inside them.
+        - generic [ref=e215]:
+          - img [ref=e218]
+          - heading "It does the math" [level=3] [ref=e226]
+          - paragraph [ref=e227]: Every recommendation is scored against what actually worked for you. Your track record, not AI opinions.
+        - generic [ref=e229]:
+          - img [ref=e232]
+          - heading "It does the work" [level=3] [ref=e234]
+          - paragraph [ref=e235]: No prompting. No chatting. You wake up to finished drafts, ready to approve with one tap.
+        - generic [ref=e237]:
+          - img [ref=e240]
+          - heading "It stays private" [level=3] [ref=e242]
+          - paragraph [ref=e243]: Your data never trains anyone else’s model. AES-256 encryption. Delete everything anytime.
+        - generic [ref=e245]:
+          - img [ref=e248]
+          - heading "It gets smarter" [level=3] [ref=e250]
+          - paragraph [ref=e251]: Every approval and every skip teaches the engine what matters to you. Day 30 is unrecognizable from day 1.
+        - generic [ref=e253]:
+          - img [ref=e256]
+          - heading "It replaces the system" [level=3] [ref=e260]
+          - paragraph [ref=e261]: Not another app to check. The whole point is that you stop managing and start deciding yes or no.
+    - generic [ref=e263]:
+      - generic [ref=e264]:
+        - heading "One plan. Full power." [level=2] [ref=e265]:
+          - text: One plan.
+          - text: Full power.
+        - paragraph [ref=e266]: Stop managing. Start executing.
+      - generic [ref=e269]:
+        - generic [ref=e271]:
+          - paragraph [ref=e272]: Professional
+          - generic [ref=e273]:
+            - generic [ref=e274]: $19
+            - generic [ref=e275]: /mo
+        - list [ref=e276]:
+          - listitem [ref=e277]:
+            - img [ref=e279]
+            - generic [ref=e281]: Unlimited integrations
+          - listitem [ref=e282]:
+            - img [ref=e284]
+            - generic [ref=e286]: Unlimited daily actions
+          - listitem [ref=e287]:
+            - img [ref=e289]
+            - generic [ref=e291]: Full autonomous queue
+          - listitem [ref=e292]:
+            - img [ref=e294]
+            - generic [ref=e296]: All specialist agents
+          - listitem [ref=e297]:
+            - img [ref=e299]
+            - generic [ref=e301]: Priority processing
+          - listitem [ref=e302]:
+            - img [ref=e304]
+            - generic [ref=e306]: Email + calendar sync
+        - link "Start 14-day free trial" [ref=e307] [cursor=pointer]:
+          - /url: /start
+          - text: Start 14-day free trial
+          - img [ref=e308]
+        - paragraph [ref=e310]: 14 days free. Cancel anytime.
+    - contentinfo [ref=e311]:
+      - generic [ref=e312]:
+        - generic [ref=e313]:
+          - generic [ref=e314]:
+            - generic [ref=e315]:
+              - img [ref=e317]
+              - generic [ref=e321]: Foldera
+            - paragraph [ref=e322]: Finished work, every morning.
+          - navigation [ref=e323]:
+            - link "Platform" [ref=e324] [cursor=pointer]:
+              - /url: "#product"
+            - link "Pricing" [ref=e325] [cursor=pointer]:
+              - /url: "#pricing"
+            - link "Sign in" [ref=e326] [cursor=pointer]:
+              - /url: /login
+        - generic [ref=e327]:
+          - generic [ref=e329]:
+            - img [ref=e330]
+            - text: AES-256
+          - paragraph [ref=e333]: © 2026 Foldera AI • Built for execution
+  - alert [ref=e334]

@@ -1,0 +1,23 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e6]
+        - generic [ref=e10]: Foldera
+      - heading "Connect your history. Foldera does the rest." [level=1] [ref=e11]:
+        - text: Connect your history.
+        - text: Foldera does the rest.
+      - paragraph [ref=e12]:
+        - text: Your patterns are already in your email.
+        - text: We just make them visible.
+      - generic [ref=e13]:
+        - button "Connect with Google" [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+          - text: Connect with Google
+        - button "Connect with Microsoft" [ref=e20] [cursor=pointer]:
+          - img [ref=e21]
+          - text: Connect with Microsoft
+      - paragraph [ref=e26]:
+        - text: We read your last 30 days of sent email.
+        - text: Nothing is stored permanently until you subscribe.
+  - alert [ref=e27]
