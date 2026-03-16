@@ -112,7 +112,19 @@ Before writing any code, trace the full data path:
 6. What encryption module touches this data?
 7. What env vars are required?
 8. What RLS policies exist on the target tables?
-If any answer is "I don't know," read the code before writing new code. Every pipeline bug in March 2026 was predictable from this checklist.
+If any answer is "I don't know," read the code before writing new code.
+
+## Session completion sequence — MANDATORY ORDER
+Every session ends with these steps IN THIS ORDER. Do not skip steps. Do not reorder. Do not report "done" until step 6 passes.
+
+1. `npm run build` — must pass with 0 errors
+2. Apply any Supabase migrations via Supabase MCP (`apply_migration` or `execute_sql`). Do NOT leave migrations as "needs manual application." You have Supabase MCP access. Use it.
+3. Verify the data state: run a SELECT query via Supabase MCP to confirm the migration produced the expected rows/columns/values.
+4. Push to main (`git push`, not feature branch).
+5. Verify Vercel deploy status is READY via Vercel MCP.
+6. If the change affects an API route or data pipeline, call the route or query the database to confirm the deployed code produces correct results.
+
+If any step fails, fix it before moving to the next step. "Migration needs manual application" is a session failure. "Vercel deploy READY" without data verification is incomplete.
 
 ## Product logic — don't violate these
 - Email is captured on the landing page. Never ask for it again inside the app.
