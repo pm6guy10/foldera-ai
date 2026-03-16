@@ -20,6 +20,7 @@ import type { ChiefOfStaffBriefing, ConvictionDirective, ActionType, EvidenceIte
 import { trackApiCall, isOverDailyLimit } from '@/lib/utils/api-tracker';
 import { scoreOpenLoops } from './scorer';
 import type { ScorerResult } from './scorer';
+import { buildContextBlock } from './context-builder';
 
 // ---------------------------------------------------------------------------
 // Clients (lazy)
@@ -39,8 +40,8 @@ const FOCUSED_SYSTEM = `You are drafting ONE artifact for ONE specific situation
 
 Do not choose what to work on. That decision is already made.
 
-CURRENT SEASON (March 2026): User is unemployed, waiting on MAS3 decision at HCA.
-Active pipeline: MAS3 at HCA (primary), DSHS HCLA CI Specialist (secondary).
+{CONTEXT_BLOCK}
+
 DO NOT reference: Kapp Advisory, consulting work, case studies, Bloomreach, Paty, Kayna,
 Justworks, visual disconnect methodology, category lockout, fractional work, e-commerce,
 storytelling engine. These are from a past era and no longer relevant.
@@ -210,10 +211,13 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     : '  No long-term memory yet.';
 
   // -----------------------------------------------------------------------
-  // 3. BUILD FOCUSED PROMPT
+  // 3. BUILD FOCUSED PROMPT (with dynamic context)
   // -----------------------------------------------------------------------
 
+  const contextBlock = await buildContextBlock(userId);
+
   const systemPrompt = FOCUSED_SYSTEM
+    .replace('{CONTEXT_BLOCK}', contextBlock)
     .replace('{MEMORY_SECTION}', memorySection)
     .replace('{APPROVED_SECTION}', approvedSection)
     .replace('{SKIPPED_SECTION}', skippedSection);

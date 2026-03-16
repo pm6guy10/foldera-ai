@@ -25,6 +25,7 @@ export default function DashboardContent() {
   const [conviction, setConviction]     = useState<ConvictionAction | null>(null);
   const [convictionLoading, setConvictionLoading] = useState(false);
   const [emailActionMsg, setEmailActionMsg] = useState<string | null>(null);
+  const [contextGreeting, setContextGreeting] = useState<string | null>(null);
 
   // Handle email deep-link: approve/skip → execute; outcome (worked/didnt_work) → conviction/outcome
   useEffect(() => {
@@ -96,7 +97,12 @@ export default function DashboardContent() {
     try {
       const res = await fetch('/api/conviction/latest');
       if (res.status === 204) return;
-      if (res.ok) setConviction(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        if (data.context_greeting) setContextGreeting(data.context_greeting);
+        // Only set conviction if there's an actual action (has an id)
+        if (data.id) setConviction(data);
+      }
     } catch { /* silent */ }
   };
 
@@ -150,7 +156,7 @@ export default function DashboardContent() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{getGreeting()}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{contextGreeting ?? getGreeting()}</h1>
           <p className="text-zinc-400 text-sm mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         </div>
         <button

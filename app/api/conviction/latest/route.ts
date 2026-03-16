@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { apiError } from '@/lib/utils/api-error';
+import { buildContextGreeting } from '@/lib/briefing/context-builder';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,8 +38,18 @@ export async function GET(request: Request) {
       throw error;
     }
 
+    // Build context greeting (runs even if no action, for empty state)
+    let contextGreeting: string;
+    try {
+      contextGreeting = await buildContextGreeting(userId);
+    } catch {
+      // Fallback to basic greeting if DB queries fail
+      const h = new Date().getHours();
+      contextGreeting = h < 12 ? 'Good morning.' : h < 17 ? 'Good afternoon.' : 'Good evening.';
+    }
+
     if (!action) {
-      return new NextResponse(null, { status: 204 });
+      return NextResponse.json({ context_greeting: contextGreeting }, { status: 200 });
     }
 
     // Map DB row → ConvictionAction shape
@@ -56,6 +67,7 @@ export async function GET(request: Request) {
       executedAt:      action.executed_at ?? undefined,
       executionResult: action.execution_result ?? undefined,
       artifact:        action.artifact ?? undefined,
+      context_greeting: contextGreeting,
     });
   } catch (err: unknown) {
     return apiError(err, 'conviction/latest');

@@ -597,12 +597,92 @@ function classifyKillReason(loop, winnerScore) {
 // System prompt — focused
 // ---------------------------------------------------------------------------
 
-const FOCUSED_SYSTEM = `You are drafting ONE artifact for ONE specific situation. The situation has already been selected by a scoring algorithm. Your job is to write the artifact using the real names, dates, and details from the data below.
+// ---------------------------------------------------------------------------
+// Dynamic context builder (mirrors lib/briefing/context-builder.ts)
+// ---------------------------------------------------------------------------
+
+const SEASONS = {
+  0: 'deep winter', 1: 'late winter', 2: 'late winter/early spring, still cold',
+  3: 'spring', 4: 'late spring', 5: 'early summer',
+  6: 'summer', 7: 'late summer', 8: 'early fall',
+  9: 'fall', 10: 'late fall', 11: 'early winter',
+};
+
+const DAY_ENERGY = {
+  0: 'Sunday — family time, low-key planning',
+  1: 'Monday — high-energy planning day, set the week',
+  2: 'Tuesday — execution day, deep work',
+  3: 'Wednesday — midweek, sustained execution',
+  4: 'Thursday — momentum day, close open loops',
+  5: 'Friday — wrap-up, tie loose ends before weekend',
+  6: 'Saturday — family time, recharge',
+};
+
+function getTimeBlock(hour) {
+  if (hour < 6) return 'early morning — most people are asleep, but if you are up, something is on your mind';
+  if (hour < 12) return 'morning — strategy and high-leverage decisions';
+  if (hour < 17) return 'afternoon — execution and follow-through';
+  return 'evening — reflection and preparation for tomorrow';
+}
+
+async function buildContextBlockMjs() {
+  const now = new Date();
+  const month = now.getMonth();
+  const dayOfWeek = now.getDay();
+  const hour = now.getHours();
+  const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const [goalsRes, commitmentsRes, lastActionRes] = await Promise.all([
+    supabase.from('tkg_goals').select('goal_text, priority, goal_category')
+      .eq('user_id', USER_ID).gte('priority', 3)
+      .order('priority', { ascending: false }).limit(3),
+    supabase.from('tkg_commitments').select('id, description, status, due_at')
+      .eq('user_id', USER_ID).eq('status', 'active')
+      .order('due_at', { ascending: true, nullsFirst: false }).limit(20),
+    supabase.from('tkg_actions').select('directive_text, action_type, status')
+      .eq('user_id', USER_ID).order('generated_at', { ascending: false })
+      .limit(1).maybeSingle(),
+  ]);
+
+  const goals = goalsRes.data ?? [];
+  const commitments = commitmentsRes.data ?? [];
+  const lastAction = lastActionRes.data;
+
+  const goalLines = goals.length > 0
+    ? goals.map(g => '  - [p' + g.priority + '] ' + g.goal_text.slice(0, 100)).join('\n')
+    : '  No active goals set.';
+
+  const activeCount = commitments.length;
+  const urgent = commitments.filter(c => c.due_at && c.due_at <= sevenDaysFromNow);
+  const urgentLines = urgent.length > 0
+    ? urgent.map(c => '  - ' + c.description.slice(0, 80) + ' (due ' + (c.due_at ?? '').slice(0, 10) + ')').join('\n')
+    : '';
+  const commitmentSummary = activeCount > 0
+    ? activeCount + ' active commitments' + (urgent.length > 0 ? ', ' + urgent.length + ' due within 7 days:\n' + urgentLines : ', none due within 7 days.')
+    : 'No active commitments tracked.';
+
+  const lastDirectiveLine = lastAction
+    ? 'Last directive: [' + lastAction.action_type + '] "' + (lastAction.directive_text ?? '').slice(0, 80) + '" — ' + (lastAction.status === 'executed' ? 'approved' : (lastAction.status === 'skipped' || lastAction.status === 'draft_rejected') ? 'skipped' : lastAction.status)
+    : 'No prior directives. This is the first generation.';
+
+  return 'CONTEXT — ' + monthNames[month] + ' ' + now.getFullYear() + ':\n' +
+    '* Location: Ellensburg, WA (central Washington, high desert, rural college town)\n' +
+    '* Season: ' + SEASONS[month] + '\n' +
+    '* Day: ' + DAY_ENERGY[dayOfWeek] + '\n' +
+    '* Time: ' + getTimeBlock(hour) + '\n' +
+    '* Active goals:\n' + goalLines + '\n' +
+    '* Commitment load: ' + commitmentSummary + '\n' +
+    '* ' + lastDirectiveLine;
+}
+
+const FOCUSED_SYSTEM_TEMPLATE = `You are drafting ONE artifact for ONE specific situation. The situation has already been selected by a scoring algorithm. Your job is to write the artifact using the real names, dates, and details from the data below.
 
 Do not choose what to work on. That decision is already made.
 
-CURRENT SEASON (March 2026): User is unemployed, waiting on MAS3 decision at HCA.
-Active pipeline: MAS3 at HCA (primary), DSHS HCLA CI Specialist (secondary).
+{CONTEXT_BLOCK}
+
 DO NOT reference: Kapp Advisory, consulting work, case studies, Bloomreach, Paty, Kayna,
 Justworks, visual disconnect methodology, category lockout, fractional work, e-commerce,
 storytelling engine. These are from a past era and no longer relevant.
@@ -708,7 +788,11 @@ const skippedSection = (skippedRes.data ?? []).length > 0
     }).join('\n')
   : '  None.';
 
-const systemPrompt = FOCUSED_SYSTEM
+const contextBlock = await buildContextBlockMjs();
+console.log('\n[context] Dynamic context block:\n' + contextBlock + '\n');
+
+const systemPrompt = FOCUSED_SYSTEM_TEMPLATE
+  .replace('{CONTEXT_BLOCK}', contextBlock)
   .replace('{APPROVED_SECTION}', approvedSection)
   .replace('{SKIPPED_SECTION}', skippedSection);
 
