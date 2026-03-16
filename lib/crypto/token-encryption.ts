@@ -6,7 +6,8 @@
 import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 16;
+const IV_LENGTH = 12;          // 96-bit — GCM standard, matches lib/encryption.ts
+const LEGACY_IV_LENGTH = 16;   // Previous non-standard IV size — kept for decryption only
 const AUTH_TAG_LENGTH = 16;
 
 /**
@@ -54,30 +55,42 @@ export function decryptToken(encryptedData: string): string {
   if (parts.length !== 3) {
     throw new Error('Invalid encrypted token format');
   }
-  
+
   const [ivHex, authTagHex, encrypted] = parts;
   const iv = Buffer.from(ivHex, 'hex');
   const authTag = Buffer.from(authTagHex, 'hex');
-  
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
-  
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  
-  return decrypted;
+
+  // Try decryption with the IV as-is (handles both legacy 16-byte and new 12-byte)
+  try {
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch {
+    // If IV was 16-byte legacy format, try trimming to 12-byte standard
+    if (iv.length === LEGACY_IV_LENGTH) {
+      const trimmedIv = iv.subarray(0, IV_LENGTH);
+      const decipher = crypto.createDecipheriv(ALGORITHM, key, trimmedIv);
+      decipher.setAuthTag(authTag);
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    }
+    throw new Error('Failed to decrypt token');
+  }
 }
 
 export function isEncrypted(value: string): boolean {
   // Check if value matches our encrypted format (iv:authTag:data)
   const parts = value.split(':');
   if (parts.length !== 3) return false;
-  
+
   const [iv, authTag, data] = parts;
-  // Each part should be valid hex
+  // Each part should be valid hex; IV can be 12-byte (new) or 16-byte (legacy)
   const hexRegex = /^[0-9a-f]+$/i;
   return (
-    iv.length === IV_LENGTH * 2 &&
+    (iv.length === IV_LENGTH * 2 || iv.length === LEGACY_IV_LENGTH * 2) &&
     authTag.length === AUTH_TAG_LENGTH * 2 &&
     hexRegex.test(iv) &&
     hexRegex.test(authTag) &&
