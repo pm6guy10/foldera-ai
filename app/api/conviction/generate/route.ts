@@ -14,6 +14,7 @@ import { createServerClient } from '@/lib/db/client';
 import { apiError } from '@/lib/utils/api-error';
 import { generateDirective } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
+import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,21 @@ export async function POST(request: Request) {
   const { userId } = auth;
 
   try {
+    // Extract entities/commitments/topics from unprocessed sync signals
+    try {
+      const extraction = await processUnextractedSignals(userId);
+      if (extraction.signals_processed > 0) {
+        console.log(
+          `[conviction/generate] signal extraction: ` +
+          `${extraction.signals_processed} signals, ${extraction.entities_upserted} entities, ` +
+          `${extraction.commitments_created} commitments, ${extraction.topics_merged} topics`,
+        );
+      }
+    } catch (extractErr: unknown) {
+      // Non-fatal — directive generation can still proceed with existing data
+      console.warn('[conviction/generate] signal extraction failed:', extractErr instanceof Error ? extractErr.message : extractErr);
+    }
+
     // Generate the directive
     const directive = await generateDirective(userId);
 
