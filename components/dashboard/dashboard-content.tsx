@@ -12,6 +12,8 @@ interface GraphStats {
   signalsTotal:      number;
   commitmentsActive: number;
   patternsActive:    number;
+  lastSignalAt:      string | null;
+  lastSignalSource:  string | null;
 }
 
 export default function DashboardContent() {
@@ -163,12 +165,19 @@ export default function DashboardContent() {
 
       {/* Signal line */}
       {!statsLoading && stats && (
-        <p className="text-zinc-500 text-xs font-mono">
-          {stats.signalsTotal === 0 && stats.patternsActive === 0
-            ? 'Foldera is building your identity graph. Your first read arrives tomorrow at 7am.'
-            : `${stats.signalsTotal} signals · ${stats.commitmentsActive} commitments · ${stats.patternsActive} patterns detected`
-          }
-        </p>
+        <div>
+          <p className="text-zinc-500 text-xs font-mono">
+            {stats.signalsTotal === 0 && stats.patternsActive === 0
+              ? 'Foldera is building your identity graph. Your first read arrives tomorrow at 7am.'
+              : `${stats.signalsTotal} signals · ${stats.commitmentsActive} commitments · ${stats.patternsActive} patterns detected`
+            }
+          </p>
+          {stats.lastSignalAt && (
+            <p className="text-zinc-600 text-xs font-mono mt-1">
+              Last signal: {formatTimeAgo(stats.lastSignalAt)} from {stats.lastSignalSource ?? 'unknown'}
+            </p>
+          )}
+        </div>
       )}
 
       {/* Hero: Today's Read — the ONE thing */}
@@ -189,4 +198,15 @@ function getGreeting(): string {
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
   return 'Good evening';
+}
+
+function formatTimeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }

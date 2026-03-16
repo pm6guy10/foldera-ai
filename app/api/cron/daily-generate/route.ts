@@ -15,6 +15,7 @@ import { generateArtifact, getFallbackArtifact } from '@/lib/conviction/artifact
 import { apiError } from '@/lib/utils/api-error';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
+import { summarizeSignals } from '@/lib/signals/summarizer';
 import type { ConvictionArtifact } from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,16 @@ async function handler(request: NextRequest) {
         .from('user_subscriptions').select('created_at, status').eq('user_id', userId).maybeSingle();
       if (sub?.status === 'expired' && userId !== 'e40b7cd8-4925-42f7-bc99-5022969f1d22') {
         results.push({ userId, success: false, error: 'trial expired' }); continue;
+      }
+
+      // Summarize old signals into weekly digests (before generation so summaries are available as context)
+      try {
+        const summariesCreated = await summarizeSignals(userId);
+        if (summariesCreated > 0) {
+          console.log(`[daily-generate] created ${summariesCreated} signal summaries for ${userId.slice(0, 8)}`);
+        }
+      } catch (sumErr: unknown) {
+        console.warn('[daily-generate] signal summarization failed:', sumErr instanceof Error ? sumErr.message : sumErr);
       }
 
       // Extract entities/commitments/topics from unprocessed sync signals

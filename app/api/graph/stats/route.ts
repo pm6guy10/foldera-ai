@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   try {
     const supabase = createServerClient();
 
-    const [signalsRes, commitmentsRes, entityRes] = await Promise.all([
+    const [signalsRes, commitmentsRes, entityRes, latestSignalRes] = await Promise.all([
       supabase
         .from('tkg_signals')
         .select('id', { count: 'exact', head: true })
@@ -40,6 +40,14 @@ export async function GET(request: Request) {
         .eq('user_id', userId)
         .eq('name', 'self')
         .maybeSingle(),
+
+      supabase
+        .from('tkg_signals')
+        .select('occurred_at, source')
+        .eq('user_id', userId)
+        .order('occurred_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
     return NextResponse.json({
@@ -48,6 +56,8 @@ export async function GET(request: Request) {
       patternsActive:    Object.keys(
         (entityRes.data?.patterns as Record<string, unknown>) ?? {}
       ).length,
+      lastSignalAt:      latestSignalRes.data?.occurred_at ?? null,
+      lastSignalSource:  latestSignalRes.data?.source ?? null,
     });
   } catch (err: unknown) {
     return apiError(err, 'graph/stats');
