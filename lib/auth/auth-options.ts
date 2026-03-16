@@ -31,7 +31,7 @@ export function getAuthOptions(): NextAuthOptions {
         tenantId: process.env.AZURE_AD_TENANT_ID || 'common',
         authorization: {
           params: {
-            scope: 'openid profile email User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite offline_access',
+            scope: 'openid profile email User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read offline_access',
           },
         },
       })
@@ -110,6 +110,19 @@ export function getAuthOptions(): NextAuthOptions {
                     refresh_token: account.refresh_token,
                     expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
                   });
+                  // Also persist to user_tokens for background sync jobs
+                  try {
+                    const { saveUserToken } = await import('@/lib/auth/user-tokens');
+                    await saveUserToken(resolvedUserId, 'microsoft', {
+                      access_token: account.access_token,
+                      refresh_token: account.refresh_token,
+                      expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
+                      email: user.email ?? undefined,
+                      scopes: (account as any).scope ?? '',
+                    });
+                  } catch (utErr) {
+                    console.error('[auth] Failed to persist Microsoft to user_tokens:', utErr);
+                  }
                 }
                 console.log(`[auth] Tokens persisted for ${account.provider}`);
               } else {

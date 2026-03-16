@@ -154,7 +154,7 @@ async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens): 
         client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
         refresh_token: tokens.refresh_token,
         grant_type: 'refresh_token',
-        scope: 'openid profile email offline_access Mail.Read Mail.Send Calendars.Read User.Read',
+        scope: 'openid profile email offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read',
       }),
     });
 

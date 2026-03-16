@@ -100,11 +100,8 @@ export default function SettingsClient() {
           integration={integrations.find(i => i.provider === 'google')}
           onConnect={() => signIn('google', { callbackUrl: '/dashboard/settings' })}
         />
-        <ConnectorCard
-          name="Outlook"
-          description="Calendar & email"
-          icon="📅"
-          isConnected={integrations.some(i => i.provider === 'azure_ad' && i.is_active)}
+        <MicrosoftSourceCard
+          integration={integrations.find(i => i.provider === 'azure_ad')}
           onConnect={() => signIn('azure-ad', { callbackUrl: '/dashboard/settings' })}
         />
       </div>
@@ -259,6 +256,112 @@ function GoogleSourceCard({ integration, onConnect }: { integration: any; onConn
           className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors"
         >
           Connect Google
+        </button>
+      )}
+    </div>
+  );
+}
+
+function MicrosoftSourceCard({ integration, onConnect }: { integration: any; onConnect: () => void }) {
+  const [disconnecting, setDisconnecting] = useState(false);
+  const isConnected = integration?.is_active;
+  const email = integration?.sync_email;
+  const lastSynced = integration?.last_synced_at;
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    try {
+      const res = await fetch('/api/microsoft/disconnect', { method: 'POST' });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } catch {
+      // silent
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  const formatSyncTime = (iso: string) => {
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    return `${diffDay}d ago`;
+  };
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-colors">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center">
+            <svg className="w-5 h-5" viewBox="0 0 23 23" fill="none">
+              <path d="M1 1h10v10H1z" fill="#F25022"/>
+              <path d="M12 1h10v10H12z" fill="#7FBA00"/>
+              <path d="M1 12h10v10H1z" fill="#00A4EF"/>
+              <path d="M12 12h10v10H12z" fill="#FFB900"/>
+            </svg>
+          </div>
+          <div>
+            <h3 className="font-semibold text-zinc-50">Microsoft</h3>
+            <p className="text-zinc-500 text-sm">Mail, Calendar, Files & Tasks</p>
+          </div>
+        </div>
+        {isConnected ? (
+          <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-500/20">
+            <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+            Connected
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 bg-zinc-800 text-zinc-500 px-2.5 py-1 rounded-full text-xs font-medium border border-zinc-700">
+            <div className="w-1.5 h-1.5 bg-zinc-600 rounded-full" />
+            Not connected
+          </div>
+        )}
+      </div>
+
+      {isConnected && (
+        <div className="mb-4 space-y-1">
+          {email && (
+            <p className="text-zinc-400 text-xs">
+              {email}
+            </p>
+          )}
+          <p className="text-zinc-500 text-xs">
+            {lastSynced
+              ? `Last synced ${formatSyncTime(lastSynced)}`
+              : 'Sync pending'}
+          </p>
+        </div>
+      )}
+
+      {isConnected ? (
+        <div className="flex gap-2">
+          <button
+            onClick={onConnect}
+            className="flex-1 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
+          >
+            Reconnect
+          </button>
+          <button
+            onClick={handleDisconnect}
+            disabled={disconnecting}
+            className="px-4 py-2.5 rounded-lg bg-zinc-800 hover:bg-red-900/30 text-zinc-400 hover:text-red-400 text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {disconnecting ? 'Disconnecting...' : 'Disconnect'}
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={onConnect}
+          className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors"
+        >
+          Connect Microsoft
         </button>
       )}
     </div>
