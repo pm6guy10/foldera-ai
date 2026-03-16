@@ -28,20 +28,25 @@ export async function POST(request: Request) {
   }
   const { action_id, decision, skip_reason } = parsed.data;
 
-  const result = await executeAction({
-    userId,
-    actionId: action_id,
-    decision: decision as 'approve' | 'skip',
-    skipReason: skip_reason,
-  });
+  try {
+    const result = await executeAction({
+      userId,
+      actionId: action_id,
+      decision: decision as 'approve' | 'skip',
+      skipReason: skip_reason,
+    });
 
-  if (result.error && result.status === 'skipped') {
-    return NextResponse.json({ error: result.error }, { status: 404 });
+    if (result.error && result.status === 'skipped') {
+      return NextResponse.json({ error: result.error }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      status: result.status,
+      action_id: result.action_id,
+      result: result.result,
+    });
+  } catch (error) {
+    console.error('[conviction/execute] execute failed:', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Execution failed' }, { status: 500 });
   }
-
-  return NextResponse.json({
-    status: result.status,
-    action_id: result.action_id,
-    result: result.result,
-  });
 }

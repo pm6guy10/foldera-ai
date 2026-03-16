@@ -30,28 +30,33 @@ export async function POST(request: Request) {
   }
   const { draft_id, decision, edited_artifact } = parsed.data;
 
-  const result = await executeAction({
-    userId,
-    actionId: draft_id,
-    decision: decision === 'reject' ? 'reject' : 'approve',
-    ...(edited_artifact ? { editedArtifact: edited_artifact as Record<string, unknown> } : {}),
-  });
+  try {
+    const result = await executeAction({
+      userId,
+      actionId: draft_id,
+      decision: decision === 'reject' ? 'reject' : 'approve',
+      ...(edited_artifact ? { editedArtifact: edited_artifact as Record<string, unknown> } : {}),
+    });
 
-  if (result.error && result.status === 'skipped') {
-    return NextResponse.json(
-      { error: result.error },
-      { status: result.error.includes('Cannot execute') ? 409 : 404 },
-    );
-  }
-  if (result.status === 'draft_rejected') {
-    return NextResponse.json({ draft_id: result.action_id, decision: 'reject', status: 'draft_rejected' });
-  }
+    if (result.error && result.status === 'skipped') {
+      return NextResponse.json(
+        { error: result.error },
+        { status: result.error.includes('Cannot execute') ? 409 : 404 },
+      );
+    }
+    if (result.status === 'draft_rejected') {
+      return NextResponse.json({ draft_id: result.action_id, decision: 'reject', status: 'draft_rejected' });
+    }
 
-  return NextResponse.json({
-    draft_id: result.action_id,
-    decision: decision === 'reject' ? 'reject' : 'approve',
-    status: result.status,
-    result: result.result,
-    email_sent: result.result?.sent === true,
-  });
+    return NextResponse.json({
+      draft_id: result.action_id,
+      decision: decision === 'reject' ? 'reject' : 'approve',
+      status: result.status,
+      result: result.result,
+      email_sent: result.result?.sent === true,
+    });
+  } catch (error) {
+    console.error('[drafts/decide] execute failed:', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Execution failed' }, { status: 500 });
+  }
 }

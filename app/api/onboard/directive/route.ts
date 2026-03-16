@@ -35,15 +35,29 @@ export async function POST(request: NextRequest) {
 
   try {
     const directive = await generateDirective(tempUserId);
+    if (directive.directive === '__GENERATION_FAILED__') {
+      return NextResponse.json(
+        { error: 'Directive generation failed' },
+        { status: 500 },
+      );
+    }
+
     let artifact: Awaited<ReturnType<typeof generateArtifact>> | null = null;
     try {
       artifact = await generateArtifact(tempUserId, directive);
     } catch {
-      // Fallback handled inside generateArtifact; persist with or without artifact
+      // Fall through to the explicit null-artifact guard below.
+    }
+
+    if (!artifact) {
+      return NextResponse.json(
+        { error: 'Artifact generation failed' },
+        { status: 500 },
+      );
     }
 
     const supabase = createServerClient();
-    await supabase.from('tkg_actions').insert({
+    const { error } = await supabase.from('tkg_actions').insert({
       user_id: tempUserId,
       directive_text: directive.directive,
       action_type: directive.action_type,
@@ -51,8 +65,11 @@ export async function POST(request: NextRequest) {
       reason: directive.reason,
       evidence: directive.evidence,
       status: 'pending_approval',
-      execution_result: artifact ? { artifact } : null,
+      execution_result: { artifact },
     });
+    if (error) {
+      return apiError(error, 'onboard/directive');
+    }
 
     return NextResponse.json(directive);
   } catch (err: unknown) {

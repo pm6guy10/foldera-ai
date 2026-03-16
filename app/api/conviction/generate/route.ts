@@ -66,6 +66,13 @@ export async function POST(request: Request) {
       console.warn('[conviction/generate] artifact generation failed:', artErr.message);
     }
 
+    if (!artifact) {
+      return NextResponse.json(
+        { error: 'Artifact generation failed' },
+        { status: 500 },
+      );
+    }
+
     // Log to tkg_actions
     const supabase = createServerClient();
     const { data: action, error } = await supabase
@@ -79,7 +86,7 @@ export async function POST(request: Request) {
         evidence:         directive.evidence,
         status:           'pending_approval',
         generated_at:     new Date().toISOString(),
-        execution_result: artifact ? { artifact } : null,
+        execution_result: { artifact },
       })
       .select('id, generated_at, status, execution_result')
       .single();

@@ -546,6 +546,9 @@ export async function generateMultipleDirectives(
 export async function generateBriefing(userId: string): Promise<ChiefOfStaffBriefing> {
   const supabase = createServerClient();
   const directive = await generateDirective(userId);
+  if (directive.directive === '__GENERATION_FAILED__') {
+    throw new Error('Briefing generation failed');
+  }
 
   const brief: ChiefOfStaffBriefing = {
     userId,

@@ -16,6 +16,7 @@ import { authOptions } from '@/lib/auth/auth-options';
 import { generateDirective } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { createServerClient } from '@/lib/db/client';
+import { apiError } from '@/lib/utils/api-error';
 
 
 export async function POST(req: NextRequest) {
@@ -24,62 +25,90 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
   const userId = session.user.id;
-  const supabase = createServerClient();
 
-  // ── Guard: one free directive per user ──────────────────────────────────
-  const { data: meta } = await supabase
-    .from('tkg_user_meta')
-    .select('free_directive_used, free_directive_date')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (meta?.free_directive_used) {
-    return NextResponse.json(
-      { error: 'Free directive already used', usedDate: meta.free_directive_date },
-      { status: 409 },
-    );
-  }
-
-  // ── Generate directive + artifact (no directive-only to-dos) ─────────────
-  const directive = await generateDirective(userId);
-  let artifact: Awaited<ReturnType<typeof generateArtifact>> | null = null;
   try {
-    artifact = await generateArtifact(userId, directive);
-  } catch (err) {
-    console.warn('[free-directive] artifact generation failed:', err);
+    const supabase = createServerClient();
+
+    // ── Guard: one free directive per user ──────────────────────────────────
+    const { data: meta, error: metaError } = await supabase
+      .from('tkg_user_meta')
+      .select('free_directive_used, free_directive_date')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (metaError) {
+      return apiError(metaError, 'onboard/free-directive');
+    }
+
+    if (meta?.free_directive_used) {
+      return NextResponse.json(
+        { error: 'Free directive already used', usedDate: meta.free_directive_date },
+        { status: 409 },
+      );
+    }
+
+    // ── Generate directive + artifact (no directive-only to-dos) ─────────────
+    const directive = await generateDirective(userId);
+    if (directive.directive === '__GENERATION_FAILED__') {
+      return NextResponse.json(
+        { error: 'Directive generation failed' },
+        { status: 500 },
+      );
+    }
+
+    let artifact: Awaited<ReturnType<typeof generateArtifact>> | null = null;
+    try {
+      artifact = await generateArtifact(userId, directive);
+    } catch (err) {
+      console.warn('[free-directive] artifact generation failed:', err);
+    }
+
+    if (!artifact) {
+      return NextResponse.json(
+        { error: 'Artifact generation failed' },
+        { status: 500 },
+      );
+    }
+
+    // ── Persist to tkg_actions with execution_result.artifact ────────────────
+    const { data: action, error: actionError } = await supabase
+      .from('tkg_actions')
+      .insert({
+        user_id:        userId,
+        directive_text: directive.directive,
+        action_type:    directive.action_type,
+        confidence:     directive.confidence,
+        reason:         directive.reason,
+        evidence:       directive.evidence,
+        status:         'pending_approval',
+        generated_at:   new Date().toISOString(),
+        execution_result: { artifact },
+      })
+      .select('id')
+      .single();
+    if (actionError) {
+      return apiError(actionError, 'onboard/free-directive');
+    }
+
+    // ── Mark free directive used + set 7-day trial expiry ───────────────────
+    const now = new Date();
+    const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const { error: upsertError } = await supabase.from('tkg_user_meta').upsert(
+      {
+        user_id:              userId,
+        free_directive_used:  true,
+        free_directive_date:  now.toISOString(),
+        graph_expires_at:     sevenDaysLater.toISOString(),
+        updated_at:           now.toISOString(),
+      },
+      { onConflict: 'user_id' },
+    );
+    if (upsertError) {
+      return apiError(upsertError, 'onboard/free-directive');
+    }
+
+    return NextResponse.json({ directive, actionId: action.id });
+  } catch (err: unknown) {
+    return apiError(err, 'onboard/free-directive');
   }
-
-  // ── Persist to tkg_actions with execution_result.artifact ────────────────
-  const { data: action } = await supabase
-    .from('tkg_actions')
-    .insert({
-      user_id:        userId,
-      directive_text: directive.directive,
-      action_type:    directive.action_type,
-      confidence:     directive.confidence,
-      reason:         directive.reason,
-      evidence:       directive.evidence,
-      status:         'pending_approval',
-      generated_at:   new Date().toISOString(),
-      execution_result: artifact ? { artifact } : null,
-    })
-    .select('id')
-    .single();
-
-  // ── Mark free directive used + set 7-day trial expiry ───────────────────
-  const now = new Date();
-  const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-  await supabase.from('tkg_user_meta').upsert(
-    {
-      user_id:              userId,
-      free_directive_used:  true,
-      free_directive_date:  now.toISOString(),
-      graph_expires_at:     sevenDaysLater.toISOString(),
-      updated_at:           now.toISOString(),
-    },
-    { onConflict: 'user_id' },
-  );
-
-  return NextResponse.json({ directive, actionId: action?.id ?? null });
 }
