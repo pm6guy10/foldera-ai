@@ -98,7 +98,7 @@ export default function SettingsClient() {
         <h2 className="text-sm font-semibold text-zinc-300">Data Sources</h2>
         <GoogleSourceCard
           integration={integrations.find(i => i.provider === 'google')}
-          onConnect={() => signIn('google', { callbackUrl: '/dashboard/settings' })}
+          onConnect={() => { window.location.href = '/api/google/connect'; }}
         />
         <MicrosoftSourceCard
           integration={integrations.find(i => i.provider === 'azure_ad')}
