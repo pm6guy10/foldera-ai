@@ -11,7 +11,8 @@
  * After extraction, marks each signal processed=true with extracted_entity_ids
  * and extracted_commitment_ids populated.
  *
- * Caps at 50 signals per run to stay within Vercel timeout.
+ * Fetches up to 100 signals per batch and loops until all unprocessed
+ * signals are consumed.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -22,7 +23,7 @@ import { isOverDailyLimit } from '@/lib/utils/api-tracker';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const BATCH_SIZE = 10;
-const MAX_SIGNALS_PER_RUN = 50;
+const FETCH_LIMIT = 100;
 
 // Sources that write raw signals without entity extraction
 const EXTRACTABLE_SOURCES = [
@@ -127,25 +128,6 @@ export async function processUnextractedSignals(userId: string): Promise<Process
 
   const supabase = createServerClient();
 
-  // Fetch unprocessed signals from sync sources
-  const { data: signals, error: fetchErr } = await supabase
-    .from('tkg_signals')
-    .select('id, user_id, source, type, content, author, occurred_at')
-    .eq('user_id', userId)
-    .eq('processed', false)
-    .in('source', EXTRACTABLE_SOURCES)
-    .order('occurred_at', { ascending: true })
-    .limit(MAX_SIGNALS_PER_RUN);
-
-  if (fetchErr) {
-    result.errors.push(`fetch: ${fetchErr.message}`);
-    return result;
-  }
-
-  if (!signals || signals.length === 0) return result;
-
-  console.log(`[signal-processor] ${signals.length} unprocessed signals for user ${userId}`);
-
   // Get or create self entity for pattern merging
   let { data: selfEntity } = await supabase
     .from('tkg_entities')
@@ -165,47 +147,76 @@ export async function processUnextractedSignals(userId: string): Promise<Process
 
   const selfId = selfEntity?.id;
   const anthropic = getAnthropicClient();
+  let batchCount = 0;
 
-  // Process in batches of BATCH_SIZE
-  for (let i = 0; i < signals.length; i += BATCH_SIZE) {
-    // Re-check spend cap between batches
-    if (i > 0 && await isOverDailyLimit()) {
+  // Loop in sequential batches of FETCH_LIMIT until all unprocessed signals are consumed
+  while (true) {
+    // Re-check spend cap before each fetch batch
+    if (batchCount > 0 && await isOverDailyLimit()) {
       console.log('[signal-processor] Daily spend cap reached mid-run, stopping');
       break;
     }
 
-    const batch = signals.slice(i, i + BATCH_SIZE);
-    try {
-      const batchResult = await processBatch(anthropic, supabase, batch, userId, selfId, selfEntity?.patterns);
-      result.signals_processed += batchResult.signals_processed;
-      result.entities_upserted += batchResult.entities_upserted;
-      result.commitments_created += batchResult.commitments_created;
-      result.topics_merged += batchResult.topics_merged;
+    const { data: signals, error: fetchErr } = await supabase
+      .from('tkg_signals')
+      .select('id, user_id, source, type, content, author, occurred_at')
+      .eq('user_id', userId)
+      .eq('processed', false)
+      .in('source', EXTRACTABLE_SOURCES)
+      .order('occurred_at', { ascending: true })
+      .limit(FETCH_LIMIT);
 
-      // Update selfEntity patterns in memory for next batch
-      if (batchResult.topics_merged > 0 && selfId) {
-        const { data: updated } = await supabase
-          .from('tkg_entities')
-          .select('patterns')
-          .eq('id', selfId)
-          .single();
-        if (updated) selfEntity = { ...selfEntity!, patterns: updated.patterns };
-      }
-    } catch (batchErr: unknown) {
-      const msg = batchErr instanceof Error ? batchErr.message : String(batchErr);
-      console.error(`[signal-processor] batch ${i}-${i + batch.length} failed:`, msg);
-      result.errors.push(msg);
-      // Mark these signals as processed anyway so we don't retry forever
-      await markSignalsProcessed(supabase, batch.map(s => s.id));
-      result.signals_processed += batch.length;
+    if (fetchErr) {
+      result.errors.push(`fetch: ${fetchErr.message}`);
+      break;
     }
+
+    if (!signals || signals.length === 0) break;
+
+    console.log(`[signal-processor] Batch ${batchCount + 1}: ${signals.length} unprocessed signals for user ${userId}`);
+    batchCount++;
+
+    // Process in sub-batches of BATCH_SIZE (for Claude API calls)
+    for (let i = 0; i < signals.length; i += BATCH_SIZE) {
+      // Re-check spend cap between sub-batches
+      if (i > 0 && await isOverDailyLimit()) {
+        console.log('[signal-processor] Daily spend cap reached mid-run, stopping');
+        break;
+      }
+
+      const batch = signals.slice(i, i + BATCH_SIZE);
+      try {
+        const batchResult = await processBatch(anthropic, supabase, batch, userId, selfId, selfEntity?.patterns);
+        result.signals_processed += batchResult.signals_processed;
+        result.entities_upserted += batchResult.entities_upserted;
+        result.commitments_created += batchResult.commitments_created;
+        result.topics_merged += batchResult.topics_merged;
+
+        // Update selfEntity patterns in memory for next batch
+        if (batchResult.topics_merged > 0 && selfId) {
+          const { data: updated } = await supabase
+            .from('tkg_entities')
+            .select('patterns')
+            .eq('id', selfId)
+            .single();
+          if (updated) selfEntity = { ...selfEntity!, patterns: updated.patterns };
+        }
+      } catch (batchErr: unknown) {
+        const msg = batchErr instanceof Error ? batchErr.message : String(batchErr);
+        console.error(`[signal-processor] batch ${i}-${i + batch.length} failed:`, msg);
+        result.errors.push(msg);
+        // Mark these signals as processed anyway so we don't retry forever
+        await markSignalsProcessed(supabase, batch.map(s => s.id));
+        result.signals_processed += batch.length;
+      }
+    }
+
+    // If we got fewer than FETCH_LIMIT, there are no more to process
+    if (signals.length < FETCH_LIMIT) break;
   }
 
-  console.log(
-    `[signal-processor] done: ${result.signals_processed} signals, ` +
-    `${result.entities_upserted} entities, ${result.commitments_created} commitments, ` +
-    `${result.topics_merged} topics`,
-  );
+  const totalProcessed = result.signals_processed;
+  console.log(`Signal processor: ${totalProcessed} signals processed in ${batchCount} batches`);
 
   return result;
 }
