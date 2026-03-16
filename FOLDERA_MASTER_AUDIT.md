@@ -85,7 +85,7 @@
 |---------|------|-------|--------|-------|
 | 1 | March 16 | Data isolation (C1, C2, H8, H9) | 47e2c17 | 8 files, +261/-155 |
 | 2 | March 16 | Error boundaries (H1, H2, H3, H4) | b8a1406 | 6 files, +235/-169 |
-| 3 | March 16 | Auth gates (H5, H6, H7) | IN PROGRESS | — |
+| 3 | March 16 | Auth gates (H5, H6, H7) | DONE — Session 3, commit e228ee9 | — |
 | 4 | Queued | Decrypt resilience + logging (H10, H11, H12) | — | — |
 | 5 | Queued | Token unification (C3) | — | — |
 | 6 | Queued | Encryption standardization (C4) | — | — |
