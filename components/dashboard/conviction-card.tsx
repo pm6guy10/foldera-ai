@@ -192,7 +192,10 @@ export default function ConvictionCard({
             )}
 
             {/* Artifact preview */}
-            {action.executionResult && (action.executionResult as any).artifact && (
+            {action.artifact && (
+              <ArtifactPreview artifact={action.artifact as ConvictionArtifact} />
+            )}
+            {!action.artifact && action.executionResult && (action.executionResult as any).artifact && (
               <ArtifactPreview artifact={(action.executionResult as any).artifact as ConvictionArtifact} />
             )}
 
@@ -514,21 +517,26 @@ function ArtifactPreview({ artifact }: { artifact: ConvictionArtifact }) {
             )}
           </div>
         )}
-        {artifact.type === 'decision_frame' && (
+        {artifact.type === 'decision_frame' && Array.isArray(artifact.options) && artifact.options.length > 0 && (
           <div className="space-y-2">
-            {artifact.options.map((opt, i) => (
-              <div key={i} className="flex items-start gap-2 text-sm">
-                <span className={`shrink-0 font-mono font-bold text-xs px-1.5 py-0.5 rounded ${
-                  i === 0 ? 'text-emerald-400 bg-emerald-900/30' : 'text-zinc-400 bg-zinc-800'
-                }`}>
-                  {Math.round(opt.weight * 100)}%
-                </span>
-                <div>
-                  <p className="text-zinc-200">{opt.option}</p>
-                  <p className="text-zinc-500 text-xs">{opt.rationale}</p>
+            {artifact.options.map((opt, i) => {
+              const weight = typeof opt.weight === 'number' && !isNaN(opt.weight) ? opt.weight : null;
+              return (
+                <div key={i} className="flex items-start gap-2 text-sm">
+                  {weight !== null && (
+                    <span className={`shrink-0 font-mono font-bold text-xs px-1.5 py-0.5 rounded ${
+                      i === 0 ? 'text-emerald-400 bg-emerald-900/30' : 'text-zinc-400 bg-zinc-800'
+                    }`}>
+                      {Math.round(weight * 100)}%
+                    </span>
+                  )}
+                  <div>
+                    <p className="text-zinc-200">{opt.option}</p>
+                    {opt.rationale && <p className="text-zinc-500 text-xs">{opt.rationale}</p>}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {artifact.recommendation && (
               <div className="pt-2 border-t border-zinc-700/40">
                 <p className="text-sm text-emerald-400">{artifact.recommendation}</p>

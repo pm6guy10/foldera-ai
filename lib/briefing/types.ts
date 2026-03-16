@@ -103,6 +103,7 @@ export interface ConvictionAction extends ConvictionDirective {
   approvedAt?: string;
   executedAt?: string;
   executionResult?: Record<string, unknown>;
+  artifact?: ConvictionArtifact | null;
 }
 
 // ---------------------------------------------------------------------------

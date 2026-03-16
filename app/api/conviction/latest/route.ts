@@ -55,6 +55,7 @@ export async function GET(request: Request) {
       approvedAt:      action.approved_at ?? undefined,
       executedAt:      action.executed_at ?? undefined,
       executionResult: action.execution_result ?? undefined,
+      artifact:        action.artifact ?? undefined,
     });
   } catch (err: unknown) {
     return apiError(err, 'conviction/latest');

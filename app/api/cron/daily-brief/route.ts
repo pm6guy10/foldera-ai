@@ -51,10 +51,12 @@ async function saveDirectiveAction(
   attempts: number,
   lastError?: string,
 ): Promise<string | null> {
+  const embeddedArtifact = (d as any).embeddedArtifact ?? null;
   const base = {
     user_id: userId, action_type: d.action_type, directive_text: d.directive,
     reason: d.reason, status: 'pending_approval', confidence: d.confidence,
     evidence: d.evidence, generated_at: new Date().toISOString(),
+    artifact: embeddedArtifact,
     execution_result: lastError ? { last_error: lastError, generation_attempts: attempts } : null,
   };
   const { data, error } = await supabase
@@ -174,7 +176,7 @@ async function handler(request: NextRequest) {
       }
 
       if (actionId && artifact) {
-        await supabase.from('tkg_actions').update({ execution_result: { artifact } }).eq('id', actionId);
+        await supabase.from('tkg_actions').update({ artifact, execution_result: { artifact } }).eq('id', actionId);
       }
 
       // ── Build the ONE directive item ──
