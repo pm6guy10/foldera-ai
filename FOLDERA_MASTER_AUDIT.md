@@ -34,32 +34,32 @@
 | H14 | 5,254 lines dead agent/acquisition/growth code | Codebase audit #5 | DONE — March 16, commit 27d8665 |
 | H15 | Onboarding flow doesn't use new sync pipeline, tries to generate from nothing | Codebase audit #6, GTM audit | DONE — March 16, commit 1d0df69 |
 | H16 | Resend sending from onboarding@resend.dev (shared domain, spam risk) | Codebase audit #8, GTM audit | OPEN — manual task |
-| H17 | Relationships page expects briefing.cooling_relationships that API never returns | Codex | OPEN |
+| H17 | Relationships page expects briefing.cooling_relationships that API never returns | Codex | DONE — March 16, commit e56211c |
 | H18 | Pricing mismatch: LP says $19, Stripe says $29/$99 | GTM audit | OPEN — manual task |
-| H19 | Messaging fragmented: three different taglines across LP, /start, login | GTM audit | OPEN |
+| H19 | Messaging fragmented: three different taglines across LP, /start, login | GTM audit | DONE — March 16, commit e56211c |
 
 ## MEDIUM — Fix before measuring retention
 
 | # | Issue | Source | Status |
 |---|-------|--------|--------|
-| M1 | briefing/latest ignores errors on four parallel Supabase reads | Codex | OPEN |
-| M2 | graph/stats ignores errors on four parallel reads | Codex bug scan | OPEN |
+| M1 | briefing/latest ignores errors on four parallel Supabase reads | Codex | DONE — March 16, commit e56211c |
+| M2 | graph/stats ignores errors on four parallel reads | Codex bug scan | DONE — March 16, commit e56211c |
 | M3 | Generator caches briefing on __GENERATION_FAILED__ | Codex | DONE — Session 2 |
-| M4 | conviction/latest route contract doesn't match implementation | Codex | OPEN |
-| M5 | integrations/status returns 200 on query failure | Codex | OPEN |
-| M6 | subscription/status has no error handling | Codex | OPEN |
-| M7 | Google and Microsoft disconnect routes ignore update result | Codex | OPEN |
-| M8 | Waitlist capture shows success on network failure (LP and /try) | Codex | OPEN |
-| M9 | Pricing page hardcodes Stripe price ID, loading state never clears on error | Codex | OPEN |
-| M10 | Dashboard conviction loading has no skeleton state | Codex | OPEN |
-| M11 | Email deep-link approve/skip doesn't check response status | Codex | OPEN |
-| M12 | Signals dashboard shows hardcoded data instead of real API values | Codex | OPEN |
+| M4 | conviction/latest route contract doesn't match implementation | Codex | DONE — March 16, commit e56211c |
+| M5 | integrations/status returns 200 on query failure | Codex | DONE — March 16, commit e56211c |
+| M6 | subscription/status has no error handling | Codex | DONE — March 16, commit e56211c |
+| M7 | Google and Microsoft disconnect routes ignore update result | Codex | DONE — March 16, commit e56211c |
+| M8 | Waitlist capture shows success on network failure (LP and /try) | Codex | DONE — March 16, commit e56211c |
+| M9 | Pricing page hardcodes Stripe price ID, loading state never clears on error | Codex | DONE — March 16, commit e56211c |
+| M10 | Dashboard conviction loading has no skeleton state | Codex | DONE — March 16, commit e56211c |
+| M11 | Email deep-link approve/skip doesn't check response status | Codex | DONE — March 16, commit e56211c |
+| M12 | Signals dashboard shows hardcoded data instead of real API values | Codex | DONE — March 16, commit e56211c |
 | M13 | growth-scanner cron still active in vercel.json | Codebase audit #7 | DONE — March 16, commit 27d8665 |
 | M14 | Dashboard doesn't show Microsoft data freshness | Codebase audit #9 | DONE — March 16, commit f1f09aa |
 | M15 | Signal summaries not being generated (no long-term memory) | Codebase audit #10 | DONE — March 16, commit f1f09aa |
-| M16 | Goals not seeded from current real data | Codebase audit #11 | OPEN |
+| M16 | Goals not seeded from current real data | Codebase audit #11 | DONE — March 16, commit e56211c (verified live goals were already current; no reseed required) |
 | M17 | Encryption verification needed after C4 fix | Codebase audit #12 | BLOCKED by C4 |
-| M18 | No rate limiting on sync-now endpoints | Codebase audit #18 | OPEN |
+| M18 | No rate limiting on sync-now endpoints | Codebase audit #18 | DONE — March 16, commit e56211c |
 | M19 | Onboarding funnel backwards: OAuth before value delivery | GTM audit | OPEN |
 | M20 | Zero social proof, testimonials, or distribution | GTM audit | OPEN — post-launch |
 
@@ -67,15 +67,15 @@
 
 | # | Issue | Source | Status |
 |---|-------|--------|--------|
-| L1 | LP and /try demo swallow all errors into generic message | Codex | OPEN |
-| L2 | Draft queue returns null while loading (no skeleton) | Codex | OPEN |
-| L3 | Trial banner checkout failure goes to console.error only | Codex | OPEN |
-| L4 | Settings fetch failures logged with console.error in production | Codex | OPEN |
+| L1 | LP and /try demo swallow all errors into generic message | Codex | DONE — March 16, commit e56211c |
+| L2 | Draft queue returns null while loading (no skeleton) | Codex | DONE — March 16, commit e56211c |
+| L3 | Trial banner checkout failure goes to console.error only | Codex | DONE — March 16, commit e56211c |
+| L4 | Settings fetch failures logged with console.error in production | Codex | DONE — March 16, commit e56211c |
 | L5 | Stale Supabase edge functions in supabase/functions/ | Codebase audit #13 | DONE — March 16, commit b062a28 |
 | L6 | Orphaned migration scripts in scripts/ | Codebase audit #14 | DONE — March 16, commit b062a28 |
 | L7 | Duplicate PostCSS configs | Codebase audit #15 | DONE — March 16, commit b062a28 |
 | L8 | Dead dashboard/briefing redirect page | Codebase audit #16 | DONE — March 16, commit b062a28 |
-| L9 | Test infrastructure incomplete, not in CI | Codebase audit #17 | OPEN |
+| L9 | Test infrastructure incomplete, not in CI | Codebase audit #17 | DONE — March 16, commit e56211c |
 
 ---
 
@@ -92,6 +92,7 @@
 | 7 | Queued | Dead code removal (H14) | — | — |
 | 8 | Queued | Google standalone OAuth (H13) | — | — |
 | 9 | Queued | Onboarding flow fix (H15, M19) | — | — |
+| 10 | March 16 | Dashboard, LP, auth, and test hardening (H17, H19, M1, M2, M4-M12, M16, M18, L1-L4, L9) | e56211c | 33 files, +771/-480 |
 
 ---
 
