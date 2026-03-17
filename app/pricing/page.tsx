@@ -1,13 +1,24 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Check, ArrowRight, Layers } from 'lucide-react';
 
 function CheckoutButton() {
+  const { status } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleCheckout() {
+    if (status === 'loading') {
+      return;
+    }
+
+    if (status !== 'authenticated') {
+      window.location.href = '/start';
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -17,12 +28,16 @@ function CheckoutButton() {
         body: JSON.stringify({}),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        window.location.href = '/start';
+        return;
+      }
       if (!res.ok || !data.url) {
-        throw new Error(data.error || 'Checkout unavailable');
+        throw new Error(data.error || 'Could not start checkout');
       }
       window.location.href = data.url;
     } catch {
-      setError('Checkout is unavailable right now. Try again in a moment.');
+      setError('Could not start checkout right now. Try again in a moment.');
     } finally {
       setLoading(false);
     }
@@ -32,14 +47,14 @@ function CheckoutButton() {
     <div className="space-y-3">
       <button
         onClick={handleCheckout}
-        disabled={loading}
+        disabled={loading || status === 'loading'}
         className="w-full py-5 rounded-2xl bg-white text-black font-black uppercase tracking-[0.2em] text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
       >
         {loading ? (
           <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
         ) : (
           <>
-            Start 14-day free trial
+            {status === 'authenticated' ? 'Continue to checkout' : 'Start 14-day free trial'}
             <ArrowRight className="w-4 h-4" />
           </>
         )}

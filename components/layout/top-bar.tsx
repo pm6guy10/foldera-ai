@@ -7,9 +7,28 @@ import { typography } from '@/lib/design-system/typography';
 import { transitions } from '@/lib/design-system/animations';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const COMMANDS = [
+  { icon: '⚡', label: 'Dashboard', shortcut: '⌘D', href: '/dashboard' },
+  { icon: '📋', label: 'Briefings', shortcut: '⌘B', href: '/dashboard/briefings' },
+  { icon: '📡', label: 'Sources', shortcut: '⌘A', href: '/dashboard/signals' },
+  { icon: '⚙️', label: 'Settings', shortcut: '⌘,', href: '/dashboard/settings' },
+];
+
 export function TopBar() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setShowCommandPalette(true);
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl">
@@ -47,6 +66,7 @@ export function TopBar() {
 
 function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const router = useRouter();
+  const [query, setQuery] = useState('');
 
   // Close on ESC
   useEffect(() => {
@@ -56,12 +76,24 @@ function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     return () => window.removeEventListener('keydown', handler);
   }, [isOpen, onClose]);
 
-  const commands = [
-    { icon: '⚡', label: 'Dashboard',           shortcut: '⌘D', href: '/dashboard' },
-    { icon: '📋', label: 'Briefings',           shortcut: '⌘B', href: '/dashboard/briefings' },
-    { icon: '📡', label: 'Sources',             shortcut: '⌘A', href: '/dashboard/signals' },
-    { icon: '⚙️', label: 'Settings',            shortcut: '⌘,', href: '/dashboard/settings' },
-  ];
+  useEffect(() => {
+    if (!isOpen) {
+      setQuery('');
+    }
+  }, [isOpen]);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredCommands = COMMANDS.filter((command) => {
+    if (!normalizedQuery) return true;
+
+    const haystack = `${command.label} ${command.href} ${command.shortcut}`.toLowerCase();
+    return haystack.includes(normalizedQuery);
+  });
+
+  const navigateTo = (href: string) => {
+    router.push(href);
+    onClose();
+  };
 
   return (
     <AnimatePresence>
@@ -92,6 +124,14 @@ function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                   type="text"
                   placeholder="Navigate to..."
                   className="flex-1 bg-transparent text-zinc-50 placeholder:text-zinc-500 outline-none"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && filteredCommands[0]) {
+                      event.preventDefault();
+                      navigateTo(filteredCommands[0].href);
+                    }
+                  }}
                   autoFocus
                 />
                 <kbd className="text-xs text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded">ESC</kbd>
@@ -102,10 +142,10 @@ function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 <p className={cn(typography.label, 'text-zinc-500 px-3 py-2')}>
                   Quick Navigation
                 </p>
-                {commands.map((cmd) => (
+                {filteredCommands.map((cmd) => (
                   <button
                     key={cmd.label}
-                    onClick={() => { router.push(cmd.href); onClose(); }}
+                    onClick={() => navigateTo(cmd.href)}
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg',
                       'text-left text-zinc-300',
@@ -118,6 +158,11 @@ function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     <kbd className="text-xs text-zinc-500">{cmd.shortcut}</kbd>
                   </button>
                 ))}
+                {filteredCommands.length === 0 ? (
+                  <p className="px-3 py-3 text-sm text-zinc-500">
+                    No matches. Try dashboard, briefings, sources, or settings.
+                  </p>
+                ) : null}
               </div>
             </div>
           </motion.div>

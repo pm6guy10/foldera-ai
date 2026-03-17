@@ -30,7 +30,7 @@ export default function SettingsClient() {
 
   // --- FETCH DATA ---
   useEffect(() => {
-    if (status !== 'authenticated' || !session?.user?.email) {
+    if (status !== 'authenticated' || !session?.user?.id) {
       setLoading(false);
       return;
     }
@@ -199,19 +199,28 @@ export default function SettingsClient() {
 
 function GoogleSourceCard({ integration, onConnect }: { integration: any; onConnect: () => void }) {
   const [disconnecting, setDisconnecting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const isConnected = integration?.is_active;
   const email = integration?.sync_email;
   const lastSynced = integration?.last_synced_at;
 
   const handleDisconnect = async () => {
     setDisconnecting(true);
+    setActionError(null);
     try {
       const res = await fetch('/api/google/disconnect', { method: 'POST' });
       if (res.ok) {
         window.location.reload();
+        return;
       }
+      const data = await res.json().catch(() => ({}));
+      setActionError(
+        typeof (data as { error?: unknown }).error === 'string'
+          ? ((data as { error: string }).error)
+          : 'Could not disconnect Google right now.',
+      );
     } catch {
-      // silent
+      setActionError('Could not disconnect Google right now.');
     } finally {
       setDisconnecting(false);
     }
@@ -299,6 +308,9 @@ function GoogleSourceCard({ integration, onConnect }: { integration: any; onConn
           Connect Google
         </button>
       )}
+      {actionError ? (
+        <p className="mt-3 text-xs text-rose-400">{actionError}</p>
+      ) : null}
     </div>
   );
 }
@@ -308,6 +320,7 @@ function MicrosoftSourceCard({ integration, onConnect }: { integration: any; onC
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ total: number; mail_signals: number; calendar_signals: number; file_signals: number; task_signals: number } | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const isConnected = integration?.is_active;
   const email = integration?.sync_email;
   const lastSynced = integration?.last_synced_at;
@@ -333,13 +346,21 @@ function MicrosoftSourceCard({ integration, onConnect }: { integration: any; onC
 
   const handleDisconnect = async () => {
     setDisconnecting(true);
+    setActionError(null);
     try {
       const res = await fetch('/api/microsoft/disconnect', { method: 'POST' });
       if (res.ok) {
         window.location.reload();
+        return;
       }
+      const data = await res.json().catch(() => ({}));
+      setActionError(
+        typeof (data as { error?: unknown }).error === 'string'
+          ? ((data as { error: string }).error)
+          : 'Could not disconnect Microsoft right now.',
+      );
     } catch {
-      // silent
+      setActionError('Could not disconnect Microsoft right now.');
     } finally {
       setDisconnecting(false);
     }
@@ -439,6 +460,9 @@ function MicrosoftSourceCard({ integration, onConnect }: { integration: any; onC
           )}
           {syncError && (
             <p className="text-red-400 text-xs">{syncError}</p>
+          )}
+          {actionError && (
+            <p className="text-red-400 text-xs">{actionError}</p>
           )}
         </div>
       ) : (

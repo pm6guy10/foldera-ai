@@ -1,5 +1,6 @@
 'use client';
 
+import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/design-system';
 import { spacing } from '@/lib/design-system/spacing';
 import { Sidebar } from './sidebar';
@@ -12,6 +13,9 @@ interface DashboardShellProps {
 }
 
 export function DashboardShell({ children }: DashboardShellProps) {
+  const { status } = useSession();
+  const showChrome = status === 'authenticated';
+
   return (
     <div className="min-h-screen bg-[#000] text-zinc-50">
       {/* Subtle grid pattern */}
@@ -25,24 +29,30 @@ export function DashboardShell({ children }: DashboardShellProps) {
           backgroundSize: '40px 40px',
         }}
       />
-      
-      <div className="flex">
-        {/* Sidebar — hidden on mobile, visible on lg+ */}
-        <Sidebar />
 
-        {/* Main content — full width on mobile, offset by sidebar on lg+ */}
-        <div className="flex-1 ml-0 lg:ml-64">
-          <TrialBanner />
-          <TopBar />
-          {/* pb-20 on mobile = room for the fixed bottom tab bar */}
-          <main className={cn(spacing.page.padding, spacing.page.maxWidth, 'pb-20 lg:pb-6')}>
-            {children}
-          </main>
+      {showChrome ? (
+        <div className="flex">
+          {/* Sidebar — hidden on mobile, visible on lg+ */}
+          <Sidebar />
+
+          {/* Main content — full width on mobile, offset by sidebar on lg+ */}
+          <div className="flex-1 ml-0 lg:ml-64">
+            <TrialBanner />
+            <TopBar />
+            {/* pb-20 on mobile = room for the fixed bottom tab bar */}
+            <main className={cn(spacing.page.padding, spacing.page.maxWidth, 'pb-20 lg:pb-6')}>
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
+      ) : (
+        <main className={cn(spacing.page.padding, spacing.page.maxWidth, 'pb-10')}>
+          {children}
+        </main>
+      )}
 
       {/* Mobile bottom nav — only renders on < lg */}
-      <MobileNav />
+      {showChrome ? <MobileNav /> : null}
     </div>
   );
 }

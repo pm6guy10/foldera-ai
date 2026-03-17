@@ -31,6 +31,8 @@ export default function DashboardContent() {
   const [convictionLoading, setConvictionLoading] = useState(true);
   const [emailActionMsg, setEmailActionMsg] = useState<EmailActionFeedback | null>(null);
   const [contextGreeting, setContextGreeting] = useState<string | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [convictionError, setConvictionError] = useState<string | null>(null);
 
   const showEmailActionFeedback = useCallback((tone: EmailActionFeedback['tone'], text: string) => {
     setEmailActionMsg({ tone, text });
@@ -107,32 +109,59 @@ export default function DashboardContent() {
 
   const loadStats = async () => {
     setStatsLoading(true);
+    setStatsError(null);
     try {
       const res = await fetch('/api/graph/stats');
-      if (res.ok) setStats(await res.json());
-    } catch { /* silent */ } finally { setStatsLoading(false); }
+      if (!res.ok) {
+        throw new Error('Could not load dashboard stats right now.');
+      }
+      setStats(await res.json());
+    } catch (error: unknown) {
+      setStatsError(error instanceof Error ? error.message : 'Could not load dashboard stats right now.');
+      setStats(null);
+    } finally { setStatsLoading(false); }
   };
 
   const loadLatestConviction = async () => {
     setConvictionLoading(true);
+    setConvictionError(null);
     try {
       const res = await fetch('/api/conviction/latest');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.context_greeting) setContextGreeting(data.context_greeting);
-        // Only set conviction if there's an actual action (has an id)
-        setConviction(data.id ? data : null);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof (data as { error?: unknown }).error === 'string'
+            ? ((data as { error: string }).error)
+            : 'Could not load your latest read right now.',
+        );
       }
-    } catch { /* silent */ } finally { setConvictionLoading(false); }
+      if (data.context_greeting) setContextGreeting(data.context_greeting);
+      // Only set conviction if there's an actual action (has an id)
+      setConviction(data.id ? data : null);
+    } catch (error: unknown) {
+      setConvictionError(error instanceof Error ? error.message : 'Could not load your latest read right now.');
+      setConviction(null);
+    } finally { setConvictionLoading(false); }
   };
 
   const generateDirective = useCallback(async () => {
     setConvictionLoading(true);
     setConviction(null);
+    setConvictionError(null);
     try {
       const res = await fetch('/api/conviction/generate', { method: 'POST' });
-      if (res.ok) setConviction(await res.json());
-    } catch { /* silent */ } finally { setConvictionLoading(false); }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof (data as { error?: unknown }).error === 'string'
+            ? ((data as { error: string }).error)
+            : 'Could not generate a read right now.',
+        );
+      }
+      setConviction(data);
+    } catch (error: unknown) {
+      setConvictionError(error instanceof Error ? error.message : 'Could not generate a read right now.');
+    } finally { setConvictionLoading(false); }
   }, []);
 
   const handleApprove = async (actionId: string) => {
@@ -176,6 +205,16 @@ export default function DashboardContent() {
           <p className={`text-sm ${
             emailActionMsg.tone === 'success' ? 'text-emerald-300' : 'text-rose-300'
           }`}>{emailActionMsg.text}</p>
+        </div>
+      )}
+      {statsError && (
+        <div className="px-5 py-3 rounded-xl border border-amber-500/30 bg-amber-500/10">
+          <p className="text-sm text-amber-200">{statsError}</p>
+        </div>
+      )}
+      {convictionError && (
+        <div className="px-5 py-3 rounded-xl border border-rose-500/30 bg-rose-500/10">
+          <p className="text-sm text-rose-300">{convictionError}</p>
         </div>
       )}
 
