@@ -16,7 +16,8 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import { decrypt } from '@/lib/encryption';
+import { decryptWithStatus } from '@/lib/encryption';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import type { ActionType } from './types';
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,39 @@ import type { ActionType } from './types';
 
 function isSelfReferentialSignal(content: string): boolean {
   return content.startsWith('[Foldera Directive') || content.startsWith('[Foldera \u00b7 20');
+}
+
+function artifactTypeForAction(actionType: ActionType): string {
+  switch (actionType) {
+    case 'send_message':
+      return 'drafted_email';
+    case 'make_decision':
+      return 'decision_frame';
+    case 'do_nothing':
+      return 'wait_rationale';
+    case 'write_document':
+      return 'write_document';
+    case 'schedule':
+      return 'schedule';
+    case 'research':
+    default:
+      return 'research';
+  }
+}
+
+function logDecryptSkip(userId: string, scope: string, skippedRows: number): void {
+  if (skippedRows === 0) return;
+  logStructuredEvent({
+    event: 'signal_skip',
+    level: 'warn',
+    userId,
+    artifactType: null,
+    generationStatus: 'decrypt_skip',
+    details: {
+      scope,
+      skipped_rows: skippedRows,
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -364,21 +398,34 @@ async function enrichRelationshipContext(
     if (signals && signals.length > 0) {
       const nameLower = entityName.toLowerCase();
       const firstName = nameLower.split(/\s+/)[0];
+      let skippedRows = 0;
       const mentioning = signals
-        .filter((s: any) => {
-          const content = decrypt(s.content as string ?? '');
-          if (isSelfReferentialSignal(content)) return false;
-          const lower = content.toLowerCase();
-          return lower.includes(nameLower) || lower.includes(firstName);
+        .map((signal: any) => {
+          const decrypted = decryptWithStatus(signal.content as string ?? '');
+          if (decrypted.usedFallback) {
+            skippedRows++;
+            return null;
+          }
+
+          if (isSelfReferentialSignal(decrypted.plaintext)) return null;
+          const lower = decrypted.plaintext.toLowerCase();
+          if (!lower.includes(nameLower) && !lower.includes(firstName)) return null;
+
+          return {
+            occurred_at: signal.occurred_at,
+            content: decrypted.plaintext,
+          };
         })
+        .filter((signal): signal is { occurred_at: string; content: string } => signal !== null)
         .slice(0, 3);
+
+      logDecryptSkip(userId, 'scorer:relationship_context', skippedRows);
 
       if (mentioning.length > 0) {
         parts.push('Recent mentions:');
-        for (const s of mentioning) {
-          const content = decrypt(s.content as string ?? '');
-          const date = (s.occurred_at as string ?? '').slice(0, 10);
-          parts.push(`  [${date}] ${content.slice(0, 300)}`);
+        for (const signal of mentioning) {
+          const date = (signal.occurred_at ?? '').slice(0, 10);
+          parts.push(`  [${date}] ${signal.content.slice(0, 300)}`);
         }
       }
     }
@@ -472,8 +519,14 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
   const domainSignalCounts: Record<string, { count: number; signals: string[] }> = {};
   let totalClassified = 0;
 
+  let skippedRows = 0;
   for (const s of signals) {
-    const content = decrypt(s.content as string ?? '');
+    const decrypted = decryptWithStatus(s.content as string ?? '');
+    if (decrypted.usedFallback) {
+      skippedRows++;
+      continue;
+    }
+    const content = decrypted.plaintext;
     if (content.length < 20) continue;
     if (isSelfReferentialSignal(content)) continue;
 
@@ -489,6 +542,8 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
       }
     }
   }
+
+  logDecryptSkip(userId, 'scorer:revealed_goals', skippedRows);
 
   if (totalClassified < 5) return [];
 
@@ -623,9 +678,15 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
     if (signals.length >= 15) {
       // Group signals by domain (keyword classification)
       const domainBuckets: Record<string, { count: number; signals: string[] }> = {};
+      let skippedRows = 0;
 
       for (const s of signals) {
-        const content = decrypt(s.content as string ?? '');
+        const decrypted = decryptWithStatus(s.content as string ?? '');
+        if (decrypted.usedFallback) {
+          skippedRows++;
+          continue;
+        }
+        const content = decrypted.plaintext;
         if (content.length < 20) continue;
         if (isSelfReferentialSignal(content)) continue;
 
@@ -644,6 +705,8 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
           domainBuckets[domain].signals.push(content.slice(0, 150));
         }
       }
+
+      logDecryptSkip(userId, 'scorer:anti_patterns', skippedRows);
 
       const domainCounts = Object.values(domainBuckets).map(b => b.count);
       if (domainCounts.length >= 2) {
@@ -849,7 +912,17 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
       }
     }
   } catch (err) {
-    console.warn('[scorer] detectAntiPatterns error:', err instanceof Error ? err.message : err);
+    logStructuredEvent({
+      event: 'scorer_error',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'detect_anti_patterns_failed',
+      details: {
+        scope: 'scorer',
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
   }
 
   antiPatterns.sort((a, b) => b.score - a.score);
@@ -1175,7 +1248,17 @@ export async function detectEmergentPatterns(userId: string): Promise<EmergentPa
       });
     }
   } catch (err) {
-    console.warn('[scorer] detectEmergentPatterns error:', err instanceof Error ? err.message : err);
+    logStructuredEvent({
+      event: 'scorer_error',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'detect_emergent_patterns_failed',
+      details: {
+        scope: 'scorer',
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
   }
 
   // Sort by score descending
@@ -1447,7 +1530,16 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
   if (antiPatterns.length > 0 && antiPatterns[0].score >= 0.5) {
     const ap = antiPatterns[0];
-    console.log(`[scorer] ANTI-PATTERN DETECTED: ${ap.type} (score=${ap.score.toFixed(2)}) — suspending normal scoring`);
+    logStructuredEvent({
+      event: 'scorer_override',
+      userId,
+      artifactType: artifactTypeForAction(ap.suggestedActionType),
+      generationStatus: 'anti_pattern_override',
+      details: {
+        scope: 'scorer',
+        pattern_type: ap.type,
+      },
+    });
 
     const mirrorContent = [
       ap.insight,
@@ -1534,12 +1626,24 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   ]);
 
   const commitments = commitmentsRes.data ?? [];
-  const signals = (signalsRes.data ?? []).map((s: any) => ({
-    ...s,
-    content: decrypt(s.content as string ?? ''),
-  })).filter((s: any) => !isSelfReferentialSignal(s.content));
+  let scoringDecryptSkips = 0;
+  const signals = (signalsRes.data ?? [])
+    .map((signal: any) => {
+      const decrypted = decryptWithStatus(signal.content as string ?? '');
+      if (decrypted.usedFallback) {
+        scoringDecryptSkips++;
+        return null;
+      }
+
+      return {
+        ...signal,
+        content: decrypted.plaintext,
+      };
+    })
+    .filter((signal: any) => signal && !isSelfReferentialSignal(signal.content));
   const entities = entitiesRes.data ?? [];
   const goals = (goalsRes.data ?? []) as Array<{ goal_text: string; priority: number; goal_category: string }>;
+  logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
 
   // Also fetch ALL recent signals (not just 7d) for context enrichment
   const { data: allRecentSignals } = await supabase
@@ -1551,7 +1655,18 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     .order('occurred_at', { ascending: false })
     .limit(50);
 
-  const decryptedSignals = (allRecentSignals ?? []).map((s: any) => decrypt(s.content as string ?? '')).filter((c: string) => !isSelfReferentialSignal(c));
+  let contextDecryptSkips = 0;
+  const decryptedSignals = (allRecentSignals ?? [])
+    .map((signal: any) => {
+      const decrypted = decryptWithStatus(signal.content as string ?? '');
+      if (decrypted.usedFallback) {
+        contextDecryptSkips++;
+        return null;
+      }
+      return decrypted.plaintext;
+    })
+    .filter((content: string | null): content is string => !!content && !isSelfReferentialSignal(content));
+  logDecryptSkip(userId, 'scorer:recent_signal_context', contextDecryptSkips);
 
   // -----------------------------------------------------------------------
   // Build candidate loops
@@ -1719,9 +1834,16 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     // Take the strongest connection and merge into a compound loop
     const bestConnection = connections[0];
     const compound = mergeLoops(bestConnection);
-    console.log(
-      `[scorer] Cross-loop connection: ${compound.connectionType} — "${compound.connectionReason}"`,
-    );
+    logStructuredEvent({
+      event: 'scorer_connection',
+      userId,
+      artifactType: artifactTypeForAction(compound.suggestedActionType),
+      generationStatus: 'cross_loop_connection',
+      details: {
+        scope: 'scorer',
+        connection_type: compound.connectionType,
+      },
+    });
     scored.push(compound);
   }
 
@@ -1766,7 +1888,17 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         relatedSignals: div.topSignals.slice(0, 3),
       });
 
-      console.log(`[scorer] REVEALED PREFERENCE DIVERGENCE: stated=${div.statedGoal.category} revealed=${div.revealedDomain} score=${divergenceScore.toFixed(2)}`);
+      logStructuredEvent({
+        event: 'scorer_override',
+        userId,
+        artifactType: artifactTypeForAction('make_decision'),
+        generationStatus: 'revealed_preference_divergence',
+        details: {
+          scope: 'scorer',
+          stated_domain: div.statedGoal.category,
+          revealed_domain: div.revealedDomain,
+        },
+      });
     }
   }
 
@@ -1816,15 +1948,6 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Sort by score descending
   scored.sort((a, b) => b.score - a.score);
 
-  // Log top 5 for diagnostics
-  console.log('[scorer] Top 5 candidates:');
-  for (const s of scored.slice(0, 5)) {
-    const f = s.breakdown.freshness !== undefined ? ` * ${s.breakdown.freshness.toFixed(2)}F` : '';
-    console.log(
-      `  ${s.score.toFixed(2)} = ${s.breakdown.stakes}S * ${s.breakdown.urgency.toFixed(2)}U * ${s.breakdown.tractability.toFixed(2)}T${f} | [${s.type}] ${s.title.slice(0, 80)}`,
-    );
-  }
-
   const winner = scored[0];
   if (!winner) return null;
 
@@ -1832,13 +1955,18 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const runnerUps = scored.slice(1, 4);
   const deprioritized = runnerUps.map(loop => classifyKillReason(loop, winner.score));
 
-  // Log kill reasons
-  if (deprioritized.length > 0) {
-    console.log('[scorer] Deprioritized (killed):');
-    for (const d of deprioritized) {
-      console.log(`  [${d.killReason.toUpperCase()}] ${d.title.slice(0, 60)} — ${d.killExplanation.slice(0, 80)}`);
-    }
-  }
+  logStructuredEvent({
+    event: 'scorer_selected',
+    userId,
+    artifactType: artifactTypeForAction(winner.suggestedActionType),
+    generationStatus: 'candidate_scored',
+    details: {
+      scope: 'scorer',
+      candidate_count: scored.length,
+      deprioritized_count: deprioritized.length,
+      winner_type: winner.type,
+    },
+  });
 
   return { winner, deprioritized };
 }

@@ -17,10 +17,24 @@ import {
   getVerifiedDailyBriefRecipientEmail,
 } from '@/lib/auth/daily-brief-users';
 import type { DirectiveItem } from '@/lib/email/resend';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 export const dynamic = 'force-dynamic';
 
 const CONFIDENCE_THRESHOLD = 70;
+
+function artifactTypeForAction(actionType: string | null | undefined): string | null {
+  switch (actionType) {
+    case 'send_message':
+      return 'drafted_email';
+    case 'make_decision':
+      return 'decision_frame';
+    case 'do_nothing':
+      return 'wait_rationale';
+    default:
+      return null;
+  }
+}
 
 async function handler(request: NextRequest) {
   const authErr = validateCronAuth(request);
@@ -113,10 +127,29 @@ async function handler(request: NextRequest) {
       }
 
       results.push({ userId, success: true });
-      console.log(`[daily-send] ${userId}: directive sent (confidence ${confidence}%)`);
+      logStructuredEvent({
+        event: 'daily_send_complete',
+        userId,
+        artifactType: artifactTypeForAction(action.action_type as string | null | undefined),
+        generationStatus: 'sent',
+        details: {
+          scope: 'daily-send',
+          action_id: action.id,
+        },
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[daily-send] failed for ${userId}:`, msg);
+      logStructuredEvent({
+        event: 'daily_send_failed',
+        level: 'error',
+        userId,
+        artifactType: null,
+        generationStatus: 'failed',
+        details: {
+          scope: 'daily-send',
+          error: msg,
+        },
+      });
       results.push({ userId, success: false, error: msg });
     }
   }

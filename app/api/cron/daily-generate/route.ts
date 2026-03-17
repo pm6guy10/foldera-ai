@@ -17,8 +17,22 @@ import { filterDailyBriefEligibleUserIds } from '@/lib/auth/daily-brief-users';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 export const dynamic = 'force-dynamic';
+
+function artifactTypeForAction(actionType: string | null | undefined): string | null {
+  switch (actionType) {
+    case 'send_message':
+      return 'drafted_email';
+    case 'make_decision':
+      return 'decision_frame';
+    case 'do_nothing':
+      return 'wait_rationale';
+    default:
+      return null;
+  }
+}
 
 async function handler(request: NextRequest) {
   const authErr = validateCronAuth(request);
@@ -54,25 +68,62 @@ async function handler(request: NextRequest) {
       try {
         const summariesCreated = await summarizeSignals(userId);
         if (summariesCreated > 0) {
-          console.log(`[daily-generate] created ${summariesCreated} signal summaries for ${userId.slice(0, 8)}`);
+          logStructuredEvent({
+            event: 'daily_generate_summary',
+            userId,
+            artifactType: null,
+            generationStatus: 'summary_complete',
+            details: {
+              scope: 'daily-generate',
+              summaries_created: summariesCreated,
+            },
+          });
         }
       } catch (sumErr: unknown) {
-        console.warn('[daily-generate] signal summarization failed:', sumErr instanceof Error ? sumErr.message : sumErr);
+        logStructuredEvent({
+          event: 'daily_generate_summary_failed',
+          level: 'warn',
+          userId,
+          artifactType: null,
+          generationStatus: 'summary_failed',
+          details: {
+            scope: 'daily-generate',
+            error: sumErr instanceof Error ? sumErr.message : String(sumErr),
+          },
+        });
       }
 
       // Extract entities/commitments/topics from unprocessed sync signals
       try {
         const extraction = await processUnextractedSignals(userId);
         if (extraction.signals_processed > 0) {
-          console.log(
-            `[daily-generate] signal extraction for ${userId}: ` +
-            `${extraction.signals_processed} signals, ${extraction.entities_upserted} entities, ` +
-            `${extraction.commitments_created} commitments, ${extraction.topics_merged} topics`,
-          );
+          logStructuredEvent({
+            event: 'daily_generate_extraction',
+            userId,
+            artifactType: null,
+            generationStatus: 'signal_extraction_complete',
+            details: {
+              scope: 'daily-generate',
+              signals_processed: extraction.signals_processed,
+              entities_upserted: extraction.entities_upserted,
+              commitments_created: extraction.commitments_created,
+              topics_merged: extraction.topics_merged,
+            },
+          });
         }
       } catch (extractErr: unknown) {
         // Non-fatal — directive generation can still proceed with existing data
-        console.warn('[daily-generate] signal extraction failed:', extractErr instanceof Error ? extractErr.message : extractErr);
+        logStructuredEvent({
+          event: 'daily_generate_extraction_failed',
+          level: 'warn',
+          userId,
+          artifactType: null,
+          generationStatus: 'signal_extraction_failed',
+          details: {
+            scope: 'daily-generate',
+            error: extractErr instanceof Error ? extractErr.message : String(extractErr),
+          },
+        });
       }
 
       // Generate ONE directive
@@ -81,14 +132,34 @@ async function handler(request: NextRequest) {
         directive = await generateDirective(userId);
       } catch (genErr: unknown) {
         const msg = genErr instanceof Error ? genErr.message : String(genErr);
-        console.error(`[daily-generate] generation failed for ${userId}:`, msg);
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'error',
+          userId,
+          artifactType: null,
+          generationStatus: 'generation_failed',
+          details: {
+            scope: 'daily-generate',
+            error: msg,
+          },
+        });
         results.push({ userId, success: false, error: msg });
         continue;
       }
 
       // Check for failure sentinel
       if (directive.directive === '__GENERATION_FAILED__') {
-        console.error(`[daily-generate] generation returned failure sentinel for ${userId}`);
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'error',
+          userId,
+          artifactType: null,
+          generationStatus: 'generation_failed',
+          details: {
+            scope: 'daily-generate',
+            error: 'generation returned failure sentinel',
+          },
+        });
         results.push({ userId, success: false, error: 'generation failed' });
         continue;
       }
@@ -98,7 +169,17 @@ async function handler(request: NextRequest) {
       try {
         artifact = await generateArtifact(userId, directive);
       } catch (artErr: unknown) {
-        console.warn('[daily-generate] artifact failed:', artErr instanceof Error ? artErr.message : artErr);
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'warn',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'artifact_failed',
+          details: {
+            scope: 'daily-generate',
+            error: artErr instanceof Error ? artErr.message : String(artErr),
+          },
+        });
       }
 
       if (!artifact) {
@@ -116,7 +197,17 @@ async function handler(request: NextRequest) {
       }).select('id').single();
 
       if (saveErr || !saved?.id) {
-        console.error('[daily-generate] save failed:', saveErr?.message ?? 'Missing inserted action id');
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'error',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'persist_failed',
+          details: {
+            scope: 'daily-generate',
+            error: saveErr?.message ?? 'Missing inserted action id',
+          },
+        });
         results.push({ userId, success: false, error: 'directive save failed' });
         continue;
       }
@@ -131,15 +222,44 @@ async function handler(request: NextRequest) {
         await extractFromConversation(feedText, userId);
       } catch (feedErr: any) {
         if (!feedErr.message?.includes('already ingested')) {
-          console.warn('[daily-generate] self-feed failed:', feedErr.message);
+          logStructuredEvent({
+            event: 'daily_generate_self_feed_failed',
+            level: 'warn',
+            userId,
+            artifactType: artifactTypeForAction(directive.action_type),
+            generationStatus: 'self_feed_failed',
+            details: {
+              scope: 'daily-generate',
+              error: feedErr.message,
+            },
+          });
         }
       }
 
       results.push({ userId, success: true });
-      console.log(`[daily-generate] ${userId}: directive generated (confidence ${directive.confidence}%)`);
+      logStructuredEvent({
+        event: 'daily_generate_complete',
+        userId,
+        artifactType: artifactTypeForAction(directive.action_type),
+        generationStatus: 'generated',
+        details: {
+          scope: 'daily-generate',
+          action_id: saved.id,
+        },
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[daily-generate] failed for ${userId}:`, msg);
+      logStructuredEvent({
+        event: 'daily_generate_failed',
+        level: 'error',
+        userId,
+        artifactType: null,
+        generationStatus: 'failed',
+        details: {
+          scope: 'daily-generate',
+          error: msg,
+        },
+      });
       results.push({ userId, success: false, error: msg });
     }
   }

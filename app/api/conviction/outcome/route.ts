@@ -19,11 +19,25 @@ import { resolveUser } from '@/lib/auth/resolve-user';
 import { NextResponse }      from 'next/server';
 import { apiError }         from '@/lib/utils/api-error';
 import { encrypt }          from '@/lib/encryption';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 export const dynamic = 'force-dynamic';
 
 const WEIGHTS = { worked: 2.0, didnt_work: -1.5 } as const;
 type Outcome = keyof typeof WEIGHTS;
+
+function artifactTypeForAction(actionType: string | null | undefined): string | null {
+  switch (actionType) {
+    case 'send_message':
+      return 'drafted_email';
+    case 'make_decision':
+      return 'decision_frame';
+    case 'do_nothing':
+      return 'wait_rationale';
+    default:
+      return null;
+  }
+}
 
 
 export async function POST(request: Request) {
@@ -113,9 +127,28 @@ export async function POST(request: Request) {
 
   if (signalErr) {
     // Non-fatal — log but don't fail the response
-    console.warn(`[conviction/outcome] signal write failed: ${signalErr.message}`);
+    logStructuredEvent({
+      event: 'outcome_signal_failed',
+      level: 'warn',
+      userId,
+      artifactType: artifactTypeForAction(action.action_type as string | null | undefined),
+      generationStatus: 'outcome_signal_failed',
+      details: {
+        scope: 'conviction/outcome',
+        error: signalErr.message,
+      },
+    });
   }
 
-  console.log(`[conviction/outcome] ${action_id} → ${outcome} (weight ${WEIGHTS[outcome as Outcome]})`);
+  logStructuredEvent({
+    event: 'outcome_recorded',
+    userId,
+    artifactType: artifactTypeForAction(action.action_type as string | null | undefined),
+    generationStatus: 'outcome_recorded',
+    details: {
+      scope: 'conviction/outcome',
+      outcome,
+    },
+  });
   return NextResponse.json({ action_id, outcome, feedback_weight: WEIGHTS[outcome as Outcome] });
 }

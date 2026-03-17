@@ -18,7 +18,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
-import { decrypt } from '@/lib/encryption';
+import { decryptWithStatus } from '@/lib/encryption';
 import type {
   ConvictionDirective,
   ConvictionArtifact,
@@ -30,6 +30,7 @@ import type {
   WaitRationaleArtifact,
 } from '@/lib/briefing/types';
 import { trackApiCall } from '@/lib/utils/api-tracker';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 // ---------------------------------------------------------------------------
 // Clients (lazy)
@@ -50,13 +51,17 @@ async function loadRelationshipContext(userId: string, directive: string): Promi
   const supabase = createServerClient();
 
   // Pull entities with interaction history
-  const { data: entities } = await supabase
+  const { data: entities, error } = await supabase
     .from('tkg_entities')
     .select('name, entity_type, patterns, total_interactions')
     .eq('user_id', userId)
     .neq('name', 'self')
     .order('total_interactions', { ascending: false })
     .limit(10);
+
+  if (error) {
+    throw error;
+  }
 
   if (!entities || entities.length === 0) return 'No relationship data available.';
 
@@ -73,7 +78,7 @@ async function loadRecentSignals(userId: string, limit = 10): Promise<string> {
   const supabase = createServerClient();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: signals } = await supabase
+  const { data: signals, error } = await supabase
     .from('tkg_signals')
     .select('type, source, content, occurred_at')
     .eq('user_id', userId)
@@ -81,21 +86,59 @@ async function loadRecentSignals(userId: string, limit = 10): Promise<string> {
     .order('occurred_at', { ascending: false })
     .limit(limit);
 
+  if (error) {
+    throw error;
+  }
+
   if (!signals || signals.length === 0) return 'No recent signals.';
 
-  return signals
-    .map((s: any) => `[${(s.occurred_at as string).slice(0, 10)}] ${decrypt(s.content as string).slice(0, 200)}`)
+  let skippedRows = 0;
+  const lines = signals
+    .map((signal: any) => {
+      const decrypted = decryptWithStatus(signal.content as string ?? '');
+      if (decrypted.usedFallback) {
+        skippedRows++;
+        return null;
+      }
+
+      return `[${(signal.occurred_at as string).slice(0, 10)}] ${decrypted.plaintext.slice(0, 200)}`;
+    })
+    .filter((line): line is string => line !== null);
+
+  if (skippedRows > 0) {
+    logStructuredEvent({
+      event: 'signal_skip',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'decrypt_skip',
+      details: {
+        scope: 'artifact-generator',
+        skipped_rows: skippedRows,
+      },
+    });
+  }
+
+  if (lines.length === 0) {
+    return 'No recent signals.';
+  }
+
+  return lines
     .join('\n');
 }
 
 async function loadGoals(userId: string): Promise<string> {
   const supabase = createServerClient();
-  const { data: goals } = await supabase
+  const { data: goals, error } = await supabase
     .from('tkg_goals')
     .select('goal_text, goal_category, priority')
     .eq('user_id', userId)
     .order('priority', { ascending: false })
     .limit(5);
+
+  if (error) {
+    throw error;
+  }
 
   if (!goals || goals.length === 0) return 'No declared goals.';
 
@@ -106,12 +149,16 @@ async function loadGoals(userId: string): Promise<string> {
 
 async function loadPatterns(userId: string): Promise<string> {
   const supabase = createServerClient();
-  const { data: entity } = await supabase
+  const { data: entity, error } = await supabase
     .from('tkg_entities')
     .select('patterns')
     .eq('user_id', userId)
     .eq('name', 'self')
     .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
 
   const patterns = (entity?.patterns as Record<string, any>) ?? {};
   if (Object.keys(patterns).length === 0) return 'No patterns extracted yet.';
@@ -381,7 +428,17 @@ export async function generateArtifact(
     // Validate type matches expected
     return validateArtifact(directive.action_type, parsed);
   } catch (err) {
-    console.error('[generateArtifact] failed:', err);
+    logStructuredEvent({
+      event: 'artifact_generation_failed',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'artifact_failed',
+      details: {
+        scope: 'artifact-generator',
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
     return null;
   }
 }
@@ -396,16 +453,18 @@ function validateArtifact(
 ): ConvictionArtifact {
   switch (actionType) {
     case 'send_message': {
-      const a = parsed as EmailArtifact;
-      if (!isNonEmptyString(a.to) || !isNonEmptyString(a.subject) || !isNonEmptyString(a.body)) {
+      const recipient = isNonEmptyString(parsed?.recipient) ? parsed.recipient : parsed?.to;
+      const subject = parsed?.subject;
+      const body = parsed?.body;
+      if (!isNonEmptyString(recipient) || !isNonEmptyString(subject) || !isNonEmptyString(body)) {
         throw new Error('Email artifact missing required fields');
       }
       return {
         type: 'email',
-        to: a.to.trim(),
-        subject: a.subject.trim(),
-        body: a.body.trim(),
-        draft_type: a.draft_type || 'email_compose',
+        to: recipient.trim(),
+        subject: subject.trim(),
+        body: body.trim(),
+        draft_type: (parsed as EmailArtifact).draft_type || 'email_compose',
       };
     }
     case 'write_document': {
@@ -446,9 +505,8 @@ function validateArtifact(
       };
     }
     case 'make_decision': {
-      const a = parsed as DecisionFrameArtifact;
-      const options = Array.isArray(a.options)
-        ? a.options
+      const options = Array.isArray(parsed?.options)
+        ? (parsed as DecisionFrameArtifact).options
           .filter((option) => isNonEmptyString(option?.option) && typeof option?.weight === 'number')
           .map((option) => ({
             option: option.option.trim(),
@@ -456,26 +514,50 @@ function validateArtifact(
             rationale: typeof option.rationale === 'string' ? option.rationale.trim() : '',
           }))
         : [];
-      if (options.length === 0 || !isNonEmptyString(a.recommendation)) {
+
+      if (options.length === 0 && isNonEmptyString(parsed?.option_a) && isNonEmptyString(parsed?.option_b)) {
+        options.push(
+          {
+            option: parsed.option_a.trim(),
+            weight: 0.5,
+            rationale: isNonEmptyString(parsed?.tradeoff_a) ? parsed.tradeoff_a.trim() : '',
+          },
+          {
+            option: parsed.option_b.trim(),
+            weight: 0.5,
+            rationale: isNonEmptyString(parsed?.tradeoff_b) ? parsed.tradeoff_b.trim() : '',
+          },
+        );
+      }
+
+      if (options.length < 2) {
         throw new Error('Decision artifact missing required fields');
       }
       return {
         type: 'decision_frame',
         options,
-        recommendation: a.recommendation.trim(),
+        recommendation: isNonEmptyString(parsed?.recommendation)
+          ? parsed.recommendation.trim()
+          : '',
       };
     }
     case 'do_nothing':
     default: {
-      const a = parsed as WaitRationaleArtifact;
-      if (!isNonEmptyString(a.context) || !isNonEmptyString(a.evidence)) {
+      const context = isNonEmptyString(parsed?.context) ? parsed.context : parsed?.reason;
+      const evidence = isNonEmptyString(parsed?.evidence) ? parsed.evidence : parsed?.trigger_condition;
+      const checkDate = isNonEmptyString(parsed?.check_date) ? parsed.check_date.trim() : undefined;
+
+      if (!isNonEmptyString(context) || !isNonEmptyString(evidence)) {
         throw new Error('Wait artifact missing required fields');
       }
       return {
         type: 'wait_rationale',
-        context: a.context.trim(),
-        evidence: a.evidence.trim(),
-        tripwires: normalizeStringArray(a.tripwires),
+        context: context.trim(),
+        evidence: evidence.trim(),
+        tripwires: normalizeStringArray(parsed?.tripwires).length > 0
+          ? normalizeStringArray(parsed?.tripwires)
+          : [evidence.trim()],
+        ...(checkDate ? { check_date: checkDate } : {}),
       };
     }
   }

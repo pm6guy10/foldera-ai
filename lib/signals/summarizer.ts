@@ -12,8 +12,9 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
-import { decrypt } from '@/lib/encryption';
+import { decryptWithStatus } from '@/lib/encryption';
 import { trackApiCall } from '@/lib/utils/api-tracker';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 let _anthropic: Anthropic | null = null;
 function getAnthropic() {
@@ -56,10 +57,25 @@ export async function summarizeSignals(userId: string): Promise<number> {
   }
 
   // Check which weeks already have summaries
-  const { data: existingSummaries } = await supabase
+  const { data: existingSummaries, error: existingSummariesError } = await supabase
     .from('signal_summaries')
     .select('week_start')
     .eq('user_id', userId);
+
+  if (existingSummariesError) {
+    logStructuredEvent({
+      event: 'summary_lookup_failed',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'summary_lookup_failed',
+      details: {
+        scope: 'summarizer',
+        error: existingSummariesError.message,
+      },
+    });
+    return 0;
+  }
 
   const summarizedWeeks = new Set(
     (existingSummaries ?? []).map((s: any) => s.week_start)
@@ -67,6 +83,8 @@ export async function summarizeSignals(userId: string): Promise<number> {
 
   // Bucket signals by week (Monday-Sunday)
   const buckets = new Map<string, WeekBucket>();
+
+  let skippedDecryptRows = 0;
 
   for (const signal of signals) {
     const date = new Date(signal.occurred_at ?? signal.created_at);
@@ -90,12 +108,30 @@ export async function summarizeSignals(userId: string): Promise<number> {
       });
     }
 
-    const decrypted = decrypt(signal.content ?? '');
+    const decrypted = decryptWithStatus(signal.content ?? '');
+    if (decrypted.usedFallback) {
+      skippedDecryptRows++;
+      continue;
+    }
     buckets.get(weekKey)!.signals.push({
       source: signal.source ?? 'unknown',
-      content: decrypted.slice(0, 500), // Trim for token efficiency
+      content: decrypted.plaintext.slice(0, 500), // Trim for token efficiency
       author: signal.author ?? null,
       occurred_at: signal.occurred_at ?? signal.created_at,
+    });
+  }
+
+  if (skippedDecryptRows > 0) {
+    logStructuredEvent({
+      event: 'signal_skip',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'decrypt_skip',
+      details: {
+        scope: 'summarizer',
+        skipped_rows: skippedDecryptRows,
+      },
     });
   }
 
@@ -125,15 +161,49 @@ export async function summarizeSignals(userId: string): Promise<number> {
             { onConflict: 'user_id,week_start' }
           );
 
-        if (!insertError) created++;
-        else console.error(`[summarizer] insert failed for week ${bucket.weekStart}:`, insertError.message);
+        if (!insertError) {
+          created++;
+        } else {
+          logStructuredEvent({
+            event: 'summary_persist_failed',
+            level: 'warn',
+            userId,
+            artifactType: null,
+            generationStatus: 'summary_persist_failed',
+            details: {
+              scope: 'summarizer',
+              week_start: bucket.weekStart,
+              error: insertError.message,
+            },
+          });
+        }
       }
     } catch (err: any) {
-      console.error(`[summarizer] failed to summarize week ${bucket.weekStart}:`, err.message);
+      logStructuredEvent({
+        event: 'summary_generation_failed',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'summary_generation_failed',
+        details: {
+          scope: 'summarizer',
+          week_start: bucket.weekStart,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      });
     }
   }
 
-  console.log(`[summarizer] created ${created} weekly summaries for user ${userId.slice(0, 8)}`);
+  logStructuredEvent({
+    event: 'summary_complete',
+    userId,
+    artifactType: null,
+    generationStatus: 'summary_complete',
+    details: {
+      scope: 'summarizer',
+      summaries_created: created,
+    },
+  });
   return created;
 }
 
@@ -198,7 +268,17 @@ Output JSON:
       tone: parsed.tone ?? 'neutral',
     };
   } catch (err: any) {
-    console.error(`[summarizer] Haiku call failed:`, err.message);
+    logStructuredEvent({
+      event: 'summary_model_failed',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'summary_model_failed',
+      details: {
+        scope: 'summarizer',
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
     // Fallback: deterministic summary without LLM
     return buildFallbackSummary(bucket);
   }

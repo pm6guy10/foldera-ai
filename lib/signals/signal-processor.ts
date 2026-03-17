@@ -121,8 +121,13 @@ export async function processUnextractedSignals(userId: string): Promise<Process
   };
 
   // Check daily spend cap before any API calls
-  if (await isOverDailyLimit()) {
-    console.log('[signal-processor] Daily spend cap reached, skipping');
+  try {
+    if (await isOverDailyLimit(userId)) {
+      console.log('[signal-processor] Daily spend cap reached, skipping');
+      return result;
+    }
+  } catch (err: unknown) {
+    result.errors.push(`spend_cap: ${err instanceof Error ? err.message : String(err)}`);
     return result;
   }
 

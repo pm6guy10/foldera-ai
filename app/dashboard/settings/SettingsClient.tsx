@@ -453,39 +453,3 @@ function MicrosoftSourceCard({ integration, onConnect }: { integration: any; onC
   );
 }
 
-function ConnectorCard({ name, description, icon, isConnected, onConnect }: any) {
-  return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-colors">
-      <div className="flex items-start justify-between mb-5">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center text-xl">{icon}</div>
-          <div>
-            <h3 className="font-semibold text-zinc-50">{name}</h3>
-            <p className="text-zinc-500 text-sm">{description}</p>
-          </div>
-        </div>
-        {isConnected ? (
-          <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-500/20">
-            <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-            Connected
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 bg-zinc-800 text-zinc-500 px-2.5 py-1 rounded-full text-xs font-medium border border-zinc-700">
-            <div className="w-1.5 h-1.5 bg-zinc-600 rounded-full" />
-            Not connected
-          </div>
-        )}
-      </div>
-
-      {isConnected ? (
-        <button onClick={onConnect} className="w-full py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors">
-          Reconnect
-        </button>
-      ) : (
-        <button onClick={onConnect} className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors">
-          Connect
-        </button>
-      )}
-    </div>
-  );
-}

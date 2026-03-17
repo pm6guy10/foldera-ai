@@ -4,9 +4,9 @@
  * Key: ENCRYPTION_KEY env var — 32-byte key, base64-encoded.
  * Wire format: base64( IV[12] || AuthTag[16] || Ciphertext[n] )
  *
- * decrypt() falls back to returning the raw value when decryption fails so that
- * rows written before this migration was deployed continue to work without a
- * data migration.
+ * decryptWithStatus() exposes whether decryption had to fall back to the raw
+ * value so callers can skip malformed or legacy rows instead of treating the
+ * fallback as safe plaintext.
  */
 
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
@@ -14,6 +14,11 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 const ALGORITHM  = 'aes-256-gcm';
 const IV_BYTES   = 12;   // 96-bit IV — required for GCM
 const TAG_BYTES  = 16;   // 128-bit auth tag
+
+export interface DecryptResult {
+  plaintext: string;
+  usedFallback: boolean;
+}
 
 function getKey(): Buffer {
   const raw = process.env.ENCRYPTION_KEY;
@@ -43,12 +48,18 @@ export function encrypt(plaintext: string): string {
  * Falls back to returning the raw value for pre-encryption legacy rows.
  */
 export function decrypt(ciphertext: string): string {
+  return decryptWithStatus(ciphertext).plaintext;
+}
+
+export function decryptWithStatus(ciphertext: string): DecryptResult {
   try {
     const key = getKey();
     const buf = Buffer.from(ciphertext, 'base64');
 
     // Too short to be a valid encrypted value — legacy plaintext row
-    if (buf.length < IV_BYTES + TAG_BYTES + 1) return ciphertext;
+    if (buf.length < IV_BYTES + TAG_BYTES + 1) {
+      return { plaintext: ciphertext, usedFallback: true };
+    }
 
     const iv        = buf.subarray(0, IV_BYTES);
     const tag       = buf.subarray(IV_BYTES, IV_BYTES + TAG_BYTES);
@@ -57,9 +68,12 @@ export function decrypt(ciphertext: string): string {
     const decipher = createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(tag);
 
-    return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+    return {
+      plaintext: Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8'),
+      usedFallback: false,
+    };
   } catch {
     // Decryption failed — return raw value (pre-encryption legacy row)
-    return ciphertext;
+    return { plaintext: ciphertext, usedFallback: true };
   }
 }

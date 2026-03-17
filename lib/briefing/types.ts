@@ -83,6 +83,7 @@ export interface WaitRationaleArtifact {
   context: string;
   evidence: string;
   tripwires?: string[];
+  check_date?: string;
 }
 
 export type ConvictionArtifact =

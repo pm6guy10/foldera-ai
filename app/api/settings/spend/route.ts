@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { getSpendSummary } from '@/lib/utils/api-tracker';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,10 +19,19 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const summary = await getSpendSummary();
+    const summary = await getSpendSummary(session.user.id);
     return NextResponse.json(summary);
   } catch (err) {
-    console.error('[settings/spend] failed:', err);
-    return NextResponse.json({ todayUSD: 0, monthUSD: 0, dailyCapUSD: 1.50, capPct: 0 });
+    logStructuredEvent({
+      event: 'settings_spend_failed',
+      level: 'error',
+      generationStatus: 'spend_summary_failed',
+      artifactType: null,
+      details: {
+        scope: 'settings/spend',
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return NextResponse.json({ error: 'Failed to load spend summary' }, { status: 500 });
   }
 }

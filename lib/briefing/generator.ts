@@ -1,552 +1,748 @@
-/**
- * Conviction Engine — the brain.
- *
- * Flow (v2 — scorer-first):
- *   1. scorer.ts ranks all open loops by stakes * urgency * tractability
- *   2. Winning loop + its context passed to LLM
- *   3. LLM drafts ONE artifact for that specific situation — it does NOT choose what to work on
- *   4. Bayesian confidence from tkg_pattern_metrics
- *
- * Data sources: tkg_signals, tkg_commitments, tkg_entities, tkg_goals, tkg_actions (feedback)
- * AI model:     directive = claude-sonnet-4-20250514
- * Output:       ConvictionDirective (one directive + embedded artifact)
- *
- * Also exports generateBriefing() for backwards compat with /api/briefing/latest.
- */
-
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
-import type { ChiefOfStaffBriefing, ConvictionDirective, ActionType, EvidenceItem } from './types';
-import { trackApiCall, isOverDailyLimit } from '@/lib/utils/api-tracker';
-import { scoreOpenLoops } from './scorer';
-import type { ScorerResult } from './scorer';
-import { buildContextBlock, buildContextGreeting } from './context-builder';
+import type { ActionType, ChiefOfStaffBriefing, ConvictionDirective, EvidenceItem } from './types';
+import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { decryptWithStatus } from '@/lib/encryption';
 
-// ---------------------------------------------------------------------------
-// Clients (lazy)
-// ---------------------------------------------------------------------------
+const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
+const RETRIEVAL_MODEL = 'claude-haiku-4-5-20251001';
+const GENERATION_MODEL = 'claude-sonnet-4-20250514';
+const APPROVAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
+const SIGNAL_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
+const SYSTEM_PROMPT = `You are the user's chief of staff. You have their
+goals, behavioral patterns, commitments, approval
+history, skip history, and current signals.
 
-// ---------------------------------------------------------------------------
-// Focused system prompt — LLM writes, does not choose
-// ---------------------------------------------------------------------------
+Find the ONE thing they should do today that they
+haven't thought of yet. Not summarize. Not remind.
+Find.
 
-const FOCUSED_SYSTEM = `You are drafting ONE artifact for ONE specific situation. The situation has already been selected by a scoring algorithm. Your job is to write the artifact using the real names, dates, and details from the data below.
+Rules:
+- Never repeat a directive approved in last 7 days.
+- Never regenerate a skipped directive unless new
+  evidence arrived since the skip.
+- Never produce a directive the user obviously knows.
+- Every directive ships with a finished artifact.
+  Three types only:
+  1. drafted_email: { recipient, subject, body }
+  2. decision_frame: { option_a, option_b,
+     tradeoff_a, tradeoff_b }
+  3. wait_rationale: { reason, trigger_condition,
+     check_date }
+- If artifact is empty or malformed, directive
+  does not persist.
+- Confidence stays internal. Never surface scores.
+- When best move is wait, emit wait_rationale with
+  a specific trigger condition. Not patience. A
+  tripwire.
+- When one domain is quiet, surface a different
+  domain. Never go dark.
+- Test before emitting: would a $200/hr EA be
+  embarrassed? If yes, go deeper.
 
-Do not choose what to work on. That decision is already made.
-
-{CONTEXT_BLOCK}
-
-DO NOT reference: Kapp Advisory, consulting work, case studies, Bloomreach, Paty, Kayna,
-Justworks, visual disconnect methodology, category lockout, fractional work, e-commerce,
-storytelling engine. These are from a past era and no longer relevant.
-DO NOT use placeholder text. If you lack specific data, state what data is needed or omit.
-DO NOT present option menus. Generate one directive with one clear action or justified inaction.
-Locked decisions: one-page resume, no methodology name-dropping, Nicole Vreeland is never a reference.
-
-RULES:
-- Use REAL names, email addresses, dates, and details from the SIGNAL DATA below. They are there.
-- NEVER use placeholders: [Name], [email@example.com], [Company], [Date], TBD, $____. If you cannot find a specific value in the data, use a decision artifact instead.
-- The one-tap test: Could the user approve this right now with zero editing? If no, rewrite.
-- For drafted_email: "to" must be a real email address from the signals. No email visible? Use decision artifact instead.
-- For document: every value must be filled from the data. Any blank = use decision artifact instead.
-- For decision: pre-fill every option with specifics from the signal data. "Leave in 60 days targeting $X+" not "Option A: leave."
-- For wait_rationale: cite a SPECIFIC prior outcome with date and result.
-
-LONG-TERM MEMORY (weekly summaries of past signals — use for context, patterns, and relationship history):
-{MEMORY_SECTION}
-
-ALREADY APPROVED (do not repeat):
-{APPROVED_SECTION}
-
-SKIPPED (do not regenerate similar):
-{SKIPPED_SECTION}
-
-Output JSON only:
+Output strict JSON:
 {
-  "directive": "one sentence imperative naming a specific person or commitment",
-  "artifact_type": "drafted_email | document | decision | calendar_event | research_brief | wait_rationale | growth_reply",
-  "artifact": <the finished work product as JSON>,
-  "evidence": "one sentence citing specific data from below",
-  "domain": "career | family | financial | health | project | growth",
-  "why_now": "one sentence why today"
+  "directive": "imperative sentence",
+  "artifact_type": "drafted_email | decision_frame | wait_rationale",
+  "artifact": {},
+  "evidence": "one sentence citing specific data",
+  "domain": "career | family | financial | health | project",
+  "why_now": "one sentence"
 }`;
 
-// ---------------------------------------------------------------------------
-// Map artifact_type -> action_type for backwards compat
-// ---------------------------------------------------------------------------
+type GeneratorArtifactType = 'drafted_email' | 'decision_frame' | 'wait_rationale';
+type GeneratorDomain = 'career' | 'family' | 'financial' | 'health' | 'project';
 
-const ARTIFACT_TYPE_TO_ACTION_TYPE: Record<string, ActionType> = {
-  drafted_email:   'send_message',
-  growth_reply:    'send_message',
-  document:        'write_document',
-  decision:        'make_decision',
-  calendar_event:  'schedule',
-  research_brief:  'research',
-  wait_rationale:  'do_nothing',
-};
-
-// ---------------------------------------------------------------------------
-// Action type labels for prompt
-// ---------------------------------------------------------------------------
-
-const ACTION_TYPE_HINTS: Record<string, string> = {
-  send_message:   'drafted_email',
-  write_document: 'document',
-  make_decision:  'decision',
-  schedule:       'calendar_event',
-  research:       'research_brief',
-  do_nothing:     'wait_rationale',
-};
-
-// ---------------------------------------------------------------------------
-// Growth domain detection (mirrors scorer.ts inferDomain for growth)
-// ---------------------------------------------------------------------------
-
-function inferDomainFromContent(text: string): string {
-  const lower = text.toLowerCase();
-  if (/\bgrowth.signal\b|growth_reddit|growth_twitter|growth_hackernews|acquire.*user|paying.*user|customer.*base|growth.*scanner|convert.*visitor/.test(lower)) return 'growth';
-  return '';
+interface GeneratedDirectivePayload {
+  directive: string;
+  artifact_type: GeneratorArtifactType;
+  artifact: Record<string, unknown>;
+  evidence: string;
+  domain: GeneratorDomain;
+  why_now: string;
 }
 
-// ---------------------------------------------------------------------------
-// Main export — generateDirective
-// ---------------------------------------------------------------------------
-
-export async function generateDirective(userId: string): Promise<ConvictionDirective> {
-  // Check daily spend cap
-  const overLimit = await isOverDailyLimit();
-  if (overLimit) {
-    console.warn('[generateDirective] Daily spend cap reached');
-    return {
-      directive: 'Daily AI budget reached. Foldera will resume tomorrow.',
-      action_type: 'do_nothing',
-      confidence: 0,
-      reason: 'Daily spend cap of $1.50 reached.',
-      evidence: [],
-    };
-  }
-
-  // -----------------------------------------------------------------------
-  // 1. SCORER PICKS
-  // -----------------------------------------------------------------------
-
-  const scorerResult = await scoreOpenLoops(userId);
-
-  if (!scorerResult || scorerResult.winner.score < 0.5) {
-    const winner = scorerResult?.winner;
-    const reason = winner
-      ? `Highest scorer: "${winner.title.slice(0, 80)}" at ${winner.score.toFixed(2)} (${winner.breakdown.stakes}S * ${winner.breakdown.urgency.toFixed(2)}U * ${winner.breakdown.tractability.toFixed(2)}T * ${winner.breakdown.freshness?.toFixed(2) ?? '1.00'}F) — below 0.5 threshold`
-      : 'No open loops found in the graph';
-    console.log(`[generateDirective] do_nothing — ${reason}`);
-    return {
-      directive: winner
-        ? `No urgent open loops today. Highest candidate: "${winner.title.slice(0, 60)}" scored ${winner.score.toFixed(1)}/5.0, not high enough to act.`
-        : 'Your graph is empty. Add conversation or email data to get personalized actions.',
-      action_type: 'do_nothing',
-      confidence: 0,
-      reason,
-      evidence: [],
-    };
-  }
-
-  const { winner } = scorerResult;
-
-  console.log(`[generateDirective] Winner: "${winner.title.slice(0, 80)}" score=${winner.score.toFixed(2)} type=${winner.suggestedActionType}`);
-
-  // -----------------------------------------------------------------------
-  // 2. QUERY APPROVED/SKIPPED FOR DEDUP
-  // -----------------------------------------------------------------------
-
-  const supabase = createServerClient();
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  const [approvedRecentRes, skippedRecentRes, signalSummariesRes] = await Promise.all([
-    supabase
-      .from('tkg_actions')
-      .select('directive_text, action_type')
-      .eq('user_id', userId)
-      .eq('status', 'executed')
-      .gte('generated_at', sevenDaysAgo)
-      .order('generated_at', { ascending: false })
-      .limit(10),
-    supabase
-      .from('tkg_actions')
-      .select('directive_text, action_type, skip_reason')
-      .eq('user_id', userId)
-      .in('status', ['skipped', 'draft_rejected', 'rejected'])
-      .gte('generated_at', sevenDaysAgo)
-      .order('generated_at', { ascending: false })
-      .limit(10),
-    supabase
-      .from('signal_summaries')
-      .select('week_start, signal_count, summary, emotional_tone, themes, people')
-      .eq('user_id', userId)
-      .order('week_start', { ascending: false })
-      .limit(12),
-  ]);
-
-  const approvedSection = (approvedRecentRes.data ?? []).length > 0
-    ? (approvedRecentRes.data ?? []).map((a: any) => `  - [${a.action_type}] ${a.directive_text.slice(0, 120)}`).join('\n')
-    : '  None.';
-
-  const skippedSection = (skippedRecentRes.data ?? []).length > 0
-    ? (skippedRecentRes.data ?? []).map((a: any) => {
-        const reason = a.skip_reason ? ` (${a.skip_reason})` : '';
-        return `  - [${a.action_type}]${reason} ${a.directive_text.slice(0, 120)}`;
-      }).join('\n')
-    : '  None.';
-
-  const memorySection = (signalSummariesRes.data ?? []).length > 0
-    ? (signalSummariesRes.data ?? []).map((s: any) => {
-        const themes = Array.isArray(s.themes) && s.themes.length > 0 ? ` Themes: ${s.themes.join(', ')}.` : '';
-        const people = Array.isArray(s.people) && s.people.length > 0 ? ` People: ${s.people.join(', ')}.` : '';
-        return `  - ${s.summary}${themes}${people}`;
-      }).join('\n')
-    : '  No long-term memory yet.';
-
-  // -----------------------------------------------------------------------
-  // 3. BUILD FOCUSED PROMPT (with dynamic context)
-  // -----------------------------------------------------------------------
-
-  const [contextBlock, contextGreeting] = await Promise.all([
-    buildContextBlock(userId),
-    buildContextGreeting(userId),
-  ]);
-
-  const systemPrompt = FOCUSED_SYSTEM
-    .replace('{CONTEXT_BLOCK}', `${contextBlock}\n* Dashboard greeting: ${contextGreeting}`)
-    .replace('{MEMORY_SECTION}', memorySection)
-    .replace('{APPROVED_SECTION}', approvedSection)
-    .replace('{SKIPPED_SECTION}', skippedSection);
-
-  const suggestedArtifact = ACTION_TYPE_HINTS[winner.suggestedActionType] ?? 'decision';
-
-  const now = new Date();
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const todayStr = `${dayNames[now.getDay()]} ${monthNames[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
-
-  // Build relationship context section if available
-  const relationshipSection = (winner as any).relationshipContext
-    ? `\nRELATIONSHIP CONTEXT:\n${(winner as any).relationshipContext}\n`
-    : '';
-
-  // Build emergent pattern section if this is an emergent winner
-  const isAntiPattern = winner.id.startsWith('antipattern-');
-  const isDivergence = winner.id.startsWith('divergence-');
-  const emergentSection = isAntiPattern
-    ? `\nANTI-PATTERN INTERCEPT — Normal task generation has been SUSPENDED. The scoring algorithm detected a behavioral anti-pattern that must be addressed before any more tasks are served. This is not a suggestion; it is a system override.
-
-Your artifact MUST:
-1. Name the anti-pattern directly and plainly. No hedging.
-2. Present the specific numbers from the data (signal counts, approval rates, ratios).
-3. End with a single forced-choice decision. Not "consider" — DECIDE.
-4. The tone is direct, not cruel. A chief of staff who respects the principal enough to say the uncomfortable thing.
-
-Do NOT generate a regular task. The user does not need another task. They need to see what they are actually doing.\n`
-    : isDivergence
-    ? `\nPREFERENCE DIVERGENCE DETECTED — The user's stated goals and their actual behavior have diverged significantly. This is a meta-observation, not a task.
-
-Your artifact MUST:
-1. State what the user SAID their priority is (with their exact goal text and priority number).
-2. State what their BEHAVIOR shows (with signal counts and specific examples).
-3. Frame this as a decision artifact with two options: "Change the goal to match reality" vs "Recommit to the stated goal and redirect effort."
-4. Be specific about what redirecting would look like (concrete next actions).
-5. Never judge — just hold up the mirror with data.\n`
-    : winner.type === 'emergent'
-    ? `\nEMERGENT PATTERN DETECTED — this is a meta-observation about the user's behavior, not a regular open loop. Draft an insight artifact that surfaces this pattern with specific data. The user should feel seen, not judged.\n`
-    : '';
-
-  // Build growth artifact section if this is a growth signal
-  const isGrowthSignal = winner.matchedGoal?.category === 'growth' ||
-    inferDomainFromContent(winner.content) === 'growth';
-  const growthSection = isGrowthSignal
-    ? `\nGROWTH ACTION — This signal is a user acquisition opportunity. The conviction engine scored this growth action higher than any personal action today. Your artifact is a COMPLETE REPLY ready to paste.
-
-RULES (from GROWTH.md — non-negotiable):
-1. Reference something SPECIFIC from their post. Quote or paraphrase what they said.
-2. Lead with empathy, not product. Make them feel seen first.
-3. NO PITCH in the first message. Zero mention of Foldera by name.
-4. The CTA is a question or shared experience — not a link, not a demo request.
-5. Maximum 3 sentences. Sound like a human, not a startup founder.
-6. For Reddit: write as a Reddit comment reply.
-7. For Twitter/X: write as a reply tweet (under 280 chars).
-8. For Hacker News: write as an HN comment.
-
-Use artifact_type "growth_reply" with this JSON shape:
-{
-  "type": "growth_reply",
-  "platform": "reddit | twitter | hackernews",
-  "post_url": "<URL from the signal data>",
-  "post_author": "<author from the signal data>",
-  "reply_text": "<the complete 2-3 sentence reply ready to paste>",
-  "angle": "<one sentence: what empathy angle you used>",
-  "ref_tag": "<platform>-<post_id> (for conversion tracking)"
+interface ApprovedActionRow {
+  directive_text: string | null;
+  action_type: string | null;
+  generated_at: string;
 }
 
-Brandon will copy-paste this reply. It must be perfect on first read.\n`
-    : '';
+interface SkippedActionRow extends ApprovedActionRow {
+  skip_reason: string | null;
+}
 
-  // Build compound directive section if this is a cross-loop merge
-  const compoundSection = winner.type === 'compound' && winner.connectionType
-    ? `\nCROSS-LOOP COMPOUND DIRECTIVE — The scoring algorithm found a CONNECTION between two separate loops. Connection type: ${winner.connectionType}. Reason: ${winner.connectionReason ?? 'linked loops'}.
+interface GoalRow {
+  goal_text: string;
+  goal_category: string;
+  priority: number;
+}
 
-Your artifact MUST address BOTH loops in a single action. Examples:
-- same_person: "Finish the proposal today so you can send it to Sarah tomorrow as promised."
-- temporal_dependency: "Do X first because Y depends on it being done."
-- resource_conflict: "Prioritize X over Y because [reason from data]."
+interface PatternRow {
+  name: string;
+  description: string;
+  domain: string;
+  detectionCount: number;
+}
 
-The user should see ONE directive that handles BOTH situations. This is the output no other product can generate because it requires the full identity graph to see the connection.\n`
-    : '';
+interface FreshSignalRow {
+  id: string;
+  source: string | null;
+  occurred_at: string;
+  content: string;
+}
 
-  const userPrompt = `TODAY: ${todayStr}
+interface ContextBundle {
+  alreadyDone: ApprovedActionRow[];
+  skippedRecently: SkippedActionRow[];
+  activeGoals: GoalRow[];
+  confirmedPatterns: PatternRow[];
+  freshSignals: FreshSignalRow[];
+}
 
-THE SITUATION (selected by scoring algorithm — score ${winner.score.toFixed(2)}/5.0):
-Type: ${winner.type}
-Title: ${winner.title}
-Full context: ${winner.content}
-${winner.matchedGoal ? `\nMATCHED GOAL (priority ${winner.matchedGoal.priority}/5): ${winner.matchedGoal.text}` : ''}
+interface ContextSections {
+  ALREADY_DONE: string[];
+  SKIPPED_RECENTLY: string[];
+  ACTIVE_GOALS: string[];
+  CONFIRMED_PATTERNS: string[];
+  FRESH_SIGNALS: string[];
+}
 
-SCORE BREAKDOWN:
-- Stakes: ${winner.breakdown.stakes} (${winner.matchedGoal ? `matched goal priority ${winner.matchedGoal.priority}` : 'no goal match, default 1.0'})
-- Urgency: ${winner.breakdown.urgency.toFixed(2)}
-- Tractability: ${winner.breakdown.tractability.toFixed(2)}
-- Freshness: ${winner.breakdown.freshness?.toFixed(2) ?? '1.00'} (1.0 = never surfaced, lower = recently generated)
-${relationshipSection}${emergentSection}${compoundSection}${growthSection}SUGGESTED ARTIFACT TYPE: ${suggestedArtifact}
-(You may override if the data supports a different type, but justify.)
+let anthropicClient: Anthropic | null = null;
 
-RELATED SIGNAL DATA (${winner.relatedSignals.length} signals with keyword overlap):
-${winner.relatedSignals.length > 0 ? winner.relatedSignals.map((s, i) => `--- Signal ${i + 1} ---\n${s.slice(0, 600)}`).join('\n\n') : 'No related signals found. Use the situation context above.'}
+function getAnthropic(): Anthropic {
+  if (!anthropicClient) {
+    anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  }
+  return anthropicClient;
+}
 
-Draft the artifact now. Use real names and details from the data above.`;
+function emptyDirective(reason: string): ConvictionDirective {
+  return {
+    directive: GENERATION_FAILED_SENTINEL,
+    action_type: 'do_nothing',
+    confidence: 0,
+    reason,
+    evidence: [],
+  };
+}
 
-  // -----------------------------------------------------------------------
-  // 4. CALL CLAUDE
-  // -----------------------------------------------------------------------
+function isSelfReferentialSignal(content: string): boolean {
+  return content.startsWith('[Foldera Directive') || content.startsWith('[Foldera ·');
+}
 
-  const MODEL = 'claude-sonnet-4-20250514';
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
-  type ParsedDirective = {
-    directive: string;
-    artifact_type: string;
-    artifact?: any;
-    evidence: string;
-    domain?: string;
-    why_now?: string;
-    action_type?: ActionType;
-    reason?: string;
+function normalizeText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function similarityScore(a: string, b: string): number {
+  const normalizedA = normalizeText(a);
+  const normalizedB = normalizeText(b);
+  if (!normalizedA || !normalizedB) return 0;
+  if (normalizedA === normalizedB) return 1;
+  if (normalizedA.includes(normalizedB) || normalizedB.includes(normalizedA)) return 0.9;
+
+  const tokensA = new Set(normalizedA.split(' ').filter((token) => token.length >= 4));
+  const tokensB = new Set(normalizedB.split(' ').filter((token) => token.length >= 4));
+  if (tokensA.size === 0 || tokensB.size === 0) return 0;
+
+  let intersection = 0;
+  for (const token of tokensA) {
+    if (tokensB.has(token)) intersection++;
+  }
+  const union = new Set([...tokensA, ...tokensB]).size;
+  return union > 0 ? intersection / union : 0;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function normalizeArtifactType(value: unknown): GeneratorArtifactType | null {
+  if (value === 'drafted_email' || value === 'decision_frame' || value === 'wait_rationale') {
+    return value;
+  }
+  return null;
+}
+
+function artifactTypeToActionType(artifactType: GeneratorArtifactType): ActionType {
+  switch (artifactType) {
+    case 'drafted_email':
+      return 'send_message';
+    case 'decision_frame':
+      return 'make_decision';
+    case 'wait_rationale':
+    default:
+      return 'do_nothing';
+  }
+}
+
+function actionTypeToArtifactType(actionType: ActionType): GeneratorArtifactType {
+  switch (actionType) {
+    case 'send_message':
+      return 'drafted_email';
+    case 'make_decision':
+      return 'decision_frame';
+    case 'do_nothing':
+    default:
+      return 'wait_rationale';
+  }
+}
+
+function formatDate(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+function extractConfirmedPatterns(patternsValue: unknown): PatternRow[] {
+  if (!patternsValue || typeof patternsValue !== 'object' || Array.isArray(patternsValue)) {
+    return [];
+  }
+
+  return Object.values(patternsValue as Record<string, unknown>)
+    .map((pattern): PatternRow | null => {
+      if (!pattern || typeof pattern !== 'object') return null;
+      const record = pattern as Record<string, unknown>;
+      const detectionCount = Number(record.detection_count ?? record.activation_count ?? 0);
+      if (Number.isNaN(detectionCount) || detectionCount < 3) return null;
+
+      return {
+        name: typeof record.name === 'string' ? record.name : 'Unnamed pattern',
+        description: typeof record.description === 'string' ? record.description : 'No description',
+        domain: typeof record.domain === 'string' ? record.domain : 'project',
+        detectionCount,
+      };
+    })
+    .filter((pattern): pattern is PatternRow => pattern !== null)
+    .sort((left, right) => right.detectionCount - left.detectionCount);
+}
+
+function deterministicSections(context: ContextBundle): ContextSections {
+  return {
+    ALREADY_DONE: context.alreadyDone.map((row) => `[${formatDate(row.generated_at)}] [${row.action_type ?? 'unknown'}] ${row.directive_text ?? ''}`),
+    SKIPPED_RECENTLY: context.skippedRecently.map((row) => {
+      const suffix = row.skip_reason ? ` (skip reason: ${row.skip_reason})` : '';
+      return `[${formatDate(row.generated_at)}] ${row.directive_text ?? ''}${suffix}`;
+    }),
+    ACTIVE_GOALS: context.activeGoals.map((row) => `[${row.goal_category}] priority ${row.priority}/5: ${row.goal_text}`),
+    CONFIRMED_PATTERNS: context.confirmedPatterns.map((row) => `[${row.domain}] ${row.name} (${row.detectionCount}x): ${row.description}`),
+    FRESH_SIGNALS: context.freshSignals.map((row) => `[${formatDate(row.occurred_at)}] (${row.source ?? 'unknown'}) ${row.content.slice(0, 260)}`),
+  };
+}
+
+async function assembleContextSections(userId: string, context: ContextBundle): Promise<ContextSections> {
+  const fallback = deterministicSections(context);
+  const response = await getAnthropic().messages.create({
+    model: RETRIEVAL_MODEL,
+    max_tokens: 1200,
+    temperature: 0,
+    system: `You assemble retrieval context for a chief-of-staff generator.
+Return strict JSON with keys ALREADY_DONE, SKIPPED_RECENTLY, ACTIVE_GOALS,
+CONFIRMED_PATTERNS, and FRESH_SIGNALS. Each value must be an array of short
+factual strings. Preserve dates, names, and concrete evidence. Do not invent.
+Do not include scores.`,
+    messages: [
+      {
+        role: 'user',
+        content: JSON.stringify(
+          {
+            ALREADY_DONE: context.alreadyDone,
+            SKIPPED_RECENTLY: context.skippedRecently,
+            ACTIVE_GOALS: context.activeGoals,
+            CONFIRMED_PATTERNS: context.confirmedPatterns,
+            FRESH_SIGNALS: context.freshSignals,
+          },
+          null,
+          2,
+        ),
+      },
+    ],
+  });
+
+  await trackApiCall({
+    userId,
+    model: RETRIEVAL_MODEL,
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+    callType: 'directive_context',
+  });
+
+  const raw = response.content[0]?.type === 'text' ? response.content[0].text : '';
+  const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
+  const parsed = JSON.parse(cleaned) as Partial<Record<keyof ContextSections, unknown>>;
+
+  return {
+    ALREADY_DONE: Array.isArray(parsed.ALREADY_DONE) ? parsed.ALREADY_DONE.filter(isNonEmptyString).map((item) => item.trim()) : fallback.ALREADY_DONE,
+    SKIPPED_RECENTLY: Array.isArray(parsed.SKIPPED_RECENTLY) ? parsed.SKIPPED_RECENTLY.filter(isNonEmptyString).map((item) => item.trim()) : fallback.SKIPPED_RECENTLY,
+    ACTIVE_GOALS: Array.isArray(parsed.ACTIVE_GOALS) ? parsed.ACTIVE_GOALS.filter(isNonEmptyString).map((item) => item.trim()) : fallback.ACTIVE_GOALS,
+    CONFIRMED_PATTERNS: Array.isArray(parsed.CONFIRMED_PATTERNS) ? parsed.CONFIRMED_PATTERNS.filter(isNonEmptyString).map((item) => item.trim()) : fallback.CONFIRMED_PATTERNS,
+    FRESH_SIGNALS: Array.isArray(parsed.FRESH_SIGNALS) ? parsed.FRESH_SIGNALS.filter(isNonEmptyString).map((item) => item.trim()) : fallback.FRESH_SIGNALS,
+  };
+}
+
+function buildGenerationPrompt(sections: ContextSections): string {
+  const section = (label: keyof ContextSections) => {
+    const items = sections[label];
+    if (items.length === 0) return `${label}:\n- None`;
+    return `${label}:\n${items.map((item) => `- ${item}`).join('\n')}`;
   };
 
-  function hasBlankPlaceholders(text: string): boolean {
-    return /\$_{2,}|_{4,}|\[.*?\]|TBD|\?{3,}|__\/__|\(\s*date\s*\)|\(\s*amount\s*\)/i.test(text);
+  return [
+    `TODAY: ${today()}`,
+    section('ALREADY_DONE'),
+    section('SKIPPED_RECENTLY'),
+    section('ACTIVE_GOALS'),
+    section('CONFIRMED_PATTERNS'),
+    section('FRESH_SIGNALS'),
+  ].join('\n\n');
+}
+
+function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | null {
+  const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
+  const parsed = JSON.parse(cleaned) as Partial<GeneratedDirectivePayload>;
+  const artifactType = normalizeArtifactType(parsed.artifact_type);
+  if (!artifactType) return null;
+
+  return {
+    directive: typeof parsed.directive === 'string' ? parsed.directive : '',
+    artifact_type: artifactType,
+    artifact: typeof parsed.artifact === 'object' && parsed.artifact !== null ? parsed.artifact as Record<string, unknown> : {},
+    evidence: typeof parsed.evidence === 'string' ? parsed.evidence : '',
+    domain: (parsed.domain === 'career' || parsed.domain === 'family' || parsed.domain === 'financial' || parsed.domain === 'health' || parsed.domain === 'project')
+      ? parsed.domain
+      : 'project',
+    why_now: typeof parsed.why_now === 'string' ? parsed.why_now : '',
+  };
+}
+
+function validateGeneratedPayload(
+  payload: GeneratedDirectivePayload | null,
+  context: ContextBundle,
+): string[] {
+  if (!payload) {
+    return ['Response was not valid JSON in the required schema.'];
   }
 
-  let parsed: ParsedDirective | null = null;
+  const issues: string[] = [];
+  if (!isNonEmptyString(payload.directive)) {
+    issues.push('directive is required');
+  }
+  if (!isNonEmptyString(payload.evidence)) {
+    issues.push('evidence is required');
+  }
+  if (!isNonEmptyString(payload.why_now)) {
+    issues.push('why_now is required');
+  }
+
+  switch (payload.artifact_type) {
+    case 'drafted_email':
+      if (!isNonEmptyString(payload.artifact.recipient)) issues.push('drafted_email requires recipient');
+      if (!isNonEmptyString(payload.artifact.subject)) issues.push('drafted_email requires subject');
+      if (!isNonEmptyString(payload.artifact.body)) issues.push('drafted_email requires body');
+      break;
+    case 'decision_frame':
+      if (!isNonEmptyString(payload.artifact.option_a)) issues.push('decision_frame requires option_a');
+      if (!isNonEmptyString(payload.artifact.option_b)) issues.push('decision_frame requires option_b');
+      break;
+    case 'wait_rationale':
+      if (!isNonEmptyString(payload.artifact.trigger_condition)) issues.push('wait_rationale requires trigger_condition');
+      break;
+  }
+
+  const duplicateApproved = context.alreadyDone.some((row) => {
+    if (!row.directive_text) return false;
+    return similarityScore(payload.directive, row.directive_text) >= 0.72;
+  });
+  if (duplicateApproved) {
+    issues.push('directive repeats something already done in the last 7 days');
+  }
+
+  const duplicateSkippedWithoutEvidence = context.skippedRecently.some((row) => {
+    if (!row.directive_text) return false;
+    if (similarityScore(payload.directive, row.directive_text) < 0.72) return false;
+    return !context.freshSignals.some((signal) => signal.occurred_at > row.generated_at);
+  });
+  if (duplicateSkippedWithoutEvidence) {
+    issues.push('directive repeats a recently skipped item without new evidence');
+  }
+
+  return issues;
+}
+
+async function computeInternalConfidence(
+  userId: string,
+  actionType: ActionType,
+  domain: GeneratorDomain,
+  context: ContextBundle,
+): Promise<number> {
+  const supabase = createServerClient();
+  const patternHash = `${actionType}:${domain}`;
+  let historyConfidence: number | null = null;
 
   try {
-    const response = await getAnthropic().messages.create({
-      model: MODEL,
-      max_tokens: 2000,
-      temperature: 0.3 as any,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    });
-
-    await trackApiCall({
-      userId,
-      model: MODEL,
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
-      callType: 'directive',
-    });
-
-    const raw = response.content[0].type === 'text' ? response.content[0].text : '';
-    const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
-    const result = JSON.parse(cleaned);
-    parsed = Array.isArray(result) ? result[0] ?? null : result;
-
-    // Retry if document has blank placeholders
-    if (
-      parsed &&
-      (parsed.artifact_type === 'document' || parsed.artifact_type === 'write_document') &&
-      parsed.artifact &&
-      hasBlankPlaceholders(JSON.stringify(parsed.artifact))
-    ) {
-      console.log('[generateDirective] Document has placeholders — retrying as decision');
-      const retryResponse = await getAnthropic().messages.create({
-        model: MODEL,
-        max_tokens: 2000,
-        temperature: 0.3 as any,
-        system: systemPrompt,
-        messages: [
-          { role: 'user', content: userPrompt },
-          { role: 'assistant', content: raw },
-          { role: 'user', content: 'Your document has blank placeholders. Use a "decision" artifact instead. Frame the choice with specifics from the data. Return JSON only.' },
-        ],
-      });
-
-      await trackApiCall({
-        userId,
-        model: MODEL,
-        inputTokens: retryResponse.usage.input_tokens,
-        outputTokens: retryResponse.usage.output_tokens,
-        callType: 'directive_retry',
-      });
-
-      try {
-        const retryRaw = retryResponse.content[0].type === 'text' ? retryResponse.content[0].text : '';
-        const retryResult = JSON.parse(retryRaw.replace(/```json\n?|\n?```/g, '').trim());
-        parsed = Array.isArray(retryResult) ? retryResult[0] ?? parsed : retryResult;
-      } catch {
-        // keep original
-      }
-    }
-  } catch (err) {
-    console.error('[generateDirective] Claude call/parse failed:', err);
-  }
-
-  if (!parsed) {
-    console.error('[generateDirective] Generation produced no output — returning null sentinel');
-    return {
-      directive: '__GENERATION_FAILED__',
-      action_type: 'do_nothing' as ActionType,
-      confidence: 0,
-      reason: 'Generation failed internally. This should never reach the user.',
-      evidence: [],
-    };
-  }
-
-  // -----------------------------------------------------------------------
-  // 4b. POST-GENERATION VALIDATION — stale context + placeholder scan
-  // -----------------------------------------------------------------------
-
-  const STALE_TERMS = /kapp\s*advisory|bloomreach|visual\s*disconnect|category\s*lockout|storytelling\s*engine|fractional\s*(cmo|cro|coo|work)|kayna|justworks|paty/i;
-  const PLACEHOLDER_RE = /\$\[.*?\]|\$\{.*?\}|\[AMOUNT\]|\[NAME\]|\[DATE\]|\[TODO\]|INSERT\s+\w+\s+HERE|\[email@|\[Company\]/i;
-
-  const fullJson = JSON.stringify(parsed);
-  const hasStale = STALE_TERMS.test(fullJson);
-  const hasPlaceholder = PLACEHOLDER_RE.test(fullJson);
-
-  if (hasStale || hasPlaceholder) {
-    const violations = [];
-    if (hasStale) violations.push('stale context references');
-    if (hasPlaceholder) violations.push('unfilled placeholders');
-    console.warn(`[generateDirective] Validation failed: ${violations.join(', ')} — falling back to safe do_nothing`);
-
-    parsed = {
-      directive: 'Hold the line today. No high-confidence action available with current-season data.',
-      artifact_type: 'wait_rationale',
-      artifact: {
-        type: 'wait_rationale',
-        context: 'The generation system detected stale or incomplete data in the output. Rather than serve an inaccurate directive, Foldera is waiting for cleaner signal data.',
-        evidence: `Validation caught: ${violations.join(', ')}. This is a guardrail, not a failure.`,
-        tripwires: ['New signal data ingested', 'MAS3 decision received', 'Next generation cycle'],
-      },
-      evidence: `Blocked by validation: ${violations.join(', ')}`,
-      domain: 'career',
-      why_now: 'Stale data guardrail activated — next cycle will use cleaner inputs.',
-    };
-  }
-
-  // -----------------------------------------------------------------------
-  // 5. POST-PROCESS
-  // -----------------------------------------------------------------------
-
-  const actionType: ActionType =
-    parsed.action_type ??
-    ARTIFACT_TYPE_TO_ACTION_TYPE[parsed.artifact_type] ??
-    'research';
-
-  // Evidence — clean text only, no score breakdowns
-  const evidenceStr = typeof parsed.evidence === 'string' ? parsed.evidence : '';
-  const evidenceItems: EvidenceItem[] = evidenceStr
-    ? [{ type: 'signal', description: evidenceStr, date: null as any }]
-    : [];
-
-  // Bayesian confidence
-  const bDomain = parsed.domain ?? winner.matchedGoal?.category ?? 'general';
-  const patternHash = `${actionType}:${bDomain}`;
-  let mathConfidence = 50;
-
-  try {
-    const { data: pm } = await supabase
+    const { data, error } = await supabase
       .from('tkg_pattern_metrics')
       .select('total_activations, successful_outcomes, failed_outcomes')
       .eq('user_id', userId)
       .eq('pattern_hash', patternHash)
       .maybeSingle();
 
-    const successes = pm?.successful_outcomes ?? 0;
-    const total = pm?.total_activations ?? 0;
-    mathConfidence = Math.round(((successes + 1) / (total + 2)) * 100);
+    if (error) throw error;
 
-    await supabase.from('tkg_pattern_metrics').upsert(
-      {
-        user_id: userId,
-        pattern_hash: patternHash,
-        category: actionType,
-        domain: bDomain,
-        total_activations: (pm?.total_activations ?? 0) + 1,
-        successful_outcomes: pm?.successful_outcomes ?? 0,
-        failed_outcomes: pm?.failed_outcomes ?? 0,
-        updated_at: new Date().toISOString(),
+    if (data) {
+      const successes = data.successful_outcomes ?? 0;
+      const failures = data.failed_outcomes ?? 0;
+      historyConfidence = Math.round(((successes + 1) / (successes + failures + 2)) * 100);
+
+      const { error: upsertError } = await supabase.from('tkg_pattern_metrics').upsert(
+        {
+          user_id: userId,
+          pattern_hash: patternHash,
+          category: actionType,
+          domain,
+          total_activations: (data.total_activations ?? 0) + 1,
+          successful_outcomes: successes,
+          failed_outcomes: failures,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,pattern_hash' },
+      );
+
+      if (upsertError) throw upsertError;
+    } else {
+      const { error: upsertError } = await supabase.from('tkg_pattern_metrics').upsert(
+        {
+          user_id: userId,
+          pattern_hash: patternHash,
+          category: actionType,
+          domain,
+          total_activations: 1,
+          successful_outcomes: 0,
+          failed_outcomes: 0,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,pattern_hash' },
+      );
+
+      if (upsertError) throw upsertError;
+    }
+  } catch (error) {
+    logStructuredEvent({
+      event: 'pattern_metric_update_failed',
+      level: 'warn',
+      userId,
+      artifactType: actionTypeToArtifactType(actionType),
+      generationStatus: 'pattern_metrics_unavailable',
+      details: {
+        scope: 'generator',
+        error: error instanceof Error ? error.message : String(error),
       },
-      { onConflict: 'user_id,pattern_hash' },
-    );
-  } catch (pmErr: any) {
-    console.warn('[generateDirective] pattern_metrics unavailable:', pmErr.message);
+    });
+  }
+
+  const contextualConfidence = Math.min(
+    95,
+    72 +
+      Math.min(context.activeGoals.length, 3) * 3 +
+      Math.min(context.confirmedPatterns.length, 3) * 2 +
+      Math.min(context.freshSignals.length, 4) * 2 +
+      (context.alreadyDone.length > 0 ? 2 : 0) +
+      (context.skippedRecently.length > 0 ? 2 : 0),
+  );
+
+  if (historyConfidence === null) {
+    return contextualConfidence;
+  }
+
+  return Math.max(70, Math.min(95, Math.round((historyConfidence * 0.35) + (contextualConfidence * 0.65))));
+}
+
+async function loadContext(userId: string): Promise<ContextBundle> {
+  const supabase = createServerClient();
+  const approvedSince = new Date(Date.now() - APPROVAL_LOOKBACK_MS).toISOString();
+  const signalsSince = new Date(Date.now() - SIGNAL_LOOKBACK_MS).toISOString();
+
+  const [approvedRes, skippedRes, goalsRes, patternsRes, freshSignalsRes] = await Promise.all([
+    supabase
+      .from('tkg_actions')
+      .select('directive_text, action_type, generated_at')
+      .eq('user_id', userId)
+      .in('status', ['approved', 'executed'])
+      .gte('generated_at', approvedSince)
+      .order('generated_at', { ascending: false })
+      .limit(10),
+    supabase
+      .from('tkg_actions')
+      .select('directive_text, action_type, generated_at, skip_reason')
+      .eq('user_id', userId)
+      .in('status', ['skipped', 'draft_rejected', 'rejected'])
+      .gte('generated_at', approvedSince)
+      .order('generated_at', { ascending: false })
+      .limit(10),
+    supabase
+      .from('tkg_goals')
+      .select('goal_text, goal_category, priority')
+      .eq('user_id', userId)
+      .order('priority', { ascending: false })
+      .limit(20),
+    supabase
+      .from('tkg_entities')
+      .select('patterns')
+      .eq('user_id', userId)
+      .eq('name', 'self')
+      .maybeSingle(),
+    supabase
+      .from('tkg_signals')
+      .select('id, source, occurred_at, content')
+      .eq('user_id', userId)
+      .gte('occurred_at', signalsSince)
+      .order('occurred_at', { ascending: false })
+      .limit(25),
+  ]);
+
+  if (approvedRes.error) throw approvedRes.error;
+  if (skippedRes.error) throw skippedRes.error;
+  if (goalsRes.error) throw goalsRes.error;
+  if (patternsRes.error) throw patternsRes.error;
+  if (freshSignalsRes.error) throw freshSignalsRes.error;
+
+  const freshSignals: FreshSignalRow[] = [];
+  let skippedDecryptRows = 0;
+
+  for (const signal of freshSignalsRes.data ?? []) {
+    const decrypted = decryptWithStatus(signal.content ?? '');
+    if (decrypted.usedFallback) {
+      skippedDecryptRows++;
+      continue;
+    }
+
+    const content = decrypted.plaintext.trim();
+    if (!content || isSelfReferentialSignal(content)) continue;
+
+    freshSignals.push({
+      id: signal.id as string,
+      source: (signal.source as string | null) ?? null,
+      occurred_at: signal.occurred_at as string,
+      content: content.slice(0, 1200),
+    });
+  }
+
+  if (skippedDecryptRows > 0) {
+    logStructuredEvent({
+      event: 'signal_skip',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'decrypt_skip',
+      details: {
+        scope: 'generator',
+        skipped_rows: skippedDecryptRows,
+      },
+    });
   }
 
   return {
-    directive: parsed.directive ?? 'Generation failed.',
-    action_type: actionType,
-    confidence: mathConfidence,
-    reason: parsed.reason ?? parsed.why_now ?? parsed.evidence ?? '',
-    evidence: evidenceItems,
-    fullContext: parsed.why_now,
-    embeddedArtifact: parsed.artifact ?? undefined,
-    embeddedArtifactType: parsed.artifact_type ?? undefined,
-    domain: parsed.domain ?? bDomain,
-    why_now: parsed.why_now ?? undefined,
-    requires_search: false,
-    search_context: undefined,
-  } as ConvictionDirective & { embeddedArtifact?: any; embeddedArtifactType?: string; domain?: string; why_now?: string };
+    alreadyDone: (approvedRes.data ?? []) as ApprovedActionRow[],
+    skippedRecently: (skippedRes.data ?? []) as SkippedActionRow[],
+    activeGoals: (goalsRes.data ?? []) as GoalRow[],
+    confirmedPatterns: extractConfirmedPatterns(patternsRes.data?.patterns),
+    freshSignals,
+  };
 }
 
-/**
- * Generate multiple directives in one batch call.
- */
-export async function generateMultipleDirectives(
+async function generatePayload(
   userId: string,
-  count: number = 3,
-): Promise<ConvictionDirective[]> {
-  const directives: ConvictionDirective[] = [];
-  for (let i = 0; i < count; i++) {
+  sections: ContextSections,
+  context: ContextBundle,
+): Promise<GeneratedDirectivePayload | null> {
+  const initialPrompt = buildGenerationPrompt(sections);
+  const attempts: Array<{ role: 'user' | 'assistant'; content: string }> = [
+    { role: 'user', content: initialPrompt },
+  ];
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await getAnthropic().messages.create({
+      model: GENERATION_MODEL,
+      max_tokens: 2000,
+      temperature: 0.2,
+      system: SYSTEM_PROMPT,
+      messages: attempts,
+    });
+
+    await trackApiCall({
+      userId,
+      model: GENERATION_MODEL,
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      callType: attempt === 0 ? 'directive' : 'directive_retry',
+    });
+
+    const raw = response.content[0]?.type === 'text' ? response.content[0].text : '';
+    let parsed: GeneratedDirectivePayload | null = null;
     try {
-      const d = await generateDirective(userId);
-      directives.push(d);
-    } catch (err) {
-      console.error(`[generateMultipleDirectives] directive ${i} failed:`, err);
+      parsed = parseGeneratedPayload(raw);
+    } catch {
+      parsed = null;
     }
+
+    const issues = validateGeneratedPayload(parsed, context);
+    if (issues.length === 0 && parsed) {
+      return parsed;
+    }
+
+    if (attempt === 0) {
+      logStructuredEvent({
+        event: 'generation_retry',
+        level: 'warn',
+        userId,
+        artifactType: parsed?.artifact_type ?? null,
+        generationStatus: 'retrying_validation',
+        details: {
+          scope: 'generator',
+          issues,
+        },
+      });
+
+      attempts.push({ role: 'assistant', content: raw });
+      attempts.push({
+        role: 'user',
+        content: `Validation failed. Fix these issues and return JSON only:
+- ${issues.join('\n- ')}`,
+      });
+      continue;
+    }
+
+    logStructuredEvent({
+      event: 'generation_incomplete',
+      level: 'error',
+      userId,
+      artifactType: parsed?.artifact_type ?? null,
+      generationStatus: 'generation_incomplete',
+      details: {
+        scope: 'generator',
+        issues,
+      },
+    });
   }
-  directives.sort((a, b) => b.confidence - a.confidence);
-  return directives;
+
+  return null;
 }
 
-// ---------------------------------------------------------------------------
-// Backwards-compat wrapper — called by /api/briefing/latest
-// ---------------------------------------------------------------------------
+export async function generateDirective(userId: string): Promise<ConvictionDirective> {
+  try {
+    if (await isOverDailyLimit(userId)) {
+      logStructuredEvent({
+        event: 'generation_skipped',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'daily_cap_reached',
+        details: { scope: 'generator' },
+      });
+      return emptyDirective('Daily spend cap reached.');
+    }
+
+    const context = await loadContext(userId);
+
+    let sections: ContextSections;
+    try {
+      sections = await assembleContextSections(userId, context);
+    } catch (error) {
+      sections = deterministicSections(context);
+      logStructuredEvent({
+        event: 'context_assembly_fallback',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'context_fallback',
+        details: {
+          scope: 'generator',
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+
+    const payload = await generatePayload(userId, sections, context);
+    if (!payload) {
+      return emptyDirective('Generation validation failed.');
+    }
+
+    const actionType = artifactTypeToActionType(payload.artifact_type);
+    const confidence = await computeInternalConfidence(userId, actionType, payload.domain, context);
+    const evidence: EvidenceItem[] = [
+      {
+        type: 'signal',
+        description: payload.evidence.trim(),
+        date: context.freshSignals[0]?.occurred_at ?? undefined,
+      },
+    ];
+
+    logStructuredEvent({
+      event: 'directive_generated',
+      userId,
+      artifactType: payload.artifact_type,
+      generationStatus: 'generated',
+      details: {
+        scope: 'generator',
+        context_counts: {
+          already_done: context.alreadyDone.length,
+          skipped_recently: context.skippedRecently.length,
+          active_goals: context.activeGoals.length,
+          confirmed_patterns: context.confirmedPatterns.length,
+          fresh_signals: context.freshSignals.length,
+        },
+      },
+    });
+
+    return {
+      directive: payload.directive.trim(),
+      action_type: actionType,
+      confidence,
+      reason: payload.why_now.trim(),
+      evidence,
+      fullContext: payload.evidence.trim(),
+      embeddedArtifact: payload.artifact,
+      embeddedArtifactType: payload.artifact_type,
+      domain: payload.domain,
+      why_now: payload.why_now.trim(),
+      requires_search: false,
+      search_context: undefined,
+    } as ConvictionDirective & {
+      embeddedArtifact?: Record<string, unknown>;
+      embeddedArtifactType?: GeneratorArtifactType;
+      domain?: GeneratorDomain;
+      why_now?: string;
+    };
+  } catch (error) {
+    logStructuredEvent({
+      event: 'directive_generation_failed',
+      level: 'error',
+      userId,
+      artifactType: null,
+      generationStatus: 'failed',
+      details: {
+        scope: 'generator',
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
+    return emptyDirective('Generation failed internally.');
+  }
+}
 
 export async function generateBriefing(userId: string): Promise<ChiefOfStaffBriefing> {
   const supabase = createServerClient();
   const directive = await generateDirective(userId);
-  if (directive.directive === '__GENERATION_FAILED__') {
+
+  if (directive.directive === GENERATION_FAILED_SENTINEL) {
     throw new Error('Briefing generation failed');
   }
 
@@ -560,7 +756,7 @@ export async function generateBriefing(userId: string): Promise<ChiefOfStaffBrie
     fullBrief: directive.fullContext ?? directive.reason,
   };
 
-  const { error: writeErr } = await supabase.from('tkg_briefings').insert({
+  const { error } = await supabase.from('tkg_briefings').insert({
     user_id: userId,
     briefing_date: brief.briefingDate,
     generated_at: brief.generatedAt.toISOString(),
@@ -576,13 +772,19 @@ export async function generateBriefing(userId: string): Promise<ChiefOfStaffBrie
     },
   });
 
-  if (writeErr) {
-    console.error('[generateBriefing] tkg_briefings write failed:', writeErr.message);
+  if (error) {
+    logStructuredEvent({
+      event: 'briefing_cache_failed',
+      level: 'warn',
+      userId,
+      artifactType: actionTypeToArtifactType(directive.action_type),
+      generationStatus: 'briefing_cache_failed',
+      details: {
+        scope: 'generator',
+        error: error.message,
+      },
+    });
   }
 
   return brief;
-}
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
 }
