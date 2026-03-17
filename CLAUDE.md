@@ -777,3 +777,27 @@ Full quality pass before real users. No features added. Pure verification of eve
 - Outlook OAuth not verified with real user
 - `growth-scanner` cron is active in vercel.json but may need review per "only daily-brief active" decision
 - Agent crons still disabled (correct — waiting for first public user)
+
+---
+
+## Session Log — 2026-03-16 (audit closures: H1/H7/H8/M4/L1)
+
+### Commit: `3ec5e15`
+Generator rewrite + decrypt fallback hardening + privacy logging cleanup
+
+### Files changed
+- `lib/briefing/generator.ts` — replaced scorer-first/growth-specific prompt flow with the new Haiku context assembly + Sonnet final generation path, strict artifact validation, retry-on-validation-failure, and sanitized structured logging.
+- `lib/conviction/artifact-generator.ts` — normalized the new three-artifact schema into execution artifacts, short-circuited embedded artifacts safely, and skipped decrypt fallback rows in prompt context.
+- `lib/briefing/scorer.ts` — skipped decrypt fallback rows everywhere scoring reads signals and replaced privacy-unsafe diagnostics with structured logs.
+- `lib/signals/summarizer.ts` and `lib/encryption.ts` — surfaced decrypt fallback status so weekly summaries skip bad rows instead of summarizing ciphertext.
+- `lib/utils/api-tracker.ts`, `app/api/settings/spend/route.ts`, and `lib/signals/signal-processor.ts` — made spend caps/user summaries per-user, logged tracking failures, and returned real errors instead of fake zero spend.
+- `app/api/cron/daily-generate/route.ts`, `app/api/cron/daily-send/route.ts`, and `app/api/conviction/outcome/route.ts` — replaced raw stdout logs with hashed structured logging.
+- `components/dashboard/briefing-card.tsx`, `components/landing/chaos-to-clarity.tsx`, `lib/relationships/tracker.ts`, `lib/integrations/gmail-client.ts`, `lib/integrations/outlook-client.ts`, `lib/integrations/outlook-calendar.ts`, `app/dashboard/settings/SettingsClient.tsx`, and `lib/briefing/generator.ts` — removed the dead exports/surfaces called out in L1.
+
+### Verified working
+- `npm run build` — passed
+- `npx playwright test` — 26 passed
+- Verified by symbol search that no changed file still contains Brandon-specific generator copy or the dead exports flagged in L1
+
+### Supabase / migrations
+- No new migrations
