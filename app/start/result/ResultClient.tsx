@@ -5,19 +5,10 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Check, ChevronRight } from 'lucide-react';
 
-interface EvidenceItem {
-  type: string;
-  description: string;
-  date: string | null;
-}
-
 interface Directive {
   directive:    string;
   action_type:  string;
-  confidence:   number;
   reason:       string;
-  evidence:     EvidenceItem[];
-  fullContext?: string;
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -46,8 +37,8 @@ const WALKTHROUGH_STEPS = [
   },
   {
     label: '2 of 3',
-    heading: 'These are things Foldera did for you.',
-    body: 'The evidence below comes from your actual emails and conversations. Foldera found them so you didn\'t have to.',
+    heading: 'This is the work Foldera surfaced first.',
+    body: 'Your read stays simple on purpose: one directive, grounded in your recent communication history, ready to act on.',
   },
   {
     label: '3 of 3',
@@ -185,43 +176,13 @@ export default function ResultPage() {
             <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${actionColor}`}>
               {actionLabel}
             </span>
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-24 bg-zinc-800 rounded-full overflow-hidden">
-                <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${directive.confidence}%` }} />
-              </div>
-              <span className="text-zinc-500 text-xs">{directive.confidence}%</span>
-            </div>
           </div>
 
-          <p className="text-2xl font-semibold leading-snug mb-6 text-white">{directive.directive}</p>
+          <p className="text-3xl font-semibold leading-tight mb-6 text-white">{directive.directive}</p>
 
-          <p className="text-zinc-400 text-sm leading-relaxed mb-6 border-l-2 border-zinc-700 pl-4 italic">
+          <p className="text-zinc-400 text-sm leading-relaxed border-l-2 border-zinc-700 pl-4 italic">
             {directive.reason}
           </p>
-
-          {directive.evidence.length > 0 && (
-            <div className="border-t border-zinc-800 pt-5">
-              <p className="text-zinc-500 text-xs font-semibold tracking-widest uppercase mb-3">Found in your history</p>
-              <ul className="space-y-2.5">
-                {directive.evidence.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-zinc-400">
-                    <span className="text-zinc-600 mt-0.5 shrink-0">•</span>
-                    <span>
-                      {item.date && <span className="text-zinc-600 text-xs mr-2 font-mono">{item.date}</span>}
-                      {item.description}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {directive.fullContext && (
-            <div className="border-t border-zinc-800 pt-5 mt-5">
-              <p className="text-zinc-500 text-xs font-semibold tracking-widest uppercase mb-2">More context</p>
-              <p className="text-zinc-400 text-sm leading-relaxed">{directive.fullContext}</p>
-            </div>
-          )}
         </div>
 
         {/* ── Walkthrough ─────────────────────────────────────────────────── */}

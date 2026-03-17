@@ -61,8 +61,8 @@ export default function StartPage() {
         </div>
 
         <p className="text-zinc-500 text-sm leading-relaxed">
-          We read your last 30 days of sent email.<br />
-          Nothing is stored permanently until you subscribe.
+          We import your last 30 days of sent email to generate your first read.<br />
+          The data is encrypted and used to prepare your daily work.
         </p>
       </div>
     </main>

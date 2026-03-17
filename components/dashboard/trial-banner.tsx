@@ -32,7 +32,7 @@ export function TrialBanner() {
 
   // ── Trial running with days remaining ───────────────────────────────────
   const isTrialWarning =
-    sub.status === 'active' &&
+    sub.status === 'active_trial' &&
     typeof sub.daysRemaining === 'number' &&
     sub.daysRemaining <= 3 &&
     sub.daysRemaining > 0;

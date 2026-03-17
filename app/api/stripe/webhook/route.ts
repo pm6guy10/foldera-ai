@@ -2,7 +2,7 @@
  * POST /api/stripe/webhook
  *
  * Handles Stripe webhook events:
- *   checkout.session.completed  → create user_subscriptions row
+ *   checkout.session.completed  → create trial user_subscriptions row
  *   invoice.payment_succeeded   → update status to active
  *   invoice.payment_failed      → update status to past_due
  *   customer.subscription.deleted → update status to cancelled + schedule deletion
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
             user_id:                userId,
             stripe_customer_id:     customerId ?? null,
             stripe_subscription_id: subId ?? null,
-            plan:                   'pro',
+            plan:                   'trial',
             status:                 'active',
             current_period_end:     trialEnd,
           },

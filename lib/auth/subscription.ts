@@ -68,14 +68,15 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
 
   if (data.status === 'active') {
     if (periodEnd < now) {
-      // Trial window has closed with no payment
       return { status: 'expired', plan: data.plan, daysRemaining: 0, isReadOnly: true };
     }
-    if (data.plan === 'trial' || data.plan === 'pro') {
-      // Distinguish trial from paid by checking if daysRemaining is within original 14-day window
-      // and plan is still 'trial', but the DB plan column is set to 'pro' on checkout
-      const status: SubscriptionStatus = data.plan === 'trial' ? 'active_trial' : 'active';
-      return { status, plan: data.plan, daysRemaining, isReadOnly: false };
+
+    if (data.plan === 'trial') {
+      return { status: 'active_trial', plan: data.plan, daysRemaining, isReadOnly: false };
+    }
+
+    if (data.plan === 'pro') {
+      return { status: 'active', plan: data.plan, daysRemaining, isReadOnly: false };
     }
   }
 
