@@ -75,6 +75,7 @@ interface ProcessResult {
   entities_upserted: number;
   commitments_created: number;
   topics_merged: number;
+  deferred_signal_ids: string[];
   errors: string[];
 }
 
@@ -127,6 +128,7 @@ export async function processUnextractedSignals(
     entities_upserted: 0,
     commitments_created: 0,
     topics_merged: 0,
+    deferred_signal_ids: [],
     errors: [],
   };
 
@@ -180,10 +182,12 @@ export async function processUnextractedSignals(
 
   const selfId = selfEntity?.id;
   const anthropic = getAnthropicClient();
+  const deferredSignalIds = new Set<string>();
 
   while (result.signals_processed < maxSignals) {
     const remaining = maxSignals - result.signals_processed;
     const fetchLimit = Math.min(BATCH_SIZE, remaining);
+    const queryLimit = Math.min(1000, fetchLimit + deferredSignalIds.size + BATCH_SIZE);
     const signalsResult = await supabase
       .from('tkg_signals')
       .select('id, user_id, source, type, content, author, occurred_at')
@@ -191,14 +195,16 @@ export async function processUnextractedSignals(
       .eq('processed', false)
       .in('source', EXTRACTABLE_SOURCES)
       .order('occurred_at', { ascending: true })
-      .limit(fetchLimit);
+      .limit(queryLimit);
 
     if (signalsResult.error) {
       result.errors.push(`fetch: ${signalsResult.error.message}`);
       break;
     }
 
-    const signals = signalsResult.data ?? [];
+    const signals = (signalsResult.data ?? [])
+      .filter((signal) => !deferredSignalIds.has(signal.id))
+      .slice(0, fetchLimit);
     if (signals.length === 0) {
       break;
     }
@@ -209,7 +215,12 @@ export async function processUnextractedSignals(
       result.entities_upserted += batchResult.entities_upserted;
       result.commitments_created += batchResult.commitments_created;
       result.topics_merged += batchResult.topics_merged;
+      result.deferred_signal_ids.push(...batchResult.deferred_signal_ids);
       result.errors.push(...batchResult.errors);
+
+      for (const signalId of batchResult.deferred_signal_ids) {
+        deferredSignalIds.add(signalId);
+      }
 
       if (batchResult.topics_merged > 0 && selfId) {
         const refreshedPatternsResult = await supabase
@@ -232,6 +243,9 @@ export async function processUnextractedSignals(
       }
 
       if (batchResult.signals_processed === 0) {
+        if (batchResult.deferred_signal_ids.length > 0) {
+          continue;
+        }
         break;
       }
     } catch (batchErr: unknown) {
@@ -272,6 +286,7 @@ async function processBatch(
     entities_upserted: 0,
     commitments_created: 0,
     topics_merged: 0,
+    deferred_signal_ids: [],
     errors: [],
   };
 
@@ -285,6 +300,7 @@ async function processBatch(
     try {
       content = decrypt(s.content);
     } catch (error: unknown) {
+      result.deferred_signal_ids.push(s.id);
       if (decryptWarningCount < MAX_WARNING_LOGS) {
         logStructuredEvent({
           event: 'signal_processor_decrypt_failed',
@@ -305,6 +321,7 @@ async function processBatch(
 
     if (looksLikeCiphertext(content)) {
       // decrypt() fell through — ENCRYPTION_KEY missing or wrong. Skip so it can be retried later.
+      result.deferred_signal_ids.push(s.id);
       if (decryptWarningCount < MAX_WARNING_LOGS) {
         logStructuredEvent({
           event: 'signal_processor_ciphertext_skipped',
