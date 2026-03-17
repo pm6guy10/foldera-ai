@@ -202,6 +202,55 @@ interface MicrosoftSignalCoverage {
   task_total_signals: number;
 }
 
+type MicrosoftMailSignalType = "email_sent" | "email_received";
+
+function formatMicrosoftMailContent(
+  msg: any,
+  signalType: MicrosoftMailSignalType,
+): string {
+  const isSent = signalType === "email_sent";
+  const from = msg.from?.emailAddress?.address ?? "";
+  const to = (msg.toRecipients ?? [])
+    .map((recipient: any) => recipient.emailAddress?.address)
+    .filter(Boolean)
+    .join(", ");
+  const subject = msg.subject ?? "(no subject)";
+  const date =
+    (isSent ? msg.sentDateTime : msg.receivedDateTime) ??
+    msg.receivedDateTime ??
+    msg.sentDateTime ??
+    new Date().toISOString();
+  const bodyText = msg.body?.content?.slice(0, 3000) ?? msg.bodyPreview ?? "";
+
+  return isSent
+    ? `[Sent email: ${date}]\nTo: ${to}\nSubject: ${subject}\nBody: ${bodyText}`
+    : `[Email received: ${date}]\nFrom: ${from}\nSubject: ${subject}\nBody: ${bodyText}`;
+}
+
+function formatMicrosoftCalendarContent(event: any): string {
+  const summary = event.subject ?? "(no title)";
+  const start = event.start?.dateTime ?? "";
+  const end = event.end?.dateTime ?? "";
+  const organizer = event.organizer?.emailAddress?.address ?? "";
+  const attendees = (event.attendees ?? [])
+    .map((attendee: any) => attendee.emailAddress?.address)
+    .filter(Boolean)
+    .join(", ");
+  const isAllDay = event.isAllDay ?? false;
+
+  return [
+    `[Calendar event: ${summary}]`,
+    `Start: ${start}`,
+    `End: ${end}`,
+    isAllDay ? "All day event" : "",
+    organizer ? `Organizer: ${organizer}` : "",
+    attendees ? `Attendees: ${attendees}` : "",
+    event.bodyPreview ? `Description: ${event.bodyPreview.slice(0, 500)}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 async function getMicrosoftSignalCoverage(
   userId: string,
 ): Promise<MicrosoftSignalCoverage | null> {
@@ -289,19 +338,14 @@ async function syncMail(
     try {
       const isSent = msg._folder === "sent";
       const from = msg.from?.emailAddress?.address ?? "";
-      const to = (msg.toRecipients ?? [])
-        .map((r: any) => r.emailAddress?.address)
-        .filter(Boolean)
-        .join(", ");
-      const subject = msg.subject ?? "(no subject)";
-      const date = msg.receivedDateTime ?? new Date().toISOString();
-      const bodyText =
-        msg.body?.content?.slice(0, 3000) ?? msg.bodyPreview ?? "";
+      const date =
+        (isSent ? msg.sentDateTime : msg.receivedDateTime) ??
+        msg.receivedDateTime ??
+        msg.sentDateTime ??
+        new Date().toISOString();
 
       const signalType = isSent ? "email_sent" : "email_received";
-      const content = isSent
-        ? `[Sent email: ${date}]\nTo: ${to}\nSubject: ${subject}\nBody: ${bodyText}`
-        : `[Email received: ${date}]\nFrom: ${from}\nSubject: ${subject}\nBody: ${bodyText}`;
+      const content = formatMicrosoftMailContent(msg, signalType);
 
       const contentHash = hash(`outlook:${msg.id}`);
 
@@ -347,29 +391,9 @@ async function syncCalendar(
   for (const event of events) {
     if (!event.id) continue;
 
-    const summary = event.subject ?? "(no title)";
     const start = event.start?.dateTime ?? "";
-    const end = event.end?.dateTime ?? "";
     const organizer = event.organizer?.emailAddress?.address ?? "";
-    const attendees = (event.attendees ?? [])
-      .map((a: any) => a.emailAddress?.address)
-      .filter(Boolean)
-      .join(", ");
-    const isAllDay = event.isAllDay ?? false;
-
-    const content = [
-      `[Calendar event: ${summary}]`,
-      `Start: ${start}`,
-      `End: ${end}`,
-      isAllDay ? "All day event" : "",
-      organizer ? `Organizer: ${organizer}` : "",
-      attendees ? `Attendees: ${attendees}` : "",
-      event.bodyPreview
-        ? `Description: ${event.bodyPreview.slice(0, 500)}`
-        : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const content = formatMicrosoftCalendarContent(event);
 
     const contentHash = hash(`outlook-calendar:${event.id}`);
 
@@ -391,6 +415,37 @@ async function syncCalendar(
   }
 
   return inserted;
+}
+
+export async function recoverMicrosoftSignalContent(
+  userId: string,
+  source: "outlook" | "outlook_calendar",
+  sourceId: string,
+  signalType?: string,
+): Promise<string | null> {
+  if (!sourceId) return null;
+
+  const token = await getValidMicrosoftToken(userId);
+  if (!token) return null;
+
+  if (source === "outlook") {
+    const message = await graphFetch(
+      userId,
+      token.access_token,
+      `${GRAPH_BASE}/me/messages/${sourceId}?$select=id,subject,from,toRecipients,receivedDateTime,sentDateTime,bodyPreview,body`,
+    );
+
+    const normalizedType: MicrosoftMailSignalType =
+      signalType === "email_sent" ? "email_sent" : "email_received";
+    return formatMicrosoftMailContent(message, normalizedType);
+  }
+
+  const event = await graphFetch(
+    userId,
+    token.access_token,
+    `${GRAPH_BASE}/me/events/${sourceId}?$select=id,subject,start,end,isAllDay,organizer,attendees,bodyPreview`,
+  );
+  return formatMicrosoftCalendarContent(event);
 }
 
 // ── OneDrive Files Sync ─────────────────────────────────────────────────────

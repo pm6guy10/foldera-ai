@@ -17,7 +17,8 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
-import { decrypt } from '@/lib/encryption';
+import { decryptWithStatus, encrypt } from '@/lib/encryption';
+import { recoverMicrosoftSignalContent } from '@/lib/sync/microsoft-sync';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { isOverDailyLimit } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -37,6 +38,7 @@ interface RawSignal {
   id: string;
   user_id: string;
   source: string;
+  source_id: string | null;
   type: string;
   content: string;
   author: string | null;
@@ -190,7 +192,7 @@ export async function processUnextractedSignals(
     const queryLimit = Math.min(1000, fetchLimit + deferredSignalIds.size + BATCH_SIZE);
     const signalsResult = await supabase
       .from('tkg_signals')
-      .select('id, user_id, source, type, content, author, occurred_at')
+      .select('id, user_id, source, source_id, type, content, author, occurred_at')
       .eq('user_id', userId)
       .eq('processed', false)
       .in('source', EXTRACTABLE_SOURCES)
@@ -296,31 +298,36 @@ async function processBatch(
   let decryptWarningCount = 0;
 
   for (const s of batch) {
-    let content: string;
-    try {
-      content = decrypt(s.content);
-    } catch (error: unknown) {
-      result.deferred_signal_ids.push(s.id);
-      if (decryptWarningCount < MAX_WARNING_LOGS) {
-        logStructuredEvent({
-          event: 'signal_processor_decrypt_failed',
-          level: 'warn',
-          userId,
-          artifactType: null,
-          generationStatus: 'decrypt_failed',
-          details: {
-            scope: 'signal-processor',
-            signal_source: s.source,
-            error: error instanceof Error ? error.message : String(error),
-          },
-        });
-        decryptWarningCount++;
+    const decrypted = decryptWithStatus(s.content);
+    let content = decrypted.plaintext;
+
+    if (decrypted.usedFallback && isMicrosoftRecoverableSignal(s)) {
+      try {
+        const recoveredContent = await recoverAndReencryptMicrosoftSignal(supabase, userId, s);
+        if (recoveredContent) {
+          content = recoveredContent;
+        }
+      } catch (error: unknown) {
+        if (decryptWarningCount < MAX_WARNING_LOGS) {
+          logStructuredEvent({
+            event: 'signal_processor_microsoft_recovery_failed',
+            level: 'warn',
+            userId,
+            artifactType: null,
+            generationStatus: 'recovery_failed',
+            details: {
+              scope: 'signal-processor',
+              signal_source: s.source,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          });
+          decryptWarningCount++;
+        }
       }
-      continue;
     }
 
     if (looksLikeCiphertext(content)) {
-      // decrypt() fell through — ENCRYPTION_KEY missing or wrong. Skip so it can be retried later.
+      // Skip undecryptable ciphertext so it can be retried once the correct key or source recovery is available.
       result.deferred_signal_ids.push(s.id);
       if (decryptWarningCount < MAX_WARNING_LOGS) {
         logStructuredEvent({
@@ -482,6 +489,57 @@ async function processBatch(
   }
 
   return result;
+}
+
+function isMicrosoftRecoverableSignal(
+  signal: RawSignal,
+): signal is RawSignal & { source: 'outlook' | 'outlook_calendar'; source_id: string } {
+  return (
+    (signal.source === 'outlook' || signal.source === 'outlook_calendar') &&
+    typeof signal.source_id === 'string' &&
+    signal.source_id.length > 0
+  );
+}
+
+async function recoverAndReencryptMicrosoftSignal(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  signal: RawSignal & { source: 'outlook' | 'outlook_calendar'; source_id: string },
+): Promise<string | null> {
+  const recoveredContent = await recoverMicrosoftSignalContent(
+    userId,
+    signal.source,
+    signal.source_id,
+    signal.type,
+  );
+
+  if (!recoveredContent) {
+    return null;
+  }
+
+  const updateResult = await supabase
+    .from('tkg_signals')
+    .update({ content: encrypt(recoveredContent) })
+    .eq('id', signal.id)
+    .eq('processed', false);
+
+  if (updateResult.error) {
+    throw new Error(`signal_reencrypt: ${updateResult.error.message}`);
+  }
+
+  logStructuredEvent({
+    event: 'signal_processor_microsoft_signal_recovered',
+    level: 'info',
+    userId,
+    artifactType: null,
+    generationStatus: 'signal_recovered',
+    details: {
+      scope: 'signal-processor',
+      signal_source: signal.source,
+    },
+  });
+
+  return recoveredContent;
 }
 
 async function upsertEntity(
