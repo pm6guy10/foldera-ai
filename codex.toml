@@ -1,0 +1,12 @@
+[sandbox]
+platform = "windows"
+permissions = "full-access"
+```
+
+**Step 3.** Hit `Ctrl+Shift+S` (Save As). Navigate to your `foldera-ai` folder (the one you're looking at in those screenshots, where `package.json` and `CLAUDE.md` live). Name the file exactly `codex.toml` and save it.
+
+**Step 4.** Open PowerShell. `cd` into your foldera-ai folder if you're not already there. Then run these three commands one at a time:
+```
+git add codex.toml
+git commit -m "codex: full access permissions"
+git push origin main
