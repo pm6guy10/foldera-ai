@@ -6,6 +6,7 @@ import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
 import { sendDailyDirective } from '@/lib/email/resend';
 import type { DirectiveItem } from '@/lib/email/resend';
+import type { ConvictionArtifact } from '@/lib/briefing/types';
 import {
   filterDailyBriefEligibleUserIds,
   getVerifiedDailyBriefRecipientEmail,
@@ -70,6 +71,19 @@ function artifactTypeForAction(actionType: string | null | undefined): string | 
     default:
       return null;
   }
+}
+
+function extractArtifact(executionResult: unknown): ConvictionArtifact | null {
+  if (!executionResult || typeof executionResult !== 'object') {
+    return null;
+  }
+
+  const artifact = (executionResult as Record<string, unknown>).artifact;
+  if (!artifact || typeof artifact !== 'object') {
+    return null;
+  }
+
+  return artifact as ConvictionArtifact;
 }
 
 async function getEligibleDailyBriefUserIds(): Promise<string[]> {
@@ -250,7 +264,10 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
           evidence: directive.evidence,
           generated_at: new Date().toISOString(),
           generation_attempts: 1,
-          execution_result: { artifact },
+          execution_result: {
+            artifact,
+            brief_origin: 'daily_cron',
+          },
         })
         .select('id')
         .single();
@@ -383,8 +400,9 @@ export async function runDailySend(): Promise<DailyBriefRunResult> {
           candidate.execution_result && typeof candidate.execution_result === 'object'
             ? (candidate.execution_result as Record<string, unknown>)
             : null;
+        const artifact = extractArtifact(executionResult);
 
-        return typeof executionResult?.daily_brief_sent_at !== 'string';
+        return typeof executionResult?.daily_brief_sent_at !== 'string' && artifact !== null;
       });
       if (!action) {
         results.push({ code: 'no_generated_directive', success: false });
@@ -410,6 +428,7 @@ export async function runDailySend(): Promise<DailyBriefRunResult> {
         action_type: action.action_type as string,
         confidence,
         reason: ((action.reason as string) ?? '').split('[score=')[0].trim(),
+        artifact: extractArtifact(action.execution_result),
       };
 
       const words = directiveItem.directive.split(/\s+/).slice(0, 6).join(' ');

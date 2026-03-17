@@ -132,14 +132,14 @@ export default function DashboardContent() {
         throw new Error(
           typeof (data as { error?: unknown }).error === 'string'
             ? ((data as { error: string }).error)
-            : 'Could not load your latest read right now.',
+            : 'Could not load your latest directive right now.',
         );
       }
       if (data.context_greeting) setContextGreeting(data.context_greeting);
       // Only set conviction if there's an actual action (has an id)
       setConviction(data.id ? data : null);
     } catch (error: unknown) {
-      setConvictionError(error instanceof Error ? error.message : 'Could not load your latest read right now.');
+      setConvictionError(error instanceof Error ? error.message : 'Could not load your latest directive right now.');
       setConviction(null);
     } finally { setConvictionLoading(false); }
   };
@@ -155,12 +155,12 @@ export default function DashboardContent() {
         throw new Error(
           typeof (data as { error?: unknown }).error === 'string'
             ? ((data as { error: string }).error)
-            : 'Could not generate a read right now.',
+            : 'Could not generate a directive right now.',
         );
       }
       setConviction(data);
     } catch (error: unknown) {
-      setConvictionError(error instanceof Error ? error.message : 'Could not generate a read right now.');
+      setConvictionError(error instanceof Error ? error.message : 'Could not generate a directive right now.');
     } finally { setConvictionLoading(false); }
   }, []);
 
@@ -251,7 +251,7 @@ export default function DashboardContent() {
         </div>
       )}
 
-      {/* Hero: Today's Read — the ONE thing */}
+      {/* Hero: Today's Directive — the ONE thing */}
       <ConvictionCard
         action={conviction}
         isLoading={convictionLoading}

@@ -110,7 +110,7 @@ export default function ConvictionCard({
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-cyan-400" />
           <span className="text-zinc-200 font-semibold text-xs uppercase tracking-widest font-mono">
-            Today's Read
+            Today's Directive
           </span>
         </div>
         <button
@@ -214,11 +214,11 @@ function DoneState({ message, terminal, onReset }: { message: string; terminal: 
           onClick={onReset}
           className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
         >
-          Generate new read →
+          Generate new directive →
         </button>
       )}
       {terminal && (
-        <p className="text-zinc-600 text-xs">Your next read arrives tomorrow morning.</p>
+        <p className="text-zinc-600 text-xs">Your next directive arrives tomorrow morning.</p>
       )}
     </div>
   );
@@ -243,13 +243,13 @@ function EmptyState({ onGenerate }: { onGenerate: () => void }) {
   return (
     <div className="text-center py-6">
       <Shield className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-      <p className="text-zinc-300 text-sm font-medium mb-1">Your next read arrives at 7am tomorrow.</p>
-      <p className="text-zinc-500 text-xs mb-4">Foldera is learning your patterns. The more you use it, the sharper it gets.</p>
+      <p className="text-zinc-300 text-sm font-medium mb-1">Your next directive arrives at 7am tomorrow.</p>
+      <p className="text-zinc-500 text-xs mb-4">Foldera is assembling one finished artifact from your latest signals.</p>
       <button
         onClick={onGenerate}
         className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors"
       >
-        Generate one now
+        Generate a directive now
       </button>
     </div>
   );
@@ -336,6 +336,12 @@ function ArtifactPreview({ artifact }: { artifact: ConvictionArtifact }) {
         )}
         {artifact.type === 'decision_frame' && Array.isArray(artifact.options) && artifact.options.length > 0 && (
           <div className="space-y-2">
+            {artifact.recommendation && (
+              <div className="pb-2 border-b border-zinc-700/40">
+                <p className="text-[10px] font-mono text-zinc-500 uppercase mb-1">Recommendation</p>
+                <p className="text-sm text-emerald-400">{artifact.recommendation}</p>
+              </div>
+            )}
             {artifact.options.map((opt, i) => {
               const weight = typeof opt.weight === 'number' && !isNaN(opt.weight) ? opt.weight : null;
               return (
@@ -354,11 +360,6 @@ function ArtifactPreview({ artifact }: { artifact: ConvictionArtifact }) {
                 </div>
               );
             })}
-            {artifact.recommendation && (
-              <div className="pt-2 border-t border-zinc-700/40">
-                <p className="text-sm text-emerald-400">{artifact.recommendation}</p>
-              </div>
-            )}
           </div>
         )}
         {waitArtifact && (
@@ -366,6 +367,16 @@ function ArtifactPreview({ artifact }: { artifact: ConvictionArtifact }) {
             <p className="text-sm text-zinc-300 leading-relaxed">{waitArtifact.context}</p>
             {waitArtifact.evidence && (
               <p className="text-xs text-zinc-500 italic">{waitArtifact.evidence}</p>
+            )}
+            {Array.isArray((waitArtifact as { tripwires?: string[] }).tripwires) && (waitArtifact as { tripwires?: string[] }).tripwires!.length > 0 && (
+              <div className="pt-2 border-t border-zinc-700/40">
+                <p className="text-[10px] font-mono text-zinc-500 uppercase mb-1">Tripwires</p>
+                <div className="space-y-1">
+                  {(waitArtifact as { tripwires?: string[] }).tripwires!.slice(0, 3).map((tripwire, index) => (
+                    <p key={index} className="text-xs text-zinc-400">• {tripwire}</p>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}

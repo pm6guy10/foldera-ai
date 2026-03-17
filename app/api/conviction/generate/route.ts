@@ -15,6 +15,7 @@ import { apiError } from '@/lib/utils/api-error';
 import { generateDirective } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,17 +35,45 @@ export async function POST(request: Request) {
         new Promise<null>((resolve) => setTimeout(() => resolve(null), SIGNAL_TIMEOUT_MS)),
       ]);
       if (extraction === null) {
-        console.warn('[conviction/generate] signal extraction timed out after 7s, proceeding with existing data');
+        logStructuredEvent({
+          event: 'conviction_generate_extraction_timeout',
+          level: 'warn',
+          userId,
+          artifactType: null,
+          generationStatus: 'signal_extraction_timeout',
+          details: {
+            scope: 'conviction/generate',
+            timeout_ms: SIGNAL_TIMEOUT_MS,
+          },
+        });
       } else if (extraction.signals_processed > 0) {
-        console.log(
-          `[conviction/generate] signal extraction: ` +
-          `${extraction.signals_processed} signals, ${extraction.entities_upserted} entities, ` +
-          `${extraction.commitments_created} commitments, ${extraction.topics_merged} topics`,
-        );
+        logStructuredEvent({
+          event: 'conviction_generate_extraction_complete',
+          userId,
+          artifactType: null,
+          generationStatus: 'signal_extraction_complete',
+          details: {
+            scope: 'conviction/generate',
+            signals_processed: extraction.signals_processed,
+            entities_upserted: extraction.entities_upserted,
+            commitments_created: extraction.commitments_created,
+            topics_merged: extraction.topics_merged,
+          },
+        });
       }
     } catch (extractErr: unknown) {
       // Non-fatal — directive generation can still proceed with existing data
-      console.warn('[conviction/generate] signal extraction failed:', extractErr instanceof Error ? extractErr.message : extractErr);
+      logStructuredEvent({
+        event: 'conviction_generate_extraction_failed',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'signal_extraction_failed',
+        details: {
+          scope: 'conviction/generate',
+          error: extractErr instanceof Error ? extractErr.message : String(extractErr),
+        },
+      });
     }
 
     // Generate the directive
@@ -62,8 +91,18 @@ export async function POST(request: Request) {
     let artifact = null;
     try {
       artifact = await generateArtifact(userId, directive);
-    } catch (artErr: any) {
-      console.warn('[conviction/generate] artifact generation failed:', artErr.message);
+    } catch (artErr: unknown) {
+      logStructuredEvent({
+        event: 'conviction_generate_artifact_failed',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'artifact_failed',
+        details: {
+          scope: 'conviction/generate',
+          error: artErr instanceof Error ? artErr.message : String(artErr),
+        },
+      });
     }
 
     if (!artifact) {
@@ -86,7 +125,7 @@ export async function POST(request: Request) {
         evidence:         directive.evidence,
         status:           'pending_approval',
         generated_at:     new Date().toISOString(),
-        execution_result: { artifact },
+        execution_result: { artifact, brief_origin: 'dashboard_generate' },
       })
       .select('id, generated_at, status, execution_result')
       .single();
@@ -102,6 +141,7 @@ export async function POST(request: Request) {
       status:          action.status,
       generatedAt:     action.generated_at,
       executionResult: action.execution_result,
+      artifact,
     });
   } catch (err: unknown) {
     return apiError(err, 'conviction/generate');

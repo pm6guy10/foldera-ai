@@ -42,6 +42,16 @@ function getAnthropic() {
   return _anthropic;
 }
 
+function isSelfReferentialSignal(content: string): boolean {
+  return content.startsWith('[Foldera Directive') || content.startsWith('[Foldera ·');
+}
+
+const PLACEHOLDER_PATTERNS = [
+  /\[(name|company|role|contact|date|amount|title|recipient)\]/i,
+  /\b(tbd|placeholder|lorem ipsum|example@|recipient@email\.com)\b/i,
+  /\b(option a|option b)\b/i,
+];
+
 
 // ---------------------------------------------------------------------------
 // Context loaders — pull graph data relevant to the artifact
@@ -49,15 +59,16 @@ function getAnthropic() {
 
 async function loadRelationshipContext(userId: string, directive: string): Promise<string> {
   const supabase = createServerClient();
+  const directiveLower = directive.toLowerCase();
 
   // Pull entities with interaction history
   const { data: entities, error } = await supabase
     .from('tkg_entities')
-    .select('name, entity_type, patterns, total_interactions')
+    .select('name, display_name, entity_type, patterns, total_interactions, primary_email, emails, role, company')
     .eq('user_id', userId)
     .neq('name', 'self')
     .order('total_interactions', { ascending: false })
-    .limit(10);
+    .limit(20);
 
   if (error) {
     throw error;
@@ -66,11 +77,40 @@ async function loadRelationshipContext(userId: string, directive: string): Promi
   if (!entities || entities.length === 0) return 'No relationship data available.';
 
   return entities
-    .map((e: any) => {
-      const pats = e.patterns ? Object.values(e.patterns as Record<string, any>)
-        .map((p: any) => p.description).slice(0, 2).join('; ') : '';
-      return `• ${e.name} (${e.entity_type}, ${e.total_interactions} interactions)${pats ? ': ' + pats : ''}`;
+    .map((entity: any) => {
+      const name = (entity.display_name as string | null) || (entity.name as string | null) || 'Unknown';
+      const role = typeof entity.role === 'string' && entity.role.trim().length > 0 ? entity.role.trim() : null;
+      const company = typeof entity.company === 'string' && entity.company.trim().length > 0 ? entity.company.trim() : null;
+      const email = typeof entity.primary_email === 'string' && entity.primary_email.trim().length > 0
+        ? entity.primary_email.trim()
+        : Array.isArray(entity.emails)
+          ? (entity.emails as unknown[]).find((value): value is string => typeof value === 'string' && value.trim().length > 0)?.trim() ?? null
+          : null;
+      const patterns = entity.patterns ? Object.values(entity.patterns as Record<string, any>)
+        .map((pattern: any) => pattern.description)
+        .filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
+        .slice(0, 2)
+        .join('; ') : '';
+
+      const relevance =
+        (directiveLower.includes(name.toLowerCase()) ? 3 : 0) +
+        (email && directiveLower.includes(email.toLowerCase()) ? 2 : 0) +
+        (company && directiveLower.includes(company.toLowerCase()) ? 1 : 0);
+
+      const descriptor = [
+        role,
+        company,
+        `${entity.total_interactions} interactions`,
+      ].filter(Boolean).join(', ');
+
+      return {
+        relevance,
+        line: `• ${name}${email ? ` <${email}>` : ''} (${descriptor || entity.entity_type || 'contact'})${patterns ? `: ${patterns}` : ''}`,
+      };
     })
+    .sort((left, right) => right.relevance - left.relevance)
+    .slice(0, 8)
+    .map((entity) => entity.line)
     .join('\n');
 }
 
@@ -98,6 +138,10 @@ async function loadRecentSignals(userId: string, limit = 10): Promise<string> {
       const decrypted = decryptWithStatus(signal.content as string ?? '');
       if (decrypted.usedFallback) {
         skippedRows++;
+        return null;
+      }
+
+      if (isSelfReferentialSignal(decrypted.plaintext.trim())) {
         return null;
       }
 
@@ -197,6 +241,12 @@ Recent activity: ${context.signals}
 
 Behavioral patterns: ${context.patterns}`;
 
+  const directiveEvidence = directive.evidence.length > 0
+    ? directive.evidence.map((item) => `- [${item.type}] ${item.description}`).join('\n')
+    : '- None captured.';
+
+  const briefingContext = directive.fullContext?.trim() || 'No additional briefing context.';
+
   switch (directive.action_type) {
     case 'send_message':
       return {
@@ -204,7 +254,9 @@ Behavioral patterns: ${context.patterns}`;
 
 You are drafting an email. Produce a complete, ready-to-send email.
 Use the relationship history and recent signals to personalize tone and content.
-If the directive references a specific person, use their name and relevant context.
+If the directive references a specific person, use their name, company, and email address from Relationships when available.
+Never invent a recipient email address.
+Never use placeholders.
 ${directive.requires_search ? 'Use web search to find any current information needed (job postings, events, contact info).' : ''}
 
 Return ONLY valid JSON:
@@ -217,6 +269,10 @@ Return ONLY valid JSON:
 }`,
         user: `DIRECTIVE: ${directive.directive}
 REASON: ${directive.reason}
+EVIDENCE:
+${directiveEvidence}
+BRIEFING CONTEXT:
+${briefingContext}
 ${directive.search_context ? `SEARCH CONTEXT: ${directive.search_context}` : ''}
 ${contextBlock}
 
@@ -228,6 +284,7 @@ Produce the email. Return JSON only.`,
         system: `${base}
 
 You are writing a complete document. Not an outline — the finished document.
+Never use placeholders or template headings.
 ${directive.requires_search ? 'Use web search to include current, accurate information (data, deadlines, requirements).' : ''}
 
 Return ONLY valid JSON:
@@ -238,6 +295,10 @@ Return ONLY valid JSON:
 }`,
         user: `DIRECTIVE: ${directive.directive}
 REASON: ${directive.reason}
+EVIDENCE:
+${directiveEvidence}
+BRIEFING CONTEXT:
+${briefingContext}
 ${directive.search_context ? `SEARCH CONTEXT: ${directive.search_context}` : ''}
 ${contextBlock}
 
@@ -251,6 +312,7 @@ Write the complete document. Return JSON only.`,
 You are creating a calendar event. Find an appropriate time slot based on context.
 Use today's date as reference: ${new Date().toISOString().slice(0, 10)}.
 If no specific time is mentioned, suggest a reasonable time within the next 7 days.
+Never leave the schedule ambiguous.
 ${directive.requires_search ? 'Use web search to find event details, locations, or timing information.' : ''}
 
 Return ONLY valid JSON:
@@ -263,6 +325,10 @@ Return ONLY valid JSON:
 }`,
         user: `DIRECTIVE: ${directive.directive}
 REASON: ${directive.reason}
+EVIDENCE:
+${directiveEvidence}
+BRIEFING CONTEXT:
+${briefingContext}
 ${directive.search_context ? `SEARCH CONTEXT: ${directive.search_context}` : ''}
 ${contextBlock}
 
@@ -277,6 +343,7 @@ You are doing actual research — not suggesting what to research.
 Use web search to find real, current information.
 Synthesize findings into actionable intelligence.
 Include specific sources with URLs.
+Never return generic market color with no decision.
 
 Return ONLY valid JSON:
 {
@@ -287,6 +354,10 @@ Return ONLY valid JSON:
 }`,
         user: `DIRECTIVE: ${directive.directive}
 REASON: ${directive.reason}
+EVIDENCE:
+${directiveEvidence}
+BRIEFING CONTEXT:
+${briefingContext}
 ${directive.search_context ? `SEARCH CONTEXT: ${directive.search_context}` : ''}
 ${contextBlock}
 
@@ -299,6 +370,7 @@ Do the research. Return JSON only.`,
 
 You are building a decision frame weighted by this person's actual behavioral history.
 Use their patterns and past outcomes to weight each option.
+Lead with the recommendation. The options should support the decision, not leave it open.
 ${directive.requires_search ? 'Use web search for any external data needed to evaluate options (prices, deadlines, reviews).' : ''}
 
 Return ONLY valid JSON:
@@ -311,6 +383,10 @@ Return ONLY valid JSON:
 }`,
         user: `DIRECTIVE: ${directive.directive}
 REASON: ${directive.reason}
+EVIDENCE:
+${directiveEvidence}
+BRIEFING CONTEXT:
+${briefingContext}
 ${directive.search_context ? `SEARCH CONTEXT: ${directive.search_context}` : ''}
 ${contextBlock}
 
@@ -324,6 +400,7 @@ Build the decision frame. Return JSON only.`,
 
 You are writing the finished rationale for waiting.
 This artifact should make clear why no external action is the right move today and what would change that call.
+Tripwires must be observable signals, not moods.
 
 Return ONLY valid JSON:
 {
@@ -334,6 +411,10 @@ Return ONLY valid JSON:
 }`,
         user: `DIRECTIVE: ${directive.directive}
 REASON: ${directive.reason}
+EVIDENCE:
+${directiveEvidence}
+BRIEFING CONTEXT:
+${briefingContext}
 ${contextBlock}
 
 Explain why waiting is correct. Return JSON only.`,
@@ -356,6 +437,10 @@ function isNonEmptyString(value: unknown): value is string {
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter(isNonEmptyString).map((item) => item.trim());
+}
+
+function containsPlaceholderText(value: string): boolean {
+  return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(value));
 }
 
 export async function generateArtifact(
@@ -459,6 +544,13 @@ function validateArtifact(
       if (!isNonEmptyString(recipient) || !isNonEmptyString(subject) || !isNonEmptyString(body)) {
         throw new Error('Email artifact missing required fields');
       }
+      if (
+        containsPlaceholderText(recipient) ||
+        containsPlaceholderText(subject.trim()) ||
+        containsPlaceholderText(body.trim())
+      ) {
+        throw new Error('Email artifact contains placeholder text');
+      }
       return {
         type: 'email',
         to: recipient.trim(),
@@ -472,6 +564,9 @@ function validateArtifact(
       if (!isNonEmptyString(a.title) || !isNonEmptyString(a.content)) {
         throw new Error('Document artifact missing required fields');
       }
+      if (containsPlaceholderText(a.title.trim()) || containsPlaceholderText(a.content.trim())) {
+        throw new Error('Document artifact contains placeholder text');
+      }
       return {
         type: 'document',
         title: a.title.trim(),
@@ -482,6 +577,12 @@ function validateArtifact(
       const a = parsed as CalendarEventArtifact;
       if (!isNonEmptyString(a.title) || !isNonEmptyString(a.start) || !isNonEmptyString(a.end)) {
         throw new Error('Calendar artifact missing required fields');
+      }
+      if (
+        containsPlaceholderText(a.title.trim()) ||
+        containsPlaceholderText((a.description ?? '').trim())
+      ) {
+        throw new Error('Calendar artifact contains placeholder text');
       }
       return {
         type: 'calendar_event',
@@ -496,6 +597,9 @@ function validateArtifact(
       const sources = normalizeStringArray(a.sources);
       if (!isNonEmptyString(a.findings) || !isNonEmptyString(a.recommended_action) || sources.length === 0) {
         throw new Error('Research artifact missing required fields');
+      }
+      if (containsPlaceholderText(a.findings.trim()) || containsPlaceholderText(a.recommended_action.trim())) {
+        throw new Error('Research artifact contains placeholder text');
       }
       return {
         type: 'research_brief',
@@ -533,6 +637,9 @@ function validateArtifact(
       if (options.length < 2) {
         throw new Error('Decision artifact missing required fields');
       }
+      if (options.some((option) => containsPlaceholderText(option.option) || containsPlaceholderText(option.rationale))) {
+        throw new Error('Decision artifact contains placeholder text');
+      }
       return {
         type: 'decision_frame',
         options,
@@ -549,6 +656,9 @@ function validateArtifact(
 
       if (!isNonEmptyString(context) || !isNonEmptyString(evidence)) {
         throw new Error('Wait artifact missing required fields');
+      }
+      if (containsPlaceholderText(context.trim()) || containsPlaceholderText(evidence.trim())) {
+        throw new Error('Wait artifact contains placeholder text');
       }
       return {
         type: 'wait_rationale',

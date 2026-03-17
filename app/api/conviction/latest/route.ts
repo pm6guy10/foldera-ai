@@ -14,6 +14,24 @@ import { buildContextGreeting } from '@/lib/briefing/context-builder';
 
 export const dynamic = 'force-dynamic';
 
+function startOfTodayIso(): string {
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  return start.toISOString();
+}
+
+function extractArtifact(action: Record<string, unknown>): Record<string, unknown> | undefined {
+  const executionResult =
+    action.execution_result && typeof action.execution_result === 'object'
+      ? (action.execution_result as Record<string, unknown>)
+      : null;
+
+  if (executionResult?.artifact && typeof executionResult.artifact === 'object') {
+    return executionResult.artifact as Record<string, unknown>;
+  }
+
+  return undefined;
+}
 
 export async function GET(request: Request) {
   // Auth
@@ -24,15 +42,14 @@ export async function GET(request: Request) {
   try {
     const supabase = createServerClient();
 
-    // Prefer most recent pending_approval
-    const { data: action, error } = await supabase
+    const { data: actions, error } = await supabase
       .from('tkg_actions')
       .select('*')
       .eq('user_id', userId)
       .eq('status', 'pending_approval')
+      .order('confidence', { ascending: false })
       .order('generated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(20);
 
     if (error) {
       throw error;
@@ -46,9 +63,18 @@ export async function GET(request: Request) {
       contextGreeting = 'Today. 0 active commitments. Top priority: None set.';
     }
 
+    const candidates = actions ?? [];
+    const todaysCandidates = candidates.filter((candidate) => {
+      const generatedAt = typeof candidate.generated_at === 'string' ? candidate.generated_at : '';
+      return generatedAt >= startOfTodayIso();
+    });
+    const action = (todaysCandidates.length > 0 ? todaysCandidates : candidates)[0];
+
     if (!action) {
       return NextResponse.json({ context_greeting: contextGreeting }, { status: 200 });
     }
+
+    const artifact = extractArtifact(action as Record<string, unknown>);
 
     // Map DB row → ConvictionAction shape
     return NextResponse.json({
@@ -64,7 +90,7 @@ export async function GET(request: Request) {
       approvedAt:      action.approved_at ?? undefined,
       executedAt:      action.executed_at ?? undefined,
       executionResult: action.execution_result ?? undefined,
-      artifact:        action.artifact ?? undefined,
+      artifact,
       context_greeting: contextGreeting,
     });
   } catch (err: unknown) {
