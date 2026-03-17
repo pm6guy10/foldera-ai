@@ -1,6 +1,5 @@
 import { createServerClient, type SupabaseClient } from '@/lib/db/client';
-
-export const OWNER_USER_ID = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+import { OWNER_USER_ID } from '@/lib/auth/constants';
 
 interface UserSubscriptionRow {
   user_id: string;

@@ -3,11 +3,27 @@
 import { useState, useEffect } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { SkeletonSettingsPage } from '@/components/ui/skeleton';
+import { OWNER_USER_ID } from '@/lib/auth/constants';
 
 interface SubscriptionInfo {
   status: string;
   plan?: string;
   daysRemaining?: number;
+}
+
+interface ManualTriggerStage {
+  attempted: number;
+  errors: string[];
+  failed: number;
+  status: 'ok' | 'partial' | 'failed' | 'skipped';
+  succeeded: number;
+  summary: string;
+}
+
+interface ManualTriggerResult {
+  ok: boolean;
+  generate: ManualTriggerStage;
+  send: ManualTriggerStage;
 }
 
 export default function SettingsClient() {
@@ -16,6 +32,10 @@ export default function SettingsClient() {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [manualRunLoading, setManualRunLoading] = useState(false);
+  const [manualRunError, setManualRunError] = useState<string | null>(null);
+  const [manualRunResult, setManualRunResult] = useState<ManualTriggerResult | null>(null);
+  const isOwner = session?.user?.id === OWNER_USER_ID;
 
   const logRouteFailure = (route: string, details: Record<string, unknown>) => {
     console.warn('[settings/client]', { route, ...details });
@@ -182,6 +202,64 @@ export default function SettingsClient() {
         </div>
       </div>
 
+      {isOwner ? (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-300">Daily brief</h2>
+              <p className="text-zinc-500 text-sm mt-1">Run today&apos;s generate and send flow now.</p>
+            </div>
+            <button
+              onClick={async () => {
+                setManualRunLoading(true);
+                setManualRunError(null);
+                setManualRunResult(null);
+                try {
+                  const res = await fetch('/api/settings/run-brief', { method: 'POST' });
+                  const data = await res.json().catch(() => ({}));
+
+                  if (
+                    typeof data === 'object' &&
+                    data &&
+                    'generate' in data &&
+                    'send' in data
+                  ) {
+                    setManualRunResult(data as ManualTriggerResult);
+                  }
+
+                  if (!res.ok) {
+                    const message = typeof (data as { error?: unknown }).error === 'string'
+                      ? ((data as { error: string }).error)
+                      : 'Could not run today\'s brief right now.';
+                    setManualRunError(message);
+                    return;
+                  }
+                } catch {
+                  setManualRunError('Could not run today\'s brief right now.');
+                } finally {
+                  setManualRunLoading(false);
+                }
+              }}
+              disabled={manualRunLoading}
+              className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {manualRunLoading ? 'Running...' : 'Run today\'s brief now'}
+            </button>
+          </div>
+
+          {manualRunError ? (
+            <p className="mt-4 text-sm text-rose-400">{manualRunError}</p>
+          ) : null}
+
+          {manualRunResult ? (
+            <div className="mt-4 space-y-3">
+              <TriggerStageSummary label="Generate" stage={manualRunResult.generate} />
+              <TriggerStageSummary label="Send" stage={manualRunResult.send} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* SIGN OUT */}
       <div className="pt-2">
         <button
@@ -193,6 +271,25 @@ export default function SettingsClient() {
       </div>
 
       <p className="text-zinc-600 text-xs">All integrations secured with OAuth 2.0.</p>
+    </div>
+  );
+}
+
+function TriggerStageSummary({ label, stage }: { label: string; stage: ManualTriggerStage }) {
+  const toneClass =
+    stage.status === 'ok' || stage.status === 'skipped'
+      ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+      : stage.status === 'partial'
+        ? 'border-amber-500/20 bg-amber-500/10 text-amber-200'
+        : 'border-rose-500/20 bg-rose-500/10 text-rose-300';
+
+  return (
+    <div className={`rounded-lg border px-3 py-3 ${toneClass}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em]">{label}</p>
+      <p className="mt-1 text-sm">{stage.summary}</p>
+      {stage.errors[0] ? (
+        <p className="mt-2 text-xs opacity-80">{stage.errors.join(' ')}</p>
+      ) : null}
     </div>
   );
 }

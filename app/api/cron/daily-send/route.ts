@@ -9,153 +9,26 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
-import { createServerClient } from '@/lib/db/client';
-import { sendDailyDirective } from '@/lib/email/resend';
+import { runDailySend, toSafeDailyBriefStageStatus } from '@/lib/cron/daily-brief';
 import { apiError } from '@/lib/utils/api-error';
-import {
-  filterDailyBriefEligibleUserIds,
-  getVerifiedDailyBriefRecipientEmail,
-} from '@/lib/auth/daily-brief-users';
-import type { DirectiveItem } from '@/lib/email/resend';
-import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 export const dynamic = 'force-dynamic';
-
-const CONFIDENCE_THRESHOLD = 70;
-
-function artifactTypeForAction(actionType: string | null | undefined): string | null {
-  switch (actionType) {
-    case 'send_message':
-      return 'drafted_email';
-    case 'make_decision':
-      return 'decision_frame';
-    case 'do_nothing':
-      return 'wait_rationale';
-    default:
-      return null;
-  }
-}
 
 async function handler(request: NextRequest) {
   const authErr = validateCronAuth(request);
   if (authErr) return authErr;
 
-  const supabase = createServerClient();
-  const date = new Date().toISOString().slice(0, 10);
-
-  const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
-  const { data: entities, error } = await supabase.from('tkg_entities').select('user_id').eq('name', 'self');
-  if (error) return apiError(error, 'cron/daily-send');
-
-  const userIds = [...new Set((entities ?? []).map((e: { user_id: string }) => e.user_id))];
-  const eligibleUserIds = await filterDailyBriefEligibleUserIds(userIds, supabase);
-  if (eligibleUserIds.length === 0) {
-    return NextResponse.json({ sent: 0, message: 'No eligible users' });
+  try {
+    const result = await runDailySend();
+    return NextResponse.json({
+      date: result.date,
+      sent: result.succeeded,
+      total: result.total,
+      status: toSafeDailyBriefStageStatus(result),
+    });
+  } catch (error: unknown) {
+    return apiError(error, 'cron/daily-send');
   }
-
-  const results: Array<{ userId: string; success: boolean; error?: string }> = [];
-
-  for (const userId of eligibleUserIds) {
-    try {
-      const to = await getVerifiedDailyBriefRecipientEmail(userId, supabase);
-      if (!to) {
-        results.push({ userId, success: false, error: 'no verified email' });
-        continue;
-      }
-
-      // Fetch today's generated directives — pick the SINGLE highest confidence
-      const { data: actions, error: actionsError } = await supabase
-        .from('tkg_actions')
-        .select('id, action_type, directive_text, reason, confidence')
-        .eq('user_id', userId)
-        .eq('status', 'generated')
-        .gte('generated_at', todayStart.toISOString())
-        .order('confidence', { ascending: false })
-        .limit(1);
-
-      if (actionsError) {
-        results.push({ userId, success: false, error: actionsError.message });
-        continue;
-      }
-
-      const action = actions?.[0];
-
-      if (!action) {
-        results.push({ userId, success: false, error: 'no generated directives found' });
-        continue;
-      }
-
-      const confidence = (action.confidence as number) ?? 0;
-
-      // Below threshold → "Nothing today"
-      if (confidence < CONFIDENCE_THRESHOLD) {
-        await sendDailyDirective({
-          to,
-          date,
-          subject: 'Foldera: Nothing today',
-          directives: [],
-          userId,
-        });
-        results.push({ userId, success: true });
-        continue;
-      }
-
-      // Build single directive
-      const directiveItem: DirectiveItem = {
-        id: action.id,
-        directive: action.directive_text as string,
-        action_type: action.action_type as string,
-        confidence,
-        reason: ((action.reason as string) ?? '').split('[score=')[0].trim(),
-      };
-
-      const words = directiveItem.directive.split(/\s+/).slice(0, 6).join(' ');
-      const subject = `Foldera: ${words.length > 50 ? words.slice(0, 47) + '...' : words}`;
-
-      // Send ONE email
-      await sendDailyDirective({ to, directives: [directiveItem], date, subject, userId });
-
-      // Update status
-      const { error: updateError } = await supabase
-        .from('tkg_actions')
-        .update({ status: 'pending_approval' })
-        .eq('id', action.id);
-
-      if (updateError) {
-        results.push({ userId, success: false, error: updateError.message });
-        continue;
-      }
-
-      results.push({ userId, success: true });
-      logStructuredEvent({
-        event: 'daily_send_complete',
-        userId,
-        artifactType: artifactTypeForAction(action.action_type as string | null | undefined),
-        generationStatus: 'sent',
-        details: {
-          scope: 'daily-send',
-          action_id: action.id,
-        },
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logStructuredEvent({
-        event: 'daily_send_failed',
-        level: 'error',
-        userId,
-        artifactType: null,
-        generationStatus: 'failed',
-        details: {
-          scope: 'daily-send',
-          error: msg,
-        },
-      });
-      results.push({ userId, success: false, error: msg });
-    }
-  }
-
-  const sent = results.filter(r => r.success).length;
-  return NextResponse.json({ date, sent, total: eligibleUserIds.length, results });
 }
 
 export const GET = handler;

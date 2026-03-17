@@ -3,7 +3,34 @@ import GoogleProvider from 'next-auth/providers/google';
 import AzureADProvider from 'next-auth/providers/azure-ad';
 import { resolveSupabaseAuthUserId } from '@/lib/auth/supabase-auth-user';
 
+const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
+const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
+
+function getProductionSessionCookieDomain(): string | undefined {
+  if (process.env.NODE_ENV !== 'production') {
+    return undefined;
+  }
+
+  const rawBaseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_BASE_URL;
+  if (!rawBaseUrl) {
+    return undefined;
+  }
+
+  try {
+    const hostname = new URL(rawBaseUrl).hostname.toLowerCase();
+    if (hostname === 'foldera.ai' || hostname.endsWith('.foldera.ai')) {
+      return '.foldera.ai';
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
 export function getAuthOptions(): NextAuthOptions {
+  const useSecureCookies = process.env.NODE_ENV === 'production';
+  const cookieDomain = getProductionSessionCookieDomain();
   const providers: any[] = [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
@@ -173,7 +200,32 @@ export function getAuthOptions(): NextAuthOptions {
     },
     session: {
       strategy: 'jwt',
-      maxAge: 30 * 24 * 60 * 60,
+      maxAge: THIRTY_DAYS_IN_SECONDS,
+      updateAge: ONE_DAY_IN_SECONDS,
+    },
+    jwt: {
+      maxAge: THIRTY_DAYS_IN_SECONDS,
+    },
+    cookies: {
+      sessionToken: {
+        name: `${useSecureCookies ? '__Secure-' : ''}next-auth.session-token`,
+        options: {
+          httpOnly: true,
+          sameSite: 'lax',
+          path: '/',
+          secure: useSecureCookies,
+          ...(cookieDomain ? { domain: cookieDomain } : {}),
+        },
+      },
+      callbackUrl: {
+        name: `${useSecureCookies ? '__Secure-' : ''}next-auth.callback-url`,
+        options: {
+          sameSite: 'lax',
+          path: '/',
+          secure: useSecureCookies,
+          ...(cookieDomain ? { domain: cookieDomain } : {}),
+        },
+      },
     },
     secret: process.env.NEXTAUTH_SECRET,
   };
