@@ -1,12 +1,16 @@
 import { createServerClient } from '@/lib/db/client';
-import { generateDirective, validateDirectiveForPersistence } from '@/lib/briefing/generator';
+import {
+  buildDirectiveExecutionResult,
+  generateDirective,
+  validateDirectiveForPersistence,
+} from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
 import { sendDailyDirective } from '@/lib/email/resend';
 import type { DirectiveItem } from '@/lib/email/resend';
-import type { ConvictionArtifact } from '@/lib/briefing/types';
+import type { ConvictionArtifact, ConvictionDirective, GenerationRunLog } from '@/lib/briefing/types';
 import {
   filterDailyBriefEligibleUserIds,
   getVerifiedDailyBriefRecipientEmail,
@@ -85,6 +89,85 @@ function extractArtifact(executionResult: unknown): ConvictionArtifact | null {
   }
 
   return artifact as ConvictionArtifact;
+}
+
+function buildNoSendGenerationLog(
+  directive: ConvictionDirective,
+  reason: string,
+  stage: GenerationRunLog['stage'],
+): GenerationRunLog {
+  const candidateDiscovery = directive.generationLog?.candidateDiscovery
+    ? {
+      ...directive.generationLog.candidateDiscovery,
+      failureReason: directive.generationLog.candidateDiscovery.failureReason ?? reason,
+    }
+    : null;
+
+  return {
+    outcome: 'no_send',
+    stage,
+    reason,
+    candidateFailureReasons: candidateDiscovery
+      ? candidateDiscovery.topCandidates.map((candidate) =>
+        candidate.decision === 'selected'
+          ? `Selected candidate blocked: ${reason}`
+          : candidate.decisionReason)
+      : [reason],
+    candidateDiscovery,
+  };
+}
+
+function buildNoSendExecutionResult(
+  directive: ConvictionDirective,
+  reason: string,
+  stage: GenerationRunLog['stage'],
+): Record<string, unknown> {
+  return buildDirectiveExecutionResult({
+    directive,
+    briefOrigin: 'daily_cron',
+    extras: {
+      outcome_type: 'no_send',
+      generation_log: directive.generationLog?.outcome === 'no_send'
+        ? directive.generationLog
+        : buildNoSendGenerationLog(directive, reason, stage),
+      no_send: {
+        reason,
+        stage,
+      },
+    },
+  });
+}
+
+async function persistNoSendOutcome(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  directive: ConvictionDirective,
+  reason: string,
+  stage: GenerationRunLog['stage'],
+): Promise<{ id: string } | null> {
+  const executionResult = buildNoSendExecutionResult(directive, reason, stage);
+  const { data, error } = await supabase
+    .from('tkg_actions')
+    .insert({
+      user_id: userId,
+      action_type: 'do_nothing',
+      directive_text: 'No directive sent today.',
+      reason,
+      status: 'skipped',
+      confidence: 0,
+      evidence: directive.evidence,
+      generated_at: new Date().toISOString(),
+      generation_attempts: 1,
+      execution_result: executionResult,
+    })
+    .select('id')
+    .single();
+
+  if (error || !data?.id) {
+    return null;
+  }
+
+  return { id: data.id };
 }
 
 async function getEligibleDailyBriefUserIds(): Promise<string[]> {
@@ -218,18 +301,31 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
       }
 
       if (directive.directive === '__GENERATION_FAILED__') {
-        logStructuredEvent({
-          event: 'daily_generate_failed',
-          level: 'error',
+        const savedNoSend = await persistNoSendOutcome(
+          supabase,
           userId,
-          artifactType: null,
-          generationStatus: 'generation_failed',
-          details: {
-            scope: 'daily-generate',
-            error: 'generation returned failure sentinel',
-          },
-        });
-        results.push({ code: 'generation_failed', success: false });
+          directive,
+          directive.reason,
+          directive.generationLog?.stage ?? 'generation',
+        );
+
+        if (!savedNoSend) {
+          logStructuredEvent({
+            event: 'daily_generate_failed',
+            level: 'error',
+            userId,
+            artifactType: null,
+            generationStatus: 'persist_failed',
+            details: {
+              scope: 'daily-generate',
+              error: 'Failed to persist no-send outcome.',
+            },
+          });
+          results.push({ code: 'directive_persist_failed', success: false });
+          continue;
+        }
+
+        results.push({ code: 'nothing_today', success: true });
         continue;
       }
 
@@ -251,7 +347,18 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
       }
 
       if (!artifact) {
-        results.push({ code: 'artifact_generation_failed', success: false });
+        const savedNoSend = await persistNoSendOutcome(
+          supabase,
+          userId,
+          directive,
+          'Artifact generation failed.',
+          'artifact',
+        );
+        if (!savedNoSend) {
+          results.push({ code: 'directive_persist_failed', success: false });
+          continue;
+        }
+        results.push({ code: 'nothing_today', success: true });
         continue;
       }
 
@@ -272,7 +379,18 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
             issues: persistenceIssues,
           },
         });
-        results.push({ code: 'generation_failed', success: false });
+        const savedNoSend = await persistNoSendOutcome(
+          supabase,
+          userId,
+          directive,
+          `Directive rejected by persistence validation: ${persistenceIssues.join('; ')}`,
+          'validation',
+        );
+        if (!savedNoSend) {
+          results.push({ code: 'directive_persist_failed', success: false });
+          continue;
+        }
+        results.push({ code: 'nothing_today', success: true });
         continue;
       }
 
@@ -288,10 +406,11 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
           evidence: directive.evidence,
           generated_at: new Date().toISOString(),
           generation_attempts: 1,
-          execution_result: {
+          execution_result: buildDirectiveExecutionResult({
+            directive,
             artifact,
-            brief_origin: 'daily_cron',
-          },
+            briefOrigin: 'daily_cron',
+          }),
         })
         .select('id')
         .single();

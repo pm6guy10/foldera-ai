@@ -35,6 +35,9 @@ export interface ConvictionDirective {
   // Search hints — set by the engine when the artifact needs current info
   requires_search?: boolean;
   search_context?: string;   // What to search for (e.g. "WA DOT job posting 2024-12345")
+
+  // Internal generation trace for persistence/debugging only.
+  generationLog?: GenerationRunLog;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,6 +96,55 @@ export type ConvictionArtifact =
   | ResearchBriefArtifact
   | DecisionFrameArtifact
   | WaitRationaleArtifact;
+
+export interface CandidateScoreBreakdown {
+  stakes: number;
+  urgency: number;
+  tractability: number;
+  freshness: number;
+}
+
+export interface GenerationCandidateSource {
+  kind: 'signal' | 'commitment' | 'relationship' | 'emergent' | 'compound';
+  id?: string;
+  source?: string;
+  occurredAt?: string;
+  summary?: string;
+}
+
+export interface GenerationCandidateLog {
+  id: string;
+  rank: number;
+  candidateType: string;
+  actionType: ActionType;
+  score: number;
+  scoreBreakdown: CandidateScoreBreakdown;
+  targetGoal: {
+    text: string;
+    priority: number;
+    category: string;
+  } | null;
+  sourceSignals: GenerationCandidateSource[];
+  decision: 'selected' | 'rejected';
+  decisionReason: string;
+}
+
+export interface GenerationCandidateDiscoveryLog {
+  candidateCount: number;
+  suppressedCandidateCount: number;
+  selectionMargin: number | null;
+  selectionReason: string | null;
+  failureReason: string | null;
+  topCandidates: GenerationCandidateLog[];
+}
+
+export interface GenerationRunLog {
+  outcome: 'selected' | 'no_send';
+  stage: 'scoring' | 'generation' | 'artifact' | 'validation' | 'persistence' | 'system';
+  reason: string;
+  candidateFailureReasons: string[];
+  candidateDiscovery: GenerationCandidateDiscoveryLog | null;
+}
 
 /**
  * Persisted to tkg_actions and returned from /api/conviction/generate

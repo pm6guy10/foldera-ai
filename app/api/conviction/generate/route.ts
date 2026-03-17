@@ -12,7 +12,11 @@ import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { apiError } from '@/lib/utils/api-error';
-import { generateDirective, validateDirectiveForPersistence } from '@/lib/briefing/generator';
+import {
+  buildDirectiveExecutionResult,
+  generateDirective,
+  validateDirectiveForPersistence,
+} from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -137,7 +141,11 @@ export async function POST(request: Request) {
         evidence:         directive.evidence,
         status:           'pending_approval',
         generated_at:     new Date().toISOString(),
-        execution_result: { artifact, brief_origin: 'dashboard_generate' },
+        execution_result: buildDirectiveExecutionResult({
+          directive,
+          artifact,
+          briefOrigin: 'dashboard_generate',
+        }),
       })
       .select('id, generated_at, status, execution_result')
       .single();

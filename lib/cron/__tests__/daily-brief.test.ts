@@ -1,0 +1,315 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ConvictionDirective, GenerationRunLog } from '@/lib/briefing/types';
+import { runDailyGenerate } from '../daily-brief';
+import { generateDirective, validateDirectiveForPersistence } from '@/lib/briefing/generator';
+import { generateArtifact } from '@/lib/conviction/artifact-generator';
+import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
+import { processUnextractedSignals } from '@/lib/signals/signal-processor';
+import { summarizeSignals } from '@/lib/signals/summarizer';
+
+const USER_ID = '11111111-1111-1111-1111-111111111111';
+
+const mockSupabase = {
+  insertedActions: [] as Array<Record<string, unknown>>,
+
+  from(table: string) {
+    const self = this;
+
+    if (table === 'user_subscriptions') {
+      return {
+        update() {
+          return {
+            eq() {
+              return {
+                eq() {
+                  return {
+                    lte: () => Promise.resolve({ error: null }),
+                  };
+                },
+              };
+            },
+          };
+        },
+      };
+    }
+
+    if (table === 'tkg_entities') {
+      return {
+        select() {
+          return {
+            eq: () => Promise.resolve({
+              data: [{ user_id: USER_ID }],
+              error: null,
+            }),
+          };
+        },
+      };
+    }
+
+    if (table === 'tkg_actions') {
+      return {
+        insert(payload: Record<string, unknown>) {
+          self.insertedActions.push(payload);
+          return {
+            select() {
+              return {
+                single: () => Promise.resolve({
+                  data: { id: `action-${self.insertedActions.length}` },
+                  error: null,
+                }),
+              };
+            },
+          };
+        },
+      };
+    }
+
+    throw new Error(`Unexpected table ${table}`);
+  },
+};
+
+vi.mock('@/lib/db/client', () => ({
+  createServerClient: () => mockSupabase,
+}));
+
+vi.mock('@/lib/briefing/generator', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/briefing/generator')>('@/lib/briefing/generator');
+  return {
+    ...actual,
+    generateDirective: vi.fn(),
+    validateDirectiveForPersistence: vi.fn(),
+  };
+});
+
+vi.mock('@/lib/conviction/artifact-generator', () => ({
+  generateArtifact: vi.fn(),
+}));
+
+vi.mock('@/lib/extraction/conversation-extractor', () => ({
+  extractFromConversation: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/signals/signal-processor', () => ({
+  processUnextractedSignals: vi.fn().mockResolvedValue({
+    signals_processed: 0,
+    entities_upserted: 0,
+    commitments_created: 0,
+    topics_merged: 0,
+  }),
+}));
+
+vi.mock('@/lib/signals/summarizer', () => ({
+  summarizeSignals: vi.fn().mockResolvedValue(0),
+}));
+
+vi.mock('@/lib/auth/daily-brief-users', () => ({
+  filterDailyBriefEligibleUserIds: vi.fn(async (userIds: string[]) => userIds),
+  getVerifiedDailyBriefRecipientEmail: vi.fn(),
+}));
+
+vi.mock('@/lib/utils/structured-logger', () => ({
+  logStructuredEvent: vi.fn(),
+}));
+
+function buildGenerationLog(overrides: Partial<GenerationRunLog> = {}): GenerationRunLog {
+  return {
+    outcome: 'selected',
+    stage: 'generation',
+    reason: 'Selected because score 3.40 beat the next-best candidate at 2.95 by 0.45.',
+    candidateFailureReasons: [
+      'Rejected because Stakes 3 but urgency only 0.30. Important, but the window is far enough out that today is not the day.',
+      'Rejected because Tractability only 0.35 - historical data shows low follow-through on this type.',
+    ],
+    candidateDiscovery: {
+      candidateCount: 3,
+      suppressedCandidateCount: 0,
+      selectionMargin: 0.45,
+      selectionReason: 'Selected because score 3.40 beat the next-best candidate at 2.95 by 0.45.',
+      failureReason: null,
+      topCandidates: [
+        {
+          id: 'sig-1',
+          rank: 1,
+          candidateType: 'signal',
+          actionType: 'send_message',
+          score: 3.4,
+          scoreBreakdown: {
+            stakes: 5,
+            urgency: 0.9,
+            tractability: 0.8,
+            freshness: 0.95,
+          },
+          targetGoal: {
+            text: 'Advance MAS3 hiring process',
+            priority: 5,
+            category: 'career',
+          },
+          sourceSignals: [
+            {
+              kind: 'signal',
+              id: 'sig-1',
+              source: 'outlook',
+              occurredAt: '2026-03-16T17:00:00.000Z',
+              summary: 'Reference prep email.',
+            },
+          ],
+          decision: 'selected',
+          decisionReason: 'Selected because score 3.40 beat the next-best candidate at 2.95 by 0.45.',
+        },
+        {
+          id: 'commitment-1',
+          rank: 2,
+          candidateType: 'commitment',
+          actionType: 'make_decision',
+          score: 2.95,
+          scoreBreakdown: {
+            stakes: 4,
+            urgency: 0.6,
+            tractability: 0.7,
+            freshness: 0.88,
+          },
+          targetGoal: {
+            text: 'Advance MAS3 hiring process',
+            priority: 5,
+            category: 'career',
+          },
+          sourceSignals: [
+            {
+              kind: 'commitment',
+              id: 'commitment-1',
+              occurredAt: '2026-03-16T18:00:00.000Z',
+              summary: 'Finalize reference packet.',
+            },
+          ],
+          decision: 'rejected',
+          decisionReason: 'Rejected because Stakes 3 but urgency only 0.30. Important, but the window is far enough out that today is not the day.',
+        },
+        {
+          id: 'rel-1',
+          rank: 3,
+          candidateType: 'relationship',
+          actionType: 'send_message',
+          score: 2.1,
+          scoreBreakdown: {
+            stakes: 3,
+            urgency: 0.55,
+            tractability: 0.5,
+            freshness: 0.85,
+          },
+          targetGoal: {
+            text: 'Advance MAS3 hiring process',
+            priority: 5,
+            category: 'career',
+          },
+          sourceSignals: [
+            {
+              kind: 'relationship',
+              id: 'rel-1',
+              occurredAt: '2026-03-01T18:00:00.000Z',
+              summary: 'Follow up with Holly.',
+            },
+          ],
+          decision: 'rejected',
+          decisionReason: 'Rejected because Tractability only 0.35 - historical data shows low follow-through on this type.',
+        },
+      ],
+    },
+    ...overrides,
+  };
+}
+
+function buildDirective(overrides: Partial<ConvictionDirective> = {}): ConvictionDirective {
+  return {
+    directive: 'Draft the reference follow-up email to Holly today.',
+    action_type: 'send_message',
+    confidence: 82,
+    reason: 'Reference prep is the highest-leverage move before the final MAS3 selection window closes.',
+    evidence: [
+      { type: 'signal', description: 'Outlook thread requesting MAS3 reference material.' },
+    ],
+    generationLog: buildGenerationLog(),
+    ...overrides,
+  };
+}
+
+describe('runDailyGenerate candidate logging', () => {
+  beforeEach(() => {
+    mockSupabase.insertedActions = [];
+    vi.mocked(generateDirective).mockReset();
+    vi.mocked(validateDirectiveForPersistence).mockReset();
+    vi.mocked(generateArtifact).mockReset();
+    vi.mocked(extractFromConversation).mockClear();
+    vi.mocked(processUnextractedSignals).mockClear();
+    vi.mocked(summarizeSignals).mockClear();
+    vi.mocked(validateDirectiveForPersistence).mockReturnValue([]);
+  });
+
+  it('persists top candidate discovery on successful directive generation', async () => {
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Reference talking points for MAS3',
+      body: 'Hi Holly,\n\nCould you send the two strongest reference talking points for MAS3?\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+
+    const result = await runDailyGenerate();
+
+    expect(result.results).toEqual([{ code: 'generated', success: true }]);
+    expect(mockSupabase.insertedActions).toHaveLength(1);
+    const saved = mockSupabase.insertedActions[0];
+    expect(saved.status).toBe('pending_approval');
+    expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates).toHaveLength(3);
+    expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[0].decision).toBe('selected');
+    expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[1].decisionReason).toContain('Rejected because');
+  });
+
+  it('persists explicit no-send outcomes with candidate failure reasons', async () => {
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective({
+      directive: '__GENERATION_FAILED__',
+      action_type: 'do_nothing',
+      confidence: 0,
+      reason: 'No ranked daily brief candidate.',
+      evidence: [],
+      generationLog: buildGenerationLog({
+        outcome: 'no_send',
+        stage: 'scoring',
+        reason: 'No ranked daily brief candidate.',
+        candidateFailureReasons: ['No ranked daily brief candidate.'],
+        candidateDiscovery: {
+          candidateCount: 0,
+          suppressedCandidateCount: 2,
+          selectionMargin: null,
+          selectionReason: null,
+          failureReason: 'No ranked daily brief candidate.',
+          topCandidates: [],
+        },
+      }),
+    }));
+
+    const result = await runDailyGenerate();
+
+    expect(result.results).toEqual([{ code: 'nothing_today', success: true }]);
+    const saved = mockSupabase.insertedActions[0];
+    expect(saved.status).toBe('skipped');
+    expect(saved.directive_text).toBe('No directive sent today.');
+    expect((saved.execution_result as Record<string, any>).outcome_type).toBe('no_send');
+    expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.failureReason).toBe('No ranked daily brief candidate.');
+  });
+
+  it('persists blocked generation outcomes when artifact creation fails', async () => {
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue(null);
+
+    const result = await runDailyGenerate();
+
+    expect(result.results).toEqual([{ code: 'nothing_today', success: true }]);
+    const saved = mockSupabase.insertedActions[0];
+    expect(saved.status).toBe('skipped');
+    expect((saved.execution_result as Record<string, any>).generation_log.outcome).toBe('no_send');
+    expect((saved.execution_result as Record<string, any>).generation_log.stage).toBe('artifact');
+    expect((saved.execution_result as Record<string, any>).generation_log.candidateFailureReasons[0]).toContain('Artifact generation failed.');
+    expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[0].decision).toBe('selected');
+  });
+});

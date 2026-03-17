@@ -1,6 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
-import type { ActionType, ChiefOfStaffBriefing, ConvictionArtifact, ConvictionDirective, EvidenceItem } from './types';
+import type {
+  ActionType,
+  ChiefOfStaffBriefing,
+  ConvictionArtifact,
+  ConvictionDirective,
+  EvidenceItem,
+  GenerationCandidateDiscoveryLog,
+  GenerationRunLog,
+} from './types';
 import type { DeprioritizedLoop, ScoredLoop, ScorerResult } from './scorer';
 import { scoreOpenLoops } from './scorer';
 import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
@@ -101,18 +109,80 @@ function getAnthropic(): Anthropic {
   return anthropicClient;
 }
 
-function emptyDirective(reason: string): ConvictionDirective {
+function isInternalNoSendExecutionResult(executionResult: unknown): boolean {
+  if (!executionResult || typeof executionResult !== 'object') return false;
+  return (executionResult as Record<string, unknown>).outcome_type === 'no_send';
+}
+
+function buildSelectedGenerationLog(
+  candidateDiscovery: GenerationCandidateDiscoveryLog | null,
+): GenerationRunLog {
+  return {
+    outcome: 'selected',
+    stage: 'generation',
+    reason: candidateDiscovery?.selectionReason ?? 'Directive generated successfully.',
+    candidateFailureReasons: (candidateDiscovery?.topCandidates ?? [])
+      .filter((candidate) => candidate.decision === 'rejected')
+      .map((candidate) => candidate.decisionReason),
+    candidateDiscovery,
+  };
+}
+
+function buildNoSendGenerationLog(
+  reason: string,
+  stage: GenerationRunLog['stage'],
+  candidateDiscovery: GenerationCandidateDiscoveryLog | null,
+): GenerationRunLog {
+  const normalizedDiscovery = candidateDiscovery
+    ? {
+      ...candidateDiscovery,
+      failureReason: candidateDiscovery.failureReason ?? reason,
+    }
+    : null;
+
+  const candidateFailureReasons = normalizedDiscovery
+    ? normalizedDiscovery.topCandidates.map((candidate) =>
+      candidate.decision === 'selected'
+        ? `Selected candidate blocked: ${reason}`
+        : candidate.decisionReason)
+    : [reason];
+
+  return {
+    outcome: 'no_send',
+    stage,
+    reason,
+    candidateFailureReasons,
+    candidateDiscovery: normalizedDiscovery,
+  };
+}
+
+function emptyDirective(reason: string, generationLog?: GenerationRunLog): ConvictionDirective {
   return {
     directive: GENERATION_FAILED_SENTINEL,
     action_type: 'do_nothing',
     confidence: 0,
     reason,
     evidence: [],
+    generationLog,
   };
 }
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+export function buildDirectiveExecutionResult(input: {
+  directive: ConvictionDirective;
+  briefOrigin: string;
+  artifact?: ConvictionArtifact | Record<string, unknown> | null;
+  extras?: Record<string, unknown>;
+}): Record<string, unknown> {
+  return {
+    ...(input.artifact ? { artifact: input.artifact } : {}),
+    brief_origin: input.briefOrigin,
+    ...(input.directive.generationLog ? { generation_log: input.directive.generationLog } : {}),
+    ...(input.extras ?? {}),
+  };
 }
 
 function normalizeText(value: string): string {
@@ -580,7 +650,7 @@ async function loadRecentActionGuardrails(userId: string): Promise<{
       .limit(10),
     supabase
       .from('tkg_actions')
-      .select('directive_text, action_type, generated_at, skip_reason')
+      .select('directive_text, action_type, generated_at, skip_reason, execution_result')
       .eq('user_id', userId)
       .in('status', ['skipped', 'draft_rejected', 'rejected'])
       .gte('generated_at', approvedSince)
@@ -593,7 +663,9 @@ async function loadRecentActionGuardrails(userId: string): Promise<{
 
   return {
     approvedRecently: (approvedRes.data ?? []) as RecentActionRow[],
-    skippedRecently: (skippedRes.data ?? []) as RecentSkippedActionRow[],
+    skippedRecently: ((skippedRes.data ?? []) as Array<RecentSkippedActionRow & {
+      execution_result?: unknown;
+    }>).filter((row) => !isInternalNoSendExecutionResult(row.execution_result)),
   };
 }
 
@@ -765,7 +837,10 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
         generationStatus: 'daily_cap_reached',
         details: { scope: 'generator' },
       });
-      return emptyDirective('Daily spend cap reached.');
+      return emptyDirective(
+        'Daily spend cap reached.',
+        buildNoSendGenerationLog('Daily spend cap reached.', 'system', null),
+      );
     }
 
     const [scored, guardrails] = await Promise.all([
@@ -774,7 +849,10 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     ]);
 
     if (!scored?.winner) {
-      return emptyDirective('No ranked daily brief candidate.');
+      return emptyDirective(
+        'No ranked daily brief candidate.',
+        buildNoSendGenerationLog('No ranked daily brief candidate.', 'scoring', null),
+      );
     }
 
     const promptContext: PromptContext = {
@@ -786,7 +864,10 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
 
     const payload = await generatePayload(userId, promptContext);
     if (!payload) {
-      return emptyDirective('Generation validation failed.');
+      return emptyDirective(
+        'Generation validation failed.',
+        buildNoSendGenerationLog('Generation validation failed.', 'generation', scored.candidateDiscovery),
+      );
     }
 
     const confidence = computeDirectiveConfidence(scored);
@@ -803,7 +884,10 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
           threshold: DIRECTIVE_CONFIDENCE_THRESHOLD,
         },
       });
-      return emptyDirective('No directive cleared the confidence bar.');
+      return emptyDirective(
+        'No directive cleared the confidence bar.',
+        buildNoSendGenerationLog('No directive cleared the confidence bar.', 'validation', scored.candidateDiscovery),
+      );
     }
 
     const directive = {
@@ -819,6 +903,7 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       search_context: isNonEmptyString(payload.search_context)
         ? payload.search_context.trim()
         : scored.winner.content.slice(0, 500),
+      generationLog: buildSelectedGenerationLog(scored.candidateDiscovery),
     } as ConvictionDirective & {
       embeddedArtifact?: Record<string, unknown>;
       embeddedArtifactType?: GeneratorArtifactType;
@@ -841,7 +926,10 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
           issues: persistenceIssues,
         },
       });
-      return emptyDirective('No directive cleared the pinned constraints.');
+      return emptyDirective(
+        'No directive cleared the pinned constraints.',
+        buildNoSendGenerationLog('No directive cleared the pinned constraints.', 'validation', scored.candidateDiscovery),
+      );
     }
 
     logStructuredEvent({
@@ -870,7 +958,10 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
         error: error instanceof Error ? error.message : String(error),
       },
     });
-    return emptyDirective('Generation failed internally.');
+    return emptyDirective(
+      'Generation failed internally.',
+      buildNoSendGenerationLog('Generation failed internally.', 'system', null),
+    );
   }
 }
 

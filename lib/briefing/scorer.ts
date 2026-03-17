@@ -23,7 +23,13 @@ import {
   getCandidateConstraintViolations,
   shouldSuppressReflectivePatterns,
 } from './pinned-constraints';
-import type { ActionType } from './types';
+import type {
+  ActionType,
+  CandidateScoreBreakdown,
+  GenerationCandidateDiscoveryLog,
+  GenerationCandidateLog,
+  GenerationCandidateSource,
+} from './types';
 
 // ---------------------------------------------------------------------------
 // Self-referential signal filter — excludes Foldera's own directive outputs
@@ -66,16 +72,16 @@ function logDecryptSkip(userId: string, scope: string, skippedRows: number): voi
   });
 }
 
+function isInternalNoSend(executionResult: unknown): boolean {
+  if (!executionResult || typeof executionResult !== 'object') return false;
+  return (executionResult as Record<string, unknown>).outcome_type === 'no_send';
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export interface ScoreBreakdown {
-  stakes: number;       // 1-5
-  urgency: number;      // 0-1
-  tractability: number; // 0.1-1
-  freshness: number;    // 0.3-1
-}
+export interface ScoreBreakdown extends CandidateScoreBreakdown {}
 
 export interface MatchedGoal {
   text: string;
@@ -93,6 +99,7 @@ export interface ScoredLoop {
   score: number;
   breakdown: ScoreBreakdown;
   relatedSignals: string[];
+  sourceSignals: GenerationCandidateSource[];
   /** For relationship loops: enriched context from entity patterns + recent signals */
   relationshipContext?: string;
   /** For compound loops: the merged loops and connection type */
@@ -115,6 +122,7 @@ export interface DeprioritizedLoop {
 export interface ScorerResult {
   winner: ScoredLoop;
   deprioritized: DeprioritizedLoop[];
+  candidateDiscovery: GenerationCandidateDiscoveryLog;
 }
 
 export interface CrossLoopConnection {
@@ -324,13 +332,14 @@ async function getFreshness(
     // Check for recent pending_approval/executed actions with similar directive text
     const { data: recentActions } = await supabase
       .from('tkg_actions')
-      .select('directive_text, generated_at, status')
+      .select('directive_text, generated_at, status, execution_result')
       .eq('user_id', userId)
       .gte('generated_at', threeDaysAgo)
       .in('status', ['pending_approval', 'executed', 'skipped', 'draft_rejected'])
       .limit(30);
 
-    if (!recentActions || recentActions.length === 0) return 1.0;
+    const filteredActions = (recentActions ?? []).filter((action) => !isInternalNoSend(action.execution_result));
+    if (filteredActions.length === 0) return 1.0;
 
     // Count how many recent directives are similar (keyword overlap)
     const titleWords = new Set(
@@ -340,7 +349,7 @@ async function getFreshness(
 
     let similarCount = 0;
     let anySkipped = false;
-    for (const a of recentActions) {
+    for (const a of filteredActions) {
       const dirText = (a.directive_text as string ?? '').toLowerCase();
       const overlap = [...titleWords].filter(w => dirText.includes(w)).length;
       if (overlap >= 2 || (overlap >= 1 && titleWords.size <= 2)) {
@@ -1464,6 +1473,7 @@ function mergeLoops(conn: CrossLoopConnection): ScoredLoop {
       freshness: Math.min(loopA.breakdown.freshness, loopB.breakdown.freshness),
     },
     relatedSignals: [...new Set([...loopA.relatedSignals, ...loopB.relatedSignals])].slice(0, 8),
+    sourceSignals: [...loopA.sourceSignals, ...loopB.sourceSignals].slice(0, 8),
     relationshipContext: [loopA.relationshipContext, loopB.relationshipContext].filter(Boolean).join('\n---\n') || undefined,
     compoundLoops: [loopA, loopB],
     connectionType,
@@ -1474,6 +1484,108 @@ function mergeLoops(conn: CrossLoopConnection): ScoredLoop {
 // ---------------------------------------------------------------------------
 // Main export — scoreOpenLoops
 // ---------------------------------------------------------------------------
+
+function compareScoredLoops(a: ScoredLoop, b: ScoredLoop): number {
+  if (b.score !== a.score) return b.score - a.score;
+  if (b.breakdown.stakes !== a.breakdown.stakes) return b.breakdown.stakes - a.breakdown.stakes;
+  if (b.breakdown.urgency !== a.breakdown.urgency) return b.breakdown.urgency - a.breakdown.urgency;
+  if (b.breakdown.freshness !== a.breakdown.freshness) return b.breakdown.freshness - a.breakdown.freshness;
+  if (b.breakdown.tractability !== a.breakdown.tractability) return b.breakdown.tractability - a.breakdown.tractability;
+  return a.id.localeCompare(b.id);
+}
+
+function buildSelectionReason(
+  winner: ScoredLoop,
+  runnerUp?: ScoredLoop,
+): {
+  margin: number | null;
+  reason: string;
+} {
+  if (!runnerUp) {
+    return {
+      margin: null,
+      reason: 'Selected as the only viable candidate after scoring.',
+    };
+  }
+
+  const rawMargin = winner.score - runnerUp.score;
+  const margin = Number(rawMargin.toFixed(2));
+  if (rawMargin > 0.01) {
+    return {
+      margin,
+      reason: `Selected because score ${winner.score.toFixed(2)} beat the next-best candidate at ${runnerUp.score.toFixed(2)} by ${margin.toFixed(2)}.`,
+    };
+  }
+
+  const tieBreakers: Array<{
+    label: string;
+    winnerValue: number;
+    runnerUpValue: number;
+  }> = [
+    { label: 'stakes', winnerValue: winner.breakdown.stakes, runnerUpValue: runnerUp.breakdown.stakes },
+    { label: 'urgency', winnerValue: winner.breakdown.urgency, runnerUpValue: runnerUp.breakdown.urgency },
+    { label: 'freshness', winnerValue: winner.breakdown.freshness, runnerUpValue: runnerUp.breakdown.freshness },
+    { label: 'tractability', winnerValue: winner.breakdown.tractability, runnerUpValue: runnerUp.breakdown.tractability },
+  ];
+
+  const tieBreaker = tieBreakers.find((candidate) => candidate.winnerValue !== candidate.runnerUpValue);
+  if (tieBreaker) {
+    return {
+      margin,
+      reason: `Selected on ${tieBreaker.label} tie-break (${tieBreaker.winnerValue.toFixed(2)} vs ${tieBreaker.runnerUpValue.toFixed(2)}).`,
+    };
+  }
+
+  return {
+    margin,
+    reason: `Selected on deterministic id tie-break (${winner.id} vs ${runnerUp.id}).`,
+  };
+}
+
+function buildCandidateDiscoveryLog(
+  winner: ScoredLoop,
+  scored: ScoredLoop[],
+  suppressedCandidateCount: number,
+  failureReason: string | null,
+): GenerationCandidateDiscoveryLog {
+  const topCandidates = scored.slice(0, 3);
+  const selection = buildSelectionReason(winner, topCandidates[1]);
+
+  const rankedCandidates: GenerationCandidateLog[] = topCandidates.map((candidate, index) => {
+    const isWinner = candidate.id === winner.id;
+    const decisionReason = isWinner
+      ? selection.reason
+      : `Rejected because ${classifyKillReason(candidate, winner.score).killExplanation}`;
+
+    return {
+      id: candidate.id,
+      rank: index + 1,
+      candidateType: candidate.type,
+      actionType: candidate.suggestedActionType,
+      score: Number(candidate.score.toFixed(2)),
+      scoreBreakdown: candidate.breakdown,
+      targetGoal: candidate.matchedGoal
+        ? {
+          text: candidate.matchedGoal.text,
+          priority: candidate.matchedGoal.priority,
+          category: candidate.matchedGoal.category,
+        }
+        : null,
+      sourceSignals: candidate.sourceSignals,
+      decision: isWinner ? 'selected' : 'rejected',
+      decisionReason,
+    };
+  });
+
+  return {
+    candidateCount: scored.length,
+    suppressedCandidateCount,
+    selectionMargin: selection.margin,
+    selectionReason: selection.reason,
+    failureReason,
+    topCandidates: rankedCandidates,
+  };
+}
 
 /**
  * Classify why a loop lost to the winner.
@@ -1571,6 +1683,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         freshness: 1.0,
       },
       relatedSignals: [],
+      sourceSignals: ap.dataPoints.slice(0, 3).map((point) => ({
+        kind: 'emergent',
+        summary: point.slice(0, 160),
+      })),
     };
 
     // Include secondary anti-patterns as deprioritized
@@ -1587,7 +1703,31 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       killExplanation: `Secondary anti-pattern (${secondary.type}): ${secondary.mirrorQuestion}`,
     }));
 
-    return { winner, deprioritized };
+    return {
+      winner,
+      deprioritized,
+      candidateDiscovery: {
+        candidateCount: 1,
+        suppressedCandidateCount: 0,
+        selectionMargin: null,
+        selectionReason: 'Selected as the only viable candidate after scoring.',
+        failureReason: null,
+        topCandidates: [
+          {
+            id: winner.id,
+            rank: 1,
+            candidateType: winner.type,
+            actionType: winner.suggestedActionType,
+            score: Number(winner.score.toFixed(2)),
+            scoreBreakdown: winner.breakdown,
+            targetGoal: null,
+            sourceSignals: winner.sourceSignals,
+            decision: 'selected',
+            decisionReason: 'Selected as the only viable candidate after scoring.',
+          },
+        ],
+      },
+    };
   }
 
   // Parallel data fetch
@@ -1693,6 +1833,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     urgency: number;
     matchedGoal: MatchedGoal | null;
     domain: string;
+    sourceSignals: GenerationCandidateSource[];
     entityPatterns?: unknown;
     entityName?: string;
   }> = [];
@@ -1717,6 +1858,14 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       urgency: deadlineUrgency(c.due_at, c.implied_due_at),
       matchedGoal: mg,
       domain: inferDomain(mg, text),
+      sourceSignals: [
+        {
+          kind: 'commitment',
+          id: c.id,
+          occurredAt: c.updated_at as string | undefined,
+          summary: c.description,
+        },
+      ],
     });
   }
 
@@ -1742,6 +1891,15 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       urgency: signalUrgency(s.occurred_at as string),
       matchedGoal: mg,
       domain: inferDomain(mg, text),
+      sourceSignals: [
+        {
+          kind: 'signal',
+          id: s.id,
+          source: s.source as string | undefined,
+          occurredAt: s.occurred_at as string | undefined,
+          summary: text.slice(0, 160),
+        },
+      ],
     });
   }
 
@@ -1766,6 +1924,14 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       urgency: relationshipUrgency(daysSince),
       matchedGoal: mg,
       domain: inferDomain(mg, text),
+      sourceSignals: [
+        {
+          kind: 'relationship',
+          id: e.id,
+          occurredAt: e.last_interaction as string | undefined,
+          summary: `Follow up with ${e.name}`,
+        },
+      ],
       entityPatterns: e.patterns,
       entityName: e.name,
     });
@@ -1809,8 +1975,41 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
             score: ep.surpriseValue * ep.dataConfidence,
             breakdown: { stakes: ep.surpriseValue, urgency: ep.dataConfidence, tractability: 1.0, freshness: 1.0 },
             relatedSignals: [],
+            sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
+              kind: 'emergent',
+              summary: point.slice(0, 160),
+            })),
           },
           deprioritized: [],
+          candidateDiscovery: {
+            candidateCount: 1,
+            suppressedCandidateCount: suppressedCandidates,
+            selectionMargin: null,
+            selectionReason: 'Selected as the only viable candidate after scoring.',
+            failureReason: null,
+            topCandidates: [
+              {
+                id: 'emergent-0',
+                rank: 1,
+                candidateType: 'emergent',
+                actionType: ep.suggestedActionType,
+                score: Number((ep.surpriseValue * ep.dataConfidence).toFixed(2)),
+                scoreBreakdown: {
+                  stakes: ep.surpriseValue,
+                  urgency: ep.dataConfidence,
+                  tractability: 1.0,
+                  freshness: 1.0,
+                },
+                targetGoal: null,
+                sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
+                  kind: 'emergent',
+                  summary: point.slice(0, 160),
+                })),
+                decision: 'selected',
+                decisionReason: 'Selected as the only viable candidate after scoring.',
+              },
+            ],
+          },
         };
       }
     }
@@ -1858,6 +2057,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       score,
       breakdown: { stakes, urgency: c.urgency, tractability, freshness },
       relatedSignals: related,
+      sourceSignals: c.sourceSignals,
       relationshipContext,
     });
   }
@@ -1866,7 +2066,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Cross-loop inference — find connections in top 5, merge if found
   // -----------------------------------------------------------------------
 
-  scored.sort((a, b) => b.score - a.score);
+  scored.sort(compareScoredLoops);
   const top5 = scored.slice(0, 5);
   const connections = detectCrossLoopConnections(top5);
 
@@ -1927,6 +2127,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
             freshness: 1.0,
           },
           relatedSignals: div.topSignals.slice(0, 3),
+          sourceSignals: div.topSignals.slice(0, 3).map((signal) => ({
+            kind: 'emergent',
+            summary: signal.slice(0, 160),
+          })),
         });
 
         logStructuredEvent({
@@ -1948,7 +2152,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Check emergent patterns — wins when surprise_value * data_confidence > top loop EV
   // -----------------------------------------------------------------------
 
-  scored.sort((a, b) => b.score - a.score);
+  scored.sort(compareScoredLoops);
   const topLoopEV = scored.length > 0 ? scored[0].score : 0;
   if (!suppressReflectivePatterns) {
     const emergent = await detectEmergentPatterns(userId);
@@ -1984,13 +2188,17 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
             freshness: emergentFreshness,
           },
           relatedSignals: [],
+          sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
+            kind: 'emergent',
+            summary: point.slice(0, 160),
+          })),
         });
       }
     }
   }
 
   // Sort by score descending
-  scored.sort((a, b) => b.score - a.score);
+  scored.sort(compareScoredLoops);
 
   const winner = scored[0];
   if (!winner) return null;
@@ -2012,5 +2220,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     },
   });
 
-  return { winner, deprioritized };
+  return {
+    winner,
+    deprioritized,
+    candidateDiscovery: buildCandidateDiscoveryLog(winner, scored, suppressedCandidates, null),
+  };
 }
