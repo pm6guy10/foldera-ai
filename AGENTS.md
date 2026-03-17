@@ -203,3 +203,22 @@ GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
 STRIPE_SECRET_KEY, STRIPE_PRO_PRICE_ID,
 STRIPE_WEBHOOK_SECRET, RESEND_WEBHOOK_SECRET,
 INGEST_USER_ID
+
+## Mandatory QA Gate
+
+Every Codex session that changes user-facing code must end with this verification before pushing to main:
+
+1. Check every user-facing route: `/`, `/start`, `/login`, `/pricing`, `/dashboard`, `/dashboard/settings`
+2. For each route verify:
+   - Build passes
+   - No hydration mismatches
+   - Loading, empty, and error states exist
+   - No hardcoded user data
+   - All buttons have working handlers
+   - No CSS overflow or truncation
+   - Copy is consistent across pages
+3. Run `npx playwright test`
+4. Fix any failures before pushing
+5. If any issue cannot be fixed, note it in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
+
+This is not optional. No push happens without this gate passing.
