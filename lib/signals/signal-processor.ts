@@ -2,7 +2,7 @@
  * Signal Processor
  *
  * Runs before directive generation in daily-generate. Takes unprocessed
- * tkg_signals (from Microsoft/Google sync), batches them in groups of 10,
+ * tkg_signals (from Microsoft/Google sync), batches them in groups of 5,
  * and calls Claude Haiku to extract:
  *   - Person names → upsert tkg_entities
  *   - Commitments  → insert tkg_commitments
@@ -11,7 +11,7 @@
  * After extraction, marks each signal processed=true with extracted_entity_ids
  * and extracted_commitment_ids populated.
  *
- * Fetches up to 5 signals per invocation (Hobby tier 10s limit).
+ * Fetches up to 5 signals per batch invocation (Hobby tier 10s limit).
  * Called on every Regenerate click and daily cron run.
  */
 
@@ -20,13 +20,15 @@ import { createServerClient } from '@/lib/db/client';
 import { decrypt } from '@/lib/encryption';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { isOverDailyLimit } from '@/lib/utils/api-tracker';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const BATCH_SIZE = 5;
-const FETCH_LIMIT = 5;
+const DEFAULT_MAX_SIGNALS = 5;
+const MAX_WARNING_LOGS = 5;
 
 // Sources that write raw signals without entity extraction
-const EXTRACTABLE_SOURCES = [
+export const EXTRACTABLE_SOURCES = [
   'outlook', 'gmail', 'outlook_calendar', 'google_calendar',
   'onedrive', 'microsoft_todo', 'notion', 'drive', 'dropbox', 'slack',
 ];
@@ -76,6 +78,11 @@ interface ProcessResult {
   errors: string[];
 }
 
+export interface ProcessSignalsOptions {
+  maxSignals?: number;
+  pauseMsBetweenBatches?: number;
+}
+
 const EXTRACTION_PROMPT = `You are extracting structured data from raw signals (emails, calendar events, files, tasks) for a personal chief of staff system.
 
 For each signal in the batch, extract:
@@ -111,7 +118,10 @@ function getAnthropicClient(): Anthropic {
 /**
  * Process unextracted signals for a user. Call before generateDirective().
  */
-export async function processUnextractedSignals(userId: string): Promise<ProcessResult> {
+export async function processUnextractedSignals(
+  userId: string,
+  options: ProcessSignalsOptions = {},
+): Promise<ProcessResult> {
   const result: ProcessResult = {
     signals_processed: 0,
     entities_upserted: 0,
@@ -120,10 +130,16 @@ export async function processUnextractedSignals(userId: string): Promise<Process
     errors: [],
   };
 
+  const maxSignals = Math.max(0, Math.floor(options.maxSignals ?? DEFAULT_MAX_SIGNALS));
+  const pauseMsBetweenBatches = Math.max(0, Math.floor(options.pauseMsBetweenBatches ?? 0));
+
+  if (maxSignals === 0) {
+    return result;
+  }
+
   // Check daily spend cap before any API calls
   try {
     if (await isOverDailyLimit(userId)) {
-      console.log('[signal-processor] Daily spend cap reached, skipping');
       return result;
     }
   } catch (err: unknown) {
@@ -134,63 +150,111 @@ export async function processUnextractedSignals(userId: string): Promise<Process
   const supabase = createServerClient();
 
   // Get or create self entity for pattern merging
-  let { data: selfEntity } = await supabase
+  const selfEntityResult = await supabase
     .from('tkg_entities')
     .select('id, patterns')
     .eq('user_id', userId)
     .eq('name', 'self')
     .maybeSingle();
 
+  if (selfEntityResult.error) {
+    result.errors.push(`self_entity_fetch: ${selfEntityResult.error.message}`);
+    return result;
+  }
+
+  let selfEntity = selfEntityResult.data;
   if (!selfEntity) {
-    const { data: created } = await supabase
+    const createSelfResult = await supabase
       .from('tkg_entities')
       .insert({ user_id: userId, type: 'person', name: 'self', display_name: 'You', emails: [], patterns: {} })
       .select('id, patterns')
       .single();
-    selfEntity = created;
+
+    if (createSelfResult.error) {
+      result.errors.push(`self_entity_create: ${createSelfResult.error.message}`);
+      return result;
+    }
+
+    selfEntity = createSelfResult.data;
   }
 
   const selfId = selfEntity?.id;
   const anthropic = getAnthropicClient();
 
-  // Fetch at most FETCH_LIMIT signals per invocation (Hobby tier: 10s limit)
-  const { data: signals, error: fetchErr } = await supabase
-    .from('tkg_signals')
-    .select('id, user_id, source, type, content, author, occurred_at')
-    .eq('user_id', userId)
-    .eq('processed', false)
-    .in('source', EXTRACTABLE_SOURCES)
-    .order('occurred_at', { ascending: true })
-    .limit(FETCH_LIMIT);
+  while (result.signals_processed < maxSignals) {
+    const remaining = maxSignals - result.signals_processed;
+    const fetchLimit = Math.min(BATCH_SIZE, remaining);
+    const signalsResult = await supabase
+      .from('tkg_signals')
+      .select('id, user_id, source, type, content, author, occurred_at')
+      .eq('user_id', userId)
+      .eq('processed', false)
+      .in('source', EXTRACTABLE_SOURCES)
+      .order('occurred_at', { ascending: true })
+      .limit(fetchLimit);
 
-  if (fetchErr) {
-    result.errors.push(`fetch: ${fetchErr.message}`);
-    return result;
+    if (signalsResult.error) {
+      result.errors.push(`fetch: ${signalsResult.error.message}`);
+      break;
+    }
+
+    const signals = signalsResult.data ?? [];
+    if (signals.length === 0) {
+      break;
+    }
+
+    try {
+      const batchResult = await processBatch(anthropic, supabase, signals, userId, selfId, selfEntity?.patterns);
+      result.signals_processed += batchResult.signals_processed;
+      result.entities_upserted += batchResult.entities_upserted;
+      result.commitments_created += batchResult.commitments_created;
+      result.topics_merged += batchResult.topics_merged;
+      result.errors.push(...batchResult.errors);
+
+      if (batchResult.topics_merged > 0 && selfId) {
+        const refreshedPatternsResult = await supabase
+          .from('tkg_entities')
+          .select('patterns')
+          .eq('id', selfId)
+          .maybeSingle();
+
+        if (refreshedPatternsResult.error) {
+          result.errors.push(`self_patterns_refresh: ${refreshedPatternsResult.error.message}`);
+          break;
+        }
+
+        if (refreshedPatternsResult.data) {
+          selfEntity = {
+            ...selfEntity,
+            patterns: refreshedPatternsResult.data.patterns,
+          };
+        }
+      }
+
+      if (batchResult.signals_processed === 0) {
+        break;
+      }
+    } catch (batchErr: unknown) {
+      const message = batchErr instanceof Error ? batchErr.message : String(batchErr);
+      result.errors.push(`batch: ${message}`);
+      logStructuredEvent({
+        event: 'signal_processor_batch_failed',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'batch_failed',
+        details: {
+          scope: 'signal-processor',
+          error: message,
+        },
+      });
+      break;
+    }
+
+    if (pauseMsBetweenBatches > 0 && result.signals_processed < maxSignals) {
+      await sleep(pauseMsBetweenBatches);
+    }
   }
-
-  if (!signals || signals.length === 0) {
-    console.log('[signal-processor] No unprocessed signals');
-    return result;
-  }
-
-  console.log(`[signal-processor] Processing ${signals.length} signals for user ${userId}`);
-
-  try {
-    const batchResult = await processBatch(anthropic, supabase, signals, userId, selfId, selfEntity?.patterns);
-    result.signals_processed += batchResult.signals_processed;
-    result.entities_upserted += batchResult.entities_upserted;
-    result.commitments_created += batchResult.commitments_created;
-    result.topics_merged += batchResult.topics_merged;
-  } catch (batchErr: unknown) {
-    const msg = batchErr instanceof Error ? batchErr.message : String(batchErr);
-    console.error(`[signal-processor] batch failed:`, msg);
-    result.errors.push(msg);
-    // Mark signals processed so we don't retry forever
-    await markSignalsProcessed(supabase, signals.map(s => s.id));
-    result.signals_processed += signals.length;
-  }
-
-  console.log(`Signal processor: ${result.signals_processed} signals processed`);
 
   return result;
 }
@@ -212,17 +276,52 @@ async function processBatch(
   };
 
   // Build prompt with decrypted signal content, skipping signals that are still ciphertext
-  const skippedIds: string[] = [];
   const decryptedBatch: RawSignal[] = [];
   const signalTexts: string[] = [];
+  let decryptWarningCount = 0;
 
   for (const s of batch) {
-    const content = decrypt(s.content);
-    if (looksLikeCiphertext(content)) {
-      // decrypt() fell through — ENCRYPTION_KEY missing or wrong. Skip so it can be retried later.
-      skippedIds.push(s.id);
+    let content: string;
+    try {
+      content = decrypt(s.content);
+    } catch (error: unknown) {
+      if (decryptWarningCount < MAX_WARNING_LOGS) {
+        logStructuredEvent({
+          event: 'signal_processor_decrypt_failed',
+          level: 'warn',
+          userId,
+          artifactType: null,
+          generationStatus: 'decrypt_failed',
+          details: {
+            scope: 'signal-processor',
+            signal_source: s.source,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        });
+        decryptWarningCount++;
+      }
       continue;
     }
+
+    if (looksLikeCiphertext(content)) {
+      // decrypt() fell through — ENCRYPTION_KEY missing or wrong. Skip so it can be retried later.
+      if (decryptWarningCount < MAX_WARNING_LOGS) {
+        logStructuredEvent({
+          event: 'signal_processor_ciphertext_skipped',
+          level: 'warn',
+          userId,
+          artifactType: null,
+          generationStatus: 'ciphertext_skipped',
+          details: {
+            scope: 'signal-processor',
+            signal_source: s.source,
+          },
+        });
+        decryptWarningCount++;
+      }
+      continue;
+    }
+
     decryptedBatch.push(s);
     const trimmed = content.length > 2000 ? content.slice(0, 2000) + '...' : content;
     signalTexts.push(`--- Signal ID: ${s.id} | Source: ${s.source} | Type: ${s.type} ---\n${trimmed}`);
@@ -230,7 +329,7 @@ async function processBatch(
 
   // If all signals were ciphertext, nothing to extract
   if (decryptedBatch.length === 0) {
-    console.warn(`[signal-processor] All ${batch.length} signals still encrypted — skipping batch`);
+    result.errors.push('decrypt: no decryptable signals in batch');
     return result;
   }
 
@@ -259,11 +358,8 @@ async function processBatch(
     const cleaned = rawText.replace(/```json\n?|\n?```/g, '').trim();
     extractions = JSON.parse(cleaned);
     if (!Array.isArray(extractions)) extractions = [];
-  } catch {
-    console.error('[signal-processor] Failed to parse Haiku response:', rawText.slice(0, 200));
-    // Mark batch as processed even on parse failure
-    await markSignalsProcessed(supabase, batch.map(s => s.id));
-    result.signals_processed = batch.length;
+  } catch (error: unknown) {
+    result.errors.push(`parse: ${error instanceof Error ? error.message : String(error)}`);
     return result;
   }
 
@@ -326,7 +422,7 @@ async function processBatch(
       : [];
 
     // Mark signal processed with extracted data persisted to columns
-    await supabase
+    const updateSignalResult = await supabase
       .from('tkg_signals')
       .update({
         processed: true,
@@ -335,6 +431,10 @@ async function processBatch(
         extracted_dates: extractedDates.length > 0 ? extractedDates : null,
       })
       .eq('id', signal.id);
+
+    if (updateSignalResult.error) {
+      throw new Error(`signal_update: ${updateSignalResult.error.message}`);
+    }
 
     result.signals_processed++;
   }
@@ -352,10 +452,15 @@ async function processBatch(
         activation_count: ((merged[key]?.activation_count as number) || 0) + 1,
       };
     }
-    await supabase
+    const updatePatternsResult = await supabase
       .from('tkg_entities')
       .update({ patterns: merged, patterns_updated_at: new Date().toISOString() })
       .eq('id', selfId);
+
+    if (updatePatternsResult.error) {
+      throw new Error(`patterns_update: ${updatePatternsResult.error.message}`);
+    }
+
     result.topics_merged = allTopics.length;
   }
 
@@ -371,12 +476,18 @@ async function upsertEntity(
   const nameLower = name.toLowerCase();
 
   // Check if entity already exists (case-insensitive match on name)
-  const { data: existing } = await supabase
+  const existingResult = await supabase
     .from('tkg_entities')
     .select('id, emails, total_interactions, last_interaction')
     .eq('user_id', userId)
     .ilike('name', nameLower)
     .maybeSingle();
+
+  if (existingResult.error) {
+    throw new Error(`entity_lookup: ${existingResult.error.message}`);
+  }
+
+  const existing = existingResult.data;
 
   if (existing) {
     // Update interaction count and merge email if new
@@ -391,12 +502,15 @@ async function upsertEntity(
     if (person.role) updates.role = person.role;
     if (person.company) updates.company = person.company;
 
-    await supabase.from('tkg_entities').update(updates).eq('id', existing.id);
+    const updateEntityResult = await supabase.from('tkg_entities').update(updates).eq('id', existing.id);
+    if (updateEntityResult.error) {
+      throw new Error(`entity_update: ${updateEntityResult.error.message}`);
+    }
     return existing.id;
   }
 
   // Insert new entity
-  const { data: created, error } = await supabase
+  const createEntityResult = await supabase
     .from('tkg_entities')
     .insert({
       user_id: userId,
@@ -414,12 +528,22 @@ async function upsertEntity(
     .select('id')
     .single();
 
-  if (error) {
+  if (createEntityResult.error) {
     // Likely unique constraint or race condition — not fatal
-    console.warn(`[signal-processor] entity insert failed for "${name}":`, error.message);
+    logStructuredEvent({
+      event: 'signal_processor_entity_insert_failed',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'entity_insert_failed',
+      details: {
+        scope: 'signal-processor',
+        error: createEntityResult.error.message,
+      },
+    });
     return null;
   }
-  return created?.id ?? null;
+  return createEntityResult.data?.id ?? null;
 }
 
 async function insertCommitment(
@@ -433,39 +557,49 @@ async function insertCommitment(
   // Try to find the promisor entity; fall back to self
   let promisorId = selfId ?? null;
   if (commitment.who) {
-    const { data: promisor } = await supabase
+    const promisorResult = await supabase
       .from('tkg_entities')
       .select('id')
       .eq('user_id', userId)
       .ilike('name', commitment.who.toLowerCase())
       .maybeSingle();
-    if (promisor) promisorId = promisor.id;
+    if (promisorResult.error) {
+      throw new Error(`promisor_lookup: ${promisorResult.error.message}`);
+    }
+    if (promisorResult.data) promisorId = promisorResult.data.id;
   }
 
   // Try to find the promisee entity; fall back to self
   let promiseeId = selfId ?? null;
   if (commitment.to_whom) {
-    const { data: promisee } = await supabase
+    const promiseeResult = await supabase
       .from('tkg_entities')
       .select('id')
       .eq('user_id', userId)
       .ilike('name', commitment.to_whom.toLowerCase())
       .maybeSingle();
-    if (promisee) promiseeId = promisee.id;
+    if (promiseeResult.error) {
+      throw new Error(`promisee_lookup: ${promiseeResult.error.message}`);
+    }
+    if (promiseeResult.data) promiseeId = promiseeResult.data.id;
   }
 
   // Dedup by canonical form
   const canonical = `SYNC:${commitment.category}:${commitment.description.slice(0, 60).replace(/\s+/g, '_')}`;
-  const { data: existing } = await supabase
+  const existingCommitmentResult = await supabase
     .from('tkg_commitments')
     .select('id')
     .eq('user_id', userId)
     .eq('canonical_form', canonical)
     .maybeSingle();
 
-  if (existing) return existing.id;
+  if (existingCommitmentResult.error) {
+    throw new Error(`commitment_lookup: ${existingCommitmentResult.error.message}`);
+  }
 
-  const { data: created, error } = await supabase
+  if (existingCommitmentResult.data) return existingCommitmentResult.data.id;
+
+  const createCommitmentResult = await supabase
     .from('tkg_commitments')
     .insert({
       user_id: userId,
@@ -484,11 +618,21 @@ async function insertCommitment(
     .select('id')
     .single();
 
-  if (error) {
-    console.warn(`[signal-processor] commitment insert failed:`, error.message);
+  if (createCommitmentResult.error) {
+    logStructuredEvent({
+      event: 'signal_processor_commitment_insert_failed',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'commitment_insert_failed',
+      details: {
+        scope: 'signal-processor',
+        error: createCommitmentResult.error.message,
+      },
+    });
     return null;
   }
-  return created?.id ?? null;
+  return createCommitmentResult.data?.id ?? null;
 }
 
 /**
@@ -505,13 +649,41 @@ function looksLikeCiphertext(content: string): boolean {
   return /^[A-Za-z0-9+/=]+$/.test(content);
 }
 
-async function markSignalsProcessed(
-  supabase: ReturnType<typeof createServerClient>,
-  signalIds: string[],
-): Promise<void> {
-  if (signalIds.length === 0) return;
-  await supabase
+export async function countUnprocessedSignals(userId: string): Promise<number> {
+  const supabase = createServerClient();
+  const countResult = await supabase
     .from('tkg_signals')
-    .update({ processed: true })
-    .in('id', signalIds);
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .in('source', EXTRACTABLE_SOURCES);
+
+  if (countResult.error) {
+    throw new Error(`signal_count: ${countResult.error.message}`);
+  }
+
+  return countResult.count ?? 0;
+}
+
+export async function listUsersWithUnprocessedSignals(): Promise<string[]> {
+  const supabase = createServerClient();
+  const signalsResult = await supabase
+    .from('tkg_signals')
+    .select('user_id')
+    .eq('processed', false)
+    .in('source', EXTRACTABLE_SOURCES);
+
+  if (signalsResult.error) {
+    throw new Error(`signal_user_list: ${signalsResult.error.message}`);
+  }
+
+  const userIds = (signalsResult.data ?? [])
+    .map((signal) => signal.user_id)
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return [...new Set(userIds)];
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -48,6 +48,7 @@ export interface SafeDailyBriefStageStatus {
 }
 
 const CONFIDENCE_THRESHOLD = 70;
+const DAILY_GENERATE_SIGNAL_CAP = 50;
 
 const SAFE_ERROR_MESSAGES: Record<DailyBriefFailureCode, string> = {
   generation_failed: 'Directive generation failed.',
@@ -164,7 +165,9 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
       }
 
       try {
-        const extraction = await processUnextractedSignals(userId);
+        const extraction = await processUnextractedSignals(userId, {
+          maxSignals: DAILY_GENERATE_SIGNAL_CAP,
+        });
         if (extraction.signals_processed > 0) {
           logStructuredEvent({
             event: 'daily_generate_extraction',
