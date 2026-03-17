@@ -1,0 +1,21 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.3
+2 info using node@v22.19.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\b-kap\foldera-ai\.npmrc
+5 silly config load:file:C:\Users\b-kap\.npmrc
+6 silly config load:file:C:\Users\b-kap\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm exec playwright-cli -s=foldera-verify open https://www.foldera.ai
+8 verbose argv "exec" "--yes" "--package" "@playwright/cli" "--" "playwright-cli" "-s=foldera-verify" "open" "https://www.foldera.ai"
+9 verbose logfile logs-max:10 dir:C:\Users\b-kap\foldera-ai\output\npm-cache\_logs\2026-03-17T04_26_50_735Z-
+10 verbose logfile C:\Users\b-kap\foldera-ai\output\npm-cache\_logs\2026-03-17T04_26_50_735Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 http fetch GET 200 https://registry.npmjs.org/@playwright%2fcli 292ms (cache revalidated)
+14 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+15 verbose cwd C:\Users\b-kap\foldera-ai
+16 verbose os Windows_NT 10.0.26200
+17 verbose node v22.19.0
+18 verbose npm  v10.9.3
+19 verbose exit 1
+20 verbose code 1

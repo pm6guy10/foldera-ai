@@ -801,3 +801,26 @@ Generator rewrite + decrypt fallback hardening + privacy logging cleanup
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-16 (production verification for 94da6fa)
+
+### Commit
+- None (documentation-only verification note; no product-code changes)
+
+### Files changed
+- `RELEASE_READINESS.md` — added a live production verification note for `https://www.foldera.ai`, including route health, deploy fingerprint checks for `94da6fa`, and public API/config checks.
+- `CLAUDE.md` — appended this session log.
+
+### Verified working
+- Production `https://www.foldera.ai` returned `200` for `/`, `/start`, `/login`, `/pricing`, `/dashboard`, and `/dashboard/settings`.
+- All production `/_next` assets referenced by those six routes returned `200`.
+- The live production bundle contains the `94da6fa` route changes: `/pricing` signed-out `/start` redirect path, dashboard command-palette no-results copy, and settings disconnect/checkout error copy.
+- Public production auth/config checks passed: `/api/auth/providers` exposes Google + Azure AD, and signed-out `/api/stripe/checkout`, `/api/subscription/status`, and `/api/integrations/status` return structured `401` JSON.
+
+### Constraints
+- Real browser automation on this machine is still blocked by the known sandbox `spawn EPERM` failure, so production verification used live route fetches plus deployed chunk/API inspection instead of Playwright interaction.
+
+### Supabase / migrations
+- No new migrations

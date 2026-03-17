@@ -24,6 +24,11 @@
 - Captured the exact local Playwright failure mode for documentation: `spawn EPERM` when Playwright tried to fork workers and when Chromium tried to launch.
 - Wrote `RELEASE_READINESS.md` and `CUSTOMER_PUSH_CHECKLIST.md`.
 
+## Production verification
+- Verified `https://www.foldera.ai` on March 16, 2026 for `/`, `/start`, `/login`, `/pricing`, `/dashboard`, and `/dashboard/settings`; all six routes returned `200` from Vercel and all referenced `/_next` assets resolved with `200` responses.
+- Confirmed the live deploy matches `94da6fa` by checking production HTML/chunks for the new `/pricing` signed-out `/start` handoff, the dashboard command-palette no-results copy, and the settings disconnect/checkout error copy.
+- Checked public production APIs for config drift: `/api/auth/providers` returns both Google and Azure AD, while signed-out calls to `/api/stripe/checkout`, `/api/subscription/status`, and `/api/integrations/status` return structured `401` JSON instead of runtime failures.
+
 ## Remaining risks
 - Full browser automation did not run in this environment because the local sandbox blocks Playwright process launch with `spawn EPERM`.
 - Authenticated-only UI behavior for the command palette and settings disconnect actions was verified by code inspection and build, not by a live signed-in browser session in this environment.
