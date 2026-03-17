@@ -804,6 +804,45 @@ Generator rewrite + decrypt fallback hardening + privacy logging cleanup
 
 ---
 
+## Session Log — 2026-03-17 (cron fallback + session persistence)
+
+### Commit: `73e2d7b`
+Manual cron fallback trigger, owner settings control, and 30-day session hardening
+
+### Files changed
+- `app/api/cron/daily-generate/route.ts` — reduced the route to a thin cron-auth wrapper around the shared generate helper.
+- `app/api/cron/daily-send/route.ts` — reduced the route to a thin cron-auth wrapper around the shared send helper.
+- `app/api/cron/trigger/route.ts` — added the secure fallback route that runs generate first, then send, and returns safe structured stage status.
+- `app/api/settings/run-brief/route.ts` — added the owner-only session-backed proxy that calls `/api/cron/trigger` with `CRON_SECRET` server-side.
+- `app/dashboard/settings/SettingsClient.tsx` — added the minimal owner-only “Run today’s brief now” control plus loading, success, and failure states.
+- `app/providers.tsx` — disabled aggressive session refetch polling/focus refresh.
+- `lib/auth/auth-options.ts` — set explicit 30-day JWT/session persistence and production session cookie domain sharing for `foldera.ai` hosts.
+- `lib/auth/constants.ts` — centralized the owner user id for server/client use.
+- `lib/auth/daily-brief-users.ts` — switched to the shared owner constant.
+- `lib/cron/daily-brief.ts` — extracted the shared daily generate/send logic and safe stage summaries used by the cron routes and trigger route.
+- `tests/e2e/settings-manual-trigger.spec.ts` — added mocked Playwright coverage for signed-out, loading/success, and failure states on the new settings control.
+
+### Root cause
+- Cron gap: the product depended entirely on scheduled `daily-generate` and `daily-send` invocations. When the Vercel Hobby cron did not fire on March 17, 2026, there was no secure recovery path to run the same email-first flow manually.
+- Session persistence: the repo already set `session.maxAge`, but did not explicitly pin `jwt.maxAge`, did not share production session cookies across `foldera.ai` subdomains, and the client `SessionProvider` was revalidating on focus and on an interval, which made the session feel brittle between visits.
+
+### Verified working
+- `npm run build` — passed
+- Local `/api/cron/trigger` verification with sandbox-safe env overrides:
+  - unauthorized `POST` returned `401 {"error":"Unauthorized"}`
+  - authorized `POST` returned structured `500` JSON with `ok`, `generate`, and `send` stage objects
+- `npx playwright test` — 29 passed
+- Local route sweep via `next start` returned `200` for `/`, `/start`, `/login`, `/pricing`, `/dashboard`, and `/dashboard/settings`
+- Settings runtime verification:
+  - signed-out settings shows `Please sign in to view settings`
+  - owner-mocked settings shows the manual trigger button
+  - mocked trigger request exercises loading, success, and failure states
+
+### Supabase / migrations
+- No new migrations
+
+---
+
 ## Session Log — 2026-03-16 (production verification for 94da6fa)
 
 ### Commit
