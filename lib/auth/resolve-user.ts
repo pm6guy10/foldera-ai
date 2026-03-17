@@ -3,27 +3,14 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 
 /**
- * Resolves the authenticated userId for routes that accept either:
- *   1. x-ingest-secret header  → INGEST_USER_ID
- *   2. NextAuth session         → session.user.id
+ * Resolves the authenticated userId for non-cron routes.
+ * Session-backed APIs must use session.user.id exclusively.
  *
  * Returns { userId } on success, or a ready-to-return NextResponse on failure.
  */
 export async function resolveUser(
-  request: Request,
+  _request: Request,
 ): Promise<{ userId: string } | NextResponse> {
-  const ingestSecret = request.headers.get('x-ingest-secret');
-  if (ingestSecret) {
-    if (ingestSecret !== process.env.INGEST_API_KEY) {
-      return NextResponse.json({ error: 'Invalid ingest secret' }, { status: 401 });
-    }
-    const userId = process.env.INGEST_USER_ID;
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID not resolved' }, { status: 500 });
-    }
-    return { userId };
-  }
-
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

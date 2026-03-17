@@ -32,6 +32,31 @@ export interface ExecuteActionResult {
   error?: string;
 }
 
+function executionSucceeded(
+  artifact: Record<string, unknown>,
+  executionResult: Record<string, unknown>,
+): boolean {
+  if (typeof executionResult.exec_error === 'string' && executionResult.exec_error.length > 0) {
+    return false;
+  }
+
+  switch (artifact.type) {
+    case 'email':
+      return executionResult.sent === true;
+    case 'document':
+      return executionResult.saved === true;
+    case 'calendar_event':
+      return executionResult.created === true;
+    case 'research_brief':
+      return executionResult.saved === true;
+    case 'decision_frame':
+      return executionResult.decided === true;
+    case 'affirmation':
+      return executionResult.acknowledged === true;
+    default:
+      return false;
+  }
+}
 
 /** Resolve artifact from action row: execution_result.artifact or legacy draft_type fields. */
 function resolveArtifact(action: Record<string, unknown>): Record<string, unknown> | null {
@@ -316,21 +341,20 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
       feedback_weight: -0.5,
       ...(skipReason ? { skip_reason: skipReason } : {}),
     };
-    await supabase.from('tkg_actions').update(update).eq('id', actionId);
+    const { error: updateError } = await supabase.from('tkg_actions').update(update).eq('id', actionId);
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
 
     await insertFeedbackSignalIdempotent(supabase, userId, actionId, 'skip', skipContent);
     return { status: status === 'draft' ? 'draft_rejected' : 'skipped', action_id: actionId };
   }
 
-  await supabase
-    .from('tkg_actions')
-    .update({ status: 'approved', approved_at: new Date().toISOString() })
-    .eq('id', actionId);
-
   const execResult = (action.execution_result as Record<string, unknown>) ?? {};
   // Prefer caller-supplied edited artifact over the stored one
   const artifact = editedArtifact ?? resolveArtifact(action as Record<string, unknown>);
   let executionResult: Record<string, unknown> = { ...execResult };
+  const now = new Date().toISOString();
 
   if (artifact) {
     const run = await executeArtifact(userId, artifact, actionId, supabase);
@@ -340,15 +364,37 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
     console.warn(`[execute-action] no artifact for action ${actionId}`);
   }
 
-  await supabase
+  if (!artifact || !executionSucceeded(artifact, executionResult)) {
+    const { error: updateError } = await supabase
+      .from('tkg_actions')
+      .update({
+        execution_result: executionResult,
+      })
+      .eq('id', actionId);
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+
+    throw new Error(
+      typeof executionResult.exec_error === 'string'
+        ? executionResult.exec_error
+        : 'Execution did not complete',
+    );
+  }
+
+  const { error: executionUpdateError } = await supabase
     .from('tkg_actions')
     .update({
       status: 'executed',
-      executed_at: new Date().toISOString(),
+      approved_at: now,
+      executed_at: now,
       execution_result: executionResult,
       feedback_weight: 1.0,
     })
     .eq('id', actionId);
+  if (executionUpdateError) {
+    throw new Error(executionUpdateError.message);
+  }
 
   const approvalContent = `Approved: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`;
   await insertFeedbackSignalIdempotent(supabase, userId, actionId, 'approve', approvalContent);

@@ -301,10 +301,19 @@ Explain why waiting is correct. Return JSON only.`,
 // Sonnet reserved for final directive generation only
 const ARTIFACT_MODEL = 'claude-haiku-4-5-20251001';
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isNonEmptyString).map((item) => item.trim());
+}
+
 export async function generateArtifact(
   userId: string,
   directive: ConvictionDirective,
-): Promise<ConvictionArtifact> {
+): Promise<ConvictionArtifact | null> {
   // If the directive already contains an embedded artifact (from new brain), use it directly
   const d = directive as ConvictionDirective & { embeddedArtifact?: any; embeddedArtifactType?: string };
   if (d.embeddedArtifact) {
@@ -372,7 +381,7 @@ export async function generateArtifact(
     return validateArtifact(directive.action_type, parsed);
   } catch (err) {
     console.error('[generateArtifact] failed:', err);
-    return getFallbackArtifact(directive);
+    return null;
   }
 }
 
@@ -387,85 +396,85 @@ function validateArtifact(
   switch (actionType) {
     case 'send_message': {
       const a = parsed as EmailArtifact;
+      if (!isNonEmptyString(a.to) || !isNonEmptyString(a.subject) || !isNonEmptyString(a.body)) {
+        throw new Error('Email artifact missing required fields');
+      }
       return {
         type: 'email',
-        to: a.to || '',
-        subject: a.subject || '',
-        body: a.body || '',
+        to: a.to.trim(),
+        subject: a.subject.trim(),
+        body: a.body.trim(),
         draft_type: a.draft_type || 'email_compose',
       };
     }
     case 'write_document': {
       const a = parsed as DocumentArtifact;
+      if (!isNonEmptyString(a.title) || !isNonEmptyString(a.content)) {
+        throw new Error('Document artifact missing required fields');
+      }
       return {
         type: 'document',
-        title: a.title || 'Untitled',
-        content: a.content || '',
+        title: a.title.trim(),
+        content: a.content.trim(),
       };
     }
     case 'schedule': {
       const a = parsed as CalendarEventArtifact;
+      if (!isNonEmptyString(a.title) || !isNonEmptyString(a.start) || !isNonEmptyString(a.end)) {
+        throw new Error('Calendar artifact missing required fields');
+      }
       return {
         type: 'calendar_event',
-        title: a.title || '',
-        start: a.start || new Date().toISOString(),
-        end: a.end || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-        description: a.description || '',
+        title: a.title.trim(),
+        start: a.start.trim(),
+        end: a.end.trim(),
+        description: typeof a.description === 'string' ? a.description.trim() : '',
       };
     }
     case 'research': {
       const a = parsed as ResearchBriefArtifact;
+      const sources = normalizeStringArray(a.sources);
+      if (!isNonEmptyString(a.findings) || !isNonEmptyString(a.recommended_action) || sources.length === 0) {
+        throw new Error('Research artifact missing required fields');
+      }
       return {
         type: 'research_brief',
-        findings: a.findings || '',
-        sources: Array.isArray(a.sources) ? a.sources : [],
-        recommended_action: a.recommended_action || '',
+        findings: a.findings.trim(),
+        sources,
+        recommended_action: a.recommended_action.trim(),
       };
     }
     case 'make_decision': {
       const a = parsed as DecisionFrameArtifact;
+      const options = Array.isArray(a.options)
+        ? a.options
+          .filter((option) => isNonEmptyString(option?.option) && typeof option?.weight === 'number')
+          .map((option) => ({
+            option: option.option.trim(),
+            weight: option.weight,
+            rationale: typeof option.rationale === 'string' ? option.rationale.trim() : '',
+          }))
+        : [];
+      if (options.length === 0 || !isNonEmptyString(a.recommendation)) {
+        throw new Error('Decision artifact missing required fields');
+      }
       return {
         type: 'decision_frame',
-        options: Array.isArray(a.options) ? a.options : [],
-        recommendation: a.recommendation || '',
+        options,
+        recommendation: a.recommendation.trim(),
       };
     }
     case 'do_nothing':
     default: {
       const a = parsed as AffirmationArtifact;
+      if (!isNonEmptyString(a.context) || !isNonEmptyString(a.evidence)) {
+        throw new Error('Wait artifact missing required fields');
+      }
       return {
         type: 'affirmation',
-        context: a.context || '',
-        evidence: a.evidence || '',
+        context: a.context.trim(),
+        evidence: a.evidence.trim(),
       };
     }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Fallback — if generation fails, return a minimal artifact (exported for daily-brief)
-// ---------------------------------------------------------------------------
-
-export function getFallbackArtifact(directive: ConvictionDirective): ConvictionArtifact {
-  switch (directive.action_type) {
-    case 'send_message':
-      return { type: 'email', to: '', subject: '', body: directive.directive, draft_type: 'email_compose' };
-    case 'write_document':
-      return { type: 'document', title: directive.directive, content: '' };
-    case 'schedule':
-      return {
-        type: 'calendar_event',
-        title: directive.directive,
-        start: new Date().toISOString(),
-        end: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-        description: directive.reason,
-      };
-    case 'research':
-      return { type: 'research_brief', findings: '', sources: [], recommended_action: directive.directive };
-    case 'make_decision':
-      return { type: 'decision_frame', options: [], recommendation: directive.directive };
-    case 'do_nothing':
-    default:
-      return { type: 'affirmation', context: directive.reason, evidence: '' };
   }
 }

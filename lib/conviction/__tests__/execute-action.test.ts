@@ -241,14 +241,13 @@ describe('executeAction', () => {
     expect(out.status).toBe('draft_rejected');
   });
 
-  it('approve with no artifact sets exec_error and still marks executed', async () => {
+  it('approve with no artifact records the failure and rejects execution', async () => {
     mockSupabase._actionRow = { ...baseAction, execution_result: {} };
-    const out = await executeAction({
+    await expect(executeAction({
       userId: USER_ID,
       actionId: ACTION_ID,
       decision: 'approve',
-    });
-    expect(out.status).toBe('executed');
-    expect(out.result?.exec_error).toBe('No artifact to execute');
+    })).rejects.toThrow('No artifact to execute');
+    expect(mockSupabase._signalInsertCalls).toBe(0);
   });
 });

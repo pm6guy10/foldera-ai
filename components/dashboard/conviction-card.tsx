@@ -119,7 +119,7 @@ export default function ConvictionCard({
       await onOutcome(action.id, outcome);
       setDoneMsg(outcome === 'worked'
         ? 'Foldera learned. Pattern reinforced.'
-        : 'Noted. That pattern will be deprioritized.'
+        : 'Noted. Foldera will adjust future reads.'
       );
       setPhase('done');
     } catch (err: unknown) {

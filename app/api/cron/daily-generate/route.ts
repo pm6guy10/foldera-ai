@@ -11,13 +11,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { generateDirective } from '@/lib/briefing/generator';
-import { generateArtifact, getFallbackArtifact } from '@/lib/conviction/artifact-generator';
+import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { apiError } from '@/lib/utils/api-error';
 import { filterDailyBriefEligibleUserIds } from '@/lib/auth/daily-brief-users';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
-import type { ConvictionArtifact } from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,33 +94,16 @@ async function handler(request: NextRequest) {
       }
 
       // Generate artifact
-      let artifact: ConvictionArtifact | null = null;
+      let artifact = null;
       try {
         artifact = await generateArtifact(userId, directive);
       } catch (artErr: unknown) {
         console.warn('[daily-generate] artifact failed:', artErr instanceof Error ? artErr.message : artErr);
-        artifact = getFallbackArtifact(directive);
       }
 
-      // Validate email artifacts
-      if (artifact && (['email', 'drafted_email'].includes((artifact as any).type as string))) {
-        const ea = artifact as any;
-        const missing: string[] = [];
-        if (!ea.to?.trim()) missing.push('recipient');
-        if (!ea.subject?.trim()) missing.push('subject');
-        if (!ea.body?.trim()) missing.push('body');
-        if (missing.length > 0) {
-          console.warn(`[daily-generate] Email validation failed: missing ${missing.join(', ')}`);
-          // Save as rejected
-          await supabase.from('tkg_actions').insert({
-            user_id: userId, action_type: directive.action_type, directive_text: directive.directive,
-            reason: directive.reason, status: 'draft_rejected', confidence: directive.confidence,
-            evidence: directive.evidence, generated_at: new Date().toISOString(),
-            execution_result: { generation_error: `Missing: ${missing.join(', ')}` },
-          });
-          results.push({ userId, success: false, error: 'email validation failed' });
-          continue;
-        }
+      if (!artifact) {
+        results.push({ userId, success: false, error: 'artifact generation failed' });
+        continue;
       }
 
       // Save
@@ -133,7 +115,11 @@ async function handler(request: NextRequest) {
         execution_result: artifact ? { artifact } : null,
       }).select('id').single();
 
-      if (saveErr) console.error('[daily-generate] save failed:', saveErr.message);
+      if (saveErr || !saved?.id) {
+        console.error('[daily-generate] save failed:', saveErr?.message ?? 'Missing inserted action id');
+        results.push({ userId, success: false, error: 'directive save failed' });
+        continue;
+      }
 
       // Self-feeding
       try {
