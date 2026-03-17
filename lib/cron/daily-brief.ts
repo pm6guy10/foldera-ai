@@ -245,7 +245,7 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
           action_type: directive.action_type,
           directive_text: directive.directive,
           reason: directive.reason,
-          status: 'generated',
+          status: 'pending_approval',
           confidence: directive.confidence,
           evidence: directive.evidence,
           generated_at: new Date().toISOString(),
@@ -366,19 +366,26 @@ export async function runDailySend(): Promise<DailyBriefRunResult> {
 
       const { data: actions, error: actionsError } = await supabase
         .from('tkg_actions')
-        .select('id, action_type, directive_text, reason, confidence')
+        .select('id, action_type, directive_text, reason, confidence, execution_result')
         .eq('user_id', userId)
-        .eq('status', 'generated')
+        .eq('status', 'pending_approval')
         .gte('generated_at', todayStart.toISOString())
         .order('confidence', { ascending: false })
-        .limit(1);
+        .limit(10);
 
       if (actionsError) {
         results.push({ code: 'directive_lookup_failed', success: false });
         continue;
       }
 
-      const action = actions?.[0];
+      const action = actions?.find((candidate) => {
+        const executionResult =
+          candidate.execution_result && typeof candidate.execution_result === 'object'
+            ? (candidate.execution_result as Record<string, unknown>)
+            : null;
+
+        return typeof executionResult?.daily_brief_sent_at !== 'string';
+      });
       if (!action) {
         results.push({ code: 'no_generated_directive', success: false });
         continue;
@@ -426,9 +433,18 @@ export async function runDailySend(): Promise<DailyBriefRunResult> {
         continue;
       }
 
+      const executionResult =
+        action.execution_result && typeof action.execution_result === 'object'
+          ? (action.execution_result as Record<string, unknown>)
+          : {};
       const { error: updateError } = await supabase
         .from('tkg_actions')
-        .update({ status: 'pending_approval' })
+        .update({
+          execution_result: {
+            ...executionResult,
+            daily_brief_sent_at: new Date().toISOString(),
+          },
+        })
         .eq('id', action.id);
 
       if (updateError) {

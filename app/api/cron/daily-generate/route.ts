@@ -2,7 +2,7 @@
  * GET /api/cron/daily-generate
  *
  * Phase 1 of the daily brief: generate ONE directive + artifact, save to
- * tkg_actions with status='generated'. No email sent — daily-send handles that.
+ * tkg_actions with status='pending_approval'. No email sent — daily-send handles that.
  *
  * Runs at 6:50 AM UTC. Must complete in <45s (Vercel Hobby 60s limit).
  */

@@ -2,7 +2,7 @@
  * GET /api/cron/daily-send
  *
  * Phase 2 of the daily brief: read today's SINGLE highest-confidence directive
- * from tkg_actions (status='generated'), send ONE email, update status.
+ * from tkg_actions (status='pending_approval'), send ONE email, and mark the action as emailed.
  *
  * Runs at 7:00 AM UTC. Must complete in <45s (Vercel Hobby 60s limit).
  */
