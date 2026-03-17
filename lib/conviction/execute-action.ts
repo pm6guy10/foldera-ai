@@ -51,8 +51,9 @@ function executionSucceeded(
       return executionResult.saved === true;
     case 'decision_frame':
       return executionResult.decided === true;
+    case 'wait_rationale':
     case 'affirmation':
-      return executionResult.acknowledged === true;
+      return executionResult.saved === true;
     default:
       return false;
   }
@@ -92,8 +93,13 @@ function resolveArtifact(action: Record<string, unknown>): Record<string, unknow
     };
   if (exec.type === 'decision_frame' || (exec.recommendation != null))
     return { type: 'decision_frame', options: exec.options ?? [], recommendation: exec.recommendation ?? '' };
-  if (exec.type === 'affirmation' || (exec.context != null))
-    return { type: 'affirmation', context: exec.context ?? '', evidence: exec.evidence ?? '' };
+  if (exec.type === 'wait_rationale' || exec.type === 'affirmation' || (exec.context != null))
+    return {
+      type: 'wait_rationale',
+      context: exec.context ?? '',
+      evidence: exec.evidence ?? '',
+      tripwires: Array.isArray(exec.tripwires) ? exec.tripwires : [],
+    };
 
   return null;
 }
@@ -272,15 +278,27 @@ async function executeArtifact(
         break;
       }
 
+      case 'wait_rationale':
       case 'affirmation': {
-        const contentHash = `artifact-affirmation-${actionId}`;
+        const contentHash = `artifact-wait-${actionId}`;
         const context = (artifact.context as string) ?? '';
         const evidence = (artifact.evidence as string) ?? '';
+        const tripwires = Array.isArray(artifact.tripwires)
+          ? (artifact.tripwires as unknown[]).filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+          : [];
+        const waitBody = [
+          'Wait rationale',
+          '',
+          `Context: ${context}`,
+          '',
+          `Evidence: ${evidence.slice(0, 4000)}`,
+          ...(tripwires.length > 0 ? ['', `Tripwires: ${tripwires.join('; ')}`] : []),
+        ].join('\n');
         const { error: affErr } = await supabase.from('tkg_signals').insert({
           user_id: userId,
           source: 'artifact',
           type: 'document',
-          content: encrypt(`Affirmation: ${context}\n\nEvidence: ${evidence.slice(0, 4000)}`),
+          content: encrypt(waitBody),
           content_hash: contentHash,
           author: 'foldera',
           occurred_at: now,
@@ -288,7 +306,7 @@ async function executeArtifact(
         if (affErr && (affErr as { code?: string }).code !== '23505')
           out.exec_error = affErr.message;
         else
-          out = { ...out, acknowledged: true, acknowledged_at: now };
+          out = { ...out, saved: true, saved_at: now };
         break;
       }
 

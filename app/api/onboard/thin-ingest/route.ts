@@ -32,6 +32,13 @@ async function checkDensity(userId: string): Promise<{ patterns: number; commitm
       .eq('user_id', userId),
   ]);
 
+  if (entityRes.error) {
+    throw entityRes.error;
+  }
+  if (commitmentsRes.error) {
+    throw commitmentsRes.error;
+  }
+
   const patterns = Object.keys(
     (entityRes.data?.patterns as Record<string, unknown>) ?? {},
   ).length;
@@ -41,36 +48,38 @@ async function checkDensity(userId: string): Promise<{ patterns: number; commitm
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-  const userId = session.user.id;
-
-  const body = await req.json().catch(() => ({}));
-  const text: string = typeof body.text === 'string' ? body.text.trim() : '';
-
-  if (!text) {
-    return NextResponse.json({ error: 'text is required' }, { status: 400 });
-  }
-
-  // Extract — ignore dedup errors (user may resubmit the same paste)
   try {
-    await extractFromConversation(text, userId);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : '';
-    if (!msg.includes('already ingested')) {
-      return apiError(err, 'onboard/thin-ingest');
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
+    const userId = session.user.id;
+
+    const body = await req.json().catch(() => ({}));
+    const text: string = typeof body.text === 'string' ? body.text.trim() : '';
+
+    if (!text) {
+      return NextResponse.json({ error: 'text is required' }, { status: 400 });
+    }
+
+    try {
+      await extractFromConversation(text, userId);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      if (!msg.includes('already ingested')) {
+        return apiError(err, 'onboard/thin-ingest');
+      }
+    }
+
+    const density = await checkDensity(userId);
+    const isReady = density.patterns >= 2;
+
+    return NextResponse.json({
+      status: isReady ? 'ready' : 'very_thin',
+      patterns: density.patterns,
+      commitments: density.commitments,
+    });
+  } catch (err: unknown) {
+    return apiError(err, 'onboard/thin-ingest');
   }
-
-  // Lower threshold after user provided both sources
-  const density = await checkDensity(userId);
-  const isReady = density.patterns >= 2;
-
-  return NextResponse.json({
-    status: isReady ? 'ready' : 'very_thin',
-    patterns: density.patterns,
-    commitments: density.commitments,
-  });
 }

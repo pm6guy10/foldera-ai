@@ -28,9 +28,7 @@ const ACTION_COLORS: Record<string, string> = {
 interface Directive {
   directive:     string;
   action_type:   string;
-  confidence:    number;
   reason:        string;
-  evidence:      Array<{ type: string; description: string; date: string | null }>;
   artifact_type?: string;
   artifact?:     any;
 }
@@ -237,17 +235,12 @@ export default function TryPage() {
                 </p>
               </div>
 
-              {/* Confidence badge */}
+              {/* Context badge */}
               <div className={`transition-all duration-700 ${subtextTyping.done ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-zinc-900/60 border border-white/5">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1 w-12 bg-zinc-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-cyan-500/50 rounded-full" style={{ width: `${coldRead.confidence}%` }} />
-                    </div>
-                    <span className="text-zinc-600 text-[10px] font-mono">{coldRead.confidence}% confidence</span>
-                  </div>
-                  <span className="text-zinc-700 text-[10px]">|</span>
-                  <span className="text-zinc-600 text-[10px]">Based on: time, day{ctx?.scenario ? ', scenario' : ''}{ctx?.referrer ? ', referrer' : ''}</span>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/60 border border-white/5 text-zinc-500 text-[10px] font-mono uppercase tracking-[0.18em]">
+                  <span>Context-aware from the moment you land</span>
+                  <span className="text-zinc-700">•</span>
+                  <span>Time, day{ctx?.scenario ? ', scenario' : ''}{ctx?.referrer ? ', referrer' : ''}</span>
                 </div>
               </div>
             </div>
@@ -340,21 +333,11 @@ export default function TryPage() {
         {result && (
           <div className="space-y-8">
             <div className="bg-zinc-950/80 border border-white/10 rounded-[2rem] p-7 backdrop-blur-sm">
-
-              {/* Action badge + confidence */}
               <div className="flex items-center justify-between mb-6">
                 <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${actionColor}`}>
                   {actionLabel}
                 </span>
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-24 bg-zinc-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-cyan-500 rounded-full"
-                      style={{ width: `${result.confidence}%` }}
-                    />
-                  </div>
-                  <span className="text-zinc-600 text-xs font-mono">{result.confidence}%</span>
-                </div>
+                <span className="text-zinc-600 text-[10px] font-mono uppercase tracking-[0.2em]">Artifact ready</span>
               </div>
 
               {/* Directive */}
@@ -367,22 +350,6 @@ export default function TryPage() {
                 {result.reason}
               </p>
 
-              {/* Evidence */}
-              {result.evidence.length > 0 && (
-                <div className="border-t border-zinc-800 pt-5">
-                  <p className="text-zinc-600 text-[10px] font-semibold tracking-widest uppercase mb-3">
-                    Evidence from your text
-                  </p>
-                  <ul className="space-y-2">
-                    {result.evidence.map((item, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-zinc-500">
-                        <span className="text-zinc-700 mt-0.5 shrink-0">&#8226;</span>
-                        {item.description}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
               {result.artifact && result.artifact_type && (
                 <ArtifactPreview artifactType={result.artifact_type} artifact={result.artifact} />
               )}

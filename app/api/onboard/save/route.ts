@@ -4,7 +4,7 @@
  * Public route — no auth required. Captures an email address at the end
  * of the onboarding flow and adds it to the waitlist.
  *
- * Body: { email: string; tempUserId: string }
+ * Body: { email: string }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const msg = parsed.error.issues[0]?.message ?? 'Invalid request';
     return validationError(msg);
   }
-  const { email, tempUserId } = parsed.data;
+  const { email } = parsed.data;
 
   const supabase = createServerClient();
 

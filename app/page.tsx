@@ -52,9 +52,7 @@ interface NavigationProps {
 interface Directive {
   directive: string;
   action_type: string;
-  confidence: number;
   reason: string;
-  evidence: Array<{ type: string; description: string; date: string | null }>;
   artifact_type?: string;
   artifact?: any;
 }
@@ -535,17 +533,12 @@ function LivingHero() {
                 </p>
               </div>
 
-              {/* Confidence badge */}
+              {/* Context badge */}
               <div className={`transition-all duration-700 ${subtextTyping.done ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-zinc-900/60 border border-white/5">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1 w-12 bg-zinc-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-cyan-500/50 rounded-full" style={{ width: `${coldRead.confidence}%` }} />
-                    </div>
-                    <span className="text-zinc-600 text-[10px] font-mono">{coldRead.confidence}% confidence</span>
-                  </div>
-                  <span className="text-zinc-700 text-[10px]">|</span>
-                  <span className="text-zinc-600 text-[10px]">Based on: time, day{ctx?.scenario ? ', scenario' : ''}{ctx?.referrer ? ', referrer' : ''}</span>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/60 border border-white/5 text-zinc-500 text-[10px] font-mono uppercase tracking-[0.18em]">
+                  <span>Context-aware from the moment you land</span>
+                  <span className="text-zinc-700">•</span>
+                  <span>Time, day{ctx?.scenario ? ', scenario' : ''}{ctx?.referrer ? ', referrer' : ''}</span>
                 </div>
               </div>
 
@@ -639,20 +632,11 @@ function LivingHero() {
       {result && (
         <div className="space-y-8 relative z-10">
           <div className="bg-zinc-950/80 border border-white/10 rounded-[2rem] p-7 backdrop-blur-sm">
-            {/* Action badge + confidence */}
             <div className="flex items-center justify-between mb-6">
               <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${actionColor}`}>
                 {actionLabel}
               </span>
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 w-24 bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-cyan-500 rounded-full"
-                    style={{ width: `${result.confidence}%` }}
-                  />
-                </div>
-                <span className="text-zinc-600 text-xs font-mono">{result.confidence}%</span>
-              </div>
+              <span className="text-zinc-600 text-[10px] font-mono uppercase tracking-[0.2em]">Artifact ready</span>
             </div>
 
             {/* Directive */}
@@ -665,22 +649,6 @@ function LivingHero() {
               {result.reason}
             </p>
 
-            {/* Evidence */}
-            {result.evidence.length > 0 && (
-              <div className="border-t border-zinc-800 pt-5">
-                <p className="text-zinc-600 text-[10px] font-semibold tracking-widest uppercase mb-3">
-                  Evidence from your text
-                </p>
-                <ul className="space-y-2">
-                  {result.evidence.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-zinc-500">
-                      <span className="text-zinc-700 mt-0.5 shrink-0">&#8226;</span>
-                      {item.description}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
             {result.artifact && result.artifact_type && (
               <ArtifactPreview artifactType={result.artifact_type} artifact={result.artifact} />
             )}
@@ -1004,11 +972,11 @@ const MathConsole = memo(() => {
         <Reveal>
           <div className="text-center mb-20">
             <h2 className="text-5xl md:text-6xl font-black tracking-tighter text-white mb-8">
-              Not AI opinions.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">Your track record.</span>
+              The engine keeps the math backstage.<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">You just get the work.</span>
             </h2>
             <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed">
-              Every recommendation is scored against what actually worked for you before.
+              Foldera reads the history, narrows the day to one live thread, and drafts the finished artifact before you even open the dashboard.
             </p>
           </div>
         </Reveal>
@@ -1021,57 +989,35 @@ const MathConsole = memo(() => {
                 <div className="w-3 h-3 rounded-full bg-zinc-700/50" />
                 <div className="w-3 h-3 rounded-full bg-zinc-700/50" />
               </div>
-              <div className="ml-2 text-zinc-500 font-bold tracking-[0.2em] uppercase">engine_core_v2.1.sh</div>
+              <div className="ml-2 text-zinc-500 font-bold tracking-[0.2em] uppercase">directive_assembly.sh</div>
             </div>
 
             <div className="p-8 md:p-12 space-y-8 text-zinc-400 leading-relaxed bg-black/60 break-words text-left">
               <div>
-                <span className="text-cyan-400 font-bold">$</span> compute_bayesian_prior --node=relationship_marcus
+                <span className="text-cyan-400 font-bold">$</span> gather_context --email --calendar --conversations
                 <br />
-                <span className="text-zinc-600 font-bold mt-2 inline-block">{'\u2192'} Loading 127 historical signal nodes...</span>
+                <span className="text-zinc-600 font-bold mt-2 inline-block">{'\u2192'} Pull the unfinished threads that actually matter.</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '500ms' }}>
-                <div className="grid grid-cols-2 gap-y-4 gap-x-8 max-w-md border-l-2 border-zinc-800 pl-6 my-6">
-                  <div>Similar nodes analyzed:</div><div className="text-white font-bold text-right">8</div>
-                  <div>Verified success outcomes:</div><div className="text-emerald-400 font-bold text-right">6</div>
-                  <div>Base Prior Probability:</div><div className="text-cyan-400 font-bold text-right">75.0%</div>
-                </div>
+                <span className="text-cyan-400 font-bold">$</span> choose_one_thread --stakes --urgency --tractability
+                <br />
+                <span className="text-zinc-600 font-bold mt-2 inline-block">{'\u2192'} Keep the scoring backstage and surface only the winning thread.</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '1000ms' }}>
-                <span className="text-cyan-400 font-bold">$</span> apply_context_weights --current_state
+                <span className="text-cyan-400 font-bold">$</span> draft_artifact --ready_to_approve
                 <br />
-                <div className="mt-6 space-y-4 max-w-lg">
-                  {[
-                    { label: 'Temporal Match', val: 92, color: 'from-blue-500 to-cyan-400' },
-                    { label: 'Tone Match', val: 88, color: 'from-blue-600 to-blue-400' },
-                    { label: 'Stakes Assessment', val: 95, color: 'from-cyan-400 to-emerald-400' },
-                  ].map((bar, i) => (
-                    <div key={i}>
-                      <div className="flex justify-between text-[10px] uppercase font-black tracking-widest mb-2">
-                        <span className="text-zinc-500">{bar.label}</span>
-                        <span className="text-white">{bar.val}%</span>
-                      </div>
-                      <div className="h-1.5 bg-zinc-900 rounded-full overflow-hidden relative">
-                        <div className="absolute inset-0 bg-cyan-500/20 blur-sm" />
-                        <div
-                          className={`absolute inset-y-0 left-0 bg-gradient-to-r ${bar.color} rounded-full transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[0_0_10px_rgba(6,182,212,0.5)]`}
-                          style={{ width: inView ? `${bar.val}%` : '0%', transitionDelay: `${1500 + i * 200}ms` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <span className="text-zinc-600 font-bold mt-2 inline-block">{'\u2192'} Produce the email, brief, decision frame, or calendar hold with the details already filled in.</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '2200ms' }}>
                 <br />
-                <span className="text-cyan-400 font-bold">$</span> result
+                <span className="text-cyan-400 font-bold">$</span> deliver_one_read --email_first
                 <br />
                 <div className="mt-4 bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl inline-block shadow-[inset_0_0_20px_rgba(52,211,153,0.1)]">
                   <span className="text-emerald-400 font-bold text-xs sm:text-sm tracking-widest">
-                    FINAL CERTAINTY: 89.4% {'->'} DIRECTIVE READY
+                    ONE DIRECTIVE. ONE ARTIFACT. READY TO APPROVE.
                   </span>
                 </div>
               </div>

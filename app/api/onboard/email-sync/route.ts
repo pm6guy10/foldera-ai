@@ -18,6 +18,7 @@ import { google } from 'googleapis';
 import { authOptions } from '@/lib/auth/auth-options';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import { createServerClient } from '@/lib/db/client';
+import { apiError } from '@/lib/utils/api-error';
 
 
 function extractEmailBody(payload: any): string {
@@ -53,6 +54,14 @@ async function checkDensity(userId: string): Promise<{ patterns: number; commitm
     supabase.from('tkg_entities').select('patterns').eq('user_id', userId).eq('name', 'self').maybeSingle(),
     supabase.from('tkg_commitments').select('id', { count: 'exact', head: true }).eq('user_id', userId),
   ]);
+
+  if (entityRes.error) {
+    throw entityRes.error;
+  }
+  if (commitmentsRes.error) {
+    throw commitmentsRes.error;
+  }
+
   const patterns = Object.keys((entityRes.data?.patterns as Record<string, unknown>) ?? {}).length;
   const commitments = commitmentsRes.count ?? 0;
   return { patterns, commitments };
@@ -127,51 +136,52 @@ async function syncOutlook(accessToken: string): Promise<string[]> {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-  const userId = session.user.id;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    const userId = session.user.id;
 
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  const accessToken = token?.accessToken as string | undefined;
-  const refreshToken = token?.refreshToken as string | undefined;
-  const expiresAt = token?.expiresAt as number | undefined;
-  const provider = token?.provider as string | undefined;
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const accessToken = token?.accessToken as string | undefined;
+    const refreshToken = token?.refreshToken as string | undefined;
+    const expiresAt = token?.expiresAt as number | undefined;
+    const provider = token?.provider as string | undefined;
 
-  if (!accessToken) {
-    return NextResponse.json({ error: 'No access token in session' }, { status: 401 });
-  }
+    if (!accessToken) {
+      return NextResponse.json({ error: 'No access token in session' }, { status: 401 });
+    }
 
-  // Fetch emails based on provider
-  let emailTexts: string[];
-  if (provider === 'azure-ad') {
-    emailTexts = await syncOutlook(accessToken);
-  } else {
-    // Default to Google
-    emailTexts = await syncGmail(accessToken, refreshToken, expiresAt);
-  }
+    let emailTexts: string[];
+    if (provider === 'azure-ad') {
+      emailTexts = await syncOutlook(accessToken);
+    } else {
+      emailTexts = await syncGmail(accessToken, refreshToken, expiresAt);
+    }
 
-  // Extract from batched email content
-  if (emailTexts.length > 0) {
-    const batchText = emailTexts.join('\n\n---\n\n');
-    try {
-      await extractFromConversation(batchText, userId);
-    } catch (err: any) {
-      if (!err.message?.includes('already ingested')) {
-        console.error('[email-sync] extraction error:', err.message);
+    if (emailTexts.length > 0) {
+      const batchText = emailTexts.join('\n\n---\n\n');
+      try {
+        await extractFromConversation(batchText, userId);
+      } catch (err: any) {
+        if (!err.message?.includes('already ingested')) {
+          console.error('[email-sync] extraction error:', err.message);
+        }
       }
     }
+
+    const density = await checkDensity(userId);
+    const isReady = density.patterns >= 3 && density.commitments >= 5;
+
+    return NextResponse.json({
+      status: isReady ? 'ready' : 'thin',
+      patterns: density.patterns,
+      commitments: density.commitments,
+      emailsProcessed: emailTexts.length,
+      provider: provider ?? 'google',
+    });
+  } catch (err: unknown) {
+    return apiError(err, 'onboard/email-sync');
   }
-
-  const density = await checkDensity(userId);
-  const isReady = density.patterns >= 3 && density.commitments >= 5;
-
-  return NextResponse.json({
-    status: isReady ? 'ready' : 'thin',
-    patterns: density.patterns,
-    commitments: density.commitments,
-    emailsProcessed: emailTexts.length,
-    provider: provider ?? 'google',
-  });
 }

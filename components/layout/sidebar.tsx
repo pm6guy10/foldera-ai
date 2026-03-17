@@ -29,7 +29,7 @@ const navItems: NavItem[] = [
     icon: <BriefingIcon />,
   },
   {
-    label: 'Activity',
+    label: 'Sources',
     href: '/dashboard/signals',
     icon: <SignalIcon />,
   },

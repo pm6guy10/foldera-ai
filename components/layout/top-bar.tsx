@@ -59,7 +59,7 @@ function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const commands = [
     { icon: '⚡', label: 'Dashboard',           shortcut: '⌘D', href: '/dashboard' },
     { icon: '📋', label: 'Briefings',           shortcut: '⌘B', href: '/dashboard/briefings' },
-    { icon: '📡', label: 'Activity',            shortcut: '⌘A', href: '/dashboard/signals' },
+    { icon: '📡', label: 'Sources',             shortcut: '⌘A', href: '/dashboard/signals' },
     { icon: '⚙️', label: 'Settings',            shortcut: '⌘,', href: '/dashboard/settings' },
   ];
 

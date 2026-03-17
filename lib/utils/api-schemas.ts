@@ -28,7 +28,6 @@ export const draftsDecideBodySchema = z.object({
 
 export const onboardSaveBodySchema = z.object({
   email: z.string().email('Valid email required').transform(s => s.toLowerCase().trim()),
-  tempUserId: z.string().uuid('Invalid tempUserId'),
 });
 
 export const ingestBodySchema = z.object({

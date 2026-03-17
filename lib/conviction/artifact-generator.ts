@@ -10,7 +10,7 @@
  *   schedule      → CalendarEventArtifact (title/start/end/description)
  *   research      → ResearchBriefArtifact (findings/sources/recommended_action)
  *   make_decision → DecisionFrameArtifact (options/weights/recommendation)
- *   do_nothing    → AffirmationArtifact (context/evidence for waiting)
+ *   do_nothing    → WaitRationaleArtifact (context/evidence for waiting)
  *
  * When requires_search is true, the generator uses Claude's built-in web_search
  * tool so artifacts contain real, current, actionable information.
@@ -27,7 +27,7 @@ import type {
   CalendarEventArtifact,
   ResearchBriefArtifact,
   DecisionFrameArtifact,
-  AffirmationArtifact,
+  WaitRationaleArtifact,
 } from '@/lib/briefing/types';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 
@@ -275,14 +275,15 @@ Build the decision frame. Return JSON only.`,
       return {
         system: `${base}
 
-You are affirming that the best action is to wait.
-Cite specific historical outcomes where waiting resolved favorably for this person.
+You are writing the finished rationale for waiting.
+This artifact should make clear why no external action is the right move today and what would change that call.
 
 Return ONLY valid JSON:
 {
-  "type": "affirmation",
+  "type": "wait_rationale",
   "context": "Why waiting is the highest-leverage move right now",
-  "evidence": "Specific past outcomes where patience paid off for this person"
+  "evidence": "Specific pattern or outcome that supports waiting today",
+  "tripwires": ["What new signal would make this active again"]
 }`,
         user: `DIRECTIVE: ${directive.directive}
 REASON: ${directive.reason}
@@ -466,14 +467,15 @@ function validateArtifact(
     }
     case 'do_nothing':
     default: {
-      const a = parsed as AffirmationArtifact;
+      const a = parsed as WaitRationaleArtifact;
       if (!isNonEmptyString(a.context) || !isNonEmptyString(a.evidence)) {
         throw new Error('Wait artifact missing required fields');
       }
       return {
-        type: 'affirmation',
+        type: 'wait_rationale',
         context: a.context.trim(),
         evidence: a.evidence.trim(),
+        tripwires: normalizeStringArray(a.tripwires),
       };
     }
   }

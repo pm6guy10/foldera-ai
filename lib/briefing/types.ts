@@ -78,10 +78,11 @@ export interface DecisionFrameArtifact {
   recommendation: string;
 }
 
-export interface AffirmationArtifact {
-  type: 'affirmation';
+export interface WaitRationaleArtifact {
+  type: 'wait_rationale';
   context: string;
   evidence: string;
+  tripwires?: string[];
 }
 
 export type ConvictionArtifact =
@@ -90,7 +91,7 @@ export type ConvictionArtifact =
   | CalendarEventArtifact
   | ResearchBriefArtifact
   | DecisionFrameArtifact
-  | AffirmationArtifact;
+  | WaitRationaleArtifact;
 
 /**
  * Persisted to tkg_actions and returned from /api/conviction/generate

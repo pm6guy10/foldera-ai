@@ -173,8 +173,8 @@ test.describe('API health', () => {
       const body = await res.json();
       expect(body).toHaveProperty('directive');
       expect(body).toHaveProperty('action_type');
-      expect(body).toHaveProperty('confidence');
       expect(body).toHaveProperty('reason');
+      expect(body).toHaveProperty('artifact_type');
     }
   });
 });

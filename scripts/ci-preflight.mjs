@@ -1,11 +1,19 @@
-﻿const req=[
+#!/usr/bin/env node
+
+const required = [
+  'ANTHROPIC_API_KEY',
+  'CRON_SECRET',
+  'ENCRYPTION_KEY',
   'NEXT_PUBLIC_SUPABASE_URL',
-  'SUPABASE_SERVICE_ROLE',
-  'UPSTASH_REDIS_REST_URL',
-  'UPSTASH_REDIS_REST_TOKEN',
-  'SENTRY_DSN',
-  'OTEL_EXPORTER_OTLP_ENDPOINT'
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
 ];
-const miss=req.filter(k=>!process.env[k]);
-if(miss.length){ console.error('Missing envs:', miss.join(', ')); process.exit(1); }
+
+const missing = required.filter((key) => !process.env[key]);
+
+if (missing.length > 0) {
+  console.error('Missing envs:', missing.join(', '));
+  process.exit(1);
+}
+
 console.log('Preflight OK');

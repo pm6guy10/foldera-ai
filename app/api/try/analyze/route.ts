@@ -5,7 +5,7 @@
  * returns a directive card. No DB write. No session required.
  *
  * Body:    { text: string }
- * Returns: { directive, action_type, confidence, reason, evidence }
+ * Returns: { directive, action_type, reason, artifact_type, artifact }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -70,11 +70,7 @@ Return JSON only, no prose:
 {
   "directive": "One sentence that names what they can't see. A direct reframe, not an instruction. No 'you should.' Just the observation.",
   "action_type": "send_message | write_document | make_decision | do_nothing | schedule | research",
-  "confidence": 0,
   "reason": "One sentence connecting the inference to specific words from their text — quote or paraphrase what they actually said",
-  "evidence": [
-    { "type": "signal", "description": "specific extracted signal from their paragraph — use their actual words", "date": null }
-  ],
   "artifact_type": "drafted_email | document | decision | calendar_event | research_brief | wait_rationale",
   "artifact": "<the actual finished work product as JSON: for drafted_email: {\"to\":\"[their contact if named]\",\"subject\":\"...\",\"body\":\"...\"}, for document: {\"title\":\"...\",\"content\":\"...\"}, for decision: {\"options\":[{\"option\":\"specific option using their variables\",\"weight\":0.0,\"rationale\":\"why given their specific constraints\"}],\"recommendation\":\"specific recommendation citing their situation\"}, for calendar_event: {\"title\":\"...\",\"start\":\"ISO8601\",\"end\":\"ISO8601\",\"description\":\"...\"}, for research_brief: {\"findings\":\"...\",\"sources\":[],\"recommended_action\":\"...\"}, for wait_rationale: {\"context\":\"specific situation from their text\",\"evidence\":\"specific reason from their text why waiting is right\"}>"
 }`;
@@ -128,9 +124,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       directive:     String(parsed.directive     ?? ''),
       action_type:   String(parsed.action_type   ?? 'research'),
-      confidence:    Number(parsed.confidence    ?? 50),
       reason:        String(parsed.reason        ?? ''),
-      evidence:      Array.isArray(parsed.evidence) ? parsed.evidence : [],
       artifact_type: String(parsed.artifact_type ?? ''),
       artifact:      parsed.artifact ?? null,
     });
