@@ -869,6 +869,36 @@ Manual cron fallback trigger, owner settings control, and 30-day session hardeni
 
 ---
 
+## Session Log — 2026-03-17 (Microsoft sync coverage)
+
+### Commit: `93d28b4`
+Deepen Microsoft sync coverage and fix Settings to distinguish total source coverage from the latest incremental sync delta.
+
+### Files changed
+- `lib/sync/microsoft-sync.ts` — added Graph pagination for mail/calendar/files/tasks, expanded calendar sync to include the next 14 days, and returned per-source coverage totals after sync.
+- `app/api/microsoft/sync-now/route.ts` — returned both `inserted_total` and `coverage_total` so the Settings action can report actual Microsoft coverage instead of only the latest delta.
+- `app/dashboard/settings/SettingsClient.tsx` — updated the Microsoft sync result card to show total Microsoft coverage separately from the items added in the current run.
+- `tests/e2e/settings-manual-trigger.spec.ts` — added a mocked Settings regression test that verifies the new Microsoft coverage/incremental split.
+
+### Root cause
+- The Settings card was surfacing the latest incremental inserts (`mail_signals`, `calendar_signals`, etc.) as if they were total source coverage. The live database already holds far more Microsoft context than the `27 mail / 0 calendar / 0 files / 0 tasks` delta implied.
+- The sync backend also stopped at the first Microsoft Graph page for every source and the calendar query ended at `now`, which excluded upcoming events from the coverage window.
+
+### Verified working
+- `npm run build` — passed
+- `npx playwright test` — 30 passed
+- Direct Supabase verification for `INGEST_USER_ID` after the change showed the current Microsoft coverage already stored in `tkg_signals`:
+  - `outlook`: 278 signals (`2026-02-24T02:03:49+00:00` → `2026-03-17T15:09:21+00:00`)
+  - `outlook_calendar`: 45 signals (`2026-02-14T03:00:00+00:00` → `2026-03-16T16:00:00+00:00`)
+  - `onedrive`: 0 signals
+  - `microsoft_todo`: 0 signals
+- Direct Supabase verification also showed the current Microsoft `user_tokens` row has `last_synced_at = 2026-03-17T15:38:49.344+00:00` and `scopes = null`, so file/task authorization cannot be proven from stored metadata even though the code paths are wired and executed.
+
+### Supabase / migrations
+- No new migrations
+
+---
+
 ## Session Log — 2026-03-16 (production verification for 94da6fa)
 
 ### Commit
