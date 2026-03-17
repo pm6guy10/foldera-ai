@@ -804,6 +804,32 @@ Generator rewrite + decrypt fallback hardening + privacy logging cleanup
 
 ---
 
+## Session Log — 2026-03-17 (daily brief status constraint fix)
+
+### Commit: `ceccd00c317cd723183e68420cf32a4e0d7e13b6`
+Align the shared daily brief generate/send flow with the live `tkg_actions` status constraint.
+
+### Files changed
+- `lib/cron/daily-brief.ts` — changed the daily-generate insert to `pending_approval`, updated the daily-send lookup to read pending actions, and recorded `daily_brief_sent_at` in `execution_result` so reruns do not resend the same action row.
+- `app/api/cron/daily-generate/route.ts` — corrected the route contract comment to reflect the real persisted status.
+- `app/api/cron/daily-send/route.ts` — corrected the route contract comment to reflect the pending-approval lookup and email marker behavior.
+
+### Root cause
+- The shared cron helper inserted daily brief actions with `status: 'generated'`, but `tkg_actions` only allows `pending_approval`, `approved`, `rejected`, `executed`, and `skipped`. That constraint failure aborted the insert, so the trigger route reported `Directive save failed` and the send stage had no action to email.
+- The same flow also queried `status = 'generated'` during send, so fixing only the insert would still have left the trigger path unable to find the freshly created action.
+
+### Verified working
+- `npm run build` — passed
+- Local `next start` verification of `POST /api/cron/trigger` with cron auth returned `200` and structured success JSON:
+  - `generate.status = "ok"` with `summary = "Generated briefs for 1 eligible user."`
+  - `send.status = "ok"` with `summary = "Sent briefs for 1 eligible user."`
+- Direct Supabase query after the trigger run confirmed newly created `tkg_actions` rows now persist as `pending_approval`, and the latest row includes `execution_result.daily_brief_sent_at` to prevent duplicate sends on rerun.
+
+### Supabase / migrations
+- No new migrations
+
+---
+
 ## Session Log — 2026-03-17 (cron fallback + session persistence)
 
 ### Commit: `73e2d7b`
