@@ -6,6 +6,12 @@
 
 ---
 
+## NEEDS_REVIEW
+
+| # | Issue | Source | Status |
+|---|-------|--------|--------|
+| NR1 | March 17, 2026 live verification showed the tightened MAS3 constraints now correctly suppress bad daily briefs, but three real `daily-generate` runs still produced `Directive generation failed` with no persisted action even though the scorer selected a concrete compound `send_message` winner. The system is safely choosing silence over a bad directive, but the remaining gap is why the generator cannot yet clear validation for that live MAS3-safe winner. | Codex verification | NEEDS_REVIEW — March 17, 2026 |
+
 ## CRITICAL — Fix before any user touches the product
 
 | # | Issue | Source | Status |
