@@ -194,7 +194,7 @@ export async function processUnextractedSignals(
       .eq('user_id', userId)
       .eq('processed', false)
       .in('source', EXTRACTABLE_SOURCES)
-      .order('occurred_at', { ascending: true })
+      .order('occurred_at', { ascending: false })
       .limit(queryLimit);
 
     if (signalsResult.error) {
