@@ -1,10 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
-import type { ActionType, ChiefOfStaffBriefing, ConvictionDirective, EvidenceItem } from './types';
+import type { ActionType, ChiefOfStaffBriefing, ConvictionArtifact, ConvictionDirective, EvidenceItem } from './types';
 import type { DeprioritizedLoop, ScoredLoop, ScorerResult } from './scorer';
 import { scoreOpenLoops } from './scorer';
 import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import {
+  getDirectiveConstraintViolations,
+  getPinnedConstraintPrompt,
+} from './pinned-constraints';
 
 const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
 const GENERATION_MODEL = 'claude-sonnet-4-20250514';
@@ -39,6 +43,7 @@ Doctrine:
 - The artifact must be directly usable with no placeholders.
 - If the action is wait, make the tripwire explicit and concrete.
 - If the action is a decision, lead with the recommendation, then justify it with concrete tradeoffs.
+- Pinned constraints are hard vetoes. Never reopen a locked decision or turn the directive into a menu of options.
 
 Return strict JSON only:
 {
@@ -80,6 +85,7 @@ interface RecentSkippedActionRow extends RecentActionRow {
 }
 
 interface PromptContext {
+  userId: string;
   winner: ScoredLoop;
   deprioritized: DeprioritizedLoop[];
   approvedRecently: RecentActionRow[];
@@ -142,6 +148,22 @@ function isNonEmptyString(value: unknown): value is string {
 
 function containsPlaceholderText(value: string): boolean {
   return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function countSentences(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+  const parts = trimmed
+    .split(/[.!?]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.length === 0 ? 1 : parts.length;
+}
+
+function isDecisionMenu(value: string): boolean {
+  const lower = value.toLowerCase();
+  return /\b(decide whether|whether to|option a|option b)\b/.test(lower) ||
+    (lower.includes(' or ') && /\b(decide|choose|whether|abandon|commit|pivot)\b/.test(lower));
 }
 
 function hasMeaningfulOverlap(candidate: string, winner: ScoredLoop): boolean {
@@ -260,6 +282,7 @@ function formatRecentAction(row: RecentActionRow): string {
 
 function buildGenerationPrompt(context: PromptContext): string {
   const { winner, deprioritized, approvedRecently, skippedRecently } = context;
+  const pinnedConstraints = getPinnedConstraintPrompt(context.userId);
   const relatedSignals = winner.relatedSignals.length > 0
     ? winner.relatedSignals.map((signal) => `- ${signal}`).join('\n')
     : '- None';
@@ -295,6 +318,7 @@ function buildGenerationPrompt(context: PromptContext): string {
     `WINNING_LOOP_TITLE:\n${winner.title}`,
     `WINNING_LOOP_TYPE:\n${winner.type}`,
     `WINNING_ACTION_TYPE:\n${winner.suggestedActionType}`,
+    `PINNED_CONSTRAINTS:\n${pinnedConstraints ?? '- None'}`,
     `GOAL_ALIGNMENT:\n${matchedGoal}`,
     `SCORE_BREAKDOWN:\n${scoreBreakdown}`,
     `PRIMARY_EVIDENCE:\n${winner.content}`,
@@ -407,7 +431,10 @@ function validateArtifactPayload(
           issues.push('decision_frame option weight must be numeric');
         }
       }
-      validateStringField(artifact.recommendation, 'decision_frame recommendation', issues);
+      const recommendation = validateStringField(artifact.recommendation, 'decision_frame recommendation', issues);
+      if (recommendation && isDecisionMenu(recommendation)) {
+        issues.push('decision_frame recommendation must name the recommendation, not reopen the choice');
+      }
       break;
     }
     case 'do_nothing':
@@ -444,6 +471,12 @@ function validateGeneratedPayload(
   if (directive && BANNED_DIRECTIVE_PATTERNS.some((pattern) => pattern.test(directive))) {
     issues.push('directive uses vague language');
   }
+  if (directive && countSentences(directive) !== 1) {
+    issues.push('directive must be exactly one sentence');
+  }
+  if (directive && isDecisionMenu(directive)) {
+    issues.push('directive must make one concrete move instead of reopening the choice');
+  }
   if (directive && !hasMeaningfulOverlap(directive, promptContext.winner)) {
     issues.push('directive is not specific to the winning evidence');
   }
@@ -476,7 +509,57 @@ function validateGeneratedPayload(
     issues.push('search_context is required when requires_search is true');
   }
 
+  const constraintViolations = getDirectiveConstraintViolations({
+    userId: promptContext.userId,
+    directive: payload.directive,
+    reason: payload.why_now,
+    evidence: [{ description: payload.evidence }],
+    artifact: payload.artifact,
+    actionType: artifactTypeToActionType(payload.artifact_type),
+  });
+  for (const violation of constraintViolations) {
+    issues.push(violation.message);
+  }
+
   return issues;
+}
+
+export function validateDirectiveForPersistence(input: {
+  userId: string;
+  directive: ConvictionDirective;
+  artifact: ConvictionArtifact | Record<string, unknown> | null;
+}): string[] {
+  const issues: string[] = [];
+
+  if (input.directive.directive === GENERATION_FAILED_SENTINEL) {
+    issues.push('directive generation failed');
+  }
+  if (input.directive.confidence < DIRECTIVE_CONFIDENCE_THRESHOLD) {
+    issues.push('directive confidence is below the send threshold');
+  }
+  if (!input.artifact || typeof input.artifact !== 'object') {
+    issues.push('artifact is required before persistence');
+  }
+  if (countSentences(input.directive.directive) !== 1) {
+    issues.push('directive must remain exactly one sentence');
+  }
+  if (isDecisionMenu(input.directive.directive)) {
+    issues.push('directive reopens a decision instead of naming the move');
+  }
+
+  const constraintViolations = getDirectiveConstraintViolations({
+    userId: input.userId,
+    directive: input.directive.directive,
+    reason: input.directive.reason,
+    evidence: input.directive.evidence,
+    artifact: input.artifact,
+    actionType: input.directive.action_type,
+  });
+  for (const violation of constraintViolations) {
+    issues.push(violation.message);
+  }
+
+  return [...new Set(issues)];
 }
 
 async function loadRecentActionGuardrails(userId: string): Promise<{
@@ -695,6 +778,7 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     }
 
     const promptContext: PromptContext = {
+      userId,
       winner: scored.winner,
       deprioritized: scored.deprioritized,
       ...guardrails,
@@ -722,20 +806,7 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       return emptyDirective('No directive cleared the confidence bar.');
     }
 
-    logStructuredEvent({
-      event: 'directive_generated',
-      userId,
-      artifactType: payload.artifact_type,
-      generationStatus: 'generated',
-      details: {
-        scope: 'generator',
-        action_type: scored.winner.suggestedActionType,
-        winner_type: scored.winner.type,
-        score: Number(scored.winner.score.toFixed(2)),
-      },
-    });
-
-    return {
+    const directive = {
       directive: payload.directive.trim(),
       action_type: artifactTypeToActionType(payload.artifact_type),
       confidence,
@@ -752,6 +823,41 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       embeddedArtifact?: Record<string, unknown>;
       embeddedArtifactType?: GeneratorArtifactType;
     };
+
+    const persistenceIssues = validateDirectiveForPersistence({
+      userId,
+      directive,
+      artifact: payload.artifact,
+    });
+    if (persistenceIssues.length > 0) {
+      logStructuredEvent({
+        event: 'generation_skipped',
+        level: 'warn',
+        userId,
+        artifactType: payload.artifact_type,
+        generationStatus: 'persistence_validation_failed',
+        details: {
+          scope: 'generator',
+          issues: persistenceIssues,
+        },
+      });
+      return emptyDirective('No directive cleared the pinned constraints.');
+    }
+
+    logStructuredEvent({
+      event: 'directive_generated',
+      userId,
+      artifactType: payload.artifact_type,
+      generationStatus: 'generated',
+      details: {
+        scope: 'generator',
+        action_type: scored.winner.suggestedActionType,
+        winner_type: scored.winner.type,
+        score: Number(scored.winner.score.toFixed(2)),
+      },
+    });
+
+    return directive;
   } catch (error) {
     logStructuredEvent({
       event: 'directive_generation_failed',

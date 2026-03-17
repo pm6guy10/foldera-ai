@@ -18,6 +18,11 @@
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus } from '@/lib/encryption';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import {
+  applyPinnedGoals,
+  getCandidateConstraintViolations,
+  shouldSuppressReflectivePatterns,
+} from './pinned-constraints';
 import type { ActionType } from './types';
 
 // ---------------------------------------------------------------------------
@@ -462,7 +467,7 @@ function inferDomain(matchedGoal: MatchedGoal | null, text: string): string {
   const lower = text.toLowerCase();
   if (/\bgrowth.signal\b|growth_reddit|growth_twitter|growth_hackernews|acquire.*user|paying.*user|customer.*base|growth.*scanner|convert.*visitor/.test(lower)) return 'growth';
   if (/\b(salary|money|financial|income|runway|payment|budget)\b/.test(lower)) return 'financial';
-  if (/\b(job|career|role|application|interview|hire|position)\b/.test(lower)) return 'career';
+  if (/\b(job|career|role|application|interview|hire|position|mas3|state government|government|dshs|doh|hca|public health)\b/.test(lower)) return 'career';
   if (/\b(family|wife|children|baby|pregnancy|health)\b/.test(lower)) return 'family';
   if (/\b(foldera|build|code|deploy|feature|bug)\b/.test(lower)) return 'project';
   return 'career';
@@ -1519,6 +1524,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const supabase = createServerClient();
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const oneHundredEightyDaysAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+  const suppressReflectivePatterns = shouldSuppressReflectivePatterns(userId);
 
   // -----------------------------------------------------------------------
   // PRE-SCORING: Anti-Pattern Detection (Session 3)
@@ -1526,7 +1532,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // The winning anti-pattern becomes the directive — a mirror, not a task.
   // -----------------------------------------------------------------------
 
-  const antiPatterns = await detectAntiPatterns(userId);
+  const antiPatterns = suppressReflectivePatterns ? [] : await detectAntiPatterns(userId);
 
   if (antiPatterns.length > 0 && antiPatterns[0].score >= 0.5) {
     const ap = antiPatterns[0];
@@ -1642,7 +1648,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     })
     .filter((signal: any) => signal && !isSelfReferentialSignal(signal.content));
   const entities = entitiesRes.data ?? [];
-  const goals = (goalsRes.data ?? []) as Array<{ goal_text: string; priority: number; goal_category: string }>;
+  const goals = applyPinnedGoals(
+    userId,
+    (goalsRes.data ?? []) as Array<{ goal_text: string; priority: number; goal_category: string }>,
+  );
   logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
 
   // Also fetch ALL recent signals (not just 7d) for context enrichment
@@ -1665,7 +1674,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       }
       return decrypted.plaintext;
     })
-    .filter((content: string | null): content is string => !!content && !isSelfReferentialSignal(content));
+    .filter((content: string | null): content is string => {
+      if (!content || isSelfReferentialSignal(content)) return false;
+      return getCandidateConstraintViolations(userId, content).length === 0;
+    });
   logDecryptSkip(userId, 'scorer:recent_signal_context', contextDecryptSkips);
 
   // -----------------------------------------------------------------------
@@ -1684,10 +1696,15 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     entityPatterns?: unknown;
     entityName?: string;
   }> = [];
+  let suppressedCandidates = 0;
 
   // 1. Commitments
   for (const c of commitments) {
     const text = `${c.description}${c.source_context ? ' — ' + c.source_context : ''}`;
+    if (getCandidateConstraintViolations(userId, text).length > 0) {
+      suppressedCandidates++;
+      continue;
+    }
     const mg = matchGoal(text, goals);
     const actionType = inferActionType(text, 'commitment');
 
@@ -1709,6 +1726,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     if (!text || text.length < 20) continue;
     // Skip signals that are Foldera's own self-fed directives
     if (isSelfReferentialSignal(text)) continue;
+    if (getCandidateConstraintViolations(userId, text).length > 0) {
+      suppressedCandidates++;
+      continue;
+    }
     const mg = matchGoal(text, goals);
     const actionType = inferActionType(text, 'signal');
 
@@ -1730,6 +1751,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       (Date.now() - new Date(e.last_interaction as string).getTime()) / (1000 * 60 * 60 * 24),
     );
     const text = `${e.name}: last contact ${daysSince} days ago, ${e.total_interactions} total interactions`;
+    if (getCandidateConstraintViolations(userId, text).length > 0) {
+      suppressedCandidates++;
+      continue;
+    }
     const mg = matchGoal(text, goals);
 
     candidates.push({
@@ -1746,33 +1771,48 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     });
   }
 
+  if (suppressedCandidates > 0) {
+    logStructuredEvent({
+      event: 'scorer_constraint_filter',
+      userId,
+      artifactType: null,
+      generationStatus: 'candidate_suppressed',
+      details: {
+        scope: 'scorer',
+        suppressed_candidates: suppressedCandidates,
+      },
+    });
+  }
+
   if (candidates.length === 0) {
     // Even with no candidates, check emergent patterns
-    const emergentFallback = await detectEmergentPatterns(userId);
-    if (emergentFallback.length > 0) {
-      const ep = emergentFallback[0];
-      const mirrorContent = [
-        ep.insight,
-        '',
-        'Evidence:',
-        ...ep.dataPoints,
-        '',
-        ep.mirrorQuestion,
-      ].join('\n');
-      return {
-        winner: {
-          id: 'emergent-0',
-          type: 'emergent',
-          title: ep.title,
-          content: mirrorContent,
-          suggestedActionType: ep.suggestedActionType,
-          matchedGoal: null,
-          score: ep.surpriseValue * ep.dataConfidence,
-          breakdown: { stakes: ep.surpriseValue, urgency: ep.dataConfidence, tractability: 1.0, freshness: 1.0 },
-          relatedSignals: [],
-        },
-        deprioritized: [],
-      };
+    if (!suppressReflectivePatterns) {
+      const emergentFallback = await detectEmergentPatterns(userId);
+      if (emergentFallback.length > 0) {
+        const ep = emergentFallback[0];
+        const mirrorContent = [
+          ep.insight,
+          '',
+          'Evidence:',
+          ...ep.dataPoints,
+          '',
+          ep.mirrorQuestion,
+        ].join('\n');
+        return {
+          winner: {
+            id: 'emergent-0',
+            type: 'emergent',
+            title: ep.title,
+            content: mirrorContent,
+            suggestedActionType: ep.suggestedActionType,
+            matchedGoal: null,
+            score: ep.surpriseValue * ep.dataConfidence,
+            breakdown: { stakes: ep.surpriseValue, urgency: ep.dataConfidence, tractability: 1.0, freshness: 1.0 },
+            relatedSignals: [],
+          },
+          deprioritized: [],
+        };
+      }
     }
     return null;
   }
@@ -1852,53 +1892,55 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // High divergence overrides standard open loop EV
   // -----------------------------------------------------------------------
 
-  const divergences = await inferRevealedGoals(userId);
-  for (const div of divergences) {
-    if (div.divergenceScore >= 0.5) {
-      const divergenceContent = [
-        `You stated your top goal is "${div.statedGoal.text}" (priority ${div.statedGoal.priority}/5, category: ${div.statedGoal.category}).`,
-        `But ${Math.round((div.revealedSignalCount / (div.revealedSignalCount + div.statedSignalCount)) * 100)}% of your signal velocity this fortnight is focused on ${div.revealedDomain} (${div.revealedSignalCount} signals vs ${div.statedSignalCount} in ${div.statedGoal.category}).`,
-        '',
-        'What the signals show:',
-        ...div.topSignals.map((s, i) => `  ${i + 1}. "${s.slice(0, 150)}"`),
-        '',
-        `Are we changing the goal, or are you avoiding the work?`,
-      ].join('\n');
+  if (!suppressReflectivePatterns) {
+    const divergences = await inferRevealedGoals(userId);
+    for (const div of divergences) {
+      if (div.divergenceScore >= 0.5) {
+        const divergenceContent = [
+          `You stated your top goal is "${div.statedGoal.text}" (priority ${div.statedGoal.priority}/5, category: ${div.statedGoal.category}).`,
+          `But ${Math.round((div.revealedSignalCount / (div.revealedSignalCount + div.statedSignalCount)) * 100)}% of your signal velocity this fortnight is focused on ${div.revealedDomain} (${div.revealedSignalCount} signals vs ${div.statedSignalCount} in ${div.statedGoal.category}).`,
+          '',
+          'What the signals show:',
+          ...div.topSignals.map((s, i) => `  ${i + 1}. "${s.slice(0, 150)}"`),
+          '',
+          `Are we changing the goal, or are you avoiding the work?`,
+        ].join('\n');
 
-      const divergenceScore = div.divergenceScore * 5; // scale to compete with normal loops (max 5)
+        const divergenceScore = div.divergenceScore * 5; // scale to compete with normal loops (max 5)
 
-      scored.push({
-        id: `divergence-${div.revealedDomain}-${div.statedGoal.category}`,
-        type: 'emergent',
-        title: `Preference divergence: stated "${div.statedGoal.text}" but signal velocity is on ${div.revealedDomain}`,
-        content: divergenceContent,
-        suggestedActionType: 'make_decision',
-        matchedGoal: {
-          text: div.statedGoal.text,
-          priority: div.statedGoal.priority,
-          category: div.statedGoal.category,
-        },
-        score: divergenceScore,
-        breakdown: {
-          stakes: div.statedGoal.priority,
-          urgency: div.divergenceScore,
-          tractability: 1.0,
-          freshness: 1.0,
-        },
-        relatedSignals: div.topSignals.slice(0, 3),
-      });
+        scored.push({
+          id: `divergence-${div.revealedDomain}-${div.statedGoal.category}`,
+          type: 'emergent',
+          title: `Preference divergence: stated "${div.statedGoal.text}" but signal velocity is on ${div.revealedDomain}`,
+          content: divergenceContent,
+          suggestedActionType: 'make_decision',
+          matchedGoal: {
+            text: div.statedGoal.text,
+            priority: div.statedGoal.priority,
+            category: div.statedGoal.category,
+          },
+          score: divergenceScore,
+          breakdown: {
+            stakes: div.statedGoal.priority,
+            urgency: div.divergenceScore,
+            tractability: 1.0,
+            freshness: 1.0,
+          },
+          relatedSignals: div.topSignals.slice(0, 3),
+        });
 
-      logStructuredEvent({
-        event: 'scorer_override',
-        userId,
-        artifactType: artifactTypeForAction('make_decision'),
-        generationStatus: 'revealed_preference_divergence',
-        details: {
-          scope: 'scorer',
-          stated_domain: div.statedGoal.category,
-          revealed_domain: div.revealedDomain,
-        },
-      });
+        logStructuredEvent({
+          event: 'scorer_override',
+          userId,
+          artifactType: artifactTypeForAction('make_decision'),
+          generationStatus: 'revealed_preference_divergence',
+          details: {
+            scope: 'scorer',
+            stated_domain: div.statedGoal.category,
+            revealed_domain: div.revealedDomain,
+          },
+        });
+      }
     }
   }
 
@@ -1908,40 +1950,42 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
   scored.sort((a, b) => b.score - a.score);
   const topLoopEV = scored.length > 0 ? scored[0].score : 0;
-  const emergent = await detectEmergentPatterns(userId);
-  for (const ep of emergent) {
-    const emergentEV = ep.surpriseValue * ep.dataConfidence;
-    // Apply freshness to emergent patterns to prevent runaway loops
-    const emergentFreshness = await getFreshness(userId, ep.title, 'emergent');
-    const adjustedEV = emergentEV * emergentFreshness;
-    // Emergent pattern must beat the top open loop to compete
-    if (adjustedEV > topLoopEV || scored.length === 0) {
-      // Build mirror content: specific data + "Is this true?"
-      const mirrorContent = [
-        ep.insight,
-        '',
-        'Evidence:',
-        ...ep.dataPoints,
-        '',
-        ep.mirrorQuestion,
-      ].join('\n');
+  if (!suppressReflectivePatterns) {
+    const emergent = await detectEmergentPatterns(userId);
+    for (const ep of emergent) {
+      const emergentEV = ep.surpriseValue * ep.dataConfidence;
+      // Apply freshness to emergent patterns to prevent runaway loops
+      const emergentFreshness = await getFreshness(userId, ep.title, 'emergent');
+      const adjustedEV = emergentEV * emergentFreshness;
+      // Emergent pattern must beat the top open loop to compete
+      if (adjustedEV > topLoopEV || scored.length === 0) {
+        // Build mirror content: specific data + "Is this true?"
+        const mirrorContent = [
+          ep.insight,
+          '',
+          'Evidence:',
+          ...ep.dataPoints,
+          '',
+          ep.mirrorQuestion,
+        ].join('\n');
 
-      scored.push({
-        id: `emergent-${ep.type}`,
-        type: 'emergent',
-        title: ep.title,
-        content: mirrorContent,
-        suggestedActionType: ep.suggestedActionType,
-        matchedGoal: null,
-        score: adjustedEV + 0.01, // tiny bump to ensure it wins over the loop it beat
-        breakdown: {
-          stakes: ep.surpriseValue,
-          urgency: ep.dataConfidence,
-          tractability: 1.0,
-          freshness: emergentFreshness,
-        },
-        relatedSignals: [],
-      });
+        scored.push({
+          id: `emergent-${ep.type}`,
+          type: 'emergent',
+          title: ep.title,
+          content: mirrorContent,
+          suggestedActionType: ep.suggestedActionType,
+          matchedGoal: null,
+          score: adjustedEV + 0.01, // tiny bump to ensure it wins over the loop it beat
+          breakdown: {
+            stakes: ep.surpriseValue,
+            urgency: ep.dataConfidence,
+            tractability: 1.0,
+            freshness: emergentFreshness,
+          },
+          relatedSignals: [],
+        });
+      }
     }
   }
 

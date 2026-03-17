@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { apiError } from '@/lib/utils/api-error';
-import { generateDirective } from '@/lib/briefing/generator';
+import { generateDirective, validateDirectiveForPersistence } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -109,6 +109,18 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Artifact generation failed' },
         { status: 500 },
+      );
+    }
+
+    const persistenceIssues = validateDirectiveForPersistence({
+      userId,
+      directive,
+      artifact,
+    });
+    if (persistenceIssues.length > 0) {
+      return NextResponse.json(
+        { error: 'Directive rejected by validation gate', issues: persistenceIssues },
+        { status: 422 },
       );
     }
 

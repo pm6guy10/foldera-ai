@@ -1,0 +1,214 @@
+import { OWNER_USER_ID } from '@/lib/auth/constants';
+import type { ActionType, ConvictionArtifact, ConvictionDirective } from './types';
+
+export interface BriefGoalRow {
+  goal_text: string;
+  priority: number;
+  goal_category: string;
+}
+
+export interface ConstraintViolation {
+  code: string;
+  message: string;
+}
+
+interface ConstraintPattern {
+  code: string;
+  message: string;
+  pattern: RegExp;
+}
+
+interface PinnedBriefConstraints {
+  id: string;
+  promptLines: string[];
+  pinnedGoals: BriefGoalRow[];
+  suppressReflectivePatterns: boolean;
+  candidatePatterns: ConstraintPattern[];
+  directivePatterns: ConstraintPattern[];
+}
+
+const STALE_CONSULTING_ERA_PATTERNS: ConstraintPattern[] = [
+  {
+    code: 'stale_consulting_era',
+    message: 'consulting-era context is stale for the current daily brief window',
+    pattern: /\b(kapp advisory|bloomreach|justworks|storytelling engine|visual disconnect|category lockout|kayna|paty)\b/i,
+  },
+];
+
+const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
+  id: 'owner_mas3_window',
+  promptLines: [
+    'MAS3 / state-government path is the primary lane.',
+    'Foldera is overflow energy only during this window and cannot become the main directive.',
+    'Never propose consulting, fractional work, revenue bridges, Mercor outreach, or client-acquisition fallback plans.',
+    'Do not reopen locked decisions like MAS3 vs Foldera, MAS3 vs backup applications, or other already-closed priority calls.',
+    'Decision directives must lead with the recommendation, not ask whether to choose between options.',
+    'If no directive obeys these constraints, fail validation and send nothing.',
+  ],
+  pinnedGoals: [
+    {
+      goal_text: 'Protect the MAS3 / state-government path as the primary focus until that hiring window resolves.',
+      priority: 5,
+      goal_category: 'career',
+    },
+  ],
+  suppressReflectivePatterns: true,
+  candidatePatterns: [
+    ...STALE_CONSULTING_ERA_PATTERNS,
+    {
+      code: 'consulting_bridge',
+      message: 'consulting and revenue-bridge directives are forbidden in the MAS3 window',
+      pattern: /\b(consulting|fractional|mercor|client acquisition|contract opportunit(?:y|ies)|revenue bridge|financial bridge)\b/i,
+    },
+    {
+      code: 'foldera_primary_conflict',
+      message: 'Foldera cannot be promoted into the primary lane during the MAS3 window',
+      pattern: /\b(foldera|10 paying users|customer acquisition|paying users goal|growth scanner)\b/i,
+    },
+    {
+      code: 'mas3_relitigation',
+      message: 'MAS3-vs-overflow priorities are already locked and must not be re-litigated',
+      pattern: /\b(decide|decision|choose|whether|reconsider|revisit|abandon|pivot|document your decision)\b[\s\S]{0,120}\b(mas3|state[- ]government)\b[\s\S]{0,120}\b(foldera|consulting|client acquisition|paying users|backup application|revenue)\b/i,
+    },
+    {
+      code: 'mas3_contingency_relitigation',
+      message: 'MAS3 contingency-planning directives reopen a locked decision window',
+      pattern: /\b(assuming|assume|if)\s+mas3\s+(does(?:n't| not)|will(?:n't| not))\s+(materialize|happen|land)\b/i,
+    },
+    {
+      code: 'goal_rewrite_relitigation',
+      message: 'goal-rewrite directives relitigate an already locked priority frame',
+      pattern: /\b(update|change|rewrite|align)\s+your\s+(stated\s+)?(top\s+)?goal\b/i,
+    },
+  ],
+  directivePatterns: [
+    ...STALE_CONSULTING_ERA_PATTERNS,
+    {
+      code: 'consulting_bridge',
+      message: 'directive proposes a forbidden consulting or revenue-bridge path',
+      pattern: /\b(consulting|fractional|mercor|client acquisition|contract opportunit(?:y|ies)|revenue bridge|financial bridge)\b/i,
+    },
+    {
+      code: 'foldera_primary_conflict',
+      message: 'directive turns Foldera or customer acquisition into the primary focus during MAS3',
+      pattern: /\b(foldera|10 paying users|customer acquisition|paying users goal|growth scanner)\b/i,
+    },
+    {
+      code: 'mas3_relitigation',
+      message: 'directive reopens a locked MAS3-vs-overflow decision',
+      pattern: /\b(decide whether|whether to|reconsider|revisit|abandon|pivot|document your decision)\b[\s\S]{0,120}\b(mas3|state[- ]government)\b/i,
+    },
+    {
+      code: 'decision_menu',
+      message: 'directive is phrased as an unresolved decision menu instead of one concrete recommendation',
+      pattern: /\b(decide whether|whether to)\b|\?/i,
+    },
+    {
+      code: 'goal_rewrite_relitigation',
+      message: 'directive asks to rewrite goals instead of executing within the locked MAS3 frame',
+      pattern: /\b(update|change|rewrite|align)\s+your\s+(stated\s+)?(top\s+)?goal\b/i,
+    },
+  ],
+};
+
+function getPinnedConstraints(userId: string): PinnedBriefConstraints | null {
+  if (userId === OWNER_USER_ID) {
+    return OWNER_MAS3_CONSTRAINTS;
+  }
+  return null;
+}
+
+function uniqueByCode(violations: ConstraintViolation[]): ConstraintViolation[] {
+  const seen = new Set<string>();
+  return violations.filter((violation) => {
+    if (seen.has(violation.code)) return false;
+    seen.add(violation.code);
+    return true;
+  });
+}
+
+function collectViolations(text: string, patterns: ConstraintPattern[]): ConstraintViolation[] {
+  if (!text.trim()) return [];
+  return uniqueByCode(
+    patterns
+      .filter(({ pattern }) => pattern.test(text))
+      .map(({ code, message }) => ({ code, message })),
+  );
+}
+
+function stringifyArtifact(artifact: ConvictionArtifact | Record<string, unknown> | null): string {
+  if (!artifact) return '';
+  try {
+    return JSON.stringify(artifact);
+  } catch {
+    return '';
+  }
+}
+
+export function applyPinnedGoals(
+  userId: string,
+  goals: Array<{ goal_text: string; priority: number; goal_category: string }>,
+): BriefGoalRow[] {
+  const constraints = getPinnedConstraints(userId);
+  if (!constraints) return goals;
+
+  const merged = [...goals];
+  for (const goal of constraints.pinnedGoals) {
+    const alreadyPresent = merged.some((candidate) => candidate.goal_text === goal.goal_text);
+    if (!alreadyPresent) {
+      merged.unshift(goal);
+    }
+  }
+
+  return merged.sort((a, b) => b.priority - a.priority);
+}
+
+export function getPinnedConstraintPrompt(userId: string): string | null {
+  const constraints = getPinnedConstraints(userId);
+  if (!constraints) return null;
+  return constraints.promptLines.map((line) => `- ${line}`).join('\n');
+}
+
+export function shouldSuppressReflectivePatterns(userId: string): boolean {
+  return getPinnedConstraints(userId)?.suppressReflectivePatterns === true;
+}
+
+export function getCandidateConstraintViolations(userId: string, text: string): ConstraintViolation[] {
+  const constraints = getPinnedConstraints(userId);
+  if (!constraints) return [];
+  return collectViolations(text, constraints.candidatePatterns);
+}
+
+export function getDirectiveConstraintViolations(input: {
+  userId: string;
+  directive: string;
+  reason?: string;
+  evidence?: Array<Pick<ConvictionDirective['evidence'][number], 'description'>>;
+  artifact?: ConvictionArtifact | Record<string, unknown> | null;
+  actionType?: ActionType;
+}): ConstraintViolation[] {
+  const constraints = getPinnedConstraints(input.userId);
+  if (!constraints) return [];
+
+  const combined = [
+    input.directive,
+    input.reason ?? '',
+    ...(input.evidence ?? []).map((item) => item.description ?? ''),
+    stringifyArtifact(input.artifact ?? null),
+  ].join('\n');
+
+  const directiveOnlyPatterns = constraints.directivePatterns.filter((pattern) => pattern.code === 'decision_menu');
+  const combinedPatterns = constraints.directivePatterns.filter((pattern) => pattern.code !== 'decision_menu');
+  const violations = [
+    ...collectViolations(combined, combinedPatterns),
+    ...collectViolations(input.directive, directiveOnlyPatterns),
+  ];
+  if (input.actionType === 'make_decision' && /\bor\b/i.test(input.directive) && /\bmas3\b/i.test(combined)) {
+    violations.push({
+      code: 'decision_menu',
+      message: 'decision directive presents a choice menu instead of a locked recommendation',
+    });
+  }
+
+  return uniqueByCode(violations);
+}

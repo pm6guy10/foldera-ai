@@ -1,5 +1,5 @@
 import { createServerClient } from '@/lib/db/client';
-import { generateDirective } from '@/lib/briefing/generator';
+import { generateDirective, validateDirectiveForPersistence } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
@@ -249,6 +249,27 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
 
       if (!artifact) {
         results.push({ code: 'artifact_generation_failed', success: false });
+        continue;
+      }
+
+      const persistenceIssues = validateDirectiveForPersistence({
+        userId,
+        directive,
+        artifact,
+      });
+      if (persistenceIssues.length > 0) {
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'warn',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'persistence_validation_failed',
+          details: {
+            scope: 'daily-generate',
+            issues: persistenceIssues,
+          },
+        });
+        results.push({ code: 'generation_failed', success: false });
         continue;
       }
 
