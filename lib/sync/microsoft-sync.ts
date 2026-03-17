@@ -10,18 +10,34 @@
  * Deduplication via content_hash prevents duplicate signals.
  */
 
-import { createServerClient } from '@/lib/db/client';
-import { getUserToken, updateSyncTimestamp, saveUserToken } from '@/lib/auth/user-tokens';
-import { encrypt } from '@/lib/encryption';
-import { createHash } from 'crypto';
+import { createServerClient } from "@/lib/db/client";
+import {
+  getUserToken,
+  updateSyncTimestamp,
+  saveUserToken,
+} from "@/lib/auth/user-tokens";
+import { encrypt } from "@/lib/encryption";
+import { createHash } from "crypto";
 
 function hash(content: string): string {
-  return createHash('sha256').update(content).digest('hex');
+  return createHash("sha256").update(content).digest("hex");
 }
 
-const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
+const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
+const GRAPH_MAX_PAGES = 10;
+const MAIL_PAGE_SIZE = 200;
+const MAIL_MAX_ITEMS_PER_FOLDER = 500;
+const CALENDAR_PAGE_SIZE = 250;
+const CALENDAR_MAX_ITEMS = 500;
+const FILE_PAGE_SIZE = 200;
+const FILE_MAX_ITEMS = 200;
+const TASK_PAGE_SIZE = 100;
+const TASK_LIST_PAGE_SIZE = 100;
+const TASK_MAX_ITEMS_PER_LIST = 200;
+const UPCOMING_CALENDAR_LOOKAHEAD_DAYS = 14;
 
-const MS_TOKEN_SCOPES = 'openid profile email offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read';
+const MS_TOKEN_SCOPES =
+  "openid profile email offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read";
 
 /**
  * Refresh the Microsoft access token using the refresh_token from user_tokens,
@@ -30,22 +46,31 @@ const MS_TOKEN_SCOPES = 'openid profile email offline_access User.Read Mail.Read
 async function refreshMicrosoftAccessToken(
   userId: string,
   refreshToken: string,
-): Promise<{ access_token: string; refresh_token: string; expires_at: number } | null> {
-  const response = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: process.env.AZURE_AD_CLIENT_ID!,
-      client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-      scope: MS_TOKEN_SCOPES,
-    }),
-  });
+): Promise<{
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+} | null> {
+  const response = await fetch(
+    "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: process.env.AZURE_AD_CLIENT_ID!,
+        client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+        scope: MS_TOKEN_SCOPES,
+      }),
+    },
+  );
 
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => '');
-    console.error(`[microsoft-sync] Token refresh failed (${response.status}): ${errorBody.slice(0, 200)}`);
+    const errorBody = await response.text().catch(() => "");
+    console.error(
+      `[microsoft-sync] Token refresh failed (${response.status}): ${errorBody.slice(0, 200)}`,
+    );
     return null;
   }
 
@@ -57,8 +82,10 @@ async function refreshMicrosoftAccessToken(
   };
 
   // Persist refreshed tokens back to user_tokens
-  await saveUserToken(userId, 'microsoft', newTokens);
-  console.log(`[microsoft-sync] Refreshed and saved Microsoft tokens for user ${userId}`);
+  await saveUserToken(userId, "microsoft", newTokens);
+  console.log(
+    `[microsoft-sync] Refreshed and saved Microsoft tokens for user ${userId}`,
+  );
   return newTokens;
 }
 
@@ -67,15 +94,21 @@ async function refreshMicrosoftAccessToken(
  */
 async function getValidMicrosoftToken(
   userId: string,
-): Promise<{ access_token: string; refresh_token: string; expires_at: number } | null> {
-  const token = await getUserToken(userId, 'microsoft');
+): Promise<{
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+} | null> {
+  const token = await getUserToken(userId, "microsoft");
   if (!token) return null;
 
   // Check if token needs refresh (5-minute buffer)
   const nowSec = Math.floor(Date.now() / 1000);
   if (token.expires_at && token.expires_at < nowSec + 5 * 60) {
     if (!token.refresh_token) {
-      console.error('[microsoft-sync] No refresh token — user must re-authenticate');
+      console.error(
+        "[microsoft-sync] No refresh token — user must re-authenticate",
+      );
       return null;
     }
     return refreshMicrosoftAccessToken(userId, token.refresh_token);
@@ -95,32 +128,124 @@ async function graphFetch(
   let res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Prefer: 'outlook.body-content-type="text"',
     },
   });
 
   if (res.status === 401) {
     // Token expired mid-sync — refresh from user_tokens and retry
-    const token = await getUserToken(userId, 'microsoft');
-    if (!token?.refresh_token) throw new Error('Token refresh failed on 401 — no refresh token');
-    const refreshed = await refreshMicrosoftAccessToken(userId, token.refresh_token);
-    if (!refreshed) throw new Error('Token refresh failed on 401');
+    const token = await getUserToken(userId, "microsoft");
+    if (!token?.refresh_token)
+      throw new Error("Token refresh failed on 401 — no refresh token");
+    const refreshed = await refreshMicrosoftAccessToken(
+      userId,
+      token.refresh_token,
+    );
+    if (!refreshed) throw new Error("Token refresh failed on 401");
     res = await fetch(url, {
       headers: {
         Authorization: `Bearer ${refreshed.access_token}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Prefer: 'outlook.body-content-type="text"',
       },
     });
   }
 
   if (!res.ok) {
-    const body = await res.text().catch(() => '');
+    const body = await res.text().catch(() => "");
     throw new Error(`Graph API ${res.status}: ${body.slice(0, 200)}`);
   }
 
   return res.json();
+}
+
+async function graphFetchAll<T>(
+  userId: string,
+  accessToken: string,
+  url: string,
+  options?: {
+    maxItems?: number;
+    maxPages?: number;
+  },
+): Promise<T[]> {
+  const maxItems = options?.maxItems ?? Number.POSITIVE_INFINITY;
+  const maxPages = options?.maxPages ?? GRAPH_MAX_PAGES;
+  const items: T[] = [];
+
+  let nextUrl: string | null = url;
+  let pagesFetched = 0;
+
+  while (nextUrl && pagesFetched < maxPages && items.length < maxItems) {
+    const data = await graphFetch(userId, accessToken, nextUrl);
+    const pageItems = Array.isArray(data?.value) ? (data.value as T[]) : [];
+    const remaining = maxItems - items.length;
+
+    if (pageItems.length > 0) {
+      items.push(...pageItems.slice(0, remaining));
+    }
+
+    nextUrl =
+      items.length < maxItems && typeof data?.["@odata.nextLink"] === "string"
+        ? data["@odata.nextLink"]
+        : null;
+    pagesFetched += 1;
+  }
+
+  return items;
+}
+
+interface MicrosoftSignalCoverage {
+  mail_total_signals: number;
+  calendar_total_signals: number;
+  file_total_signals: number;
+  task_total_signals: number;
+}
+
+async function getMicrosoftSignalCoverage(
+  userId: string,
+): Promise<MicrosoftSignalCoverage | null> {
+  const supabase = createServerClient();
+
+  const [mailRes, calendarRes, fileRes, taskRes] = await Promise.all([
+    supabase
+      .from("tkg_signals")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("source", "outlook"),
+    supabase
+      .from("tkg_signals")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("source", "outlook_calendar"),
+    supabase
+      .from("tkg_signals")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("source", "onedrive"),
+    supabase
+      .from("tkg_signals")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("source", "microsoft_todo"),
+  ]);
+
+  const queryError =
+    mailRes.error ?? calendarRes.error ?? fileRes.error ?? taskRes.error;
+  if (queryError) {
+    console.error(
+      "[microsoft-sync] Coverage count failed:",
+      queryError.message,
+    );
+    return null;
+  }
+
+  return {
+    mail_total_signals: mailRes.count ?? 0,
+    calendar_total_signals: calendarRes.count ?? 0,
+    file_total_signals: fileRes.count ?? 0,
+    task_total_signals: taskRes.count ?? 0,
+  };
 }
 
 // ── Mail Sync ───────────────────────────────────────────────────────────────
@@ -131,16 +256,27 @@ async function syncMail(
   sinceIso: string,
 ): Promise<number> {
   const filter = encodeURIComponent(`receivedDateTime ge ${sinceIso}`);
-  const select = 'id,subject,from,toRecipients,receivedDateTime,bodyPreview,body';
+  const select =
+    "id,subject,from,toRecipients,receivedDateTime,bodyPreview,body";
 
   // Fetch inbox and sent items in parallel
   const [inboxData, sentData] = await Promise.all([
-    graphFetch(userId, accessToken, `${GRAPH_BASE}/me/messages?$filter=${filter}&$select=${select}&$top=200&$orderby=receivedDateTime desc`),
-    graphFetch(userId, accessToken, `${GRAPH_BASE}/me/mailFolders/sentitems/messages?$filter=${filter}&$select=${select}&$top=200&$orderby=receivedDateTime desc`),
+    graphFetchAll<any>(
+      userId,
+      accessToken,
+      `${GRAPH_BASE}/me/messages?$filter=${filter}&$select=${select}&$top=${MAIL_PAGE_SIZE}&$orderby=receivedDateTime desc`,
+      { maxItems: MAIL_MAX_ITEMS_PER_FOLDER },
+    ),
+    graphFetchAll<any>(
+      userId,
+      accessToken,
+      `${GRAPH_BASE}/me/mailFolders/sentitems/messages?$filter=${filter}&$select=${select}&$top=${MAIL_PAGE_SIZE}&$orderby=receivedDateTime desc`,
+      { maxItems: MAIL_MAX_ITEMS_PER_FOLDER },
+    ),
   ]);
 
-  const inboxMessages = (inboxData.value ?? []).map((m: any) => ({ ...m, _folder: 'inbox' }));
-  const sentMessages = (sentData.value ?? []).map((m: any) => ({ ...m, _folder: 'sent' }));
+  const inboxMessages = inboxData.map((m: any) => ({ ...m, _folder: "inbox" }));
+  const sentMessages = sentData.map((m: any) => ({ ...m, _folder: "sent" }));
   const allMessages = [...inboxMessages, ...sentMessages];
 
   if (allMessages.length === 0) return 0;
@@ -151,28 +287,32 @@ async function syncMail(
   for (const msg of allMessages) {
     if (!msg.id) continue;
     try {
-      const isSent = msg._folder === 'sent';
-      const from = msg.from?.emailAddress?.address ?? '';
-      const to = (msg.toRecipients ?? []).map((r: any) => r.emailAddress?.address).filter(Boolean).join(', ');
-      const subject = msg.subject ?? '(no subject)';
+      const isSent = msg._folder === "sent";
+      const from = msg.from?.emailAddress?.address ?? "";
+      const to = (msg.toRecipients ?? [])
+        .map((r: any) => r.emailAddress?.address)
+        .filter(Boolean)
+        .join(", ");
+      const subject = msg.subject ?? "(no subject)";
       const date = msg.receivedDateTime ?? new Date().toISOString();
-      const bodyText = msg.body?.content?.slice(0, 3000) ?? msg.bodyPreview ?? '';
+      const bodyText =
+        msg.body?.content?.slice(0, 3000) ?? msg.bodyPreview ?? "";
 
-      const signalType = isSent ? 'email_sent' : 'email_received';
+      const signalType = isSent ? "email_sent" : "email_received";
       const content = isSent
         ? `[Sent email: ${date}]\nTo: ${to}\nSubject: ${subject}\nBody: ${bodyText}`
         : `[Email received: ${date}]\nFrom: ${from}\nSubject: ${subject}\nBody: ${bodyText}`;
 
       const contentHash = hash(`outlook:${msg.id}`);
 
-      const { error } = await supabase.from('tkg_signals').insert({
+      const { error } = await supabase.from("tkg_signals").insert({
         user_id: userId,
-        source: 'outlook',
+        source: "outlook",
         source_id: msg.id,
         type: signalType,
         content: encrypt(content),
         content_hash: contentHash,
-        author: isSent ? 'self' : from,
+        author: isSent ? "self" : from,
         occurred_at: new Date(date).toISOString(),
         processed: false,
       });
@@ -192,12 +332,13 @@ async function syncCalendar(
   userId: string,
   accessToken: string,
   sinceIso: string,
+  untilIso: string,
 ): Promise<number> {
-  const now = new Date().toISOString();
-  const url = `${GRAPH_BASE}/me/calendarView?startDateTime=${sinceIso}&endDateTime=${now}&$select=id,subject,start,end,isAllDay,organizer,attendees,bodyPreview&$top=250&$orderby=start/dateTime`;
+  const url = `${GRAPH_BASE}/me/calendarView?startDateTime=${sinceIso}&endDateTime=${untilIso}&$select=id,subject,start,end,isAllDay,organizer,attendees,bodyPreview&$top=${CALENDAR_PAGE_SIZE}&$orderby=start/dateTime`;
 
-  const data = await graphFetch(userId, accessToken, url);
-  const events = data.value ?? [];
+  const events = await graphFetchAll<any>(userId, accessToken, url, {
+    maxItems: CALENDAR_MAX_ITEMS,
+  });
   if (events.length === 0) return 0;
 
   const supabase = createServerClient();
@@ -206,37 +347,43 @@ async function syncCalendar(
   for (const event of events) {
     if (!event.id) continue;
 
-    const summary = event.subject ?? '(no title)';
-    const start = event.start?.dateTime ?? '';
-    const end = event.end?.dateTime ?? '';
-    const organizer = event.organizer?.emailAddress?.address ?? '';
+    const summary = event.subject ?? "(no title)";
+    const start = event.start?.dateTime ?? "";
+    const end = event.end?.dateTime ?? "";
+    const organizer = event.organizer?.emailAddress?.address ?? "";
     const attendees = (event.attendees ?? [])
       .map((a: any) => a.emailAddress?.address)
       .filter(Boolean)
-      .join(', ');
+      .join(", ");
     const isAllDay = event.isAllDay ?? false;
 
     const content = [
       `[Calendar event: ${summary}]`,
       `Start: ${start}`,
       `End: ${end}`,
-      isAllDay ? 'All day event' : '',
-      organizer ? `Organizer: ${organizer}` : '',
-      attendees ? `Attendees: ${attendees}` : '',
-      event.bodyPreview ? `Description: ${event.bodyPreview.slice(0, 500)}` : '',
-    ].filter(Boolean).join('\n');
+      isAllDay ? "All day event" : "",
+      organizer ? `Organizer: ${organizer}` : "",
+      attendees ? `Attendees: ${attendees}` : "",
+      event.bodyPreview
+        ? `Description: ${event.bodyPreview.slice(0, 500)}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const contentHash = hash(`outlook-calendar:${event.id}`);
 
-    const { error } = await supabase.from('tkg_signals').insert({
+    const { error } = await supabase.from("tkg_signals").insert({
       user_id: userId,
-      source: 'outlook_calendar',
+      source: "outlook_calendar",
       source_id: event.id,
-      type: 'calendar_event',
+      type: "calendar_event",
       content: encrypt(content),
       content_hash: contentHash,
-      author: organizer || 'self',
-      occurred_at: start ? new Date(start).toISOString() : new Date().toISOString(),
+      author: organizer || "self",
+      occurred_at: start
+        ? new Date(start).toISOString()
+        : new Date().toISOString(),
       processed: false,
     });
 
@@ -254,49 +401,58 @@ async function syncFiles(
   sinceIso: string,
 ): Promise<number> {
   const filter = encodeURIComponent(`lastModifiedDateTime ge ${sinceIso}`);
-  const select = 'id,name,lastModifiedDateTime,lastModifiedBy,size,webUrl,file,folder';
-  const url = `${GRAPH_BASE}/me/drive/root/search(q='')?$filter=${filter}&$select=${select}&$top=200&$orderby=lastModifiedDateTime desc`;
+  const select =
+    "id,name,lastModifiedDateTime,lastModifiedBy,size,webUrl,file,folder";
+  const url = `${GRAPH_BASE}/me/drive/root/search(q='')?$filter=${filter}&$select=${select}&$top=${FILE_PAGE_SIZE}&$orderby=lastModifiedDateTime desc`;
 
-  let data: any;
+  let files: any[];
   try {
-    data = await graphFetch(userId, accessToken, url);
+    files = await graphFetchAll<any>(userId, accessToken, url, {
+      maxItems: FILE_MAX_ITEMS,
+    });
   } catch (err: any) {
     // Files.Read may not be granted yet for existing users — non-fatal
-    if (err.message?.includes('403') || err.message?.includes('Forbidden')) {
-      console.warn('[microsoft-sync] Files.Read scope not granted, skipping file sync');
+    if (err.message?.includes("403") || err.message?.includes("Forbidden")) {
+      console.warn(
+        "[microsoft-sync] Files.Read scope not granted, skipping file sync",
+      );
       return 0;
     }
     throw err;
   }
 
-  const files = (data.value ?? []).filter((f: any) => f.file); // skip folders
-  if (files.length === 0) return 0;
+  const fileItems = files.filter((f: any) => f.file); // skip folders
+  if (fileItems.length === 0) return 0;
 
   const supabase = createServerClient();
   let inserted = 0;
 
-  for (const file of files) {
+  for (const file of fileItems) {
     if (!file.id) continue;
 
-    const modifiedBy = file.lastModifiedBy?.user?.displayName ?? '';
+    const modifiedBy = file.lastModifiedBy?.user?.displayName ?? "";
     const content = [
       `[File modified: ${file.name}]`,
       `Modified: ${file.lastModifiedDateTime}`,
-      modifiedBy ? `By: ${modifiedBy}` : '',
-      file.size ? `Size: ${Math.round(file.size / 1024)}KB` : '',
-      file.webUrl ? `URL: ${file.webUrl}` : '',
-    ].filter(Boolean).join('\n');
+      modifiedBy ? `By: ${modifiedBy}` : "",
+      file.size ? `Size: ${Math.round(file.size / 1024)}KB` : "",
+      file.webUrl ? `URL: ${file.webUrl}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
 
-    const contentHash = hash(`onedrive:${file.id}:${file.lastModifiedDateTime}`);
+    const contentHash = hash(
+      `onedrive:${file.id}:${file.lastModifiedDateTime}`,
+    );
 
-    const { error } = await supabase.from('tkg_signals').insert({
+    const { error } = await supabase.from("tkg_signals").insert({
       user_id: userId,
-      source: 'onedrive',
+      source: "onedrive",
       source_id: file.id,
-      type: 'file_modified',
+      type: "file_modified",
       content: encrypt(content),
       content_hash: contentHash,
-      author: modifiedBy || 'self',
+      author: modifiedBy || "self",
       occurred_at: file.lastModifiedDateTime ?? new Date().toISOString(),
       processed: false,
     });
@@ -317,16 +473,22 @@ async function syncTasks(
   // First get task lists
   let listsData: any;
   try {
-    listsData = await graphFetch(userId, accessToken, `${GRAPH_BASE}/me/todo/lists`);
+    listsData = await graphFetchAll<any>(
+      userId,
+      accessToken,
+      `${GRAPH_BASE}/me/todo/lists?$top=${TASK_LIST_PAGE_SIZE}`,
+    );
   } catch (err: any) {
-    if (err.message?.includes('403') || err.message?.includes('Forbidden')) {
-      console.warn('[microsoft-sync] Tasks.Read scope not granted, skipping task sync');
+    if (err.message?.includes("403") || err.message?.includes("Forbidden")) {
+      console.warn(
+        "[microsoft-sync] Tasks.Read scope not granted, skipping task sync",
+      );
       return 0;
     }
     throw err;
   }
 
-  const lists = listsData.value ?? [];
+  const lists = listsData ?? [];
   if (lists.length === 0) return 0;
 
   const supabase = createServerClient();
@@ -337,37 +499,40 @@ async function syncTasks(
 
     try {
       const filter = encodeURIComponent(`lastModifiedDateTime ge ${sinceIso}`);
-      const tasksData = await graphFetch(
+      const tasks = await graphFetchAll<any>(
         userId,
         accessToken,
-        `${GRAPH_BASE}/me/todo/lists/${list.id}/tasks?$filter=${filter}&$select=id,title,status,importance,dueDateTime,lastModifiedDateTime,body&$top=100`,
+        `${GRAPH_BASE}/me/todo/lists/${list.id}/tasks?$filter=${filter}&$select=id,title,status,importance,dueDateTime,lastModifiedDateTime,body&$top=${TASK_PAGE_SIZE}`,
+        { maxItems: TASK_MAX_ITEMS_PER_LIST },
       );
-
-      const tasks = tasksData.value ?? [];
 
       for (const task of tasks) {
         if (!task.id) continue;
 
-        const dueDate = task.dueDateTime?.dateTime ?? '';
+        const dueDate = task.dueDateTime?.dateTime ?? "";
         const content = [
           `[Task: ${task.title}]`,
-          `List: ${list.displayName ?? 'Tasks'}`,
-          `Status: ${task.status ?? 'notStarted'}`,
-          task.importance ? `Importance: ${task.importance}` : '',
-          dueDate ? `Due: ${dueDate}` : '',
-          task.body?.content ? `Notes: ${task.body.content.slice(0, 500)}` : '',
-        ].filter(Boolean).join('\n');
+          `List: ${list.displayName ?? "Tasks"}`,
+          `Status: ${task.status ?? "notStarted"}`,
+          task.importance ? `Importance: ${task.importance}` : "",
+          dueDate ? `Due: ${dueDate}` : "",
+          task.body?.content ? `Notes: ${task.body.content.slice(0, 500)}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
 
-        const contentHash = hash(`todo:${task.id}:${task.lastModifiedDateTime}`);
+        const contentHash = hash(
+          `todo:${task.id}:${task.lastModifiedDateTime}`,
+        );
 
-        const { error } = await supabase.from('tkg_signals').insert({
+        const { error } = await supabase.from("tkg_signals").insert({
           user_id: userId,
-          source: 'microsoft_todo',
+          source: "microsoft_todo",
           source_id: task.id,
-          type: 'task',
+          type: "task",
           content: encrypt(content),
           content_hash: contentHash,
-          author: 'self',
+          author: "self",
           occurred_at: task.lastModifiedDateTime ?? new Date().toISOString(),
           processed: false,
         });
@@ -389,6 +554,10 @@ export interface MicrosoftSyncResult {
   calendar_signals: number;
   file_signals: number;
   task_signals: number;
+  mail_total_signals: number;
+  calendar_total_signals: number;
+  file_total_signals: number;
+  task_total_signals: number;
   is_first_sync: boolean;
   error?: string;
 }
@@ -397,20 +566,36 @@ export interface MicrosoftSyncResult {
  * Run Microsoft sync for a user. On first connect (no last_synced_at),
  * pulls 30 days. On subsequent runs, pulls since last sync.
  */
-export async function syncMicrosoft(userId: string): Promise<MicrosoftSyncResult> {
+export async function syncMicrosoft(
+  userId: string,
+): Promise<MicrosoftSyncResult> {
   // Get token from user_tokens, refreshing if expired
   const validToken = await getValidMicrosoftToken(userId);
   if (!validToken) {
-    return { mail_signals: 0, calendar_signals: 0, file_signals: 0, task_signals: 0, is_first_sync: false, error: 'no_token' };
+    return {
+      mail_signals: 0,
+      calendar_signals: 0,
+      file_signals: 0,
+      task_signals: 0,
+      mail_total_signals: 0,
+      calendar_total_signals: 0,
+      file_total_signals: 0,
+      task_total_signals: 0,
+      is_first_sync: false,
+      error: "no_token",
+    };
   }
 
   // Read last_synced_at separately (getValidMicrosoftToken may have refreshed)
-  const tokenMeta = await getUserToken(userId, 'microsoft');
+  const tokenMeta = await getUserToken(userId, "microsoft");
   const isFirstSync = !tokenMeta?.last_synced_at;
   const sinceMs = isFirstSync
     ? Date.now() - 30 * 24 * 60 * 60 * 1000 // 30 days ago
     : new Date(tokenMeta!.last_synced_at!).getTime();
   const sinceIso = new Date(sinceMs).toISOString();
+  const calendarUntilIso = new Date(
+    Date.now() + UPCOMING_CALENDAR_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
 
   const accessToken = validToken.access_token;
 
@@ -423,40 +608,52 @@ export async function syncMicrosoft(userId: string): Promise<MicrosoftSyncResult
   try {
     mailSignals = await syncMail(userId, accessToken, sinceIso);
   } catch (err: any) {
-    console.error('[microsoft-sync] Mail sync failed:', err.message);
+    console.error("[microsoft-sync] Mail sync failed:", err.message);
     errors.push(`mail: ${err.message}`);
   }
 
   try {
-    calendarSignals = await syncCalendar(userId, accessToken, sinceIso);
+    calendarSignals = await syncCalendar(
+      userId,
+      accessToken,
+      sinceIso,
+      calendarUntilIso,
+    );
   } catch (err: any) {
-    console.error('[microsoft-sync] Calendar sync failed:', err.message);
+    console.error("[microsoft-sync] Calendar sync failed:", err.message);
     errors.push(`calendar: ${err.message}`);
   }
 
   try {
     fileSignals = await syncFiles(userId, accessToken, sinceIso);
   } catch (err: any) {
-    console.error('[microsoft-sync] Files sync failed:', err.message);
+    console.error("[microsoft-sync] Files sync failed:", err.message);
     errors.push(`files: ${err.message}`);
   }
 
   try {
     taskSignals = await syncTasks(userId, accessToken, sinceIso);
   } catch (err: any) {
-    console.error('[microsoft-sync] Tasks sync failed:', err.message);
+    console.error("[microsoft-sync] Tasks sync failed:", err.message);
     errors.push(`tasks: ${err.message}`);
   }
 
   // Update last_synced_at even on partial success
-  if (mailSignals > 0 || calendarSignals > 0 || fileSignals > 0 || taskSignals > 0 || errors.length === 0) {
-    await updateSyncTimestamp(userId, 'microsoft');
+  if (
+    mailSignals > 0 ||
+    calendarSignals > 0 ||
+    fileSignals > 0 ||
+    taskSignals > 0 ||
+    errors.length === 0
+  ) {
+    await updateSyncTimestamp(userId, "microsoft");
   }
 
   const total = mailSignals + calendarSignals + fileSignals + taskSignals;
+  const coverage = await getMicrosoftSignalCoverage(userId);
   console.log(
     `[microsoft-sync] user=${userId} first=${isFirstSync} mail=${mailSignals} calendar=${calendarSignals} files=${fileSignals} tasks=${taskSignals} total=${total}` +
-    (errors.length > 0 ? ` errors=[${errors.join('; ')}]` : ''),
+      (errors.length > 0 ? ` errors=[${errors.join("; ")}]` : ""),
   );
 
   return {
@@ -464,7 +661,11 @@ export async function syncMicrosoft(userId: string): Promise<MicrosoftSyncResult
     calendar_signals: calendarSignals,
     file_signals: fileSignals,
     task_signals: taskSignals,
+    mail_total_signals: coverage?.mail_total_signals ?? mailSignals,
+    calendar_total_signals: coverage?.calendar_total_signals ?? calendarSignals,
+    file_total_signals: coverage?.file_total_signals ?? fileSignals,
+    task_total_signals: coverage?.task_total_signals ?? taskSignals,
     is_first_sync: isFirstSync,
-    error: errors.length > 0 ? errors.join('; ') : undefined,
+    error: errors.length > 0 ? errors.join("; ") : undefined,
   };
 }

@@ -1,28 +1,33 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { getAuthOptions } from '@/lib/auth/auth-options';
-import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
-import { rateLimit } from '@/lib/utils/rate-limit';
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { getAuthOptions } from "@/lib/auth/auth-options";
+import { syncMicrosoft } from "@/lib/sync/microsoft-sync";
+import { rateLimit } from "@/lib/utils/rate-limit";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST() {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const userId = session.user.id;
 
-  const rl = await rateLimit(`sync-now:microsoft:${userId}`, { limit: 3, window: 3600 });
+  const rl = await rateLimit(`sync-now:microsoft:${userId}`, {
+    limit: 3,
+    window: 3600,
+  });
   if (!rl.success) {
     return NextResponse.json(
-      { error: 'Sync rate limit exceeded. Try again later.' },
+      { error: "Sync rate limit exceeded. Try again later." },
       {
         status: 429,
         headers: {
-          'Retry-After': String(Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000)),
+          "Retry-After": String(
+            Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000),
+          ),
         },
       },
     );
@@ -31,9 +36,9 @@ export async function POST() {
   try {
     const result = await syncMicrosoft(userId);
 
-    if (result.error === 'no_token') {
+    if (result.error === "no_token") {
       return NextResponse.json(
-        { error: 'Microsoft account not connected' },
+        { error: "Microsoft account not connected" },
         { status: 400 },
       );
     }
@@ -43,12 +48,26 @@ export async function POST() {
       result.calendar_signals +
       result.file_signals +
       result.task_signals;
+    const coverageTotal =
+      result.mail_total_signals +
+      result.calendar_total_signals +
+      result.file_total_signals +
+      result.task_total_signals;
 
-    return NextResponse.json({ ok: true, total, ...result });
+    return NextResponse.json({
+      ok: true,
+      total,
+      inserted_total: total,
+      coverage_total: coverageTotal,
+      ...result,
+    });
   } catch (err: any) {
-    console.error('[microsoft/sync-now] error:', err instanceof Error ? err.message : err);
+    console.error(
+      "[microsoft/sync-now] error:",
+      err instanceof Error ? err.message : err,
+    );
     return NextResponse.json(
-      { error: err.message ?? 'Sync failed' },
+      { error: err.message ?? "Sync failed" },
       { status: 500 },
     );
   }
