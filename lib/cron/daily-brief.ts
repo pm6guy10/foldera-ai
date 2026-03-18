@@ -76,6 +76,10 @@ export interface DailyBriefOrchestrationResult {
   signal_processing: DailyBriefRunResult;
 }
 
+export interface DailyBriefSignalWindowOptions {
+  signalCreatedAtGte?: string;
+}
+
 export interface SafeDailyBriefStageStatus {
   attempted: number;
   errors: string[];
@@ -383,13 +387,20 @@ async function countUnprocessedSignalsOlderThan(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
   beforeIso: string,
+  options: DailyBriefSignalWindowOptions = {},
 ): Promise<number> {
-  const { count, error } = await supabase
+  let query = supabase
     .from('tkg_signals')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('processed', false)
     .lt('occurred_at', beforeIso);
+
+  if (options.signalCreatedAtGte) {
+    query = query.gte('created_at', options.signalCreatedAtGte);
+  }
+
+  const { count, error } = await query;
 
   if (error) {
     throw error;
@@ -646,13 +657,21 @@ async function getEligibleDailyBriefUserIds(): Promise<string[]> {
 async function runSignalProcessingForUser(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
+  options: DailyBriefSignalWindowOptions = {},
 ): Promise<DailyBriefUserResult> {
   const staleCutoffIso = isoHoursAgo(24);
   const deadline = Date.now() + DAILY_SIGNAL_PROCESSING_BUDGET_MS;
 
   try {
-    const staleBefore = await countUnprocessedSignalsOlderThan(supabase, userId, staleCutoffIso);
-    const totalBefore = await countUnprocessedSignals(userId);
+    const staleBefore = await countUnprocessedSignalsOlderThan(
+      supabase,
+      userId,
+      staleCutoffIso,
+      options,
+    );
+    const totalBefore = await countUnprocessedSignals(userId, {
+      createdAtGte: options.signalCreatedAtGte,
+    });
 
     let signalsProcessed = 0;
     let summariesCreated = 0;
@@ -663,6 +682,7 @@ async function runSignalProcessingForUser(
 
     while (Date.now() < deadline) {
       const extraction = await processUnextractedSignals(userId, {
+        createdAtGte: options.signalCreatedAtGte,
         maxSignals: DAILY_SIGNAL_BATCH_SIZE,
       });
       signalsProcessed += extraction.signals_processed;
@@ -673,8 +693,15 @@ async function runSignalProcessingForUser(
         errors.push(error);
       }
 
-      staleAfter = await countUnprocessedSignalsOlderThan(supabase, userId, staleCutoffIso);
-      totalAfter = await countUnprocessedSignals(userId);
+      staleAfter = await countUnprocessedSignalsOlderThan(
+        supabase,
+        userId,
+        staleCutoffIso,
+        options,
+      );
+      totalAfter = await countUnprocessedSignals(userId, {
+        createdAtGte: options.signalCreatedAtGte,
+      });
 
       if (extraction.signals_processed === 0) {
         break;
@@ -767,7 +794,9 @@ async function runSignalProcessingForUser(
   }
 }
 
-export async function runDailyGenerate(): Promise<DailyBriefGenerateRunResult> {
+export async function runDailyGenerate(
+  options: DailyBriefSignalWindowOptions = {},
+): Promise<DailyBriefGenerateRunResult> {
   const supabase = createServerClient();
   const date = new Date().toISOString().slice(0, 10);
   const todayStart = todayStartIso();
@@ -800,7 +829,7 @@ export async function runDailyGenerate(): Promise<DailyBriefGenerateRunResult> {
   const results: DailyBriefUserResult[] = [];
 
   for (const userId of eligibleUserIds) {
-    const signalResult = await runSignalProcessingForUser(supabase, userId);
+    const signalResult = await runSignalProcessingForUser(supabase, userId, options);
     signalResults.push(signalResult);
 
     try {
@@ -1435,8 +1464,10 @@ export async function runDailySend(): Promise<DailyBriefRunResult> {
   return buildRunResult(date, buildSendMessage(results, eligibleUserIds.length), results);
 }
 
-export async function runDailyBrief(): Promise<DailyBriefOrchestrationResult> {
-  const generate = await runDailyGenerate();
+export async function runDailyBrief(
+  options: DailyBriefSignalWindowOptions = {},
+): Promise<DailyBriefOrchestrationResult> {
+  const generate = await runDailyGenerate(options);
   const send = await runDailySend();
   const signalProcessing = generate.signalProcessing;
   const ok =

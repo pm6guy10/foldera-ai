@@ -12,6 +12,20 @@ export const dynamic = 'force-dynamic';
 const DEFAULT_MAX_SIGNALS = 5;
 const MAX_SIGNALS_PER_REQUEST = 50;
 
+function resolveSignalCreatedAtGte(request: NextRequest): string | null {
+  const raw = request.nextUrl.searchParams.get('signalCreatedAtGte');
+  if (!raw) {
+    return null;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString();
+}
+
 function resolveRequestedLimit(request: NextRequest): number {
   const limitParam = request.nextUrl.searchParams.get('maxSignals');
   const parsed = Number(limitParam ?? DEFAULT_MAX_SIGNALS);
@@ -29,7 +43,10 @@ async function handler(request: NextRequest) {
 
   try {
     const maxSignals = resolveRequestedLimit(request);
-    const userIds = await listUsersWithUnprocessedSignals();
+    const signalCreatedAtGte = resolveSignalCreatedAtGte(request);
+    const userIds = await listUsersWithUnprocessedSignals({
+      createdAtGte: signalCreatedAtGte ?? undefined,
+    });
 
     if (userIds.length === 0) {
       return NextResponse.json({
@@ -51,11 +68,14 @@ async function handler(request: NextRequest) {
 
       const remainingCapacity = maxSignals - processed;
       const extraction = await processUnextractedSignals(userId, {
+        createdAtGte: signalCreatedAtGte ?? undefined,
         maxSignals: remainingCapacity,
       });
 
       processed += extraction.signals_processed;
-      remaining += await countUnprocessedSignals(userId);
+      remaining += await countUnprocessedSignals(userId, {
+        createdAtGte: signalCreatedAtGte ?? undefined,
+      });
     }
 
     return NextResponse.json({

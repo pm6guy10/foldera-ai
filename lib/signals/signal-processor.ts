@@ -84,6 +84,11 @@ interface ProcessResult {
 export interface ProcessSignalsOptions {
   maxSignals?: number;
   pauseMsBetweenBatches?: number;
+  createdAtGte?: string;
+}
+
+export interface SignalQueryOptions {
+  createdAtGte?: string;
 }
 
 const EXTRACTION_PROMPT = `You are extracting structured data from raw signals (emails, calendar events, files, tasks) for a personal chief of staff system.
@@ -190,14 +195,19 @@ export async function processUnextractedSignals(
     const remaining = maxSignals - result.signals_processed;
     const fetchLimit = Math.min(BATCH_SIZE, remaining);
     const queryLimit = Math.min(1000, fetchLimit + deferredSignalIds.size + BATCH_SIZE);
-    const signalsResult = await supabase
+    let signalsQuery = supabase
       .from('tkg_signals')
       .select('id, user_id, source, source_id, type, content, author, occurred_at')
       .eq('user_id', userId)
       .eq('processed', false)
       .in('source', EXTRACTABLE_SOURCES)
-      .order('occurred_at', { ascending: false })
-      .limit(queryLimit);
+      .order('occurred_at', { ascending: false });
+
+    if (options.createdAtGte) {
+      signalsQuery = signalsQuery.gte('created_at', options.createdAtGte);
+    }
+
+    const signalsResult = await signalsQuery.limit(queryLimit);
 
     if (signalsResult.error) {
       result.errors.push(`fetch: ${signalsResult.error.message}`);
@@ -724,14 +734,23 @@ function looksLikeCiphertext(content: string): boolean {
   return /^[A-Za-z0-9+/=]+$/.test(content);
 }
 
-export async function countUnprocessedSignals(userId: string): Promise<number> {
+export async function countUnprocessedSignals(
+  userId: string,
+  options: SignalQueryOptions = {},
+): Promise<number> {
   const supabase = createServerClient();
-  const countResult = await supabase
+  let countQuery = supabase
     .from('tkg_signals')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('processed', false)
     .in('source', EXTRACTABLE_SOURCES);
+
+  if (options.createdAtGte) {
+    countQuery = countQuery.gte('created_at', options.createdAtGte);
+  }
+
+  const countResult = await countQuery;
 
   if (countResult.error) {
     throw new Error(`signal_count: ${countResult.error.message}`);
@@ -740,13 +759,21 @@ export async function countUnprocessedSignals(userId: string): Promise<number> {
   return countResult.count ?? 0;
 }
 
-export async function listUsersWithUnprocessedSignals(): Promise<string[]> {
+export async function listUsersWithUnprocessedSignals(
+  options: SignalQueryOptions = {},
+): Promise<string[]> {
   const supabase = createServerClient();
-  const signalsResult = await supabase
+  let signalsQuery = supabase
     .from('tkg_signals')
     .select('user_id')
     .eq('processed', false)
     .in('source', EXTRACTABLE_SOURCES);
+
+  if (options.createdAtGte) {
+    signalsQuery = signalsQuery.gte('created_at', options.createdAtGte);
+  }
+
+  const signalsResult = await signalsQuery;
 
   if (signalsResult.error) {
     throw new Error(`signal_user_list: ${signalsResult.error.message}`);
