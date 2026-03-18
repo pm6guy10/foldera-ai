@@ -1,9 +1,15 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
-import { SkeletonSettingsPage } from "@/components/ui/skeleton";
-import { OWNER_USER_ID } from "@/lib/auth/constants";
+import { useState, useEffect } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import Link from 'next/link';
+import { Settings } from 'lucide-react';
+
+interface Integration {
+  provider: string;
+  is_active: boolean;
+  sync_email?: string;
+}
 
 interface SubscriptionInfo {
   status: string;
@@ -11,668 +17,229 @@ interface SubscriptionInfo {
   daysRemaining?: number;
 }
 
-interface ManualTriggerStage {
-  attempted: number;
-  errors: string[];
-  failed: number;
-  status: "ok" | "partial" | "failed" | "skipped";
-  succeeded: number;
-  summary: string;
-}
-
-interface ManualTriggerResult {
-  ok: boolean;
-  generate: ManualTriggerStage;
-  send: ManualTriggerStage;
-}
-
 export default function SettingsClient() {
   const { data: session, status } = useSession();
-  const [integrations, setIntegrations] = useState<any[]>([]);
-  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(
-    null,
-  );
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [manualRunLoading, setManualRunLoading] = useState(false);
-  const [manualRunError, setManualRunError] = useState<string | null>(null);
-  const [manualRunResult, setManualRunResult] =
-    useState<ManualTriggerResult | null>(null);
-  const isOwner = session?.user?.id === OWNER_USER_ID;
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const logRouteFailure = (route: string, details: Record<string, unknown>) => {
-    console.warn("[settings/client]", { route, ...details });
-  };
-
-  const readErrorMessage = async (response: Response, fallback: string) => {
-    const data = await response.json().catch(() => ({}));
-    return typeof (data as { error?: unknown }).error === "string"
-      ? (data as { error: string }).error
-      : fallback;
-  };
-
-  // --- FETCH DATA ---
   useEffect(() => {
-    if (status !== "authenticated" || !session?.user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchData = async () => {
-      setError(null);
-      try {
-        const [intRes, subRes] = await Promise.all([
-          fetch("/api/integrations/status"),
-          fetch("/api/subscription/status"),
-        ]);
-
-        if (!intRes.ok) {
-          const message = await readErrorMessage(
-            intRes,
-            "Failed to fetch integrations",
-          );
-          logRouteFailure("/api/integrations/status", {
-            status: intRes.status,
-            error: message,
-          });
-          setError("Could not load integrations right now.");
-          setLoading(false);
-          return;
-        }
-
-        const { integrations: fetchedIntegrations } = await intRes.json();
-        setIntegrations(fetchedIntegrations || []);
-
-        if (subRes.ok) {
-          const subData = await subRes.json();
-          setSubscription(subData);
-        } else {
-          const message = await readErrorMessage(
-            subRes,
-            "Failed to fetch subscription",
-          );
-          logRouteFailure("/api/subscription/status", {
-            status: subRes.status,
-            error: message,
-          });
-          setError("Could not load subscription status right now.");
-        }
-
-        setLoading(false);
-      } catch (err: unknown) {
-        logRouteFailure("settings/fetch", {
-          type: "network",
-          error: err instanceof Error ? err.message : String(err),
-        });
-        setError("Could not load settings right now.");
-        setLoading(false);
+    if (status !== 'authenticated') { setLoading(false); return; }
+    Promise.all([
+      fetch('/api/integrations/status'),
+      fetch('/api/subscription/status'),
+    ]).then(async ([intRes, subRes]) => {
+      if (intRes.ok) {
+        const d = await intRes.json();
+        setIntegrations(d.integrations || []);
       }
-    };
+      if (subRes.ok) {
+        setSubscription(await subRes.json());
+      }
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [status]);
 
-    fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
-  }, [session, status]);
+  const google = integrations.find(i => i.provider === 'google');
+  const microsoft = integrations.find(i => i.provider === 'azure_ad');
 
-  if (status === "loading" || loading) {
-    return <SkeletonSettingsPage />;
-  }
+  const handleDeleteAccount = async () => {
+    if (!deleteConfirm) { setDeleteConfirm(true); return; }
+    setDeleteError(null);
+    try {
+      const res = await fetch('/api/account/delete', { method: 'POST' });
+      if (res.ok) {
+        await signOut({ callbackUrl: '/' });
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setDeleteError(typeof d.error === 'string' ? d.error : 'Could not delete account right now.');
+      }
+    } catch {
+      setDeleteError('Could not delete account right now.');
+    }
+  };
 
-  if (status !== "authenticated") {
+  if (status === 'loading' || loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <p className="text-red-400 mb-4 text-sm">
-            Please sign in to view settings
-          </p>
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={() =>
-                signIn("google", { callbackUrl: "/dashboard/settings" })
-              }
-              className="px-4 py-2 bg-white text-black hover:bg-zinc-100 rounded-lg font-medium transition-colors text-sm"
-            >
-              Sign in with Google
-            </button>
-            <button
-              onClick={() =>
-                signIn("azure-ad", { callbackUrl: "/dashboard/settings" })
-              }
-              className="px-4 py-2 bg-[#00a4ef] text-white hover:bg-[#0078d4] rounded-lg font-medium transition-colors text-sm"
-            >
-              Sign in with Microsoft
-            </button>
+      <div className="min-h-screen bg-zinc-950">
+        <Header />
+        <main className="pt-20 pb-8 px-4 max-w-2xl mx-auto">
+          <div className="animate-pulse space-y-3 mt-4">
+            <div className="h-4 w-40 bg-zinc-800 rounded" />
+            <div className="h-16 bg-zinc-900 rounded-xl" />
+            <div className="h-16 bg-zinc-900 rounded-xl" />
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
+  if (status !== 'authenticated') {
+    return (
+      <div className="min-h-screen bg-zinc-950">
+        <Header />
+        <main className="pt-20 pb-8 px-4 max-w-2xl mx-auto">
+          <p className="text-zinc-400 text-sm mt-8">Please sign in to view settings.</p>
+        </main>
+      </div>
+    );
+  }
+
+  const planLabel = subscription?.plan === 'pro' ? 'Pro' : 'Free trial';
+  const planDetail =
+    subscription?.status === 'active' ? 'Active' :
+    subscription?.status === 'active_trial' && subscription.daysRemaining != null
+      ? `${subscription.daysRemaining} day${subscription.daysRemaining !== 1 ? 's' : ''} left`
+      : subscription?.status === 'past_due' ? 'Payment past due'
+      : subscription?.status === 'expired' ? 'Expired'
+      : '';
+
   return (
-    <div className="space-y-8">
-      {/* HEADER */}
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-50 tracking-tight">
-          Settings
-        </h1>
-        <p className="text-zinc-400 text-sm mt-1">
-          Manage your connected accounts
-        </p>
-      </div>
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <Header />
+      <main className="pt-20 pb-8 px-4 max-w-2xl mx-auto">
 
-      {error && (
-        <div className="px-4 py-3 rounded-xl border border-rose-500/30 bg-rose-500/10">
-          <p className="text-sm text-rose-300">{error}</p>
-        </div>
-      )}
+        {/* Connected accounts */}
+        <h2 className="text-lg font-semibold text-white">Connected accounts</h2>
 
-      {/* DATA SOURCES */}
-      <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-zinc-300">Data Sources</h2>
-        <GoogleSourceCard
-          integration={integrations.find((i) => i.provider === "google")}
-          onConnect={() => {
-            window.location.href = "/api/google/connect";
-          }}
-        />
-        <MicrosoftSourceCard
-          integration={integrations.find((i) => i.provider === "azure_ad")}
-          onConnect={() =>
-            signIn("azure-ad", { callbackUrl: "/dashboard/settings" })
-          }
-        />
-      </div>
-
-      {/* SUBSCRIPTION */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-zinc-300 mb-4">
-          Subscription
-        </h2>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-zinc-200 text-sm font-medium">
-              {subscription?.plan === "pro" ? "Pro" : "Free"}
-              {subscription?.status === "active_trial" &&
-              subscription.daysRemaining != null
-                ? ` — ${subscription.daysRemaining} day${subscription.daysRemaining !== 1 ? "s" : ""} left in trial`
-                : subscription?.status === "active"
-                  ? " — Active"
-                  : subscription?.status === "past_due"
-                    ? " — Payment past due"
-                    : subscription?.status === "expired"
-                      ? " — Expired"
-                      : ""}
-            </p>
+        <div className="mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <GoogleIcon />
+            <div>
+              <p className="text-sm font-medium text-white">Google</p>
+              <p className={`text-sm ${google?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                {google?.is_active ? (google.sync_email || 'Connected') : 'Not connected'}
+              </p>
+            </div>
           </div>
-          {subscription?.status !== "active" && (
+          {google?.is_active ? (
+            <button
+              onClick={() => { window.location.href = '/api/google/connect'; }}
+              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors"
+            >
+              Reconnect
+            </button>
+          ) : (
+            <button
+              onClick={() => { window.location.href = '/api/google/connect'; }}
+              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors"
+            >
+              Connect
+            </button>
+          )}
+        </div>
+
+        <div className="mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MicrosoftIcon />
+            <div>
+              <p className="text-sm font-medium text-white">Microsoft</p>
+              <p className={`text-sm ${microsoft?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                {microsoft?.is_active ? (microsoft.sync_email || 'Connected') : 'Not connected'}
+              </p>
+            </div>
+          </div>
+          {microsoft?.is_active ? (
+            <button
+              onClick={() => fetch('/api/microsoft/disconnect', { method: 'POST' }).then(() => window.location.reload())}
+              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors"
+            >
+              Disconnect
+            </button>
+          ) : (
+            <button
+              onClick={() => { window.location.href = '/api/auth/signin/azure-ad?callbackUrl=/dashboard/settings'; }}
+              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors"
+            >
+              Connect
+            </button>
+          )}
+        </div>
+
+        {/* Subscription */}
+        <h2 className="text-lg font-semibold text-white mt-8">Subscription</h2>
+        <div className="mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-white">{planLabel}</p>
+            {planDetail && <p className="text-sm text-zinc-500">{planDetail}</p>}
+          </div>
+          {subscription?.status !== 'active' && (
             <button
               onClick={async () => {
-                setError(null);
-                try {
-                  const res = await fetch("/api/stripe/checkout", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({}),
-                  });
-                  const data = await res.json().catch(() => ({}));
-                  if (!res.ok || !data.url) {
-                    const message =
-                      typeof data.error === "string"
-                        ? data.error
-                        : "Checkout unavailable";
-                    logRouteFailure("/api/stripe/checkout", {
-                      status: res.status,
-                      error: message,
-                    });
-                    setError("Could not start checkout right now.");
-                    return;
-                  }
-                  window.location.href = data.url;
-                } catch (err: unknown) {
-                  logRouteFailure("/api/stripe/checkout", {
-                    type: "network",
-                    error: err instanceof Error ? err.message : String(err),
-                  });
-                  setError("Could not start checkout right now.");
-                }
+                const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+                const d = await res.json().catch(() => ({}));
+                if (d.url) window.location.href = d.url;
               }}
-              className="px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors"
+              className="text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg px-3 py-1.5 text-white font-medium transition-colors"
             >
               Upgrade
             </button>
           )}
         </div>
-      </div>
 
-      {isOwner ? (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-sm font-semibold text-zinc-300">
-                Daily brief
-              </h2>
-              <p className="text-zinc-500 text-sm mt-1">
-                Run today&apos;s generate and send flow now.
-              </p>
-            </div>
-            <button
-              onClick={async () => {
-                setManualRunLoading(true);
-                setManualRunError(null);
-                setManualRunResult(null);
-                try {
-                  const res = await fetch("/api/settings/run-brief", {
-                    method: "POST",
-                  });
-                  const data = await res.json().catch(() => ({}));
+        {/* Account */}
+        <h2 className="text-lg font-semibold text-white mt-8">Account</h2>
+        {session?.user?.email && (
+          <p className="text-sm text-zinc-500 mt-1">{session.user.email}</p>
+        )}
 
-                  if (
-                    typeof data === "object" &&
-                    data &&
-                    "generate" in data &&
-                    "send" in data
-                  ) {
-                    setManualRunResult(data as ManualTriggerResult);
-                  }
-
-                  if (!res.ok) {
-                    const message =
-                      typeof (data as { error?: unknown }).error === "string"
-                        ? (data as { error: string }).error
-                        : "Could not run today's brief right now.";
-                    setManualRunError(message);
-                    return;
-                  }
-                } catch {
-                  setManualRunError("Could not run today's brief right now.");
-                } finally {
-                  setManualRunLoading(false);
-                }
-              }}
-              disabled={manualRunLoading}
-              className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              {manualRunLoading ? "Running..." : "Run today's brief now"}
-            </button>
-          </div>
-
-          {manualRunError ? (
-            <p className="mt-4 text-sm text-rose-400">{manualRunError}</p>
-          ) : null}
-
-          {manualRunResult ? (
-            <div className="mt-4 space-y-3">
-              <TriggerStageSummary
-                label="Generate"
-                stage={manualRunResult.generate}
-              />
-              <TriggerStageSummary label="Send" stage={manualRunResult.send} />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* SIGN OUT */}
-      <div className="pt-2">
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
-          className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+          onClick={() => signOut({ callbackUrl: '/' })}
+          className="mt-3 w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl py-3 text-sm font-medium transition-colors"
         >
           Sign out
         </button>
-      </div>
 
-      <p className="text-zinc-600 text-xs">
-        All integrations secured with OAuth 2.0.
-      </p>
-    </div>
-  );
-}
-
-function TriggerStageSummary({
-  label,
-  stage,
-}: {
-  label: string;
-  stage: ManualTriggerStage;
-}) {
-  const toneClass =
-    stage.status === "ok" || stage.status === "skipped"
-      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-      : stage.status === "partial"
-        ? "border-amber-500/20 bg-amber-500/10 text-amber-200"
-        : "border-rose-500/20 bg-rose-500/10 text-rose-300";
-
-  return (
-    <div className={`rounded-lg border px-3 py-3 ${toneClass}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.2em]">
-        {label}
-      </p>
-      <p className="mt-1 text-sm">{stage.summary}</p>
-      {stage.errors[0] ? (
-        <p className="mt-2 text-xs opacity-80">{stage.errors.join(" ")}</p>
-      ) : null}
-    </div>
-  );
-}
-
-function GoogleSourceCard({
-  integration,
-  onConnect,
-}: {
-  integration: any;
-  onConnect: () => void;
-}) {
-  const [disconnecting, setDisconnecting] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const isConnected = integration?.is_active;
-  const email = integration?.sync_email;
-  const lastSynced = integration?.last_synced_at;
-
-  const handleDisconnect = async () => {
-    setDisconnecting(true);
-    setActionError(null);
-    try {
-      const res = await fetch("/api/google/disconnect", { method: "POST" });
-      if (res.ok) {
-        window.location.reload();
-        return;
-      }
-      const data = await res.json().catch(() => ({}));
-      setActionError(
-        typeof (data as { error?: unknown }).error === "string"
-          ? (data as { error: string }).error
-          : "Could not disconnect Google right now.",
-      );
-    } catch {
-      setActionError("Could not disconnect Google right now.");
-    } finally {
-      setDisconnecting(false);
-    }
-  };
-
-  const formatSyncTime = (iso: string) => {
-    const d = new Date(iso);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return "Just now";
-    if (diffMin < 60) return `${diffMin}m ago`;
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr}h ago`;
-    const diffDay = Math.floor(diffHr / 24);
-    return `${diffDay}d ago`;
-  };
-
-  return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-colors">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-                fill="#4285F4"
-              />
-              <path
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                fill="#34A853"
-              />
-              <path
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                fill="#FBBC05"
-              />
-              <path
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                fill="#EA4335"
-              />
-            </svg>
-          </div>
-          <div>
-            <h3 className="font-semibold text-zinc-50">Google</h3>
-            <p className="text-zinc-500 text-sm">Gmail & Calendar</p>
-          </div>
-        </div>
-        {isConnected ? (
-          <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-500/20">
-            <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-            Connected
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 bg-zinc-800 text-zinc-500 px-2.5 py-1 rounded-full text-xs font-medium border border-zinc-700">
-            <div className="w-1.5 h-1.5 bg-zinc-600 rounded-full" />
-            Not connected
-          </div>
-        )}
-      </div>
-
-      {isConnected && (
-        <div className="mb-4 space-y-1">
-          {email && <p className="text-zinc-400 text-xs">{email}</p>}
-          <p className="text-zinc-500 text-xs">
-            {lastSynced
-              ? `Last synced ${formatSyncTime(lastSynced)}`
-              : "Sync pending"}
-          </p>
-        </div>
-      )}
-
-      {isConnected ? (
-        <div className="flex gap-2">
-          <button
-            onClick={onConnect}
-            className="flex-1 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
-          >
-            Reconnect
-          </button>
-          <button
-            onClick={handleDisconnect}
-            disabled={disconnecting}
-            className="px-4 py-2.5 rounded-lg bg-zinc-800 hover:bg-red-900/30 text-zinc-400 hover:text-red-400 text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {disconnecting ? "Disconnecting..." : "Disconnect"}
-          </button>
-        </div>
-      ) : (
         <button
-          onClick={onConnect}
-          className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors"
+          onClick={handleDeleteAccount}
+          className="mt-3 w-full border border-red-900 hover:border-red-700 text-red-400 hover:text-red-300 rounded-xl py-3 text-sm font-medium transition-colors"
         >
-          Connect Google
+          {deleteConfirm ? 'Tap again to confirm deletion' : 'Delete account'}
         </button>
-      )}
-      {actionError ? (
-        <p className="mt-3 text-xs text-rose-400">{actionError}</p>
-      ) : null}
+
+        {deleteError && (
+          <p className="mt-2 text-xs text-red-400">{deleteError}</p>
+        )}
+
+      </main>
     </div>
   );
 }
 
-function MicrosoftSourceCard({
-  integration,
-  onConnect,
-}: {
-  integration: any;
-  onConnect: () => void;
-}) {
-  const [disconnecting, setDisconnecting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<{
-    total: number;
-    inserted_total?: number;
-    coverage_total?: number;
-    mail_signals: number;
-    calendar_signals: number;
-    file_signals: number;
-    task_signals: number;
-    mail_total_signals?: number;
-    calendar_total_signals?: number;
-    file_total_signals?: number;
-    task_total_signals?: number;
-  } | null>(null);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const isConnected = integration?.is_active;
-  const email = integration?.sync_email;
-  const lastSynced = integration?.last_synced_at;
-
-  const handleSyncNow = async () => {
-    setSyncing(true);
-    setSyncResult(null);
-    setSyncError(null);
-    try {
-      const res = await fetch("/api/microsoft/sync-now", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) {
-        setSyncError(data.error ?? "Sync failed");
-      } else {
-        setSyncResult(data);
-      }
-    } catch {
-      setSyncError("Sync failed");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    setDisconnecting(true);
-    setActionError(null);
-    try {
-      const res = await fetch("/api/microsoft/disconnect", { method: "POST" });
-      if (res.ok) {
-        window.location.reload();
-        return;
-      }
-      const data = await res.json().catch(() => ({}));
-      setActionError(
-        typeof (data as { error?: unknown }).error === "string"
-          ? (data as { error: string }).error
-          : "Could not disconnect Microsoft right now.",
-      );
-    } catch {
-      setActionError("Could not disconnect Microsoft right now.");
-    } finally {
-      setDisconnecting(false);
-    }
-  };
-
-  const formatSyncTime = (iso: string) => {
-    const d = new Date(iso);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return "Just now";
-    if (diffMin < 60) return `${diffMin}m ago`;
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr}h ago`;
-    const diffDay = Math.floor(diffHr / 24);
-    return `${diffDay}d ago`;
-  };
-
+function Header() {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-colors">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5" viewBox="0 0 23 23" fill="none">
-              <path d="M1 1h10v10H1z" fill="#F25022" />
-              <path d="M12 1h10v10H12z" fill="#7FBA00" />
-              <path d="M1 12h10v10H1z" fill="#00A4EF" />
-              <path d="M12 12h10v10H12z" fill="#FFB900" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="font-semibold text-zinc-50">Microsoft</h3>
-            <p className="text-zinc-500 text-sm">
-              Mail, Calendar, Files & Tasks
-            </p>
-          </div>
-        </div>
-        {isConnected ? (
-          <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-500/20">
-            <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-            Connected
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 bg-zinc-800 text-zinc-500 px-2.5 py-1 rounded-full text-xs font-medium border border-zinc-700">
-            <div className="w-1.5 h-1.5 bg-zinc-600 rounded-full" />
-            Not connected
-          </div>
-        )}
+    <header className="fixed top-0 left-0 right-0 z-10 bg-zinc-950 border-b border-zinc-800 h-14">
+      <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4">
+        <Link href="/dashboard" className="text-lg font-bold text-white">Foldera</Link>
+        <Settings className="w-5 h-5 text-white" />
       </div>
+    </header>
+  );
+}
 
-      {isConnected && (
-        <div className="mb-4 space-y-1">
-          {email && <p className="text-zinc-400 text-xs">{email}</p>}
-          <p className="text-zinc-500 text-xs">
-            {lastSynced
-              ? `Last synced ${formatSyncTime(lastSynced)}`
-              : "Sync pending"}
-          </p>
-        </div>
-      )}
+function GoogleIcon() {
+  return (
+    <div className="w-8 h-8 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
+      <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+      </svg>
+    </div>
+  );
+}
 
-      {isConnected ? (
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <button
-              onClick={handleSyncNow}
-              disabled={syncing}
-              className="flex-1 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              {syncing ? "Syncing..." : "Sync now"}
-            </button>
-            <button
-              onClick={onConnect}
-              className="px-4 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
-            >
-              Reconnect
-            </button>
-            <button
-              onClick={handleDisconnect}
-              disabled={disconnecting}
-              className="px-4 py-2.5 rounded-lg bg-zinc-800 hover:bg-red-900/30 text-zinc-400 hover:text-red-400 text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              {disconnecting ? "Disconnecting..." : "Disconnect"}
-            </button>
-          </div>
-          {syncResult && (
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
-              <p className="text-emerald-400 text-xs font-medium">
-                {syncResult.coverage_total != null
-                  ? `${syncResult.coverage_total} Microsoft signal${syncResult.coverage_total !== 1 ? "s" : ""} available`
-                  : `${syncResult.total} signal${syncResult.total !== 1 ? "s" : ""} synced`}
-              </p>
-              <p className="text-emerald-400/70 text-xs mt-0.5">
-                {syncResult.mail_total_signals ?? syncResult.mail_signals} mail
-                ·{" "}
-                {syncResult.calendar_total_signals ??
-                  syncResult.calendar_signals}{" "}
-                calendar ·{" "}
-                {syncResult.file_total_signals ?? syncResult.file_signals} files
-                · {syncResult.task_total_signals ?? syncResult.task_signals}{" "}
-                tasks
-              </p>
-              <p className="text-emerald-400/70 text-xs mt-1">
-                {syncResult.inserted_total ?? syncResult.total} new this run:{" "}
-                {syncResult.mail_signals} mail · {syncResult.calendar_signals}{" "}
-                calendar · {syncResult.file_signals} files ·{" "}
-                {syncResult.task_signals} tasks
-              </p>
-            </div>
-          )}
-          {syncError && <p className="text-red-400 text-xs">{syncError}</p>}
-          {actionError && <p className="text-red-400 text-xs">{actionError}</p>}
-        </div>
-      ) : (
-        <button
-          onClick={onConnect}
-          className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors"
-        >
-          Connect Microsoft
-        </button>
-      )}
+function MicrosoftIcon() {
+  return (
+    <div className="w-8 h-8 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
+      <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+      </svg>
     </div>
   );
 }
