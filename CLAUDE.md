@@ -584,3 +584,97 @@ Deepen Microsoft sync coverage and fix Settings to distinguish total source cove
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-17 (daily brief pipeline hardening)
+
+- **MODE:** AUDIT
+- **Commits:** `1e47532`, `8e1e129`, `dfa8ad4`, `eb71907`, `3cc1c14`, `aaf6bb7`, `e7b6928`
+- **Files changed:**
+  - `lib/briefing/generator.ts` — constraint locking for MAS3 daily brief
+  - `lib/briefing/pinned-constraints.ts` — NEW, pinned constraints module
+  - `lib/briefing/scorer.ts` — scorer updates for constraint compliance
+  - `lib/briefing/__tests__/generator.test.ts` — NEW, generator unit tests
+  - `lib/cron/daily-brief.ts` — pipeline hardening and constraint enforcement
+  - `app/api/conviction/generate/route.ts` — generation route updates
+  - `lib/signals/signal-processor.ts` — batch processing for unextracted signals, skip undecryptable batches, recent signal prioritization
+  - `app/api/cron/process-unprocessed-signals/route.ts` — NEW, batch signal processing cron
+  - `scripts/process-unprocessed-signals.ts` — NEW, standalone signal processing script
+  - `FOLDERA_MASTER_AUDIT.md` — logged MAS3 review status and decrypt blocker
+- **Verified:** `npm run build` passed per commit messages
+- **Unresolved:** Signal backlog decrypt blocker noted in audit doc (`e7b6928`)
+
+---
+
+## Session Log — 2026-03-17 (unified daily brief cron)
+
+- **MODE:** AUDIT
+- **Commits:** `f9aec59`, `cb4ab2f`, `9284c2e`, `9452572`, `021d147`, `0e9f1a0`, `13dcc05`
+- **Files changed:**
+  - `lib/cron/daily-brief.ts` — major rewrite: unified generate+send loop, candidate discovery logging, explicit no-send blockers
+  - `lib/cron/__tests__/daily-brief.test.ts` — NEW, daily brief cron test suite
+  - `lib/briefing/generator.ts` — candidate logging, no-send blocker surfacing
+  - `lib/briefing/scorer.ts` — expanded scoring with diagnostic logging
+  - `lib/briefing/types.ts` — NEW, shared briefing type definitions
+  - `app/api/cron/daily-brief/route.ts` — NEW, unified cron route replacing split generate/send
+  - `app/api/cron/daily-generate/route.ts` — reduced to thin wrapper
+  - `app/api/cron/daily-send/route.ts` — reduced to thin wrapper
+  - `app/api/cron/trigger/route.ts` — updated to use unified flow
+  - `app/api/settings/run-brief/route.ts` — updated proxy call
+  - `app/api/conviction/generate/route.ts` — updated generation route
+  - `lib/crypto/token-encryption.ts` — Outlook decryption recovery hardening
+  - `lib/encryption.ts` — decrypt fallback improvements
+  - `lib/sync/microsoft-sync.ts` — Microsoft sync decrypt recovery
+  - `vercel.json` — cron schedule updates
+  - `codex.toml` — added/removed Codex permissions
+  - `FOLDERA_MASTER_AUDIT.md` — logged unified daily brief blocker
+- **Verified:** `npm run build` passed; tests added for daily brief flow
+- **Unresolved:** Live daily brief still blocked by stale signal backlog and legacy-encrypted Microsoft data (`13dcc05`)
+
+---
+
+## Session Log — 2026-03-18 (signal processing + artifact hardening)
+
+- **MODE:** AUDIT
+- **Commits:** `aecfb79`, `8d9c7ed`, `116c658`, `d1b5d00`, `7b03189`, `9edaf55`, `dfb7531`
+- **Files changed:**
+  - `lib/signals/signal-processor.ts` — scoped processing window, UUID persistence fixes, stale signal drain, quarantine schema fix
+  - `app/api/cron/daily-brief/route.ts` — processing window scoping
+  - `app/api/cron/process-unprocessed-signals/route.ts` — scoped processing, stale drain support
+  - `lib/cron/daily-brief.ts` — processing window updates
+  - `lib/briefing/generator.ts` — hardened artifact generation with 225-line expansion
+  - `FOLDERA_MASTER_AUDIT.md` — noted stale signal backlog status
+- **Verified:** `npm run build` passed per commit progression
+- **Unresolved:** Stale signal backlog noted (`7b03189`); quarantine schema mismatch fixed in `dfb7531`
+
+---
+
+## Session Log — 2026-03-18 (docs consolidation + cleanup)
+
+- **MODE:** OPS
+- **Commits:** `18608f4`, `df595a2`, `fd8050e`, `f6e4ef8`, `352da2c`, `e32580c`, `e670a8f`, `745a00f`
+- **Files changed:**
+  - `AGENTS.md` — governing doc updates, rebase-before-push rule, consolidated operational rules, execution mode definitions
+  - `CLAUDE.md` — updated operational sections, consolidated rules
+  - `FOLDERA_MASTER.md` — updated to March 18 production state
+  - `FOLDERA_MASTER_AUDIT.md` — updated status, dependency cleanup noted
+  - `DOC_RESOLUTION_CHANGELOG.md` — changelog entry
+  - `GROWTH.md` — updates
+  - `PRODUCTION_AUDIT.md` — removed (superseded)
+  - `package.json` / `package-lock.json` — removed unused deps `@stripe/stripe-js` and `recharts`
+  - `.claude/worktrees/*` — removed 90 stale worktree references
+- **Verified:** `npm run build` passed after dependency removal
+- **Unresolved:** None
+
+---
+
+## Session Log — 2026-03-18 (scorer rewrite + audit closures)
+
+- **MODE:** AUDIT
+- **Commits:** `2c86b1e`, `c9015f7`, `500acbe`
+- **Files changed:**
+  - `lib/briefing/scorer.ts` — rewritten to be goal-driven and user-agnostic (246 insertions, 251 deletions)
+  - `FOLDERA_MASTER_AUDIT.md` — closed scorer audit items, pointed closures at main commit
+- **Verified:** `npm run build` passed (inferred from successful push to main)
+- **Unresolved:** None
