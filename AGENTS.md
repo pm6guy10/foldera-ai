@@ -20,7 +20,7 @@ Foldera is a conviction engine. It ingests email and calendar data, builds an id
 
 ```
 app/                    # Next.js app router pages and API routes
-app/api/cron/           # Cron jobs: daily-generate, daily-send, sync-google, sync-microsoft
+app/api/cron/           # Cron jobs: daily-brief, sync-google, sync-microsoft
 app/api/conviction/     # Core engine: generate, execute, latest
 app/api/google/         # Google OAuth connect/callback/disconnect
 app/api/microsoft/      # Microsoft OAuth and sync-now
@@ -63,14 +63,13 @@ All signal content and OAuth tokens are AES-256-GCM encrypted.
 
 ## Cron schedule (vercel.json)
 
-- `daily-generate`: 6:50am UTC (generates directive)
-- `daily-send`: 7:00am UTC (sends email)
+- `daily-brief`: `0 14 * * *` (7:00am Pacific) — unified generate + send flow
 - `sync-google`: daily
 - `sync-microsoft`: daily
 
 ---
 
-## CRITICAL RULES — PRODUCTION AUDIT (March 16, 2026)
+## CRITICAL RULES — PRODUCTION AUDIT (March 18, 2026)
 
 These rules override any pattern you observe in the existing code. If the code violates these rules, the code is wrong.
 
@@ -144,8 +143,8 @@ try {
 
 ### Daily cron scoping
 
-- `daily-generate` must only generate directives for users with active subscriptions or the owner account (`e40b7cd8`). Do not generate for temp onboarding users or unsubscribed accounts.
-- `daily-send` must resolve recipient email per user from their profile or auth record. Do not send all directives to `DAILY_BRIEF_TO_EMAIL`. That env var is a fallback for the owner only.
+- `daily-brief` must only generate/send directives for users with active subscriptions or the owner account (`e40b7cd8`). Do not run it for temp onboarding users or unsubscribed accounts.
+- `daily-brief` must resolve recipient email per user from their profile or auth record. Do not route all directives through a single fallback inbox.
 
 ### Logging in production
 
@@ -194,11 +193,12 @@ Known violation: `app/api/briefing/latest/route.ts` ignores errors on four paral
 
 ## Environment variables required
 
-ANTHROPIC_API_KEY, ENCRYPTION_KEY, CRON_SECRET,
+ANTHROPIC_API_KEY, ENCRYPTION_KEY, ENCRYPTION_KEY_LEGACY, CRON_SECRET,
+NEXTAUTH_SECRET, NEXTAUTH_URL, NEXT_PUBLIC_BASE_URL,
 NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
 SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY,
-RESEND_FROM_EMAIL, DAILY_BRIEF_TO_EMAIL,
-AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET,
+RESEND_FROM_EMAIL,
+AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET, AZURE_AD_TENANT_ID,
 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
 STRIPE_SECRET_KEY, STRIPE_PRO_PRICE_ID,
 STRIPE_WEBHOOK_SECRET, RESEND_WEBHOOK_SECRET,

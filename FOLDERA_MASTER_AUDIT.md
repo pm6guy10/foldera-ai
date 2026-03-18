@@ -1,6 +1,6 @@
 # FOLDERA MASTER AUDIT — Single Source of Truth
-**Updated:** March 16, 2026
-**Last Verified Fix:** March 16, 2026 — `3ec5e15`
+**Updated:** March 18, 2026
+**Last Verified Fix:** March 18, 2026 — `dfb7531`
 **Scope:** Read-only full audit of `app/`, `lib/`, `components/`, `scripts/`, and `supabase/`
 **Source:** Codex full audit + CC audit
 
@@ -14,6 +14,19 @@
 | NR2 | March 17, 2026 backlog-processing verification added chunked extraction to `daily-generate` and a cron-auth backfill path, then exercised the production processor against all 385 unprocessed Microsoft signals. A follow-up patch added base64-or-hex `ENCRYPTION_KEY` parsing plus Outlook row rehydration from Graph, but live verification still cannot process real blocked rows because both `tkg_signals.content` and Microsoft OAuth tokens were encrypted under a pre-rotation key that is no longer present in repo/local/Vercel env copies. Recovery now needs either that legacy key loaded via `ENCRYPTION_KEY_LEGACY` or a fresh Microsoft re-auth to repopulate readable tokens. | Codex verification | NEEDS_REVIEW — March 17, 2026 |
 | NR3 | March 17, 2026 unified `/api/cron/daily-brief` verification proved the new single-route scheduler correctly persisted explicit no-send evidence and withheld email on failure, but the acceptance gate still fails live because 45 unprocessed signals older than 24h remain in a 238-signal backlog that the processor deferred within route budget, and the top-ranked compound `send_message` candidate that did score cleanly still validated into a no-send row (`tkg_actions.id = e95a2640-a150-46ea-a693-088b7d6a4ade`) because the generated artifact payload was missing drafted-email fields. The scheduler is now production-safe; the remaining blocker is fresh readable signals plus generator output that can clear drafted-email validation. | Codex verification | NEEDS_REVIEW — March 17, 2026 |
 | NR4 | March 18, 2026 post-fix production verification of `GET /api/cron/daily-brief` showed the generator path now reuses or persists a valid `pending_approval` action with a non-empty artifact (`tkg_actions.id = 5e7a034c-2a8f-42e6-bfe6-e12e269721c4`), but the route still returned HTTP 500 because signal processing exhausted its budget while 2 stale unprocessed signals older than 24h remained (`stale_signal_backlog_remaining`). Daily brief generation/send can succeed; the unresolved blocker is the stale-signal acceptance gate. | Codex verification | NEEDS_REVIEW — March 18, 2026 |
+| NR5 | `lib/briefing/scorer.ts` still needs a March 18 hardcode-removal pass to strip owner-specific job-search and MAS3-era assumptions out of candidate scoring so the brain stays user-agnostic in production. | Codex follow-up | NEEDS_REVIEW — March 18, 2026 |
+| NR6 | The scorer still needs a second hardcode-removal pass for season-specific urgency/stakes clamps and suppression rules that were useful during owner testing but should move to data/config before multi-user hardening. | Codex follow-up | NEEDS_REVIEW — March 18, 2026 |
+| NR7 | The scorer still needs a final hardcode-removal pass on fallback labeling and domain-specific heuristics so non-owner users cannot inherit Brandon-only assumptions in directive selection. | Codex follow-up | NEEDS_REVIEW — March 18, 2026 |
+| NR8 | Commit the March 18 governing doc updates in the repo root (`AGENTS.md`, `FOLDERA_MASTER_AUDIT.md`, `FOLDERA_MASTER.md`, `GROWTH.md`, and `DOC_RESOLUTION_CHANGELOG.md`) so the repo state matches the live operating rules. | Docs maintenance | NEEDS_REVIEW — March 18, 2026 |
+| NR9 | Run the UX mega-prompt pass to tighten the landing/onboarding/dashboard/settings copy, empty states, and trust framing around the now-working daily brief loop. | Product follow-up | NEEDS_REVIEW — March 18, 2026 |
+| NR10 | Keep point-in-time GTM reference docs aligned with the single-source audit so historical strategy notes do not drift into operational guidance. | Docs maintenance | NEEDS_REVIEW — March 18, 2026 |
+| NR11 | Keep session-log hygiene and top-of-file operational notes aligned in `CLAUDE.md` so current-state guidance stays above the historical logs. | Docs maintenance | NEEDS_REVIEW — March 18, 2026 |
+| NR12 | Remove the unused npm dependencies `@stripe/stripe-js` and `recharts` from `package.json`/`package-lock.json` and confirm the production build still passes. | Dependency cleanup | NEEDS_REVIEW — March 18, 2026 |
+| NR13 | Update the top operational sections in `CLAUDE.md` to the March 18 product, env, cron, and priority state without touching historical session logs. | Docs maintenance | NEEDS_REVIEW — March 18, 2026 |
+| NR14 | Carry the remaining medium items from `PRODUCTION_AUDIT.md` into the master audit/backlog, then retire the redundant file so open work is tracked in one place. | Audit consolidation | NEEDS_REVIEW — March 18, 2026 |
+| NR15 | Delete stale `RELEASE_READINESS.md`, which still says READY on March 16 despite the March 17-18 blockers now tracked in the master audit. | Docs maintenance | NEEDS_REVIEW — March 18, 2026 |
+
+---
 
 ## CRITICAL — Fix before any user touches the product
 

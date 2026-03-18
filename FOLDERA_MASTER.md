@@ -1,5 +1,5 @@
 # FOLDERA — Master Vision & Strategy Document
-**Version 2.1 | March 11, 2026 | Living Document**
+**Version 2.2 | March 18, 2026 | Living Document**
 
 ---
 
@@ -175,10 +175,10 @@ Can't manufacture it. Position for it by making the product undeniably good.
 
 ## The 24-Month Plan
 
-### Now — MAS3 Window
-- Wait for offer (March 10-17)
-- Accept, negotiate step placement to ~$75K
-- Foldera is a hobby. Overflow energy only.
+### Now — March 18 Production State
+- The core loop is working on real data: directive generated, emailed, and user-interacted
+- Priority is production hardening and UX polish, not expanding product surface area
+- `FOLDERA_MASTER_AUDIT.md` tracks live blockers; `CLAUDE.md` tracks operating details
 
 ### Month 1-3 — Foundation
 - Clean repo, delete dead code, unify onboarding
@@ -269,5 +269,22 @@ Foldera exists because one person couldn't find this tool when he needed it most
 
 ---
 
-*Last updated: March 11, 2026*
-*Next update: After MAS3 offer confirmed*
+*Last updated: March 18, 2026*
+*Next update: After the March 18 consistency backlog is reduced*
+
+---
+
+## Cross-Document Consistency Notes
+
+1. Contradiction: Env var requirements drifted across docs.
+   Resolution: `AGENTS.md` is the canonical required-env list, and operational docs should mirror it exactly.
+2. Contradiction: Some docs described split `daily-generate` / `daily-send` flows while the live system runs unified `/api/cron/daily-brief`.
+   Resolution: Treat `/api/cron/daily-brief` at `0 14 * * *` as the active daily loop and reference `AGENTS.md` for the full cron schedule.
+3. Contradiction: Older docs called the product GTM-ready/READY, while live verification on March 17-18 still showed production hardening blockers.
+   Resolution: Current truth is that the core loop works, and the remaining work is UX polish plus multi-user hardening.
+4. Contradiction: Point-in-time audit notes competed with the master audit for authority.
+   Resolution: `FOLDERA_MASTER_AUDIT.md` is the single source of truth for open issues and verification status.
+5. Contradiction: Strategic/growth language could drift away from the shipped email-first approval loop.
+   Resolution: Strategy and growth docs should assume email is primary, dashboard is secondary, and every directive ships with a finished artifact.
+6. Contradiction: Superseded readiness docs could leave stale March 16 claims in the repo.
+   Resolution: Keep only current governing docs in the active path; treat stale readiness snapshots as removable or historical-only.

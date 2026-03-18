@@ -163,6 +163,11 @@ If no, it's not good enough yet.
 
 > Update this section weekly. Date each entry.
 
+### 2026-03-18 (week 2)
+- The core product loop now works on real data: a real directive was generated, emailed, and user-interacted.
+- Growth is no longer blocked on basic loop feasibility; it is blocked on UX polish, trust clarity, and multi-user hardening.
+- Do not use stale "READY" language in growth planning. Use `FOLDERA_MASTER_AUDIT.md` for launch reality and blockers.
+
 ### 2026-03-10 (week 1)
 - Product is live. Zero public users.
 - Landing page, onboarding, and dashboard all functional.
