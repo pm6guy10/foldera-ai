@@ -1,447 +1,112 @@
-# Foldera — Claude context
-
-Next.js 14 App Router · Supabase · Claude API
-Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env var.
-
----
-
-## Decided — never relitigate
-- **Accent color:** cyan/emerald. Not violet. Done.
-- **Brain prompt:** chief of staff model, not summarizer. Artifact required on every directive. Done.
-- **Cost model:** haiku for artifact assembly, sonnet for final directive generation. Daily cap $1.50. Done.
-- **Empty drafts:** validation gate required before staging — missing to/subject/body logs error and skips. Done.
-- **Dashboard stats:** remove vanity cards, replace with single signal line. Done.
-- **Post-skip state:** terminal message, not empty card. Done.
-- **Email is the primary product**, dashboard is secondary. Done.
-- **All pushes go to main.** No feature branches.
-- **Session logs** appended to CLAUDE.md after every session.
-- **Only one cron active:** `/api/cron/daily-brief` at `0 14 * * *` (7am Pacific). See `AGENTS.md` for the full schedule. Do NOT re-add removed crons without explicit instruction. Done.
-- **Dashboard is for users, not developers.** If it wouldn't make sense to a stranger, it doesn't belong on the main screen. No API usage, token counts, health monitors, or debug info on the dashboard. Done.
-- **One directive per email.** No multi-directive emails. Nothing below 70% confidence. No deprioritized/guilt section. No surveys. No learning signals. Done.
-- **Owner account (e40b7cd8) is always pro.** Never show trial/expired banners to the product owner. Done.
-- **Docs are updated by Codex on every session** per AGENTS.md mandatory audit maintenance rule.
-
-## Build Status
-- Phase 1: done
-- Phase 2: done
-- Phase 3: done
-- Phase 4: done
-
----
-
-## STATUS — MARCH 18, 2026
-The core product loop is working in production:
-a real directive has been generated, emailed,
-and user-interacted. Remaining work is UX
-polish and multi-user hardening per
-`FOLDERA_MASTER_AUDIT.md`.
-
-### What's live and working:
-- Living hero: cold read generates on LP load
-  (client-side, no API cost)
-- /try: scenario-specific cold reads + Haiku
-  "go deeper" flow + email capture
-- Brain: stale context guardrails + placeholder
-  validation on every generation
-- Daily brief cron: `/api/cron/daily-brief`
-  at `0 14 * * *` (7am Pacific). See
-  `AGENTS.md` for the full schedule.
-- Approve/skip: email deep-links + dashboard
-  buttons, feedback messages, learning loop wired
-- Onboarding: "Building your graph" animation,
-  OAuth + paste fallback, first directive in
-  processing flow
-- Dashboard: directive card, DraftQueue, stats,
-  meaningful empty states
-- Settings: connected accounts, subscription
-  status, logout
-- Auth: Google + Microsoft OAuth, session
-  management, logout
-- Mobile: all pages verified at 375px, zero
-  overflow
-
-### Current priorities:
-- Scorer hardcode removal (NR5-NR7)
-- UX mega-prompt pass (NR9)
-- `PRODUCTION_AUDIT.md` medium items now
-  tracked under NR14
-
-### Remaining work:
-- UX polish across first-run, trust, and
-  dashboard states
-- Multi-user hardening before broader use
-- Audit follow-through per
-  `FOLDERA_MASTER_AUDIT.md`
-
----
-
-## Product Spec — the whole thing
-
-Foldera has one user flow that matters:
-
-1. **Nightly:** cron runs, ingests signals from connected sources, updates identity graph
-2. **Morning:** generator runs, queries goals + patterns + action history, produces single directive with artifact via chief-of-staff prompt
-3. **Email:** directive + full artifact delivered to user inbox at 7am. **This is the primary product surface.**
-4. **Dashboard:** user opens only if they want to approve/skip, review history, or teach Foldera something new. Secondary surface.
-5. **Approve:** artifact executes (send email, create doc, log decision). Logged as positive signal.
-6. **Skip:** logged as negative signal. Terminal message shown. No regeneration until tomorrow.
-7. **Learn:** approval and skip history feed back into next generation cycle. Engine gets smarter.
-
-Every feature must serve this loop. If it doesn't, cut it.
-
-Every CC session starts by reading this spec. If a task contradicts the spec, flag it and ask.
-
----
-
-## Stack notes
-- App Router only — no Pages Router
-- All DB access via `createServerClient()` from `lib/db/client.ts` (centralized factory)
-- Directives live in `tkg_actions`, signals in `tkg_signals`, patterns in `tkg_entities.patterns`, goals in `tkg_goals`
-- `/api/conviction/latest` and `/api/graph/stats` are the two dashboard data routes
-- Public onboard routes under `/api/onboard/*` use `tempUserId` (UUID), no session required
-- Auth providers: Google OAuth + Azure AD (Outlook). Both configured in `lib/auth/auth-options.ts`
-- OAuth tokens persist to `integrations` table via `lib/auth/token-store.ts` for background cron use
-
-## Pre-build checklist — before every CC session
-Before writing any code, trace the full data path:
-1. Where does the data come from?
-2. What table does it write to?
-3. What reads from that table?
-4. What format does the reader expect?
-5. Is there a processing step between write and read?
-6. What encryption module touches this data?
-7. What env vars are required?
-8. What RLS policies exist on the target tables?
-If any answer is "I don't know," read the code before writing new code.
-
-## Discovery phase — BEFORE writing any code
-Every session begins with discovery. Before making any changes:
-1. Read every file you are about to modify.
-2. Trace the data path: where does the data come from, what transforms it, what reads it?
-3. Run `git log --oneline -10` to see what shipped recently. If a file was modified in the last 3 commits, read the diff before editing it.
-4. List any dependencies, surprises, or conflicts with recent changes.
-5. If you discover something that changes the approach, say so BEFORE writing code. Propose the adjusted approach and proceed.
-
-This phase takes 2-5 minutes. It is not optional. Every pipeline bug in this project was predictable from skipping this step.
-
-## Time-saving rules — stop wasting tokens
-1. **Backend-only changes skip preview.** If no .tsx or .css files were modified, do NOT start the dev server, take screenshots, or check the landing page. Build pass + Vercel deploy is sufficient verification.
-2. **Read once, execute once.** In multi-task sessions, read all relevant files during discovery. Do not re-read the same file for each task.
-3. **Git push pattern (worktree-safe):**
-   ```
-   cd /path/to/main/repo
-   git merge claude/branch-name --no-edit
-   git push origin main
-   ```
-   Do NOT try `git checkout main` from inside a worktree. It will fail every time. Use the merge pattern above directly.
-4. **Deploy verification:** After pushing, check deployment status ONCE via Vercel MCP. If it shows BUILDING or QUEUED, say "Pushed to main, deploy building" and move on. Do not poll repeatedly. Only wait for READY if the task requires runtime verification (API routes, data pipeline changes).
-5. **Migrations are not homework.** If a migration file is created, apply it immediately via Supabase MCP (`apply_migration` or `execute_sql`). Never say "needs manual application." You have Supabase MCP. Use it.
-
-## Session completion sequence — MANDATORY ORDER
-Every session ends with these steps IN THIS ORDER. Do not skip steps. Do not reorder. Do not report "done" until step 6 passes.
-
-1. `npm run build` — must pass with 0 errors
-2. Apply any Supabase migrations via Supabase MCP (`apply_migration` or `execute_sql`). Do NOT leave migrations as "needs manual application." You have Supabase MCP access. Use it.
-3. Verify the data state: run a SELECT query via Supabase MCP to confirm the migration produced the expected rows/columns/values.
-4. Push to main (`git push`, not feature branch). Do not leave code on a feature branch. Every session must end with code merged to main and pushed. If you cannot push, say why.
-5. Verify Vercel deploy status is READY via Vercel MCP.
-6. If the change affects an API route or data pipeline, call the route or query the database to confirm the deployed code produces correct results.
-
-If any step fails, fix it before moving to the next step. "Migration needs manual application" is a session failure. "Vercel deploy READY" without data verification is incomplete.
-
-## Product logic — don't violate these
-- Email is captured on the landing page. Never ask for it again inside the app.
-- Never ask the user a question Foldera should be able to answer itself.
-- Never add a step that requires user effort when the engine can generate instead.
-- The product promise is zero lift. If a user has to think hard to get value, the feature is broken.
-- Friction is a bug, not a design choice.
-
----
-
-## Vision
-Foldera is not a dashboard. It's an agent that acts on your behalf with your approval.
-
-End state: Foldera wakes up, reads your emails, calendar, and conversations overnight,
-identifies what needs to happen, drafts the actions, and presents them for one-tap approval.
-You approve or skip. It learns. It gets more accurate.
-
-## Core Product Loop — DO NOT VIOLATE
-
-Foldera is not a recommendation engine. It is a worker.
-
-The loop:
-1. Ingest behavior (email, conversations, calendar, approvals)
-2. Extract patterns, decisions, relationships, goals
-3. Generate the single highest-leverage action (directive)
-4. Generate the finished work product (artifact)
-5. Present both to user for one-tap approval
-6. Execute on approval. Learn from approval/skip.
-7. Next cycle is smarter.
-
-The directive without an artifact is a to-do list.
-The artifact is the product.
-
-### What "artifact" means by action type:
-- send_message: drafted email with to/subject/body,
-  pulled from relationship history and recent threads
-- write_document: complete document, not an outline
-- schedule: calendar event with proposed time found
-  from open slots
-- research: specific questions with sources identified
-- make_decision: decision frame with options weighted
-  by user's own historical outcomes
-- do_nothing: explanation citing specific prior outcomes
-  where waiting resolved favorably
-
-### Approval behavior:
-- Email artifact + approve = send via Outlook/Gmail
-- Document artifact + approve = save to tkg_documents
-- Calendar artifact + approve = create event via API
-- Skip on any artifact = feedback_weight -0.5, learn
-
-### The test for every feature:
-Does the user have to do work after approving?
-If yes, the feature is broken. Foldera does the work.
-The user only decides yes or no.
-
-### The conversion event (demo/onboarding):
-Three accurate inferences in a row about things the
-system was never explicitly told. One hit is luck.
-Two is interesting. Three is "take my money."
-
----
-
-## Current state (accurate as of March 12, 2026)
-
-### Working
-- Identity graph: 315 patterns, 207 commitments, 122 signals from 127 ingested conversations
-- Conviction engine: generates directives with confidence scores, feedback loop weighted by action_type history
-- Artifact generation: all 6 types live (email, document, calendar_event, research_brief, decision_frame, affirmation) via lib/conviction/artifact-generator.ts with web search integration
-- Self-feeding loop: approvals/skips write back to tkg_signals as behavioral signals; next cycle is informed
-- DraftQueue: approve/dismiss UI with email deep-links
-- Daily email: action cards with approve/skip buttons, progressive subject lines days 1-7
-- Dashboard: current priorities (3 slots), quick capture, full artifact preview in conviction card
-- Relationship tracker: lib/relationships/tracker.ts — analyzeRelationships + getCoolingRelationships
-- Extraction pipeline: lib/extraction/conversation-extractor.ts — full extractFromConversation (not a stub)
-- Email sync cron: /api/cron/sync-email — inbox + sent mail + drafts + relationship updates
-- Zero-auth demo at /try
-- 14-day free trial, $99/month after
-- Landing page rewritten for strangers
-- Waitlist with email capture
-- Health monitoring: stale graph alert if no ingest in 48+ hours
-- Security: cron auth, svix webhook verification, token encryption, 30-day data deletion, sanitized error responses
-- Retry logic on daily cron
-- Email send on approval via Gmail/Outlook (outlook-client.ts and gmail-client.ts)
-- Stripe Pro $99/month with webhook endpoint
-- Six specialist agents on scheduled crons (disabled until first public user)
-- Continuous ingest pipeline: /api/ingest/conversation + scripts/ingest-recent.mjs
-- Proactive scanner: lib/acquisition/briefing-scanner.ts, briefing-scorer.ts, reply-drafter.ts
-- Skip feedback: skip_reason captured and used for suppression in next generation cycle
-
-### NOT working — must be built
-- Calendar sync execution: cron route exists but calendar API clients are not wired to create events on approval
-- Outlook OAuth: Azure AD env vars configured, code complete, but not verified end-to-end by current user
-- Agent crons: code complete but disabled in vercel.json until first public user
-
-### Dead code — cleaned
-All previously identified dead code directories have been deleted (scan-inbox, generate-draft, meeting-prep, plugins). Unused npm dependencies (pdf-parse, react-dropzone, @vitest/ui) removed.
-
----
-
-## Graph feeding — required for accurate reads
-The identity graph requires regular feeding to stay useful. The initial 127-conversation
-batch is the baseline; every week of new work should be added.
-
-**Mechanism**: Export Claude project conversations as text files, drop in a folder, run the script.
-
-```bash
-CRON_SECRET=<secret> node scripts/ingest-recent.mjs ./conversations/
-```
-
-- The script reads `.txt` and `.md` files from the directory
-- Tracks processed files in `.ingested.json` (safe to re-run)
-- POSTs each new file to `/api/ingest/conversation` (Bearer CRON_SECRET auth)
-- Daily-brief cron surfaces a DraftQueue warning if graph hasn't been fed in 48+ hours
-
-## Agent Layer
-Six specialist agents run on schedule, think like domain experts, and stage all findings
-in DraftQueue for one-tap approval. Nothing executes without approval. Skipped
-items train the agent to find better signals next time.
-
-**STATUS: Crons disabled until first public user to save API costs.**
-
-| Agent | Persona | Schedule | Route |
-|-------|---------|----------|-------|
-| UI/UX Critic | Senior Apple product designer | Daily | `/api/cron/agents/uiux-critic` |
-| Pricing Analyst | SaaS pricing expert | Weekly | `/api/cron/agents/pricing-analyst` |
-| GTM Strategist | Growth hacker | Daily | `/api/cron/agents/gtm-strategist` |
-| Retention Analyst | Churn analyst | Weekly | `/api/cron/agents/retention-analyst` |
-| Trust Auditor | Skeptical first-time user | Daily | `/api/cron/agents/trust-auditor` |
-| Distribution Finder | Connector | Daily | `/api/cron/agents/distribution-finder` |
-
-All agents write to `tkg_actions` with `status='draft'` via `lib/agents/base-agent.ts`.
-User approves or skips in DraftQueue. Approved = execute. Skipped = feedback weight -0.5.
-
----
-
-## Verification Standard (NON-NEGOTIABLE)
-- NEVER mark a task done based on localhost or dev build
-- After every push to main, wait for Vercel deployment
-  to show READY, then fetch the PRODUCTION URL
-  (https://www.foldera.ai) and verify changes are
-  visible on the live site
-- If you cannot access the production URL, explicitly
-  say "I cannot verify production" instead of claiming
-  the task is complete
-- Screenshots from localhost do not count as verification
-- Playwright tests must run against the production URL,
-  not localhost
-- "Vercel deployment green" means the build compiled.
-  It does NOT mean the feature works. Always verify
-  the actual rendered page.
-- Any session that ends with "all checks pass" based
-  on localhost screenshots is a FAILED session.
-
-## QA Standard — run this automatically
-After EVERY commit, before marking anything done:
-1. Screenshot every affected screen at 390px and 1280px
-2. Hit every affected API endpoint and confirm real data returns
-3. Walk the full user journey touching the changed code as a first-time user
-4. Fix anything that looks broken, confusing, or unpolished before reporting back
-5. Never say "done" until you've verified it yourself
-6. After every push to main, fetch the Vercel build logs and fix any build failures
-   before stopping. Do not mark anything done until foldera.ai shows a successful
-   deployment. Never stop at a broken Vercel build.
-7. After merging any branch, run `npm run build` locally before pushing to main.
-   A broken local build means a broken Vercel deploy. Never push a build that fails locally.
-8. When creating new lib/ modules that are imported by existing routes, always create
-   the file in the same session. Never leave an import pointing to a file that doesn't exist.
-9. After all changes are complete and local build passes, merge your branch to main,
-   push main to origin, and verify the Vercel deployment succeeds. Never stop or report
-   done on a branch. Always finish on main with a successful Vercel deploy.
-10. Before pushing any code, review all changes through these professional lenses and fix
-    issues proactively. Do not wait for Brandon to find them:
-    - UX: Is the user journey clear? Can a stranger use this without instructions?
-    - Visual: Does every screen look like a $99/month product? No raw errors, no broken
-      animations, no dev artifacts visible.
-    - Copy: Does any user-facing text use internal jargon? Fix it.
-    - Consistency: Do all pages use the same design language, spacing, and component styles?
-    - Error handling: Does every user action have a graceful failure state? No raw error
-      messages ever reach the user.
-    - Dead UI: Is there any button, link, or feature that doesn't work? Remove it or fix it.
-    Brandon should never discover a visual bug, a broken button, or an inconsistency.
-    Find them yourself before reporting done.
-11. ML/AI generation checks:
-    - [ ] If any generation call fails, the system recovers gracefully. No infinite loops, no crashed dashboard, no raw stack traces to the user.
-12. Before ending any session, append a session log to CLAUDE.md with every commit hash,
-    every file changed, and every Supabase migration requiring manual application. This is
-    the final action of every session, no exceptions.
-
----
-
-## Build priority (in order)
-1. Scorer hardcode removal (NR5-NR7)
-2. UX mega-prompt pass (NR9)
-3. `PRODUCTION_AUDIT.md` medium items tracked under NR14
-
-## Intelligence Backlog (in priority order)
-
-### Session 2: Emergent Pattern Detection
-Build detectEmergentPatterns() in scorer.ts.
-Competes with open loop scorer for directive slot.
-Analyzes: approval-without-execution, skip
-clustering by day/type, commitment decay rates,
-signal velocity spikes, repetition suppression.
-Artifact is a mirror, not a task. Ends with
-"Is this true?"
-
-### Session 3: Cross-Loop Reasoning
-Second pass on top 5 scored loops looking for
-connections: same person in two loops, temporal
-dependencies, resource conflicts. Merge connected
-loops into compound directives. This is the
-"can't leave" output.
-
-### Session 4: Extend TTL + Signal Summaries
-Change tkg_signals TTL from 7 days to 90 days.
-Add signal_summary table compressing old signals
-into weekly digests with themes and tone.
-Summaries persist permanently as long-term context.
-
-### Session 5: Feedback Loop Completion
-- Skip reason feeds into scorer math (not just
-  LLM prompt). not_relevant vs wrong_approach
-  have different effects.
-- Edit distance telemetry: Levenshtein on
-  edited_artifact vs original. 0% edit = +1.0,
-  10-30% = +0.5, 50%+ = -0.5 failure.
-- Time-of-day preference learning from
-  approval timestamps.
-- Outcome quality scoring beyond binary yes/no.
-
-### Session 6: Magic Layer — Deferred Items
-These were identified during the magic audit but need
-new data sources or capabilities:
-
-1. **Instant mini-sync on OAuth connect** — pull last 10
-   sent emails immediately after OAuth, don't wait for 2am
-   cron. Show "building your graph" experience with real
-   data appearing in real time. Kill the gap between
-   "I connected my email" and "holy crap it knows me."
-   Needs: new /api/onboard/instant-sync route + client UI.
-
-2. **Weekly retrospective** — "This week you executed 4
-   actions, skipped 2, saved ~3 hours of decision-making."
-   Needs: new generation mode in daily-brief for day 7+.
-
-3. **Day-of-week preference learning** — "You consistently
-   avoid financial tasks on Mondays. I've moved those to
-   Wednesdays where your approval rate is 2x." Detected
-   by temporal_cluster in scorer, needs action routing.
-
-4. **Relationship decay alerts in email** — "You haven't
-   talked to Sarah in 22 days. Last time this happened
-   you regretted it. Draft ready." Already detectable via
-   tkg_entities.last_interaction, needs priority boost.
-
-5. **Cross-loop compound email** — Show two linked loops
-   in a single email card with merged action. Already
-   supported by compound directives in scorer/generator.
-
-### Blindspots (build when triggered)
-1. Cold start warmup: synthetic scoring bypass
-   for users with <10 actions. Sent folder scan
-   to bootstrap relationships. Build before
-   first public user.
-2. Emergent pattern framing: never declarative,
-   always "Is this true?" with observable data.
-3. Goal completion detection: resolution language
-   triggers archive prompt. Post-launch.
-4. Network effect layer: anonymized aggregate
-   outcome data to improve cold-start scoring.
-   Post-10 users.
-
-## Env vars required in Vercel
-ANTHROPIC_API_KEY, ENCRYPTION_KEY, ENCRYPTION_KEY_LEGACY, CRON_SECRET,
-NEXTAUTH_SECRET, NEXTAUTH_URL, NEXT_PUBLIC_BASE_URL,
-NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
-SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, RESEND_FROM_EMAIL,
-AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET, AZURE_AD_TENANT_ID,
-GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, STRIPE_SECRET_KEY,
-STRIPE_PRO_PRICE_ID, STRIPE_WEBHOOK_SECRET,
-RESEND_WEBHOOK_SECRET, INGEST_USER_ID
-
-### ENCRYPTION_KEY
-Required in production. 32-byte AES-256 key, base64-encoded.
-Encrypts OAuth tokens before storage in the `integrations` table.
-App throws at startup if absent in `NODE_ENV=production`.
-
-Generate:
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-```
-
----
+# CLAUDE.md — Operational Runbook
+
+## Pre-Flight Checklist
+
+Every session runs this before any work:
+
+1. Run `GIT_EDITOR=true git pull --rebase origin main` before making changes. If the worktree is not clean, resolve that without discarding user changes.
+2. Read `CLAUDE.md` fully.
+3. Read `FOLDERA_MASTER_AUDIT.md` for current item statuses.
+4. Read every file you plan to modify.
+5. Run `git log --oneline -10`.
+6. Trace the relevant data path before coding: source -> transform -> persistence -> reader.
+7. If recent changes or repo state conflict with the task, report that before editing.
+
+## Environment Variables Required In Vercel
+
+- `ANTHROPIC_API_KEY`
+- `ENCRYPTION_KEY`
+- `CRON_SECRET`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+- `DAILY_BRIEF_TO_EMAIL`
+- `AZURE_AD_CLIENT_ID`
+- `AZURE_AD_CLIENT_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PRO_PRICE_ID`
+- `STRIPE_WEBHOOK_SECRET`
+- `RESEND_WEBHOOK_SECRET`
+- `INGEST_USER_ID`
+
+Optional recovery variable:
+
+- `ENCRYPTION_KEY_LEGACY` only when old ciphertext or OAuth tokens still depend on a pre-rotation key.
+
+## Cron Schedule
+
+- `/api/cron/daily-brief` — `0 14 * * *` (`14:00 UTC`, `7:00 AM` Pacific on March 18, 2026)
+- `/api/cron/sync-google` — `0 2 * * *`
+- `/api/cron/sync-microsoft` — `0 3 * * *`
+- The split `daily-generate` / `daily-send` cron schedule is historical only. `vercel.json` is the current source of truth.
+
+## Current Status And Build Priorities
+
+Status as of March 18, 2026:
+
+- `FOLDERA_MASTER_AUDIT.md` is the release truth. The product is not acceptance-gate clean while `NEEDS_REVIEW` items remain open.
+- The unified `/api/cron/daily-brief` flow can now persist and send a valid `pending_approval` action, but live verification still fails on stale-signal backlog handling and legacy-encrypted Microsoft data.
+- Do not claim the product is ready for user testing until the open audit blockers are closed and the QA gate passes again.
+
+Build priorities:
+
+1. Clear the stale-signal acceptance gate blocker tracked in `NR4`.
+2. Restore readable legacy Microsoft data via `ENCRYPTION_KEY_LEGACY` or a fresh Microsoft re-auth so backlog processing can complete (`NR2`).
+3. Fix the remaining live generator validation failure for the compound `send_message` winner (`NR1` and `NR3`).
+4. Re-run the full QA gate after the above blockers are closed.
+
+## Decided Items
+
+- Email is the primary product surface. The dashboard is secondary.
+- One directive per email. Never send anything below `70%` confidence.
+- Every directive must include a finished artifact. If the user has to do work after approval, the feature is broken.
+- Confidence stays internal. Do not surface confidence percentages, evidence panels, or internal scoring to users unless that decision is explicitly changed.
+- Core surfaces stay one-tap approve or skip. No guilt copy, deprioritized lists, or extra workflow steps.
+- Cyan and emerald are the accent colors. No violet.
+- The dashboard is for users, not developers. No internal health, token, API, or debug metrics on the main product surface.
+- Owner account `e40b7cd8` is always pro. Never show trial or expired banners to the owner.
+- Self-referential Foldera signals must be filtered before generator or extraction reads.
+- Session-backed routes use `session.user.id` only. `INGEST_USER_ID` is cron and background only.
+- Production logs must not include directive text, conviction scores, behavioral content, or similar user-private data.
+- Pushes go to `main`.
+
+## Mandatory QA Gate
+
+For any session that changes user-facing code, this gate is mandatory before push:
+
+1. Check every user-facing route: `/`, `/start`, `/login`, `/pricing`, `/dashboard`, `/dashboard/settings`.
+2. For each route verify:
+   - Build passes.
+   - No hydration mismatches.
+   - Loading, empty, and error states exist.
+   - No hardcoded user data.
+   - All buttons have working handlers.
+   - No CSS overflow or truncation.
+   - Copy is consistent across pages.
+3. Run `npm run build`.
+4. Run `npx playwright test`.
+5. Fix any failures before pushing.
+6. If any issue cannot be fixed in-session, note it in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
+For non-user-facing changes, `npm run build` must still pass before commit.
+
+## Multi-User Verification Rule
+
+- A task is not done if it only works for Brandon, the owner account, or `INGEST_USER_ID`.
+- Any session-backed route or UI path must be verified for general-user behavior: `session.user.id` scoping, no owner-only fallback, no hardcoded user data, and no reliance on the owner dataset.
+- When auth, billing, or settings behavior changes, verify the relevant signed-in and signed-out states.
+
+## Doc Maintenance Rule
+
+- After every session, update `FOLDERA_MASTER_AUDIT.md` so the current status reflects what is fixed, blocked, or now `NEEDS_REVIEW`.
+- If required verification fails and cannot be fixed in-session, log it in `FOLDERA_MASTER_AUDIT.md` before stopping.
+- Append a new session log to this file after the work is complete. Existing logs below are the historical record and stay verbatim.
+
+## Session Logs
 
 ## Session Log — 2026-03-13
 
