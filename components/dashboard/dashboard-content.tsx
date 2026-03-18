@@ -3,18 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw } from 'lucide-react';
 import ConvictionCard from './conviction-card';
 import type { SkipReason } from './conviction-card';
 import type { ConvictionAction } from '@/lib/briefing/types';
-
-interface GraphStats {
-  signalsTotal:      number;
-  commitmentsActive: number;
-  patternsActive:    number;
-  lastSignalAt:      string | null;
-  lastSignalSource:  string | null;
-}
 
 interface EmailActionFeedback {
   tone: 'success' | 'error';
@@ -22,16 +13,12 @@ interface EmailActionFeedback {
 }
 
 export default function DashboardContent() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
-  const [stats, setStats]               = useState<GraphStats | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
   const [conviction, setConviction]     = useState<ConvictionAction | null>(null);
   const [convictionLoading, setConvictionLoading] = useState(true);
   const [emailActionMsg, setEmailActionMsg] = useState<EmailActionFeedback | null>(null);
-  const [contextGreeting, setContextGreeting] = useState<string | null>(null);
-  const [statsError, setStatsError] = useState<string | null>(null);
   const [convictionError, setConvictionError] = useState<string | null>(null);
 
   const showEmailActionFeedback = useCallback((tone: EmailActionFeedback['tone'], text: string) => {
@@ -101,26 +88,10 @@ export default function DashboardContent() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      loadStats();
       loadLatestConviction();
     }
     if (status === 'unauthenticated') router.push('/start');
   }, [status]);
-
-  const loadStats = async () => {
-    setStatsLoading(true);
-    setStatsError(null);
-    try {
-      const res = await fetch('/api/graph/stats');
-      if (!res.ok) {
-        throw new Error('Could not load dashboard stats right now.');
-      }
-      setStats(await res.json());
-    } catch (error: unknown) {
-      setStatsError(error instanceof Error ? error.message : 'Could not load dashboard stats right now.');
-      setStats(null);
-    } finally { setStatsLoading(false); }
-  };
 
   const loadLatestConviction = async () => {
     setConvictionLoading(true);
@@ -135,8 +106,6 @@ export default function DashboardContent() {
             : 'Could not load your latest directive right now.',
         );
       }
-      if (data.context_greeting) setContextGreeting(data.context_greeting);
-      // Only set conviction if there's an actual action (has an id)
       setConviction(data.id ? data : null);
     } catch (error: unknown) {
       setConvictionError(error instanceof Error ? error.message : 'Could not load your latest directive right now.');
@@ -207,51 +176,13 @@ export default function DashboardContent() {
           }`}>{emailActionMsg.text}</p>
         </div>
       )}
-      {statsError && (
-        <div className="px-5 py-3 rounded-xl border border-amber-500/30 bg-amber-500/10">
-          <p className="text-sm text-amber-200">{statsError}</p>
-        </div>
-      )}
       {convictionError && (
         <div className="px-5 py-3 rounded-xl border border-rose-500/30 bg-rose-500/10">
           <p className="text-sm text-rose-300">{convictionError}</p>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{contextGreeting ?? 'Loading context...'}</h1>
-          <p className="text-zinc-400 text-sm mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-        </div>
-        <button
-          onClick={() => { loadStats(); loadLatestConviction(); }}
-          disabled={statsLoading}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${statsLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </div>
-
-      {/* Signal line */}
-      {!statsLoading && stats && (
-        <div>
-          <p className="text-zinc-500 text-xs font-mono">
-            {stats.signalsTotal === 0 && stats.patternsActive === 0
-              ? 'Foldera is building your identity graph. Your first read arrives tomorrow at 7am.'
-              : `${stats.signalsTotal} signals · ${stats.commitmentsActive} commitments · ${stats.patternsActive} patterns detected`
-            }
-          </p>
-          {stats.lastSignalAt && (
-            <p className="text-zinc-600 text-xs font-mono mt-1">
-              Last signal: {formatTimeAgo(stats.lastSignalAt)} from {stats.lastSignalSource ?? 'unknown'}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Hero: Today's Directive — the ONE thing */}
+      {/* The ONE thing: today's directive */}
       <ConvictionCard
         action={conviction}
         isLoading={convictionLoading}
@@ -260,17 +191,11 @@ export default function DashboardContent() {
         onSkip={handleSkip}
         onOutcome={handleOutcome}
       />
+
+      {/* Next sync */}
+      <p className="text-center text-zinc-600 text-xs">
+        Next sync at 7am Pacific
+      </p>
     </div>
   );
-}
-
-function formatTimeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }

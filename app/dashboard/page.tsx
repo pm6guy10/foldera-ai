@@ -1,9 +1,8 @@
 import dynamic from 'next/dynamic';
 
-// Client Shell Pattern - load dashboard client-side only
 const DashboardContent = dynamic(
   () => import('@/components/dashboard/dashboard-content'),
-  { 
+  {
     ssr: false,
     loading: () => <DashboardSkeleton />,
   }
@@ -16,28 +15,22 @@ export default function DashboardPage() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      {/* Header skeleton */}
-      <div className="flex justify-between items-center">
-        <div className="space-y-2">
-          <div className="h-8 w-48 bg-zinc-800 rounded" />
-          <div className="h-4 w-32 bg-zinc-800 rounded" />
+      {/* Single card skeleton */}
+      <div className="bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-zinc-800">
+          <div className="h-3 w-28 bg-zinc-800 rounded" />
         </div>
-        <div className="h-10 w-32 bg-zinc-800 rounded" />
-      </div>
-      
-      {/* Metrics skeleton — matches 3-column layout in dashboard-content */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-16 sm:h-20 bg-zinc-900 rounded-xl border border-zinc-800" />
-        ))}
-      </div>
-      
-      {/* Main content skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        <div className="col-span-1 lg:col-span-2 h-64 lg:h-96 bg-zinc-900 rounded-xl border border-zinc-800" />
-        <div className="h-64 lg:h-96 bg-zinc-900 rounded-xl border border-zinc-800" />
+        <div className="p-5 space-y-3">
+          <div className="h-3 w-16 bg-zinc-800 rounded" />
+          <div className="h-6 bg-zinc-800 rounded w-full" />
+          <div className="h-6 bg-zinc-800 rounded w-4/5" />
+          <div className="h-4 bg-zinc-800 rounded w-3/4 mt-2" />
+          <div className="flex gap-3 mt-4">
+            <div className="h-12 bg-zinc-800 rounded flex-1" />
+            <div className="h-12 bg-zinc-800 rounded flex-1" />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-

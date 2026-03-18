@@ -106,21 +106,13 @@ export default function ConvictionCard({
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-3 border-b border-zinc-800 flex items-center justify-between">
+      <div className="px-5 py-3 border-b border-zinc-800">
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-cyan-400" />
           <span className="text-zinc-200 font-semibold text-xs uppercase tracking-widest font-mono">
-            Today's Directive
+            Today&apos;s Read
           </span>
         </div>
-        <button
-          onClick={onGenerate}
-          disabled={isLoading}
-          className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1 disabled:opacity-40"
-        >
-          {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-          {isLoading ? 'Generating...' : 'Regenerate'}
-        </button>
       </div>
 
       {/* Body */}
@@ -128,7 +120,7 @@ export default function ConvictionCard({
         {isLoading ? (
           <LoadingSkeleton />
         ) : !action ? (
-          <EmptyState onGenerate={onGenerate} />
+          <EmptyState />
         ) : phase === 'done' ? (
           <DoneState
             message={doneMsg}
@@ -214,11 +206,11 @@ function DoneState({ message, terminal, onReset }: { message: string; terminal: 
           onClick={onReset}
           className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
         >
-          Generate new directive →
+          Generate new read →
         </button>
       )}
       {terminal && (
-        <p className="text-zinc-600 text-xs">Your next directive arrives tomorrow morning.</p>
+        <p className="text-zinc-600 text-xs">Your next read arrives tomorrow morning.</p>
       )}
     </div>
   );
@@ -239,18 +231,12 @@ function LoadingSkeleton() {
   );
 }
 
-function EmptyState({ onGenerate }: { onGenerate: () => void }) {
+function EmptyState() {
   return (
     <div className="text-center py-6">
       <Shield className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-      <p className="text-zinc-300 text-sm font-medium mb-1">Your next directive arrives at 7am tomorrow.</p>
-      <p className="text-zinc-500 text-xs mb-4">Foldera is assembling one finished artifact from your latest signals.</p>
-      <button
-        onClick={onGenerate}
-        className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium transition-colors"
-      >
-        Generate a directive now
-      </button>
+      <p className="text-zinc-300 text-sm font-medium mb-1">Your next read arrives at 7am tomorrow.</p>
+      <p className="text-zinc-500 text-xs">Foldera is learning your patterns.</p>
     </div>
   );
 }

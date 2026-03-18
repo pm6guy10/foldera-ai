@@ -1,11 +1,9 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import Link from 'next/link';
+import { useSession, signOut } from 'next-auth/react';
 import { cn } from '@/lib/design-system';
 import { spacing } from '@/lib/design-system/spacing';
-import { Sidebar } from './sidebar';
-import { TopBar } from './top-bar';
-import { MobileNav } from './mobile-nav';
 import { TrialBanner } from '@/components/dashboard/trial-banner';
 
 interface DashboardShellProps {
@@ -13,46 +11,49 @@ interface DashboardShellProps {
 }
 
 export function DashboardShell({ children }: DashboardShellProps) {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const showChrome = status === 'authenticated';
 
   return (
     <div className="min-h-screen bg-[#000] text-zinc-50">
-      {/* Subtle grid pattern */}
-      <div
-        className="fixed inset-0 -z-10"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-        }}
-      />
-
       {showChrome ? (
-        <div className="flex">
-          {/* Sidebar — hidden on mobile, visible on lg+ */}
-          <Sidebar />
+        <div className="flex flex-col min-h-screen">
+          <TrialBanner />
+          {/* Minimal header: logo + sign out */}
+          <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl">
+            <div className="flex items-center justify-between h-14 px-6 max-w-3xl mx-auto w-full">
+              <Link href="/dashboard" className="flex items-center gap-3">
+                <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center">
+                  <span className="text-white font-bold text-xs">F</span>
+                </div>
+                <span className="text-zinc-50 font-semibold text-sm tracking-tight">Foldera</span>
+              </Link>
+              <div className="flex items-center gap-4">
+                <Link
+                  href="/dashboard/settings"
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  Settings
+                </Link>
+                <button
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </header>
 
-          {/* Main content — full width on mobile, offset by sidebar on lg+ */}
-          <div className="flex-1 ml-0 lg:ml-64">
-            <TrialBanner />
-            <TopBar />
-            {/* pb-20 on mobile = room for the fixed bottom tab bar */}
-            <main className={cn(spacing.page.padding, spacing.page.maxWidth, 'pb-20 lg:pb-6')}>
-              {children}
-            </main>
-          </div>
+          <main className={cn(spacing.page.padding, 'max-w-3xl mx-auto w-full py-8')}>
+            {children}
+          </main>
         </div>
       ) : (
         <main className={cn(spacing.page.padding, spacing.page.maxWidth, 'pb-10')}>
           {children}
         </main>
       )}
-
-      {/* Mobile bottom nav — only renders on < lg */}
-      {showChrome ? <MobileNav /> : null}
     </div>
   );
 }
