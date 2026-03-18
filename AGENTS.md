@@ -177,6 +177,14 @@ Known violation: `app/api/briefing/latest/route.ts` ignores errors on four paral
 - Signal content must be decrypted before extraction. If decrypt fails, skip the signal (don't mark processed).
 - Signal processor: max 5 signals per invocation (Vercel Hobby 10s timeout).
 
+## Session Start
+
+Before any commit or push, run:
+git pull --rebase origin main
+Use GIT_EDITOR=true if rebase prompts for
+a commit message in non-interactive
+environments.
+
 ## Before making changes
 
 1. Read this entire file first
