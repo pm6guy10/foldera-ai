@@ -15,10 +15,11 @@ Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env
 - **Email is the primary product**, dashboard is secondary. Done.
 - **All pushes go to main.** No feature branches.
 - **Session logs** appended to CLAUDE.md after every session.
-- **Only one cron active:** daily-brief at `0 14 * * *` (7am Pacific). All others disabled until their features are verified working. Do NOT re-add removed crons without explicit instruction. Done.
+- **Only one cron active:** `/api/cron/daily-brief` at `0 14 * * *` (7am Pacific). See `AGENTS.md` for the full schedule. Do NOT re-add removed crons without explicit instruction. Done.
 - **Dashboard is for users, not developers.** If it wouldn't make sense to a stranger, it doesn't belong on the main screen. No API usage, token counts, health monitors, or debug info on the dashboard. Done.
 - **One directive per email.** No multi-directive emails. Nothing below 70% confidence. No deprioritized/guilt section. No surveys. No learning signals. Done.
 - **Owner account (e40b7cd8) is always pro.** Never show trial/expired banners to the product owner. Done.
+- **Docs are updated by Codex on every session** per AGENTS.md mandatory audit maintenance rule.
 
 ## Build Status
 - Phase 1: done
@@ -28,10 +29,12 @@ Single-user production app. Auth via NextAuth. Ingest user: `INGEST_USER_ID` env
 
 ---
 
-## STATUS — MARCH 14, 2026
-Product is GTM-ready. All 12 QA checks passed
-(commit c16ab2a). No open blockers for first
-user testing.
+## STATUS — MARCH 18, 2026
+The core product loop is working in production:
+a real directive has been generated, emailed,
+and user-interacted. Remaining work is UX
+polish and multi-user hardening per
+`FOLDERA_MASTER_AUDIT.md`.
 
 ### What's live and working:
 - Living hero: cold read generates on LP load
@@ -40,8 +43,9 @@ user testing.
   "go deeper" flow + email capture
 - Brain: stale context guardrails + placeholder
   validation on every generation
-- Cron split: daily-generate at 6:50am UTC,
-  daily-send at 7:00am UTC (Hobby-safe)
+- Daily brief cron: `/api/cron/daily-brief`
+  at `0 14 * * *` (7am Pacific). See
+  `AGENTS.md` for the full schedule.
 - Approve/skip: email deep-links + dashboard
   buttons, feedback messages, learning loop wired
 - Onboarding: "Building your graph" animation,
@@ -56,22 +60,18 @@ user testing.
 - Mobile: all pages verified at 375px, zero
   overflow
 
-### What's deferred (post-first-user):
-- api_usage Supabase migration
-- Calendar event creation on approval
-- Outlook OAuth real-user verification
-- growth-scanner cron review
-- Agent crons (disabled, waiting for users)
-- Resend domain verification (for inbox
-  delivery vs spam)
-- Gemini LP design pass (visual polish,
-  not structural)
+### Current priorities:
+- Scorer hardcode removal (NR5-NR7)
+- UX mega-prompt pass (NR9)
+- `PRODUCTION_AUDIT.md` medium items now
+  tracked under NR14
 
-### DO NOT TOUCH until first user feedback:
-- Landing page structure (living hero is working)
-- Generator system prompt (brain is clean)
-- Cron split architecture (email pipeline works)
-- Approve/skip flow (end-to-end verified)
+### Remaining work:
+- UX polish across first-run, trust, and
+  dashboard states
+- Multi-user hardening before broader use
+- Audit follow-through per
+  `FOLDERA_MASTER_AUDIT.md`
 
 ---
 
@@ -340,9 +340,9 @@ After EVERY commit, before marking anything done:
 ---
 
 ## Build priority (in order)
-1. Wire calendar event creation on artifact approval (Google Calendar + Outlook Calendar API clients)
-2. Verify Outlook OAuth flow end-to-end with a real user
-3. Enable agent crons in vercel.json when first public user arrives
+1. Scorer hardcode removal (NR5-NR7)
+2. UX mega-prompt pass (NR9)
+3. `PRODUCTION_AUDIT.md` medium items tracked under NR14
 
 ## Intelligence Backlog (in priority order)
 
@@ -422,14 +422,14 @@ new data sources or capabilities:
    Post-10 users.
 
 ## Env vars required in Vercel
-ANTHROPIC_API_KEY, AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET,
-CRON_SECRET, DAILY_BRIEF_TO_EMAIL,
-ENCRYPTION_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, INGEST_USER_ID,
-NEXTAUTH_SECRET, NEXTAUTH_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
-NEXT_PUBLIC_SUPABASE_URL, RESEND_API_KEY, RESEND_FROM_EMAIL,
-RESEND_WEBHOOK_SECRET, STRIPE_PRO_PRICE_ID,
-STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
-SUPABASE_SERVICE_ROLE_KEY
+ANTHROPIC_API_KEY, ENCRYPTION_KEY, ENCRYPTION_KEY_LEGACY, CRON_SECRET,
+NEXTAUTH_SECRET, NEXTAUTH_URL, NEXT_PUBLIC_BASE_URL,
+NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, RESEND_FROM_EMAIL,
+AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET, AZURE_AD_TENANT_ID,
+GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, STRIPE_SECRET_KEY,
+STRIPE_PRO_PRICE_ID, STRIPE_WEBHOOK_SECRET,
+RESEND_WEBHOOK_SECRET, INGEST_USER_ID
 
 ### ENCRYPTION_KEY
 Required in production. 32-byte AES-256 key, base64-encoded.
