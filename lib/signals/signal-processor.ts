@@ -794,12 +794,10 @@ async function quarantineDeferredSignals(
     return [];
   }
 
-  const quarantineReason = 'quarantined_unrecoverable_ciphertext_after_recovery';
   const quarantineResult = await supabase
     .from('tkg_signals')
     .update({
       processed: true,
-      processing_error: quarantineReason,
       extracted_entities: [],
       extracted_commitments: [],
       extracted_dates: null,
