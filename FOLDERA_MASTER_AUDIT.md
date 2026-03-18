@@ -17,14 +17,14 @@
 | NR5 | `lib/briefing/scorer.ts` still needs a March 18 hardcode-removal pass to strip owner-specific job-search and MAS3-era assumptions out of candidate scoring so the brain stays user-agnostic in production. | Codex follow-up | NEEDS_REVIEW — March 18, 2026 |
 | NR6 | The scorer still needs a second hardcode-removal pass for season-specific urgency/stakes clamps and suppression rules that were useful during owner testing but should move to data/config before multi-user hardening. | Codex follow-up | NEEDS_REVIEW — March 18, 2026 |
 | NR7 | The scorer still needs a final hardcode-removal pass on fallback labeling and domain-specific heuristics so non-owner users cannot inherit Brandon-only assumptions in directive selection. | Codex follow-up | NEEDS_REVIEW — March 18, 2026 |
-| NR8 | Commit the March 18 governing doc updates in the repo root (`AGENTS.md`, `FOLDERA_MASTER_AUDIT.md`, `FOLDERA_MASTER.md`, `GROWTH.md`, and `DOC_RESOLUTION_CHANGELOG.md`) so the repo state matches the live operating rules. | Docs maintenance | NEEDS_REVIEW — March 18, 2026 |
+| NR8 | Commit the March 18 governing doc updates in the repo root (`AGENTS.md`, `FOLDERA_MASTER_AUDIT.md`, `FOLDERA_MASTER.md`, `GROWTH.md`, and `DOC_RESOLUTION_CHANGELOG.md`) so the repo state matches the live operating rules. | Docs maintenance | DONE — March 18, 2026, commit `3d02aa8` |
 | NR9 | Run the UX mega-prompt pass to tighten the landing/onboarding/dashboard/settings copy, empty states, and trust framing around the now-working daily brief loop. | Product follow-up | NEEDS_REVIEW — March 18, 2026 |
 | NR10 | Keep point-in-time GTM reference docs aligned with the single-source audit so historical strategy notes do not drift into operational guidance. | Docs maintenance | NEEDS_REVIEW — March 18, 2026 |
 | NR11 | Keep session-log hygiene and top-of-file operational notes aligned in `CLAUDE.md` so current-state guidance stays above the historical logs. | Docs maintenance | NEEDS_REVIEW — March 18, 2026 |
-| NR12 | Remove the unused npm dependencies `@stripe/stripe-js` and `recharts` from `package.json`/`package-lock.json` and confirm the production build still passes. | Dependency cleanup | NEEDS_REVIEW — March 18, 2026 |
-| NR13 | Update the top operational sections in `CLAUDE.md` to the March 18 product, env, cron, and priority state without touching historical session logs. | Docs maintenance | NEEDS_REVIEW — March 18, 2026 |
+| NR12 | Remove the unused npm dependencies `@stripe/stripe-js` and `recharts` from `package.json`/`package-lock.json` and confirm the production build still passes. | Dependency cleanup | DONE — March 18, 2026 |
+| NR13 | Update the top operational sections in `CLAUDE.md` to the March 18 product, env, cron, and priority state without touching historical session logs. | Docs maintenance | DONE — March 18, 2026, commit `3e0ffae` |
 | NR14 | Carry the remaining medium items from `PRODUCTION_AUDIT.md` into the master audit/backlog, then retire the redundant file so open work is tracked in one place. | Audit consolidation | NEEDS_REVIEW — March 18, 2026 |
-| NR15 | Delete stale `RELEASE_READINESS.md`, which still says READY on March 16 despite the March 17-18 blockers now tracked in the master audit. | Docs maintenance | NEEDS_REVIEW — March 18, 2026 |
+| NR15 | Delete stale `RELEASE_READINESS.md`, which still says READY on March 16 despite the March 17-18 blockers now tracked in the master audit. | Docs maintenance | DONE — March 18, 2026, commit `256ed39` |
 
 ---
 
