@@ -442,13 +442,6 @@ async function processBatch(
       }
     }
 
-    // Build extracted data arrays for write-back
-    const extractedEntities = extraction
-      ? (extraction.persons ?? []).filter(p => p.name?.trim()).map(p => p.name.trim())
-      : [];
-    const extractedCommitments = extraction
-      ? (extraction.commitments ?? []).filter(c => c.description?.trim()).map(c => c.description.trim())
-      : [];
     const extractedDates = extraction
       ? (extraction.commitments ?? [])
           .filter(c => c.due)
@@ -460,8 +453,8 @@ async function processBatch(
       .from('tkg_signals')
       .update({
         processed: true,
-        extracted_entities: extractedEntities.length > 0 ? extractedEntities : [],
-        extracted_commitments: extractedCommitments.length > 0 ? extractedCommitments : [],
+        extracted_entity_ids: entityIds.length > 0 ? entityIds : [],
+        extracted_commitment_ids: commitmentIds.length > 0 ? commitmentIds : [],
         extracted_dates: extractedDates.length > 0 ? extractedDates : null,
       })
       .eq('id', signal.id);
