@@ -226,6 +226,39 @@ export function getAuthOptions(): NextAuthOptions {
           ...(cookieDomain ? { domain: cookieDomain } : {}),
         },
       },
+      csrfToken: {
+        // Use __Secure- (not default __Host-) so the domain attribute is allowed.
+        name: `${useSecureCookies ? '__Secure-' : ''}next-auth.csrf-token`,
+        options: {
+          httpOnly: true,
+          sameSite: 'lax',
+          path: '/',
+          secure: useSecureCookies,
+          ...(cookieDomain ? { domain: cookieDomain } : {}),
+        },
+      },
+      state: {
+        name: `${useSecureCookies ? '__Secure-' : ''}next-auth.state`,
+        options: {
+          httpOnly: true,
+          sameSite: 'lax',
+          path: '/',
+          secure: useSecureCookies,
+          maxAge: 900,
+          ...(cookieDomain ? { domain: cookieDomain } : {}),
+        },
+      },
+      pkceCodeVerifier: {
+        name: `${useSecureCookies ? '__Secure-' : ''}next-auth.pkce.code_verifier`,
+        options: {
+          httpOnly: true,
+          sameSite: 'lax',
+          path: '/',
+          secure: useSecureCookies,
+          maxAge: 900,
+          ...(cookieDomain ? { domain: cookieDomain } : {}),
+        },
+      },
     },
     secret: process.env.NEXTAUTH_SECRET,
   };
