@@ -15,6 +15,19 @@ MODE: OPS - For cleanup, git hygiene, worktree management, file moves, local res
 
 The task prompt will specify which mode. If not specified, default to AUDIT for code changes and OPS for cleanup.
 
+## Session Log Rule
+
+Every session, regardless of mode, must append a session log to CLAUDE.md under ## Session Logs before the final push. The log must include:
+
+- Date and one-line session description
+- MODE used (AUDIT or OPS)
+- Commit hash(es)
+- Files changed
+- What was verified
+- Any unresolved issues
+
+This is not optional. No push happens without a session log entry.
+
 ## Communication Rules
 
 - Do not ask clarification questions when the answer can be derived from the repo, `CLAUDE.md`, or the stricter existing rule.
