@@ -1,10 +1,83 @@
 import { NextAuthOptions } from 'next-auth';
+import type { JWT } from 'next-auth/jwt';
 import GoogleProvider from 'next-auth/providers/google';
 import AzureADProvider from 'next-auth/providers/azure-ad';
 import { resolveSupabaseAuthUserId } from '@/lib/auth/supabase-auth-user';
 
 const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
+
+/**
+ * Silently refresh an expired Google access token using the stored refresh token.
+ * Returns the updated token fields, or sets an error flag if refresh fails.
+ */
+async function refreshGoogleToken(token: JWT): Promise<JWT> {
+  try {
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID || '',
+      client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+      grant_type: 'refresh_token',
+      refresh_token: token.refreshToken as string,
+    });
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('[auth] Google token refresh failed:', data);
+      return { ...token, error: 'RefreshAccessTokenError' };
+    }
+    console.log('[auth] Google token refreshed silently');
+    return {
+      ...token,
+      accessToken: data.access_token,
+      expiresAt: Math.floor(Date.now() / 1000) + (data.expires_in ?? 3600),
+      // Google only returns a new refresh_token if the old one is revoked
+      refreshToken: data.refresh_token ?? token.refreshToken,
+    };
+  } catch (err) {
+    console.error('[auth] Google token refresh threw:', err);
+    return { ...token, error: 'RefreshAccessTokenError' };
+  }
+}
+
+/**
+ * Silently refresh an expired Microsoft access token using the stored refresh token.
+ */
+async function refreshMicrosoftToken(token: JWT): Promise<JWT> {
+  try {
+    const tenantId = process.env.AZURE_AD_TENANT_ID || 'common';
+    const params = new URLSearchParams({
+      client_id: process.env.AZURE_AD_CLIENT_ID || '',
+      client_secret: process.env.AZURE_AD_CLIENT_SECRET || '',
+      grant_type: 'refresh_token',
+      refresh_token: token.refreshToken as string,
+      scope: 'openid profile email User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read offline_access',
+    });
+    const res = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('[auth] Microsoft token refresh failed:', data);
+      return { ...token, error: 'RefreshAccessTokenError' };
+    }
+    console.log('[auth] Microsoft token refreshed silently');
+    return {
+      ...token,
+      accessToken: data.access_token,
+      expiresAt: Math.floor(Date.now() / 1000) + (data.expires_in ?? 3600),
+      refreshToken: data.refresh_token ?? token.refreshToken,
+    };
+  } catch (err) {
+    console.error('[auth] Microsoft token refresh threw:', err);
+    return { ...token, error: 'RefreshAccessTokenError' };
+  }
+}
 
 function getProductionSessionCookieDomain(): string | undefined {
   if (process.env.NODE_ENV !== 'production') {
@@ -45,7 +118,7 @@ export function getAuthOptions(): NextAuthOptions {
             'https://www.googleapis.com/auth/calendar',
           ].join(' '),
           access_type: 'offline',
-          prompt: 'consent',
+          prompt: 'select_account',
         },
       },
     }),
@@ -60,7 +133,6 @@ export function getAuthOptions(): NextAuthOptions {
         authorization: {
           params: {
             scope: 'openid profile email User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read offline_access',
-            prompt: 'consent',
           },
         },
       })
@@ -90,6 +162,7 @@ export function getAuthOptions(): NextAuthOptions {
       async jwt({ token, account, user }) {
         try {
           if (account && user) {
+            // --- Initial sign-in: store OAuth tokens in JWT ---
             console.log(`[auth] jwt callback — provider: ${account.provider}, has_access_token: ${!!account.access_token}, has_refresh_token: ${!!account.refresh_token}`);
             token.accessToken = account.access_token;
             token.refreshToken = account.refresh_token;
@@ -147,7 +220,7 @@ export function getAuthOptions(): NextAuthOptions {
                       expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
                     });
                   } else {
-                    console.warn(`[auth] Microsoft sign-in missing refresh_token — prompt=consent should force it. Saving access_token only.`);
+                    console.warn('[auth] Microsoft sign-in missing refresh_token. Saving access_token only.');
                   }
                   // Also persist to user_tokens for background sync jobs
                   try {
@@ -171,6 +244,18 @@ export function getAuthOptions(): NextAuthOptions {
             } catch (err) {
               // Non-fatal — JWT still works; log and move on
               console.error('[auth] Failed to persist OAuth tokens:', err);
+            }
+          } else if (token.expiresAt && token.refreshToken) {
+            // --- Subsequent request: check if access token needs refresh ---
+            const expiresAt = typeof token.expiresAt === 'number' ? token.expiresAt : 0;
+            const nowSec = Math.floor(Date.now() / 1000);
+            // Refresh 5 minutes before actual expiry to avoid edge-case failures
+            if (nowSec >= expiresAt - 300) {
+              if (token.provider === 'google') {
+                return await refreshGoogleToken(token);
+              } else if (token.provider === 'azure-ad') {
+                return await refreshMicrosoftToken(token);
+              }
             }
           }
           return token;
