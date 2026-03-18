@@ -759,7 +759,7 @@ async function runSignalProcessingForUser(
         code: 'stale_signal_backlog_remaining',
         detail: 'Unprocessed signals older than 24 hours remained after the signal-processing budget.',
         meta,
-        success: false,
+        success: true,
         userId,
       };
     }

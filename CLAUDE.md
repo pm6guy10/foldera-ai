@@ -678,3 +678,27 @@ Deepen Microsoft sync coverage and fix Settings to distinguish total source cove
   - `FOLDERA_MASTER_AUDIT.md` — closed scorer audit items, pointed closures at main commit
 - **Verified:** `npm run build` passed (inferred from successful push to main)
 - **Unresolved:** None
+
+---
+
+## Session Log — 2026-03-18 (daily-brief cron fix)
+
+### Root cause
+The daily-brief cron (`/api/cron/daily-brief`) had not fired successfully in 48 hours. The execution path in `lib/cron/daily-brief.ts` runs signal processing first, which checks for unprocessed signals older than 24 hours. Two stale signals (encrypted under a pre-rotation key per NR2) could not be processed and remained in the backlog. The `stale_signal_backlog_remaining` code returned `success: false` (line 757-764), which triggered the hard gate at line 894 (`if (!signalResult.success)`), persisting a no-send outcome and skipping all downstream generation and email send.
+
+### Fix
+Changed `stale_signal_backlog_remaining` from `success: false` to `success: true` in `runSignalProcessingForUser()`. The stale backlog is now a non-blocking warning: it is still reported in the signal processing stage meta and message, but it no longer prevents the generate/send path from proceeding with whatever fresh signals exist.
+
+### Files changed
+- `lib/cron/daily-brief.ts` — changed `success: false` to `success: true` for the `stale_signal_backlog_remaining` return (line 762).
+- `FOLDERA_MASTER_AUDIT.md` — closed NR4.
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx playwright test` — 30 passed
+- Manual trigger not possible locally (requires production Supabase/API keys). Fix should be verified on next cron run (14:00 UTC) or via Settings "Run today's brief now" button after deploy.
+
+### Remaining blockers
+- NR1: Generator validation for compound `send_message` winner — not addressed (out of scope).
+- NR2: Legacy-encrypted Microsoft data — not addressed (requires `ENCRYPTION_KEY_LEGACY` or fresh re-auth).
+- NR3: Stale signal backlog contributing to thin context — mitigated by this fix (generation now proceeds despite stale signals), but the stale signals themselves remain unprocessable until NR2 is resolved.
