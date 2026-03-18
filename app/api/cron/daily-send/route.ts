@@ -22,9 +22,10 @@ async function handler(request: NextRequest) {
     const result = await runDailySend();
     return NextResponse.json({
       date: result.date,
-      sent: result.succeeded,
-      total: result.total,
-      status: toSafeDailyBriefStageStatus(result),
+      send: {
+        ...toSafeDailyBriefStageStatus(result),
+        results: result.results,
+      },
     });
   } catch (error: unknown) {
     return apiError(error, 'cron/daily-send');

@@ -22,9 +22,14 @@ async function handler(request: NextRequest) {
     const result = await runDailyGenerate();
     return NextResponse.json({
       date: result.date,
-      generated: result.succeeded,
-      total: result.total,
-      status: toSafeDailyBriefStageStatus(result),
+      generate: {
+        ...toSafeDailyBriefStageStatus(result),
+        results: result.results,
+      },
+      signal_processing: {
+        ...toSafeDailyBriefStageStatus(result.signalProcessing),
+        results: result.signalProcessing.results,
+      },
     });
   } catch (error: unknown) {
     return apiError(error, 'cron/daily-generate');

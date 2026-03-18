@@ -25,14 +25,10 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/daily-generate",
-      "schedule": "50 13 * * *"
-    },
-    {
-      "path": "/api/cron/daily-send",
+      "path": "/api/cron/daily-brief",
       "schedule": "0 14 * * *"
     },
-{
+    {
       "path": "/api/cron/sync-google",
       "schedule": "0 2 * * *"
     },

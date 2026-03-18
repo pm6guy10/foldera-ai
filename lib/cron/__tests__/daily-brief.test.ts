@@ -4,7 +4,7 @@ import { runDailyGenerate, runDailySend } from '../daily-brief';
 import { generateDirective, validateDirectiveForPersistence } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
-import { processUnextractedSignals } from '@/lib/signals/signal-processor';
+import { countUnprocessedSignals, processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
 import { sendDailyDirective } from '@/lib/email/resend';
@@ -46,6 +46,26 @@ const mockSupabase = {
               error: null,
             }),
           };
+        },
+      };
+    }
+
+    if (table === 'tkg_signals') {
+      return {
+        select() {
+          const query = {
+            eq() {
+              return query;
+            },
+            lt() {
+              return Promise.resolve({
+                count: 0,
+                error: null,
+              });
+            },
+          };
+
+          return query;
         },
       };
     }
@@ -162,11 +182,14 @@ vi.mock('@/lib/extraction/conversation-extractor', () => ({
 }));
 
 vi.mock('@/lib/signals/signal-processor', () => ({
+  countUnprocessedSignals: vi.fn().mockResolvedValue(0),
   processUnextractedSignals: vi.fn().mockResolvedValue({
     signals_processed: 0,
     entities_upserted: 0,
     commitments_created: 0,
     topics_merged: 0,
+    deferred_signal_ids: [],
+    errors: [],
   }),
 }));
 
@@ -317,11 +340,13 @@ describe('runDailyGenerate candidate logging', () => {
     vi.mocked(validateDirectiveForPersistence).mockReset();
     vi.mocked(generateArtifact).mockReset();
     vi.mocked(extractFromConversation).mockClear();
+    vi.mocked(countUnprocessedSignals).mockReset();
     vi.mocked(processUnextractedSignals).mockClear();
     vi.mocked(summarizeSignals).mockClear();
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockReset();
     vi.mocked(sendDailyDirective).mockClear();
     vi.mocked(validateDirectiveForPersistence).mockReturnValue([]);
+    vi.mocked(countUnprocessedSignals).mockResolvedValue(0);
   });
 
   it('persists top candidate discovery on successful directive generation', async () => {
@@ -336,7 +361,12 @@ describe('runDailyGenerate candidate logging', () => {
 
     const result = await runDailyGenerate();
 
-    expect(result.results).toEqual([{ code: 'generated', success: true }]);
+    expect(result.signalProcessing.results).toEqual([
+      expect.objectContaining({ code: 'no_unprocessed_signals', success: true }),
+    ]);
+    expect(result.results).toEqual([
+      expect.objectContaining({ code: 'pending_approval_persisted', success: true }),
+    ]);
     expect(mockSupabase.insertedActions).toHaveLength(1);
     const saved = mockSupabase.insertedActions[0];
     expect(saved.status).toBe('pending_approval');
@@ -371,11 +401,11 @@ describe('runDailyGenerate candidate logging', () => {
     const result = await runDailyGenerate();
 
     expect(result.results).toEqual([
-      {
-        code: 'nothing_today',
+      expect.objectContaining({
+        code: 'no_send_persisted',
         detail: 'No ranked daily brief candidate.',
         success: true,
-      },
+      }),
     ]);
     expect(result.message).toContain('No pending_approval brief was persisted');
     expect(result.message).toContain('No ranked daily brief candidate.');
@@ -393,11 +423,11 @@ describe('runDailyGenerate candidate logging', () => {
     const result = await runDailyGenerate();
 
     expect(result.results).toEqual([
-      {
-        code: 'nothing_today',
+      expect.objectContaining({
+        code: 'no_send_persisted',
         detail: 'Artifact generation failed.',
         success: true,
-      },
+      }),
     ]);
     const saved = mockSupabase.insertedActions[0];
     expect(saved.status).toBe('skipped');
@@ -407,10 +437,40 @@ describe('runDailyGenerate candidate logging', () => {
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[0].decision).toBe('selected');
   });
 
+  it('persists explicit no-send outcomes when fewer than 3 candidates were evaluated', async () => {
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective({
+      generationLog: buildGenerationLog({
+        candidateDiscovery: {
+          ...buildGenerationLog().candidateDiscovery!,
+          candidateCount: 2,
+          topCandidates: buildGenerationLog().candidateDiscovery!.topCandidates.slice(0, 2),
+        },
+      }),
+    }));
+
+    const result = await runDailyGenerate();
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'no_send_persisted',
+        detail: 'Acceptance gate blocked send because fewer than 3 candidates were evaluated.',
+        success: true,
+      }),
+    ]);
+    expect(generateArtifact).not.toHaveBeenCalled();
+    const saved = mockSupabase.insertedActions[0];
+    expect(saved.status).toBe('skipped');
+    expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates).toHaveLength(2);
+    expect((saved.execution_result as Record<string, any>).generation_log.reason).toBe(
+      'Acceptance gate blocked send because fewer than 3 candidates were evaluated.',
+    );
+  });
+
   it('surfaces a persisted no-send blocker during send when no pending action exists', async () => {
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
     mockSupabase.actionRows = [
       {
+        id: 'blocked-1',
         user_id: USER_ID,
         status: 'skipped',
         action_type: 'do_nothing',
@@ -430,11 +490,11 @@ describe('runDailyGenerate candidate logging', () => {
     const result = await runDailySend();
 
     expect(result.results).toEqual([
-      {
-        code: 'nothing_today',
+      expect.objectContaining({
+        code: 'no_send_blocker_persisted',
         detail: 'Generation validation failed: drafted_email recipient must be a real email address',
         success: true,
-      },
+      }),
     ]);
     expect(result.message).toContain('No brief email was sent for 1 user');
     expect(result.message).toContain('drafted_email recipient must be a real email address');

@@ -30,7 +30,7 @@ async function handler(request: NextRequest) {
       { status: getTriggerResponseStatus(signalProcessing, generate, send) },
     );
   } catch (error: unknown) {
-    return apiError(error, 'cron/trigger');
+    return apiError(error, 'cron/daily-brief');
   }
 }
 
