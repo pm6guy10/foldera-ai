@@ -7,6 +7,14 @@
 - Read every file you plan to modify, inspect recent history, and trace the relevant data path before making changes.
 - Complete the requested task end-to-end without broadening scope.
 
+## Execution Modes
+
+MODE: AUDIT - For code changes, debugging, architecture, auth, database, cron, sync, encryption, prompts, tests, or anything user-facing. Read all relevant repo docs. Trace execution paths. Verify with build and runtime checks. Be thorough.
+
+MODE: OPS - For cleanup, git hygiene, worktree management, file moves, local resets, log inspection. Read only AGENTS.md. Use direct commands. No temp scripts unless a direct command fails twice. Keep output minimal.
+
+The task prompt will specify which mode. If not specified, default to AUDIT for code changes and OPS for cleanup.
+
 ## Communication Rules
 
 - Do not ask clarification questions when the answer can be derived from the repo, `CLAUDE.md`, or the stricter existing rule.
