@@ -538,22 +538,21 @@ function validateArtifact(
 ): ConvictionArtifact {
   switch (actionType) {
     case 'send_message': {
-      const recipient = isNonEmptyString(parsed?.recipient) ? parsed.recipient : parsed?.to;
+      const recipient = isNonEmptyString(parsed?.recipient) ? parsed.recipient.trim() : (isNonEmptyString(parsed?.to) ? parsed.to.trim() : '');
       const subject = parsed?.subject;
       const body = parsed?.body;
-      if (!isNonEmptyString(recipient) || !isNonEmptyString(subject) || !isNonEmptyString(body)) {
-        throw new Error('Email artifact missing required fields');
+      if (!isNonEmptyString(subject) || !isNonEmptyString(body)) {
+        throw new Error('Email artifact missing required fields (subject and body are required)');
       }
-      if (
-        containsPlaceholderText(recipient) ||
-        containsPlaceholderText(subject.trim()) ||
-        containsPlaceholderText(body.trim())
-      ) {
+      if (recipient && containsPlaceholderText(recipient)) {
+        throw new Error('Email artifact recipient contains placeholder text');
+      }
+      if (containsPlaceholderText(subject.trim()) || containsPlaceholderText(body.trim())) {
         throw new Error('Email artifact contains placeholder text');
       }
       return {
         type: 'email',
-        to: recipient.trim(),
+        to: recipient,
         subject: subject.trim(),
         body: body.trim(),
         draft_type: (parsed as EmailArtifact).draft_type || 'email_compose',

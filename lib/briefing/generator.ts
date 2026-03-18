@@ -432,8 +432,9 @@ function expectedArtifactRules(actionType: ActionType): string {
     case 'send_message':
       return [
         'Action type is send_message. artifact_type must be drafted_email.',
-        'Artifact JSON must include recipient or to, subject, and body.',
-        'Use a real email address from the dossier if one is present. Never fabricate an address.',
+        'Artifact JSON must include subject and body. recipient is strongly preferred but optional.',
+        'Use a real email address from the dossier or SUGGESTED_RECIPIENT if one is present. Never fabricate an address.',
+        'If no real email address is available in the context, set recipient to an empty string. The user will fill it on approval.',
       ].join('\n');
     case 'write_document':
       return [
@@ -477,7 +478,7 @@ function expectedArtifactSchema(actionType: ActionType): string {
   switch (actionType) {
     case 'send_message':
       return `{
-  "recipient": "person@example.com",
+  "recipient": "person@example.com or empty string if no real address is available",
   "subject": "Specific subject line",
   "body": "Complete email body with greeting and sign-off"
 }`;
@@ -525,6 +526,17 @@ function expectedArtifactSchema(actionType: ActionType): string {
   }
 }
 
+function extractBestRecipientEmail(relationshipContext: string | undefined): string | null {
+  if (!relationshipContext) return null;
+  const emailPattern = /<([^@\s>]+@[^@\s>]+\.[^@\s>]+)>/g;
+  let match: RegExpExecArray | null;
+  const candidates: string[] = [];
+  while ((match = emailPattern.exec(relationshipContext)) !== null) {
+    candidates.push(match[1]);
+  }
+  return candidates.length > 0 ? candidates[0] : null;
+}
+
 function buildGenerationPrompt(context: PromptContext): string {
   const { winner, deprioritized, approvedRecently, skippedRecently } = context;
   const pinnedConstraints = getPinnedConstraintPrompt(context.userId);
@@ -558,7 +570,7 @@ function buildGenerationPrompt(context: PromptContext): string {
     `total=${winner.score.toFixed(2)}`,
   ].join(', ');
 
-  return [
+  const sections = [
     `TODAY: ${today()}`,
     `WINNING_LOOP_TITLE:\n${winner.title}`,
     `WINNING_LOOP_TYPE:\n${winner.type}`,
@@ -569,12 +581,24 @@ function buildGenerationPrompt(context: PromptContext): string {
     `PRIMARY_EVIDENCE:\n${winner.content}`,
     `RELATED_SIGNALS:\n${relatedSignals}`,
     `RELATIONSHIP_CONTEXT:\n${winner.relationshipContext ?? 'None'}`,
+  ];
+
+  if (winner.suggestedActionType === 'send_message') {
+    const bestEmail = extractBestRecipientEmail(winner.relationshipContext);
+    sections.push(
+      `SUGGESTED_RECIPIENT:\n${bestEmail ?? 'No email found in dossier. Use the most relevant contact email from RELATIONSHIP_CONTEXT, or leave recipient empty if none is available.'}`,
+    );
+  }
+
+  sections.push(
     `RUNNER_UPS_REJECTED:\n${runnerUps}`,
     `RECENTLY_APPROVED:\n${approvedLines}`,
     `RECENTLY_SKIPPED:\n${skippedLines}`,
     `ARTIFACT_RULES:\n${expectedArtifactRules(winner.suggestedActionType)}`,
     `ARTIFACT_JSON_SCHEMA:\n${expectedArtifactSchema(winner.suggestedActionType)}`,
-  ].join('\n\n');
+  );
+
+  return sections.join('\n\n');
 }
 
 function normalizeArtifactPayload(
@@ -613,8 +637,13 @@ function normalizeArtifactPayload(
     }
   }
 
-  if (artifactType === 'drafted_email' && artifact.recipient === undefined && artifact.to !== undefined) {
-    artifact.recipient = artifact.to;
+  if (artifactType === 'drafted_email') {
+    if (artifact.recipient === undefined && artifact.to !== undefined) {
+      artifact.recipient = artifact.to;
+    }
+    if (artifact.to === undefined && artifact.recipient !== undefined) {
+      artifact.to = artifact.recipient;
+    }
   }
 
   return artifact;
@@ -670,17 +699,20 @@ function validateArtifactPayload(
 ): void {
   switch (actionType) {
     case 'send_message': {
-      const recipient = validateStringField(
-        artifact.recipient ?? artifact.to,
-        'drafted_email recipient',
-        issues,
-        { allowShort: true },
-      );
+      const rawRecipient = artifact.recipient ?? artifact.to;
+      const recipientPresent = isNonEmptyString(rawRecipient);
+      if (recipientPresent) {
+        const recipient = (rawRecipient as string).trim();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(recipient)) {
+          issues.push('drafted_email recipient must be a real email address');
+        }
+        if (containsPlaceholderText(recipient)) {
+          issues.push('drafted_email recipient contains placeholder text');
+        }
+      }
+      // recipient is optional — the user can fill it on approval
       const subject = validateStringField(artifact.subject, 'drafted_email subject', issues, { allowShort: true });
       validateStringField(artifact.body, 'drafted_email body', issues);
-      if (recipient && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(recipient)) {
-        issues.push('drafted_email recipient must be a real email address');
-      }
       if (subject && BANNED_DIRECTIVE_PATTERNS.some((pattern) => pattern.test(subject))) {
         issues.push('drafted_email subject is vague');
       }

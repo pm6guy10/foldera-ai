@@ -702,3 +702,31 @@ Changed `stale_signal_backlog_remaining` from `success: false` to `success: true
 - NR1: Generator validation for compound `send_message` winner — not addressed (out of scope).
 - NR2: Legacy-encrypted Microsoft data — not addressed (requires `ENCRYPTION_KEY_LEGACY` or fresh re-auth).
 - NR3: Stale signal backlog contributing to thin context — mitigated by this fix (generation now proceeds despite stale signals), but the stale signals themselves remain unprocessable until NR2 is resolved.
+
+---
+
+## Session Log — 2026-03-18 (NR1/NR3 compound send_message fix)
+
+### Root cause
+Compound `send_message` winners from the scorer produced valid high-scoring candidates, but the generator's artifact validation required a valid email recipient (`to`/`recipient`) that the LLM could not reliably produce from compound loop context. The relationship context contained emails in freeform `Name <email>` format, but compound winners often reference multiple people or don't clearly indicate the target recipient. The generator's `validateArtifactPayload` treated missing recipient as a hard validation failure, and even with one retry the LLM could not resolve the ambiguity, so every compound `send_message` winner resulted in `Directive generation failed`.
+
+### Files changed
+- `lib/briefing/generator.ts` — Four changes:
+  1. Added `extractBestRecipientEmail()` helper that parses `<email>` patterns from relationship context and returns the first match.
+  2. `buildGenerationPrompt()` now adds a `SUGGESTED_RECIPIENT` section when the winner is `send_message`, giving the LLM a clear email to use.
+  3. `validateArtifactPayload` for `send_message`: recipient is now optional. Subject and body remain required. If recipient is present, it must be a real email (not a placeholder). If absent, validation passes — the user fills it on approval.
+  4. `normalizeArtifactPayload`: now normalizes `recipient` → `to` bidirectionally (was only `to` → `recipient`).
+  5. `expectedArtifactRules` and `expectedArtifactSchema` for `send_message`: updated to tell the LLM that recipient is preferred but optional.
+- `lib/conviction/artifact-generator.ts` — `validateArtifact` for `send_message`: now requires only `subject` and `body`. Empty `to` is allowed (persisted as empty string for user to fill on approval). Placeholder check only runs when recipient is non-empty.
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx playwright test` — 30 passed
+- Code path trace: scorer compound `send_message` winner → `hydrateWinnerRelationshipContext` (adds emails) → `buildGenerationPrompt` (extracts best email into `SUGGESTED_RECIPIENT`) → LLM generates `drafted_email` artifact → `normalizeArtifactPayload` (bidirectional `to`/`recipient`) → `validateArtifactPayload` (passes with or without recipient) → `generateArtifact` / `validateArtifact` (passes with subject+body only) → `validateDirectiveForPersistence` (passes) → persisted as `pending_approval`
+
+### Supabase / migrations
+- No new migrations
+
+### Audit updates
+- NR1: DONE — March 18, 2026
+- NR3: DONE — March 18, 2026
