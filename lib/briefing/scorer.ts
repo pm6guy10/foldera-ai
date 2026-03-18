@@ -18,11 +18,6 @@
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus } from '@/lib/encryption';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
-import {
-  applyPinnedGoals,
-  getCandidateConstraintViolations,
-  shouldSuppressReflectivePatterns,
-} from './pinned-constraints';
 import type {
   ActionType,
   CandidateScoreBreakdown,
@@ -82,6 +77,12 @@ function isInternalNoSend(executionResult: unknown): boolean {
 // ---------------------------------------------------------------------------
 
 export interface ScoreBreakdown extends CandidateScoreBreakdown {}
+
+interface GoalRow {
+  goal_text: string;
+  priority: number;
+  goal_category: string;
+}
 
 export interface MatchedGoal {
   text: string;
@@ -212,9 +213,59 @@ function goalKeywords(goalText: string): string[] {
     .filter(w => w.length >= 4 && !stopwords.has(w));
 }
 
+type GoalKeywordIndex = Map<string, string[]>;
+
+function buildGoalKeywordIndex(goals: GoalRow[]): GoalKeywordIndex {
+  const byCategory = new Map<string, Set<string>>();
+
+  for (const goal of goals) {
+    const category = goal.goal_category.trim();
+    if (!category) continue;
+
+    if (!byCategory.has(category)) {
+      byCategory.set(category, new Set<string>());
+    }
+
+    for (const keyword of goalKeywords(goal.goal_text)) {
+      byCategory.get(category)?.add(keyword);
+    }
+  }
+
+  return new Map(
+    [...byCategory.entries()]
+      .map(([category, keywords]) => [category, [...keywords]] as [string, string[]])
+      .filter(([, keywords]) => keywords.length > 0),
+  );
+}
+
+function inferGoalCategory(text: string, goalKeywordIndex: GoalKeywordIndex): string | null {
+  const lower = text.toLowerCase();
+  let bestMatch: { category: string; matchedCount: number; keywordCount: number } | null = null;
+
+  for (const [category, keywords] of goalKeywordIndex.entries()) {
+    const matchedCount = keywords.filter((keyword) => lower.includes(keyword)).length;
+    const passesThreshold = matchedCount >= 2 || (matchedCount === 1 && keywords.length <= 3);
+    if (!passesThreshold) continue;
+
+    if (
+      !bestMatch ||
+      matchedCount > bestMatch.matchedCount ||
+      (matchedCount === bestMatch.matchedCount && keywords.length < bestMatch.keywordCount)
+    ) {
+      bestMatch = {
+        category,
+        matchedCount,
+        keywordCount: keywords.length,
+      };
+    }
+  }
+
+  return bestMatch?.category ?? null;
+}
+
 function matchGoal(
   text: string,
-  goals: Array<{ goal_text: string; priority: number; goal_category: string }>,
+  goals: GoalRow[],
 ): MatchedGoal | null {
   const lower = text.toLowerCase();
   let best: MatchedGoal | null = null;
@@ -470,16 +521,14 @@ function inferActionType(text: string, loopType: 'commitment' | 'signal' | 'rela
 // Infer domain from goal match or content
 // ---------------------------------------------------------------------------
 
-function inferDomain(matchedGoal: MatchedGoal | null, text: string): string {
+function inferDomain(
+  matchedGoal: MatchedGoal | null,
+  text: string,
+  goalKeywordIndex: GoalKeywordIndex,
+  fallbackCategory: string,
+): string {
   if (matchedGoal) return matchedGoal.category;
-
-  const lower = text.toLowerCase();
-  if (/\bgrowth.signal\b|growth_reddit|growth_twitter|growth_hackernews|acquire.*user|paying.*user|customer.*base|growth.*scanner|convert.*visitor/.test(lower)) return 'growth';
-  if (/\b(salary|money|financial|income|runway|payment|budget)\b/.test(lower)) return 'financial';
-  if (/\b(job|career|role|application|interview|hire|position|mas3|state government|government|dshs|doh|hca|public health)\b/.test(lower)) return 'career';
-  if (/\b(family|wife|children|baby|pregnancy|health)\b/.test(lower)) return 'family';
-  if (/\b(foldera|build|code|deploy|feature|bug)\b/.test(lower)) return 'project';
-  return 'career';
+  return inferGoalCategory(text, goalKeywordIndex) ?? fallbackCategory;
 }
 
 // ---------------------------------------------------------------------------
@@ -516,20 +565,12 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
   ]);
 
   const signals = signalsRes.data ?? [];
-  const goals = (goalsRes.data ?? []) as Array<{ goal_text: string; priority: number; goal_category: string }>;
+  const goals = (goalsRes.data ?? []) as GoalRow[];
+  const goalKeywordIndex = buildGoalKeywordIndex(goals);
 
-  if (signals.length < 10 || goals.length === 0) return [];
+  if (signals.length < 10 || goals.length === 0 || goalKeywordIndex.size === 0) return [];
 
   // Step 1: Calculate Signal_Density per domain
-  // Classify each signal into a domain using keyword matching
-  const domainKeywords: Record<string, RegExp> = {
-    career: /\b(job|career|application|interview|hire|position|resume|salary|offer|role|employer|recruiting|linkedin|applied|posting)\b/i,
-    financial: /\b(money|financial|income|payment|budget|invest|savings|debt|expense|revenue|profit|cost|price)\b/i,
-    relationship: /\b(family|wife|husband|partner|children|friend|parent|marriage|dating|relationship)\b/i,
-    health: /\b(health|exercise|doctor|medical|fitness|sleep|diet|weight|mental|therapy|anxiety)\b/i,
-    project: /\b(build|code|deploy|feature|bug|launch|product|startup|release|ship|develop|design)\b/i,
-  };
-
   const domainSignalCounts: Record<string, { count: number; signals: string[] }> = {};
   let totalClassified = 0;
 
@@ -544,17 +585,17 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
     if (content.length < 20) continue;
     if (isSelfReferentialSignal(content)) continue;
 
-    for (const [domain, regex] of Object.entries(domainKeywords)) {
-      const matches = content.match(regex);
-      if (matches && matches.length > 0) {
-        if (!domainSignalCounts[domain]) domainSignalCounts[domain] = { count: 0, signals: [] };
-        domainSignalCounts[domain].count++;
-        if (domainSignalCounts[domain].signals.length < 5) {
-          domainSignalCounts[domain].signals.push(content.slice(0, 200));
-        }
-        totalClassified++;
-      }
+    const revealedDomain = inferGoalCategory(content, goalKeywordIndex);
+    if (!revealedDomain) continue;
+
+    if (!domainSignalCounts[revealedDomain]) {
+      domainSignalCounts[revealedDomain] = { count: 0, signals: [] };
     }
+    domainSignalCounts[revealedDomain].count++;
+    if (domainSignalCounts[revealedDomain].signals.length < 5) {
+      domainSignalCounts[revealedDomain].signals.push(content.slice(0, 200));
+    }
+    totalClassified++;
   }
 
   logDecryptSkip(userId, 'scorer:revealed_goals', skippedRows);
@@ -650,7 +691,7 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
   const antiPatterns: AntiPattern[] = [];
 
   try {
-    const [actionsRes, signalsRes, commitmentsRes] = await Promise.all([
+    const [actionsRes, signalsRes, commitmentsRes, goalsRes] = await Promise.all([
       supabase
         .from('tkg_actions')
         .select('id, directive_text, action_type, status, generated_at, executed_at, outcome_closed, feedback_weight')
@@ -673,11 +714,20 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
         .gte('created_at', thirtyDaysAgo)
         .order('created_at', { ascending: false })
         .limit(200),
+      supabase
+        .from('tkg_goals')
+        .select('goal_text, priority, goal_category')
+        .eq('user_id', userId)
+        .gte('priority', 1)
+        .order('priority', { ascending: false })
+        .limit(20),
     ]);
 
     const actions = actionsRes.data ?? [];
     const signals = signalsRes.data ?? [];
     const commitments = commitmentsRes.data ?? [];
+    const goals = (goalsRes.data ?? []) as GoalRow[];
+    const goalKeywordIndex = buildGoalKeywordIndex(goals);
 
     // Need minimum data for meaningful detection
     if (actions.length < 5) return antiPatterns;
@@ -704,13 +754,7 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
         if (content.length < 20) continue;
         if (isSelfReferentialSignal(content)) continue;
 
-        const lower = content.toLowerCase();
-        let domain = 'other';
-        if (/\b(job|career|application|interview|hire|position|resume|salary|offer|role)\b/.test(lower)) domain = 'career';
-        else if (/\b(money|financial|income|payment|budget|invest)\b/.test(lower)) domain = 'financial';
-        else if (/\b(build|code|deploy|feature|product|startup)\b/.test(lower)) domain = 'project';
-        else if (/\b(family|wife|children|health|therapy)\b/.test(lower)) domain = 'personal';
-
+        const domain = inferGoalCategory(content, goalKeywordIndex) ?? 'other';
         if (domain === 'other') continue;
 
         if (!domainBuckets[domain]) domainBuckets[domain] = { count: 0, signals: [] };
@@ -734,24 +778,14 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
           const decisionApprovals = actions.filter(a =>
             (a.action_type as string) === 'make_decision' &&
             ((a.status as string) === 'executed' || (a.status as string) === 'approved') &&
-            (a.directive_text as string ?? '').toLowerCase().match(
-              domain === 'career' ? /\b(job|career|offer|position|role)\b/ :
-              domain === 'financial' ? /\b(money|financial|budget|invest)\b/ :
-              domain === 'project' ? /\b(build|code|product|launch)\b/ :
-              /\b(family|health|personal)\b/,
-            ),
+            inferGoalCategory(a.directive_text as string ?? '', goalKeywordIndex) === domain,
           );
 
           if (decisionApprovals.length === 0) {
             // Also count research actions on this topic for more evidence
             const researchActions = actions.filter(a =>
               (a.action_type as string) === 'research' &&
-              (a.directive_text as string ?? '').toLowerCase().match(
-                domain === 'career' ? /\b(job|career|offer|position|role)\b/ :
-                domain === 'financial' ? /\b(money|financial|budget|invest)\b/ :
-                domain === 'project' ? /\b(build|code|product|launch)\b/ :
-                /\b(family|health|personal)\b/,
-              ),
+              inferGoalCategory(a.directive_text as string ?? '', goalKeywordIndex) === domain,
             );
 
             const velocityMultiple = data.count / baseline;
@@ -893,11 +927,7 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
         // Count domains of new commitments to find where novelty-seeking is concentrated
         const noveltyDomains: Record<string, number> = {};
         for (const c of recentCommitments) {
-          const lower = (c.description as string ?? '').toLowerCase();
-          let domain = 'other';
-          if (/\b(job|career|application|interview)\b/.test(lower)) domain = 'career';
-          else if (/\b(build|code|product|feature)\b/.test(lower)) domain = 'project';
-          else if (/\b(money|financial|invest)\b/.test(lower)) domain = 'financial';
+          const domain = inferGoalCategory(c.description as string ?? '', goalKeywordIndex) ?? 'other';
           noveltyDomains[domain] = (noveltyDomains[domain] ?? 0) + 1;
         }
         const topNoveltyDomain = Object.entries(noveltyDomains).sort(([, a], [, b]) => b - a)[0]?.[0] ?? 'general';
@@ -1291,8 +1321,7 @@ function extractPersonNames(text: string): string[] {
     'Review', 'Write', 'Check', 'Monday', 'Tuesday', 'Wednesday', 'Thursday',
     'Friday', 'Saturday', 'Sunday', 'January', 'February', 'March', 'April',
     'May', 'June', 'July', 'August', 'September', 'October', 'November',
-    'December', 'Foldera', 'Google', 'Microsoft', 'Outlook', 'Gmail',
-    'Calendar', 'Stripe', 'The', 'This', 'That', 'Your', 'Our', 'Their',
+    'December', 'Calendar', 'The', 'This', 'That', 'Your', 'Our', 'Their',
     'Option', 'Decision', 'Document', 'Meeting', 'Project', 'None',
   ]);
   const matches = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g) ?? [];
@@ -1636,7 +1665,6 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const supabase = createServerClient();
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const oneHundredEightyDaysAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
-  const suppressReflectivePatterns = shouldSuppressReflectivePatterns(userId);
 
   // -----------------------------------------------------------------------
   // PRE-SCORING: Anti-Pattern Detection (Session 3)
@@ -1644,7 +1672,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // The winning anti-pattern becomes the directive — a mirror, not a task.
   // -----------------------------------------------------------------------
 
-  const antiPatterns = suppressReflectivePatterns ? [] : await detectAntiPatterns(userId);
+  const antiPatterns = await detectAntiPatterns(userId);
 
   if (antiPatterns.length > 0 && antiPatterns[0].score >= 0.5) {
     const ap = antiPatterns[0];
@@ -1788,10 +1816,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     })
     .filter((signal: any) => signal && !isSelfReferentialSignal(signal.content));
   const entities = entitiesRes.data ?? [];
-  const goals = applyPinnedGoals(
-    userId,
-    (goalsRes.data ?? []) as Array<{ goal_text: string; priority: number; goal_category: string }>,
-  );
+  const goals = (goalsRes.data ?? []) as GoalRow[];
+  const goalKeywordIndex = buildGoalKeywordIndex(goals);
   logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
 
   // Also fetch ALL recent signals (not just 7d) for context enrichment
@@ -1815,8 +1841,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       return decrypted.plaintext;
     })
     .filter((content: string | null): content is string => {
-      if (!content || isSelfReferentialSignal(content)) return false;
-      return getCandidateConstraintViolations(userId, content).length === 0;
+      if (!content) return false;
+      return !isSelfReferentialSignal(content);
     });
   logDecryptSkip(userId, 'scorer:recent_signal_context', contextDecryptSkips);
 
@@ -1837,15 +1863,11 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     entityPatterns?: unknown;
     entityName?: string;
   }> = [];
-  let suppressedCandidates = 0;
+  const suppressedCandidates = 0;
 
   // 1. Commitments
   for (const c of commitments) {
     const text = `${c.description}${c.source_context ? ' — ' + c.source_context : ''}`;
-    if (getCandidateConstraintViolations(userId, text).length > 0) {
-      suppressedCandidates++;
-      continue;
-    }
     const mg = matchGoal(text, goals);
     const actionType = inferActionType(text, 'commitment');
 
@@ -1857,7 +1879,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       actionType,
       urgency: deadlineUrgency(c.due_at, c.implied_due_at),
       matchedGoal: mg,
-      domain: inferDomain(mg, text),
+      domain: inferDomain(mg, text, goalKeywordIndex, 'general'),
       sourceSignals: [
         {
           kind: 'commitment',
@@ -1875,10 +1897,6 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     if (!text || text.length < 20) continue;
     // Skip signals that are Foldera's own self-fed directives
     if (isSelfReferentialSignal(text)) continue;
-    if (getCandidateConstraintViolations(userId, text).length > 0) {
-      suppressedCandidates++;
-      continue;
-    }
     const mg = matchGoal(text, goals);
     const actionType = inferActionType(text, 'signal');
 
@@ -1890,7 +1908,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       actionType,
       urgency: signalUrgency(s.occurred_at as string),
       matchedGoal: mg,
-      domain: inferDomain(mg, text),
+      domain: inferDomain(mg, text, goalKeywordIndex, 'general'),
       sourceSignals: [
         {
           kind: 'signal',
@@ -1909,10 +1927,6 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       (Date.now() - new Date(e.last_interaction as string).getTime()) / (1000 * 60 * 60 * 24),
     );
     const text = `${e.name}: last contact ${daysSince} days ago, ${e.total_interactions} total interactions`;
-    if (getCandidateConstraintViolations(userId, text).length > 0) {
-      suppressedCandidates++;
-      continue;
-    }
     const mg = matchGoal(text, goals);
 
     candidates.push({
@@ -1923,7 +1937,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       actionType: 'send_message',
       urgency: relationshipUrgency(daysSince),
       matchedGoal: mg,
-      domain: inferDomain(mg, text),
+      domain: inferDomain(mg, text, goalKeywordIndex, 'relationship'),
       sourceSignals: [
         {
           kind: 'relationship',
@@ -1937,81 +1951,66 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     });
   }
 
-  if (suppressedCandidates > 0) {
-    logStructuredEvent({
-      event: 'scorer_constraint_filter',
-      userId,
-      artifactType: null,
-      generationStatus: 'candidate_suppressed',
-      details: {
-        scope: 'scorer',
-        suppressed_candidates: suppressedCandidates,
-      },
-    });
-  }
-
   if (candidates.length === 0) {
     // Even with no candidates, check emergent patterns
-    if (!suppressReflectivePatterns) {
-      const emergentFallback = await detectEmergentPatterns(userId);
-      if (emergentFallback.length > 0) {
-        const ep = emergentFallback[0];
-        const mirrorContent = [
-          ep.insight,
-          '',
-          'Evidence:',
-          ...ep.dataPoints,
-          '',
-          ep.mirrorQuestion,
-        ].join('\n');
-        return {
-          winner: {
-            id: 'emergent-0',
-            type: 'emergent',
-            title: ep.title,
-            content: mirrorContent,
-            suggestedActionType: ep.suggestedActionType,
-            matchedGoal: null,
-            score: ep.surpriseValue * ep.dataConfidence,
-            breakdown: { stakes: ep.surpriseValue, urgency: ep.dataConfidence, tractability: 1.0, freshness: 1.0 },
-            relatedSignals: [],
-            sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
-              kind: 'emergent',
-              summary: point.slice(0, 160),
-            })),
-          },
-          deprioritized: [],
-          candidateDiscovery: {
-            candidateCount: 1,
-            suppressedCandidateCount: suppressedCandidates,
-            selectionMargin: null,
-            selectionReason: 'Selected as the only viable candidate after scoring.',
-            failureReason: null,
-            topCandidates: [
-              {
-                id: 'emergent-0',
-                rank: 1,
-                candidateType: 'emergent',
-                actionType: ep.suggestedActionType,
-                score: Number((ep.surpriseValue * ep.dataConfidence).toFixed(2)),
-                scoreBreakdown: {
-                  stakes: ep.surpriseValue,
-                  urgency: ep.dataConfidence,
-                  tractability: 1.0,
-                  freshness: 1.0,
-                },
-                targetGoal: null,
-                sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
-                  kind: 'emergent',
-                  summary: point.slice(0, 160),
-                })),
-                decision: 'selected',
-                decisionReason: 'Selected as the only viable candidate after scoring.',
+    const emergentFallback = await detectEmergentPatterns(userId);
+    if (emergentFallback.length > 0) {
+      const ep = emergentFallback[0];
+      const mirrorContent = [
+        ep.insight,
+        '',
+        'Evidence:',
+        ...ep.dataPoints,
+        '',
+        ep.mirrorQuestion,
+      ].join('\n');
+      return {
+        winner: {
+          id: 'emergent-0',
+          type: 'emergent',
+          title: ep.title,
+          content: mirrorContent,
+          suggestedActionType: ep.suggestedActionType,
+          matchedGoal: null,
+          score: ep.surpriseValue * ep.dataConfidence,
+          breakdown: { stakes: ep.surpriseValue, urgency: ep.dataConfidence, tractability: 1.0, freshness: 1.0 },
+          relatedSignals: [],
+          sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
+            kind: 'emergent',
+            summary: point.slice(0, 160),
+          })),
+        },
+        deprioritized: [],
+        candidateDiscovery: {
+          candidateCount: 1,
+          suppressedCandidateCount: suppressedCandidates,
+          selectionMargin: null,
+          selectionReason: 'Selected as the only viable candidate after scoring.',
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'emergent-0',
+              rank: 1,
+              candidateType: 'emergent',
+              actionType: ep.suggestedActionType,
+              score: Number((ep.surpriseValue * ep.dataConfidence).toFixed(2)),
+              scoreBreakdown: {
+                stakes: ep.surpriseValue,
+                urgency: ep.dataConfidence,
+                tractability: 1.0,
+                freshness: 1.0,
               },
-            ],
-          },
-        };
-      }
+              targetGoal: null,
+              sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
+                kind: 'emergent',
+                summary: point.slice(0, 160),
+              })),
+              decision: 'selected',
+              decisionReason: 'Selected as the only viable candidate after scoring.',
+            },
+          ],
+        },
+      };
     }
     return null;
   }
@@ -2092,59 +2091,57 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // High divergence overrides standard open loop EV
   // -----------------------------------------------------------------------
 
-  if (!suppressReflectivePatterns) {
-    const divergences = await inferRevealedGoals(userId);
-    for (const div of divergences) {
-      if (div.divergenceScore >= 0.5) {
-        const divergenceContent = [
-          `You stated your top goal is "${div.statedGoal.text}" (priority ${div.statedGoal.priority}/5, category: ${div.statedGoal.category}).`,
-          `But ${Math.round((div.revealedSignalCount / (div.revealedSignalCount + div.statedSignalCount)) * 100)}% of your signal velocity this fortnight is focused on ${div.revealedDomain} (${div.revealedSignalCount} signals vs ${div.statedSignalCount} in ${div.statedGoal.category}).`,
-          '',
-          'What the signals show:',
-          ...div.topSignals.map((s, i) => `  ${i + 1}. "${s.slice(0, 150)}"`),
-          '',
-          `Are we changing the goal, or are you avoiding the work?`,
-        ].join('\n');
+  const divergences = await inferRevealedGoals(userId);
+  for (const div of divergences) {
+    if (div.divergenceScore >= 0.5) {
+      const divergenceContent = [
+        `You stated your top goal is "${div.statedGoal.text}" (priority ${div.statedGoal.priority}/5, category: ${div.statedGoal.category}).`,
+        `But ${Math.round((div.revealedSignalCount / (div.revealedSignalCount + div.statedSignalCount)) * 100)}% of your signal velocity this fortnight is focused on ${div.revealedDomain} (${div.revealedSignalCount} signals vs ${div.statedSignalCount} in ${div.statedGoal.category}).`,
+        '',
+        'What the signals show:',
+        ...div.topSignals.map((s, i) => `  ${i + 1}. "${s.slice(0, 150)}"`),
+        '',
+        `Are we changing the goal, or are you avoiding the work?`,
+      ].join('\n');
 
-        const divergenceScore = div.divergenceScore * 5; // scale to compete with normal loops (max 5)
+      const divergenceScore = div.divergenceScore * 5; // scale to compete with normal loops (max 5)
 
-        scored.push({
-          id: `divergence-${div.revealedDomain}-${div.statedGoal.category}`,
-          type: 'emergent',
-          title: `Preference divergence: stated "${div.statedGoal.text}" but signal velocity is on ${div.revealedDomain}`,
-          content: divergenceContent,
-          suggestedActionType: 'make_decision',
-          matchedGoal: {
-            text: div.statedGoal.text,
-            priority: div.statedGoal.priority,
-            category: div.statedGoal.category,
-          },
-          score: divergenceScore,
-          breakdown: {
-            stakes: div.statedGoal.priority,
-            urgency: div.divergenceScore,
-            tractability: 1.0,
-            freshness: 1.0,
-          },
-          relatedSignals: div.topSignals.slice(0, 3),
-          sourceSignals: div.topSignals.slice(0, 3).map((signal) => ({
-            kind: 'emergent',
-            summary: signal.slice(0, 160),
-          })),
-        });
+      scored.push({
+        id: `divergence-${div.revealedDomain}-${div.statedGoal.category}`,
+        type: 'emergent',
+        title: `Preference divergence: stated "${div.statedGoal.text}" but signal velocity is on ${div.revealedDomain}`,
+        content: divergenceContent,
+        suggestedActionType: 'make_decision',
+        matchedGoal: {
+          text: div.statedGoal.text,
+          priority: div.statedGoal.priority,
+          category: div.statedGoal.category,
+        },
+        score: divergenceScore,
+        breakdown: {
+          stakes: div.statedGoal.priority,
+          urgency: div.divergenceScore,
+          tractability: 1.0,
+          freshness: 1.0,
+        },
+        relatedSignals: div.topSignals.slice(0, 3),
+        sourceSignals: div.topSignals.slice(0, 3).map((signal) => ({
+          kind: 'emergent',
+          summary: signal.slice(0, 160),
+        })),
+      });
 
-        logStructuredEvent({
-          event: 'scorer_override',
-          userId,
-          artifactType: artifactTypeForAction('make_decision'),
-          generationStatus: 'revealed_preference_divergence',
-          details: {
-            scope: 'scorer',
-            stated_domain: div.statedGoal.category,
-            revealed_domain: div.revealedDomain,
-          },
-        });
-      }
+      logStructuredEvent({
+        event: 'scorer_override',
+        userId,
+        artifactType: artifactTypeForAction('make_decision'),
+        generationStatus: 'revealed_preference_divergence',
+        details: {
+          scope: 'scorer',
+          stated_domain: div.statedGoal.category,
+          revealed_domain: div.revealedDomain,
+        },
+      });
     }
   }
 
@@ -2154,46 +2151,44 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
   scored.sort(compareScoredLoops);
   const topLoopEV = scored.length > 0 ? scored[0].score : 0;
-  if (!suppressReflectivePatterns) {
-    const emergent = await detectEmergentPatterns(userId);
-    for (const ep of emergent) {
-      const emergentEV = ep.surpriseValue * ep.dataConfidence;
-      // Apply freshness to emergent patterns to prevent runaway loops
-      const emergentFreshness = await getFreshness(userId, ep.title, 'emergent');
-      const adjustedEV = emergentEV * emergentFreshness;
-      // Emergent pattern must beat the top open loop to compete
-      if (adjustedEV > topLoopEV || scored.length === 0) {
-        // Build mirror content: specific data + "Is this true?"
-        const mirrorContent = [
-          ep.insight,
-          '',
-          'Evidence:',
-          ...ep.dataPoints,
-          '',
-          ep.mirrorQuestion,
-        ].join('\n');
+  const emergent = await detectEmergentPatterns(userId);
+  for (const ep of emergent) {
+    const emergentEV = ep.surpriseValue * ep.dataConfidence;
+    // Apply freshness to emergent patterns to prevent runaway loops
+    const emergentFreshness = await getFreshness(userId, ep.title, 'emergent');
+    const adjustedEV = emergentEV * emergentFreshness;
+    // Emergent pattern must beat the top open loop to compete
+    if (adjustedEV > topLoopEV || scored.length === 0) {
+      // Build mirror content: specific data + "Is this true?"
+      const mirrorContent = [
+        ep.insight,
+        '',
+        'Evidence:',
+        ...ep.dataPoints,
+        '',
+        ep.mirrorQuestion,
+      ].join('\n');
 
-        scored.push({
-          id: `emergent-${ep.type}`,
-          type: 'emergent',
-          title: ep.title,
-          content: mirrorContent,
-          suggestedActionType: ep.suggestedActionType,
-          matchedGoal: null,
-          score: adjustedEV + 0.01, // tiny bump to ensure it wins over the loop it beat
-          breakdown: {
-            stakes: ep.surpriseValue,
-            urgency: ep.dataConfidence,
-            tractability: 1.0,
-            freshness: emergentFreshness,
-          },
-          relatedSignals: [],
-          sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
-            kind: 'emergent',
-            summary: point.slice(0, 160),
-          })),
-        });
-      }
+      scored.push({
+        id: `emergent-${ep.type}`,
+        type: 'emergent',
+        title: ep.title,
+        content: mirrorContent,
+        suggestedActionType: ep.suggestedActionType,
+        matchedGoal: null,
+        score: adjustedEV + 0.01, // tiny bump to ensure it wins over the loop it beat
+        breakdown: {
+          stakes: ep.surpriseValue,
+          urgency: ep.dataConfidence,
+          tractability: 1.0,
+          freshness: emergentFreshness,
+        },
+        relatedSignals: [],
+        sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
+          kind: 'emergent',
+          summary: point.slice(0, 160),
+        })),
+      });
     }
   }
 
