@@ -52,6 +52,8 @@ Doctrine:
 - If the action is wait, make the tripwire explicit and concrete.
 - If the action is a decision, lead with the recommendation, then justify it with concrete tradeoffs.
 - Pinned constraints are hard vetoes. Never reopen a locked decision or turn the directive into a menu of options.
+- The artifact object must stay nested under "artifact" and must match ARTIFACT_JSON_SCHEMA exactly.
+- Do not move artifact fields like recipient, subject, body, title, options, or tripwires to the top level.
 
 Return strict JSON only:
 {
@@ -250,6 +252,98 @@ function isDecisionMenu(value: string): boolean {
     (lower.includes(' or ') && /\b(decide|choose|whether|abandon|commit|pivot)\b/.test(lower));
 }
 
+async function hydrateWinnerRelationshipContext(
+  userId: string,
+  winner: ScoredLoop,
+): Promise<ScoredLoop> {
+  if (winner.relationshipContext) {
+    return winner;
+  }
+
+  const supabase = createServerClient();
+  const queryText = [
+    winner.title,
+    winner.content,
+    ...winner.relatedSignals,
+  ].join(' ').toLowerCase();
+
+  const { data: entities, error } = await supabase
+    .from('tkg_entities')
+    .select('name, display_name, primary_email, emails, role, company, total_interactions, patterns')
+    .eq('user_id', userId)
+    .neq('name', 'self')
+    .order('total_interactions', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    throw error;
+  }
+
+  if (!entities || entities.length === 0) {
+    return winner;
+  }
+
+  const lines = entities
+    .map((entity) => {
+      const record = entity as Record<string, unknown>;
+      const name = isNonEmptyString(record.display_name)
+        ? record.display_name.trim()
+        : isNonEmptyString(record.name)
+          ? record.name.trim()
+          : 'Unknown';
+      const role = isNonEmptyString(record.role) ? record.role.trim() : null;
+      const company = isNonEmptyString(record.company) ? record.company.trim() : null;
+      const email = isNonEmptyString(record.primary_email)
+        ? record.primary_email.trim()
+        : Array.isArray(record.emails)
+          ? (record.emails as unknown[]).find((value): value is string => isNonEmptyString(value))?.trim() ?? null
+          : null;
+      const patterns = record.patterns && typeof record.patterns === 'object'
+        ? Object.values(record.patterns as Record<string, unknown>)
+          .map((pattern) =>
+            pattern && typeof pattern === 'object' && isNonEmptyString((pattern as Record<string, unknown>).description)
+              ? ((pattern as Record<string, unknown>).description as string).trim()
+              : null)
+          .filter((value): value is string => value !== null)
+          .slice(0, 2)
+          .join('; ')
+        : '';
+
+      const relevance =
+        (queryText.includes(name.toLowerCase()) ? 3 : 0) +
+        (email && queryText.includes(email.toLowerCase()) ? 2 : 0) +
+        (company && queryText.includes(company.toLowerCase()) ? 1 : 0);
+      const descriptor = [
+        role,
+        company,
+        typeof record.total_interactions === 'number' ? `${record.total_interactions} interactions` : null,
+      ].filter(Boolean).join(', ');
+
+      return {
+        relevance,
+        interactions: typeof record.total_interactions === 'number' ? record.total_interactions : 0,
+        line: `- ${name}${email ? ` <${email}>` : ''}${descriptor ? ` (${descriptor})` : ''}${patterns ? `: ${patterns}` : ''}`,
+      };
+    })
+    .sort((left, right) => {
+      if (right.relevance !== left.relevance) {
+        return right.relevance - left.relevance;
+      }
+      return right.interactions - left.interactions;
+    })
+    .slice(0, 8)
+    .map((entity) => entity.line);
+
+  if (lines.length === 0) {
+    return winner;
+  }
+
+  return {
+    ...winner,
+    relationshipContext: lines.join('\n'),
+  };
+}
+
 function hasMeaningfulOverlap(candidate: string, winner: ScoredLoop): boolean {
   const directiveTokens = new Set(normalizeText(candidate).split(' ').filter((token) => token.length >= 4));
   if (directiveTokens.size === 0) return false;
@@ -269,6 +363,21 @@ function hasMeaningfulOverlap(candidate: string, winner: ScoredLoop): boolean {
 }
 
 function normalizeArtifactType(value: unknown): GeneratorArtifactType | null {
+  if (value === 'email' || value === 'email_compose' || value === 'email_reply') {
+    return 'drafted_email';
+  }
+  if (value === 'calendar' || value === 'event') {
+    return 'calendar_event';
+  }
+  if (value === 'research') {
+    return 'research_brief';
+  }
+  if (value === 'decision') {
+    return 'decision_frame';
+  }
+  if (value === 'wait' || value === 'do_nothing') {
+    return 'wait_rationale';
+  }
   if (
     value === 'drafted_email' ||
     value === 'document' ||
@@ -364,6 +473,58 @@ function formatRecentAction(row: RecentActionRow): string {
   return `[${row.generated_at.slice(0, 10)}] [${row.action_type ?? 'unknown'}] ${row.directive_text ?? ''}`;
 }
 
+function expectedArtifactSchema(actionType: ActionType): string {
+  switch (actionType) {
+    case 'send_message':
+      return `{
+  "recipient": "person@example.com",
+  "subject": "Specific subject line",
+  "body": "Complete email body with greeting and sign-off"
+}`;
+    case 'write_document':
+      return `{
+  "title": "Document title",
+  "content": "Complete document in markdown"
+}`;
+    case 'schedule':
+      return `{
+  "title": "Meeting title",
+  "start": "2026-03-18T15:00:00-07:00",
+  "end": "2026-03-18T15:30:00-07:00",
+  "description": "Calendar description with details"
+}`;
+    case 'research':
+      return `{
+  "findings": "Detailed research findings in markdown",
+  "sources": ["https://example.com/source"],
+  "recommended_action": "One concrete recommendation"
+}`;
+    case 'make_decision':
+      return `{
+  "options": [
+    {
+      "option": "Option description",
+      "weight": 0.72,
+      "rationale": "Why this option scores this way"
+    },
+    {
+      "option": "Second option",
+      "weight": 0.28,
+      "rationale": "Why this option scores this way"
+    }
+  ],
+  "recommendation": "Lead with the recommendation in the first sentence"
+}`;
+    case 'do_nothing':
+    default:
+      return `{
+  "context": "Why waiting is correct right now",
+  "evidence": "Specific evidence supporting the wait decision",
+  "tripwires": ["Specific signal that would reopen this decision"]
+}`;
+  }
+}
+
 function buildGenerationPrompt(context: PromptContext): string {
   const { winner, deprioritized, approvedRecently, skippedRecently } = context;
   const pinnedConstraints = getPinnedConstraintPrompt(context.userId);
@@ -412,19 +573,68 @@ function buildGenerationPrompt(context: PromptContext): string {
     `RECENTLY_APPROVED:\n${approvedLines}`,
     `RECENTLY_SKIPPED:\n${skippedLines}`,
     `ARTIFACT_RULES:\n${expectedArtifactRules(winner.suggestedActionType)}`,
+    `ARTIFACT_JSON_SCHEMA:\n${expectedArtifactSchema(winner.suggestedActionType)}`,
   ].join('\n\n');
+}
+
+function normalizeArtifactPayload(
+  parsed: Record<string, unknown>,
+  artifactType: GeneratorArtifactType,
+): Record<string, unknown> {
+  const artifact = parsed.artifact && typeof parsed.artifact === 'object'
+    ? { ...(parsed.artifact as Record<string, unknown>) }
+    : {};
+
+  const knownFields = [
+    'recipient',
+    'to',
+    'subject',
+    'body',
+    'title',
+    'content',
+    'start',
+    'end',
+    'description',
+    'findings',
+    'sources',
+    'recommended_action',
+    'options',
+    'recommendation',
+    'context',
+    'evidence',
+    'tripwires',
+    'check_date',
+    'draft_type',
+  ];
+
+  for (const field of knownFields) {
+    if (artifact[field] === undefined && parsed[field] !== undefined) {
+      artifact[field] = parsed[field];
+    }
+  }
+
+  if (artifactType === 'drafted_email' && artifact.recipient === undefined && artifact.to !== undefined) {
+    artifact.recipient = artifact.to;
+  }
+
+  return artifact;
 }
 
 function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | null {
   const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
-  const parsed = JSON.parse(cleaned) as Partial<GeneratedDirectivePayload>;
-  const artifactType = normalizeArtifactType(parsed.artifact_type);
+  const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+  const nestedArtifact = parsed.artifact && typeof parsed.artifact === 'object'
+    ? (parsed.artifact as Record<string, unknown>)
+    : null;
+  const artifactType = normalizeArtifactType(
+    parsed.artifact_type ?? parsed.type ?? nestedArtifact?.type,
+  );
   if (!artifactType) return null;
 
   return {
     directive: typeof parsed.directive === 'string' ? parsed.directive : '',
     artifact_type: artifactType,
-    artifact: typeof parsed.artifact === 'object' && parsed.artifact !== null ? parsed.artifact as Record<string, unknown> : {},
+    artifact: normalizeArtifactPayload(parsed, artifactType),
     evidence: typeof parsed.evidence === 'string' ? parsed.evidence : '',
     why_now: typeof parsed.why_now === 'string' ? parsed.why_now : '',
     requires_search: parsed.requires_search === true,
@@ -788,7 +998,10 @@ async function generatePayload(
       callType: attempt === 0 ? 'directive' : 'directive_retry',
     });
 
-    const raw = response.content[0]?.type === 'text' ? response.content[0].text : '';
+    const raw = response.content
+      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+      .map((block) => block.text)
+      .join('');
     let parsed: GeneratedDirectivePayload | null = null;
     try {
       parsed = parseGeneratedPayload(raw);
@@ -822,7 +1035,11 @@ async function generatePayload(
       attempts.push({ role: 'assistant', content: raw });
       attempts.push({
         role: 'user',
-        content: `Validation failed. Fix these issues and return JSON only:
+        content: `Validation failed. Fix these issues and return JSON only.
+Keep the artifact nested under "artifact" and match this schema exactly:
+${expectedArtifactSchema(promptContext.winner.suggestedActionType)}
+
+Issues:
 - ${issues.join('\n- ')}`,
       });
       continue;
@@ -877,9 +1094,10 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       );
     }
 
+    const hydratedWinner = await hydrateWinnerRelationshipContext(userId, scored.winner);
     const promptContext: PromptContext = {
       userId,
-      winner: scored.winner,
+      winner: hydratedWinner,
       deprioritized: scored.deprioritized,
       ...guardrails,
     };
@@ -923,7 +1141,7 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       confidence,
       reason: payload.why_now.trim(),
       evidence: buildEvidenceItems(scored, payload),
-      fullContext: buildFullContext(scored, payload),
+      fullContext: buildFullContext({ ...scored, winner: hydratedWinner }, payload),
       embeddedArtifact: payload.artifact,
       embeddedArtifactType: payload.artifact_type,
       requires_search: payload.requires_search === true || artifactTypeToActionType(payload.artifact_type) === 'research',
