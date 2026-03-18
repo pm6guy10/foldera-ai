@@ -453,8 +453,8 @@ async function processBatch(
       .from('tkg_signals')
       .update({
         processed: true,
-        extracted_entity_ids: entityIds.length > 0 ? entityIds : [],
-        extracted_commitment_ids: commitmentIds.length > 0 ? commitmentIds : [],
+        extracted_entities: entityIds.length > 0 ? entityIds : [],
+        extracted_commitments: commitmentIds.length > 0 ? commitmentIds : [],
         extracted_dates: extractedDates.length > 0 ? extractedDates : null,
       })
       .eq('id', signal.id);
