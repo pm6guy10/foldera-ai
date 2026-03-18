@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_MAX_SIGNALS = 5;
 const MAX_SIGNALS_PER_REQUEST = 50;
+const STALE_SIGNAL_CUTOFF_HOURS = 24;
 
 function resolveSignalCreatedAtGte(request: NextRequest): string | null {
   const raw = request.nextUrl.searchParams.get('signalCreatedAtGte');
@@ -44,6 +45,9 @@ async function handler(request: NextRequest) {
   try {
     const maxSignals = resolveRequestedLimit(request);
     const signalCreatedAtGte = resolveSignalCreatedAtGte(request);
+    const staleCutoffIso = new Date(
+      Date.now() - (STALE_SIGNAL_CUTOFF_HOURS * 60 * 60 * 1000),
+    ).toISOString();
     const userIds = await listUsersWithUnprocessedSignals({
       createdAtGte: signalCreatedAtGte ?? undefined,
     });
@@ -70,6 +74,8 @@ async function handler(request: NextRequest) {
       const extraction = await processUnextractedSignals(userId, {
         createdAtGte: signalCreatedAtGte ?? undefined,
         maxSignals: remainingCapacity,
+        prioritizeOlderThanIso: staleCutoffIso,
+        quarantineDeferredOlderThanIso: staleCutoffIso,
       });
 
       processed += extraction.signals_processed;

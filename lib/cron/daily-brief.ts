@@ -684,6 +684,8 @@ async function runSignalProcessingForUser(
       const extraction = await processUnextractedSignals(userId, {
         createdAtGte: options.signalCreatedAtGte,
         maxSignals: DAILY_SIGNAL_BATCH_SIZE,
+        prioritizeOlderThanIso: staleCutoffIso,
+        quarantineDeferredOlderThanIso: staleCutoffIso,
       });
       signalsProcessed += extraction.signals_processed;
       for (const signalId of extraction.deferred_signal_ids ?? []) {

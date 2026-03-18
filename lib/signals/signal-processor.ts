@@ -85,6 +85,8 @@ export interface ProcessSignalsOptions {
   maxSignals?: number;
   pauseMsBetweenBatches?: number;
   createdAtGte?: string;
+  prioritizeOlderThanIso?: string;
+  quarantineDeferredOlderThanIso?: string;
 }
 
 export interface SignalQueryOptions {
@@ -195,13 +197,16 @@ export async function processUnextractedSignals(
     const remaining = maxSignals - result.signals_processed;
     const fetchLimit = Math.min(BATCH_SIZE, remaining);
     const queryLimit = Math.min(1000, fetchLimit + deferredSignalIds.size + BATCH_SIZE);
+    const prioritizeOldestFirst = options.prioritizeOlderThanIso
+      ? await hasUnprocessedSignalsOlderThan(userId, options.prioritizeOlderThanIso, options)
+      : false;
     let signalsQuery = supabase
       .from('tkg_signals')
       .select('id, user_id, source, source_id, type, content, author, occurred_at')
       .eq('user_id', userId)
       .eq('processed', false)
       .in('source', EXTRACTABLE_SOURCES)
-      .order('occurred_at', { ascending: false });
+      .order('occurred_at', { ascending: prioritizeOldestFirst });
 
     if (options.createdAtGte) {
       signalsQuery = signalsQuery.gte('created_at', options.createdAtGte);
@@ -223,14 +228,27 @@ export async function processUnextractedSignals(
 
     try {
       const batchResult = await processBatch(anthropic, supabase, signals, userId, selfId, selfEntity?.patterns);
+      const quarantinedDeferredSignalIds = await quarantineDeferredSignals(
+        supabase,
+        userId,
+        signals,
+        batchResult.deferred_signal_ids,
+        options.quarantineDeferredOlderThanIso,
+      );
+      const unresolvedDeferredSignalIds = batchResult.deferred_signal_ids
+        .filter((signalId) => !quarantinedDeferredSignalIds.includes(signalId));
+
       result.signals_processed += batchResult.signals_processed;
       result.entities_upserted += batchResult.entities_upserted;
       result.commitments_created += batchResult.commitments_created;
       result.topics_merged += batchResult.topics_merged;
-      result.deferred_signal_ids.push(...batchResult.deferred_signal_ids);
+      result.deferred_signal_ids.push(...unresolvedDeferredSignalIds);
       result.errors.push(...batchResult.errors);
+      if (quarantinedDeferredSignalIds.length > 0) {
+        result.errors.push(`quarantined: ${quarantinedDeferredSignalIds.length} stale undecryptable signal(s)`);
+      }
 
-      for (const signalId of batchResult.deferred_signal_ids) {
+      for (const signalId of unresolvedDeferredSignalIds) {
         deferredSignalIds.add(signalId);
       }
 
@@ -255,7 +273,7 @@ export async function processUnextractedSignals(
       }
 
       if (batchResult.signals_processed === 0) {
-        if (batchResult.deferred_signal_ids.length > 0) {
+        if (unresolvedDeferredSignalIds.length > 0) {
           continue;
         }
         break;
@@ -725,6 +743,88 @@ function looksLikeCiphertext(content: string): boolean {
   if (content.length < 40) return false;
   // Base64 pattern: only A-Z, a-z, 0-9, +, /, = and no whitespace
   return /^[A-Za-z0-9+/=]+$/.test(content);
+}
+
+async function hasUnprocessedSignalsOlderThan(
+  userId: string,
+  beforeIso: string,
+  options: SignalQueryOptions = {},
+): Promise<boolean> {
+  const supabase = createServerClient();
+  let query = supabase
+    .from('tkg_signals')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .in('source', EXTRACTABLE_SOURCES)
+    .lt('occurred_at', beforeIso);
+
+  if (options.createdAtGte) {
+    query = query.gte('created_at', options.createdAtGte);
+  }
+
+  const countResult = await query;
+  if (countResult.error) {
+    throw new Error(`signal_stale_count: ${countResult.error.message}`);
+  }
+
+  return (countResult.count ?? 0) > 0;
+}
+
+async function quarantineDeferredSignals(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  signals: RawSignal[],
+  deferredSignalIds: string[],
+  quarantineOlderThanIso?: string,
+): Promise<string[]> {
+  if (!quarantineOlderThanIso || deferredSignalIds.length === 0) {
+    return [];
+  }
+
+  const staleDeferredSignalIds = signals
+    .filter((signal) =>
+      deferredSignalIds.includes(signal.id) &&
+      typeof signal.occurred_at === 'string' &&
+      signal.occurred_at < quarantineOlderThanIso,
+    )
+    .map((signal) => signal.id);
+
+  if (staleDeferredSignalIds.length === 0) {
+    return [];
+  }
+
+  const quarantineReason = 'quarantined_unrecoverable_ciphertext_after_recovery';
+  const quarantineResult = await supabase
+    .from('tkg_signals')
+    .update({
+      processed: true,
+      processing_error: quarantineReason,
+      extracted_entities: [],
+      extracted_commitments: [],
+      extracted_dates: null,
+    })
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .in('id', staleDeferredSignalIds);
+
+  if (quarantineResult.error) {
+    throw new Error(`signal_quarantine: ${quarantineResult.error.message}`);
+  }
+
+  logStructuredEvent({
+    event: 'signal_processor_stale_signal_quarantined',
+    level: 'warn',
+    userId,
+    artifactType: null,
+    generationStatus: 'signal_quarantined',
+    details: {
+      scope: 'signal-processor',
+      quarantined_signals: staleDeferredSignalIds.length,
+    },
+  });
+
+  return staleDeferredSignalIds;
 }
 
 export async function countUnprocessedSignals(
