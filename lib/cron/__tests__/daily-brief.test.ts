@@ -1,16 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConvictionDirective, GenerationRunLog } from '@/lib/briefing/types';
-import { runDailyGenerate } from '../daily-brief';
+import { runDailyGenerate, runDailySend } from '../daily-brief';
 import { generateDirective, validateDirectiveForPersistence } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
+import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
+import { sendDailyDirective } from '@/lib/email/resend';
 
 const USER_ID = '11111111-1111-1111-1111-111111111111';
 
 const mockSupabase = {
+  actionRows: [] as Array<Record<string, unknown>>,
   insertedActions: [] as Array<Record<string, unknown>>,
+  updatedActions: [] as Array<Record<string, unknown>>,
 
   from(table: string) {
     const self = this;
@@ -58,6 +62,74 @@ const mockSupabase = {
                   error: null,
                 }),
               };
+            },
+          };
+        },
+        select() {
+          const state = {
+            filters: {} as Record<string, unknown>,
+            gteField: null as string | null,
+            gteValue: null as string | null,
+            orderField: null as string | null,
+            ascending: false,
+          };
+
+          const query = {
+            eq(field: string, value: unknown) {
+              state.filters[field] = value;
+              return query;
+            },
+            gte(field: string, value: string) {
+              state.gteField = field;
+              state.gteValue = value;
+              return query;
+            },
+            order(field: string, options: { ascending: boolean }) {
+              state.orderField = field;
+              state.ascending = options.ascending;
+              return query;
+            },
+            limit(count: number) {
+              let rows = [...self.actionRows];
+
+              for (const [field, value] of Object.entries(state.filters)) {
+                rows = rows.filter((row) => row[field] === value);
+              }
+
+              if (state.gteField && state.gteValue) {
+                rows = rows.filter((row) => {
+                  const fieldValue = row[state.gteField];
+                  return typeof fieldValue === 'string' && fieldValue >= state.gteValue!;
+                });
+              }
+
+              if (state.orderField) {
+                rows.sort((left, right) => {
+                  const leftValue = left[state.orderField!];
+                  const rightValue = right[state.orderField!];
+                  if (leftValue === rightValue) return 0;
+                  if (leftValue == null) return state.ascending ? -1 : 1;
+                  if (rightValue == null) return state.ascending ? 1 : -1;
+                  return leftValue < rightValue
+                    ? (state.ascending ? -1 : 1)
+                    : (state.ascending ? 1 : -1);
+                });
+              }
+
+              return Promise.resolve({
+                data: rows.slice(0, count),
+                error: null,
+              });
+            },
+          };
+
+          return query;
+        },
+        update(payload: Record<string, unknown>) {
+          return {
+            eq(field: string, value: unknown) {
+              self.updatedActions.push({ payload, [field]: value });
+              return Promise.resolve({ error: null });
             },
           };
         },
@@ -109,6 +181,10 @@ vi.mock('@/lib/auth/daily-brief-users', () => ({
 
 vi.mock('@/lib/utils/structured-logger', () => ({
   logStructuredEvent: vi.fn(),
+}));
+
+vi.mock('@/lib/email/resend', () => ({
+  sendDailyDirective: vi.fn().mockResolvedValue(undefined),
 }));
 
 function buildGenerationLog(overrides: Partial<GenerationRunLog> = {}): GenerationRunLog {
@@ -234,13 +310,17 @@ function buildDirective(overrides: Partial<ConvictionDirective> = {}): Convictio
 
 describe('runDailyGenerate candidate logging', () => {
   beforeEach(() => {
+    mockSupabase.actionRows = [];
     mockSupabase.insertedActions = [];
+    mockSupabase.updatedActions = [];
     vi.mocked(generateDirective).mockReset();
     vi.mocked(validateDirectiveForPersistence).mockReset();
     vi.mocked(generateArtifact).mockReset();
     vi.mocked(extractFromConversation).mockClear();
     vi.mocked(processUnextractedSignals).mockClear();
     vi.mocked(summarizeSignals).mockClear();
+    vi.mocked(getVerifiedDailyBriefRecipientEmail).mockReset();
+    vi.mocked(sendDailyDirective).mockClear();
     vi.mocked(validateDirectiveForPersistence).mockReturnValue([]);
   });
 
@@ -290,7 +370,15 @@ describe('runDailyGenerate candidate logging', () => {
 
     const result = await runDailyGenerate();
 
-    expect(result.results).toEqual([{ code: 'nothing_today', success: true }]);
+    expect(result.results).toEqual([
+      {
+        code: 'nothing_today',
+        detail: 'No ranked daily brief candidate.',
+        success: true,
+      },
+    ]);
+    expect(result.message).toContain('No pending_approval brief was persisted');
+    expect(result.message).toContain('No ranked daily brief candidate.');
     const saved = mockSupabase.insertedActions[0];
     expect(saved.status).toBe('skipped');
     expect(saved.directive_text).toBe('No directive sent today.');
@@ -304,12 +392,52 @@ describe('runDailyGenerate candidate logging', () => {
 
     const result = await runDailyGenerate();
 
-    expect(result.results).toEqual([{ code: 'nothing_today', success: true }]);
+    expect(result.results).toEqual([
+      {
+        code: 'nothing_today',
+        detail: 'Artifact generation failed.',
+        success: true,
+      },
+    ]);
     const saved = mockSupabase.insertedActions[0];
     expect(saved.status).toBe('skipped');
     expect((saved.execution_result as Record<string, any>).generation_log.outcome).toBe('no_send');
     expect((saved.execution_result as Record<string, any>).generation_log.stage).toBe('artifact');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateFailureReasons[0]).toContain('Artifact generation failed.');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[0].decision).toBe('selected');
+  });
+
+  it('surfaces a persisted no-send blocker during send when no pending action exists', async () => {
+    vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
+    mockSupabase.actionRows = [
+      {
+        user_id: USER_ID,
+        status: 'skipped',
+        action_type: 'do_nothing',
+        directive_text: 'No directive sent today.',
+        reason: 'Generation validation failed: drafted_email recipient must be a real email address',
+        confidence: 0,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          outcome_type: 'no_send',
+          generation_log: {
+            reason: 'Generation validation failed: drafted_email recipient must be a real email address',
+          },
+        },
+      },
+    ];
+
+    const result = await runDailySend();
+
+    expect(result.results).toEqual([
+      {
+        code: 'nothing_today',
+        detail: 'Generation validation failed: drafted_email recipient must be a real email address',
+        success: true,
+      },
+    ]);
+    expect(result.message).toContain('No brief email was sent for 1 user');
+    expect(result.message).toContain('drafted_email recipient must be a real email address');
+    expect(sendDailyDirective).not.toHaveBeenCalled();
   });
 });

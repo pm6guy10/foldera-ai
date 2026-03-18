@@ -31,6 +31,7 @@ type DailyBriefSuccessCode = 'generated' | 'sent' | 'nothing_today';
 
 export interface DailyBriefUserResult {
   code: DailyBriefFailureCode | DailyBriefSuccessCode;
+  detail?: string;
   success: boolean;
 }
 
@@ -65,6 +66,104 @@ const SAFE_ERROR_MESSAGES: Record<DailyBriefFailureCode, string> = {
   status_update_failed: 'Action status update failed.',
 };
 
+function formatEligibleUserCount(count: number): string {
+  return `${count} eligible user${count === 1 ? '' : 's'}`;
+}
+
+function collectResultDetails(
+  results: DailyBriefUserResult[],
+  predicate: (result: DailyBriefUserResult) => boolean,
+): string[] {
+  return [
+    ...new Set(
+      results
+        .filter(predicate)
+        .map((result) => result.detail?.trim())
+        .filter((detail): detail is string => Boolean(detail)),
+    ),
+  ];
+}
+
+function appendBlockerSummary(message: string, details: string[]): string {
+  if (details.length === 0) {
+    return message;
+  }
+
+  return `${message} Blocker${details.length === 1 ? '' : 's'}: ${details.join(' ')}`;
+}
+
+function buildGenerateMessage(results: DailyBriefUserResult[], total: number): string {
+  const generatedCount = results.filter((result) => result.code === 'generated').length;
+  const noSendCount = results.filter((result) => result.code === 'nothing_today').length;
+
+  if (generatedCount === total) {
+    return `Generated briefs for ${generatedCount} eligible user${generatedCount === 1 ? '' : 's'}.`;
+  }
+
+  if (generatedCount === 0 && noSendCount === total) {
+    return appendBlockerSummary(
+      `No pending_approval brief was persisted for ${formatEligibleUserCount(total)}. Explicit no-send evidence was saved.`,
+      collectResultDetails(results, (result) => result.code === 'nothing_today'),
+    );
+  }
+
+  const segments = [`Generated briefs for ${generatedCount} of ${formatEligibleUserCount(total)}.`];
+  if (noSendCount > 0) {
+    segments.push(
+      `Explicit no-send evidence was saved for ${noSendCount} user${noSendCount === 1 ? '' : 's'}.`,
+    );
+  }
+
+  return appendBlockerSummary(
+    segments.join(' '),
+    collectResultDetails(results, (result) => result.code === 'nothing_today'),
+  );
+}
+
+function buildSendMessage(results: DailyBriefUserResult[], total: number): string {
+  const sentCount = results.filter((result) => result.code === 'sent').length;
+  const emailedNothingCount = results.filter(
+    (result) => result.code === 'nothing_today' && !result.detail,
+  ).length;
+  const blockedNoSendCount = results.filter(
+    (result) => result.code === 'nothing_today' && Boolean(result.detail),
+  ).length;
+  const missingDirectiveCount = results.filter(
+    (result) => result.code === 'no_generated_directive',
+  ).length;
+
+  if (sentCount === total) {
+    return `Sent briefs for ${sentCount} eligible user${sentCount === 1 ? '' : 's'}.`;
+  }
+
+  const segments = [`Sent briefs for ${sentCount} of ${formatEligibleUserCount(total)}.`];
+  if (emailedNothingCount > 0) {
+    segments.push(
+      `Sent "Nothing today" emails for ${emailedNothingCount} user${emailedNothingCount === 1 ? '' : 's'}.`,
+    );
+  }
+  if (blockedNoSendCount > 0) {
+    segments.push(
+      `No brief email was sent for ${blockedNoSendCount} user${blockedNoSendCount === 1 ? '' : 's'} because an explicit no-send blocker was recorded.`,
+    );
+  }
+  if (missingDirectiveCount > 0) {
+    segments.push(
+      `No generated brief was available to send for ${missingDirectiveCount} user${missingDirectiveCount === 1 ? '' : 's'}.`,
+    );
+  }
+
+  return appendBlockerSummary(
+    segments.join(' '),
+    collectResultDetails(
+      results,
+      (result) =>
+        (result.code === 'nothing_today' && Boolean(result.detail)) ||
+        result.code === 'no_generated_directive',
+    ),
+  );
+}
+
 function artifactTypeForAction(actionType: string | null | undefined): string | null {
   switch (actionType) {
     case 'send_message':
@@ -89,6 +188,75 @@ function extractArtifact(executionResult: unknown): ConvictionArtifact | null {
   }
 
   return artifact as ConvictionArtifact;
+}
+
+function extractNoSendBlockerReason(record: {
+  reason?: unknown;
+  execution_result?: unknown;
+}): string | null {
+  const executionResult =
+    record.execution_result && typeof record.execution_result === 'object'
+      ? (record.execution_result as Record<string, unknown>)
+      : null;
+  const generationLog =
+    executionResult?.generation_log && typeof executionResult.generation_log === 'object'
+      ? (executionResult.generation_log as Record<string, unknown>)
+      : null;
+  const noSend =
+    executionResult?.no_send && typeof executionResult.no_send === 'object'
+      ? (executionResult.no_send as Record<string, unknown>)
+      : null;
+
+  const candidates = [
+    typeof record.reason === 'string' ? record.reason : null,
+    typeof generationLog?.reason === 'string' ? generationLog.reason : null,
+    typeof noSend?.reason === 'string' ? noSend.reason : null,
+  ];
+
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  return null;
+}
+
+async function findPersistedNoSendBlocker(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  sinceIso: string,
+): Promise<{ error: Error | null; reason: string | null }> {
+  const { data, error } = await supabase
+    .from('tkg_actions')
+    .select('reason, execution_result, generated_at')
+    .eq('user_id', userId)
+    .eq('status', 'skipped')
+    .gte('generated_at', sinceIso)
+    .order('generated_at', { ascending: false })
+    .limit(10);
+
+  if (error) {
+    return { error, reason: null };
+  }
+
+  const blocker = (data ?? []).find((candidate) => {
+    const executionResult =
+      candidate.execution_result && typeof candidate.execution_result === 'object'
+        ? (candidate.execution_result as Record<string, unknown>)
+        : null;
+    return executionResult?.outcome_type === 'no_send';
+  });
+
+  if (!blocker) {
+    return { error: null, reason: null };
+  }
+
+  return {
+    error: null,
+    reason: extractNoSendBlockerReason(blocker),
+  };
 }
 
 function buildNoSendGenerationLog(
@@ -325,7 +493,7 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
           continue;
         }
 
-        results.push({ code: 'nothing_today', success: true });
+        results.push({ code: 'nothing_today', detail: directive.reason, success: true });
         continue;
       }
 
@@ -358,7 +526,7 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
           results.push({ code: 'directive_persist_failed', success: false });
           continue;
         }
-        results.push({ code: 'nothing_today', success: true });
+        results.push({ code: 'nothing_today', detail: 'Artifact generation failed.', success: true });
         continue;
       }
 
@@ -390,7 +558,11 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
           results.push({ code: 'directive_persist_failed', success: false });
           continue;
         }
-        results.push({ code: 'nothing_today', success: true });
+        results.push({
+          code: 'nothing_today',
+          detail: `Directive rejected by persistence validation: ${persistenceIssues.join('; ')}`,
+          success: true,
+        });
         continue;
       }
 
@@ -487,10 +659,7 @@ export async function runDailyGenerate(): Promise<DailyBriefRunResult> {
 
   return {
     date,
-    message:
-      succeeded === eligibleUserIds.length
-        ? `Generated briefs for ${succeeded} eligible user${succeeded === 1 ? '' : 's'}.`
-        : `Generated briefs for ${succeeded} of ${eligibleUserIds.length} eligible user${eligibleUserIds.length === 1 ? '' : 's'}.`,
+    message: buildGenerateMessage(results, eligibleUserIds.length),
     results,
     succeeded,
     total: eligibleUserIds.length,
@@ -548,6 +717,24 @@ export async function runDailySend(): Promise<DailyBriefRunResult> {
         return typeof executionResult?.daily_brief_sent_at !== 'string' && artifact !== null;
       });
       if (!action) {
+        const noSendBlocker = await findPersistedNoSendBlocker(
+          supabase,
+          userId,
+          todayStart.toISOString(),
+        );
+        if (noSendBlocker.error) {
+          results.push({ code: 'directive_lookup_failed', success: false });
+          continue;
+        }
+        if (noSendBlocker.reason) {
+          results.push({
+            code: 'nothing_today',
+            detail: noSendBlocker.reason,
+            success: true,
+          });
+          continue;
+        }
+
         results.push({ code: 'no_generated_directive', success: false });
         continue;
       }
@@ -645,10 +832,7 @@ export async function runDailySend(): Promise<DailyBriefRunResult> {
 
   return {
     date,
-    message:
-      succeeded === eligibleUserIds.length
-        ? `Sent briefs for ${succeeded} eligible user${succeeded === 1 ? '' : 's'}.`
-        : `Sent briefs for ${succeeded} of ${eligibleUserIds.length} eligible user${eligibleUserIds.length === 1 ? '' : 's'}.`,
+    message: buildSendMessage(results, eligibleUserIds.length),
     results,
     succeeded,
     total: eligibleUserIds.length,
@@ -662,7 +846,7 @@ export function toSafeDailyBriefStageStatus(result: DailyBriefRunResult): SafeDa
     ...new Set(
       result.results
         .filter((entry): entry is DailyBriefUserResult & { code: DailyBriefFailureCode } => !entry.success)
-        .map((entry) => SAFE_ERROR_MESSAGES[entry.code]),
+        .map((entry) => entry.detail?.trim() || SAFE_ERROR_MESSAGES[entry.code]),
     ),
   ];
 

@@ -100,6 +100,11 @@ interface PromptContext {
   skippedRecently: RecentSkippedActionRow[];
 }
 
+interface GeneratePayloadResult {
+  issues: string[];
+  payload: GeneratedDirectivePayload | null;
+}
+
 let anthropicClient: Anthropic | null = null;
 
 function getAnthropic(): Anthropic {
@@ -154,6 +159,15 @@ function buildNoSendGenerationLog(
     candidateFailureReasons,
     candidateDiscovery: normalizedDiscovery,
   };
+}
+
+function formatValidationFailureReason(prefix: string, issues: string[]): string {
+  const normalizedIssues = [...new Set(issues.map((issue) => issue.trim()).filter(Boolean))];
+  if (normalizedIssues.length === 0) {
+    return prefix;
+  }
+
+  return `${prefix} ${normalizedIssues.join('; ')}`;
 }
 
 function emptyDirective(reason: string, generationLog?: GenerationRunLog): ConvictionDirective {
@@ -750,11 +764,12 @@ function buildFullContext(result: ScorerResult, payload: GeneratedDirectivePaylo
 async function generatePayload(
   userId: string,
   promptContext: PromptContext,
-): Promise<GeneratedDirectivePayload | null> {
+): Promise<GeneratePayloadResult> {
   const initialPrompt = buildGenerationPrompt(promptContext);
   const attempts: Array<{ role: 'user' | 'assistant'; content: string }> = [
     { role: 'user', content: initialPrompt },
   ];
+  let lastIssues: string[] = [];
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const response = await getAnthropic().messages.create({
@@ -782,8 +797,12 @@ async function generatePayload(
     }
 
     const issues = validateGeneratedPayload(parsed, promptContext);
+    lastIssues = issues;
     if (issues.length === 0 && parsed) {
-      return parsed;
+      return {
+        issues: [],
+        payload: parsed,
+      };
     }
 
     if (attempt === 0) {
@@ -823,7 +842,10 @@ async function generatePayload(
     });
   }
 
-  return null;
+  return {
+    issues: lastIssues,
+    payload: null,
+  };
 }
 
 export async function generateDirective(userId: string): Promise<ConvictionDirective> {
@@ -862,13 +884,18 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       ...guardrails,
     };
 
-    const payload = await generatePayload(userId, promptContext);
-    if (!payload) {
+    const payloadResult = await generatePayload(userId, promptContext);
+    if (!payloadResult.payload) {
+      const failureReason = formatValidationFailureReason(
+        'Generation validation failed:',
+        payloadResult.issues,
+      );
       return emptyDirective(
-        'Generation validation failed.',
-        buildNoSendGenerationLog('Generation validation failed.', 'generation', scored.candidateDiscovery),
+        failureReason,
+        buildNoSendGenerationLog(failureReason, 'generation', scored.candidateDiscovery),
       );
     }
+    const payload = payloadResult.payload;
 
     const confidence = computeDirectiveConfidence(scored);
     if (confidence < DIRECTIVE_CONFIDENCE_THRESHOLD) {
@@ -927,8 +954,18 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
         },
       });
       return emptyDirective(
-        'No directive cleared the pinned constraints.',
-        buildNoSendGenerationLog('No directive cleared the pinned constraints.', 'validation', scored.candidateDiscovery),
+        formatValidationFailureReason(
+          'Directive rejected by persistence validation:',
+          persistenceIssues,
+        ),
+        buildNoSendGenerationLog(
+          formatValidationFailureReason(
+            'Directive rejected by persistence validation:',
+            persistenceIssues,
+          ),
+          'validation',
+          scored.candidateDiscovery,
+        ),
       );
     }
 
