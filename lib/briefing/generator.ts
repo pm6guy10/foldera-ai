@@ -537,22 +537,28 @@ function expectedArtifactRules(actionType: ActionType): string {
       ].join('\n');
     case 'research':
       return [
-        'Action type is research. artifact_type must be research_brief.',
-        'Artifact JSON must include findings, sources, and recommended_action.',
-        'Cite real sources and make the recommendation concrete.',
+        'Action type is research. Do NOT produce a research_brief — that is consulting, not action.',
+        'Instead, produce a concrete deliverable:',
+        '- If research leads to contacting someone, artifact_type must be drafted_email with the outreach message.',
+        '- If research is internal, artifact_type must be document with the findings and recommended next step.',
+        'The directive sentence must name what was found and what to do with it.',
       ].join('\n');
     case 'make_decision':
       return [
-        'Action type is make_decision. artifact_type must be decision_frame.',
-        'Artifact JSON must include options and recommendation.',
-        'Recommendation must make the choice explicit in the first sentence.',
+        'Action type is make_decision. Do NOT produce a decision_frame — that is consulting, not action.',
+        'Instead, produce a concrete deliverable:',
+        '- If the decision involves another person, artifact_type must be drafted_email with the actual follow-up message.',
+        '- If the decision is internal (no person to contact), artifact_type must be document with a one-page brief that states the decision and next steps.',
+        'The directive sentence must name the specific decision being made, not ask the user to decide.',
       ].join('\n');
     case 'do_nothing':
     default:
       return [
-        'Action type is do_nothing. artifact_type must be wait_rationale.',
-        'Artifact JSON must include context, evidence, and tripwires.',
-        'Tripwires must be specific signals that would reopen the decision.',
+        'Action type is do_nothing. Do NOT produce a wait_rationale — that is consulting, not action.',
+        'Instead, produce a concrete deliverable:',
+        '- artifact_type must be document with a brief that explains why no action is needed and names the specific tripwire that would change that.',
+        '- Or if there is a person to notify about the wait, artifact_type must be drafted_email.',
+        'The directive sentence must name what is being deliberately deferred and why.',
       ].join('\n');
   }
 }
@@ -582,33 +588,41 @@ function expectedArtifactSchema(actionType: ActionType): string {
   "description": "Calendar description with details"
 }`;
     case 'research':
-      return `{
-  "findings": "Detailed research findings in markdown",
-  "sources": ["https://example.com/source"],
-  "recommended_action": "One concrete recommendation"
+      return `If research leads to contacting someone, use drafted_email:
+{
+  "recipient": "person@example.com or empty string",
+  "subject": "Subject about the research finding",
+  "body": "Complete email communicating the finding or requesting info"
+}
+If research is internal, use document:
+{
+  "title": "Research: [topic]",
+  "content": "Findings in markdown with recommended next step"
 }`;
     case 'make_decision':
-      return `{
-  "options": [
-    {
-      "option": "Option description",
-      "weight": 0.72,
-      "rationale": "Why this option scores this way"
-    },
-    {
-      "option": "Second option",
-      "weight": 0.28,
-      "rationale": "Why this option scores this way"
-    }
-  ],
-  "recommendation": "Lead with the recommendation in the first sentence"
+      return `If the decision involves another person, use drafted_email:
+{
+  "recipient": "person@example.com or empty string",
+  "subject": "Specific subject about the decision",
+  "body": "Complete email that communicates the decision or requests info"
+}
+If the decision is internal (no person to contact), use document:
+{
+  "title": "Decision: [specific decision name]",
+  "content": "One-page brief stating the decision, reasoning, and next steps"
 }`;
     case 'do_nothing':
     default:
-      return `{
-  "context": "Why waiting is correct right now",
-  "evidence": "Specific evidence supporting the wait decision",
-  "tripwires": ["Specific signal that would reopen this decision"]
+      return `If there is a person to notify, use drafted_email:
+{
+  "recipient": "person@example.com or empty string",
+  "subject": "Subject about the deferral",
+  "body": "Complete email explaining the wait and what triggers action"
+}
+Otherwise, use document:
+{
+  "title": "Hold: [what is being deferred]",
+  "content": "Brief explaining why no action is needed now and the specific tripwire that would change that"
 }`;
   }
 }
