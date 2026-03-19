@@ -39,10 +39,11 @@ Optional recovery variable:
 
 ## Cron Schedule
 
-- `/api/cron/daily-brief` — `0 14 * * *` (`14:00 UTC`, `7:00 AM` Pacific on March 18, 2026)
+- `/api/cron/daily-generate` — `50 13 * * *` (`13:50 UTC`, `6:50 AM` Pacific)
+- `/api/cron/daily-send` — `0 14 * * *` (`14:00 UTC`, `7:00 AM` Pacific)
 - `/api/cron/sync-google` — `0 2 * * *`
 - `/api/cron/sync-microsoft` — `0 3 * * *`
-- The split `daily-generate` / `daily-send` cron schedule is historical only. `vercel.json` is the current source of truth.
+- `vercel.json` is the current source of truth.
 
 ## Current Status And Build Priorities
 
