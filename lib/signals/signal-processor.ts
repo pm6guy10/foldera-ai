@@ -303,6 +303,52 @@ export async function processUnextractedSignals(
   return result;
 }
 
+/**
+ * Returns true if the signal was sent by Foldera itself (brief@foldera.ai or
+ * any @foldera.ai address). These signals should not produce commitments or
+ * entities to prevent the self-referential loop where directives become
+ * commitments that generate future directives about themselves.
+ */
+function isFolderaSender(author: string | null | undefined, content: string | null | undefined): boolean {
+  const authorLower = (author ?? '').toLowerCase();
+  if (authorLower.includes('@foldera.ai') || authorLower.includes('foldera')) return true;
+
+  // Also check email content for Foldera sender in From/To lines
+  const contentLower = (content ?? '').toLowerCase();
+  if (/\bfrom:\s*[^\n]*@foldera\.ai\b/.test(contentLower)) return true;
+  if (/\[sent email:/.test(contentLower) && /\bto:\s*[^\n]*@foldera\.ai\b/.test(contentLower)) return false; // user sending TO foldera is fine
+  if (/\[foldera\b/.test(contentLower)) return true; // [Foldera Directive or [Foldera · prefix
+
+  return false;
+}
+
+/**
+ * Filters out extracted "commitments" that aren't real commitments in the
+ * product sense. A real commitment is a promise the user made to another
+ * person or a professional deliverable with a named recipient.
+ *
+ * Rejects: calendar events without external recipients, bill/payment reminders,
+ * automated notifications, personal errands, system-generated emails.
+ */
+const NON_COMMITMENT_PATTERNS = [
+  // Calendar events and appointments (personal, no external recipient)
+  /\b(appointment|counseling|therapy|doctor|dentist|haircut|pickup|drop.?off|grocery|errand)\b/i,
+  // Automated billing and payment notifications
+  /\b(bill\s*payment|payment\s*(?:due|reminder)|auto.?pay|statement\s*(?:ready|available)|account\s*(?:ending|balance)|amount\s*due)\b/i,
+  // System-generated / automated emails
+  /\b(no.?reply|noreply|automated|unsubscribe|do.?not.?reply|data\s*export|will\s*be\s*emailed\s*when\s*ready)\b/i,
+  // Personal errands
+  /\b(pizza|dinner|lunch|breakfast|groceries|laundry|cleaning|oil\s*change|car\s*wash)\b/i,
+  // Generic calendar event titles without a person
+  /^(meeting|event|reminder|call|check.?in)$/i,
+  // Feedback/survey requests from services
+  /\b(provide\s*feedback|rate\s*(?:your|our)|how\s*was\s*your|survey|experience\s*(?:for|with))\b/i,
+];
+
+function isNonCommitment(description: string): boolean {
+  return NON_COMMITMENT_PATTERNS.some((pattern) => pattern.test(description));
+}
+
 async function processBatch(
   anthropic: Anthropic,
   supabase: ReturnType<typeof createServerClient>,
@@ -429,7 +475,13 @@ async function processBatch(
     const entityIds: string[] = [];
     const commitmentIds: string[] = [];
 
-    if (extraction) {
+    // Skip commitment and entity extraction for Foldera's own sent emails.
+    // These signals are kept for engagement tracking but must not produce
+    // commitments or entities — otherwise directives become commitments
+    // that generate future directives about themselves (self-referential loop).
+    const isFolderaEmail = isFolderaSender(signal.author, signal.content);
+
+    if (extraction && !isFolderaEmail) {
       // Upsert persons → tkg_entities
       for (const person of extraction.persons ?? []) {
         if (!person.name?.trim()) continue;
@@ -440,9 +492,10 @@ async function processBatch(
         }
       }
 
-      // Insert commitments → tkg_commitments
+      // Insert commitments → tkg_commitments (with quality filter)
       for (const commitment of extraction.commitments ?? []) {
         if (!commitment.description?.trim()) continue;
+        if (isNonCommitment(commitment.description)) continue;
         const commitmentId = await insertCommitment(
           supabase, userId, selfId, commitment, signal.id, entityIds,
         );
