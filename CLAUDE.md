@@ -774,3 +774,28 @@ Compound `send_message` winners from the scorer produced valid high-scoring cand
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-19 (commitment skip suppression + consulting decision block)
+
+- **MODE:** AUDIT
+- **Commit:** `557634e`
+
+### Files changed
+- `supabase/migrations/20260319000001_commitment_suppression.sql` — NEW. Adds `suppressed_at TIMESTAMPTZ` and `suppressed_reason TEXT` columns to `tkg_commitments`.
+- `lib/conviction/execute-action.ts` — Added `suppressCommitmentsForSkippedAction()`. On skip, reads `execution_result.generation_log.candidateDiscovery.topCandidates[0].sourceSignals`, finds commitment-sourced signals (`kind === 'commitment'`), and marks those commitments as suppressed.
+- `lib/briefing/scorer.ts` — Added `.is('suppressed_at', null)` filter to the commitments query so suppressed commitments are excluded from candidate generation.
+- `lib/signals/signal-processor.ts` — After inserting a new commitment, clears `suppressed_at` on all existing commitments for the same `promisor_id`. This unsuppresses commitments when fresh signals arrive for the same entity.
+- `lib/briefing/pinned-constraints.ts` — Added `CONSULTING_DECISION_PATTERNS` as a global constraint. Blocks directives phrased as "should you", "consider whether", "decide if", "evaluate whether" — consulting that asks the user to decide whether to act, not a real decision frame.
+- `lib/briefing/__tests__/generator.test.ts` — Added 10 tests for consulting constraint: 4 BLOCKED, 5 ALLOWED, 1 directive-level validation each way.
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx vitest run` — 28 tests passed (was 18, added 10)
+- `npx playwright test` — 16 passed
+- No hardcoded user data in changed files
+- All constraints apply globally to all users
+
+### Supabase / migrations
+- `20260319000001_commitment_suppression.sql` — must be applied in Supabase dashboard SQL editor
