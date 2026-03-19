@@ -59,6 +59,55 @@ function executionSucceeded(
   }
 }
 
+/**
+ * When a user skips a directive, suppress any commitment that sourced it.
+ * Reads execution_result.generation_log.candidateDiscovery.topCandidates[0].sourceSignals
+ * and marks matching tkg_commitments as suppressed.
+ */
+async function suppressCommitmentsForSkippedAction(
+  supabase: SupabaseClient,
+  action: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const execResult = action.execution_result as Record<string, unknown> | null;
+    if (!execResult) return;
+
+    const genLog = execResult.generation_log as Record<string, unknown> | undefined;
+    if (!genLog) return;
+
+    const discovery = genLog.candidateDiscovery as Record<string, unknown> | undefined;
+    if (!discovery) return;
+
+    const topCandidates = discovery.topCandidates as Array<Record<string, unknown>> | undefined;
+    if (!topCandidates?.length) return;
+
+    // The selected candidate is the one that was shown to the user
+    const selected = topCandidates.find((c) => c.decision === 'selected') ?? topCandidates[0];
+    const sourceSignals = selected.sourceSignals as Array<Record<string, unknown>> | undefined;
+    if (!sourceSignals?.length) return;
+
+    const commitmentIds = sourceSignals
+      .filter((s) => s.kind === 'commitment' && typeof s.id === 'string')
+      .map((s) => s.id as string);
+
+    if (commitmentIds.length === 0) return;
+
+    const { error } = await supabase
+      .from('tkg_commitments')
+      .update({
+        suppressed_at: new Date().toISOString(),
+        suppressed_reason: 'user_skipped_directive',
+      })
+      .in('id', commitmentIds);
+
+    if (error) {
+      console.warn('[execute-action] Failed to suppress commitments:', error.message);
+    }
+  } catch {
+    // Non-fatal — don't break skip flow if suppression fails
+  }
+}
+
 /** Resolve artifact from action row: execution_result.artifact or legacy draft_type fields. */
 function resolveArtifact(action: Record<string, unknown>): Record<string, unknown> | null {
   const exec = (action.execution_result as Record<string, unknown>) ?? {};
@@ -365,6 +414,11 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
     }
 
     await insertFeedbackSignalIdempotent(supabase, userId, actionId, 'skip', skipContent);
+
+    // Suppress commitments that sourced this directive so the scorer
+    // won't re-surface them until a new signal arrives for the same entity.
+    await suppressCommitmentsForSkippedAction(supabase, action);
+
     return { status: status === 'draft' ? 'draft_rejected' : 'skipped', action_id: actionId };
   }
 

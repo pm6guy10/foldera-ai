@@ -728,6 +728,19 @@ async function insertCommitment(
     });
     return null;
   }
+
+  // A new signal arrived for this entity — unsuppress any previously
+  // suppressed commitments from the same promisor so the scorer can
+  // re-evaluate them with fresh context.
+  if (promisorId) {
+    await supabase
+      .from('tkg_commitments')
+      .update({ suppressed_at: null, suppressed_reason: null })
+      .eq('user_id', userId)
+      .eq('promisor_id', promisorId)
+      .not('suppressed_at', 'is', null);
+  }
+
   return createCommitmentResult.data?.id ?? null;
 }
 

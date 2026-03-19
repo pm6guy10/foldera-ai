@@ -1760,12 +1760,13 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
   // Parallel data fetch
   const [commitmentsRes, signalsRes, entitiesRes, goalsRes] = await Promise.all([
-    // Open commitments (last 14 days or no deadline)
+    // Open commitments (last 14 days or no deadline), excluding user-suppressed ones
     supabase
       .from('tkg_commitments')
       .select('id, description, category, status, risk_score, due_at, implied_due_at, source_context, updated_at')
       .eq('user_id', userId)
       .in('status', ['active', 'at_risk'])
+      .is('suppressed_at', null)
       .order('risk_score', { ascending: false })
       .limit(50),
 

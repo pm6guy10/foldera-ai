@@ -49,12 +49,22 @@ const SYSTEM_INTROSPECTION_PATTERNS: ConstraintPattern[] = [
   },
 ];
 
+const CONSULTING_DECISION_PATTERNS: ConstraintPattern[] = [
+  {
+    code: 'consulting_decision_frame',
+    message: 'directive asks the user whether to act instead of presenting a real decision with tradeoffs — this is consulting, not a valid decision frame',
+    pattern: /\b(should you|consider whether|decide if|evaluate whether|would it be worth|might you want to|have you considered)\b/i,
+  },
+];
+
 const GLOBAL_CANDIDATE_PATTERNS: ConstraintPattern[] = [
   ...SYSTEM_INTROSPECTION_PATTERNS,
+  ...CONSULTING_DECISION_PATTERNS,
 ];
 
 const GLOBAL_DIRECTIVE_PATTERNS: ConstraintPattern[] = [
   ...SYSTEM_INTROSPECTION_PATTERNS,
+  ...CONSULTING_DECISION_PATTERNS,
 ];
 
 const STALE_CONSULTING_ERA_PATTERNS: ConstraintPattern[] = [

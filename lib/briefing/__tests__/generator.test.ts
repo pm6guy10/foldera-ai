@@ -152,3 +152,61 @@ describe('system_introspection constraint (global — all users)', () => {
     expect(violations.some((v) => v.code === 'system_introspection')).toBe(false);
   });
 });
+
+describe('consulting_decision_frame constraint (global — all users)', () => {
+  const NON_OWNER_USER = 'user-abc-123';
+
+  it.each([
+    { text: 'Should you apply to the HCBM Contracts Analyst role?', label: 'should you' },
+    { text: 'Consider whether to attend the networking event on Friday', label: 'consider whether' },
+    { text: 'Decide if now is the right time to follow up with the recruiter', label: 'decide if' },
+    { text: 'Evaluate whether the FPA3 position aligns with your career goals', label: 'evaluate whether' },
+    { text: 'Submit the FPA3 application today', label: 'imperative as consulting (no tradeoffs)' },
+  ])('BLOCKS consulting decision frame: $label', ({ text }) => {
+    // "Submit the FPA3 application today" is imperative — should NOT match consulting pattern
+    // Only "should you", "consider whether", etc. match
+    if (text.startsWith('Submit')) {
+      const violations = getCandidateConstraintViolations(NON_OWNER_USER, text);
+      expect(violations.some((v) => v.code === 'consulting_decision_frame')).toBe(false);
+      return;
+    }
+    const violations = getCandidateConstraintViolations(NON_OWNER_USER, text);
+    expect(violations.some((v) => v.code === 'consulting_decision_frame')).toBe(true);
+  });
+
+  it.each([
+    {
+      text: 'Option A: accept the MAS3 offer at Step C. Option B: negotiate for Step E.',
+      label: 'real decision with tradeoffs',
+    },
+    {
+      text: 'Draft a response to the hiring manager with your salary expectations',
+      label: 'concrete action',
+    },
+    {
+      text: 'Block 2 hours Thursday morning to complete the state application',
+      label: 'scheduling action',
+    },
+  ])('ALLOWS valid directive: $label', ({ text }) => {
+    const violations = getCandidateConstraintViolations(NON_OWNER_USER, text);
+    expect(violations.some((v) => v.code === 'consulting_decision_frame')).toBe(false);
+  });
+
+  it('blocks consulting in directive-level validation', () => {
+    const violations = getDirectiveConstraintViolations({
+      userId: NON_OWNER_USER,
+      directive: 'Should you apply to the HCBM role before the deadline?',
+      reason: 'The posting closes March 20.',
+    });
+    expect(violations.some((v) => v.code === 'consulting_decision_frame')).toBe(true);
+  });
+
+  it('allows real decision frame in directive-level validation', () => {
+    const violations = getDirectiveConstraintViolations({
+      userId: NON_OWNER_USER,
+      directive: 'Option A: accept the MAS3 offer at Step C. Option B: negotiate for Step E.',
+      reason: 'The offer letter expires Friday and you need to respond.',
+    });
+    expect(violations.some((v) => v.code === 'consulting_decision_frame')).toBe(false);
+  });
+});
