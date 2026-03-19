@@ -1674,89 +1674,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
   const antiPatterns = await detectAntiPatterns(userId);
 
-  if (antiPatterns.length > 0 && antiPatterns[0].score >= 0.5) {
-    const ap = antiPatterns[0];
-    logStructuredEvent({
-      event: 'scorer_override',
-      userId,
-      artifactType: artifactTypeForAction(ap.suggestedActionType),
-      generationStatus: 'anti_pattern_override',
-      details: {
-        scope: 'scorer',
-        pattern_type: ap.type,
-      },
-    });
-
-    const mirrorContent = [
-      ap.insight,
-      '',
-      'Evidence:',
-      ...ap.dataPoints,
-      '',
-      ap.mirrorQuestion,
-    ].join('\n');
-
-    const winner: ScoredLoop = {
-      id: `antipattern-${ap.type}`,
-      type: 'emergent',
-      title: ap.title,
-      content: mirrorContent,
-      suggestedActionType: ap.suggestedActionType,
-      matchedGoal: null,
-      score: ap.score + 5.0, // force above all normal loops
-      breakdown: {
-        stakes: ap.severity * 5,
-        urgency: ap.dataConfidence,
-        tractability: 1.0,
-        freshness: 1.0,
-      },
-      relatedSignals: [],
-      sourceSignals: ap.dataPoints.slice(0, 3).map((point) => ({
-        kind: 'emergent',
-        summary: point.slice(0, 160),
-      })),
-    };
-
-    // Include secondary anti-patterns as deprioritized
-    const deprioritized: DeprioritizedLoop[] = antiPatterns.slice(1, 4).map(secondary => ({
-      title: secondary.title,
-      score: secondary.score,
-      breakdown: {
-        stakes: secondary.severity * 5,
-        urgency: secondary.dataConfidence,
-        tractability: 1.0,
-        freshness: 1.0,
-      },
-      killReason: 'not_now' as KillReason,
-      killExplanation: `Secondary anti-pattern (${secondary.type}): ${secondary.mirrorQuestion}`,
-    }));
-
-    return {
-      winner,
-      deprioritized,
-      candidateDiscovery: {
-        candidateCount: 1,
-        suppressedCandidateCount: 0,
-        selectionMargin: null,
-        selectionReason: 'Selected as the only viable candidate after scoring.',
-        failureReason: null,
-        topCandidates: [
-          {
-            id: winner.id,
-            rank: 1,
-            candidateType: winner.type,
-            actionType: winner.suggestedActionType,
-            score: Number(winner.score.toFixed(2)),
-            scoreBreakdown: winner.breakdown,
-            targetGoal: null,
-            sourceSignals: winner.sourceSignals,
-            decision: 'selected',
-            decisionReason: 'Selected as the only viable candidate after scoring.',
-          },
-        ],
-      },
-    };
-  }
+  // Anti-patterns (commitment_decay, signal_velocity, etc.) no longer bypass
+  // normal scoring with an early return. They are injected into the scored pool
+  // at the emergent pattern stage (line ~2160) where the no-goal penalty applies.
+  // This prevents goalless system metrics from winning over goal-connected candidates.
 
   // Parallel data fetch
   const [commitmentsRes, signalsRes, entitiesRes, goalsRes] = await Promise.all([
@@ -1953,66 +1874,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   }
 
   if (candidates.length === 0) {
-    // Even with no candidates, check emergent patterns
-    const emergentFallback = await detectEmergentPatterns(userId);
-    if (emergentFallback.length > 0) {
-      const ep = emergentFallback[0];
-      const mirrorContent = [
-        ep.insight,
-        '',
-        'Evidence:',
-        ...ep.dataPoints,
-        '',
-        ep.mirrorQuestion,
-      ].join('\n');
-      return {
-        winner: {
-          id: 'emergent-0',
-          type: 'emergent',
-          title: ep.title,
-          content: mirrorContent,
-          suggestedActionType: ep.suggestedActionType,
-          matchedGoal: null,
-          score: ep.surpriseValue * ep.dataConfidence,
-          breakdown: { stakes: ep.surpriseValue, urgency: ep.dataConfidence, tractability: 1.0, freshness: 1.0 },
-          relatedSignals: [],
-          sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
-            kind: 'emergent',
-            summary: point.slice(0, 160),
-          })),
-        },
-        deprioritized: [],
-        candidateDiscovery: {
-          candidateCount: 1,
-          suppressedCandidateCount: suppressedCandidates,
-          selectionMargin: null,
-          selectionReason: 'Selected as the only viable candidate after scoring.',
-          failureReason: null,
-          topCandidates: [
-            {
-              id: 'emergent-0',
-              rank: 1,
-              candidateType: 'emergent',
-              actionType: ep.suggestedActionType,
-              score: Number((ep.surpriseValue * ep.dataConfidence).toFixed(2)),
-              scoreBreakdown: {
-                stakes: ep.surpriseValue,
-                urgency: ep.dataConfidence,
-                tractability: 1.0,
-                freshness: 1.0,
-              },
-              targetGoal: null,
-              sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
-                kind: 'emergent',
-                summary: point.slice(0, 160),
-              })),
-              decision: 'selected',
-              decisionReason: 'Selected as the only viable candidate after scoring.',
-            },
-          ],
-        },
-      };
-    }
+    // No goal-connected candidates. Goalless emergent patterns (commitment_decay,
+    // signal_velocity) are system metrics, not user-serving. Return null for a
+    // valid no-send rather than surfacing goalless emergent patterns.
     return null;
   }
 
@@ -2027,11 +1891,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     const tractability = await getTractability(userId, c.actionType, c.domain);
     const freshness = await getFreshness(userId, c.title, c.type);
 
-    // No-goal penalty: candidates that don't connect to any active goal
-    // are effectively unranked. A directive about system health will never
-    // match a user goal, so this is a second gate against introspection.
-    const noGoalPenalty = c.matchedGoal ? 0 : -50;
-    const score = Math.max(0, stakes * c.urgency * tractability * freshness + noGoalPenalty);
+    const score = stakes * c.urgency * tractability * freshness;
 
     // Find related signals: keyword overlap with this loop's content
     const loopWords = new Set(
@@ -2194,6 +2054,15 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           summary: point.slice(0, 160),
         })),
       });
+    }
+  }
+
+  // No-goal penalty: any candidate (including emergent) that doesn't connect
+  // to an active goal is effectively unranked. System introspection and
+  // commitment-decay emergent patterns never match a user goal.
+  for (const s of scored) {
+    if (!s.matchedGoal) {
+      s.score = Math.max(0, s.score - 50);
     }
   }
 
