@@ -33,7 +33,21 @@ const BANNED_DIRECTIVE_PATTERNS = [
   /\bmaybe\b/i,
   /\bperhaps\b/i,
   /\btry to\b/i,
+  /\byou should\b/i,
+  /\bfocus on\b/i,
+  /\bstop doing\b/i,
+  /\bstart doing\b/i,
 ];
+
+/** Artifact types that count as concrete deliverables. */
+const CONCRETE_ARTIFACT_TYPES: ReadonlySet<string> = new Set([
+  'drafted_email',
+  'document',
+  'calendar_event',
+]);
+
+/** Maximum age (in days) for signal references — older signals with no recent reinforcement are stale. */
+const STALE_SIGNAL_THRESHOLD_DAYS = 14;
 const PLACEHOLDER_PATTERNS = [
   /\[(name|company|role|contact|date|amount|title|recipient)\]/i,
   /\[your\s*name\]/i,
@@ -50,11 +64,10 @@ Doctrine:
 - No fake confidence. No generic productivity filler.
 - No multiple options in the brief itself.
 - No speculative hobby or lifestyle suggestions.
-- No vague language like consider, reflect, explore, think about, maybe, perhaps, try to.
+- No vague or consulting language: never use "consider", "reflect", "explore", "think about", "maybe", "perhaps", "try to", "you should", "focus on", "stop doing", "start doing".
 - Name the actual person, project, deadline, decision, or constraint from the evidence.
+- The artifact must be a concrete deliverable: a drafted email, a document, or a calendar event. Do NOT produce decision memos, wait rationales, or research briefs — those are consulting, not action.
 - The artifact must be directly usable with no placeholders.
-- If the action is wait, make the tripwire explicit and concrete.
-- If the action is a decision, lead with the recommendation, then justify it with concrete tradeoffs.
 - Pinned constraints are hard vetoes. Never reopen a locked decision or turn the directive into a menu of options.
 - The artifact object must stay nested under "artifact" and must match ARTIFACT_JSON_SCHEMA exactly.
 - Do not move artifact fields like recipient, subject, body, title, options, or tripwires to the top level.
@@ -62,7 +75,7 @@ Doctrine:
 Return strict JSON only:
 {
   "directive": "One imperative sentence with the exact move",
-  "artifact_type": "drafted_email | document | calendar_event | research_brief | decision_frame | wait_rationale",
+  "artifact_type": "drafted_email | document | calendar_event",
   "artifact": {},
   "evidence": "One sentence naming the decisive evidence",
   "why_now": "One sentence explaining why this wins today",
@@ -899,6 +912,25 @@ function validateGeneratedPayload(
     issues.push('directive is not specific to the winning evidence');
   }
 
+  // Concrete deliverable gate: reject decision memos, wait rationales, and research briefs.
+  if (!CONCRETE_ARTIFACT_TYPES.has(payload.artifact_type)) {
+    issues.push(`artifact type "${payload.artifact_type}" is not a concrete deliverable — must be drafted_email, document, or calendar_event`);
+  }
+
+  // Stale reference gate: reject if the newest source signal is older than 14 days.
+  const signalDates = (promptContext.winner.sourceSignals ?? [])
+    .map((s) => s.occurredAt)
+    .filter((d): d is string => Boolean(d))
+    .map((d) => new Date(d).getTime())
+    .filter((t) => !Number.isNaN(t));
+  const newestSignalMs = signalDates.length > 0 ? Math.max(...signalDates) : 0;
+  const newestSignalAgeDays = newestSignalMs > 0
+    ? (Date.now() - newestSignalMs) / (1000 * 60 * 60 * 24)
+    : STALE_SIGNAL_THRESHOLD_DAYS + 1;
+  if (newestSignalAgeDays > STALE_SIGNAL_THRESHOLD_DAYS) {
+    issues.push(`directive references items older than ${STALE_SIGNAL_THRESHOLD_DAYS} days with no recent signal reinforcement`);
+  }
+
   const expectedArtifactType = actionTypeToArtifactType(promptContext.winner.suggestedActionType);
   if (payload.artifact_type !== expectedArtifactType) {
     issues.push(`artifact_type must be ${expectedArtifactType}`);
@@ -957,6 +989,15 @@ export function validateDirectiveForPersistence(input: {
   }
   if (!input.artifact || typeof input.artifact !== 'object') {
     issues.push('artifact is required before persistence');
+  }
+  // Concrete deliverable gate — backup check at persistence time
+  const embeddedType = (input.directive as any).embeddedArtifactType;
+  if (embeddedType && !CONCRETE_ARTIFACT_TYPES.has(embeddedType)) {
+    issues.push(`artifact type "${embeddedType}" is not a concrete deliverable`);
+  }
+  // Consulting language gate — backup check at persistence time
+  if (BANNED_DIRECTIVE_PATTERNS.some((p) => p.test(input.directive.directive))) {
+    issues.push('directive uses consulting language');
   }
   if (countSentences(input.directive.directive) !== 1) {
     issues.push('directive must remain exactly one sentence');

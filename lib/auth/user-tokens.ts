@@ -121,6 +121,28 @@ export async function updateSyncTimestamp(
 }
 
 /**
+ * Return all distinct user IDs that have a token for the given provider.
+ * Used by cron sync jobs to loop all connected users, not just INGEST_USER_ID.
+ */
+export async function getAllUsersWithProvider(
+  provider: 'google' | 'microsoft',
+): Promise<string[]> {
+  const supabase = createServerClient();
+
+  const { data, error } = await supabase
+    .from('user_tokens')
+    .select('user_id')
+    .eq('provider', provider);
+
+  if (error) {
+    console.error(`[user-tokens] getAllUsersWithProvider(${provider}) failed:`, error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => row.user_id);
+}
+
+/**
  * Delete a user's token (disconnect).
  */
 export async function deleteUserToken(

@@ -12,6 +12,7 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
+import { OWNER_USER_ID } from '@/lib/auth/constants';
 
 export type SubscriptionStatus =
   | 'active_trial'
@@ -28,9 +29,6 @@ export interface SubscriptionInfo {
   /** True when the user cannot execute approvals */
   isReadOnly: boolean;
 }
-
-// Owner account — exempt from trial/payment gates
-const OWNER_USER_ID = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
 
 export async function getSubscriptionStatus(userId: string): Promise<SubscriptionInfo> {
   // Owner is always active pro

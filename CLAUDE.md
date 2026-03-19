@@ -821,3 +821,45 @@ Compound `send_message` winners from the scorer produced valid high-scoring cand
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-19 (multi-user sync + directive quality gates + hardcoded ID cleanup)
+
+### Files changed
+- `lib/auth/user-tokens.ts` — Added `getAllUsersWithProvider(provider)` helper that queries all distinct user IDs from `user_tokens` for a given provider. Used by sync crons to loop all connected users.
+- `app/api/cron/sync-google/route.ts` — Rewritten from single-user (`resolveCronUser` → `INGEST_USER_ID`) to multi-user loop. Now uses `validateCronAuth` + `getAllUsersWithProvider('google')` and syncs every user with a Google token. Returns per-user results.
+- `app/api/cron/sync-microsoft/route.ts` — Same rewrite as sync-google: multi-user loop via `validateCronAuth` + `getAllUsersWithProvider('microsoft')`.
+- `lib/auth/subscription.ts` — Replaced duplicate hardcoded `OWNER_USER_ID` with import from `@/lib/auth/constants`.
+- `lib/briefing/generator.ts` — Four quality gate additions:
+  1. Extended `BANNED_DIRECTIVE_PATTERNS` with consulting phrases: "you should", "focus on", "stop doing", "start doing".
+  2. Added `CONCRETE_ARTIFACT_TYPES` set (`drafted_email`, `document`, `calendar_event`). Non-concrete types (`decision_frame`, `wait_rationale`, `research_brief`) are rejected in `validateGeneratedPayload` and `validateDirectiveForPersistence`.
+  3. Added 14-day stale signal suppression: computes newest `occurredAt` from `sourceSignals`; rejects if all signals are older than 14 days.
+  4. Updated `SYSTEM_PROMPT` to instruct the LLM to only produce concrete deliverables and explicitly ban consulting language.
+
+### Phase 2 — Google OAuth verification
+- Google OAuth flow is fully built: scopes (gmail.readonly, gmail.send, calendar), token storage to both `integrations` and `user_tokens` tables, `sync-google` cron, `google-sync.ts` with `syncGmail` + `syncCalendar`.
+- **Fixed**: sync-google and sync-microsoft crons previously only synced `INGEST_USER_ID`. Now loop ALL users with connected tokens.
+- OAuth callback redirects to `/dashboard` after consent.
+
+### Phase 3 — Directive quality gates
+- Confidence < 70% gate: already existed (line 26, validated at lines 987-988 and 1293).
+- Consulting language: added "you should", "focus on", "stop doing", "start doing" to banned patterns. Generator retries once on validation failure (existing 2-attempt loop in `generatePayload`).
+- No concrete deliverable: `decision_frame`, `wait_rationale`, and `research_brief` are now rejected. System prompt updated to only request `drafted_email | document | calendar_event`.
+- 14-day stale references: computed from `sourceSignals[].occurredAt`. Signals older than 14 days with no recent reinforcement are suppressed.
+
+### Phase 4 — Email template
+- Already matches spec: dark background (#0a0a0f), cyan accents (#38bdf8), one directive, one artifact, no confidence visible, no deprioritized section, one-sentence reason, mobile-first (max-width 560px). No changes needed.
+
+### Phase 5 — Multi-user verification
+- `lib/auth/subscription.ts`: replaced duplicate hardcoded owner ID with import from `constants.ts`.
+- `tests/e2e/settings-manual-trigger.spec.ts`: duplicate ID is a test fixture (cannot import app code in Playwright e2e tests) — left as-is.
+- Sync crons now loop all users, not just `INGEST_USER_ID`.
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx playwright test` — 16 passed, 14 failed (all 14 failures are pre-existing on main, verified by running same tests on main branch)
+- No new test failures introduced
+
+### Supabase / migrations
+- No new migrations
