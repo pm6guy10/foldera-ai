@@ -627,6 +627,28 @@ Otherwise, use document:
   }
 }
 
+/**
+ * Translate non-concrete action types into deliverable-oriented labels.
+ * This prevents the LLM from seeing "make_decision" and defaulting to decision_frame.
+ */
+function translateToDeliverableAction(actionType: ActionType, winner: ScoredLoop): string {
+  switch (actionType) {
+    case 'make_decision': {
+      // If there's a person in the context, steer to send_message
+      const hasRecipient = extractBestRecipientEmail(winner.relationshipContext);
+      return hasRecipient
+        ? 'send_message (decision involves a person — draft the email)'
+        : 'write_document (internal decision — write a one-page brief)';
+    }
+    case 'research':
+      return 'write_document (research findings — write the findings document)';
+    case 'do_nothing':
+      return 'write_document (deliberate hold — write a brief explaining why)';
+    default:
+      return actionType;
+  }
+}
+
 function extractBestRecipientEmail(relationshipContext: string | undefined): string | null {
   if (!relationshipContext) return null;
   const emailPattern = /<([^@\s>]+@[^@\s>]+\.[^@\s>]+)>/g;
@@ -671,11 +693,15 @@ function buildGenerationPrompt(context: PromptContext): string {
     `total=${winner.score.toFixed(2)}`,
   ].join(', ');
 
+  // Translate non-concrete action types into deliverable-oriented labels
+  // so the LLM doesn't default to decision_frame / wait_rationale / research_brief
+  const deliverableAction = translateToDeliverableAction(winner.suggestedActionType, winner);
+
   const sections = [
     `TODAY: ${today()}`,
     `WINNING_LOOP_TITLE:\n${winner.title}`,
     `WINNING_LOOP_TYPE:\n${winner.type}`,
-    `WINNING_ACTION_TYPE:\n${winner.suggestedActionType}`,
+    `WINNING_ACTION_TYPE:\n${deliverableAction}`,
     `PINNED_CONSTRAINTS:\n${pinnedConstraints ?? '- None'}`,
     `GOAL_ALIGNMENT:\n${matchedGoal}`,
     `SCORE_BREAKDOWN:\n${scoreBreakdown}`,
@@ -1214,7 +1240,8 @@ async function generatePayload(
       attempts.push({ role: 'assistant', content: raw });
       attempts.push({
         role: 'user',
-        content: `Validation failed. Fix these issues and return JSON only.
+        content: `Validation failed. CRITICAL: artifact_type MUST be "drafted_email" or "document" or "calendar_event". Do NOT use decision_frame, research_brief, or wait_rationale.
+Fix these issues and return JSON only.
 Keep the artifact nested under "artifact" and match this schema exactly:
 ${expectedArtifactSchema(promptContext.winner.suggestedActionType)}
 
