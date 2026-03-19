@@ -34,6 +34,8 @@ const BANNED_DIRECTIVE_PATTERNS = [
 ];
 const PLACEHOLDER_PATTERNS = [
   /\[(name|company|role|contact|date|amount|title|recipient)\]/i,
+  /\[your\s*name\]/i,
+  /\[RECIPIENT\]/i,
   /\b(tbd|placeholder|lorem ipsum|example@|recipient@email\.com)\b/i,
   /\b(option a|option b)\b/i,
 ];
