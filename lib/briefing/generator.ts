@@ -971,12 +971,23 @@ function validateGeneratedPayload(
     issues.push(`directive references items older than ${STALE_SIGNAL_THRESHOLD_DAYS} days with no recent signal reinforcement`);
   }
 
-  const expectedArtifactType = actionTypeToArtifactType(promptContext.winner.suggestedActionType);
-  if (payload.artifact_type !== expectedArtifactType) {
-    issues.push(`artifact_type must be ${expectedArtifactType}`);
+  // For action types that we've redirected to concrete deliverables,
+  // accept any concrete artifact type instead of the legacy mapping.
+  const redirectedActionTypes: ActionType[] = ['make_decision', 'research', 'do_nothing'];
+  if (redirectedActionTypes.includes(promptContext.winner.suggestedActionType)) {
+    if (!CONCRETE_ARTIFACT_TYPES.has(payload.artifact_type)) {
+      issues.push(`artifact type "${payload.artifact_type}" is not a concrete deliverable — must be drafted_email, document, or calendar_event`);
+    }
+  } else {
+    const expectedArtifactType = actionTypeToArtifactType(promptContext.winner.suggestedActionType);
+    if (payload.artifact_type !== expectedArtifactType) {
+      issues.push(`artifact_type must be ${expectedArtifactType}`);
+    }
   }
 
-  validateArtifactPayload(promptContext.winner.suggestedActionType, payload.artifact, issues);
+  // Validate artifact payload using the LLM's chosen artifact type (not the original action type)
+  const validationActionType = artifactTypeToActionType(payload.artifact_type);
+  validateArtifactPayload(validationActionType, payload.artifact, issues);
 
   const duplicateApproved = promptContext.approvedRecently.some((row) => {
     if (!row.directive_text) return false;
