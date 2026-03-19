@@ -263,6 +263,74 @@ async function hydrateWinnerRelationshipContext(
   }
 
   const supabase = createServerClient();
+
+  // For commitment-sourced candidates, resolve the recipient entity ONLY
+  // from the commitment's promisor/promisee fields. Do not fall back to a
+  // broad entity search by goal category — that produces wrong recipients
+  // (e.g. DSHS contact for an HCA directive because both are "career").
+  const commitmentSourceIds = (winner.sourceSignals ?? [])
+    .filter((s) => s.kind === 'commitment' && typeof s.id === 'string')
+    .map((s) => s.id as string);
+
+  if (commitmentSourceIds.length > 0) {
+    return hydrateFromCommitmentEntities(supabase, userId, winner, commitmentSourceIds);
+  }
+
+  // Non-commitment candidates: use text-based entity matching (existing behavior)
+  return hydrateFromTextMatch(supabase, userId, winner);
+}
+
+/**
+ * Resolve relationship context from commitment promisor/promisee entities.
+ * Returns only entities directly linked to the commitment — no guessing.
+ */
+async function hydrateFromCommitmentEntities(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  winner: ScoredLoop,
+  commitmentIds: string[],
+): Promise<ScoredLoop> {
+  // Get promisor and promisee entity IDs from the commitments
+  const { data: commitments } = await supabase
+    .from('tkg_commitments')
+    .select('promisor_id, promisee_id')
+    .in('id', commitmentIds);
+
+  if (!commitments || commitments.length === 0) return winner;
+
+  const entityIds = new Set<string>();
+  for (const c of commitments) {
+    if (c.promisor_id) entityIds.add(c.promisor_id);
+    if (c.promisee_id) entityIds.add(c.promisee_id);
+  }
+
+  if (entityIds.size === 0) return winner;
+
+  // Look up those specific entities
+  const { data: entities } = await supabase
+    .from('tkg_entities')
+    .select('name, display_name, primary_email, emails, role, company, total_interactions, patterns')
+    .eq('user_id', userId)
+    .in('id', [...entityIds])
+    .neq('name', 'self');
+
+  if (!entities || entities.length === 0) return winner;
+
+  const lines = entities.map((entity) => formatEntityLine(entity as Record<string, unknown>));
+  if (lines.length === 0) return winner;
+
+  return { ...winner, relationshipContext: lines.join('\n') };
+}
+
+/**
+ * Fallback: resolve relationship context from text-based entity matching.
+ * Used for signal and relationship candidates that don't have commitment links.
+ */
+async function hydrateFromTextMatch(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  winner: ScoredLoop,
+): Promise<ScoredLoop> {
   const queryText = [
     winner.title,
     winner.content,
@@ -277,15 +345,9 @@ async function hydrateWinnerRelationshipContext(
     .order('total_interactions', { ascending: false })
     .limit(20);
 
-  if (error) {
-    throw error;
-  }
+  if (error || !entities || entities.length === 0) return winner;
 
-  if (!entities || entities.length === 0) {
-    return winner;
-  }
-
-  const lines = entities
+  const scored = entities
     .map((entity) => {
       const record = entity as Record<string, unknown>;
       const name = isNonEmptyString(record.display_name)
@@ -293,57 +355,64 @@ async function hydrateWinnerRelationshipContext(
         : isNonEmptyString(record.name)
           ? record.name.trim()
           : 'Unknown';
-      const role = isNonEmptyString(record.role) ? record.role.trim() : null;
-      const company = isNonEmptyString(record.company) ? record.company.trim() : null;
       const email = isNonEmptyString(record.primary_email)
         ? record.primary_email.trim()
         : Array.isArray(record.emails)
           ? (record.emails as unknown[]).find((value): value is string => isNonEmptyString(value))?.trim() ?? null
           : null;
-      const patterns = record.patterns && typeof record.patterns === 'object'
-        ? Object.values(record.patterns as Record<string, unknown>)
-          .map((pattern) =>
-            pattern && typeof pattern === 'object' && isNonEmptyString((pattern as Record<string, unknown>).description)
-              ? ((pattern as Record<string, unknown>).description as string).trim()
-              : null)
-          .filter((value): value is string => value !== null)
-          .slice(0, 2)
-          .join('; ')
-        : '';
-
+      const company = isNonEmptyString(record.company) ? record.company.trim() : null;
       const relevance =
         (queryText.includes(name.toLowerCase()) ? 3 : 0) +
         (email && queryText.includes(email.toLowerCase()) ? 2 : 0) +
         (company && queryText.includes(company.toLowerCase()) ? 1 : 0);
-      const descriptor = [
-        role,
-        company,
-        typeof record.total_interactions === 'number' ? `${record.total_interactions} interactions` : null,
-      ].filter(Boolean).join(', ');
 
       return {
         relevance,
         interactions: typeof record.total_interactions === 'number' ? record.total_interactions : 0,
-        line: `- ${name}${email ? ` <${email}>` : ''}${descriptor ? ` (${descriptor})` : ''}${patterns ? `: ${patterns}` : ''}`,
+        line: formatEntityLine(record),
       };
     })
     .sort((left, right) => {
-      if (right.relevance !== left.relevance) {
-        return right.relevance - left.relevance;
-      }
+      if (right.relevance !== left.relevance) return right.relevance - left.relevance;
       return right.interactions - left.interactions;
     })
     .slice(0, 8)
     .map((entity) => entity.line);
 
-  if (lines.length === 0) {
-    return winner;
-  }
+  if (scored.length === 0) return winner;
+  return { ...winner, relationshipContext: scored.join('\n') };
+}
 
-  return {
-    ...winner,
-    relationshipContext: lines.join('\n'),
-  };
+function formatEntityLine(record: Record<string, unknown>): string {
+  const name = isNonEmptyString(record.display_name)
+    ? record.display_name.trim()
+    : isNonEmptyString(record.name)
+      ? record.name.trim()
+      : 'Unknown';
+  const role = isNonEmptyString(record.role) ? record.role.trim() : null;
+  const company = isNonEmptyString(record.company) ? record.company.trim() : null;
+  const email = isNonEmptyString(record.primary_email)
+    ? record.primary_email.trim()
+    : Array.isArray(record.emails)
+      ? (record.emails as unknown[]).find((value): value is string => isNonEmptyString(value))?.trim() ?? null
+      : null;
+  const patterns = record.patterns && typeof record.patterns === 'object'
+    ? Object.values(record.patterns as Record<string, unknown>)
+      .map((pattern) =>
+        pattern && typeof pattern === 'object' && isNonEmptyString((pattern as Record<string, unknown>).description)
+          ? ((pattern as Record<string, unknown>).description as string).trim()
+          : null)
+      .filter((value): value is string => value !== null)
+      .slice(0, 2)
+      .join('; ')
+    : '';
+  const descriptor = [
+    role,
+    company,
+    typeof record.total_interactions === 'number' ? `${record.total_interactions} interactions` : null,
+  ].filter(Boolean).join(', ');
+
+  return `- ${name}${email ? ` <${email}>` : ''}${descriptor ? ` (${descriptor})` : ''}${patterns ? `: ${patterns}` : ''}`;
 }
 
 function hasMeaningfulOverlap(candidate: string, winner: ScoredLoop): boolean {
