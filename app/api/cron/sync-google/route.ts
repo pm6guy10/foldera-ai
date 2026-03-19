@@ -4,7 +4,7 @@
  * Background sync job — pulls Gmail messages and Google Calendar events
  * into tkg_signals for ALL users with a connected Google token.
  *
- * On first connect (last_synced_at is null): pulls last 30 days.
+ * On first connect (last_synced_at is null): pulls last 90 days.
  * On subsequent runs: pulls since last_synced_at.
  *
  * Auth: CRON_SECRET Bearer token.
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, message: 'No users with Google tokens', users: 0 });
   }
 
-  const results: Array<{ userId: string; ok: boolean; gmail_signals?: number; calendar_signals?: number; error?: string }> = [];
+  const results: Array<{ userId: string; ok: boolean; gmail_signals?: number; calendar_signals?: number; drive_signals?: number; error?: string }> = [];
 
   for (const userId of userIds) {
     try {
@@ -37,6 +37,7 @@ export async function GET(request: Request) {
         ok: !result.error,
         gmail_signals: result.gmail_signals,
         calendar_signals: result.calendar_signals,
+        drive_signals: result.drive_signals,
         error: result.error,
       });
     } catch (err: any) {

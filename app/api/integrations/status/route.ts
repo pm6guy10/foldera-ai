@@ -29,7 +29,7 @@ export async function GET() {
         .eq('user_id', session.user.id),
       supabase
         .from('user_tokens')
-        .select('provider, email, last_synced_at')
+        .select('provider, email, last_synced_at, scopes')
         .eq('user_id', session.user.id),
     ]);
 
@@ -49,6 +49,7 @@ export async function GET() {
         ...int,
         sync_email: token?.email ?? null,
         last_synced_at: token?.last_synced_at ?? null,
+        scopes: token?.scopes ?? null,
       };
     });
 

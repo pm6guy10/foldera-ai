@@ -9,6 +9,7 @@ interface Integration {
   provider: string;
   is_active: boolean;
   sync_email?: string;
+  scopes?: string | null;
 }
 
 interface SubscriptionInfo {
@@ -43,6 +44,9 @@ export default function SettingsClient() {
 
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
+
+  const microsoftNeedsReconnect = microsoft?.is_active && microsoft.scopes && !microsoft.scopes.includes('Files.Read');
+  const googleNeedsReconnect = google?.is_active && google.scopes && !google.scopes.includes('drive');
 
   const handleDeleteAccount = async () => {
     if (!deleteConfirm) { setDeleteConfirm(true); return; }
@@ -130,6 +134,10 @@ export default function SettingsClient() {
           )}
         </div>
 
+        {googleNeedsReconnect && (
+          <p className="mt-1.5 text-xs text-amber-400 px-1">Reconnect Google to enable document sync.</p>
+        )}
+
         <div className="mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <MicrosoftIcon />
@@ -149,13 +157,17 @@ export default function SettingsClient() {
             </button>
           ) : (
             <button
-              onClick={() => { window.location.href = '/api/auth/signin/azure-ad?callbackUrl=/dashboard/settings'; }}
+              onClick={() => { window.location.href = '/api/microsoft/connect'; }}
               className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors"
             >
               Connect
             </button>
           )}
         </div>
+
+        {microsoftNeedsReconnect && (
+          <p className="mt-1.5 text-xs text-amber-400 px-1">Reconnect Microsoft to enable document sync.</p>
+        )}
 
         {/* Subscription */}
         <h2 className="text-lg font-semibold text-white mt-8">Subscription</h2>

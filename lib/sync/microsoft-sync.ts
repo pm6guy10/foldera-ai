@@ -4,7 +4,7 @@
  * Background sync job: pulls Outlook mail, calendar events, OneDrive files,
  * and To Do tasks into tkg_signals via Microsoft Graph API.
  *
- * On first connect (last_synced_at is null), pulls the last 30 days.
+ * On first connect (last_synced_at is null), pulls the last 90 days.
  * On subsequent runs, pulls since last_synced_at.
  *
  * Deduplication via content_hash prevents duplicate signals.
@@ -450,13 +450,45 @@ export async function recoverMicrosoftSignalContent(
 
 // ── OneDrive Files Sync ─────────────────────────────────────────────────────
 
+const SUPPORTED_FILE_EXTENSIONS = new Set([".docx", ".xlsx", ".txt", ".md"]);
+const TEXT_FILE_EXTENSIONS = new Set([".txt", ".md"]);
+
+function getFileExtension(name: string): string {
+  const dot = name.lastIndexOf(".");
+  return dot >= 0 ? name.slice(dot).toLowerCase() : "";
+}
+
+/**
+ * Download the first 500 chars of text content for plain text files (.txt, .md)
+ * via the Graph /content endpoint.
+ */
+async function downloadFileTextContent(
+  userId: string,
+  accessToken: string,
+  fileId: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${GRAPH_BASE}/me/drive/items/${fileId}/content`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        redirect: "follow",
+      },
+    );
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text.slice(0, 500);
+  } catch {
+    return null;
+  }
+}
+
 async function syncFiles(
   userId: string,
   accessToken: string,
   sinceIso: string,
 ): Promise<number> {
   // Use /me/drive/recent instead of search(q='') which returns 400 on empty query.
-  // /me/drive/recent returns recently modified files without requiring a search term.
   const select =
     "id,name,lastModifiedDateTime,lastModifiedBy,size,webUrl,file,folder";
   const url = `${GRAPH_BASE}/me/drive/recent?$select=${select}&$top=${FILE_PAGE_SIZE}`;
@@ -474,7 +506,6 @@ async function syncFiles(
       );
       return 0;
     }
-    // search/query errors (400) are also non-fatal — skip gracefully
     if (err.message?.includes("400")) {
       console.warn(
         "[microsoft-sync] OneDrive recent files request failed (400), skipping file sync",
@@ -484,10 +515,12 @@ async function syncFiles(
     throw err;
   }
 
-  // Filter to actual files (skip folders) modified since the sync window
+  // Filter to supported file types modified since the sync window
   const sinceDate = new Date(sinceIso).getTime();
   const fileItems = files.filter((f: any) => {
     if (!f.file) return false; // skip folders
+    const ext = getFileExtension(f.name ?? "");
+    if (!SUPPORTED_FILE_EXTENSIONS.has(ext)) return false;
     const modified = f.lastModifiedDateTime
       ? new Date(f.lastModifiedDateTime).getTime()
       : 0;
@@ -502,6 +535,17 @@ async function syncFiles(
     if (!file.id) continue;
 
     const modifiedBy = file.lastModifiedBy?.user?.displayName ?? "";
+    const ext = getFileExtension(file.name ?? "");
+
+    // Download text content for plain text files
+    let fileContent = "";
+    if (TEXT_FILE_EXTENSIONS.has(ext)) {
+      const text = await downloadFileTextContent(userId, accessToken, file.id);
+      if (text) {
+        fileContent = `\nContent: ${text}`;
+      }
+    }
+
     const content = [
       `[File modified: ${file.name}]`,
       `Modified: ${file.lastModifiedDateTime}`,
@@ -510,7 +554,7 @@ async function syncFiles(
       file.webUrl ? `URL: ${file.webUrl}` : "",
     ]
       .filter(Boolean)
-      .join("\n");
+      .join("\n") + fileContent;
 
     const contentHash = hash(
       `onedrive:${file.id}:${file.lastModifiedDateTime}`,
@@ -661,7 +705,7 @@ export async function syncMicrosoft(
   const tokenMeta = await getUserToken(userId, "microsoft");
   const isFirstSync = !tokenMeta?.last_synced_at;
   const sinceMs = isFirstSync
-    ? Date.now() - 30 * 24 * 60 * 60 * 1000 // 30 days ago
+    ? Date.now() - 90 * 24 * 60 * 60 * 1000 // 90 days ago
     : new Date(tokenMeta!.last_synced_at!).getTime();
   const sinceIso = new Date(sinceMs).toISOString();
   const calendarUntilIso = new Date(
