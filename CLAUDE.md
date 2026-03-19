@@ -799,3 +799,25 @@ Compound `send_message` winners from the scorer produced valid high-scoring cand
 
 ### Supabase / migrations
 - `20260319000001_commitment_suppression.sql` — must be applied in Supabase dashboard SQL editor
+
+---
+
+## Session Log — 2026-03-19 (researcher module)
+
+- **MODE:** AUDIT
+
+### Files changed
+- `lib/briefing/researcher.ts` — NEW. Research module that sits between scorer and writer. Pass 1: internal synthesis via Claude API call cross-referencing the winning signal cluster against all 30-day signals looking for temporal collisions, financial implications, relationship gaps, and dependency chains. Pass 2: external enrichment for career/financial domains via a second Claude call. System introspection filter prevents Foldera infrastructure insights. 15-second time budget enforced with structured timing logs.
+- `lib/briefing/generator.ts` — Integrated researcher into the `generateDirective()` pipeline. After `hydrateWinnerRelationshipContext` and before `generatePayload`, calls `researchWinner()`. When an insight is returned, injects `RESEARCHER_INSIGHT`, `INSIGHT_WINDOW`, `EXTERNAL_CONTEXT`, and `ARTIFACT_GUIDANCE` sections into the writer prompt with an instruction to build the artifact around the insight. Falls through to raw mode on null or error.
+- `lib/briefing/__tests__/researcher.test.ts` — NEW. 10 test cases: MAS3 + salary + calendar synthesis, career signals without financial overlap, system introspection rejection, empty signal set, no-insight-found, API failure graceful handling, decrypt-fallback skip, external enrichment for career domain, non-career domain skips enrichment, multi-user safety (works for non-owner users).
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx vitest run` — 10 researcher tests passed, 36 generator/cron tests passed (46 total for briefing+cron)
+- Pre-existing execute-action test failures (ENCRYPTION_KEY not set) are unrelated
+- No hardcoded user data in researcher module — all queries scoped by `userId` parameter
+- Multi-user verified: test case uses non-owner user ID
+- System introspection filter applied to all synthesis output
+
+### Supabase / migrations
+- No new migrations

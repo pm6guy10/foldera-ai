@@ -17,6 +17,8 @@ import {
   getDirectiveConstraintViolations,
   getPinnedConstraintPrompt,
 } from './pinned-constraints';
+import { researchWinner } from './researcher';
+import type { ResearchInsight } from './researcher';
 
 const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
 const GENERATION_MODEL = 'claude-sonnet-4-20250514';
@@ -98,6 +100,7 @@ interface RecentSkippedActionRow extends RecentActionRow {
 
 interface PromptContext {
   userId: string;
+  insight?: ResearchInsight | null;
   winner: ScoredLoop;
   deprioritized: DeprioritizedLoop[];
   approvedRecently: RecentActionRow[];
@@ -661,6 +664,24 @@ function buildGenerationPrompt(context: PromptContext): string {
     );
   }
 
+  // Inject researcher insight when available — this becomes the primary context
+  if (context.insight) {
+    const insightSections = [
+      `RESEARCHER_INSIGHT:\n${context.insight.synthesis}`,
+    ];
+    if (context.insight.window) {
+      insightSections.push(`INSIGHT_WINDOW:\n${context.insight.window}`);
+    }
+    if (context.insight.external_context) {
+      insightSections.push(`EXTERNAL_CONTEXT:\n${context.insight.external_context}`);
+    }
+    insightSections.push(
+      `ARTIFACT_GUIDANCE:\n${context.insight.artifact_instructions}`,
+      'INSTRUCTION: Draft the artifact that delivers this insight and captures its value before the window closes. The insight is the primary context — build the artifact around it, not around the raw commitment description.',
+    );
+    sections.push(...insightSections);
+  }
+
   sections.push(
     `RUNNER_UPS_REJECTED:\n${runnerUps}`,
     `RECENTLY_APPROVED:\n${approvedLines}`,
@@ -1198,8 +1219,26 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     }
 
     const hydratedWinner = await hydrateWinnerRelationshipContext(userId, scored.winner);
+
+    // Research phase: deepen the winner into an insight before writing
+    let insight: ResearchInsight | null = null;
+    try {
+      insight = await researchWinner(userId, hydratedWinner);
+    } catch {
+      // Researcher failure is non-blocking — fall through to raw mode
+      logStructuredEvent({
+        event: 'researcher_fallthrough',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'researcher_fallthrough',
+        details: { scope: 'generator' },
+      });
+    }
+
     const promptContext: PromptContext = {
       userId,
+      insight,
       winner: hydratedWinner,
       deprioritized: scored.deprioritized,
       ...guardrails,
