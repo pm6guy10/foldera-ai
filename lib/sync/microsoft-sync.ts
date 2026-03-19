@@ -455,10 +455,11 @@ async function syncFiles(
   accessToken: string,
   sinceIso: string,
 ): Promise<number> {
-  const filter = encodeURIComponent(`lastModifiedDateTime ge ${sinceIso}`);
+  // Use /me/drive/recent instead of search(q='') which returns 400 on empty query.
+  // /me/drive/recent returns recently modified files without requiring a search term.
   const select =
     "id,name,lastModifiedDateTime,lastModifiedBy,size,webUrl,file,folder";
-  const url = `${GRAPH_BASE}/me/drive/root/search(q='')?$filter=${filter}&$select=${select}&$top=${FILE_PAGE_SIZE}&$orderby=lastModifiedDateTime desc`;
+  const url = `${GRAPH_BASE}/me/drive/recent?$select=${select}&$top=${FILE_PAGE_SIZE}`;
 
   let files: any[];
   try {
@@ -473,10 +474,25 @@ async function syncFiles(
       );
       return 0;
     }
+    // search/query errors (400) are also non-fatal — skip gracefully
+    if (err.message?.includes("400")) {
+      console.warn(
+        "[microsoft-sync] OneDrive recent files request failed (400), skipping file sync",
+      );
+      return 0;
+    }
     throw err;
   }
 
-  const fileItems = files.filter((f: any) => f.file); // skip folders
+  // Filter to actual files (skip folders) modified since the sync window
+  const sinceDate = new Date(sinceIso).getTime();
+  const fileItems = files.filter((f: any) => {
+    if (!f.file) return false; // skip folders
+    const modified = f.lastModifiedDateTime
+      ? new Date(f.lastModifiedDateTime).getTime()
+      : 0;
+    return modified >= sinceDate;
+  });
   if (fileItems.length === 0) return 0;
 
   const supabase = createServerClient();
