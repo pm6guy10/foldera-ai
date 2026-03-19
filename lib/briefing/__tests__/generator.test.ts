@@ -161,15 +161,11 @@ describe('consulting_decision_frame constraint (global — all users)', () => {
     { text: 'Consider whether to attend the networking event on Friday', label: 'consider whether' },
     { text: 'Decide if now is the right time to follow up with the recruiter', label: 'decide if' },
     { text: 'Evaluate whether the FPA3 position aligns with your career goals', label: 'evaluate whether' },
-    { text: 'Submit the FPA3 application today', label: 'imperative as consulting (no tradeoffs)' },
+    { text: 'Stop creating new commitments and focus exclusively on the three overdue items', label: 'stop creating + focus exclusively' },
+    { text: 'You need to pause all new work and address the backlog', label: 'you need to + pause all' },
+    { text: 'You should focus energy on completing the application', label: 'you should + focus energy' },
+    { text: 'This requires intervention before the deadline passes', label: 'requires intervention' },
   ])('BLOCKS consulting decision frame: $label', ({ text }) => {
-    // "Submit the FPA3 application today" is imperative — should NOT match consulting pattern
-    // Only "should you", "consider whether", etc. match
-    if (text.startsWith('Submit')) {
-      const violations = getCandidateConstraintViolations(NON_OWNER_USER, text);
-      expect(violations.some((v) => v.code === 'consulting_decision_frame')).toBe(false);
-      return;
-    }
     const violations = getCandidateConstraintViolations(NON_OWNER_USER, text);
     expect(violations.some((v) => v.code === 'consulting_decision_frame')).toBe(true);
   });
@@ -205,7 +201,7 @@ describe('consulting_decision_frame constraint (global — all users)', () => {
     const violations = getDirectiveConstraintViolations({
       userId: NON_OWNER_USER,
       directive: 'Option A: accept the MAS3 offer at Step C. Option B: negotiate for Step E.',
-      reason: 'The offer letter expires Friday and you need to respond.',
+      reason: 'The offer letter expires Friday and a response is required.',
     });
     expect(violations.some((v) => v.code === 'consulting_decision_frame')).toBe(false);
   });

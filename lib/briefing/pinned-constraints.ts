@@ -55,6 +55,11 @@ const CONSULTING_DECISION_PATTERNS: ConstraintPattern[] = [
     message: 'directive asks the user whether to act instead of presenting a real decision with tradeoffs — this is consulting, not a valid decision frame',
     pattern: /\b(should you|consider whether|decide if|evaluate whether|would it be worth|might you want to|have you considered)\b/i,
   },
+  {
+    code: 'consulting_decision_frame',
+    message: 'directive uses imperative coaching language — telling the user what to do rather than presenting a finished artifact',
+    pattern: /\b(stop creating|stop doing|pause all|focus exclusively on|focus energy on|you need to|you must|you should|requires intervention|intervention required)\b/i,
+  },
 ];
 
 const GLOBAL_CANDIDATE_PATTERNS: ConstraintPattern[] = [
