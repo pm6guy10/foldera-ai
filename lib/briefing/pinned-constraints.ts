@@ -27,6 +27,36 @@ interface PinnedBriefConstraints {
   directivePatterns: ConstraintPattern[];
 }
 
+// ---------------------------------------------------------------------------
+// Global constraints — apply to ALL users, not just the owner
+// ---------------------------------------------------------------------------
+
+const SYSTEM_INTROSPECTION_PATTERNS: ConstraintPattern[] = [
+  {
+    code: 'system_introspection',
+    message: 'directive is about Foldera system health, pipeline metrics, or internal infrastructure — not user-serving',
+    pattern: /\b(tkg_signals?|tkg_actions?|tkg_patterns?|signal\s*(?:spike|count|backlog|processing)|unprocessed\s*(?:count|signal)|orchestrator|data\s*pipeline|sync\s*(?:health|error|failure|status)|signal\s*processing\s*stall)/i,
+  },
+  {
+    code: 'system_introspection',
+    message: 'directive recommends investigating Foldera infrastructure instead of serving the user',
+    pattern: /\b(investigate|debug|diagnose|fix|check\s*(?:why|what))\b[\s\S]{0,80}\b(signal|sync|pipeline|cron|processing|orchestrat|api\s*failure|infrastructure|foldera\s*(?:system|health|error|log))/i,
+  },
+  {
+    code: 'system_introspection',
+    message: 'directive references internal system metrics that should never reach the user',
+    pattern: /\b(229[- ]signal|signal\s*spike|processing\s*count|decrypt\s*(?:fail|error)|token\s*(?:refresh|expir)|cron\s*(?:job|run|fail)|api\s*(?:usage|spend|rate\s*limit))\b/i,
+  },
+];
+
+const GLOBAL_CANDIDATE_PATTERNS: ConstraintPattern[] = [
+  ...SYSTEM_INTROSPECTION_PATTERNS,
+];
+
+const GLOBAL_DIRECTIVE_PATTERNS: ConstraintPattern[] = [
+  ...SYSTEM_INTROSPECTION_PATTERNS,
+];
+
 const STALE_CONSULTING_ERA_PATTERNS: ConstraintPattern[] = [
   {
     code: 'stale_consulting_era',
@@ -174,9 +204,10 @@ export function shouldSuppressReflectivePatterns(userId: string): boolean {
 }
 
 export function getCandidateConstraintViolations(userId: string, text: string): ConstraintViolation[] {
+  const globalViolations = collectViolations(text, GLOBAL_CANDIDATE_PATTERNS);
   const constraints = getPinnedConstraints(userId);
-  if (!constraints) return [];
-  return collectViolations(text, constraints.candidatePatterns);
+  if (!constraints) return uniqueByCode(globalViolations);
+  return uniqueByCode([...globalViolations, ...collectViolations(text, constraints.candidatePatterns)]);
 }
 
 export function getDirectiveConstraintViolations(input: {
@@ -187,9 +218,6 @@ export function getDirectiveConstraintViolations(input: {
   artifact?: ConvictionArtifact | Record<string, unknown> | null;
   actionType?: ActionType;
 }): ConstraintViolation[] {
-  const constraints = getPinnedConstraints(input.userId);
-  if (!constraints) return [];
-
   const combined = [
     input.directive,
     input.reason ?? '',
@@ -197,9 +225,16 @@ export function getDirectiveConstraintViolations(input: {
     stringifyArtifact(input.artifact ?? null),
   ].join('\n');
 
+  // Global constraints apply to all users
+  const globalViolations = collectViolations(combined, GLOBAL_DIRECTIVE_PATTERNS);
+
+  const constraints = getPinnedConstraints(input.userId);
+  if (!constraints) return uniqueByCode(globalViolations);
+
   const directiveOnlyPatterns = constraints.directivePatterns.filter((pattern) => pattern.code === 'decision_menu');
   const combinedPatterns = constraints.directivePatterns.filter((pattern) => pattern.code !== 'decision_menu');
   const violations = [
+    ...globalViolations,
     ...collectViolations(combined, combinedPatterns),
     ...collectViolations(input.directive, directiveOnlyPatterns),
   ];

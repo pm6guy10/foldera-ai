@@ -2026,7 +2026,11 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     const tractability = await getTractability(userId, c.actionType, c.domain);
     const freshness = await getFreshness(userId, c.title, c.type);
 
-    const score = stakes * c.urgency * tractability * freshness;
+    // No-goal penalty: candidates that don't connect to any active goal
+    // are effectively unranked. A directive about system health will never
+    // match a user goal, so this is a second gate against introspection.
+    const noGoalPenalty = c.matchedGoal ? 0 : -50;
+    const score = Math.max(0, stakes * c.urgency * tractability * freshness + noGoalPenalty);
 
     // Find related signals: keyword overlap with this loop's content
     const loopWords = new Set(

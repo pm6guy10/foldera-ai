@@ -3,6 +3,7 @@ import { OWNER_USER_ID } from '@/lib/auth/constants';
 import {
   applyPinnedGoals,
   getCandidateConstraintViolations,
+  getDirectiveConstraintViolations,
 } from '../pinned-constraints';
 import { validateDirectiveForPersistence } from '../generator';
 import type { ConvictionDirective } from '../types';
@@ -104,5 +105,50 @@ describe('daily brief pinned constraints', () => {
     });
 
     expect(issues).toEqual([]);
+  });
+});
+
+describe('system_introspection constraint (global — all users)', () => {
+  const NON_OWNER_USER = 'user-abc-123';
+
+  it.each([
+    { text: 'Investigate the 229-signal spike in the data pipeline', label: 'signal spike' },
+    { text: 'Check why signal processing stalled overnight', label: 'processing stalled' },
+    { text: 'Review tkg_signals table for unprocessed count anomalies', label: 'tkg_signals reference' },
+    { text: 'Debug the sync failure in the Microsoft data pipeline', label: 'sync failure' },
+    { text: 'Investigate why the orchestrator cron job failed', label: 'orchestrator reference' },
+    { text: 'Check the API rate limit errors from last night', label: 'API rate limit' },
+  ])('BLOCKS system introspection candidate: $label', ({ text }) => {
+    // Must work for non-owner users too
+    const violations = getCandidateConstraintViolations(NON_OWNER_USER, text);
+    expect(violations.some((v) => v.code === 'system_introspection')).toBe(true);
+  });
+
+  it.each([
+    { text: 'Send a follow-up email to Yadira about the project timeline', label: 'follow-up email' },
+    { text: 'Review your calendar for Thursday and block focus time', label: 'calendar review' },
+    { text: 'Draft a thank-you note to the hiring manager', label: 'thank-you note' },
+    { text: 'Research competitive salary data for the state position', label: 'salary research' },
+  ])('ALLOWS user-serving candidate: $label', ({ text }) => {
+    const violations = getCandidateConstraintViolations(NON_OWNER_USER, text);
+    expect(violations.some((v) => v.code === 'system_introspection')).toBe(false);
+  });
+
+  it('blocks system introspection in directive-level validation for any user', () => {
+    const violations = getDirectiveConstraintViolations({
+      userId: NON_OWNER_USER,
+      directive: 'Investigate the signal processing backlog and diagnose why 50 signals remain unprocessed',
+      reason: 'The tkg_signals backlog has not decreased in 48 hours',
+    });
+    expect(violations.some((v) => v.code === 'system_introspection')).toBe(true);
+  });
+
+  it('allows user-serving directive for any user', () => {
+    const violations = getDirectiveConstraintViolations({
+      userId: NON_OWNER_USER,
+      directive: 'Send a follow-up email to Yadira',
+      reason: 'You committed to following up by end of week and the window closes Friday.',
+    });
+    expect(violations.some((v) => v.code === 'system_introspection')).toBe(false);
   });
 });
