@@ -731,3 +731,24 @@ Compound `send_message` winners from the scorer produced valid high-scoring cand
 ### Audit updates
 - NR1: DONE — March 18, 2026
 - NR3: DONE — March 18, 2026
+
+---
+
+## Session Log — 2026-03-19 (three fixes: orchestrator, acceptance gate, OneDrive)
+
+- **MODE:** AUDIT
+- **Commit:** `4790356`
+
+### Files changed
+- `~/.codex/automations/nightly-orchestrator/automation.toml` — Removed "Do not push commits" prohibition. Added explicit rule: orchestrator MUST commit and push NIGHTLY_REPORT.md and AUTOMATION_BACKLOG.md to main (only those two files). Replaced end-of-report "Do not commit unless..." with the same explicit push rule.
+- `ACCEPTANCE_GATE.md` — NEW. Product contract from AGENTS.md distilled into a verification checklist (34 lines). Covers core contract, artifact validation per type, hard failures, and UX rules.
+- `lib/sync/microsoft-sync.ts` — Fixed OneDrive 400 "Search Query cannot be empty" error. Replaced `/me/drive/root/search(q='')` with `/me/drive/recent` endpoint. Added client-side date filtering (since `/recent` does not support `$filter`). Added 400 error graceful fallback. Mail and calendar sync paths unchanged.
+
+### Verified working
+- `npm run build` — 0 errors
+- No hardcoded user data in changed files
+- `syncFiles()` takes dynamic `userId` parameter, `syncMicrosoft()` is called with session-resolved user — works for any authenticated user
+- Pushed to main via fast-forward
+
+### Supabase / migrations
+- No new migrations
