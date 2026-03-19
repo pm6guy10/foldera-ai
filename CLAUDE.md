@@ -752,3 +752,25 @@ Compound `send_message` winners from the scorer produced valid high-scoring cand
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-19 (system introspection constraint + no-goal penalty)
+
+- **MODE:** AUDIT
+- **Commit:** `43db243`
+
+### Files changed
+- `lib/briefing/pinned-constraints.ts` — Added `SYSTEM_INTROSPECTION_PATTERNS` (3 regexes) as global constraint patterns applied to ALL users. Catches: tkg_signals/tkg_actions/pipeline references, investigate-Foldera-infrastructure patterns, and internal metrics (signal spikes, decrypt errors, cron failures, API rate limits). Refactored `getCandidateConstraintViolations` and `getDirectiveConstraintViolations` to merge global patterns with per-user pinned patterns.
+- `lib/briefing/scorer.ts` — Added -50 additive penalty for candidates with no matched goal (`matchedGoal === null`). Score floored at 0 via `Math.max`. System health directives never match a user goal, making this a second gate.
+- `lib/briefing/__tests__/generator.test.ts` — Added 10 regression tests for system_introspection: 6 BLOCKED (signal spike, processing stalled, tkg_signals, sync failure, orchestrator, API rate limit) and 4 ALLOWED (follow-up email, calendar review, thank-you note, salary research). All tests use non-owner user ID to verify global applicability.
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx vitest run` — 18 tests passed (was 8, added 10)
+- `npx playwright test` — 16 passed
+- No hardcoded user data in changed files
+- Global constraints apply to all users, not just owner
+
+### Supabase / migrations
+- No new migrations
