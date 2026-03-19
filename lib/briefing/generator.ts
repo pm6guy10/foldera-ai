@@ -23,7 +23,7 @@ import type { ResearchInsight } from './researcher';
 const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
 const GENERATION_MODEL = 'claude-sonnet-4-20250514';
 const APPROVAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
-const DIRECTIVE_CONFIDENCE_THRESHOLD = 70;
+const DIRECTIVE_CONFIDENCE_THRESHOLD = 45; // Temporary: lowered from 70 while signal pool builds depth
 const BANNED_DIRECTIVE_PATTERNS = [
   /\bconsider\b/i,
   /\breflect\b/i,
