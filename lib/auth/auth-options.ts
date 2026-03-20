@@ -29,13 +29,32 @@ async function refreshGoogleToken(token: JWT): Promise<JWT> {
       console.error('[auth] Google token refresh failed:', data);
       return { ...token, error: 'RefreshAccessTokenError' };
     }
-    console.log('[auth] Google token refreshed silently');
+    const newAccessToken = data.access_token;
+    const newExpiresAt = Math.floor(Date.now() / 1000) + (data.expires_in ?? 3600);
+    const newRefreshToken = data.refresh_token ?? token.refreshToken;
+
+    // Persist refreshed tokens to user_tokens so background sync jobs use the fresh token
+    if (token.userId && typeof token.userId === 'string') {
+      try {
+        const { saveUserToken } = await import('@/lib/auth/user-tokens');
+        await saveUserToken(token.userId, 'google', {
+          access_token: newAccessToken,
+          refresh_token: newRefreshToken as string,
+          expires_at: newExpiresAt,
+        });
+        console.log('[auth] Google token refreshed + persisted to user_tokens');
+      } catch (persistErr) {
+        console.error('[auth] Google token refreshed but user_tokens persist failed:', persistErr);
+      }
+    } else {
+      console.log('[auth] Google token refreshed silently (no userId for persist)');
+    }
+
     return {
       ...token,
-      accessToken: data.access_token,
-      expiresAt: Math.floor(Date.now() / 1000) + (data.expires_in ?? 3600),
-      // Google only returns a new refresh_token if the old one is revoked
-      refreshToken: data.refresh_token ?? token.refreshToken,
+      accessToken: newAccessToken,
+      expiresAt: newExpiresAt,
+      refreshToken: newRefreshToken,
     };
   } catch (err) {
     console.error('[auth] Google token refresh threw:', err);
@@ -66,12 +85,32 @@ async function refreshMicrosoftToken(token: JWT): Promise<JWT> {
       console.error('[auth] Microsoft token refresh failed:', data);
       return { ...token, error: 'RefreshAccessTokenError' };
     }
-    console.log('[auth] Microsoft token refreshed silently');
+    const newAccessToken = data.access_token;
+    const newExpiresAt = Math.floor(Date.now() / 1000) + (data.expires_in ?? 3600);
+    const newRefreshToken = data.refresh_token ?? token.refreshToken;
+
+    // Persist refreshed tokens to user_tokens so background sync jobs use the fresh token
+    if (token.userId && typeof token.userId === 'string') {
+      try {
+        const { saveUserToken } = await import('@/lib/auth/user-tokens');
+        await saveUserToken(token.userId, 'microsoft', {
+          access_token: newAccessToken,
+          refresh_token: newRefreshToken as string,
+          expires_at: newExpiresAt,
+        });
+        console.log('[auth] Microsoft token refreshed + persisted to user_tokens');
+      } catch (persistErr) {
+        console.error('[auth] Microsoft token refreshed but user_tokens persist failed:', persistErr);
+      }
+    } else {
+      console.log('[auth] Microsoft token refreshed silently (no userId for persist)');
+    }
+
     return {
       ...token,
-      accessToken: data.access_token,
-      expiresAt: Math.floor(Date.now() / 1000) + (data.expires_in ?? 3600),
-      refreshToken: data.refresh_token ?? token.refreshToken,
+      accessToken: newAccessToken,
+      expiresAt: newExpiresAt,
+      refreshToken: newRefreshToken,
     };
   } catch (err) {
     console.error('[auth] Microsoft token refresh threw:', err);

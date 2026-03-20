@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const triggerUrl = new URL('/api/cron/daily-brief', request.url);
+    const triggerUrl = new URL('/api/cron/trigger', request.url);
     const response = await fetch(triggerUrl, {
       method: 'POST',
       headers: {

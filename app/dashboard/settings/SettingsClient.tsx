@@ -25,6 +25,8 @@ export default function SettingsClient() {
   const [loading, setLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [generateState, setGenerateState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [generateMessage, setGenerateMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (status !== 'authenticated') { setLoading(false); return; }
@@ -209,6 +211,56 @@ export default function SettingsClient() {
             >
               Upgrade
             </button>
+          )}
+        </div>
+
+        {/* Manual trigger */}
+        <h2 className="text-lg font-semibold text-white mt-8">Daily brief</h2>
+        <div className="mt-3 bg-zinc-900 rounded-xl p-4">
+          <p className="text-sm text-zinc-400 mb-3">
+            Sync your email and calendar, then generate and send today&apos;s brief.
+          </p>
+          <button
+            disabled={generateState === 'loading'}
+            onClick={async () => {
+              setGenerateState('loading');
+              setGenerateMessage(null);
+              try {
+                const res = await fetch('/api/settings/run-brief', { method: 'POST' });
+                const data = await res.json().catch(() => null);
+                if (res.ok && data?.ok) {
+                  setGenerateState('success');
+                  setGenerateMessage('Brief generated and sent.');
+                } else if (res.ok && data?.stages) {
+                  // Partial success — show what happened
+                  const parts: string[] = [];
+                  const stages = data.stages as Record<string, any>;
+                  if (stages.sync_microsoft?.ok === false) parts.push('Microsoft sync failed');
+                  if (stages.sync_google?.ok === false) parts.push('Google sync failed');
+                  if (stages.daily_brief?.ok === false) parts.push('Brief generation failed');
+                  setGenerateState(parts.length > 0 ? 'error' : 'success');
+                  setGenerateMessage(parts.length > 0 ? parts.join('. ') + '.' : 'Done.');
+                } else {
+                  setGenerateState('error');
+                  setGenerateMessage(data?.error || 'Something went wrong.');
+                }
+              } catch {
+                setGenerateState('error');
+                setGenerateMessage('Network error — could not reach the server.');
+              }
+            }}
+            className={`w-full rounded-xl py-3 text-sm font-medium transition-colors ${
+              generateState === 'loading'
+                ? 'bg-zinc-700 text-zinc-400 cursor-wait'
+                : 'bg-cyan-600 hover:bg-cyan-500 text-white'
+            }`}
+          >
+            {generateState === 'loading' ? 'Running sync + generate…' : 'Generate now'}
+          </button>
+          {generateMessage && (
+            <p className={`mt-2 text-xs ${generateState === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
+              {generateMessage}
+            </p>
           )}
         </div>
 
