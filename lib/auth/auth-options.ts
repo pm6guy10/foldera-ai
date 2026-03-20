@@ -225,69 +225,31 @@ export function getAuthOptions(): NextAuthOptions {
             token.userId = resolvedUserId;
             console.log(`[auth][jwt] resolved userId: ${resolvedUserId}`);
 
-            // Persist OAuth tokens to the `integrations` table so background
+            // Persist OAuth tokens to user_tokens so background
             // cron jobs (sync-email, etc.) can retrieve them without a session.
             try {
-              const { saveTokens } = await import('@/lib/auth/token-store');
+              const { saveUserToken } = await import('@/lib/auth/user-tokens');
               if (resolvedUserId && account.access_token) {
                 if (account.provider === 'google') {
-                  console.log(`[auth][jwt][google] START token persist — userId: ${resolvedUserId}, has_refresh: ${!!account.refresh_token}`);
-                  if (account.refresh_token) {
-                    console.log(`[auth][jwt][google] saving to integrations table...`);
-                    await saveTokens(resolvedUserId, 'google', {
-                      access_token: account.access_token,
-                      refresh_token: account.refresh_token,
-                      expiry_date: account.expires_at
-                        ? account.expires_at * 1000
-                        : Date.now() + 3_600_000,
-                    });
-                    console.log(`[auth][jwt][google] integrations table save OK`);
-                  } else {
-                    console.warn(`[auth][jwt][google] NO refresh_token — skipping integrations table save`);
-                  }
-                  // Also persist to user_tokens for background sync jobs
-                  console.log(`[auth][jwt][google] saving to user_tokens table...`);
-                  try {
-                    const { saveUserToken } = await import('@/lib/auth/user-tokens');
-                    const userTokenParams = {
-                      access_token: account.access_token,
-                      refresh_token: account.refresh_token ?? '',
-                      expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
-                      email: user.email ?? undefined,
-                      scopes: (account as any).scope ?? '',
-                    };
-                    console.log(`[auth][jwt][google] saveUserToken params — refresh_token_length: ${userTokenParams.refresh_token.length}, expires_at: ${userTokenParams.expires_at}, email: ${userTokenParams.email}`);
-                    await saveUserToken(resolvedUserId, 'google', userTokenParams);
-                    console.log(`[auth][jwt][google] user_tokens upsert OK for user ${resolvedUserId}`);
-                  } catch (utErr: any) {
-                    console.error(`[auth][jwt][google] FAILED to persist to user_tokens: ${utErr.message}`, utErr.stack ?? '');
-                  }
+                  console.log(`[auth][jwt][google] persisting to user_tokens — userId: ${resolvedUserId}, has_refresh: ${!!account.refresh_token}`);
+                  await saveUserToken(resolvedUserId, 'google', {
+                    access_token: account.access_token,
+                    refresh_token: account.refresh_token ?? '',
+                    expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
+                    email: user.email ?? undefined,
+                    scopes: (account as any).scope ?? '',
+                  });
+                  console.log(`[auth][jwt][google] user_tokens upsert OK`);
                 } else if (account.provider === 'azure-ad') {
-                  console.log(`[auth][jwt][microsoft] START token persist — userId: ${resolvedUserId}, has_refresh: ${!!account.refresh_token}`);
-                  if (account.refresh_token) {
-                    await saveTokens(resolvedUserId, 'azure_ad', {
-                      access_token: account.access_token,
-                      refresh_token: account.refresh_token,
-                      expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
-                    });
-                  } else {
-                    console.warn('[auth][jwt][microsoft] sign-in missing refresh_token. Saving access_token only.');
-                  }
-                  // Also persist to user_tokens for background sync jobs
-                  console.log(`[auth][jwt][microsoft] saving to user_tokens table...`);
-                  try {
-                    const { saveUserToken } = await import('@/lib/auth/user-tokens');
-                    await saveUserToken(resolvedUserId, 'microsoft', {
-                      access_token: account.access_token,
-                      refresh_token: account.refresh_token ?? '',
-                      expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
-                      email: user.email ?? undefined,
-                      scopes: (account as any).scope ?? '',
-                    });
-                    console.log(`[auth][jwt][microsoft] user_tokens upsert OK for user ${resolvedUserId}, has_refresh=${!!account.refresh_token}`);
-                  } catch (utErr: any) {
-                    console.error(`[auth][jwt][microsoft] FAILED to persist to user_tokens: ${utErr.message}`, utErr.stack ?? '');
-                  }
+                  console.log(`[auth][jwt][microsoft] persisting to user_tokens — userId: ${resolvedUserId}, has_refresh: ${!!account.refresh_token}`);
+                  await saveUserToken(resolvedUserId, 'microsoft', {
+                    access_token: account.access_token,
+                    refresh_token: account.refresh_token ?? '',
+                    expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
+                    email: user.email ?? undefined,
+                    scopes: (account as any).scope ?? '',
+                  });
+                  console.log(`[auth][jwt][microsoft] user_tokens upsert OK`);
                 }
                 console.log(`[auth][jwt] Token persist COMPLETE for ${account.provider}`);
               } else {

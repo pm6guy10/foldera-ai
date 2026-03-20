@@ -158,7 +158,7 @@ test.describe('Dashboard /dashboard — authenticated', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupEmptyDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByText(/nothing new/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/first read arrives tomorrow/i)).toBeVisible({ timeout: 15000 });
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {

@@ -215,7 +215,8 @@ export default function SettingsClient() {
                 const data = await res.json().catch(() => null);
                 if (res.ok && data?.ok) {
                   setGenerateState('success');
-                  setGenerateMessage('Brief generated and sent.');
+                  setGenerateMessage('Brief generated and sent. Redirecting to dashboard…');
+                  setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
                 } else if (res.ok && data?.stages) {
                   // Partial success — show what happened
                   const parts: string[] = [];

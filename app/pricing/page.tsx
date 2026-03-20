@@ -102,7 +102,7 @@ export default function PricingPage() {
               <div className="mb-12 relative z-10">
                 <p className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-5 bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 rounded-lg inline-block shadow-inner">Professional</p>
                 <div className="flex items-baseline justify-center gap-2">
-                  <span className="text-8xl font-black text-white tracking-tighter">$19</span>
+                  <span className="text-8xl font-black text-white tracking-tighter">$29</span>
                   <span className="text-zinc-500 font-bold tracking-widest uppercase text-xs">/mo</span>
                 </div>
               </div>

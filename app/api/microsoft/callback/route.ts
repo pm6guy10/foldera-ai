@@ -2,8 +2,8 @@
  * GET /api/microsoft/callback
  *
  * Handles the OAuth callback from Microsoft after the user grants consent.
- * Exchanges the authorization code for tokens, stores them in both
- * `integrations` and `user_tokens` tables under the active session's user ID.
+ * Exchanges the authorization code for tokens, stores them in
+ * `user_tokens` table under the active session's user ID.
  *
  * This ensures account linking: if a user signed in with Google first and
  * then connects Microsoft, both tokens share the same Supabase user ID.
@@ -12,7 +12,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
-import { saveTokens } from '@/lib/auth/token-store';
 import { saveUserToken } from '@/lib/auth/user-tokens';
 import { cookies } from 'next/headers';
 
@@ -132,19 +131,7 @@ export async function GET(request: NextRequest) {
 
   const expiresAt = Math.floor(Date.now() / 1000) + (tokenData.expires_in ?? 3600);
 
-  // 6. Save to integrations table
-  try {
-    await saveTokens(userId, 'azure_ad', {
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token ?? '',
-      expires_at: expiresAt,
-    });
-  } catch (err: any) {
-    console.error('[microsoft/callback] saveTokens failed:', err.message);
-    return NextResponse.redirect(`${settingsUrl}?microsoft_error=save_failed`);
-  }
-
-  // 7. Save to user_tokens table
+  // 6. Save to user_tokens table (single source of truth for OAuth tokens)
   try {
     await saveUserToken(userId, 'microsoft', {
       access_token: tokenData.access_token,
@@ -155,10 +142,11 @@ export async function GET(request: NextRequest) {
     });
   } catch (err: any) {
     console.error('[microsoft/callback] saveUserToken failed:', err.message);
+    return NextResponse.redirect(`${settingsUrl}?microsoft_error=save_failed`);
   }
 
   console.log(`[microsoft/callback] Microsoft connected for user ${userId} (${msEmail ?? 'no email'})`);
 
-  // 8. Redirect back to settings
+  // 7. Redirect back to settings
   return NextResponse.redirect(`${settingsUrl}?microsoft_connected=true`);
 }

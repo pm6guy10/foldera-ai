@@ -131,8 +131,8 @@ export default function DashboardPage() {
           </div>
         ) : !action ? (
           <div className="mt-20 text-center">
-            <p className="text-zinc-500">Nothing new today.</p>
-            <p className="text-zinc-600 text-sm mt-2">Next sync at 7am Pacific</p>
+            <p className="text-zinc-400">Your first read arrives tomorrow morning.</p>
+            <p className="text-zinc-600 text-sm mt-2">Foldera is learning your patterns.</p>
           </div>
         ) : (
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">

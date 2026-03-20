@@ -130,7 +130,7 @@ test.describe('Pricing page /pricing', () => {
   test('loads with price visible — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/pricing');
-    await expect(page.getByText(/\$19/)).toBeVisible();
+    await expect(page.getByText(/\$29/)).toBeVisible();
   });
 
   test('CTA button is visible', async ({ page }) => {
@@ -143,7 +143,7 @@ test.describe('Pricing page /pricing', () => {
   test('loads with price visible — mobile 390px', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/pricing');
-    await expect(page.getByText(/\$19/)).toBeVisible();
+    await expect(page.getByText(/\$29/)).toBeVisible();
   });
 
   test('no actionable console errors', async ({ page }) => {

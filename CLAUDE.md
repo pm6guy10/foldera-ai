@@ -12,6 +12,12 @@ Every session runs this before any work:
 6. Trace the relevant data path before coding: source -> transform -> persistence -> reader.
 7. If recent changes or repo state conflict with the task, report that before editing.
 
+## Token Storage
+
+- `user_tokens` is the single source of truth for OAuth tokens. All reads and writes go through `lib/auth/user-tokens.ts`.
+- `integrations` table is deprecated. No code reads from it. Do not add new reads.
+- Token refresh on execution paths goes through `lib/auth/token-store.ts`, which delegates to `user_tokens`.
+
 ## Environment Variables Required In Vercel
 
 - `ANTHROPIC_API_KEY`
@@ -929,6 +935,52 @@ The `92dbbfc` generator fix (signal evidence enrichment + bracket placeholder re
 ### Verified working
 - `npm run build` — 0 errors
 - Signal processing: 284 → 0 (6 batches, no stalls)
+
+### Supabase / migrations
+- No new migrations
+
+---
+
+## Session Log — 2026-03-23 (full app audit: token unification, pricing, UX)
+
+- **MODE:** AUDIT
+
+### Files changed (15)
+- `lib/auth/token-store.ts` — Rewrote to read/write `user_tokens` instead of `integrations`. Removed `saveTokens` export. Refresh logic persists via `saveUserToken`.
+- `lib/auth/auth-options.ts` — Removed all `saveTokens`/`integrations` writes from JWT callback. Only writes to `user_tokens` via `saveUserToken`.
+- `app/api/google/callback/route.ts` — Removed `integrations` dual-write. Only saves to `user_tokens`.
+- `app/api/microsoft/callback/route.ts` — Same: removed `integrations` dual-write.
+- `app/api/google/disconnect/route.ts` — Removed `integrations` table update. Only deletes from `user_tokens`.
+- `app/api/microsoft/disconnect/route.ts` — Same: removed `integrations` table update.
+- `app/dashboard/settings/SettingsClient.tsx` — Generate Now success redirects to dashboard after 1.5s.
+- `app/dashboard/page.tsx` — Empty state updated: "Your first read arrives tomorrow morning. Foldera is learning your patterns."
+- `app/page.tsx` — Pricing: $19 → $29.
+- `app/pricing/page.tsx` — Pricing: $19 → $29.
+- `app/start/result/ResultClient.tsx` — Pricing: $19/month → $29/month.
+- `components/dashboard/trial-banner.tsx` — Pricing: $19/mo → $29/mo.
+- `tests/e2e/authenticated-routes.spec.ts` — Updated empty state assertion to match new copy.
+- `tests/e2e/public-routes.spec.ts` — Updated pricing assertions from $19 to $29.
+- `CLAUDE.md` — Added Token Storage section documenting `integrations` table deprecation. Added session log.
+
+### What was fixed
+1. **Token table unification (PASS 1):** `token-store.ts` read exclusively from `integrations`, while sync jobs used `user_tokens`. Now all OAuth reads/writes go through `user_tokens`. The `integrations` table is deprecated — zero code reads from it.
+2. **tkg_goals suppressions (PASS 2):** Verified FPA3, Keri Nopens, and Mercor suppression goals exist at priority 1.
+3. **Settings UX (PASS 3):** Generate Now redirects to dashboard on success. Connected accounts already show Connect/Disconnect correctly (no Reconnect).
+4. **Dashboard (PASS 4):** Conviction card loads latest `pending_approval`, shows artifact, approve/skip both call execute API. Empty state updated for new users.
+5. **Landing page (PASS 5):** All links resolve to real destinations. Pricing fixed from $19 → $29 across 4 source files + 2 test files.
+6. **Onboarding (PASS 6):** /start → OAuth → /dashboard flow is clean.
+7. **Email (PASS 7):** Template verified: dark bg, cyan accent, one directive, approve/skip deep-links, no confidence shown, score breakdown stripped.
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx vitest run` — 48 passed, 7 failed (pre-existing ENCRYPTION_KEY failures in execute-action tests)
+- `npx playwright test` — 42 passed, 6 failed (pre-existing NextAuth CLIENT_FETCH_ERROR in test env + clickflow test)
+- No new test failures introduced
+
+### Items requiring Brandon's decision
+- **Stripe price ID:** Codebase now shows $29/mo everywhere. Verify `STRIPE_PRO_PRICE_ID` in Vercel env matches the $29 Stripe Starter price, not $99 Pro.
+- **NR2 (legacy encryption):** Still open — Microsoft tokens encrypted under pre-rotation key cannot be decrypted. Needs `ENCRYPTION_KEY_LEGACY` or fresh Microsoft re-auth.
+- **`integrations` table cleanup:** Table is now dead (no reads). Can be dropped when convenient — no migration written yet.
 
 ### Supabase / migrations
 - No new migrations

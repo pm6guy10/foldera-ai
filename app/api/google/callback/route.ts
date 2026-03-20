@@ -2,8 +2,8 @@
  * GET /api/google/callback
  *
  * Handles the OAuth callback from Google after the user grants consent.
- * Exchanges the authorization code for tokens, stores them in both
- * `integrations` and `user_tokens` tables, and redirects to /dashboard/settings.
+ * Exchanges the authorization code for tokens, stores them in
+ * `user_tokens` table, and redirects to /dashboard/settings.
  *
  * Does NOT touch NextAuth config.
  */
@@ -12,7 +12,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { google } from 'googleapis';
-import { saveTokens } from '@/lib/auth/token-store';
 import { saveUserToken } from '@/lib/auth/user-tokens';
 import { cookies } from 'next/headers';
 
@@ -89,36 +88,22 @@ export async function GET(request: NextRequest) {
     console.warn('[google/callback] Failed to fetch user email:', err.message);
   }
 
-  // 6. Save to integrations table (primary token store for crons)
-  try {
-    await saveTokens(userId, 'google', {
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token ?? '',
-      expiry_date: tokens.expiry_date ?? Date.now() + 3_600_000,
-    });
-  } catch (err: any) {
-    console.error('[google/callback] saveTokens failed:', err.message);
-    return NextResponse.redirect(`${settingsUrl}?google_error=save_failed`);
-  }
-
-  // 7. Save to user_tokens table (secondary store with email + scopes metadata)
+  // 6. Save to user_tokens table (single source of truth for OAuth tokens)
   try {
     await saveUserToken(userId, 'google', {
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token ?? '',
-      expires_at: tokens.expiry_date
-        ? Math.floor(tokens.expiry_date / 1000)
-        : Math.floor(Date.now() / 1000) + 3600,
+      expires_at: tokens.expiry_date ?? Date.now() + 3_600_000,
       email: googleEmail,
       scopes: tokens.scope ?? '',
     });
   } catch (err: any) {
     console.error('[google/callback] saveUserToken failed:', err.message);
-    // Non-fatal — integrations table already saved
+    return NextResponse.redirect(`${settingsUrl}?google_error=save_failed`);
   }
 
   console.log(`[google/callback] Google connected for user ${userId} (${googleEmail ?? 'no email'})`);
 
-  // 8. Redirect back to settings
+  // 7. Redirect back to settings
   return NextResponse.redirect(`${settingsUrl}?google_connected=true`);
 }
