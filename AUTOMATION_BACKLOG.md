@@ -1,0 +1,20 @@
+# AUTOMATION BACKLOG
+**Updated:** 2026-03-20 02:15 UTC (nightly orchestrator)
+
+---
+
+## OPEN Items
+
+| # | Issue | Status | Classification | Failure Class | Scope | Evidence | Allowed For Auto-Fix | Reason | Human Action |
+|---|-------|--------|----------------|---------------|-------|----------|---------------------|--------|--------------|
+| AB1 | Generator produces placeholder text in document artifacts when `make_decision` candidates are redirected to concrete deliverable types. Validation correctly catches and blocks, but the LLM consistently fails to produce clean document content for redirected action types. | OPEN | MANUAL_REVIEW | BLOCKER_GENERATOR_VALIDATION | `lib/briefing/generator.ts` (prompt + validation) | March 20 run: 102 candidates, top compound `make_decision` (score 0.55) selected, generator redirected to document, output contained placeholder text, validation blocked. Same pattern on March 19 (2 of 5 runs = no-send). | no | Generator prompt engineering is excluded from auto-fix scope per task rules. Root cause is LLM prompt design for type-redirected candidates. | Review generator prompt for `make_decision` → document redirect path. Consider whether the redirect should target `drafted_email` instead (higher LLM success rate), or add few-shot examples for document artifacts. |
+| AB2 | Zero user approvals in 7 days (92 actions, 11 sent, 0 approved). The product end-to-end loop is not completing. Directives are being generated and emailed but never approved. | OPEN | VISION_REQUIRED | INFO_ZERO_APPROVAL_RATE | Product-wide | `tkg_actions` 7-day query: Mar 13 (12 total, 0 approved), Mar 14 (25, 0), Mar 16 (26, 0), Mar 17 (17, 0), Mar 18 (6, 0), Mar 19 (5, 0), Mar 20 (1, 0). All rows end as `skipped`. | no | This is a product/quality problem requiring human judgment about directive relevance. | Investigate whether directives are reaching the inbox (Resend delivery logs), whether email approve/skip links work, and whether directive content is actionable enough to approve. |
+| AB3 | Legacy-encrypted Microsoft data remains unreadable. Pre-rotation `ENCRYPTION_KEY` needed via `ENCRYPTION_KEY_LEGACY` env var or fresh Microsoft re-auth to repopulate readable tokens. | OPEN | BLOCKED | BLOCKER_TOKEN_DECRYPT | `lib/encryption.ts`, Vercel env config | NR2 in FOLDERA_MASTER_AUDIT.md. Stale signals encrypted under old key cannot be decrypted. Not blocking generation (NR4 fix made it non-blocking) but contributes to thinner context. | no | Requires either the old encryption key or manual Microsoft re-authorization. Neither can be done automatically. | Set `ENCRYPTION_KEY_LEGACY` in Vercel env vars with the pre-rotation key, OR re-authorize Microsoft OAuth to get fresh tokens. |
+| AB4 | `make_decision` action type dominates top candidates but has low tractability (0.50) and produces artifacts that fail validation. All 3 top candidates on March 20 were `make_decision` type. | OPEN | MANUAL_REVIEW | BLOCKER_GENERATOR_VALIDATION | `lib/briefing/scorer.ts` (scoring weights) | March 20 generation log: rank 1 (compound make_decision, 0.55), rank 2 (make_decision, 0.50), rank 3 (make_decision, 0.38). All career/job-application domain. Scorer is not excluded from auto-fix per rules. | no | Scorer is excluded from auto-fix scope per task rules. The scoring weights favor high-stakes career signals even when tractability is low. | Review whether `make_decision` candidates should receive a tractability penalty when historical artifact validation failure rate is high. |
+| AB5 | `.next` cache on local dev machine produces stale type errors requiring manual `rm -rf .next` before build succeeds. Not a code issue — build passes clean after cache removal. | OPEN | AUTO_FIXABLE | WARN_STALE_CACHE | Local dev environment | Build failed with `File '.next/types/app/api/auth/[...nextauth]/route.ts' not found` until `.next` was deleted. Rebuild then passed cleanly. | yes | Safe local operation. Add `.next` cleanup to pre-build or document the workaround. | None — auto-fixable. |
+
+---
+
+## DONE Items
+
+(none yet)
