@@ -25,20 +25,8 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/daily-generate",
+      "path": "/api/cron/trigger",
       "schedule": "50 13 * * *"
-    },
-    {
-      "path": "/api/cron/daily-send",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/sync-google",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/sync-microsoft",
-      "schedule": "0 3 * * *"
     },
     {
       "path": "/api/cron/health-check",

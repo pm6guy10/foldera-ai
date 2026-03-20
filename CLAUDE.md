@@ -39,11 +39,12 @@ Optional recovery variable:
 
 ## Cron Schedule
 
-- `/api/cron/daily-generate` — `50 13 * * *` (`13:50 UTC`, `6:50 AM` Pacific)
-- `/api/cron/daily-send` — `0 14 * * *` (`14:00 UTC`, `7:00 AM` Pacific)
-- `/api/cron/sync-google` — `0 2 * * *`
-- `/api/cron/sync-microsoft` — `0 3 * * *`
+Vercel Hobby allows max 2 cron jobs. All sync + generate + send is consolidated into `/api/cron/trigger`.
+
+- `/api/cron/trigger` — `50 13 * * *` (`13:50 UTC`, `6:50 AM` Pacific) — runs sync-microsoft, sync-google, daily-generate, daily-send sequentially.
+- `/api/cron/health-check` — `0 15 * * *` (`15:00 UTC`, `8:00 AM` Pacific) — checks tokens, DB, last directive age; sends alert email if anything fails.
 - `vercel.json` is the current source of truth.
+- The individual routes (`daily-generate`, `daily-send`, `sync-google`, `sync-microsoft`) still exist and work with CRON_SECRET auth but are not registered as Vercel crons.
 
 ## Current Status And Build Priorities
 
