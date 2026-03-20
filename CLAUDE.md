@@ -81,6 +81,7 @@ Build priorities:
 - Session-backed routes use `session.user.id` only. `INGEST_USER_ID` is cron and background only.
 - Production logs must not include directive text, conviction scores, behavioral content, or similar user-private data.
 - Pushes go to `main`.
+- When running in a worktree, do not create feature branches. Merge your changes into main and push to origin/main before stopping. If you cannot checkout main because a worktree holds it, use git worktree remove to free it first.
 
 ## Mandatory QA Gate
 
