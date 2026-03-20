@@ -19,6 +19,7 @@ import {
 } from './pinned-constraints';
 import { researchWinner } from './researcher';
 import type { ResearchInsight } from './researcher';
+import { decryptWithStatus } from '@/lib/encryption';
 
 const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
 const GENERATION_MODEL = 'claude-sonnet-4-20250514';
@@ -54,6 +55,10 @@ const PLACEHOLDER_PATTERNS = [
   /\[RECIPIENT\]/i,
   /\b(tbd|placeholder|lorem ipsum|example@|recipient@email\.com)\b/i,
   /\b(option a|option b)\b/i,
+  /\[[A-Z][a-z]+\s*[A-Za-z]*\]/,  // [Name], [Your Name], [Recipient], [Company Name]
+  /\[placeholder\]/i,
+  /\[your\s/i,                     // [your email], [your company], etc.
+  /\[insert\b/i,                   // [insert name here], etc.
 ];
 
 const SYSTEM_PROMPT = `You are finalizing Foldera's single winning daily directive.
@@ -118,6 +123,7 @@ interface PromptContext {
   deprioritized: DeprioritizedLoop[];
   approvedRecently: RecentActionRow[];
   skippedRecently: RecentSkippedActionRow[];
+  signalEvidence?: SignalSnippet[];
 }
 
 interface GeneratePayloadResult {
@@ -660,6 +666,159 @@ function extractBestRecipientEmail(relationshipContext: string | undefined): str
   return candidates.length > 0 ? candidates[0] : null;
 }
 
+interface SignalSnippet {
+  source: string;
+  date: string;
+  subject: string | null;
+  snippet: string;
+  author: string | null;
+}
+
+/**
+ * Fetch real signal snippets from the DB that are related to the winning candidate.
+ * Returns email subjects, content snippets, sources, and dates — the concrete details
+ * the LLM needs to produce a real artifact instead of placeholder text.
+ */
+async function fetchWinnerSignalEvidence(
+  userId: string,
+  winner: ScoredLoop,
+): Promise<SignalSnippet[]> {
+  const supabase = createServerClient();
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Get IDs from sourceSignals if available
+  const sourceIds = (winner.sourceSignals ?? [])
+    .map((s) => s.id)
+    .filter((id): id is string => Boolean(id));
+
+  // Fetch by source IDs first (most relevant)
+  const snippets: SignalSnippet[] = [];
+
+  if (sourceIds.length > 0) {
+    const { data: sourceRows } = await supabase
+      .from('tkg_signals')
+      .select('content, source, occurred_at, author')
+      .in('id', sourceIds);
+
+    for (const row of sourceRows ?? []) {
+      const decrypted = decryptWithStatus(row.content as string ?? '');
+      if (decrypted.usedFallback) continue;
+      const parsed = parseSignalSnippet(decrypted.plaintext, row);
+      if (parsed) snippets.push(parsed);
+    }
+  }
+
+  // Also fetch keyword-matched signals for richer context
+  // Build keywords from the winner title and content
+  const keywords = winner.title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter((w) => w.length >= 5);
+
+  if (keywords.length > 0 && snippets.length < 8) {
+    const { data: contextRows } = await supabase
+      .from('tkg_signals')
+      .select('content, source, occurred_at, author')
+      .eq('user_id', userId)
+      .eq('processed', true)
+      .gte('occurred_at', fourteenDaysAgo)
+      .order('occurred_at', { ascending: false })
+      .limit(50);
+
+    const existingSnippetTexts = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
+
+    for (const row of contextRows ?? []) {
+      if (snippets.length >= 8) break;
+      const decrypted = decryptWithStatus(row.content as string ?? '');
+      if (decrypted.usedFallback) continue;
+      const text = decrypted.plaintext.toLowerCase();
+      const matchCount = keywords.filter((kw) => text.includes(kw)).length;
+      if (matchCount < 2) continue;
+
+      const parsed = parseSignalSnippet(decrypted.plaintext, row);
+      if (parsed && !existingSnippetTexts.has(parsed.snippet.slice(0, 60))) {
+        snippets.push(parsed);
+        existingSnippetTexts.add(parsed.snippet.slice(0, 60));
+      }
+    }
+  }
+
+  return snippets;
+}
+
+function parseSignalSnippet(
+  plaintext: string,
+  row: Record<string, unknown>,
+): SignalSnippet | null {
+  if (!plaintext || plaintext.length < 20) return null;
+
+  // Try to extract email subject from the signal content
+  let subject: string | null = null;
+  const subjectMatch = plaintext.match(/(?:Subject|Re|Fwd):\s*(.+?)(?:\n|$)/i);
+  if (subjectMatch) {
+    subject = subjectMatch[1].trim().slice(0, 120);
+  }
+
+  // Extract a meaningful snippet (first 300 chars, skip headers)
+  const lines = plaintext.split('\n').filter((l) => l.trim().length > 0);
+  const contentLines = lines.filter(
+    (l) => !l.match(/^(From|To|Date|Subject|Cc|Bcc|Re|Fwd):/i),
+  );
+  const snippet = contentLines.join(' ').slice(0, 300).trim();
+
+  return {
+    source: (row.source as string) ?? 'unknown',
+    date: row.occurred_at
+      ? new Date(row.occurred_at as string).toISOString().slice(0, 10)
+      : 'unknown',
+    subject,
+    snippet: snippet || plaintext.slice(0, 300),
+    author: (row.author as string) ?? null,
+  };
+}
+
+/**
+ * Extract all email addresses from both relationshipContext and sourceSignals/relatedSignals.
+ */
+function extractAllEmailAddresses(winner: ScoredLoop): string[] {
+  const emails = new Set<string>();
+  const emailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+
+  // From relationship context
+  if (winner.relationshipContext) {
+    let match: RegExpExecArray | null;
+    while ((match = emailPattern.exec(winner.relationshipContext)) !== null) {
+      emails.add(match[0].toLowerCase());
+    }
+  }
+
+  // From related signals
+  for (const signal of winner.relatedSignals ?? []) {
+    emailPattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = emailPattern.exec(signal)) !== null) {
+      emails.add(match[0].toLowerCase());
+    }
+  }
+
+  // From source signal summaries
+  for (const source of winner.sourceSignals ?? []) {
+    if (source.summary) {
+      emailPattern.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = emailPattern.exec(source.summary)) !== null) {
+        emails.add(match[0].toLowerCase());
+      }
+    }
+  }
+
+  // Filter out placeholder emails
+  return [...emails].filter(
+    (e) => !e.includes('example') && !e.includes('placeholder') && !e.includes('noreply'),
+  );
+}
+
 function buildGenerationPrompt(context: PromptContext): string {
   const { winner, deprioritized, approvedRecently, skippedRecently } = context;
   const pinnedConstraints = getPinnedConstraintPrompt(context.userId);
@@ -710,10 +869,42 @@ function buildGenerationPrompt(context: PromptContext): string {
     `RELATIONSHIP_CONTEXT:\n${winner.relationshipContext ?? 'None'}`,
   ];
 
-  if (winner.suggestedActionType === 'send_message') {
-    const bestEmail = extractBestRecipientEmail(winner.relationshipContext);
+  // Inject real signal evidence — email subjects, snippets, dates, authors.
+  // This gives the LLM concrete details to reference instead of generating placeholders.
+  const signalEvidence = context.signalEvidence ?? [];
+  if (signalEvidence.length > 0) {
+    const evidenceLines = signalEvidence.map((s) => {
+      const parts = [`[${s.date}] [${s.source}]`];
+      if (s.author) parts.push(`From: ${s.author}`);
+      if (s.subject) parts.push(`Subject: ${s.subject}`);
+      parts.push(s.snippet.slice(0, 200));
+      return `- ${parts.join(' | ')}`;
+    });
+    sections.push(`SIGNAL_EVIDENCE (real emails/signals — use these details in your artifact):\n${evidenceLines.join('\n')}`);
+  }
+
+  // Collect all real email addresses from relationship context and signals
+  const allEmails = extractAllEmailAddresses(winner);
+  // Also extract from signal evidence
+  for (const s of signalEvidence) {
+    if (s.author) {
+      const emailMatch = s.author.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+      if (emailMatch) allEmails.push(emailMatch[0].toLowerCase());
+    }
+  }
+  const uniqueEmails = [...new Set(allEmails)];
+
+  if (winner.suggestedActionType === 'send_message' || deliverableAction.includes('send_message')) {
+    const bestEmail = uniqueEmails[0] ?? extractBestRecipientEmail(winner.relationshipContext);
     sections.push(
-      `SUGGESTED_RECIPIENT:\n${bestEmail ?? 'No email found in dossier. Use the most relevant contact email from RELATIONSHIP_CONTEXT, or leave recipient empty if none is available.'}`,
+      `AVAILABLE_EMAIL_ADDRESSES:\n${uniqueEmails.length > 0 ? uniqueEmails.map((e) => `- ${e}`).join('\n') : '- None found'}`,
+      `SUGGESTED_RECIPIENT:\n${bestEmail ?? 'No email found in dossier. Use the most relevant contact email from AVAILABLE_EMAIL_ADDRESSES, or leave recipient empty if none is available.'}`,
+    );
+  } else if (uniqueEmails.length > 0) {
+    // Even for non-email actions, surface available emails so the LLM can
+    // choose to draft an email if appropriate
+    sections.push(
+      `AVAILABLE_EMAIL_ADDRESSES:\n${uniqueEmails.map((e) => `- ${e}`).join('\n')}`,
     );
   }
 
@@ -734,6 +925,15 @@ function buildGenerationPrompt(context: PromptContext): string {
     );
     sections.push(...insightSections);
   }
+
+  // Critical instruction: use real data only, never placeholder text
+  sections.push(
+    'CRITICAL_INSTRUCTION:\n' +
+    'You MUST use real names, real email addresses, real dates, and real details from the evidence above. ' +
+    'NEVER use placeholder brackets like [Name], [Company], [Date], [Your Name], [Recipient], or similar. ' +
+    'If you do not have a specific detail, omit it or write around it — do not insert a bracket placeholder. ' +
+    'Every field in the artifact must contain real, specific content drawn from the signals and context provided.',
+  );
 
   sections.push(
     `RUNNER_UPS_REJECTED:\n${runnerUps}`,
@@ -988,6 +1188,21 @@ function validateGeneratedPayload(
   // Validate artifact payload using the LLM's chosen artifact type (not the original action type)
   const validationActionType = artifactTypeToActionType(payload.artifact_type);
   validateArtifactPayload(validationActionType, payload.artifact, issues);
+
+  // Scan all artifact string fields for bracket placeholders that slipped past per-field checks
+  const bracketPlaceholderRe = /\[[A-Z][a-zA-Z\s]*\]/;
+  for (const [key, val] of Object.entries(payload.artifact)) {
+    if (typeof val === 'string' && bracketPlaceholderRe.test(val)) {
+      issues.push(`artifact.${key} contains bracket placeholder text`);
+    }
+  }
+  // Also check directive and evidence
+  if (bracketPlaceholderRe.test(payload.directive)) {
+    issues.push('directive contains bracket placeholder text');
+  }
+  if (bracketPlaceholderRe.test(payload.evidence)) {
+    issues.push('evidence contains bracket placeholder text');
+  }
 
   const duplicateApproved = promptContext.approvedRecently.some((row) => {
     if (!row.directive_text) return false;
@@ -1256,6 +1471,8 @@ Fix these issues and return JSON only.
 Keep the artifact nested under "artifact" and match this schema exactly:
 ${expectedArtifactSchema(promptContext.winner.suggestedActionType)}
 
+CRITICAL: Do NOT use bracket placeholders like [Name], [Company], [Date], [Your Name], [Recipient], etc. Use REAL names, dates, and details from the evidence provided. If a detail is unknown, write around it — never insert a bracket placeholder.
+
 Issues:
 - ${issues.join('\n- ')}`,
       });
@@ -1313,6 +1530,14 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
 
     const hydratedWinner = await hydrateWinnerRelationshipContext(userId, scored.winner);
 
+    // Fetch real signal evidence (email subjects, snippets, dates) for the winner
+    let signalEvidence: SignalSnippet[] = [];
+    try {
+      signalEvidence = await fetchWinnerSignalEvidence(userId, hydratedWinner);
+    } catch {
+      // Signal evidence fetch failure is non-blocking
+    }
+
     // Research phase: deepen the winner into an insight before writing
     let insight: ResearchInsight | null = null;
     try {
@@ -1334,6 +1559,7 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       insight,
       winner: hydratedWinner,
       deprioritized: scored.deprioritized,
+      signalEvidence,
       ...guardrails,
     };
 
