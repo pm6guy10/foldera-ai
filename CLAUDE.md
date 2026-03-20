@@ -1060,3 +1060,46 @@ Removed: `make_decision`, `research`, `decision_frame`, `research_brief` as user
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-23 (Gemini scorer integration)
+
+- **MODE:** AUDIT
+
+### Files changed
+- `lib/briefing/types.ts` — Extended `CandidateScoreBreakdown` with 9 optional Gemini breakdown fields: `stakes_raw`, `stakes_transformed`, `urgency_raw`, `urgency_effective`, `exec_potential`, `behavioral_rate`, `novelty_multiplier`, `suppression_multiplier`, `final_score`.
+- `lib/briefing/scorer.ts` — Three additions and one replacement:
+  1. Added exported `ApprovalAction` type and `computeCandidateScore()` pure function implementing the finalized Gemini formula: `stakes^0.6 * harmonicMean(uEff, t) * timeWeightedRate * novelty * suppression * 3.0`.
+  2. Added `getApprovalHistory(userId)` — fetches 30-day raw action rows with status mapping (`executed`→`approved`, `draft_rejected`→`rejected`). Returns `ApprovalAction[]` for the behavioral rate computation.
+  3. Added `getDaysSinceLastSurface(userId, title)` — keyword-matching recurrence detection (same approach as existing `getFreshness`) returning integer days for novelty penalty.
+  4. Replaced the scoring loop in `scoreOpenLoops()`: old flat formula `(stakes * urgency * tractability * freshness * actionTypeRate) + entityPenalty` replaced with `computeCandidateScore()`. Approval history fetched once before the loop and passed to each candidate. `getFreshness` and `getActionTypeApprovalRate` removed from the main scoring path. `getFreshness` retained for emergent pattern scoring (line 2307).
+- `lib/briefing/__tests__/scorer-benchmark.test.ts` — NEW. 12 test cases covering all 8 benchmark expectations against threshold 2.0 plus 4 breakdown verification tests (field presence, cold-start rate, novelty multiplier values).
+
+### Scoring-path changes
+- Old formula: `Math.max(0, (S * U * T * F * R) + E)` — flat multiplicative with additive entity penalty
+- New formula: `S^0.6 * HM(uEff, t) * rate * nov * sup * 3.0` where:
+  - `S^0.6`: sublinear stakes (high priority still wins but doesn't dominate linearly)
+  - `HM(uEff, t)`: harmonic mean of urgency (with stakes-based floor) and tractability — punishes when either is near zero
+  - `rate`: time-weighted behavioral rate with 21-day half-life and blending ramp (n<5: 0.5, 5-15: blend, 15+: full)
+  - `nov`: novelty penalty (yesterday=0.55, 2 days=0.80, else 1.0) — replaces old `getFreshness` multiplier
+  - `sup`: `exp(entityPenalty / 2)` for suppressed entities — maps -30 to ~3e-7 (near zero)
+  - `3.0`: scale factor so threshold-passing scores land near 2.0+
+- Entity penalty: kept at 0 / -30 from `getEntitySkipPenalty()`, now feeds exponential suppression instead of additive offset
+
+### Integration assumptions
+- `tkg_actions` has no `commitment_id` column. `ApprovalAction.commitment_id` is always `null` from the DB query. `daysSinceLastSurface` uses keyword matching on `directive_text` instead of commitment FK lookup.
+- `getActionTypeApprovalRate()` is now dead code in the main scoring path (retained in file, not called). Could be removed in a future cleanup.
+- Emergent pattern scoring still uses `getFreshness()` — only the main candidate scoring path uses the new Gemini function.
+- Legacy breakdown fields (`stakes`, `urgency`, `tractability`, `freshness`, `actionTypeRate`, `entityPenalty`) remain populated for emergent/divergence/kill-reason classification paths.
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx vitest run` — 60 passed, 7 failed (all 7 are pre-existing `ENCRYPTION_KEY` failures in `execute-action.test.ts`)
+- Scorer benchmark: 12/12 passed
+- Old flat freshness term confirmed absent from final score multiplication (grep returns no matches)
+- New breakdown fields confirmed present in scored loop output
+- No schema changes made
+
+### Supabase / migrations
+- No new migrations

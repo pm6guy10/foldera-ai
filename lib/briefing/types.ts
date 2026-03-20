@@ -106,6 +106,26 @@ export interface CandidateScoreBreakdown {
   actionTypeRate: number;
   /** Additive penalty for entities with 3+ consecutive skips. 0 or -30. */
   entityPenalty: number;
+
+  // --- Gemini scorer breakdown (populated by computeCandidateScore) ---
+  /** Raw stakes value from goal priority (1-5) */
+  stakes_raw?: number;
+  /** stakes^0.6 */
+  stakes_transformed?: number;
+  /** Raw urgency before floor adjustment */
+  urgency_raw?: number;
+  /** Urgency after stakes-based floor: min(1, urgency*0.9 + floor) */
+  urgency_effective?: number;
+  /** Harmonic mean of urgency_effective and tractability: 2*uEff*t/(uEff+t) */
+  exec_potential?: number;
+  /** Time-weighted approval rate for this action_type (0-1) */
+  behavioral_rate?: number;
+  /** Novelty penalty: 0.55 if resurfaced yesterday, 0.80 if 2 days, 1.0 otherwise */
+  novelty_multiplier?: number;
+  /** Suppression multiplier: exp(entityPenalty/2) if negative, else 1.0 */
+  suppression_multiplier?: number;
+  /** Final computed score from Gemini formula */
+  final_score?: number;
 }
 
 export interface GenerationCandidateSource {

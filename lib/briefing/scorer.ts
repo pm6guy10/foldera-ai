@@ -530,6 +530,160 @@ async function getEntitySkipPenalty(
 }
 
 // ---------------------------------------------------------------------------
+// Gemini candidate scoring function (v4: replaces flat formula)
+// ---------------------------------------------------------------------------
+
+export type ApprovalAction = {
+  action_type: string;
+  status: 'approved' | 'skipped' | 'rejected';
+  created_at: string;
+  commitment_id: string | null;
+};
+
+export function computeCandidateScore(args: {
+  stakes: number;
+  urgency: number;
+  tractability: number;
+  actionType: string;
+  entityPenalty: number;
+  daysSinceLastSurface: number;
+  commitmentId?: string | null;
+  approvalHistory: ApprovalAction[];
+  now?: Date;
+}): { score: number; breakdown: { stakes_raw: number; stakes_transformed: number; urgency_raw: number; urgency_effective: number; tractability: number; exec_potential: number; behavioral_rate: number; novelty_multiplier: number; suppression_multiplier: number; final_score: number } } {
+  const nowMs = (args.now || new Date()).getTime();
+  const relevant = args.approvalHistory.filter(a => a.action_type === args.actionType);
+  const n = relevant.length;
+  let rate = 0.5;
+
+  if (n > 0) {
+    let wSuccess = 0, wTotal = 0;
+    for (const action of relevant) {
+      const daysOld = Math.max(0, (nowMs - new Date(action.created_at).getTime()) / 86400000);
+      const weight = Math.pow(0.5, daysOld / 21.0);
+      wTotal += weight;
+      if (action.status === 'approved') wSuccess += weight;
+    }
+    const computed = wTotal > 0 ? (wSuccess / wTotal) : 0.5;
+    rate = n < 5 ? 0.5 : n < 15 ? (((n - 5) / 10) * computed) + ((15 - n) / 10 * 0.5) : computed;
+  }
+
+  const nov = args.daysSinceLastSurface === 1 ? 0.55 : args.daysSinceLastSurface === 2 ? 0.80 : 1.0;
+  const sup = args.entityPenalty < 0 ? Math.exp(args.entityPenalty / 2.0) : 1.0;
+
+  const urgencyFloor = ((args.stakes - 1) / 4) * 0.2;
+  const uEff = Math.min(1, args.urgency * 0.9 + urgencyFloor);
+  const t = Math.max(0.01, args.tractability);
+  const exec = (2 * uEff * t) / (uEff + t);
+
+  const stakesTransformed = Math.pow(args.stakes, 0.6);
+  const finalScore = stakesTransformed * exec * rate * nov * sup * 3.0;
+
+  return {
+    score: finalScore,
+    breakdown: {
+      stakes_raw: args.stakes,
+      stakes_transformed: stakesTransformed,
+      urgency_raw: args.urgency,
+      urgency_effective: uEff,
+      tractability: args.tractability,
+      exec_potential: exec,
+      behavioral_rate: rate,
+      novelty_multiplier: nov,
+      suppression_multiplier: sup,
+      final_score: finalScore,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Approval history — raw action rows for behavioral rate (v4: new)
+// ---------------------------------------------------------------------------
+
+async function getApprovalHistory(userId: string): Promise<ApprovalAction[]> {
+  const supabase = createServerClient();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  try {
+    const { data } = await supabase
+      .from('tkg_actions')
+      .select('action_type, status, generated_at')
+      .eq('user_id', userId)
+      .gte('generated_at', thirtyDaysAgo)
+      .in('status', ['approved', 'executed', 'skipped', 'draft_rejected', 'rejected'])
+      .order('generated_at', { ascending: false })
+      .limit(200);
+
+    return (data ?? []).map(a => ({
+      action_type: a.action_type as string,
+      status: ((a.status as string) === 'executed' ? 'approved'
+        : (a.status as string) === 'draft_rejected' ? 'rejected'
+        : a.status) as 'approved' | 'skipped' | 'rejected',
+      created_at: a.generated_at as string,
+      commitment_id: null, // tkg_actions has no commitment_id column
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Days since last surface — keyword-matching recurrence detection (v4: new)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute how many days ago this candidate's topic was last surfaced as a directive.
+ * Uses keyword overlap (same approach as getFreshness) but returns integer days
+ * for the novelty penalty in computeCandidateScore.
+ *
+ * Returns 0 if never surfaced (maps to novelty_multiplier = 1.0, no penalty).
+ */
+async function getDaysSinceLastSurface(
+  userId: string,
+  candidateTitle: string,
+): Promise<number> {
+  const supabase = createServerClient();
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+
+  try {
+    const { data: recentActions } = await supabase
+      .from('tkg_actions')
+      .select('directive_text, generated_at, status, execution_result')
+      .eq('user_id', userId)
+      .gte('generated_at', threeDaysAgo)
+      .in('status', ['pending_approval', 'executed', 'skipped', 'draft_rejected'])
+      .order('generated_at', { ascending: false })
+      .limit(30);
+
+    const filteredActions = (recentActions ?? []).filter(
+      (action) => !isInternalNoSend(action.execution_result),
+    );
+    if (filteredActions.length === 0) return 0;
+
+    const titleWords = new Set(
+      candidateTitle.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 4),
+    );
+    if (titleWords.size === 0) return 0;
+
+    // Find the most recent matching action
+    for (const a of filteredActions) {
+      const dirText = (a.directive_text as string ?? '').toLowerCase();
+      const overlap = [...titleWords].filter(w => dirText.includes(w)).length;
+      if (overlap >= 2 || (overlap >= 1 && titleWords.size <= 2)) {
+        const daysAgo = Math.max(0, Math.floor(
+          (Date.now() - new Date(a.generated_at as string).getTime()) / 86400000,
+        ));
+        return daysAgo;
+      }
+    }
+
+    return 0; // no match found → never surfaced → fresh
+  } catch {
+    return 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Relationship enrichment (v2: new)
 // ---------------------------------------------------------------------------
 
@@ -1988,20 +2142,28 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   }
 
   // -----------------------------------------------------------------------
-  // Score each candidate (v2: includes freshness)
+  // Score each candidate (v4: Gemini scoring function)
   // -----------------------------------------------------------------------
 
   const scored: ScoredLoop[] = [];
+  const approvalHistory = await getApprovalHistory(userId);
 
   for (const c of candidates) {
     const stakes = c.matchedGoal ? c.matchedGoal.priority : 1.0;
     const tractability = await getTractability(userId, c.actionType, c.domain);
-    const freshness = await getFreshness(userId, c.title, c.type);
-    const actionTypeRate = await getActionTypeApprovalRate(userId, c.actionType);
+    const daysSinceLastSurface = await getDaysSinceLastSurface(userId, c.title);
     const entityPenalty = await getEntitySkipPenalty(userId, c.content, c.title);
 
-    // v3 formula: multiplicative for positive signal, additive for negative
-    const score = Math.max(0, (stakes * c.urgency * tractability * freshness * actionTypeRate) + entityPenalty);
+    // v4: Gemini scoring function — replaces flat multiplicative formula
+    const { score, breakdown: geminiBreakdown } = computeCandidateScore({
+      stakes,
+      urgency: c.urgency,
+      tractability,
+      actionType: c.actionType,
+      entityPenalty,
+      daysSinceLastSurface,
+      approvalHistory,
+    });
 
     // Find related signals: keyword overlap with this loop's content
     const loopWords = new Set(
@@ -2029,7 +2191,17 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       suggestedActionType: c.actionType,
       matchedGoal: c.matchedGoal,
       score,
-      breakdown: { stakes, urgency: c.urgency, tractability, freshness, actionTypeRate, entityPenalty },
+      breakdown: {
+        // Gemini breakdown fields first (v4 detail)
+        ...geminiBreakdown,
+        // Legacy fields override where names collide (used by emergent/divergence/kill-reason paths)
+        stakes,
+        urgency: c.urgency,
+        tractability,
+        freshness: geminiBreakdown.novelty_multiplier,
+        actionTypeRate: geminiBreakdown.behavioral_rate,
+        entityPenalty,
+      },
       relatedSignals: related,
       sourceSignals: c.sourceSignals,
       relationshipContext,
