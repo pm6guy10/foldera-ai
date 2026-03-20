@@ -48,6 +48,20 @@ export default function SettingsClient() {
   const microsoftNeedsReconnect = microsoft?.is_active && microsoft.scopes && !microsoft.scopes.includes('Files.Read');
   const googleNeedsReconnect = google?.is_active && google.scopes && !google.scopes.includes('drive');
 
+  const handleSignOut = async () => {
+    try {
+      // Use redirect:false so we control the redirect.
+      // If CSRF fetch fails silently, signOut() resolves without
+      // clearing the cookie — the hard redirect below still lands
+      // the user on / where no session-gated content is shown.
+      await signOut({ redirect: false, callbackUrl: '/' });
+    } catch {
+      // signOut threw (network/CSRF failure) — fall through
+    }
+    // Always force a hard navigation to clear client-side state
+    window.location.href = '/';
+  };
+
   const handleDeleteAccount = async () => {
     if (!deleteConfirm) { setDeleteConfirm(true); return; }
     setDeleteError(null);
@@ -149,12 +163,20 @@ export default function SettingsClient() {
             </div>
           </div>
           {microsoft?.is_active ? (
-            <button
-              onClick={() => fetch('/api/microsoft/disconnect', { method: 'POST' }).then(() => window.location.reload())}
-              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors"
-            >
-              Disconnect
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { window.location.href = '/api/microsoft/connect'; }}
+                className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors"
+              >
+                Reconnect
+              </button>
+              <button
+                onClick={() => fetch('/api/microsoft/disconnect', { method: 'POST' }).then(() => window.location.reload())}
+                className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                Disconnect
+              </button>
+            </div>
           ) : (
             <button
               onClick={() => { window.location.href = '/api/microsoft/connect'; }}
@@ -197,7 +219,7 @@ export default function SettingsClient() {
         )}
 
         <button
-          onClick={() => signOut({ callbackUrl: '/' })}
+          onClick={handleSignOut}
           className="mt-3 w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl py-3 text-sm font-medium transition-colors"
         >
           Sign out
