@@ -27,6 +27,7 @@ export default function SettingsClient() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [generateState, setGenerateState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (status !== 'authenticated') { setLoading(false); return; }
@@ -42,6 +43,41 @@ export default function SettingsClient() {
         setSubscription(await subRes.json());
       }
     }).catch(() => {}).finally(() => setLoading(false));
+  }, [status]);
+
+  // Auto-sync after OAuth connection — makes the product feel alive on day one
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    const params = new URLSearchParams(window.location.search);
+    const googleConnected = params.get('google_connected') === 'true';
+    const microsoftConnected = params.get('microsoft_connected') === 'true';
+    if (!googleConnected && !microsoftConnected) return;
+
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+
+    const provider = googleConnected ? 'google' : 'microsoft';
+    const syncUrl = googleConnected ? '/api/google/sync-now' : '/api/microsoft/sync-now';
+
+    setSyncStatus(`Syncing your ${provider === 'google' ? 'Google' : 'Microsoft'} data...`);
+
+    fetch(syncUrl, { method: 'POST' })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          const count = data.total ?? 0;
+          setSyncStatus(`Synced ${count} signal${count !== 1 ? 's' : ''} from ${provider === 'google' ? 'Google' : 'Microsoft'}.`);
+        } else {
+          setSyncStatus('Sync started. Your data will be ready shortly.');
+        }
+      })
+      .catch(() => {
+        setSyncStatus('Sync started. Your data will be ready shortly.');
+      })
+      .finally(() => {
+        // Clear status after 6 seconds
+        setTimeout(() => setSyncStatus(null), 6000);
+      });
   }, [status]);
 
   const google = integrations.find(i => i.provider === 'google');
@@ -118,6 +154,13 @@ export default function SettingsClient() {
     <div className="min-h-screen bg-zinc-950 text-white">
       <Header />
       <main className="pt-20 pb-8 px-4 max-w-2xl mx-auto">
+
+        {/* Sync status banner */}
+        {syncStatus && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+            <p className="text-sm text-cyan-300">{syncStatus}</p>
+          </div>
+        )}
 
         {/* Connected accounts */}
         <h2 className="text-lg font-semibold text-white">Connected accounts</h2>
