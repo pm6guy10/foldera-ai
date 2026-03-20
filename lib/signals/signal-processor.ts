@@ -454,10 +454,36 @@ async function processBatch(
   let extractions: SignalExtraction[] = [];
   try {
     const cleaned = rawText.replace(/```json\n?|\n?```/g, '').trim();
-    extractions = JSON.parse(cleaned);
+    // Try full parse first; if it fails, extract just the JSON array portion
+    try {
+      extractions = JSON.parse(cleaned);
+    } catch {
+      const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        extractions = JSON.parse(arrayMatch[0]);
+      } else {
+        throw new Error('No JSON array found in LLM response');
+      }
+    }
     if (!Array.isArray(extractions)) extractions = [];
   } catch (error: unknown) {
+    // Parse failed even after extraction attempt — mark all signals in this
+    // batch as processed with empty extractions so they don't stall the pipeline
     result.errors.push(`parse: ${error instanceof Error ? error.message : String(error)}`);
+    for (const signal of decryptedBatch) {
+      const updateSignalResult = await supabase
+        .from('tkg_signals')
+        .update({
+          processed: true,
+          extracted_entities: [],
+          extracted_commitments: [],
+          extracted_dates: null,
+        })
+        .eq('id', signal.id);
+      if (!updateSignalResult.error) {
+        result.signals_processed++;
+      }
+    }
     return result;
   }
 
