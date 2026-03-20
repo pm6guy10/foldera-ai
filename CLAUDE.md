@@ -898,3 +898,36 @@ Compound `send_message` winners from the scorer produced valid high-scoring cand
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-22 (nightly orchestrator)
+
+- **MODE:** AUDIT
+- **Commit:** `a0a7536`
+
+### Job 1 — Orchestrator Report
+- **Microsoft sync:** OK — 12 mail + 15 calendar signals synced
+- **Signal processing:** FULL CLEAR — 284 signals processed to 0 remaining across 6 batches. AB6 fix (`ec50ccb`) confirmed working. No stalls.
+- **Queue cleanup:** Clean — no stale pending_approval rows
+- **Daily brief generation:** NO-SEND (reused) — existing no-send result from 01:58 UTC reused. Blocker: placeholder text in document content. Note: `92dbbfc` fix was deployed at 02:36 UTC, AFTER this generation. Fix has not been exercised yet.
+- **Daily send:** SKIPPED — no valid directive
+- **Build:** PASS
+- **7-day stats:** 89 actions, 0 approved, 88 skipped, 1 executed (0% approval rate, day 9+)
+
+### Job 2 — Backlog Worker
+- No AUTO_FIXABLE items available. AB1-AB4 all require human review or are in never-touch scope.
+
+### Key insight
+The `92dbbfc` generator fix (signal evidence enrichment + bracket placeholder rejection) has NOT been tested by a daily-brief cycle. Tomorrow's 13:50 UTC cron will be the first real test.
+
+### Files changed
+- `NIGHTLY_REPORT.md` — March 22 report
+- `AUTOMATION_BACKLOG.md` — Updated evidence for AB1-AB4, confirmed AB6 DONE
+
+### Verified working
+- `npm run build` — 0 errors
+- Signal processing: 284 → 0 (6 batches, no stalls)
+
+### Supabase / migrations
+- No new migrations
