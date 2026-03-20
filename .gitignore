@@ -7,3 +7,4 @@ node_modules
 .cursor
 .env*.local
 test-results/
+audit-output/

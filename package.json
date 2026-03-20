@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "audit:smoke": "npx playwright test --config=playwright.audit.config.ts",
+    "audit:ux": "npx tsx scripts/ux-audit.ts",
+    "audit:all": "npx playwright test --config=playwright.audit.config.ts && npx tsx scripts/ux-audit.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
