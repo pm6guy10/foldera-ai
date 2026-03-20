@@ -75,7 +75,13 @@ export async function GET(request: NextRequest) {
   const clientId = process.env.AZURE_AD_CLIENT_ID!;
   const clientSecret = process.env.AZURE_AD_CLIENT_SECRET!;
   const tenantId = process.env.AZURE_AD_TENANT_ID || 'common';
-  const redirectUri = `${baseUrl}/api/microsoft/callback`;
+  // Must match the redirect_uri sent in /api/microsoft/connect.
+  // Azure only has https://www.foldera.ai/api/microsoft/callback registered.
+  const normalizedBase = baseUrl.replace(
+    /^(https:\/\/)foldera\.ai/,
+    '$1www.foldera.ai',
+  );
+  const redirectUri = `${normalizedBase}/api/microsoft/callback`;
 
   let tokenData: any;
   try {

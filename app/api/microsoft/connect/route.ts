@@ -46,7 +46,13 @@ export async function GET() {
     );
   }
 
-  const redirectUri = `${baseUrl}/api/microsoft/callback`;
+  // Azure only has https://www.foldera.ai/api/microsoft/callback registered.
+  // Normalize: if baseUrl is https://foldera.ai, rewrite to https://www.foldera.ai
+  const normalizedBase = baseUrl.replace(
+    /^(https:\/\/)foldera\.ai/,
+    '$1www.foldera.ai',
+  );
+  const redirectUri = `${normalizedBase}/api/microsoft/callback`;
 
   // CSRF protection: random state stored in httpOnly cookie
   const state = randomBytes(32).toString('hex');
