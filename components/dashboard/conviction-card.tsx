@@ -43,6 +43,7 @@ export type SkipReason = 'not_relevant' | 'already_handled' | 'wrong_approach';
 interface ConvictionCardProps {
   action:     ConvictionAction | null;
   isLoading:  boolean;
+  isPro:      boolean;
   onGenerate: () => void;
   onApprove:  (id: string) => Promise<void>;
   onSkip:     (id: string, reason?: SkipReason) => Promise<void>;
@@ -56,6 +57,7 @@ interface ConvictionCardProps {
 export default function ConvictionCard({
   action,
   isLoading,
+  isPro,
   onGenerate,
   onApprove,
   onSkip,
@@ -147,9 +149,13 @@ export default function ConvictionCard({
               <p className="text-zinc-400 text-sm leading-relaxed mb-5">{cleanReason}</p>
             )}
 
-            {/* Artifact preview — artifact is extracted from execution_result by the API */}
+            {/* Artifact preview — Pro only */}
             {(action.artifact ?? (action.executionResult as any)?.artifact) && (
-              <ArtifactPreview artifact={(action.artifact ?? (action.executionResult as any).artifact) as ConvictionArtifact} />
+              isPro ? (
+                <ArtifactPreview artifact={(action.artifact ?? (action.executionResult as any).artifact) as ConvictionArtifact} />
+              ) : (
+                <LockedArtifact />
+              )
             )}
 
             {/* Error */}
@@ -157,8 +163,8 @@ export default function ConvictionCard({
               <p className="text-red-400 text-xs mb-3">{error}</p>
             )}
 
-            {/* Approve / Skip buttons */}
-            {action.status === 'pending_approval' && (
+            {/* Approve / Skip buttons — Pro only */}
+            {isPro && action.status === 'pending_approval' && (
               <div className="flex gap-3 mb-4">
                 <button
                   onClick={handleApprove}
@@ -234,6 +240,55 @@ function EmptyState() {
       <Shield className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
       <p className="text-zinc-300 text-sm font-medium mb-1">Your next read arrives at 7am tomorrow.</p>
       <p className="text-zinc-500 text-xs">Foldera is learning your patterns.</p>
+    </div>
+  );
+}
+
+function LockedArtifact() {
+  const [loading, setLoading] = useState(false);
+
+  async function handleUpgrade() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+    } catch { /* fall through */ }
+    setLoading(false);
+  }
+
+  return (
+    <div className="mb-4 rounded-lg border border-zinc-700/60 bg-zinc-800/50 overflow-hidden relative">
+      {/* Blurred placeholder content */}
+      <div className="p-4 select-none" style={{ filter: 'blur(6px)' }} aria-hidden="true">
+        <div className="space-y-2">
+          <div className="h-3 w-16 bg-zinc-600 rounded" />
+          <div className="h-4 w-full bg-zinc-600 rounded" />
+          <div className="h-4 w-5/6 bg-zinc-600 rounded" />
+          <div className="h-4 w-4/6 bg-zinc-600 rounded" />
+          <div className="h-4 w-full bg-zinc-600 rounded" />
+          <div className="h-4 w-3/4 bg-zinc-600 rounded" />
+        </div>
+      </div>
+      {/* Overlay CTA */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/70 backdrop-blur-sm">
+        <p className="text-zinc-300 text-sm font-medium mb-1">The finished work is ready.</p>
+        <p className="text-zinc-500 text-xs mb-4">Upgrade to see and execute artifacts.</p>
+        <button
+          onClick={handleUpgrade}
+          disabled={loading}
+          className="px-5 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-semibold transition-colors disabled:opacity-60"
+        >
+          {loading ? 'Loading...' : 'Upgrade to Pro \u2014 $29/mo'}
+        </button>
+      </div>
     </div>
   );
 }

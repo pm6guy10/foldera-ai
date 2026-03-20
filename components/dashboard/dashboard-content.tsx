@@ -20,6 +20,7 @@ export default function DashboardContent() {
   const [convictionLoading, setConvictionLoading] = useState(true);
   const [emailActionMsg, setEmailActionMsg] = useState<EmailActionFeedback | null>(null);
   const [convictionError, setConvictionError] = useState<string | null>(null);
+  const [isPro, setIsPro] = useState(true); // default true to avoid upgrade flash for paying users
 
   const showEmailActionFeedback = useCallback((tone: EmailActionFeedback['tone'], text: string) => {
     setEmailActionMsg({ tone, text });
@@ -89,6 +90,14 @@ export default function DashboardContent() {
   useEffect(() => {
     if (status === 'authenticated') {
       loadLatestConviction();
+      // Fetch subscription status for Pro gating
+      fetch('/api/subscription/status')
+        .then(r => r.json())
+        .then(data => {
+          const pro = data.status === 'active' || data.status === 'active_trial';
+          setIsPro(pro);
+        })
+        .catch(() => setIsPro(false));
     }
     if (status === 'unauthenticated') router.push('/start');
   }, [status]);
@@ -186,6 +195,7 @@ export default function DashboardContent() {
       <ConvictionCard
         action={conviction}
         isLoading={convictionLoading}
+        isPro={isPro}
         onGenerate={generateDirective}
         onApprove={handleApprove}
         onSkip={handleSkip}
