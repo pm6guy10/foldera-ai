@@ -1133,3 +1133,31 @@ No code changes. No new tables. Rows not deleted.
 
 ### Supabase / migrations
 - `20260323000001_suppress_stale_commitments.sql` — applied live during session
+
+---
+
+## Session Log — 2026-03-20 (landing page hero mechanism)
+
+- **MODE:** AUDIT
+- **Commit:** (pending)
+
+### Files changed
+- `app/page.tsx` — Replaced `LivingHero` component with `SignalEngineHero`. Removed cold-read imports (`getVisitorContext`, `generateColdRead`, `FALLBACK_COLD_READ`, `VisitorContext`, `ColdRead`). Removed `ChevronDown` import. Added `Brain`, `Calendar`, `MessageSquare` from lucide-react. Added CSS keyframe animations (`hero-dot-glow`, `hero-output-in`) with `animation-fill-mode: both` for one-shot effects. Removed `NeuralStream` from hero section to eliminate background flicker. Changed hero section from `pt-40 pb-24` to tight `overflow-hidden border-b border-white/5` wrapper.
+
+### What was changed
+- **Old hero**: Cold-read typing animation with visitor context inference (time of day, device, scenario). No visible mechanism — just atmospheric text.
+- **New hero**: Compact vertical mechanism showing visible causality:
+  1. Signal input chips: "23 emails", "8 events", "3 threads" with Mail/Calendar/MessageSquare icons
+  2. Convergence lines + processing dot with Brain icon (one-shot cyan glow animation)
+  3. Directive output card: urgency badge, title ("Finalize Q3 Projections"), description, drafted reply artifact, Approve/Skip buttons
+- **Design**: Dark premium glass aesthetic preserved. No looping animations. Static dismissed cards (no flicker). `animate-pulse` removed from badge dot. Mobile responsive with `w-[90%] max-w-[320px]` pattern.
+
+### Verified working
+- `npm run build` — 0 errors
+- Desktop 1280x800: full mechanism above the fold, clean layout
+- Mobile 375x812: no horizontal overflow (`scrollWidth === 375`), clean layout
+- Console: only pre-existing NextAuth CLIENT_FETCH_ERROR, no hero-related errors
+- All non-hero sections untouched: ScenarioDemos, How It Works, FlipSection, MathConsole, Pricing, Footer
+
+### Supabase / migrations
+- No new migrations

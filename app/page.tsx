@@ -5,12 +5,9 @@ import {
   ArrowRight, Check, Mail, Calendar, MessageSquare,
   Zap, Brain, Briefcase, Code, Coffee, Database, Shield,
   Globe, Layers, Terminal, FileText, AlertCircle,
-  Lock, ChevronRight, ChevronDown, Eye,
+  Lock, ChevronRight, Eye,
 } from 'lucide-react';
-import {
-  getVisitorContext, generateColdRead, FALLBACK_COLD_READ,
-  type VisitorContext, type ColdRead,
-} from '@/lib/cold-read';
+// cold-read imports removed — hero replaced with signal engine mechanism
 
 // ============================================================================
 // TYPES
@@ -375,339 +372,97 @@ function ArtifactPreview({ artifactType, artifact }: { artifactType: string; art
 }
 
 // ============================================================================
-// LIVING HERO — cold read on page load
+// SIGNAL ENGINE HERO — mechanism visualization
 // ============================================================================
-function LivingHero() {
-  const [coldRead, setColdRead] = useState<ColdRead | null>(null);
-  const [ctx, setCtx] = useState<VisitorContext | null>(null);
-  const [showInput, setShowInput] = useState(false);
-  const [text, setText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<Directive | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [emailSubmitted, setEmailSubmitted] = useState(false);
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    try {
-      const visitorCtx = getVisitorContext();
-      setCtx(visitorCtx);
-      setColdRead(generateColdRead(visitorCtx));
-    } catch {
-      setColdRead(FALLBACK_COLD_READ);
-    }
-    // Brief shimmer before text appears
-    const t = setTimeout(() => setReady(true), 200);
-    return () => clearTimeout(t);
-  }, []);
-
-  const observationTyping = useTypingEffect(
-    ready && coldRead ? coldRead.observation : '',
-    30,
-    300,
-  );
-
-  const subtextTyping = useTypingEffect(
-    ready && coldRead ? coldRead.subtext : '',
-    18,
-    (coldRead?.observation.length ?? 0) * 30 + 800,
-  );
-
-  useEffect(() => {
-    if (showInput && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [showInput]);
-
-  function getAnalyzeErrorMessage(status: number): string {
-    if (status === 429) return 'Too many demo reads right now. Try again in an hour.';
-    if (status === 503) return 'Foldera is temporarily unavailable. Try again later.';
-    return 'Foldera could not finish that read. Try again.';
-  }
-
-  function getWaitlistErrorMessage(status: number): string {
-    if (status === 429) return 'Too many signups from this connection. Try again later.';
-    if (status === 503) return 'Waitlist capture is temporarily unavailable. Retry shortly.';
-    return 'Could not save your spot. Try again.';
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!text.trim() || loading) return;
-    setLoading(true);
-    setResult(null);
-    setError(null);
-
-    try {
-      const res = await fetch('/api/try/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          context: ctx ? {
-            timeOfDay: ctx.timeOfDay,
-            dayOfWeek: ctx.dayOfWeek,
-            isWeekend: ctx.isWeekend,
-            scenario: ctx.scenario,
-            device: ctx.device,
-          } : undefined,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(getAnalyzeErrorMessage(res.status));
-        return;
-      }
-      setResult(data as Directive);
-    } catch {
-      setError('Network error — check your connection and retry.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleEmailCapture(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim() || emailLoading) return;
-    setEmailLoading(true);
-    setEmailError(null);
-    try {
-      const res = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      if (res.ok || res.status === 409) {
-        setEmailSubmitted(true);
-        return;
-      }
-      setEmailError(getWaitlistErrorMessage(res.status));
-    } catch {
-      setEmailError('Network error — retry to join the waitlist.');
-    } finally {
-      setEmailLoading(false);
-    }
-  }
-
-  const actionLabel = result ? (ACTION_LABELS[result.action_type] ?? result.action_type) : '';
-  const actionColor = result ? (ACTION_COLORS[result.action_type] ?? ACTION_COLORS.research) : '';
-
+function SignalEngineHero() {
   return (
-    <div className="w-full max-w-3xl mx-auto relative z-10 pt-8 px-5">
-      <NeuralStream />
+    <div className="w-full max-w-7xl mx-auto px-6 pt-28 pb-12 text-center relative z-10 flex flex-col items-center">
+      {/* Headlines & CTA */}
+      <Reveal>
+        <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
+          Finished work, every morning.
+        </div>
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-5 leading-[1.08]">
+          Your next move,<br className="hidden md:block" /> already prepared.
+        </h1>
+        <p className="text-base md:text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed mb-8">
+          Foldera reads your email and calendar, finds what matters most, and prepares the work before you wake up.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a
+            href="/start"
+            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+          >
+            Get started <ChevronRight className="w-4 h-4" />
+          </a>
+        </div>
+      </Reveal>
 
-      {/* ── COLD READ PHASE ── */}
-      {!result && !showInput && (
-        <div className="space-y-10 relative z-10">
-          {/* Loading shimmer */}
-          {!ready && (
-            <div className="space-y-4 animate-pulse">
-              <div className="h-8 bg-zinc-900/60 rounded-xl w-3/4" />
-              <div className="h-4 bg-zinc-900/40 rounded-lg w-full" />
-              <div className="h-4 bg-zinc-900/40 rounded-lg w-5/6" />
-            </div>
-          )}
+      {/* The Mechanism: inputs → convergence → directive */}
+      <div className="w-full mt-8 md:mt-12 relative flex flex-col items-center">
+        {/* Background Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/[0.04] blur-[150px] rounded-full pointer-events-none z-0" />
 
-          {ready && coldRead && (
-            <>
-              {/* System observation label */}
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400/60">
-                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                System observation
+        {/* Signal input chips — what Foldera reads */}
+        <div className="flex items-center justify-center gap-3 sm:gap-4 mb-0 relative z-10">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
+            <Mail className="w-3 h-3 text-zinc-500" />
+            <span>23 emails</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
+            <Calendar className="w-3 h-3 text-zinc-500" />
+            <span>8 events</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
+            <MessageSquare className="w-3 h-3 text-zinc-500" />
+            <span>3 threads</span>
+          </div>
+        </div>
+
+        {/* Convergence line + processing dot */}
+        <div className="flex flex-col items-center my-0 relative z-10">
+          <div className="w-[1px] h-5 bg-gradient-to-b from-zinc-700/0 to-zinc-600/60" />
+          <div className="w-7 h-7 rounded-full bg-[#0a0a0f] border border-zinc-600/50 flex items-center justify-center hero-process-dot">
+            <Brain className="w-3.5 h-3.5 text-cyan-400/70" />
+          </div>
+          <div className="w-[1px] h-5 bg-gradient-to-b from-cyan-500/40 to-cyan-500/0" />
+        </div>
+
+        {/* Directive Output Card — the payoff, always visible */}
+        <div className="relative z-30 w-full max-w-[400px] hero-output">
+          <div className="rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/40 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.15)] flex flex-col text-left overflow-hidden">
+            <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+            <div className="p-5 sm:p-6 border-b border-white/10">
+              <div className="mb-3">
+                <div className="px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center gap-2 w-fit">
+                  <div className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span className="text-rose-400 text-[10px] font-bold uppercase tracking-widest">Blocks 3 Team Members</span>
+                </div>
               </div>
-
-              {/* The cold read text IS the headline */}
-              <p className="text-2xl sm:text-3xl md:text-4xl font-semibold leading-snug text-white tracking-tight min-h-[3.5rem]">
-                {observationTyping.displayed}
-                {!observationTyping.done && <span className="inline-block w-[2px] h-[1.2em] bg-cyan-400 ml-0.5 animate-pulse align-text-bottom" />}
-              </p>
-
-              <div className={`transition-opacity duration-1000 ${observationTyping.done ? 'opacity-100' : 'opacity-0'}`}>
-                <p className="text-zinc-400 text-base md:text-lg leading-relaxed">
-                  {subtextTyping.displayed}
-                  {observationTyping.done && !subtextTyping.done && <span className="inline-block w-[2px] h-[1em] bg-zinc-500 ml-0.5 animate-pulse align-text-bottom" />}
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Finalize Q3 Projections</h3>
+              <p className="text-sm text-zinc-400">Reopened 4 times. Waiting on your approval to unblock the team.</p>
+            </div>
+            <div className="p-5 sm:p-6 bg-black/40">
+              <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 space-y-2">
+                <p className="text-cyan-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                  <Zap className="w-3 h-3" /> Drafted Reply
+                </p>
+                <p className="text-zinc-200 text-sm leading-relaxed">
+                  &quot;Hi team, attached are the finalized numbers before the board meeting. We&apos;ve adjusted the forecast based on recent churn...&quot;
                 </p>
               </div>
-
-              {/* Context badge */}
-              <div className={`transition-all duration-700 ${subtextTyping.done ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/60 border border-white/5 text-zinc-500 text-[10px] font-mono uppercase tracking-[0.18em]">
-                  <span>Context-aware from the moment you land</span>
-                  <span className="text-zinc-700">•</span>
-                  <span>Time, day{ctx?.scenario ? ', scenario' : ''}{ctx?.referrer ? ', referrer' : ''}</span>
-                </div>
-              </div>
-
-              {/* Go deeper CTA */}
-              <div className={`space-y-4 transition-all duration-700 delay-300 ${subtextTyping.done ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                <div className="h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent" />
-
-                <button
-                  onClick={() => setShowInput(true)}
-                  className="w-full group flex items-center justify-between p-5 rounded-2xl bg-zinc-950/80 border border-white/5 hover:border-cyan-500/20 transition-all"
-                >
-                  <div className="text-left">
-                    <p className="text-white font-semibold text-sm">Want to go deeper?</p>
-                    <p className="text-zinc-500 text-xs mt-1">Tell me what you&apos;re actually dealing with. I&apos;ll show you what Foldera does with real context.</p>
-                  </div>
-                  <ChevronDown className="w-5 h-5 text-zinc-600 group-hover:text-cyan-400 transition-colors shrink-0 ml-4" />
-                </button>
-
-                <div className="text-center pt-2">
-                  <a
-                    href="/start"
-                    className="inline-flex items-center gap-2 text-zinc-500 hover:text-white text-sm transition-colors group"
-                  >
-                    Or skip ahead and connect your real data
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </a>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ── TEXT INPUT PHASE ── */}
-      {!result && showInput && (
-        <div className="space-y-6 relative z-10">
-          {/* Collapsed cold read */}
-          <div className="p-4 rounded-xl bg-zinc-950/60 border border-white/5">
-            <p className="text-zinc-500 text-sm leading-relaxed">{coldRead?.observation}</p>
-          </div>
-
-          <div className="text-center">
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tighter text-white mb-2">
-              Go deeper
-            </h2>
-            <p className="text-zinc-500 text-sm">
-              Paste a paragraph about what you&apos;re working on or struggling with right now.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <textarea
-              ref={inputRef}
-              value={text}
-              onChange={e => setText(e.target.value)}
-              placeholder="E.g. I've been going back and forth on whether to leave my job. I have a competing offer that pays 30% more but means relocating..."
-              rows={6}
-              className="w-full bg-zinc-950/80 border border-white/10 rounded-2xl px-5 py-4 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors leading-relaxed backdrop-blur-sm"
-            />
-            {error && (
-              <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/60 border border-white/5">
-                <p className="text-zinc-400 text-sm">{error}</p>
-                <button
-                  type="button"
-                  onClick={() => setError(null)}
-                  className="text-cyan-400 text-xs font-semibold hover:text-cyan-300 transition-colors shrink-0 ml-3"
-                >
-                  Retry
-                </button>
-              </div>
-            )}
-            <button
-              type="submit"
-              disabled={!text.trim() || loading}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all disabled:opacity-40 shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:scale-[1.01] active:scale-95"
-            >
-              {loading ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-black/40 border-t-black rounded-full animate-spin" />
-                  Reading...
-                </>
-              ) : (
-                <>Get your read</>
-              )}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* ── RESULT CARD ── */}
-      {result && (
-        <div className="space-y-8 relative z-10">
-          <div className="bg-zinc-950/80 border border-white/10 rounded-[2rem] p-7 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-6">
-              <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${actionColor}`}>
-                {actionLabel}
-              </span>
-              <span className="text-zinc-600 text-[10px] font-mono uppercase tracking-[0.2em]">Artifact ready</span>
             </div>
-
-            {/* Directive */}
-            <p className="text-xl sm:text-2xl font-semibold leading-snug text-white mb-5">
-              {result.directive}
-            </p>
-
-            {/* Reason */}
-            <p className="text-zinc-500 text-sm leading-relaxed border-l-2 border-zinc-800 pl-4 italic mb-5">
-              {result.reason}
-            </p>
-
-            {result.artifact && result.artifact_type && (
-              <ArtifactPreview artifactType={result.artifact_type} artifact={result.artifact} />
-            )}
+            <div className="p-4 flex gap-3 bg-white/[0.02] border-t border-white/10">
+              <a href="/start" className="flex-1 bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                <Check className="w-4 h-4" /> Approve
+              </a>
+              <a href="/start" className="px-6 bg-zinc-900 border border-white/20 text-zinc-300 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:text-white hover:border-white/40 transition-colors flex items-center justify-center">
+                Skip
+              </a>
+            </div>
           </div>
-
-          {/* Email capture */}
-          <div className="bg-zinc-950/60 border border-white/5 rounded-[2rem] p-8 text-center space-y-6 backdrop-blur-sm">
-            <p className="text-zinc-400 text-base leading-relaxed font-medium">
-              That was one paragraph.<br />
-              Imagine what Foldera does with 30 days of your actual history.
-            </p>
-
-            {!emailSubmitted ? (
-              <div className="space-y-4">
-                <p className="text-white font-semibold text-lg">Finished work, every morning.</p>
-                <form onSubmit={handleEmailCapture} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="you@email.com"
-                    required
-                    className="flex-1 bg-zinc-950/80 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                  />
-                  <button
-                    type="submit"
-                    disabled={emailLoading}
-                    className="px-6 py-3.5 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 whitespace-nowrap"
-                  >
-                    {emailLoading ? 'Saving...' : emailError ? 'Retry' : 'Start free'}
-                  </button>
-                </form>
-                {emailError && <p className="text-sm text-amber-300">{emailError}</p>}
-                <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">14 days free &middot; No credit card required</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-cyan-400 font-semibold">You&apos;re in.</p>
-                <p className="text-zinc-500 text-sm">Your first finished read arrives tomorrow morning.</p>
-                <a
-                  href="/start"
-                  className="inline-flex items-center gap-2 text-zinc-400 hover:text-white text-sm transition-colors group mt-2"
-                >
-                  Or connect your email now for a deeper read
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                </a>
-              </div>
-            )}
-          </div>
-
-          {/* Try again */}
-          <button
-            onClick={() => { setResult(null); setError(null); setShowInput(true); }}
-            className="w-full text-zinc-600 hover:text-zinc-400 text-sm transition-colors"
-          >
-            Try a different paragraph
-          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -1159,6 +914,23 @@ export default function App() {
           100% { background-position: 0% 50%; }
         }
         .animate-gradient-x { background-size: 200% 200%; animation: gradient-x 8s ease infinite; filter: drop-shadow(0 0 20px rgba(6,182,212,0.4)); }
+        /* Hero — processing dot glows once */
+        .hero-process-dot {
+          animation: hero-dot-glow 1.2s ease-out 0.6s both;
+        }
+        @keyframes hero-dot-glow {
+          0% { box-shadow: none; border-color: rgba(82,82,91,0.5); }
+          40% { box-shadow: 0 0 16px rgba(6,182,212,0.4); border-color: rgba(6,182,212,0.5); }
+          100% { box-shadow: 0 0 6px rgba(6,182,212,0.15); border-color: rgba(82,82,91,0.5); }
+        }
+        /* Hero — output card appears once after dot glows, stays */
+        .hero-output {
+          animation: hero-output-in 0.8s ease-out 1s both;
+        }
+        @keyframes hero-output-in {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         @media (prefers-reduced-motion: reduce) {
           *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
         }
@@ -1166,9 +938,10 @@ export default function App() {
 
       <Navigation scrolled={scrolled} />
 
-      {/* ── LIVING HERO — cold read on page load ── */}
-      <section className="relative pt-40 pb-24 overflow-hidden">
-        <LivingHero />
+      {/* ── SIGNAL ENGINE HERO — mechanism visualization ── */}
+      <section className="relative overflow-hidden border-b border-white/5">
+        <AmbientGrid />
+        <SignalEngineHero />
       </section>
 
       {/* ── SCENARIO DEMOS — "with a month of your data" ── */}
