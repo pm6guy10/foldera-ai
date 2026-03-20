@@ -866,30 +866,11 @@ export async function runDailyGenerate(
         continue;
       }
 
-      const existingNoSend = await findPersistedNoSendBlocker(supabase, userId, todayStart);
-      if (existingNoSend.error) {
-        results.push({
-          code: 'directive_lookup_failed',
-          detail: existingNoSend.error.message,
-          success: false,
-          userId,
-        });
-        continue;
-      }
-
-      if (existingNoSend.id) {
-        results.push({
-          code: 'no_send_reused',
-          detail: existingNoSend.reason ?? 'A no-send blocker was already persisted for today.',
-          meta: {
-            ...cleanupMeta,
-            action_id: existingNoSend.id,
-          },
-          success: true,
-          userId,
-        });
-        continue;
-      }
+      // NOTE: We intentionally do NOT check for a persisted no_send blocker here.
+      // Previous failed generations should not prevent retries — the LLM is
+      // nondeterministic and fresh signals may have been processed since the last
+      // attempt. The send path still checks for no_send blockers to avoid sending
+      // a brief that was explicitly blocked.
 
       if (!signalResult.success) {
         const preconditionReason =

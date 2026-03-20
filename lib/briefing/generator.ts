@@ -40,11 +40,18 @@ const BANNED_DIRECTIVE_PATTERNS = [
   /\bstart doing\b/i,
 ];
 
-/** Artifact types that count as concrete deliverables. */
+/**
+ * Artifact types that count as concrete deliverables.
+ * - decision_frame: options + weights + recommendation — finished decision layout.
+ * - wait_rationale: context + evidence + tripwires — finished wait-and-watch plan.
+ * Both are complete artifacts the user can approve or skip without extra work.
+ */
 const CONCRETE_ARTIFACT_TYPES: ReadonlySet<string> = new Set([
   'drafted_email',
   'document',
   'calendar_event',
+  'decision_frame',
+  'wait_rationale',
 ]);
 
 /** Maximum age (in days) for signal references — older signals with no recent reinforcement are stale. */
@@ -54,7 +61,6 @@ const PLACEHOLDER_PATTERNS = [
   /\[your\s*name\]/i,
   /\[RECIPIENT\]/i,
   /\b(tbd|placeholder|lorem ipsum|example@|recipient@email\.com)\b/i,
-  /\b(option a|option b)\b/i,
   /\[[A-Z][a-z]+\s*[A-Za-z]*\]/,  // [Name], [Your Name], [Recipient], [Company Name]
   /\[placeholder\]/i,
   /\[your\s/i,                     // [your email], [your company], etc.
@@ -71,7 +77,7 @@ Doctrine:
 - No speculative hobby or lifestyle suggestions.
 - No vague or consulting language: never use "consider", "reflect", "explore", "think about", "maybe", "perhaps", "try to", "you should", "focus on", "stop doing", "start doing".
 - Name the actual person, project, deadline, decision, or constraint from the evidence.
-- The artifact must be a concrete deliverable: a drafted email, a document, or a calendar event. Do NOT produce decision memos, wait rationales, or research briefs — those are consulting, not action.
+- The artifact must be a concrete deliverable the user can act on immediately: a drafted email, a document, a calendar event, a decision frame (with options, weights, and a clear recommendation), or a wait rationale (with context, evidence, and tripwires). Do NOT produce research briefs — those ask the user to do work.
 - The artifact must be directly usable with no placeholders.
 - Pinned constraints are hard vetoes. Never reopen a locked decision or turn the directive into a menu of options.
 - The artifact object must stay nested under "artifact" and must match ARTIFACT_JSON_SCHEMA exactly.
@@ -80,7 +86,7 @@ Doctrine:
 Return strict JSON only:
 {
   "directive": "One imperative sentence with the exact move",
-  "artifact_type": "drafted_email | document | calendar_event",
+  "artifact_type": "drafted_email | document | calendar_event | decision_frame | wait_rationale",
   "artifact": {},
   "evidence": "One sentence naming the decisive evidence",
   "why_now": "One sentence explaining why this wins today",
@@ -1171,18 +1177,10 @@ function validateGeneratedPayload(
     issues.push(`directive references items older than ${STALE_SIGNAL_THRESHOLD_DAYS} days with no recent signal reinforcement`);
   }
 
-  // For action types that we've redirected to concrete deliverables,
-  // accept any concrete artifact type instead of the legacy mapping.
-  const redirectedActionTypes: ActionType[] = ['make_decision', 'research', 'do_nothing'];
-  if (redirectedActionTypes.includes(promptContext.winner.suggestedActionType)) {
-    if (!CONCRETE_ARTIFACT_TYPES.has(payload.artifact_type)) {
-      issues.push(`artifact type "${payload.artifact_type}" is not a concrete deliverable — must be drafted_email, document, or calendar_event`);
-    }
-  } else {
-    const expectedArtifactType = actionTypeToArtifactType(promptContext.winner.suggestedActionType);
-    if (payload.artifact_type !== expectedArtifactType) {
-      issues.push(`artifact_type must be ${expectedArtifactType}`);
-    }
+  // Accept any concrete artifact type — the LLM picks the best format for the content.
+  // The CONCRETE_ARTIFACT_TYPES gate above already rejects research_brief.
+  if (!CONCRETE_ARTIFACT_TYPES.has(payload.artifact_type)) {
+    issues.push(`artifact type "${payload.artifact_type}" is not a concrete deliverable — must be drafted_email, document, calendar_event, decision_frame, or wait_rationale`);
   }
 
   // Validate artifact payload using the LLM's chosen artifact type (not the original action type)
