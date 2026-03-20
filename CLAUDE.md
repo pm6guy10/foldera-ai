@@ -1028,3 +1028,35 @@ Removed: `make_decision`, `research`, `decision_frame`, `research_brief` as user
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-22 (scorer feedback loop)
+
+- **MODE:** AUDIT
+
+### Files changed
+- `lib/briefing/types.ts` — Added `actionTypeRate` and `entityPenalty` fields to `CandidateScoreBreakdown`.
+- `lib/briefing/scorer.ts` — Added `getActionTypeApprovalRate()`: queries 30-day tkg_actions by action_type, computes approved/(approved+skipped+rejected), requires minimum 3 actions to activate (default 0.5). Added `getEntitySkipPenalty()`: extracts person names from candidate, checks for 3+ consecutive skips referencing that entity, returns -30 penalty. Updated scoring formula from `stakes * urgency * tractability * freshness` to `max(0, (stakes * urgency * tractability * freshness * actionTypeRate) + entityPenalty)`. Updated all breakdown object constructors (compound loops, divergence, emergent) with new fields.
+- `lib/cron/daily-brief.ts` — Added `autoSkipStaleApprovals()`: finds all `pending_approval` actions older than 24 hours, updates to `skipped` with `skip_reason='passive_timeout'`. Exported for use by trigger route.
+- `app/api/cron/trigger/route.ts` — Added passive rejection stage before daily brief generation. Imports and calls `autoSkipStaleApprovals()` so stale approvals feed the feedback loop.
+- `lib/conviction/execute-action.ts` — Changed commitment suppression from suppress-on-first-skip to suppress-after-3-skips. Counts how many skipped actions reference each commitment_id in 30-day history before setting `suppressed_at`.
+- `lib/briefing/__tests__/researcher.test.ts` — Updated mock breakdown to include new `actionTypeRate` and `entityPenalty` fields.
+
+### Scoring formula change
+- **Before:** `score = stakes * urgency * tractability * freshness`
+- **After:** `score = max(0, (stakes * urgency * tractability * freshness * actionTypeRate) + entityPenalty)`
+- `actionTypeRate`: 0.1-1.0 multiplier based on 30-day approval rate for this action_type. Default 0.5 (cold start, or <3 historical actions).
+- `entityPenalty`: -30 additive if a referenced person has 3+ consecutive skips. 0 otherwise.
+
+### Multi-user check
+- `getActionTypeApprovalRate()` filters by `user_id` parameter
+- `getEntitySkipPenalty()` filters by `user_id` parameter
+- `autoSkipStaleApprovals()` operates on all users (no user filter — clears stale approvals globally)
+- Commitment suppression in `execute-action.ts` filters by `action.user_id`
+
+### Verified working
+- `npm run build` — 0 errors
+
+### Supabase / migrations
+- No new migrations

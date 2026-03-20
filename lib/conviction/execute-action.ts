@@ -92,13 +92,46 @@ async function suppressCommitmentsForSkippedAction(
 
     if (commitmentIds.length === 0) return;
 
+    // Only suppress after 3+ skips for the same commitment.
+    // Count how many skipped actions reference each commitment.
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: skippedActions } = await supabase
+      .from('tkg_actions')
+      .select('execution_result')
+      .eq('user_id', action.user_id as string)
+      .gte('generated_at', thirtyDaysAgo)
+      .in('status', ['skipped', 'draft_rejected', 'rejected'])
+      .limit(100);
+
+    const skipCountByCommitment: Record<string, number> = {};
+    for (const sa of skippedActions ?? []) {
+      const er = sa.execution_result as Record<string, unknown> | null;
+      const gl = er?.generation_log as Record<string, unknown> | undefined;
+      const disc = gl?.candidateDiscovery as Record<string, unknown> | undefined;
+      const tc = disc?.topCandidates as Array<Record<string, unknown>> | undefined;
+      const sel = tc?.find((c) => c.decision === 'selected') ?? tc?.[0];
+      const ss = sel?.sourceSignals as Array<Record<string, unknown>> | undefined;
+      for (const sig of ss ?? []) {
+        if (sig.kind === 'commitment' && typeof sig.id === 'string') {
+          skipCountByCommitment[sig.id] = (skipCountByCommitment[sig.id] ?? 0) + 1;
+        }
+      }
+    }
+
+    // Include the current skip (+1) since this action is being skipped now
+    const toSuppress = commitmentIds.filter(
+      (id) => (skipCountByCommitment[id] ?? 0) + 1 >= 3,
+    );
+
+    if (toSuppress.length === 0) return;
+
     const { error } = await supabase
       .from('tkg_commitments')
       .update({
         suppressed_at: new Date().toISOString(),
-        suppressed_reason: 'user_skipped_directive',
+        suppressed_reason: 'user_skipped_directive_3x',
       })
-      .in('id', commitmentIds);
+      .in('id', toSuppress);
 
     if (error) {
       console.warn('[execute-action] Failed to suppress commitments:', error.message);

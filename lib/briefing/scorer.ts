@@ -425,6 +425,111 @@ async function getFreshness(
 }
 
 // ---------------------------------------------------------------------------
+// Feedback loop — action-type approval rate (v3: new)
+// ---------------------------------------------------------------------------
+
+/**
+ * For each action_type, compute approved / (approved + skipped + rejected).
+ * Requires minimum 3 historical actions of this type to activate.
+ * Returns 0.5 (neutral) if insufficient data.
+ */
+async function getActionTypeApprovalRate(
+  userId: string,
+  actionType: string,
+): Promise<number> {
+  const supabase = createServerClient();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  try {
+    const { data: actions } = await supabase
+      .from('tkg_actions')
+      .select('status')
+      .eq('user_id', userId)
+      .eq('action_type', actionType)
+      .gte('generated_at', thirtyDaysAgo)
+      .in('status', ['approved', 'executed', 'skipped', 'draft_rejected', 'rejected'])
+      .limit(100);
+
+    if (!actions || actions.length < 3) return 0.5; // cold start
+
+    const approved = actions.filter(
+      (a) => (a.status as string) === 'approved' || (a.status as string) === 'executed',
+    ).length;
+    const total = actions.length;
+
+    // Floor at 0.1 so heavily-skipped types still have a chance
+    return Math.max(0.1, approved / total);
+  } catch {
+    return 0.5;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Feedback loop — entity skip penalty (v3: new)
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract entity names from candidate content/title, then check if any
+ * referenced entity has 3+ consecutive skips in recent tkg_actions.
+ * Returns -30 if found, 0 otherwise.
+ */
+async function getEntitySkipPenalty(
+  userId: string,
+  candidateContent: string,
+  candidateTitle: string,
+): Promise<number> {
+  const supabase = createServerClient();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Extract person names from candidate
+  const names = extractPersonNames(`${candidateTitle} ${candidateContent}`);
+  if (names.length === 0) return 0;
+
+  try {
+    // Fetch recent skipped/rejected actions to check for consecutive entity skips
+    const { data: recentActions } = await supabase
+      .from('tkg_actions')
+      .select('directive_text, status')
+      .eq('user_id', userId)
+      .gte('generated_at', thirtyDaysAgo)
+      .in('status', ['approved', 'executed', 'skipped', 'draft_rejected', 'rejected'])
+      .order('generated_at', { ascending: false })
+      .limit(100);
+
+    if (!recentActions || recentActions.length === 0) return 0;
+
+    for (const name of names) {
+      const firstName = name.split(' ')[0].toLowerCase();
+      if (firstName.length < 3) continue;
+
+      // Find actions mentioning this entity, ordered most-recent-first
+      const entityActions = recentActions.filter((a) => {
+        const text = (a.directive_text as string ?? '').toLowerCase();
+        return text.includes(firstName);
+      });
+
+      if (entityActions.length < 3) continue;
+
+      // Count consecutive skips from the most recent action
+      let consecutiveSkips = 0;
+      for (const a of entityActions) {
+        if ((a.status as string) === 'skipped' || (a.status as string) === 'draft_rejected' || (a.status as string) === 'rejected') {
+          consecutiveSkips++;
+        } else {
+          break; // non-skip breaks the streak
+        }
+      }
+
+      if (consecutiveSkips >= 3) return -30;
+    }
+
+    return 0;
+  } catch {
+    return 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Relationship enrichment (v2: new)
 // ---------------------------------------------------------------------------
 
@@ -1500,6 +1605,8 @@ function mergeLoops(conn: CrossLoopConnection): ScoredLoop {
       urgency: Math.max(loopA.breakdown.urgency, loopB.breakdown.urgency),
       tractability: Math.min(loopA.breakdown.tractability, loopB.breakdown.tractability),
       freshness: Math.min(loopA.breakdown.freshness, loopB.breakdown.freshness),
+      actionTypeRate: Math.min(loopA.breakdown.actionTypeRate, loopB.breakdown.actionTypeRate),
+      entityPenalty: Math.min(loopA.breakdown.entityPenalty, loopB.breakdown.entityPenalty),
     },
     relatedSignals: [...new Set([...loopA.relatedSignals, ...loopB.relatedSignals])].slice(0, 8),
     sourceSignals: [...loopA.sourceSignals, ...loopB.sourceSignals].slice(0, 8),
@@ -1890,8 +1997,11 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     const stakes = c.matchedGoal ? c.matchedGoal.priority : 1.0;
     const tractability = await getTractability(userId, c.actionType, c.domain);
     const freshness = await getFreshness(userId, c.title, c.type);
+    const actionTypeRate = await getActionTypeApprovalRate(userId, c.actionType);
+    const entityPenalty = await getEntitySkipPenalty(userId, c.content, c.title);
 
-    const score = stakes * c.urgency * tractability * freshness;
+    // v3 formula: multiplicative for positive signal, additive for negative
+    const score = Math.max(0, (stakes * c.urgency * tractability * freshness * actionTypeRate) + entityPenalty);
 
     // Find related signals: keyword overlap with this loop's content
     const loopWords = new Set(
@@ -1919,7 +2029,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       suggestedActionType: c.actionType,
       matchedGoal: c.matchedGoal,
       score,
-      breakdown: { stakes, urgency: c.urgency, tractability, freshness },
+      breakdown: { stakes, urgency: c.urgency, tractability, freshness, actionTypeRate, entityPenalty },
       relatedSignals: related,
       sourceSignals: c.sourceSignals,
       relationshipContext,
@@ -1988,6 +2098,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           urgency: div.divergenceScore,
           tractability: 1.0,
           freshness: 1.0,
+          actionTypeRate: 0.5,
+          entityPenalty: 0,
         },
         relatedSignals: div.topSignals.slice(0, 3),
         sourceSignals: div.topSignals.slice(0, 3).map((signal) => ({
@@ -2047,6 +2159,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           urgency: ep.dataConfidence,
           tractability: 1.0,
           freshness: emergentFreshness,
+          actionTypeRate: 0.5,
+          entityPenalty: 0,
         },
         relatedSignals: [],
         sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({

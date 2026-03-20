@@ -96,7 +96,7 @@ function buildWinner(overrides: Partial<ScoredLoop> = {}): ScoredLoop {
     suggestedActionType: 'send_message',
     matchedGoal: { text: 'State government career path', priority: 5, category: 'career' },
     score: 4.2,
-    breakdown: { stakes: 4.0, urgency: 0.85, tractability: 0.9, freshness: 0.8 },
+    breakdown: { stakes: 4.0, urgency: 0.85, tractability: 0.9, freshness: 0.8, actionTypeRate: 0.5, entityPenalty: 0 },
     relatedSignals: ['Hiring manager mentioned March deadline'],
     sourceSignals: [{ kind: 'commitment', id: 'sig-1' }],
     ...overrides,

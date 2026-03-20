@@ -102,6 +102,10 @@ export interface CandidateScoreBreakdown {
   urgency: number;
   tractability: number;
   freshness: number;
+  /** Approval rate for this action_type (0-1). Default 0.5 if < 3 historical actions. */
+  actionTypeRate: number;
+  /** Additive penalty for entities with 3+ consecutive skips. 0 or -30. */
+  entityPenalty: number;
 }
 
 export interface GenerationCandidateSource {

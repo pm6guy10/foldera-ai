@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import {
+  autoSkipStaleApprovals,
   getTriggerResponseStatus,
   runDailyBrief,
   toSafeDailyBriefStageStatus,
@@ -79,7 +80,14 @@ async function handler(request: NextRequest) {
     stages.sync_google = { ok: false, error: err.message };
   }
 
-  // Stage 3: Daily brief (generate + send)
+  // Stage 3: Passive rejection — auto-skip pending_approval > 24h
+  try {
+    stages.passive_rejection = await autoSkipStaleApprovals();
+  } catch (err: any) {
+    stages.passive_rejection = { skipped: 0, error: err.message };
+  }
+
+  // Stage 4: Daily brief (generate + send)
   try {
     const result = await runDailyBrief();
     const signalProcessing = toSafeDailyBriefStageStatus(result.signal_processing);

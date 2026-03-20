@@ -1500,6 +1500,56 @@ export function toSafeDailyBriefStageStatus(result: DailyBriefRunResult): SafeDa
   };
 }
 
+/**
+ * Passive rejection: auto-skip any pending_approval actions older than 24 hours.
+ * Clears the queue AND feeds the feedback loop — these count as skips.
+ */
+export async function autoSkipStaleApprovals(): Promise<{ skipped: number }> {
+  const supabase = createServerClient();
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  try {
+    const { data: staleActions } = await supabase
+      .from('tkg_actions')
+      .select('id')
+      .eq('status', 'pending_approval')
+      .lt('generated_at', twentyFourHoursAgo)
+      .limit(50);
+
+    if (!staleActions || staleActions.length === 0) {
+      return { skipped: 0 };
+    }
+
+    const ids = staleActions.map((a) => a.id as string);
+    const { error } = await supabase
+      .from('tkg_actions')
+      .update({
+        status: 'skipped',
+        skip_reason: 'passive_timeout',
+      })
+      .in('id', ids);
+
+    if (error) {
+      console.error('[auto-skip] Failed to update stale approvals:', error.message);
+      return { skipped: 0 };
+    }
+
+    logStructuredEvent({
+      event: 'passive_timeout_skip',
+      level: 'info',
+      userId: null,
+      artifactType: null,
+      generationStatus: 'auto_skipped',
+      details: { count: ids.length },
+    });
+
+    return { skipped: ids.length };
+  } catch (err) {
+    console.error('[auto-skip] Error:', err instanceof Error ? err.message : String(err));
+    return { skipped: 0 };
+  }
+}
+
 export function getTriggerResponseStatus(
   signalProcessing: SafeDailyBriefStageStatus,
   generate: SafeDailyBriefStageStatus,
