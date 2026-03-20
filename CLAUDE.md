@@ -984,3 +984,47 @@ The `92dbbfc` generator fix (signal evidence enrichment + bracket placeholder re
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-20 (generator rewrite: execution-only artifact contract)
+
+- **MODE:** AUDIT
+
+### Purpose
+Rewrite the final generation path so Foldera produces only executable state-changing artifacts or explicit valid silence. Eliminate coaching, advice, therapy language, fake strategic memos, placeholder documents, and decision frames.
+
+### Changes
+
+**New artifact contract (5 valid user-facing types):**
+1. `send_message` — real email with to/subject/body
+2. `write_document` — finished document with document_purpose/target_reader/title/content
+3. `schedule_block` — time reservation with title/reason/start/duration_minutes
+4. `wait_rationale` — grounded silence with why_wait/tripwire_date/trigger_condition
+5. `do_nothing` — deterministic fallback with exact_reason/blocked_by
+
+Removed: `make_decision`, `research`, `decision_frame`, `research_brief` as user-facing output. Internal scorer candidate classes preserved.
+
+**New system prompt:** Execution layer contract. Not an advisor, coach, therapist, or strategist. Exhaustive NEVER OUTPUT list. Per-type schema in prompt.
+
+**Structured preprocessing (buildStructuredContext):** Replaces sprawling prompt assembly. Max 5 compressed signals, max 5 surgical raw facts, 8 precomputed boolean flags (has_real_recipient, has_recent_evidence, already_acted_recently, can_execute_without_editing, etc.).
+
+**Evidence gating (checkGenerationEligibility):** Runs before any LLM call. Rejects stale evidence (>14d), constraint conflicts, already-acted topics. Emits deterministic do_nothing with no API spend.
+
+**Structural validation (validateGeneratedArtifact):** Per-type required fields, placeholder patterns, banned coaching language as secondary gate, bracket placeholder scan, constraint violations, dedup.
+
+**Deterministic fallback:** If LLM fails both attempts → wait_rationale (if recent evidence) or do_nothing (otherwise). No third attempt.
+
+### Files changed
+- `lib/briefing/generator.ts` — Complete rewrite (961 insertions, 985 deletions)
+- `lib/conviction/artifact-generator.ts` — Updated schedule and do_nothing validation for new shapes
+- `ACCEPTANCE_GATE.md` — Updated to new 5-type artifact contract
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx vitest run` — 48 passed, 7 failed (pre-existing ENCRYPTION_KEY failures)
+- Generator tests — 31 passed, 0 failed
+- 10-run live generation: 2/10 valid write_document, 0/10 banned types or coaching language, 8/10 correctly blocked by owner constraints
+
+### Supabase / migrations
+- No new migrations

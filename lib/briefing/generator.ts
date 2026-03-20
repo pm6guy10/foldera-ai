@@ -21,95 +21,131 @@ import { researchWinner } from './researcher';
 import type { ResearchInsight } from './researcher';
 import { decryptWithStatus } from '@/lib/encryption';
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
 const GENERATION_MODEL = 'claude-sonnet-4-20250514';
 const APPROVAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
-const DIRECTIVE_CONFIDENCE_THRESHOLD = 45; // Temporary: lowered from 70 while signal pool builds depth
-const BANNED_DIRECTIVE_PATTERNS = [
-  /\bconsider\b/i,
-  /\breflect\b/i,
-  /\bexplore\b/i,
-  /\bbrainstorm\b/i,
-  /\bthink about\b/i,
-  /\bmaybe\b/i,
-  /\bperhaps\b/i,
-  /\btry to\b/i,
-  /\byou should\b/i,
-  /\bfocus on\b/i,
-  /\bstop doing\b/i,
-  /\bstart doing\b/i,
-];
+const DIRECTIVE_CONFIDENCE_THRESHOLD = 45;
+const STALE_SIGNAL_THRESHOLD_DAYS = 14;
 
-/**
- * Artifact types that count as concrete deliverables.
- * - decision_frame: options + weights + recommendation — finished decision layout.
- * - wait_rationale: context + evidence + tripwires — finished wait-and-watch plan.
- * Both are complete artifacts the user can approve or skip without extra work.
- */
-const CONCRETE_ARTIFACT_TYPES: ReadonlySet<string> = new Set([
-  'drafted_email',
-  'document',
-  'calendar_event',
-  'decision_frame',
+// ---------------------------------------------------------------------------
+// Part 1 — Artifact contract: valid user-facing types
+// ---------------------------------------------------------------------------
+
+type ValidArtifactType =
+  | 'send_message'
+  | 'write_document'
+  | 'schedule_block'
+  | 'wait_rationale'
+  | 'do_nothing';
+
+const VALID_ARTIFACT_TYPES: ReadonlySet<string> = new Set([
+  'send_message',
+  'write_document',
+  'schedule_block',
   'wait_rationale',
+  'do_nothing',
 ]);
 
-/** Maximum age (in days) for signal references — older signals with no recent reinforcement are stale. */
-const STALE_SIGNAL_THRESHOLD_DAYS = 14;
-const PLACEHOLDER_PATTERNS = [
-  /\[(name|company|role|contact|date|amount|title|recipient)\]/i,
-  /\[your\s*name\]/i,
-  /\[RECIPIENT\]/i,
-  /\b(tbd|placeholder|lorem ipsum|example@|recipient@email\.com)\b/i,
-  /\[[A-Z][a-z]+\s*[A-Za-z]*\]/,  // [Name], [Your Name], [Recipient], [Company Name]
-  /\[placeholder\]/i,
-  /\[your\s/i,                     // [your email], [your company], etc.
-  /\[insert\b/i,                   // [insert name here], etc.
-];
+const EXECUTABLE_ARTIFACT_TYPES: ReadonlySet<string> = new Set([
+  'send_message',
+  'write_document',
+  'schedule_block',
+]);
 
-const SYSTEM_PROMPT = `You are finalizing Foldera's single winning daily directive.
-The ranking is already done. Do not pick a different problem. Turn the winning thread into one concrete directive and one finished artifact.
+// ---------------------------------------------------------------------------
+// Part 2 — System prompt (execution layer, not advisor)
+// ---------------------------------------------------------------------------
 
-Doctrine:
-- Email first. One directive. One finished artifact.
-- No fake confidence. No generic productivity filler.
-- No multiple options in the brief itself.
-- No speculative hobby or lifestyle suggestions.
-- No vague or consulting language: never use "consider", "reflect", "explore", "think about", "maybe", "perhaps", "try to", "you should", "focus on", "stop doing", "start doing".
-- Name the actual person, project, deadline, decision, or constraint from the evidence.
-- The artifact must be a concrete deliverable the user can act on immediately: a drafted email, a document, a calendar event, a decision frame (with options, weights, and a clear recommendation), or a wait rationale (with context, evidence, and tripwires). Do NOT produce research briefs — those ask the user to do work.
-- The artifact must be directly usable with no placeholders.
-- Pinned constraints are hard vetoes. Never reopen a locked decision or turn the directive into a menu of options.
-- The artifact object must stay nested under "artifact" and must match ARTIFACT_JSON_SCHEMA exactly.
-- Do not move artifact fields like recipient, subject, body, title, options, or tripwires to the top level.
+const SYSTEM_PROMPT = `You are Foldera's execution layer.
+You are not an advisor, coach, therapist, strategist, or brainstorming partner.
+Your only job is to turn one pre-selected viable candidate into one artifact that materially changes reality when approved.
+If no artifact can change reality without user editing, output valid silence: wait_rationale or do_nothing.
 
+CORE PRODUCT RULES
+- One directive only.
+- One artifact only.
+- The artifact is the product.
+- If approval would not materially change reality, fail.
+- If the user would need to rewrite, reinterpret, or figure out next steps after approval, fail.
+- Silence with a specific reason is better than fake usefulness.
+
+NEVER OUTPUT
+- affirmations, emotional support, wellness guidance
+- "take a break", "reflect on", "consider", "explore", "think about"
+- vague productivity suggestions, life advice
+- strategic framing with no action
+- placeholder text, anything requiring manual editing after approval
+- decision menus asking the user to choose between options
+
+VALID ARTIFACT TYPES AND SCHEMAS
+
+1. send_message — artifact_type: "send_message"
+{
+  "to": "real@email.com",
+  "subject": "Specific subject line",
+  "body": "Complete email body with greeting and sign-off"
+}
+Requirements: real recipient email in "to" (or empty string if none available), non-empty subject, non-empty body ready to send as-is.
+
+2. write_document — artifact_type: "write_document"
+{
+  "document_purpose": "brief|plan|summary|proposal|checklist",
+  "target_reader": "Who this document is for",
+  "title": "Document title",
+  "content": "Complete document in markdown"
+}
+Requirements: explicit document_purpose, target_reader, title, non-empty final content. Must be a finished artifact, not notes or an outline.
+
+3. schedule_block — artifact_type: "schedule_block"
+{
+  "title": "Block title",
+  "reason": "Why this time must be reserved",
+  "start": "ISO 8601 datetime",
+  "duration_minutes": 30,
+  "description": "Details"
+}
+Requirements: title, reason, start or scheduling target, duration.
+
+4. wait_rationale — artifact_type: "wait_rationale"
+{
+  "why_wait": "Why waiting is correct now",
+  "what_changes": "What would change the calculus",
+  "tripwire_date": "YYYY-MM-DD",
+  "trigger_condition": "Exact trigger condition if known"
+}
+Requirements: why_wait, tripwire_date, trigger_condition.
+
+5. do_nothing — artifact_type: "do_nothing"
+{
+  "exact_reason": "Exact reason no candidate cleared threshold",
+  "blocked_by": "Specific reference to the blocking condition"
+}
+Requirements: exact_reason, blocked_by.
+
+OUTPUT FORMAT
 Return strict JSON only:
 {
   "directive": "One imperative sentence with the exact move",
-  "artifact_type": "drafted_email | document | calendar_event | decision_frame | wait_rationale",
+  "artifact_type": "send_message|write_document|schedule_block|wait_rationale|do_nothing",
   "artifact": {},
   "evidence": "One sentence naming the decisive evidence",
-  "why_now": "One sentence explaining why this wins today",
-  "requires_search": false,
-  "search_context": ""
+  "why_now": "One sentence explaining why this wins today"
 }`;
 
-type GeneratorArtifactType =
-  | 'drafted_email'
-  | 'document'
-  | 'calendar_event'
-  | 'research_brief'
-  | 'decision_frame'
-  | 'wait_rationale';
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface GeneratedDirectivePayload {
   directive: string;
-  artifact_type: GeneratorArtifactType;
+  artifact_type: ValidArtifactType;
   artifact: Record<string, unknown>;
   evidence: string;
   why_now: string;
-  requires_search?: boolean;
-  search_context?: string;
 }
 
 interface RecentActionRow {
@@ -122,20 +158,344 @@ interface RecentSkippedActionRow extends RecentActionRow {
   skip_reason: string | null;
 }
 
-interface PromptContext {
-  userId: string;
-  insight?: ResearchInsight | null;
-  winner: ScoredLoop;
-  deprioritized: DeprioritizedLoop[];
-  approvedRecently: RecentActionRow[];
-  skippedRecently: RecentSkippedActionRow[];
-  signalEvidence?: SignalSnippet[];
+interface SignalSnippet {
+  source: string;
+  date: string;
+  subject: string | null;
+  snippet: string;
+  author: string | null;
 }
 
-interface GeneratePayloadResult {
-  issues: string[];
-  payload: GeneratedDirectivePayload | null;
+// ---------------------------------------------------------------------------
+// Part 3 — Structured context (preprocessing)
+// ---------------------------------------------------------------------------
+
+interface CompressedSignal {
+  source: string;
+  occurred_at: string;
+  entity: string | null;
+  summary: string;
 }
+
+interface StructuredContext {
+  selected_candidate: string;
+  candidate_class: string;
+  candidate_title: string;
+  candidate_reason: string;
+  candidate_goal: string | null;
+  candidate_score: number;
+  candidate_due_date: string | null;
+  supporting_signals: CompressedSignal[];
+  surgical_raw_facts: string[];
+  active_goals: string[];
+  locked_constraints: string | null;
+  recent_action_history_7d: string[];
+  // Precomputed booleans (Part 4)
+  has_real_target: boolean;
+  has_real_recipient: boolean;
+  has_recent_evidence: boolean;
+  already_acted_recently: boolean;
+  decision_already_made: boolean;
+  can_execute_without_editing: boolean;
+  has_due_date_or_time_anchor: boolean;
+  conflicts_with_locked_constraints: boolean;
+  // Enrichment
+  researcher_insight: ResearchInsight | null;
+}
+
+function buildStructuredContext(
+  winner: ScoredLoop,
+  guardrails: { approvedRecently: RecentActionRow[]; skippedRecently: RecentSkippedActionRow[] },
+  userId: string,
+  signalEvidence: SignalSnippet[],
+  insight: ResearchInsight | null,
+): StructuredContext {
+  // Compress supporting signals to max 5
+  const supporting_signals: CompressedSignal[] = signalEvidence.slice(0, 5).map((s) => ({
+    source: s.source,
+    occurred_at: s.date,
+    entity: s.author,
+    summary: [s.subject, s.snippet.slice(0, 150)].filter(Boolean).join(' — '),
+  }));
+
+  // Extract surgical raw facts: emails, dates, names, subjects
+  const surgical_raw_facts: string[] = [];
+  const emailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+
+  // Extract emails from relationship context
+  if (winner.relationshipContext) {
+    const bracketEmails = winner.relationshipContext.match(/<([^@\s>]+@[^@\s>]+\.[^@\s>]+)>/g);
+    if (bracketEmails) {
+      for (const e of bracketEmails.slice(0, 3)) {
+        surgical_raw_facts.push(`recipient_email: ${e.replace(/[<>]/g, '')}`);
+      }
+    }
+  }
+
+  // Extract emails from signals
+  for (const s of signalEvidence.slice(0, 3)) {
+    if (s.subject) surgical_raw_facts.push(`email_subject: ${s.subject.slice(0, 100)}`);
+    if (s.author) {
+      const authorEmail = s.author.match(emailPattern);
+      if (authorEmail) surgical_raw_facts.push(`contact_email: ${authorEmail[0]}`);
+    }
+  }
+
+  // Extract due date from winner content
+  const dateMatch = winner.content.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+  const candidate_due_date = dateMatch ? dateMatch[1] : null;
+
+  // Active goals (priority 3+)
+  const active_goals: string[] = [];
+  if (winner.matchedGoal) {
+    active_goals.push(`[${winner.matchedGoal.category}, p${winner.matchedGoal.priority}] ${winner.matchedGoal.text}`);
+  }
+
+  // Recent action history (compact)
+  const recent_action_history_7d = [
+    ...guardrails.approvedRecently.map((r) =>
+      `[${r.generated_at.slice(0, 10)}] ${r.action_type ?? 'unknown'} APPROVED: ${(r.directive_text ?? '').slice(0, 80)}`),
+    ...guardrails.skippedRecently.map((r) =>
+      `[${r.generated_at.slice(0, 10)}] ${r.action_type ?? 'unknown'} SKIPPED: ${(r.directive_text ?? '').slice(0, 80)}`),
+  ].slice(0, 10);
+
+  // Precomputed booleans
+  const allEmails = extractAllEmailAddresses(winner);
+  for (const s of signalEvidence) {
+    if (s.author) {
+      const em = s.author.match(emailPattern);
+      if (em) allEmails.push(em[0].toLowerCase());
+    }
+  }
+  const uniqueEmails = [...new Set(allEmails)];
+
+  const has_real_recipient = uniqueEmails.length > 0;
+
+  // Check signal freshness
+  const signalDates = (winner.sourceSignals ?? [])
+    .map((s) => s.occurredAt)
+    .filter((d): d is string => Boolean(d))
+    .map((d) => new Date(d).getTime())
+    .filter((t) => !Number.isNaN(t));
+  const newestSignalMs = signalDates.length > 0 ? Math.max(...signalDates) : 0;
+  const newestSignalAgeDays = newestSignalMs > 0
+    ? (Date.now() - newestSignalMs) / (1000 * 60 * 60 * 24)
+    : STALE_SIGNAL_THRESHOLD_DAYS + 1;
+  const has_recent_evidence = newestSignalAgeDays <= STALE_SIGNAL_THRESHOLD_DAYS;
+
+  // Already acted recently: same topic in last 7 days
+  const winnerNorm = normalizeText(winner.title);
+  const already_acted_recently = guardrails.approvedRecently.some((r) => {
+    if (!r.directive_text) return false;
+    return similarityScore(winnerNorm, normalizeText(r.directive_text)) >= 0.72;
+  });
+
+  // Decision already made: check if approved recently with high similarity
+  const decision_already_made = already_acted_recently;
+
+  // Can execute: send_message needs email, write_document always can, schedule needs time anchor
+  const actionType = winner.suggestedActionType;
+  let can_execute_without_editing = true;
+  if (actionType === 'send_message' && !has_real_recipient) {
+    can_execute_without_editing = false;
+  }
+
+  const has_due_date_or_time_anchor = candidate_due_date !== null ||
+    /\b(deadline|due|by\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|next week|end of))\b/i.test(winner.content);
+
+  // Constraint check
+  const pinnedConstraints = getPinnedConstraintPrompt(userId);
+  const constraintViolations = getDirectiveConstraintViolations({
+    userId,
+    directive: winner.title,
+    reason: winner.content,
+    actionType: winner.suggestedActionType,
+  });
+  const conflicts_with_locked_constraints = constraintViolations.length > 0;
+
+  return {
+    selected_candidate: winner.content.slice(0, 500),
+    candidate_class: winner.type,
+    candidate_title: winner.title,
+    candidate_reason: winner.relatedSignals.slice(0, 2).join('; ').slice(0, 300) || winner.content.slice(0, 200),
+    candidate_goal: winner.matchedGoal
+      ? `${winner.matchedGoal.text} [${winner.matchedGoal.category}, p${winner.matchedGoal.priority}]`
+      : null,
+    candidate_score: winner.score,
+    candidate_due_date,
+    supporting_signals,
+    surgical_raw_facts: surgical_raw_facts.slice(0, 5),
+    active_goals,
+    locked_constraints: pinnedConstraints,
+    recent_action_history_7d,
+    has_real_target: has_real_recipient || has_due_date_or_time_anchor,
+    has_real_recipient,
+    has_recent_evidence,
+    already_acted_recently,
+    decision_already_made,
+    can_execute_without_editing,
+    has_due_date_or_time_anchor,
+    conflicts_with_locked_constraints,
+    researcher_insight: insight,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Part 4 — Evidence gating (before LLM call)
+// ---------------------------------------------------------------------------
+
+interface EligibilityResult {
+  eligible: boolean;
+  reason: string;
+}
+
+function checkGenerationEligibility(ctx: StructuredContext): EligibilityResult {
+  if (!ctx.has_recent_evidence) {
+    return { eligible: false, reason: 'No recent evidence (all signals older than 14 days)' };
+  }
+  if (ctx.conflicts_with_locked_constraints) {
+    return { eligible: false, reason: 'Candidate conflicts with locked constraints' };
+  }
+  if (ctx.already_acted_recently) {
+    return { eligible: false, reason: 'Already acted on this topic in the last 7 days' };
+  }
+
+  // Must have at least one anchor for a grounded artifact
+  const hasAnchor =
+    ctx.has_real_recipient ||
+    ctx.has_due_date_or_time_anchor ||
+    // write_document and wait_rationale can be grounded without recipient/time
+    true; // We allow write_document and wait_rationale as always-groundable
+
+  if (!hasAnchor) {
+    return { eligible: false, reason: 'No real recipient, due date, or groundable artifact type' };
+  }
+
+  return { eligible: true, reason: 'Passed all eligibility checks' };
+}
+
+// ---------------------------------------------------------------------------
+// Part 2 continued — Build prompt from structured context
+// ---------------------------------------------------------------------------
+
+function buildPromptFromStructuredContext(ctx: StructuredContext): string {
+  const sections: string[] = [
+    `TODAY: ${today()}`,
+    `CANDIDATE_TITLE:\n${ctx.candidate_title}`,
+    `CANDIDATE_CLASS:\n${ctx.candidate_class}`,
+    `CANDIDATE_EVIDENCE:\n${ctx.selected_candidate}`,
+  ];
+
+  if (ctx.candidate_goal) {
+    sections.push(`GOAL_ALIGNMENT:\n${ctx.candidate_goal}`);
+  }
+
+  sections.push(`SCORE: ${ctx.candidate_score.toFixed(2)}`);
+
+  if (ctx.candidate_due_date) {
+    sections.push(`DUE_DATE: ${ctx.candidate_due_date}`);
+  }
+
+  if (ctx.supporting_signals.length > 0) {
+    const signalLines = ctx.supporting_signals.map((s) =>
+      `- [${s.occurred_at}] [${s.source}]${s.entity ? ` From: ${s.entity}` : ''} ${s.summary}`);
+    sections.push(`SUPPORTING_SIGNALS:\n${signalLines.join('\n')}`);
+  }
+
+  if (ctx.surgical_raw_facts.length > 0) {
+    sections.push(`RAW_FACTS:\n${ctx.surgical_raw_facts.map((f) => `- ${f}`).join('\n')}`);
+  }
+
+  if (ctx.active_goals.length > 0) {
+    sections.push(`ACTIVE_GOALS:\n${ctx.active_goals.map((g) => `- ${g}`).join('\n')}`);
+  }
+
+  if (ctx.locked_constraints) {
+    sections.push(`LOCKED_CONSTRAINTS:\n${ctx.locked_constraints}`);
+  }
+
+  if (ctx.recent_action_history_7d.length > 0) {
+    sections.push(`RECENT_ACTIONS_7D:\n${ctx.recent_action_history_7d.map((a) => `- ${a}`).join('\n')}`);
+  }
+
+  // Precomputed booleans
+  sections.push(`PRECOMPUTED_FLAGS:
+- has_real_recipient: ${ctx.has_real_recipient}
+- has_recent_evidence: ${ctx.has_recent_evidence}
+- has_due_date_or_time_anchor: ${ctx.has_due_date_or_time_anchor}
+- can_execute_without_editing: ${ctx.can_execute_without_editing}`);
+
+  // Researcher insight
+  if (ctx.researcher_insight) {
+    sections.push(`RESEARCHER_INSIGHT:\n${ctx.researcher_insight.synthesis}`);
+    if (ctx.researcher_insight.window) {
+      sections.push(`INSIGHT_WINDOW:\n${ctx.researcher_insight.window}`);
+    }
+    if (ctx.researcher_insight.external_context) {
+      sections.push(`EXTERNAL_CONTEXT:\n${ctx.researcher_insight.external_context}`);
+    }
+    sections.push(`ARTIFACT_GUIDANCE:\n${ctx.researcher_insight.artifact_instructions}`);
+  }
+
+  // Artifact selection guidance based on booleans
+  if (ctx.has_real_recipient) {
+    sections.push('ARTIFACT_PREFERENCE: send_message is strongly preferred when a real recipient email is available.');
+  } else if (ctx.has_due_date_or_time_anchor) {
+    sections.push('ARTIFACT_PREFERENCE: schedule_block is preferred when a time anchor exists.');
+  } else {
+    sections.push('ARTIFACT_PREFERENCE: write_document is the default when no recipient or time anchor exists.');
+  }
+
+  sections.push(
+    'CRITICAL: Use ONLY real names, emails, dates, and details from the context above. ' +
+    'NEVER use bracket placeholders like [Name], [Company], [Date]. ' +
+    'If a detail is unknown, write around it. Every field must contain real content.',
+  );
+
+  return sections.join('\n\n');
+}
+
+// ---------------------------------------------------------------------------
+// Placeholder & language validation patterns
+// ---------------------------------------------------------------------------
+
+const PLACEHOLDER_PATTERNS = [
+  /\[(name|company|role|contact|date|amount|title|recipient)\]/i,
+  /\[your\s*name\]/i,
+  /\[RECIPIENT\]/i,
+  /\b(tbd|placeholder|lorem ipsum|example@|recipient@email\.com)\b/i,
+  /\[[A-Z][a-z]+\s*[A-Za-z]*\]/,
+  /\[placeholder\]/i,
+  /\[your\s/i,
+  /\[insert\b/i,
+  /\bTODO\b/,
+];
+
+const BANNED_LANGUAGE_PATTERNS = [
+  /\bconsider\b/i,
+  /\breflect\b/i,
+  /\bexplore\b/i,
+  /\bbrainstorm\b/i,
+  /\bthink about\b/i,
+  /\bmaybe\b/i,
+  /\bperhaps\b/i,
+  /\btry to\b/i,
+  /\byou should\b/i,
+  /\bfocus on\b/i,
+  /\bstop doing\b/i,
+  /\bstart doing\b/i,
+  /\btake a break\b/i,
+  /\bself[- ]care\b/i,
+  /\bbreathe\b/i,
+  /\bspend time offline\b/i,
+  /\baffirmation\b/i,
+];
+
+const BRACKET_PLACEHOLDER_RE = /\[[A-Z][a-zA-Z\s]*\]/;
+
+// ---------------------------------------------------------------------------
+// Utility functions
+// ---------------------------------------------------------------------------
 
 let anthropicClient: Anthropic | null = null;
 
@@ -146,89 +506,8 @@ function getAnthropic(): Anthropic {
   return anthropicClient;
 }
 
-function isInternalNoSendExecutionResult(executionResult: unknown): boolean {
-  if (!executionResult || typeof executionResult !== 'object') return false;
-  return (executionResult as Record<string, unknown>).outcome_type === 'no_send';
-}
-
-function buildSelectedGenerationLog(
-  candidateDiscovery: GenerationCandidateDiscoveryLog | null,
-): GenerationRunLog {
-  return {
-    outcome: 'selected',
-    stage: 'generation',
-    reason: candidateDiscovery?.selectionReason ?? 'Directive generated successfully.',
-    candidateFailureReasons: (candidateDiscovery?.topCandidates ?? [])
-      .filter((candidate) => candidate.decision === 'rejected')
-      .map((candidate) => candidate.decisionReason),
-    candidateDiscovery,
-  };
-}
-
-function buildNoSendGenerationLog(
-  reason: string,
-  stage: GenerationRunLog['stage'],
-  candidateDiscovery: GenerationCandidateDiscoveryLog | null,
-): GenerationRunLog {
-  const normalizedDiscovery = candidateDiscovery
-    ? {
-      ...candidateDiscovery,
-      failureReason: candidateDiscovery.failureReason ?? reason,
-    }
-    : null;
-
-  const candidateFailureReasons = normalizedDiscovery
-    ? normalizedDiscovery.topCandidates.map((candidate) =>
-      candidate.decision === 'selected'
-        ? `Selected candidate blocked: ${reason}`
-        : candidate.decisionReason)
-    : [reason];
-
-  return {
-    outcome: 'no_send',
-    stage,
-    reason,
-    candidateFailureReasons,
-    candidateDiscovery: normalizedDiscovery,
-  };
-}
-
-function formatValidationFailureReason(prefix: string, issues: string[]): string {
-  const normalizedIssues = [...new Set(issues.map((issue) => issue.trim()).filter(Boolean))];
-  if (normalizedIssues.length === 0) {
-    return prefix;
-  }
-
-  return `${prefix} ${normalizedIssues.join('; ')}`;
-}
-
-function emptyDirective(reason: string, generationLog?: GenerationRunLog): ConvictionDirective {
-  return {
-    directive: GENERATION_FAILED_SENTINEL,
-    action_type: 'do_nothing',
-    confidence: 0,
-    reason,
-    evidence: [],
-    generationLog,
-  };
-}
-
 function today(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-export function buildDirectiveExecutionResult(input: {
-  directive: ConvictionDirective;
-  briefOrigin: string;
-  artifact?: ConvictionArtifact | Record<string, unknown> | null;
-  extras?: Record<string, unknown>;
-}): Record<string, unknown> {
-  return {
-    ...(input.artifact ? { artifact: input.artifact } : {}),
-    brief_origin: input.briefOrigin,
-    ...(input.directive.generationLog ? { generation_log: input.directive.generationLog } : {}),
-    ...(input.extras ?? {}),
-  };
 }
 
 function normalizeText(value: string): string {
@@ -240,14 +519,14 @@ function normalizeText(value: string): string {
 }
 
 function similarityScore(a: string, b: string): number {
-  const normalizedA = normalizeText(a);
-  const normalizedB = normalizeText(b);
+  const normalizedA = typeof a === 'string' ? normalizeText(a) : '';
+  const normalizedB = typeof b === 'string' ? normalizeText(b) : '';
   if (!normalizedA || !normalizedB) return 0;
   if (normalizedA === normalizedB) return 1;
   if (normalizedA.includes(normalizedB) || normalizedB.includes(normalizedA)) return 0.9;
 
-  const tokensA = new Set(normalizedA.split(' ').filter((token) => token.length >= 4));
-  const tokensB = new Set(normalizedB.split(' ').filter((token) => token.length >= 4));
+  const tokensA = new Set(normalizedA.split(' ').filter((t) => t.length >= 4));
+  const tokensB = new Set(normalizedB.split(' ').filter((t) => t.length >= 4));
   if (tokensA.size === 0 || tokensB.size === 0) return 0;
 
   let intersection = 0;
@@ -263,16 +542,22 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 function containsPlaceholderText(value: string): boolean {
-  return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(value));
+  return PLACEHOLDER_PATTERNS.some((p) => p.test(value));
+}
+
+function containsBannedLanguage(value: string): boolean {
+  return BANNED_LANGUAGE_PATTERNS.some((p) => p.test(value));
+}
+
+function isInternalNoSendExecutionResult(executionResult: unknown): boolean {
+  if (!executionResult || typeof executionResult !== 'object') return false;
+  return (executionResult as Record<string, unknown>).outcome_type === 'no_send';
 }
 
 function countSentences(value: string): number {
   const trimmed = value.trim();
   if (!trimmed) return 0;
-  const parts = trimmed
-    .split(/[.!?]+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const parts = trimmed.split(/[.!?]+/).map((p) => p.trim()).filter(Boolean);
   return parts.length === 0 ? 1 : parts.length;
 }
 
@@ -282,20 +567,112 @@ function isDecisionMenu(value: string): boolean {
     (lower.includes(' or ') && /\b(decide|choose|whether|abandon|commit|pivot)\b/.test(lower));
 }
 
+function extractAllEmailAddresses(winner: ScoredLoop): string[] {
+  const emails = new Set<string>();
+  const emailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+
+  if (winner.relationshipContext) {
+    let match: RegExpExecArray | null;
+    while ((match = emailPattern.exec(winner.relationshipContext)) !== null) {
+      emails.add(match[0].toLowerCase());
+    }
+  }
+
+  for (const signal of winner.relatedSignals ?? []) {
+    emailPattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = emailPattern.exec(signal)) !== null) {
+      emails.add(match[0].toLowerCase());
+    }
+  }
+
+  for (const source of winner.sourceSignals ?? []) {
+    if (source.summary) {
+      emailPattern.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = emailPattern.exec(source.summary)) !== null) {
+        emails.add(match[0].toLowerCase());
+      }
+    }
+  }
+
+  return [...emails].filter(
+    (e) => !e.includes('example') && !e.includes('placeholder') && !e.includes('noreply'),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Generation log builders
+// ---------------------------------------------------------------------------
+
+function buildSelectedGenerationLog(
+  candidateDiscovery: GenerationCandidateDiscoveryLog | null,
+): GenerationRunLog {
+  return {
+    outcome: 'selected',
+    stage: 'generation',
+    reason: candidateDiscovery?.selectionReason ?? 'Directive generated successfully.',
+    candidateFailureReasons: (candidateDiscovery?.topCandidates ?? [])
+      .filter((c) => c.decision === 'rejected')
+      .map((c) => c.decisionReason),
+    candidateDiscovery,
+  };
+}
+
+function buildNoSendGenerationLog(
+  reason: string,
+  stage: GenerationRunLog['stage'],
+  candidateDiscovery: GenerationCandidateDiscoveryLog | null,
+): GenerationRunLog {
+  const normalizedDiscovery = candidateDiscovery
+    ? { ...candidateDiscovery, failureReason: candidateDiscovery.failureReason ?? reason }
+    : null;
+
+  const candidateFailureReasons = normalizedDiscovery
+    ? normalizedDiscovery.topCandidates.map((c) =>
+      c.decision === 'selected'
+        ? `Selected candidate blocked: ${reason}`
+        : c.decisionReason)
+    : [reason];
+
+  return {
+    outcome: 'no_send',
+    stage,
+    reason,
+    candidateFailureReasons,
+    candidateDiscovery: normalizedDiscovery,
+  };
+}
+
+function emptyDirective(reason: string, generationLog?: GenerationRunLog): ConvictionDirective {
+  return {
+    directive: GENERATION_FAILED_SENTINEL,
+    action_type: 'do_nothing',
+    confidence: 0,
+    reason,
+    evidence: [],
+    generationLog,
+  };
+}
+
+function formatValidationFailureReason(prefix: string, issues: string[]): string {
+  const normalized = [...new Set(issues.map((i) => i.trim()).filter(Boolean))];
+  if (normalized.length === 0) return prefix;
+  return `${prefix} ${normalized.join('; ')}`;
+}
+
+// ---------------------------------------------------------------------------
+// Relationship context hydration (preserved from original)
+// ---------------------------------------------------------------------------
+
 async function hydrateWinnerRelationshipContext(
   userId: string,
   winner: ScoredLoop,
 ): Promise<ScoredLoop> {
-  if (winner.relationshipContext) {
-    return winner;
-  }
+  if (winner.relationshipContext) return winner;
 
   const supabase = createServerClient();
 
-  // For commitment-sourced candidates, resolve the recipient entity ONLY
-  // from the commitment's promisor/promisee fields. Do not fall back to a
-  // broad entity search by goal category — that produces wrong recipients
-  // (e.g. DSHS contact for an HCA directive because both are "career").
   const commitmentSourceIds = (winner.sourceSignals ?? [])
     .filter((s) => s.kind === 'commitment' && typeof s.id === 'string')
     .map((s) => s.id as string);
@@ -304,21 +681,15 @@ async function hydrateWinnerRelationshipContext(
     return hydrateFromCommitmentEntities(supabase, userId, winner, commitmentSourceIds);
   }
 
-  // Non-commitment candidates: use text-based entity matching (existing behavior)
   return hydrateFromTextMatch(supabase, userId, winner);
 }
 
-/**
- * Resolve relationship context from commitment promisor/promisee entities.
- * Returns only entities directly linked to the commitment — no guessing.
- */
 async function hydrateFromCommitmentEntities(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
   winner: ScoredLoop,
   commitmentIds: string[],
 ): Promise<ScoredLoop> {
-  // Get promisor and promisee entity IDs from the commitments
   const { data: commitments } = await supabase
     .from('tkg_commitments')
     .select('promisor_id, promisee_id')
@@ -331,10 +702,8 @@ async function hydrateFromCommitmentEntities(
     if (c.promisor_id) entityIds.add(c.promisor_id);
     if (c.promisee_id) entityIds.add(c.promisee_id);
   }
-
   if (entityIds.size === 0) return winner;
 
-  // Look up those specific entities
   const { data: entities } = await supabase
     .from('tkg_entities')
     .select('name, display_name, primary_email, emails, role, company, total_interactions, patterns')
@@ -344,26 +713,17 @@ async function hydrateFromCommitmentEntities(
 
   if (!entities || entities.length === 0) return winner;
 
-  const lines = entities.map((entity) => formatEntityLine(entity as Record<string, unknown>));
+  const lines = entities.map((e) => formatEntityLine(e as Record<string, unknown>));
   if (lines.length === 0) return winner;
-
   return { ...winner, relationshipContext: lines.join('\n') };
 }
 
-/**
- * Fallback: resolve relationship context from text-based entity matching.
- * Used for signal and relationship candidates that don't have commitment links.
- */
 async function hydrateFromTextMatch(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
   winner: ScoredLoop,
 ): Promise<ScoredLoop> {
-  const queryText = [
-    winner.title,
-    winner.content,
-    ...winner.relatedSignals,
-  ].join(' ').toLowerCase();
+  const queryText = [winner.title, winner.content, ...winner.relatedSignals].join(' ').toLowerCase();
 
   const { data: entities, error } = await supabase
     .from('tkg_entities')
@@ -380,13 +740,11 @@ async function hydrateFromTextMatch(
       const record = entity as Record<string, unknown>;
       const name = isNonEmptyString(record.display_name)
         ? record.display_name.trim()
-        : isNonEmptyString(record.name)
-          ? record.name.trim()
-          : 'Unknown';
+        : isNonEmptyString(record.name) ? record.name.trim() : 'Unknown';
       const email = isNonEmptyString(record.primary_email)
         ? record.primary_email.trim()
         : Array.isArray(record.emails)
-          ? (record.emails as unknown[]).find((value): value is string => isNonEmptyString(value))?.trim() ?? null
+          ? (record.emails as unknown[]).find((v): v is string => isNonEmptyString(v))?.trim() ?? null
           : null;
       const company = isNonEmptyString(record.company) ? record.company.trim() : null;
       const relevance =
@@ -394,18 +752,11 @@ async function hydrateFromTextMatch(
         (email && queryText.includes(email.toLowerCase()) ? 2 : 0) +
         (company && queryText.includes(company.toLowerCase()) ? 1 : 0);
 
-      return {
-        relevance,
-        interactions: typeof record.total_interactions === 'number' ? record.total_interactions : 0,
-        line: formatEntityLine(record),
-      };
+      return { relevance, interactions: typeof record.total_interactions === 'number' ? record.total_interactions : 0, line: formatEntityLine(record) };
     })
-    .sort((left, right) => {
-      if (right.relevance !== left.relevance) return right.relevance - left.relevance;
-      return right.interactions - left.interactions;
-    })
+    .sort((a, b) => b.relevance !== a.relevance ? b.relevance - a.relevance : b.interactions - a.interactions)
     .slice(0, 8)
-    .map((entity) => entity.line);
+    .map((e) => e.line);
 
   if (scored.length === 0) return winner;
   return { ...winner, relationshipContext: scored.join('\n') };
@@ -414,277 +765,32 @@ async function hydrateFromTextMatch(
 function formatEntityLine(record: Record<string, unknown>): string {
   const name = isNonEmptyString(record.display_name)
     ? record.display_name.trim()
-    : isNonEmptyString(record.name)
-      ? record.name.trim()
-      : 'Unknown';
+    : isNonEmptyString(record.name) ? record.name.trim() : 'Unknown';
   const role = isNonEmptyString(record.role) ? record.role.trim() : null;
   const company = isNonEmptyString(record.company) ? record.company.trim() : null;
   const email = isNonEmptyString(record.primary_email)
     ? record.primary_email.trim()
     : Array.isArray(record.emails)
-      ? (record.emails as unknown[]).find((value): value is string => isNonEmptyString(value))?.trim() ?? null
+      ? (record.emails as unknown[]).find((v): v is string => isNonEmptyString(v))?.trim() ?? null
       : null;
   const patterns = record.patterns && typeof record.patterns === 'object'
     ? Object.values(record.patterns as Record<string, unknown>)
-      .map((pattern) =>
-        pattern && typeof pattern === 'object' && isNonEmptyString((pattern as Record<string, unknown>).description)
-          ? ((pattern as Record<string, unknown>).description as string).trim()
-          : null)
-      .filter((value): value is string => value !== null)
+      .map((p) => p && typeof p === 'object' && isNonEmptyString((p as Record<string, unknown>).description)
+        ? ((p as Record<string, unknown>).description as string).trim() : null)
+      .filter((v): v is string => v !== null)
       .slice(0, 2)
       .join('; ')
     : '';
-  const descriptor = [
-    role,
-    company,
-    typeof record.total_interactions === 'number' ? `${record.total_interactions} interactions` : null,
-  ].filter(Boolean).join(', ');
+  const descriptor = [role, company, typeof record.total_interactions === 'number' ? `${record.total_interactions} interactions` : null]
+    .filter(Boolean).join(', ');
 
   return `- ${name}${email ? ` <${email}>` : ''}${descriptor ? ` (${descriptor})` : ''}${patterns ? `: ${patterns}` : ''}`;
 }
 
-function hasMeaningfulOverlap(candidate: string, winner: ScoredLoop): boolean {
-  const directiveTokens = new Set(normalizeText(candidate).split(' ').filter((token) => token.length >= 4));
-  if (directiveTokens.size === 0) return false;
+// ---------------------------------------------------------------------------
+// Signal evidence fetching (preserved from original)
+// ---------------------------------------------------------------------------
 
-  const sourceTokens = new Set(
-    normalizeText(
-      [winner.title, winner.content, winner.relationshipContext ?? '', ...(winner.relatedSignals ?? [])].join(' '),
-    )
-      .split(' ')
-      .filter((token) => token.length >= 4),
-  );
-
-  for (const token of directiveTokens) {
-    if (sourceTokens.has(token)) return true;
-  }
-  return false;
-}
-
-function normalizeArtifactType(value: unknown): GeneratorArtifactType | null {
-  if (value === 'email' || value === 'email_compose' || value === 'email_reply') {
-    return 'drafted_email';
-  }
-  if (value === 'calendar' || value === 'event') {
-    return 'calendar_event';
-  }
-  if (value === 'research') {
-    return 'research_brief';
-  }
-  if (value === 'decision') {
-    return 'decision_frame';
-  }
-  if (value === 'wait' || value === 'do_nothing') {
-    return 'wait_rationale';
-  }
-  if (
-    value === 'drafted_email' ||
-    value === 'document' ||
-    value === 'calendar_event' ||
-    value === 'research_brief' ||
-    value === 'decision_frame' ||
-    value === 'wait_rationale'
-  ) {
-    return value;
-  }
-  return null;
-}
-
-function artifactTypeToActionType(artifactType: GeneratorArtifactType): ActionType {
-  switch (artifactType) {
-    case 'drafted_email':
-      return 'send_message';
-    case 'document':
-      return 'write_document';
-    case 'calendar_event':
-      return 'schedule';
-    case 'research_brief':
-      return 'research';
-    case 'decision_frame':
-      return 'make_decision';
-    case 'wait_rationale':
-    default:
-      return 'do_nothing';
-  }
-}
-
-function actionTypeToArtifactType(actionType: ActionType): GeneratorArtifactType {
-  switch (actionType) {
-    case 'send_message':
-      return 'drafted_email';
-    case 'write_document':
-      return 'document';
-    case 'schedule':
-      return 'calendar_event';
-    case 'research':
-      return 'research_brief';
-    case 'make_decision':
-      return 'decision_frame';
-    case 'do_nothing':
-    default:
-      return 'wait_rationale';
-  }
-}
-
-function expectedArtifactRules(actionType: ActionType): string {
-  switch (actionType) {
-    case 'send_message':
-      return [
-        'Action type is send_message. artifact_type must be drafted_email.',
-        'Artifact JSON must include subject and body. recipient is strongly preferred but optional.',
-        'Use a real email address from the dossier or SUGGESTED_RECIPIENT if one is present. Never fabricate an address.',
-        'If no real email address is available in the context, set recipient to an empty string. The user will fill it on approval.',
-      ].join('\n');
-    case 'write_document':
-      return [
-        'Action type is write_document. artifact_type must be document.',
-        'Artifact JSON must include title and content.',
-        'Write the finished memo or note, not bullet prompts.',
-      ].join('\n');
-    case 'schedule':
-      return [
-        'Action type is schedule. artifact_type must be calendar_event.',
-        'Artifact JSON must include title, start, end, and description.',
-        'Choose a concrete time slot. Do not leave timing open ended.',
-      ].join('\n');
-    case 'research':
-      return [
-        'Action type is research. Do NOT produce a research_brief — that is consulting, not action.',
-        'Instead, produce a concrete deliverable:',
-        '- If research leads to contacting someone, artifact_type must be drafted_email with the outreach message.',
-        '- If research is internal, artifact_type must be document with the findings and recommended next step.',
-        'The directive sentence must name what was found and what to do with it.',
-      ].join('\n');
-    case 'make_decision':
-      return [
-        'Action type is make_decision. Do NOT produce a decision_frame — that is consulting, not action.',
-        'Instead, produce a concrete deliverable:',
-        '- If the decision involves another person, artifact_type must be drafted_email with the actual follow-up message.',
-        '- If the decision is internal (no person to contact), artifact_type must be document with a one-page brief that states the decision and next steps.',
-        'The directive sentence must name the specific decision being made, not ask the user to decide.',
-      ].join('\n');
-    case 'do_nothing':
-    default:
-      return [
-        'Action type is do_nothing. Do NOT produce a wait_rationale — that is consulting, not action.',
-        'Instead, produce a concrete deliverable:',
-        '- artifact_type must be document with a brief that explains why no action is needed and names the specific tripwire that would change that.',
-        '- Or if there is a person to notify about the wait, artifact_type must be drafted_email.',
-        'The directive sentence must name what is being deliberately deferred and why.',
-      ].join('\n');
-  }
-}
-
-function formatRecentAction(row: RecentActionRow): string {
-  return `[${row.generated_at.slice(0, 10)}] [${row.action_type ?? 'unknown'}] ${row.directive_text ?? ''}`;
-}
-
-function expectedArtifactSchema(actionType: ActionType): string {
-  switch (actionType) {
-    case 'send_message':
-      return `{
-  "recipient": "person@example.com or empty string if no real address is available",
-  "subject": "Specific subject line",
-  "body": "Complete email body with greeting and sign-off"
-}`;
-    case 'write_document':
-      return `{
-  "title": "Document title",
-  "content": "Complete document in markdown"
-}`;
-    case 'schedule':
-      return `{
-  "title": "Meeting title",
-  "start": "2026-03-18T15:00:00-07:00",
-  "end": "2026-03-18T15:30:00-07:00",
-  "description": "Calendar description with details"
-}`;
-    case 'research':
-      return `If research leads to contacting someone, use drafted_email:
-{
-  "recipient": "person@example.com or empty string",
-  "subject": "Subject about the research finding",
-  "body": "Complete email communicating the finding or requesting info"
-}
-If research is internal, use document:
-{
-  "title": "Research: [topic]",
-  "content": "Findings in markdown with recommended next step"
-}`;
-    case 'make_decision':
-      return `If the decision involves another person, use drafted_email:
-{
-  "recipient": "person@example.com or empty string",
-  "subject": "Specific subject about the decision",
-  "body": "Complete email that communicates the decision or requests info"
-}
-If the decision is internal (no person to contact), use document:
-{
-  "title": "Decision: [specific decision name]",
-  "content": "One-page brief stating the decision, reasoning, and next steps"
-}`;
-    case 'do_nothing':
-    default:
-      return `If there is a person to notify, use drafted_email:
-{
-  "recipient": "person@example.com or empty string",
-  "subject": "Subject about the deferral",
-  "body": "Complete email explaining the wait and what triggers action"
-}
-Otherwise, use document:
-{
-  "title": "Hold: [what is being deferred]",
-  "content": "Brief explaining why no action is needed now and the specific tripwire that would change that"
-}`;
-  }
-}
-
-/**
- * Translate non-concrete action types into deliverable-oriented labels.
- * This prevents the LLM from seeing "make_decision" and defaulting to decision_frame.
- */
-function translateToDeliverableAction(actionType: ActionType, winner: ScoredLoop): string {
-  switch (actionType) {
-    case 'make_decision': {
-      // If there's a person in the context, steer to send_message
-      const hasRecipient = extractBestRecipientEmail(winner.relationshipContext);
-      return hasRecipient
-        ? 'send_message (decision involves a person — draft the email)'
-        : 'write_document (internal decision — write a one-page brief)';
-    }
-    case 'research':
-      return 'write_document (research findings — write the findings document)';
-    case 'do_nothing':
-      return 'write_document (deliberate hold — write a brief explaining why)';
-    default:
-      return actionType;
-  }
-}
-
-function extractBestRecipientEmail(relationshipContext: string | undefined): string | null {
-  if (!relationshipContext) return null;
-  const emailPattern = /<([^@\s>]+@[^@\s>]+\.[^@\s>]+)>/g;
-  let match: RegExpExecArray | null;
-  const candidates: string[] = [];
-  while ((match = emailPattern.exec(relationshipContext)) !== null) {
-    candidates.push(match[1]);
-  }
-  return candidates.length > 0 ? candidates[0] : null;
-}
-
-interface SignalSnippet {
-  source: string;
-  date: string;
-  subject: string | null;
-  snippet: string;
-  author: string | null;
-}
-
-/**
- * Fetch real signal snippets from the DB that are related to the winning candidate.
- * Returns email subjects, content snippets, sources, and dates — the concrete details
- * the LLM needs to produce a real artifact instead of placeholder text.
- */
 async function fetchWinnerSignalEvidence(
   userId: string,
   winner: ScoredLoop,
@@ -692,12 +798,10 @@ async function fetchWinnerSignalEvidence(
   const supabase = createServerClient();
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Get IDs from sourceSignals if available
   const sourceIds = (winner.sourceSignals ?? [])
     .map((s) => s.id)
     .filter((id): id is string => Boolean(id));
 
-  // Fetch by source IDs first (most relevant)
   const snippets: SignalSnippet[] = [];
 
   if (sourceIds.length > 0) {
@@ -714,8 +818,6 @@ async function fetchWinnerSignalEvidence(
     }
   }
 
-  // Also fetch keyword-matched signals for richer context
-  // Build keywords from the winner title and content
   const keywords = winner.title
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, '')
@@ -732,7 +834,7 @@ async function fetchWinnerSignalEvidence(
       .order('occurred_at', { ascending: false })
       .limit(50);
 
-    const existingSnippetTexts = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
+    const existingTexts = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
 
     for (const row of contextRows ?? []) {
       if (snippets.length >= 8) break;
@@ -743,9 +845,9 @@ async function fetchWinnerSignalEvidence(
       if (matchCount < 2) continue;
 
       const parsed = parseSignalSnippet(decrypted.plaintext, row);
-      if (parsed && !existingSnippetTexts.has(parsed.snippet.slice(0, 60))) {
+      if (parsed && !existingTexts.has(parsed.snippet.slice(0, 60))) {
         snippets.push(parsed);
-        existingSnippetTexts.add(parsed.snippet.slice(0, 60));
+        existingTexts.add(parsed.snippet.slice(0, 60));
       }
     }
   }
@@ -759,245 +861,60 @@ function parseSignalSnippet(
 ): SignalSnippet | null {
   if (!plaintext || plaintext.length < 20) return null;
 
-  // Try to extract email subject from the signal content
   let subject: string | null = null;
   const subjectMatch = plaintext.match(/(?:Subject|Re|Fwd):\s*(.+?)(?:\n|$)/i);
-  if (subjectMatch) {
-    subject = subjectMatch[1].trim().slice(0, 120);
-  }
+  if (subjectMatch) subject = subjectMatch[1].trim().slice(0, 120);
 
-  // Extract a meaningful snippet (first 300 chars, skip headers)
   const lines = plaintext.split('\n').filter((l) => l.trim().length > 0);
-  const contentLines = lines.filter(
-    (l) => !l.match(/^(From|To|Date|Subject|Cc|Bcc|Re|Fwd):/i),
-  );
+  const contentLines = lines.filter((l) => !l.match(/^(From|To|Date|Subject|Cc|Bcc|Re|Fwd):/i));
   const snippet = contentLines.join(' ').slice(0, 300).trim();
 
   return {
     source: (row.source as string) ?? 'unknown',
-    date: row.occurred_at
-      ? new Date(row.occurred_at as string).toISOString().slice(0, 10)
-      : 'unknown',
+    date: row.occurred_at ? new Date(row.occurred_at as string).toISOString().slice(0, 10) : 'unknown',
     subject,
     snippet: snippet || plaintext.slice(0, 300),
     author: (row.author as string) ?? null,
   };
 }
 
-/**
- * Extract all email addresses from both relationshipContext and sourceSignals/relatedSignals.
- */
-function extractAllEmailAddresses(winner: ScoredLoop): string[] {
-  const emails = new Set<string>();
-  const emailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+// ---------------------------------------------------------------------------
+// Part 5 — Structural validation (after generation)
+// ---------------------------------------------------------------------------
 
-  // From relationship context
-  if (winner.relationshipContext) {
-    let match: RegExpExecArray | null;
-    while ((match = emailPattern.exec(winner.relationshipContext)) !== null) {
-      emails.add(match[0].toLowerCase());
-    }
+function normalizeArtifactType(value: unknown): ValidArtifactType | null {
+  // Map old artifact type names to new contract
+  if (value === 'drafted_email' || value === 'email' || value === 'email_compose' || value === 'email_reply') {
+    return 'send_message';
   }
-
-  // From related signals
-  for (const signal of winner.relatedSignals ?? []) {
-    emailPattern.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = emailPattern.exec(signal)) !== null) {
-      emails.add(match[0].toLowerCase());
-    }
+  if (value === 'document' || value === 'write_document') {
+    return 'write_document';
   }
-
-  // From source signal summaries
-  for (const source of winner.sourceSignals ?? []) {
-    if (source.summary) {
-      emailPattern.lastIndex = 0;
-      let match: RegExpExecArray | null;
-      while ((match = emailPattern.exec(source.summary)) !== null) {
-        emails.add(match[0].toLowerCase());
-      }
-    }
+  if (value === 'calendar_event' || value === 'calendar' || value === 'event' || value === 'schedule' || value === 'schedule_block') {
+    return 'schedule_block';
   }
-
-  // Filter out placeholder emails
-  return [...emails].filter(
-    (e) => !e.includes('example') && !e.includes('placeholder') && !e.includes('noreply'),
-  );
+  if (value === 'wait_rationale' || value === 'wait') {
+    return 'wait_rationale';
+  }
+  if (value === 'do_nothing') {
+    return 'do_nothing';
+  }
+  // Reject decision_frame, research_brief — these are not valid user-facing types
+  if (value === 'decision_frame' || value === 'decision' || value === 'research_brief' || value === 'research') {
+    return null;
+  }
+  return null;
 }
 
-function buildGenerationPrompt(context: PromptContext): string {
-  const { winner, deprioritized, approvedRecently, skippedRecently } = context;
-  const pinnedConstraints = getPinnedConstraintPrompt(context.userId);
-  const relatedSignals = winner.relatedSignals.length > 0
-    ? winner.relatedSignals.map((signal) => `- ${signal}`).join('\n')
-    : '- None';
-  const runnerUps = deprioritized.length > 0
-    ? deprioritized
-      .map((loop) => `- ${loop.title} — ${loop.killExplanation}`)
-      .join('\n')
-    : '- None';
-  const approvedLines = approvedRecently.length > 0
-    ? approvedRecently.map(formatRecentAction).map((line) => `- ${line}`).join('\n')
-    : '- None';
-  const skippedLines = skippedRecently.length > 0
-    ? skippedRecently
-      .map((row) => `${formatRecentAction(row)}${row.skip_reason ? ` (skip: ${row.skip_reason})` : ''}`)
-      .map((line) => `- ${line}`)
-      .join('\n')
-    : '- None';
-
-  const matchedGoal = winner.matchedGoal
-    ? `${winner.matchedGoal.text} [${winner.matchedGoal.category}, priority ${winner.matchedGoal.priority}/5]`
-    : 'No explicit goal match.';
-
-  const scoreBreakdown = [
-    `stakes=${winner.breakdown.stakes.toFixed(2)}`,
-    `urgency=${winner.breakdown.urgency.toFixed(2)}`,
-    `tractability=${winner.breakdown.tractability.toFixed(2)}`,
-    `freshness=${winner.breakdown.freshness.toFixed(2)}`,
-    `total=${winner.score.toFixed(2)}`,
-  ].join(', ');
-
-  // Translate non-concrete action types into deliverable-oriented labels
-  // so the LLM doesn't default to decision_frame / wait_rationale / research_brief
-  const deliverableAction = translateToDeliverableAction(winner.suggestedActionType, winner);
-
-  const sections = [
-    `TODAY: ${today()}`,
-    `WINNING_LOOP_TITLE:\n${winner.title}`,
-    `WINNING_LOOP_TYPE:\n${winner.type}`,
-    `WINNING_ACTION_TYPE:\n${deliverableAction}`,
-    `PINNED_CONSTRAINTS:\n${pinnedConstraints ?? '- None'}`,
-    `GOAL_ALIGNMENT:\n${matchedGoal}`,
-    `SCORE_BREAKDOWN:\n${scoreBreakdown}`,
-    `PRIMARY_EVIDENCE:\n${winner.content}`,
-    `RELATED_SIGNALS:\n${relatedSignals}`,
-    `RELATIONSHIP_CONTEXT:\n${winner.relationshipContext ?? 'None'}`,
-  ];
-
-  // Inject real signal evidence — email subjects, snippets, dates, authors.
-  // This gives the LLM concrete details to reference instead of generating placeholders.
-  const signalEvidence = context.signalEvidence ?? [];
-  if (signalEvidence.length > 0) {
-    const evidenceLines = signalEvidence.map((s) => {
-      const parts = [`[${s.date}] [${s.source}]`];
-      if (s.author) parts.push(`From: ${s.author}`);
-      if (s.subject) parts.push(`Subject: ${s.subject}`);
-      parts.push(s.snippet.slice(0, 200));
-      return `- ${parts.join(' | ')}`;
-    });
-    sections.push(`SIGNAL_EVIDENCE (real emails/signals — use these details in your artifact):\n${evidenceLines.join('\n')}`);
+function artifactTypeToActionType(artifactType: ValidArtifactType): ActionType {
+  switch (artifactType) {
+    case 'send_message': return 'send_message';
+    case 'write_document': return 'write_document';
+    case 'schedule_block': return 'schedule';
+    case 'wait_rationale': return 'do_nothing';
+    case 'do_nothing': return 'do_nothing';
+    default: return 'do_nothing';
   }
-
-  // Collect all real email addresses from relationship context and signals
-  const allEmails = extractAllEmailAddresses(winner);
-  // Also extract from signal evidence
-  for (const s of signalEvidence) {
-    if (s.author) {
-      const emailMatch = s.author.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
-      if (emailMatch) allEmails.push(emailMatch[0].toLowerCase());
-    }
-  }
-  const uniqueEmails = [...new Set(allEmails)];
-
-  if (winner.suggestedActionType === 'send_message' || deliverableAction.includes('send_message')) {
-    const bestEmail = uniqueEmails[0] ?? extractBestRecipientEmail(winner.relationshipContext);
-    sections.push(
-      `AVAILABLE_EMAIL_ADDRESSES:\n${uniqueEmails.length > 0 ? uniqueEmails.map((e) => `- ${e}`).join('\n') : '- None found'}`,
-      `SUGGESTED_RECIPIENT:\n${bestEmail ?? 'No email found in dossier. Use the most relevant contact email from AVAILABLE_EMAIL_ADDRESSES, or leave recipient empty if none is available.'}`,
-    );
-  } else if (uniqueEmails.length > 0) {
-    // Even for non-email actions, surface available emails so the LLM can
-    // choose to draft an email if appropriate
-    sections.push(
-      `AVAILABLE_EMAIL_ADDRESSES:\n${uniqueEmails.map((e) => `- ${e}`).join('\n')}`,
-    );
-  }
-
-  // Inject researcher insight when available — this becomes the primary context
-  if (context.insight) {
-    const insightSections = [
-      `RESEARCHER_INSIGHT:\n${context.insight.synthesis}`,
-    ];
-    if (context.insight.window) {
-      insightSections.push(`INSIGHT_WINDOW:\n${context.insight.window}`);
-    }
-    if (context.insight.external_context) {
-      insightSections.push(`EXTERNAL_CONTEXT:\n${context.insight.external_context}`);
-    }
-    insightSections.push(
-      `ARTIFACT_GUIDANCE:\n${context.insight.artifact_instructions}`,
-      'INSTRUCTION: Draft the artifact that delivers this insight and captures its value before the window closes. The insight is the primary context — build the artifact around it, not around the raw commitment description.',
-    );
-    sections.push(...insightSections);
-  }
-
-  // Critical instruction: use real data only, never placeholder text
-  sections.push(
-    'CRITICAL_INSTRUCTION:\n' +
-    'You MUST use real names, real email addresses, real dates, and real details from the evidence above. ' +
-    'NEVER use placeholder brackets like [Name], [Company], [Date], [Your Name], [Recipient], or similar. ' +
-    'If you do not have a specific detail, omit it or write around it — do not insert a bracket placeholder. ' +
-    'Every field in the artifact must contain real, specific content drawn from the signals and context provided.',
-  );
-
-  sections.push(
-    `RUNNER_UPS_REJECTED:\n${runnerUps}`,
-    `RECENTLY_APPROVED:\n${approvedLines}`,
-    `RECENTLY_SKIPPED:\n${skippedLines}`,
-    `ARTIFACT_RULES:\n${expectedArtifactRules(winner.suggestedActionType)}`,
-    `ARTIFACT_JSON_SCHEMA:\n${expectedArtifactSchema(winner.suggestedActionType)}`,
-  );
-
-  return sections.join('\n\n');
-}
-
-function normalizeArtifactPayload(
-  parsed: Record<string, unknown>,
-  artifactType: GeneratorArtifactType,
-): Record<string, unknown> {
-  const artifact = parsed.artifact && typeof parsed.artifact === 'object'
-    ? { ...(parsed.artifact as Record<string, unknown>) }
-    : {};
-
-  const knownFields = [
-    'recipient',
-    'to',
-    'subject',
-    'body',
-    'title',
-    'content',
-    'start',
-    'end',
-    'description',
-    'findings',
-    'sources',
-    'recommended_action',
-    'options',
-    'recommendation',
-    'context',
-    'evidence',
-    'tripwires',
-    'check_date',
-    'draft_type',
-  ];
-
-  for (const field of knownFields) {
-    if (artifact[field] === undefined && parsed[field] !== undefined) {
-      artifact[field] = parsed[field];
-    }
-  }
-
-  if (artifactType === 'drafted_email') {
-    if (artifact.recipient === undefined && artifact.to !== undefined) {
-      artifact.recipient = artifact.to;
-    }
-    if (artifact.to === undefined && artifact.recipient !== undefined) {
-      artifact.to = artifact.recipient;
-    }
-  }
-
-  return artifact;
 }
 
 function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | null {
@@ -1011,14 +928,41 @@ function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | null {
   );
   if (!artifactType) return null;
 
+  // Normalize artifact: pull known fields from top level into artifact if needed
+  let artifact = parsed.artifact && typeof parsed.artifact === 'object'
+    ? { ...(parsed.artifact as Record<string, unknown>) }
+    : {};
+
+  const knownFields = [
+    'to', 'recipient', 'subject', 'body',
+    'title', 'content', 'document_purpose', 'target_reader',
+    'start', 'duration_minutes', 'reason', 'description',
+    'why_wait', 'what_changes', 'tripwire_date', 'trigger_condition',
+    'exact_reason', 'blocked_by',
+  ];
+
+  for (const field of knownFields) {
+    if (artifact[field] === undefined && parsed[field] !== undefined) {
+      artifact[field] = parsed[field];
+    }
+  }
+
+  // Normalize send_message: bidirectional to/recipient
+  if (artifactType === 'send_message') {
+    if (artifact.recipient === undefined && artifact.to !== undefined) {
+      artifact.recipient = artifact.to;
+    }
+    if (artifact.to === undefined && artifact.recipient !== undefined) {
+      artifact.to = artifact.recipient;
+    }
+  }
+
   return {
     directive: typeof parsed.directive === 'string' ? parsed.directive : '',
     artifact_type: artifactType,
-    artifact: normalizeArtifactPayload(parsed, artifactType),
+    artifact,
     evidence: typeof parsed.evidence === 'string' ? parsed.evidence : '',
     why_now: typeof parsed.why_now === 'string' ? parsed.why_now : '',
-    requires_search: parsed.requires_search === true,
-    search_context: typeof parsed.search_context === 'string' ? parsed.search_context : '',
   };
 }
 
@@ -1032,7 +976,6 @@ function validateStringField(
     issues.push(`${label} is required`);
     return '';
   }
-
   const trimmed = value.trim();
   if (!options?.allowShort && trimmed.length < 12) {
     issues.push(`${label} is too short`);
@@ -1043,200 +986,134 @@ function validateStringField(
   return trimmed;
 }
 
-function validateArtifactPayload(
-  actionType: ActionType,
-  artifact: Record<string, unknown>,
-  issues: string[],
-): void {
-  switch (actionType) {
-    case 'send_message': {
-      const rawRecipient = artifact.recipient ?? artifact.to;
-      const recipientPresent = isNonEmptyString(rawRecipient);
-      if (recipientPresent) {
-        const recipient = (rawRecipient as string).trim();
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(recipient)) {
-          issues.push('drafted_email recipient must be a real email address');
-        }
-        if (containsPlaceholderText(recipient)) {
-          issues.push('drafted_email recipient contains placeholder text');
-        }
-      }
-      // recipient is optional — the user can fill it on approval
-      const subject = validateStringField(artifact.subject, 'drafted_email subject', issues, { allowShort: true });
-      validateStringField(artifact.body, 'drafted_email body', issues);
-      if (subject && BANNED_DIRECTIVE_PATTERNS.some((pattern) => pattern.test(subject))) {
-        issues.push('drafted_email subject is vague');
-      }
-      break;
-    }
-    case 'write_document':
-      validateStringField(artifact.title, 'document title', issues, { allowShort: true });
-      validateStringField(artifact.content, 'document content', issues);
-      break;
-    case 'schedule':
-      validateStringField(artifact.title, 'calendar_event title', issues, { allowShort: true });
-      validateStringField(artifact.start, 'calendar_event start', issues, { allowShort: true });
-      validateStringField(artifact.end, 'calendar_event end', issues, { allowShort: true });
-      validateStringField(artifact.description, 'calendar_event description', issues);
-      break;
-    case 'research': {
-      validateStringField(artifact.findings, 'research_brief findings', issues);
-      validateStringField(artifact.recommended_action, 'research_brief recommended_action', issues);
-      const sources = Array.isArray(artifact.sources) ? artifact.sources.filter(isNonEmptyString) : [];
-      if (sources.length === 0) {
-        issues.push('research_brief sources are required');
-      }
-      break;
-    }
-    case 'make_decision': {
-      const options = Array.isArray(artifact.options) ? artifact.options : [];
-      if (options.length < 2) {
-        issues.push('decision_frame requires at least two options');
-      }
-      for (const option of options) {
-        if (!option || typeof option !== 'object') {
-          issues.push('decision_frame options must be objects');
-          continue;
-        }
-
-        const record = option as Record<string, unknown>;
-        const label = validateStringField(record.option, 'decision_frame option', issues, { allowShort: true });
-        if (label && containsPlaceholderText(label)) {
-          issues.push('decision_frame option contains placeholder text');
-        }
-        if (typeof record.weight !== 'number' || Number.isNaN(record.weight)) {
-          issues.push('decision_frame option weight must be numeric');
-        }
-      }
-      const recommendation = validateStringField(artifact.recommendation, 'decision_frame recommendation', issues);
-      if (recommendation && isDecisionMenu(recommendation)) {
-        issues.push('decision_frame recommendation must name the recommendation, not reopen the choice');
-      }
-      break;
-    }
-    case 'do_nothing':
-    default: {
-      validateStringField(artifact.context, 'wait_rationale context', issues);
-      validateStringField(artifact.evidence, 'wait_rationale evidence', issues);
-      const tripwires = Array.isArray(artifact.tripwires)
-        ? artifact.tripwires.filter(isNonEmptyString).map((value) => value.trim())
-        : [];
-      if (tripwires.length === 0) {
-        issues.push('wait_rationale tripwires are required');
-      }
-      if (tripwires.some(containsPlaceholderText)) {
-        issues.push('wait_rationale tripwires contain placeholder text');
-      }
-      break;
-    }
-  }
-}
-
-function validateGeneratedPayload(
+function validateGeneratedArtifact(
   payload: GeneratedDirectivePayload | null,
-  promptContext: PromptContext,
+  ctx: StructuredContext,
 ): string[] {
   if (!payload) {
     return ['Response was not valid JSON in the required schema.'];
   }
 
   const issues: string[] = [];
+
+  // Type check
+  if (!VALID_ARTIFACT_TYPES.has(payload.artifact_type)) {
+    issues.push(`artifact type "${payload.artifact_type}" is not valid — must be send_message, write_document, schedule_block, wait_rationale, or do_nothing`);
+  }
+
+  // Directive text checks
   const directive = validateStringField(payload.directive, 'directive', issues);
   validateStringField(payload.evidence, 'evidence', issues);
   validateStringField(payload.why_now, 'why_now', issues);
 
-  if (directive && BANNED_DIRECTIVE_PATTERNS.some((pattern) => pattern.test(directive))) {
-    issues.push('directive uses vague language');
-  }
   if (directive && countSentences(directive) !== 1) {
     issues.push('directive must be exactly one sentence');
   }
   if (directive && isDecisionMenu(directive)) {
     issues.push('directive must make one concrete move instead of reopening the choice');
   }
-  if (directive && !hasMeaningfulOverlap(directive, promptContext.winner)) {
-    issues.push('directive is not specific to the winning evidence');
+
+  // Structural validation per artifact type
+  const a = payload.artifact;
+  switch (payload.artifact_type) {
+    case 'send_message': {
+      const rawRecipient = a.to ?? a.recipient;
+      if (isNonEmptyString(rawRecipient)) {
+        const recipient = (rawRecipient as string).trim();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(recipient)) {
+          issues.push('send_message "to" must be a real email address');
+        }
+        if (containsPlaceholderText(recipient)) {
+          issues.push('send_message "to" contains placeholder text');
+        }
+      }
+      validateStringField(a.subject, 'send_message subject', issues, { allowShort: true });
+      validateStringField(a.body, 'send_message body', issues);
+      break;
+    }
+    case 'write_document': {
+      validateStringField(a.document_purpose, 'write_document document_purpose', issues, { allowShort: true });
+      validateStringField(a.target_reader, 'write_document target_reader', issues, { allowShort: true });
+      validateStringField(a.title, 'write_document title', issues, { allowShort: true });
+      const content = validateStringField(a.content, 'write_document content', issues);
+      // Must be specific to the candidate, not generic filler
+      if (content && content.length < 50) {
+        issues.push('write_document content is too short to be a finished artifact');
+      }
+      break;
+    }
+    case 'schedule_block': {
+      validateStringField(a.title, 'schedule_block title', issues, { allowShort: true });
+      validateStringField(a.reason, 'schedule_block reason', issues, { allowShort: true });
+      if (!isNonEmptyString(a.start)) {
+        issues.push('schedule_block start is required');
+      }
+      if (typeof a.duration_minutes !== 'number' && !isNonEmptyString(a.duration_minutes)) {
+        issues.push('schedule_block duration_minutes is required');
+      }
+      break;
+    }
+    case 'wait_rationale': {
+      validateStringField(a.why_wait, 'wait_rationale why_wait', issues);
+      validateStringField(a.tripwire_date, 'wait_rationale tripwire_date', issues, { allowShort: true });
+      validateStringField(a.trigger_condition, 'wait_rationale trigger_condition', issues, { allowShort: true });
+      break;
+    }
+    case 'do_nothing': {
+      validateStringField(a.exact_reason, 'do_nothing exact_reason', issues);
+      validateStringField(a.blocked_by, 'do_nothing blocked_by', issues, { allowShort: true });
+      break;
+    }
   }
 
-  // Concrete deliverable gate: reject decision memos, wait rationales, and research briefs.
-  if (!CONCRETE_ARTIFACT_TYPES.has(payload.artifact_type)) {
-    issues.push(`artifact type "${payload.artifact_type}" is not a concrete deliverable — must be drafted_email, document, or calendar_event`);
-  }
-
-  // Stale reference gate: reject if the newest source signal is older than 14 days.
-  const signalDates = (promptContext.winner.sourceSignals ?? [])
-    .map((s) => s.occurredAt)
-    .filter((d): d is string => Boolean(d))
-    .map((d) => new Date(d).getTime())
-    .filter((t) => !Number.isNaN(t));
-  const newestSignalMs = signalDates.length > 0 ? Math.max(...signalDates) : 0;
-  const newestSignalAgeDays = newestSignalMs > 0
-    ? (Date.now() - newestSignalMs) / (1000 * 60 * 60 * 24)
-    : STALE_SIGNAL_THRESHOLD_DAYS + 1;
-  if (newestSignalAgeDays > STALE_SIGNAL_THRESHOLD_DAYS) {
-    issues.push(`directive references items older than ${STALE_SIGNAL_THRESHOLD_DAYS} days with no recent signal reinforcement`);
-  }
-
-  // Accept any concrete artifact type — the LLM picks the best format for the content.
-  // The CONCRETE_ARTIFACT_TYPES gate above already rejects research_brief.
-  if (!CONCRETE_ARTIFACT_TYPES.has(payload.artifact_type)) {
-    issues.push(`artifact type "${payload.artifact_type}" is not a concrete deliverable — must be drafted_email, document, calendar_event, decision_frame, or wait_rationale`);
-  }
-
-  // Validate artifact payload using the LLM's chosen artifact type (not the original action type)
-  const validationActionType = artifactTypeToActionType(payload.artifact_type);
-  validateArtifactPayload(validationActionType, payload.artifact, issues);
-
-  // Scan all artifact string fields for bracket placeholders that slipped past per-field checks
-  const bracketPlaceholderRe = /\[[A-Z][a-zA-Z\s]*\]/;
+  // Global placeholder scan on all artifact string fields
   for (const [key, val] of Object.entries(payload.artifact)) {
-    if (typeof val === 'string' && bracketPlaceholderRe.test(val)) {
+    if (typeof val === 'string' && BRACKET_PLACEHOLDER_RE.test(val)) {
       issues.push(`artifact.${key} contains bracket placeholder text`);
     }
   }
-  // Also check directive and evidence
-  if (bracketPlaceholderRe.test(payload.directive)) {
+  if (payload.directive && BRACKET_PLACEHOLDER_RE.test(payload.directive)) {
     issues.push('directive contains bracket placeholder text');
   }
-  if (bracketPlaceholderRe.test(payload.evidence)) {
+  if (payload.evidence && BRACKET_PLACEHOLDER_RE.test(payload.evidence)) {
     issues.push('evidence contains bracket placeholder text');
   }
 
-  const duplicateApproved = promptContext.approvedRecently.some((row) => {
-    if (!row.directive_text) return false;
-    return similarityScore(payload.directive, row.directive_text) >= 0.72;
-  });
-  if (duplicateApproved) {
-    issues.push('directive repeats something already done in the last 7 days');
+  // Secondary: banned coaching language (backup gate)
+  if (directive && containsBannedLanguage(directive)) {
+    issues.push('directive uses coaching/advice language');
   }
 
-  const duplicateSkippedWithoutEvidence = promptContext.skippedRecently.some((row) => {
-    if (!row.directive_text) return false;
-    if (similarityScore(payload.directive, row.directive_text) < 0.72) return false;
-    return !promptContext.winner.relatedSignals.some((signal) => signal.length > 0);
-  });
-  if (duplicateSkippedWithoutEvidence) {
-    issues.push('directive repeats a recently skipped item without new evidence');
+  // Dedup check against recent actions
+  const recentApproved = ctx.recent_action_history_7d
+    .filter((a) => a.includes('APPROVED'))
+    .map((a) => a.replace(/^\[.*?\]\s*\w+\s*APPROVED:\s*/, ''));
+  for (const approved of recentApproved) {
+    if (directive && similarityScore(directive, approved) >= 0.72) {
+      issues.push('directive repeats something already done in the last 7 days');
+      break;
+    }
   }
 
-  if (payload.requires_search && !isNonEmptyString(payload.search_context)) {
-    issues.push('search_context is required when requires_search is true');
-  }
-
+  // Constraint violations
   const constraintViolations = getDirectiveConstraintViolations({
-    userId: promptContext.userId,
+    userId: ctx.locked_constraints ? 'check' : '',
     directive: payload.directive,
     reason: payload.why_now,
     evidence: [{ description: payload.evidence }],
     artifact: payload.artifact,
     actionType: artifactTypeToActionType(payload.artifact_type),
   });
-  for (const violation of constraintViolations) {
-    issues.push(violation.message);
+  for (const v of constraintViolations) {
+    issues.push(v.message);
   }
 
   return issues;
 }
+
+// ---------------------------------------------------------------------------
+// Persistence validation (exported, used by daily-brief)
+// ---------------------------------------------------------------------------
 
 export function validateDirectiveForPersistence(input: {
   userId: string;
@@ -1254,14 +1131,14 @@ export function validateDirectiveForPersistence(input: {
   if (!input.artifact || typeof input.artifact !== 'object') {
     issues.push('artifact is required before persistence');
   }
-  // Concrete deliverable gate — backup check at persistence time
+
   const embeddedType = (input.directive as any).embeddedArtifactType;
-  if (embeddedType && !CONCRETE_ARTIFACT_TYPES.has(embeddedType)) {
-    issues.push(`artifact type "${embeddedType}" is not a concrete deliverable`);
+  if (embeddedType && !VALID_ARTIFACT_TYPES.has(embeddedType)) {
+    issues.push(`artifact type "${embeddedType}" is not a valid user-facing type`);
   }
-  // Consulting language gate — backup check at persistence time
-  if (BANNED_DIRECTIVE_PATTERNS.some((p) => p.test(input.directive.directive))) {
-    issues.push('directive uses consulting language');
+
+  if (BANNED_LANGUAGE_PATTERNS.some((p) => p.test(input.directive.directive))) {
+    issues.push('directive uses coaching/advice language');
   }
   if (countSentences(input.directive.directive) !== 1) {
     issues.push('directive must remain exactly one sentence');
@@ -1278,12 +1155,52 @@ export function validateDirectiveForPersistence(input: {
     artifact: input.artifact,
     actionType: input.directive.action_type,
   });
-  for (const violation of constraintViolations) {
-    issues.push(violation.message);
+  for (const v of constraintViolations) {
+    issues.push(v.message);
   }
 
   return [...new Set(issues)];
 }
+
+// ---------------------------------------------------------------------------
+// Part 6 — Deterministic fallback templates
+// ---------------------------------------------------------------------------
+
+function buildDeterministicWaitRationale(
+  winner: ScoredLoop,
+  reason: string,
+): GeneratedDirectivePayload {
+  const tripwireDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return {
+    directive: `Hold on "${winner.title.slice(0, 60)}" — waiting for new evidence before acting.`,
+    artifact_type: 'wait_rationale',
+    artifact: {
+      why_wait: reason,
+      what_changes: 'New signal or deadline within the next 7 days.',
+      tripwire_date: tripwireDate,
+      trigger_condition: 'Fresh signal arrives or deadline passes.',
+    },
+    evidence: `Based on: ${winner.title.slice(0, 100)}`,
+    why_now: reason,
+  };
+}
+
+function buildDeterministicDoNothing(reason: string, blockedBy: string): GeneratedDirectivePayload {
+  return {
+    directive: 'No candidate cleared the threshold for an executable artifact today.',
+    artifact_type: 'do_nothing',
+    artifact: {
+      exact_reason: reason,
+      blocked_by: blockedBy,
+    },
+    evidence: 'No viable candidate met all eligibility checks.',
+    why_now: reason,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Guardrail loading
+// ---------------------------------------------------------------------------
 
 async function loadRecentActionGuardrails(userId: string): Promise<{
   approvedRecently: RecentActionRow[];
@@ -1316,11 +1233,14 @@ async function loadRecentActionGuardrails(userId: string): Promise<{
 
   return {
     approvedRecently: (approvedRes.data ?? []) as RecentActionRow[],
-    skippedRecently: ((skippedRes.data ?? []) as Array<RecentSkippedActionRow & {
-      execution_result?: unknown;
-    }>).filter((row) => !isInternalNoSendExecutionResult(row.execution_result)),
+    skippedRecently: ((skippedRes.data ?? []) as Array<RecentSkippedActionRow & { execution_result?: unknown }>)
+      .filter((row) => !isInternalNoSendExecutionResult(row.execution_result)),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Confidence computation
+// ---------------------------------------------------------------------------
 
 function computeDirectiveConfidence(result: ScorerResult): number {
   const runnerUpScore = result.deprioritized[0]?.score ?? 0;
@@ -1329,13 +1249,10 @@ function computeDirectiveConfidence(result: ScorerResult): number {
   const urgency = Math.max(0, Math.min(1, winner.breakdown.urgency));
   const tractability = Math.max(0, Math.min(1, winner.breakdown.tractability));
   const freshness = Math.max(0, Math.min(1, winner.breakdown.freshness));
-  const evidenceDepth = Math.min(
-    1,
-    (
-      (winner.relatedSignals.length > 0 ? Math.min(winner.relatedSignals.length, 3) : 0) +
+  const evidenceDepth = Math.min(1,
+    ((winner.relatedSignals.length > 0 ? Math.min(winner.relatedSignals.length, 3) : 0) +
       (winner.matchedGoal ? 2 : 0) +
-      (winner.relationshipContext ? 2 : 0)
-    ) / 7,
+      (winner.relationshipContext ? 2 : 0)) / 7,
   );
   const margin = winner.score <= 0
     ? 0
@@ -1352,12 +1269,13 @@ function computeDirectiveConfidence(result: ScorerResult): number {
   return Math.max(40, Math.min(95, Math.round(40 + (composite * 55))));
 }
 
+// ---------------------------------------------------------------------------
+// Evidence / context builders for directive output
+// ---------------------------------------------------------------------------
+
 function buildEvidenceItems(result: ScorerResult, payload: GeneratedDirectivePayload): EvidenceItem[] {
   const evidence: EvidenceItem[] = [
-    {
-      type: 'signal',
-      description: payload.evidence.trim(),
-    },
+    { type: 'signal', description: payload.evidence.trim() },
   ];
 
   if (result.winner.matchedGoal) {
@@ -1368,10 +1286,7 @@ function buildEvidenceItems(result: ScorerResult, payload: GeneratedDirectivePay
   }
 
   for (const signal of result.winner.relatedSignals.slice(0, 2)) {
-    evidence.push({
-      type: 'signal',
-      description: signal.slice(0, 220),
-    });
+    evidence.push({ type: 'signal', description: signal.slice(0, 220) });
   }
 
   return evidence;
@@ -1391,22 +1306,24 @@ function buildFullContext(result: ScorerResult, payload: GeneratedDirectivePaylo
 
   if (result.deprioritized.length > 0) {
     sections.push(
-      `Runner-ups rejected:\n${result.deprioritized
-        .map((loop) => `- ${loop.title}: ${loop.killExplanation}`)
-        .join('\n')}`,
+      `Runner-ups rejected:\n${result.deprioritized.map((l) => `- ${l.title}: ${l.killExplanation}`).join('\n')}`,
     );
   }
 
   return sections.join('\n\n');
 }
 
+// ---------------------------------------------------------------------------
+// LLM generation with retry and fallback (Parts 2 + 6)
+// ---------------------------------------------------------------------------
+
 async function generatePayload(
   userId: string,
-  promptContext: PromptContext,
-): Promise<GeneratePayloadResult> {
-  const initialPrompt = buildGenerationPrompt(promptContext);
+  ctx: StructuredContext,
+): Promise<{ issues: string[]; payload: GeneratedDirectivePayload | null }> {
+  const prompt = buildPromptFromStructuredContext(ctx);
   const attempts: Array<{ role: 'user' | 'assistant'; content: string }> = [
-    { role: 'user', content: initialPrompt },
+    { role: 'user', content: prompt },
   ];
   let lastIssues: string[] = [];
 
@@ -1431,6 +1348,7 @@ async function generatePayload(
       .filter((block): block is Anthropic.TextBlock => block.type === 'text')
       .map((block) => block.text)
       .join('');
+
     let parsed: GeneratedDirectivePayload | null = null;
     try {
       parsed = parseGeneratedPayload(raw);
@@ -1438,13 +1356,11 @@ async function generatePayload(
       parsed = null;
     }
 
-    const issues = validateGeneratedPayload(parsed, promptContext);
+    const issues = validateGeneratedArtifact(parsed, ctx);
     lastIssues = issues;
+
     if (issues.length === 0 && parsed) {
-      return {
-        issues: [],
-        payload: parsed,
-      };
+      return { issues: [], payload: parsed };
     }
 
     if (attempt === 0) {
@@ -1454,22 +1370,17 @@ async function generatePayload(
         userId,
         artifactType: parsed?.artifact_type ?? null,
         generationStatus: 'retrying_validation',
-        details: {
-          scope: 'generator',
-          issues,
-          action_type: promptContext.winner.suggestedActionType,
-        },
+        details: { scope: 'generator', issues },
       });
 
       attempts.push({ role: 'assistant', content: raw });
       attempts.push({
         role: 'user',
-        content: `Validation failed. CRITICAL: artifact_type MUST be "drafted_email" or "document" or "calendar_event". Do NOT use decision_frame, research_brief, or wait_rationale.
-Fix these issues and return JSON only.
-Keep the artifact nested under "artifact" and match this schema exactly:
-${expectedArtifactSchema(promptContext.winner.suggestedActionType)}
-
-CRITICAL: Do NOT use bracket placeholders like [Name], [Company], [Date], [Your Name], [Recipient], etc. Use REAL names, dates, and details from the evidence provided. If a detail is unknown, write around it — never insert a bracket placeholder.
+        content: `Validation failed. Fix these issues and return JSON only.
+Valid artifact_type values: send_message, write_document, schedule_block, wait_rationale, do_nothing.
+Do NOT use decision_frame, research_brief, drafted_email, document, or calendar_event.
+Do NOT use bracket placeholders like [Name], [Company], [Date].
+Use REAL details from the evidence provided.
 
 Issues:
 - ${issues.join('\n- ')}`,
@@ -1483,29 +1394,41 @@ Issues:
       userId,
       artifactType: parsed?.artifact_type ?? null,
       generationStatus: 'generation_incomplete',
-      details: {
-        scope: 'generator',
-        issues,
-        action_type: promptContext.winner.suggestedActionType,
-      },
+      details: { scope: 'generator', issues },
     });
   }
 
+  return { issues: lastIssues, payload: null };
+}
+
+// ---------------------------------------------------------------------------
+// Exported: buildDirectiveExecutionResult
+// ---------------------------------------------------------------------------
+
+export function buildDirectiveExecutionResult(input: {
+  directive: ConvictionDirective;
+  briefOrigin: string;
+  artifact?: ConvictionArtifact | Record<string, unknown> | null;
+  extras?: Record<string, unknown>;
+}): Record<string, unknown> {
   return {
-    issues: lastIssues,
-    payload: null,
+    ...(input.artifact ? { artifact: input.artifact } : {}),
+    brief_origin: input.briefOrigin,
+    ...(input.directive.generationLog ? { generation_log: input.directive.generationLog } : {}),
+    ...(input.extras ?? {}),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Main: generateDirective (Parts 1-6 wired together)
+// ---------------------------------------------------------------------------
 
 export async function generateDirective(userId: string): Promise<ConvictionDirective> {
   try {
     if (await isOverDailyLimit(userId)) {
       logStructuredEvent({
-        event: 'generation_skipped',
-        level: 'warn',
-        userId,
-        artifactType: null,
-        generationStatus: 'daily_cap_reached',
+        event: 'generation_skipped', level: 'warn', userId,
+        artifactType: null, generationStatus: 'daily_cap_reached',
         details: { scope: 'generator' },
       });
       return emptyDirective(
@@ -1528,65 +1451,101 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
 
     const hydratedWinner = await hydrateWinnerRelationshipContext(userId, scored.winner);
 
-    // Fetch real signal evidence (email subjects, snippets, dates) for the winner
+    // Fetch signal evidence
     let signalEvidence: SignalSnippet[] = [];
     try {
       signalEvidence = await fetchWinnerSignalEvidence(userId, hydratedWinner);
     } catch {
-      // Signal evidence fetch failure is non-blocking
+      // Non-blocking
     }
 
-    // Research phase: deepen the winner into an insight before writing
+    // Research phase
     let insight: ResearchInsight | null = null;
     try {
       insight = await researchWinner(userId, hydratedWinner);
     } catch {
-      // Researcher failure is non-blocking — fall through to raw mode
       logStructuredEvent({
-        event: 'researcher_fallthrough',
-        level: 'warn',
-        userId,
-        artifactType: null,
-        generationStatus: 'researcher_fallthrough',
+        event: 'researcher_fallthrough', level: 'warn', userId,
+        artifactType: null, generationStatus: 'researcher_fallthrough',
         details: { scope: 'generator' },
       });
     }
 
-    const promptContext: PromptContext = {
-      userId,
-      insight,
-      winner: hydratedWinner,
-      deprioritized: scored.deprioritized,
-      signalEvidence,
-      ...guardrails,
-    };
+    // Part 3: Build structured context
+    const ctx = buildStructuredContext(
+      hydratedWinner, guardrails, userId, signalEvidence, insight,
+    );
 
-    const payloadResult = await generatePayload(userId, promptContext);
-    if (!payloadResult.payload) {
-      const failureReason = formatValidationFailureReason(
-        'Generation validation failed:',
-        payloadResult.issues,
+    // Part 4: Evidence gating — check eligibility before calling LLM
+    const eligibility = checkGenerationEligibility(ctx);
+    if (!eligibility.eligible) {
+      logStructuredEvent({
+        event: 'generation_skipped', level: 'warn', userId,
+        artifactType: null, generationStatus: 'eligibility_gate_failed',
+        details: { scope: 'generator', reason: eligibility.reason },
+      });
+
+      // Deterministic do_nothing — no LLM call
+      const fallbackPayload = buildDeterministicDoNothing(
+        eligibility.reason,
+        `Candidate: ${hydratedWinner.title.slice(0, 80)}`,
       );
+
+      return {
+        directive: fallbackPayload.directive,
+        action_type: 'do_nothing',
+        confidence: 0,
+        reason: eligibility.reason,
+        evidence: [],
+        embeddedArtifact: fallbackPayload.artifact,
+        embeddedArtifactType: fallbackPayload.artifact_type,
+        generationLog: buildNoSendGenerationLog(eligibility.reason, 'validation', scored.candidateDiscovery),
+      } as ConvictionDirective & { embeddedArtifact?: Record<string, unknown>; embeddedArtifactType?: string };
+    }
+
+    // Generate with LLM
+    const payloadResult = await generatePayload(userId, ctx);
+
+    // Part 6: If generation fails, deterministic fallback
+    if (!payloadResult.payload) {
+      const failureReason = formatValidationFailureReason('Generation validation failed:', payloadResult.issues);
+
+      // Try wait_rationale fallback if the candidate has grounding
+      if (ctx.has_recent_evidence) {
+        const waitFallback = buildDeterministicWaitRationale(hydratedWinner, failureReason);
+        logStructuredEvent({
+          event: 'generation_fallback', level: 'warn', userId,
+          artifactType: 'wait_rationale', generationStatus: 'deterministic_fallback',
+          details: { scope: 'generator', original_issues: payloadResult.issues },
+        });
+
+        return {
+          directive: waitFallback.directive,
+          action_type: 'do_nothing',
+          confidence: 0,
+          reason: failureReason,
+          evidence: [],
+          embeddedArtifact: waitFallback.artifact,
+          embeddedArtifactType: waitFallback.artifact_type,
+          generationLog: buildNoSendGenerationLog(failureReason, 'generation', scored.candidateDiscovery),
+        } as ConvictionDirective & { embeddedArtifact?: Record<string, unknown>; embeddedArtifactType?: string };
+      }
+
       return emptyDirective(
         failureReason,
         buildNoSendGenerationLog(failureReason, 'generation', scored.candidateDiscovery),
       );
     }
+
     const payload = payloadResult.payload;
 
+    // Confidence check
     const confidence = computeDirectiveConfidence(scored);
     if (confidence < DIRECTIVE_CONFIDENCE_THRESHOLD) {
       logStructuredEvent({
-        event: 'generation_skipped',
-        level: 'warn',
-        userId,
-        artifactType: payload.artifact_type,
-        generationStatus: 'below_confidence_threshold',
-        details: {
-          scope: 'generator',
-          confidence,
-          threshold: DIRECTIVE_CONFIDENCE_THRESHOLD,
-        },
+        event: 'generation_skipped', level: 'warn', userId,
+        artifactType: payload.artifact_type, generationStatus: 'below_confidence_threshold',
+        details: { scope: 'generator', confidence, threshold: DIRECTIVE_CONFIDENCE_THRESHOLD },
       });
       return emptyDirective(
         'No directive cleared the confidence bar.',
@@ -1603,16 +1562,13 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       fullContext: buildFullContext({ ...scored, winner: hydratedWinner }, payload),
       embeddedArtifact: payload.artifact,
       embeddedArtifactType: payload.artifact_type,
-      requires_search: payload.requires_search === true || artifactTypeToActionType(payload.artifact_type) === 'research',
-      search_context: isNonEmptyString(payload.search_context)
-        ? payload.search_context.trim()
-        : scored.winner.content.slice(0, 500),
       generationLog: buildSelectedGenerationLog(scored.candidateDiscovery),
     } as ConvictionDirective & {
       embeddedArtifact?: Record<string, unknown>;
-      embeddedArtifactType?: GeneratorArtifactType;
+      embeddedArtifactType?: string;
     };
 
+    // Persistence validation
     const persistenceIssues = validateDirectiveForPersistence({
       userId,
       directive,
@@ -1620,26 +1576,14 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     });
     if (persistenceIssues.length > 0) {
       logStructuredEvent({
-        event: 'generation_skipped',
-        level: 'warn',
-        userId,
-        artifactType: payload.artifact_type,
-        generationStatus: 'persistence_validation_failed',
-        details: {
-          scope: 'generator',
-          issues: persistenceIssues,
-        },
+        event: 'generation_skipped', level: 'warn', userId,
+        artifactType: payload.artifact_type, generationStatus: 'persistence_validation_failed',
+        details: { scope: 'generator', issues: persistenceIssues },
       });
       return emptyDirective(
-        formatValidationFailureReason(
-          'Directive rejected by persistence validation:',
-          persistenceIssues,
-        ),
+        formatValidationFailureReason('Directive rejected by persistence validation:', persistenceIssues),
         buildNoSendGenerationLog(
-          formatValidationFailureReason(
-            'Directive rejected by persistence validation:',
-            persistenceIssues,
-          ),
+          formatValidationFailureReason('Directive rejected by persistence validation:', persistenceIssues),
           'validation',
           scored.candidateDiscovery,
         ),
@@ -1647,13 +1591,11 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     }
 
     logStructuredEvent({
-      event: 'directive_generated',
-      userId,
-      artifactType: payload.artifact_type,
-      generationStatus: 'generated',
+      event: 'directive_generated', userId,
+      artifactType: payload.artifact_type, generationStatus: 'generated',
       details: {
         scope: 'generator',
-        action_type: scored.winner.suggestedActionType,
+        action_type: artifactTypeToActionType(payload.artifact_type),
         winner_type: scored.winner.type,
         score: Number(scored.winner.score.toFixed(2)),
       },
@@ -1662,15 +1604,9 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     return directive;
   } catch (error) {
     logStructuredEvent({
-      event: 'directive_generation_failed',
-      level: 'error',
-      userId,
-      artifactType: null,
-      generationStatus: 'failed',
-      details: {
-        scope: 'generator',
-        error: error instanceof Error ? error.message : String(error),
-      },
+      event: 'directive_generation_failed', level: 'error', userId,
+      artifactType: null, generationStatus: 'failed',
+      details: { scope: 'generator', error: error instanceof Error ? error.message : String(error) },
     });
     return emptyDirective(
       'Generation failed internally.',
@@ -1678,6 +1614,10 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Briefing generation (preserved)
+// ---------------------------------------------------------------------------
 
 export async function generateBriefing(userId: string): Promise<ChiefOfStaffBriefing> {
   const supabase = createServerClient();
@@ -1715,15 +1655,9 @@ export async function generateBriefing(userId: string): Promise<ChiefOfStaffBrie
 
   if (error) {
     logStructuredEvent({
-      event: 'briefing_cache_failed',
-      level: 'warn',
-      userId,
-      artifactType: actionTypeToArtifactType(directive.action_type),
-      generationStatus: 'briefing_cache_failed',
-      details: {
-        scope: 'generator',
-        error: error.message,
-      },
+      event: 'briefing_cache_failed', level: 'warn', userId,
+      artifactType: null, generationStatus: 'briefing_cache_failed',
+      details: { scope: 'generator', error: error.message },
     });
   }
 

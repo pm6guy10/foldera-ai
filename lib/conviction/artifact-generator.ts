@@ -574,21 +574,36 @@ function validateArtifact(
     }
     case 'schedule': {
       const a = parsed as CalendarEventArtifact;
-      if (!isNonEmptyString(a.title) || !isNonEmptyString(a.start) || !isNonEmptyString(a.end)) {
+      // Support both old (start/end) and new (start/duration_minutes) shapes
+      const start = isNonEmptyString(a.start) ? a.start.trim() : (isNonEmptyString(parsed?.start) ? parsed.start.trim() : '');
+      const durationMins = typeof parsed?.duration_minutes === 'number' ? parsed.duration_minutes : 30;
+      let end = isNonEmptyString(a.end) ? a.end.trim() : '';
+      // If no end but we have start + duration, compute end
+      if (!end && start) {
+        try {
+          const startDate = new Date(start);
+          if (!isNaN(startDate.getTime())) {
+            end = new Date(startDate.getTime() + durationMins * 60 * 1000).toISOString();
+          }
+        } catch { /* use empty */ }
+      }
+      if (!isNonEmptyString(start)) {
         throw new Error('Calendar artifact missing required fields');
       }
-      if (
-        containsPlaceholderText(a.title.trim()) ||
-        containsPlaceholderText((a.description ?? '').trim())
-      ) {
+      const title = isNonEmptyString(a.title) ? a.title.trim() : (isNonEmptyString(parsed?.title) ? parsed.title.trim() : '');
+      if (!title) {
+        throw new Error('Calendar artifact missing title');
+      }
+      if (containsPlaceholderText(title) || containsPlaceholderText((a.description ?? '').trim())) {
         throw new Error('Calendar artifact contains placeholder text');
       }
       return {
         type: 'calendar_event',
-        title: a.title.trim(),
-        start: a.start.trim(),
-        end: a.end.trim(),
-        description: typeof a.description === 'string' ? a.description.trim() : '',
+        title,
+        start,
+        end: end || start,
+        description: typeof a.description === 'string' ? a.description.trim()
+          : typeof parsed?.reason === 'string' ? parsed.reason.trim() : '',
       };
     }
     case 'research': {
@@ -649,9 +664,20 @@ function validateArtifact(
     }
     case 'do_nothing':
     default: {
-      const context = isNonEmptyString(parsed?.context) ? parsed.context : parsed?.reason;
-      const evidence = isNonEmptyString(parsed?.evidence) ? parsed.evidence : parsed?.trigger_condition;
-      const checkDate = isNonEmptyString(parsed?.check_date) ? parsed.check_date.trim() : undefined;
+      // Support both old (context/evidence) and new (why_wait/tripwire_date/trigger_condition) shapes
+      const context = isNonEmptyString(parsed?.context) ? parsed.context
+        : isNonEmptyString(parsed?.why_wait) ? parsed.why_wait
+        : isNonEmptyString(parsed?.reason) ? parsed.reason
+        : isNonEmptyString(parsed?.exact_reason) ? parsed.exact_reason
+        : null;
+      const evidence = isNonEmptyString(parsed?.evidence) ? parsed.evidence
+        : isNonEmptyString(parsed?.trigger_condition) ? parsed.trigger_condition
+        : isNonEmptyString(parsed?.what_changes) ? parsed.what_changes
+        : isNonEmptyString(parsed?.blocked_by) ? parsed.blocked_by
+        : null;
+      const checkDate = isNonEmptyString(parsed?.check_date) ? parsed.check_date.trim()
+        : isNonEmptyString(parsed?.tripwire_date) ? parsed.tripwire_date.trim()
+        : undefined;
 
       if (!isNonEmptyString(context) || !isNonEmptyString(evidence)) {
         throw new Error('Wait artifact missing required fields');
