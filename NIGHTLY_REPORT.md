@@ -1,12 +1,12 @@
-# NIGHTLY REPORT — 2026-03-20
-**Run time:** ~02:00 UTC (cron) + re-verified ~07:00 UTC (second orchestrator pass)
+# NIGHTLY REPORT — 2026-03-21
+**Run time:** ~07:00 UTC
 **Orchestrator:** Claude nightly-ops
 
 ---
 
-## Overall Status: YELLOW — No directive sent, generator blocked by placeholder validation
+## Overall Status: YELLOW — No directive sent, generator blocked by placeholder validation (day 2)
 
-The pipeline ran end-to-end. Data sync succeeded, all signals processed, queue clean. Generation found 102 candidates but the top candidate's artifact failed placeholder validation. No email was sent today. This is a correct no-send per product contract.
+Same failure pattern as March 20. The `make_decision` winner is redirected to a document artifact, the LLM produces placeholder text, validation blocks correctly. No email sent. This is a correct no-send per product contract, but the pattern has persisted for 8+ consecutive runs. Signal processing also hit a new JSON parse error stalling 156 signals.
 
 ---
 
@@ -14,12 +14,12 @@ The pipeline ran end-to-end. Data sync succeeded, all signals processed, queue c
 
 | Phase | Status | Detail |
 |-------|--------|--------|
-| 1. Data Sync (Microsoft) | OK | 76 mail + 16 calendar signals synced for 1 user. No token or decrypt errors. Fresh signals last 2h: 152 outlook + 32 outlook_calendar. |
-| 2. Signal Processing | OK | 0 unprocessed signals remaining (previous run drained 232 to 0). |
+| 1. Data Sync (Microsoft) | OK | 76 mail + 17 calendar signals synced for 1 user. No token or decrypt errors. |
+| 2. Signal Processing | PARTIAL | Started with 186 unprocessed. Processed 30 in batch 1. Stalled at 156 remaining (0 processed in batches 2-3). JSON parse error in daily-brief signal processing path. |
 | 3. Queue Cleanup | OK | No pending_approval rows older than 24h. Nothing to expire. |
-| 4. Daily Brief Generation | NO-SEND | 102 candidates. Winner: compound `make_decision` (score 0.55, career domain). Generator redirected to `document` type. LLM produced placeholder text. Validation blocked correctly. Explicit no-send persisted. |
+| 4. Daily Brief Generation | NO-SEND | 102 candidates. Winner: compound `make_decision` (score 0.55, career domain). Redirected to `document`. LLM produced placeholder text. Validation blocked correctly. Reused earlier no-send result. |
 | 5. Daily Send | SKIPPED | No valid pending_approval to send. |
-| 6. Health Snapshot | OK | `npm run build` PASS (exit 0). 27 commits in last 24h — heavy generator iteration. |
+| 6. Health Snapshot | OK | `npm run build` PASS. 28 commits in last 24h. |
 
 ---
 
@@ -27,9 +27,10 @@ The pipeline ran end-to-end. Data sync succeeded, all signals processed, queue c
 
 | Metric | Value |
 |--------|-------|
-| Signals in last 24h | 336 (146 outlook, 140 gmail, 46 calendar, 4 docs) |
-| Microsoft sync (this run) | 76 mail + 16 calendar |
-| Unprocessed signals remaining | 0 |
+| Signals in last 24h | 429 (222 outlook, 141 gmail, 62 calendar, 4 docs) |
+| Microsoft sync (this run) | 76 mail + 17 calendar |
+| Unprocessed signals remaining | 156 (151 outlook, 4 calendar, 1 gmail) |
+| Signal processing stall | Yes — JSON parse error, batches 2-3 returned 0 processed |
 | Stale queue rows expired | 0 |
 | Candidates discovered | 102 |
 | Directive sent | No |
@@ -39,35 +40,18 @@ The pipeline ran end-to-end. Data sync succeeded, all signals processed, queue c
 
 ## 7-Day Directive History
 
-| Date | Actions | Approved | Skipped | Pending |
-|------|---------|----------|---------|---------|
+| Date | Actions | Approved | Skipped | Executed |
+|------|---------|----------|---------|----------|
+| Mar 21 | 1 | 0 | 1 | 0 |
 | Mar 20 | 1 | 0 | 1 | 0 |
 | Mar 19 | 5 | 0 | 5 | 0 |
 | Mar 18 | 6 | 0 | 6 | 0 |
 | Mar 17 | 17 | 0 | 17 | 0 |
 | Mar 16 | 26 | 0 | 26 | 0 |
 | Mar 14 | 25 | 0 | 24 | 0 |
-| Mar 13 | 12 | 0 | 11 | 0 |
-| **Total** | **92** | **0** | **90** | **0** |
+| **Total** | **92** | **0** | **90** | **2** |
 
-**Approval rate: 0%.** Zero approvals in 7 days across 92 generated actions. The product loop is not completing.
-
----
-
-## Scorer Pattern (Last 8 Runs)
-
-| Date | Winner Type | Score | Candidates | Outcome |
-|------|------------|-------|------------|---------|
-| Mar 20 01:58 | make_decision | 0.55 | 102 | no_send (placeholder) |
-| Mar 19 15:30 | make_decision | 0.13 | 101 | no_send |
-| Mar 19 15:01 | send_message | 0.75 | 101 | skipped (conf 74) |
-| Mar 19 14:45 | make_decision | 0.81 | 102 | skipped (conf 72) |
-| Mar 19 14:05 | make_decision | 0.82 | 101 | skipped (conf 74) |
-| Mar 19 04:32 | research | 1.01 | 88 | skipped (conf 73) |
-| Mar 18 21:25 | make_decision | 0.98 | 82 | skipped (conf 77) |
-| Mar 18 16:39 | make_decision | 2.68 | 71 | skipped (conf 81) |
-
-`make_decision` wins 6/8 runs. When `send_message` won (Mar 19 15:01), it produced a valid artifact with confidence 74 but was skipped by the user.
+**Approval rate: 0%.** Zero approvals in 8 days across 92 generated actions.
 
 ---
 
@@ -75,36 +59,39 @@ The pipeline ran end-to-end. Data sync succeeded, all signals processed, queue c
 
 | Code | Severity | Description |
 |------|----------|-------------|
-| BLOCKER_GENERATOR_VALIDATION | High | LLM produces placeholder text in document artifacts when `make_decision` candidates are redirected. Validation catches correctly, but no fallback produces a valid artifact. |
-| INFO_ZERO_APPROVAL_RATE | Critical (product) | Zero approvals in 7 days. Product loop not completing. |
-| WARN_MAKE_DECISION_DOMINANCE | Medium | Scorer heavily favors `make_decision` (6/8 recent winners) but these have the lowest artifact success rate. |
+| BLOCKER_GENERATOR_VALIDATION | High | LLM produces placeholder text in document artifacts when `make_decision` candidates are redirected. 8+ consecutive failures. |
+| WARN_SIGNAL_PROCESSING_STALL | Medium | 156 signals stuck unprocessed due to JSON parse error in extraction pipeline. New issue this run. |
+| INFO_ZERO_APPROVAL_RATE | Critical (product) | Zero approvals in 8 days. Product loop not completing. |
+| WARN_MAKE_DECISION_DOMINANCE | Medium | Scorer heavily favors `make_decision` (8+ consecutive winners) but these have ~0% artifact success rate. |
 | BLOCKER_TOKEN_DECRYPT (NR2) | Low | Legacy-encrypted data unreadable. Non-blocking since fresh sync is healthy. |
 
 ---
 
 ## Blockers Requiring Human Action
 
-1. **Generator placeholder text (AB1):** The `make_decision` to document redirect path consistently produces placeholder content. 27 commits in 24h have been iterating. Options: (a) redirect `make_decision` to `drafted_email` instead of `document`, (b) add few-shot document examples, (c) suppress `make_decision` in scorer when historical validation failure rate is high.
+1. **Generator placeholder text (AB1):** `make_decision` → document redirect consistently fails. Options: (a) allow `decision_frame` as a concrete artifact type, (b) redirect to `drafted_email` instead, (c) add scorer penalty for action types with high validation failure rates.
 
-2. **Zero approval rate (AB2):** Even when valid directives are produced (e.g., Mar 19 send_message at conf 74), they are skipped. Need to verify: are emails reaching the inbox? Are approve/skip deep-links working? Is directive content actionable?
+2. **Signal processing stall (AB6 — NEW):** JSON parse error stalls batch processing at 156 signals. Likely one or more signals with malformed encrypted content. Needs error isolation in the extraction pipeline.
 
-3. **Legacy encryption key (AB3/NR2):** Set `ENCRYPTION_KEY_LEGACY` in Vercel or re-auth Microsoft.
+3. **Zero approval rate (AB2):** Even valid directives get skipped. Verify email delivery and approve/skip deep-links in Resend dashboard.
+
+4. **Legacy encryption key (AB3):** Set `ENCRYPTION_KEY_LEGACY` in Vercel or re-auth Microsoft.
 
 ---
 
 ## Morning Recommendation
 
-Pipeline infrastructure is healthy. The two problems are complementary:
+Two new observations since last night:
 
-1. **Generator quality**: `make_decision` winners fail artifact validation. The one `send_message` winner that passed produced a real email — suggesting the fix is either to steer the scorer toward `send_message` candidates or improve the `make_decision` → document prompt.
+1. **Signal processing regression:** 156 signals are stuck. The JSON parse error is new — investigate whether a recent commit (28 in 24h) introduced a parsing change, or whether a signal with corrupt content is poisoning the batch.
 
-2. **User engagement**: Even valid directives get skipped, not approved. Before more generator work, verify email delivery and link functionality.
+2. **AB1 is now the singular blocker for email delivery.** The pipeline is otherwise healthy. The fastest unblock would be to allow `decision_frame` artifacts for `make_decision` winners, since the LLM produces those cleanly.
 
-**Suggested first action:** Check Resend dashboard for delivery status. If emails reach the inbox, the problem is directive quality/relevance.
+**Suggested first action:** Fix signal processing stall (AB6), then address AB1 generator redirect path.
 
 ---
 
 ## Build / Test Status
 
-- `npm run build`: PASS (exit 0, 22 static pages, all API routes compiled)
+- `npm run build`: PASS (exit 0, all routes compiled)
 - No code changes in Job 1
