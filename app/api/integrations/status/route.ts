@@ -2,7 +2,7 @@
  * GET /api/integrations/status
  *
  * Returns the list of connected OAuth integrations for the authenticated user.
- * Queries the `integrations` table (service role bypasses RLS).
+ * Reads from `user_tokens` — the table that OAuth connect flows write to.
  */
 
 import { NextResponse } from 'next/server';
@@ -22,59 +22,28 @@ export async function GET() {
   try {
     const supabase = createServerClient();
 
-    const [intResult, tokenResult] = await Promise.all([
-      supabase
-        .from('integrations')
-        .select('provider, is_active, connected_at')
-        .eq('user_id', session.user.id),
-      supabase
-        .from('user_tokens')
-        .select('provider, email, last_synced_at, scopes')
-        .eq('user_id', session.user.id),
-    ]);
+    const { data, error } = await supabase
+      .from('user_tokens')
+      .select('provider, email, last_synced_at, scopes, access_token')
+      .eq('user_id', session.user.id);
 
-    const queryError = intResult.error ?? tokenResult.error;
-    if (queryError) {
-      throw queryError;
+    if (error) {
+      throw error;
     }
 
-    // Merge integrations + user_tokens into a unified list.
-    // A provider is "connected" if it exists in EITHER table.
-    const integrations: any[] = [];
-    const coveredProviders = new Set<string>();
+    const integrations = (data ?? []).map((row: any) => {
+      // Map user_tokens provider names to settings UI provider names
+      const uiProvider = row.provider === 'microsoft' ? 'azure_ad' : row.provider;
+      const hasToken = typeof row.access_token === 'string' && row.access_token.length > 0;
 
-    // First pass: start from integrations table, enrich with user_tokens
-    for (const int of intResult.data || []) {
-      const token = (tokenResult.data || []).find((t: any) => {
-        if (int.provider === 'google' && t.provider === 'google') return true;
-        if (int.provider === 'azure_ad' && t.provider === 'microsoft') return true;
-        return false;
-      });
-      integrations.push({
-        ...int,
-        sync_email: token?.email ?? null,
-        last_synced_at: token?.last_synced_at ?? null,
-        scopes: token?.scopes ?? null,
-      });
-      coveredProviders.add(int.provider);
-    }
-
-    // Second pass: add user_tokens entries that have no integrations row
-    for (const tok of tokenResult.data || []) {
-      // Map user_tokens provider name to the integrations provider name
-      const intProvider = tok.provider === 'microsoft' ? 'azure_ad' : tok.provider;
-      if (coveredProviders.has(intProvider)) continue;
-
-      integrations.push({
-        provider: intProvider,
-        is_active: true,
-        connected_at: null,
-        sync_email: tok.email ?? null,
-        last_synced_at: tok.last_synced_at ?? null,
-        scopes: tok.scopes ?? null,
-      });
-      coveredProviders.add(intProvider);
-    }
+      return {
+        provider: uiProvider,
+        is_active: hasToken,
+        sync_email: row.email ?? null,
+        last_synced_at: row.last_synced_at ?? null,
+        scopes: row.scopes ?? null,
+      };
+    });
 
     return NextResponse.json({ integrations });
   } catch (err: unknown) {

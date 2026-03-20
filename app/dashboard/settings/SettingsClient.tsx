@@ -47,8 +47,7 @@ export default function SettingsClient() {
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
 
-  const microsoftNeedsReconnect = microsoft?.is_active && microsoft.scopes && !microsoft.scopes.includes('Files.Read');
-  const googleNeedsReconnect = google?.is_active && google.scopes && !google.scopes.includes('drive');
+  // Scope checks removed — no Reconnect button in the UI.
 
   const handleSignOut = async () => {
     try {
@@ -135,10 +134,10 @@ export default function SettingsClient() {
           </div>
           {google?.is_active ? (
             <button
-              onClick={() => { window.location.href = '/api/google/connect'; }}
-              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors"
+              onClick={() => fetch('/api/google/disconnect', { method: 'POST' }).then(() => window.location.reload())}
+              className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
             >
-              Reconnect
+              Disconnect
             </button>
           ) : (
             <button
@@ -150,9 +149,6 @@ export default function SettingsClient() {
           )}
         </div>
 
-        {googleNeedsReconnect && (
-          <p className="mt-1.5 text-xs text-amber-400 px-1">Reconnect Google to enable document sync.</p>
-        )}
 
         <div className="mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -165,20 +161,12 @@ export default function SettingsClient() {
             </div>
           </div>
           {microsoft?.is_active ? (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => { window.location.href = '/api/microsoft/connect'; }}
-                className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors"
-              >
-                Reconnect
-              </button>
-              <button
-                onClick={() => fetch('/api/microsoft/disconnect', { method: 'POST' }).then(() => window.location.reload())}
-                className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-              >
-                Disconnect
-              </button>
-            </div>
+            <button
+              onClick={() => fetch('/api/microsoft/disconnect', { method: 'POST' }).then(() => window.location.reload())}
+              className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              Disconnect
+            </button>
           ) : (
             <button
               onClick={() => { window.location.href = '/api/microsoft/connect'; }}
@@ -189,9 +177,6 @@ export default function SettingsClient() {
           )}
         </div>
 
-        {microsoftNeedsReconnect && (
-          <p className="mt-1.5 text-xs text-amber-400 px-1">Reconnect Microsoft to enable document sync.</p>
-        )}
 
         {/* Subscription */}
         <h2 className="text-lg font-semibold text-white mt-8">Subscription</h2>
