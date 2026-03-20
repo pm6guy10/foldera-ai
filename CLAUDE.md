@@ -1104,3 +1104,32 @@ Removed: `make_decision`, `research`, `decision_frame`, `research_brief` as user
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-23 (commitment table purge)
+
+- **MODE:** OPS
+
+### Files changed
+- `supabase/migrations/20260323000001_suppress_stale_commitments.sql` — NEW. One-time data cleanup: suppress pre-quality-filter commitments for owner account.
+
+### What was done
+Queried `tkg_commitments` for user `e40b7cd8`. Found 714 total / 706 active.
+Applied suppression strategy:
+- KEEP: created after 2026-03-19 (post quality-filter deploy) → 87 rows kept
+- KEEP: referenced by a `tkg_actions` execution_result → 0 found
+- SUPPRESS: everything else → 619 rows set `suppressed_at = now()`, `suppressed_reason = 'bulk_purge_pre_quality_filter'`
+
+### Before / after
+| | Before | After |
+|---|---|---|
+| Total | 714 | 714 |
+| Active (suppressed_at IS NULL) | 706 | 87 |
+| Suppressed | 8 | 627 |
+
+SQL applied live via Supabase MCP. Migration file added for documentation.
+No code changes. No new tables. Rows not deleted.
+
+### Supabase / migrations
+- `20260323000001_suppress_stale_commitments.sql` — applied live during session
