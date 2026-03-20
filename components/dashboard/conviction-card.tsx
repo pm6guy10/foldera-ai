@@ -147,12 +147,9 @@ export default function ConvictionCard({
               <p className="text-zinc-400 text-sm leading-relaxed mb-5">{cleanReason}</p>
             )}
 
-            {/* Artifact preview */}
-            {action.artifact && (
-              <ArtifactPreview artifact={action.artifact as ConvictionArtifact} />
-            )}
-            {!action.artifact && action.executionResult && (action.executionResult as any).artifact && (
-              <ArtifactPreview artifact={(action.executionResult as any).artifact as ConvictionArtifact} />
+            {/* Artifact preview — artifact is extracted from execution_result by the API */}
+            {(action.artifact ?? (action.executionResult as any)?.artifact) && (
+              <ArtifactPreview artifact={(action.artifact ?? (action.executionResult as any).artifact) as ConvictionArtifact} />
             )}
 
             {/* Error */}
