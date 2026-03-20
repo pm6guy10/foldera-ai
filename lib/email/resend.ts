@@ -163,7 +163,7 @@ export async function sendDailyDirective({
 </html>`;
 
     return getResend().emails.send({
-      from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <onboarding@resend.dev>',
+      from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
       to,
       subject: nothingSubject,
       html,
@@ -219,7 +219,7 @@ export async function sendDailyDirective({
 </html>`;
 
   return getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <onboarding@resend.dev>',
+    from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
     to,
     subject: emailSubject,
     html,
