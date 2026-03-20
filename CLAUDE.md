@@ -863,3 +863,38 @@ Compound `send_message` winners from the scorer produced valid high-scoring cand
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-21 (nightly orchestrator + signal processing fix)
+
+- **MODE:** AUDIT
+- **Commits:** `8992e0c` (nightly report), `ec50ccb` (signal processor fix), `8a44696` (backlog update)
+
+### Job 1 — Orchestrator Report
+- **Microsoft sync:** OK — 76 mail + 17 calendar signals synced
+- **Signal processing:** PARTIAL — 30 processed, 156 stalled (JSON parse error in LLM response)
+- **Queue cleanup:** Clean — no stale pending_approval rows
+- **Daily brief generation:** NO-SEND — `make_decision` winner (score 0.55) redirected to document, placeholder validation blocked. Same AB1 pattern (8+ consecutive runs).
+- **Daily send:** SKIPPED — no valid directive
+- **Build:** PASS
+- **7-day stats:** 92 actions, 0 approved, 90 skipped, 2 executed (0% approval rate)
+
+### Job 2 — Backlog Fix (AB6)
+- **Root cause:** `processBatch()` in `signal-processor.ts` returned early on JSON parse error with `signals_processed: 0`, leaving signals unprocessed. On next call, same signals fetched and failed again — infinite stall.
+- **Fix:** Two changes in `lib/signals/signal-processor.ts`:
+  1. Try extracting JSON array portion from LLM response when full parse fails (handles trailing text after valid JSON)
+  2. If parse still fails, mark all batch signals as processed with empty extractions instead of leaving them stuck
+
+### Files changed
+- `NIGHTLY_REPORT.md` — March 21 report
+- `AUTOMATION_BACKLOG.md` — Updated AB1-AB4 evidence, added and closed AB6
+- `lib/signals/signal-processor.ts` — JSON parse error isolation (27 insertions, 1 deletion)
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx vitest run` — 36 passed, 16 failed (pre-existing ENCRYPTION_KEY failures)
+- No new test failures introduced
+
+### Supabase / migrations
+- No new migrations
