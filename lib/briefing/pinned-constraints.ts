@@ -86,6 +86,7 @@ const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
     'MAS3 / state-government path is the primary lane.',
     'Foldera is overflow energy only during this window and cannot become the main directive.',
     'Never propose consulting, fractional work, revenue bridges, Mercor outreach, or client-acquisition fallback plans.',
+    'The Functional Program Analyst 3 (HCBM Contracts Analyst) position has been explicitly rejected. Never generate directives about FPA3, HCBM, or that application.',
     'Do not reopen locked decisions like MAS3 vs Foldera, MAS3 vs backup applications, or other already-closed priority calls.',
     'Decision directives must lead with the recommendation, not ask whether to choose between options.',
     'If no directive obeys these constraints, fail validation and send nothing.',
@@ -100,6 +101,11 @@ const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
   suppressReflectivePatterns: true,
   candidatePatterns: [
     ...STALE_CONSULTING_ERA_PATTERNS,
+    {
+      code: 'fpa3_rejected',
+      message: 'FPA3 / Functional Program Analyst 3 / HCBM Contracts Analyst position was explicitly rejected by the user',
+      pattern: /\b(functional program analyst\s*3|fpa\s*3|hcbm\s*contracts?\s*analyst)\b/i,
+    },
     {
       code: 'consulting_bridge',
       message: 'consulting and revenue-bridge directives are forbidden in the MAS3 window',
@@ -128,6 +134,11 @@ const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
   ],
   directivePatterns: [
     ...STALE_CONSULTING_ERA_PATTERNS,
+    {
+      code: 'fpa3_rejected',
+      message: 'directive references FPA3 / Functional Program Analyst 3, a position the user explicitly rejected',
+      pattern: /\b(functional program analyst\s*3|fpa\s*3|hcbm\s*contracts?\s*analyst)\b/i,
+    },
     {
       code: 'consulting_bridge',
       message: 'directive proposes a forbidden consulting or revenue-bridge path',
