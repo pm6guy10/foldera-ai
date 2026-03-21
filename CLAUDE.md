@@ -45,12 +45,12 @@ Optional recovery variable:
 
 ## Cron Schedule
 
-Vercel Hobby allows max 2 cron jobs. All sync + generate + send is consolidated into `/api/cron/trigger`.
+Vercel Free allows max 2 cron jobs. The full nightly pipeline is consolidated into `/api/cron/nightly-ops`.
 
-- `/api/cron/trigger` — `50 13 * * *` (`13:50 UTC`, `6:50 AM` Pacific) — runs sync-microsoft, sync-google, daily-generate, daily-send sequentially.
+- `/api/cron/nightly-ops` — `0 11 * * *` (`11:00 UTC`, `4:00 AM` Pacific) — runs sync-microsoft, process-unprocessed-signals (up to 3 rounds of 50), passive rejection, daily-brief sequentially. All users.
 - `/api/cron/health-check` — `0 15 * * *` (`15:00 UTC`, `8:00 AM` Pacific) — checks tokens, DB, last directive age; sends alert email if anything fails.
 - `vercel.json` is the current source of truth.
-- The individual routes (`daily-generate`, `daily-send`, `sync-google`, `sync-microsoft`) still exist and work with CRON_SECRET auth but are not registered as Vercel crons.
+- The individual routes (`trigger`, `daily-generate`, `daily-send`, `sync-google`, `sync-microsoft`, `process-unprocessed-signals`, `daily-brief`) still exist and work with CRON_SECRET auth but are not registered as Vercel crons.
 
 ## Current Status And Build Priorities
 
@@ -1257,3 +1257,35 @@ Old broken score for the same S5 candidate: 0.085. Threshold remains at 2.0 — 
 
 ### Supabase / migrations
 - No new migration file (purge applied live via SQL, same as March 18)
+
+---
+
+## Session Log — 2026-03-24 (nightly-ops cron route)
+
+- **MODE:** AUDIT
+
+### Files created
+- `app/api/cron/nightly-ops/route.ts` — Nightly orchestrator route. Runs 4 stages in sequence:
+  1. Microsoft sync (all users via `getAllUsersWithProvider`)
+  2. Signal processing (up to 3 rounds of 50, all users via `listUsersWithUnprocessedSignals`)
+  3. Passive rejection (auto-skip stale pending_approval > 24h)
+  4. Daily brief (generate + send via `runDailyBrief`)
+  Returns JSON summary with per-stage results, duration, and overall ok status.
+  Structured JSON logging for each stage (Vercel-friendly).
+
+### Files changed
+- `vercel.json` — Replaced `/api/cron/trigger` (0 12) with `/api/cron/nightly-ops` (0 11). Free plan max 2 crons; nightly-ops is a superset of trigger (adds signal processing rounds). Health-check unchanged.
+- `CLAUDE.md` — Updated Cron Schedule section, session log appended.
+
+### Multi-user verification
+- `stageSyncMicrosoft()`: `getAllUsersWithProvider('microsoft')` — loops all users
+- `stageProcessSignals()`: `listUsersWithUnprocessedSignals({})` — loops all users
+- `autoSkipStaleApprovals()`: operates on all users (no user filter)
+- `runDailyBrief()`: processes all eligible users
+
+### Verified working
+- `npm run build` — 0 errors
+- Route reachable at `/api/cron/nightly-ops` (GET/POST, CRON_SECRET auth)
+
+### Supabase / migrations
+- No new migrations
