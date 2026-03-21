@@ -263,7 +263,7 @@ export async function researchWinner(
       artifact_instructions?: string;
     };
     try {
-      const cleaned = synthesisRaw.replace(/```json\n?|\n?```/g, '').trim();
+      const cleaned = synthesisRaw.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
       synthesisResult = JSON.parse(cleaned);
     } catch {
       logStructuredEvent({
@@ -356,7 +356,7 @@ export async function researchWinner(
           .join('');
 
         try {
-          const cleaned = enrichmentRaw.replace(/```json\n?|\n?```/g, '').trim();
+          const cleaned = enrichmentRaw.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
           const enrichmentResult = JSON.parse(cleaned) as { external_context?: string | null };
           if (typeof enrichmentResult.external_context === 'string' && enrichmentResult.external_context.length > 0) {
             // System introspection check on external context too

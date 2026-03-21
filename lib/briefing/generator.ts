@@ -917,8 +917,25 @@ function artifactTypeToActionType(artifactType: ValidArtifactType): ActionType {
   }
 }
 
+function extractJsonFromResponse(raw: string): string {
+  // Strategy 1: Strip markdown fences (case-insensitive, with optional language tag)
+  let cleaned = raw.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
+
+  // Strategy 2: If the result doesn't start with '{', try to find the JSON object
+  if (!cleaned.startsWith('{')) {
+    // Look for the first '{' and last '}' to extract the JSON object
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+    }
+  }
+
+  return cleaned;
+}
+
 function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | null {
-  const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
+  const cleaned = extractJsonFromResponse(raw);
   const parsed = JSON.parse(cleaned) as Record<string, unknown>;
   const nestedArtifact = parsed.artifact && typeof parsed.artifact === 'object'
     ? (parsed.artifact as Record<string, unknown>)
@@ -1350,10 +1367,31 @@ async function generatePayload(
       .join('');
 
     let parsed: GeneratedDirectivePayload | null = null;
+    let parseError: string | null = null;
     try {
       parsed = parseGeneratedPayload(raw);
-    } catch {
+    } catch (e) {
+      parseError = e instanceof Error ? e.message : String(e);
       parsed = null;
+    }
+
+    // Log raw LLM response for diagnosability (truncated to avoid leaking full content)
+    if (!parsed || parseError) {
+      logStructuredEvent({
+        event: 'generation_raw_response',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'parse_failed',
+        details: {
+          scope: 'generator',
+          attempt,
+          parseError,
+          rawResponseLength: raw.length,
+          rawResponsePrefix: raw.slice(0, 500),
+          rawResponseSuffix: raw.length > 500 ? raw.slice(-200) : undefined,
+        },
+      });
     }
 
     const issues = validateGeneratedArtifact(parsed, ctx);
@@ -1373,7 +1411,10 @@ async function generatePayload(
         details: { scope: 'generator', issues },
       });
 
-      attempts.push({ role: 'assistant', content: raw });
+      // For the retry, feed back only the extracted JSON (if parseable) to avoid
+      // reinforcing preamble/fence patterns from the first attempt.
+      const assistantContent = parsed ? JSON.stringify(parsed) : raw;
+      attempts.push({ role: 'assistant', content: assistantContent });
       attempts.push({
         role: 'user',
         content: `Validation failed. Fix these issues and return JSON only.

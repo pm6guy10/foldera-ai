@@ -453,7 +453,7 @@ async function processBatch(
   const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
   let extractions: SignalExtraction[] = [];
   try {
-    const cleaned = rawText.replace(/```json\n?|\n?```/g, '').trim();
+    const cleaned = rawText.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
     // Try full parse first; if it fails, extract just the JSON array portion
     try {
       extractions = JSON.parse(cleaned);

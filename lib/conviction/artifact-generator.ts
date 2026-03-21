@@ -507,7 +507,15 @@ export async function generateArtifact(
     const raw = textBlocks.map(b => b.text).join('');
 
     // Parse JSON from the response (strip markdown fences if present)
-    const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
+    let cleaned = raw.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
+    // If result doesn't start with '{', extract the JSON object
+    if (!cleaned.startsWith('{')) {
+      const firstBrace = cleaned.indexOf('{');
+      const lastBrace = cleaned.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+      }
+    }
     const parsed = JSON.parse(cleaned) as ConvictionArtifact;
 
     // Validate type matches expected

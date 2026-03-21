@@ -229,7 +229,7 @@ export async function extractFromConversation(
 
   let payload: ExtractionPayload = { decisions: [], outcomes: [], patterns: [], goals: [] };
   try {
-    const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
+    const cleaned = raw.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
     payload = JSON.parse(cleaned);
   } catch {
     console.error('[conversation-extractor] Failed to parse Claude response:', raw.slice(0, 200));

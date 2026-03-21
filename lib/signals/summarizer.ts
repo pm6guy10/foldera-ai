@@ -258,7 +258,7 @@ Output JSON:
     });
 
     const raw = response.content[0].type === 'text' ? response.content[0].text : '';
-    const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
+    const cleaned = raw.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
     const parsed = JSON.parse(cleaned);
 
     return {
