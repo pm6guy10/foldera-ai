@@ -1161,3 +1161,35 @@ No code changes. No new tables. Rows not deleted.
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-23 (scorer rate floor emergency fix)
+
+- **MODE:** AUDIT
+- **Commit:** `4d88228`
+
+### Root cause
+Pre-rewrite generator actions (before `e4406d7`) were all correctly skipped by the user but still counted in the behavioral approval rate. With make_decision at 1.8% and send_message at 10.5%, the Gemini scorer multiplied every candidate by ~0.02–0.10, producing top scores of 0.01–0.09 against a threshold of 2.0. No directive could pass. These actions already had `feedback_weight = 0` in the DB but the scorer was not filtering on that column.
+
+### Files changed
+- `lib/briefing/scorer.ts` — Three changes in `computeCandidateScore` and `getApprovalHistory`:
+  1. `getApprovalHistory`: now fetches `feedback_weight` and excludes rows where `feedback_weight = 0` (pre-rewrite noise).
+  2. `computeCandidateScore`: after computing time-weighted blended rate, applies cold-start prior: `effectiveRate = (blended * n + 0.50 * 10) / (n + 10)`. When n < 10, the 0.50 prior dominates.
+  3. `computeCandidateScore`: hard rate floor: `rate = Math.max(rate, 0.25)`. Even 100% skip history can't drop below 0.25.
+- `lib/briefing/__tests__/scorer-benchmark.test.ts` — Added 3 tests: rate floor with 100% skips, rate floor score above zero, cold-start prior with sparse history.
+
+### Score simulation (top 3 candidates, post-fix)
+With all pre-rewrite actions excluded (n=0 post-rewrite), rate defaults to 0.50:
+- S5 U0.6 T0.5 send_message: **2.351** (PASSES)
+- S4 U0.8 T0.5 make_decision: **2.188** (PASSES)
+- S3 U0.9 T0.5 send_message: **1.871** (near threshold)
+Old broken score for the same S5 candidate: 0.085. Threshold remains at 2.0 — no change needed.
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx vitest run scorer-benchmark` — 15/15 passed (12 original + 3 new rate floor tests)
+- No schema changes made
+
+### Supabase / migrations
+- No new migrations
