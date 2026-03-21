@@ -1,3 +1,33 @@
+/**
+ * ┌─────────────────────────────────────────────────────────────────────┐
+ * │ THRESHOLD REFERENCE                                                │
+ * │                                                                    │
+ * │ Two independent scales gate whether a directive is sent:           │
+ * │                                                                    │
+ * │ 1. SCORER EV (lib/briefing/scorer.ts)                              │
+ * │    Scale: 0–~5 (continuous). No production threshold — scorer      │
+ * │    ranks candidates and the top one is selected regardless of      │
+ * │    score. The "2.0" number only exists in the scorer benchmark     │
+ * │    test file (scorer-benchmark.test.ts). A low EV score (< 1.0)   │
+ * │    usually means no candidate is urgent enough to act on today.    │
+ * │                                                                    │
+ * │ 2. GENERATOR CONFIDENCE (lib/briefing/generator.ts)                │
+ * │    Scale: 0–100 (LLM self-rated). Two gates:                      │
+ * │    - DIRECTIVE_CONFIDENCE_THRESHOLD = 45 in generator.ts           │
+ * │      Rejects at generation time if the LLM rates its own output   │
+ * │      below 45/100.                                                 │
+ * │    - CONFIDENCE_THRESHOLD = 70 in this file (line ~92)             │
+ * │      Used in reconcilePendingApprovalQueue to auto-skip stale     │
+ * │      actions with confidence < 70 before re-generation.            │
+ * │                                                                    │
+ * │ When debugging "no-send", check BOTH:                              │
+ * │   scorer_ev   = top candidate score from scorer (EV scale)         │
+ * │   confidence  = LLM self-rated confidence (0–100 scale)            │
+ * │ They are independent — a high EV candidate can still fail the      │
+ * │ confidence gate if the LLM is uncertain about its own output.      │
+ * └─────────────────────────────────────────────────────────────────────┘
+ */
+
 import { createServerClient } from '@/lib/db/client';
 import {
   buildDirectiveExecutionResult,
@@ -89,8 +119,21 @@ export interface SafeDailyBriefStageStatus {
   summary: string;
 }
 
-const CONFIDENCE_THRESHOLD = 70;
+const CONFIDENCE_THRESHOLD = 70; // LLM self-rated 0-100 scale — see THRESHOLD REFERENCE above
 const DAILY_SIGNAL_BATCH_SIZE = 5;
+
+/** Extract both scorer EV and generator confidence for structured logging. */
+function extractThresholdValues(directive: ConvictionDirective | null): {
+  scorer_ev: number | null;
+  generator_confidence: number | null;
+} {
+  if (!directive) return { scorer_ev: null, generator_confidence: null };
+  const topCandidate = directive.generationLog?.candidateDiscovery?.topCandidates?.[0];
+  return {
+    scorer_ev: typeof topCandidate?.score === 'number' ? topCandidate.score : null,
+    generator_confidence: typeof directive.confidence === 'number' ? directive.confidence : null,
+  };
+}
 const DAILY_SIGNAL_PROCESSING_BUDGET_MS = 20_000;
 
 const SAFE_ERROR_MESSAGES: Record<DailyBriefFailureCode, string> = {
@@ -1031,6 +1074,7 @@ export async function runDailyGenerate(
             action_id: savedNoSend.id,
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
             top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            ...extractThresholdValues(directive),
           },
           success: true,
           userId,
@@ -1072,6 +1116,7 @@ export async function runDailyGenerate(
             action_id: savedNoSend.id,
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
             top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            ...extractThresholdValues(directive),
           },
           success: true,
           userId,
@@ -1122,6 +1167,7 @@ export async function runDailyGenerate(
             action_id: savedNoSend.id,
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
             top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            ...extractThresholdValues(directive),
           },
           success: true,
           userId,
@@ -1171,6 +1217,7 @@ export async function runDailyGenerate(
             action_id: savedNoSend.id,
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
             top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            ...extractThresholdValues(directive),
           },
           success: true,
           userId,
@@ -1254,6 +1301,7 @@ export async function runDailyGenerate(
           artifact_valid: true,
           candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
           top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+          ...extractThresholdValues(directive),
         },
         success: true,
         userId,
@@ -1266,6 +1314,7 @@ export async function runDailyGenerate(
         details: {
           scope: 'daily-generate',
           action_id: saved.id,
+          ...extractThresholdValues(directive),
         },
       });
     } catch (err: unknown) {

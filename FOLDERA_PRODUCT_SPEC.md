@@ -1,7 +1,7 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 21, 2026 by Claude (PM)
-Next Review: Monday March 23, 2026
+Last Updated: March 21, 2026 by Claude Code
+Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
 
@@ -17,10 +17,11 @@ Everything here must be PROVEN before any user sees the product.
 |---|---|---|---|
 | Email sends every morning | BUILT | self-heal defense 5, wait_rationale fallback | 3 consecutive mornings unproven |
 | Slim wait_rationale (one line) | PROVEN | Resend 9f8ed15d, commit 9033644 | — |
-| Real directive email (not just wait_rationale) | BLOCKED | Scorer top candidate 0.87 vs 2.0 threshold | Needs self-optimize OR more urgent goals |
+| Real directive email (not just wait_rationale) | BLOCKED | Scorer top candidate 1.05, blocked by constraint | Needs unblocked candidate or more urgent goals |
 | Cron fires at 4am PT (11:00 UTC) | BUILT | vercel.json 0 11, commit 791a186 | First live fire unproven |
+| Approve/skip buttons in email | FIXED | DB mechanics verified (skip a9d165df, approve 78333ac2). Dashboard had silent error swallowing + auth redirect dropped params. Fixed in this session. | Deploy needed to verify live |
 
-**NEXT MOVE:** Wait for tomorrow 4am cron. Check inbox + Vercel logs. If email arrives, mark 1.1 rows PROVEN. If not, read logs and write fix prompt.
+**NEXT MOVE:** Wait for tomorrow 4am cron. Check inbox + Vercel logs. If email arrives, mark 1.1 rows PROVEN. Click Approve in email to verify full round-trip.
 
 ### 1.2 Self-Healing (immune system)
 
@@ -95,12 +96,13 @@ Only start after Phase 1 is fully PROVEN.
 
 | Item | Status | Evidence |
 |---|---|---|
-| Goals seeded (ESD, MA4, MAS3 onboard) | PROVEN | 3 rows, showing at 0.87 |
-| Top candidate above threshold | NOT ACHIEVED | 0.87 vs 2.0 |
+| Goals seeded (ESD, MA4, MAS3 onboard) | PROVEN | 3 rows, top at 1.05 |
 | Keri Nopens suppression working | PROVEN | Correctly blocked |
 | FPA3 suppression working | PROVEN | Correctly blocked |
 
-**NEXT MOVE:** Self-optimize will fix threshold gap automatically. Manual option: lower threshold to 1.5 as interim.
+**Threshold note:** There are two independent scales. The scorer EV (0–5 continuous) ranks candidates — there is no production EV threshold; the "2.0" only exists in the test benchmark. The generator confidence (0–100, LLM self-rated) has two gates: `DIRECTIVE_CONFIDENCE_THRESHOLD = 45` at generation time and `CONFIDENCE_THRESHOLD = 70` for queue reconciliation. Structured logs now include both `scorer_ev` and `generator_confidence` so debugging is unambiguous.
+
+**NEXT MOVE:** Self-optimize will dynamically adjust thresholds based on approval rates. Manual option: lower CONFIDENCE_THRESHOLD.
 
 ## PHASE 3: GROWTH READY (post-intelligence)
 

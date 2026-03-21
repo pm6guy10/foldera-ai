@@ -32,10 +32,14 @@ export default function DashboardPage() {
   const [flash, setFlash] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status === 'unauthenticated') router.push('/start');
+    if (status === 'unauthenticated') {
+      // Preserve deep-link params through login so email approve/skip links work
+      const search = typeof window !== 'undefined' ? window.location.search : '';
+      router.push(search ? `/login?callbackUrl=${encodeURIComponent(`/dashboard${search}`)}` : '/start');
+    }
   }, [status, router]);
 
-  // Handle email deep-link params
+  // Handle email deep-link params (approve/skip from morning email)
   useEffect(() => {
     if (status !== 'authenticated') return;
     const params = new URLSearchParams(window.location.search);
@@ -48,9 +52,28 @@ export default function DashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action_id: id, decision: deepAction }),
-      }).then(() => {
-        setDone(true);
-      }).catch(() => {});
+      })
+        .then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            const msg = (data as { error?: string }).error ?? 'Could not update that action.';
+            throw new Error(msg);
+          }
+          if (data.status === 'executed' || data.status === 'skipped') {
+            setDone(true);
+            setFlash(
+              deepAction === 'approve'
+                ? 'Done. Foldera executed that.'
+                : 'Skipped. Foldera will adjust.',
+            );
+          } else {
+            throw new Error('Unexpected response from Foldera.');
+          }
+        })
+        .catch((err: unknown) => {
+          setDone(true);
+          setFlash(err instanceof Error ? err.message : 'Could not update that action.');
+        });
     }
   }, [status]);
 
@@ -73,24 +96,36 @@ export default function DashboardPage() {
 
   const handleApprove = async () => {
     if (!action) return;
-    await fetch('/api/conviction/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action_id: action.id, decision: 'approve' }),
-    });
-    setDone(true);
-    setFlash('Done. Foldera executed that.');
+    try {
+      const res = await fetch('/api/conviction/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_id: action.id, decision: 'approve' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Approve failed');
+      setDone(true);
+      setFlash('Done. Foldera executed that.');
+    } catch (err: unknown) {
+      setFlash(err instanceof Error ? err.message : 'Approve failed');
+    }
   };
 
   const handleSkip = async () => {
     if (!action) return;
-    await fetch('/api/conviction/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action_id: action.id, decision: 'skip' }),
-    });
-    setDone(true);
-    setFlash('Skipped. Foldera will adjust.');
+    try {
+      const res = await fetch('/api/conviction/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_id: action.id, decision: 'skip' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Skip failed');
+      setDone(true);
+      setFlash('Skipped. Foldera will adjust.');
+    } catch (err: unknown) {
+      setFlash(err instanceof Error ? err.message : 'Skip failed');
+    }
   };
 
   const artifact = action?.artifact as ArtifactWithDraftedEmail | null | undefined;

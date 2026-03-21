@@ -1,19 +1,22 @@
 'use client';
 
+import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Layers, ArrowRight } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginInner() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   async function handleSignIn(provider: 'google' | 'azure-ad') {
     setLoadingProvider(provider);
-    await signIn(provider, { callbackUrl: '/dashboard' });
+    const cb = searchParams.get('callbackUrl') ?? '/dashboard';
+    await signIn(provider, { callbackUrl: cb });
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#000] text-white flex flex-col antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Nav */}
       <nav className="w-full px-6 py-6 flex items-center justify-between max-w-6xl mx-auto">
         <a href="/" className="flex items-center gap-3 group">
@@ -85,6 +88,14 @@ export default function LoginPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginInner />
+    </Suspense>
   );
 }
 

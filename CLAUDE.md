@@ -1331,3 +1331,42 @@ Old broken score for the same S5 candidate: 0.085. Threshold remains at 2.0 — 
 
 ### Supabase / migrations
 - No new migrations. Test user data: auth.users, user_tokens, user_subscriptions, tkg_entities for `22222222`
+
+---
+
+## Session Log — 2026-03-21 (approve/skip buttons + threshold clarity)
+
+- **MODE:** AUDIT
+
+### FIX 1: Approve/Skip Buttons
+- **Root cause:** Dashboard deep-link handler had silent error swallowing (`.catch(() => {})`) and no HTTP status check (`.then(() => setDone(true))` fires even on 401/403/500). Login page also ignored `callbackUrl` param, so unauthenticated users clicking email links lost their approve/skip params on redirect.
+- **DB mechanics verified:** Skip action `a9d165df` (Brandon) → `status=skipped, feedback_weight=-0.5`. Approve action `78333ac2` (test user) → `status=executed, feedback_weight=1.0, approved_at set`.
+- **Fixes:**
+  - `app/dashboard/page.tsx`: Deep-link handler now checks `res.ok`, parses error messages, shows success/error flash. Button handlers (`handleApprove`/`handleSkip`) now have try/catch with error feedback.
+  - `app/dashboard/page.tsx`: Unauthenticated redirect now preserves URL params via `callbackUrl` to login.
+  - `app/login/page.tsx`: Reads `callbackUrl` from search params instead of hardcoding `/dashboard`. Wrapped in Suspense for `useSearchParams()`.
+
+### FIX 2: Threshold Clarity
+- Added 25-line comment block at top of `lib/cron/daily-brief.ts` explaining the two independent threshold scales (scorer EV 0-5 vs generator confidence 0-100) and that the "2.0" number only exists in the test benchmark.
+- Added `extractThresholdValues()` helper that returns `{ scorer_ev, generator_confidence }` from a directive's generation log.
+- All 4 `no_send_persisted` code paths and the `pending_approval_persisted` success path now include both values in structured logs.
+- The `daily_generate_complete` structured log event now includes both values.
+
+### FIX 3: Spec Update
+- `FOLDERA_PRODUCT_SPEC.md`: Added approve/skip button verification row to 1.1 with evidence. Updated 2.3 scorer quality with threshold explanation (scorer EV has no production threshold; "2.0" is test-only). Corrected top candidate score from 0.87 to 1.05.
+
+### Files changed
+- `app/dashboard/page.tsx` — error handling + auth redirect preservation
+- `app/login/page.tsx` — callbackUrl support + Suspense wrapper
+- `lib/cron/daily-brief.ts` — threshold comment block + dual-value logging
+- `FOLDERA_PRODUCT_SPEC.md` — updated per FIX 3
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx playwright test` — 47 passed, 1 failed (pre-existing landing page clickflow timeout)
+- DB verification: skip and approve mechanics confirmed working for both Brandon and test user
+- Multi-user: all changed code uses `session.user.id` scoping, no hardcoded user data
+
+### Supabase / migrations
+- No new migrations
+- Test data changes: skipped action `a9d165df` (Brandon), executed action `78333ac2` (test user)
