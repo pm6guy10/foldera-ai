@@ -6,7 +6,8 @@ Every session runs this before any work:
 
 1. Run `GIT_EDITOR=true git pull --rebase origin main` before making changes. If the worktree is not clean, resolve that without discarding user changes.
 2. Read `CLAUDE.md` fully.
-3. Read `FOLDERA_MASTER_AUDIT.md` for current item statuses.
+3. Read `LESSONS_LEARNED.md` before every session. Every rule is enforced.
+4. Read `FOLDERA_MASTER_AUDIT.md` for current item statuses.
 4. Read every file you plan to modify.
 5. Run `git log --oneline -10`.
 6. Trace the relevant data path before coding: source -> transform -> persistence -> reader.
