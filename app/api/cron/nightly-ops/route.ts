@@ -23,6 +23,7 @@ import {
   runDailyBrief,
   toSafeDailyBriefStageStatus,
 } from '@/lib/cron/daily-brief';
+import { runSelfHeal } from '@/lib/cron/self-heal';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min
@@ -182,6 +183,26 @@ async function handler(request: NextRequest) {
   } catch (err: any) {
     stages.daily_brief = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'daily_brief', error: err.message }));
+  }
+
+  // Stage 5: Self-heal (immune system — final phase)
+  try {
+    const healResult = await runSelfHeal();
+    stages.self_heal = {
+      ok: healResult.ok,
+      alert_sent: healResult.alert_sent,
+      duration_ms: healResult.duration_ms,
+      defenses: healResult.defenses.map((d) => ({ defense: d.defense, ok: d.ok })),
+    };
+    console.log(JSON.stringify({
+      event: 'nightly_ops_stage',
+      stage: 'self_heal',
+      ok: healResult.ok,
+      alert_sent: healResult.alert_sent,
+    }));
+  } catch (err: any) {
+    stages.self_heal = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'self_heal', error: err.message }));
   }
 
   const durationMs = Date.now() - startTime;

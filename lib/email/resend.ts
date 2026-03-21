@@ -55,46 +55,47 @@ function renderArtifactHtml(artifact: ConvictionArtifact | null | undefined): st
   if (artifact.type === 'email') {
     return `
       ${renderField('Finished Artifact', 'Draft Email')}
-      ${renderField('To', artifact.to)}
-      ${renderField('Subject', artifact.subject)}
-      ${renderField('Body', clipText(artifact.body, 2400))}
+      ${artifact.to ? renderField('To', artifact.to) : ''}
+      ${artifact.subject ? renderField('Subject', artifact.subject) : ''}
+      ${artifact.body ? renderField('Body', clipText(artifact.body, 2400)) : ''}
     `;
   }
 
   if (artifact.type === 'document') {
     return `
       ${renderField('Finished Artifact', 'Document')}
-      ${renderField('Title', artifact.title)}
-      ${renderField('Content', clipText(artifact.content, 2400))}
+      ${artifact.title ? renderField('Title', artifact.title) : ''}
+      ${artifact.content ? renderField('Content', clipText(artifact.content, 2400)) : ''}
     `;
   }
 
   if (artifact.type === 'calendar_event') {
     return `
       ${renderField('Finished Artifact', 'Calendar Hold')}
-      ${renderField('Title', artifact.title)}
-      ${renderField('Time', `${artifact.start} to ${artifact.end}`)}
+      ${artifact.title ? renderField('Title', artifact.title) : ''}
+      ${artifact.start && artifact.end ? renderField('Time', `${artifact.start} to ${artifact.end}`) : ''}
       ${artifact.description ? renderField('Details', clipText(artifact.description, 1000)) : ''}
     `;
   }
 
   if (artifact.type === 'research_brief') {
-    const sources = artifact.sources.slice(0, 5).map((source) => `• ${source}`).join('\n');
+    const sources = (artifact.sources ?? []).slice(0, 5).map((source) => `• ${source}`).join('\n');
     return `
       ${renderField('Finished Artifact', 'Research Brief')}
-      ${renderField('Findings', clipText(artifact.findings, 2200))}
-      ${renderField('Recommended Action', clipText(artifact.recommended_action, 600))}
+      ${artifact.findings ? renderField('Findings', clipText(artifact.findings, 2200)) : ''}
+      ${artifact.recommended_action ? renderField('Recommended Action', clipText(artifact.recommended_action, 600)) : ''}
       ${sources ? renderField('Sources', sources) : ''}
     `;
   }
 
   if (artifact.type === 'decision_frame') {
-    const recommendation = artifact.recommendation || artifact.options[0]?.option || 'No recommendation captured.';
-    const options = artifact.options
+    const opts = artifact.options ?? [];
+    const recommendation = artifact.recommendation || opts[0]?.option || 'No recommendation captured.';
+    const options = opts
       .slice(0, 2)
       .map((option) => {
         const weight = typeof option.weight === 'number' ? `${Math.round(option.weight * 100)}%` : '';
-        return `${option.option}${weight ? ` (${weight})` : ''}${option.rationale ? ` — ${option.rationale}` : ''}`;
+        return `${option.option ?? ''}${weight ? ` (${weight})` : ''}${option.rationale ? ` — ${option.rationale}` : ''}`;
       })
       .join('\n');
 

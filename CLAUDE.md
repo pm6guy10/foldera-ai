@@ -103,6 +103,8 @@ For any session that changes user-facing code, this gate is mandatory before pus
 
 For non-user-facing changes, `npm run build` must still pass before commit.
 
+Every session that touches the pipeline must re-trigger production after deploying, query the database for the expected outcome, and show the receipt (email delivered, action row created, correct status). A build pass alone is not sufficient verification. "Done" without live proof is not done.
+
 ## Multi-User Verification Rule
 
 - A task is not done if it only works for Brandon, the owner account, or `INGEST_USER_ID`.
@@ -1289,3 +1291,40 @@ Old broken score for the same S5 candidate: 0.085. Threshold remains at 2.0 — 
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-24 (immune system: gates 1-2, self-heal, always-send)
+
+- **MODE:** AUDIT
+
+### Gate 1: Email delivery — PASS
+- Test directive `6bf4160d` created, triggered daily-send
+- Resend ID: `ef5f37b3` — email delivered to b.kapp1010@gmail.com
+- Wait_rationale email also delivered: Resend ID `2c573433`
+
+### Gate 2: Second user — PASS
+- Test user `22222222` created in auth.users + user_tokens + user_subscriptions + tkg_entities
+- Pipeline: user got own directive row `8537c9f5` (separate from Brandon's `e5ed3b8c`)
+
+### Wait_rationale always-send — LIVE
+- `persistNoSendOutcome`: status skipped→pending_approval, do_nothing + wait_rationale artifact
+- Constraint-safe: uses `do_nothing` action_type (in DB check constraint)
+
+### Self-heal immune system — 6 defenses
+- `lib/cron/self-heal.ts`: token watchdog, commitment ceiling (150), signal backlog drain (dead_key), queue hygiene (24h skip), delivery guarantee, health alert
+- Wired as final phase of nightly-ops
+
+### Files created
+- `lib/cron/self-heal.ts`
+
+### Files changed
+- `lib/cron/daily-brief.ts`, `lib/email/resend.ts`, `app/api/cron/nightly-ops/route.ts`, `ACCEPTANCE_GATE.md`, `CLAUDE.md`, `AGENTS.md`
+
+### Commits
+- `a346f47` — wait_rationale always-send
+- `4d4d793` — constraint-safe do_nothing
+- (this commit) — self-heal + null guards + docs
+
+### Supabase / migrations
+- No new migrations. Test user data: auth.users, user_tokens, user_subscriptions, tkg_entities for `22222222`

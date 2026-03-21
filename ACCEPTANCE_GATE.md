@@ -2,29 +2,43 @@
 
 Product contract checklist. Every directive must pass before it ships.
 
+## Permanent Success Criteria
+
+The system passes if and only if ALL of these are true every morning with zero human intervention:
+
+1. **DELIVERY**: Email arrives by 7am PT. Every morning. `wait_rationale` counts. Silence fails.
+2. **SELF-HEALING**: Tokens, signals, commitments, queue — detected and resolved automatically via `lib/cron/self-heal.ts`.
+3. **SELF-LEARNING**: Skips and approvals change future output. No manual teaching.
+4. **SELF-OPTIMIZING**: Threshold adjusts based on approval rates. System finds its own bar.
+5. **MULTI-USER**: Everything works for someone who is not Brandon.
+
+Failure on any criterion = the system is broken. Not "needs improvement." Broken.
+
 ## Core Contract
 
 - [ ] Exactly one directive per email
 - [ ] Exactly one finished artifact attached
 - [ ] If the user has to do work after approving, the feature is broken
-- [ ] Confidence below threshold is never sent
-- [ ] A correct no-send is better than a bad directive
-- [ ] Silence with a specific reason is better than fake usefulness
+- [ ] Confidence below threshold: send `wait_rationale` (not silence)
+- [ ] A correct "nothing today" with rationale is better than a bad directive
+- [ ] The morning email ALWAYS arrives. Silence is a bug.
 
 ## Valid User-Facing Artifact Types
 
 1. **send_message**: real recipient email in `to` (or empty if unavailable), non-empty `subject`, non-empty `body` ready to send as-is
 2. **write_document**: `document_purpose` (brief|plan|summary|proposal|checklist), `target_reader`, `title`, non-empty `content` — finished artifact, not notes
 3. **schedule_block**: `title`, `reason`, `start` or scheduling target, `duration_minutes`
-4. **wait_rationale**: `why_wait`, `tripwire_date`, `trigger_condition`
+4. **wait_rationale**: `context` (what was evaluated), `evidence` (why nothing was sent), optional `tripwires` (what unblocks future sends)
 5. **do_nothing**: `exact_reason`, `blocked_by`
 
-## Removed Types (not valid as user-facing output)
+## Self-Heal Defenses (lib/cron/self-heal.ts)
 
-- **make_decision** — may remain as internal candidate class; generator converts to send_message, write_document, or silence
-- **research** — may remain as internal candidate class; generator converts to write_document or send_message
-- **decision_frame** — removed
-- **research_brief** — removed
+1. **Token Watchdog**: auto-refresh tokens expiring within 6 hours of cron. Alert user on failure.
+2. **Commitment Ceiling**: auto-suppress oldest beyond 150 per user.
+3. **Signal Backlog Drain**: process stale signals, flag undecryptable as dead_key.
+4. **Queue Hygiene**: auto-skip stale pending_approval > 24h, abandon executed > 7d with no interaction.
+5. **Delivery Guarantee**: wait_rationale on no-send (implemented in daily-brief.ts).
+6. **Health Alert**: alert email to brief@foldera.ai if any defense fails.
 
 ## Hard Failures
 
@@ -43,7 +57,7 @@ A candidate is generation-eligible only if:
 - conflicts_with_locked_constraints = false
 - already_acted_recently = false
 
-If no candidate is eligible, emit do_nothing deterministically (no LLM call).
+If no candidate is eligible, emit wait_rationale deterministically (no LLM call).
 
 ## User Experience
 

@@ -47,6 +47,12 @@ This is not optional. No push happens without a session log entry.
 - If tests fail, fix them before push. If they cannot be fixed in-session, flag the issue in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW` and report it.
 - Never leave unresolved failures hidden behind a success claim.
 
+## Pipeline Verification
+
+- Every session that touches the pipeline must re-trigger production after deploying, query the database for the expected outcome, and show the receipt (email delivered, action row created, correct status).
+- A build pass alone is not sufficient verification. "Done" without a production receipt is not done.
+- No session closes without confirming the acceptance gate passes against production.
+
 ## Scope Discipline
 
 - One task per session.
