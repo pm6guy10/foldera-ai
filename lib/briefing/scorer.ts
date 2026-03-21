@@ -565,8 +565,16 @@ export function computeCandidateScore(args: {
       if (action.status === 'approved') wSuccess += weight;
     }
     const computed = wTotal > 0 ? (wSuccess / wTotal) : 0.5;
-    rate = n < 5 ? 0.5 : n < 15 ? (((n - 5) / 10) * computed) + ((15 - n) / 10 * 0.5) : computed;
+    const blended = n < 5 ? 0.5 : n < 15 ? (((n - 5) / 10) * computed) + ((15 - n) / 10 * 0.5) : computed;
+
+    // Cold-start prior: blend with 0.50 prior weighted by 10 virtual observations.
+    // When n < 10, the prior dominates; as n grows, actual data takes over.
+    rate = (blended * n + 0.50 * 10) / (n + 10);
   }
+
+  // Rate floor: even with 100% skip history, rate never drops below 0.25.
+  // This prevents pre-rewrite garbage skips from permanently burying action types.
+  rate = Math.max(rate, 0.25);
 
   const nov = args.daysSinceLastSurface === 1 ? 0.55 : args.daysSinceLastSurface === 2 ? 0.80 : 1.0;
   const sup = args.entityPenalty < 0 ? Math.exp(args.entityPenalty / 2.0) : 1.0;
@@ -607,21 +615,25 @@ async function getApprovalHistory(userId: string): Promise<ApprovalAction[]> {
   try {
     const { data } = await supabase
       .from('tkg_actions')
-      .select('action_type, status, generated_at')
+      .select('action_type, status, generated_at, feedback_weight')
       .eq('user_id', userId)
       .gte('generated_at', thirtyDaysAgo)
       .in('status', ['approved', 'executed', 'skipped', 'draft_rejected', 'rejected'])
       .order('generated_at', { ascending: false })
       .limit(200);
 
-    return (data ?? []).map(a => ({
-      action_type: a.action_type as string,
-      status: ((a.status as string) === 'executed' ? 'approved'
-        : (a.status as string) === 'draft_rejected' ? 'rejected'
-        : a.status) as 'approved' | 'skipped' | 'rejected',
-      created_at: a.generated_at as string,
-      commitment_id: null, // tkg_actions has no commitment_id column
-    }));
+    // Exclude pre-rewrite noise: actions with feedback_weight = 0 were from
+    // the old generator era and should not poison the behavioral rate.
+    return (data ?? [])
+      .filter(a => (a.feedback_weight as number ?? 1) !== 0)
+      .map(a => ({
+        action_type: a.action_type as string,
+        status: ((a.status as string) === 'executed' ? 'approved'
+          : (a.status as string) === 'draft_rejected' ? 'rejected'
+          : a.status) as 'approved' | 'skipped' | 'rejected',
+        created_at: a.generated_at as string,
+        commitment_id: null, // tkg_actions has no commitment_id column
+      }));
   } catch {
     return [];
   }

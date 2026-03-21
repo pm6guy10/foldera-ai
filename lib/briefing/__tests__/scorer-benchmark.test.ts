@@ -213,4 +213,49 @@ describe('computeCandidateScore — Gemini benchmark', () => {
     });
     expect(breakdown.novelty_multiplier).toBe(0.80);
   });
+
+  it('rate floor: 100% skip history still yields rate >= 0.25', () => {
+    const { breakdown } = computeCandidateScore({
+      stakes: 5,
+      urgency: 0.9,
+      tractability: 0.9,
+      actionType: 'make_decision',
+      entityPenalty: 0,
+      daysSinceLastSurface: 0,
+      approvalHistory: buildHistory('make_decision', 50, 0),
+      now,
+    });
+    expect(breakdown.behavioral_rate).toBeGreaterThanOrEqual(0.25);
+  });
+
+  it('rate floor: 0% approval with high stakes still scores above zero', () => {
+    const { score } = computeCandidateScore({
+      stakes: 5,
+      urgency: 0.9,
+      tractability: 0.9,
+      actionType: 'make_decision',
+      entityPenalty: 0,
+      daysSinceLastSurface: 0,
+      approvalHistory: buildHistory('make_decision', 50, 0),
+      now,
+    });
+    // With rate floor 0.25, S5 U0.9 T0.9 should still produce a meaningful score
+    expect(score).toBeGreaterThan(1.0);
+  });
+
+  it('cold-start prior: sparse history (n=3) stays near 0.5', () => {
+    const { breakdown } = computeCandidateScore({
+      stakes: 3,
+      urgency: 0.5,
+      tractability: 0.5,
+      actionType: 'research',
+      entityPenalty: 0,
+      daysSinceLastSurface: 0,
+      approvalHistory: buildHistory('research', 3, 0),
+      now,
+    });
+    // n=3 < 5 → blended = 0.5 (cold start), then prior: (0.5*3 + 0.5*10)/(3+10) = 0.5
+    expect(breakdown.behavioral_rate).toBeGreaterThanOrEqual(0.45);
+    expect(breakdown.behavioral_rate).toBeLessThanOrEqual(0.55);
+  });
 });
