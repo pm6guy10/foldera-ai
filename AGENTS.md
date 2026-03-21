@@ -5,6 +5,7 @@
 - Codex is the autonomous executor for this repo.
 - Read `CLAUDE.md` fully at the start of every session and follow it as the operational source of truth.
 - Read `LESSONS_LEARNED.md`. Every rule is enforced. No exceptions.
+- Read `FOLDERA_PRODUCT_SPEC.md`. Every fix must map to a spec item. Fixes outside the spec require explicit approval. Update the spec before closing.
 - Read every file you plan to modify, inspect recent history, and trace the relevant data path before making changes.
 - Complete the requested task end-to-end without broadening scope.
 
