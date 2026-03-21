@@ -106,10 +106,12 @@ function renderArtifactHtml(artifact: ConvictionArtifact | null | undefined): st
   }
 
   const tripwires = artifact.tripwires?.slice(0, 3).map((tripwire) => `• ${tripwire}`).join('\n') ?? '';
+  const context = typeof artifact.context === 'string' ? artifact.context : 'No details available.';
+  const evidence = typeof artifact.evidence === 'string' ? artifact.evidence : '';
   return `
     ${renderField('Finished Artifact', 'Wait Rationale')}
-    ${renderField('Why Waiting Wins', clipText(artifact.context, 1200))}
-    ${renderField('Evidence', clipText(artifact.evidence, 800))}
+    ${renderField('Why Waiting Wins', clipText(context, 1200))}
+    ${evidence ? renderField('Evidence', clipText(evidence, 800)) : ''}
     ${tripwires ? renderField('Tripwires', tripwires) : ''}
   `;
 }

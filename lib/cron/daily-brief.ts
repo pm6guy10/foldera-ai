@@ -273,6 +273,7 @@ function artifactTypeForAction(actionType: string | null | undefined): string | 
     case 'make_decision':
       return 'decision_frame';
     case 'do_nothing':
+    case 'wait_rationale':
       return 'wait_rationale';
     default:
       return null;
@@ -603,6 +604,57 @@ function buildNoSendExecutionResult(
   });
 }
 
+/**
+ * Build a human-readable wait_rationale summary from candidate discovery data.
+ * This gets emailed — the morning email always arrives. Silence is a bug.
+ */
+function buildWaitRationale(
+  directive: ConvictionDirective,
+  reason: string,
+): { directiveText: string; artifact: Record<string, unknown> } {
+  const discovery = directive.generationLog?.candidateDiscovery;
+  const candidateCount = discovery?.candidateCount ?? 0;
+  const topCandidates = discovery?.topCandidates ?? [];
+
+  // Build context: what was evaluated and why nothing was sent
+  const contextParts: string[] = [];
+  if (candidateCount > 0) {
+    contextParts.push(`Foldera evaluated ${candidateCount} candidates today.`);
+  }
+  for (const candidate of topCandidates.slice(0, 3)) {
+    const action = candidate.actionType ?? 'action';
+    const score = typeof candidate.score === 'number' ? candidate.score.toFixed(2) : '?';
+    const goalText = candidate.targetGoal?.text
+      ? ` (goal: ${candidate.targetGoal.text.slice(0, 80)})`
+      : '';
+    const blocked = candidate.decision === 'selected' ? ' [BLOCKED by constraint]' : '';
+    contextParts.push(`• ${action} scored ${score}${goalText}${blocked}`);
+  }
+  if (contextParts.length === 0) {
+    contextParts.push('No actionable candidates were found today.');
+  }
+
+  const context = contextParts.join('\n');
+  const evidence = reason;
+
+  const directiveText = candidateCount > 0
+    ? `Nothing cleared the bar today — ${candidateCount} candidates evaluated, none ready to send.`
+    : 'Nothing cleared the bar today.';
+
+  return {
+    directiveText,
+    artifact: {
+      type: 'wait_rationale',
+      context,
+      evidence,
+      tripwires: topCandidates
+        .filter((c) => c.decision === 'selected')
+        .slice(0, 3)
+        .map((c) => `Unblocked when: constraint on "${c.targetGoal?.text?.slice(0, 60) ?? 'unknown'}" is lifted`),
+    },
+  };
+}
+
 async function persistNoSendOutcome(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
@@ -611,19 +663,26 @@ async function persistNoSendOutcome(
   stage: GenerationRunLog['stage'],
 ): Promise<{ id: string } | null> {
   const executionResult = buildNoSendExecutionResult(directive, reason, stage);
+  const waitRationale = buildWaitRationale(directive, reason);
+
+  // Persist as pending_approval wait_rationale so the send stage emails it.
+  // The morning email always arrives. Silence is a bug.
   const { data, error } = await supabase
     .from('tkg_actions')
     .insert({
       user_id: userId,
-      action_type: 'do_nothing',
-      directive_text: 'No directive sent today.',
+      action_type: 'wait_rationale',
+      directive_text: waitRationale.directiveText,
       reason,
-      status: 'skipped',
-      confidence: 0,
+      status: 'pending_approval',
+      confidence: 45,
       evidence: directive.evidence,
       generated_at: new Date().toISOString(),
       generation_attempts: 1,
-      execution_result: executionResult,
+      execution_result: {
+        ...executionResult,
+        artifact: waitRationale.artifact,
+      },
     })
     .select('id')
     .single();
