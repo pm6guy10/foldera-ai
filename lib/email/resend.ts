@@ -106,14 +106,17 @@ function renderArtifactHtml(artifact: ConvictionArtifact | null | undefined): st
     `;
   }
 
-  const tripwires = artifact.tripwires?.slice(0, 3).map((tripwire) => `• ${tripwire}`).join('\n') ?? '';
-  const context = typeof artifact.context === 'string' ? artifact.context : 'No details available.';
-  const evidence = typeof artifact.evidence === 'string' ? artifact.evidence : '';
+  // Slim wait_rationale: one line, not a report.
+  const context = typeof artifact.context === 'string' ? artifact.context : '';
+  const candidateMatch = context.match(/evaluated (\d+) candidates/);
+  const candidateCount = candidateMatch ? candidateMatch[1] : '0';
+  const firstTripwire = artifact.tripwires?.[0] ?? 'new signals arrive';
   return `
-    ${renderField('Finished Artifact', 'Wait Rationale')}
-    ${renderField('Why Waiting Wins', clipText(context, 1200))}
-    ${evidence ? renderField('Evidence', clipText(evidence, 800)) : ''}
-    ${tripwires ? renderField('Tripwires', tripwires) : ''}
+    <tr><td style="padding:0 0 10px 0;">
+      <div style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.6;">
+        Foldera checked ${escapeHtml(candidateCount)} candidates today. Nothing worth your time. Watching for: ${escapeHtml(firstTripwire)}.
+      </div>
+    </td></tr>
   `;
 }
 
