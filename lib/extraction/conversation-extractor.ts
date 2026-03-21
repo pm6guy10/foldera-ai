@@ -262,7 +262,7 @@ export async function extractFromConversation(
 
   const selfId = selfEntity?.id;
 
-  // 5. Write decisions → tkg_commitments
+  // 5. Write decisions → tkg_commitments (with dedup gate)
   let decisionsWritten = 0;
   if (selfId && payload.decisions.length > 0) {
     const rows = payload.decisions.map((d) => ({
@@ -281,9 +281,21 @@ export async function extractFromConversation(
       risk_factors: [{ stakes: d.stakes }],
     }));
 
-    const { error: commitError } = await supabase.from('tkg_commitments').insert(rows);
-    if (!commitError) decisionsWritten = rows.length;
-    else console.error('[conversation-extractor] Commitment write error:', commitError.message);
+    // Dedup: check which canonical_forms already exist for this user
+    const canonicalForms = rows.map((r) => r.canonical_form);
+    const { data: existingRows } = await supabase
+      .from('tkg_commitments')
+      .select('canonical_form')
+      .eq('user_id', userId)
+      .in('canonical_form', canonicalForms);
+    const existingSet = new Set((existingRows ?? []).map((r) => r.canonical_form));
+    const newRows = rows.filter((r) => !existingSet.has(r.canonical_form));
+
+    if (newRows.length > 0) {
+      const { error: commitError } = await supabase.from('tkg_commitments').insert(newRows);
+      if (!commitError) decisionsWritten = newRows.length;
+      else console.error('[conversation-extractor] Commitment write error:', commitError.message);
+    }
   }
 
   // 6. Merge patterns into tkg_entities.patterns JSONB

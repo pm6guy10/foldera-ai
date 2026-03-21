@@ -1224,3 +1224,36 @@ Old broken score for the same S5 candidate: 0.085. Threshold remains at 2.0 — 
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-24 (commitment purge v2 + dedup gate)
+
+- **MODE:** AUDIT
+- **Commit:** (pending)
+
+### Commitment purge
+- **Before:** 719 total, 691 active, 28 suppressed
+- **After:** 719 total, 98 active, 621 suppressed
+- **Suppressed this run:** 593 rows (pre-2026-03-19, same logic as March 18 purge)
+- SQL: `UPDATE tkg_commitments SET suppressed_at = now(), suppressed_reason = 'bulk_purge_pre_quality_filter_v2' WHERE created_at < '2026-03-19' AND suppressed_at IS NULL`
+
+### Dedup gate
+- `lib/extraction/conversation-extractor.ts` — Added dedup check before batch insert. Queries existing `canonical_form` values for the user, filters out duplicates before inserting. Matches the pattern already used in `lib/signals/signal-processor.ts` (line 762-775).
+- `lib/signals/signal-processor.ts` — Already had dedup gate via `canonical_form` lookup. No changes needed.
+
+### Multi-user verification
+- Both dedup gates filter by `user_id` parameter — gate applies per user, not globally.
+- `conversation-extractor.ts`: `.eq('user_id', userId)` on dedup query
+- `signal-processor.ts`: `.eq('user_id', userId)` on dedup query (pre-existing)
+
+### Files changed
+- `lib/extraction/conversation-extractor.ts` — dedup gate added
+- `CLAUDE.md` — session log appended
+
+### Verified working
+- `npm run build` — 0 errors
+- Commitment count: 98 active (target: under 100)
+
+### Supabase / migrations
+- No new migration file (purge applied live via SQL, same as March 18)
