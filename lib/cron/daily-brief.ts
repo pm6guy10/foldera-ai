@@ -273,7 +273,6 @@ function artifactTypeForAction(actionType: string | null | undefined): string | 
     case 'make_decision':
       return 'decision_frame';
     case 'do_nothing':
-    case 'wait_rationale':
       return 'wait_rationale';
     default:
       return null;
@@ -665,13 +664,14 @@ async function persistNoSendOutcome(
   const executionResult = buildNoSendExecutionResult(directive, reason, stage);
   const waitRationale = buildWaitRationale(directive, reason);
 
-  // Persist as pending_approval wait_rationale so the send stage emails it.
+  // Persist as pending_approval do_nothing so the send stage emails it.
   // The morning email always arrives. Silence is a bug.
+  // Uses do_nothing action_type (constraint-safe) with wait_rationale artifact.
   const { data, error } = await supabase
     .from('tkg_actions')
     .insert({
       user_id: userId,
-      action_type: 'wait_rationale',
+      action_type: 'do_nothing',
       directive_text: waitRationale.directiveText,
       reason,
       status: 'pending_approval',
