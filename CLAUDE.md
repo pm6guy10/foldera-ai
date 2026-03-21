@@ -1193,3 +1193,34 @@ Old broken score for the same S5 candidate: 0.085. Threshold remains at 2.0 — 
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-24 (Supabase cleanup: Edge Function + storage buckets)
+
+- **MODE:** OPS
+
+### What was deleted
+1. **Edge Function `ingest-file`** — old legal/case-management file ingestion function (PDF/DOCX/ZIP/MSG parser). Referenced `case-files` bucket, `documents` table, `audit_log` table, `msg_queue` table. Deleted via `supabase functions delete`.
+2. **Storage bucket `case-files`** — 31 files (legal PDFs, screenshots, .msg files from Sep 2025). Emptied via Storage API, then deleted.
+3. **Storage bucket `evidence`** — empty, deleted.
+4. **Storage bucket `project-uploads`** — empty, deleted.
+5. **Storage bucket `templates`** — empty. Set to private first, then deleted since no code references it.
+
+### What was changed
+- `templates` bucket was public, set to private before deletion.
+- No code changes — all deletions were Supabase infrastructure only.
+
+### Verification performed
+- Grep confirmed zero references to `storage.from(`, `case-files`, `project-uploads`, `ingest-file` in any `.ts/.tsx/.js/.jsx/.mjs` file.
+- Grep confirmed zero references to `documents`, `audit_log`, `msg_queue` tables in any code file.
+- `SUPABASE_SERVICE_ROLE_KEY` references verified: only in `lib/db/client.ts`, `scripts/load-conversations.ts`, `scripts/ci-preflight.mjs` — all current Foldera code, none related to the deleted Edge Function.
+- `supabase list_edge_functions` returned empty array after deletion.
+- Storage API `GET /storage/v1/bucket` returned empty array after deletion.
+- `npm run build` — 0 errors.
+
+### Files changed
+- `CLAUDE.md` — session log appended.
+
+### Supabase / migrations
+- No new migrations
