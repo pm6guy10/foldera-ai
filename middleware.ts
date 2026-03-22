@@ -1,31 +1,14 @@
 /**
- * Next.js middleware — auth guard for /dashboard/* + UTM/ref tracking.
+ * Next.js middleware — captures UTM/ref params for growth conversion tracking.
  *
- * 1. For /dashboard/* routes: checks for NextAuth session cookie. If missing,
- *    redirects to /login with callbackUrl preserving the original URL.
- * 2. For all matched routes: captures UTM/ref params for growth tracking.
+ * Note: Auth guard for /dashboard/* was removed because edge middleware processes
+ * the redirect from /api/auth/callback before the browser stores the session cookie,
+ * creating a sign-in loop. Dashboard auth is handled client-side in page.tsx instead.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
-
-  // ── AUTH GUARD for /dashboard/* ──
-  // Check for NextAuth session token cookie (handles both __Secure- and non-secure prefix)
-  if (pathname.startsWith('/dashboard')) {
-    const hasSession =
-      request.cookies.has('__Secure-next-auth.session-token') ||
-      request.cookies.has('next-auth.session-token');
-
-    if (!hasSession) {
-      const callbackUrl = `${pathname}${search}`;
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('callbackUrl', callbackUrl);
-      return NextResponse.redirect(loginUrl);
-    }
-  }
-
   // ── UTM / REF TRACKING ──
   const ref = request.nextUrl.searchParams.get('ref');
   const utm_source = request.nextUrl.searchParams.get('utm_source');
