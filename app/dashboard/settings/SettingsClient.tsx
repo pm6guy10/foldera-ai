@@ -141,14 +141,11 @@ export default function SettingsClient() {
     );
   }
 
-  const planLabel = subscription?.plan === 'pro' ? 'Pro' : 'Free trial';
+  const planLabel = subscription?.plan === 'pro' ? 'Pro' : 'Free';
   const planDetail =
     subscription?.status === 'active' ? 'Active' :
-    subscription?.status === 'active_trial' && subscription.daysRemaining != null
-      ? `${subscription.daysRemaining} day${subscription.daysRemaining !== 1 ? 's' : ''} left`
-      : subscription?.status === 'past_due' ? 'Payment past due'
-      : subscription?.status === 'expired' ? 'Expired'
-      : '';
+    subscription?.status === 'past_due' ? 'Payment past due'
+    : '';
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -228,7 +225,7 @@ export default function SettingsClient() {
             <p className="text-sm font-medium text-white">{planLabel}</p>
             {planDetail && <p className="text-sm text-zinc-500">{planDetail}</p>}
           </div>
-          {subscription?.status !== 'active' && (
+          {subscription?.plan === 'pro' && subscription?.status !== 'active' && (
             <button
               onClick={async () => {
                 const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
