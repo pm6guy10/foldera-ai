@@ -35,7 +35,7 @@ export default function DashboardPage() {
     if (status === 'unauthenticated') {
       // Preserve deep-link params through login so email approve/skip links work
       const search = typeof window !== 'undefined' ? window.location.search : '';
-      router.push(search ? `/login?callbackUrl=${encodeURIComponent(`/dashboard${search}`)}` : '/start');
+      router.push(`/login?callbackUrl=${encodeURIComponent(`/dashboard${search}`)}`);
     }
   }, [status, router]);
 

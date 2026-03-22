@@ -5,9 +5,26 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Layers, ArrowRight } from 'lucide-react';
 
+function getErrorMessage(error: string | null): string | null {
+  if (!error) return null;
+  switch (error) {
+    case 'OAuthCallback':
+    case 'Callback':
+      return 'Sign-in failed. Please try again.';
+    case 'OAuthAccountNotLinked':
+      return 'This email is already linked to another provider.';
+    case 'AccessDenied':
+      return 'Access denied. Please contact support.';
+    default:
+      return 'Something went wrong. Please try again.';
+  }
+}
+
 function LoginInner() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const searchParams = useSearchParams();
+  const errorParam = searchParams.get('error');
+  const errorMessage = getErrorMessage(errorParam);
 
   async function handleSignIn(provider: 'google' | 'azure-ad') {
     setLoadingProvider(provider);
@@ -42,6 +59,12 @@ function LoginInner() {
               Finished work, every morning.
             </p>
           </div>
+
+          {errorMessage && (
+            <div className="mb-6 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50">
+              <p className="text-sm text-red-300">{errorMessage}</p>
+            </div>
+          )}
 
           <div className="space-y-3 mb-8">
             <button

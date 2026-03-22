@@ -358,6 +358,9 @@ const NON_COMMITMENT_PATTERNS = [
   /\b(grant(?:ed)?\s*(?:Claude|Foldera|app)\s*(?:access|permission))\b/i,
   // Self-referential: directives extracted as commitments
   /\b(?:Foldera\s*(?:Directive|directive)|(?:schedule|block)\s*(?:a\s*)?(?:30|60|15|45).?minute\s*(?:block|review|session)\s*(?:to\s*(?:review|check|assess|audit)))\b/i,
+  // Vercel deployment notifications (infrastructure noise)
+  /\b(?:vercel|deployment|deploy(?:ed|ing)?)\s+(?:failed|succeeded|ready|error|build|complete|cancel)/i,
+  /\b(?:build\s+(?:failed|succeeded|error|complete)|production\s+deployment)\b/i,
 ];
 
 function isNonCommitment(description: string): boolean {

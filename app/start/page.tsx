@@ -46,7 +46,7 @@ export default function StartPage() {
         {/* What to expect */}
         <div className="mt-10 space-y-3">
           {[
-            'Day 1 — We scan your last 30 days of email',
+            'Day 1 — We scan your last 90 days of email',
             'Day 3 — Patterns start emerging',
             'Day 7 — Your reads get specific',
             'Day 30 — The engine knows you',

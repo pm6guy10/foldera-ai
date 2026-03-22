@@ -62,7 +62,15 @@ test.describe('Authenticated: Settings', () => {
     const response = await page.goto('/dashboard/settings');
     expect(response?.status()).toBe(200);
     expect(page.url()).toContain('/dashboard/settings');
-    // At least one provider should be visible
+    // Wait for integrations API to respond before checking for provider text
+    await page.waitForResponse(
+      (res) => res.url().includes('/api/integrations/status') && res.status() === 200,
+      { timeout: 15000 },
+    ).catch(() => {
+      // Fallback: wait for network idle if the response was already received
+    });
+    await page.waitForLoadState('networkidle');
+    // At least one provider should be visible after data loads
     const hasGoogle = await page.getByText(/google/i).first().isVisible().catch(() => false);
     const hasMicrosoft = await page.getByText(/microsoft/i).first().isVisible().catch(() => false);
     expect(hasGoogle || hasMicrosoft).toBe(true);
