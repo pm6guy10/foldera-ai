@@ -1628,3 +1628,55 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-23 (session persistence + goal enrichment + pricing copy)
+
+- **MODE:** AUDIT then FIX
+- **Commit:** `5e04612`
+
+### Problem 1 — Session persistence
+- **Root cause:** `prompt: 'consent'` on Google OAuth (auth-options.ts:161) forced full consent screen on every sign-in, including returning users. Combined with no middleware auth guard on /dashboard/*, users got kicked to /start on every visit.
+- **Fixes:**
+  1. Removed `prompt: 'consent'` from Google OAuth. `access_type: 'offline'` alone handles refresh token.
+  2. Added middleware auth guard in `middleware.ts` for `/dashboard/*` — checks for NextAuth session cookie at the edge, redirects to `/login?callbackUrl=...` if missing.
+  3. Changed `pages.signIn` from `/start` to `/login` in auth-options.ts. Returning users go to login, new users go to /start.
+
+### Problem 2 — Pricing copy
+- "14 days free. Cancel anytime." → "No credit card required." across: `app/page.tsx`, `app/pricing/page.tsx`, `app/login/page.tsx`, `app/try/page.tsx`.
+- `app/start/result/ResultClient.tsx`: "$29/month after your trial" → "$29/month".
+
+### Problem 3 — Goal quality (DB fix)
+- Updated 3 key goals with entity names for keyword matching:
+  - MAS3: added Yadira Clapper, Mike George, Teo Bicchieri, April start date
+  - MA4: added DSHS HCLA, CI/Lean, $85-95K, Ricky Luna
+  - ESD: added Claim 2MFDBB-007, RCW 50.20.190, 800-318-6022, March 27
+- Set `current_priority=true` on all 9 priority>=3 goals.
+
+### Problem 4 — Defense 5 per-user
+- `defense5DeliveryGuarantee()` now queries all eligible users (via `filterDailyBriefEligibleUserIds`), checks each has a today action. Reports `missing_user_ids` in details. `ok` is false if any eligible user lacks a directive.
+
+### Problem 5 — AB16 closed
+- AB16 closed as INVALID: scorer and generator both use `.gte('priority', 3)` without filtering `current_priority`. The column only affects the suppression goal query (priority < 3).
+
+### Files changed
+- `lib/auth/auth-options.ts` — removed `prompt: 'consent'`, changed signIn page to /login
+- `middleware.ts` — added /dashboard/* auth guard with edge redirect
+- `app/page.tsx` — pricing copy fix + pre-existing landing page changes
+- `app/pricing/page.tsx` — pricing copy fix
+- `app/login/page.tsx` — removed "14 days free" line
+- `app/try/page.tsx` — pricing copy fix
+- `app/start/result/ResultClient.tsx` — pricing copy fix
+- `lib/cron/self-heal.ts` — defense 5 per-user delivery check
+- `AUTOMATION_BACKLOG.md` — AB16 closed as invalid
+- `FOLDERA_PRODUCT_SPEC.md` — updated goals, onboarding, session persistence items
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx vitest run` — 303 passed, 38 failed (pre-existing ENCRYPTION_KEY)
+- `npx playwright test` — 42 passed, 6 failed (pre-existing)
+- No new test failures
+
+### Supabase / migrations
+- No new migrations. Goal text + current_priority updated via live SQL.
