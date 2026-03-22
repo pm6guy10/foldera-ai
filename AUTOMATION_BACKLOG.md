@@ -1,5 +1,5 @@
 # AUTOMATION BACKLOG
-**Updated:** 2026-03-22 09:12 UTC (nightly orchestrator)
+**Updated:** 2026-03-23 UTC (AB10 fix session)
 
 ---
 
@@ -23,5 +23,10 @@
 | AB6 | Signal processing JSON parse error stalls batch processing. | DONE | Fixed in `ec50ccb`. Verified March 22 nightly: 70 signals processed to 0 remaining. Confirmed working March 23: 80 processed to 0 remaining across 2 batches. |
 | AB8 | Test user `22222222` causes HTTP 500 on daily-brief send because no verified email. | DONE | Fixed in nightly-ops run. `getTriggerResponseStatus` now accepts `partial` status as HTTP 200. When some users succeed and some fail, response is 200 (not 500). |
 | AB9 | `tkg_actions.artifact` column NULL; artifact only in `execution_result.artifact`. | DONE | Fixed in nightly-ops run. Both insert paths (normal directive + no-send wait_rationale) now populate the `artifact` column alongside `execution_result.artifact`. |
+| AB10 | `resolveSupabaseAuthUserId` fails in production — `session.user.id` empty, all API routes 401. | DONE | Root cause: test user `22222222` had NULL `confirmation_token`/`recovery_token`/`email_change_token_new` in `auth.users`. GoTrue's Go scanner cannot convert NULL to string, so `admin.listUsers()` returned HTTP 500. Three-layer fix in `f1ffe65`: (1) Data: set NULL columns to empty string, (2) Code: replaced `listUsers()` with `get_auth_user_id_by_email` RPC (direct SQL, avoids GoTrue bug), (3) JWT catch-block fallback queries `user_tokens` by email. |
+| AB11 | Self-referential commitment loop. | DONE | Fixed in `a094130`. Filter on `source_context`. |
+| AB12 | `foldera_primary_conflict` false positive. | DONE | Fixed in `a094130`. Negative lookahead. |
+| AB13 | Google Calendar + Drive return 0 signals. `scopes:null` in user_tokens. | OPEN | Blocked by AB10 — now unblocked. Re-auth Google with all scopes. |
+| AB14 | Homework directive artifacts. | DONE | Fixed in `8b2e92d`. BAD DIRECTIVE rules expanded. |
 
 ---
