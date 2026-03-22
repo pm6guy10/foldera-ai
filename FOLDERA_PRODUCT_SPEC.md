@@ -39,11 +39,12 @@ Everything here must be PROVEN before any user sees the product.
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| Test user gets own directive | PROVEN | Action row 8537c9f5 for user 22222222 | — |
-| Test user gets email | NOT PROVEN | no_verified_email (fake email) | Need real test with deliverable address |
-| Stranger onboarding flow | NOT STARTED | Never walked as stranger | Gate 5 |
+| Test user gets own directive | PROVEN | Action rows for user 22222222 (multiple runs). Latest: `fb02af62` do_nothing on 2026-03-22 | — |
+| Test user gets email | NOT PROVEN | `no_verified_email` — test user has fake email `gate2-test@foldera.ai` | Need real OAuth signup with deliverable address |
+| Stranger onboarding flow (code paths) | VERIFIED | Code audit: empty goals→graceful, empty signals→null/wait_rationale, 90d first-sync, no hardcoded user IDs, trial banner only for past_due | — |
+| Stranger onboarding flow (live) | NOT TESTED | Requires real OAuth sign-up with a real email address. Cannot be automated without browser. | Manual test needed |
 
-**NEXT MOVE:** Gate 5 prompt after immune system is proven.
+**NEXT MOVE:** Brandon or a real test user signs up via /start → Google OAuth → connects email → waits for next nightly-ops cron → verifies email arrives.
 
 ### 1.4 Stripe Payment
 
@@ -123,9 +124,9 @@ Only start after Phase 2 deployed.
 
 | Item | Status |
 |---|---|
-| Stranger signup to first email | NOT TESTED |
-| Under 2 minutes, no instructions | NOT TESTED |
-| Connect email, see "first brief tomorrow" | NOT TESTED |
+| Stranger signup to first email | CODE VERIFIED | Code paths verified: CTA→/start, OAuth (Google+Microsoft), redirect→/dashboard, 90d first-sync, empty state handling. Live test requires real signup. |
+| Under 2 minutes, no instructions | CODE VERIFIED | /start page: OAuth buttons + copy "Your first read arrives tomorrow at 7am". No manual steps between OAuth consent and dashboard. |
+| Connect email, see "first brief tomorrow" | CODE VERIFIED | /start copy at line 23: "Your first read arrives tomorrow at 7am". Auto-sync triggers after OAuth connect. |
 
 ### 3.2 Landing Page
 

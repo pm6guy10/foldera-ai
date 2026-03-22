@@ -1562,3 +1562,35 @@ All three causes contributed to garbage directives:
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-22 (stranger onboarding verification)
+
+- **MODE:** AUDIT
+
+### Code path verification (all PASS)
+- **Landing page**: CTA "Get started" → /start. Hero copy present.
+- **Sign-in**: Google + Microsoft OAuth buttons. Redirect → /dashboard. Copy: "Your first read arrives tomorrow at 7am."
+- **Login page**: "Finished work, every morning" tagline. callbackUrl preserved.
+- **Settings**: Shows "Please sign in" when unauthenticated. Connect buttons when authenticated.
+- **Empty goals**: `buildUserIdentityContext()` returns null when 0 goals. Generator continues with null context.
+- **Empty signals**: `scoreOpenLoops()` returns null when 0 candidates. Generator outputs wait_rationale.
+- **First-sync lookback**: 90 days for both Google and Microsoft (when `last_synced_at` is null).
+- **Session isolation**: All session-backed routes use `session.user.id`. No hardcoded owner fallback.
+- **Trial banner**: Only shows for `past_due` status. New users see nothing (correct).
+
+### Test user nightly-ops result
+- User 22222222 got own `no_send` action (`fb02af62`, 0 candidates — expected, no real signals).
+- Email send failed: `no_verified_email` (test user has fake email `gate2-test@foldera.ai`).
+- This is not a code bug — the test user is a DB fixture without real OAuth or a deliverable email.
+
+### NOT verified (requires manual test)
+- Live email delivery to a non-Brandon user (needs real OAuth signup with deliverable email)
+- Browser-based onboarding walkthrough (sandbox EPERM blocks Playwright)
+
+### Files changed
+- `FOLDERA_PRODUCT_SPEC.md` — Updated 1.3 Multi-User and 3.1 Onboarding with code verification status.
+
+### Supabase / migrations
+- No new migrations
