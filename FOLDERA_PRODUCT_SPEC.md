@@ -106,6 +106,10 @@ Only start after Phase 1 is fully PROVEN.
 | Consecutive duplicate suppression | BUILT | >50% word-overlap similarity against last 3 tkg_actions rejects and falls through to wait_rationale |
 | Gmail sync in nightly-ops | BUILT | `stageSyncGoogle()` added as Stage 1b, mirrors Microsoft pattern, uses `getAllUsersWithProvider('google')` |
 | 90-day first-sync lookback | BUILT | Both Microsoft and Google sync already use 90-day lookback on first connect (`!last_synced_at`) |
+| Extraction noise filter (C) | BUILT | 8 new NON_COMMITMENT_PATTERNS: security alerts, newsletters, billing, promotions, credit monitoring, tool mgmt, self-referential, mass registrations. Commit `91e3e76` |
+| Scorer noise pre-filter (A) | BUILT | NOISE_CANDIDATE_PATTERNS removes housekeeping/tool/notification candidates before scoring loop. Commit `91e3e76` |
+| Generator quality examples (B) | BUILT | Concrete good/bad examples in SYSTEM_PROMPT, schedule_block housekeeping rejection gate. Commit `91e3e76` |
+| Directive quality: housekeeping eliminated | PROVEN | Post-fix trigger: 93 candidates, all noise filtered. Generator correctly produced wait_rationale about DSHS career application (priority 5 goal) instead of "Schedule a block to review Google settings". Email sent (Resend `d9251850`). |
 
 **Threshold note:** There are two independent scales. The scorer EV (0–5 continuous) ranks candidates — there is no production EV threshold; the "2.0" only exists in the test benchmark. The generator confidence (0–100, LLM self-rated) has two gates: `DIRECTIVE_CONFIDENCE_THRESHOLD = 45` at generation time and `CONFIDENCE_THRESHOLD = 70` for queue reconciliation. Structured logs now include both `scorer_ev` and `generator_confidence` so debugging is unambiguous.
 

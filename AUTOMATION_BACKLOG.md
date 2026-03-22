@@ -1,5 +1,5 @@
 # AUTOMATION BACKLOG
-**Updated:** 2026-03-22 UTC (acceptance gate session)
+**Updated:** 2026-03-22 UTC (directive quality + acceptance gate session)
 
 ---
 

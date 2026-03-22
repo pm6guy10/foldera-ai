@@ -1521,3 +1521,44 @@ Old broken score for the same S5 candidate: 0.085. Threshold remains at 2.0 — 
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-22 (directive quality proof)
+
+- **MODE:** AUDIT
+- **Commit:** `91e3e76`
+
+### Root cause
+All three causes contributed to garbage directives:
+- **C (Primary):** Extraction created noise commitments from newsletters, security alerts, billing notifications, and Foldera's own directives being re-extracted as DECISION commitments.
+- **A (Secondary):** Scorer fed garbage candidates (credit score checks, Google security reviews) because no pre-scoring quality filter existed.
+- **B (Tertiary):** Generator produced homework ("Document why X can wait") and schedule_block for housekeeping when given garbage candidates.
+
+### Files changed
+- `lib/signals/signal-processor.ts` — Expanded `NON_COMMITMENT_PATTERNS` with 8 new categories: security alerts, newsletters, billing, promotions, credit monitoring, tool management, self-referential directives, mass registrations.
+- `lib/briefing/scorer.ts` — Added `NOISE_CANDIDATE_PATTERNS` pre-filter before scoring loop. Removes housekeeping, tool management, notification, and self-referential candidates.
+- `lib/briefing/generator.ts` — Added concrete good/bad examples to SYSTEM_PROMPT. Added schedule_block housekeeping rejection gate in `validateGeneratedArtifact`. Strengthened friction test text.
+
+### DB changes (applied live)
+- Suppressed 39 noise commitments (150 → 111 active) for Brandon.
+
+### Verification
+- `npm run build` — 0 errors
+- `npx vitest run` — 303 passed, 38 failed (pre-existing ENCRYPTION_KEY)
+- Production trigger: 93 candidates → all noise filtered. Generator produced wait_rationale about DSHS career application (priority 5 goal). Email sent (Resend `d9251850`).
+- Pre-fix output: "Schedule a 30-minute block to review Google account security settings" (housekeeping)
+- Post-fix output: "Wait for DSHS to complete their review process" (real goal, specific tripwire April 5)
+
+### Acceptance gate (first live run)
+- AUTH: PASS
+- TOKENS: FAIL (3 tokens expiring within 6h — expected, OAuth tokens have short TTL)
+- SIGNALS: PASS (0 unprocessed)
+- COMMITMENTS: PASS (112 active)
+- GENERATION: PASS (19 actions today)
+- DELIVERY: FAIL (test user has no email — expected)
+- SESSION: PASS
+- Alert email sent to b.kapp1010@gmail.com
+
+### Supabase / migrations
+- No new migrations
