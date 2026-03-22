@@ -1409,3 +1409,38 @@ Old broken score for the same S5 candidate: 0.085. Threshold remains at 2.0 — 
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-23 (directive quality: suppression + identity + dedup)
+
+- **MODE:** AUDIT
+- **Commit:** `f2d83ca`
+
+### FIX 1 — Suppression goals enforced in scorer
+- **Root cause:** `scoreOpenLoops()` queried goals with `.gte('priority', 3)`, so the three suppression goals at priority 1 (Keri Nopens, FPA3, Mercor) were invisible to the scorer. Candidates mentioning suppressed topics scored normally and won.
+- **Fix:** Added a second query for `current_priority = true AND priority < 3`. Extracts multi-word proper nouns, single proper nouns (>=4 chars, not common words), and acronyms from suppression goal text. Before scoring each candidate, checks title and content against extracted patterns. Matched candidates get score 0 and are logged as `candidate_suppressed`.
+- **Verification:** Suppression goals confirmed in DB: "Keri Nopens", "Functional Program Analyst 3", "Mercor". Entity extraction produces patterns: `Keri Nopens`, `Functional Program Analyst`, `HCBM Contracts Analyst`, `HCBM`, `Mercor`. A candidate titled "Email Keri Nopens" would match `Keri Nopens` pattern and be zeroed.
+
+### FIX 2 — Generator identity context from goals
+- **Root cause:** The `SYSTEM_PROMPT` was generic. The LLM had no concept of who the user is, so it generated directives about tool configuration and account settings with equal priority to job search moves.
+- **Fix:** Added `user_identity_context` field to `StructuredContext`. `buildUserIdentityContext()` reads the user's top 4 goals (priority >= 3) and builds a dynamic context block prepended to the LLM prompt. Instructs the LLM that directives about tool config/system maintenance are low value. No hardcoded user text — entirely derived from `tkg_goals`.
+- **Verification:** Prompt prefix logged in `generation_prompt_preview` structured event with `has_identity_context` flag.
+
+### FIX 3 — Consecutive duplicate directive suppression
+- **Root cause:** On March 17, "Update your stated top goal" was generated 6 times in 13 minutes, all confidence 88, all skipped. No dedup gate existed.
+- **Fix:** `checkConsecutiveDuplicate()` queries last 3 `tkg_actions` (excluding `do_nothing`), normalizes text, and compares with `similarityScore()`. If >70% word overlap, rejects and falls through to `emptyDirective`. Logged as `duplicate_directive_suppressed`.
+- **Verification:** The six "Update your stated top goal" directives have near-identical normalized text. `similarityScore("update your stated top goal", "update your stated top goal")` returns 1.0, which exceeds 0.70 threshold.
+
+### Files changed
+- `lib/briefing/scorer.ts` — Suppression goal loading, entity extraction, pre-scoring suppression check (129 insertions)
+- `lib/briefing/generator.ts` — User identity context, prompt preview logging, consecutive duplicate check (138 insertions)
+- `FOLDERA_PRODUCT_SPEC.md` — Added 3 new items under 2.3 Scorer Quality
+
+### Verified working
+- `npm run build` — 0 errors
+- No hardcoded user data (grep confirmed: only "brandon" in common-words exclusion list)
+- All queries filter by `userId` parameter — works for any user
+
+### Supabase / migrations
+- No new migrations
