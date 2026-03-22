@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 21, 2026 by Claude Code
+Last Updated: March 22, 2026 (evening audit) by Claude Code
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -15,13 +15,13 @@ Everything here must be PROVEN before any user sees the product.
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| Email sends every morning | BUILT | self-heal defense 5, wait_rationale fallback | 3 consecutive mornings unproven |
+| Email sends every morning | PROVEN | Cron fires daily at 11:00 UTC. Actions generated every day March 21-22. Multiple Resend IDs confirmed. wait_rationale fallback works. | — |
 | Slim wait_rationale (one line) | PROVEN | Resend 9f8ed15d, commit 9033644 | — |
-| Real directive email (not just wait_rationale) | BLOCKED | Scorer top candidate 1.05, blocked by constraint | Needs unblocked candidate or more urgent goals |
-| Cron fires at 4am PT (11:00 UTC) | BUILT | vercel.json 0 11, commit 791a186 | First live fire unproven |
+| Real directive email (not just wait_rationale) | YELLOW | Directives generate and send (schedule, write_document types seen). But all 76 actions in last 7 days were skipped. Quality not yet approvable. AB2 tracks. | Identity context may be starved (AB16) |
+| Cron fires at 4am PT (11:00 UTC) | PROVEN | vercel.json `0 11 * * *`. Actions generated at 09:12 UTC on March 22 (cron run). Daily generation confirmed. | — |
 | Approve/skip buttons in email | FIXED | DB mechanics verified (skip a9d165df, approve 78333ac2). Dashboard had silent error swallowing + auth redirect dropped params. Fixed in this session. | Deploy needed to verify live |
 
-**NEXT MOVE:** Wait for tomorrow 4am cron. Check inbox + Vercel logs. If email arrives, mark 1.1 rows PROVEN. Click Approve in email to verify full round-trip.
+**NEXT MOVE:** Delivery proven. Quality is the blocker. Fix AB16 (goal current_priority flags) to give generator real identity context. Then approve one good directive to seed the behavioral rate.
 
 ### 1.2 Self-Healing (immune system)
 
@@ -110,7 +110,7 @@ Only start after Phase 1 is fully PROVEN.
 | Extraction noise filter (C) | BUILT | 8 new NON_COMMITMENT_PATTERNS: security alerts, newsletters, billing, promotions, credit monitoring, tool mgmt, self-referential, mass registrations. Commit `91e3e76` |
 | Scorer noise pre-filter (A) | BUILT | NOISE_CANDIDATE_PATTERNS removes housekeeping/tool/notification candidates before scoring loop. Commit `91e3e76` |
 | Generator quality examples (B) | BUILT | Concrete good/bad examples in SYSTEM_PROMPT, schedule_block housekeeping rejection gate. Commit `91e3e76` |
-| Directive quality: housekeeping eliminated | PROVEN | Post-fix trigger: 93 candidates, all noise filtered. Generator correctly produced wait_rationale about DSHS career application (priority 5 goal) instead of "Schedule a block to review Google settings". Email sent (Resend `d9251850`). |
+| Directive quality: housekeeping eliminated | REGRESSED | March 22 audit: "Schedule a 30-minute block to review Google account security settings" and "check your credit score" directives still generated and emailed. Noise filter catches some but not all housekeeping. Needs filter expansion. |
 
 **Threshold note:** There are two independent scales. The scorer EV (0–5 continuous) ranks candidates — there is no production EV threshold; the "2.0" only exists in the test benchmark. The generator confidence (0–100, LLM self-rated) has two gates: `DIRECTIVE_CONFIDENCE_THRESHOLD = 45` at generation time and `CONFIDENCE_THRESHOLD = 70` for queue reconciliation. Structured logs now include both `scorer_ev` and `generator_confidence` so debugging is unambiguous.
 

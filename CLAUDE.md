@@ -1594,3 +1594,37 @@ All three causes contributed to garbage directives:
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-22 (full system health audit)
+
+- **MODE:** AUDIT
+- **Commits:** (this commit)
+
+### Purpose
+Full 8-check system health audit. No code changes. Database queries, pipeline verification, spec/backlog reconciliation.
+
+### Findings
+
+**GREEN:**
+- AUTH: RPC works, both Google + Microsoft tokens valid and refreshing
+- DATA: 1,965 signals across 6 sources, 0 unprocessed backlog
+- PIPELINE: All 6 nightly-ops stages present. Cron fires daily at 11:00 UTC.
+- Delivery: Email sends every morning — upgraded to PROVEN in spec
+
+**YELLOW:**
+- COMMITMENTS: 112 active (under 150 ceiling) but 15 self-referential Foldera infrastructure leaks (AB15)
+- GOALS: All 11 real goals have `current_priority=false`. Only 3 suppression goals are `true`. Generator identity context likely starved (AB16)
+
+**RED:**
+- DIRECTIVE QUALITY: 76 actions in 7 days, 0 approved. 12+ day zero-approval streak. Housekeeping filter REGRESSED.
+
+### Files changed
+- `NIGHTLY_REPORT.md` — Full fresh audit report
+- `AUTOMATION_BACKLOG.md` — Updated AB1-AB4/AB7, added AB15, AB16
+- `FOLDERA_PRODUCT_SPEC.md` — Upgraded delivery/cron to PROVEN, marked housekeeping as REGRESSED
+- `CLAUDE.md` — Session log appended
+
+### Supabase / migrations
+- No new migrations

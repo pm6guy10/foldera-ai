@@ -1,147 +1,183 @@
-# NIGHTLY REPORT — 2026-03-22
-**Run time:** ~09:12 UTC
-**Orchestrator:** Claude nightly-ops
+# NIGHTLY REPORT — 2026-03-22 (evening audit)
+**Run time:** ~20:30 UTC
+**Auditor:** Claude Code (full system health check)
 
 ---
 
-## Overall Status: GREEN — Directive sent. First `calendar_event` artifact delivered. Email confirmed.
+## Overall Status: YELLOW — Pipeline functional, directive quality stagnant, zero approvals in 12+ days
 
-Today's pipeline completed end-to-end for Brandon. A `schedule`/`calendar_event` directive was generated (confidence 71, scorer EV 1.57), persisted as `pending_approval`, and emailed via Resend. This is the first successful email delivery of a concrete artifact since the generator rewrite.
-
-Test user (22222222) correctly received `no_send` (no signals available) but failed on email send due to no verified recipient — expected for a synthetic test user.
-
-Signal processing healthy: 70 processed across 2 rounds, 0 remaining.
+The pipeline runs end-to-end. Cron fires, sync works, signals process, directives generate, emails send. But every directive produced in the last 7 days was skipped (76/76). The product loop is not completing. Self-referential commitment leaks (15 active) continue to pollute the scorer. Goals with `current_priority=true` are only the 3 suppression goals — the 11 real goals all have `current_priority=false`, which may affect identity context in the generator.
 
 ---
 
-## Phase Results
+## CHECK 1: AUTH HEALTH — GREEN
 
-| Phase | Status | Detail |
-|-------|--------|--------|
-| 1. Data Sync (Microsoft) | OK | 43 mail + 15 calendar signals synced for 1 user. No token or decrypt errors. |
-| 2. Signal Processing | OK | 70 unprocessed. Processed all across 2 rounds (50 + 20) to 0 remaining. No stalls. |
-| 3. Queue Cleanup | OK | No pending_approval rows older than 24h. Nothing to expire. |
-| 4. Daily Brief Generation | SENT | Brandon: `schedule`/`calendar_event`, confidence 71, scorer EV 1.57, 100 candidates scored, 3 surfaced. Test user: `no_send` (0 candidates). |
-| 5. Daily Send | PARTIAL | Brandon: email sent (Resend ID `9e7dbe77-210d-47ee-b54a-da3a863df935`). Test user: failed (no verified email). |
-| 6. Health Snapshot | OK | `npm run build` PASS. 14 commits in last 24h. |
+| Item | Status | Detail |
+|------|--------|--------|
+| RPC `get_auth_user_id_by_email` | PASS | Returns `e40b7cd8` for `b-kapp@outlook.com` |
+| Google token | VALID | Expires in ~30 min (normal short-lived OAuth). Last synced: 2026-03-22 15:07 UTC |
+| Microsoft token | VALID | Expires in ~56 min (normal short-lived OAuth). Last synced: 2026-03-22 19:58 UTC |
+| Providers connected | 2/2 | Google + Microsoft both active |
+
+**Note:** Token expiry within the hour is normal — OAuth access tokens are short-lived and refresh automatically on use. The token watchdog in self-heal handles pre-cron refresh.
 
 ---
 
-## Data Summary
+## CHECK 2: DATA HEALTH — GREEN
+
+| Source | Count | Latest Signal |
+|--------|-------|---------------|
+| outlook | 630 | 2026-03-22 |
+| outlook_calendar | 541 | 2026-04-04 (future events) |
+| uploaded_document | 371 | 2026-03-22 |
+| claude_conversation | 242 | 2026-03-20 |
+| gmail | 144 | 2026-03-20 |
+| chatgpt_conversation | 37 | 2026-03-18 |
+| **Total** | **1,965** | |
 
 | Metric | Value |
 |--------|-------|
-| Microsoft sync (this run) | 43 mail + 15 calendar |
-| Unprocessed signals remaining | 0 |
-| Signal processing stall | None |
-| Stale queue rows expired | 0 |
-| Directive sent (Brandon) | Yes — `calendar_event` |
-| Directive sent (test user) | No — no signals, no verified email |
-| Resend ID | `9e7dbe77-210d-47ee-b54a-da3a863df935` |
+| Unprocessed signals | 0 |
+| Signal backlog | Clear |
+
+**Note:** Gmail last synced March 20 — 2 days stale. Google sync should be running nightly. Claude/ChatGPT conversations are uploaded documents, not auto-syncing, so staleness there is expected.
 
 ---
 
-## Today's Directive (Brandon)
+## CHECK 3: COMMITMENT HEALTH — YELLOW
 
-| Field | Value |
-|-------|-------|
-| Action ID | `13b55097-a95d-4fa8-8daa-58cc86d67e74` |
-| Action type | `schedule` |
-| Artifact type | `calendar_event` |
-| Directive text | Schedule a 30-minute block today to review Google account security settings and recent activity logs after granting Claude Drive access |
-| Artifact title | Google Account Security Review |
-| Artifact start | 2026-03-22T14:00:00 |
-| Artifact end | 2026-03-22T14:30:00 |
-| Confidence | 71 |
-| Scorer EV | 1.57 |
+| Metric | Value | Threshold |
+|--------|-------|-----------|
+| Active commitments | 112 | 150 ceiling |
+| Self-referential leaks | **15** | 0 target |
 
-**Artifact validation**: title ✓, start ✓, end ✓, description ✓ — all non-empty.
+All 15 self-referential commitments are Foldera deployment/infrastructure items (e.g., "Fix failed production deployments on foldera-ai", "Review and fix security vulnerabilities in Supabase project 'Foldera'"). These are `source=signal_extraction` — the extraction pipeline is creating commitments from Vercel notification emails that got ingested as signals.
 
-**Note**: Artifact is stored in `execution_result.artifact`, not in the `artifact` column (which is NULL). Pipeline reads from execution_result so this works, but the column discrepancy should be noted.
+**Impact:** These leak into the scorer and can produce infrastructure-focused directives. The `SYSTEM_INTROSPECTION_PATTERNS` constraint should catch most at generation time, but they waste scorer slots.
 
 ---
 
-## Top Candidate Breakdown
+## CHECK 4: GOAL HEALTH — YELLOW
 
-| Field | Value |
-|-------|-------|
-| Candidate type | commitment |
-| Source signal | "Check account activity and secure Google account due to Claude for Google Drive access grant" (2026-03-22) |
-| Target goal | Check careers.wa.gov weekly for new MA4 postings |
-| Stakes (raw → transformed) | 4 → 2.297 |
-| Urgency (raw → effective) | 0.3 → 0.42 |
-| Tractability | 0.5 |
-| Exec potential (HM) | 0.457 |
-| Behavioral rate | 0.5 (cold start) |
-| Novelty | 1.0 |
-| Suppression | 1.0 |
-| **Final score** | **1.57** |
+| Priority | Count | Goals |
+|----------|-------|-------|
+| 5 (highest) | 4 | MA4 role, ESD follow-up (March 27), MAS3 at HCA, Financial stability |
+| 4 | 3 | MAS3 onboarding prep (April 1), Family stability, MA4 weekly check (March 28) |
+| 3 | 2 | SQL/PMP credentials, Reference slate |
+| 2 | 2 | ESD overpayment, Foldera (overflow only) |
+| 1 (suppression) | 3 | FPA3, Keri Nopens, Mercor |
+| **Total** | **14** | |
 
-Candidates #2 and #3 scored 0.87 each (novelty penalty 0.55).
+**Issues found:**
+1. **All `current_priority = false` except suppressions.** The 3 suppression goals (priority 1) are `current_priority = true`. The 11 real goals are all `false`. This may affect `buildUserIdentityContext()` which queries `current_priority = true` goals — if it only reads those, the generator gets suppression context but no positive identity context.
+2. **Stale date references:** "Follow up on ESD overpayment waiver by phone on March 27" and "Check careers.wa.gov weekly — Next check: March 28" have dates that are approaching. These are still valid as of today (March 22).
 
 ---
 
-## 7-Day Action History
+## CHECK 5: DIRECTIVE QUALITY — RED
 
-| Metric | Value |
-|--------|-------|
-| Total actions | 71 |
-| Approved | 0 (0%) |
-| Skipped | 69 |
-| Executed | 1 |
-| Pending | 2 (today's) |
+### Last 5 non-do_nothing actions (all skipped):
 
-**Action type breakdown (7 days):**
-| Type | Count | Skipped | Other |
-|------|-------|---------|-------|
-| make_decision | 37 | 37 | 0 |
-| do_nothing | 20 | 18 | 1 executed, 1 pending |
-| send_message | 8 | 8 | 0 |
-| research | 4 | 4 | 0 |
-| write_document | 1 | 1 | 0 |
-| schedule | 1 | 0 | 1 pending |
+| Date | Type | Directive (truncated) | Confidence | Status |
+|------|------|-----------------------|------------|--------|
+| Mar 22 | write_document | Document why credit monitoring can wait until after the MA4 search cycle | 75 | skipped |
+| Mar 22 | schedule | Schedule a 30-minute block this week to check your credit score | 66 | skipped |
+| Mar 22 | schedule | Schedule a 30-minute block today to review Google account security settings | 71 | skipped |
+| Mar 22 | schedule | Schedule a 30-minute block today to review Google account security settings | 71 | skipped |
+| Mar 21 | send_message | Gate 1 test: confirm email delivery pipeline | 85 | skipped |
 
-**make_decision share**: 37/71 = 52% (down from 66% on March 23 — pre-rewrite actions aging out).
+### Last 5 do_nothing actions (all skipped):
 
-**Approval rate: 0%.** Zero approvals in 11+ days. Today's calendar_event directive is the first concrete, artifact-valid directive in days — if approved, this breaks the streak.
+| Date | Directive | Confidence |
+|------|-----------|------------|
+| Mar 22 | Wait for DSHS to complete their review process... | 70 |
+| Mar 22 | Nothing cleared the bar today — 97 candidates evaluated | 45 |
+| Mar 22 | Nothing cleared the bar today — 101 candidates evaluated | 45 |
+| Mar 22 | Nothing cleared the bar today — 101 candidates evaluated | 45 |
+| Mar 22 | Nothing cleared the bar today — 101 candidates evaluated | 45 |
+
+### 7-day action breakdown:
+
+| Type | Count | % |
+|------|-------|---|
+| make_decision | 37 | 49% |
+| do_nothing | 22 | 29% |
+| send_message | 8 | 11% |
+| research | 4 | 5% |
+| schedule | 3 | 4% |
+| write_document | 2 | 3% |
+| **Total** | **76** | **0% approved** |
+
+**Assessment:** Directive quality is stagnant. The generator consistently produces:
+- Credit score / Google security housekeeping (noise)
+- "Nothing cleared the bar" do_nothing (correct but not useful)
+- DSHS wait_rationale (correct and relevant but not actionable)
+
+Zero approvals in 12+ days. The `make_decision` type still dominates at 49% (down from 52% last report — pre-rewrite actions aging out). The product loop is not completing.
 
 ---
 
-## Failure Classifications
+## CHECK 6: PIPELINE INTEGRITY — GREEN
 
-| Code | Severity | Description |
-|------|----------|-------------|
-| INFO_DIRECTIVE_SENT | Success | First successful directive email with concrete artifact since generator rewrite. |
-| INFO_TEST_USER_NO_EMAIL | Low | Test user 22222222 has no verified email. Expected. HTTP 500 from daily-brief due to this. |
-| INFO_ZERO_APPROVAL_RATE | Critical (product) | Zero approvals in 11+ days. Product loop not completing. Today's directive may break the streak. |
-| INFO_ARTIFACT_COLUMN_NULL | Low | `tkg_actions.artifact` column is NULL; artifact stored in `execution_result.artifact`. Pipeline works but schema inconsistency exists. |
-| WARN_MAKE_DECISION_DOMINANCE | Low (declining) | `make_decision` at 52% of 7-day actions, down from 66%. Pre-rewrite actions aging out. |
-| BLOCKER_TOKEN_DECRYPT (NR2) | Low | Legacy-encrypted data unreadable. Non-blocking since fresh sync healthy. |
+| Component | Status | Detail |
+|-----------|--------|--------|
+| vercel.json crons | MATCH | `nightly-ops` at `0 11 * * *`, `health-check` at `0 15 * * *` — matches CLAUDE.md |
+| nightly-ops stages | ALL PRESENT | 1a. stageSyncMicrosoft, 1b. stageSyncGoogle, 2. stageProcessSignals, 3. passive_rejection, 4. daily_brief, 5. self_heal, 6. acceptance_gate |
+| acceptance-gate.ts | ALL 7 CHECKS | AUTH, TOKENS, SIGNALS, COMMITMENTS, GENERATION, DELIVERY, SESSION |
+| Latest cron fire | Mar 22 09:12 UTC | Directive generated and emailed |
+| Latest action | Mar 22 20:00 UTC | Manual triggers during the day |
+
+---
+
+## CHECK 7: SPEC RECONCILIATION
+
+| Item | Current Status | Should Be | Reason |
+|------|---------------|-----------|--------|
+| 1.1 "Email sends every morning" | BUILT | PROVEN | Cron has been firing daily. Multiple Resend IDs confirmed. Upgrade. |
+| 1.1 "Cron fires at 4am PT" | BUILT | PROVEN | vercel.json confirmed, actions generated daily at ~09:12-11:xx UTC. |
+| 1.1 "Real directive email" | BLOCKED | YELLOW | Directives generate and send, but all are skipped. Quality is the issue, not delivery. |
+| 1.2 All self-heal defenses | BUILT | BUILT | Cannot upgrade without Vercel log evidence of self-heal running. Keep BUILT. |
+| 1.5 Acceptance gate items | BUILT | BUILT | Same — need Vercel log evidence. Keep BUILT. |
+| 2.3 "Directive quality: housekeeping eliminated" | PROVEN | REGRESSED | Credit score and Google security directives are housekeeping. The filter is not catching them. |
+
+---
+
+## CHECK 8: BACKLOG RECONCILIATION
+
+| # | Current | Should Be | Reason |
+|---|---------|-----------|--------|
+| AB1 | OPEN | CLOSE-CANDIDATE | `make_decision` share at 49% (down from 66%). Pre-rewrite actions aging out. Last 3 days show schedule/write_document/do_nothing, not make_decision placeholders. Monitor 3 more days then close. |
+| AB2 | OPEN | OPEN (CRITICAL) | Zero approvals in 12+ days. 76 actions, 76 skipped. No change. |
+| AB3 | OPEN | OPEN (LOW) | Legacy encryption still unresolved. Non-blocking since fresh sync healthy. |
+| AB4 | OPEN | CLOSE-CANDIDATE | Same trajectory as AB1 — aging out. |
+| AB7 | OPEN | OPEN | Top scores still below 2.0 benchmark. Generator confidence gates at 70, which works. Informational only. |
+| AB13 | OPEN | OPEN | Google Calendar/Drive still at 0 signals. Needs re-auth with scopes. |
+| NEW: AB15 | — | OPEN | 15 self-referential commitments (Foldera deployment/infra). Need suppression. |
+| NEW: AB16 | — | OPEN | All real goals have `current_priority=false`. Generator identity context may be empty. |
 
 ---
 
 ## Blockers Requiring Human Action
 
-1. **Zero approval rate (AB2):** No approvals in 11+ days. Today's `calendar_event` directive was sent — check email and test approve deep-link. If the directive quality looks good, approve it to break the 0% streak and feed the behavioral rate.
+1. **Zero approval rate (AB2, CRITICAL):** 12+ days, 76 actions, 0 approved. The behavioral rate is stuck at cold-start 0.50. The product loop cannot self-improve without at least one approval.
 
-2. **Test user email (NEW):** Test user `22222222` causes HTTP 500 on daily-brief because no verified email exists. Either add a real email for the test user or filter synthetic users from the send path.
+2. **Self-referential commitment leaks (AB15, MEDIUM):** 15 active commitments about Foldera infrastructure. Need suppression SQL or extraction filter update.
 
-3. **Legacy encryption key (AB3):** Set `ENCRYPTION_KEY_LEGACY` in Vercel or re-auth Microsoft. Low priority.
+3. **Goal current_priority mismatch (AB16, MEDIUM):** Only suppression goals are `current_priority=true`. Real goals (MA4, MAS3, family stability) are `false`. Generator identity context may be starved.
+
+4. **Google Calendar/Drive (AB13, LOW):** Still 0 signals. Needs re-auth with calendar+drive scopes.
 
 ---
 
 ## Morning Recommendation
 
-**The pipeline is working end-to-end.** Today's run produced a valid `calendar_event` artifact, passed validation, and delivered the email. This is a significant milestone.
-
-**Suggested actions:**
-1. Check email and approve/skip today's directive. An approval will feed the behavioral rate and improve future scoring.
-2. Decide whether to configure the test user with a real email or filter it from the send path to avoid HTTP 500.
-3. AB3 (legacy encryption) remains low priority.
+**The pipeline works. The quality doesn't.** The single highest-priority action is to either:
+- Approve one good directive to break the 0% approval rate and let the self-learning loop activate, OR
+- Fix the `current_priority` flags on real goals so the generator gets proper identity context
 
 ---
 
 ## Build / Test Status
 
-- `npm run build`: PASS
-- No code changes in Job 1
+- `npm run build`: Not run (audit-only session, no code changes)
+- No code changes in this audit
