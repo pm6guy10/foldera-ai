@@ -76,6 +76,8 @@ WHAT MAKES A BAD DIRECTIVE
 - Things the user already knows and is actively managing
 - Generic productivity: "block time for", "schedule a review of", "set aside 30 minutes"
 - Anything where the user's response would be "so what?"
+- Documents that explain, rationalize, or justify inaction. "Document why X can wait" is homework. If the right answer is to wait, output wait_rationale — don't write an essay about it.
+- Any artifact where the finished work IS the thinking, not the doing. A drafted email is doing. A call script is doing. A decision rationale document is thinking. Thinking is the user's job.
 
 DECISION FRAMEWORK
 1. Is there evidence the user has been AVOIDING this, not just that it exists?
