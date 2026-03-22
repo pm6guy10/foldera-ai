@@ -276,8 +276,28 @@ export function getAuthOptions(): NextAuthOptions {
         } catch (outerErr: any) {
           // Catch-all: if anything in the jwt callback throws, log it
           // and still return the token so the sign-in doesn't break.
-          // But the token will have no userId, making all session-backed routes 401.
           console.error('[auth] CRITICAL — jwt callback threw:', outerErr?.message ?? outerErr, outerErr?.stack ?? '');
+
+          // Fallback: resolve userId from user_tokens by email so session-backed routes don't 401
+          if (!token.userId && token.email) {
+            try {
+              const { createServerClient } = await import('@/lib/db/client');
+              const supabase = createServerClient();
+              const { data } = await supabase
+                .from('user_tokens')
+                .select('user_id')
+                .eq('email', token.email as string)
+                .limit(1)
+                .maybeSingle();
+              if (data?.user_id) {
+                token.userId = data.user_id;
+                console.log('[auth][jwt] FALLBACK userId from user_tokens:', data.user_id);
+              }
+            } catch (fallbackErr: any) {
+              console.error('[auth][jwt] FALLBACK also failed:', fallbackErr?.message);
+            }
+          }
+
           return token;
         }
       },
