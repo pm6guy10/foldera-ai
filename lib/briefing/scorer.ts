@@ -2378,9 +2378,22 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     }
   }
 
-  // 1. Commitments
+  // 1. Commitments — skip self-referential (sourced from previous Foldera directives)
   for (const c of commitments) {
-    const text = `${c.description}${c.source_context ? ' — ' + c.source_context : ''}`;
+    const sourceCtx = (c.source_context as string | null) ?? '';
+    if (/foldera/i.test(c.description) || /foldera/i.test(sourceCtx)) {
+      logStructuredEvent({
+        event: 'self_referential_commitment_filtered',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'filtered',
+        details: { scope: 'scorer', commitment_id: c.id, description: (c.description as string).slice(0, 100) },
+      });
+      continue;
+    }
+
+    const text = `${c.description}${sourceCtx ? ' — ' + sourceCtx : ''}`;
     const mg = matchGoal(text, goals);
     const actionType = inferActionType(text, 'commitment');
 

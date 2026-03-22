@@ -114,7 +114,7 @@ const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
     {
       code: 'foldera_primary_conflict',
       message: 'Foldera cannot be promoted into the primary lane during the MAS3 window',
-      pattern: /\b(foldera|10 paying users|customer acquisition|paying users goal|growth scanner)\b/i,
+      pattern: /\b(foldera(?!\s+directive\b)(?!'s\s)|10 paying users|customer acquisition|paying users goal|growth scanner)\b/i,
     },
     {
       code: 'mas3_relitigation',
@@ -147,7 +147,7 @@ const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
     {
       code: 'foldera_primary_conflict',
       message: 'directive turns Foldera or customer acquisition into the primary focus during MAS3',
-      pattern: /\b(foldera|10 paying users|customer acquisition|paying users goal|growth scanner)\b/i,
+      pattern: /\b(foldera(?!\s+directive\b)(?!'s\s)|10 paying users|customer acquisition|paying users goal|growth scanner)\b/i,
     },
     {
       code: 'mas3_relitigation',
