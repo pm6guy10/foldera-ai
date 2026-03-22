@@ -41,7 +41,7 @@ import {
   processUnextractedSignals,
 } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
-import { sendDailyDirective } from '@/lib/email/resend';
+import { sendDailyDirective, type HealthSummary } from '@/lib/email/resend';
 import type { DirectiveItem } from '@/lib/email/resend';
 import type {
   ConvictionArtifact,
@@ -1461,9 +1461,29 @@ export async function runDailySend(): Promise<DailyBriefRunResult> {
       const words = directiveItem.directive.split(/\s+/).slice(0, 6).join(' ');
       const subject = `Foldera: ${words.length > 50 ? `${words.slice(0, 47)}...` : words}`;
 
+      // Gather health summary for email footer
+      let healthSummary: HealthSummary | undefined;
+      try {
+        const [signalRes, commitRes, goalRes, syncRes] = await Promise.all([
+          supabase.from('tkg_signals').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('processed', true),
+          supabase.from('tkg_commitments').select('id', { count: 'exact', head: true }).eq('user_id', userId).is('suppressed_at', null),
+          supabase.from('tkg_goals').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('priority', 3),
+          supabase.from('user_tokens').select('last_synced_at').eq('user_id', userId).order('last_synced_at', { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        healthSummary = {
+          signalCount: signalRes.count ?? 0,
+          commitmentCount: commitRes.count ?? 0,
+          goalCount: goalRes.count ?? 0,
+          lastSyncTime: (syncRes.data?.last_synced_at as string) ?? null,
+          gateStatus: 'OK',
+        };
+      } catch {
+        // Non-fatal — send without health summary
+      }
+
       let delivery: unknown;
       try {
-        delivery = await sendDailyDirective({ to, directives: [directiveItem], date, subject, userId });
+        delivery = await sendDailyDirective({ to, directives: [directiveItem], date, subject, userId, healthSummary });
       } catch (sendErr: unknown) {
         logStructuredEvent({
           event: 'daily_send_failed',

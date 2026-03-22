@@ -269,6 +269,20 @@ async function handler(request: NextRequest) {
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'acceptance_gate', error: err.message }));
   }
 
+  // Stage 7: Weekly goal refresh (Sundays only)
+  const dayOfWeek = new Date().getUTCDay();
+  if (dayOfWeek === 0) {
+    try {
+      const { refreshGoalContext } = await import('@/lib/cron/goal-refresh');
+      const refreshResult = await refreshGoalContext();
+      (stages as any).goal_refresh = refreshResult;
+      console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'goal_refresh', ...refreshResult }));
+    } catch (err: any) {
+      (stages as any).goal_refresh = { ok: false, error: err.message };
+      console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'goal_refresh', error: err.message }));
+    }
+  }
+
   const durationMs = Date.now() - startTime;
   const allOk = Object.values(stages).every(
     (s) => s && typeof s === 'object' && (s as any).ok !== false,

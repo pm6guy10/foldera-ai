@@ -50,13 +50,15 @@ Everything here must be PROVEN before any user sees the product.
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| Checkout session creation | NOT TESTED | Code exists (commit 650eba5) | — |
-| Webhook handler | NOT TESTED | — | — |
+| Stripe keys configured | CANNOT VERIFY | `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` checked at runtime in checkout/webhook routes. Cannot read Vercel env vars from CI. Brandon must verify in Vercel dashboard. | — |
+| API version | NOTE | Routes use `apiVersion: '2025-08-27.basil'` cast as `any`. This is a future-dated API version string. Verify it matches the Stripe dashboard. | — |
+| Checkout session creation | NOT TESTED | Code exists (commit 650eba5). Route: `/api/stripe/checkout` | — |
+| Webhook handler | NOT TESTED | Route: `/api/stripe/webhook`. Handles `checkout.session.completed`, `invoice.payment_succeeded`, `invoice.payment_failed`, `customer.subscription.deleted` | — |
 | Subscription written to DB | NOT TESTED | — | — |
 | Pro tier unlocked after payment | NOT TESTED | — | — |
 | End-to-end test payment | NOT STARTED | — | Revenue |
 
-**NEXT MOVE:** Gate 3 prompt. Stripe test mode, full cycle. After immune system proven.
+**STATUS:** Stripe is Gate 3, not blocking Phase 1. Checkout route exists but untested. Brandon must verify `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are set in Vercel env vars.
 
 ### 1.5 Acceptance Gate
 

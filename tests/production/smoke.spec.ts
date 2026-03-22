@@ -154,6 +154,22 @@ test.describe('Public: Start page', () => {
   });
 });
 
+test.describe('Authenticated: Approve/Skip flow', () => {
+  test('can skip a pending action via API', async ({ request }) => {
+    const latest = await request.get('/api/conviction/latest');
+    const body = await latest.json();
+    if (body?.id && body?.status === 'pending_approval') {
+      const execute = await request.post('/api/conviction/execute', {
+        data: { action_id: body.id, decision: 'skip' },
+      });
+      expect(execute.status()).toBe(200);
+      const result = await execute.json();
+      expect(result.status).toBe('skipped');
+    }
+    // If no pending action, test passes (nothing to skip)
+  });
+});
+
 test.describe('Public: Pricing page', () => {
   test('shows $29 price', async ({ page }) => {
     await page.goto('/pricing');

@@ -120,18 +120,42 @@ function renderArtifactHtml(artifact: ConvictionArtifact | null | undefined): st
   `;
 }
 
+function renderHealthFooter(h?: HealthSummary): string {
+  if (!h) return '';
+  const syncLabel = h.lastSyncTime
+    ? new Date(h.lastSyncTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })
+    : 'never';
+  return `
+        <tr><td style="padding-top:16px;">
+          <div style="font-family:system-ui,-apple-system,sans-serif;font-size:11px;color:#52525b;line-height:1.6;">
+            <strong style="color:#71717a;">System</strong>&nbsp;&nbsp;
+            ${h.signalCount} signals · ${h.commitmentCount}/150 commitments · ${h.goalCount} goals · Sync ${escapeHtml(syncLabel)} · Gate ${escapeHtml(h.gateStatus)}
+          </div>
+        </td></tr>`;
+}
+
+export interface HealthSummary {
+  signalCount: number;
+  commitmentCount: number;
+  goalCount: number;
+  lastSyncTime: string | null;
+  gateStatus: string;
+}
+
 export async function sendDailyDirective({
   to,
   directives,
   date,
   subject,
   userId,
+  healthSummary,
 }: {
   to: string;
   directives: DirectiveItem[];
   date: string;
   subject?: string;
   userId: string;
+  healthSummary?: HealthSummary;
 }) {
   const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
   const directive = directives[0];
@@ -162,6 +186,7 @@ export async function sendDailyDirective({
         <tr><td style="padding-top:32px;border-top:1px solid #27272a;margin-top:32px;">
           <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;"><a href="${baseUrl}/dashboard" style="color:#52525b;text-decoration:none;">Open dashboard</a></p>
         </td></tr>
+        ${renderHealthFooter(healthSummary)}
       </table>
     </td></tr>
   </table>
@@ -218,6 +243,7 @@ export async function sendDailyDirective({
         <tr><td style="padding-top:28px;border-top:1px solid #27272a;">
           <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;"><a href="${baseUrl}/dashboard" style="color:#52525b;text-decoration:none;">Open dashboard</a></p>
         </td></tr>
+        ${renderHealthFooter(healthSummary)}
       </table>
     </td></tr>
   </table>

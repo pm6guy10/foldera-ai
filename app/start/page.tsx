@@ -6,10 +6,17 @@ import { Lock } from 'lucide-react';
 
 export default function StartPage() {
   const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSignIn(provider: 'google' | 'azure-ad') {
     setLoading(provider);
-    await signIn(provider, { callbackUrl: '/dashboard' });
+    setError(null);
+    try {
+      await signIn(provider, { callbackUrl: '/dashboard' });
+    } catch {
+      setLoading(null);
+      setError('Could not connect. Please try again.');
+    }
   }
 
   return (
@@ -21,6 +28,12 @@ export default function StartPage() {
         {/* Heading */}
         <h1 className="text-3xl font-bold text-white">Connect your email.</h1>
         <p className="text-zinc-400 mt-2">Your first read arrives tomorrow at 7am.</p>
+
+        {error && (
+          <div className="mt-4 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50">
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
+        )}
 
         {/* OAuth buttons */}
         <div className="mt-8 space-y-3">
