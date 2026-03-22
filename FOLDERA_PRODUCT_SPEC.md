@@ -61,12 +61,12 @@ Everything here must be PROVEN before any user sees the product.
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| acceptance-gate.ts script | NOT STARTED | — | Permanent quality enforcement |
-| Wired into nightly-ops | NOT STARTED | — | — |
-| Alert on failure | NOT STARTED | — | — |
-| CLAUDE.md/AGENTS.md updated | NOT STARTED | — | — |
+| acceptance-gate.ts script | BUILT | `lib/cron/acceptance-gate.ts`, 7 checks: AUTH, TOKENS, SIGNALS, COMMITMENTS, GENERATION, DELIVERY, SESSION | — |
+| Wired into nightly-ops | BUILT | Stage 6 in `app/api/cron/nightly-ops/route.ts` | First live fire unproven |
+| Alert on failure | BUILT | Sends to b.kapp1010@gmail.com via Resend on any FAIL | — |
+| CLAUDE.md/AGENTS.md updated | DONE | Session log appended | — |
 
-**NEXT MOVE:** Gate 6 prompt. After Gates 3-5 pass.
+**NEXT MOVE:** Wait for next nightly-ops cron (11:00 UTC). Check Vercel logs for acceptance_gate_result event. If all 7 checks PASS, mark items PROVEN.
 
 ## PHASE 2: PRODUCT INTELLIGENCE (post-integrity)
 

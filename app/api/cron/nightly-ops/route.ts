@@ -25,6 +25,7 @@ import {
   toSafeDailyBriefStageStatus,
 } from '@/lib/cron/daily-brief';
 import { runSelfHeal } from '@/lib/cron/self-heal';
+import { runAcceptanceGate } from '@/lib/cron/acceptance-gate';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min
@@ -244,6 +245,28 @@ async function handler(request: NextRequest) {
   } catch (err: any) {
     stages.self_heal = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'self_heal', error: err.message }));
+  }
+
+  // Stage 6: Acceptance gate (final — checks all production invariants)
+  try {
+    const gateResult = await runAcceptanceGate();
+    stages.acceptance_gate = {
+      ok: gateResult.ok,
+      alert_sent: gateResult.alert_sent,
+      duration_ms: gateResult.duration_ms,
+      checks: gateResult.checks.map((c) => ({ check: c.check, pass: c.pass, detail: c.detail })),
+    };
+    console.log(JSON.stringify({
+      event: 'nightly_ops_stage',
+      stage: 'acceptance_gate',
+      ok: gateResult.ok,
+      alert_sent: gateResult.alert_sent,
+      checks_passed: gateResult.checks.filter((c) => c.pass).length,
+      checks_total: gateResult.checks.length,
+    }));
+  } catch (err: any) {
+    stages.acceptance_gate = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'acceptance_gate', error: err.message }));
   }
 
   const durationMs = Date.now() - startTime;

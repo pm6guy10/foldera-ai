@@ -1483,3 +1483,41 @@ Old broken score for the same S5 candidate: 0.085. Threshold remains at 2.0 — 
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-22 (acceptance gate + connector verification)
+
+- **MODE:** AUDIT
+
+### Files created
+- `lib/cron/acceptance-gate.ts` — Production invariant checker with 7 checks: AUTH (RPC user lookup), TOKENS (expiring within 6h, handles bigint epoch ms), SIGNALS (unprocessed <= 50), COMMITMENTS (active <= 150 per user), GENERATION (at least one tkg_actions row today), DELIVERY (pending_approval has send evidence), SESSION (user_tokens accessible). Sends alert email via Resend to b.kapp1010@gmail.com on any failure.
+
+### Files changed
+- `app/api/cron/nightly-ops/route.ts` — Added Stage 6: acceptance gate as final stage after self-heal. Imports `runAcceptanceGate`, logs structured JSON with pass/fail counts.
+- `FOLDERA_PRODUCT_SPEC.md` — Updated 1.5 Acceptance Gate: all 4 items marked BUILT/DONE.
+- `AUTOMATION_BACKLOG.md` — Updated AB13 with current connector status.
+
+### Connector verification
+- AUTH session: No JWT_SESSION_ERROR in 24h. AB10 fix holding.
+- Google: Connected (144 gmail signals). Calendar/Drive at 0 — AB13 open, requires re-auth with scopes.
+- Microsoft: Connected (outlook + outlook_calendar signals exist).
+- Integrations/status: DB layer verified accessible.
+
+### DB invariant snapshot
+- AUTH: PASS (RPC returns Brandon UUID)
+- TOKENS: PASS (gate handles bigint epoch ms)
+- SIGNALS: PASS (0 unprocessed)
+- COMMITMENTS: PASS (150 active, exactly at ceiling)
+- GENERATION: PASS (10 actions today)
+- DELIVERY: Expected exception (test user pending_approval with no send — no real email)
+- SESSION: PASS (user_tokens accessible)
+
+### Verified working
+- `npm run build` — 0 errors
+
+### NOT verified
+- Live acceptance gate execution via nightly-ops (requires deploy + cron trigger)
+
+### Supabase / migrations
+- No new migrations
