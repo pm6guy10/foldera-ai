@@ -273,10 +273,11 @@ export function getAuthOptions(): NextAuthOptions {
             }
           }
           return token;
-        } catch (outerErr) {
+        } catch (outerErr: any) {
           // Catch-all: if anything in the jwt callback throws, log it
           // and still return the token so the sign-in doesn't break.
-          console.error('[auth] CRITICAL — jwt callback threw:', outerErr);
+          // But the token will have no userId, making all session-backed routes 401.
+          console.error('[auth] CRITICAL — jwt callback threw:', outerErr?.message ?? outerErr, outerErr?.stack ?? '');
           return token;
         }
       },
@@ -285,6 +286,9 @@ export function getAuthOptions(): NextAuthOptions {
         session.user.id = typeof token.userId === 'string' ? token.userId : '';
         session.user.email = token.email as string;
         session.user.name = token.name as string;
+        if (!session.user.id) {
+          console.error(`[auth][session] WARNING: token has no userId — email: ${token.email}, provider: ${token.provider}. User must sign out and sign back in to get a valid JWT.`);
+        }
         return session;
       },
       async redirect({ url, baseUrl }) {

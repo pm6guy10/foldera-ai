@@ -12,6 +12,7 @@ export async function resolveSupabaseAuthUserId(
   name?: string | null,
 ): Promise<string> {
   const normalizedEmail = normalizeEmail(email);
+  console.log(`[supabase-auth] resolving user for email: ${normalizedEmail}`);
   const supabase = createServerClient();
 
   for (let page = 1; page <= MAX_USER_PAGES; page += 1) {
@@ -21,14 +22,18 @@ export async function resolveSupabaseAuthUserId(
     });
 
     if (error) {
+      console.error(`[supabase-auth] listUsers page ${page} failed:`, error.message);
       throw error;
     }
+
+    console.log(`[supabase-auth] listUsers page ${page}: ${data.users.length} users`);
 
     const match = data.users.find(
       (user) => normalizeEmail(user.email ?? '') === normalizedEmail,
     );
 
     if (match?.id) {
+      console.log(`[supabase-auth] found user ${match.id} for ${normalizedEmail}`);
       return match.id;
     }
 
@@ -37,6 +42,8 @@ export async function resolveSupabaseAuthUserId(
     }
   }
 
+  console.log(`[supabase-auth] no existing user found for ${normalizedEmail}, creating...`);
+
   const { data, error } = await supabase.auth.admin.createUser({
     email: normalizedEmail,
     email_confirm: true,
@@ -44,6 +51,7 @@ export async function resolveSupabaseAuthUserId(
   });
 
   if (error) {
+    console.error(`[supabase-auth] createUser failed for ${normalizedEmail}:`, error.message);
     throw error;
   }
 
@@ -51,5 +59,6 @@ export async function resolveSupabaseAuthUserId(
     throw new Error('Failed to create Supabase auth user');
   }
 
+  console.log(`[supabase-auth] created user ${data.user.id} for ${normalizedEmail}`);
   return data.user.id;
 }
