@@ -1934,6 +1934,185 @@ function classifyKillReason(loop: ScoredLoop, winnerScore: number): Deprioritize
   };
 }
 
+// ---------------------------------------------------------------------------
+// Self-learn: auto-suppression from skip patterns + auto-lift on approval
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the primary entity/topic from a directive text.
+ * Looks for the first capitalized multi-word sequence after common action verbs,
+ * or falls back to the first capitalized proper noun phrase.
+ */
+function extractDirectiveEntity(directiveText: string): string | null {
+  if (!directiveText) return null;
+
+  // Pattern 1: verb + entity (e.g., "Email Keri Nopens", "Apply for FPA3", "Contact Brandon Kapp")
+  const verbEntityMatch = directiveText.match(
+    /\b(?:Email|Contact|Reach out to|Apply for|Submit|Schedule|Follow up with|Update|Review|Send)\s+(.+?)(?:\s*[-—–.]|$)/i,
+  );
+  if (verbEntityMatch) {
+    const entity = verbEntityMatch[1].trim();
+    // Take first 3-4 significant words as entity name
+    const words = entity.split(/\s+/).slice(0, 4).join(' ');
+    if (words.length >= 3) return words;
+  }
+
+  // Pattern 2: first capitalized multi-word sequence (proper noun)
+  const properNounMatch = directiveText.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b/);
+  if (properNounMatch) return properNounMatch[1];
+
+  // Pattern 3: first significant capitalized word (4+ chars, not sentence start)
+  const words = directiveText.split(/\s+/);
+  for (let i = 1; i < words.length; i++) {
+    const clean = words[i].replace(/[^a-zA-Z0-9]/g, '');
+    if (clean.length >= 4 && /^[A-Z]/.test(clean)) return clean;
+  }
+
+  // Fallback: normalized first 6 significant words as topic fingerprint
+  const significant = directiveText
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length >= 4)
+    .slice(0, 6)
+    .join(' ');
+  return significant || null;
+}
+
+async function checkAndCreateAutoSuppressions(userId: string): Promise<void> {
+  const supabase = createServerClient();
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  try {
+    // --- Phase 1: Auto-create suppressions from 3+ skips ---
+    const { data: skippedActions } = await supabase
+      .from('tkg_actions')
+      .select('id, directive_text, action_type')
+      .eq('user_id', userId)
+      .eq('status', 'skipped')
+      .not('action_type', 'eq', 'do_nothing')
+      .gte('generated_at', fourteenDaysAgo);
+
+    // Group skipped directives by extracted entity
+    const entitySkips = new Map<string, { count: number; actionIds: string[] }>();
+    for (const action of (skippedActions ?? [])) {
+      const entity = extractDirectiveEntity(action.directive_text as string | null ?? '');
+      if (!entity) continue;
+      const key = entity.toLowerCase();
+      const existing = entitySkips.get(key) ?? { count: 0, actionIds: [] };
+      existing.count++;
+      existing.actionIds.push(action.id as string);
+      entitySkips.set(key, existing);
+    }
+
+    // For entities with 3+ skips, check if suppression already exists
+    for (const [entityKey, { count, actionIds }] of entitySkips) {
+      if (count < 3) continue;
+
+      // Check for existing suppression goal matching this entity
+      const { data: existingGoals } = await supabase
+        .from('tkg_goals')
+        .select('id, goal_text')
+        .eq('user_id', userId)
+        .eq('current_priority', true);
+
+      const alreadySuppressed = (existingGoals ?? []).some(g =>
+        g.goal_text.toLowerCase().includes(entityKey),
+      );
+
+      if (!alreadySuppressed) {
+        await supabase
+          .from('tkg_goals')
+          .insert({
+            user_id: userId,
+            goal_text: `AUTO-SUPPRESSED: ${entityKey}. Skipped 3+ times in 14 days. Will auto-lift on first approval matching this entity.`,
+            goal_category: 'other',
+            goal_type: 'recurring',
+            priority: 1,
+            current_priority: true,
+            source: 'auto_suppression',
+            status: 'active',
+            confidence: 100,
+            updated_at: new Date().toISOString(),
+          });
+
+        logStructuredEvent({
+          event: 'auto_suppression_created',
+          level: 'info',
+          userId,
+          artifactType: null,
+          generationStatus: 'auto_suppression',
+          details: {
+            scope: 'scorer',
+            entity: entityKey,
+            skip_count: count,
+            action_ids: actionIds.slice(0, 5),
+          },
+        });
+      }
+    }
+
+    // --- Phase 2: Auto-lift suppressions on approval ---
+    const { data: autoSuppressionGoals } = await supabase
+      .from('tkg_goals')
+      .select('id, goal_text')
+      .eq('user_id', userId)
+      .eq('source', 'auto_suppression')
+      .eq('current_priority', true);
+
+    for (const goal of (autoSuppressionGoals ?? [])) {
+      // Extract the entity name from "AUTO-SUPPRESSED: <entity>. ..."
+      const entityMatch = goal.goal_text.match(/^AUTO-SUPPRESSED:\s*(.+?)\.\s/i);
+      if (!entityMatch) continue;
+      const suppressedEntity = entityMatch[1].toLowerCase();
+
+      // Check for recent approval matching this entity
+      const { data: approvedActions } = await supabase
+        .from('tkg_actions')
+        .select('id, directive_text')
+        .eq('user_id', userId)
+        .eq('status', 'executed')
+        .gte('generated_at', sevenDaysAgo);
+
+      const matchingApproval = (approvedActions ?? []).find(a => {
+        const entity = extractDirectiveEntity(a.directive_text as string | null ?? '');
+        return entity && entity.toLowerCase().includes(suppressedEntity);
+      });
+
+      if (matchingApproval) {
+        await supabase
+          .from('tkg_goals')
+          .delete()
+          .eq('id', goal.id);
+
+        logStructuredEvent({
+          event: 'auto_suppression_lifted',
+          level: 'info',
+          userId,
+          artifactType: null,
+          generationStatus: 'auto_suppression_lifted',
+          details: {
+            scope: 'scorer',
+            entity: suppressedEntity,
+            approving_action_id: matchingApproval.id,
+          },
+        });
+      }
+    }
+  } catch (err) {
+    // Non-blocking — auto-suppression is an enhancement, not a gate
+    logStructuredEvent({
+      event: 'auto_suppression_error',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'auto_suppression_error',
+      details: { scope: 'scorer', error: err instanceof Error ? err.message : String(err) },
+    });
+  }
+}
+
 export async function scoreOpenLoops(userId: string): Promise<ScorerResult | null> {
   const supabase = createServerClient();
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
@@ -1951,6 +2130,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // normal scoring with an early return. They are injected into the scored pool
   // at the emergent pattern stage (line ~2160) where the no-goal penalty applies.
   // This prevents goalless system metrics from winning over goal-connected candidates.
+
+  // Self-learn: auto-create/lift suppression goals from skip patterns
+  await checkAndCreateAutoSuppressions(userId);
 
   // Parallel data fetch
   const [commitmentsRes, signalsRes, entitiesRes, goalsRes] = await Promise.all([

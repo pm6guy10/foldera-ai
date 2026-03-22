@@ -74,11 +74,13 @@ Only start after Phase 1 is fully PROVEN.
 
 ### 2.1 Self-Learning
 
-| Item | Status | Blocks |
+| Item | Status | Evidence |
 |---|---|---|
-| Auto-suppress after 3 skips on same entity | NOT STARTED | Phase 1 complete |
-| Auto-lift suppression on approval | NOT STARTED | Phase 1 complete |
+| Auto-suppress after 3 skips on same entity | BUILT | `checkAndCreateAutoSuppressions` in scorer.ts, source=auto_suppression |
+| Auto-lift suppression on approval | BUILT | Same function, deletes auto_suppression goals on matching executed action within 7d |
 | Feedback loop into scorer | PROVEN | commit 3da2129 |
+| Goal priority promotion from signal frequency | BUILT | conversation-extractor: confidence >= 80 promotes priority by 1, resets to 60 |
+| Goal consolidation (fuzzy dedup) | BUILT | conversation-extractor: Jaccard similarity > 0.5 merges into existing goal |
 
 **PROMPT READY:** Self-learn prompt written, locked in LESSONS_LEARNED.md.
 

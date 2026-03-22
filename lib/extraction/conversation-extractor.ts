@@ -355,6 +355,26 @@ export async function extractFromConversation(
 
       if (existing) {
         // Update metadata but never overwrite status (user may have marked it achieved/abandoned)
+        const { data: currentGoal } = await supabase
+          .from('tkg_goals')
+          .select('confidence, priority')
+          .eq('id', existing.id)
+          .single();
+
+        const currentConfidence = currentGoal?.confidence ?? 50;
+        const currentPriority = currentGoal?.priority ?? 3;
+        let newConfidence = Math.min(100, currentConfidence + 5);
+        let newPriority = currentPriority;
+
+        // Goal priority promotion: if confidence reaches 80 and priority < 5,
+        // promote priority by 1 and reset confidence to 60 so next promotion
+        // requires another ~4 reinforcements.
+        if (newConfidence >= 80 && currentPriority < 5) {
+          newPriority = currentPriority + 1;
+          newConfidence = 60;
+          console.log(`[conversation-extractor] goal_promoted: "${g.description.slice(0, 80)}" priority ${currentPriority} → ${newPriority}`);
+        }
+
         await supabase
           .from('tkg_goals')
           .update({
@@ -362,43 +382,97 @@ export async function extractFromConversation(
             time_horizon: g.time_horizon ?? null,
             source_conversation_id: signal.id,
             entity_id: selfId ?? null,
-            confidence: Math.min(100, ((await supabase
-              .from('tkg_goals')
-              .select('confidence')
-              .eq('id', existing.id)
-              .single()).data?.confidence ?? 50) + 5),
+            confidence: newConfidence,
+            priority: newPriority,
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
       } else {
-        // Insert new goal — map extractor domain to allowed goal_category values
-        const domainMap: Record<string, string> = {
-          career: 'career',
-          financial: 'financial',
-          finances: 'financial',
-          relationship: 'relationship',
-          relationships: 'relationship',
-          health: 'health',
-          project: 'project',
-        };
-        const goal_category = domainMap[g.domain?.toLowerCase() ?? ''] ?? 'other';
+        // -------------------------------------------------------------------
+        // Goal consolidation (fuzzy dedup): before inserting, check for
+        // semantic near-duplicates using Jaccard similarity on word sets.
+        // -------------------------------------------------------------------
+        const GOAL_STOP_WORDS = new Set([
+          'the', 'a', 'an', 'is', 'at', 'to', 'for', 'and', 'or', 'in',
+          'of', 'with', 'on', 'by', 'from', 'that', 'this', 'be', 'as',
+        ]);
 
-        await supabase
+        function goalWords(text: string): Set<string> {
+          return new Set(
+            text.toLowerCase()
+              .replace(/[^a-z0-9\s]/g, ' ')
+              .split(/\s+/)
+              .filter(w => w.length >= 2 && !GOAL_STOP_WORDS.has(w)),
+          );
+        }
+
+        function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
+          if (a.size === 0 && b.size === 0) return 1;
+          let intersection = 0;
+          for (const word of a) {
+            if (b.has(word)) intersection++;
+          }
+          const union = new Set([...a, ...b]).size;
+          return union > 0 ? intersection / union : 0;
+        }
+
+        const { data: allActiveGoals } = await supabase
           .from('tkg_goals')
-          .insert({
-            user_id: userId,
-            goal_text: g.description,
-            goal_category,
-            goal_type,
-            time_horizon: g.time_horizon ?? null,
-            source_conversation_id: signal.id,
-            entity_id: selfId ?? null,
-            status: 'active',
-            confidence: 60,
-            priority: 3,
-            source: 'extracted',
-            updated_at: new Date().toISOString(),
-          });
+          .select('id, goal_text, confidence')
+          .eq('user_id', userId)
+          .eq('status', 'active');
+
+        const newGoalWords = goalWords(g.description);
+        let consolidated = false;
+
+        for (const existingGoal of (allActiveGoals ?? [])) {
+          const existingWords = goalWords(existingGoal.goal_text);
+          const sim = jaccardSimilarity(newGoalWords, existingWords);
+          if (sim > 0.5) {
+            // Near-duplicate — reinforce existing goal instead of inserting
+            await supabase
+              .from('tkg_goals')
+              .update({
+                confidence: Math.min(100, (existingGoal.confidence ?? 50) + 5),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existingGoal.id);
+            console.log(`[conversation-extractor] goal_consolidated: "${g.description.slice(0, 60)}" → existing "${existingGoal.goal_text.slice(0, 60)}" (sim=${sim.toFixed(2)})`);
+            consolidated = true;
+            break;
+          }
+        }
+
+        if (!consolidated) {
+          // Insert new goal — map extractor domain to allowed goal_category values
+          const domainMap: Record<string, string> = {
+            career: 'career',
+            financial: 'financial',
+            finances: 'financial',
+            relationship: 'relationship',
+            relationships: 'relationship',
+            health: 'health',
+            project: 'project',
+          };
+          const goal_category = domainMap[g.domain?.toLowerCase() ?? ''] ?? 'other';
+
+          await supabase
+            .from('tkg_goals')
+            .insert({
+              user_id: userId,
+              goal_text: g.description,
+              goal_category,
+              goal_type,
+              time_horizon: g.time_horizon ?? null,
+              source_conversation_id: signal.id,
+              entity_id: selfId ?? null,
+              status: 'active',
+              confidence: 60,
+              priority: 3,
+              source: 'extracted',
+              updated_at: new Date().toISOString(),
+            });
+        }
       }
     }
   }
