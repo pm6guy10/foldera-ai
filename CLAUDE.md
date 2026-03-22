@@ -1444,3 +1444,42 @@ Old broken score for the same S5 candidate: 0.085. Threshold remains at 2.0 — 
 
 ### Supabase / migrations
 - No new migrations
+
+---
+
+## Session Log — 2026-03-23 (self-learn: identity graph automation)
+
+- **MODE:** AUDIT
+- **Commit:** `7525e8f`
+
+### CHANGE 1 — Goal priority promotion from signal frequency
+- **Before:** Goals extracted at priority=3, confidence=60. Repeated signal reinforcement bumped confidence by +5 but never changed priority.
+- **After:** When confidence reaches 80 (after ~4 reinforcements), priority promotes by 1 (cap 5), confidence resets to 60. A goal needs ~8 reinforcements to reach max priority from cold start (priority 3→4 at 4th extraction, 4→5 at 8th).
+- **File:** `lib/extraction/conversation-extractor.ts` — goal upsert block
+
+### CHANGE 2 — Auto-suppression from skip patterns + auto-lift
+- **Create:** `checkAndCreateAutoSuppressions(userId)` runs at start of `scoreOpenLoops`. Queries 14-day skipped actions, extracts entity/topic via regex, groups by entity. If 3+ skips on same entity and no existing suppression: inserts `tkg_goals` row with `priority=1, current_priority=true, source='auto_suppression'`.
+- **Lift:** Same function checks existing `source='auto_suppression'` goals. If a matching approval (`status='executed'`) exists within 7 days, deletes the auto-suppression goal. Manual suppressions (`source='manual'` or any non-auto_suppression) are never auto-lifted.
+- **Entity extraction:** `extractDirectiveEntity()` — tries verb+entity pattern, then proper noun phrase, then capitalized word, then normalized topic fingerprint.
+- **File:** `lib/briefing/scorer.ts` — new function before `scoreOpenLoops`
+
+### CHANGE 3 — Goal consolidation (fuzzy dedup)
+- **Before:** Exact-match dedup on `goal_text` only.
+- **After:** Before inserting a new goal, queries all active goals for the user. Computes Jaccard similarity on word sets (after stop word removal). If similarity > 0.5, reinforces existing goal (+5 confidence) instead of inserting.
+- **Verification math:**
+  - "Update your stated top goal from 'Maintain family stability'" vs "Update your stated top goal from 'Maintain health and family stability'" → Words: {update, stated, top, goal, maintain, family, stability} vs {update, stated, top, goal, maintain, health, family, stability}. Intersection=7, Union=8. Jaccard=0.875. **CONSOLIDATES.** Correct.
+  - "Land MAS3 position at HCA" vs "Land permanent WA state government Management Analyst 4" → Words: {land, mas3, position, hca, establish, 12-month, tenure} vs {land, permanent, wa, state, government, management, analyst, role}. Intersection=1 (land), Union~14. Jaccard=0.07. **DOES NOT CONSOLIDATE.** Correct — different goals.
+- **File:** `lib/extraction/conversation-extractor.ts` — goal insert block
+
+### Files changed
+- `lib/extraction/conversation-extractor.ts` — Goal priority promotion + fuzzy dedup (112 insertions, 16 deletions)
+- `lib/briefing/scorer.ts` — Auto-suppression create/lift + entity extraction (163 insertions)
+- `FOLDERA_PRODUCT_SPEC.md` — Updated 5 items under 2.1 Self-Learning
+
+### Verified working
+- `npm run build` — 0 errors
+- No hardcoded user data
+- All queries filter by `userId` parameter — works for any user
+
+### Supabase / migrations
+- No new migrations
