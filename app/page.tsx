@@ -7,7 +7,6 @@ import {
   Globe, Layers, Terminal, FileText, AlertCircle,
   Lock, ChevronRight, Eye,
 } from 'lucide-react';
-// cold-read imports removed — hero replaced with signal engine mechanism
 
 // ============================================================================
 // TYPES
@@ -46,31 +45,6 @@ interface NavigationProps {
   scrolled: boolean;
 }
 
-interface Directive {
-  directive: string;
-  action_type: string;
-  reason: string;
-  artifact_type?: string;
-  artifact?: any;
-}
-
-const ACTION_LABELS: Record<string, string> = {
-  write_document: 'Write',
-  send_message: 'Reach Out',
-  make_decision: 'Decide',
-  do_nothing: 'Wait',
-  schedule: 'Schedule',
-  research: 'Research',
-};
-
-const ACTION_COLORS: Record<string, string> = {
-  write_document: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-  send_message: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-  make_decision: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  do_nothing: 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
-  schedule: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  research: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-};
 
 // ============================================================================
 // DATA
@@ -131,8 +105,8 @@ const SCENARIOS: Scenario[] = [
 
 const FEATURES: FeatureItem[] = [
   { icon: Database, title: 'It reads your history', desc: 'Email, calendar, conversations. Foldera ingests what you\u2019ve already written and finds the patterns you can\u2019t see from inside them.' },
-  { icon: Brain, title: 'It does the math', desc: 'Every recommendation is scored against what actually worked for you. Your track record, not AI opinions.' },
-  { icon: Zap, title: 'It does the work', desc: 'No prompting. No chatting. You wake up to finished drafts, ready to approve with one tap.' },
+  { icon: Brain, title: 'It picks the one thing', desc: 'Dozens of threads, one winner. The engine scores what matters most and ignores the rest.' },
+  { icon: Zap, title: 'It drafts the email', desc: 'No prompting. No chatting. You wake up to a finished draft \u2014 ready to send with one tap.' },
   { icon: Shield, title: 'It stays private', desc: 'Your data never trains anyone else\u2019s model. AES-256 encryption. Delete everything anytime.' },
   { icon: Terminal, title: 'It gets smarter', desc: 'Every approval and every skip teaches the engine what matters to you. Day 30 is unrecognizable from day 1.' },
   { icon: Layers, title: 'It replaces the system', desc: 'Not another app to check. The whole point is that you stop managing and start deciding yes or no.' },
@@ -173,38 +147,6 @@ const useInView = (threshold = 0.15): [React.MutableRefObject<HTMLDivElement | n
   return [ref, inView];
 };
 
-function useTypingEffect(text: string, speed: number = 25, startDelay: number = 500) {
-  const [displayed, setDisplayed] = useState('');
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    if (!text) { setDisplayed(''); setDone(false); return; }
-    setDisplayed('');
-    setDone(false);
-    let i = 0;
-    let timeout: ReturnType<typeof setTimeout>;
-    let interval: ReturnType<typeof setInterval>;
-
-    timeout = setTimeout(() => {
-      interval = setInterval(() => {
-        if (i < text.length) {
-          setDisplayed(text.slice(0, i + 1));
-          i++;
-        } else {
-          clearInterval(interval);
-          setDone(true);
-        }
-      }, speed);
-    }, startDelay);
-
-    return () => {
-      clearTimeout(timeout);
-      if (interval) clearInterval(interval);
-    };
-  }, [text, speed, startDelay]);
-
-  return { displayed, done };
-}
 
 // ============================================================================
 // ATOMIC COMPONENTS
@@ -244,132 +186,6 @@ const AmbientGrid = () => (
   </div>
 );
 
-const NeuralStream = () => (
-  <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-40">
-    <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.05)_0%,transparent_50%)] animate-pulse-slow" />
-    <div
-      className="absolute top-[20%] left-[20%] w-[60%] h-[60%] bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05)_0%,transparent_60%)] animate-pulse-slow"
-      style={{ animationDelay: '2s' }}
-    />
-  </div>
-);
-
-// ============================================================================
-// ARTIFACT PREVIEW (shared with /try)
-// ============================================================================
-function ArtifactPreview({ artifactType, artifact }: { artifactType: string; artifact: any }) {
-  const baseCard = 'mt-6 border-t border-zinc-800 pt-5';
-  const label = (
-    <p className="text-zinc-600 text-[10px] font-semibold tracking-widest uppercase mb-3">
-      Draft ready
-    </p>
-  );
-
-  if (artifactType === 'drafted_email' && artifact) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-3 text-sm">
-          <div className="flex gap-2">
-            <span className="text-zinc-500 w-14 shrink-0">To</span>
-            <span className="text-zinc-300 truncate">{artifact.to ?? '\u2014'}</span>
-          </div>
-          <div className="flex gap-2 border-t border-zinc-700/40 pt-3">
-            <span className="text-zinc-500 w-14 shrink-0">Subject</span>
-            <span className="text-zinc-300">{artifact.subject ?? '\u2014'}</span>
-          </div>
-          <div className="border-t border-zinc-700/40 pt-3 text-zinc-400 leading-relaxed whitespace-pre-wrap break-words">
-            {artifact.body ?? ''}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (artifactType === 'decision' && artifact?.options) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="space-y-3">
-          {artifact.options.map((opt: any, i: number) => (
-            <div key={i} className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-zinc-300 text-sm font-medium">{opt.option}</span>
-                <span className="text-zinc-500 text-xs">{Math.round((opt.weight ?? 0) * 100)}%</span>
-              </div>
-              <div className="h-1 bg-zinc-700 rounded-full overflow-hidden mb-2">
-                <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${Math.round((opt.weight ?? 0) * 100)}%` }} />
-              </div>
-              {opt.rationale && <p className="text-zinc-500 text-xs">{opt.rationale}</p>}
-            </div>
-          ))}
-          {artifact.recommendation && (
-            <p className="text-zinc-500 text-sm border-l-2 border-cyan-500/40 pl-3 italic">{artifact.recommendation}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (artifactType === 'document' && artifact) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
-          <p className="text-zinc-300 text-sm font-semibold mb-2">{artifact.title ?? 'Document'}</p>
-          <p className="text-zinc-500 text-sm leading-relaxed line-clamp-4">{artifact.content ?? ''}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (artifactType === 'wait_rationale' && artifact) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-2">
-          <p className="text-zinc-400 text-sm leading-relaxed">{artifact.context ?? ''}</p>
-          {artifact.evidence && (
-            <p className="text-zinc-600 text-sm border-l-2 border-zinc-700 pl-3 italic">{artifact.evidence}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (artifactType === 'research_brief' && artifact) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4">
-          <p className="text-zinc-400 text-sm leading-relaxed mb-2">{artifact.findings ?? ''}</p>
-          {artifact.recommended_action && (
-            <p className="text-zinc-600 text-xs border-l-2 border-zinc-700 pl-3 italic">{artifact.recommended_action}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (artifactType === 'calendar_event' && artifact) {
-    return (
-      <div className={baseCard}>
-        {label}
-        <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl p-4 space-y-2">
-          <p className="text-zinc-300 text-sm font-semibold">{artifact.title ?? 'Event'}</p>
-          {artifact.start && (
-            <p className="text-zinc-500 text-xs">{new Date(artifact.start).toLocaleString()} \u2014 {artifact.end ? new Date(artifact.end).toLocaleString() : ''}</p>
-          )}
-          {artifact.description && (
-            <p className="text-zinc-500 text-sm">{artifact.description}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-}
 
 // ============================================================================
 // SIGNAL ENGINE HERO — mechanism visualization
@@ -474,7 +290,6 @@ function ScenarioDemos() {
   const [activeTab, setActiveTab] = useState(0);
   const [phase, setPhase] = useState<'chaos' | 'clarity'>('chaos');
   const [progress, setProgress] = useState(0);
-  const [isAutoPlay, setIsAutoPlay] = useState(true);
   const prefersReducedMotion = usePrefersReducedMotion();
 
   const runDemo = useCallback(() => {
@@ -507,11 +322,7 @@ function ScenarioDemos() {
     return cleanup;
   }, [activeTab, runDemo]);
 
-  useEffect(() => {
-    if (!isAutoPlay || prefersReducedMotion) return;
-    const interval = setInterval(() => setActiveTab((prev) => (prev + 1) % SCENARIOS.length), 9000);
-    return () => clearInterval(interval);
-  }, [isAutoPlay, prefersReducedMotion]);
+  // Auto-play removed — user controls scenario via dots
 
   const current = SCENARIOS[activeTab];
   const isProcessing = phase === 'chaos' && progress > 40;
@@ -533,9 +344,9 @@ function ScenarioDemos() {
           </div>
         </div>
 
-        {/* Processing glow */}
-        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.15)_0%,transparent_50%)] transition-opacity duration-1000 ${
-          isProcessing ? 'opacity-100 animate-pulse-fast' : 'opacity-30'
+        {/* Subtle background glow */}
+        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.08)_0%,transparent_50%)] transition-opacity duration-1000 ${
+          isProcessing ? 'opacity-100' : 'opacity-30'
         }`} />
 
         {/* Chaos layer */}
@@ -563,42 +374,20 @@ function ScenarioDemos() {
                     <ChaosIcon type={item.type} />
                   </div>
                   <span className="flex-1 font-semibold tracking-tight">{item.text}</span>
-                  <div className="w-2 h-2 rounded-full bg-rose-500/50 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-zinc-600" />
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Processing overlay */}
-        {phase === 'chaos' && progress > 50 && (
-          <div className="absolute inset-0 pt-12 flex items-center justify-center z-20">
-            <div className="flex flex-col items-center gap-8 p-10 rounded-[2rem] bg-black/60 backdrop-blur-2xl border border-cyan-500/30 shadow-[0_0_100px_rgba(6,182,212,0.2)]">
-              <div className="relative">
-                <Brain className="w-12 h-12 text-cyan-400 animate-pulse-fast relative z-10" />
-                <div className="absolute inset-0 bg-cyan-400 blur-xl opacity-50 animate-pulse-fast" />
-              </div>
-              <div className="flex flex-col items-center gap-4">
-                <span className="text-xs font-mono font-bold text-cyan-400 tracking-[0.3em] uppercase">Synthesizing Intent</span>
-                <div className="w-64 h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/5 relative">
-                  <div className="absolute inset-0 bg-cyan-500/20 blur-sm" />
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 transition-all duration-300 ease-out rounded-full relative z-10"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <p className="text-zinc-500 text-[10px] font-mono mt-2 uppercase tracking-widest font-bold">MAP_REDUCE // EXTRACTING PATTERNS</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Clarity layer */}
         <div className={`absolute inset-0 pt-12 p-6 md:p-12 flex items-center justify-center transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${
           phase === 'clarity' ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'
         }`}>
           <div className="w-full max-w-lg rounded-[2rem] bg-zinc-950/90 backdrop-blur-2xl border border-white/10 overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,1)] ring-1 ring-white/5">
-            <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400" />
+            <div className="h-1 w-full bg-gradient-to-r from-cyan-500 to-cyan-300" />
             <div className="p-6 md:p-8 border-b border-white/5 bg-white/[0.01] flex items-start gap-5 text-left">
               <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]">
                 <Check className="w-6 h-6 text-cyan-400" />
@@ -627,7 +416,7 @@ function ScenarioDemos() {
           return (
             <button
               key={s.id}
-              onClick={() => { setActiveTab(i); setIsAutoPlay(false); }}
+              onClick={() => { setActiveTab(i); }}
               className={`h-1.5 rounded-full transition-all duration-500 ${isActive ? 'bg-cyan-400 w-12 shadow-[0_0_15px_rgba(34,211,238,0.6)]' : 'bg-white/20 w-4 hover:bg-white/40'}`}
               aria-label={`Scenario ${i + 1}: ${s.label}`}
             />
@@ -685,23 +474,14 @@ const FlipSection = memo(() => {
             </div>
             <div className="space-y-6 relative z-10">
               <div className="p-8 rounded-2xl bg-black/80 border border-white/10 shadow-2xl backdrop-blur-md">
-                <div className="flex justify-between items-center mb-6 text-[11px] font-black uppercase tracking-widest">
-                  <span className="text-white">Signal Confidence</span>
-                  <span className="text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.2)]">ACTIVE</span>
-                </div>
-                <div className="w-full bg-zinc-900 h-2 rounded-full overflow-hidden mb-4 border border-white/5 relative">
-                  <div className="absolute inset-0 bg-cyan-500/20 blur-sm" />
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 transition-all duration-[2000ms] ease-[cubic-bezier(0.16,1,0.3,1)] relative z-10"
-                    style={{ width: inView ? '92%' : '0%' }}
-                  />
-                </div>
-                <div className="text-[10px] font-mono font-bold text-zinc-500 tracking-[0.2em] uppercase">Matching historic nodes... 92% Accuracy</div>
+                <div className="text-[11px] font-black uppercase tracking-widest text-white mb-6">One thread identified</div>
+                <div className="text-zinc-300 text-sm leading-relaxed mb-4">Marcus reopened the terms thread Friday. Legal was CC&rsquo;d on the last three rounds. He typically responds within 22 minutes.</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Pattern Extracted</div>
               </div>
               <div className="p-8 rounded-2xl bg-black/50 border border-white/5 relative overflow-hidden group">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-400 to-blue-500 shadow-[0_0_20px_rgba(6,182,212,0.5)]" aria-hidden="true" />
-                <div className="text-zinc-600 text-[10px] font-black uppercase tracking-widest mb-3">Pattern Extracted</div>
-                <div className="text-zinc-200 text-sm md:text-base font-medium leading-relaxed">&ldquo;Marcus prioritizes Friday terms. Always CC legal. Historic response latency: 22m.&rdquo;</div>
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyan-400" aria-hidden="true" />
+                <div className="text-zinc-600 text-[10px] font-black uppercase tracking-widest mb-3">Artifact Ready</div>
+                <div className="text-zinc-200 text-sm md:text-base font-medium leading-relaxed">&ldquo;Hi Marcus — attached are the revised terms with the two changes from Friday. Let me know if legal needs anything else.&rdquo;</div>
               </div>
             </div>
           </div>
@@ -728,7 +508,7 @@ const MathConsole = memo(() => {
           <div className="text-center mb-20">
             <h2 className="text-5xl md:text-6xl font-black tracking-tighter text-white mb-8">
               The engine keeps the math backstage.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">You just get the work.</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#38bdf8] to-[#22d3ee]">You just get the work.</span>
             </h2>
             <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed">
               Foldera reads the history, narrows the day to one live thread, and drafts the finished artifact before you even open the dashboard.
@@ -744,34 +524,37 @@ const MathConsole = memo(() => {
                 <div className="w-3 h-3 rounded-full bg-zinc-700/50" />
                 <div className="w-3 h-3 rounded-full bg-zinc-700/50" />
               </div>
-              <div className="ml-2 text-zinc-500 font-bold tracking-[0.2em] uppercase">directive_assembly.sh</div>
+              <div className="ml-2 text-zinc-500 font-bold tracking-[0.2em] uppercase">How it works</div>
             </div>
 
-            <div className="p-8 md:p-12 space-y-8 text-zinc-400 leading-relaxed bg-black/60 break-words text-left">
+            <div className="p-8 md:p-12 space-y-8 text-zinc-400 leading-relaxed bg-black/60 break-words text-left font-sans">
               <div>
-                <span className="text-cyan-400 font-bold">$</span> gather_context --email --calendar --conversations
+                <span className="text-cyan-400 font-bold text-sm">01</span>
+                <span className="text-white font-bold text-sm ml-3">Read your email, calendar, and conversations</span>
                 <br />
-                <span className="text-zinc-600 font-bold mt-2 inline-block">{'\u2192'} Pull the unfinished threads that actually matter.</span>
+                <span className="text-zinc-600 font-medium mt-2 inline-block text-sm">Pull the unfinished threads that actually matter.</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '500ms' }}>
-                <span className="text-cyan-400 font-bold">$</span> choose_one_thread --stakes --urgency --tractability
+                <span className="text-cyan-400 font-bold text-sm">02</span>
+                <span className="text-white font-bold text-sm ml-3">Pick the one thread with the highest stakes</span>
                 <br />
-                <span className="text-zinc-600 font-bold mt-2 inline-block">{'\u2192'} Keep the scoring backstage and surface only the winning thread.</span>
+                <span className="text-zinc-600 font-medium mt-2 inline-block text-sm">Scoring stays backstage. You only see the winner.</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '1000ms' }}>
-                <span className="text-cyan-400 font-bold">$</span> draft_artifact --ready_to_approve
+                <span className="text-cyan-400 font-bold text-sm">03</span>
+                <span className="text-white font-bold text-sm ml-3">Draft the finished artifact</span>
                 <br />
-                <span className="text-zinc-600 font-bold mt-2 inline-block">{'\u2192'} Produce the email, brief, decision frame, or calendar hold with the details already filled in.</span>
+                <span className="text-zinc-600 font-medium mt-2 inline-block text-sm">The email, document, or calendar hold — with the details already filled in.</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '2200ms' }}>
+                <span className="text-cyan-400 font-bold text-sm">04</span>
+                <span className="text-white font-bold text-sm ml-3">Deliver one read to your inbox</span>
                 <br />
-                <span className="text-cyan-400 font-bold">$</span> deliver_one_read --email_first
-                <br />
-                <div className="mt-4 bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl inline-block shadow-[inset_0_0_20px_rgba(52,211,153,0.1)]">
-                  <span className="text-emerald-400 font-bold text-xs sm:text-sm tracking-widest">
+                <div className="mt-4 bg-cyan-500/10 border border-cyan-500/20 p-4 rounded-xl inline-block">
+                  <span className="text-cyan-400 font-bold text-xs sm:text-sm tracking-widest">
                     ONE DIRECTIVE. ONE ARTIFACT. READY TO APPROVE.
                   </span>
                 </div>
@@ -789,14 +572,6 @@ MathConsole.displayName = 'MathConsole';
 // FEATURE CAROUSEL
 // ============================================================================
 function FeatureCarousel() {
-  const [featured, setFeatured] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setFeatured((prev) => (prev + 1) % FEATURES.length);
-    }, 4500);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <section id="product" className="py-40 relative bg-[#07070c] border-t border-white/5">
@@ -809,26 +584,14 @@ function FeatureCarousel() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {FEATURES.map((feature, i) => {
             const Icon = feature.icon;
-            const isFeatured = i === featured;
             return (
               <Reveal key={feature.title} delay={i * 100}>
-                <div
-                  className={`p-10 rounded-[2rem] bg-zinc-950/80 backdrop-blur-xl border transition-all duration-700 h-full relative overflow-hidden text-left ${
-                    isFeatured
-                      ? 'border-cyan-500/40 shadow-[0_0_60px_rgba(6,182,212,0.2)] -translate-y-2 scale-[1.03]'
-                      : 'border-white/[0.08] shadow-2xl shadow-black/40 hover:border-cyan-500/30 hover:shadow-[0_0_50px_rgba(6,182,212,0.15)] hover:-translate-y-2'
-                  }`}
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent transition-opacity duration-700 ${isFeatured ? 'opacity-100' : 'opacity-0'}`} />
-                  <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center mb-8 transition-all duration-500 shadow-inner ${
-                    isFeatured
-                      ? 'bg-cyan-500/10 border-cyan-500/30 scale-110'
-                      : 'bg-black border-white/10'
-                  }`}>
-                    <Icon className={`w-7 h-7 transition-colors duration-500 ${isFeatured ? 'text-cyan-400' : 'text-zinc-500'}`} />
+                <div className="p-10 rounded-[2rem] bg-zinc-950/80 backdrop-blur-xl border border-white/[0.08] shadow-2xl shadow-black/40 hover:border-cyan-500/30 hover:shadow-[0_0_50px_rgba(6,182,212,0.15)] hover:-translate-y-2 transition-all duration-700 h-full relative overflow-hidden text-left">
+                  <div className="w-14 h-14 rounded-2xl border bg-black border-white/10 flex items-center justify-center mb-8 shadow-inner">
+                    <Icon className="w-7 h-7 text-zinc-500" />
                   </div>
                   <h3 className="text-xl font-black text-white mb-4 tracking-tight relative z-10">{feature.title}</h3>
-                  <p className={`text-base leading-relaxed font-medium relative z-10 transition-colors duration-500 ${isFeatured ? 'text-zinc-300' : 'text-zinc-400'}`}>{feature.desc}</p>
+                  <p className="text-base leading-relaxed font-medium relative z-10 text-zinc-400">{feature.desc}</p>
                 </div>
               </Reveal>
             );
@@ -898,22 +661,6 @@ export default function App() {
         .perspective-1000 { perspective: 1000px; }
         .rotate-y-12 { transform: rotateY(12deg); }
         .rotate-y-0 { transform: rotateY(0deg); }
-        @keyframes pulse-slow-lp {
-          0%, 100% { transform: scale(1); opacity: 0.5; }
-          50% { transform: scale(1.05); opacity: 0.8; }
-        }
-        .animate-pulse-slow { animation: pulse-slow-lp 6s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse-fast-lp {
-          0%, 100% { opacity: 0.8; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.02); }
-        }
-        .animate-pulse-fast { animation: pulse-fast-lp 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes gradient-x {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .animate-gradient-x { background-size: 200% 200%; animation: gradient-x 8s ease infinite; filter: drop-shadow(0 0 20px rgba(6,182,212,0.4)); }
         /* Hero — processing dot glows once */
         .hero-process-dot {
           animation: hero-dot-glow 1.2s ease-out 0.6s both;
@@ -951,12 +698,12 @@ export default function App() {
           <Reveal className="text-center mb-16 px-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white mb-6">
               Now imagine a month of<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-400 to-cyan-300 animate-gradient-x">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-cyan-400">
                 your real data.
               </span>
             </h2>
             <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed">
-              That cold read used time and day. Here&apos;s what Foldera does with your email, calendar, and conversations.
+              Here&apos;s what Foldera does with your email, calendar, and conversations.
             </p>
           </Reveal>
           <Reveal delay={150}>
@@ -1023,7 +770,7 @@ export default function App() {
                   </div>
                 </div>
                 <ul className="space-y-6 mb-16 relative z-10 text-left">
-                  {['Unlimited integrations', 'Unlimited daily actions', 'Full autonomous queue', 'All specialist agents', 'Priority processing', 'Email + calendar sync'].map((f) => (
+                  {['Email + calendar sync', 'One directive every morning', 'Drafted emails + documents', 'Approve or skip in one tap', 'Encrypted at rest', 'Gets smarter every day'].map((f) => (
                     <li key={f} className="flex items-center gap-5 text-white">
                       <div className="p-1 rounded-full bg-cyan-500/10 border border-cyan-500/30">
                         <Check className="w-4 h-4 text-cyan-400 shrink-0" aria-hidden="true" />
@@ -1039,7 +786,7 @@ export default function App() {
                   Start 14-day free trial <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </a>
                 <p className="text-center text-zinc-500 text-[10px] uppercase tracking-[0.2em] font-black mt-8 leading-relaxed relative z-10">
-                  14 days free. Cancel anytime.
+                  No credit card required.
                 </p>
               </div>
             </div>

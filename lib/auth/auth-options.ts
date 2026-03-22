@@ -158,7 +158,6 @@ export function getAuthOptions(): NextAuthOptions {
             'https://www.googleapis.com/auth/drive.readonly',
           ].join(' '),
           access_type: 'offline',
-          prompt: 'consent',
         },
       },
     }),
@@ -319,7 +318,7 @@ export function getAuthOptions(): NextAuthOptions {
       },
     },
     pages: {
-      signIn: '/start',
+      signIn: '/login',
     },
     session: {
       strategy: 'jwt',

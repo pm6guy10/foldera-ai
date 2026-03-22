@@ -1,22 +1,36 @@
 /**
- * Next.js middleware — captures UTM/ref params for growth conversion tracking.
+ * Next.js middleware — auth guard for /dashboard/* + UTM/ref tracking.
  *
- * Runs at the edge on every request. Lightweight: only acts when ?ref= is present.
- * Stores the ref param in a cookie so downstream pages can read it and log
- * the visit as a growth signal.
- *
- * Also fires a non-blocking fetch to /api/growth/visit to log the visit
- * as a tkg_signal immediately.
+ * 1. For /dashboard/* routes: checks for NextAuth session cookie. If missing,
+ *    redirects to /login with callbackUrl preserving the original URL.
+ * 2. For all matched routes: captures UTM/ref params for growth tracking.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+
+  // ── AUTH GUARD for /dashboard/* ──
+  // Check for NextAuth session token cookie (handles both __Secure- and non-secure prefix)
+  if (pathname.startsWith('/dashboard')) {
+    const hasSession =
+      request.cookies.has('__Secure-next-auth.session-token') ||
+      request.cookies.has('next-auth.session-token');
+
+    if (!hasSession) {
+      const callbackUrl = `${pathname}${search}`;
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('callbackUrl', callbackUrl);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // ── UTM / REF TRACKING ──
   const ref = request.nextUrl.searchParams.get('ref');
   const utm_source = request.nextUrl.searchParams.get('utm_source');
   const utm_medium = request.nextUrl.searchParams.get('utm_medium');
 
-  // Only act when there's a referral or UTM param
   const trackingRef = ref ?? utm_source;
   if (!trackingRef) {
     return NextResponse.next();
@@ -24,17 +38,14 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
 
-  // Set a cookie so the /try and /start pages can read it
-  // Expires in 30 days — covers the full conversion window
   response.cookies.set('foldera_ref', trackingRef, {
-    maxAge:   30 * 24 * 60 * 60,  // 30 days
+    maxAge:   30 * 24 * 60 * 60,
     path:     '/',
-    httpOnly: false,  // Readable by client-side code
+    httpOnly: false,
     sameSite: 'lax',
     secure:   process.env.NODE_ENV === 'production',
   });
 
-  // Also store UTM details if present
   if (utm_source || utm_medium) {
     const utmData = JSON.stringify({
       source: utm_source ?? '',
@@ -53,7 +64,7 @@ export function middleware(request: NextRequest) {
   return response;
 }
 
-// Only run middleware on public pages, not API routes or static assets
+// Run on public pages + dashboard routes (not API routes or static assets)
 export const config = {
   matcher: [
     '/',

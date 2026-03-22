@@ -383,7 +383,7 @@ export default function TryPage() {
                     </button>
                   </form>
                   {emailError && <p className="text-sm text-amber-300">{emailError}</p>}
-                  <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">14 days free &middot; No credit card required</p>
+                  <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">No credit card required</p>
                 </div>
               ) : (
                 <div className="space-y-3">

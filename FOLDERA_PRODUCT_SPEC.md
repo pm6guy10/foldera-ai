@@ -99,7 +99,7 @@ Only start after Phase 1 is fully PROVEN.
 
 | Item | Status | Evidence |
 |---|---|---|
-| Goals seeded (ESD, MA4, MAS3 onboard) | PROVEN | 3 rows, top at 1.05 |
+| Goals seeded (ESD, MA4, MAS3 onboard) | UPDATED | 3 key goals enriched with entity names (Yadira Clapper, Mike George, Teo Bicchieri, Ricky Luna, Claim 2MFDBB-007, RCW 50.20.190). All 9 priority>=3 goals set current_priority=true. March 23. |
 | Keri Nopens suppression working | PROVEN | Correctly blocked |
 | FPA3 suppression working | PROVEN | Correctly blocked |
 | Suppression goals loaded and enforced | BUILT | Scorer now queries `current_priority=true, priority<3` and zeroes matching candidates before scoring |
@@ -127,6 +127,9 @@ Only start after Phase 2 deployed.
 | Stranger signup to first email | CODE VERIFIED | Code paths verified: CTA→/start, OAuth (Google+Microsoft), redirect→/dashboard, 90d first-sync, empty state handling. Live test requires real signup. |
 | Under 2 minutes, no instructions | CODE VERIFIED | /start page: OAuth buttons + copy "Your first read arrives tomorrow at 7am". No manual steps between OAuth consent and dashboard. |
 | Connect email, see "first brief tomorrow" | CODE VERIFIED | /start copy at line 23: "Your first read arrives tomorrow at 7am". Auto-sync triggers after OAuth connect. |
+| Session persists across tab close/reopen | FIXED | March 23: removed `prompt:'consent'` from Google OAuth (forced re-consent on every visit). Added middleware auth guard for /dashboard/* (edge redirect to /login if no session cookie). Changed NextAuth signIn page from /start to /login. Deploy needed to verify live. |
+| Middleware auth guard for /dashboard | BUILT | middleware.ts checks for NextAuth session cookie on /dashboard/* routes. Redirects to /login with callbackUrl preserving original URL. |
+| Pricing copy consistent | FIXED | "14 days free. Cancel anytime." → "No credit card required." across landing, /pricing, /try, /login. $29/month consistent. |
 
 ### 3.2 Landing Page
 

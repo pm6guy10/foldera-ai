@@ -242,7 +242,7 @@ export default function ResultPage() {
             </button>
 
             <div className="mt-4 text-center space-y-1.5">
-              {['No credit card required', '$29/month after your trial', 'Cancel anytime'].map(line => (
+              {['No credit card required', '$29/month', 'Cancel anytime'].map(line => (
                 <p key={line} className="flex items-center justify-center gap-1.5 text-zinc-600 text-xs">
                   <Check className="w-3 h-3 text-zinc-700" />
                   {line}

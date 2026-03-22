@@ -315,11 +315,19 @@ async function defense5DeliveryGuarantee(): Promise<DefenseResult> {
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
 
+  // Get all eligible users (same logic as daily-brief)
+  const { filterDailyBriefEligibleUserIds } = await import('@/lib/auth/daily-brief-users');
+  const allTokenUsers = await getAllUsersWithProvider('google');
+  const msUsers = await getAllUsersWithProvider('microsoft');
+  const allUsers = [...new Set([...allTokenUsers, ...msUsers])];
+  const eligibleUsers = await filterDailyBriefEligibleUserIds(allUsers);
+
+  // Get today's actions
   const { data: todayActions } = await supabase
     .from('tkg_actions')
     .select('id, user_id, status, action_type, execution_result')
     .gte('generated_at', todayStart.toISOString())
-    .in('status', ['pending_approval', 'approved', 'executed']);
+    .in('status', ['pending_approval', 'approved', 'executed', 'skipped']);
 
   const usersWithDirective = new Set((todayActions ?? []).map((a) => a.user_id));
   const emailsSent = (todayActions ?? []).filter((a) => {
@@ -327,19 +335,25 @@ async function defense5DeliveryGuarantee(): Promise<DefenseResult> {
     return er?.daily_brief_sent_at;
   });
 
+  // Check which eligible users are missing a directive today
+  const missingUsers = eligibleUsers.filter((uid) => !usersWithDirective.has(uid));
+
   console.log(JSON.stringify({
     event: 'self_heal_defense', defense: 'delivery_guarantee',
+    eligible_users: eligibleUsers.length,
     users_with_directive: usersWithDirective.size,
     emails_sent: emailsSent.length,
+    missing_users: missingUsers.length,
   }));
 
   return {
     defense: 'delivery_guarantee',
-    ok: usersWithDirective.size > 0,
+    ok: missingUsers.length === 0,
     details: {
+      eligible_users: eligibleUsers.length,
       users_with_directive: usersWithDirective.size,
       emails_sent: emailsSent.length,
-      user_ids: [...usersWithDirective],
+      missing_user_ids: missingUsers,
     },
   };
 }

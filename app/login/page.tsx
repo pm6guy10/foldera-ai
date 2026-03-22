@@ -83,7 +83,7 @@ function LoginInner() {
             </a>
           </p>
           <p className="text-zinc-700 text-xs text-center mt-2">
-            14 days free · No credit card required
+            No credit card required
           </p>
         </div>
       </main>

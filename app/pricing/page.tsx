@@ -66,7 +66,7 @@ function CheckoutButton() {
 
 export default function PricingPage() {
   return (
-    <div className="min-h-[100dvh] bg-[#000] text-white flex flex-col antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Nav */}
       <nav className="border-b border-white/5 px-6 py-5 flex items-center justify-between bg-black/80 backdrop-blur-xl">
         <a href="/" className="flex items-center gap-3 group">
@@ -109,12 +109,12 @@ export default function PricingPage() {
 
               <ul className="space-y-5 mb-12 relative z-10 text-left">
                 {[
-                  'Unlimited integrations',
-                  'Unlimited daily actions',
-                  'Full autonomous queue',
-                  'All specialist agents',
-                  'Priority processing',
                   'Email + calendar sync',
+                  'One directive every morning',
+                  'Drafted emails + documents',
+                  'Approve or skip in one tap',
+                  'Encrypted at rest',
+                  'Gets smarter every day',
                 ].map((feature) => (
                   <li key={feature} className="flex items-center gap-4 text-white">
                     <div className="p-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 shrink-0">
@@ -128,7 +128,7 @@ export default function PricingPage() {
               <div className="relative z-10">
                 <CheckoutButton />
                 <p className="text-center text-zinc-500 text-[10px] uppercase tracking-[0.2em] font-black mt-6 leading-relaxed">
-                  14 days free. Cancel anytime.
+                  No credit card required.
                 </p>
               </div>
             </div>
