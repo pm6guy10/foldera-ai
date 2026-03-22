@@ -331,6 +331,58 @@ function signalUrgency(occurredAt: string): number {
   return base * decay;
 }
 
+/**
+ * Extract a date from goal text and compute urgency boost.
+ * Supports: "March 28", "March 27", "2026-03-28", "Apr 1", etc.
+ * Returns null if no date found or date is > 7 days away.
+ * Returns 0.95 if <= 3 days, 0.80 if <= 7 days.
+ */
+function extractGoalDateUrgency(goalText: string): number | null {
+  const MONTH_NAMES: Record<string, number> = {
+    january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+    july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+    jan: 0, feb: 1, mar: 2, apr: 3, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+  };
+
+  let daysUntil: number | null = null;
+  const now = new Date();
+
+  // Pattern 1: "Month DD" (e.g., "March 28", "Apr 1")
+  const monthDayMatch = goalText.match(
+    /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\s+(\d{1,2})\b/i,
+  );
+  if (monthDayMatch) {
+    const month = MONTH_NAMES[monthDayMatch[1].toLowerCase()];
+    const day = parseInt(monthDayMatch[2], 10);
+    if (month !== undefined && day >= 1 && day <= 31) {
+      const targetDate = new Date(now.getFullYear(), month, day);
+      // If the date is in the past this year, try next year
+      if (targetDate.getTime() < now.getTime() - 24 * 60 * 60 * 1000) {
+        targetDate.setFullYear(now.getFullYear() + 1);
+      }
+      daysUntil = (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    }
+  }
+
+  // Pattern 2: "YYYY-MM-DD"
+  if (daysUntil === null) {
+    const isoMatch = goalText.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+    if (isoMatch) {
+      const targetDate = new Date(
+        parseInt(isoMatch[1], 10),
+        parseInt(isoMatch[2], 10) - 1,
+        parseInt(isoMatch[3], 10),
+      );
+      daysUntil = (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    }
+  }
+
+  if (daysUntil === null || daysUntil < 0) return null;
+  if (daysUntil <= 3) return 0.95;
+  if (daysUntil <= 7) return 0.80;
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Tractability — Bayesian from tkg_pattern_metrics (v2: includes failed_outcomes)
 // ---------------------------------------------------------------------------
@@ -2417,6 +2469,19 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     // signal_velocity) are system metrics, not user-serving. Return null for a
     // valid no-send rather than surfacing goalless emergent patterns.
     return null;
+  }
+
+  // -----------------------------------------------------------------------
+  // Goal-text date urgency boost: if a matched goal mentions a date within
+  // 7 days, boost urgency so time-sensitive goals surface when they should.
+  // -----------------------------------------------------------------------
+
+  for (const c of candidates) {
+    if (!c.matchedGoal) continue;
+    const goalDateUrgency = extractGoalDateUrgency(c.matchedGoal.text);
+    if (goalDateUrgency !== null) {
+      c.urgency = Math.max(c.urgency, goalDateUrgency);
+    }
   }
 
   // -----------------------------------------------------------------------

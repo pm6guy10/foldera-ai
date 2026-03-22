@@ -353,6 +353,7 @@ function buildStructuredContext(
 function buildUserIdentityContext(
   goals: Array<{ goal_text: string; priority: number; goal_category: string }>,
 ): string | null {
+  console.log(`[generator] buildUserIdentityContext: ${goals.length} goals received`);
   if (goals.length === 0) return null;
 
   const lines: string[] = [];
@@ -1625,9 +1626,11 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       .limit(4);
 
     // Part 3: Build structured context
+    const goalsForContext = (userGoalsData ?? []) as Array<{ goal_text: string; priority: number; goal_category: string }>;
+    console.log(`[generator] goalsForContext: ${goalsForContext.length} goals for user ${userId.slice(0, 8)}`);
     const ctx = buildStructuredContext(
       hydratedWinner, guardrails, userId, signalEvidence, insight,
-      (userGoalsData ?? []) as Array<{ goal_text: string; priority: number; goal_category: string }>,
+      goalsForContext,
     );
 
     // Part 4: Evidence gating — check eligibility before calling LLM
