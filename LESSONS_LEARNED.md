@@ -93,3 +93,14 @@ The system passes if and only if ALL of these are true every morning with zero h
 5. **MULTI-USER**: Everything works for someone who is not Brandon.
 
 Failure on any criterion = the system is broken. Not "needs improvement." Broken.
+
+## 9. Production E2E Tests Replace Self-Grading
+
+CC cannot test real OAuth flows, session persistence, or redirect chains in its sandbox. The production E2E suite (tests/production/smoke.spec.ts) runs against https://www.foldera.ai with stored session cookies. It catches:
+- Middleware redirect loops (the March 23 sign-in bug)
+- Session cookie domain mismatches
+- API routes returning 401 due to empty userId
+- UI copy regressions (pricing, CTAs)
+- Dashboard rendering failures
+
+Every deploy must pass this suite. "Build passed" is not verification. "Production E2E passed" is verification.

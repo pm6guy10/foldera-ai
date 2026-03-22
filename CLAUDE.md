@@ -108,6 +108,20 @@ For non-user-facing changes, `npm run build` must still pass before commit.
 
 Every session that touches the pipeline must re-trigger production after deploying, query the database for the expected outcome, and show the receipt (email delivered, action row created, correct status). A build pass alone is not sufficient verification. "Done" without live proof is not done.
 
+## Production E2E Tests (MANDATORY)
+
+Every CC session that pushes to main MUST:
+1. Wait for Vercel deployment to show READY
+2. Run `npm run test:prod`
+3. Show all tests passing
+4. If any test fails, the session is NOT done. Fix the failure before closing.
+
+If auth-state.json is expired (session older than 30 days), tell Brandon to run `npm run test:prod:setup` to refresh it. Do not skip the tests.
+
+If tests cannot run (network issues, etc.), explicitly say "Production E2E tests could not run" and explain why. Do not claim the task is verified.
+
+Tests live in tests/production/smoke.spec.ts. Config is playwright.prod.config.ts.
+
 ## Multi-User Verification Rule
 
 - A task is not done if it only works for Brandon, the owner account, or `INGEST_USER_ID`.
