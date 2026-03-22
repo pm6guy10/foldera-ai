@@ -2,7 +2,8 @@
  * GET /api/cron/nightly-ops
  *
  * Nightly orchestrator — runs the full pipeline in sequence:
- *   1. Sync Microsoft (all users)
+ *   1a. Sync Microsoft (all users)
+ *   1b. Sync Google (all users)
  *   2. Process unprocessed signals (up to 3 rounds of 50)
  *   3. Daily brief (generate + send)
  *
@@ -61,6 +62,36 @@ async function stageSyncMicrosoft(): Promise<SyncResult> {
     } catch (err: any) {
       console.error(
         JSON.stringify({ event: 'nightly_ops_sync_error', userId, error: err.message }),
+      );
+      failed++;
+    }
+  }
+
+  return { ok: failed === 0, users: userIds.length, succeeded, failed };
+}
+
+// ---------------------------------------------------------------------------
+// Stage 1b: Google sync (all users)
+// ---------------------------------------------------------------------------
+
+async function stageSyncGoogle(): Promise<SyncResult> {
+  const userIds = await getAllUsersWithProvider('google');
+  if (userIds.length === 0) {
+    return { ok: true, users: 0, succeeded: 0, failed: 0 };
+  }
+
+  let succeeded = 0;
+  let failed = 0;
+
+  const { syncGoogle } = await import('@/lib/sync/google-sync');
+  for (const userId of userIds) {
+    try {
+      const result = await syncGoogle(userId);
+      if (result.error) failed++;
+      else succeeded++;
+    } catch (err: any) {
+      console.error(
+        JSON.stringify({ event: 'nightly_ops_sync_error', provider: 'google', userId, error: err.message }),
       );
       failed++;
     }
@@ -139,6 +170,16 @@ async function handler(request: NextRequest) {
   } catch (err: any) {
     stages.sync_microsoft = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'sync_microsoft', error: err.message }));
+  }
+
+  // Stage 1b: Google sync
+  try {
+    const googleSyncResult = await stageSyncGoogle();
+    stages.sync_google = googleSyncResult;
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'sync_google', ...googleSyncResult }));
+  } catch (err: any) {
+    stages.sync_google = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'sync_google', error: err.message }));
   }
 
   // Stage 2: Signal processing
