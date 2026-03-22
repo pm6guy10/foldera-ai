@@ -612,7 +612,7 @@ async function checkConsecutiveDuplicate(
       const existingNormalized = normalizeText(action.directive_text);
       const sim = similarityScore(newNormalized, existingNormalized);
 
-      if (sim >= 0.70) {
+      if (sim >= 0.50) {
         return {
           isDuplicate: true,
           matchingActionId: action.id as string,
