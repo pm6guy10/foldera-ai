@@ -2477,6 +2477,63 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     });
   }
 
+  // -----------------------------------------------------------------------
+  // PRE-SCORING: Candidate quality filter
+  // Reject housekeeping, tool management, notifications, and spam before
+  // they reach the scoring loop. These waste scorer capacity and poison
+  // the candidate pool even when the generator correctly downgrades them.
+  // -----------------------------------------------------------------------
+
+  const NOISE_CANDIDATE_PATTERNS = [
+    // Tool/account/security management
+    /\b(?:review|check|audit|secure)\s+(?:your\s+)?(?:Google|Microsoft|Apple|Robinhood|account|security|settings|permissions)\b/i,
+    // Credit/billing monitoring
+    /\b(?:check|monitor|review)\s+(?:your\s+)?(?:credit\s*score|credit\s*report|billing|payment\s*method)\b/i,
+    // Grant/revoke access to tools
+    /\b(?:grant(?:ed)?|revoke)\s+(?:Claude|Foldera|app|access|permission)\b/i,
+    // Newsletter/spam registrations
+    /\b(?:register\s+for|complete\s+registration|sign\s+up\s+for)\s+.{0,40}(?:program|initiative|workshop|training|webinar|event)\b/i,
+    // Generic "check X" without urgency (not goal-connected)
+    /^check\s+(?:email|account|status|update)\b/i,
+    // Schedule-a-block-to-review pattern (homework disguised as action)
+    /\bschedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session)\s+(?:to\s+)?(?:review|check|assess|audit)\b/i,
+    // Update billing/payment
+    /\bupdate\s+(?:billing|payment)\s+(?:information|method|details)\b/i,
+    // Security alerts
+    /\b(?:unauthorized|suspicious)\s+(?:login|access|sign.?in|activity)\b/i,
+    // Foldera self-referential (backup for the explicit filter above)
+    /\bFoldera\s+(?:Directive|directive|system)\b/i,
+  ];
+
+  const preScoringCount = candidates.length;
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    const c = candidates[i];
+    const isNoise = NOISE_CANDIDATE_PATTERNS.some((p) => p.test(c.title) || p.test(c.content));
+    if (isNoise) {
+      logStructuredEvent({
+        event: 'candidate_noise_filtered',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'noise_filtered',
+        details: {
+          scope: 'scorer',
+          candidate_id: c.id,
+          candidate_title: c.title.slice(0, 100),
+        },
+      });
+      candidates.splice(i, 1);
+    }
+  }
+  if (preScoringCount !== candidates.length) {
+    console.log(JSON.stringify({
+      event: 'scorer_noise_filter',
+      before: preScoringCount,
+      after: candidates.length,
+      filtered: preScoringCount - candidates.length,
+    }));
+  }
+
   if (candidates.length === 0) {
     // No goal-connected candidates. Goalless emergent patterns (commitment_decay,
     // signal_velocity) are system metrics, not user-serving. Return null for a

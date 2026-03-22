@@ -334,7 +334,7 @@ const NON_COMMITMENT_PATTERNS = [
   // Calendar events and appointments (personal, no external recipient)
   /\b(appointment|counseling|therapy|doctor|dentist|haircut|pickup|drop.?off|grocery|errand)\b/i,
   // Automated billing and payment notifications
-  /\b(bill\s*payment|payment\s*(?:due|reminder)|auto.?pay|statement\s*(?:ready|available)|account\s*(?:ending|balance)|amount\s*due)\b/i,
+  /\b(bill\s*payment|payment\s*(?:due|reminder)|auto.?pay|statement\s*(?:ready|available)|account\s*(?:ending|balance)|amount\s*due|update\s*(?:billing|payment)\s*(?:information|method|details))\b/i,
   // System-generated / automated emails
   /\b(no.?reply|noreply|automated|unsubscribe|do.?not.?reply|data\s*export|will\s*be\s*emailed\s*when\s*ready)\b/i,
   // Personal errands
@@ -343,6 +343,21 @@ const NON_COMMITMENT_PATTERNS = [
   /^(meeting|event|reminder|call|check.?in)$/i,
   // Feedback/survey requests from services
   /\b(provide\s*feedback|rate\s*(?:your|our)|how\s*was\s*your|survey|experience\s*(?:for|with))\b/i,
+  // Security alerts and account notifications
+  /\b(unauthorized\s*(?:login|access|sign.?in)|verify\s*(?:your|new)\s*sign.?in|review\s*account\s*(?:security|activity)|suspicious\s*activity|two.?factor|2fa|security\s*(?:alert|notice|code))\b/i,
+  // Newsletter / marketing / spam
+  /\b(deals?\s*(?:promotion|valid)|livestream|webinar\s*(?:recording|replay)|limited.?time\s*offer|exclusive\s*(?:offer|deal|discount)|free\s*(?:trial|shipping)|promo(?:tion(?:al)?)?|sale\s*(?:ends?|starts?))\b/i,
+  // Generic event promotions and community events (not personal)
+  /\b(egg.?stravaganza|fishing\s*deals|career\s*workshop|dozer\s*days)\b/i,
+  // Mass registration / program signup (impersonal)
+  /\b(complete\s*registration\s*for|register\s*for\s*.{0,30}(?:program|initiative|workshop|training|webinar))\b/i,
+  // Credit / account monitoring (routine, not urgent)
+  /\b(check\s*(?:your\s*)?credit\s*score|credit\s*(?:monitoring|report|check)|check\s*account\s*(?:activity|balance))\b/i,
+  // Tool / service management (not user's real work)
+  /\b(review\s*(?:Google|Microsoft|Apple|Robinhood|Stripe)\s*(?:account|security|settings))\b/i,
+  /\b(grant(?:ed)?\s*(?:Claude|Foldera|app)\s*(?:access|permission))\b/i,
+  // Self-referential: directives extracted as commitments
+  /\b(?:Foldera\s*(?:Directive|directive)|(?:schedule|block)\s*(?:a\s*)?(?:30|60|15|45).?minute\s*(?:block|review|session)\s*(?:to\s*(?:review|check|assess|audit)))\b/i,
 ];
 
 function isNonCommitment(description: string): boolean {

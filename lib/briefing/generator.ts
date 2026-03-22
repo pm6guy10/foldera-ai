@@ -87,11 +87,31 @@ DECISION FRAMEWORK
    - Deadline within 7 days, relationship going cold, opportunity expiring
    - If no timing pressure: output wait_rationale.
 3. Does the artifact actually remove friction?
-   - Drafted email, call script, decision frame = removes friction.
-   - Calendar hold = removes nothing. The user can make their own calendar event.
+   - Drafted email = removes friction (user just hits send).
+   - Finished document = removes friction (user just shares it).
+   - Calendar hold / schedule_block = removes NOTHING. The user can make their own calendar event. Never output schedule_block unless the candidate already passed tests 1 and 2 independently.
 4. Would the user be surprised or relieved?
    - Surprised or relieved = GOOD.
    - Indifferent = BAD. Output wait_rationale.
+
+EXAMPLES OF GOOD VS BAD
+
+BAD: "Schedule a 30-minute block to review your Google account security settings"
+WHY BAD: Routine maintenance. No avoidance. No timing. No friction removed. The user would say "so what?"
+
+BAD: "Document why credit monitoring can wait until after the MA4 search cycle"
+WHY BAD: Homework. The artifact IS the thinking. If waiting is correct, output wait_rationale — don't write an essay about it.
+
+BAD: "Check your credit score through your existing monitoring service"
+WHY BAD: Routine. The user knows they can check their credit score. No surprise. No relief.
+
+GOOD: "Email Yadira Clapper to ask for the MAS3 hiring timeline" + drafted email artifact
+WHY GOOD: The user has been waiting on this for 2 weeks with no action. The email removes friction — they just hit approve. Surprise: "I should have done this already."
+
+GOOD: "Reply to the SAO Share invitation before access expires Friday" + drafted reply artifact
+WHY GOOD: Real deadline. Real consequence. The drafted reply removes friction. Relief: "I almost missed this."
+
+IF ALL CANDIDATES ARE ROUTINE/MAINTENANCE/HOUSEKEEPING: output wait_rationale. Do NOT try to dress up a bad candidate with a better artifact. The candidate itself must pass the avoidance + timing test.
 
 SILENCE IS BETTER THAN NOISE
 If no candidate passes the avoidance + timing + friction test, output wait_rationale. A correct "nothing today" protects trust. A bad directive destroys it. The user will stop opening the email if it's noise twice in a row.
@@ -1187,6 +1207,12 @@ function validateGeneratedArtifact(
       }
       if (typeof a.duration_minutes !== 'number' && !isNonEmptyString(a.duration_minutes)) {
         issues.push('schedule_block duration_minutes is required');
+      }
+      // Reject schedule_block for housekeeping/maintenance topics
+      const scheduleText = `${payload.directive ?? ''} ${a.title ?? ''} ${a.reason ?? ''}`.toLowerCase();
+      const HOUSEKEEPING_RE = /\b(review\s*(?:security|settings|account|permissions)|check\s*(?:credit|billing|payment)|organize\s*(?:files|folders|documents)|audit\s*(?:your|account)|clean\s*up)\b/i;
+      if (HOUSEKEEPING_RE.test(scheduleText)) {
+        issues.push('schedule_block for routine housekeeping rejected — output wait_rationale instead');
       }
       break;
     }
