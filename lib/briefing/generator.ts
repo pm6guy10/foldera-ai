@@ -622,6 +622,7 @@ async function checkConsecutiveDuplicate(
       .from('tkg_actions')
       .select('id, directive_text, action_type')
       .eq('user_id', userId)
+      .in('status', ['pending_approval', 'executed'])
       .not('action_type', 'in', '("do_nothing")')
       .order('generated_at', { ascending: false })
       .limit(3);
