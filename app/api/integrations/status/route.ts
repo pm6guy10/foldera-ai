@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
+    console.error(`[integrations/status] 401 — session: ${JSON.stringify({ hasSession: !!session, hasUser: !!session?.user, userId: session?.user?.id ?? 'MISSING', email: session?.user?.email ?? 'MISSING' })}`);
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
