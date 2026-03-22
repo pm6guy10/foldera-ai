@@ -201,6 +201,8 @@ interface StructuredContext {
   conflicts_with_locked_constraints: boolean;
   // Enrichment
   researcher_insight: ResearchInsight | null;
+  // User identity context (dynamic, from goals)
+  user_identity_context: string | null;
 }
 
 function buildStructuredContext(
@@ -209,6 +211,7 @@ function buildStructuredContext(
   userId: string,
   signalEvidence: SignalSnippet[],
   insight: ResearchInsight | null,
+  userGoals?: Array<{ goal_text: string; priority: number; goal_category: string }>,
 ): StructuredContext {
   // Compress supporting signals to max 5
   const supporting_signals: CompressedSignal[] = signalEvidence.slice(0, 5).map((s) => ({
@@ -337,7 +340,33 @@ function buildStructuredContext(
     has_due_date_or_time_anchor,
     conflicts_with_locked_constraints,
     researcher_insight: insight,
+    user_identity_context: buildUserIdentityContext(userGoals ?? []),
   };
+}
+
+/**
+ * Build a dynamic identity context string from the user's top goals.
+ * This gives the LLM a sense of who the user is and what matters to them,
+ * so it can distinguish high-value directives from low-value housekeeping.
+ * Never hardcodes user-specific text — derived entirely from tkg_goals.
+ */
+function buildUserIdentityContext(
+  goals: Array<{ goal_text: string; priority: number; goal_category: string }>,
+): string | null {
+  if (goals.length === 0) return null;
+
+  const lines: string[] = [];
+  // Top goals become identity lines
+  for (const g of goals.slice(0, 4)) {
+    lines.push(`- [${g.goal_category}, priority ${g.priority}] ${g.goal_text}`);
+  }
+
+  return `USER CONTEXT (read-only, do not reference directly in output):
+The user's current priorities:
+${lines.join('\n')}
+- Directives that move these priorities forward or handle time-sensitive obligations are high value.
+- Directives about tool configuration, account settings, internal system maintenance, or generic productivity are low value and should become wait_rationale instead.
+- If the best candidate is housekeeping or system maintenance, output wait_rationale with why_wait explaining no actionable candidate cleared the bar today.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -379,12 +408,19 @@ function checkGenerationEligibility(ctx: StructuredContext): EligibilityResult {
 // ---------------------------------------------------------------------------
 
 function buildPromptFromStructuredContext(ctx: StructuredContext): string {
-  const sections: string[] = [
+  const sections: string[] = [];
+
+  // User identity context first — gives the LLM judgment about what matters
+  if (ctx.user_identity_context) {
+    sections.push(ctx.user_identity_context);
+  }
+
+  sections.push(
     `TODAY: ${today()}`,
     `CANDIDATE_TITLE:\n${ctx.candidate_title}`,
     `CANDIDATE_CLASS:\n${ctx.candidate_class}`,
     `CANDIDATE_EVIDENCE:\n${ctx.selected_candidate}`,
-  ];
+  );
 
   if (ctx.candidate_goal) {
     sections.push(`GOAL_ALIGNMENT:\n${ctx.candidate_goal}`);
@@ -539,6 +575,57 @@ function similarityScore(a: string, b: string): number {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Consecutive duplicate detection (FIX 3)
+// ---------------------------------------------------------------------------
+
+async function checkConsecutiveDuplicate(
+  userId: string,
+  newDirectiveText: string,
+): Promise<{ isDuplicate: boolean; matchingActionId?: string; similarity?: number }> {
+  const supabase = createServerClient();
+
+  try {
+    const { data: recentActions } = await supabase
+      .from('tkg_actions')
+      .select('id, directive_text, action_type')
+      .eq('user_id', userId)
+      .not('action_type', 'in', '("do_nothing")')
+      .order('generated_at', { ascending: false })
+      .limit(3);
+
+    if (!recentActions || recentActions.length === 0) {
+      return { isDuplicate: false };
+    }
+
+    const newNormalized = normalizeText(newDirectiveText);
+    if (!newNormalized) return { isDuplicate: false };
+
+    for (const action of recentActions) {
+      if (!action.directive_text) continue;
+      // Skip wait_rationale actions (they are valid silence, not real directives)
+      const actionType = (action.action_type as string | null) ?? '';
+      if (actionType === 'do_nothing') continue;
+
+      const existingNormalized = normalizeText(action.directive_text);
+      const sim = similarityScore(newNormalized, existingNormalized);
+
+      if (sim >= 0.70) {
+        return {
+          isDuplicate: true,
+          matchingActionId: action.id as string,
+          similarity: sim,
+        };
+      }
+    }
+
+    return { isDuplicate: false };
+  } catch {
+    // Non-blocking — if query fails, allow the directive through
+    return { isDuplicate: false };
+  }
 }
 
 function containsPlaceholderText(value: string): boolean {
@@ -1339,6 +1426,21 @@ async function generatePayload(
   ctx: StructuredContext,
 ): Promise<{ issues: string[]; payload: GeneratedDirectivePayload | null }> {
   const prompt = buildPromptFromStructuredContext(ctx);
+
+  // Log prompt prefix so identity context is visible in structured logs
+  logStructuredEvent({
+    event: 'generation_prompt_preview',
+    level: 'info',
+    userId,
+    artifactType: null,
+    generationStatus: 'prompt_built',
+    details: {
+      scope: 'generator',
+      prompt_prefix: prompt.slice(0, 500),
+      has_identity_context: ctx.user_identity_context !== null,
+    },
+  });
+
   const attempts: Array<{ role: 'user' | 'assistant'; content: string }> = [
     { role: 'user', content: prompt },
   ];
@@ -1512,9 +1614,20 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
       });
     }
 
+    // Fetch user goals for identity context (top 4 by priority)
+    const supabase = createServerClient();
+    const { data: userGoalsData } = await supabase
+      .from('tkg_goals')
+      .select('goal_text, priority, goal_category')
+      .eq('user_id', userId)
+      .gte('priority', 3)
+      .order('priority', { ascending: false })
+      .limit(4);
+
     // Part 3: Build structured context
     const ctx = buildStructuredContext(
       hydratedWinner, guardrails, userId, signalEvidence, insight,
+      (userGoalsData ?? []) as Array<{ goal_text: string; priority: number; goal_category: string }>,
     );
 
     // Part 4: Evidence gating — check eligibility before calling LLM
@@ -1579,6 +1692,27 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     }
 
     const payload = payloadResult.payload;
+
+    // Part 5b: Consecutive duplicate suppression — reject if >70% similar to last 3 directives
+    const duplicateCheck = await checkConsecutiveDuplicate(userId, payload.directive);
+    if (duplicateCheck.isDuplicate) {
+      logStructuredEvent({
+        event: 'duplicate_directive_suppressed', level: 'warn', userId,
+        artifactType: payload.artifact_type, generationStatus: 'duplicate_suppressed',
+        details: {
+          scope: 'generator',
+          new_directive: payload.directive.slice(0, 100),
+          matching_action_id: duplicateCheck.matchingActionId,
+          similarity: duplicateCheck.similarity,
+        },
+      });
+
+      const dupReason = `Duplicate directive suppressed (${Math.round((duplicateCheck.similarity ?? 0) * 100)}% similar to recent action ${duplicateCheck.matchingActionId})`;
+      return emptyDirective(
+        dupReason,
+        buildNoSendGenerationLog(dupReason, 'validation', scored.candidateDiscovery),
+      );
+    }
 
     // Confidence check
     const confidence = computeDirectiveConfidence(scored);

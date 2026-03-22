@@ -2058,7 +2058,91 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     entityPatterns?: unknown;
     entityName?: string;
   }> = [];
-  const suppressedCandidates = 0;
+  let suppressedCandidates = 0;
+
+  // -----------------------------------------------------------------------
+  // Suppression goals — load ALL goals with current_priority = true
+  // These are constraint/suppression goals (priority 1-2) not loaded by the
+  // main .gte('priority', 3) query. If a candidate matches suppression text,
+  // its score is zeroed before it can win.
+  // -----------------------------------------------------------------------
+
+  const { data: suppressionGoalRows } = await supabase
+    .from('tkg_goals')
+    .select('goal_text, priority, goal_category')
+    .eq('user_id', userId)
+    .eq('current_priority', true)
+    .lt('priority', 3);
+
+  // Extract entity names and key phrases from suppression goal text
+  const suppressionCommonWords = new Set([
+    'not', 'the', 'this', 'that', 'with', 'from', 'until', 'unless', 'only',
+    'suggest', 'apply', 'contacting', 'related', 'position', 'decided',
+    'reviewed', 'posting', 'directives', 'suppress', 'locked', 'decision',
+    'stable', 'employment', 'current', 'supervisor', 'reference', 'explicitly',
+    'asks', 'path', 'post', 'brandon', 'work', 'platform', 'match',
+    'contracts', 'analyst', 'program', 'functional', // individual words too generic
+  ]);
+  const suppressionEntities: Array<{ pattern: RegExp; goalText: string }> = [];
+  for (const sg of (suppressionGoalRows ?? []) as GoalRow[]) {
+    // Strategy: extract multi-word proper nouns and acronyms as suppression patterns.
+    // Single common words are excluded to avoid false positives.
+    const words = sg.goal_text.split(/\s+/);
+    const entityCandidates: string[] = [];
+
+    // 1. Multi-word capitalized phrases (2+ consecutive capitalized words = likely entity name)
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i].replace(/[^a-zA-Z0-9]/g, '');
+      if (word.length >= 3 && /^[A-Z]/.test(word)) {
+        const phrase = [word];
+        for (let j = i + 1; j < words.length && j <= i + 3; j++) {
+          const nextWord = words[j].replace(/[^a-zA-Z0-9]/g, '');
+          if (/^[A-Z]/.test(nextWord) || /^[0-9]/.test(nextWord)) {
+            phrase.push(nextWord);
+          } else {
+            break;
+          }
+        }
+        if (phrase.length >= 2) {
+          entityCandidates.push(phrase.join(' '));
+        } else if (!suppressionCommonWords.has(word.toLowerCase()) && word.length >= 4) {
+          // Single capitalized word that's not a common English word — likely a proper noun (e.g., Mercor)
+          entityCandidates.push(word);
+        }
+      }
+    }
+
+    // 2. Acronyms with numbers (FPA3, MAS3, HCBM, etc.)
+    const acronyms = sg.goal_text.match(/\b[A-Z]{2,}[0-9]*\b/g);
+    if (acronyms) {
+      for (const acr of acronyms) {
+        if (!suppressionCommonWords.has(acr.toLowerCase()) && acr.length >= 3) {
+          entityCandidates.push(acr);
+        }
+      }
+    }
+
+    // 3. Known entity pattern: "Name Name" (first + last name, both capitalized, not common)
+    const namePattern = /\b([A-Z][a-z]+)\s+([A-Z][a-z]+)\b/g;
+    let nameMatch;
+    while ((nameMatch = namePattern.exec(sg.goal_text)) !== null) {
+      const firstName = nameMatch[1];
+      const lastName = nameMatch[2];
+      if (!suppressionCommonWords.has(firstName.toLowerCase()) &&
+          !suppressionCommonWords.has(lastName.toLowerCase())) {
+        entityCandidates.push(`${firstName} ${lastName}`);
+      }
+    }
+
+    // Deduplicate and create patterns
+    const uniqueEntities = [...new Set(entityCandidates)].filter(e => e.length >= 3);
+    for (const entity of uniqueEntities) {
+      suppressionEntities.push({
+        pattern: new RegExp(entity.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+        goalText: sg.goal_text,
+      });
+    }
+  }
 
   // 1. Commitments
   for (const c of commitments) {
@@ -2161,6 +2245,49 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const approvalHistory = await getApprovalHistory(userId);
 
   for (const c of candidates) {
+    // Check suppression goals BEFORE scoring — zero the score if matched
+    const candidateText = `${c.title} ${c.content}`.toLowerCase();
+    let isSuppressed = false;
+    for (const { pattern, goalText } of suppressionEntities) {
+      if (pattern.test(c.title) || pattern.test(c.content)) {
+        suppressedCandidates++;
+        isSuppressed = true;
+        logStructuredEvent({
+          event: 'candidate_suppressed',
+          level: 'info',
+          userId,
+          artifactType: artifactTypeForAction(c.actionType),
+          generationStatus: 'suppressed_by_goal',
+          details: {
+            scope: 'scorer',
+            candidate_title: c.title.slice(0, 100),
+            suppression_goal: goalText.slice(0, 120),
+          },
+        });
+        break;
+      }
+    }
+
+    if (isSuppressed) {
+      // Push with score 0 — it will never win but appears in discovery log
+      scored.push({
+        id: c.id,
+        type: c.type,
+        title: c.title,
+        content: c.content,
+        suggestedActionType: c.actionType,
+        matchedGoal: c.matchedGoal,
+        score: 0,
+        breakdown: {
+          stakes: 0, urgency: 0, tractability: 0, freshness: 0,
+          actionTypeRate: 0, entityPenalty: -999,
+        },
+        relatedSignals: [],
+        sourceSignals: c.sourceSignals,
+      });
+      continue;
+    }
+
     const stakes = c.matchedGoal ? c.matchedGoal.priority : 1.0;
     const tractability = await getTractability(userId, c.actionType, c.domain);
     const daysSinceLastSurface = await getDaysSinceLastSurface(userId, c.title);

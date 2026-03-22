@@ -99,6 +99,9 @@ Only start after Phase 1 is fully PROVEN.
 | Goals seeded (ESD, MA4, MAS3 onboard) | PROVEN | 3 rows, top at 1.05 |
 | Keri Nopens suppression working | PROVEN | Correctly blocked |
 | FPA3 suppression working | PROVEN | Correctly blocked |
+| Suppression goals loaded and enforced | BUILT | Scorer now queries `current_priority=true, priority<3` and zeroes matching candidates before scoring |
+| Generator identity context from goals | BUILT | Dynamic user context block prepended to LLM prompt from top tkg_goals (not hardcoded) |
+| Consecutive duplicate suppression | BUILT | >70% word-overlap similarity against last 3 tkg_actions rejects and falls through to wait_rationale |
 
 **Threshold note:** There are two independent scales. The scorer EV (0–5 continuous) ranks candidates — there is no production EV threshold; the "2.0" only exists in the test benchmark. The generator confidence (0–100, LLM self-rated) has two gates: `DIRECTIVE_CONFIDENCE_THRESHOLD = 45` at generation time and `CONFIDENCE_THRESHOLD = 70` for queue reconciliation. Structured logs now include both `scorer_ev` and `generator_confidence` so debugging is unambiguous.
 
