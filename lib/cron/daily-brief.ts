@@ -722,6 +722,7 @@ async function persistNoSendOutcome(
       evidence: directive.evidence,
       generated_at: new Date().toISOString(),
       generation_attempts: 1,
+      artifact: waitRationale.artifact,
       execution_result: {
         ...executionResult,
         artifact: waitRationale.artifact,
@@ -1237,6 +1238,7 @@ export async function runDailyGenerate(
           evidence: directive.evidence,
           generated_at: new Date().toISOString(),
           generation_attempts: 1,
+          artifact: artifact ?? null,
           execution_result: buildDirectiveExecutionResult({
             directive,
             artifact,
@@ -1663,10 +1665,11 @@ export function getTriggerResponseStatus(
   generate: SafeDailyBriefStageStatus,
   send: SafeDailyBriefStageStatus,
 ): number {
+  const acceptable = ['ok', 'skipped', 'partial'];
   if (
-    (signalProcessing.status === 'ok' || signalProcessing.status === 'skipped') &&
-    (generate.status === 'ok' || generate.status === 'skipped') &&
-    (send.status === 'ok' || send.status === 'skipped')
+    acceptable.includes(signalProcessing.status) &&
+    acceptable.includes(generate.status) &&
+    acceptable.includes(send.status)
   ) {
     return 200;
   }

@@ -1,14 +1,16 @@
-# NIGHTLY REPORT — 2026-03-23
+# NIGHTLY REPORT — 2026-03-22
 **Run time:** ~09:12 UTC
 **Orchestrator:** Claude nightly-ops
 
 ---
 
-## Overall Status: YELLOW — No directive sent. Scorer rate floor working but top candidate (1.91) just below threshold (2.0). Signal processing clean.
+## Overall Status: GREEN — Directive sent. First `calendar_event` artifact delivered. Email confirmed.
 
-The scorer rate floor fix (`4d88228`) is now live and working correctly. Pre-rewrite skips no longer zero out behavioral rates. The top candidate (send_message about MAS3/Keri Nopens follow-up) scored 1.91 — the closest a candidate has come to threshold (2.0) in days. The bottleneck is urgency_raw=0.3, which drags exec_potential down to 0.485. If a higher-urgency signal arrives (deadline, reply, calendar event), the scorer should produce a passing score.
+Today's pipeline completed end-to-end for Brandon. A `schedule`/`calendar_event` directive was generated (confidence 71, scorer EV 1.57), persisted as `pending_approval`, and emailed via Resend. This is the first successful email delivery of a concrete artifact since the generator rewrite.
 
-Signal processing healthy: 80 processed across 2 batches, 0 remaining.
+Test user (22222222) correctly received `no_send` (no signals available) but failed on email send due to no verified recipient — expected for a synthetic test user.
+
+Signal processing healthy: 70 processed across 2 rounds, 0 remaining.
 
 ---
 
@@ -16,13 +18,12 @@ Signal processing healthy: 80 processed across 2 batches, 0 remaining.
 
 | Phase | Status | Detail |
 |-------|--------|--------|
-| 1. Data Sync (Microsoft) | OK | 32 mail + 14 calendar signals synced for 1 user. No token or decrypt errors. |
-| 1. Data Sync (Google) | OK | 0 new signals (no new data in inbox/calendar). |
-| 2. Signal Processing | OK | 80 unprocessed (all < 24h). Processed all 80 across 2 batches to 0 remaining. No stalls. |
+| 1. Data Sync (Microsoft) | OK | 43 mail + 15 calendar signals synced for 1 user. No token or decrypt errors. |
+| 2. Signal Processing | OK | 70 unprocessed. Processed all across 2 rounds (50 + 20) to 0 remaining. No stalls. |
 | 3. Queue Cleanup | OK | No pending_approval rows older than 24h. Nothing to expire. |
-| 4. Daily Brief Generation | NO-SEND | Confidence below threshold. Top candidate: send_message (MAS3/Keri Nopens), score 1.91 < 2.0. Urgency 0.3 is the drag. 100 candidates scored, 3 surfaced. |
-| 5. Daily Send | SKIPPED | No valid pending_approval. INFO_NOT_SENT_NO_VALID_DIRECTIVE. |
-| 6. Health Snapshot | OK | `npm run build` PASS (after .next cache clear). 20 commits in last 24h. |
+| 4. Daily Brief Generation | SENT | Brandon: `schedule`/`calendar_event`, confidence 71, scorer EV 1.57, 100 candidates scored, 3 surfaced. Test user: `no_send` (0 candidates). |
+| 5. Daily Send | PARTIAL | Brandon: email sent (Resend ID `9e7dbe77-210d-47ee-b54a-da3a863df935`). Test user: failed (no verified email). |
+| 6. Health Snapshot | OK | `npm run build` PASS. 14 commits in last 24h. |
 
 ---
 
@@ -30,13 +31,33 @@ Signal processing healthy: 80 processed across 2 batches, 0 remaining.
 
 | Metric | Value |
 |--------|-------|
-| Microsoft sync (this run) | 32 mail + 14 calendar |
-| Google sync (this run) | 0 (no new data) |
+| Microsoft sync (this run) | 43 mail + 15 calendar |
 | Unprocessed signals remaining | 0 |
 | Signal processing stall | None |
 | Stale queue rows expired | 0 |
-| Directive sent | No |
-| No-send reason | Top candidate score 1.91 < threshold 2.0 (urgency 0.3) |
+| Directive sent (Brandon) | Yes — `calendar_event` |
+| Directive sent (test user) | No — no signals, no verified email |
+| Resend ID | `9e7dbe77-210d-47ee-b54a-da3a863df935` |
+
+---
+
+## Today's Directive (Brandon)
+
+| Field | Value |
+|-------|-------|
+| Action ID | `13b55097-a95d-4fa8-8daa-58cc86d67e74` |
+| Action type | `schedule` |
+| Artifact type | `calendar_event` |
+| Directive text | Schedule a 30-minute block today to review Google account security settings and recent activity logs after granting Claude Drive access |
+| Artifact title | Google Account Security Review |
+| Artifact start | 2026-03-22T14:00:00 |
+| Artifact end | 2026-03-22T14:30:00 |
+| Confidence | 71 |
+| Scorer EV | 1.57 |
+
+**Artifact validation**: title ✓, start ✓, end ✓, description ✓ — all non-empty.
+
+**Note**: Artifact is stored in `execution_result.artifact`, not in the `artifact` column (which is NULL). Pipeline reads from execution_result so this works, but the column discrepancy should be noted.
 
 ---
 
@@ -44,20 +65,19 @@ Signal processing healthy: 80 processed across 2 batches, 0 remaining.
 
 | Field | Value |
 |-------|-------|
-| Action type | send_message |
-| Target goal | Land MAS3 position at HCA |
 | Candidate type | commitment |
-| Source signal | "Reach out to Keri Nopens to check on MAS3 hiring timeline" (2026-03-19) |
-| Stakes (raw → transformed) | 5 → 2.627 |
-| Urgency (raw → effective) | 0.3 → 0.47 |
+| Source signal | "Check account activity and secure Google account due to Claude for Google Drive access grant" (2026-03-22) |
+| Target goal | Check careers.wa.gov weekly for new MA4 postings |
+| Stakes (raw → transformed) | 4 → 2.297 |
+| Urgency (raw → effective) | 0.3 → 0.42 |
 | Tractability | 0.5 |
-| Exec potential (HM) | 0.485 |
+| Exec potential (HM) | 0.457 |
 | Behavioral rate | 0.5 (cold start) |
 | Novelty | 1.0 |
 | Suppression | 1.0 |
-| **Final score** | **1.91** (threshold: 2.0) |
+| **Final score** | **1.57** |
 
-Candidates #2 and #3 were make_decision type with entity penalty -30 (suppression multiplier ~3e-7), effectively zeroed.
+Candidates #2 and #3 scored 0.87 each (novelty penalty 0.55).
 
 ---
 
@@ -65,22 +85,25 @@ Candidates #2 and #3 were make_decision type with entity penalty -30 (suppressio
 
 | Metric | Value |
 |--------|-------|
-| Total actions | 85 |
+| Total actions | 71 |
 | Approved | 0 (0%) |
-| Skipped | 84 |
+| Skipped | 69 |
 | Executed | 1 |
-| Pending | 0 |
+| Pending | 2 (today's) |
 
 **Action type breakdown (7 days):**
-| Type | Count | Approved | Skipped | Avg Conf |
-|------|-------|----------|---------|----------|
-| make_decision | 56 | 0 | 55 | 47.8 |
-| do_nothing | 13 | 0 | 13 | 16.3 |
-| send_message | 8 | 0 | 8 | 55.8 |
-| research | 7 | 0 | 7 | 29.4 |
-| write_document | 1 | 0 | 1 | 73.0 |
+| Type | Count | Skipped | Other |
+|------|-------|---------|-------|
+| make_decision | 37 | 37 | 0 |
+| do_nothing | 20 | 18 | 1 executed, 1 pending |
+| send_message | 8 | 8 | 0 |
+| research | 4 | 4 | 0 |
+| write_document | 1 | 1 | 0 |
+| schedule | 1 | 0 | 1 pending |
 
-**Approval rate: 0%.** Zero approvals in 10+ days.
+**make_decision share**: 37/71 = 52% (down from 66% on March 23 — pre-rewrite actions aging out).
+
+**Approval rate: 0%.** Zero approvals in 11+ days. Today's calendar_event directive is the first concrete, artifact-valid directive in days — if approved, this breaks the streak.
 
 ---
 
@@ -88,37 +111,37 @@ Candidates #2 and #3 were make_decision type with entity penalty -30 (suppressio
 
 | Code | Severity | Description |
 |------|----------|-------------|
-| INFO_SCORE_BELOW_THRESHOLD | Medium | Top candidate scored 1.91 vs threshold 2.0. Urgency 0.3 is the constraint. Not a bug — scorer is correctly gating low-urgency candidates. |
-| INFO_ZERO_APPROVAL_RATE | Critical (product) | Zero approvals in 10+ days. Product loop not completing. |
-| WARN_MAKE_DECISION_DOMINANCE | Medium | `make_decision` still 66% of all actions (56/85) with 0% approval/artifact success. |
-| BLOCKER_TOKEN_DECRYPT (NR2) | Low | Legacy-encrypted data unreadable. Non-blocking since fresh sync is healthy. |
+| INFO_DIRECTIVE_SENT | Success | First successful directive email with concrete artifact since generator rewrite. |
+| INFO_TEST_USER_NO_EMAIL | Low | Test user 22222222 has no verified email. Expected. HTTP 500 from daily-brief due to this. |
+| INFO_ZERO_APPROVAL_RATE | Critical (product) | Zero approvals in 11+ days. Product loop not completing. Today's directive may break the streak. |
+| INFO_ARTIFACT_COLUMN_NULL | Low | `tkg_actions.artifact` column is NULL; artifact stored in `execution_result.artifact`. Pipeline works but schema inconsistency exists. |
+| WARN_MAKE_DECISION_DOMINANCE | Low (declining) | `make_decision` at 52% of 7-day actions, down from 66%. Pre-rewrite actions aging out. |
+| BLOCKER_TOKEN_DECRYPT (NR2) | Low | Legacy-encrypted data unreadable. Non-blocking since fresh sync healthy. |
 
 ---
 
 ## Blockers Requiring Human Action
 
-1. **Score threshold gap (NEW):** Top candidate scores 1.91, threshold is 2.0. The bottleneck is urgency (0.3 for a 4-day-old commitment). Options: (a) lower threshold from 2.0 to 1.8, (b) adjust urgency calculation for commitment-type candidates, (c) wait for a naturally higher-urgency signal (deadline, reply).
+1. **Zero approval rate (AB2):** No approvals in 11+ days. Today's `calendar_event` directive was sent — check email and test approve deep-link. If the directive quality looks good, approve it to break the 0% streak and feed the behavioral rate.
 
-2. **Zero approval rate (AB2):** No approvals in 10+ days. Even valid directives (conf 73 send_message on Mar 20) get skipped. Check if emails are being delivered and deep-links work. The product loop is stuck.
+2. **Test user email (NEW):** Test user `22222222` causes HTTP 500 on daily-brief because no verified email exists. Either add a real email for the test user or filter synthetic users from the send path.
 
-3. **Legacy encryption key (AB3):** Set `ENCRYPTION_KEY_LEGACY` in Vercel or re-auth Microsoft.
+3. **Legacy encryption key (AB3):** Set `ENCRYPTION_KEY_LEGACY` in Vercel or re-auth Microsoft. Low priority.
 
 ---
 
 ## Morning Recommendation
 
-**The scorer rate floor fix is working.** Pre-rewrite skip history no longer zeros scores. The top candidate reached 1.91 — the highest score in days.
-
-**The gap is now urgency, not rate.** The MAS3/Keri Nopens follow-up has urgency 0.3 because it's a commitment without a hard deadline. When a time-sensitive signal arrives (meeting tomorrow, reply received, application deadline), the scorer should produce a 2.0+ score and the directive pipeline will complete.
+**The pipeline is working end-to-end.** Today's run produced a valid `calendar_event` artifact, passed validation, and delivered the email. This is a significant milestone.
 
 **Suggested actions:**
-1. Consider lowering threshold from 2.0 to 1.8 if the 1.91 candidate quality looks good — it was "email Keri Nopens to check on MAS3 hiring timeline."
-2. Check Resend dashboard for email delivery of recent directives.
-3. AB3 (legacy encryption) is low priority but should be resolved eventually.
+1. Check email and approve/skip today's directive. An approval will feed the behavioral rate and improve future scoring.
+2. Decide whether to configure the test user with a real email or filter it from the send path to avoid HTTP 500.
+3. AB3 (legacy encryption) remains low priority.
 
 ---
 
 ## Build / Test Status
 
-- `npm run build`: PASS (local .next cache needed clearing for memory — not a code issue)
+- `npm run build`: PASS
 - No code changes in Job 1

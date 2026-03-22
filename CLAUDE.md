@@ -1370,3 +1370,42 @@ Old broken score for the same S5 candidate: 0.085. Threshold remains at 2.0 — 
 ### Supabase / migrations
 - No new migrations
 - Test data changes: skipped action `a9d165df` (Brandon), executed action `78333ac2` (test user)
+
+---
+
+## Session Log — 2026-03-22 (nightly orchestrator + AB8/AB9 fixes)
+
+- **MODE:** AUDIT
+- **Commits:** (this commit)
+
+### Job 1 — Orchestrator Report
+- **Microsoft sync:** OK — 43 mail + 15 calendar signals synced
+- **Signal processing:** FULL CLEAR — 70 signals processed to 0 remaining across 2 rounds (50 + 20). No stalls.
+- **Queue cleanup:** Clean — no stale pending_approval rows
+- **Daily brief generation:** SUCCESS — Brandon: `schedule`/`calendar_event` artifact (confidence 71, scorer EV 1.57). Test user: `no_send` (0 candidates, expected).
+- **Daily send:** PARTIAL — Brandon: email sent (Resend ID `9e7dbe77`). Test user: failed (no verified email).
+- **Build:** PASS
+- **7-day stats:** 71 actions, 0 approved, 69 skipped, 1 executed, 2 pending (0% approval rate)
+
+### Job 2 — Backlog Fixes
+
+**AB8 (test user HTTP 500):**
+- Root cause: `getTriggerResponseStatus` returned HTTP 500 for `partial` status (when some users succeed, some fail). Test user `22222222` has no verified email, causing send failure, which made the entire response 500 even though Brandon's flow completed.
+- Fix: Accept `partial` status as HTTP 200 in `getTriggerResponseStatus`. Only total failure (`failed`) returns 500.
+
+**AB9 (artifact column null):**
+- Root cause: Both insert paths in `daily-brief.ts` (normal directive at line 1228 and no-send wait_rationale at line 713) stored the artifact only in `execution_result.artifact` but not in the `artifact` column.
+- Fix: Added `artifact: artifact ?? null` to the normal insert and `artifact: waitRationale.artifact` to the no-send insert.
+
+### Files changed
+- `lib/cron/daily-brief.ts` — AB8: `getTriggerResponseStatus` accepts `partial` as HTTP 200. AB9: both insert paths now populate the `artifact` column.
+- `NIGHTLY_REPORT.md` — March 22 report
+- `AUTOMATION_BACKLOG.md` — Updated AB1-AB4/AB7, added and closed AB8/AB9
+
+### Verified working
+- `npm run build` — 0 errors
+- `npx vitest run` — 303 passed, 38 failed (all pre-existing ENCRYPTION_KEY failures)
+- No new test failures introduced
+
+### Supabase / migrations
+- No new migrations
