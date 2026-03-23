@@ -84,11 +84,8 @@ export async function POST(req: NextRequest) {
     rows.push({
       user_id: userId,
       goal_text: '__ONBOARDING_COMPLETE__',
-      goal_category: 'system',
-      goal_type: 'milestone',
-      status: 'active',
-      confidence: 100,
-      priority: 0,
+      goal_category: 'other',
+      priority: 1,
       current_priority: false,
       source: 'onboarding_marker',
       updated_at: now,
