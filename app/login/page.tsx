@@ -1,138 +1,116 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, CheckCircle2, Lock } from 'lucide-react';
+import { Layers, ArrowRight } from 'lucide-react';
 
 function getErrorMessage(error: string | null): string | null {
   if (!error) return null;
   switch (error) {
     case 'OAuthCallback':
     case 'Callback':
-      return 'Sign-in failed. Try that again.';
+      return 'Sign-in failed. Please try again.';
     case 'OAuthAccountNotLinked':
-      return 'That email is already linked to another sign-in method.';
+      return 'This email is already linked to another provider.';
     case 'AccessDenied':
-      return 'Access was denied. Try a different account or contact support.';
+      return 'Access denied. Please contact support.';
     default:
-      return 'Something went wrong during sign-in.';
+      return 'Something went wrong. Please try again.';
   }
 }
 
 function LoginInner() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const searchParams = useSearchParams();
-  const errorMessage = getErrorMessage(searchParams.get('error'));
+  const errorParam = searchParams.get('error');
+  const errorMessage = getErrorMessage(errorParam);
 
   async function handleSignIn(provider: 'google' | 'azure-ad') {
     setLoadingProvider(provider);
-    const callbackUrl = searchParams.get('callbackUrl') ?? '/dashboard';
-    await signIn(provider, { callbackUrl });
+    const cb = searchParams.get('callbackUrl') ?? '/dashboard';
+    await signIn(provider, { callbackUrl: cb });
   }
 
   return (
-    <main className="min-h-screen bg-[#07080d] px-6 py-10 text-white">
-      <div className="mx-auto max-w-6xl">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="text-xl font-black tracking-tight">
-            Foldera
-          </Link>
-          <div className="flex items-center gap-5 text-sm text-zinc-400">
-            <Link href="/pricing" className="hidden hover:text-white sm:inline-flex">
-              Pricing
-            </Link>
-            <Link href="/start" className="hover:text-white">
-              Get started
-            </Link>
+    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* Nav */}
+      <nav className="w-full px-6 py-6 flex items-center justify-between max-w-6xl mx-auto">
+        <a href="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+            <Layers className="w-5 h-5 fill-black" aria-hidden="true" />
           </div>
-        </div>
+          <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
+        </a>
+        <a
+          href="/start"
+          className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors"
+        >
+          Get started
+        </a>
+      </nav>
 
-        <div className="mt-14 grid gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
-          <section className="max-w-xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">
-              Welcome back
+      {/* Main */}
+      <main className="flex-1 flex items-center justify-center px-6 py-16">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-12">
+            <h1 className="text-5xl font-black tracking-tighter text-white mb-4">Sign in.</h1>
+            <p className="text-zinc-400 text-lg font-medium leading-relaxed">
+              Finished work, every morning.
             </p>
-            <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
-              Pick up where your morning read left off.
-            </h1>
-            <p className="mt-5 text-lg leading-8 text-zinc-300">
-              Foldera is built around one decision point. Sign in to review today&apos;s prepared move, adjust your connections, or update what the system should bias toward.
-            </p>
+          </div>
 
-            <div className="mt-8 space-y-4">
-              {[
-                'One directive each morning',
-                'Approve or skip in one tap',
-                'Nothing sends without your approval',
-              ].map((item) => (
-                <div key={item} className="flex items-start gap-3 text-sm text-zinc-400">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
-                  {item}
-                </div>
-              ))}
+          {errorMessage && (
+            <div className="mb-6 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50">
+              <p className="text-sm text-red-300">{errorMessage}</p>
             </div>
-          </section>
+          )}
 
-          <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 shadow-2xl shadow-black/30 sm:p-8">
-            <div className="rounded-[1.5rem] border border-white/8 bg-zinc-950/70 p-6">
-              <h2 className="text-2xl font-semibold tracking-tight text-white">Sign in</h2>
-              <p className="mt-2 text-sm leading-6 text-zinc-400">
-                Use the same Google or Microsoft account you connected when you started your trial.
-              </p>
-
-              {errorMessage && (
-                <div className="mt-5 rounded-2xl border border-red-900/50 bg-red-950/40 px-4 py-3 text-sm text-red-300">
-                  {errorMessage}
-                </div>
+          <div className="space-y-3 mb-8">
+            <button
+              onClick={() => handleSignIn('google')}
+              disabled={!!loadingProvider}
+              className="w-full flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-4 px-6 rounded-2xl transition-all shadow-lg disabled:opacity-60 text-sm"
+            >
+              {loadingProvider === 'google' ? (
+                <span className="w-5 h-5 border-2 border-zinc-400 border-t-zinc-900 rounded-full animate-spin" />
+              ) : (
+                <>
+                  <GoogleIcon />
+                  Continue with Google
+                </>
               )}
+            </button>
 
-              <div className="mt-6 space-y-3">
-                <button
-                  onClick={() => handleSignIn('google')}
-                  disabled={!!loadingProvider}
-                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loadingProvider === 'google' ? <Spinner dark /> : <GoogleIcon />}
-                  {loadingProvider === 'google' ? 'Signing in with Google…' : 'Continue with Google'}
-                </button>
+            <button
+              onClick={() => handleSignIn('azure-ad')}
+              disabled={!!loadingProvider}
+              className="w-full flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0078d4] font-semibold py-4 px-6 rounded-2xl transition-all shadow-lg disabled:opacity-60 text-sm"
+            >
+              {loadingProvider === 'azure-ad' ? (
+                <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <MicrosoftIcon />
+                  Continue with Microsoft
+                </>
+              )}
+            </button>
+          </div>
 
-                <button
-                  onClick={() => handleSignIn('azure-ad')}
-                  disabled={!!loadingProvider}
-                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#0a84ff] px-5 py-4 text-sm font-semibold text-white transition hover:bg-[#0075f2] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loadingProvider === 'azure-ad' ? <Spinner /> : <MicrosoftIcon />}
-                  {loadingProvider === 'azure-ad' ? 'Signing in with Microsoft…' : 'Continue with Microsoft'}
-                </button>
-              </div>
-
-              <div className="mt-6 flex items-center gap-2 text-sm text-zinc-500">
-                <Lock className="h-4 w-4" />
-                Your connections stay encrypted at rest.
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-[1.5rem] border border-cyan-400/20 bg-gradient-to-b from-cyan-400/10 to-white/[0.02] p-5">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">
-                New here?
-              </p>
-              <p className="mt-2 text-sm leading-6 text-zinc-300">
-                Start with a free trial, connect your account, and set what you care about. Foldera takes it from there.
-              </p>
-              <Link
-                href="/start"
-                className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-white transition hover:text-cyan-200"
-              >
-                Start free
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </section>
+          <p className="text-zinc-600 text-xs text-center leading-relaxed">
+            New here?{' '}
+            <a href="/start" className="text-zinc-400 hover:text-white transition-colors inline-flex items-center gap-1">
+              Start your free trial
+              <ArrowRight className="w-3 h-3" />
+            </a>
+          </p>
+          <p className="text-zinc-700 text-xs text-center mt-2">
+            No credit card required
+          </p>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 
@@ -144,15 +122,9 @@ export default function LoginPage() {
   );
 }
 
-function Spinner({ dark = false }: { dark?: boolean }) {
-  return (
-    <span className={`h-5 w-5 rounded-full border-2 ${dark ? 'border-zinc-400 border-t-zinc-900' : 'border-white/40 border-t-white'} animate-spin`} />
-  );
-}
-
 function GoogleIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true" className="shrink-0">
+    <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
       <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
       <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
       <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
@@ -163,7 +135,7 @@ function GoogleIcon() {
 
 function MicrosoftIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 21 21" aria-hidden="true" className="shrink-0">
+    <svg width="20" height="20" viewBox="0 0 21 21" aria-hidden="true">
       <rect x="1" y="1" width="9" height="9" fill="#f25022" />
       <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
       <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
