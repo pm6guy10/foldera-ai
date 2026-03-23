@@ -8,11 +8,11 @@ const GOAL_BUCKETS: Record<string, { goal_text: string; category: string }> = {
   'Job search': { goal_text: 'Active job search and career transition', category: 'career' },
   'Career growth': { goal_text: 'Professional development and advancement in current role', category: 'career' },
   'Side project': { goal_text: 'Building and shipping a side project', category: 'project' },
-  'Business ops': { goal_text: 'Business operations and stakeholder management', category: 'work' },
-  'Health & family': { goal_text: 'Health, wellness, and family priorities', category: 'personal' },
+  'Business ops': { goal_text: 'Business operations and stakeholder management', category: 'other' },
+  'Health & family': { goal_text: 'Health, wellness, and family priorities', category: 'health' },
   'Financial': { goal_text: 'Financial planning and obligations', category: 'financial' },
   'Relationships': { goal_text: 'Maintaining and building key relationships', category: 'relationship' },
-  'Learning': { goal_text: 'Skill building and continuous learning', category: 'learning' },
+  'Learning': { goal_text: 'Skill building and continuous learning', category: 'other' },
 };
 
 export async function POST(req: NextRequest) {

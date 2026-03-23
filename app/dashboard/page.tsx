@@ -184,7 +184,7 @@ export default function DashboardPage() {
         ) : done ? (
           <div className="mt-20 text-center">
             {flash && <p className="text-white text-base mb-2">{flash}</p>}
-            <p className="text-zinc-500 text-sm">Next sync at 7am Pacific.</p>
+            <p className="text-zinc-500 text-sm">Your next read arrives at 7am Pacific.</p>
           </div>
         ) : !action ? (
           <div className="mt-20 text-center">
@@ -260,19 +260,22 @@ export default function DashboardPage() {
               >
                 Approve
               </button>
-              <button
-                onClick={handleSkip}
-                className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-3 rounded-xl font-medium transition-colors"
-              >
-                Skip
-              </button>
+              <div className="flex-1 text-center">
+                <button
+                  onClick={handleSkip}
+                  className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-3 rounded-xl font-medium transition-colors"
+                >
+                  Skip
+                </button>
+                <p className="text-[10px] text-zinc-500 mt-1">Foldera learns from this</p>
+              </div>
             </div>
           </div>
         )}
 
         {/* Footer — only when directive shown */}
         {!loading && !done && action && (
-          <p className="text-xs text-zinc-600 text-center mt-8">Next sync at 7am Pacific</p>
+          <p className="text-xs text-zinc-600 text-center mt-8">Your next read arrives at 7am Pacific</p>
         )}
       </main>
     </div>

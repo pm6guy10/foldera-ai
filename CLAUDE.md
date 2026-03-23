@@ -15,6 +15,18 @@ Every session runs this before any work:
 9. If recent changes or repo state conflict with the task, report that before editing.
 10. After completing work, update `FOLDERA_PRODUCT_SPEC.md` with new status and evidence for every item touched. If a fix would break or conflict with another spec item, flag it before implementing. Push updated spec as final commit.
 
+## Database CHECK Constraints (tkg_goals)
+
+These are enforced by Postgres. Invalid values cause silent insert failures.
+
+- `goal_category`: career, financial, relationship, health, project, other
+- `goal_type`: short_term, long_term, recurring
+- `priority`: 1-5 (integer)
+- `source`: extracted, manual, auto_suppression, onboarding_bucket, onboarding_stated, onboarding_marker
+- `status`: active, achieved, abandoned
+
+Any insert with values outside these sets will fail silently (Supabase returns success but doesn't persist the row). ALWAYS verify insert values against this list.
+
 ## Token Storage
 
 - `user_tokens` is the single source of truth for OAuth tokens. All reads and writes go through `lib/auth/user-tokens.ts`.

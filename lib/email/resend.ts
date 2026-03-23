@@ -237,6 +237,7 @@ export async function sendDailyDirective({
             </td>
             <td>
               <a href="${skipHref}" style="display:inline-block;padding:12px 28px;background:transparent;color:#a1a1aa;font-family:system-ui,-apple-system,sans-serif;font-size:14px;font-weight:500;text-decoration:none;border-radius:8px;border:1px solid #3f3f46;">Skip</a>
+              <div style="font-family:system-ui,-apple-system,sans-serif;font-size:11px;color:#71717a;margin-top:6px;">Foldera learns from this</div>
             </td>
           </tr></table>
         </td></tr>

@@ -208,9 +208,9 @@ export default function SettingsClient() {
         </div>
         {google?.is_active && (
           <div className="mt-1 px-4 space-y-0.5">
-            <SourceLine label="Gmail" count={sourceCounts['gmail'] ?? 0} />
-            <SourceLine label="Calendar" count={sourceCounts['google_calendar'] ?? 0} />
-            <SourceLine label="Drive" count={sourceCounts['google_drive'] ?? 0} />
+            <SourceLine label="Gmail" count={sourceCounts['gmail'] ?? 0} providerActive={true} />
+            <SourceLine label="Calendar" count={sourceCounts['google_calendar'] ?? 0} providerActive={true} />
+            <SourceLine label="Drive" count={sourceCounts['google_drive'] ?? 0} providerActive={true} />
           </div>
         )}
 
@@ -242,9 +242,9 @@ export default function SettingsClient() {
         </div>
         {microsoft?.is_active && (
           <div className="mt-1 px-4 space-y-0.5">
-            <SourceLine label="Mail" count={sourceCounts['outlook'] ?? 0} />
-            <SourceLine label="Calendar" count={sourceCounts['outlook_calendar'] ?? 0} />
-            <SourceLine label="OneDrive" count={sourceCounts['onedrive'] ?? 0} />
+            <SourceLine label="Mail" count={sourceCounts['outlook'] ?? 0} providerActive={true} />
+            <SourceLine label="Calendar" count={sourceCounts['outlook_calendar'] ?? 0} providerActive={true} />
+            <SourceLine label="OneDrive" count={sourceCounts['onedrive'] ?? 0} providerActive={true} />
           </div>
         )}
 
@@ -410,14 +410,15 @@ function GoogleIcon() {
   );
 }
 
-function SourceLine({ label, count }: { label: string; count: number }) {
+function SourceLine({ label, count, providerActive }: { label: string; count: number; providerActive: boolean }) {
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="text-zinc-500">{label}:</span>
       <span className={count > 0 ? 'text-zinc-400' : 'text-zinc-600'}>
         {count} signal{count !== 1 ? 's' : ''}
       </span>
-      {count === 0 && <span className="text-amber-500/70">reconnect</span>}
+      {count === 0 && providerActive && <span className="text-zinc-500">awaiting sync</span>}
+      {count === 0 && !providerActive && <span className="text-amber-500/70">reconnect</span>}
     </div>
   );
 }

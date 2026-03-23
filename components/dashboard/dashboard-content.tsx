@@ -204,7 +204,7 @@ export default function DashboardContent() {
 
       {/* Next sync */}
       <p className="text-center text-zinc-600 text-xs">
-        Next sync at 7am Pacific
+        Your next read arrives at 7am Pacific
       </p>
     </div>
   );
