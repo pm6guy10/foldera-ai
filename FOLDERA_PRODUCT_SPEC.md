@@ -58,7 +58,7 @@ Everything here must be PROVEN before any user sees the product.
 | Pro tier unlocked after payment | NOT TESTED | — | — |
 | End-to-end test payment | NOT STARTED | — | Revenue |
 
-**STATUS:** Stripe is Gate 3, not blocking Phase 1. Checkout route exists but untested. Brandon must verify `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are set in Vercel env vars.
+**STATUS:** Stripe is Gate 3, not blocking Phase 1. Stripe keys cannot be verified from CI (Vercel env vars not readable). Checkout and webhook routes exist but are untested. `apiVersion: '2025-08-27.basil'` is cast as `any` — Brandon must verify it matches the Stripe dashboard API version. Brandon must verify `STRIPE_SECRET_KEY`, `STRIPE_PRO_PRICE_ID`, and `STRIPE_WEBHOOK_SECRET` are set in Vercel env vars.
 
 ### 1.5 Acceptance Gate
 

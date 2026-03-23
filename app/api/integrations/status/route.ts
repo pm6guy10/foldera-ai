@@ -54,7 +54,20 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ integrations });
+    // Per-source signal counts for connector health display
+    const { data: signalRows } = await supabase
+      .from('tkg_signals')
+      .select('source')
+      .eq('user_id', session.user.id)
+      .eq('processed', true);
+
+    const sourceCounts: Record<string, number> = {};
+    for (const row of (signalRows ?? [])) {
+      const src = row.source as string;
+      sourceCounts[src] = (sourceCounts[src] ?? 0) + 1;
+    }
+
+    return NextResponse.json({ integrations, sourceCounts });
   } catch (err: unknown) {
     return apiError(err, 'integrations/status');
   }

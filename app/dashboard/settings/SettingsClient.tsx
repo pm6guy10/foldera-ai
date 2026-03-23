@@ -37,6 +37,7 @@ export default function SettingsClient() {
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [goalBuckets, setGoalBuckets] = useState<string[]>([]);
   const [goalFreeText, setGoalFreeText] = useState<string | null>(null);
+  const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (status !== 'authenticated') { setLoading(false); return; }
@@ -48,6 +49,7 @@ export default function SettingsClient() {
       if (intRes.ok) {
         const d = await intRes.json();
         setIntegrations(d.integrations || []);
+        setSourceCounts(d.sourceCounts || {});
       }
       if (subRes.ok) {
         setSubscription(await subRes.json());
@@ -203,7 +205,13 @@ export default function SettingsClient() {
             </button>
           )}
         </div>
-
+        {google?.is_active && (
+          <div className="mt-1 px-4 space-y-0.5">
+            <SourceLine label="Gmail" count={sourceCounts['gmail'] ?? 0} />
+            <SourceLine label="Calendar" count={sourceCounts['google_calendar'] ?? 0} />
+            <SourceLine label="Drive" count={sourceCounts['google_drive'] ?? 0} />
+          </div>
+        )}
 
         <div className="mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -231,7 +239,13 @@ export default function SettingsClient() {
             </button>
           )}
         </div>
-
+        {microsoft?.is_active && (
+          <div className="mt-1 px-4 space-y-0.5">
+            <SourceLine label="Mail" count={sourceCounts['outlook'] ?? 0} />
+            <SourceLine label="Calendar" count={sourceCounts['outlook_calendar'] ?? 0} />
+            <SourceLine label="OneDrive" count={sourceCounts['onedrive'] ?? 0} />
+          </div>
+        )}
 
         {/* Focus areas */}
         <h2 className="text-lg font-semibold text-white mt-8">Your focus areas</h2>
@@ -391,6 +405,18 @@ function GoogleIcon() {
         <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
         <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
       </svg>
+    </div>
+  );
+}
+
+function SourceLine({ label, count }: { label: string; count: number }) {
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="text-zinc-500">{label}:</span>
+      <span className={count > 0 ? 'text-zinc-400' : 'text-zinc-600'}>
+        {count} signal{count !== 1 ? 's' : ''}
+      </span>
+      {count === 0 && <span className="text-amber-500/70">reconnect</span>}
     </div>
   );
 }

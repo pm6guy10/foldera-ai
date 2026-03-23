@@ -1,7 +1,7 @@
 import { createServerClient } from '@/lib/db/client';
 import Anthropic from '@anthropic-ai/sdk';
 
-export async function refreshGoalContext(): Promise<{ ok: boolean; updated: number; skipped: number }> {
+export async function refreshGoalContext(): Promise<{ ok: boolean; updated: number; skipped: number; decayed: number }> {
   const supabase = createServerClient();
 
   // Get all distinct users with priority >= 3 goals
@@ -82,5 +82,35 @@ Rewrite the goal text to include specific entity names (people, organizations, j
     }
   }
 
-  return { ok: true, updated, skipped };
+  // --- Goal decay: demote goals with no signal reinforcement in 30+ days ---
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  let decayed = 0;
+
+  for (const userId of userIds) {
+    const { data: staleGoals } = await supabase
+      .from('tkg_goals')
+      .select('id, goal_text, priority, updated_at, source')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .gte('priority', 3)
+      .lt('updated_at', thirtyDaysAgo);
+
+    for (const goal of (staleGoals ?? [])) {
+      // Never decay user-stated goals below priority 3
+      if (goal.source === 'onboarding_stated' && goal.priority <= 3) continue;
+      // Never decay onboarding bucket goals below priority 2
+      if (goal.source === 'onboarding_bucket' && goal.priority <= 2) continue;
+
+      const newPriority = Math.max(2, goal.priority - 1);
+      if (newPriority < goal.priority) {
+        await supabase
+          .from('tkg_goals')
+          .update({ priority: newPriority, updated_at: new Date().toISOString() })
+          .eq('id', goal.id);
+        decayed++;
+      }
+    }
+  }
+
+  return { ok: true, updated, skipped, decayed };
 }
