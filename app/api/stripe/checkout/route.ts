@@ -3,7 +3,7 @@
  *
  * Creates a Stripe Checkout Session for the Pro plan and returns the URL.
  * Accepts an optional price_id parameter; defaults to STRIPE_PRO_PRICE_ID.
- * Includes a 14-day free trial on every new subscription.
+ * No trial — free tier is available to all users.
  *
  * Required env vars:
  *   STRIPE_SECRET_KEY
@@ -48,9 +48,6 @@ export async function POST(req: NextRequest) {
     const checkout = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: {
-        trial_period_days: 14,
-      },
       success_url: `${baseUrl}/dashboard?upgraded=true`,
       cancel_url:  `${baseUrl}/pricing`,
       ...(email ? { customer_email: email } : {}),
