@@ -1,4 +1,4 @@
-echo "Running build check before push..."
+echo "Running build check..."
 npm run build
 
 if [ $? -ne 0 ]; then
@@ -6,4 +6,12 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "Build passed."
+echo "Running E2E tests..."
+npx playwright test tests/e2e/
+
+if [ $? -ne 0 ]; then
+  echo "E2E TESTS FAILED. Push rejected."
+  exit 1
+fi
+
+echo "All gates passed."
