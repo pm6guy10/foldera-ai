@@ -130,20 +130,20 @@ test.describe('Pricing page /pricing', () => {
   test('loads with price visible — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/pricing');
-    await expect(page.getByText(/\$29/)).toBeVisible();
+    await expect(page.getByText('$29', { exact: true })).toBeVisible();
   });
 
   test('CTA button is visible', async ({ page }) => {
     await page.goto('/pricing');
-    const cta = page.getByRole('button', { name: /trial|checkout/i });
+    const cta = page.getByRole('button', { name: /start free|checkout/i });
     await expect(cta).toBeVisible();
-    // Button may be disabled until session resolves — just verify it renders
+    // Button text varies by auth state: "Start free" or "Continue to checkout"
   });
 
   test('loads with price visible — mobile 390px', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/pricing');
-    await expect(page.getByText(/\$29/)).toBeVisible();
+    await expect(page.getByText('$29', { exact: true })).toBeVisible();
   });
 
   test('no actionable console errors', async ({ page }) => {
