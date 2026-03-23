@@ -80,13 +80,18 @@ export default function DashboardPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Check onboarding status first
-      const checkRes = await fetch('/api/onboard/check');
-      if (checkRes.ok) {
-        const checkData = await checkRes.json();
-        if (!checkData.hasOnboarded) {
-          router.push('/onboard');
-          return;
+      // Don't redirect to onboarding if this is a deep-link action (approve/skip from email)
+      const params = new URLSearchParams(window.location.search);
+      const hasDeepLink = params.get('action') && params.get('id');
+      if (!hasDeepLink) {
+        // Check onboarding status first
+        const checkRes = await fetch('/api/onboard/check');
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          if (!checkData.hasOnboarded) {
+            router.push('/onboard');
+            return;
+          }
         }
       }
 
