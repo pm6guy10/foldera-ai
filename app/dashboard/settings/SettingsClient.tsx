@@ -40,6 +40,7 @@ export default function SettingsClient() {
   const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    if (status === 'loading') return; // keep loading=true while session resolves
     if (status !== 'authenticated') { setLoading(false); return; }
     Promise.all([
       fetch('/api/integrations/status'),
