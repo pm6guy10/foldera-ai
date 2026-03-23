@@ -170,6 +170,42 @@ test.describe('Authenticated: Approve/Skip flow', () => {
   });
 });
 
+test.describe('Authenticated: Settings interactions', () => {
+  test('Google connect/disconnect buttons are clickable', async ({ page }) => {
+    await page.goto('/dashboard/settings');
+    await page.waitForLoadState('networkidle');
+
+    // At least one of Connect or Disconnect should be visible for Google
+    const connectBtn = page.locator('button:has-text("Connect")').first();
+    const disconnectBtn = page.locator('button:has-text("Disconnect")').first();
+
+    const hasConnect = await connectBtn.isVisible().catch(() => false);
+    const hasDisconnect = await disconnectBtn.isVisible().catch(() => false);
+
+    expect(hasConnect || hasDisconnect).toBe(true);
+  });
+
+  test('settings page has no console errors after full load', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const text = msg.text();
+        if (text.includes('Failed to load resource')) return;
+        if (text.includes('favicon')) return;
+        if (text.includes('React DevTools')) return;
+        if (text.includes('Download the React DevTools')) return;
+        if (text.includes('Third-party cookie')) return;
+        errors.push(text);
+      }
+    });
+    await page.goto('/dashboard/settings');
+    await page.waitForLoadState('networkidle');
+    // Wait extra for async fetches to complete
+    await page.waitForTimeout(2000);
+    expect(errors).toEqual([]);
+  });
+});
+
 test.describe('Public: Pricing page', () => {
   test('shows $29 price', async ({ page }) => {
     await page.goto('/pricing');

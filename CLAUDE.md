@@ -107,6 +107,65 @@ If tests cannot run (network issues, etc.), explicitly say "Production E2E tests
 
 Tests live in tests/production/smoke.spec.ts. Config is playwright.prod.config.ts.
 
+## Change Impact Report (MANDATORY)
+
+When editing any existing file, BEFORE committing, run:
+
+1. `git diff <file>` on every modified file
+2. For each file, list:
+   - Functions/components that existed before and still exist (PRESERVED)
+   - Functions/components that were removed or renamed (REMOVED — justify why)
+   - onClick handlers, fetch calls, form submissions that existed before (verify each still works)
+3. If ANY interactive element (button, link, form) was in the file before the edit, confirm it still exists and still fires. Name each one.
+
+This catches the #1 CC failure pattern: rewriting a file to add a feature and accidentally removing existing functionality. The build passes because the removed code was never tested. The user finds it broken.
+
+Example output:
+```
+SettingsClient.tsx impact report:
+- Google Connect button: PRESERVED (onClick → /api/google/connect)
+- Google Disconnect button: PRESERVED (onClick → fetch /api/google/disconnect)
+- Microsoft Connect button: PRESERVED
+- Microsoft Disconnect button: PRESERVED
+- Sign Out button: PRESERVED
+- Delete Account button: PRESERVED
+- Generate Now button: PRESERVED
+- NEW: Goals section with Edit link
+- NEW: Sub-source signal counts
+```
+
+## Test-First Edit Rule (MANDATORY)
+
+Before editing any existing file:
+
+1. Write tests for every behavior that file currently has. Buttons, fetches, redirects, renders. Run them. They must pass against the current code.
+2. Now make your changes.
+3. Run the same tests. If any fail, your change broke existing behavior. Fix it before committing.
+4. Add tests for your new behavior. Run everything. All must pass.
+
+The tests are written BEFORE the edit, not after the breakage. This is not reactive. This is how regressions become impossible. If you skip step 1, you are guessing that your edit did not break anything. Guessing is how Connect buttons disappear.
+
+## Before/After Test Gate (MANDATORY)
+
+1. BEFORE making any code changes, run `npm run test:prod` (or `npx playwright test` if auth-state is unavailable). Record which tests pass and fail. Save the output.
+2. Make your changes.
+3. Run `npm run build`. Must pass.
+4. Run the SAME test suite again. Compare results to the baseline from step 1.
+5. If ANY test that PASSED before now FAILS: your change broke something. Fix it before committing. Do not push with new test failures.
+6. If you broke something that no test catches: add the test FIRST, confirm it passes against current production, THEN make your change, THEN verify the new test still passes. The test suite gets stronger with every fix.
+
+This replaces manual impact analysis. The tests ARE the impact trace. If the tests are good enough, regressions are caught automatically. If they're not good enough, the gap becomes visible and we add coverage.
+
+## Change Impact Trace (MANDATORY)
+
+No change exists in a vacuum. Before committing ANY edit, trace the full dependency chain:
+
+1. **WHAT DID I CHANGE?** Run `git diff` on every modified file. List every function signature, response shape, prop interface, database query, or API contract that changed.
+2. **WHO CONSUMES THIS?** For every changed function/API/response shape, grep the codebase for every caller. List them. If an API response added a field, every component that reads that response must still work. If a component was rewritten, every route that renders it must still work. If a database query changed, every function that uses its results must still work.
+3. **WHAT INTERACTIVE ELEMENTS EXISTED BEFORE?** For every modified UI file: list every button, link, form, onClick, onSubmit, fetch call, and router.push that existed BEFORE the edit. Confirm each one still exists and still fires after the edit. Name them explicitly.
+4. **WHAT COULD BREAK DOWNSTREAM?** Think one level past the file you touched. Changed API response shape → every fetch() that reads it. Changed auth callback → every redirect target. Changed database schema → every query that reads that table. Changed component props → every parent that renders it. For each downstream consumer, verify it still works with the new code. If you cannot verify (e.g. requires auth), say "CANNOT VERIFY: [component] reads [API] — manual test needed."
+5. **WHAT IS THE BLAST RADIUS IF I'M WRONG?** Name the worst case. This forces you to think about consequences before shipping.
+
 ## Multi-User Verification Rule
 
 - A task is not done if it only works for Brandon, the owner account, or `INGEST_USER_ID`.
