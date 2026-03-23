@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Settings } from 'lucide-react';
 
@@ -18,8 +19,14 @@ interface SubscriptionInfo {
   daysRemaining?: number;
 }
 
+const ALL_BUCKETS = [
+  'Job search', 'Career growth', 'Side project', 'Business ops',
+  'Health & family', 'Financial', 'Relationships', 'Learning',
+];
+
 export default function SettingsClient() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,19 +35,27 @@ export default function SettingsClient() {
   const [generateState, setGenerateState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [goalBuckets, setGoalBuckets] = useState<string[]>([]);
+  const [goalFreeText, setGoalFreeText] = useState<string | null>(null);
 
   useEffect(() => {
     if (status !== 'authenticated') { setLoading(false); return; }
     Promise.all([
       fetch('/api/integrations/status'),
       fetch('/api/subscription/status'),
-    ]).then(async ([intRes, subRes]) => {
+      fetch('/api/onboard/set-goals'),
+    ]).then(async ([intRes, subRes, goalsRes]) => {
       if (intRes.ok) {
         const d = await intRes.json();
         setIntegrations(d.integrations || []);
       }
       if (subRes.ok) {
         setSubscription(await subRes.json());
+      }
+      if (goalsRes.ok) {
+        const g = await goalsRes.json();
+        setGoalBuckets(g.buckets ?? []);
+        setGoalFreeText(g.freeText ?? null);
       }
     }).catch(() => {}).finally(() => setLoading(false));
   }, [status]);
@@ -217,6 +232,43 @@ export default function SettingsClient() {
           )}
         </div>
 
+
+        {/* Focus areas */}
+        <h2 className="text-lg font-semibold text-white mt-8">Your focus areas</h2>
+        <div className="mt-3 bg-zinc-900 rounded-xl p-4">
+          {goalBuckets.length === 0 && !goalFreeText ? (
+            <p className="text-sm text-zinc-500">No focus areas set yet.</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {ALL_BUCKETS.map((label) => {
+                  const active = goalBuckets.includes(label);
+                  return (
+                    <span
+                      key={label}
+                      className={`rounded-lg py-1.5 px-3 text-xs font-medium ${
+                        active
+                          ? 'bg-cyan-500/15 border border-cyan-500/50 text-cyan-300'
+                          : 'bg-zinc-800 border border-zinc-800 text-zinc-600'
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  );
+                })}
+              </div>
+              {goalFreeText && (
+                <p className="mt-3 text-sm text-zinc-300">{goalFreeText}</p>
+              )}
+            </>
+          )}
+          <button
+            onClick={() => router.push('/onboard?edit=true')}
+            className="mt-3 text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+          >
+            Edit focus areas
+          </button>
+        </div>
 
         {/* Subscription */}
         <h2 className="text-lg font-semibold text-white mt-8">Subscription</h2>

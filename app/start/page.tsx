@@ -59,10 +59,10 @@ export default function StartPage() {
         {/* What to expect */}
         <div className="mt-10 space-y-3">
           {[
-            'Day 1 — We scan your last 90 days of email',
-            'Day 3 — Patterns start emerging',
-            'Day 7 — Your reads get specific',
-            'Day 30 — The engine knows you',
+            'Connect — Link your email in one click',
+            'Focus — Tell us what you\u2019re working on',
+            'Sleep — Your first read arrives tomorrow at 7am',
+            'Improve — Every approve and skip makes it smarter',
           ].map((text, i) => (
             <div key={i} className="flex items-start gap-3">
               <span className="text-sm text-zinc-500 w-4 shrink-0">{i + 1}</span>
