@@ -363,7 +363,7 @@ const NON_COMMITMENT_PATTERNS = [
   /\b(?:build\s+(?:failed|succeeded|error|complete)|production\s+deployment)\b/i,
 ];
 
-function isNonCommitment(description: string): boolean {
+export function isNonCommitment(description: string): boolean {
   return NON_COMMITMENT_PATTERNS.some((pattern) => pattern.test(description));
 }
 

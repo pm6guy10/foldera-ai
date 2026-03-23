@@ -19,6 +19,7 @@ import { createServerClient } from '@/lib/db/client';
 import { createHash } from 'crypto';
 import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 import { encrypt } from '@/lib/encryption';
+import { isNonCommitment } from '@/lib/signals/signal-processor';
 
 // ---------------------------------------------------------------------------
 // Clients
@@ -111,7 +112,9 @@ Return JSON matching this schema exactly:
   ]
 }
 
-Extract only what is explicit or clearly implied. Do not infer. If nothing relevant, return empty arrays.`;
+Extract only what is explicit or clearly implied. Do not infer. If nothing relevant, return empty arrays.
+
+IMPORTANT: Do NOT extract action items, decisions, or commitments that reference Foldera itself, Foldera directives, deployment notifications, Vercel builds, or system self-review tasks. These are internal system artifacts, not user decisions.`;
 
 const SOURCE_PROMPTS: Record<SourceType, string> = {
   conversation: `You are building an identity graph for a personal chief of staff system.
@@ -289,7 +292,7 @@ export async function extractFromConversation(
       .eq('user_id', userId)
       .in('canonical_form', canonicalForms);
     const existingSet = new Set((existingRows ?? []).map((r) => r.canonical_form));
-    const newRows = rows.filter((r) => !existingSet.has(r.canonical_form));
+    const newRows = rows.filter((r) => !existingSet.has(r.canonical_form) && !isNonCommitment(r.description));
 
     if (newRows.length > 0) {
       const { error: commitError } = await supabase.from('tkg_commitments').insert(newRows);
