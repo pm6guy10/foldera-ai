@@ -85,3 +85,4 @@ Any change affecting frontend, auth, onboarding, connectors, or routing must pas
 - One task per session.
 - No opportunistic refactors, adjacent fixes, or extra docs outside the requested task and required runbook maintenance.
 - If you encounter unrelated issues, mention them only if they block the task or must be logged in the audit.
+
