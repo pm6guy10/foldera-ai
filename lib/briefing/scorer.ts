@@ -837,7 +837,7 @@ function inferActionType(text: string, loopType: 'commitment' | 'signal' | 'rela
   if (/\b(schedule|calendar|meeting|call|appointment)\b/.test(lower)) return 'schedule';
   if (/\b(research|investigate|look into|find out)\b/.test(lower)) return 'research';
   if (/\b(wait|hold|pause|defer|delay)\b/.test(lower)) return 'do_nothing';
-  return 'make_decision'; // default for commitments
+  return 'send_message'; // default: most commitments resolve to follow-ups
 }
 
 // ---------------------------------------------------------------------------
@@ -2606,13 +2606,50 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     }
 
     const stakes = c.matchedGoal ? c.matchedGoal.priority : 1.0;
+
+    // Specificity multiplier: reward candidates with concrete details, penalize vague ones
+    let specificityAdjustedStakes = stakes;
+    const words = c.content.split(/\s+/);
+    const hasEntityReference = /[A-Z0-9]{4,}/.test(c.content);
+    const hasEmail = /@/.test(c.content);
+    const hasPhone = /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(c.content);
+    const hasDate = /\d{4}-\d{2}-\d{2}|\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}/i.test(c.content);
+
+    const specificitySignals = [hasEntityReference, hasEmail, hasPhone, hasDate].filter(Boolean).length;
+
+    if (words.length < 10 && specificitySignals === 0) {
+      specificityAdjustedStakes = stakes * 0.4;
+    } else if (specificitySignals >= 2) {
+      specificityAdjustedStakes = Math.min(stakes * 1.4, 5.0);
+    } else if (specificitySignals === 1) {
+      specificityAdjustedStakes = Math.min(stakes * 1.15, 5.0);
+    }
+
+    if (specificityAdjustedStakes !== stakes) {
+      logStructuredEvent({
+        event: 'specificity_adjustment',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'scoring',
+        details: {
+          scope: 'scorer',
+          candidate_title: c.title.slice(0, 80),
+          raw_stakes: stakes,
+          adjusted_stakes: specificityAdjustedStakes,
+          specificity_signals: specificitySignals,
+          word_count: words.length,
+        },
+      });
+    }
+
     const tractability = await getTractability(userId, c.actionType, c.domain);
     const daysSinceLastSurface = await getDaysSinceLastSurface(userId, c.title);
     const entityPenalty = await getEntitySkipPenalty(userId, c.content, c.title);
 
     // v4: Gemini scoring function — replaces flat multiplicative formula
     const { score, breakdown: geminiBreakdown } = computeCandidateScore({
-      stakes,
+      stakes: specificityAdjustedStakes,
       urgency: c.urgency,
       tractability,
       actionType: c.actionType,
@@ -2652,6 +2689,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         ...geminiBreakdown,
         // Legacy fields override where names collide (used by emergent/divergence/kill-reason paths)
         stakes,
+        specificityAdjustedStakes,
         urgency: c.urgency,
         tractability,
         freshness: geminiBreakdown.novelty_multiplier,
@@ -2836,4 +2874,39 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     deprioritized,
     candidateDiscovery: buildCandidateDiscoveryLog(winner, scored, suppressedCandidates, null),
   };
+}
+
+export async function computeUserState(userId: string): Promise<{
+  state: 'waiting' | 'execution' | 'active';
+  pendingCount: number;
+  approvalRate: number;
+  lastDirectiveAgeHours: number;
+}> {
+  const supabase = createServerClient();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: recentActions } = await supabase
+    .from('tkg_actions')
+    .select('status, generated_at')
+    .eq('user_id', userId)
+    .gte('generated_at', sevenDaysAgo)
+    .order('generated_at', { ascending: false });
+
+  const actions = recentActions ?? [];
+  const pending = actions.filter(a => a.status === 'pending_approval');
+  const approved = actions.filter(a => a.status === 'executed');
+  const total = actions.length;
+  const approvalRate = total > 0 ? approved.length / total : 0;
+  const lastDirectiveAgeHours = actions.length > 0
+    ? (Date.now() - new Date(actions[0].generated_at).getTime()) / (1000 * 60 * 60)
+    : Infinity;
+
+  let state: 'waiting' | 'execution' | 'active' = 'active';
+  if (pending.length >= 3) {
+    state = 'waiting';
+  } else if (approvalRate > 0.3 && lastDirectiveAgeHours < 24) {
+    state = 'execution';
+  }
+
+  return { state, pendingCount: pending.length, approvalRate, lastDirectiveAgeHours };
 }

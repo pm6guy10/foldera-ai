@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 22, 2026 (evening audit) by Claude Code
+Last Updated: March 23, 2026 (late session audit) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -106,6 +106,9 @@ Only start after Phase 1 is fully PROVEN.
 | FPA3 suppression working | PROVEN | Correctly blocked |
 | Suppression goals loaded and enforced | BUILT | Scorer now queries `current_priority=true, priority<3` and zeroes matching candidates before scoring |
 | Generator identity context from goals | BUILT | Dynamic user context block prepended to LLM prompt from top tkg_goals (not hardcoded). System prompt rewritten to insight/avoidance framing — rejects routine maintenance, calendar holds, generic productivity |
+| Commitment fallback action type | BUILT | March 23 late session: `inferActionType()` default changed from `make_decision` to `send_message` so unclassified commitments now land on a generator-supported artifact path. Local search confirms `make_decision` is no longer the fallback return. |
+| Specificity floor for vague candidates | BUILT | March 23 late session: scorer now penalizes short/no-detail candidates and boosts claim/email/phone/date-rich candidates before `computeCandidateScore()`. Structured log event `specificity_adjustment` added for auditability. |
+| Recent raw signal context in context builder | BUILT | March 23 late session: `buildContextBlock()` now queries the last 5 processed `tkg_signals` from 7 days, decrypts them, skips fallback/self-referential rows, and appends concrete signal snippets only when valid rows remain. |
 | Consecutive duplicate suppression | BUILT | >50% word-overlap similarity against last 3 tkg_actions rejects and falls through to wait_rationale |
 | Gmail sync in nightly-ops | BUILT | `stageSyncGoogle()` added as Stage 1b, mirrors Microsoft pattern, uses `getAllUsersWithProvider('google')` |
 | 90-day first-sync lookback | BUILT | Both Microsoft and Google sync already use 90-day lookback on first connect (`!last_synced_at`) |
@@ -117,6 +120,14 @@ Only start after Phase 1 is fully PROVEN.
 **Threshold note:** There are two independent scales. The scorer EV (0–5 continuous) ranks candidates — there is no production EV threshold; the "2.0" only exists in the test benchmark. The generator confidence (0–100, LLM self-rated) has two gates: `DIRECTIVE_CONFIDENCE_THRESHOLD = 45` at generation time and `CONFIDENCE_THRESHOLD = 70` for queue reconciliation. Structured logs now include both `scorer_ev` and `generator_confidence` so debugging is unambiguous.
 
 **NEXT MOVE:** Self-optimize will dynamically adjust thresholds based on approval rates. Manual option: lower CONFIDENCE_THRESHOLD.
+
+### 2.4 User-State Readiness
+
+| Item | Status | Evidence |
+|---|---|---|
+| `computeUserState()` helper export | BUILT | March 23 late session: exported from `lib/briefing/scorer.ts` without wiring it into nightly-ops. Local runtime check returned valid JSON for owner `e40b7cd8-4925-42f7-bc99-5022969f1d22` and test user `22222222-2222-2222-2222-222222222222`. |
+
+**NEXT MOVE:** Wire `computeUserState()` into the caller/orchestrator in a separate prompt once nightly data confirms the scorer quality changes improve approval odds.
 
 ## PHASE 3: GROWTH READY (post-intelligence)
 

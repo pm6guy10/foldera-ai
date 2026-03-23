@@ -99,6 +99,8 @@ export type ConvictionArtifact =
 
 export interface CandidateScoreBreakdown {
   stakes: number;
+  /** Stakes after the scorer's specificity multiplier, used for final candidate scoring. */
+  specificityAdjustedStakes?: number;
   urgency: number;
   tractability: number;
   freshness: number;

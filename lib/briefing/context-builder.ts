@@ -1,11 +1,13 @@
 /**
  * Context builder — dynamically assembles situational context for the generator.
  *
- * Queries tkg_goals, tkg_commitments, and tkg_actions at generation time
- * to produce a context block that makes the brain feel like it knows the user.
+ * Queries tkg_goals, tkg_commitments, tkg_actions, and recent tkg_signals at
+ * generation time to produce a context block that makes the brain feel like it
+ * knows the user.
  */
 
 import { createServerClient } from '@/lib/db/client';
+import { decryptWithStatus } from '@/lib/encryption';
 
 type GreetingSnapshot = {
   dayName: string;
@@ -13,6 +15,10 @@ type GreetingSnapshot = {
   activeCommitmentCount: number;
   topGoalText: string | null;
 };
+
+function isSelfReferentialSignal(content: string): boolean {
+  return content.startsWith('[Foldera Directive') || content.startsWith('[Foldera · 20');
+}
 
 // ---------------------------------------------------------------------------
 // Season + time-of-day helpers
@@ -102,7 +108,7 @@ export async function buildContextBlock(userId: string): Promise<string> {
     'July', 'August', 'September', 'October', 'November', 'December'];
 
   // Parallel queries
-  const [goalsRes, commitmentsRes, lastActionRes] = await Promise.all([
+  const [goalsRes, commitmentsRes, lastActionRes, recentSignalsRes] = await Promise.all([
     supabase
       .from('tkg_goals')
       .select('goal_text, priority, goal_category')
@@ -124,11 +130,34 @@ export async function buildContextBlock(userId: string): Promise<string> {
       .order('generated_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from('tkg_signals')
+      .select('content, source, occurred_at')
+      .eq('user_id', userId)
+      .eq('processed', true)
+      .gte('occurred_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      .order('occurred_at', { ascending: false })
+      .limit(5),
   ]);
 
   const goals = goalsRes.data ?? [];
   const commitments = commitmentsRes.data ?? [];
   const lastAction = lastActionRes.data;
+  const recentSignals = (recentSignalsRes.data ?? [])
+    .map((signal) => {
+      const decrypted = decryptWithStatus(signal.content as string ?? '');
+      if (decrypted.usedFallback) return null;
+
+      const plaintext = decrypted.plaintext.trim();
+      if (!plaintext || isSelfReferentialSignal(plaintext)) return null;
+
+      return {
+        source: (signal.source as string | null) ?? 'unknown',
+        occurredAt: (signal.occurred_at as string | null) ?? '',
+        preview: plaintext.replace(/\s+/g, ' ').slice(0, 200),
+      };
+    })
+    .filter((signal): signal is { source: string; occurredAt: string; preview: string } => Boolean(signal));
 
   // Active goals summary
   const goalLines = goals.length > 0
@@ -150,6 +179,10 @@ export async function buildContextBlock(userId: string): Promise<string> {
     ? `Last directive: [${lastAction.action_type}] "${lastAction.directive_text?.slice(0, 80)}" — ${lastAction.status === 'executed' ? 'approved' : lastAction.status === 'skipped' || lastAction.status === 'draft_rejected' ? 'skipped' : lastAction.status}`
     : 'No prior directives. This is the first generation.';
 
+  const recentSignalsSection = recentSignals.length > 0
+    ? `\n* Recent signals (last 7 days):\n${recentSignals.map((signal) => `  - [${signal.source}, ${signal.occurredAt.slice(0, 10)}] ${signal.preview}`).join('\n')}`
+    : '';
+
   return `CONTEXT — ${monthNames[month]} ${now.getFullYear()}:
 * Location: Ellensburg, WA (central Washington, high desert, rural college town)
 * Season: ${SEASONS[month]}
@@ -158,7 +191,7 @@ export async function buildContextBlock(userId: string): Promise<string> {
 * Active goals:
 ${goalLines}
 * Commitment load: ${commitmentSummary}
-* ${lastDirectiveLine}`;
+* ${lastDirectiveLine}${recentSignalsSection}`;
 }
 
 // ---------------------------------------------------------------------------
