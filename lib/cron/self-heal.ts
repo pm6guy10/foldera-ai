@@ -244,14 +244,14 @@ async function defense3SignalBacklogDrain(): Promise<DefenseResult> {
 
 // ---------------------------------------------------------------------------
 // DEFENSE 4 — QUEUE HYGIENE
-// Auto-skip pending_approval older than 24h.
+// Auto-skip pending_approval older than 36h.
 // Mark executed with no interaction after 7 days as abandoned.
 // Feed both into the feedback loop.
 // ---------------------------------------------------------------------------
 
 async function defense4QueueHygiene(): Promise<DefenseResult> {
   const supabase = createServerClient();
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const thirtySixHoursAgo = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   // Auto-skip stale pending_approval
@@ -259,7 +259,7 @@ async function defense4QueueHygiene(): Promise<DefenseResult> {
     .from('tkg_actions')
     .select('id')
     .eq('status', 'pending_approval')
-    .lt('generated_at', twentyFourHoursAgo)
+    .lt('generated_at', thirtySixHoursAgo)
     .limit(50);
 
   let expiredCount = 0;
@@ -267,7 +267,7 @@ async function defense4QueueHygiene(): Promise<DefenseResult> {
     const ids = staleApprovals.map((r) => r.id);
     await supabase
       .from('tkg_actions')
-      .update({ status: 'skipped', skip_reason: 'auto_expired_24h' })
+      .update({ status: 'skipped', skip_reason: 'auto_expired_36h' })
       .in('id', ids);
     expiredCount = ids.length;
   }

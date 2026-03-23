@@ -1371,6 +1371,24 @@ export async function runDailySend(): Promise<DailyBriefRunResult> {
         continue;
       }
 
+      // Dedup: skip if ANY email was already sent today for this user (any action)
+      const { count: alreadySentCount } = await supabase
+        .from('tkg_actions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('generated_at', todayStart)
+        .not('execution_result->daily_brief_sent_at', 'is', null);
+
+      if ((alreadySentCount ?? 0) > 0) {
+        results.push({
+          code: 'email_already_sent',
+          meta: { dedup: true, sent_count_today: alreadySentCount },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
       const { data: actions, error: actionsError } = await supabase
         .from('tkg_actions')
         .select('id, action_type, directive_text, reason, confidence, execution_result, generated_at')
@@ -1631,19 +1649,19 @@ export function toSafeDailyBriefStageStatus(result: DailyBriefRunResult): SafeDa
 }
 
 /**
- * Passive rejection: auto-skip any pending_approval actions older than 24 hours.
+ * Passive rejection: auto-skip any pending_approval actions older than 36 hours.
  * Clears the queue AND feeds the feedback loop — these count as skips.
  */
 export async function autoSkipStaleApprovals(): Promise<{ skipped: number }> {
   const supabase = createServerClient();
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const thirtySixHoursAgo = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
 
   try {
     const { data: staleActions } = await supabase
       .from('tkg_actions')
       .select('id')
       .eq('status', 'pending_approval')
-      .lt('generated_at', twentyFourHoursAgo)
+      .lt('generated_at', thirtySixHoursAgo)
       .limit(50);
 
     if (!staleActions || staleActions.length === 0) {

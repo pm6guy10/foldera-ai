@@ -71,8 +71,9 @@ export default function DashboardPage() {
           }
         })
         .catch((err: unknown) => {
-          setDone(true);
           setFlash(err instanceof Error ? err.message : 'Could not update that action.');
+          // Don't set done=true on error — the load() effect will populate
+          // the dashboard so the user sees the current state, not a permanent error
         });
     }
   }, [status]);
@@ -163,6 +164,12 @@ export default function DashboardPage() {
 
       {/* Content */}
       <main className="pt-20 pb-8 px-4 max-w-2xl mx-auto">
+        {/* Flash message (from deep-link errors or actions) */}
+        {flash && !done && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-700">
+            <p className="text-sm text-zinc-300">{flash}</p>
+          </div>
+        )}
         {loading ? (
           <div className="animate-pulse space-y-4 mt-4">
             <div className="h-3 w-20 bg-zinc-800 rounded" />
