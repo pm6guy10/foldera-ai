@@ -250,7 +250,7 @@ export default function HomePage() {
               <span className="text-6xl font-black tracking-tight text-white">$29</span>
               <span className="pb-2 text-sm uppercase tracking-[0.18em] text-zinc-500">/ month</span>
             </div>
-            <p className="mt-2 text-sm text-zinc-400">14-day free trial. No credit card required to start.</p>
+            <p className="mt-2 text-sm text-zinc-400">Free forever. Artifacts unlock at $29/mo.</p>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {productBullets.map((bullet) => (
                 <div key={bullet} className="flex items-start gap-3 rounded-2xl border border-white/8 bg-zinc-950/60 p-3">

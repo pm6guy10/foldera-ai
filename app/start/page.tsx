@@ -56,7 +56,7 @@ export default function StartPage() {
               This is the only heavy lift. After you connect, Foldera reads your inbox and calendar in the background and sends one prepared move each morning.
             </p>
             <p className="mt-3 text-base leading-7 text-zinc-400">
-              No credit card required to start. Foldera never sends anything without your approval.
+              Free forever. No credit card required. Foldera never sends anything without your approval.
             </p>
 
             {error && (

@@ -102,7 +102,7 @@ export default function PricingPage() {
             </p>
             <div className="mt-8 flex items-center gap-2 text-sm text-zinc-500">
               <Lock className="h-4 w-4" />
-              14-day free trial. No credit card required to start.
+              Free forever. No credit card required.
             </div>
           </section>
 
@@ -113,7 +113,7 @@ export default function PricingPage() {
                 <span className="pb-3 text-sm uppercase tracking-[0.18em] text-zinc-500">per month</span>
               </div>
               <p className="mt-3 max-w-lg text-sm leading-7 text-zinc-400">
-                Start free, connect your accounts, and decide whether the morning read earns a permanent place in your life.
+                Connect your accounts free. The morning read is yours. Artifacts and execution unlock at $29/mo.
               </p>
 
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
