@@ -1,8 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import Link from 'next/link';
+import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { Check, ArrowRight, Layers } from 'lucide-react';
+import { ArrowRight, Check, Lock } from 'lucide-react';
+
+const features = [
+  'Email and calendar sync',
+  'One morning directive each day',
+  'Prepared emails, decision frames, and documents',
+  'Approve or skip in one tap',
+  'Encrypted at rest',
+  'Learns from your feedback over time',
+];
 
 function CheckoutButton() {
   const { status } = useSession();
@@ -10,10 +20,7 @@ function CheckoutButton() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleCheckout() {
-    if (status === 'loading') {
-      return;
-    }
-
+    if (status === 'loading') return;
     if (status !== 'authenticated') {
       window.location.href = '/start';
       return;
@@ -44,97 +51,90 @@ function CheckoutButton() {
   }
 
   return (
-    <div className="space-y-3">
+    <div>
       <button
         onClick={handleCheckout}
         disabled={loading || status === 'loading'}
-        className="w-full py-5 rounded-2xl bg-white text-black font-black uppercase tracking-[0.2em] text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
+        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-4 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? (
-          <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-400 border-t-zinc-900" />
         ) : (
           <>
-            {status === 'authenticated' ? 'Continue to checkout' : 'Start 14-day free trial'}
-            <ArrowRight className="w-4 h-4" />
+            {status === 'authenticated' ? 'Continue to checkout' : 'Start free'}
+            <ArrowRight className="h-4 w-4" />
           </>
         )}
       </button>
-      {error && <p className="text-sm text-rose-300">{error}</p>}
+      {error && <p className="mt-3 text-sm text-rose-300">{error}</p>}
     </div>
   );
 }
 
 export default function PricingPage() {
   return (
-    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* Nav */}
-      <nav className="border-b border-white/5 px-6 py-5 flex items-center justify-between bg-black/80 backdrop-blur-xl">
-        <a href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-            <Layers className="w-5 h-5 fill-black" aria-hidden="true" />
+    <main className="min-h-screen bg-[#07080d] px-6 py-10 text-white">
+      <div className="mx-auto max-w-6xl">
+        <div className="flex items-center justify-between">
+          <Link href="/" className="text-xl font-black tracking-tight">
+            Foldera
+          </Link>
+          <div className="flex items-center gap-5 text-sm text-zinc-400">
+            <Link href="/login" className="hover:text-white">
+              Sign in
+            </Link>
+            <Link href="/start" className="hover:text-white">
+              Get started
+            </Link>
           </div>
-          <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
-        </a>
-        <a
-          href="/login"
-          className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors"
-        >
-          Sign in
-        </a>
-      </nav>
+        </div>
 
-      {/* Main */}
-      <main className="flex-1 flex items-center justify-center px-6 py-24">
-        <div className="w-full max-w-lg">
-          <div className="text-center mb-16">
-            <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-white mb-6 leading-none">
-              One plan.<br />Full power.
-            </h1>
-            <p className="text-zinc-400 text-xl font-medium">
-              Finished work, every morning.
+        <div className="mt-16 grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <section className="max-w-xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">
+              Pricing
             </p>
-          </div>
+            <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
+              One plan. One clear promise.
+            </h1>
+            <p className="mt-5 text-lg leading-8 text-zinc-300">
+              Foldera is not selling a giant workspace. It is selling one prepared move every morning. Pricing should match that simplicity.
+            </p>
+            <div className="mt-8 flex items-center gap-2 text-sm text-zinc-500">
+              <Lock className="h-4 w-4" />
+              14-day free trial. No credit card required to start.
+            </div>
+          </section>
 
-          <div className="rounded-[3rem] p-[1px] bg-gradient-to-b from-cyan-400/50 via-blue-500/10 to-transparent shadow-[0_0_150px_rgba(6,182,212,0.2)] hover:shadow-[0_0_200px_rgba(6,182,212,0.3)] transition-shadow duration-1000 group">
-            <div className="rounded-[calc(3rem-1px)] bg-zinc-950/90 backdrop-blur-3xl p-12 md:p-16 relative overflow-hidden text-center group-hover:-translate-y-1 transition-transform duration-700">
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+          <section className="rounded-[2rem] border border-cyan-400/20 bg-gradient-to-b from-cyan-400/10 to-white/[0.02] p-1 shadow-2xl shadow-black/30">
+            <div className="rounded-[calc(2rem-1px)] border border-white/8 bg-zinc-950/90 p-8 sm:p-10">
+              <div className="flex flex-wrap items-end gap-3">
+                <span className="text-7xl font-black tracking-tight">$29</span>
+                <span className="pb-3 text-sm uppercase tracking-[0.18em] text-zinc-500">per month</span>
+              </div>
+              <p className="mt-3 max-w-lg text-sm leading-7 text-zinc-400">
+                Start free, connect your accounts, and decide whether the morning read earns a permanent place in your life.
+              </p>
 
-              <div className="mb-12 relative z-10">
-                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-5 bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 rounded-lg inline-block shadow-inner">Professional</p>
-                <div className="flex items-baseline justify-center gap-2">
-                  <span className="text-8xl font-black text-white tracking-tighter">$29</span>
-                  <span className="text-zinc-500 font-bold tracking-widest uppercase text-xs">/mo</span>
-                </div>
+              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                {features.map((feature) => (
+                  <div key={feature} className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+                    <p className="text-sm leading-6 text-zinc-300">{feature}</p>
+                  </div>
+                ))}
               </div>
 
-              <ul className="space-y-5 mb-12 relative z-10 text-left">
-                {[
-                  'Email + calendar sync',
-                  'One directive every morning',
-                  'Drafted emails + documents',
-                  'Approve or skip in one tap',
-                  'Encrypted at rest',
-                  'Gets smarter every day',
-                ].map((feature) => (
-                  <li key={feature} className="flex items-center gap-4 text-white">
-                    <div className="p-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 shrink-0">
-                      <Check className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-                    </div>
-                    <span className="text-base font-bold tracking-tight text-zinc-200">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="relative z-10">
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CheckoutButton />
-                <p className="text-center text-zinc-500 text-[10px] uppercase tracking-[0.2em] font-black mt-6 leading-relaxed">
-                  No credit card required.
+                <p className="text-sm text-zinc-500">
+                  Cancel any time.
                 </p>
               </div>
             </div>
-          </div>
+          </section>
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }

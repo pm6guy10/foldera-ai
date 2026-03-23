@@ -1,8 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { signIn } from 'next-auth/react';
+import { Lock, Mail, Calendar, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
-import { Lock } from 'lucide-react';
+
+const expectationList = [
+  'Connect Google or Microsoft.',
+  'Tell Foldera what you care about right now.',
+  'Your first morning read arrives at 7am Pacific.',
+  'Approve or skip. That feedback makes tomorrow better.',
+];
 
 export default function StartPage() {
   const [loading, setLoading] = useState<string | null>(null);
@@ -15,69 +23,137 @@ export default function StartPage() {
       await signIn(provider, { callbackUrl: '/dashboard' });
     } catch {
       setLoading(null);
-      setError('Could not connect. Please try again.');
+      setError('Could not start sign-in. Please try again.');
     }
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <p className="text-2xl font-bold text-white mb-8">Foldera</p>
-
-        {/* Heading */}
-        <h1 className="text-3xl font-bold text-white">Connect your email.</h1>
-        <p className="text-zinc-400 mt-2">Your first read arrives tomorrow at 7am.</p>
-
-        {error && (
-          <div className="mt-4 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50">
-            <p className="text-sm text-red-300">{error}</p>
+    <main className="min-h-screen bg-[#07080d] px-6 py-10 text-white">
+      <div className="mx-auto max-w-6xl">
+        <div className="flex items-center justify-between">
+          <Link href="/" className="text-xl font-black tracking-tight">
+            Foldera
+          </Link>
+          <div className="flex items-center gap-5 text-sm text-zinc-400">
+            <Link href="/pricing" className="hidden hover:text-white sm:inline-flex">
+              Pricing
+            </Link>
+            <Link href="/login" className="hover:text-white">
+              Sign in
+            </Link>
           </div>
-        )}
-
-        {/* OAuth buttons */}
-        <div className="mt-8 space-y-3">
-          <button
-            onClick={() => handleSignIn('google')}
-            disabled={!!loading}
-            className="w-full flex items-center gap-3 bg-zinc-900 border border-zinc-800 text-white py-3 px-4 rounded-2xl hover:bg-zinc-800 transition-colors disabled:opacity-50"
-          >
-            <GoogleIcon />
-            {loading === 'google' ? 'Connecting…' : 'Continue with Google'}
-          </button>
-
-          <button
-            onClick={() => handleSignIn('azure-ad')}
-            disabled={!!loading}
-            className="w-full flex items-center gap-3 bg-zinc-900 border border-zinc-800 text-white py-3 px-4 rounded-2xl hover:bg-zinc-800 transition-colors disabled:opacity-50"
-          >
-            <MicrosoftIcon />
-            {loading === 'azure-ad' ? 'Connecting…' : 'Continue with Microsoft'}
-          </button>
         </div>
 
-        {/* What to expect */}
-        <div className="mt-10 space-y-3">
-          {[
-            'Connect — Link your email in one click',
-            'Focus — Tell us what you\u2019re working on',
-            'Sleep — Your first read arrives tomorrow at 7am',
-            'Improve — Every approve and skip makes it smarter',
-          ].map((text, i) => (
-            <div key={i} className="flex items-start gap-3">
-              <span className="text-sm text-zinc-500 w-4 shrink-0">{i + 1}</span>
-              <span className="text-sm text-zinc-500">{text}</span>
+        <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_0.95fr] lg:items-center">
+          <section className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">
+              Step 1 of 2
+            </p>
+            <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
+              Connect the account Foldera should read.
+            </h1>
+            <p className="mt-5 text-lg leading-8 text-zinc-300">
+              This is the only heavy lift. After you connect, Foldera reads your inbox and calendar in the background and sends one prepared move each morning.
+            </p>
+            <p className="mt-3 text-base leading-7 text-zinc-400">
+              No credit card required to start. Foldera never sends anything without your approval.
+            </p>
+
+            {error && (
+              <div className="mt-6 rounded-2xl border border-red-900/50 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+                {error}
+              </div>
+            )}
+
+            <div className="mt-8 space-y-3 max-w-md">
+              <button
+                onClick={() => handleSignIn('google')}
+                disabled={!!loading}
+                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading === 'google' ? <Spinner dark /> : <GoogleIcon />}
+                {loading === 'google' ? 'Connecting Google…' : 'Continue with Google'}
+              </button>
+
+              <button
+                onClick={() => handleSignIn('azure-ad')}
+                disabled={!!loading}
+                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#0a84ff] px-5 py-4 text-sm font-semibold text-white transition hover:bg-[#0075f2] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading === 'azure-ad' ? <Spinner /> : <MicrosoftIcon />}
+                {loading === 'azure-ad' ? 'Connecting Microsoft…' : 'Continue with Microsoft'}
+              </button>
             </div>
-          ))}
-        </div>
 
-        {/* Footer */}
-        <div className="mt-8 flex items-center justify-center gap-1.5">
-          <Lock className="w-3 h-3 text-zinc-600" />
-          <p className="text-xs text-zinc-600">Your data is encrypted. Delete anytime.</p>
+            <div className="mt-6 flex items-center gap-2 text-sm text-zinc-500">
+              <Lock className="h-4 w-4" />
+              Encrypted at rest. Disconnect any time in Settings.
+            </div>
+          </section>
+
+          <aside className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 shadow-2xl shadow-black/30">
+            <div className="rounded-[1.5rem] border border-cyan-400/20 bg-gradient-to-b from-cyan-400/10 to-white/[0.02] p-5">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">
+                What happens next
+              </p>
+              <div className="mt-5 space-y-4">
+                {expectationList.map((item, index) => (
+                  <div key={item} className="flex gap-4 rounded-2xl border border-white/8 bg-zinc-950/70 p-4">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/6 text-xs font-semibold text-white">
+                      {index + 1}
+                    </div>
+                    <p className="text-sm leading-6 text-zinc-300">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[1.5rem] border border-white/8 bg-zinc-950/70 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                Tomorrow&apos;s read looks like this
+              </p>
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-white/6 p-2">
+                    <Mail className="h-4 w-4 text-zinc-300" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">Reply to the client today</p>
+                    <p className="mt-1 text-xs leading-5 text-zinc-500">
+                      Foldera noticed the thread is aging, saw the calendar gap this afternoon, and prepared the email for approval.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-3 text-xs text-zinc-500">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5" />
+                    drafted email
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5" />
+                    timed for today
+                  </span>
+                </div>
+              </div>
+
+              <Link
+                href="/login"
+                className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-zinc-400 transition hover:text-white"
+              >
+                Already have an account?
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </aside>
         </div>
       </div>
     </main>
+  );
+}
+
+function Spinner({ dark = false }: { dark?: boolean }) {
+  return (
+    <span className={`h-5 w-5 rounded-full border-2 ${dark ? 'border-zinc-400 border-t-zinc-900' : 'border-white/40 border-t-white'} animate-spin`} />
   );
 }
 
