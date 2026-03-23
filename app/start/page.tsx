@@ -1,16 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { signIn } from 'next-auth/react';
-import { Lock, Mail, Calendar, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
-
-const expectationList = [
-  'Connect Google or Microsoft.',
-  'Tell Foldera what you care about right now.',
-  'Your first morning read arrives at 7am Pacific.',
-  'Approve or skip. That feedback makes tomorrow better.',
-];
+import { ArrowRight, Lock, Sparkles, Shield, MoonStar, CheckCircle2 } from 'lucide-react';
 
 export default function StartPage() {
   const [loading, setLoading] = useState<string | null>(null);
@@ -23,137 +15,187 @@ export default function StartPage() {
       await signIn(provider, { callbackUrl: '/dashboard' });
     } catch {
       setLoading(null);
-      setError('Could not start sign-in. Please try again.');
+      setError('Could not connect. Please try again.');
     }
   }
 
   return (
-    <main className="min-h-screen bg-[#07080d] px-6 py-10 text-white">
-      <div className="mx-auto max-w-6xl">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="text-xl font-black tracking-tight">
-            Foldera
-          </Link>
-          <div className="flex items-center gap-5 text-sm text-zinc-400">
-            <Link href="/pricing" className="hidden hover:text-white sm:inline-flex">
-              Pricing
-            </Link>
-            <Link href="/login" className="hover:text-white">
-              Sign in
-            </Link>
-          </div>
-        </div>
+    <main className="min-h-screen bg-[#07070c] text-white overflow-hidden relative">
+      <AmbientBackdrop />
 
-        <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_0.95fr] lg:items-center">
-          <section className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">
-              Step 1 of 2
-            </p>
-            <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
-              Connect the account Foldera should read.
-            </h1>
-            <p className="mt-5 text-lg leading-8 text-zinc-300">
-              This is the only heavy lift. After you connect, Foldera reads your inbox and calendar in the background and sends one prepared move each morning.
-            </p>
-            <p className="mt-3 text-base leading-7 text-zinc-400">
-              Free forever. No credit card required. Foldera never sends anything without your approval.
-            </p>
-
-            {error && (
-              <div className="mt-6 rounded-2xl border border-red-900/50 bg-red-950/40 px-4 py-3 text-sm text-red-300">
-                {error}
+      <div className="relative z-10 min-h-screen px-6 py-10">
+        <div className="max-w-6xl mx-auto min-h-[calc(100vh-5rem)] grid lg:grid-cols-[1.05fr_0.95fr] gap-10 items-center">
+          <section className="max-w-xl">
+            <a href="/" className="inline-flex items-center gap-3 mb-8 group">
+              <div className="w-11 h-11 rounded-2xl bg-white text-black flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.14)] group-hover:scale-105 transition-transform">
+                <Sparkles className="w-5 h-5" />
               </div>
-            )}
+              <span className="text-lg font-black tracking-[0.18em] uppercase">Foldera</span>
+            </a>
 
-            <div className="mt-8 space-y-3 max-w-md">
-              <button
-                onClick={() => handleSignIn('google')}
-                disabled={!!loading}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading === 'google' ? <Spinner dark /> : <GoogleIcon />}
-                {loading === 'google' ? 'Connecting Google…' : 'Continue with Google'}
-              </button>
-
-              <button
-                onClick={() => handleSignIn('azure-ad')}
-                disabled={!!loading}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#0a84ff] px-5 py-4 text-sm font-semibold text-white transition hover:bg-[#0075f2] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading === 'azure-ad' ? <Spinner /> : <MicrosoftIcon />}
-                {loading === 'azure-ad' ? 'Connecting Microsoft…' : 'Continue with Microsoft'}
-              </button>
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 text-cyan-300 text-[11px] font-black uppercase tracking-[0.18em] mb-6">
+              Start the overnight loop
             </div>
 
-            <div className="mt-6 flex items-center gap-2 text-sm text-zinc-500">
-              <Lock className="h-4 w-4" />
-              Encrypted at rest. Disconnect any time in Settings.
+            <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-[1.02] text-white">
+              Connect once.
+              <br />
+              Wake up to work
+              <span className="text-cyan-300"> already prepared.</span>
+            </h1>
+
+            <p className="mt-5 text-base md:text-lg text-zinc-400 leading-relaxed max-w-lg">
+              Foldera reads your email and calendar, finds the thread that actually matters, and sends one directive tomorrow morning with the draft already done.
+            </p>
+
+            <div className="mt-8 grid sm:grid-cols-3 gap-3 text-sm">
+              {[
+                ['Connect', 'Link Google or Microsoft'],
+                ['Sleep', 'Foldera assembles tomorrow\'s read'],
+                ['Approve or skip', 'One decision. Then move on.'],
+              ].map(([label, desc], i) => (
+                <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500 font-black">0{i + 1}</p>
+                  <p className="mt-2 text-white font-semibold">{label}</p>
+                  <p className="mt-1 text-zinc-500 text-sm leading-relaxed">{desc}</p>
+                </div>
+              ))}
             </div>
           </section>
 
-          <aside className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 shadow-2xl shadow-black/30">
-            <div className="rounded-[1.5rem] border border-cyan-400/20 bg-gradient-to-b from-cyan-400/10 to-white/[0.02] p-5">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">
-                What happens next
-              </p>
-              <div className="mt-5 space-y-4">
-                {expectationList.map((item, index) => (
-                  <div key={item} className="flex gap-4 rounded-2xl border border-white/8 bg-zinc-950/70 p-4">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/6 text-xs font-semibold text-white">
-                      {index + 1}
-                    </div>
-                    <p className="text-sm leading-6 text-zinc-300">{item}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-[1.5rem] border border-white/8 bg-zinc-950/70 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                Tomorrow&apos;s read looks like this
-              </p>
-              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="flex items-start gap-3">
-                  <div className="rounded-xl bg-white/6 p-2">
-                    <Mail className="h-4 w-4 text-zinc-300" />
-                  </div>
+          <section className="relative">
+            <div className="absolute -inset-6 bg-cyan-500/10 blur-[90px] rounded-full" />
+            <div className="relative rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] backdrop-blur-2xl shadow-[0_40px_140px_rgba(0,0,0,0.6)] overflow-hidden">
+              <div className="p-7 sm:p-8 border-b border-white/8 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_55%)]">
+                <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium text-white">Reply to the client today</p>
-                    <p className="mt-1 text-xs leading-5 text-zinc-500">
-                      Foldera noticed the thread is aging, saw the calendar gap this afternoon, and prepared the email for approval.
-                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500 font-black">Tomorrow at 7am</p>
+                    <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Your first read arrives.</h2>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 flex items-center justify-center text-cyan-300">
+                    <MoonStar className="w-5 h-5" />
                   </div>
                 </div>
-                <div className="mt-4 flex items-center gap-3 text-xs text-zinc-500">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5" />
-                    drafted email
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
-                    timed for today
-                  </span>
-                </div>
+                <p className="mt-3 text-zinc-400 leading-relaxed">
+                  No prompt. No dashboard babysitting. Just one prepared next move.
+                </p>
               </div>
 
-              <Link
-                href="/login"
-                className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-zinc-400 transition hover:text-white"
-              >
-                Already have an account?
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              <div className="p-7 sm:p-8">
+                {error && (
+                  <div className="mb-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                    {error}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <ProviderButton
+                    provider="google"
+                    loading={loading === 'google'}
+                    disabled={!!loading}
+                    onClick={() => handleSignIn('google')}
+                    title="Continue with Google"
+                    subtitle="Gmail, Calendar, Drive"
+                    icon={<GoogleIcon />}
+                  />
+
+                  <ProviderButton
+                    provider="azure-ad"
+                    loading={loading === 'azure-ad'}
+                    disabled={!!loading}
+                    onClick={() => handleSignIn('azure-ad')}
+                    title="Continue with Microsoft"
+                    subtitle="Outlook, Calendar, OneDrive"
+                    icon={<MicrosoftIcon />}
+                  />
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-white/8 bg-black/30 p-5">
+                  <div className="flex items-center gap-2 text-zinc-300 mb-3">
+                    <Shield className="w-4 h-4 text-cyan-300" />
+                    <p className="text-sm font-semibold">What happens next</p>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      'You connect one provider.',
+                      'You set what matters to you on the next screen.',
+                      'Foldera builds tomorrow\'s morning directive.',
+                      'Every approve and skip sharpens the next one.',
+                    ].map((text) => (
+                      <div key={text} className="flex items-start gap-3 text-sm text-zinc-400">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                        <span>{text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-6 flex items-center justify-center gap-2 text-xs text-zinc-600">
+                  <Lock className="w-3 h-3" />
+                  <span>Your data is encrypted. Delete anytime.</span>
+                </div>
+
+                <div className="mt-4 text-center text-xs text-zinc-600">
+                  Already connected?{' '}
+                  <a href="/login" className="text-zinc-400 hover:text-white transition-colors inline-flex items-center gap-1">
+                    Sign in
+                    <ArrowRight className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
             </div>
-          </aside>
+          </section>
         </div>
       </div>
     </main>
   );
 }
 
-function Spinner({ dark = false }: { dark?: boolean }) {
+function ProviderButton({
+  loading,
+  disabled,
+  onClick,
+  title,
+  subtitle,
+  icon,
+}: {
+  provider: 'google' | 'azure-ad';
+  loading: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+}) {
   return (
-    <span className={`h-5 w-5 rounded-full border-2 ${dark ? 'border-zinc-400 border-t-zinc-900' : 'border-white/40 border-t-white'} animate-spin`} />
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full rounded-2xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] hover:border-cyan-400/30 transition-all px-5 py-4 text-left disabled:opacity-50"
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-2xl bg-black/40 border border-white/8 flex items-center justify-center shrink-0">
+            {icon}
+          </div>
+          <div>
+            <p className="text-white font-semibold">{loading ? 'Connecting…' : title}</p>
+            <p className="text-sm text-zinc-500 mt-0.5">{subtitle}</p>
+          </div>
+        </div>
+        <ArrowRight className="w-4 h-4 text-zinc-500" />
+      </div>
+    </button>
+  );
+}
+
+function AmbientBackdrop() {
+  return (
+    <>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800f_1px,transparent_1px),linear-gradient(to_bottom,#8080800f_1px,transparent_1px)] bg-[size:44px_44px] opacity-60" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.13),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.08),transparent_28%),linear-gradient(180deg,#07070c_0%,#090912_50%,#050508_100%)]" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[70rem] h-[28rem] bg-cyan-500/10 blur-[140px] rounded-full" />
+    </>
   );
 }
 
