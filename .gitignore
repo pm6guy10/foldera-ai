@@ -12,3 +12,7 @@ audit-output/
 # Production test auth state (contains session cookies)
 tests/production/auth-state.json
 tests/production/results.json
+.claude/worktrees/
+.playwright-mcp/
+conversation_signals.json
+*.jpeg
