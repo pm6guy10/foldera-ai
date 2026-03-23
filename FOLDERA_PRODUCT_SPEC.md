@@ -131,7 +131,9 @@ Only start after Phase 2 deployed.
 | Connect email, see "first brief tomorrow" | CODE VERIFIED | /start copy at line 23: "Your first read arrives tomorrow at 7am". Auto-sync triggers after OAuth connect. |
 | Session persists across tab close/reopen | FIXED | March 23: removed `prompt:'consent'` from Google OAuth (forced re-consent on every visit). Added middleware auth guard for /dashboard/* (edge redirect to /login if no session cookie). Changed NextAuth signIn page from /start to /login. Deploy needed to verify live. |
 | Middleware auth guard for /dashboard | BUILT | middleware.ts checks for NextAuth session cookie on /dashboard/* routes. Redirects to /login with callbackUrl preserving original URL. |
-| Pricing copy consistent | FIXED | "14 days free. Cancel anytime." → "No credit card required." across landing, /pricing, /try, /login. $29/month consistent. |
+| Pricing copy consistent | PROVEN | $29/month confirmed in all source files. No $19 references found in codebase (March 23 full sweep). |
+| Onboarding goal_category DB constraint | FIXED | March 23: 'work'→'other', 'personal'→'health', 'learning'→'other' to match tkg_goals CHECK constraint. |
+| User-facing copy polish | FIXED | March 23: "Next sync at 7am" → "Your next read arrives at 7am Pacific". Skip button now shows "Foldera learns from this" in email + dashboard. Settings SourceLine shows "awaiting sync" when provider connected but 0 signals. |
 
 ### 3.2 Landing Page
 
