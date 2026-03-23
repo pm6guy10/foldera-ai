@@ -109,15 +109,12 @@ test.describe('Public: Landing page', () => {
     await expect(page).toHaveTitle(/Foldera/i);
   });
 
-  test('pricing says "No credit card required"', async ({ page }) => {
+  test('pricing says "Free forever"', async ({ page }) => {
     await page.goto('/');
-    // Scroll to pricing section
-    await page.evaluate(() => {
-      const el = document.querySelector('#pricing');
-      if (el) el.scrollIntoView();
-    });
+    // Scroll to bottom where pricing section lives
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.waitForTimeout(500);
-    const hasCorrectCopy = await page.getByText(/no credit card required/i).first().isVisible().catch(() => false);
+    const hasCorrectCopy = await page.getByText(/free forever/i).first().isVisible().catch(() => false);
     expect(hasCorrectCopy).toBe(true);
   });
 
@@ -209,7 +206,9 @@ test.describe('Authenticated: Settings interactions', () => {
 test.describe('Public: Pricing page', () => {
   test('shows $29 price', async ({ page }) => {
     await page.goto('/pricing');
-    await expect(page.getByText(/\$29/)).toBeVisible();
+    await page.waitForLoadState('domcontentloaded');
+    const hasPricing = await page.locator('text=$29').first().isVisible().catch(() => false);
+    expect(hasPricing).toBe(true);
   });
 
   test('says "No credit card required"', async ({ page }) => {
