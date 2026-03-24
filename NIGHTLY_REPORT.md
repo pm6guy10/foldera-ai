@@ -1,53 +1,50 @@
-# NIGHTLY REPORT — 2026-03-23
+# NIGHTLY REPORT — 2026-03-24
 
-**Run time:** ~09:30 UTC (orchestrator-triggered, not cron)
-**Overall status:** GREEN — directive generated, artifact valid, email sent
+**Run time:** ~09:10 UTC (orchestrator-triggered)
+**Overall status:** RED — Signal processing completely stalled. No directive generated.
 
 ---
 
 ## Data Sync (Phase 1)
-- **Microsoft sync:** SUCCESS — 543 outlook + 130 calendar signals
+- **Microsoft sync:** SUCCESS — 35 outlook + 14 calendar signals
 - **Sources covered:** outlook, outlook_calendar
 - **Classification:** HEALTHY
 
 ## Signal Processing (Phase 2)
-- **Processed:** 500 signals across 10 batches (50 each), steady decrease, no stalls
-- **Daily-brief additional:** 15 more signals processed inline
-- **Remaining unprocessed:** 358 (budget exhaustion, not errors)
-- **New commitments:** 146 extracted in last hour (879 total, 297 active)
-- **Classification:** HEALTHY (but see AB18 for backlog growth)
+- **Processed:** 0 signals in 2 attempts (maxSignals=50 each)
+- **Remaining unprocessed:** 601 (up from 358 yesterday, +68%)
+- **Stale signals (>24h occurred_at):** 514
+- **Root cause:** `decryptWithStatus()` fails for ALL signals. Content remains ciphertext after decryption attempt. All signals deferred, none quarantined.
+- **Daily API spend:** $0.00 (no Anthropic calls made)
+- **Classification:** RED — BLOCKER_ALL_SIGNALS_DEAD_KEY
 
 ## Queue Cleanup (Phase 3)
 - **Stale pending_approval (>24h):** 0
-- **Cleared:** 0 (queue was already clean)
+- **Cleared:** 0 (queue clean)
 
 ## Daily Brief (Phase 4)
-- **Brandon (e40b7cd8):** `schedule` / `calendar_event`
-  - Title: "Call ESD claims center - waiver follow-up"
-  - Artifact: calendar_event with title, start, end, description — all non-empty
-  - Confidence: 77 (above 70 threshold)
-  - Scorer EV: 2.55 (above 2.0 benchmark — FIRST TIME)
-  - Candidates evaluated: 96, top 3 scored
-  - **VALID — real, actionable, entity-specific directive**
+- **Brandon (e40b7cd8):** `do_nothing` / `wait_rationale`
+  - Evidence: "Generation failed internally" — 0 candidates, scorer EV null, confidence 0
+  - No candidates because signal processing stalled
+  - **VALID wait_rationale — but reflects pipeline failure, not lack of signal**
 - **Test user (22222222):** `do_nothing` / `wait_rationale`
-  - Context and evidence non-empty
+  - "No ranked daily brief candidate" — expected
   - **VALID — correct no-send**
-- **Classification:** PASS
+- **Classification:** YELLOW — contract met (wait_rationale), but no real directive
 
 ## Daily Send (Phase 5)
-- **Brandon:** SENT — Resend ID `f328ffab-290b-4b60-9c34-fdaef8f35898`
+- **Brandon:** Already sent earlier today (dedup=true, sent_count_today=1)
 - **Test user:** Correctly skipped (no verified email)
-- **Classification:** PASS
+- **Classification:** GREEN — email delivered (wait_rationale)
 
 ## Health Snapshot (Phase 6)
 - **Build:** PASS (all routes compile, no errors)
-- **Recent commits:** 28 in last 24h (heavy development day)
-- **Active commitments:** 297 (ABOVE 150 ceiling — AB17)
-- **Self-referential commitments:** 26 (up from 15 — AB15)
-- **Unprocessed signals:** 358 remaining (AB18)
-- **7-day action breakdown:** 87 skipped, 1 executed, 2 pending_approval
-- **7-day approval rate:** ~1.1% (1/90) — slight improvement from 0% (AB2)
-- **Action type mix (Brandon, 7d):** make_decision 37, do_nothing 22, send_message 8, research 4, schedule 4, write_document 2
+- **Recent commits:** 32 in last 24h (heavy development day)
+- **Active commitments (suppressed_at IS NULL):** 150 (at ceiling — self-heal working correctly)
+- **Unprocessed signals:** 601 (ALL undecryptable)
+- **7-day action breakdown:** 66 skipped, 1 executed, 2 pending_approval
+- **7-day approval rate:** ~1.4% (1/69)
+- **Action type mix (7d skips):** do_nothing 37 (56%), make_decision 17 (26%), send_message 5, schedule 4, write_document 2, research 1
 
 ---
 
@@ -55,27 +52,44 @@
 
 | Classification | Items | Severity |
 |---|---|---|
-| INFO_ZERO_APPROVAL_RATE | AB2 | CRITICAL — but today's directive is the best quality yet |
-| WARN_SELF_REFERENTIAL_LEAK | AB15 | MEDIUM — 26 Foldera commitments polluting extraction |
-| WARN_COMMITMENT_CEILING_BREACH | AB17 (NEW) | MEDIUM — 297 active vs 150 ceiling |
-| WARN_SIGNAL_BACKLOG_GROWTH | AB18 (NEW) | LOW — processing budget can't keep pace with sync volume |
-| BLOCKER_TOKEN_DECRYPT | AB3 | LOW — non-blocking, fresh sync healthy |
-| WARN_MAKE_DECISION_DOMINANCE | AB4 | LOW — declining trend (48%), close candidate |
+| BLOCKER_ALL_SIGNALS_DEAD_KEY | AB21 (NEW) | CRITICAL — entire pipeline dead |
+| WARN_COMMITMENT_CEILING_BREACH | AB22 (CLOSED) | FALSE ALARM — suppressed_at IS NULL = 150 (at ceiling). Self-heal working. |
+| INFO_ZERO_APPROVAL_RATE | AB2 | ONGOING — cannot improve while processing is stalled |
+| WARN_SIGNAL_BACKLOG_GROWTH | AB18 | CRITICAL — 601 unprocessed and growing |
+| BLOCKER_TOKEN_DECRYPT | AB3 | LOW — non-blocking for generation |
+| WARN_MISSING_SCOPES | AB13 | LOW — Google calendar/drive |
+
+## Items Closed This Run
+
+| # | Issue | Reason |
+|---|---|---|
+| AB1 | Generator placeholder text | No failures in 4+ days, close deadline met |
+| AB4 | `make_decision` dominance | Production confirmed: 48% → 26% after fallback fix |
+| AB7 | Scorer EV below 2.0 | Last measured EV was 2.55, informational only |
 
 ## Blockers Requiring Human Action
 
-1. **AB2 (CRITICAL):** Today's directive — "Call ESD claims center for hardship waiver follow-up" — is the highest quality directive seen. Confidence 77, EV 2.55. If relevant, approve it to seed the behavioral learning loop. One approval unblocks self-learning.
-2. **AB3 (LOW):** Set `ENCRYPTION_KEY_LEGACY` in Vercel or re-authorize Microsoft OAuth to decrypt legacy data.
-3. **AB13 (LOW):** Re-authorize Google OAuth with calendar+drive scopes via /dashboard/settings.
+1. **CRITICAL — AB21: Signal decryption failure.** Zero signals processed. All 601 fail decryption. The pipeline generates only `wait_rationale` until this is fixed. No code changed since March 23's successful run.
+   - **Action**: Check `ENCRYPTION_KEY` in Vercel dashboard. Compare to `.env.local`. Look for trailing whitespace, quote characters, or accidental edit. Test decryption locally.
+
+2. **CLOSED — AB22: Commitment ceiling false alarm.** `suppressed_at IS NULL` = 150, exactly at ceiling. Self-heal is working correctly.
+
+3. **LOW — AB13: Google scopes.** Re-authorize Google OAuth via /dashboard/settings.
 
 ## Morning Recommendation
 
-The pipeline is healthy and generating the best directives to date. Today's ESD claims follow-up is specific, actionable, and entity-referenced — exactly the product promise. The single most impactful thing Brandon can do this morning is **approve or skip today's directive** to give the self-learning loop its first real signal.
+**The pipeline is broken. AB21 (signal decryption) is the only thing that matters.**
 
-Auto-fixable items (AB15 commitment suppression, AB17 commitment ceiling) will be addressed in Job 2 of this nightly run.
+Yesterday: 500 signals processed, EV 2.55, confidence 77, a real directive delivered.
+Today: 0 signals processed, 0 candidates, wait_rationale only.
+
+No code changed between these two outcomes. The most likely cause is an `ENCRYPTION_KEY` environment variable change in Vercel (accidental edit, trailing character, encoding issue). Check the Vercel dashboard immediately.
+
+Once decryption is restored, the 601-signal backlog will process and the pipeline should resume generating real directives.
 
 ## Build/Test Status
 - **npm run build:** PASS
-- **Production E2E:** Not run (scheduled task context, no browser available)
+- **Production E2E:** Not run (nightly orchestrator mode)
+- **Last known prod test result:** 18/18 passed (March 23)
 
 ---
