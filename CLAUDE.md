@@ -192,6 +192,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-23 — Middleware auth gate, redirect cleanup, and connector refresh
+  MODE: AUDIT
+  Commit hash(es): `f4549e5`
+  Files changed: `middleware.ts`, `app/dashboard/page.tsx`, `app/onboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `tests/e2e/public-routes.spec.ts`, `tests/production/smoke.spec.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `CLAUDE.md`
+  What was verified: baseline `npx playwright test tests/e2e/public-routes.spec.ts` before edits; Step 1 `npm run build` + `npx playwright test tests/e2e/public-routes.spec.ts`; Step 2 `npm run build` + `npx playwright test tests/e2e/` (27 passed); Step 3 `npm run build` + `npx playwright test tests/e2e/` (27 passed); `npm run test:prod` (18 passed) after updating the stale landing-page CTA assertion
+  Any unresolved issues: none
+
 - 2026-03-23 — Scorer quality floor + generator context enrichment
   MODE: AUDIT
   Commit hash(es): 92a15c1
