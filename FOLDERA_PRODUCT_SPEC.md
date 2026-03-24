@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 24, 2026 (signal freshness repair + Yadira alias backfill) by Codex
+Last Updated: March 24, 2026 (manual run-brief immediate email send) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -17,7 +17,7 @@ Everything here must be PROVEN before any user sees the product.
 |---|---|---|---|
 | Email sends every morning | PROVEN | Cron fires daily at 11:00 UTC. Actions generated every day March 21-22. Multiple Resend IDs confirmed. wait_rationale fallback works. | — |
 | Slim wait_rationale (one line) | PROVEN | Resend 9f8ed15d, commit 9033644 | — |
-| Real directive email (not just wait_rationale) | YELLOW | Directives generate and send (schedule, write_document types seen). But all 76 actions in last 7 days were skipped. Quality not yet approvable. AB2 tracks. | Identity context may be starved (AB16) |
+| Real directive email (not just wait_rationale) | YELLOW | Directives generate and send (schedule, write_document types seen). Manual `POST /api/settings/run-brief` now also reuses the shared send stage immediately after generation for the signed-in user instead of waiting for the next cron send pass. But all 76 actions in last 7 days were skipped. Quality not yet approvable. AB2 tracks. | Identity context may be starved (AB16) |
 | Cron fires at 4am PT (11:00 UTC) | PROVEN | vercel.json `0 11 * * *`. Actions generated at 09:12 UTC on March 22 (cron run). Daily generation confirmed. | — |
 | Approve/skip buttons in email | FIXED | DB mechanics verified (skip a9d165df, approve 78333ac2). Dashboard had silent error swallowing + auth redirect dropped params. Fixed in this session. | Deploy needed to verify live |
 
@@ -26,6 +26,7 @@ Everything here must be PROVEN before any user sees the product.
 March 24 production hotfix evidence:
 - `tkg_actions.id = 504c171f-50dc-473f-afdc-cdfc53f15894` from a live `POST https://www.foldera.ai/api/cron/nightly-ops` run now preserves `execution_result.generation_log.stage = "generation"` and the real Anthropic billing error in `generation_log.reason` instead of collapsing to `stage = "system"`.
 - `api_usage` helper/schema alignment verified live with rows `be76ef5c-40af-4543-9cb3-37db0cf27d16` and `80aaeaaa-c6bb-4458-bf9e-78fe72d5fdd6`, both written with the `endpoint` column on March 24.
+- Manual `POST https://www.foldera.ai/api/settings/run-brief` for the signed-in owner now stays on the session user path, created `tkg_actions.id = 6e555f8f-d28c-4400-b3bd-c77c9d3c9715` with `status = pending_approval`, and returned `send.results[0].code = "email_already_sent"` because the owner had already been sent today’s brief on `tkg_actions.id = a2481a04-9097-4546-b782-6437c2688c8d` at `2026-03-24T02:26:26.519Z`.
 
 ### 1.2 Self-Healing (immune system)
 
@@ -45,7 +46,7 @@ March 24 production hotfix evidence:
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| Test user gets own directive | PROVEN | Action rows for user 22222222 (multiple runs). Latest: `fb02af62` do_nothing on 2026-03-22 | — |
+| Test user gets own directive | PROVEN | Action rows for user 22222222 (multiple runs). Latest: `fb02af62` do_nothing on 2026-03-22. March 24 manual run-brief route now scopes sync/generate/send to `session.user.id` instead of the owner-only cron proxy path; route/unit tests cover authenticated non-owner access plus explicit per-user send scope. | — |
 | Test user gets email | NOT PROVEN | `no_verified_email` — test user has fake email `gate2-test@foldera.ai` | Need real OAuth signup with deliverable address |
 | Stranger onboarding flow (code paths) | VERIFIED | Code audit: empty goals→graceful, empty signals→null/wait_rationale, 90d first-sync, no hardcoded user IDs, trial banner only for past_due. March 23 follow-up: middleware now routes authenticated `/login` and `/start` to `/dashboard` or `/onboard` via the JWT `hasOnboarded` claim instead of a per-request `/api/onboard/check` fetch; dashboard/onboard pages no longer do client-side auth redirects. Local `npm run build` + `npx playwright test tests/e2e/` passed. | — |
 | Stranger onboarding flow (live) | NOT TESTED | Requires real OAuth sign-up with a real email address. Cannot be automated without browser. | Manual test needed |

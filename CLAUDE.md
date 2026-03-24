@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Manual run-brief now sends immediately for the signed-in user
+  MODE: AUDIT
+  Commit hash(es): `2576c1a`
+  Files changed: `app/api/settings/run-brief/route.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `lib/cron/daily-brief.ts`, `lib/cron/__tests__/manual-send.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: baseline `git pull --rebase origin main`; baseline `git log --oneline -10`; baseline `npm run test:prod` (18 passed); focused `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts lib/cron/__tests__/manual-send.test.ts` (5 passed); `npm run build`; full local `npx playwright test` reproduced the pre-existing mixed-suite failures (`73 passed, 7 skipped, 10 failed`); Vercel production deploy `dpl_3fz8buNpDkRvSV4bppvVnEtvayt7` reached `Ready`; post-deploy `npm run test:prod` (18 passed); production `POST /api/settings/run-brief` with a valid signed-in owner session returned HTTP `207` with `daily_brief.generate.results[0].meta.action_id = 6e555f8f-d28c-4400-b3bd-c77c9d3c9715`, `status = pending_approval`, and `daily_brief.send.results[0].code = email_already_sent`; live DB query confirmed the owner already had `daily_brief_sent_at = 2026-03-24T02:26:26.519Z` on action `a2481a04-9097-4546-b782-6437c2688c8d`; authenticated non-owner coverage verified by route/unit tests (`runDailyBrief({ userIds })` + `runDailySend({ userIds })` scope) because no deliverable non-owner auth session exists in this workspace
+  Any unresolved issues: full local `npx playwright test` still fails outside this patch scope because `tests/production/smoke.spec.ts` expects valid authenticated local auth state and `tests/audit/clickflow.spec.ts` still times out on `/`; logged in `AUTOMATION_BACKLOG.md` and `FOLDERA_MASTER_AUDIT.md`
+
 - 2026-03-24 — Signal freshness repair for existing entities and Yadira alias backfill
   MODE: AUDIT
   Commit hash(es): `7532485`

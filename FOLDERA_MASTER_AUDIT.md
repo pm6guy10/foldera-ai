@@ -2,6 +2,9 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-24 — Full local `npx playwright test` still fails outside the manual run-brief send patch scope
+  The manual run-brief fix itself is verified locally: focused `vitest` passed for the route fallback and explicit send scope, and `npm run build` passed. The unresolved issue is still the full local omnibus Playwright run: `73 passed, 7 skipped, 10 failed`, consisting of one `tests/audit/clickflow.spec.ts` timeout on `/` plus authenticated `tests/production/smoke.spec.ts` expectations running against `http://localhost:3000` without valid local auth state.
+
 - 2026-03-24 — Full local `npx playwright test` still fails outside the signal-freshness patch scope
   The signal-freshness fix itself is verified: focused `vitest` passed (`lib/signals/__tests__/signal-processor.test.ts`, 3 tests), `npm run build` passed, both Yadira rows now read `2026-03-23T09:18:07.943+00:00`, `scoreOpenLoops()` no longer surfaces Yadira as a candidate, and a local `generateDirective()` run now returns a low-urgency `do_nothing` result instead of selecting Yadira. The unresolved issue is still the full local omnibus Playwright run: `73 passed, 7 skipped, 10 failed`, consisting of one `tests/audit/clickflow.spec.ts` timeout on `/` plus authenticated `tests/production/smoke.spec.ts` expectations running against `http://localhost:3000` without valid local auth state.
 
