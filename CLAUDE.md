@@ -192,6 +192,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-23 — Added E2E safety-gate coverage for redirect stability, API user context, pricing, overflow, and connector decrypt canary
+  MODE: AUDIT
+  Commit hash(es): `79f9de7`
+  Files changed: `tests/e2e/safety-gates.spec.ts`
+  What was verified: baseline `npm run test:prod` (18 passed); `npx playwright test tests/e2e/safety-gates.spec.ts` (6 passed); `npm run build`; `npx playwright test tests/e2e/` (35 passed); `npm run test:prod` (18 passed)
+  Any unresolved issues: none
+
 - 2026-03-23 — Dashboard no longer client-redirects to onboard after middleware auth and route loop coverage added
   MODE: AUDIT
   Commit hash(es): `7b0b170`
