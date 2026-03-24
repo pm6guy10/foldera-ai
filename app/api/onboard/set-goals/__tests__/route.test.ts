@@ -38,9 +38,12 @@ vi.mock('@/lib/utils/api-error', () => ({
 }));
 
 describe('POST /api/onboard/set-goals', () => {
+  let insertMock: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    insertMock = vi.fn(() => Promise.resolve({ error: null }));
     getServerSession.mockResolvedValue({
       user: {
         id: 'user-1',
@@ -69,7 +72,7 @@ describe('POST /api/onboard/set-goals', () => {
               in: () => Promise.resolve({ error: null }),
             }),
           }),
-          insert: () => Promise.resolve({ error: null }),
+          insert: insertMock,
           select: () => ({
             eq: () => ({
               in: () => Promise.resolve({ data: [], error: null }),
@@ -104,6 +107,24 @@ describe('POST /api/onboard/set-goals', () => {
     }) as never);
 
     expect(response.status).toBe(200);
+    expect(insertMock).toHaveBeenCalledWith([
+      {
+        user_id: 'user-1',
+        goal_text: 'Professional development and advancement in current role',
+        goal_category: 'career',
+        priority: 3,
+        current_priority: true,
+        source: 'onboarding_bucket',
+      },
+      {
+        user_id: 'user-1',
+        goal_text: '__ONBOARDING_COMPLETE__',
+        goal_category: 'other',
+        priority: 1,
+        current_priority: false,
+        source: 'onboarding_marker',
+      },
+    ]);
     expect(sendResendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         subject: "You're connected — your first read arrives tomorrow",

@@ -22,6 +22,7 @@
 - New user empty state
 - OAuth error display
 - Google sync scope logging
+- Onboarding goal insert schema fix
 
 ### OPEN (Priority order)
 - Blog formatting fix (prose typography, Codex queued)
@@ -48,3 +49,4 @@
 - Duplicate entity cleanup (beyond Yadira)
 - Old signal cleanup job (>180 days)
 - Email send idempotency (prevent double-send on cron double-fire)
+- Local Playwright auth-state mismatch against `http://localhost:3000` still breaks the authenticated production-smoke subset

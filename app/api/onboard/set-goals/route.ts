@@ -55,13 +55,9 @@ export async function POST(req: NextRequest) {
         user_id: userId,
         goal_text: bucket.goal_text,
         goal_category: bucket.category,
-        goal_type: 'recurring',
-        status: 'active',
-        confidence: 60,
         priority: 3,
         current_priority: true,
         source: 'onboarding_bucket',
-        updated_at: now,
       });
     }
 
@@ -71,13 +67,9 @@ export async function POST(req: NextRequest) {
         user_id: userId,
         goal_text: freeText.trim(),
         goal_category: 'other',
-        goal_type: 'recurring',
-        status: 'active',
-        confidence: 70,
         priority: 4,
         current_priority: true,
         source: 'onboarding_stated',
-        updated_at: now,
       });
     }
 
@@ -86,13 +78,9 @@ export async function POST(req: NextRequest) {
       user_id: userId,
       goal_text: '__ONBOARDING_COMPLETE__',
       goal_category: 'other',
-      goal_type: 'recurring',
-      status: 'active',
-      confidence: 100,
       priority: 1,
       current_priority: false,
       source: 'onboarding_marker',
-      updated_at: now,
     });
 
     if (rows.length > 0) {

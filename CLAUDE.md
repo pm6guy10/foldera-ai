@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Onboarding goal insert schema fix
+  MODE: AUDIT
+  Commit hash(es): latest `fix: remove invalid onboarding goal columns` commit on `main`
+  Files changed: `app/api/onboard/set-goals/route.ts`, `app/api/onboard/set-goals/__tests__/route.test.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `FOLDERA_PRODUCT_SPEC.md`, `CLAUDE.md`
+  What was verified: baseline `GIT_EDITOR=true git pull --rebase origin main`; baseline `git log --oneline -10`; traced onboarding data path `POST /api/onboard/set-goals -> bucket/freeText row mapping -> supabase.from('tkg_goals').insert(rows) -> GET /api/onboard/set-goals` before editing; baseline `npx vitest run app/api/onboard/set-goals/__tests__/route.test.ts` passed; baseline `npx playwright test` reproduced the known local auth-state/clickflow failures; post-change `npx vitest run app/api/onboard/set-goals/__tests__/route.test.ts` passed; `npm run build` passed; local `/api/auth/session` resolved a valid session for `e40b7cd8-4925-42f7-bc99-5022969f1d22`; local `GET /api/onboard/set-goals` payload was replayed through local `POST /api/onboard/set-goals` and returned HTTP `200`; follow-up DB query confirmed the onboarding row persisted with only `user_id`, `goal_text`, `goal_category`, `priority`, `source`, `current_priority`, and `created_at`; post-change `npx playwright test` reproduced the same 10 known failures as baseline.
+  Any unresolved issues: full local `npx playwright test` still fails outside this patch scope because `tests/audit/clickflow.spec.ts` times out on `/` and authenticated `tests/production/smoke.spec.ts` still do not get valid local auth state against `http://localhost:3000`; logged in `AUTOMATION_BACKLOG.md` and `FOLDERA_MASTER_AUDIT.md`.
+
 - 2026-03-24 — Production hardening sweep
   MODE: AUDIT
   Commit hash(es): latest `fix: production hardening sweep` commit on `main`

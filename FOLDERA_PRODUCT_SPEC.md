@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 24, 2026 (production hardening sweep: cron guards, connector health, credit canary, send_message delivery, onboarding, and Google scope logging) by Codex
+Last Updated: March 24, 2026 (onboarding goal insert schema fix after the production hardening sweep) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -169,7 +169,7 @@ Only start after Phase 2 deployed.
 | Session persists across tab close/reopen | FIXED | March 23: removed `prompt:'consent'` from Google OAuth (forced re-consent on every visit). Added middleware auth guard for /dashboard/* (edge redirect to /login if no session cookie). Changed NextAuth signIn page from /start to /login. March 23 follow-up: middleware now handles authenticated `/login` and `/start` routing from the JWT `hasOnboarded` claim, and `/dashboard` layout remains a pass-through with no duplicate auth gate. Local `npm run build` + `npx playwright test tests/e2e/` passed. Deploy needed to verify live. |
 | Middleware auth guard for /dashboard | CODE VERIFIED | `middleware.ts` checks for a NextAuth token on `/dashboard/*` and `/onboard`, redirects unauthenticated users to `/login`, and routes authenticated `/login` + `/start` requests to `/dashboard` or `/onboard` from the JWT `hasOnboarded` claim populated in `lib/auth/auth-options.ts`. Local `npm run build` + `npx playwright test tests/e2e/` passed. |
 | Pricing copy consistent | PROVEN | March 24 production hardening sweep: pricing CTAs now say "Get started free" and no source copy still advertises `$19`. Locked pricing remains free tier with no card and Pro at `$29/mo`. |
-| Onboarding goal_category DB constraint | FIXED | March 23: 'work'→'other', 'personal'→'health', 'learning'→'other' to match tkg_goals CHECK constraint. |
+| Onboarding goal_category DB constraint | FIXED | March 23: 'work'→'other', 'personal'→'health', 'learning'→'other' to match `tkg_goals` CHECK constraint. March 24 follow-up: `app/api/onboard/set-goals/route.ts` now inserts only the real `tkg_goals` columns (`user_id`, `goal_text`, `goal_category`, `priority`, `source`, `current_priority`) instead of sending removed fields (`goal_type`, `status`, `confidence`, `updated_at`). |
 | User-facing copy polish | FIXED | March 23: "Next sync at 7am" → "Your next read arrives at 7am Pacific". Skip button now shows "Foldera learns from this" in email + dashboard. Settings SourceLine shows "awaiting sync" when provider connected but 0 signals. |
 | Welcome email after onboarding | BUILT | March 24 production hardening sweep: `app/api/onboard/set-goals/route.ts` now sends a one-time Resend welcome email after goals save succeeds and at least one provider is connected, then records `welcome_email_sent` in auth user metadata. |
 | New user dashboard empty state | BUILT | March 24 production hardening sweep: when `/api/conviction/latest` returns no directives and the account is under 24 hours old, `/dashboard` shows "Your first read arrives tomorrow at 7am Pacific. Foldera is syncing your email and calendar now." |
