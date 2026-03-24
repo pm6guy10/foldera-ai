@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 24, 2026 (nightly pre-ceiling + scorer suppressed filter + 180d signal cleanup) by Codex
+Last Updated: March 24, 2026 (health endpoint contract fix for cron checker) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -41,6 +41,7 @@ March 24 production hotfix evidence:
 | Nightly backlog auto-throttle | BUILT | March 24 follow-up: `/api/cron/nightly-ops` now counts all `tkg_signals` rows with `processed = false` before Stage 2 (not just extractable sources), stays at 50x3 below 100 queued signals, and automatically expands to 100x10 when backlog reaches 100+; structured logs now emit `nightly_ops_signal_mode = "low"|"high"` with the chosen batch/round values. |
 | Queue hygiene (24h auto-skip) | BUILT | self-heal.ts, commit 8b3e0fc | Stale approvals blocking fresh generation |
 | Health alert email | BUILT | March 24 production hardening sweep: `lib/cron/connector-health.ts` now checks 7-day signal coverage per connected provider/source (`google_calendar`, `google_drive`, `onedrive`), sends one Resend alert per flagged source, and rate-limits with `user_tokens.last_health_alert_at`. | Silent failures with no notification |
+| `/api/health` JSON contract for cron checker | BUILT | March 24 follow-up: added `app/api/health/route.ts` returning JSON `{ status, ts, db, env }` with `status = "ok" | "degraded"` so `/api/cron/health-check` can parse `healthRes.json()` instead of receiving an HTML 404 and sending false alert emails. Local verification returned HTTP 200 `application/json` with `{\"status\":\"ok\",...}`. | False-positive health alert spam from JSON parse failures |
 | Feedback signal source constraint restored | BUILT | March 24 data-fix pass: `tkg_signals_source_check` migration restored `user_feedback`, matching the approve/skip insert path in `executeAction()`. |
 | Test-token persistence guard | BUILT | March 24 data-fix pass: `saveUserToken()` now rejects any access/refresh token starting with `test_` and logs a warning before any DB write. |
 | Microsoft token soft-disconnect + reconnect restore | BUILT | March 24 follow-up: `/api/microsoft/disconnect` now preserves the `user_tokens` row and clears secrets (`access_token = null`, `refresh_token = null`, `disconnected_at` set) instead of deleting; sign-in token persistence still upserts through `saveUserToken()` and clears `disconnected_at`, so reconnect restores the same row in place; Microsoft sync now skips users with `access_token IS NULL` the same way it skips missing rows. |

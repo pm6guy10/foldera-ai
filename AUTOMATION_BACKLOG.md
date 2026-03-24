@@ -30,6 +30,7 @@
 - Commitment ceiling batch-safe suppression (no oversized IN payload failures)
 - Nightly-ops 180-day extracted-signal cleanup at pipeline start
 - Scorer commitment loaders verified to explicitly enforce suppressed_at IS NULL
+- /api/health route now returns JSON status for cron health-check
 
 ### OPEN (Priority order)
 - Blog formatting fix (prose typography, Codex queued)
@@ -46,7 +47,7 @@
 - Sentry error tracking
 - .env.example for contributors
 - GitHub Actions CI
-- /api/health + UptimeRobot
+- UptimeRobot monitor for /api/health
 - DB migrations in code (not manual)
 - Correlation IDs in logs
 - Supabase backups

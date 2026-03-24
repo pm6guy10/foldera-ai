@@ -2,6 +2,9 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-24 — Full local `npx playwright test` still fails outside the `/api/health` endpoint fix scope
+  This session fixed the missing `app/api/health/route.ts` contract and verified `npm run build` plus a direct route execution returning HTTP `200`, `content-type: application/json`, and `{"status":"ok","db":true,"env":true,...}`. The required omnibus Playwright run still has the same pre-existing 10 failures unrelated to this patch: one `tests/audit/clickflow.spec.ts` timeout on `/`, plus authenticated `tests/production/smoke.spec.ts` failures tied to missing local authenticated session state (`/dashboard` and `/dashboard/settings` redirecting to `/login`, `/api/auth/session` missing `user`, and `/api/conviction/latest` + `/api/integrations/status` returning `401`).
+
 - 2026-03-24 — `npm run test:prod` still fails pre-existing `/login?error=OAuthCallback` banner assertion
   This cleanup session passed build and focused nightly-ops tests, but production smoke remains at `17 passed, 1 failed` on `tests/production/smoke.spec.ts:137` (`Public: Login page › shows error param if present`). The failure reproduces the known missing banner text expectation and is outside this cron/scorer/self-heal cleanup scope.
 

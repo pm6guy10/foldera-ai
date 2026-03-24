@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Added `/api/health` route to stop health-check JSON parse failures and alert spam
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `app/api/health/route.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: attempted `GIT_EDITOR=true git pull --rebase origin main` (blocked by pre-existing unstaged changes in the workspace); baseline `git log --oneline -10`; traced failing path `/api/cron/health-check -> fetch(/api/health) -> healthRes.json()`; baseline `npx playwright test` captured pre-existing 10-failure auth/clickflow set; `npm run build` passed after the fix; direct route execution of `GET /api/health` returned HTTP `200`, `application/json`, and body `{"status":"ok","ts":"...","db":true,"env":true}`; post-change `npx playwright test` reran and reproduced the same pre-existing 10-failure set with no new regressions
+  Any unresolved issues: full local `npx playwright test` still fails outside this patch scope (`tests/audit/clickflow.spec.ts` timeout on `/`, and authenticated `tests/production/smoke.spec.ts` failures due missing local authenticated session state); logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
+
 - 2026-03-24 — Nightly pre-ceiling + scorer suppressed filter + 180-day signal cleanup
   MODE: AUDIT
   Commit hash(es): pending (set after commit on `main`)
