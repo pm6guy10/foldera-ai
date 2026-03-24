@@ -1,5 +1,5 @@
 # AUTOMATION BACKLOG
-**Updated:** 2026-03-23 (auth gate + Playwright cleanup)
+**Updated:** 2026-03-23 (JWT onboarding claim audit)
 
 ---
 
@@ -16,6 +16,7 @@
 | AB15 | 26 self-referential commitments active (Foldera deployment/infra). Vercel notification emails ingested as signals, extracted as commitments. | DONE | AUTO_FIXABLE | WARN_SELF_REFERENTIAL_LEAK | `tkg_commitments`, `lib/extraction/conversation-extractor.ts` | March 23 fix: (1) Suppressed all 26 Foldera commitments via SQL. (2) Exported `isNonCommitment` from signal-processor.ts. (3) Added filter to conversation-extractor.ts before commitment insert. (4) Added self-referential exclusion to extraction prompt. | yes | Fixed. | — |
 | AB17 | Commitment count 845 unsuppressed — 5.6x the 150 ceiling. Self-heal code correct but hadn't run (orchestrator called individual endpoints, not full nightly-ops). | DONE | AUTO_FIXABLE | WARN_COMMITMENT_CEILING_BREACH | `tkg_commitments` | March 23 fix: Enforced ceiling via SQL — suppressed 695 oldest commitments, 150 remaining. Self-heal code in self-heal.ts is correctly wired (defense2CommitmentCeiling). Will auto-enforce at next nightly-ops cron (11:00 UTC). | yes | Fixed via SQL + verified code path. | — |
 | AB18 | 358 unprocessed signals remaining after budget exhaustion. Signal backlog growing faster than processing budget allows. | NEW | MANUAL_REVIEW | WARN_SIGNAL_BACKLOG_GROWTH | `app/api/cron/nightly-ops/route.ts` | March 23 nightly: 873 unprocessed at start. 500 processed in 10 orchestrator batches + 15 in daily-brief. 358 remaining. Each sync adds ~673 signals. Processing budget (10x50 in orchestrator + daily-brief budget) cannot keep up. | no | Budget increase is a product/cost decision (more Claude API calls). | Consider increasing maxSignals per batch or number of batches in nightly-ops. |
+| AB20 | Production smoke suite still treats `/login` and `/start` as public pages even when the stored session is authenticated. | OPEN (NEEDS_REVIEW) | MANUAL_REVIEW | WARN_PROD_SMOKE_EXPECTATION_DRIFT | `tests/production/smoke.spec.ts` | March 23 JWT-claim session: local `npm run build` passed and `npx playwright test tests/e2e/` passed 27/27. `npm run test:prod` failed 2 tests because authenticated storage-state was redirected away from `/login` and `/start`, so the suite could not find the sign-in heading or OAuth buttons. | no | This is a production smoke expectation mismatch, and the current task explicitly disallowed test-file edits. | Update the production smoke suite to account for authenticated redirects on `/login` and `/start`, then rerun after deploy. |
 
 ---
 

@@ -3,9 +3,41 @@ import type { JWT } from 'next-auth/jwt';
 import GoogleProvider from 'next-auth/providers/google';
 import AzureADProvider from 'next-auth/providers/azure-ad';
 import { resolveSupabaseAuthUserId } from '@/lib/auth/supabase-auth-user';
+import { createServerClient } from '@/lib/db/client';
 
 const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
+const ONBOARDING_SOURCES = ['onboarding_bucket', 'onboarding_stated', 'onboarding_marker'] as const;
+
+async function setOnboardingClaim(token: JWT): Promise<JWT> {
+  if (!token.userId || typeof token.userId !== 'string') {
+    return { ...token, hasOnboarded: false };
+  }
+
+  try {
+    const supabase = createServerClient();
+    const { count, error } = await supabase
+      .from('tkg_goals')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', token.userId)
+      .in('source', [...ONBOARDING_SOURCES]);
+
+    if (error) {
+      throw error;
+    }
+
+    return {
+      ...token,
+      hasOnboarded: (count ?? 0) > 0,
+    };
+  } catch (err) {
+    console.error('[auth][jwt] FAILED to load onboarding status:', err);
+    return {
+      ...token,
+      hasOnboarded: false,
+    };
+  }
+}
 
 /**
  * Silently refresh an expired Google access token using the stored refresh token.
@@ -265,13 +297,13 @@ export function getAuthOptions(): NextAuthOptions {
             // Refresh 5 minutes before actual expiry to avoid edge-case failures
             if (nowSec >= expiresAt - 300) {
               if (token.provider === 'google') {
-                return await refreshGoogleToken(token);
+                return await setOnboardingClaim(await refreshGoogleToken(token));
               } else if (token.provider === 'azure-ad') {
-                return await refreshMicrosoftToken(token);
+                return await setOnboardingClaim(await refreshMicrosoftToken(token));
               }
             }
           }
-          return token;
+          return await setOnboardingClaim(token);
         } catch (outerErr: any) {
           // Catch-all: if anything in the jwt callback throws, log it
           // and still return the token so the sign-in doesn't break.
@@ -280,7 +312,6 @@ export function getAuthOptions(): NextAuthOptions {
           // Fallback: resolve userId from user_tokens by email so session-backed routes don't 401
           if (!token.userId && token.email) {
             try {
-              const { createServerClient } = await import('@/lib/db/client');
               const supabase = createServerClient();
               const { data } = await supabase
                 .from('user_tokens')
@@ -297,7 +328,7 @@ export function getAuthOptions(): NextAuthOptions {
             }
           }
 
-          return token;
+          return await setOnboardingClaim(token);
         }
       },
       async session({ session, token }) {
@@ -305,6 +336,8 @@ export function getAuthOptions(): NextAuthOptions {
         session.user.id = typeof token.userId === 'string' ? token.userId : '';
         session.user.email = token.email as string;
         session.user.name = token.name as string;
+        (session.user as typeof session.user & { hasOnboarded?: boolean }).hasOnboarded =
+          Boolean((token as JWT & { hasOnboarded?: boolean }).hasOnboarded);
         if (!session.user.id) {
           console.error(`[auth][session] WARNING: token has no userId — email: ${token.email}, provider: ${token.provider}. User must sign out and sign back in to get a valid JWT.`);
         }

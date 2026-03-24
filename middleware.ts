@@ -58,6 +58,7 @@ export async function middleware(request: NextRequest) {
 
   if (isProtectedRoute || isAuthEntryRoute) {
     const token = await getToken({ req: request, secret });
+    const hasOnboarded = Boolean((token as { hasOnboarded?: boolean } | null)?.hasOnboarded);
 
     if (isProtectedRoute && !token) {
       const loginUrl = new URL('/login', origin);
@@ -67,30 +68,11 @@ export async function middleware(request: NextRequest) {
     }
 
     if (isAuthEntryRoute && token) {
-      try {
-        const onboardCheckUrl = new URL('/api/onboard/check', origin);
-        const onboardResponse = await fetch(onboardCheckUrl, {
-          headers: {
-            cookie: request.headers.get('cookie') ?? '',
-          },
-        });
-
-        if (onboardResponse.ok) {
-          const { hasOnboarded } = await onboardResponse.json();
-          const destination = hasOnboarded ? '/dashboard' : '/onboard';
-          return applyTrackingCookies(
-            request,
-            NextResponse.redirect(new URL(destination, origin)),
-          );
-        }
-
-        if (onboardResponse.status === 401) {
-          const loginUrl = new URL('/login', origin);
-          return applyTrackingCookies(request, NextResponse.redirect(loginUrl));
-        }
-      } catch {
-        // If onboarding status cannot be determined, allow the route to render.
-      }
+      const destination = hasOnboarded ? '/dashboard' : '/onboard';
+      return applyTrackingCookies(
+        request,
+        NextResponse.redirect(new URL(destination, origin)),
+      );
     }
   }
 
