@@ -1902,7 +1902,7 @@ function buildCandidateDiscoveryLog(
   suppressedCandidateCount: number,
   failureReason: string | null,
 ): GenerationCandidateDiscoveryLog {
-  const topCandidates = scored.slice(0, 3);
+  const topCandidates = scored.slice(0, 5);
   const selection = buildSelectionReason(winner, topCandidates[1]);
 
   const rankedCandidates: GenerationCandidateLog[] = topCandidates.map((candidate, index) => {

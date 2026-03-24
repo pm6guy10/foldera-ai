@@ -42,6 +42,10 @@ export interface ResearchInsight {
   artifact_instructions: string;
 }
 
+interface ResearchWinnerOptions {
+  dryRun?: boolean;
+}
+
 interface SignalRow {
   id: string;
   content: string;
@@ -214,6 +218,7 @@ If no relevant public information exists, return:
 export async function researchWinner(
   userId: string,
   winner: ScoredLoop,
+  options: ResearchWinnerOptions = {},
 ): Promise<ResearchInsight | null> {
   const startTime = Date.now();
 
@@ -249,6 +254,7 @@ export async function researchWinner(
       inputTokens: synthesisResponse.usage.input_tokens,
       outputTokens: synthesisResponse.usage.output_tokens,
       callType: 'researcher_synthesis',
+      persist: !options.dryRun,
     });
 
     const synthesisRaw = synthesisResponse.content
@@ -348,6 +354,7 @@ export async function researchWinner(
           inputTokens: enrichmentResponse.usage.input_tokens,
           outputTokens: enrichmentResponse.usage.output_tokens,
           callType: 'researcher_enrichment',
+          persist: !options.dryRun,
         });
 
         const enrichmentRaw = enrichmentResponse.content

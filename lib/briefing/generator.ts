@@ -217,6 +217,10 @@ interface SignalSnippet {
   author: string | null;
 }
 
+interface GenerateDirectiveOptions {
+  dryRun?: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Part 3 — Structured context (preprocessing)
 // ---------------------------------------------------------------------------
@@ -1483,6 +1487,7 @@ function buildFullContext(result: ScorerResult, payload: GeneratedDirectivePaylo
 async function generatePayload(
   userId: string,
   ctx: StructuredContext,
+  options: GenerateDirectiveOptions = {},
 ): Promise<{ issues: string[]; payload: GeneratedDirectivePayload | null }> {
   const prompt = buildPromptFromStructuredContext(ctx);
 
@@ -1520,6 +1525,7 @@ async function generatePayload(
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
       callType: attempt === 0 ? 'directive' : 'directive_retry',
+      persist: !options.dryRun,
     });
 
     const raw = response.content
@@ -1625,9 +1631,12 @@ export function buildDirectiveExecutionResult(input: {
 // Main: generateDirective (Parts 1-6 wired together)
 // ---------------------------------------------------------------------------
 
-export async function generateDirective(userId: string): Promise<ConvictionDirective> {
+export async function generateDirective(
+  userId: string,
+  options: GenerateDirectiveOptions = {},
+): Promise<ConvictionDirective> {
   try {
-    if (await isOverDailyLimit(userId)) {
+    if (!options.dryRun && await isOverDailyLimit(userId)) {
       logStructuredEvent({
         event: 'generation_skipped', level: 'warn', userId,
         artifactType: null, generationStatus: 'daily_cap_reached',
@@ -1664,7 +1673,7 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     // Research phase
     let insight: ResearchInsight | null = null;
     try {
-      insight = await researchWinner(userId, hydratedWinner);
+      insight = await researchWinner(userId, hydratedWinner, { dryRun: options.dryRun });
     } catch {
       logStructuredEvent({
         event: 'researcher_fallthrough', level: 'warn', userId,
@@ -1719,7 +1728,7 @@ export async function generateDirective(userId: string): Promise<ConvictionDirec
     }
 
     // Generate with LLM
-    const payloadResult = await generatePayload(userId, ctx);
+    const payloadResult = await generatePayload(userId, ctx, options);
 
     // Part 6: If generation fails, deterministic fallback
     if (!payloadResult.payload) {

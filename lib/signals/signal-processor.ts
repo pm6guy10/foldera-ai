@@ -87,6 +87,7 @@ export interface ProcessSignalsOptions {
   createdAtGte?: string;
   prioritizeOlderThanIso?: string;
   quarantineDeferredOlderThanIso?: string;
+  dryRun?: boolean;
 }
 
 export interface SignalQueryOptions {
@@ -159,6 +160,7 @@ export async function processUnextractedSignals(
   }
 
   const supabase = createServerClient();
+  const isDryRun = options.dryRun === true;
 
   // Get or create self entity for pattern merging
   const selfEntityResult = await supabase
@@ -174,7 +176,7 @@ export async function processUnextractedSignals(
   }
 
   let selfEntity = selfEntityResult.data;
-  if (!selfEntity) {
+  if (!selfEntity && !isDryRun) {
     const createSelfResult = await supabase
       .from('tkg_entities')
       .insert({ user_id: userId, type: 'person', name: 'self', display_name: 'You', emails: [], patterns: {} })
@@ -227,14 +229,24 @@ export async function processUnextractedSignals(
     }
 
     try {
-      const batchResult = await processBatch(anthropic, supabase, signals, userId, selfId, selfEntity?.patterns);
-      const quarantinedDeferredSignalIds = await quarantineDeferredSignals(
+      const batchResult = await processBatch(
+        anthropic,
         supabase,
-        userId,
         signals,
-        batchResult.deferred_signal_ids,
-        options.quarantineDeferredOlderThanIso,
+        userId,
+        selfId,
+        selfEntity?.patterns,
+        isDryRun,
       );
+      const quarantinedDeferredSignalIds = isDryRun
+        ? []
+        : await quarantineDeferredSignals(
+          supabase,
+          userId,
+          signals,
+          batchResult.deferred_signal_ids,
+          options.quarantineDeferredOlderThanIso,
+        );
       const unresolvedDeferredSignalIds = batchResult.deferred_signal_ids
         .filter((signalId) => !quarantinedDeferredSignalIds.includes(signalId));
 
@@ -264,9 +276,9 @@ export async function processUnextractedSignals(
           break;
         }
 
-        if (refreshedPatternsResult.data) {
+        if (refreshedPatternsResult.data && selfEntity?.id) {
           selfEntity = {
-            ...selfEntity,
+            id: selfEntity.id,
             patterns: refreshedPatternsResult.data.patterns,
           };
         }
@@ -374,6 +386,7 @@ async function processBatch(
   userId: string,
   selfId: string | undefined,
   selfPatterns: Record<string, any> | undefined,
+  dryRun = false,
 ): Promise<ProcessResult> {
   const result: ProcessResult = {
     signals_processed: 0,
@@ -395,6 +408,9 @@ async function processBatch(
 
     if (decrypted.usedFallback && isMicrosoftRecoverableSignal(s)) {
       try {
+        if (dryRun) {
+          throw new Error('microsoft_recovery_skipped_in_dry_run');
+        }
         const recoveredContent = await recoverAndReencryptMicrosoftSignal(supabase, userId, s);
         if (recoveredContent) {
           content = recoveredContent;
@@ -466,6 +482,7 @@ async function processBatch(
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
     callType: 'signal_extraction',
+    persist: !dryRun,
   });
 
   const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
@@ -488,6 +505,10 @@ async function processBatch(
     // Parse failed even after extraction attempt — mark all signals in this
     // batch as processed with empty extractions so they don't stall the pipeline
     result.errors.push(`parse: ${error instanceof Error ? error.message : String(error)}`);
+    if (dryRun) {
+      result.signals_processed += decryptedBatch.length;
+      return result;
+    }
     for (const signal of decryptedBatch) {
       const updateSignalResult = await supabase
         .from('tkg_signals')
@@ -529,7 +550,9 @@ async function processBatch(
       // Upsert persons → tkg_entities
       for (const person of extraction.persons ?? []) {
         if (!person.name?.trim()) continue;
-        const entityId = await upsertEntity(supabase, userId, person);
+        const entityId = dryRun
+          ? `dry-run-entity-${entityIds.length + 1}`
+          : await upsertEntity(supabase, userId, person);
         if (entityId) {
           entityIds.push(entityId);
           result.entities_upserted++;
@@ -540,9 +563,11 @@ async function processBatch(
       for (const commitment of extraction.commitments ?? []) {
         if (!commitment.description?.trim()) continue;
         if (isNonCommitment(commitment.description)) continue;
-        const commitmentId = await insertCommitment(
-          supabase, userId, selfId, commitment, signal.id, entityIds,
-        );
+        const commitmentId = dryRun
+          ? `dry-run-commitment-${commitmentIds.length + 1}`
+          : await insertCommitment(
+            supabase, userId, selfId, commitment, signal.id, entityIds,
+          );
         if (commitmentId) {
           commitmentIds.push(commitmentId);
           result.commitments_created++;
@@ -564,25 +589,27 @@ async function processBatch(
       : [];
 
     // Mark signal processed with extracted data persisted to columns
-    const updateSignalResult = await supabase
-      .from('tkg_signals')
-      .update({
-        processed: true,
-        extracted_entities: entityIds.length > 0 ? entityIds : [],
-        extracted_commitments: commitmentIds.length > 0 ? commitmentIds : [],
-        extracted_dates: extractedDates.length > 0 ? extractedDates : null,
-      })
-      .eq('id', signal.id);
+    if (!dryRun) {
+      const updateSignalResult = await supabase
+        .from('tkg_signals')
+        .update({
+          processed: true,
+          extracted_entities: entityIds.length > 0 ? entityIds : [],
+          extracted_commitments: commitmentIds.length > 0 ? commitmentIds : [],
+          extracted_dates: extractedDates.length > 0 ? extractedDates : null,
+        })
+        .eq('id', signal.id);
 
-    if (updateSignalResult.error) {
-      throw new Error(`signal_update: ${updateSignalResult.error.message}`);
+      if (updateSignalResult.error) {
+        throw new Error(`signal_update: ${updateSignalResult.error.message}`);
+      }
     }
 
     result.signals_processed++;
   }
 
   // Merge topics into self entity patterns
-  if (allTopics.length > 0 && selfId) {
+  if (allTopics.length > 0 && selfId && !dryRun) {
     const merged = { ...(selfPatterns ?? {}) };
     for (const topic of allTopics) {
       const key = topic.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60);

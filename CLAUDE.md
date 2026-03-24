@@ -38,6 +38,7 @@ Any insert with values outside these sets will fail silently (Supabase returns s
 - `ANTHROPIC_API_KEY`
 - `ENCRYPTION_KEY`
 - `CRON_SECRET`
+- `ALLOW_DEV_ROUTES` (`true` only in local/dev environments when testing `/api/dev/*`; leave unset in production)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`

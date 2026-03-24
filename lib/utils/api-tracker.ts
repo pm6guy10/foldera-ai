@@ -35,6 +35,7 @@ export interface TrackCallParams {
   inputTokens: number;
   outputTokens: number;
   callType: string;  // 'directive' | 'artifact' | 'agent' | 'extraction' | 'demo' | etc.
+  persist?: boolean;
 }
 
 /**
@@ -43,6 +44,9 @@ export interface TrackCallParams {
  */
 export async function trackApiCall(params: TrackCallParams): Promise<void> {
   try {
+    if (params.persist === false) {
+      return;
+    }
     const cost = estimateCost(params.model, params.inputTokens, params.outputTokens);
     const supabase = createServerClient();
     const { error } = await supabase.from('api_usage').insert({
