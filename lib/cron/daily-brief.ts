@@ -108,6 +108,7 @@ export interface DailyBriefOrchestrationResult {
 
 export interface DailyBriefSignalWindowOptions {
   signalCreatedAtGte?: string;
+  userIds?: string[];
 }
 
 export interface SafeDailyBriefStageStatus {
@@ -738,6 +739,15 @@ async function persistNoSendOutcome(
   return { id: data.id };
 }
 
+async function resolveDailyBriefUserIds(explicitUserIds?: string[]): Promise<string[]> {
+  const uniqueExplicitUserIds = [...new Set((explicitUserIds ?? []).filter(Boolean))];
+  if (uniqueExplicitUserIds.length > 0) {
+    return uniqueExplicitUserIds;
+  }
+
+  return getEligibleDailyBriefUserIds();
+}
+
 async function getEligibleDailyBriefUserIds(): Promise<string[]> {
   const supabase = createServerClient();
   const { data: entities, error } = await supabase
@@ -917,7 +927,7 @@ export async function runDailyGenerate(
     throw expireError;
   }
 
-  const eligibleUserIds = await getEligibleDailyBriefUserIds();
+  const eligibleUserIds = await resolveDailyBriefUserIds(options.userIds);
   if (eligibleUserIds.length === 0) {
     const emptySignalStage = buildRunResult(
       date,
@@ -1351,12 +1361,14 @@ export async function runDailyGenerate(
   };
 }
 
-export async function runDailySend(): Promise<DailyBriefRunResult> {
+export async function runDailySend(
+  options: DailyBriefSignalWindowOptions = {},
+): Promise<DailyBriefRunResult> {
   const supabase = createServerClient();
   const date = new Date().toISOString().slice(0, 10);
   const todayStart = todayStartIso();
 
-  const eligibleUserIds = await getEligibleDailyBriefUserIds();
+  const eligibleUserIds = await resolveDailyBriefUserIds(options.userIds);
   if (eligibleUserIds.length === 0) {
     return buildRunResult(date, 'No eligible users.', []);
   }
@@ -1599,7 +1611,7 @@ export async function runDailyBrief(
   options: DailyBriefSignalWindowOptions = {},
 ): Promise<DailyBriefOrchestrationResult> {
   const generate = await runDailyGenerate(options);
-  const send = await runDailySend();
+  const send = await runDailySend(options);
   const signalProcessing = generate.signalProcessing;
   const ok =
     (toSafeDailyBriefStageStatus(signalProcessing).status === 'ok' ||
