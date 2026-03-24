@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Settings } from 'lucide-react';
 import type { ConvictionAction } from '@/lib/briefing/types';
@@ -23,7 +22,6 @@ type ArtifactWithDraftedEmail = {
 type ActionWithDomain = ConvictionAction & { domain?: string };
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [action, setAction] = useState<ActionWithDomain | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
@@ -70,21 +68,6 @@ export default function DashboardPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Don't redirect to onboarding if this is a deep-link action (approve/skip from email)
-      const params = new URLSearchParams(window.location.search);
-      const hasDeepLink = params.get('action') && params.get('id');
-      if (!hasDeepLink) {
-        // Check onboarding status first
-        const checkRes = await fetch('/api/onboard/check');
-        if (checkRes.ok) {
-          const checkData = await checkRes.json();
-          if (!checkData.hasOnboarded) {
-            router.push('/onboard');
-            return;
-          }
-        }
-      }
-
       const res = await fetch('/api/conviction/latest');
       const data = await res.json().catch(() => ({}));
       setAction(data?.id ? data : null);
@@ -93,7 +76,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     load();

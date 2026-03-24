@@ -1,0 +1,69 @@
+import { test, expect, type Page } from '@playwright/test';
+import { config as loadEnv } from 'dotenv';
+import { encode } from 'next-auth/jwt';
+
+loadEnv({ path: '.env.local' });
+
+const MOCK_USER_ID = 'test-user-00000000-0000-0000-0000-000000000002';
+const SESSION_COOKIE_NAMES = [
+  'next-auth.session-token',
+  '__Secure-next-auth.session-token',
+];
+
+async function seedAuthenticatedSession(page: Page) {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error('NEXTAUTH_SECRET is required for flow route tests.');
+  }
+
+  const sessionToken = await encode({
+    secret,
+    token: {
+      sub: MOCK_USER_ID,
+      userId: MOCK_USER_ID,
+      email: 'flow-test@foldera.ai',
+      name: 'Flow Test User',
+      hasOnboarded: true,
+    },
+  });
+
+  await page.context().setExtraHTTPHeaders({
+    cookie: SESSION_COOKIE_NAMES.map((name) => `${name}=${sessionToken}`).join('; '),
+  });
+}
+
+test.describe('Flow routes', () => {
+  test('no page performs client-side redirect after load', async ({ page }) => {
+    await seedAuthenticatedSession(page);
+
+    for (const route of ['/dashboard', '/dashboard/settings', '/dashboard/briefings', '/onboard']) {
+      await page.goto(route);
+      await page.waitForLoadState('networkidle');
+
+      const stableUrl = page.url();
+
+      await page.waitForTimeout(3000);
+
+      await expect(page).toHaveURL(stableUrl);
+    }
+  });
+
+  test('authenticated user is not looped between dashboard and onboard', async ({ page }) => {
+    await seedAuthenticatedSession(page);
+
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    let navigationCount = 1;
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) {
+        navigationCount += 1;
+      }
+    });
+
+    await page.waitForTimeout(5000);
+
+    expect(navigationCount).toBe(1);
+    await expect(page).toHaveURL(/\/dashboard$/);
+  });
+});
