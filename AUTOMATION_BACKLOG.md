@@ -24,6 +24,7 @@
 - Google sync scope logging
 - Onboarding goal insert schema fix
 - Nightly ops all-source backlog threshold + stale reset guard
+- Pipeline receipt test for extraction -> score -> generate -> send
 
 ### OPEN (Priority order)
 - Blog formatting fix (prose typography, Codex queued)

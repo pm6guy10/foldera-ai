@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Added the pipeline receipt test for encrypted signal -> extraction -> scoring -> generation -> send
+  MODE: AUDIT
+  Commit hash(es): latest `test: add pipeline receipt coverage` commit on `main`
+  Files changed: `lib/briefing/__tests__/pipeline-receipt.test.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `FOLDERA_PRODUCT_SPEC.md`, `CLAUDE.md`
+  What was verified: baseline `GIT_EDITOR=true git pull --rebase origin main`; baseline `git log --oneline -10`; baseline `npx playwright test` timed out before edits while starting the full omnibus suite; traced the receipt path `encrypt() -> tkg_signals.content -> processUnextractedSignals() -> scoreOpenLoops() -> generateDirective() -> runDailyGenerate() -> runDailySend()` before coding; `npx vitest run lib/briefing/__tests__/pipeline-receipt.test.ts` passed; `npm run build` passed on rerun after one transient `.next` rename failure; post-change `npx playwright test` reproduced the same local auth/session and clickflow failures outside this patch scope while the new receipt test stayed green
+  Any unresolved issues: full local `npx playwright test` still fails outside this test-only patch because `tests/audit/clickflow.spec.ts` times out on `/`, authenticated `tests/production/smoke.spec.ts` redirects local `/dashboard` and `/dashboard/settings` to `/login`, `/api/auth/session` has no authenticated user, and `/api/conviction/latest` plus `/api/integrations/status` return `401`; logged in `FOLDERA_MASTER_AUDIT.md`
+
 - 2026-03-24 — Nightly ops backlog threshold and stale reset guard
   MODE: AUDIT
   Commit hash(es): latest `fix: correct nightly signal backlog mode and stale reset guard` commit on `main`

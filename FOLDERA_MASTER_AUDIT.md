@@ -2,6 +2,9 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-24 — Full local `npx playwright test` still fails outside the pipeline receipt test scope
+  The new `lib/briefing/__tests__/pipeline-receipt.test.ts` receipt test passes, proving the mocked end-to-end briefing path from encrypted signal insertion through extraction, scoring, directive generation, persistence, and Resend delivery receipt. `npm run build` also passes after a transient local `.next` rename retry. The unresolved issue remains the same omnibus Playwright failure set outside this task scope: `tests/audit/clickflow.spec.ts` still times out on `/`, and authenticated `tests/production/smoke.spec.ts` cases still fail locally against `http://localhost:3000` because the stored auth state redirects `/dashboard` and `/dashboard/settings` to `/login`, `/api/auth/session` returns no authenticated user, and `/api/conviction/latest` plus `/api/integrations/status` return `401`.
+
 - 2026-03-24 — Manual `/api/settings/run-brief` verification for the signal backlog fix is blocked by missing local authenticated session state
   This cron patch is verified by focused regression tests (`app/api/cron/nightly-ops/__tests__/route.test.ts`, `lib/cron/__tests__/daily-brief.test.ts`) and `npm run build`, but the requested manual local `/api/settings/run-brief` proof remains blocked by the same pre-existing auth-state issue already visible in the omnibus Playwright run: local authenticated production-smoke checks are redirected to `/login`, `/api/auth/session` has no `user`, and `/api/conviction/latest` plus `/api/integrations/status` return `401` against `http://localhost:3000`. The code now emits `nightly_ops_signal_mode = "high"` from `runDailyBrief()` when the all-source backlog is `>= 100`, but a real manual signed-in route invocation could not be completed from this workspace until local auth state is refreshed.
 
