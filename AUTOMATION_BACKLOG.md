@@ -1,5 +1,5 @@
 # AUTOMATION BACKLOG
-**Updated:** 2026-03-24 (manual run-brief immediate email send)
+**Updated:** 2026-03-24 (blog markdown rendering fix verified; no backlog status changes)
 
 ---
 

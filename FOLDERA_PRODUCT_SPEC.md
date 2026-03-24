@@ -174,7 +174,7 @@ Only start after Phase 2 deployed.
 | Hero with mechanism visualization | BUILT (72a36f3) |
 | $29 pricing | BUILT |
 | "Finished work, every morning" copy | BUILT |
-| Static blog with 5 posts | BUILT | March 24 follow-up: `/blog` index and `/blog/[slug]` post pages now render five markdown-backed posts with frontmatter metadata and responsive layouts. |
+| Static blog with 5 posts | BUILT | March 24 follow-up: `/blog` index and `/blog/[slug]` post pages now render five markdown-backed posts with frontmatter metadata and responsive layouts. March 24 blog-rendering fix: `lib/blog.ts` now uses `remark-gfm` so markdown tables render as HTML, `app/(marketing)/blog/[slug]/page.tsx` keeps `dangerouslySetInnerHTML` inside a typography-enabled prose container, and focused blog Playwright checks now verify rendered `h2`/`p`/`li` content plus the busy-professionals comparison table at desktop and 390px mobile. |
 
 ### 3.3 Distribution
 

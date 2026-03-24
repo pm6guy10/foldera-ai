@@ -163,10 +163,36 @@ test.describe('Blog routes', () => {
     await expect(page.getByRole('heading', { name: /ai that reads my email and tells me what to do every morning/i })).toBeVisible();
   });
 
+  test('blog post renders markdown elements as HTML', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/blog/ai-email-assistant');
+
+    await expect(page.locator('h2', { hasText: 'The Problem with an AI Email Assistant That Writes Emails for Me' })).toBeVisible();
+    await expect(page.locator('li', { hasText: 'A drafted email ready to send' })).toBeVisible();
+    await expect(page.locator('p', { hasText: "This started as a personal problem." })).toBeVisible();
+  });
+
+  test('busy professionals post renders the comparison table', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/blog/ai-assistant-busy-professionals');
+
+    await expect(page.locator('table')).toBeVisible();
+    await expect(page.locator('th', { hasText: 'Tool' })).toBeVisible();
+    await expect(page.locator('td', { hasText: 'Foldera' })).toBeVisible();
+  });
+
   test('blog post loads on mobile without overflow', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/blog/ai-email-assistant');
     await expect(page.getByRole('heading', { name: /ai that reads my email and tells me what to do every morning/i })).toBeVisible();
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(400);
+  });
+
+  test('busy professionals table stays readable on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/blog/ai-assistant-busy-professionals');
+    await expect(page.locator('table')).toBeVisible();
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(400);
   });
