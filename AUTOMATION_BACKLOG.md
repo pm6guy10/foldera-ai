@@ -26,6 +26,10 @@
 - Nightly ops all-source backlog threshold + stale reset guard
 - Pipeline receipt test for extraction -> score -> generate -> send
 - Microsoft token soft-disconnect (preserve row, null tokens, reconnect restore)
+- Nightly-ops pre-signal commitment ceiling execution
+- Commitment ceiling batch-safe suppression (no oversized IN payload failures)
+- Nightly-ops 180-day extracted-signal cleanup at pipeline start
+- Scorer commitment loaders verified to explicitly enforce suppressed_at IS NULL
 
 ### OPEN (Priority order)
 - Blog formatting fix (prose typography, Codex queued)
@@ -50,7 +54,6 @@
 - Past directives view (/dashboard/briefings)
 - Auth-state.json refresh (expires ~April 22)
 - Duplicate entity cleanup (beyond Yadira)
-- Old signal cleanup job (>180 days)
 - Email send idempotency (prevent double-send on cron double-fire)
 - Local Playwright auth-state mismatch against `http://localhost:3000` still breaks the authenticated production-smoke subset
 - Production `/login?error=OAuthCallback` banner is missing in `npm run test:prod` (`17 passed, 1 failed`)

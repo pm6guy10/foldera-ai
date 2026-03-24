@@ -2,6 +2,9 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-24 — `npm run test:prod` still fails pre-existing `/login?error=OAuthCallback` banner assertion
+  This cleanup session passed build and focused nightly-ops tests, but production smoke remains at `17 passed, 1 failed` on `tests/production/smoke.spec.ts:137` (`Public: Login page › shows error param if present`). The failure reproduces the known missing banner text expectation and is outside this cron/scorer/self-heal cleanup scope.
+
 - 2026-03-24 — Full local `npx playwright test` still fails outside the spend-cap + recent-entity suppression scope
   This session’s scoped fixes are verified (`lib/utils/api-tracker.ts` cap raised to `1.00`, generator contact-entity suppression added before prompt generation for `send_message`/`schedule` candidates, and focused `vitest` coverage passed). The unresolved issue remains the same pre-existing omnibus Playwright failures outside this patch: one `tests/audit/clickflow.spec.ts` timeout on `/` plus multiple authenticated `tests/production/smoke.spec.ts` failures caused by missing local authenticated session state (`/dashboard` and `/dashboard/settings` redirecting to `/login`, `/api/auth/session` missing `user`, and `/api/conviction/latest` + `/api/integrations/status` returning `401`).
 

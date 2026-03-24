@@ -130,16 +130,27 @@ async function sendReconnectAlert(userId: string, provider: string): Promise<voi
 async function defense2CommitmentCeiling(): Promise<DefenseResult> {
   const supabase = createServerClient();
   const CEILING = 150;
+  const UPDATE_BATCH_SIZE = 200;
 
-  // Direct query: count active commitments per user
-  const { data: counts } = await supabase
-    .from('tkg_commitments')
-    .select('user_id')
-    .is('suppressed_at', null);
+  const { data: tokenRows, error: tokenError } = await supabase
+    .from('user_tokens')
+    .select('user_id');
+  if (tokenError) {
+    throw tokenError;
+  }
 
+  const userIds = [...new Set((tokenRows ?? []).map((row) => row.user_id as string).filter(Boolean))];
   const perUser = new Map<string, number>();
-  for (const row of counts ?? []) {
-    perUser.set(row.user_id, (perUser.get(row.user_id) ?? 0) + 1);
+  for (const userId of userIds) {
+    const { count, error: countError } = await supabase
+      .from('tkg_commitments')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .is('suppressed_at', null);
+    if (countError) {
+      throw countError;
+    }
+    perUser.set(userId, count ?? 0);
   }
 
   const suppressions: Array<{ userId: string; before: number; after: number; suppressed: number }> = [];
@@ -159,10 +170,17 @@ async function defense2CommitmentCeiling(): Promise<DefenseResult> {
 
     if (oldestRows && oldestRows.length > 0) {
       const ids = oldestRows.map((r) => r.id);
-      await supabase
-        .from('tkg_commitments')
-        .update({ suppressed_at: new Date().toISOString(), suppressed_reason: 'commitment_ceiling_auto' })
-        .in('id', ids);
+      const suppressedAt = new Date().toISOString();
+      for (let i = 0; i < ids.length; i += UPDATE_BATCH_SIZE) {
+        const batchIds = ids.slice(i, i + UPDATE_BATCH_SIZE);
+        const { error: updateError } = await supabase
+          .from('tkg_commitments')
+          .update({ suppressed_at: suppressedAt, suppressed_reason: 'commitment_ceiling_auto' })
+          .in('id', batchIds);
+        if (updateError) {
+          throw updateError;
+        }
+      }
 
       suppressions.push({ userId, before: count, after: count - ids.length, suppressed: ids.length });
     }
@@ -175,6 +193,10 @@ async function defense2CommitmentCeiling(): Promise<DefenseResult> {
     ok: true,
     details: { users_checked: perUser.size, suppressions },
   };
+}
+
+export async function runCommitmentCeilingDefense(): Promise<DefenseResult> {
+  return defense2CommitmentCeiling();
 }
 
 // ---------------------------------------------------------------------------

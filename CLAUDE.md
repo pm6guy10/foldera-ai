@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Nightly pre-ceiling + scorer suppressed filter + 180-day signal cleanup
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `lib/cron/self-heal.ts`, `app/api/cron/nightly-ops/route.ts`, `app/api/cron/nightly-ops/__tests__/route.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: attempted `GIT_EDITOR=true git pull --rebase origin main` (blocked by pre-existing unstaged `supabase/.temp/cli-latest`); `git log --oneline -10`; traced data path `nightly-ops start -> pre-cleanup -> pre-ceiling -> signal processing -> scorer commitment inputs`; focused `npx vitest run app/api/cron/nightly-ops/__tests__/route.test.ts` passed (5 tests); `npm run build` passed; local DB-backed verification script executed the new pre-ceiling defense and 180-day cleanup logic and confirmed `max_unsuppressed_commitments_after = 150` across checked users plus old extracted-signal totals before/after; verified scorer commitment loaders already include explicit `suppressed_at IS NULL` filters (no scorer file edit required)
+  Any unresolved issues: `npm run test:prod` still has the pre-existing single failure `tests/production/smoke.spec.ts:137` (`/login?error=OAuthCallback` banner assertion); logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
+
 - 2026-03-24 — Raise generation spend cap + suppress recent contact repeats before prompt generation
   MODE: AUDIT
   Commit hash(es): pending (set after commit on `main`)

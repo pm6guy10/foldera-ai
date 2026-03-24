@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 24, 2026 (generation spend-cap headroom + recent-entity suppression) by Codex
+Last Updated: March 24, 2026 (nightly pre-ceiling + scorer suppressed filter + 180d signal cleanup) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -34,6 +34,9 @@ March 24 production hotfix evidence:
 |---|---|---|---|
 | Token watchdog | BUILT | self-heal.ts, commit 8b3e0fc | Silent sync failure from expired tokens |
 | Commitment ceiling (150) | BUILT | self-heal.ts, commit 8b3e0fc | Commitment explosion poisoning scorer |
+| Commitment ceiling now runs at pipeline start | BUILT | March 24 cleanup pass: `/api/cron/nightly-ops` now runs `runCommitmentCeilingDefense()` before sync/signal processing so daytime commitment growth cannot poison scoring until the end-of-run self-heal phase. |
+| Commitment ceiling batching/count fix | BUILT | March 24 cleanup pass: `defense2CommitmentCeiling()` now uses exact per-user counts and chunked updates (`UPDATE_BATCH_SIZE = 200`) so large suppressions do not fail with PostgREST `Bad Request` on oversized `in(...)` payloads. |
+| 180-day extracted signal retention cleanup | BUILT | March 24 cleanup pass: `/api/cron/nightly-ops` now deletes `tkg_signals` rows older than 180 days with non-null `extracted_entities` at pipeline start, per user, before signal processing. |
 | Signal backlog drain + dead_key | BUILT | self-heal.ts, commit 8b3e0fc | Undecryptable signals clogging queue forever |
 | Nightly backlog auto-throttle | BUILT | March 24 follow-up: `/api/cron/nightly-ops` now counts all `tkg_signals` rows with `processed = false` before Stage 2 (not just extractable sources), stays at 50x3 below 100 queued signals, and automatically expands to 100x10 when backlog reaches 100+; structured logs now emit `nightly_ops_signal_mode = "low"|"high"` with the chosen batch/round values. |
 | Queue hygiene (24h auto-skip) | BUILT | self-heal.ts, commit 8b3e0fc | Stale approvals blocking fresh generation |
@@ -134,6 +137,7 @@ Only start after Phase 1 is fully PROVEN.
 | Google granted-scope diagnostics | BUILT | March 24 production hardening sweep: `syncGoogle()` now logs `[google-sync] Granted scopes:` from `user_tokens.scopes` and emits explicit warnings when `calendar.readonly` or `drive.readonly` are missing. |
 | Signal extraction preserves entity freshness on existing matches | BUILT | March 24 signal freshness pass: `lib/signals/signal-processor.ts` now writes `tkg_entities.last_interaction` from `signal.occurred_at` instead of `now`, never moves an entity backward on older signals, and refreshes duplicate same-email aliases together. Focused regression tests cover newer-signal updates, older-signal no-regressions, and duplicate-email alias refresh. Live owner verification: both `Yadira Clapper` rows now show `last_interaction = 2026-03-23T09:18:07.943+00:00`, `scoreOpenLoops()` no longer surfaces a Yadira relationship candidate, and a local `generateDirective()` run now returns a low-urgency `do_nothing` directive instead of selecting Yadira. |
 | Generator suppresses recent contact repeats (7d) before prompt generation | BUILT | March 24 follow-up: `lib/briefing/generator.ts` now extracts entity/contact names from candidate evidence and blocks `send_message` / `schedule` winners when `tkg_actions` already has `approved`, `executed`, or `pending_approval` actions for the same entity within 7 days. Runtime tests cover both action types and non-owner user IDs. |
+| Scorer commitment input explicitly excludes suppressed commitments | VERIFIED | March 24 cleanup verification: scorer commitment fetches already had explicit `suppressed_at IS NULL` filters in anti-pattern, emergent-pattern, and `scoreOpenLoops()` loaders; no code patch required for this item. |
 | Directive quality: housekeeping eliminated | REGRESSED | March 22 audit: "Schedule a 30-minute block to review Google account security settings" and "check your credit score" directives still generated and emailed. Noise filter catches some but not all housekeeping. Needs filter expansion. |
 | Goal-gap analysis in generator | BUILT | March 24 architectural rewrite: `buildGoalGapAnalysis()` queries all active non-placeholder goals, counts 14-day signals and completed actions per goal, computes gap level (HIGH/MEDIUM/LOW), and injects `GOAL_GAP_ANALYSIS` section into the LLM prompt BEFORE candidate context. System prompt now leads with "which goal has the biggest gap between stated priority and actual behavior?" Directives must reference the specific goal by name and name the behavioral gap explicitly. |
 | Goal-gap scorer multiplier | BUILT | March 24 architectural rewrite: scorer now computes a lightweight gap map from goals+signals, identifies the highest-gap goal (highest priority / lowest signal count), and applies a 1.5x score boost to candidates matching that goal. Structured log `goal_gap_boost` emitted for auditability. |

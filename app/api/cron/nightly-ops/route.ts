@@ -30,7 +30,7 @@ import {
   runDailyBrief,
   toSafeDailyBriefStageStatus,
 } from '@/lib/cron/daily-brief';
-import { runSelfHeal } from '@/lib/cron/self-heal';
+import { runCommitmentCeilingDefense, runSelfHeal } from '@/lib/cron/self-heal';
 import { runAcceptanceGate } from '@/lib/cron/acceptance-gate';
 import { checkConnectorHealth } from '@/lib/cron/connector-health';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -41,6 +41,7 @@ export const maxDuration = 300; // 5 min
 const TEST_USER_ID = '22222222-2222-2222-2222-222222222222';
 const STALE_SIGNAL_RESET_BACKLOG_THRESHOLD = 200;
 const STALE_CUTOFF_HOURS = 24;
+const SIGNAL_RETENTION_DAYS = 180;
 
 // ---------------------------------------------------------------------------
 // Stage 1: Microsoft sync (all users)
@@ -294,6 +295,30 @@ async function listNightlyBriefUserIds(): Promise<string[]> {
     .filter((id) => id !== TEST_USER_ID);
 }
 
+async function purgeOldExtractedSignals(userIds: string[]): Promise<{ ok: boolean; deleted: number }> {
+  const supabase = createServerClient();
+  const cutoffIso = new Date(Date.now() - SIGNAL_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  let deleted = 0;
+
+  for (const userId of userIds) {
+    const { data, error } = await supabase
+      .from('tkg_signals')
+      .delete()
+      .eq('user_id', userId)
+      .lt('occurred_at', cutoffIso)
+      .not('extracted_entities', 'is', null)
+      .select('id');
+
+    if (error) {
+      throw error;
+    }
+
+    deleted += (data ?? []).length;
+  }
+
+  return { ok: true, deleted };
+}
+
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
@@ -303,6 +328,34 @@ async function handler(request: NextRequest) {
 
   const startTime = Date.now();
   const stages: Record<string, unknown> = {};
+  const nightlyBriefUserIds = await listNightlyBriefUserIds();
+
+  // Stage 0: Cleanup old extracted signals before any pipeline work
+  try {
+    const cleanupResult = await purgeOldExtractedSignals(nightlyBriefUserIds);
+    stages.signal_retention_cleanup = cleanupResult;
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'signal_retention_cleanup', ...cleanupResult }));
+  } catch (err: any) {
+    stages.signal_retention_cleanup = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'signal_retention_cleanup', error: err.message }));
+  }
+
+  // Stage 0b: Commitment ceiling before signal/scoring pipeline stages
+  try {
+    const ceilingResult = await runCommitmentCeilingDefense();
+    stages.commitment_ceiling_pre = {
+      ok: ceilingResult.ok,
+      details: ceilingResult.details,
+    };
+    console.log(JSON.stringify({
+      event: 'nightly_ops_stage',
+      stage: 'commitment_ceiling_pre',
+      ok: ceilingResult.ok,
+    }));
+  } catch (err: any) {
+    stages.commitment_ceiling_pre = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'commitment_ceiling_pre', error: err.message }));
+  }
 
   // Stage 1: Microsoft sync
   try {
@@ -370,7 +423,7 @@ async function handler(request: NextRequest) {
 
   // Stage 4: Daily brief (generate + send)
   try {
-    const result = await runDailyBrief({ userIds: await listNightlyBriefUserIds() });
+    const result = await runDailyBrief({ userIds: nightlyBriefUserIds });
     const signalProcessing = toSafeDailyBriefStageStatus(result.signal_processing);
     const generate = toSafeDailyBriefStageStatus(result.generate);
     const send = toSafeDailyBriefStageStatus(result.send);

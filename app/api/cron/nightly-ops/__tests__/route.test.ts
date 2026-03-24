@@ -14,6 +14,7 @@ const resolveSignalBacklogMode = vi.fn((unprocessedCount: number) => (
 const runDailyBrief = vi.fn();
 const autoSkipStaleApprovals = vi.fn();
 const toSafeDailyBriefStageStatus = vi.fn((stage: { ok: boolean; results: unknown[] }) => stage);
+const runCommitmentCeilingDefense = vi.fn();
 const runSelfHeal = vi.fn();
 const runAcceptanceGate = vi.fn();
 const checkConnectorHealth = vi.fn();
@@ -23,8 +24,10 @@ const mockSupabase = {
   commitmentIds: [] as string[],
   nightlyBriefUserIds: ['user-1', '22222222-2222-2222-2222-222222222222'] as string[],
   signalResetUpdates: [] as Array<Record<string, unknown>>,
+  signalDeleteCountByUser: {} as Record<string, number>,
   from(table: string) {
     if (table === 'tkg_signals') {
+      let deleteUserId: string | null = null;
       return {
         select: () => ({
           eq: () => ({
@@ -35,6 +38,24 @@ const mockSupabase = {
               }),
             }),
           }),
+        }),
+        delete: () => ({
+          eq: (_field: string, userId: string) => {
+            deleteUserId = userId;
+            return {
+              lt: () => ({
+                not: () => ({
+                  select: () => {
+                    const count = deleteUserId ? (this.signalDeleteCountByUser[deleteUserId] ?? 0) : 0;
+                    return Promise.resolve({
+                      data: Array.from({ length: count }, (_, index) => ({ id: `deleted-${index + 1}` })),
+                      error: null,
+                    });
+                  },
+                }),
+              }),
+            };
+          },
         }),
         update: (payload: Record<string, unknown>) => ({
           in: (ids: string[]) => {
@@ -105,6 +126,7 @@ vi.mock('@/lib/cron/daily-brief', () => ({
 }));
 
 vi.mock('@/lib/cron/self-heal', () => ({
+  runCommitmentCeilingDefense,
   runSelfHeal,
 }));
 
@@ -141,6 +163,7 @@ describe('nightly-ops route', () => {
     });
     resolveSignalBacklogMode.mockClear();
     autoSkipStaleApprovals.mockResolvedValue({ skipped: 0 });
+    runCommitmentCeilingDefense.mockResolvedValue({ ok: true, details: { suppressions: [] } });
     runDailyBrief.mockResolvedValue({
       date: '2026-03-24',
       ok: true,
@@ -172,6 +195,7 @@ describe('nightly-ops route', () => {
     mockSupabase.commitmentIds = [];
     mockSupabase.nightlyBriefUserIds = ['user-1', '22222222-2222-2222-2222-222222222222'];
     mockSupabase.signalResetUpdates = [];
+    mockSupabase.signalDeleteCountByUser = {};
   });
 
   it('keeps the original low-cap signal processing behavior when the backlog is below 100', async () => {
@@ -199,6 +223,7 @@ describe('nightly-ops route', () => {
         max_signal_rounds: 3,
       }),
     }));
+    expect(runCommitmentCeilingDefense).toHaveBeenCalledTimes(1);
     expect(checkConnectorHealth).toHaveBeenCalledTimes(1);
     expect(runDailyBrief).toHaveBeenCalledWith({ userIds: ['user-1'] });
   });
@@ -265,6 +290,19 @@ describe('nightly-ops route', () => {
     expect(payload.stages.signal_processing.reset_stale_signals).toBe(2);
     expect(mockSupabase.signalResetUpdates).toHaveLength(1);
     expect(payload.stages.suppressed_commitments).toEqual({ ok: true, updated: 1 });
+  });
+
+  it('runs signal retention cleanup at pipeline start for non-test users', async () => {
+    mockSupabase.signalDeleteCountByUser = {
+      'user-1': 3,
+    };
+
+    const { GET } = await import('../route');
+    const response = await GET(new NextRequest('http://localhost/api/cron/nightly-ops'));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.stages.signal_retention_cleanup).toEqual({ ok: true, deleted: 3 });
   });
 
   it('skips stale signal reset when the all-source backlog is already at least 200', async () => {
