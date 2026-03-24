@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 24, 2026 (generator fallback + api_usage verification) by Codex
+Last Updated: March 24, 2026 (cost controls for extraction, research, refresh, demo analyze, and spend cap) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -113,6 +113,7 @@ Only start after Phase 1 is fully PROVEN.
 | Commitment fallback action type | BUILT | March 23 late session: `inferActionType()` default changed from `make_decision` to `send_message` so unclassified commitments now land on a generator-supported artifact path. Local search confirms `make_decision` is no longer the fallback return. |
 | Specificity floor for vague candidates | BUILT | March 23 late session: scorer now penalizes short/no-detail candidates and boosts claim/email/phone/date-rich candidates before `computeCandidateScore()`. Structured log event `specificity_adjustment` added for auditability. |
 | Recent raw signal context in context builder | BUILT | March 23 late session: `buildContextBlock()` now queries the last 5 processed `tkg_signals` from 7 days, decrypts them, skips fallback/self-referential rows, and appends concrete signal snippets only when valid rows remain. |
+| Research phase gated below weak scores | BUILT | March 24 cost-control pass: `generateDirective()` now skips `researchWinner()` when `winner.score < 2.0`, logs `researcher_skipped_low_score`, and passes `insight = null` into prompt building for low-conviction candidates. |
 | Consecutive duplicate suppression | BUILT | >50% word-overlap similarity against last 3 tkg_actions rejects and falls through to wait_rationale |
 | Gmail sync in nightly-ops | BUILT | `stageSyncGoogle()` added as Stage 1b, mirrors Microsoft pattern, uses `getAllUsersWithProvider('google')` |
 | 90-day first-sync lookback | BUILT | Both Microsoft and Google sync already use 90-day lookback on first connect (`!last_synced_at`) |
@@ -121,7 +122,16 @@ Only start after Phase 1 is fully PROVEN.
 | Generator quality examples (B) | BUILT | Concrete good/bad examples in SYSTEM_PROMPT, schedule_block housekeeping rejection gate. Commit `91e3e76` |
 | Directive quality: housekeeping eliminated | REGRESSED | March 22 audit: "Schedule a 30-minute block to review Google account security settings" and "check your credit score" directives still generated and emailed. Noise filter catches some but not all housekeeping. Needs filter expansion. |
 
-**Threshold note:** There are two independent scales. The scorer EV (0–5 continuous) ranks candidates — there is no production EV threshold; the "2.0" only exists in the test benchmark. The generator confidence (0–100, LLM self-rated) has two gates: `DIRECTIVE_CONFIDENCE_THRESHOLD = 45` at generation time and `CONFIDENCE_THRESHOLD = 70` for queue reconciliation. Structured logs now include both `scorer_ev` and `generator_confidence` so debugging is unambiguous.
+**Threshold note:** There are two independent scales. The scorer EV (0–5 continuous) ranks candidates. As of March 24, research enrichment is skipped below `2.0` EV as a permanent cost control, but the generator still uses the existing confidence gates unchanged: `DIRECTIVE_CONFIDENCE_THRESHOLD = 45` at generation time and `CONFIDENCE_THRESHOLD = 70` for queue reconciliation. Structured logs now include both `scorer_ev` and `generator_confidence` so debugging is unambiguous.
+
+### 2.5 Cost Controls
+
+| Item | Status | Evidence |
+|---|---|---|
+| Conversation extraction uses Haiku | BUILT | March 24 cost-control pass: `lib/extraction/conversation-extractor.ts` now uses `claude-haiku-4-5-20251001`. |
+| Goal refresh uses Haiku | BUILT | March 24 cost-control pass: `lib/cron/goal-refresh.ts` now uses `claude-haiku-4-5-20251001`. |
+| Demo analyze route uses Haiku | BUILT | March 24 cost-control pass: `app/api/try/analyze/route.ts` now uses `claude-haiku-4-5-20251001`. |
+| Daily spend cap reduced to $0.25 | BUILT | March 24 cost-control pass: `lib/utils/api-tracker.ts` now enforces `DAILY_SPEND_CAP_USD = 0.25`. |
 
 **NEXT MOVE:** Self-optimize will dynamically adjust thresholds based on approval rates. Manual option: lower CONFIDENCE_THRESHOLD.
 

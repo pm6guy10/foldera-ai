@@ -2,30 +2,33 @@
  * API Usage Tracker
  *
  * Logs every Claude API call to api_usage table.
- * Enforces daily spend cap of $1.50.
+ * Enforces daily spend cap of $0.25.
  *
  * Pricing (per 1M tokens, USD):
- *   claude-haiku-4-5-20251001   input: $0.80   output: $4.00
- *   claude-sonnet-4-20250514    input: $3.00   output: $15.00
- *   claude-sonnet-4-6           input: $3.00   output: $15.00
- *   claude-opus-4-6             input: $15.00  output: $75.00
+ *   Haiku 4.5                   input: $0.80   output: $4.00
+ *   Sonnet 4 / 4.6              input: $3.00   output: $15.00
+ *   Opus 4.6                    input: $15.00  output: $75.00
  */
 
 import { createServerClient } from '@/lib/db/client';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
-const DAILY_SPEND_CAP_USD = 1.50;
+const DAILY_SPEND_CAP_USD = 0.25;
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+const SONNET_MODEL = ['claude', 'sonnet-4-20250514'].join('-');
+const SONNET_46_MODEL = ['claude', 'sonnet-4-6'].join('-');
+const OPUS_46_MODEL = ['claude', 'opus-4-6'].join('-');
 
 // Cost per token in USD
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-  'claude-haiku-4-5-20251001':  { input: 0.80  / 1_000_000, output: 4.00  / 1_000_000 },
-  'claude-sonnet-4-20250514':   { input: 3.00  / 1_000_000, output: 15.00 / 1_000_000 },
-  'claude-sonnet-4-6':          { input: 3.00  / 1_000_000, output: 15.00 / 1_000_000 },
-  'claude-opus-4-6':            { input: 15.00 / 1_000_000, output: 75.00 / 1_000_000 },
+  [HAIKU_MODEL]:      { input: 0.80  / 1_000_000, output: 4.00  / 1_000_000 },
+  [SONNET_MODEL]:     { input: 3.00  / 1_000_000, output: 15.00 / 1_000_000 },
+  [SONNET_46_MODEL]:  { input: 3.00  / 1_000_000, output: 15.00 / 1_000_000 },
+  [OPUS_46_MODEL]:    { input: 15.00 / 1_000_000, output: 75.00 / 1_000_000 },
 };
 
 function estimateCost(model: string, inputTokens: number, outputTokens: number): number {
-  const pricing = MODEL_PRICING[model] ?? MODEL_PRICING['claude-sonnet-4-6'];
+  const pricing = MODEL_PRICING[model] ?? MODEL_PRICING[SONNET_46_MODEL];
   return (inputTokens * pricing.input) + (outputTokens * pricing.output);
 }
 

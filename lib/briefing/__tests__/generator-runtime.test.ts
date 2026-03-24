@@ -7,6 +7,7 @@ const mockTrackApiCall = vi.fn<() => Promise<void>>();
 const mockResearchWinner = vi.fn<() => Promise<null>>();
 const mockGetDirectiveConstraintViolations = vi.fn();
 const mockGetPinnedConstraintPrompt = vi.fn();
+const mockLogStructuredEvent = vi.fn();
 
 const queryResult = { data: [], error: null };
 
@@ -74,7 +75,7 @@ vi.mock('@/lib/briefing/pinned-constraints', () => ({
 }));
 
 vi.mock('@/lib/utils/structured-logger', () => ({
-  logStructuredEvent: vi.fn(),
+  logStructuredEvent: mockLogStructuredEvent,
 }));
 
 const anthropicCreate = vi.fn();
@@ -145,6 +146,7 @@ describe('generateDirective runtime failures', () => {
     mockResearchWinner.mockReset();
     mockGetDirectiveConstraintViolations.mockReset();
     mockGetPinnedConstraintPrompt.mockReset();
+    mockLogStructuredEvent.mockReset();
     anthropicCreate.mockReset();
 
     mockIsOverDailyLimit.mockResolvedValue(false);
@@ -165,6 +167,42 @@ describe('generateDirective runtime failures', () => {
     expect(directive.directive).not.toBe('__GENERATION_FAILED__');
     expect(directive.generationLog?.stage).toBe('generation');
     expect(directive.generationLog?.reason).toContain('credit balance too low');
+  });
+
+  it('skips research below the winner-score threshold and logs the triggering score', async () => {
+    const scored = buildScorerResult();
+    scored.winner.score = 1.9;
+    mockScoreOpenLoops.mockResolvedValue(scored);
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 80 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Send the follow-up email to the MAS3 hiring manager today.',
+          artifact_type: 'send_message',
+          artifact: {
+            to: 'manager@example.com',
+            subject: 'MAS3 timeline follow-up',
+            body: 'Hi,\n\nI wanted to follow up on the MAS3 interview timeline.\n\nThank you,\nBrandon',
+          },
+          evidence: 'The interview window closes this week and the manager has not replied.',
+          why_now: 'The timing window closes this week.',
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    await generateDirective('user-1', { dryRun: true });
+
+    expect(mockResearchWinner).not.toHaveBeenCalled();
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'researcher_skipped_low_score',
+      generationStatus: 'researcher_skipped',
+      details: expect.objectContaining({
+        winner_score: 1.9,
+        threshold: 2.0,
+      }),
+    }));
   });
 
   it('logs the actual system error before returning the sentinel fallback', async () => {

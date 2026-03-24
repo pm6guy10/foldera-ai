@@ -1672,13 +1672,28 @@ export async function generateDirective(
 
     // Research phase
     let insight: ResearchInsight | null = null;
-    try {
-      insight = await researchWinner(userId, hydratedWinner, { dryRun: options.dryRun });
-    } catch {
+    if (scored.winner.score >= 2.0) {
+      try {
+        insight = await researchWinner(userId, hydratedWinner, { dryRun: options.dryRun });
+      } catch {
+        logStructuredEvent({
+          event: 'researcher_fallthrough', level: 'warn', userId,
+          artifactType: null, generationStatus: 'researcher_fallthrough',
+          details: { scope: 'generator' },
+        });
+      }
+    } else {
       logStructuredEvent({
-        event: 'researcher_fallthrough', level: 'warn', userId,
-        artifactType: null, generationStatus: 'researcher_fallthrough',
-        details: { scope: 'generator' },
+        event: 'researcher_skipped_low_score',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'researcher_skipped',
+        details: {
+          scope: 'generator',
+          winner_score: scored.winner.score,
+          threshold: 2.0,
+        },
       });
     }
 

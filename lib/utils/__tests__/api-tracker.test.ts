@@ -34,7 +34,7 @@ describe('trackApiCall', () => {
 
     await trackApiCall({
       userId: 'user-1',
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-haiku-4-5-20251001',
       inputTokens: 1000,
       outputTokens: 500,
       callType: 'directive',
@@ -45,5 +45,37 @@ describe('trackApiCall', () => {
       endpoint: 'directive',
     }));
     expect(insertSpy.mock.calls[0][0]).not.toHaveProperty('call_type');
+  });
+
+  it('reports the reduced permanent daily spend cap in the summary', async () => {
+    insertSpy.mockReset();
+
+    const selectChain = {
+      eq() { return this; },
+      gte() { return Promise.resolve({ data: [], error: null }); },
+    };
+
+    vi.doMock('@/lib/db/client', () => ({
+      createServerClient: () => ({
+        from(table: string) {
+          if (table !== 'api_usage') {
+            throw new Error(`Unexpected table ${table}`);
+          }
+
+          return {
+            insert: insertSpy,
+            select() {
+              return selectChain;
+            },
+          };
+        },
+      }),
+    }));
+
+    const { getSpendSummary } = await import('../api-tracker');
+    const summary = await getSpendSummary('user-1');
+
+    expect(summary.dailyCapUSD).toBe(0.25);
+    expect(summary.capPct).toBe(0);
   });
 });

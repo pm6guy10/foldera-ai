@@ -220,7 +220,7 @@ export async function extractFromConversation(
   // 3. Extract with Claude (source-specific prompt)
   const systemPrompt = SOURCE_PROMPTS[source_type] ?? EXTRACTION_SYSTEM;
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
     temperature: 0.1 as any,
     system: systemPrompt,
