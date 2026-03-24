@@ -153,3 +153,21 @@ test.describe('Pricing page /pricing', () => {
     expect(errors).toHaveLength(0);
   });
 });
+
+// ── Blog routes (/blog, /blog/[slug]) ──────────────────────────────────────
+
+test.describe('Blog routes', () => {
+  test('blog index loads with the post list', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/blog');
+    await expect(page.getByRole('heading', { name: /ai that reads my email and tells me what to do every morning/i })).toBeVisible();
+  });
+
+  test('blog post loads on mobile without overflow', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/blog/ai-email-assistant');
+    await expect(page.getByRole('heading', { name: /ai that reads my email and tells me what to do every morning/i })).toBeVisible();
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(400);
+  });
+});

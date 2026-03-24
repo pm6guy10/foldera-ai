@@ -151,7 +151,7 @@ export async function processUnextractedSignals(
 
   // Check daily spend cap before any API calls
   try {
-    if (await isOverDailyLimit(userId)) {
+    if (await isOverDailyLimit(userId, 'signal_extraction')) {
       return result;
     }
   } catch (err: unknown) {

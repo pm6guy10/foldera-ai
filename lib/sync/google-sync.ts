@@ -387,6 +387,31 @@ export async function syncGoogle(userId: string): Promise<GoogleSyncResult> {
     return { gmail_signals: 0, calendar_signals: 0, drive_signals: 0, is_first_sync: false, error: 'no_token' };
   }
 
+  const supabase = createServerClient();
+  const { data: scopeRow } = await supabase
+    .from('user_tokens')
+    .select('scopes')
+    .eq('user_id', userId)
+    .eq('provider', 'google')
+    .maybeSingle();
+
+  const grantedScopes: string[] = (scopeRow?.scopes ?? '')
+    .split(/\s+/)
+    .map((scope: string) => scope.trim())
+    .filter(Boolean);
+  console.log(`[google-sync] Granted scopes for user ${userId}: ${grantedScopes.length > 0 ? grantedScopes.join(', ') : '(none)'}`);
+
+  const hasCalendarScope = grantedScopes.some((scope) => scope.includes('calendar'));
+  const hasDriveScope = grantedScopes.some((scope) => scope.includes('drive'));
+
+  if (!hasCalendarScope) {
+    console.warn('[google-sync] Missing scope: calendar');
+  }
+
+  if (!hasDriveScope) {
+    console.warn('[google-sync] Missing scope: drive');
+  }
+
   const isFirstSync = !token.last_synced_at;
   const sinceMs = isFirstSync
     ? Date.now() - 90 * 24 * 60 * 60 * 1000 // 90 days ago

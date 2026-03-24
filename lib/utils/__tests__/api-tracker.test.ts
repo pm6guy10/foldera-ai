@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const insertSpy = vi.fn();
 const logStructuredEvent = vi.fn();
+const selectChain = {
+  eq() { return this; },
+  in() { return this; },
+  gte() { return Promise.resolve({ data: [], error: null }); },
+};
 
 vi.mock('@/lib/db/client', () => ({
   createServerClient: () => ({
@@ -12,6 +17,9 @@ vi.mock('@/lib/db/client', () => ({
 
       return {
         insert: insertSpy,
+        select() {
+          return selectChain;
+        },
       };
     },
   }),
@@ -50,32 +58,23 @@ describe('trackApiCall', () => {
   it('reports the reduced permanent daily spend cap in the summary', async () => {
     insertSpy.mockReset();
 
-    const selectChain = {
-      eq() { return this; },
-      gte() { return Promise.resolve({ data: [], error: null }); },
-    };
-
-    vi.doMock('@/lib/db/client', () => ({
-      createServerClient: () => ({
-        from(table: string) {
-          if (table !== 'api_usage') {
-            throw new Error(`Unexpected table ${table}`);
-          }
-
-          return {
-            insert: insertSpy,
-            select() {
-              return selectChain;
-            },
-          };
-        },
-      }),
-    }));
-
     const { getSpendSummary } = await import('../api-tracker');
     const summary = await getSpendSummary('user-1');
 
     expect(summary.dailyCapUSD).toBe(0.25);
+    expect(summary.extractionDailyCapUSD).toBe(2);
     expect(summary.capPct).toBe(0);
+  });
+
+  it('uses the extraction cap only for extraction traffic', async () => {
+    const { isOverDailyLimit } = await import('../api-tracker');
+    const inSpy = vi.spyOn(selectChain, 'in');
+    const gteSpy = vi.spyOn(selectChain, 'gte');
+
+    await expect(isOverDailyLimit('user-1', 'signal_extraction')).resolves.toBe(false);
+
+    expect(inSpy).toHaveBeenCalledWith('endpoint', ['extraction', 'signal_extraction']);
+    expect(gteSpy).toHaveBeenCalled();
+    expect(logStructuredEvent).not.toHaveBeenCalled();
   });
 });

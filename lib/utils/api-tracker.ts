@@ -2,7 +2,8 @@
  * API Usage Tracker
  *
  * Logs every Claude API call to api_usage table.
- * Enforces daily spend cap of $0.25.
+ * Enforces daily spend cap of $0.25, except extraction traffic which uses
+ * its own higher daily cap to allow backlog backfills.
  *
  * Pricing (per 1M tokens, USD):
  *   Haiku 4.5                   input: $0.80   output: $4.00
@@ -14,6 +15,7 @@ import { createServerClient } from '@/lib/db/client';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 const DAILY_SPEND_CAP_USD = 0.25;
+export const EXTRACTION_DAILY_CAP = 2.00;
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const SONNET_MODEL = ['claude', 'sonnet-4-20250514'].join('-');
 const SONNET_46_MODEL = ['claude', 'sonnet-4-6'].join('-');
@@ -103,23 +105,54 @@ export async function getDailySpend(userId: string): Promise<number> {
   }, 0);
 }
 
+async function getDailySpendByEndpoints(userId: string, endpoints: string[]): Promise<number> {
+  const supabase = createServerClient();
+  const todayUTC = new Date();
+  todayUTC.setUTCHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from('api_usage')
+    .select('estimated_cost')
+    .eq('user_id', userId)
+    .in('endpoint', endpoints)
+    .gte('created_at', todayUTC.toISOString());
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).reduce((sum: number, row: { estimated_cost: string | number }) => {
+    return sum + Number(row.estimated_cost);
+  }, 0);
+}
+
+function isExtractionCall(callType?: string): boolean {
+  return callType === 'extraction' || callType === 'signal_extraction';
+}
+
 /**
  * Returns true if daily spend cap has been reached.
  * Logs a warning when cap is hit.
  */
-export async function isOverDailyLimit(userId: string): Promise<boolean> {
-  const spend = await getDailySpend(userId);
-  if (spend >= DAILY_SPEND_CAP_USD) {
+export async function isOverDailyLimit(userId: string, callType?: string): Promise<boolean> {
+  const extractionCall = isExtractionCall(callType);
+  const spend = extractionCall
+    ? await getDailySpendByEndpoints(userId, ['extraction', 'signal_extraction'])
+    : await getDailySpend(userId);
+  const cap = extractionCall ? EXTRACTION_DAILY_CAP : DAILY_SPEND_CAP_USD;
+
+  if (spend >= cap) {
     logStructuredEvent({
-      event: 'daily_spend_cap_reached',
+      event: extractionCall ? 'extraction_daily_spend_cap_reached' : 'daily_spend_cap_reached',
       level: 'warn',
       userId,
       artifactType: null,
-      generationStatus: 'daily_cap_reached',
+      generationStatus: extractionCall ? 'extraction_daily_cap_reached' : 'daily_cap_reached',
       details: {
         scope: 'api-tracker',
         spend_usd: Number(spend.toFixed(4)),
-        daily_cap_usd: DAILY_SPEND_CAP_USD,
+        daily_cap_usd: cap,
+        call_type: callType ?? null,
       },
     });
     return true;
@@ -134,6 +167,7 @@ export async function getSpendSummary(userId: string): Promise<{
   todayUSD: number;
   monthUSD: number;
   dailyCapUSD: number;
+  extractionDailyCapUSD: number;
   capPct: number;
 }> {
   const supabase = createServerClient();
@@ -169,6 +203,7 @@ export async function getSpendSummary(userId: string): Promise<{
     todayUSD,
     monthUSD,
     dailyCapUSD: DAILY_SPEND_CAP_USD,
+    extractionDailyCapUSD: EXTRACTION_DAILY_CAP,
     capPct: Math.min(100, Math.round((todayUSD / DAILY_SPEND_CAP_USD) * 100)),
   };
 }

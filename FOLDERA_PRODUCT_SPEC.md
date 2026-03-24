@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 24, 2026 (manual run-brief immediate email send) by Codex
+Last Updated: March 24, 2026 (signal backfill throttle, extraction cap, blog, and Google scope diagnostics) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -35,6 +35,7 @@ March 24 production hotfix evidence:
 | Token watchdog | BUILT | self-heal.ts, commit 8b3e0fc | Silent sync failure from expired tokens |
 | Commitment ceiling (150) | BUILT | self-heal.ts, commit 8b3e0fc | Commitment explosion poisoning scorer |
 | Signal backlog drain + dead_key | BUILT | self-heal.ts, commit 8b3e0fc | Undecryptable signals clogging queue forever |
+| Nightly backlog auto-throttle | BUILT | March 24 follow-up: `/api/cron/nightly-ops` now counts unprocessed signals before Stage 2 and stays at 50x3 below 100 queued signals, but automatically expands to 100x10 when backlog reaches 100+; structured log `nightly_ops_signal_mode` records the selected mode. |
 | Queue hygiene (24h auto-skip) | BUILT | self-heal.ts, commit 8b3e0fc | Stale approvals blocking fresh generation |
 | Health alert email | BUILT | self-heal.ts, commit 8b3e0fc | Silent failures with no notification |
 | Feedback signal source constraint restored | BUILT | March 24 data-fix pass: `tkg_signals_source_check` migration restored `user_feedback`, matching the approve/skip insert path in `executeAction()`. |
@@ -137,6 +138,7 @@ Only start after Phase 1 is fully PROVEN.
 | Goal refresh uses Haiku | BUILT | March 24 cost-control pass: `lib/cron/goal-refresh.ts` now uses `claude-haiku-4-5-20251001`. |
 | Demo analyze route uses Haiku | BUILT | March 24 cost-control pass: `app/api/try/analyze/route.ts` now uses `claude-haiku-4-5-20251001`. |
 | Daily spend cap reduced to $0.25 | BUILT | March 24 cost-control pass: `lib/utils/api-tracker.ts` now enforces `DAILY_SPEND_CAP_USD = 0.25`. |
+| Extraction daily cap raised to $2.00 | BUILT | March 24 follow-up: extraction calls (`extraction`, `signal_extraction`) are exempt from the global $0.25 cap and now use `EXTRACTION_DAILY_CAP = 2.00` so backlog backfills are not blocked mid-run. |
 
 **NEXT MOVE:** Self-optimize will dynamically adjust thresholds based on approval rates. Manual option: lower CONFIDENCE_THRESHOLD.
 
@@ -172,6 +174,7 @@ Only start after Phase 2 deployed.
 | Hero with mechanism visualization | BUILT (72a36f3) |
 | $29 pricing | BUILT |
 | "Finished work, every morning" copy | BUILT |
+| Static blog with 5 posts | BUILT | March 24 follow-up: `/blog` index and `/blog/[slug]` post pages now render five markdown-backed posts with frontmatter metadata and responsive layouts. |
 
 ### 3.3 Distribution
 

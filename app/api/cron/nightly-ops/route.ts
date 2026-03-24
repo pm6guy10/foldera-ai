@@ -30,8 +30,11 @@ import { runAcceptanceGate } from '@/lib/cron/acceptance-gate';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min
 
-const SIGNAL_BATCH_SIZE = 50;
-const MAX_SIGNAL_ROUNDS = 3;
+const DEFAULT_SIGNAL_BATCH_SIZE = 50;
+const DEFAULT_MAX_SIGNAL_ROUNDS = 3;
+const BACKFILL_SIGNAL_BATCH_SIZE = 100;
+const BACKFILL_MAX_SIGNAL_ROUNDS = 10;
+const SIGNAL_BACKFILL_THRESHOLD = 100;
 const STALE_CUTOFF_HOURS = 24;
 
 // ---------------------------------------------------------------------------
@@ -116,22 +119,40 @@ async function stageProcessSignals(): Promise<SignalProcessingResult> {
   const staleCutoffIso = new Date(
     Date.now() - STALE_CUTOFF_HOURS * 60 * 60 * 1000,
   ).toISOString();
+  const userIdsWithBacklog = await listUsersWithUnprocessedSignals({});
+  let totalUnprocessed = 0;
+
+  for (const userId of userIdsWithBacklog) {
+    totalUnprocessed += await countUnprocessedSignals(userId);
+  }
+
+  const useBackfillMode = totalUnprocessed >= SIGNAL_BACKFILL_THRESHOLD;
+  const signalBatchSize = useBackfillMode ? BACKFILL_SIGNAL_BATCH_SIZE : DEFAULT_SIGNAL_BATCH_SIZE;
+  const maxSignalRounds = useBackfillMode ? BACKFILL_MAX_SIGNAL_ROUNDS : DEFAULT_MAX_SIGNAL_ROUNDS;
+
+  console.log(JSON.stringify({
+    event: 'nightly_ops_signal_mode',
+    mode: useBackfillMode ? 'backfill' : 'default',
+    unprocessed_signals: totalUnprocessed,
+    signal_batch_size: signalBatchSize,
+    max_signal_rounds: maxSignalRounds,
+  }));
 
   let totalProcessed = 0;
   let remaining = 0;
   let rounds = 0;
 
-  for (let round = 0; round < MAX_SIGNAL_ROUNDS; round++) {
-    const userIds = await listUsersWithUnprocessedSignals({});
+  for (let round = 0; round < maxSignalRounds; round++) {
+    const userIds = round === 0 ? userIdsWithBacklog : await listUsersWithUnprocessedSignals({});
     if (userIds.length === 0) break;
 
     rounds++;
     let roundProcessed = 0;
 
     for (const userId of userIds) {
-      if (roundProcessed >= SIGNAL_BATCH_SIZE) break;
+      if (roundProcessed >= signalBatchSize) break;
 
-      const capacity = SIGNAL_BATCH_SIZE - roundProcessed;
+      const capacity = signalBatchSize - roundProcessed;
       const extraction = await processUnextractedSignals(userId, {
         maxSignals: capacity,
         prioritizeOlderThanIso: staleCutoffIso,

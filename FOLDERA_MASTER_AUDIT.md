@@ -2,6 +2,9 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-24 — Full local `npx playwright test` still fails outside the signal/blog diagnostics patch scope
+  This session’s requested changes are verified locally where they apply: focused `vitest` passed for nightly-ops throttle selection, extraction-cap tracking, Google scope diagnostics, and signal extraction; `npm run build` passed; the new `/blog` and `/blog/ai-email-assistant` routes both returned HTTP 200 locally; and the new blog Playwright checks passed inside the full suite. The unresolved issue remains the pre-existing local production-smoke/auth-state failures in the combined Playwright run (`76 passed, 7 skipped, 9 failed`), where authenticated production-smoke cases are redirected to local `/login` and `/api/*` returns 401 without valid local auth state.
+
 - 2026-03-24 — Full local `npx playwright test` still fails outside the manual run-brief send patch scope
   The manual run-brief fix itself is verified locally: focused `vitest` passed for the route fallback and explicit send scope, and `npm run build` passed. The unresolved issue is still the full local omnibus Playwright run: `73 passed, 7 skipped, 10 failed`, consisting of one `tests/audit/clickflow.spec.ts` timeout on `/` plus authenticated `tests/production/smoke.spec.ts` expectations running against `http://localhost:3000` without valid local auth state.
 
