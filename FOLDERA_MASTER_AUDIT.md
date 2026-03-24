@@ -2,6 +2,9 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-24 — Full local `npx playwright test` still fails outside the repo push gate
+  The generator JSON hardening patch itself is verified: focused `vitest` passed, `npm run build` passed, repo push-gate E2E passed (`45 passed, 6 skipped`), post-deploy `npm run test:prod` passed (`18 passed`), and post-deploy `POST /api/settings/run-brief` created owner action `9ec89641-e099-4138-82cb-3b6fe0e83773` with `status = pending_approval`, `action_type = send_message`, `confidence = 78`. The unresolved issue is the full local omnibus Playwright run: `73 passed, 7 skipped, 10 failed`, consisting of one `tests/audit/clickflow.spec.ts` timeout on `/` plus authenticated `tests/production/smoke.spec.ts` expectations running against `http://localhost:3000` without the production auth context.
+
 - 2026-03-24 — Live `tkg_signals_source_check` migration could not be applied from this workspace
   The execute path is confirmed: `executeAction()` writes `source: 'user_feedback'` into `tkg_signals`, and the new migration restores that exact value in `tkg_signals_source_check`. The token defense also landed: `saveUserToken()` now rejects any `test_`-prefixed access or refresh token before a DB write. Verification passed for the new unit test, `npm run build`, `npm run test:prod`, and `git grep -n "test_" -- lib/auth/user-tokens.ts`. The unresolved blocker is live DB access: `npx supabase migration list` prompted for the linked project Postgres password, so the migration could not be applied or verified with `SELECT pg_get_constraintdef(...)` from this machine.
 
