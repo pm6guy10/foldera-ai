@@ -2,6 +2,9 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-24 — Production `npm run test:prod` fails the `/login?error=OAuthCallback` banner check
+  After the onboarding goal insert fix shipped to `main`, production smoke ran against `https://www.foldera.ai` and 17 of 18 checks passed. The single failing check is `tests/production/smoke.spec.ts:137` (`Public: Login page › shows error param if present`), which expected `Sign-in failed. Please try again or use a different account.` to be visible at `/login?error=OAuthCallback` but did not find the banner on the live site. This is outside the onboarding insert schema patch scope and needs a follow-up on the login error display path or its production deploy state.
+
 - 2026-03-24 — Full local `npx playwright test` still fails outside the onboarding goal insert schema fix scope
   This session’s requested fix is verified locally: `app/api/onboard/set-goals/route.ts` now inserts only real `tkg_goals` columns, the focused route test passed, `npm run build` passed, local `/api/auth/session` resolved a valid session for user `e40b7cd8-4925-42f7-bc99-5022969f1d22`, local `POST /api/onboard/set-goals` returned `200` with the current onboarding payload, and the follow-up DB query showed the onboarding row persisted with only `user_id`, `goal_text`, `goal_category`, `priority`, `source`, `current_priority`, and `created_at`. The unresolved issue remains the same local omnibus Playwright failure set as the baseline: `tests/audit/clickflow.spec.ts` times out on `/`, and authenticated `tests/production/smoke.spec.ts` cases still fail against `http://localhost:3000` because the stored production auth state does not hydrate into valid local authenticated sessions.
 

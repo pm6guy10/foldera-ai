@@ -50,3 +50,4 @@
 - Old signal cleanup job (>180 days)
 - Email send idempotency (prevent double-send on cron double-fire)
 - Local Playwright auth-state mismatch against `http://localhost:3000` still breaks the authenticated production-smoke subset
+- Production `/login?error=OAuthCallback` banner is missing in `npm run test:prod` (`17 passed, 1 failed`)
