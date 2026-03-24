@@ -192,6 +192,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-23 — Production smoke redirects for authenticated /login and /start
+  MODE: OPS
+  Commit hash(es): `7e15efa`
+  Files changed: `tests/production/smoke.spec.ts`, `CLAUDE.md`
+  What was verified: `npm run build`; `npx playwright test tests/e2e/` (27 passed); baseline `npm run test:prod` reproduced the 2 stale failures; updated `npm run test:prod` passed (18 passed)
+  Any unresolved issues: none
+
 - 2026-03-23 — JWT onboarding claim for middleware auth routing
   MODE: AUDIT
   Commit hash(es): `67d0d23`
