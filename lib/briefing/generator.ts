@@ -1728,7 +1728,28 @@ export async function generateDirective(
     }
 
     // Generate with LLM
-    const payloadResult = await generatePayload(userId, ctx, options);
+    let payloadResult: { issues: string[]; payload: GeneratedDirectivePayload | null };
+    try {
+      payloadResult = await generatePayload(userId, ctx, options);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[generator] generatePayload failed: ${errorMessage}`);
+      logStructuredEvent({
+        event: 'generation_request_failed',
+        level: 'error',
+        userId,
+        artifactType: null,
+        generationStatus: 'generation_request_failed',
+        details: {
+          scope: 'generator',
+          error: errorMessage,
+        },
+      });
+      payloadResult = {
+        issues: [`Generation request failed: ${errorMessage}`],
+        payload: null,
+      };
+    }
 
     // Part 6: If generation fails, deterministic fallback
     if (!payloadResult.payload) {
@@ -1848,10 +1869,12 @@ export async function generateDirective(
 
     return directive;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[generator] generateDirective failed: ${errorMessage}`);
     logStructuredEvent({
       event: 'directive_generation_failed', level: 'error', userId,
       artifactType: null, generationStatus: 'failed',
-      details: { scope: 'generator', error: error instanceof Error ? error.message : String(error) },
+      details: { scope: 'generator', error: errorMessage },
     });
     return emptyDirective(
       'Generation failed internally.',

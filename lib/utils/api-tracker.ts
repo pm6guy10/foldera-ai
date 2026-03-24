@@ -34,7 +34,7 @@ export interface TrackCallParams {
   model: string;
   inputTokens: number;
   outputTokens: number;
-  callType: string;  // 'directive' | 'artifact' | 'agent' | 'extraction' | 'demo' | etc.
+  callType: string;  // logical endpoint/call site: 'directive' | 'artifact' | 'agent' | etc.
   persist?: boolean;
 }
 
@@ -55,7 +55,7 @@ export async function trackApiCall(params: TrackCallParams): Promise<void> {
       input_tokens:  params.inputTokens,
       output_tokens: params.outputTokens,
       estimated_cost: cost,
-      call_type:     params.callType,
+      endpoint:      params.callType,
     });
     if (error) {
       throw error;
