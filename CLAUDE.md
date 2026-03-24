@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Feedback signal source migration + test-token persistence guard
+  MODE: AUDIT
+  Commit hash(es): `21e83d0`
+  Files changed: `lib/auth/user-tokens.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `supabase/migrations/20260324000002_restore_user_feedback_signal_source.sql`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: baseline `git pull --rebase origin main`; baseline `git log --oneline -10`; baseline `npm run test:prod` (18 passed); live owner Google `user_tokens` row exists and is encrypted in storage, not a literal `test_` token; `npx vitest run lib/auth/__tests__/user-tokens.test.ts` (2 passed); `npm run build`; post-change `npm run test:prod` (18 passed); `git grep -n "test_" -- lib/auth/user-tokens.ts`
+  Any unresolved issues: remote Supabase DDL could not run from this workspace because `npx supabase migration list` requires the linked project Postgres password, so the requested live `pg_get_constraintdef(...)` verification for `tkg_signals_source_check` remains blocked; logged in `AUTOMATION_BACKLOG.md` and `FOLDERA_MASTER_AUDIT.md`
+
 - 2026-03-24 — Permanent cost controls for extraction, research gating, goal refresh, try-analyze, and spend cap
   MODE: AUDIT
   Commit hash(es): `7258b73`
