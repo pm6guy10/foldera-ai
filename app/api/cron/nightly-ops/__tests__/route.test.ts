@@ -6,16 +6,23 @@ const getAllUsersWithProvider = vi.fn();
 const listUsersWithUnprocessedSignals = vi.fn();
 const countUnprocessedSignals = vi.fn();
 const processUnextractedSignals = vi.fn();
+const resolveSignalBacklogMode = vi.fn((unprocessedCount: number) => (
+  unprocessedCount >= 100
+    ? { mode: 'high', maxSignals: 100, rounds: 10 }
+    : { mode: 'low', maxSignals: 50, rounds: 3 }
+));
 const runDailyBrief = vi.fn();
 const autoSkipStaleApprovals = vi.fn();
 const toSafeDailyBriefStageStatus = vi.fn((stage: { ok: boolean; results: unknown[] }) => stage);
 const runSelfHeal = vi.fn();
 const runAcceptanceGate = vi.fn();
 const checkConnectorHealth = vi.fn();
+const logStructuredEvent = vi.fn();
 const mockSupabase = {
   staleSignalIds: [] as string[],
   commitmentIds: [] as string[],
   nightlyBriefUserIds: ['user-1', '22222222-2222-2222-2222-222222222222'] as string[],
+  signalResetUpdates: [] as Array<Record<string, unknown>>,
   from(table: string) {
     if (table === 'tkg_signals') {
       return {
@@ -29,8 +36,11 @@ const mockSupabase = {
             }),
           }),
         }),
-        update: () => ({
-          in: () => Promise.resolve({ error: null }),
+        update: (payload: Record<string, unknown>) => ({
+          in: (ids: string[]) => {
+            this.signalResetUpdates.push({ payload, ids });
+            return Promise.resolve({ error: null });
+          },
         }),
       };
     }
@@ -81,6 +91,11 @@ vi.mock('@/lib/signals/signal-processor', () => ({
   countUnprocessedSignals,
   listUsersWithUnprocessedSignals,
   processUnextractedSignals,
+  resolveSignalBacklogMode,
+  LOW_BACKLOG_SIGNAL_BATCH_SIZE: 50,
+  LOW_BACKLOG_MAX_SIGNAL_ROUNDS: 3,
+  HIGH_BACKLOG_SIGNAL_BATCH_SIZE: 100,
+  HIGH_BACKLOG_MAX_SIGNAL_ROUNDS: 10,
 }));
 
 vi.mock('@/lib/cron/daily-brief', () => ({
@@ -101,6 +116,10 @@ vi.mock('@/lib/cron/connector-health', () => ({
   checkConnectorHealth,
 }));
 
+vi.mock('@/lib/utils/structured-logger', () => ({
+  logStructuredEvent,
+}));
+
 describe('nightly-ops route', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -111,13 +130,16 @@ describe('nightly-ops route', () => {
     listUsersWithUnprocessedSignals
       .mockResolvedValueOnce(['user-1'])
       .mockResolvedValueOnce(['user-1'])
+      .mockResolvedValueOnce(['user-1'])
       .mockResolvedValueOnce([]);
     countUnprocessedSignals
+      .mockResolvedValue(0)
       .mockResolvedValueOnce(60)
       .mockResolvedValueOnce(0);
     processUnextractedSignals.mockResolvedValue({
       signals_processed: 50,
     });
+    resolveSignalBacklogMode.mockClear();
     autoSkipStaleApprovals.mockResolvedValue({ skipped: 0 });
     runDailyBrief.mockResolvedValue({
       date: '2026-03-24',
@@ -145,9 +167,11 @@ describe('nightly-ops route', () => {
       flagged_sources: 0,
       skipped_recent_alerts: 0,
     });
+    logStructuredEvent.mockReset();
     mockSupabase.staleSignalIds = [];
     mockSupabase.commitmentIds = [];
     mockSupabase.nightlyBriefUserIds = ['user-1', '22222222-2222-2222-2222-222222222222'];
+    mockSupabase.signalResetUpdates = [];
   });
 
   it('keeps the original low-cap signal processing behavior when the backlog is below 100', async () => {
@@ -167,6 +191,14 @@ describe('nightly-ops route', () => {
       total_processed: 50,
       remaining: 0,
     });
+    expect(logStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'nightly_ops_signal_mode',
+      details: expect.objectContaining({
+        nightly_ops_signal_mode: 'low',
+        signal_batch_size: 50,
+        max_signal_rounds: 3,
+      }),
+    }));
     expect(checkConnectorHealth).toHaveBeenCalledTimes(1);
     expect(runDailyBrief).toHaveBeenCalledWith({ userIds: ['user-1'] });
   });
@@ -175,6 +207,7 @@ describe('nightly-ops route', () => {
     listUsersWithUnprocessedSignals.mockReset();
     countUnprocessedSignals.mockReset();
     listUsersWithUnprocessedSignals
+      .mockResolvedValueOnce(['user-1'])
       .mockResolvedValueOnce(['user-1'])
       .mockResolvedValueOnce(['user-1'])
       .mockResolvedValueOnce([]);
@@ -194,6 +227,14 @@ describe('nightly-ops route', () => {
       'user-1',
       expect.objectContaining({ maxSignals: 100 }),
     );
+    expect(logStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'nightly_ops_signal_mode',
+      details: expect.objectContaining({
+        nightly_ops_signal_mode: 'high',
+        signal_batch_size: 100,
+        max_signal_rounds: 10,
+      }),
+    }));
     expect(payload.stages.signal_processing).toMatchObject({
       rounds: 1,
       total_processed: 100,
@@ -204,6 +245,17 @@ describe('nightly-ops route', () => {
   it('resets stale processed signals and completes suppressed commitments before the brief stage', async () => {
     mockSupabase.staleSignalIds = ['sig-1', 'sig-2'];
     mockSupabase.commitmentIds = ['commitment-1'];
+    listUsersWithUnprocessedSignals.mockReset();
+    countUnprocessedSignals.mockReset();
+    listUsersWithUnprocessedSignals
+      .mockResolvedValueOnce(['user-1'])
+      .mockResolvedValueOnce(['user-1'])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    countUnprocessedSignals
+      .mockResolvedValue(0)
+      .mockResolvedValueOnce(60)
+      .mockResolvedValueOnce(0);
 
     const { GET } = await import('../route');
     const response = await GET(new NextRequest('http://localhost/api/cron/nightly-ops'));
@@ -211,6 +263,34 @@ describe('nightly-ops route', () => {
 
     expect(response.status).toBe(200);
     expect(payload.stages.signal_processing.reset_stale_signals).toBe(2);
+    expect(mockSupabase.signalResetUpdates).toHaveLength(1);
     expect(payload.stages.suppressed_commitments).toEqual({ ok: true, updated: 1 });
+  });
+
+  it('skips stale signal reset when the all-source backlog is already at least 200', async () => {
+    mockSupabase.staleSignalIds = ['sig-1', 'sig-2'];
+    listUsersWithUnprocessedSignals.mockReset();
+    countUnprocessedSignals.mockReset();
+    listUsersWithUnprocessedSignals
+      .mockResolvedValueOnce(['user-1'])
+      .mockResolvedValueOnce(['user-1'])
+      .mockResolvedValueOnce([]);
+    countUnprocessedSignals
+      .mockResolvedValueOnce(250)
+      .mockResolvedValueOnce(0);
+
+    const { GET } = await import('../route');
+    const response = await GET(new NextRequest('http://localhost/api/cron/nightly-ops'));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.stages.signal_processing.reset_stale_signals).toBe(0);
+    expect(mockSupabase.signalResetUpdates).toHaveLength(0);
+    expect(logStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'nightly_ops_stale_reset_skipped',
+      details: expect.objectContaining({
+        total_unprocessed_signals: 250,
+      }),
+    }));
   });
 });

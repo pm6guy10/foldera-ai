@@ -8,8 +8,16 @@ import { countUnprocessedSignals, processUnextractedSignals } from '@/lib/signal
 import { summarizeSignals } from '@/lib/signals/summarizer';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
 import { sendDailyDirective } from '@/lib/email/resend';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 const USER_ID = '11111111-1111-1111-1111-111111111111';
+const { mockResolveSignalBacklogMode } = vi.hoisted(() => ({
+  mockResolveSignalBacklogMode: vi.fn((unprocessedCount: number) => (
+    unprocessedCount >= 100
+      ? { mode: 'high', maxSignals: 100, rounds: 10 }
+      : { mode: 'low', maxSignals: 50, rounds: 3 }
+  )),
+}));
 
 const mockSupabase = {
   actionRows: [] as Array<Record<string, unknown>>,
@@ -90,6 +98,8 @@ const mockSupabase = {
             filters: {} as Record<string, unknown>,
             gteField: null as string | null,
             gteValue: null as string | null,
+            notField: null as string | null,
+            notValue: null as unknown,
             orderField: null as string | null,
             ascending: false,
           };
@@ -103,6 +113,29 @@ const mockSupabase = {
               state.gteField = field;
               state.gteValue = value;
               return query;
+            },
+            not(field: string, _operator: string, value: unknown) {
+              state.notField = field;
+              state.notValue = value;
+              return Promise.resolve({
+                count: self.actionRows.filter((row) => {
+                  const filterMatches = Object.entries(state.filters)
+                    .every(([filterField, filterValue]) => row[filterField] === filterValue);
+                  if (!filterMatches) return false;
+                  if (state.gteField && state.gteValue) {
+                    const fieldValue = row[state.gteField];
+                    if (!(typeof fieldValue === 'string' && fieldValue >= state.gteValue)) {
+                      return false;
+                    }
+                  }
+                  if (field === 'execution_result->daily_brief_sent_at') {
+                    const sentAt = (row.execution_result as Record<string, unknown> | undefined)?.daily_brief_sent_at;
+                    return (sentAt ?? null) !== value;
+                  }
+                  return row[field] !== value;
+                }).length,
+                error: null,
+              });
             },
             order(field: string, options: { ascending: boolean }) {
               state.orderField = field;
@@ -183,6 +216,7 @@ vi.mock('@/lib/extraction/conversation-extractor', () => ({
 
 vi.mock('@/lib/signals/signal-processor', () => ({
   countUnprocessedSignals: vi.fn().mockResolvedValue(0),
+  resolveSignalBacklogMode: mockResolveSignalBacklogMode,
   processUnextractedSignals: vi.fn().mockResolvedValue({
     signals_processed: 0,
     entities_upserted: 0,
@@ -341,6 +375,7 @@ describe('runDailyGenerate candidate logging', () => {
     vi.mocked(generateArtifact).mockReset();
     vi.mocked(extractFromConversation).mockClear();
     vi.mocked(countUnprocessedSignals).mockReset();
+    mockResolveSignalBacklogMode.mockClear();
     vi.mocked(processUnextractedSignals).mockClear();
     vi.mocked(summarizeSignals).mockClear();
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockReset();
@@ -373,6 +408,34 @@ describe('runDailyGenerate candidate logging', () => {
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates).toHaveLength(3);
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[0].decision).toBe('selected');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[1].decisionReason).toContain('Rejected because');
+  });
+
+  it('logs high nightly-ops signal mode during manual brief runs when all-source backlog is at least 100', async () => {
+    vi.mocked(countUnprocessedSignals)
+      .mockImplementation(async (_userId: string, options?: { includeAllSources?: boolean }) => (
+        options?.includeAllSources ? 831 : 0
+      ));
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Reference talking points for MAS3',
+      body: 'Hi Holly,\n\nCould you send the two strongest reference talking points for MAS3?\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+
+    await runDailyGenerate({ userIds: [USER_ID] });
+
+    expect(logStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'daily_brief_signal_mode',
+      userId: USER_ID,
+      details: expect.objectContaining({
+        nightly_ops_signal_mode: 'high',
+        total_unprocessed_signals_before_processing: 831,
+        signal_batch_size: 100,
+        max_signal_rounds: 10,
+      }),
+    }));
   });
 
   it('persists explicit no-send outcomes with candidate failure reasons', async () => {
@@ -410,8 +473,7 @@ describe('runDailyGenerate candidate logging', () => {
     expect(result.message).toContain('No pending_approval brief was persisted');
     expect(result.message).toContain('No ranked daily brief candidate.');
     const saved = mockSupabase.insertedActions[0];
-    expect(saved.status).toBe('skipped');
-    expect(saved.directive_text).toBe('No directive sent today.');
+    expect(saved.status).toBe('pending_approval');
     expect((saved.execution_result as Record<string, any>).outcome_type).toBe('no_send');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.failureReason).toBe('No ranked daily brief candidate.');
   });
@@ -430,7 +492,7 @@ describe('runDailyGenerate candidate logging', () => {
       }),
     ]);
     const saved = mockSupabase.insertedActions[0];
-    expect(saved.status).toBe('skipped');
+    expect(saved.status).toBe('pending_approval');
     expect((saved.execution_result as Record<string, any>).generation_log.outcome).toBe('no_send');
     expect((saved.execution_result as Record<string, any>).generation_log.stage).toBe('artifact');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateFailureReasons[0]).toContain('Artifact generation failed.');
@@ -459,7 +521,7 @@ describe('runDailyGenerate candidate logging', () => {
     ]);
     expect(generateArtifact).not.toHaveBeenCalled();
     const saved = mockSupabase.insertedActions[0];
-    expect(saved.status).toBe('skipped');
+    expect(saved.status).toBe('pending_approval');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates).toHaveLength(2);
     expect((saved.execution_result as Record<string, any>).generation_log.reason).toBe(
       'Acceptance gate blocked send because fewer than 3 candidates were evaluated.',

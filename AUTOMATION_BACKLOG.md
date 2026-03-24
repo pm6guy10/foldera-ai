@@ -23,6 +23,7 @@
 - OAuth error display
 - Google sync scope logging
 - Onboarding goal insert schema fix
+- Nightly ops all-source backlog threshold + stale reset guard
 
 ### OPEN (Priority order)
 - Blog formatting fix (prose typography, Codex queued)

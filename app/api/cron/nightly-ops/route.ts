@@ -17,8 +17,13 @@ import { getAllUsersWithProvider } from '@/lib/auth/user-tokens';
 import { createServerClient } from '@/lib/db/client';
 import {
   countUnprocessedSignals,
+  HIGH_BACKLOG_MAX_SIGNAL_ROUNDS,
+  HIGH_BACKLOG_SIGNAL_BATCH_SIZE,
+  LOW_BACKLOG_MAX_SIGNAL_ROUNDS,
+  LOW_BACKLOG_SIGNAL_BATCH_SIZE,
   listUsersWithUnprocessedSignals,
   processUnextractedSignals,
+  resolveSignalBacklogMode,
 } from '@/lib/signals/signal-processor';
 import {
   autoSkipStaleApprovals,
@@ -28,16 +33,13 @@ import {
 import { runSelfHeal } from '@/lib/cron/self-heal';
 import { runAcceptanceGate } from '@/lib/cron/acceptance-gate';
 import { checkConnectorHealth } from '@/lib/cron/connector-health';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min
 
 const TEST_USER_ID = '22222222-2222-2222-2222-222222222222';
-const DEFAULT_SIGNAL_BATCH_SIZE = 50;
-const DEFAULT_MAX_SIGNAL_ROUNDS = 3;
-const BACKFILL_SIGNAL_BATCH_SIZE = 100;
-const BACKFILL_MAX_SIGNAL_ROUNDS = 10;
-const SIGNAL_BACKFILL_THRESHOLD = 100;
+const STALE_SIGNAL_RESET_BACKLOG_THRESHOLD = 200;
 const STALE_CUTOFF_HOURS = 24;
 
 // ---------------------------------------------------------------------------
@@ -119,7 +121,34 @@ interface SignalProcessingResult {
   error?: string;
 }
 
-async function resetStaleSignalsForReprocessing(): Promise<number> {
+async function countNightlyOpsUnprocessedSignals(): Promise<number> {
+  const userIds = (await listUsersWithUnprocessedSignals({ includeAllSources: true }))
+    .filter((id) => id !== TEST_USER_ID);
+  let totalUnprocessed = 0;
+
+  for (const userId of userIds) {
+    totalUnprocessed += await countUnprocessedSignals(userId, { includeAllSources: true });
+  }
+
+  return totalUnprocessed;
+}
+
+async function resetStaleSignalsForReprocessing(totalUnprocessed: number): Promise<number> {
+  if (totalUnprocessed >= STALE_SIGNAL_RESET_BACKLOG_THRESHOLD) {
+    logStructuredEvent({
+      event: 'nightly_ops_stale_reset_skipped',
+      userId: null,
+      artifactType: null,
+      generationStatus: 'skipped',
+      details: {
+        scope: 'nightly-ops',
+        total_unprocessed_signals: totalUnprocessed,
+        stale_signal_reset_backlog_threshold: STALE_SIGNAL_RESET_BACKLOG_THRESHOLD,
+      },
+    });
+    return 0;
+  }
+
   const supabase = createServerClient();
   const { data: staleSignals, error } = await supabase
     .from('tkg_signals')
@@ -158,31 +187,39 @@ async function stageProcessSignals(): Promise<SignalProcessingResult> {
   const staleCutoffIso = new Date(
     Date.now() - STALE_CUTOFF_HOURS * 60 * 60 * 1000,
   ).toISOString();
-  const resetStaleSignals = await resetStaleSignalsForReprocessing();
+  const totalUnprocessedBeforeReset = await countNightlyOpsUnprocessedSignals();
+  const resetStaleSignals = await resetStaleSignalsForReprocessing(totalUnprocessedBeforeReset);
+  const totalUnprocessed = resetStaleSignals > 0
+    ? await countNightlyOpsUnprocessedSignals()
+    : totalUnprocessedBeforeReset;
   const userIdsWithBacklog = (await listUsersWithUnprocessedSignals({})).filter((id) => id !== TEST_USER_ID);
-  let totalUnprocessed = 0;
+  const backlogMode = resolveSignalBacklogMode(totalUnprocessed);
 
-  for (const userId of userIdsWithBacklog) {
-    totalUnprocessed += await countUnprocessedSignals(userId);
-  }
-
-  const useBackfillMode = totalUnprocessed >= SIGNAL_BACKFILL_THRESHOLD;
-  const signalBatchSize = useBackfillMode ? BACKFILL_SIGNAL_BATCH_SIZE : DEFAULT_SIGNAL_BATCH_SIZE;
-  const maxSignalRounds = useBackfillMode ? BACKFILL_MAX_SIGNAL_ROUNDS : DEFAULT_MAX_SIGNAL_ROUNDS;
-
-  console.log(JSON.stringify({
+  logStructuredEvent({
     event: 'nightly_ops_signal_mode',
-    mode: useBackfillMode ? 'backfill' : 'default',
-    unprocessed_signals: totalUnprocessed,
-    signal_batch_size: signalBatchSize,
-    max_signal_rounds: maxSignalRounds,
-  }));
+    userId: null,
+    artifactType: null,
+    generationStatus: 'mode_selected',
+    details: {
+      scope: 'nightly-ops',
+      nightly_ops_signal_mode: backlogMode.mode,
+      unprocessed_signals: totalUnprocessed,
+      unprocessed_signals_before_reset: totalUnprocessedBeforeReset,
+      reset_stale_signals: resetStaleSignals,
+      signal_batch_size: backlogMode.maxSignals,
+      max_signal_rounds: backlogMode.rounds,
+      low_backlog_signal_batch_size: LOW_BACKLOG_SIGNAL_BATCH_SIZE,
+      low_backlog_max_signal_rounds: LOW_BACKLOG_MAX_SIGNAL_ROUNDS,
+      high_backlog_signal_batch_size: HIGH_BACKLOG_SIGNAL_BATCH_SIZE,
+      high_backlog_max_signal_rounds: HIGH_BACKLOG_MAX_SIGNAL_ROUNDS,
+    },
+  });
 
   let totalProcessed = 0;
   let remaining = 0;
   let rounds = 0;
 
-  for (let round = 0; round < maxSignalRounds; round++) {
+  for (let round = 0; round < backlogMode.rounds; round++) {
     const userIds = (round === 0
       ? userIdsWithBacklog
       : await listUsersWithUnprocessedSignals({})).filter((id) => id !== TEST_USER_ID);
@@ -192,9 +229,9 @@ async function stageProcessSignals(): Promise<SignalProcessingResult> {
     let roundProcessed = 0;
 
     for (const userId of userIds) {
-      if (roundProcessed >= signalBatchSize) break;
+      if (roundProcessed >= backlogMode.maxSignals) break;
 
-      const capacity = signalBatchSize - roundProcessed;
+      const capacity = backlogMode.maxSignals - roundProcessed;
       const extraction = await processUnextractedSignals(userId, {
         maxSignals: capacity,
         prioritizeOlderThanIso: staleCutoffIso,

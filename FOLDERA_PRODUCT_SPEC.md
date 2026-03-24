@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 24, 2026 (onboarding goal insert schema fix after the production hardening sweep) by Codex
+Last Updated: March 24, 2026 (nightly ops backlog threshold and stale reset guard) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -35,13 +35,13 @@ March 24 production hotfix evidence:
 | Token watchdog | BUILT | self-heal.ts, commit 8b3e0fc | Silent sync failure from expired tokens |
 | Commitment ceiling (150) | BUILT | self-heal.ts, commit 8b3e0fc | Commitment explosion poisoning scorer |
 | Signal backlog drain + dead_key | BUILT | self-heal.ts, commit 8b3e0fc | Undecryptable signals clogging queue forever |
-| Nightly backlog auto-throttle | BUILT | March 24 follow-up: `/api/cron/nightly-ops` now counts unprocessed signals before Stage 2 and stays at 50x3 below 100 queued signals, but automatically expands to 100x10 when backlog reaches 100+; structured log `nightly_ops_signal_mode` records the selected mode. |
+| Nightly backlog auto-throttle | BUILT | March 24 follow-up: `/api/cron/nightly-ops` now counts all `tkg_signals` rows with `processed = false` before Stage 2 (not just extractable sources), stays at 50x3 below 100 queued signals, and automatically expands to 100x10 when backlog reaches 100+; structured logs now emit `nightly_ops_signal_mode = "low"|"high"` with the chosen batch/round values. |
 | Queue hygiene (24h auto-skip) | BUILT | self-heal.ts, commit 8b3e0fc | Stale approvals blocking fresh generation |
 | Health alert email | BUILT | March 24 production hardening sweep: `lib/cron/connector-health.ts` now checks 7-day signal coverage per connected provider/source (`google_calendar`, `google_drive`, `onedrive`), sends one Resend alert per flagged source, and rate-limits with `user_tokens.last_health_alert_at`. | Silent failures with no notification |
 | Feedback signal source constraint restored | BUILT | March 24 data-fix pass: `tkg_signals_source_check` migration restored `user_feedback`, matching the approve/skip insert path in `executeAction()`. |
 | Test-token persistence guard | BUILT | March 24 data-fix pass: `saveUserToken()` now rejects any access/refresh token starting with `test_` and logs a warning before any DB write. |
 | Cron excludes test user | BUILT | March 24 production hardening sweep: `/api/cron/nightly-ops` now filters `22222222-2222-2222-2222-222222222222` out of Microsoft sync, Google sync, signal processing, and daily brief stages via `TEST_USER_ID`. | Fake directives and wasted LLM calls from non-real accounts |
-| Stale signal reprocessing | BUILT | March 24 production hardening sweep: nightly-ops resets up to 500 `tkg_signals` rows where `processed = true` and `extracted_entities IS NULL` back to `processed = false`, logging the reset count before signal processing. | Signals stuck in a half-processed state forever |
+| Stale signal reprocessing | BUILT | March 24 production hardening sweep: nightly-ops resets up to 500 `tkg_signals` rows where `processed = true` and `extracted_entities IS NULL` back to `processed = false`, but the March 24 follow-up now skips that reset entirely whenever the all-source unprocessed backlog is already `>= 200`, logging `nightly_ops_stale_reset_skipped` instead. | Signals stuck in a half-processed state forever |
 | Suppressed commitment cleanup | BUILT | March 24 production hardening sweep: nightly-ops now marks `tkg_commitments` with `suppressed_at IS NOT NULL` and `status = 'active'` as `completed` after processing, logging the number updated. | Suppressed commitments continuing to look active |
 
 **NEXT MOVE:** All defenses run for first time at tonight's 4am cron. Check Vercel logs for structured JSON from each defense. Update each to PROVEN with log evidence.

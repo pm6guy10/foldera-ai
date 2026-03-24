@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Nightly ops backlog threshold and stale reset guard
+  MODE: AUDIT
+  Commit hash(es): latest `fix: correct nightly signal backlog mode and stale reset guard` commit on `main`
+  Files changed: `app/api/cron/nightly-ops/route.ts`, `app/api/cron/nightly-ops/__tests__/route.test.ts`, `lib/signals/signal-processor.ts`, `lib/cron/daily-brief.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `FOLDERA_PRODUCT_SPEC.md`, `CLAUDE.md`
+  What was verified: baseline `GIT_EDITOR=true git pull --rebase origin main`; baseline `git log --oneline -10`; baseline `npx vitest run app/api/cron/nightly-ops/__tests__/route.test.ts` passed; baseline `npx playwright test` reproduced the existing local auth/session failures; traced Stage 2 path `nightly-ops -> listUsersWithUnprocessedSignals/countUnprocessedSignals -> resetStaleSignalsForReprocessing/processUnextractedSignals -> runDailyBrief` before editing; post-change `npx vitest run --exclude ".claude/worktrees/**" app/api/cron/nightly-ops/__tests__/route.test.ts` passed; post-change `npx vitest run --exclude ".claude/worktrees/**" lib/cron/__tests__/daily-brief.test.ts` passed; `npm run build` passed; post-change `npx playwright test` still reproduced the same pre-existing local auth/session failures while the cron-focused changes stayed green in targeted tests
+  Any unresolved issues: a real manual signed-in local `POST /api/settings/run-brief` could not be completed from this workspace because the stored local auth state is invalid (`/dashboard` and `/dashboard/settings` redirect to `/login`, `/api/auth/session` has no authenticated user, `/api/conviction/latest` and `/api/integrations/status` return `401`); full local `npx playwright test` still fails outside this patch scope with the same 10 pre-existing auth/clickflow cases already logged in `FOLDERA_MASTER_AUDIT.md`
+
 - 2026-03-24 — Onboarding goal insert schema fix
   MODE: AUDIT
   Commit hash(es): latest `fix: remove invalid onboarding goal columns` commit on `main`

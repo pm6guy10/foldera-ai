@@ -39,6 +39,7 @@ import { extractFromConversation } from '@/lib/extraction/conversation-extractor
 import {
   countUnprocessedSignals,
   processUnextractedSignals,
+  resolveSignalBacklogMode,
 } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
 import { sendDailyDirective, type HealthSummary } from '@/lib/email/resend';
@@ -782,8 +783,27 @@ async function runSignalProcessingForUser(
       staleCutoffIso,
       options,
     );
+    const totalBeforeAllSources = await countUnprocessedSignals(userId, {
+      createdAtGte: options.signalCreatedAtGte,
+      includeAllSources: true,
+    });
     const totalBefore = await countUnprocessedSignals(userId, {
       createdAtGte: options.signalCreatedAtGte,
+    });
+    const backlogMode = resolveSignalBacklogMode(totalBeforeAllSources);
+
+    logStructuredEvent({
+      event: 'daily_brief_signal_mode',
+      userId,
+      artifactType: null,
+      generationStatus: 'mode_selected',
+      details: {
+        scope: 'daily-brief',
+        nightly_ops_signal_mode: backlogMode.mode,
+        total_unprocessed_signals_before_processing: totalBeforeAllSources,
+        signal_batch_size: backlogMode.maxSignals,
+        max_signal_rounds: backlogMode.rounds,
+      },
     });
 
     let signalsProcessed = 0;
@@ -861,6 +881,7 @@ async function runSignalProcessingForUser(
       stale_unprocessed_signals_before_generation: staleAfter,
       stale_unprocessed_signals_before_generation_initial: staleBefore,
       summaries_created: summariesCreated,
+      total_unprocessed_signals_before_processing_all_sources: totalBeforeAllSources,
       total_unprocessed_signals_after_processing: totalAfter,
       total_unprocessed_signals_before_processing: totalBefore,
       deferred_signal_ids: [...deferredSignalIds],

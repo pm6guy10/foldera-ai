@@ -92,6 +92,35 @@ export interface ProcessSignalsOptions {
 
 export interface SignalQueryOptions {
   createdAtGte?: string;
+  includeAllSources?: boolean;
+}
+
+export const LOW_BACKLOG_SIGNAL_BATCH_SIZE = 50;
+export const LOW_BACKLOG_MAX_SIGNAL_ROUNDS = 3;
+export const HIGH_BACKLOG_SIGNAL_BATCH_SIZE = 100;
+export const HIGH_BACKLOG_MAX_SIGNAL_ROUNDS = 10;
+export const HIGH_BACKLOG_SIGNAL_THRESHOLD = 100;
+
+export interface SignalBacklogMode {
+  maxSignals: number;
+  mode: 'high' | 'low';
+  rounds: number;
+}
+
+export function resolveSignalBacklogMode(unprocessedCount: number): SignalBacklogMode {
+  if (unprocessedCount >= HIGH_BACKLOG_SIGNAL_THRESHOLD) {
+    return {
+      mode: 'high',
+      maxSignals: HIGH_BACKLOG_SIGNAL_BATCH_SIZE,
+      rounds: HIGH_BACKLOG_MAX_SIGNAL_ROUNDS,
+    };
+  }
+
+  return {
+    mode: 'low',
+    maxSignals: LOW_BACKLOG_SIGNAL_BATCH_SIZE,
+    rounds: LOW_BACKLOG_MAX_SIGNAL_ROUNDS,
+  };
 }
 
 const EXTRACTION_PROMPT = `You are extracting structured data from raw signals (emails, calendar events, files, tasks) for a personal chief of staff system.
@@ -1058,8 +1087,11 @@ export async function countUnprocessedSignals(
     .from('tkg_signals')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
-    .eq('processed', false)
-    .in('source', EXTRACTABLE_SOURCES);
+    .eq('processed', false);
+
+  if (!options.includeAllSources) {
+    countQuery = countQuery.in('source', EXTRACTABLE_SOURCES);
+  }
 
   if (options.createdAtGte) {
     countQuery = countQuery.gte('created_at', options.createdAtGte);
@@ -1081,8 +1113,11 @@ export async function listUsersWithUnprocessedSignals(
   let signalsQuery = supabase
     .from('tkg_signals')
     .select('user_id')
-    .eq('processed', false)
-    .in('source', EXTRACTABLE_SOURCES);
+    .eq('processed', false);
+
+  if (!options.includeAllSources) {
+    signalsQuery = signalsQuery.in('source', EXTRACTABLE_SOURCES);
+  }
 
   if (options.createdAtGte) {
     signalsQuery = signalsQuery.gte('created_at', options.createdAtGte);
