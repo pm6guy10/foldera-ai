@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Replaced placeholder blog post bodies with provided marketing copy
+  MODE: AUDIT
+  Commit hash(es): `PENDING`
+  Files changed: `content/blog/ai-email-assistant.md`, `content/blog/ai-task-prioritization.md`, `content/blog/ai-assistant-busy-professionals.md`, `content/blog/reduce-email-overwhelm.md`, `content/blog/best-ai-tools-solopreneurs-2026.md`, `CLAUDE.md`
+  What was verified: baseline `GIT_EDITOR=true git pull --rebase origin main`; baseline `git log --oneline -10`; traced blog content path through `lib/blog.ts`; confirmed body-only diffs for all five markdown files; `npm run build` passed; `npx playwright test` ran after an initial webServer startup error and reproduced the pre-existing authenticated production-smoke failures plus the existing `tests/audit/clickflow.spec.ts` timeout on `/`
+  Any unresolved issues: `npx playwright test` did not pass because of pre-existing local auth-state / production-smoke failures (`tests/production/smoke.spec.ts`) and the existing `tests/audit/clickflow.spec.ts` landing-page timeout; no source changes were made outside the requested blog content and this mandatory session log
+
 - 2026-03-24 — Signal backfill throttle, extraction spend cap, blog launch, and Google scope diagnostics
   MODE: AUDIT
   Commit hash(es): `e804e58`
