@@ -195,7 +195,7 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 - 2026-03-24 — Fixed blog markdown rendering and typography on `/blog/[slug]`
   MODE: AUDIT
-  Commit hash(es): `PENDING`
+  Commit hash(es): `27c3f79`
   Files changed: `app/(marketing)/blog/[slug]/page.tsx`, `lib/blog.ts`, `tailwind.config.js`, `tests/e2e/public-routes.spec.ts`, `package.json`, `package-lock.json`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
   What was verified: baseline `GIT_EDITOR=true git pull --rebase origin main`; baseline `git log --oneline -10`; baseline `npm run test:prod` (18 passed); traced blog data path `content/blog/*.md -> lib/blog.ts -> app/(marketing)/blog/[slug]/page.tsx`; pre-edit focused `npx playwright test tests/e2e/public-routes.spec.ts --grep "Blog routes"` failed on missing busy-professionals table; post-change `npm run build` passed; post-change focused `npx playwright test tests/e2e/public-routes.spec.ts --grep "Blog routes"` passed (5 passed); full local `npx playwright test` reproduced only the pre-existing mixed-suite failures while the new blog checks passed
   Any unresolved issues: full local `npx playwright test` still fails outside this patch scope because `tests/production/smoke.spec.ts` expects authenticated production storage state against `http://localhost:3000` and `tests/audit/clickflow.spec.ts` still times out on `/`; logged in `FOLDERA_MASTER_AUDIT.md`
