@@ -319,6 +319,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
   What was verified: baseline `npx playwright test tests/e2e/public-routes.spec.ts` before edits; Step 1 `npm run build` + `npx playwright test tests/e2e/public-routes.spec.ts`; Step 2 `npm run build` + `npx playwright test tests/e2e/` (27 passed); Step 3 `npm run build` + `npx playwright test tests/e2e/` (27 passed); `npm run test:prod` (18 passed) after updating the stale landing-page CTA assertion
   Any unresolved issues: none
 
+- 2026-03-24 — Generator rewritten to behavioral-analyst mode
+  MODE: AUDIT
+  Commit hash(es): `09d06ae`
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `lib/briefing/__tests__/scorer-benchmark.test.ts`, `FOLDERA_PRODUCT_SPEC.md`
+  What was verified: baseline `GIT_EDITOR=true git pull --rebase origin main`; baseline `git log --oneline -10`; read `LESSONS_LEARNED.md`, `FOLDERA_PRODUCT_SPEC.md`; baseline `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/generator.test.ts` (160 passed); post-change `npx vitest run lib/briefing/__tests__/ lib/utils/__tests__/api-tracker.test.ts` (279 passed); `npm run build`; pre-push `npx playwright test` (50 passed, 6 skipped); push gate passed; Vercel deploy `dpl_2mGQv2GC9qdwxfwYpjTJJhTMkeo5` reached `READY`; post-deploy `npm run test:prod` (17 passed, 1 pre-existing failure); production `POST /api/settings/run-brief` created `tkg_actions.id = 2dc60d21-d7d2-4812-8310-4d4c0dba47e0` with `action_type = do_nothing`, `confidence = 66`, `gen_stage = generation`, `artifact_type = wait_rationale`; directive text surfaced a behavioral-analyst observation (spending contradiction while cash-constrained) rather than a task-manager suggestion
+  Any unresolved issues: `npm run test:prod` still has the pre-existing `smoke.spec.ts:137` login error banner failure; the directive was `wait_rationale` (scorer_ev = 0) because signal processing budget was exhausted with 841 unprocessed signals remaining — quality of executable directives (send_message, write_document) cannot be verified until signal backlog clears
+
 - 2026-03-23 — Scorer quality floor + generator context enrichment
   MODE: AUDIT
   Commit hash(es): 92a15c1
