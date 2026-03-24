@@ -205,6 +205,42 @@ describe('generateDirective runtime failures', () => {
     }));
   });
 
+  it('extracts JSON from prefixed non-json fenced responses and logs the raw payload preview', async () => {
+    mockScoreOpenLoops.mockResolvedValue(buildScorerResult());
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 80 },
+      content: [{
+        type: 'text',
+        text: `Here is the directive:
+\`\`\`jsonc
+{
+  "directive": "Send the follow-up email to the MAS3 hiring manager today.",
+  "artifact_type": "send_message",
+  "artifact": {
+    "to": "manager@example.com",
+    "subject": "MAS3 timeline follow-up",
+    "body": "Hi,\\n\\nI wanted to follow up on the MAS3 interview timeline.\\n\\nThank you,\\nBrandon"
+  },
+  "evidence": "The interview window closes this week and the manager has not replied.",
+  "why_now": "The timing window closes this week."
+}
+\`\`\``,
+      }],
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { generateDirective } = await import('../generator');
+    await generateDirective('user-1', { dryRun: true });
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('[generator] Raw LLM response (attempt 1):'));
+    expect(anthropicCreate).toHaveBeenCalledWith(expect.objectContaining({
+      max_tokens: 3200,
+      system: expect.stringContaining('CRITICAL: Return ONLY a JSON object.'),
+    }));
+
+    errorSpy.mockRestore();
+  });
+
   it('logs the actual system error before returning the sentinel fallback', async () => {
     mockScoreOpenLoops.mockRejectedValue(new Error('scoreOpenLoops blew up'));
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

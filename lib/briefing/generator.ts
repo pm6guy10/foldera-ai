@@ -185,7 +185,9 @@ Return strict JSON only:
   "artifact": {},
   "evidence": "One sentence naming the decisive evidence",
   "why_now": "One sentence explaining why this wins today"
-}`;
+}
+
+CRITICAL: Return ONLY a JSON object. No markdown fences, no explanation, no text before or after the JSON. The response must start with { and end with }.`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1027,21 +1029,28 @@ function parseSignalSnippet(
 // ---------------------------------------------------------------------------
 
 function normalizeArtifactType(value: unknown): ValidArtifactType | null {
+  if (
+    value === 'send_message' ||
+    value === 'write_document' ||
+    value === 'schedule_block' ||
+    value === 'wait_rationale' ||
+    value === 'do_nothing'
+  ) {
+    return value;
+  }
+
   // Map old artifact type names to new contract
   if (value === 'drafted_email' || value === 'email' || value === 'email_compose' || value === 'email_reply') {
     return 'send_message';
   }
-  if (value === 'document' || value === 'write_document') {
+  if (value === 'document') {
     return 'write_document';
   }
-  if (value === 'calendar_event' || value === 'calendar' || value === 'event' || value === 'schedule' || value === 'schedule_block') {
+  if (value === 'calendar_event' || value === 'calendar' || value === 'event' || value === 'schedule') {
     return 'schedule_block';
   }
-  if (value === 'wait_rationale' || value === 'wait') {
+  if (value === 'wait') {
     return 'wait_rationale';
-  }
-  if (value === 'do_nothing') {
-    return 'do_nothing';
   }
   // Reject decision_frame, research_brief — these are not valid user-facing types
   if (value === 'decision_frame' || value === 'decision' || value === 'research_brief' || value === 'research') {
@@ -1061,13 +1070,26 @@ function artifactTypeToActionType(artifactType: ValidArtifactType): ActionType {
   }
 }
 
-function extractJsonFromResponse(raw: string): string {
+export function extractJsonFromResponse(raw: string): string {
   // Strategy 1: Strip markdown fences (case-insensitive, with optional language tag)
-  let cleaned = raw.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
+  let cleaned = raw.trim();
 
-  // Strategy 2: If the result doesn't start with '{', try to find the JSON object
+  if (/^```[\w-]*\s*/i.test(cleaned)) {
+    cleaned = cleaned
+      .replace(/^```[\w-]*\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+  }
+
+  // Strategy 2: If a code block appears later in the response, extract its body even if the
+  // language tag is not exactly "json" (for example jsonc/JSON5).
+  const fencedMatch = cleaned.match(/```[\w-]*\s*([\s\S]*?)\s*```/i);
+  if (fencedMatch?.[1]) {
+    cleaned = fencedMatch[1].trim();
+  }
+
+  // Strategy 3: Strip preamble text like "Here is the directive:" and isolate the JSON object.
   if (!cleaned.startsWith('{')) {
-    // Look for the first '{' and last '}' to extract the JSON object
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace !== -1 && lastBrace > firstBrace) {
@@ -1078,7 +1100,7 @@ function extractJsonFromResponse(raw: string): string {
   return cleaned;
 }
 
-function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | null {
+export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | null {
   const cleaned = extractJsonFromResponse(raw);
   const parsed = JSON.parse(cleaned) as Record<string, unknown>;
   const nestedArtifact = parsed.artifact && typeof parsed.artifact === 'object'
@@ -1513,7 +1535,7 @@ async function generatePayload(
   for (let attempt = 0; attempt < 2; attempt++) {
     const response = await getAnthropic().messages.create({
       model: GENERATION_MODEL,
-      max_tokens: 2400,
+      max_tokens: 3200,
       temperature: 0.15,
       system: SYSTEM_PROMPT,
       messages: attempts,
@@ -1532,6 +1554,8 @@ async function generatePayload(
       .filter((block): block is Anthropic.TextBlock => block.type === 'text')
       .map((block) => block.text)
       .join('');
+
+    console.error(`[generator] Raw LLM response (attempt ${attempt + 1}):\n${raw.slice(0, 800)}`);
 
     let parsed: GeneratedDirectivePayload | null = null;
     let parseError: string | null = null;

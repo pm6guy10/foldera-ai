@@ -5,7 +5,7 @@ import {
   getCandidateConstraintViolations,
   getDirectiveConstraintViolations,
 } from '../pinned-constraints';
-import { validateDirectiveForPersistence } from '../generator';
+import { extractJsonFromResponse, parseGeneratedPayload, validateDirectiveForPersistence } from '../generator';
 import type { ConvictionDirective } from '../types';
 
 function buildDirective(overrides: Partial<ConvictionDirective>): ConvictionDirective {
@@ -105,6 +105,35 @@ describe('daily brief pinned constraints', () => {
     });
 
     expect(issues).toEqual([]);
+  });
+});
+
+describe('generator response parsing', () => {
+  it('extracts JSON from prefixed non-json fenced responses', () => {
+    const raw = `Here is the directive:
+\`\`\`jsonc
+{
+  "directive": "Send the follow-up email to the MAS3 hiring manager today.",
+  "artifact_type": "send_message",
+  "artifact": {
+    "to": "manager@example.com",
+    "subject": "MAS3 timeline follow-up",
+    "body": "Hi,\\n\\nI wanted to follow up on the MAS3 interview timeline.\\n\\nThank you,\\nBrandon"
+  },
+  "evidence": "The interview window closes this week and the manager has not replied.",
+  "why_now": "The timing window closes this week."
+}
+\`\`\``;
+
+    expect(extractJsonFromResponse(raw)).toMatch(/^\{/);
+    expect(parseGeneratedPayload(raw)).toMatchObject({
+      directive: 'Send the follow-up email to the MAS3 hiring manager today.',
+      artifact_type: 'send_message',
+      artifact: expect.objectContaining({
+        to: 'manager@example.com',
+        subject: 'MAS3 timeline follow-up',
+      }),
+    });
   });
 });
 
