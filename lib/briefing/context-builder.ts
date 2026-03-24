@@ -111,9 +111,11 @@ export async function buildContextBlock(userId: string): Promise<string> {
   const [goalsRes, commitmentsRes, lastActionRes, recentSignalsRes] = await Promise.all([
     supabase
       .from('tkg_goals')
-      .select('goal_text, priority, goal_category')
+      .select('goal_text, priority, goal_category, source')
       .eq('user_id', userId)
+      .eq('status', 'active')
       .gte('priority', 3)
+      .not('source', 'in', '("onboarding_bucket","onboarding_marker")')
       .order('priority', { ascending: false })
       .limit(3),
     supabase

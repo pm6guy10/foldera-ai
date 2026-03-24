@@ -31,6 +31,9 @@ const APPROVAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 const DIRECTIVE_CONFIDENCE_THRESHOLD = 45;
 const STALE_SIGNAL_THRESHOLD_DAYS = 14;
 
+/** Goal sources that are onboarding placeholders — excluded from scoring/generation. */
+const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker']);
+
 // ---------------------------------------------------------------------------
 // Part 1 — Artifact contract: valid user-facing types
 // ---------------------------------------------------------------------------
@@ -63,6 +66,15 @@ const EXECUTABLE_ARTIFACT_TYPES: ReadonlySet<string> = new Set([
 const SYSTEM_PROMPT = `You are Foldera's behavioral analyst. You read the user's signal graph — emails, calendar, responses, silences — and surface the ONE thing they cannot see about their own behavior. Then you hand them a finished artifact that resolves it.
 
 You are NOT a task manager. You do NOT remind people of things they already know. If it's on their calendar, in their recent sent mail, or in their active task list — they are aware. Your job is to find what's HIDING.
+
+YOUR PRIMARY QUESTION
+Which goal has the biggest gap between stated priority and actual behavior? Start there. The GOAL_GAP_ANALYSIS section shows every active goal ranked by behavioral divergence. A HIGH gap means the user says this matters but their signals show near-zero activity. Find the one finished action that closes the most important gap.
+
+When a GOAL_GAP_ANALYSIS is provided:
+- Reference the specific goal BY NAME in your directive
+- Name the behavioral gap explicitly ("your top goal is X, your last 14 days show Y")
+- The artifact must directly advance the highest-gap goal
+- If no gap goal has a viable artifact, output wait_rationale naming the gap
 
 YOUR ANALYTICAL LENS
 Look for these patterns in the signal data:
@@ -252,6 +264,139 @@ interface GenerateDirectiveOptions {
 }
 
 // ---------------------------------------------------------------------------
+// Goal-gap analysis — behavioral divergence between stated and actual
+// ---------------------------------------------------------------------------
+
+export interface GoalGapEntry {
+  goal_text: string;
+  priority: number;
+  category: string;
+  signal_count_14d: number;
+  action_count_14d: number;
+  gap_level: 'HIGH' | 'MEDIUM' | 'LOW';
+  gap_description: string;
+}
+
+/**
+ * For every active (non-placeholder) goal, count how many signals and
+ * completed actions relate to it in the last 14 days.  Then compute the
+ * gap between stated priority and actual behavior.
+ *
+ * Returns up to 5 goals ordered by priority descending.
+ */
+async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
+  const supabase = createServerClient();
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+  // 1. Fetch all active goals (exclude placeholder sources)
+  const { data: goalRows } = await supabase
+    .from('tkg_goals')
+    .select('goal_text, priority, goal_category, source')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .order('priority', { ascending: false })
+    .limit(10);
+
+  const goals = (goalRows ?? []).filter(
+    (g: { source?: string | null }) => !PLACEHOLDER_GOAL_SOURCES.has((g.source as string) ?? ''),
+  ).slice(0, 5) as Array<{ goal_text: string; priority: number; goal_category: string }>;
+
+  if (goals.length === 0) return [];
+
+  // 2. Fetch recent signals (14d) — just counts per category/keyword
+  const { data: signalRows } = await supabase
+    .from('tkg_signals')
+    .select('content, source, occurred_at')
+    .eq('user_id', userId)
+    .eq('processed', true)
+    .gte('occurred_at', fourteenDaysAgo)
+    .order('occurred_at', { ascending: false })
+    .limit(200);
+
+  // 3. Fetch recent completed actions (14d)
+  const { data: actionRows } = await supabase
+    .from('tkg_actions')
+    .select('directive_text, action_type, status, generated_at')
+    .eq('user_id', userId)
+    .in('status', ['approved', 'executed'])
+    .gte('generated_at', fourteenDaysAgo)
+    .limit(100);
+
+  const signals = signalRows ?? [];
+  const actions = actionRows ?? [];
+
+  // Build keyword sets for each goal
+  const goalKeywordSets = goals.map((g) => {
+    const words = g.goal_text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(/\s+/)
+      .filter((w) => w.length >= 4);
+    return { ...g, keywords: words };
+  });
+
+  const entries: GoalGapEntry[] = [];
+
+  for (const goal of goalKeywordSets) {
+    // Count signals matching this goal by keyword overlap or category
+    let signalCount = 0;
+    for (const s of signals) {
+      const content = ((s.content as string) ?? '').toLowerCase();
+      const catMatch = (s.source as string ?? '').toLowerCase().includes(goal.goal_category);
+      const kwMatch = goal.keywords.length > 0 &&
+        goal.keywords.filter((kw) => content.includes(kw)).length >= Math.min(2, goal.keywords.length);
+      if (catMatch || kwMatch) signalCount++;
+    }
+
+    // Count actions matching this goal
+    let actionCount = 0;
+    for (const a of actions) {
+      const text = ((a.directive_text as string) ?? '').toLowerCase();
+      const kwMatch = goal.keywords.length > 0 &&
+        goal.keywords.filter((kw) => text.includes(kw)).length >= Math.min(2, goal.keywords.length);
+      if (kwMatch) actionCount++;
+    }
+
+    // Compute gap: high priority + low activity = HIGH gap
+    let gap_level: GoalGapEntry['gap_level'];
+    let gap_description: string;
+
+    if (goal.priority >= 4 && signalCount <= 3 && actionCount === 0) {
+      gap_level = 'HIGH';
+      gap_description = `Stated top priority, near-zero behavioral footprint. ${signalCount} signal${signalCount !== 1 ? 's' : ''} in 14 days, 0 completed actions.`;
+    } else if (goal.priority >= 3 && (signalCount <= 5 || actionCount === 0)) {
+      gap_level = signalCount > 10 && actionCount === 0 ? 'MEDIUM' : (signalCount <= 5 ? 'HIGH' : 'LOW');
+      gap_description = signalCount > 10 && actionCount === 0
+        ? `High signal activity (${signalCount}), but no conversion to completed actions.`
+        : `${signalCount} signal${signalCount !== 1 ? 's' : ''} in 14 days, ${actionCount} completed action${actionCount !== 1 ? 's' : ''}.`;
+    } else {
+      gap_level = 'LOW';
+      gap_description = `${signalCount} signals, ${actionCount} completed actions in 14 days — behavior and priority are roughly aligned.`;
+    }
+
+    entries.push({
+      goal_text: goal.goal_text,
+      priority: goal.priority,
+      category: goal.goal_category,
+      signal_count_14d: signalCount,
+      action_count_14d: actionCount,
+      gap_level,
+      gap_description,
+    });
+  }
+
+  // Sort: HIGH gaps first, then by priority descending
+  const gapOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+  entries.sort((a, b) => {
+    const gapDiff = gapOrder[a.gap_level] - gapOrder[b.gap_level];
+    if (gapDiff !== 0) return gapDiff;
+    return b.priority - a.priority;
+  });
+
+  return entries;
+}
+
+// ---------------------------------------------------------------------------
 // Part 3 — Structured context (preprocessing)
 // ---------------------------------------------------------------------------
 
@@ -288,6 +433,8 @@ interface StructuredContext {
   researcher_insight: ResearchInsight | null;
   // User identity context (dynamic, from goals)
   user_identity_context: string | null;
+  // Goal-gap analysis (all active goals with behavioral gap)
+  goal_gap_analysis: GoalGapEntry[];
 }
 
 function buildStructuredContext(
@@ -297,6 +444,7 @@ function buildStructuredContext(
   signalEvidence: SignalSnippet[],
   insight: ResearchInsight | null,
   userGoals?: Array<{ goal_text: string; priority: number; goal_category: string }>,
+  goalGapAnalysis?: GoalGapEntry[],
 ): StructuredContext {
   // Compress supporting signals to max 5
   const supporting_signals: CompressedSignal[] = signalEvidence.slice(0, 5).map((s) => ({
@@ -426,6 +574,7 @@ function buildStructuredContext(
     conflicts_with_locked_constraints,
     researcher_insight: insight,
     user_identity_context: buildUserIdentityContext(userGoals ?? []),
+    goal_gap_analysis: goalGapAnalysis ?? [],
   };
 }
 
@@ -496,7 +645,15 @@ function checkGenerationEligibility(ctx: StructuredContext): EligibilityResult {
 function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   const sections: string[] = [];
 
-  // User identity context first — gives the LLM judgment about what matters
+  // Goal-gap analysis FIRST — this is the primary analytical lens
+  if (ctx.goal_gap_analysis.length > 0) {
+    const gapLines = ctx.goal_gap_analysis.map((g) => {
+      return `[priority ${g.priority}] ${g.goal_text}\n  → ${g.signal_count_14d} signals in 14 days, ${g.action_count_14d} completed actions\n  → Gap: ${g.gap_level} — ${g.gap_description}`;
+    });
+    sections.push(`GOAL_GAP_ANALYSIS:\nYour primary question: which goal has the biggest gap between stated priority and actual behavior? Start there. Then find the one finished action that closes the most important gap.\n\n${gapLines.join('\n\n')}`);
+  }
+
+  // User identity context — gives the LLM judgment about what matters
   if (ctx.user_identity_context) {
     sections.push(ctx.user_identity_context);
   }
@@ -1913,22 +2070,35 @@ export async function generateDirective(
       });
     }
 
-    // Fetch user goals for identity context (top 4 by priority)
+    // Fetch user goals for identity context (top 5 by priority, exclude placeholders)
     const supabase = createServerClient();
     const { data: userGoalsData } = await supabase
       .from('tkg_goals')
-      .select('goal_text, priority, goal_category')
+      .select('goal_text, priority, goal_category, source')
       .eq('user_id', userId)
-      .gte('priority', 3)
+      .eq('status', 'active')
       .order('priority', { ascending: false })
-      .limit(4);
+      .limit(10);
+
+    const goalsForContext = ((userGoalsData ?? []) as Array<{ goal_text: string; priority: number; goal_category: string; source?: string }>)
+      .filter((g) => !PLACEHOLDER_GOAL_SOURCES.has(g.source ?? ''))
+      .slice(0, 5);
+    console.log(`[generator] goalsForContext: ${goalsForContext.length} goals for user ${userId.slice(0, 8)}`);
+
+    // Build goal-gap analysis (parallel-safe, queries its own data)
+    let goalGapAnalysis: GoalGapEntry[] = [];
+    try {
+      goalGapAnalysis = await buildGoalGapAnalysis(userId);
+      console.log(`[generator] goalGapAnalysis: ${goalGapAnalysis.length} entries, top gap: ${goalGapAnalysis[0]?.gap_level ?? 'none'}`);
+    } catch (err) {
+      console.error(`[generator] goalGapAnalysis failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
 
     // Part 3: Build structured context
-    const goalsForContext = (userGoalsData ?? []) as Array<{ goal_text: string; priority: number; goal_category: string }>;
-    console.log(`[generator] goalsForContext: ${goalsForContext.length} goals for user ${userId.slice(0, 8)}`);
     const ctx = buildStructuredContext(
       hydratedWinner, guardrails, userId, signalEvidence, insight,
       goalsForContext,
+      goalGapAnalysis,
     );
 
     // Part 4: Evidence gating — check eligibility before calling LLM

@@ -883,7 +883,7 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
       .limit(500),
     supabase
       .from('tkg_goals')
-      .select('goal_text, priority, goal_category')
+      .select('goal_text, priority, goal_category, source')
       .eq('user_id', userId)
       .gte('priority', 1)
       .order('priority', { ascending: false })
@@ -891,7 +891,9 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
   ]);
 
   const signals = signalsRes.data ?? [];
-  const goals = (goalsRes.data ?? []) as GoalRow[];
+  const PLACEHOLDER_SOURCES_RG = new Set(['onboarding_bucket', 'onboarding_marker']);
+  const goals = ((goalsRes.data ?? []) as Array<GoalRow & { source?: string }>)
+    .filter((g) => !PLACEHOLDER_SOURCES_RG.has(g.source ?? '')) as GoalRow[];
   const goalKeywordIndex = buildGoalKeywordIndex(goals);
 
   if (signals.length < 10 || goals.length === 0 || goalKeywordIndex.size === 0) return [];
@@ -1037,12 +1039,13 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
         .from('tkg_commitments')
         .select('id, description, status, created_at, due_at, updated_at')
         .eq('user_id', userId)
+        .is('suppressed_at', null)
         .gte('created_at', thirtyDaysAgo)
         .order('created_at', { ascending: false })
         .limit(200),
       supabase
         .from('tkg_goals')
-        .select('goal_text, priority, goal_category')
+        .select('goal_text, priority, goal_category, source')
         .eq('user_id', userId)
         .gte('priority', 1)
         .order('priority', { ascending: false })
@@ -1052,7 +1055,9 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
     const actions = actionsRes.data ?? [];
     const signals = signalsRes.data ?? [];
     const commitments = commitmentsRes.data ?? [];
-    const goals = (goalsRes.data ?? []) as GoalRow[];
+    const PLACEHOLDER_SOURCES_AP = new Set(['onboarding_bucket', 'onboarding_marker']);
+    const goals = ((goalsRes.data ?? []) as Array<GoalRow & { source?: string }>)
+      .filter((g) => !PLACEHOLDER_SOURCES_AP.has(g.source ?? '')) as GoalRow[];
     const goalKeywordIndex = buildGoalKeywordIndex(goals);
 
     // Need minimum data for meaningful detection
@@ -1325,6 +1330,7 @@ export async function detectEmergentPatterns(userId: string): Promise<EmergentPa
         .from('tkg_commitments')
         .select('id, description, status, created_at, due_at')
         .eq('user_id', userId)
+        .is('suppressed_at', null)
         .gte('created_at', thirtyDaysAgo)
         .order('created_at', { ascending: false })
         .limit(200),
@@ -2221,14 +2227,14 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       .order('last_interaction', { ascending: true })
       .limit(10),
 
-    // Active goals with priority >= 3
+    // Active goals with priority >= 3 (source fetched for placeholder filtering)
     supabase
       .from('tkg_goals')
-      .select('goal_text, priority, goal_category')
+      .select('goal_text, priority, goal_category, source')
       .eq('user_id', userId)
       .gte('priority', 3)
       .order('priority', { ascending: false })
-      .limit(10),
+      .limit(20),
   ]);
 
   const commitments = commitmentsRes.data ?? [];
@@ -2248,7 +2254,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     })
     .filter((signal: any) => signal && !isSelfReferentialSignal(signal.content));
   const entities = entitiesRes.data ?? [];
-  const goals = (goalsRes.data ?? []) as GoalRow[];
+  // Filter out onboarding placeholder goals — only extracted, manual, and onboarding_stated goals feed the scorer
+  const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker']);
+  const goals = ((goalsRes.data ?? []) as Array<GoalRow & { source?: string }>)
+    .filter((g) => !PLACEHOLDER_GOAL_SOURCES.has(g.source ?? '')) as GoalRow[];
   const goalKeywordIndex = buildGoalKeywordIndex(goals);
   logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
 
@@ -2845,6 +2854,59 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           summary: point.slice(0, 160),
         })),
       });
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Goal-gap multiplier: candidates that directly address the highest-gap
+  // goal (stated high priority, near-zero behavioral activity) get a 1.5x
+  // boost. This ensures the scorer surfaces goal-aligned candidates, not
+  // just high-signal ones.
+  // -----------------------------------------------------------------------
+
+  // Build a lightweight gap map from signals already fetched
+  const goalGapMap = new Map<string, { priority: number; signalCount: number }>();
+  for (const g of goals) {
+    const gkws = goalKeywords(g.goal_text);
+    let gSignalCount = 0;
+    for (const s of signals) {
+      const text = (s.content as string ?? '').toLowerCase();
+      const matchCount = gkws.filter((kw: string) => text.includes(kw)).length;
+      if (matchCount >= Math.min(2, gkws.length)) gSignalCount++;
+    }
+    goalGapMap.set(g.goal_text, { priority: g.priority, signalCount: gSignalCount });
+  }
+
+  // Find the highest-gap goal: highest priority with lowest signal count
+  let highestGapGoal: { text: string; gapScore: number } | null = null;
+  for (const [text, { priority, signalCount }] of goalGapMap) {
+    // Gap score: priority weight * inverse of signal activity
+    const gapScore = priority * (1 / (1 + signalCount));
+    if (!highestGapGoal || gapScore > highestGapGoal.gapScore) {
+      highestGapGoal = { text, gapScore };
+    }
+  }
+
+  // Apply 1.5x boost to candidates matching the highest-gap goal
+  if (highestGapGoal) {
+    for (const s of scored) {
+      if (s.matchedGoal && s.matchedGoal.text === highestGapGoal.text) {
+        s.score *= 1.5;
+        logStructuredEvent({
+          event: 'goal_gap_boost',
+          level: 'info',
+          userId,
+          artifactType: null,
+          generationStatus: 'scoring',
+          details: {
+            scope: 'scorer',
+            candidate_title: s.title.slice(0, 80),
+            gap_goal: highestGapGoal.text.slice(0, 80),
+            gap_score: highestGapGoal.gapScore,
+            boosted_score: s.score,
+          },
+        });
+      }
     }
   }
 

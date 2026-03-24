@@ -354,6 +354,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
   What was verified: baseline `npx playwright test tests/e2e/public-routes.spec.ts` before edits; Step 1 `npm run build` + `npx playwright test tests/e2e/public-routes.spec.ts`; Step 2 `npm run build` + `npx playwright test tests/e2e/` (27 passed); Step 3 `npm run build` + `npx playwright test tests/e2e/` (27 passed); `npm run test:prod` (18 passed) after updating the stale landing-page CTA assertion
   Any unresolved issues: none
 
+- 2026-03-24 — Goal-gap analysis architectural rewrite (generator, scorer, context-builder, goal-refresh)
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `lib/briefing/context-builder.ts`, `lib/cron/goal-refresh.ts`, `FOLDERA_PRODUCT_SPEC.md`, `CLAUDE.md`
+  What was verified: baseline `GIT_EDITOR=true git pull --rebase origin main`; baseline `git log --oneline -10`; read `LESSONS_LEARNED.md`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`; read all 5 target files in full before coding; traced data path `tkg_goals -> scorer goals query -> matchGoal() -> buildStructuredContext() -> buildPromptFromStructuredContext() -> generatePayload()` before editing; baseline `npx vitest run` (231 passed across 12 test files); post-change `npm run build` passed; post-change `npx vitest run --exclude ".claude/worktrees/**"` (110 passed, 19 test files); post-change `npx playwright test tests/e2e/` (50 passed, 6 skipped — same as baseline)
+  Any unresolved issues: `inferGoalsFromBehavior()` is not yet wired into nightly-ops (needs explicit call, designed for Sunday/weekly cadence); production verification of goal-gap analysis quality requires signal backlog to clear first; full local `npx playwright test` still has pre-existing auth-state failures outside this patch scope
+
 - 2026-03-24 — Generator rewritten to behavioral-analyst mode
   MODE: AUDIT
   Commit hash(es): `09d06ae`
