@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Signal backfill throttle, extraction spend cap, blog launch, and Google scope diagnostics
+  MODE: AUDIT
+  Commit hash(es): `e804e58`
+  Files changed: `app/api/cron/nightly-ops/route.ts`, `app/api/cron/nightly-ops/__tests__/route.test.ts`, `lib/utils/api-tracker.ts`, `lib/utils/__tests__/api-tracker.test.ts`, `lib/signals/signal-processor.ts`, `lib/sync/google-sync.ts`, `lib/sync/__tests__/google-sync.test.ts`, `lib/blog.ts`, `app/(marketing)/blog/page.tsx`, `app/(marketing)/blog/[slug]/page.tsx`, `content/blog/ai-email-assistant.md`, `content/blog/ai-task-prioritization.md`, `content/blog/ai-assistant-busy-professionals.md`, `content/blog/reduce-email-overwhelm.md`, `content/blog/best-ai-tools-solopreneurs-2026.md`, `tests/e2e/public-routes.spec.ts`, `package.json`, `package-lock.json`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: baseline `GIT_EDITOR=true git pull --rebase origin main`; baseline `git log --oneline -10`; focused baseline `vitest` for nightly-ops/api-tracker/google-sync before edits; post-change `npx vitest run app/api/cron/nightly-ops/__tests__/route.test.ts lib/utils/__tests__/api-tracker.test.ts lib/sync/__tests__/google-sync.test.ts lib/signals/__tests__/signal-processor.test.ts`; `npm run build`; full local `npx playwright test` with the new `/blog` coverage passing while the pre-existing production-smoke/local-auth failures remained; explicit grep checks for signal throttle constants, `EXTRACTION_DAILY_CAP`, and Google missing-scope logs; local `http://localhost:3000/blog` and `http://localhost:3000/blog/ai-email-assistant` both returned HTTP 200
+  Any unresolved issues: full local `npx playwright test` still fails outside this patch scope because `tests/production/smoke.spec.ts` expects authenticated production storage state against `http://localhost:3000`; logged in `FOLDERA_MASTER_AUDIT.md`
+
 - 2026-03-24 — Manual run-brief now sends immediately for the signed-in user
   MODE: AUDIT
   Commit hash(es): `2576c1a`
