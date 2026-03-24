@@ -16,6 +16,10 @@ interface SaveUserTokenParams {
   scopes?: string;
 }
 
+function hasTestTokenPrefix(value: string): boolean {
+  return value.startsWith('test_');
+}
+
 /**
  * Save or update a user's OAuth token in user_tokens.
  */
@@ -24,6 +28,11 @@ export async function saveUserToken(
   provider: 'google' | 'microsoft',
   params: SaveUserTokenParams,
 ): Promise<void> {
+  if (hasTestTokenPrefix(params.refresh_token) || hasTestTokenPrefix(params.access_token)) {
+    console.warn(`[user-tokens] rejected test token write for ${provider} user ${userId}`);
+    throw new Error('Refusing to persist test token value');
+  }
+
   const supabase = createServerClient();
   const now = new Date().toISOString();
 

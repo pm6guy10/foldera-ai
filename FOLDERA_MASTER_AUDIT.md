@@ -2,6 +2,9 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-24 — Live `tkg_signals_source_check` migration could not be applied from this workspace
+  The execute path is confirmed: `executeAction()` writes `source: 'user_feedback'` into `tkg_signals`, and the new migration restores that exact value in `tkg_signals_source_check`. The token defense also landed: `saveUserToken()` now rejects any `test_`-prefixed access or refresh token before a DB write. Verification passed for the new unit test, `npm run build`, `npm run test:prod`, and `git grep -n "test_" -- lib/auth/user-tokens.ts`. The unresolved blocker is live DB access: `npx supabase migration list` prompted for the linked project Postgres password, so the migration could not be applied or verified with `SELECT pg_get_constraintdef(...)` from this machine.
+
 - 2026-03-24 — Full local Playwright suite still fails outside the cost-control patch scope
   Post-change `npx playwright test` completed with `73 passed, 7 skipped, 10 failed`. The failures were in pre-existing local-auth/prod-smoke expectations (`tests/production/smoke.spec.ts` redirect/session assertions hitting `http://localhost:3000`) plus one `tests/audit/clickflow.spec.ts` timeout on `/`. This cost-optimization task did not touch auth, routing, or the audit harness. The required post-change gates that did pass were `npm run build`, `npm run test:prod`, focused `vitest`, and the requested model/spend greps.
 
