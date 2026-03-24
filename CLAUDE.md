@@ -221,6 +221,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
   What was verified: `npm run build`; `npx playwright test tests/e2e/` (27 passed); baseline `npm run test:prod` reproduced the 2 stale failures; updated `npm run test:prod` passed (18 passed)
   Any unresolved issues: none
 
+- 2026-03-23 — Added a read-only stress-test route for the directive pipeline
+  MODE: AUDIT
+  Commit hash(es): `9b3e719`
+  Files changed: `app/api/dev/stress-test/route.ts`, `lib/signals/signal-processor.ts`, `lib/briefing/generator.ts`, `lib/briefing/researcher.ts`, `lib/briefing/scorer.ts`, `lib/utils/api-tracker.ts`, `CLAUDE.md`
+  What was verified: `npm run build`; local dev call to `POST /api/dev/stress-test` with a signed generic session cookie and `{"rounds":3}` returned valid JSON in the requested shape; `tkg_actions` count for user `44444444-4444-4444-8444-444444444444` stayed at `0` before and after the call; `npx playwright test tests/e2e/` (44 passed, 7 skipped)
+  Any unresolved issues: none
+
 - 2026-03-23 — JWT onboarding claim for middleware auth routing
   MODE: AUDIT
   Commit hash(es): `67d0d23`
