@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 23, 2026 (late session audit) by Codex
+Last Updated: March 23, 2026 (auth gate + redirect cleanup audit) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -41,7 +41,7 @@ Everything here must be PROVEN before any user sees the product.
 |---|---|---|---|
 | Test user gets own directive | PROVEN | Action rows for user 22222222 (multiple runs). Latest: `fb02af62` do_nothing on 2026-03-22 | — |
 | Test user gets email | NOT PROVEN | `no_verified_email` — test user has fake email `gate2-test@foldera.ai` | Need real OAuth signup with deliverable address |
-| Stranger onboarding flow (code paths) | VERIFIED | Code audit: empty goals→graceful, empty signals→null/wait_rationale, 90d first-sync, no hardcoded user IDs, trial banner only for past_due | — |
+| Stranger onboarding flow (code paths) | VERIFIED | Code audit: empty goals→graceful, empty signals→null/wait_rationale, 90d first-sync, no hardcoded user IDs, trial banner only for past_due. March 23 follow-up: middleware now routes authenticated `/login` and `/start` to `/dashboard` or `/onboard` via `/api/onboard/check`; dashboard/onboard pages no longer do client-side auth redirects. Local `npm run build` + `npx playwright test tests/e2e/` passed. | — |
 | Stranger onboarding flow (live) | NOT TESTED | Requires real OAuth sign-up with a real email address. Cannot be automated without browser. | Manual test needed |
 
 **NEXT MOVE:** Brandon or a real test user signs up via /start → Google OAuth → connects email → waits for next nightly-ops cron → verifies email arrives.
@@ -139,9 +139,9 @@ Only start after Phase 2 deployed.
 |---|---|
 | Stranger signup to first email | CODE VERIFIED | Code paths verified: CTA→/start, OAuth (Google+Microsoft), redirect→/dashboard, 90d first-sync, empty state handling. Live test requires real signup. |
 | Under 2 minutes, no instructions | CODE VERIFIED | /start page: OAuth buttons + copy "Your first read arrives tomorrow at 7am". No manual steps between OAuth consent and dashboard. |
-| Connect email, see "first brief tomorrow" | CODE VERIFIED | /start copy at line 23: "Your first read arrives tomorrow at 7am". Auto-sync triggers after OAuth connect. |
-| Session persists across tab close/reopen | FIXED | March 23: removed `prompt:'consent'` from Google OAuth (forced re-consent on every visit). Added middleware auth guard for /dashboard/* (edge redirect to /login if no session cookie). Changed NextAuth signIn page from /start to /login. Deploy needed to verify live. |
-| Middleware auth guard for /dashboard | BUILT | middleware.ts checks for NextAuth session cookie on /dashboard/* routes. Redirects to /login with callbackUrl preserving original URL. |
+| Connect email, see "first brief tomorrow" | CODE VERIFIED | /start copy at line 23: "Your first read arrives tomorrow at 7am". Auto-sync triggers after OAuth connect. March 23 follow-up: settings now re-fetches `/api/integrations/status` after connect-return sync and disconnect success so provider state updates without a full reload. |
+| Session persists across tab close/reopen | FIXED | March 23: removed `prompt:'consent'` from Google OAuth (forced re-consent on every visit). Added middleware auth guard for /dashboard/* (edge redirect to /login if no session cookie). Changed NextAuth signIn page from /start to /login. March 23 follow-up: middleware now handles authenticated `/login` and `/start` routing based on onboarding status, and `/dashboard` + `/onboard` no longer rely on client-side auth redirects. Local `npm run build` + `npx playwright test tests/e2e/` passed. Deploy needed to verify live. |
+| Middleware auth guard for /dashboard | CODE VERIFIED | `middleware.ts` checks for a NextAuth token on `/dashboard/*` and `/onboard`, redirects unauthenticated users to `/login`, and routes authenticated `/login` + `/start` requests to `/dashboard` or `/onboard` using `/api/onboard/check`. Local `npm run build` + `npx playwright test tests/e2e/public-routes.spec.ts` passed. |
 | Pricing copy consistent | PROVEN | $29/month confirmed in all source files. No $19 references found in codebase (March 23 full sweep). |
 | Onboarding goal_category DB constraint | FIXED | March 23: 'work'→'other', 'personal'→'health', 'learning'→'other' to match tkg_goals CHECK constraint. |
 | User-facing copy polish | FIXED | March 23: "Next sync at 7am" → "Your next read arrives at 7am Pacific". Skip button now shows "Foldera learns from this" in email + dashboard. Settings SourceLine shows "awaiting sync" when provider connected but 0 signals. |

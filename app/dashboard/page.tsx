@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Settings } from 'lucide-react';
@@ -24,24 +23,14 @@ type ArtifactWithDraftedEmail = {
 type ActionWithDomain = ConvictionAction & { domain?: string };
 
 export default function DashboardPage() {
-  const { status } = useSession();
   const router = useRouter();
   const [action, setAction] = useState<ActionWithDomain | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      // Preserve deep-link params through login so email approve/skip links work
-      const search = typeof window !== 'undefined' ? window.location.search : '';
-      router.push(`/login?callbackUrl=${encodeURIComponent(`/dashboard${search}`)}`);
-    }
-  }, [status, router]);
-
   // Handle email deep-link params (approve/skip from morning email)
   useEffect(() => {
-    if (status !== 'authenticated') return;
     const params = new URLSearchParams(window.location.search);
     const deepAction = params.get('action');
     const id = params.get('id');
@@ -76,7 +65,7 @@ export default function DashboardPage() {
           // the dashboard so the user sees the current state, not a permanent error
         });
     }
-  }, [status]);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -107,8 +96,8 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
-    if (status === 'authenticated') load();
-  }, [status, load]);
+    load();
+  }, [load]);
 
   const handleApprove = async () => {
     if (!action) return;

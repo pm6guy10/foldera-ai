@@ -10,8 +10,16 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
+import { config as loadEnv } from 'dotenv';
+import { encode } from 'next-auth/jwt';
+
+loadEnv({ path: '.env.local' });
 
 const MOCK_USER_ID = 'test-user-00000000-0000-0000-0000-000000000001';
+const SESSION_COOKIE_NAMES = [
+  'next-auth.session-token',
+  '__Secure-next-auth.session-token',
+];
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -68,8 +76,30 @@ function json(data: unknown) {
   return JSON.stringify(data);
 }
 
+async function seedAuthenticatedSession(page: Page) {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error('NEXTAUTH_SECRET is required for authenticated route tests.');
+  }
+
+  const sessionToken = await encode({
+    secret,
+    token: {
+      sub: MOCK_USER_ID,
+      userId: MOCK_USER_ID,
+      email: SESSION_RESPONSE.user.email,
+      name: SESSION_RESPONSE.user.name,
+    },
+  });
+
+  await page.context().setExtraHTTPHeaders({
+    cookie: SESSION_COOKIE_NAMES.map((name) => `${name}=${sessionToken}`).join('; '),
+  });
+}
+
 /** Set up all mocks for an authenticated dashboard with a directive. */
 async function setupDashboardMocks(page: Page) {
+  await seedAuthenticatedSession(page);
   // NextAuth session + CSRF
   await page.route('**/api/auth/session', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: json(SESSION_RESPONSE) }),
@@ -84,6 +114,9 @@ async function setupDashboardMocks(page: Page) {
   await page.route('**/api/subscription/status', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: json({ plan: 'pro', status: 'active' }) }),
   );
+  await page.route('**/api/onboard/check', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: json({ hasOnboarded: true }) }),
+  );
   await page.route('**/api/conviction/latest', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: json(DIRECTIVE_RESPONSE) }),
   );
@@ -94,6 +127,7 @@ async function setupDashboardMocks(page: Page) {
 
 /** Set up mocks for dashboard with no directive (empty state). */
 async function setupEmptyDashboardMocks(page: Page) {
+  await seedAuthenticatedSession(page);
   await page.route('**/api/auth/session', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: json(SESSION_RESPONSE) }),
   );
@@ -103,6 +137,9 @@ async function setupEmptyDashboardMocks(page: Page) {
   await page.route('**/api/subscription/status', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: json({ plan: 'pro', status: 'active' }) }),
   );
+  await page.route('**/api/onboard/check', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: json({ hasOnboarded: true }) }),
+  );
   await page.route('**/api/conviction/latest', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: json({}) }),
   );
@@ -110,6 +147,7 @@ async function setupEmptyDashboardMocks(page: Page) {
 
 /** Set up mocks for settings page. */
 async function setupSettingsMocks(page: Page) {
+  await seedAuthenticatedSession(page);
   await page.route('**/api/auth/session', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: json(SESSION_RESPONSE) }),
   );
@@ -121,6 +159,9 @@ async function setupSettingsMocks(page: Page) {
   );
   await page.route('**/api/integrations/status', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: json(INTEGRATIONS_RESPONSE) }),
+  );
+  await page.route('**/api/onboard/set-goals', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: json({ buckets: [], freeText: null }) }),
   );
 }
 

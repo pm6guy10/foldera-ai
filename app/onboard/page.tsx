@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -17,7 +16,6 @@ const BUCKETS = [
 ];
 
 function OnboardContent() {
-  const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isEdit = searchParams.get('edit') === 'true';
@@ -27,15 +25,9 @@ function OnboardContent() {
   const [saving, setSaving] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(isEdit);
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login?callbackUrl=/onboard');
-    }
-  }, [status, router]);
-
   // Pre-populate when editing
   useEffect(() => {
-    if (!isEdit || status !== 'authenticated') return;
+    if (!isEdit) return;
     fetch('/api/onboard/set-goals')
       .then((r) => r.json())
       .then((data) => {
@@ -44,7 +36,7 @@ function OnboardContent() {
       })
       .catch(() => {})
       .finally(() => setLoadingExisting(false));
-  }, [isEdit, status]);
+  }, [isEdit]);
 
   const toggle = (label: string) => {
     setSelected((prev) => {
@@ -73,7 +65,7 @@ function OnboardContent() {
     router.push(isEdit ? '/dashboard/settings' : '/dashboard');
   };
 
-  if (status === 'loading' || loadingExisting) {
+  if (loadingExisting) {
     return (
       <main className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="animate-pulse w-8 h-8 rounded-full bg-zinc-800" />

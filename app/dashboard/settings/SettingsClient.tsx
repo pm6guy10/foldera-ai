@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -38,6 +38,17 @@ export default function SettingsClient() {
   const [goalBuckets, setGoalBuckets] = useState<string[]>([]);
   const [goalFreeText, setGoalFreeText] = useState<string | null>(null);
   const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
+
+  const refreshIntegrationsStatus = useCallback(async () => {
+    const response = await fetch('/api/integrations/status');
+    if (!response.ok) {
+      throw new Error('Could not refresh integrations status.');
+    }
+
+    const data = await response.json();
+    setIntegrations(data.integrations || []);
+    setSourceCounts(data.sourceCounts || {});
+  }, []);
 
   useEffect(() => {
     if (status === 'loading') return; // keep loading=true while session resolves
@@ -83,6 +94,7 @@ export default function SettingsClient() {
       .then(async (res) => {
         if (res.ok) {
           const data = await res.json().catch(() => ({}));
+          await refreshIntegrationsStatus().catch(() => {});
           const count = data.total ?? 0;
           setSyncStatus(`Synced ${count} signal${count !== 1 ? 's' : ''} from ${provider === 'google' ? 'Google' : 'Microsoft'}.`);
         } else {
@@ -96,7 +108,7 @@ export default function SettingsClient() {
         // Clear status after 6 seconds
         setTimeout(() => setSyncStatus(null), 6000);
       });
-  }, [status]);
+  }, [status, refreshIntegrationsStatus]);
 
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
@@ -192,7 +204,12 @@ export default function SettingsClient() {
           </div>
           {google?.is_active ? (
             <button
-              onClick={() => fetch('/api/google/disconnect', { method: 'POST' }).then(() => window.location.reload())}
+              onClick={async () => {
+                const response = await fetch('/api/google/disconnect', { method: 'POST' });
+                if (response.ok) {
+                  await refreshIntegrationsStatus().catch(() => {});
+                }
+              }}
               className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
             >
               Disconnect
@@ -226,7 +243,12 @@ export default function SettingsClient() {
           </div>
           {microsoft?.is_active ? (
             <button
-              onClick={() => fetch('/api/microsoft/disconnect', { method: 'POST' }).then(() => window.location.reload())}
+              onClick={async () => {
+                const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
+                if (response.ok) {
+                  await refreshIntegrationsStatus().catch(() => {});
+                }
+              }}
               className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
             >
               Disconnect

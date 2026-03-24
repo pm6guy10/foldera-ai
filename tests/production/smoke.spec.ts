@@ -109,12 +109,12 @@ test.describe('Public: Landing page', () => {
     await expect(page).toHaveTitle(/Foldera/i);
   });
 
-  test('pricing says "Free forever"', async ({ page }) => {
+  test('pricing CTA says "Start 14-day free trial"', async ({ page }) => {
     await page.goto('/');
     // Scroll to bottom where pricing section lives
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.waitForTimeout(500);
-    const hasCorrectCopy = await page.getByText(/free forever/i).first().isVisible().catch(() => false);
+    const hasCorrectCopy = await page.getByText(/start 14-day free trial/i).first().isVisible().catch(() => false);
     expect(hasCorrectCopy).toBe(true);
   });
 

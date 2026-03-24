@@ -1,5 +1,5 @@
 # AUTOMATION BACKLOG
-**Updated:** 2026-03-23 (late session — scorer floor + context enrichment)
+**Updated:** 2026-03-23 (auth gate + Playwright cleanup)
 
 ---
 
@@ -16,7 +16,6 @@
 | AB15 | 26 self-referential commitments active (Foldera deployment/infra). Vercel notification emails ingested as signals, extracted as commitments. | DONE | AUTO_FIXABLE | WARN_SELF_REFERENTIAL_LEAK | `tkg_commitments`, `lib/extraction/conversation-extractor.ts` | March 23 fix: (1) Suppressed all 26 Foldera commitments via SQL. (2) Exported `isNonCommitment` from signal-processor.ts. (3) Added filter to conversation-extractor.ts before commitment insert. (4) Added self-referential exclusion to extraction prompt. | yes | Fixed. | — |
 | AB17 | Commitment count 845 unsuppressed — 5.6x the 150 ceiling. Self-heal code correct but hadn't run (orchestrator called individual endpoints, not full nightly-ops). | DONE | AUTO_FIXABLE | WARN_COMMITMENT_CEILING_BREACH | `tkg_commitments` | March 23 fix: Enforced ceiling via SQL — suppressed 695 oldest commitments, 150 remaining. Self-heal code in self-heal.ts is correctly wired (defense2CommitmentCeiling). Will auto-enforce at next nightly-ops cron (11:00 UTC). | yes | Fixed via SQL + verified code path. | — |
 | AB18 | 358 unprocessed signals remaining after budget exhaustion. Signal backlog growing faster than processing budget allows. | NEW | MANUAL_REVIEW | WARN_SIGNAL_BACKLOG_GROWTH | `app/api/cron/nightly-ops/route.ts` | March 23 nightly: 873 unprocessed at start. 500 processed in 10 orchestrator batches + 15 in daily-brief. 358 remaining. Each sync adds ~673 signals. Processing budget (10x50 in orchestrator + daily-brief budget) cannot keep up. | no | Budget increase is a product/cost decision (more Claude API calls). | Consider increasing maxSignals per batch or number of batches in nightly-ops. |
-| AB19 | Playwright verification suite still has unrelated pricing CTA and production auth/session failures. | OPEN (NEEDS_REVIEW) | MANUAL_REVIEW | WARN_QA_SUITE_FAILING | `tests/e2e/public-routes.spec.ts`, `tests/production/smoke.spec.ts` | March 23 late session: `npx playwright test` failed 8 tests. Failures were on pricing CTA visibility and production authenticated-session/API expectations (`/api/auth/session`, `/api/conviction/latest`, `/api/integrations/status`, settings/provider-card checks), none in the scorer/context-builder files touched here. | no | Verification issue exists outside this task's code path and the repo's requested `FOLDERA_MASTER_AUDIT.md` file does not exist. | Triage the failing frontend/prod auth tests before treating Playwright as green again. |
 
 ---
 
@@ -33,5 +32,6 @@
 | AB12 | `foldera_primary_conflict` false positive. | DONE | Fixed in `a094130`. Negative lookahead. |
 | AB14 | Homework directive artifacts. | DONE | Fixed in `8b2e92d`. BAD DIRECTIVE rules expanded. |
 | AB16 | All real goals have `current_priority=false`. | CLOSED (INVALID) | `current_priority` column only affects suppression goal query (priority < 3). Scorer and generator queries use `.gte('priority', 3)` without filtering on `current_priority`. Fixed anyway via SQL update on March 23. |
+| AB19 | Playwright verification suite still has unrelated pricing CTA and production auth/session failures. | DONE | March 23 auth-gate session: updated `tests/e2e/authenticated-routes.spec.ts` to seed a real NextAuth JWT for middleware-driven auth checks, tightened the pricing CTA assertion in `tests/e2e/public-routes.spec.ts`, and updated `tests/production/smoke.spec.ts` to match the live landing-page CTA copy. Verified with `npx playwright test tests/e2e/` (27 passed) and `npm run test:prod` (18 passed). |
 
 ---
