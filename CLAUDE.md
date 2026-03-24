@@ -192,6 +192,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-23 — Dashboard no longer client-redirects to onboard after middleware auth and route loop coverage added
+  MODE: AUDIT
+  Commit hash(es): `7b0b170`
+  Files changed: `app/dashboard/page.tsx`, `tests/e2e/flow-routes.spec.ts`
+  What was verified: baseline `npx playwright test tests/e2e/` (27 passed); `npx playwright test tests/e2e/flow-routes.spec.ts` (2 passed); `npm run build`; `npx playwright test tests/e2e/` (29 passed); `npm run test:prod` (18 passed)
+  Any unresolved issues: none
+
 - 2026-03-23 — Production smoke redirects for authenticated /login and /start
   MODE: OPS
   Commit hash(es): `7e15efa`
