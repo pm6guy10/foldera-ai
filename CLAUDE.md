@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Permanent cost controls for extraction, research gating, goal refresh, try-analyze, and spend cap
+  MODE: AUDIT
+  Commit hash(es): `7258b73`
+  Files changed: `lib/extraction/conversation-extractor.ts`, `lib/briefing/generator.ts`, `lib/cron/goal-refresh.ts`, `app/api/try/analyze/route.ts`, `lib/utils/api-tracker.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/utils/__tests__/api-tracker.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: baseline `git pull --rebase origin main`; baseline `git log --oneline -10`; baseline `npm run test:prod` (18 passed); focused `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/utils/__tests__/api-tracker.test.ts` (5 passed); post-change `npm run build`; post-change `npm run test:prod` (18 passed); post-change `git grep -n "claude-sonnet" -- app lib tests` showed only `lib/briefing/generator.ts` and `lib/briefing/researcher.ts`; post-change `git grep -n "DAILY_SPEND_CAP" -- lib` showed `0.25`; post-change full `npx playwright test` completed with pre-existing mixed-suite failures logged in `FOLDERA_MASTER_AUDIT.md`
+  Any unresolved issues: full local `npx playwright test` still fails in pre-existing `tests/production/smoke.spec.ts` local-auth expectations plus one `tests/audit/clickflow.spec.ts` timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
+
 - 2026-03-24 — Generator fallback now preserves generation-stage failures and api_usage writes endpoint
   MODE: AUDIT
   Commit hash(es): `e60752f`
