@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Signal freshness repair for existing entities and Yadira alias backfill
+  MODE: AUDIT
+  Commit hash(es): `7532485`
+  Files changed: `lib/signals/signal-processor.ts`, `lib/signals/__tests__/signal-processor.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: baseline `git pull --rebase origin main`; baseline `git log --oneline -10`; focused regression baseline `npx vitest run lib/signals/__tests__/signal-processor.test.ts` failed before the patch (2 failed) and passed after the patch (3 passed); `npm run build`; full local `npx playwright test` reproduced the pre-existing mixed-suite failures (`73 passed, 7 skipped, 10 failed`); live owner query `SELECT name, last_interaction FROM tkg_entities WHERE user_id = 'e40b7cd8-4925-42f7-bc99-5022969f1d22' AND name ILIKE '%clapper%'` now returns both Yadira rows at `2026-03-23T09:18:07.943+00:00`; live `scoreOpenLoops()` no longer surfaces a Yadira relationship candidate; local `generateDirective()` for owner now returns a low-urgency `do_nothing` result instead of selecting Yadira
+  Any unresolved issues: full local `npx playwright test` still fails outside this patch scope because `tests/production/smoke.spec.ts` expects valid authenticated local auth state and `tests/audit/clickflow.spec.ts` still times out on `/`; logged in `FOLDERA_MASTER_AUDIT.md`
+
 - 2026-03-24 — Generator JSON extraction hardening and production receipt verification
   MODE: AUDIT
   Commit hash(es): `f56f7d2`, `9de6a0f`
