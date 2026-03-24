@@ -126,10 +126,12 @@ test.describe('Public: Landing page', () => {
 });
 
 test.describe('Public: Login page', () => {
-  test('renders sign-in buttons', async ({ page }) => {
+  test('redirects authenticated users to dashboard or onboard', async ({ page }) => {
     const response = await page.goto('/login');
-    expect(response?.status()).toBe(200);
-    await expect(page.getByText(/sign in/i).first()).toBeVisible();
+    const redirectResponse = await response?.request().redirectedFrom()?.response();
+    expect(redirectResponse?.status()).toBeGreaterThanOrEqual(302);
+    expect(redirectResponse?.status()).toBeLessThanOrEqual(307);
+    expect(page.url()).toMatch(/\/(dashboard|onboard)(\?|$)/);
   });
 
   test('shows error param if present', async ({ page }) => {
@@ -144,10 +146,12 @@ test.describe('Public: Login page', () => {
 });
 
 test.describe('Public: Start page', () => {
-  test('renders OAuth buttons', async ({ page }) => {
-    await page.goto('/start');
-    await expect(page.getByRole('button', { name: /google/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /microsoft/i })).toBeVisible();
+  test('redirects authenticated users to dashboard or onboard', async ({ page }) => {
+    const response = await page.goto('/start');
+    const redirectResponse = await response?.request().redirectedFrom()?.response();
+    expect(redirectResponse?.status()).toBeGreaterThanOrEqual(302);
+    expect(redirectResponse?.status()).toBeLessThanOrEqual(307);
+    expect(page.url()).toMatch(/\/(dashboard|onboard)(\?|$)/);
   });
 });
 
