@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 24, 2026 (Microsoft token soft-disconnect + sync skip guard) by Codex
+Last Updated: March 24, 2026 (generation spend-cap headroom + recent-entity suppression) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -133,6 +133,7 @@ Only start after Phase 1 is fully PROVEN.
 | Pipeline receipt test covers extraction -> score -> generate -> send | BUILT | March 24 follow-up: `lib/briefing/__tests__/pipeline-receipt.test.ts` inserts a real encrypted signal via `encrypt()`, runs `processUnextractedSignals()`, verifies `scoreOpenLoops()` returns a winner with score `> 0`, verifies `generateDirective()` yields an executable directive, persists the artifact through `runDailyGenerate({ userIds })`, and confirms `runDailySend({ userIds })` records a non-null mocked Resend ID. |
 | Google granted-scope diagnostics | BUILT | March 24 production hardening sweep: `syncGoogle()` now logs `[google-sync] Granted scopes:` from `user_tokens.scopes` and emits explicit warnings when `calendar.readonly` or `drive.readonly` are missing. |
 | Signal extraction preserves entity freshness on existing matches | BUILT | March 24 signal freshness pass: `lib/signals/signal-processor.ts` now writes `tkg_entities.last_interaction` from `signal.occurred_at` instead of `now`, never moves an entity backward on older signals, and refreshes duplicate same-email aliases together. Focused regression tests cover newer-signal updates, older-signal no-regressions, and duplicate-email alias refresh. Live owner verification: both `Yadira Clapper` rows now show `last_interaction = 2026-03-23T09:18:07.943+00:00`, `scoreOpenLoops()` no longer surfaces a Yadira relationship candidate, and a local `generateDirective()` run now returns a low-urgency `do_nothing` directive instead of selecting Yadira. |
+| Generator suppresses recent contact repeats (7d) before prompt generation | BUILT | March 24 follow-up: `lib/briefing/generator.ts` now extracts entity/contact names from candidate evidence and blocks `send_message` / `schedule` winners when `tkg_actions` already has `approved`, `executed`, or `pending_approval` actions for the same entity within 7 days. Runtime tests cover both action types and non-owner user IDs. |
 | Directive quality: housekeeping eliminated | REGRESSED | March 22 audit: "Schedule a 30-minute block to review Google account security settings" and "check your credit score" directives still generated and emailed. Noise filter catches some but not all housekeeping. Needs filter expansion. |
 
 **Threshold note:** There are two independent scales. The scorer EV (0–5 continuous) ranks candidates. As of March 24, research enrichment is skipped below `2.0` EV as a permanent cost control, but the generator still uses the existing confidence gates unchanged: `DIRECTIVE_CONFIDENCE_THRESHOLD = 45` at generation time and `CONFIDENCE_THRESHOLD = 70` for queue reconciliation. Structured logs now include both `scorer_ev` and `generator_confidence` so debugging is unambiguous.
@@ -144,7 +145,7 @@ Only start after Phase 1 is fully PROVEN.
 | Conversation extraction uses Haiku | BUILT | March 24 cost-control pass: `lib/extraction/conversation-extractor.ts` now uses `claude-haiku-4-5-20251001`. |
 | Goal refresh uses Haiku | BUILT | March 24 cost-control pass: `lib/cron/goal-refresh.ts` now uses `claude-haiku-4-5-20251001`. |
 | Demo analyze route uses Haiku | BUILT | March 24 cost-control pass: `app/api/try/analyze/route.ts` now uses `claude-haiku-4-5-20251001`. |
-| Daily spend cap reduced to $0.25 | BUILT | March 24 cost-control pass: `lib/utils/api-tracker.ts` now enforces `DAILY_SPEND_CAP_USD = 0.25`. |
+| Daily spend cap raised to $1.00 | BUILT | March 24 follow-up: `lib/utils/api-tracker.ts` now enforces `DAILY_SPEND_CAP_USD = 1.00` so manual Generate Now usage does not block the same-day nightly cron run. |
 | Extraction daily cap raised to $2.00 | BUILT | March 24 follow-up: extraction calls (`extraction`, `signal_extraction`) are exempt from the global $0.25 cap and now use `EXTRACTION_DAILY_CAP = 2.00` so backlog backfills are not blocked mid-run. |
 
 **NEXT MOVE:** Self-optimize will dynamically adjust thresholds based on approval rates. Manual option: lower CONFIDENCE_THRESHOLD.

@@ -2,7 +2,7 @@
  * API Usage Tracker
  *
  * Logs every Claude API call to api_usage table.
- * Enforces daily spend cap of $0.25, except extraction traffic which uses
+ * Enforces daily spend cap of $1.00, except extraction traffic which uses
  * its own higher daily cap to allow backlog backfills.
  *
  * Pricing (per 1M tokens, USD):
@@ -14,7 +14,7 @@
 import { createServerClient } from '@/lib/db/client';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
-const DAILY_SPEND_CAP_USD = 0.25;
+const DAILY_SPEND_CAP_USD = 1.00;
 export const EXTRACTION_DAILY_CAP = 2.00;
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const SONNET_MODEL = ['claude', 'sonnet-4-20250514'].join('-');

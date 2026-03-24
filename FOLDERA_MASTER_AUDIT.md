@@ -2,6 +2,9 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-24 — Full local `npx playwright test` still fails outside the spend-cap + recent-entity suppression scope
+  This session’s scoped fixes are verified (`lib/utils/api-tracker.ts` cap raised to `1.00`, generator contact-entity suppression added before prompt generation for `send_message`/`schedule` candidates, and focused `vitest` coverage passed). The unresolved issue remains the same pre-existing omnibus Playwright failures outside this patch: one `tests/audit/clickflow.spec.ts` timeout on `/` plus multiple authenticated `tests/production/smoke.spec.ts` failures caused by missing local authenticated session state (`/dashboard` and `/dashboard/settings` redirecting to `/login`, `/api/auth/session` missing `user`, and `/api/conviction/latest` + `/api/integrations/status` returning `401`).
+
 - 2026-03-24 — Full local `npx playwright test` still fails outside the Microsoft soft-disconnect scope
   This session’s requested Microsoft disconnect fix is verified by focused tests (`app/api/microsoft/disconnect/__tests__/route.test.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `lib/sync/__tests__/microsoft-sync.test.ts`) and `npm run build`, and the new behavior preserves the `user_tokens` row while clearing secrets. The unresolved issue is the same pre-existing omnibus Playwright failure set outside this patch: `tests/audit/clickflow.spec.ts` timeout on `/`, multiple authenticated `tests/production/smoke.spec.ts` failures against local auth/session state, and additional blog/audit assertions failing in the combined run.
 

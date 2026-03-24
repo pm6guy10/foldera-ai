@@ -55,13 +55,13 @@ describe('trackApiCall', () => {
     expect(insertSpy.mock.calls[0][0]).not.toHaveProperty('call_type');
   });
 
-  it('reports the reduced permanent daily spend cap in the summary', async () => {
+  it('reports the permanent daily spend cap in the summary', async () => {
     insertSpy.mockReset();
 
     const { getSpendSummary } = await import('../api-tracker');
     const summary = await getSpendSummary('user-1');
 
-    expect(summary.dailyCapUSD).toBe(0.25);
+    expect(summary.dailyCapUSD).toBe(1.0);
     expect(summary.extractionDailyCapUSD).toBe(2);
     expect(summary.capPct).toBe(0);
   });

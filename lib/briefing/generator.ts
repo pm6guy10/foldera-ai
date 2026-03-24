@@ -231,6 +231,14 @@ interface RecentSkippedActionRow extends RecentActionRow {
   skip_reason: string | null;
 }
 
+interface RecentEntityActionRow {
+  id: string;
+  directive_text: string | null;
+  execution_result: unknown;
+  generated_at: string;
+  status: string | null;
+}
+
 interface SignalSnippet {
   source: string;
   date: string;
@@ -649,6 +657,134 @@ function similarityScore(a: string, b: string): number {
   }
   const union = new Set([...tokensA, ...tokensB]).size;
   return union > 0 ? intersection / union : 0;
+}
+
+const CONTACT_ACTION_TYPES = new Set<ActionType>(['send_message', 'schedule']);
+const ENTITY_NAME_STOPWORDS = new Set([
+  'follow', 'with', 'send', 'email', 'message', 'draft', 'schedule', 'block',
+  'today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday',
+  'saturday', 'sunday', 'week', 'project', 'deadline', 'before', 'after',
+  'manager', 'hiring',
+]);
+
+function extractEntityPhraseCandidates(text: string): string[] {
+  const matches = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\b/g) ?? [];
+  return matches
+    .map((candidate) => candidate.trim())
+    .filter((candidate) => {
+      const lowered = candidate.toLowerCase();
+      if (lowered.length < 3) return false;
+      if (ENTITY_NAME_STOPWORDS.has(lowered)) return false;
+      return true;
+    });
+}
+
+function extractEntityNamesFromCandidate(
+  winner: ScoredLoop,
+  signalEvidence: SignalSnippet[],
+): string[] {
+  const byKey = new Map<string, string>();
+
+  const addCandidate = (value: string | null | undefined): void => {
+    if (!value) return;
+    const normalized = normalizeText(value);
+    if (!normalized) return;
+    const tokens = normalized.split(' ').filter((token) => token.length >= 3);
+    if (tokens.length === 0) return;
+    if (tokens.every((token) => ENTITY_NAME_STOPWORDS.has(token))) return;
+    if (!byKey.has(normalized)) {
+      byKey.set(normalized, value.trim());
+    }
+  };
+
+  for (const line of (winner.relationshipContext ?? '').split('\n')) {
+    const match = line.match(/^\s*-\s*([^<(]+?)(?:\s*<|\s*\(|$)/);
+    if (match) {
+      addCandidate(match[1]);
+    }
+  }
+
+  const narrative = [winner.title, winner.content, ...winner.relatedSignals].join(' ');
+  for (const phrase of extractEntityPhraseCandidates(narrative)) {
+    addCandidate(phrase);
+  }
+
+  for (const signal of signalEvidence) {
+    if (signal.author) {
+      const author = signal.author.replace(/<[^>]+>/g, '').split('@')[0].trim();
+      addCandidate(author);
+      for (const phrase of extractEntityPhraseCandidates(author)) {
+        addCandidate(phrase);
+      }
+    }
+  }
+
+  return [...byKey.values()].slice(0, 8);
+}
+
+function buildActionSearchText(action: RecentEntityActionRow): string {
+  const serializedExecution = typeof action.execution_result === 'string'
+    ? action.execution_result
+    : JSON.stringify(action.execution_result ?? {});
+  return normalizeText(`${action.directive_text ?? ''} ${serializedExecution}`);
+}
+
+function actionMentionsEntity(action: RecentEntityActionRow, entityName: string): boolean {
+  const actionText = buildActionSearchText(action);
+  if (!actionText) return false;
+
+  const entityTokens = normalizeText(entityName).split(' ').filter((token) => token.length >= 3);
+  if (entityTokens.length === 0) return false;
+  return entityTokens.every((token) => actionText.includes(token));
+}
+
+async function findRecentEntityActionConflict(
+  userId: string,
+  entityNames: string[],
+): Promise<{ matched: false } | { matched: true; entityName: string; actionId: string }> {
+  if (entityNames.length === 0) {
+    return { matched: false };
+  }
+
+  const supabase = createServerClient();
+  const since = new Date(Date.now() - APPROVAL_LOOKBACK_MS).toISOString();
+
+  try {
+    const { data, error } = await supabase
+      .from('tkg_actions')
+      .select('id, directive_text, execution_result, generated_at, status')
+      .eq('user_id', userId)
+      .in('status', ['approved', 'executed', 'pending_approval'])
+      .gte('generated_at', since)
+      .order('generated_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      throw error;
+    }
+
+    const actions = (data ?? []) as RecentEntityActionRow[];
+    for (const entityName of entityNames) {
+      const match = actions.find((action) => actionMentionsEntity(action, entityName));
+      if (match) {
+        return { matched: true, entityName, actionId: match.id };
+      }
+    }
+  } catch (error) {
+    logStructuredEvent({
+      event: 'recent_entity_check_failed',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'recent_entity_check_failed',
+      details: {
+        scope: 'generator',
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
+
+  return { matched: false };
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -1712,6 +1848,42 @@ export async function generateDirective(
       signalEvidence = await fetchWinnerSignalEvidence(userId, hydratedWinner);
     } catch {
       // Non-blocking
+    }
+
+    if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType)) {
+      const candidateEntities = extractEntityNamesFromCandidate(hydratedWinner, signalEvidence);
+      const recentEntityConflict = await findRecentEntityActionConflict(userId, candidateEntities);
+      if (recentEntityConflict.matched) {
+        const suppressionReason = `Suppressed: action for "${recentEntityConflict.entityName}" already exists in the last 7 days.`;
+        const fallbackPayload = buildDeterministicDoNothing(
+          suppressionReason,
+          `Recent action id ${recentEntityConflict.actionId}`,
+        );
+
+        logStructuredEvent({
+          event: 'generation_skipped',
+          level: 'info',
+          userId,
+          artifactType: hydratedWinner.suggestedActionType === 'schedule' ? 'schedule_block' : 'send_message',
+          generationStatus: 'recent_entity_action_suppressed',
+          details: {
+            scope: 'generator',
+            entity_name: recentEntityConflict.entityName,
+            action_id: recentEntityConflict.actionId,
+          },
+        });
+
+        return {
+          directive: fallbackPayload.directive,
+          action_type: 'do_nothing',
+          confidence: 0,
+          reason: suppressionReason,
+          evidence: [],
+          embeddedArtifact: fallbackPayload.artifact,
+          embeddedArtifactType: fallbackPayload.artifact_type,
+          generationLog: buildNoSendGenerationLog(suppressionReason, 'validation', scored.candidateDiscovery),
+        } as ConvictionDirective & { embeddedArtifact?: Record<string, unknown>; embeddedArtifactType?: string };
+      }
     }
 
     // Research phase

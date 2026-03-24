@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Raise generation spend cap + suppress recent contact repeats before prompt generation
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `lib/utils/api-tracker.ts`, `lib/utils/__tests__/api-tracker.test.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: attempted `GIT_EDITOR=true git pull --rebase origin main` (blocked by pre-existing unstaged `supabase/.temp/cli-latest`); `git log --oneline -10`; traced generation path `scoreOpenLoops() -> hydrateWinnerRelationshipContext() -> fetchWinnerSignalEvidence() -> generatePayload()` before edits; focused `npx vitest run lib/utils/__tests__/api-tracker.test.ts lib/briefing/__tests__/generator-runtime.test.ts` passed (9 tests); `npm run build` passed; `npx playwright test` ran and reproduced pre-existing mixed-suite auth/session failures outside patch scope; live query `SELECT estimated_cost FROM api_usage ... LIMIT 5` for owner returned recent rows and `getSpendSummary()` returned `"dailyCapUSD": 1`
+  Any unresolved issues: full local `npx playwright test` still fails outside this scoped patch (`tests/audit/clickflow.spec.ts` timeout on `/`, plus authenticated `tests/production/smoke.spec.ts` failures due missing local authenticated session state and `401` API checks); recorded in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
+
 - 2026-03-24 — Microsoft soft-disconnect token flow (no hard delete) + sync null-token guard
   MODE: AUDIT
   Commit hash(es): pending (will be updated after commit on `main`)

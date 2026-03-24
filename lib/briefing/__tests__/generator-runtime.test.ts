@@ -10,15 +10,22 @@ const mockGetPinnedConstraintPrompt = vi.fn();
 const mockLogStructuredEvent = vi.fn();
 
 const queryResult = { data: [], error: null };
+const tkgActionsResultsQueue: Array<{ data: unknown[]; error: null }> = [];
 
-function makeLimitQuery(result = queryResult) {
+function makeLimitQuery(table: string, result = queryResult) {
   return {
     eq() { return this; },
     neq() { return this; },
     in() { return this; },
     gte() { return this; },
+    not() { return this; },
     order() { return this; },
-    limit() { return Promise.resolve(result); },
+    limit() {
+      if (table === 'tkg_actions' && tkgActionsResultsQueue.length > 0) {
+        return Promise.resolve(tkgActionsResultsQueue.shift());
+      }
+      return Promise.resolve(result);
+    },
   };
 }
 
@@ -42,7 +49,7 @@ vi.mock('@/lib/db/client', () => ({
       if (table === 'tkg_actions' || table === 'tkg_goals') {
         return {
           select() {
-            return makeLimitQuery();
+            return makeLimitQuery(table);
           },
         };
       }
@@ -148,12 +155,17 @@ describe('generateDirective runtime failures', () => {
     mockGetPinnedConstraintPrompt.mockReset();
     mockLogStructuredEvent.mockReset();
     anthropicCreate.mockReset();
+    tkgActionsResultsQueue.length = 0;
 
     mockIsOverDailyLimit.mockResolvedValue(false);
     mockResearchWinner.mockResolvedValue(null);
     mockGetDirectiveConstraintViolations.mockReturnValue([]);
     mockGetPinnedConstraintPrompt.mockReturnValue(null);
   });
+
+  function queueTkgActionsResult(data: unknown[]): void {
+    tkgActionsResultsQueue.push({ data, error: null });
+  }
 
   it('falls back at generation stage when the LLM request throws', async () => {
     mockScoreOpenLoops.mockResolvedValue(buildScorerResult());
@@ -255,5 +267,68 @@ describe('generateDirective runtime failures', () => {
     );
 
     errorSpy.mockRestore();
+  });
+
+  it('suppresses send_message candidates when the same contact was actioned in the last 7 days', async () => {
+    const scored = buildScorerResult();
+    scored.winner.title = 'Email Yadira about the project timeline update';
+    scored.winner.content = 'Yadira asked for a timeline update and still needs the status summary.';
+    scored.winner.relationshipContext = '- Yadira Clapper <yadira@example.com> (Client)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    // loadRecentActionGuardrails() queries
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    // recent entity conflict query
+    queueTkgActionsResult([
+      {
+        id: 'action-yadira-1',
+        directive_text: 'Email Yadira with the project timeline update',
+        execution_result: { artifact: { to: 'yadira@example.com' } },
+        generated_at: new Date().toISOString(),
+        status: 'executed',
+      },
+    ]);
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(directive.action_type).toBe('do_nothing');
+    expect(directive.reason).toContain('already exists in the last 7 days');
+    expect(anthropicCreate).not.toHaveBeenCalled();
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      generationStatus: 'recent_entity_action_suppressed',
+      details: expect.objectContaining({
+        entity_name: expect.stringContaining('Yadira'),
+      }),
+    }));
+  });
+
+  it('suppresses schedule candidates when the same contact was actioned in the last 7 days', async () => {
+    const scored = buildScorerResult();
+    scored.winner.suggestedActionType = 'schedule';
+    scored.winner.title = 'Schedule a focused block with Yadira before Friday';
+    scored.winner.content = 'Yadira has not replied and the Friday deadline is near.';
+    scored.winner.relationshipContext = '- Yadira Clapper <yadira@example.com> (Client)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([
+      {
+        id: 'action-yadira-2',
+        directive_text: 'Scheduled follow-up prep with Yadira',
+        execution_result: { artifact: { title: 'Yadira follow-up block' } },
+        generated_at: new Date().toISOString(),
+        status: 'pending_approval',
+      },
+    ]);
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-2', { dryRun: true });
+
+    expect(directive.action_type).toBe('do_nothing');
+    expect(directive.reason).toContain('already exists in the last 7 days');
+    expect(anthropicCreate).not.toHaveBeenCalled();
   });
 });
