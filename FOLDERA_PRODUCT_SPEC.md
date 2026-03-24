@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 23, 2026 (JWT onboarding claim audit) by Codex
+Last Updated: March 24, 2026 (generator fallback + api_usage verification) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -22,6 +22,10 @@ Everything here must be PROVEN before any user sees the product.
 | Approve/skip buttons in email | FIXED | DB mechanics verified (skip a9d165df, approve 78333ac2). Dashboard had silent error swallowing + auth redirect dropped params. Fixed in this session. | Deploy needed to verify live |
 
 **NEXT MOVE:** Delivery proven. Quality is the blocker. Fix AB16 (goal current_priority flags) to give generator real identity context. Then approve one good directive to seed the behavioral rate.
+
+March 24 production hotfix evidence:
+- `tkg_actions.id = 504c171f-50dc-473f-afdc-cdfc53f15894` from a live `POST https://www.foldera.ai/api/cron/nightly-ops` run now preserves `execution_result.generation_log.stage = "generation"` and the real Anthropic billing error in `generation_log.reason` instead of collapsing to `stage = "system"`.
+- `api_usage` helper/schema alignment verified live with rows `be76ef5c-40af-4543-9cb3-37db0cf27d16` and `80aaeaaa-c6bb-4458-bf9e-78fe72d5fdd6`, both written with the `endpoint` column on March 24.
 
 ### 1.2 Self-Healing (immune system)
 

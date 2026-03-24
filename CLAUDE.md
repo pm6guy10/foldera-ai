@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Generator fallback now preserves generation-stage failures and api_usage writes endpoint
+  MODE: AUDIT
+  Commit hash(es): `e60752f`
+  Files changed: `lib/briefing/generator.ts`, `lib/utils/api-tracker.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/utils/__tests__/api-tracker.test.ts`, `supabase/migrations/20260324000001_api_usage_endpoint.sql`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: baseline `npm run test:prod` (18 passed); baseline `npx playwright test` reproduced existing failures; targeted `vitest` for generator/api-tracker regressions failed before the patch and passed after it; `npm run build`; post-change `npx playwright test` still reproduced the same pre-existing failures outside the repo push gate; repo push hook `npx playwright test tests/e2e/ tests/e2e/backend-safety-gates.spec.ts tests/e2e/safety-gates.spec.ts tests/e2e/flow-routes.spec.ts` passed (44 passed, 7 skipped); post-deploy `npm run test:prod` passed (18 passed); live `POST https://www.foldera.ai/api/cron/nightly-ops` created action `504c171f-50dc-473f-afdc-cdfc53f15894` with `generation_log.stage = "generation"`; live `api_usage` writes verified via rows `be76ef5c-40af-4543-9cb3-37db0cf27d16` and `80aaeaaa-c6bb-4458-bf9e-78fe72d5fdd6`.
+  Any unresolved issues: Anthropic credits are exhausted in production, so cron-driven `api_usage` rows are still blocked until billing is restored; full local `npx playwright test` still has the pre-existing mixed-suite failures logged in `FOLDERA_MASTER_AUDIT.md`.
+
 - 2026-03-23 — Added backend E2E safety gates for cron auth reachability, auth/session agreement, sync error handling, invalid input, and webhook preconditions
   MODE: AUDIT
   Commit hash(es): `2781a23`
