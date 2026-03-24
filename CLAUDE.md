@@ -192,6 +192,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-23 — Added backend E2E safety gates for cron auth reachability, auth/session agreement, sync error handling, invalid input, and webhook preconditions
+  MODE: AUDIT
+  Commit hash(es): `2781a23`
+  Files changed: `tests/e2e/backend-safety-gates.spec.ts`
+  What was verified: baseline `npm run test:prod` (18 passed); `npx playwright test tests/e2e/backend-safety-gates.spec.ts` (9 passed, 7 skipped for unmet env/runtime preconditions); `npm run build`; `npx playwright test tests/e2e/` (44 passed, 7 skipped); `npm run test:prod` (18 passed)
+  Any unresolved issues: none
+
 - 2026-03-23 — Added E2E safety-gate coverage for redirect stability, API user context, pricing, overflow, and connector decrypt canary
   MODE: AUDIT
   Commit hash(es): `79f9de7`
