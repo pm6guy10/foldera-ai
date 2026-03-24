@@ -54,7 +54,7 @@ function CheckoutButton() {
           <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
         ) : (
           <>
-            {status === 'authenticated' ? 'Continue to checkout' : 'Start 14-day free trial'}
+            {status === 'authenticated' ? 'Continue to checkout' : 'Get started free'}
             <ArrowRight className="w-4 h-4" />
           </>
         )}

@@ -23,6 +23,7 @@ type ActionWithDomain = ConvictionAction & { domain?: string };
 
 export default function DashboardPage() {
   const [action, setAction] = useState<ActionWithDomain | null>(null);
+  const [accountCreatedAt, setAccountCreatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
@@ -70,8 +71,10 @@ export default function DashboardPage() {
     try {
       const res = await fetch('/api/conviction/latest');
       const data = await res.json().catch(() => ({}));
+      setAccountCreatedAt(typeof data?.account_created_at === 'string' ? data.account_created_at : null);
       setAction(data?.id ? data : null);
     } catch {
+      setAccountCreatedAt(null);
       setAction(null);
     } finally {
       setLoading(false);
@@ -121,6 +124,9 @@ export default function DashboardPage() {
   const isDecision = artifact?.type === 'decision_frame';
   const isWait = artifact?.type === 'wait_rationale';
   const recipient = artifact?.to || artifact?.recipient || '';
+  const isNewAccount =
+    accountCreatedAt !== null &&
+    Date.now() - new Date(accountCreatedAt).getTime() < 24 * 60 * 60 * 1000;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -160,8 +166,17 @@ export default function DashboardPage() {
           </div>
         ) : !action ? (
           <div className="mt-20 text-center">
-            <p className="text-zinc-400">Your first read arrives tomorrow morning.</p>
-            <p className="text-zinc-600 text-sm mt-2">Foldera is learning your patterns.</p>
+            {isNewAccount ? (
+              <>
+                <p className="text-zinc-400">Your first read arrives tomorrow at 7am Pacific.</p>
+                <p className="text-zinc-600 text-sm mt-2">Foldera is syncing your email and calendar now.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-zinc-400">Your first read arrives tomorrow morning.</p>
+                <p className="text-zinc-600 text-sm mt-2">Foldera is learning your patterns.</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">

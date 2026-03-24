@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 24, 2026 (signal backfill throttle, extraction cap, blog, and Google scope diagnostics) by Codex
+Last Updated: March 24, 2026 (production hardening sweep: cron guards, connector health, credit canary, send_message delivery, onboarding, and Google scope logging) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -37,9 +37,12 @@ March 24 production hotfix evidence:
 | Signal backlog drain + dead_key | BUILT | self-heal.ts, commit 8b3e0fc | Undecryptable signals clogging queue forever |
 | Nightly backlog auto-throttle | BUILT | March 24 follow-up: `/api/cron/nightly-ops` now counts unprocessed signals before Stage 2 and stays at 50x3 below 100 queued signals, but automatically expands to 100x10 when backlog reaches 100+; structured log `nightly_ops_signal_mode` records the selected mode. |
 | Queue hygiene (24h auto-skip) | BUILT | self-heal.ts, commit 8b3e0fc | Stale approvals blocking fresh generation |
-| Health alert email | BUILT | self-heal.ts, commit 8b3e0fc | Silent failures with no notification |
+| Health alert email | BUILT | March 24 production hardening sweep: `lib/cron/connector-health.ts` now checks 7-day signal coverage per connected provider/source (`google_calendar`, `google_drive`, `onedrive`), sends one Resend alert per flagged source, and rate-limits with `user_tokens.last_health_alert_at`. | Silent failures with no notification |
 | Feedback signal source constraint restored | BUILT | March 24 data-fix pass: `tkg_signals_source_check` migration restored `user_feedback`, matching the approve/skip insert path in `executeAction()`. |
 | Test-token persistence guard | BUILT | March 24 data-fix pass: `saveUserToken()` now rejects any access/refresh token starting with `test_` and logs a warning before any DB write. |
+| Cron excludes test user | BUILT | March 24 production hardening sweep: `/api/cron/nightly-ops` now filters `22222222-2222-2222-2222-222222222222` out of Microsoft sync, Google sync, signal processing, and daily brief stages via `TEST_USER_ID`. | Fake directives and wasted LLM calls from non-real accounts |
+| Stale signal reprocessing | BUILT | March 24 production hardening sweep: nightly-ops resets up to 500 `tkg_signals` rows where `processed = true` and `extracted_entities IS NULL` back to `processed = false`, logging the reset count before signal processing. | Signals stuck in a half-processed state forever |
+| Suppressed commitment cleanup | BUILT | March 24 production hardening sweep: nightly-ops now marks `tkg_commitments` with `suppressed_at IS NOT NULL` and `status = 'active'` as `completed` after processing, logging the number updated. | Suppressed commitments continuing to look active |
 
 **NEXT MOVE:** All defenses run for first time at tonight's 4am cron. Check Vercel logs for structured JSON from each defense. Update each to PROVEN with log evidence.
 
@@ -72,12 +75,12 @@ March 24 production hotfix evidence:
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| acceptance-gate.ts script | BUILT | `lib/cron/acceptance-gate.ts`, 7 checks: AUTH, TOKENS, SIGNALS, COMMITMENTS, GENERATION, DELIVERY, SESSION | — |
+| acceptance-gate.ts script | BUILT | `lib/cron/acceptance-gate.ts`, now with 8 checks: AUTH, TOKENS, SIGNALS, COMMITMENTS, GENERATION, DELIVERY, SESSION, API_CREDIT_CANARY. The new canary makes a minimal Anthropic Haiku request and sends a Resend alert if credits appear exhausted. | — |
 | Wired into nightly-ops | BUILT | Stage 6 in `app/api/cron/nightly-ops/route.ts` | First live fire unproven |
 | Alert on failure | BUILT | Sends to b.kapp1010@gmail.com via Resend on any FAIL | — |
 | CLAUDE.md/AGENTS.md updated | DONE | Session log appended | — |
 
-**NEXT MOVE:** Wait for next nightly-ops cron (11:00 UTC). Check Vercel logs for acceptance_gate_result event. If all 7 checks PASS, mark items PROVEN.
+**NEXT MOVE:** Wait for next nightly-ops cron (11:00 UTC). Check Vercel logs for `acceptance_gate_result`. If all 8 checks PASS, mark items PROVEN.
 
 ## PHASE 2: PRODUCT INTELLIGENCE (post-integrity)
 
@@ -125,6 +128,8 @@ Only start after Phase 1 is fully PROVEN.
 | Scorer noise pre-filter (A) | BUILT | NOISE_CANDIDATE_PATTERNS removes housekeeping/tool/notification candidates before scoring loop. Commit `91e3e76` |
 | Generator quality examples (B) | BUILT | Concrete good/bad examples in SYSTEM_PROMPT, schedule_block housekeeping rejection gate. Commit `91e3e76` |
 | Generator JSON extraction + raw-response logging | BUILT | March 24 generator hardening: `generatePayload()` now logs `[generator] Raw LLM response (attempt N):` before parsing, `SYSTEM_PROMPT` now ends with an explicit JSON-only contract, `extractJsonFromResponse()` strips non-`json` fenced code blocks plus preamble text, and `normalizeArtifactType()` now accepts direct `send_message|write_document|schedule_block|wait_rationale|do_nothing` values. Post-deploy owner `POST /api/settings/run-brief` created `tkg_actions.id = 9ec89641-e099-4138-82cb-3b6fe0e83773` with `status = pending_approval`, `action_type = send_message`, `confidence = 78`. |
+| Approved `send_message` executes real email delivery | BUILT | March 24 production hardening sweep: `executeAction()` now extracts `to`/`recipient`, `subject`, and `body` from `execution_result.artifact`, sends the approved message through Resend, persists the returned `resend_id`, and writes `status = failed` instead of `executed` when delivery fails. |
+| Google granted-scope diagnostics | BUILT | March 24 production hardening sweep: `syncGoogle()` now logs `[google-sync] Granted scopes:` from `user_tokens.scopes` and emits explicit warnings when `calendar.readonly` or `drive.readonly` are missing. |
 | Signal extraction preserves entity freshness on existing matches | BUILT | March 24 signal freshness pass: `lib/signals/signal-processor.ts` now writes `tkg_entities.last_interaction` from `signal.occurred_at` instead of `now`, never moves an entity backward on older signals, and refreshes duplicate same-email aliases together. Focused regression tests cover newer-signal updates, older-signal no-regressions, and duplicate-email alias refresh. Live owner verification: both `Yadira Clapper` rows now show `last_interaction = 2026-03-23T09:18:07.943+00:00`, `scoreOpenLoops()` no longer surfaces a Yadira relationship candidate, and a local `generateDirective()` run now returns a low-urgency `do_nothing` directive instead of selecting Yadira. |
 | Directive quality: housekeeping eliminated | REGRESSED | March 22 audit: "Schedule a 30-minute block to review Google account security settings" and "check your credit score" directives still generated and emailed. Noise filter catches some but not all housekeeping. Needs filter expansion. |
 
@@ -158,14 +163,17 @@ Only start after Phase 2 deployed.
 
 | Item | Status |
 |---|---|
-| Stranger signup to first email | CODE VERIFIED | Code paths verified: CTA→/start, OAuth (Google+Microsoft), redirect→/dashboard, 90d first-sync, empty state handling. Live test requires real signup. |
+| Stranger signup to first email | CODE VERIFIED | Code paths verified: CTA→/start, OAuth (Google+Microsoft), redirect→/dashboard, 90d first-sync, new-account empty state handling, and post-goals welcome email if at least one provider is connected. Live test requires real signup. |
 | Under 2 minutes, no instructions | CODE VERIFIED | /start page: OAuth buttons + copy "Your first read arrives tomorrow at 7am". No manual steps between OAuth consent and dashboard. |
 | Connect email, see "first brief tomorrow" | CODE VERIFIED | /start copy at line 23: "Your first read arrives tomorrow at 7am". Auto-sync triggers after OAuth connect. March 23 follow-up: settings now re-fetches `/api/integrations/status` after connect-return sync and disconnect success so provider state updates without a full reload. |
 | Session persists across tab close/reopen | FIXED | March 23: removed `prompt:'consent'` from Google OAuth (forced re-consent on every visit). Added middleware auth guard for /dashboard/* (edge redirect to /login if no session cookie). Changed NextAuth signIn page from /start to /login. March 23 follow-up: middleware now handles authenticated `/login` and `/start` routing from the JWT `hasOnboarded` claim, and `/dashboard` layout remains a pass-through with no duplicate auth gate. Local `npm run build` + `npx playwright test tests/e2e/` passed. Deploy needed to verify live. |
 | Middleware auth guard for /dashboard | CODE VERIFIED | `middleware.ts` checks for a NextAuth token on `/dashboard/*` and `/onboard`, redirects unauthenticated users to `/login`, and routes authenticated `/login` + `/start` requests to `/dashboard` or `/onboard` from the JWT `hasOnboarded` claim populated in `lib/auth/auth-options.ts`. Local `npm run build` + `npx playwright test tests/e2e/` passed. |
-| Pricing copy consistent | PROVEN | $29/month confirmed in all source files. No $19 references found in codebase (March 23 full sweep). |
+| Pricing copy consistent | PROVEN | March 24 production hardening sweep: pricing CTAs now say "Get started free" and no source copy still advertises `$19`. Locked pricing remains free tier with no card and Pro at `$29/mo`. |
 | Onboarding goal_category DB constraint | FIXED | March 23: 'work'→'other', 'personal'→'health', 'learning'→'other' to match tkg_goals CHECK constraint. |
 | User-facing copy polish | FIXED | March 23: "Next sync at 7am" → "Your next read arrives at 7am Pacific". Skip button now shows "Foldera learns from this" in email + dashboard. Settings SourceLine shows "awaiting sync" when provider connected but 0 signals. |
+| Welcome email after onboarding | BUILT | March 24 production hardening sweep: `app/api/onboard/set-goals/route.ts` now sends a one-time Resend welcome email after goals save succeeds and at least one provider is connected, then records `welcome_email_sent` in auth user metadata. |
+| New user dashboard empty state | BUILT | March 24 production hardening sweep: when `/api/conviction/latest` returns no directives and the account is under 24 hours old, `/dashboard` shows "Your first read arrives tomorrow at 7am Pacific. Foldera is syncing your email and calendar now." |
+| OAuth error visible on login | BUILT | March 24 production hardening sweep: `/login` now reads `?error=` and shows a red warning banner above the OAuth buttons with "Sign-in failed. Please try again or use a different account." |
 
 ### 3.2 Landing Page
 

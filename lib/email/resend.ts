@@ -142,6 +142,35 @@ export interface HealthSummary {
   gateStatus: string;
 }
 
+export async function sendResendEmail({
+  to,
+  subject,
+  text,
+  html,
+  from,
+  tags,
+}: {
+  to: string | string[];
+  subject: string;
+  text?: string;
+  html?: string;
+  from?: string;
+  tags?: Array<{ name: string; value: string }>;
+}) {
+  return getResend().emails.send({
+    from: from ?? process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
+    to,
+    subject,
+    ...(text ? { text } : {}),
+    ...(html ? { html } : {}),
+    ...(tags ? { tags } : {}),
+  } as any);
+}
+
+export function renderPlaintextEmailHtml(body: string): string {
+  return `<div style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#18181b;">${escapeHtml(body)}</div>`;
+}
+
 export async function sendDailyDirective({
   to,
   directives,
@@ -193,8 +222,7 @@ export async function sendDailyDirective({
 </body>
 </html>`;
 
-    return getResend().emails.send({
-      from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
+    return sendResendEmail({
       to,
       subject: nothingSubject,
       html,
@@ -251,8 +279,7 @@ export async function sendDailyDirective({
 </body>
 </html>`;
 
-  return getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
+  return sendResendEmail({
     to,
     subject: emailSubject,
     html,

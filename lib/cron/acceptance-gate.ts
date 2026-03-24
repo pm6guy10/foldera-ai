@@ -15,8 +15,9 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import { Resend } from 'resend';
+import Anthropic from '@anthropic-ai/sdk';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { renderPlaintextEmailHtml, sendResendEmail } from '@/lib/email/resend';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,6 +90,55 @@ async function checkTokens(): Promise<CheckResult> {
   }
 
   return { check: 'TOKENS', pass: true, detail: 'No tokens expiring within 6h' };
+}
+
+// ---------------------------------------------------------------------------
+// Check 2b: api_credit_canary — Anthropic request still has spend available
+// ---------------------------------------------------------------------------
+
+async function sendApiCreditAlert(detail: string): Promise<void> {
+  const body = `Anthropic credit canary failed: ${detail}`;
+  await sendResendEmail({
+    from: 'Foldera <brief@foldera.ai>',
+    to: 'b.kapp1010@gmail.com',
+    subject: 'Foldera: API credits may be exhausted',
+    text: body,
+    html: renderPlaintextEmailHtml(body),
+    tags: [{ name: 'email_type', value: 'api_credit_canary_alert' }],
+  });
+}
+
+async function checkApiCreditCanary(): Promise<CheckResult> {
+  try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1,
+      messages: [{ role: 'user', content: '1' }],
+    });
+
+    return { check: 'api_credit_canary', pass: true, detail: 'Minimal Anthropic canary succeeded' };
+  } catch (err: any) {
+    const status = err?.status ?? err?.statusCode ?? null;
+    const detail = typeof err?.message === 'string' ? err.message : 'Unknown Anthropic canary failure';
+
+    if (status === 400 || status === 402) {
+      try {
+        await sendApiCreditAlert(detail);
+      } catch (alertErr: any) {
+        console.error(JSON.stringify({
+          event: 'api_credit_canary_alert_failed',
+          error: alertErr.message,
+        }));
+      }
+    }
+
+    return {
+      check: 'api_credit_canary',
+      pass: false,
+      detail: status ? `Anthropic canary failed (${status}): ${detail}` : detail,
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -262,13 +312,11 @@ async function checkSession(): Promise<CheckResult> {
 
 async function sendAcceptanceAlert(failures: CheckResult[]): Promise<boolean> {
   try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
     const failureSummary = failures
       .map((f) => `<li><strong>${f.check}</strong>: ${f.detail}</li>`)
       .join('\n');
 
-    await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
+    await sendResendEmail({
       to: 'b.kapp1010@gmail.com',
       subject: `Foldera acceptance gate: ${failures.length} check(s) FAILED`,
       html: `<h3>Acceptance Gate Failures — ${new Date().toISOString()}</h3>
@@ -299,6 +347,7 @@ export async function runAcceptanceGate(): Promise<AcceptanceGateResult> {
   const checkFns = [
     checkAuth,
     checkTokens,
+    checkApiCreditCanary,
     checkSignals,
     checkCommitments,
     checkGeneration,

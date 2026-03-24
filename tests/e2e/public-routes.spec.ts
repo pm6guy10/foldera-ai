@@ -135,9 +135,9 @@ test.describe('Pricing page /pricing', () => {
 
   test('CTA button is visible', async ({ page }) => {
     await page.goto('/pricing');
-    const cta = page.getByRole('button', { name: /(start 14-day free trial|continue to checkout)/i });
+    const cta = page.getByRole('button', { name: /(get started free|continue to checkout)/i });
     await expect(cta).toBeVisible();
-    // Button text varies by auth state: "Start 14-day free trial" or "Continue to checkout"
+    // Button text varies by auth state: "Get started free" or "Continue to checkout"
   });
 
   test('loads with price visible — mobile 390px', async ({ page }) => {

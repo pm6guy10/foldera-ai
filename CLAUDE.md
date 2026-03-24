@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Production hardening sweep
+  MODE: AUDIT
+  Commit hash(es): latest `fix: production hardening sweep` commit on `main`
+  Files changed: `app/api/conviction/latest/route.ts`, `app/api/cron/nightly-ops/route.ts`, `app/api/cron/nightly-ops/__tests__/route.test.ts`, `app/api/onboard/set-goals/route.ts`, `app/api/onboard/set-goals/__tests__/route.test.ts`, `app/dashboard/page.tsx`, `app/login/page.tsx`, `app/page.tsx`, `app/pricing/page.tsx`, `lib/briefing/types.ts`, `lib/conviction/execute-action.ts`, `lib/conviction/__tests__/execute-action.test.ts`, `lib/cron/acceptance-gate.ts`, `lib/cron/connector-health.ts`, `lib/cron/__tests__/acceptance-gate.test.ts`, `lib/cron/__tests__/connector-health.test.ts`, `lib/email/resend.ts`, `lib/sync/google-sync.ts`, `lib/sync/__tests__/google-sync.test.ts`, `supabase/migrations/20260325000001_health_alert.sql`, `tests/e2e/public-routes.spec.ts`, `tests/production/smoke.spec.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `FOLDERA_PRODUCT_SPEC.md`, `CLAUDE.md`
+  What was verified: baseline `GIT_EDITOR=true git pull --rebase origin main` was blocked by a pre-existing dirty worktree; baseline `git log --oneline -10`; traced cron/sync/execute/onboarding/dashboard/login data paths before editing; focused `npx vitest run --exclude ".claude/worktrees/**" app/api/cron/nightly-ops/__tests__/route.test.ts lib/conviction/__tests__/execute-action.test.ts lib/sync/__tests__/google-sync.test.ts lib/cron/__tests__/acceptance-gate.test.ts lib/cron/__tests__/connector-health.test.ts app/api/onboard/set-goals/__tests__/route.test.ts` passed (`6 files, 19 tests`); `npm run build` passed; post-change full local `npx playwright test` still reproduced the pre-existing mixed-suite failures while the updated pricing and login-error assertions passed; requested grep checks will be captured in this session before commit.
+  Any unresolved issues: full local `npx playwright test` still fails outside this patch scope because `tests/audit/clickflow.spec.ts` times out on `/` and authenticated `tests/production/smoke.spec.ts` expects valid local auth state against `http://localhost:3000`; the pre-existing dirty worktree also blocked the required pre-push rebase flow.
+
 - 2026-03-24 — Fixed blog markdown rendering and typography on `/blog/[slug]`
   MODE: AUDIT
   Commit hash(es): `27c3f79`

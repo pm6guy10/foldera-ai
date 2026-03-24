@@ -399,17 +399,18 @@ export async function syncGoogle(userId: string): Promise<GoogleSyncResult> {
     .split(/\s+/)
     .map((scope: string) => scope.trim())
     .filter(Boolean);
-  console.log(`[google-sync] Granted scopes for user ${userId}: ${grantedScopes.length > 0 ? grantedScopes.join(', ') : '(none)'}`);
+  const scopes = grantedScopes.length > 0 ? grantedScopes.join(', ') : '(none)';
+  console.log('[google-sync] Granted scopes:', scopes);
 
   const hasCalendarScope = grantedScopes.some((scope) => scope.includes('calendar'));
   const hasDriveScope = grantedScopes.some((scope) => scope.includes('drive'));
 
   if (!hasCalendarScope) {
-    console.warn('[google-sync] Missing scope: calendar');
+    console.warn('[google-sync] Missing scope: calendar.readonly');
   }
 
   if (!hasDriveScope) {
-    console.warn('[google-sync] Missing scope: drive');
+    console.warn('[google-sync] Missing scope: drive.readonly');
   }
 
   const isFirstSync = !token.last_synced_at;

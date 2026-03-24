@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { getAllUsersWithProvider } from '@/lib/auth/user-tokens';
+import { createServerClient } from '@/lib/db/client';
 import {
   countUnprocessedSignals,
   listUsersWithUnprocessedSignals,
@@ -26,10 +27,12 @@ import {
 } from '@/lib/cron/daily-brief';
 import { runSelfHeal } from '@/lib/cron/self-heal';
 import { runAcceptanceGate } from '@/lib/cron/acceptance-gate';
+import { checkConnectorHealth } from '@/lib/cron/connector-health';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min
 
+const TEST_USER_ID = '22222222-2222-2222-2222-222222222222';
 const DEFAULT_SIGNAL_BATCH_SIZE = 50;
 const DEFAULT_MAX_SIGNAL_ROUNDS = 3;
 const BACKFILL_SIGNAL_BATCH_SIZE = 100;
@@ -49,7 +52,7 @@ interface SyncResult {
 }
 
 async function stageSyncMicrosoft(): Promise<SyncResult> {
-  const userIds = await getAllUsersWithProvider('microsoft');
+  const userIds = (await getAllUsersWithProvider('microsoft')).filter((id) => id !== TEST_USER_ID);
   if (userIds.length === 0) {
     return { ok: true, users: 0, succeeded: 0, failed: 0 };
   }
@@ -79,7 +82,7 @@ async function stageSyncMicrosoft(): Promise<SyncResult> {
 // ---------------------------------------------------------------------------
 
 async function stageSyncGoogle(): Promise<SyncResult> {
-  const userIds = await getAllUsersWithProvider('google');
+  const userIds = (await getAllUsersWithProvider('google')).filter((id) => id !== TEST_USER_ID);
   if (userIds.length === 0) {
     return { ok: true, users: 0, succeeded: 0, failed: 0 };
   }
@@ -112,14 +115,51 @@ interface SignalProcessingResult {
   rounds: number;
   total_processed: number;
   remaining: number;
+  reset_stale_signals?: number;
   error?: string;
+}
+
+async function resetStaleSignalsForReprocessing(): Promise<number> {
+  const supabase = createServerClient();
+  const { data: staleSignals, error } = await supabase
+    .from('tkg_signals')
+    .select('id')
+    .eq('processed', true)
+    .is('extracted_entities', null)
+    .limit(500);
+
+  if (error) {
+    throw error;
+  }
+
+  const staleIds = (staleSignals ?? []).map((signal) => signal.id as string);
+  if (staleIds.length === 0) {
+    console.log('[nightly-ops] Reset 0 stale signals for reprocessing');
+    return 0;
+  }
+
+  const { error: updateError } = await supabase
+    .from('tkg_signals')
+    .update({
+      processed: false,
+      updated_at: new Date().toISOString(),
+    })
+    .in('id', staleIds);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  console.log(`[nightly-ops] Reset ${staleIds.length} stale signals for reprocessing`);
+  return staleIds.length;
 }
 
 async function stageProcessSignals(): Promise<SignalProcessingResult> {
   const staleCutoffIso = new Date(
     Date.now() - STALE_CUTOFF_HOURS * 60 * 60 * 1000,
   ).toISOString();
-  const userIdsWithBacklog = await listUsersWithUnprocessedSignals({});
+  const resetStaleSignals = await resetStaleSignalsForReprocessing();
+  const userIdsWithBacklog = (await listUsersWithUnprocessedSignals({})).filter((id) => id !== TEST_USER_ID);
   let totalUnprocessed = 0;
 
   for (const userId of userIdsWithBacklog) {
@@ -143,7 +183,9 @@ async function stageProcessSignals(): Promise<SignalProcessingResult> {
   let rounds = 0;
 
   for (let round = 0; round < maxSignalRounds; round++) {
-    const userIds = round === 0 ? userIdsWithBacklog : await listUsersWithUnprocessedSignals({});
+    const userIds = (round === 0
+      ? userIdsWithBacklog
+      : await listUsersWithUnprocessedSignals({})).filter((id) => id !== TEST_USER_ID);
     if (userIds.length === 0) break;
 
     rounds++;
@@ -165,13 +207,54 @@ async function stageProcessSignals(): Promise<SignalProcessingResult> {
 
     // Check if there are still unprocessed signals
     remaining = 0;
-    for (const userId of await listUsersWithUnprocessedSignals({})) {
+    for (const userId of (await listUsersWithUnprocessedSignals({})).filter((id) => id !== TEST_USER_ID)) {
       remaining += await countUnprocessedSignals(userId);
     }
     if (remaining === 0) break;
   }
 
-  return { ok: true, rounds, total_processed: totalProcessed, remaining };
+  return {
+    ok: true,
+    rounds,
+    total_processed: totalProcessed,
+    remaining,
+    reset_stale_signals: resetStaleSignals,
+  };
+}
+
+async function completeSuppressedCommitments(): Promise<number> {
+  const supabase = createServerClient();
+  const { data: updatedRows, error } = await supabase
+    .from('tkg_commitments')
+    .update({
+      status: 'completed',
+      updated_at: new Date().toISOString(),
+    })
+    .not('suppressed_at', 'is', null)
+    .eq('status', 'active')
+    .select('id');
+
+  if (error) {
+    throw error;
+  }
+
+  const updatedCount = (updatedRows ?? []).length;
+  console.log(`[nightly-ops] Completed ${updatedCount} suppressed commitments`);
+  return updatedCount;
+}
+
+async function listNightlyBriefUserIds(): Promise<string[]> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from('user_tokens')
+    .select('user_id');
+
+  if (error) {
+    throw error;
+  }
+
+  return [...new Set((data ?? []).map((row) => row.user_id as string))]
+    .filter((id) => id !== TEST_USER_ID);
 }
 
 // ---------------------------------------------------------------------------
@@ -204,6 +287,16 @@ async function handler(request: NextRequest) {
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'sync_google', error: err.message }));
   }
 
+  // Stage 1c: Connector health
+  try {
+    const connectorHealth = await checkConnectorHealth();
+    stages.connector_health = connectorHealth;
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'connector_health', ...connectorHealth }));
+  } catch (err: any) {
+    stages.connector_health = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'connector_health', error: err.message }));
+  }
+
   // Stage 2: Signal processing
   try {
     const signalResult = await stageProcessSignals();
@@ -212,6 +305,21 @@ async function handler(request: NextRequest) {
   } catch (err: any) {
     stages.signal_processing = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'signal_processing', error: err.message }));
+  }
+
+  // Stage 2b: Complete suppressed commitments
+  try {
+    const updatedCount = await completeSuppressedCommitments();
+    stages.suppressed_commitments = { ok: true, updated: updatedCount };
+    console.log(JSON.stringify({
+      event: 'nightly_ops_stage',
+      stage: 'suppressed_commitments',
+      ok: true,
+      updated: updatedCount,
+    }));
+  } catch (err: any) {
+    stages.suppressed_commitments = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'suppressed_commitments', error: err.message }));
   }
 
   // Stage 3: Passive rejection (auto-skip stale pending_approval > 24h)
@@ -225,7 +333,7 @@ async function handler(request: NextRequest) {
 
   // Stage 4: Daily brief (generate + send)
   try {
-    const result = await runDailyBrief();
+    const result = await runDailyBrief({ userIds: await listNightlyBriefUserIds() });
     const signalProcessing = toSafeDailyBriefStageStatus(result.signal_processing);
     const generate = toSafeDailyBriefStageStatus(result.generate);
     const send = toSafeDailyBriefStageStatus(result.send);

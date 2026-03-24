@@ -178,7 +178,7 @@ export interface GenerationRunLog {
 export interface ConvictionAction extends ConvictionDirective {
   id: string;
   userId: string;
-  status: 'pending_approval' | 'approved' | 'rejected' | 'executed' | 'skipped' | 'draft' | 'draft_rejected' | 'generated' | 'sent';
+  status: 'pending_approval' | 'approved' | 'rejected' | 'executed' | 'skipped' | 'failed' | 'draft' | 'draft_rejected' | 'generated' | 'sent';
   generatedAt: string;
   approvedAt?: string;
   executedAt?: string;

@@ -109,12 +109,12 @@ test.describe('Public: Landing page', () => {
     await expect(page).toHaveTitle(/Foldera/i);
   });
 
-  test('pricing CTA says "Start 14-day free trial"', async ({ page }) => {
+  test('pricing CTA says "Get started free"', async ({ page }) => {
     await page.goto('/');
     // Scroll to bottom where pricing section lives
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.waitForTimeout(500);
-    const hasCorrectCopy = await page.getByText(/start 14-day free trial/i).first().isVisible().catch(() => false);
+    const hasCorrectCopy = await page.getByText(/get started free/i).first().isVisible().catch(() => false);
     expect(hasCorrectCopy).toBe(true);
   });
 
@@ -136,12 +136,7 @@ test.describe('Public: Login page', () => {
 
   test('shows error param if present', async ({ page }) => {
     await page.goto('/login?error=OAuthCallback');
-    // If error handling is implemented, should show error message
-    const hasErrorDisplay = await page.getByText(/error|failed|try again/i).first().isVisible().catch(() => false);
-    // Documentation test — log result but don't fail
-    if (!hasErrorDisplay) {
-      console.warn('LOGIN ERROR DISPLAY NOT IMPLEMENTED: /login?error=OAuthCallback shows no error message');
-    }
+    await expect(page.getByText('Sign-in failed. Please try again or use a different account.')).toBeVisible();
   });
 });
 

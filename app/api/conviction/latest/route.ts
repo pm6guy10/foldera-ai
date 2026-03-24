@@ -63,6 +63,16 @@ export async function GET(request: Request) {
       contextGreeting = 'Today. 0 active commitments. Top priority: None set.';
     }
 
+    let accountCreatedAt: string | null = null;
+    try {
+      const { data: userData, error: authUserError } = await supabase.auth.admin.getUserById(userId);
+      if (!authUserError) {
+        accountCreatedAt = userData.user?.created_at ?? null;
+      }
+    } catch {
+      accountCreatedAt = null;
+    }
+
     const candidates = actions ?? [];
     const todaysCandidates = candidates.filter((candidate) => {
       const generatedAt = typeof candidate.generated_at === 'string' ? candidate.generated_at : '';
@@ -71,7 +81,10 @@ export async function GET(request: Request) {
     const action = (todaysCandidates.length > 0 ? todaysCandidates : candidates)[0];
 
     if (!action) {
-      return NextResponse.json({ context_greeting: contextGreeting }, { status: 200 });
+      return NextResponse.json({
+        context_greeting: contextGreeting,
+        account_created_at: accountCreatedAt,
+      }, { status: 200 });
     }
 
     const artifact = extractArtifact(action as Record<string, unknown>);
@@ -92,6 +105,7 @@ export async function GET(request: Request) {
       executionResult: action.execution_result ?? undefined,
       artifact,
       context_greeting: contextGreeting,
+      account_created_at: accountCreatedAt,
     });
   } catch (err: unknown) {
     return apiError(err, 'conviction/latest');

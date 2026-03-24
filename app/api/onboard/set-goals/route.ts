@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { createServerClient } from '@/lib/db/client';
 import { apiError, badRequest } from '@/lib/utils/api-error';
+import { renderPlaintextEmailHtml, sendResendEmail } from '@/lib/email/resend';
 
 const GOAL_BUCKETS: Record<string, { goal_text: string; category: string }> = {
   'Job search': { goal_text: 'Active job search and career transition', category: 'career' },
@@ -99,6 +100,71 @@ export async function POST(req: NextRequest) {
       if (error) {
         return apiError(error, 'onboard/set-goals');
       }
+    }
+
+    try {
+      const { count: connectedProviderCount, error: tokenError } = await supabase
+        .from('user_tokens')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      if (tokenError) {
+        throw tokenError;
+      }
+
+      if ((connectedProviderCount ?? 0) > 0) {
+        const { data: authUserData, error: authUserError } = await supabase.auth.admin.getUserById(userId);
+        if (authUserError) {
+          throw authUserError;
+        }
+
+        const user = authUserData.user;
+        const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+        const welcomeEmailSent = metadata.welcome_email_sent === true;
+        const email = typeof user?.email === 'string' && user.email.trim().length > 0
+          ? user.email
+          : session.user.email ?? null;
+
+        if (!welcomeEmailSent && email) {
+          const bodyText = `Foldera is now watching your email and calendar. Your first directive arrives tomorrow morning at 7am Pacific. You'll get one finished action to approve or skip.
+
+If you connected Google or Microsoft, your data is already syncing. The more signals Foldera sees, the sharper your directives become.
+
+— Foldera`;
+          const sendResult = await sendResendEmail({
+            from: 'Foldera <brief@foldera.ai>',
+            to: email,
+            subject: "You're connected — your first read arrives tomorrow",
+            text: bodyText,
+            html: renderPlaintextEmailHtml(bodyText),
+            tags: [
+              { name: 'email_type', value: 'welcome_connected' },
+              { name: 'user_id', value: userId },
+            ],
+          });
+
+          const sendError =
+            sendResult && typeof sendResult === 'object' && 'error' in sendResult
+              ? (sendResult as { error?: { message?: string } | null }).error
+              : null;
+          if (sendError) {
+            throw new Error(sendError.message ?? 'Welcome email send failed');
+          }
+
+          await supabase.auth.admin.updateUserById(userId, {
+            user_metadata: {
+              ...metadata,
+              welcome_email_sent: true,
+              welcome_email_sent_at: now,
+            },
+          });
+        }
+      }
+    } catch (welcomeError) {
+      console.error(
+        '[onboard/set-goals] welcome email failed:',
+        welcomeError instanceof Error ? welcomeError.message : String(welcomeError),
+      );
     }
 
     return NextResponse.json({ ok: true, count: rows.length - 1 }); // exclude marker from count

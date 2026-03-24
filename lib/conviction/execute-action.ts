@@ -11,6 +11,7 @@ import { sendOutlookEmail } from '@/lib/integrations/outlook-client';
 import { createGoogleCalendarEvent } from '@/lib/integrations/google-calendar';
 import { createOutlookCalendarEvent } from '@/lib/integrations/outlook-calendar';
 import { encrypt } from '@/lib/encryption';
+import { renderPlaintextEmailHtml, sendResendEmail } from '@/lib/email/resend';
 
 export type ExecuteDecision = 'approve' | 'skip' | 'reject';
 
@@ -26,7 +27,7 @@ export interface ExecuteActionInput {
 }
 
 export interface ExecuteActionResult {
-  status: 'executed' | 'skipped' | 'draft_rejected';
+  status: 'executed' | 'skipped' | 'draft_rejected' | 'failed';
   action_id: string;
   result?: Record<string, unknown>;
   error?: string;
@@ -145,7 +146,22 @@ async function suppressCommitmentsForSkippedAction(
 function resolveArtifact(action: Record<string, unknown>): Record<string, unknown> | null {
   const exec = (action.execution_result as Record<string, unknown>) ?? {};
   const artifact = exec.artifact as Record<string, unknown> | undefined;
-  if (artifact && typeof artifact.type === 'string') return artifact;
+  if (artifact && typeof artifact === 'object') {
+    const artifactType = typeof artifact.type === 'string' ? artifact.type : '';
+    if (action.action_type === 'send_message' && (artifactType === 'send_message' || artifactType === 'email' || artifactType === 'drafted_email' || artifactType === '')) {
+      const recipient = artifact.to ?? artifact.recipient;
+      return {
+        ...artifact,
+        type: 'email',
+        ...(recipient ? { to: recipient } : {}),
+        ...(recipient ? { recipient } : {}),
+      };
+    }
+
+    if (typeof artifact.type === 'string') {
+      return artifact;
+    }
+  }
 
   const draftType = exec.draft_type as string | undefined;
   if (draftType === 'email_compose' || draftType === 'email_reply') {
@@ -228,6 +244,7 @@ async function executeArtifact(
   artifact: Record<string, unknown>,
   actionId: string,
   supabase: SupabaseClient,
+  actionType?: string,
 ): Promise<Record<string, unknown>> {
   const type = (artifact.type as string) ?? '';
   const now = new Date().toISOString();
@@ -247,16 +264,48 @@ async function executeArtifact(
           out.exec_error = 'Invalid email address';
           break;
         }
-        const useGoogle = await hasIntegration(userId, 'google');
-        const result = useGoogle
-          ? await sendGmailEmail(userId, { to, subject, body })
-          : await sendOutlookEmail(userId, { to, subject, body });
-        if (result.success) {
-          out = { ...out, sent: true, sent_at: now };
-          console.log(`[execute-action] email sent for action ${actionId}`);
+        if (actionType === 'send_message') {
+          const delivery = await sendResendEmail({
+            from: 'Foldera <brief@foldera.ai>',
+            to,
+            subject,
+            text: body,
+            html: renderPlaintextEmailHtml(body),
+            tags: [
+              { name: 'email_type', value: 'approved_send_message' },
+              { name: 'user_id', value: userId },
+              { name: 'action_id', value: actionId },
+            ],
+          });
+          const resendError =
+            delivery && typeof delivery === 'object' && 'error' in delivery
+              ? (delivery as { error?: { message?: string } | null }).error
+              : null;
+          const resendId =
+            delivery && typeof delivery === 'object' && 'data' in delivery && typeof (delivery as { data?: { id?: unknown } }).data?.id === 'string'
+              ? ((delivery as { data?: { id?: string } }).data?.id ?? null)
+              : null;
+
+          if (resendError || !resendId) {
+            const sendError = resendError?.message ?? 'Resend send failed';
+            out = { ...out, sent: false, resend_id: resendId, send_error: sendError, exec_error: sendError };
+            console.warn(`[execute-action] resend send failed for ${actionId}:`, sendError);
+          } else {
+            out = { ...out, sent: true, sent_at: now, resend_id: resendId };
+            console.log(`[execute-action] resend email sent for action ${actionId}`);
+          }
         } else {
-          out = { ...out, sent: false, send_error: result.error };
-          console.warn(`[execute-action] email send failed for ${actionId}:`, result.error);
+          const useGoogle = await hasIntegration(userId, 'google');
+          const result = useGoogle
+            ? await sendGmailEmail(userId, { to, subject, body })
+            : await sendOutlookEmail(userId, { to, subject, body });
+          if (result.success) {
+            out = { ...out, sent: true, sent_at: now };
+            console.log(`[execute-action] email sent for action ${actionId}`);
+          } else {
+            out = { ...out, sent: false, send_error: result.error, exec_error: result.error };
+            console.warn(`[execute-action] email send failed for ${actionId}:`, result.error);
+          }
         }
         break;
       }
@@ -462,7 +511,7 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
   const now = new Date().toISOString();
 
   if (artifact) {
-    const run = await executeArtifact(userId, artifact, actionId, supabase);
+    const run = await executeArtifact(userId, artifact, actionId, supabase, action.action_type as string | undefined);
     executionResult = { ...executionResult, ...run, artifact };
   } else {
     executionResult.exec_error = 'No artifact to execute';
@@ -473,7 +522,15 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
     const { error: updateError } = await supabase
       .from('tkg_actions')
       .update({
+        status: action.action_type === 'send_message' ? 'failed' : action.status,
+        approved_at: now,
         execution_result: executionResult,
+        last_error:
+          typeof executionResult.exec_error === 'string'
+            ? executionResult.exec_error
+            : typeof executionResult.send_error === 'string'
+              ? executionResult.send_error
+              : null,
       })
       .eq('id', actionId);
     if (updateError) {

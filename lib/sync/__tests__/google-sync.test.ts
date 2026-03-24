@@ -85,8 +85,8 @@ describe('syncGoogle', () => {
     const result = await syncGoogle('user-1');
 
     expect(result.gmail_signals).toBe(0);
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Granted scopes for user user-1'));
-    expect(warnSpy).toHaveBeenCalledWith('[google-sync] Missing scope: calendar');
-    expect(warnSpy).toHaveBeenCalledWith('[google-sync] Missing scope: drive');
+    expect(logSpy).toHaveBeenCalledWith('[google-sync] Granted scopes:', expect.stringContaining('gmail.readonly'));
+    expect(warnSpy).toHaveBeenCalledWith('[google-sync] Missing scope: calendar.readonly');
+    expect(warnSpy).toHaveBeenCalledWith('[google-sync] Missing scope: drive.readonly');
   });
 });

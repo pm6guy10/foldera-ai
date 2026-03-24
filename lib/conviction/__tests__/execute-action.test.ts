@@ -9,14 +9,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { executeAction } from '../execute-action';
 
+const { sendResendEmail } = vi.hoisted(() => ({
+  sendResendEmail: vi.fn(),
+}));
+
 const USER_ID = 'user-1';
 const ACTION_ID = 'action-1';
-
 const baseAction = {
   id: ACTION_ID,
   user_id: USER_ID,
   directive_text: 'Test directive',
   reason: 'Test reason',
+  action_type: 'write_document',
   status: 'pending_approval',
   execution_result: null as Record<string, unknown> | null,
 };
@@ -117,10 +121,21 @@ vi.mock('@/lib/integrations/outlook-calendar', () => ({
   createOutlookCalendarEvent: vi.fn().mockResolvedValue({ success: true, eventId: 'ev-2' }),
 }));
 
+vi.mock('@/lib/encryption', () => ({
+  encrypt: vi.fn((value: string) => value),
+}));
+
+vi.mock('@/lib/email/resend', () => ({
+  renderPlaintextEmailHtml: vi.fn((body: string) => `<p>${body}</p>`),
+  sendResendEmail,
+}));
+
 describe('executeAction', () => {
   beforeEach(() => {
     mockSupabase._signalInsertCalls = 0;
     mockSupabase._signalSelectReturn = null;
+    sendResendEmail.mockReset();
+    sendResendEmail.mockResolvedValue({ data: { id: 'resend-123' }, error: null });
   });
 
   it('returns error when action not found', async () => {
@@ -147,12 +162,15 @@ describe('executeAction', () => {
   });
 
   it('approve with email artifact executes and writes approval signal', async () => {
-    mockSupabase._actionRow = actionWithArtifact({
-      type: 'email',
-      to: 'a@b.com',
-      subject: 'Subj',
-      body: 'Body',
-    });
+    mockSupabase._actionRow = {
+      ...actionWithArtifact({
+        type: 'send_message',
+        recipient: 'a@b.com',
+        subject: 'Subj',
+        body: 'Body',
+      }),
+      action_type: 'send_message',
+    };
     const out = await executeAction({
       userId: USER_ID,
       actionId: ACTION_ID,
@@ -160,6 +178,8 @@ describe('executeAction', () => {
     });
     expect(out.status).toBe('executed');
     expect(out.result?.sent).toBe(true);
+    expect(out.result?.resend_id).toBe('resend-123');
+    expect(sendResendEmail).toHaveBeenCalledTimes(1);
     expect(mockSupabase._signalInsertCalls).toBe(1);
   });
 
@@ -249,5 +269,24 @@ describe('executeAction', () => {
       decision: 'approve',
     })).rejects.toThrow('No artifact to execute');
     expect(mockSupabase._signalInsertCalls).toBe(0);
+  });
+
+  it('marks send_message approvals as failed when Resend delivery fails', async () => {
+    sendResendEmail.mockResolvedValue({ data: null, error: { message: 'credit balance is too low' } });
+    mockSupabase._actionRow = {
+      ...actionWithArtifact({
+        type: 'send_message',
+        to: 'a@b.com',
+        subject: 'Subj',
+        body: 'Body',
+      }),
+      action_type: 'send_message',
+    };
+
+    await expect(executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    })).rejects.toThrow('credit balance is too low');
   });
 });

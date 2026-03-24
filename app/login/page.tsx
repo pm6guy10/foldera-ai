@@ -5,26 +5,13 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Layers, ArrowRight } from 'lucide-react';
 
-function getErrorMessage(error: string | null): string | null {
-  if (!error) return null;
-  switch (error) {
-    case 'OAuthCallback':
-    case 'Callback':
-      return 'Sign-in failed. Please try again.';
-    case 'OAuthAccountNotLinked':
-      return 'This email is already linked to another provider.';
-    case 'AccessDenied':
-      return 'Access denied. Please contact support.';
-    default:
-      return 'Something went wrong. Please try again.';
-  }
-}
-
 function LoginInner() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
-  const errorMessage = getErrorMessage(errorParam);
+  const errorMessage = errorParam
+    ? 'Sign-in failed. Please try again or use a different account.'
+    : null;
 
   async function handleSignIn(provider: 'google' | 'azure-ad') {
     setLoadingProvider(provider);
@@ -101,7 +88,7 @@ function LoginInner() {
           <p className="text-zinc-600 text-xs text-center leading-relaxed">
             New here?{' '}
             <a href="/start" className="text-zinc-400 hover:text-white transition-colors inline-flex items-center gap-1">
-              Start your free trial
+              Get started free
               <ArrowRight className="w-3 h-3" />
             </a>
           </p>

@@ -783,7 +783,7 @@ export default function App() {
                   href="/start"
                   className="w-full py-5 rounded-2xl bg-white text-black font-black uppercase tracking-[0.2em] text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 relative z-10 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95"
                 >
-                  Start 14-day free trial <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                  Get started free <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </a>
                 <p className="text-center text-zinc-500 text-[10px] uppercase tracking-[0.2em] font-black mt-8 leading-relaxed relative z-10">
                   No credit card required.

@@ -2,6 +2,9 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-24 — Full local `npx playwright test` still fails outside the production hardening sweep scope
+  The requested hardening changes are locally verified where they apply: focused `vitest` passed for nightly-ops, connector health, acceptance gate canary, send_message execution, Google scope logging, and onboarding welcome email (`6 files, 19 tests`), `npm run build` passed, and the updated pricing/login copy assertions now pass in the Playwright suite. The unresolved issue remains the pre-existing mixed local omnibus Playwright failures: `tests/audit/clickflow.spec.ts` still times out on `/`, and authenticated `tests/production/smoke.spec.ts` cases still fail against `http://localhost:3000` without valid local auth state (`/dashboard`, `/dashboard/settings`, `/api/auth/session`, `/api/conviction/latest`, `/api/integrations/status`, `/login`, `/start`, and settings connect/disconnect flows).
+
 - 2026-03-24 — Full local `npx playwright test` still fails outside the blog markdown rendering fix scope
   The requested blog fix itself is verified: the markdown pipeline now uses `remark-gfm`, `/blog/[slug]` keeps `dangerouslySetInnerHTML` with typography-enabled prose styling, `npm run build` passed, focused blog route Playwright coverage passed (`5 passed`), and `npm run test:prod` baseline was green before the patch. The unresolved issue is still the pre-existing full local omnibus Playwright failure set (`78 passed, 7 skipped, 10 failed`): one `tests/audit/clickflow.spec.ts` timeout on `/`, plus authenticated `tests/production/smoke.spec.ts` cases that run against `http://localhost:3000` without valid local auth state.
 
