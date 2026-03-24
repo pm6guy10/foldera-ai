@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 24, 2026 (feedback source repair + test-token persistence guard) by Codex
+Last Updated: March 24, 2026 (signal freshness repair + Yadira alias backfill) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -123,6 +123,7 @@ Only start after Phase 1 is fully PROVEN.
 | Scorer noise pre-filter (A) | BUILT | NOISE_CANDIDATE_PATTERNS removes housekeeping/tool/notification candidates before scoring loop. Commit `91e3e76` |
 | Generator quality examples (B) | BUILT | Concrete good/bad examples in SYSTEM_PROMPT, schedule_block housekeeping rejection gate. Commit `91e3e76` |
 | Generator JSON extraction + raw-response logging | BUILT | March 24 generator hardening: `generatePayload()` now logs `[generator] Raw LLM response (attempt N):` before parsing, `SYSTEM_PROMPT` now ends with an explicit JSON-only contract, `extractJsonFromResponse()` strips non-`json` fenced code blocks plus preamble text, and `normalizeArtifactType()` now accepts direct `send_message|write_document|schedule_block|wait_rationale|do_nothing` values. Post-deploy owner `POST /api/settings/run-brief` created `tkg_actions.id = 9ec89641-e099-4138-82cb-3b6fe0e83773` with `status = pending_approval`, `action_type = send_message`, `confidence = 78`. |
+| Signal extraction preserves entity freshness on existing matches | BUILT | March 24 signal freshness pass: `lib/signals/signal-processor.ts` now writes `tkg_entities.last_interaction` from `signal.occurred_at` instead of `now`, never moves an entity backward on older signals, and refreshes duplicate same-email aliases together. Focused regression tests cover newer-signal updates, older-signal no-regressions, and duplicate-email alias refresh. Live owner verification: both `Yadira Clapper` rows now show `last_interaction = 2026-03-23T09:18:07.943+00:00`, `scoreOpenLoops()` no longer surfaces a Yadira relationship candidate, and a local `generateDirective()` run now returns a low-urgency `do_nothing` directive instead of selecting Yadira. |
 | Directive quality: housekeeping eliminated | REGRESSED | March 22 audit: "Schedule a 30-minute block to review Google account security settings" and "check your credit score" directives still generated and emailed. Noise filter catches some but not all housekeeping. Needs filter expansion. |
 
 **Threshold note:** There are two independent scales. The scorer EV (0–5 continuous) ranks candidates. As of March 24, research enrichment is skipped below `2.0` EV as a permanent cost control, but the generator still uses the existing confidence gates unchanged: `DIRECTIVE_CONFIDENCE_THRESHOLD = 45` at generation time and `CONFIDENCE_THRESHOLD = 70` for queue reconciliation. Structured logs now include both `scorer_ev` and `generator_confidence` so debugging is unambiguous.

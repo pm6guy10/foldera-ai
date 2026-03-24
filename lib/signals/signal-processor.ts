@@ -98,7 +98,7 @@ const EXTRACTION_PROMPT = `You are extracting structured data from raw signals (
 
 For each signal in the batch, extract:
 
-1. **persons** — every person mentioned by name. Include email if visible, role/title if stated, company if stated. Do NOT include the user themselves.
+1. **persons** — every person mentioned by name. Include email if visible, role/title if stated, company if stated. For email signals (gmail, outlook, email_sent, email_received), always extract the sender and recipients from the From/To headers when they refer to real people. If a header includes both a name and email, preserve both. Do NOT include the user themselves.
 2. **commitments** — promises, deadlines, action items. "I'll send the deck by Friday", "Meeting with Sarah at 3pm", "Review the proposal". Include who made the commitment and to whom.
 3. **topics** — key themes or subjects (e.g. "Q2 budget review", "product launch", "hiring"). Keep to 1-3 per signal.
 
@@ -552,7 +552,7 @@ async function processBatch(
         if (!person.name?.trim()) continue;
         const entityId = dryRun
           ? `dry-run-entity-${entityIds.length + 1}`
-          : await upsertEntity(supabase, userId, person);
+          : await upsertEntity(supabase, userId, person, signal.occurred_at);
         if (entityId) {
           entityIds.push(entityId);
           result.entities_upserted++;
@@ -691,40 +691,41 @@ async function upsertEntity(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
   person: ExtractedPerson,
+  signalOccurredAt: string | null,
 ): Promise<string | null> {
   const name = person.name.trim();
   const nameLower = name.toLowerCase();
+  const signalInteractionAt = normalizeInteractionTimestamp(signalOccurredAt);
 
-  // Check if entity already exists (case-insensitive match on name)
-  const existingResult = await supabase
-    .from('tkg_entities')
-    .select('id, emails, total_interactions, last_interaction')
-    .eq('user_id', userId)
-    .ilike('name', nameLower)
-    .maybeSingle();
-
-  if (existingResult.error) {
-    throw new Error(`entity_lookup: ${existingResult.error.message}`);
-  }
-
-  const existing = existingResult.data;
+  const existingMatches = await findExistingEntityMatches(supabase, userId, person, nameLower);
+  const existing = existingMatches[0] ?? null;
 
   if (existing) {
-    // Update interaction count and merge email if new
-    const updates: Record<string, any> = {
-      total_interactions: (existing.total_interactions ?? 0) + 1,
-      last_interaction: new Date().toISOString(),
-    };
-    if (person.email && !(existing.emails ?? []).includes(person.email)) {
-      updates.emails = [...(existing.emails ?? []), person.email];
-      updates.primary_email = existing.emails?.length ? existing.emails[0] : person.email;
-    }
-    if (person.role) updates.role = person.role;
-    if (person.company) updates.company = person.company;
+    for (const match of existingMatches) {
+      const updates: Record<string, any> = {};
+      if (match.id === existing.id) {
+        updates.total_interactions = (match.total_interactions ?? 0) + 1;
+        if (person.email && !(match.emails ?? []).includes(person.email)) {
+          updates.emails = [...(match.emails ?? []), person.email];
+          updates.primary_email = match.primary_email ?? match.emails?.[0] ?? person.email;
+        }
+        if (person.role) updates.role = person.role;
+        if (person.company) updates.company = person.company;
+      }
 
-    const updateEntityResult = await supabase.from('tkg_entities').update(updates).eq('id', existing.id);
-    if (updateEntityResult.error) {
-      throw new Error(`entity_update: ${updateEntityResult.error.message}`);
+      const existingLastInteraction = normalizeInteractionTimestamp(match.last_interaction ?? null);
+      if (!existingLastInteraction || (signalInteractionAt && signalInteractionAt > existingLastInteraction)) {
+        updates.last_interaction = signalInteractionAt ?? new Date().toISOString();
+      }
+
+      if (Object.keys(updates).length === 0) {
+        continue;
+      }
+
+      const updateEntityResult = await supabase.from('tkg_entities').update(updates).eq('id', match.id);
+      if (updateEntityResult.error) {
+        throw new Error(`entity_update: ${updateEntityResult.error.message}`);
+      }
     }
     return existing.id;
   }
@@ -743,7 +744,7 @@ async function upsertEntity(
       company: person.company ?? null,
       patterns: {},
       total_interactions: 1,
-      last_interaction: new Date().toISOString(),
+      last_interaction: signalInteractionAt ?? new Date().toISOString(),
     })
     .select('id')
     .single();
@@ -764,6 +765,85 @@ async function upsertEntity(
     return null;
   }
   return createEntityResult.data?.id ?? null;
+}
+
+async function findExistingEntityMatches(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  person: ExtractedPerson,
+  normalizedName: string,
+): Promise<Array<{
+  id: string;
+  name?: string | null;
+  emails: string[] | null;
+  primary_email?: string | null;
+  total_interactions: number | null;
+  last_interaction: string | null;
+  role?: string | null;
+  company?: string | null;
+}>> {
+  const matches = new Map<string, {
+    id: string;
+    name?: string | null;
+    emails: string[] | null;
+    primary_email?: string | null;
+    total_interactions: number | null;
+    last_interaction: string | null;
+    role?: string | null;
+    company?: string | null;
+  }>();
+
+  if (person.email) {
+    const emailMatchesResult = await supabase
+      .from('tkg_entities')
+      .select('id, name, emails, primary_email, total_interactions, last_interaction, role, company')
+      .eq('user_id', userId)
+      .contains('emails', [person.email]);
+
+    if (emailMatchesResult.error) {
+      throw new Error(`entity_lookup_email: ${emailMatchesResult.error.message}`);
+    }
+
+    for (const match of emailMatchesResult.data ?? []) {
+      matches.set(match.id, match);
+    }
+  }
+
+  const nameMatchResult = await supabase
+    .from('tkg_entities')
+    .select('id, name, emails, primary_email, total_interactions, last_interaction, role, company')
+    .eq('user_id', userId)
+    .ilike('name', normalizedName)
+    .maybeSingle();
+
+  if (nameMatchResult.error) {
+    throw new Error(`entity_lookup_name: ${nameMatchResult.error.message}`);
+  }
+
+  if (nameMatchResult.data) {
+    matches.set(nameMatchResult.data.id, nameMatchResult.data);
+  }
+
+  return [...matches.values()].sort(
+    (left, right) => rankExistingEntityMatch(right, person, normalizedName) - rankExistingEntityMatch(left, person, normalizedName),
+  );
+}
+
+function rankExistingEntityMatch(
+  entity: {
+    name?: string | null;
+    primary_email?: string | null;
+    emails: string[] | null;
+    total_interactions: number | null;
+  },
+  person: ExtractedPerson,
+  normalizedName: string,
+): number {
+  let score = entity.total_interactions ?? 0;
+  if ((entity.name ?? '').toLowerCase() === normalizedName) score += 1000;
+  if (person.email && entity.primary_email === person.email) score += 100;
+  if (person.email && (entity.emails ?? []).includes(person.email)) score += 50;
+  return score;
 }
 
 async function insertCommitment(
@@ -866,6 +946,13 @@ async function insertCommitment(
   }
 
   return createCommitmentResult.data?.id ?? null;
+}
+
+function normalizeInteractionTimestamp(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
 }
 
 /**
