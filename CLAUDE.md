@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Generator JSON extraction hardening and production receipt verification
+  MODE: AUDIT
+  Commit hash(es): `f56f7d2`, `9de6a0f`
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/briefing/__tests__/generator.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: baseline `git pull --rebase origin main`; baseline `git log --oneline -10`; baseline `npm run test:prod` (18 passed); focused `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/generator.test.ts` (160 passed); `npm run build`; full local `npx playwright test` reproduced the mixed-suite failures (`73 passed, 7 skipped, 10 failed`); repo push gate passed (`npm run build` + `npx playwright test tests/e2e/ tests/e2e/backend-safety-gates.spec.ts tests/e2e/safety-gates.spec.ts tests/e2e/flow-routes.spec.ts` => `45 passed, 6 skipped`); post-deploy `npm run test:prod` (18 passed); post-deploy `POST /api/settings/run-brief` created owner action `9ec89641-e099-4138-82cb-3b6fe0e83773` with `status = pending_approval`, `action_type = send_message`, `confidence = 78`
+  Any unresolved issues: full local `npx playwright test` still fails outside the repo push gate because the omnibus local run mixes `tests/production/smoke.spec.ts` auth expectations against `http://localhost:3000` and still has one `tests/audit/clickflow.spec.ts` timeout on `/`; logged in `AUTOMATION_BACKLOG.md` and `FOLDERA_MASTER_AUDIT.md`
+
 - 2026-03-24 — Feedback signal source migration + test-token persistence guard
   MODE: AUDIT
   Commit hash(es): `21e83d0`
