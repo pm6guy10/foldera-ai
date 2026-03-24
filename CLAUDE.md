@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Nightly orchestrator Job 1 prompt contract + morning action template
+  MODE: OPS
+  Commit hash(es): pending (will include this session's docs commits on `main`)
+  Files changed: `AGENTS.md`, `NIGHTLY_REPORT.md`, `CLAUDE.md`
+  What was verified: read `CLAUDE.md`, `AGENTS.md`, `LESSONS_LEARNED.md`, `FOLDERA_PRODUCT_SPEC.md`; ran `git log --oneline -10`; traced reporting path `Job 1 output -> NIGHTLY_REPORT.md -> Brandon morning action`; confirmed `NIGHTLY_REPORT.md` has `## MORNING_ACTION` at top; confirmed AUTO_FIXABLE item includes `Status`, `Classification`, `Evidence`, `Human Action`, and `CODEX_PROMPT`; `npm run build` passed
+  Any unresolved issues: pre-existing dirty worktree blocked `GIT_EDITOR=true git pull --rebase origin main` in this session
+
 - 2026-03-24 — Added the pipeline receipt test for encrypted signal -> extraction -> scoring -> generation -> send
   MODE: AUDIT
   Commit hash(es): latest `test: add pipeline receipt coverage` commit on `main`

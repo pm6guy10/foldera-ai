@@ -80,9 +80,25 @@ Any change affecting frontend, auth, onboarding, connectors, or routing must pas
 - A build pass alone is not sufficient verification. "Done" without a production receipt is not done.
 - No session closes without confirming the acceptance gate passes against production.
 
+## Nightly Orchestrator Contract (Job 1)
+
+- The nightly orchestrator must fully prepare next-day execution during **Job 1**.
+- For every backlog item created in Job 1, include these fields:
+  - `Status`
+  - `Classification`
+  - `Evidence`
+  - `Human Action`
+- If `Classification = AUTO_FIXABLE`, `CODEX_PROMPT` is required in Job 1 (not Job 2).
+- `CODEX_PROMPT` must be complete and paste-ready, and must follow the exact mega-prompt template in `CLAUDE.md`. It must:
+  - name the specific files to edit
+  - state the exact fix to make
+  - include verification steps
+  - include a multi-user check
+  - end with the exact line: `Push directly to main. Do not create a branch.`
+- By the time `NIGHTLY_REPORT.md` is written, every AUTO_FIXABLE item must already include its final `CODEX_PROMPT`.
+
 ## Scope Discipline
 
 - One task per session.
 - No opportunistic refactors, adjacent fixes, or extra docs outside the requested task and required runbook maintenance.
 - If you encounter unrelated issues, mention them only if they block the task or must be logged in the audit.
-

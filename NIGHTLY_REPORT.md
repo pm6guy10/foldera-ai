@@ -1,5 +1,53 @@
 # NIGHTLY REPORT — 2026-03-24
 
+## MORNING_ACTION
+1. **Check first (in order):** inbox (latest Foldera email) -> Supabase (signal decrypt health and unprocessed count) -> Vercel (nightly-ops + env var history/logs).
+2. **Single most important action today:** restore signal decryption for AB21 so the pipeline can generate a real directive instead of fallback `wait_rationale`.
+3. **Paste-ready Codex prompts (priority order):**
+   1. **AB21 decrypt guard + diagnostics**
+      ```text
+      Task: Fix AB21 by adding deterministic decryption diagnostics and dead-key handling so nightly ops can classify and drain undecryptable signals without stalling generation.
+
+      MODE: AUDIT
+
+      Read first:
+      - AGENTS.md
+      - CLAUDE.md
+      - LESSONS_LEARNED.md
+      - FOLDERA_PRODUCT_SPEC.md
+
+      Files to modify:
+      - lib/encryption.ts
+      - lib/signals/signal-processor.ts
+      - app/api/cron/nightly-ops/route.ts
+      - lib/signals/__tests__/signal-processor.test.ts
+      - app/api/cron/nightly-ops/__tests__/route.test.ts
+      - AUTOMATION_BACKLOG.md
+      - FOLDERA_MASTER_AUDIT.md (only if a verification issue cannot be fixed in-session; mark NEEDS_REVIEW)
+
+      Exact fix:
+      - Ensure decrypt failures are explicitly classified as dead_key/invalid_ciphertext and never silently treated as plaintext.
+      - In signal processing, quarantine or mark truly undecryptable rows so they do not block processing retries.
+      - Keep processing moving for decryptable rows in the same run.
+      - Add structured nightly logs with counts for decrypt_success, decrypt_dead_key, decrypt_parse_error, and deferred rows.
+      - Keep behavior scoped to existing pipeline flow (no feature expansion).
+
+      Verification steps:
+      1. Run `npm run build` and confirm pass.
+      2. Run `npx playwright test` and confirm no new regressions versus baseline.
+      3. Run focused tests:
+         - `npx vitest run lib/signals/__tests__/signal-processor.test.ts`
+         - `npx vitest run app/api/cron/nightly-ops/__tests__/route.test.ts`
+      4. Re-run nightly path locally and confirm undecryptable signals are isolated while other signals still process.
+      5. If any required test cannot be fixed in-session, add a NEEDS_REVIEW entry in FOLDERA_MASTER_AUDIT.md with exact failure details.
+
+      Multi-user check:
+      - Verify behavior is user-scoped (session user and non-owner path), with no owner-only fallback or hardcoded user IDs.
+      - Confirm dead-key handling and backlog drain logic works for both owner and non-owner test coverage.
+
+      Push directly to main. Do not create a branch.
+      ```
+
 **Run time:** ~09:10 UTC (orchestrator-triggered)
 **Overall status:** RED — Signal processing completely stalled. No directive generated.
 
@@ -71,6 +119,11 @@
 
 1. **CRITICAL — AB21: Signal decryption failure.** Zero signals processed. All 601 fail decryption. The pipeline generates only `wait_rationale` until this is fixed. No code changed since March 23's successful run.
    - **Action**: Check `ENCRYPTION_KEY` in Vercel dashboard. Compare to `.env.local`. Look for trailing whitespace, quote characters, or accidental edit. Test decryption locally.
+   - **Classification**: AUTO_FIXABLE
+   - **Status**: OPEN
+   - **Evidence**: Nightly run processed 0/601 signals and repeatedly hit decrypt fallback, resulting in no ranked candidate.
+   - **Human Action**: Confirm env key integrity, then run the CODEX_PROMPT listed in `MORNING_ACTION`.
+   - **CODEX_PROMPT**: See `MORNING_ACTION` item 3.1 (paste-ready, complete prompt)
 
 2. **CLOSED — AB22: Commitment ceiling false alarm.** `suppressed_at IS NULL` = 150, exactly at ceiling. Self-heal is working correctly.
 
