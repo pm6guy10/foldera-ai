@@ -17,11 +17,11 @@ Everything here must be PROVEN before any user sees the product.
 |---|---|---|---|
 | Email sends every morning | PROVEN | Cron fires daily at 11:00 UTC. Actions generated every day March 21-22. Multiple Resend IDs confirmed. wait_rationale fallback works. | — |
 | Slim wait_rationale (one line) | PROVEN | Resend 9f8ed15d, commit 9033644 | — |
-| Real directive email (not just wait_rationale) | YELLOW | Directives generate and send (schedule, write_document types seen). Manual `POST /api/settings/run-brief` now also reuses the shared send stage immediately after generation for the signed-in user instead of waiting for the next cron send pass. But all 76 actions in last 7 days were skipped. Quality not yet approvable. AB2 tracks. | Identity context may be starved (AB16) |
+| Real directive email (not just wait_rationale) | YELLOW | Directives generate and send (schedule, write_document types seen). March 24: generator system prompt rewritten from task-manager to behavioral-analyst mode. Scorer weights updated to penalize "already known" candidates harder (novelty 0.55→0.35 for 1-day, freshness skip penalty 0.5→0.3, vague specificity 0.4→0.25) and reward multi-signal insight candidates (specificity boost 1.4→1.6). Noise filter expanded to block generic scheduling and bare follow-ups. Quality improvement awaiting first post-deploy directive. AB2 tracks. | Identity context may be starved (AB16) |
 | Cron fires at 4am PT (11:00 UTC) | PROVEN | vercel.json `0 11 * * *`. Actions generated at 09:12 UTC on March 22 (cron run). Daily generation confirmed. | — |
 | Approve/skip buttons in email | FIXED | DB mechanics verified (skip a9d165df, approve 78333ac2). Dashboard had silent error swallowing + auth redirect dropped params. Fixed in this session. | Deploy needed to verify live |
 
-**NEXT MOVE:** Delivery proven. Quality is the blocker. Fix AB16 (goal current_priority flags) to give generator real identity context. Then approve one good directive to seed the behavioral rate.
+**NEXT MOVE:** Delivery proven. Generator rewritten to analyst mode (March 24). Next: trigger `POST /api/settings/run-brief` post-deploy, verify the directive surfaces a non-obvious behavioral insight (not a task-manager suggestion), and approve one good directive to seed the behavioral rate.
 
 March 24 production hotfix evidence:
 - `tkg_actions.id = 504c171f-50dc-473f-afdc-cdfc53f15894` from a live `POST https://www.foldera.ai/api/cron/nightly-ops` run now preserves `execution_result.generation_log.stage = "generation"` and the real Anthropic billing error in `generation_log.reason` instead of collapsing to `stage = "system"`.

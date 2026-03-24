@@ -197,10 +197,10 @@ describe('computeCandidateScore — Gemini benchmark', () => {
       approvalHistory: [],
       now,
     });
-    expect(breakdown.novelty_multiplier).toBe(0.55);
+    expect(breakdown.novelty_multiplier).toBe(0.35);
   });
 
-  it('novelty_multiplier = 0.80 when surfaced 2 days ago', () => {
+  it('novelty_multiplier = 0.65 when surfaced 2 days ago', () => {
     const { breakdown } = computeCandidateScore({
       stakes: 3,
       urgency: 0.5,
@@ -211,7 +211,7 @@ describe('computeCandidateScore — Gemini benchmark', () => {
       approvalHistory: [],
       now,
     });
-    expect(breakdown.novelty_multiplier).toBe(0.80);
+    expect(breakdown.novelty_multiplier).toBe(0.65);
   });
 
   it('rate floor: 100% skip history still yields rate >= 0.25', () => {

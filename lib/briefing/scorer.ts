@@ -465,12 +465,13 @@ async function getFreshness(
 
     if (similarCount === 0) return 1.0;
 
-    // Each similar recent directive reduces freshness
-    // 1 similar → 0.6, 2 → 0.4, 3+ → 0.3
-    // If any were skipped, extra penalty
-    let freshness = Math.max(0.3, 1.0 - (similarCount * 0.2));
-    if (anySkipped) freshness *= 0.5; // hard penalty for skipped similar content
-    return Math.max(0.1, freshness);
+    // Each similar recent directive reduces freshness — analyst mode penalizes
+    // "already known" topics harder to force novel insights to the surface.
+    // 1 similar → 0.5, 2 → 0.3, 3+ → 0.2
+    // If any were skipped, harsh penalty — user already said "I know this"
+    let freshness = Math.max(0.2, 1.0 - (similarCount * 0.25));
+    if (anySkipped) freshness *= 0.3; // user explicitly rejected similar content
+    return Math.max(0.05, freshness);
   } catch {
     return 1.0;
   }
@@ -628,7 +629,9 @@ export function computeCandidateScore(args: {
   // This prevents pre-rewrite garbage skips from permanently burying action types.
   rate = Math.max(rate, 0.25);
 
-  const nov = args.daysSinceLastSurface === 1 ? 0.55 : args.daysSinceLastSurface === 2 ? 0.80 : 1.0;
+  // Analyst mode: surfaced-yesterday topics get crushed — force the system
+  // to find something new rather than repeating what the user just saw
+  const nov = args.daysSinceLastSurface === 1 ? 0.35 : args.daysSinceLastSurface === 2 ? 0.65 : 1.0;
   const sup = args.entityPenalty < 0 ? Math.exp(args.entityPenalty / 2.0) : 1.0;
 
   const urgencyFloor = ((args.stakes - 1) / 4) * 0.2;
@@ -2497,6 +2500,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     /^check\s+(?:email|account|status|update)\b/i,
     // Schedule-a-block-to-review pattern (homework disguised as action)
     /\bschedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session)\s+(?:to\s+)?(?:review|check|assess|audit)\b/i,
+    // Generic scheduling suggestions (analyst mode: never suggest blocking time)
+    /\bschedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session)\b/i,
+    // Generic follow-up without specifics
+    /^follow\s+up\s+(?:with|on)\s+/i,
     // Update billing/payment
     /\bupdate\s+(?:billing|payment)\s+(?:information|method|details)\b/i,
     // Security alerts
@@ -2618,11 +2625,15 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     const specificitySignals = [hasEntityReference, hasEmail, hasPhone, hasDate].filter(Boolean).length;
 
     if (words.length < 10 && specificitySignals === 0) {
-      specificityAdjustedStakes = stakes * 0.4;
+      // Vague candidates with no concrete details are almost certainly
+      // "things the user already knows" — penalize hard in analyst mode
+      specificityAdjustedStakes = stakes * 0.25;
     } else if (specificitySignals >= 2) {
-      specificityAdjustedStakes = Math.min(stakes * 1.4, 5.0);
+      // Candidates with multiple concrete signals (email + date, entity + date)
+      // are more likely to contain hidden insights — boost aggressively
+      specificityAdjustedStakes = Math.min(stakes * 1.6, 5.0);
     } else if (specificitySignals === 1) {
-      specificityAdjustedStakes = Math.min(stakes * 1.15, 5.0);
+      specificityAdjustedStakes = Math.min(stakes * 1.2, 5.0);
     }
 
     if (specificityAdjustedStakes !== stakes) {
