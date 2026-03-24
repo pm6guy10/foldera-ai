@@ -41,6 +41,7 @@ export async function saveUserToken(
     provider,
     refresh_token: encryptToken(params.refresh_token),
     access_token: encryptToken(params.access_token),
+    disconnected_at: null,
     expires_at: params.expires_at,
     email: params.email ?? null,
     scopes: params.scopes ?? null,
@@ -101,11 +102,19 @@ export async function getUserToken(
 
   if (error || !data) return null;
 
+  if (typeof data.access_token !== 'string' || data.access_token.length === 0) {
+    return null;
+  }
+
+  if (typeof data.refresh_token !== 'string' || data.refresh_token.length === 0) {
+    return null;
+  }
+
   return {
-    refresh_token: data.refresh_token && isEncrypted(data.refresh_token)
+    refresh_token: isEncrypted(data.refresh_token)
       ? decryptToken(data.refresh_token)
       : data.refresh_token,
-    access_token: data.access_token && isEncrypted(data.access_token)
+    access_token: isEncrypted(data.access_token)
       ? decryptToken(data.access_token)
       : data.access_token,
     expires_at: data.expires_at,
@@ -141,7 +150,8 @@ export async function getAllUsersWithProvider(
   const { data, error } = await supabase
     .from('user_tokens')
     .select('user_id')
-    .eq('provider', provider);
+    .eq('provider', provider)
+    .not('access_token', 'is', null);
 
   if (error) {
     console.error(`[user-tokens] getAllUsersWithProvider(${provider}) failed:`, error.message);
@@ -169,4 +179,32 @@ export async function deleteUserToken(
     throw error;
   }
   console.log(`[user-tokens] deleted ${provider} token for user ${userId}`);
+}
+
+/**
+ * Soft-disconnect a user's token while preserving the row for reconnect flows.
+ * This clears OAuth secrets and marks the row as disconnected.
+ */
+export async function softDisconnectUserToken(
+  userId: string,
+  provider: 'google' | 'microsoft',
+): Promise<void> {
+  const supabase = createServerClient();
+  const { error } = await supabase
+    .from('user_tokens')
+    .update({
+      access_token: null,
+      refresh_token: null,
+      disconnected_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+    .eq('provider', provider);
+
+  if (error) {
+    console.error(`[user-tokens] soft disconnect failed:`, error.message);
+    throw error;
+  }
+
+  console.log(`[user-tokens] soft-disconnected ${provider} token for user ${userId}`);
 }

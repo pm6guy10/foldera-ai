@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 24, 2026 (nightly ops backlog threshold and stale reset guard) by Codex
+Last Updated: March 24, 2026 (Microsoft token soft-disconnect + sync skip guard) by Codex
 Next Review: Monday March 24, 2026
 
 ## HOW TO USE THIS FILE
@@ -40,6 +40,7 @@ March 24 production hotfix evidence:
 | Health alert email | BUILT | March 24 production hardening sweep: `lib/cron/connector-health.ts` now checks 7-day signal coverage per connected provider/source (`google_calendar`, `google_drive`, `onedrive`), sends one Resend alert per flagged source, and rate-limits with `user_tokens.last_health_alert_at`. | Silent failures with no notification |
 | Feedback signal source constraint restored | BUILT | March 24 data-fix pass: `tkg_signals_source_check` migration restored `user_feedback`, matching the approve/skip insert path in `executeAction()`. |
 | Test-token persistence guard | BUILT | March 24 data-fix pass: `saveUserToken()` now rejects any access/refresh token starting with `test_` and logs a warning before any DB write. |
+| Microsoft token soft-disconnect + reconnect restore | BUILT | March 24 follow-up: `/api/microsoft/disconnect` now preserves the `user_tokens` row and clears secrets (`access_token = null`, `refresh_token = null`, `disconnected_at` set) instead of deleting; sign-in token persistence still upserts through `saveUserToken()` and clears `disconnected_at`, so reconnect restores the same row in place; Microsoft sync now skips users with `access_token IS NULL` the same way it skips missing rows. |
 | Cron excludes test user | BUILT | March 24 production hardening sweep: `/api/cron/nightly-ops` now filters `22222222-2222-2222-2222-222222222222` out of Microsoft sync, Google sync, signal processing, and daily brief stages via `TEST_USER_ID`. | Fake directives and wasted LLM calls from non-real accounts |
 | Stale signal reprocessing | BUILT | March 24 production hardening sweep: nightly-ops resets up to 500 `tkg_signals` rows where `processed = true` and `extracted_entities IS NULL` back to `processed = false`, but the March 24 follow-up now skips that reset entirely whenever the all-source unprocessed backlog is already `>= 200`, logging `nightly_ops_stale_reset_skipped` instead. | Signals stuck in a half-processed state forever |
 | Suppressed commitment cleanup | BUILT | March 24 production hardening sweep: nightly-ops now marks `tkg_commitments` with `suppressed_at IS NOT NULL` and `status = 'active'` as `completed` after processing, logging the number updated. | Suppressed commitments continuing to look active |

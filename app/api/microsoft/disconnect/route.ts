@@ -1,13 +1,14 @@
 /**
  * POST /api/microsoft/disconnect
  *
- * Disconnects the user's Microsoft account by deleting the token from user_tokens.
+ * Disconnects the user's Microsoft account by soft-disconnecting the token row
+ * in user_tokens (preserves row, clears secrets).
  */
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
-import { deleteUserToken, getUserToken } from '@/lib/auth/user-tokens';
+import { getUserToken, softDisconnectUserToken } from '@/lib/auth/user-tokens';
 import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +27,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Microsoft account not connected' }, { status: 404 });
     }
 
-    await deleteUserToken(userId, 'microsoft');
+    await softDisconnectUserToken(userId, 'microsoft');
 
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {

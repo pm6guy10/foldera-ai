@@ -272,10 +272,18 @@ export function getAuthOptions(): NextAuthOptions {
                   });
                   console.log(`[auth][jwt][google] user_tokens upsert OK`);
                 } else if (account.provider === 'azure-ad') {
+                  const microsoftRefreshToken =
+                    account.refresh_token ??
+                    (typeof token.refreshToken === 'string' ? token.refreshToken : '');
+                  if (!microsoftRefreshToken) {
+                    console.warn('[auth][jwt][microsoft] missing refresh_token on sign-in; persist may not support background refresh until next consented sign-in');
+                  }
                   console.log(`[auth][jwt][microsoft] persisting to user_tokens — userId: ${resolvedUserId}, has_refresh: ${!!account.refresh_token}`);
+                  // saveUserToken performs an upsert, so soft-disconnected rows are restored
+                  // in-place by writing fresh encrypted access/refresh tokens.
                   await saveUserToken(resolvedUserId, 'microsoft', {
                     access_token: account.access_token,
-                    refresh_token: account.refresh_token ?? '',
+                    refresh_token: microsoftRefreshToken,
                     expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
                     email: user.email ?? undefined,
                     scopes: (account as any).scope ?? '',

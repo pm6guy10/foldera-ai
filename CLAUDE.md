@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Microsoft soft-disconnect token flow (no hard delete) + sync null-token guard
+  MODE: AUDIT
+  Commit hash(es): pending (will be updated after commit on `main`)
+  Files changed: `app/api/microsoft/disconnect/route.ts`, `app/api/microsoft/disconnect/__tests__/route.test.ts`, `lib/auth/user-tokens.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `lib/auth/auth-options.ts`, `lib/sync/microsoft-sync.ts`, `lib/sync/__tests__/microsoft-sync.test.ts`, `supabase/migrations/20260325000002_soft_disconnect.sql`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: baseline `GIT_EDITOR=true git pull --rebase origin main`; baseline `git log --oneline -10`; traced token path `JWT callback -> saveUserToken() -> /api/microsoft/disconnect -> user_tokens -> getAllUsersWithProvider()/getUserToken() -> syncMicrosoft()` before editing; focused `npx vitest run lib/auth/__tests__/user-tokens.test.ts lib/sync/__tests__/microsoft-sync.test.ts app/api/microsoft/disconnect/__tests__/route.test.ts` passed (`3 files, 8 tests`); `npm run build` passed
+  Any unresolved issues: full local `npx playwright test` still fails outside this patch scope with pre-existing mixed-suite failures (audit clickflow timeout on `/`, multiple authenticated production-smoke failures against local auth/session state, plus blog/audit assertions in the omnibus run); logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
+
 - 2026-03-24 — Nightly orchestrator Job 1 prompt contract + morning action template
   MODE: OPS
   Commit hash(es): `5eaddaa`

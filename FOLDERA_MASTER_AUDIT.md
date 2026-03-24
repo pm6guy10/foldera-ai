@@ -2,6 +2,9 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-24 — Full local `npx playwright test` still fails outside the Microsoft soft-disconnect scope
+  This session’s requested Microsoft disconnect fix is verified by focused tests (`app/api/microsoft/disconnect/__tests__/route.test.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `lib/sync/__tests__/microsoft-sync.test.ts`) and `npm run build`, and the new behavior preserves the `user_tokens` row while clearing secrets. The unresolved issue is the same pre-existing omnibus Playwright failure set outside this patch: `tests/audit/clickflow.spec.ts` timeout on `/`, multiple authenticated `tests/production/smoke.spec.ts` failures against local auth/session state, and additional blog/audit assertions failing in the combined run.
+
 - 2026-03-24 — Full local `npx playwright test` still fails outside the pipeline receipt test scope
   The new `lib/briefing/__tests__/pipeline-receipt.test.ts` receipt test passes, proving the mocked end-to-end briefing path from encrypted signal insertion through extraction, scoring, directive generation, persistence, and Resend delivery receipt. `npm run build` also passes after a transient local `.next` rename retry. The unresolved issue remains the same omnibus Playwright failure set outside this task scope: `tests/audit/clickflow.spec.ts` still times out on `/`, and authenticated `tests/production/smoke.spec.ts` cases still fail locally against `http://localhost:3000` because the stored auth state redirects `/dashboard` and `/dashboard/settings` to `/login`, `/api/auth/session` returns no authenticated user, and `/api/conviction/latest` plus `/api/integrations/status` return `401`.
 

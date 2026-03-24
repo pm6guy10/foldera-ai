@@ -25,6 +25,7 @@
 - Onboarding goal insert schema fix
 - Nightly ops all-source backlog threshold + stale reset guard
 - Pipeline receipt test for extraction -> score -> generate -> send
+- Microsoft token soft-disconnect (preserve row, null tokens, reconnect restore)
 
 ### OPEN (Priority order)
 - Blog formatting fix (prose typography, Codex queued)

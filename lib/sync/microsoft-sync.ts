@@ -101,6 +101,7 @@ async function getValidMicrosoftToken(
 } | null> {
   const token = await getUserToken(userId, "microsoft");
   if (!token) return null;
+  if (!token.access_token) return null;
 
   // Check if token needs refresh (5-minute buffer)
   const nowSec = Math.floor(Date.now() / 1000);
