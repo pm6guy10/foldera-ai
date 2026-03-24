@@ -192,6 +192,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-23 — JWT onboarding claim for middleware auth routing
+  MODE: AUDIT
+  Commit hash(es): `67d0d23`
+  Files changed: `middleware.ts`, `lib/auth/auth-options.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`
+  What was verified: baseline `npx playwright test tests/e2e/` (27 passed) before edits; `npm run build`; `npx playwright test tests/e2e/` (27 passed)
+  Any unresolved issues: `npm run test:prod` failed 2 tests on live `/login` and `/start` public-route expectations under authenticated storage state; logged as `NEEDS_REVIEW` in `FOLDERA_MASTER_AUDIT.md` and `AB20` in `AUTOMATION_BACKLOG.md`
+
 - 2026-03-23 — Middleware auth gate, redirect cleanup, and connector refresh
   MODE: AUDIT
   Commit hash(es): `f4549e5`
