@@ -40,7 +40,7 @@ The task prompt will specify which mode. If not specified, default to AUDIT for 
 
 ## Session Log Rule
 
-Every session, regardless of mode, must append a session log to CLAUDE.md under ## Session Logs before the final push. The log must include:
+Every session, regardless of mode, must append a session log to SESSION_HISTORY.md before the final push. The log must include:
 
 - Date and one-line session description
 - MODE used (AUDIT, OPS, or FLOW)
