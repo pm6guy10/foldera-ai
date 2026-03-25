@@ -90,7 +90,34 @@ const mockSupabase = {
           }),
         };
       },
-      update() {
+      update(payload: Record<string, unknown>) {
+        if (table === 'tkg_actions') {
+          // Support atomic claim chain: .update().eq('id').eq('user_id').eq('status').select().maybeSingle()
+          // Track the status filter to correctly simulate conditional update
+          let statusFilter: unknown = null;
+          const eqChain = (col: string, val: unknown): any => ({
+            eq: (col2: string, val2: unknown) => {
+              if (col2 === 'status') statusFilter = val2;
+              return eqChain(col2, val2);
+            },
+            select: () => ({
+              maybeSingle: () => {
+                if (!self._actionRow) {
+                  return Promise.resolve({ data: null, error: null });
+                }
+                // Only return the row if status matches the conditional filter
+                if (statusFilter !== null && self._actionRow.status !== statusFilter) {
+                  return Promise.resolve({ data: null, error: null });
+                }
+                return Promise.resolve({
+                  data: { ...self._actionRow, ...payload },
+                  error: null,
+                });
+              },
+            }),
+          });
+          return { eq: (col: string, val: unknown) => { if (col === 'status') statusFilter = val; return eqChain(col, val); } };
+        }
         return { eq: () => Promise.resolve({ error: null }) };
       },
     };
@@ -146,7 +173,7 @@ describe('executeAction', () => {
       decision: 'approve',
     });
     expect(out.status).toBe('skipped');
-    expect(out.error).toBe('Action not found');
+    expect(out.error).toBe('Action already claimed by another request or not found');
   });
 
   it('skip/reject updates status and writes one feedback signal', async () => {

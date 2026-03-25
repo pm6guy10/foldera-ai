@@ -102,7 +102,13 @@ async function syncGmail(
         ? `[Sent email: ${date}]\nTo: ${to}\nSubject: ${subject}\nPreview: ${snippet}`
         : `[Email received: ${date}]\nFrom: ${from}\nSubject: ${subject}\nPreview: ${snippet}`;
 
-      const contentHash = hash(`gmail:${id}`);
+      // Cross-provider email dedup: normalize hash from sender + subject + date
+      // so Gmail and Outlook versions of the same email produce the same hash.
+      // Supabase's unique constraint on content_hash deduplicates silently.
+      const senderEmail = (isSent ? to : from).toLowerCase().trim().replace(/.*<([^>]+)>.*/, '$1');
+      const normalizedSubject = subject.toLowerCase().trim();
+      const datePrefix = date ? new Date(date).toISOString().slice(0, 10) : '';
+      const contentHash = hash(`email:${senderEmail}|${normalizedSubject}|${datePrefix}`);
 
       const { error } = await supabase.from('tkg_signals').insert({
         user_id: userId,

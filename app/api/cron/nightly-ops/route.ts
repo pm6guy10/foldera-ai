@@ -135,20 +135,10 @@ async function countNightlyOpsUnprocessedSignals(): Promise<number> {
 }
 
 async function resetStaleSignalsForReprocessing(totalUnprocessed: number): Promise<number> {
-  if (totalUnprocessed >= STALE_SIGNAL_RESET_BACKLOG_THRESHOLD) {
-    logStructuredEvent({
-      event: 'nightly_ops_stale_reset_skipped',
-      userId: null,
-      artifactType: null,
-      generationStatus: 'skipped',
-      details: {
-        scope: 'nightly-ops',
-        total_unprocessed_signals: totalUnprocessed,
-        stale_signal_reset_backlog_threshold: STALE_SIGNAL_RESET_BACKLOG_THRESHOLD,
-      },
-    });
-    return 0;
-  }
+  // Always reset at least 10 stale signals per run regardless of backlog.
+  // Previously, high-backlog periods completely skipped stale resets, causing
+  // stale signals to become permanently stranded after the backlog cleared.
+  const resetLimit = Math.max(10, Math.min(50, STALE_SIGNAL_RESET_BACKLOG_THRESHOLD - totalUnprocessed));
 
   const supabase = createServerClient();
   const { data: staleSignals, error } = await supabase
@@ -156,7 +146,7 @@ async function resetStaleSignalsForReprocessing(totalUnprocessed: number): Promi
     .select('id')
     .eq('processed', true)
     .is('extracted_entities', null)
-    .limit(500);
+    .limit(resetLimit);
 
   if (error) {
     throw error;
@@ -285,7 +275,8 @@ async function listNightlyBriefUserIds(): Promise<string[]> {
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from('user_tokens')
-    .select('user_id');
+    .select('user_id')
+    .is('disconnected_at', null);
 
   if (error) {
     throw error;
@@ -330,6 +321,36 @@ async function handler(request: NextRequest) {
   const stages: Record<string, unknown> = {};
   const nightlyBriefUserIds = await listNightlyBriefUserIds();
 
+  // Double-fire guard: if ALL users already have today's email sent, skip the entire run.
+  // This handles the common Vercel double-fire case where both invocations start within seconds.
+  if (nightlyBriefUserIds.length > 0) {
+    const supabase = createServerClient();
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const { data: todayActions } = await supabase
+      .from('tkg_actions')
+      .select('user_id, execution_result')
+      .gte('generated_at', todayStart.toISOString())
+      .in('user_id', nightlyBriefUserIds);
+
+    const usersAlreadySent = new Set(
+      (todayActions ?? [])
+        .filter((a) => {
+          const er = a.execution_result as Record<string, unknown> | null;
+          return er?.daily_brief_sent_at;
+        })
+        .map((a) => a.user_id as string),
+    );
+
+    const allSent = nightlyBriefUserIds.every((uid) => usersAlreadySent.has(uid));
+    if (allSent) {
+      return NextResponse.json(
+        { ok: true, skipped: true, reason: 'already_ran_today', duration_ms: Date.now() - startTime },
+        { status: 200 },
+      );
+    }
+  }
+
   // Stage 0: Cleanup old extracted signals before any pipeline work
   try {
     const cleanupResult = await purgeOldExtractedSignals(nightlyBriefUserIds);
@@ -355,6 +376,18 @@ async function handler(request: NextRequest) {
   } catch (err: any) {
     stages.commitment_ceiling_pre = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'commitment_ceiling_pre', error: err.message }));
+  }
+
+  // Stage 0c: Token refresh before sync attempts — expired tokens cause sync to
+  // fail on stale data, and the watchdog in Stage 5 only fixes it for tomorrow.
+  try {
+    const { runTokenWatchdog } = await import('@/lib/cron/self-heal');
+    const tokenResult = await runTokenWatchdog();
+    stages.token_refresh_pre = tokenResult;
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'token_refresh_pre', ok: tokenResult.ok }));
+  } catch (err: any) {
+    stages.token_refresh_pre = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'token_refresh_pre', error: err.message }));
   }
 
   // Stage 1: Microsoft sync
@@ -421,8 +454,24 @@ async function handler(request: NextRequest) {
     stages.passive_rejection = { ok: false, skipped: 0, error: err.message };
   }
 
-  // Stage 4: Daily brief (generate + send)
+  // Stage 3b: Credit canary before generation — if credits are exhausted,
+  // skip generation but continue to self-heal/acceptance gate so the alert email fires.
+  let skipDailyBrief = false;
   try {
+    const { checkApiCreditCanary } = await import('@/lib/cron/acceptance-gate');
+    const canary = await checkApiCreditCanary();
+    stages.credit_canary_pre = { ok: canary.pass, ...canary };
+    if (!canary.pass) {
+      skipDailyBrief = true;
+      stages.daily_brief = { ok: false, error: 'Skipped: Anthropic credit canary failed pre-generation' };
+      console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'credit_canary_pre', pass: false }));
+    }
+  } catch (err: any) {
+    stages.credit_canary_pre = { ok: false, error: err.message };
+  }
+
+  // Stage 4: Daily brief (generate + send) — skipped if credit canary failed
+  if (!skipDailyBrief) try {
     const result = await runDailyBrief({ userIds: nightlyBriefUserIds });
     const signalProcessing = toSafeDailyBriefStageStatus(result.signal_processing);
     const generate = toSafeDailyBriefStageStatus(result.generate);

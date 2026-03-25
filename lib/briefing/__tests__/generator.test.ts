@@ -31,12 +31,12 @@ describe('daily brief pinned constraints', () => {
     expect(goals[0]?.goal_text).toContain('MAS3 / state-government path');
   });
 
-  it('suppresses Foldera-primary candidate text before ranking', () => {
+  it('no longer suppresses Foldera-primary candidate text after MAS3 constraint cleanup', () => {
     const violations = getCandidateConstraintViolations(
       OWNER_USER_ID,
       'Decide whether to abandon the 10 paying users goal and commit fully to the MAS3 health job path, or block out specific daily hours for customer acquisition work starting tomorrow.',
     );
-    expect(violations.map((violation) => violation.code)).toContain('foldera_primary_conflict');
+    expect(violations.map((violation) => violation.code)).not.toContain('foldera_primary_conflict');
   });
 
   it.each([

@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/db/client';
 import Anthropic from '@anthropic-ai/sdk';
 import { decryptWithStatus } from '@/lib/encryption';
+import { isOverDailyLimit } from '@/lib/utils/api-tracker';
 
 export async function refreshGoalContext(): Promise<{ ok: boolean; updated: number; skipped: number; decayed: number }> {
   const supabase = createServerClient();
@@ -17,6 +18,13 @@ export async function refreshGoalContext(): Promise<{ ok: boolean; updated: numb
   let skipped = 0;
 
   for (const userId of userIds) {
+    // Check daily spend cap before any Anthropic API call
+    if (await isOverDailyLimit(userId, 'goal_refresh')) {
+      console.log(`[goal-refresh] spend cap reached for ${userId}, skipping`);
+      skipped++;
+      continue;
+    }
+
     // Load current goals
     const { data: goals } = await supabase
       .from('tkg_goals')

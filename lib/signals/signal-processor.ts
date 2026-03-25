@@ -464,22 +464,37 @@ async function processBatch(
     }
 
     if (looksLikeCiphertext(content)) {
-      // Skip undecryptable ciphertext so it can be retried once the correct key or source recovery is available.
-      result.deferred_signal_ids.push(s.id);
-      if (decryptWarningCount < MAX_WARNING_LOGS) {
-        logStructuredEvent({
-          event: 'signal_processor_ciphertext_skipped',
-          level: 'warn',
-          userId,
-          artifactType: null,
-          generationStatus: 'ciphertext_skipped',
-          details: {
-            scope: 'signal-processor',
-            signal_source: s.source,
-          },
-        });
-        decryptWarningCount++;
+      // Immediately quarantine undecryptable signals so they never block the pipeline.
+      // Previously these stayed unprocessed, accumulated as stale, triggered the stale
+      // guard, and blocked generation permanently.
+      if (!dryRun) {
+        const quarantineErr = await supabase
+          .from('tkg_signals')
+          .update({
+            processed: true,
+            extracted_entities: [],
+            extracted_commitments: [],
+            extracted_dates: null,
+          })
+          .eq('id', s.id)
+          .then((r) => r.error);
+        if (quarantineErr) {
+          result.errors.push(`quarantine_decrypt_failed: ${quarantineErr.message}`);
+        }
       }
+      result.signals_processed += 1;
+      logStructuredEvent({
+        event: 'signal_decrypt_failed_quarantined',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'decrypt_quarantined',
+        details: {
+          scope: 'signal-processor',
+          signalId: s.id,
+          signal_source: s.source,
+        },
+      });
       continue;
     }
 

@@ -149,7 +149,7 @@ async function sendApiCreditAlert(detail: string): Promise<void> {
   });
 }
 
-async function checkApiCreditCanary(): Promise<CheckResult> {
+export async function checkApiCreditCanary(): Promise<CheckResult> {
   try {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     await anthropic.messages.create({

@@ -82,10 +82,23 @@ const mockSupabase = {
     }
 
     if (table === 'user_tokens') {
+      const result = Promise.resolve({
+        data: this.nightlyBriefUserIds.map((user_id) => ({ user_id })),
+        error: null,
+      });
       return {
-        select: () => Promise.resolve({
-          data: this.nightlyBriefUserIds.map((user_id) => ({ user_id })),
-          error: null,
+        select: () => ({
+          is: () => result,
+        }),
+      };
+    }
+
+    if (table === 'tkg_actions') {
+      return {
+        select: () => ({
+          gte: () => ({
+            in: () => Promise.resolve({ data: [], error: null }),
+          }),
         }),
       };
     }
@@ -130,8 +143,11 @@ vi.mock('@/lib/cron/self-heal', () => ({
   runSelfHeal,
 }));
 
+const checkApiCreditCanary = vi.fn().mockResolvedValue({ check: 'api_credit_canary', pass: true, detail: 'mock canary pass' });
+
 vi.mock('@/lib/cron/acceptance-gate', () => ({
   runAcceptanceGate,
+  checkApiCreditCanary,
 }));
 
 vi.mock('@/lib/cron/connector-health', () => ({

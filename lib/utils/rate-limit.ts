@@ -1,5 +1,14 @@
+/**
+ * Supabase-backed rate limiting.
+ *
+ * Uses the api_usage table to count recent requests per user+endpoint.
+ * Survives Vercel cold starts (unlike the previous in-memory Map).
+ */
+
+import { createServerClient } from '@/lib/db/client';
+
 interface RateLimitConfig {
-  limit: number;      // Max requests
+  limit: number;      // Max requests per window
   window: number;     // Time window in seconds
 }
 
@@ -9,56 +18,48 @@ interface RateLimitResult {
   resetAt: Date;
 }
 
-// In-memory store (replace with Redis in production)
-const store = new Map<string, { count: number; resetAt: number }>();
-
 export async function rateLimit(
   identifier: string,
   config: RateLimitConfig = { limit: 10, window: 60 }
 ): Promise<RateLimitResult> {
   const now = Date.now();
-  const key = identifier;
   const windowMs = config.window * 1000;
+  const windowStart = new Date(now - windowMs).toISOString();
+  const resetAt = new Date(now + windowMs);
 
-  const existing = store.get(key);
+  const supabase = createServerClient();
 
-  if (!existing || now > existing.resetAt) {
-    // New window
-    store.set(key, { count: 1, resetAt: now + windowMs });
-    return {
-      success: true,
-      remaining: config.limit - 1,
-      resetAt: new Date(now + windowMs),
-    };
+  // Count recent rows for this identifier in the window
+  const { count, error } = await supabase
+    .from('api_usage')
+    .select('id', { count: 'exact', head: true })
+    .eq('endpoint', identifier)
+    .gte('created_at', windowStart);
+
+  if (error) {
+    // On DB error, fail open (allow the request) to avoid blocking legitimate traffic
+    console.warn('[rate-limit] DB query failed, allowing request:', error.message);
+    return { success: true, remaining: config.limit - 1, resetAt };
   }
 
-  if (existing.count >= config.limit) {
-    // Rate limited
-    return {
-      success: false,
-      remaining: 0,
-      resetAt: new Date(existing.resetAt),
-    };
+  const currentCount = count ?? 0;
+
+  if (currentCount >= config.limit) {
+    return { success: false, remaining: 0, resetAt };
   }
 
-  // Increment counter
-  existing.count++;
-  store.set(key, existing);
+  // Insert a tracking row
+  await supabase.from('api_usage').insert({
+    endpoint: identifier,
+    model: 'rate_limit',
+    input_tokens: 0,
+    output_tokens: 0,
+    estimated_cost: 0,
+  });
 
   return {
     success: true,
-    remaining: config.limit - existing.count,
-    resetAt: new Date(existing.resetAt),
+    remaining: config.limit - currentCount - 1,
+    resetAt,
   };
 }
-
-// Cleanup old entries periodically (call this from a cron or on each request)
-export function cleanupRateLimitStore(): void {
-  const now = Date.now();
-  for (const [key, value] of store.entries()) {
-    if (now > value.resetAt) {
-      store.delete(key);
-    }
-  }
-}
-

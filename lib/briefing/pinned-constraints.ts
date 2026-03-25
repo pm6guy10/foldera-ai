@@ -72,6 +72,10 @@ const GLOBAL_DIRECTIVE_PATTERNS: ConstraintPattern[] = [
   ...CONSULTING_DECISION_PATTERNS,
 ];
 
+// TODO: These constraints are time-bound to the MAS3 hiring window.
+// After MAS3 resolves (hired or rejected), remove this entire block
+// and replace with DB-driven constraints from tkg_goals.
+
 const STALE_CONSULTING_ERA_PATTERNS: ConstraintPattern[] = [
   {
     code: 'stale_consulting_era',
@@ -84,7 +88,7 @@ const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
   id: 'owner_mas3_window',
   promptLines: [
     'MAS3 / state-government path is the primary lane.',
-    'Foldera is overflow energy only during this window and cannot become the main directive.',
+    'Foldera is a legitimate build project and can appear in directives.',
     'Never propose consulting, fractional work, revenue bridges, Mercor outreach, or client-acquisition fallback plans.',
     'The Functional Program Analyst 3 (HCBM Contracts Analyst) position has been explicitly rejected. Never generate directives about FPA3, HCBM, or that application.',
     'Do not reopen locked decisions like MAS3 vs Foldera, MAS3 vs backup applications, or other already-closed priority calls.',
@@ -110,11 +114,6 @@ const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
       code: 'consulting_bridge',
       message: 'consulting and revenue-bridge directives are forbidden in the MAS3 window',
       pattern: /\b(consulting|fractional|mercor|client acquisition|contract opportunit(?:y|ies)|revenue bridge|financial bridge)\b/i,
-    },
-    {
-      code: 'foldera_primary_conflict',
-      message: 'Foldera cannot be promoted into the primary lane during the MAS3 window',
-      pattern: /\b(foldera(?!\s+directive\b)(?!'s\s)|10 paying users|customer acquisition|paying users goal|growth scanner)\b/i,
     },
     {
       code: 'mas3_relitigation',
@@ -143,11 +142,6 @@ const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
       code: 'consulting_bridge',
       message: 'directive proposes a forbidden consulting or revenue-bridge path',
       pattern: /\b(consulting|fractional|mercor|client acquisition|contract opportunit(?:y|ies)|revenue bridge|financial bridge)\b/i,
-    },
-    {
-      code: 'foldera_primary_conflict',
-      message: 'directive turns Foldera or customer acquisition into the primary focus during MAS3',
-      pattern: /\b(foldera(?!\s+directive\b)(?!'s\s)|10 paying users|customer acquisition|paying users goal|growth scanner)\b/i,
     },
     {
       code: 'mas3_relitigation',

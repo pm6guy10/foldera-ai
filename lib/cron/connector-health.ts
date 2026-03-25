@@ -35,6 +35,12 @@ function shouldSendHealthAlert(lastHealthAlertAt: string | null): boolean {
 
 function buildFlagsForRow(row: UserTokenRow, signalCounts: Record<string, number>): ConnectorHealthFlag[] {
   if (row.provider === 'google') {
+    // Only flag calendar/drive if Gmail IS actively syncing (gmail > 0).
+    // If Gmail is also 0, the whole Google connection is inactive — don't
+    // alert about secondary scopes when the primary isn't working either.
+    const gmailCount = signalCounts.gmail ?? 0;
+    if (gmailCount === 0) return [];
+
     const flags: ConnectorHealthFlag[] = [];
     if ((signalCounts.google_calendar ?? 0) === 0) {
       flags.push({
@@ -52,6 +58,10 @@ function buildFlagsForRow(row: UserTokenRow, signalCounts: Record<string, number
     }
     return flags;
   }
+
+  // Only flag OneDrive if Outlook mail IS actively syncing (outlook > 0).
+  const outlookCount = signalCounts.outlook ?? 0;
+  if (outlookCount === 0) return [];
 
   if ((signalCounts.onedrive ?? 0) === 0) {
     return [{
@@ -145,7 +155,8 @@ export async function checkConnectorHealth(): Promise<ConnectorHealthResult> {
     }
 
     for (const flag of flags) {
-      const body = `${flag.sourceLabel} has been connected but hasn't synced data in 7 days. Try disconnecting and reconnecting from Settings.`;
+      const providerName = flag.provider === 'google' ? 'Google' : 'Microsoft';
+      const body = `${flag.sourceLabel} has been connected but hasn't synced data in 7 days. To enable ${flag.sourceLabel} sync, disconnect and reconnect ${providerName} from Settings to grant the required permissions.`;
       const result = await sendResendEmail({
         from: 'Foldera <brief@foldera.ai>',
         to: row.email,

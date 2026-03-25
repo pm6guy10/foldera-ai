@@ -28,8 +28,30 @@ import { decryptWithStatus } from '@/lib/encryption';
 const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
 const GENERATION_MODEL = 'claude-sonnet-4-20250514';
 const APPROVAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
-const DIRECTIVE_CONFIDENCE_THRESHOLD = 45;
+const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = 45;
 const STALE_SIGNAL_THRESHOLD_DAYS = 14;
+
+/**
+ * Load the per-user dynamic confidence threshold from tkg_goals.
+ * Falls back to DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD (45) if no row exists.
+ * Written by defense7SelfOptimize in self-heal.ts.
+ */
+async function loadDirectiveConfidenceThreshold(userId: string): Promise<number> {
+  try {
+    const { createServerClient: csc } = await import('@/lib/db/client');
+    const supabase = csc();
+    const { data } = await supabase
+      .from('tkg_goals')
+      .select('priority')
+      .eq('user_id', userId)
+      .eq('source', 'system_threshold')
+      .eq('goal_category', 'other')
+      .maybeSingle();
+    return data?.priority ?? DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD;
+  } catch {
+    return DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD;
+  }
+}
 
 /** Goal sources that are onboarding placeholders — excluded from scoring/generation. */
 const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker']);
@@ -1629,7 +1651,7 @@ export function validateDirectiveForPersistence(input: {
   if (input.directive.directive === GENERATION_FAILED_SENTINEL) {
     issues.push('directive generation failed');
   }
-  if (input.directive.confidence < DIRECTIVE_CONFIDENCE_THRESHOLD) {
+  if (input.directive.confidence < DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD) {
     issues.push('directive confidence is below the send threshold');
   }
   if (!input.artifact || typeof input.artifact !== 'object') {
@@ -2005,8 +2027,20 @@ export async function generateDirective(
     let signalEvidence: SignalSnippet[] = [];
     try {
       signalEvidence = await fetchWinnerSignalEvidence(userId, hydratedWinner);
-    } catch {
-      // Non-blocking
+    } catch (ctxErr: unknown) {
+      // Non-blocking but log context degradation so it's visible in Sentry/Vercel
+      logStructuredEvent({
+        event: 'generator_signal_evidence_failed',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'context_degraded',
+        details: {
+          scope: 'generator',
+          stage: 'fetchWinnerSignalEvidence',
+          error: ctxErr instanceof Error ? ctxErr.message : String(ctxErr),
+        },
+      });
     }
 
     if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType)) {
@@ -2208,13 +2242,14 @@ export async function generateDirective(
       );
     }
 
-    // Confidence check
+    // Confidence check — load per-user dynamic threshold from DB
     const confidence = computeDirectiveConfidence(scored);
-    if (confidence < DIRECTIVE_CONFIDENCE_THRESHOLD) {
+    const dynamicThreshold = await loadDirectiveConfidenceThreshold(userId);
+    if (confidence < dynamicThreshold) {
       logStructuredEvent({
         event: 'generation_skipped', level: 'warn', userId,
         artifactType: payload.artifact_type, generationStatus: 'below_confidence_threshold',
-        details: { scope: 'generator', confidence, threshold: DIRECTIVE_CONFIDENCE_THRESHOLD },
+        details: { scope: 'generator', confidence, threshold: dynamicThreshold },
       });
       return emptyDirective(
         'No directive cleared the confidence bar.',

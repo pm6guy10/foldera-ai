@@ -16,6 +16,11 @@ vi.mock('@/lib/auth/auth-options', () => ({
 
 vi.mock('@/lib/db/client', () => ({
   createServerClient: () => ({
+    from: () => ({
+      delete: () => ({
+        eq: () => Promise.resolve({ error: null }),
+      }),
+    }),
     auth: {
       admin: {
         deleteUser,

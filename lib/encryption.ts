@@ -88,8 +88,9 @@ export function encrypt(plaintext: string): string {
 }
 
 /**
- * Decrypts a string produced by encrypt().
- * Falls back to returning the raw value for pre-encryption legacy rows.
+ * @deprecated Use decryptWithStatus() instead.
+ * Returns ciphertext string silently on failure.
+ * decryptWithStatus() returns { plaintext, usedFallback }.
  */
 export function decrypt(ciphertext: string): string {
   return decryptWithStatus(ciphertext).plaintext;

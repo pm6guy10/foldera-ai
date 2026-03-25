@@ -132,25 +132,22 @@ async function defense2CommitmentCeiling(): Promise<DefenseResult> {
   const CEILING = 150;
   const UPDATE_BATCH_SIZE = 200;
 
-  const { data: tokenRows, error: tokenError } = await supabase
-    .from('user_tokens')
-    .select('user_id');
-  if (tokenError) {
-    throw tokenError;
+  // Get user IDs directly from tkg_commitments, not user_tokens.
+  // Users with no token row were previously skipped, letting commitments accumulate to 871+.
+  const { data: commitmentUserRows, error: commitmentUserError } = await supabase
+    .from('tkg_commitments')
+    .select('user_id')
+    .is('suppressed_at', null);
+  if (commitmentUserError) {
+    throw commitmentUserError;
   }
 
-  const userIds = [...new Set((tokenRows ?? []).map((row) => row.user_id as string).filter(Boolean))];
+  // Count per user in-memory from the fetched rows
   const perUser = new Map<string, number>();
-  for (const userId of userIds) {
-    const { count, error: countError } = await supabase
-      .from('tkg_commitments')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .is('suppressed_at', null);
-    if (countError) {
-      throw countError;
-    }
-    perUser.set(userId, count ?? 0);
+  for (const row of commitmentUserRows ?? []) {
+    const uid = row.user_id as string;
+    if (!uid) continue;
+    perUser.set(uid, (perUser.get(uid) ?? 0) + 1);
   }
 
   const suppressions: Array<{ userId: string; before: number; after: number; suppressed: number }> = [];
@@ -197,6 +194,10 @@ async function defense2CommitmentCeiling(): Promise<DefenseResult> {
 
 export async function runCommitmentCeilingDefense(): Promise<DefenseResult> {
   return defense2CommitmentCeiling();
+}
+
+export async function runTokenWatchdog(): Promise<DefenseResult> {
+  return defense1TokenWatchdog();
 }
 
 // ---------------------------------------------------------------------------
@@ -432,6 +433,111 @@ async function defense6HealthAlert(
 }
 
 // ---------------------------------------------------------------------------
+// DEFENSE 7 — SELF-OPTIMIZE (dynamic confidence threshold)
+// Weekly approval rate check. Below 20% -> raise threshold. Above 60% -> lower.
+// Stores per-user threshold in tkg_goals (source='system_threshold').
+// ---------------------------------------------------------------------------
+
+async function defense7SelfOptimize(): Promise<DefenseResult> {
+  const supabase = createServerClient();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Get all users with recent decided actions
+  const { data: recentActions, error: actionsError } = await supabase
+    .from('tkg_actions')
+    .select('user_id, status')
+    .gte('generated_at', sevenDaysAgo)
+    .in('status', ['approved', 'executed', 'skipped', 'draft_rejected']);
+
+  if (actionsError) {
+    throw actionsError;
+  }
+
+  // Group by user
+  const perUser = new Map<string, { approved: number; total: number }>();
+  for (const row of recentActions ?? []) {
+    const uid = row.user_id as string;
+    if (!uid) continue;
+    const entry = perUser.get(uid) ?? { approved: 0, total: 0 };
+    entry.total++;
+    if (row.status === 'approved' || row.status === 'executed') {
+      entry.approved++;
+    }
+    perUser.set(uid, entry);
+  }
+
+  const adjustments: Array<{ userId: string; rate: number; oldThreshold: number; newThreshold: number }> = [];
+
+  for (const [userId, stats] of perUser) {
+    if (stats.total < 3) continue; // Need minimum sample
+
+    const approvalRate = stats.approved / stats.total;
+
+    // Read current threshold from tkg_goals (source='system_threshold')
+    const { data: thresholdRow } = await supabase
+      .from('tkg_goals')
+      .select('id, priority')
+      .eq('user_id', userId)
+      .eq('source', 'system_threshold')
+      .eq('goal_category', 'other')
+      .maybeSingle();
+
+    let currentThreshold = thresholdRow?.priority ?? 45;
+    let newThreshold = currentThreshold;
+
+    if (approvalRate < 0.20 && currentThreshold < 65) {
+      newThreshold = currentThreshold + 5;
+    } else if (approvalRate > 0.60 && currentThreshold > 30) {
+      newThreshold = currentThreshold - 5;
+    }
+
+    if (newThreshold !== currentThreshold) {
+      if (thresholdRow) {
+        await supabase
+          .from('tkg_goals')
+          .update({ priority: newThreshold, updated_at: new Date().toISOString() })
+          .eq('id', thresholdRow.id);
+      } else {
+        await supabase
+          .from('tkg_goals')
+          .insert({
+            user_id: userId,
+            goal_text: 'System: directive confidence threshold',
+            goal_category: 'other',
+            priority: newThreshold,
+            source: 'system_threshold',
+            status: 'active',
+          });
+      }
+
+      adjustments.push({
+        userId,
+        rate: Math.round(approvalRate * 100),
+        oldThreshold: currentThreshold,
+        newThreshold,
+      });
+    }
+  }
+
+  console.log(JSON.stringify({
+    event: 'self_heal_defense',
+    defense: 'self_optimize',
+    users_checked: perUser.size,
+    adjustments,
+  }));
+
+  return {
+    defense: 'self_optimize',
+    ok: true,
+    details: { users_checked: perUser.size, adjustments },
+  };
+}
+
+export async function runSelfOptimize(): Promise<DefenseResult> {
+  return defense7SelfOptimize();
+}
+
+// ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
 
@@ -470,7 +576,13 @@ export async function runSelfHeal(): Promise<SelfHealResult> {
     defenses.push({ defense: 'delivery_guarantee', ok: false, details: { error: err.message } });
   }
 
-  // Defense 6: health alert (runs last, checks results of 1-5)
+  try {
+    defenses.push(await defense7SelfOptimize());
+  } catch (err: any) {
+    defenses.push({ defense: 'self_optimize', ok: false, details: { error: err.message } });
+  }
+
+  // Defense 6: health alert (runs last, checks results of 1-6)
   let alertSent = false;
   try {
     const alertResult = await defense6HealthAlert(defenses);

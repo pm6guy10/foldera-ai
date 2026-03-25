@@ -59,9 +59,7 @@ This is not optional. No push happens without a session log entry.
 
 ## Commit And Push Rules
 
-- Rebase onto `origin/main` before push.
-- Use `GIT_EDITOR=true` for non-interactive pull/rebase flows.
-- Commit only the files intended for the task.
+- Do not rebase. Commit only task files. Leave unrelated worktree changes untouched.
 - Push to `main`.
 
 ## FLOW Verification Requirement

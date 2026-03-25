@@ -83,7 +83,11 @@ export async function trackApiCall(params: TrackCallParams): Promise<void> {
 
 /**
  * Get total spend today (UTC day) in USD.
- * Returns 0 on error.
+ *
+ * Day boundary is UTC midnight (not PT).
+ * Cron fires at 11:00 UTC (4am PT).
+ * Spend cap resets at midnight UTC = 4pm PT the previous day.
+ * A ~19hr spend window relative to cron fire time.
  */
 export async function getDailySpend(userId: string): Promise<number> {
   const supabase = createServerClient();

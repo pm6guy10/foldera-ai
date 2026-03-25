@@ -462,52 +462,56 @@ async function executeArtifact(
 export async function executeAction(input: ExecuteActionInput): Promise<ExecuteActionResult> {
   const { userId, actionId, decision, skipReason, editedArtifact } = input;
   const supabase = createServerClient();
-
-  const { data: action, error: fetchErr } = await supabase
-    .from('tkg_actions')
-    .select('*')
-    .eq('id', actionId)
-    .eq('user_id', userId)
-    .single();
-
-  if (fetchErr || !action) {
-    return { status: 'skipped', action_id: actionId, error: 'Action not found' };
-  }
-
-  const status = action.status as string;
-  const allowed = status === 'pending_approval' || status === 'draft';
-  if (!allowed) {
-    return { status: 'skipped', action_id: actionId, error: `Cannot execute action with status: ${status}` };
-  }
-
   const isReject = decision === 'reject' || decision === 'skip';
-  const skipStatus = status === 'draft' ? 'draft_rejected' : 'skipped';
-  const skipContent = skipReason
-    ? `Skipped (${skipReason}): ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`
-    : `Skipped: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`;
+
+  // Atomic claim: conditionally update the row only if it still has an actionable
+  // status. This prevents the double-execute race condition where two concurrent
+  // requests both read 'pending_approval' and both proceed to send email.
+  // First, try to claim from 'pending_approval':
+  let claimedStatus: 'pending_approval' | 'draft' | null = null;
+  let action: Record<string, unknown> | null = null;
+
+  for (const candidateStatus of ['pending_approval', 'draft'] as const) {
+    const targetStatus = isReject
+      ? (candidateStatus === 'draft' ? 'draft_rejected' : 'skipped')
+      : 'approved';
+
+    const { data: claimed, error: claimErr } = await supabase
+      .from('tkg_actions')
+      .update({
+        status: targetStatus,
+        ...(isReject ? { feedback_weight: -0.5 } : {}),
+        ...(isReject && skipReason ? { skip_reason: skipReason } : {}),
+      })
+      .eq('id', actionId)
+      .eq('user_id', userId)
+      .eq('status', candidateStatus)
+      .select('*')
+      .maybeSingle();
+
+    if (!claimErr && claimed) {
+      claimedStatus = candidateStatus;
+      action = claimed as Record<string, unknown>;
+      break;
+    }
+  }
+
+  if (!action || !claimedStatus) {
+    return { status: 'skipped', action_id: actionId, error: 'Action already claimed by another request or not found' };
+  }
 
   if (isReject) {
-    const update: Record<string, unknown> = {
-      status: skipStatus,
-      feedback_weight: -0.5,
-      ...(skipReason ? { skip_reason: skipReason } : {}),
-    };
-    const { error: updateError } = await supabase.from('tkg_actions').update(update).eq('id', actionId);
-    if (updateError) {
-      throw new Error(updateError.message);
-    }
+    const skipContent = skipReason
+      ? `Skipped (${skipReason}): ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`
+      : `Skipped: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`;
 
     await insertFeedbackSignalIdempotent(supabase, userId, actionId, 'skip', skipContent);
-
-    // Suppress commitments that sourced this directive so the scorer
-    // won't re-surface them until a new signal arrives for the same entity.
     await suppressCommitmentsForSkippedAction(supabase, action);
 
-    return { status: status === 'draft' ? 'draft_rejected' : 'skipped', action_id: actionId };
+    return { status: claimedStatus === 'draft' ? 'draft_rejected' : 'skipped', action_id: actionId };
   }
 
   const execResult = (action.execution_result as Record<string, unknown>) ?? {};
-  // Prefer caller-supplied edited artifact over the stored one
   const artifact = editedArtifact ?? resolveArtifact(action as Record<string, unknown>);
   let executionResult: Record<string, unknown> = { ...execResult };
   const now = new Date().toISOString();

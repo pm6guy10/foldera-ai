@@ -892,10 +892,13 @@ async function runSignalProcessingForUser(
       route_budget_exhausted: Date.now() >= deadline,
     };
 
-    if (staleAfter > 0) {
+    // 1-9 stale signals do not block generation. Combined with decrypt quarantine
+    // (Fix 1), undecryptable signals are immediately marked processed so this
+    // guard will rarely trigger. Previously any single stale signal blocked everything.
+    if (staleAfter >= 10) {
       return {
         code: 'stale_signal_backlog_remaining',
-        detail: 'Unprocessed signals older than 24 hours remained after the signal-processing budget.',
+        detail: `${staleAfter} unprocessed signals older than 24 hours remained after the signal-processing budget.`,
         meta,
         success: false,
         userId,

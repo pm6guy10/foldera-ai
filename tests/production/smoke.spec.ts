@@ -99,6 +99,16 @@ test.describe('Authenticated: API health', () => {
     const body = await response.json();
     expect(body.integrations).toBeDefined();
   });
+
+  test('/api/stripe/checkout returns checkout URL or 400', async ({ request }) => {
+    const response = await request.post('/api/stripe/checkout');
+    // Accept 200 (returns URL) or 400 (already subscribed) — not 500
+    expect(response.status()).not.toBe(500);
+    if (response.status() === 200) {
+      const body = await response.json();
+      expect(body.url).toMatch(/^https:\/\/checkout\.stripe\.com\//);
+    }
+  });
 });
 
 // ── PUBLIC ROUTES (no session needed but included for completeness) ────────
@@ -134,9 +144,14 @@ test.describe('Public: Login page', () => {
     expect(page.url()).toMatch(/\/(dashboard|onboard)(\?|$)/);
   });
 
-  test('shows error param if present', async ({ page }) => {
-    await page.goto('/login?error=OAuthCallback');
+  test('shows error param if present', async ({ browser }) => {
+    // Use a fresh unauthenticated context — authenticated users get redirected
+    // away from /login before the error banner can render.
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto('https://www.foldera.ai/login?error=OAuthCallback');
     await expect(page.getByText('Sign-in failed. Please try again or use a different account.')).toBeVisible();
+    await context.close();
   });
 });
 

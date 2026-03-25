@@ -348,7 +348,12 @@ async function syncMail(
       const signalType = isSent ? "email_sent" : "email_received";
       const content = formatMicrosoftMailContent(msg, signalType);
 
-      const contentHash = hash(`outlook:${msg.id}`);
+      // Cross-provider email dedup: normalize hash from sender + subject + date
+      // so Gmail and Outlook versions of the same email produce the same hash.
+      const senderEmail = (isSent ? (msg.toRecipients?.[0]?.emailAddress?.address ?? '') : from).toLowerCase().trim();
+      const normalizedSubject = (msg.subject ?? '').toLowerCase().trim();
+      const datePrefix = date ? new Date(date).toISOString().slice(0, 10) : '';
+      const contentHash = hash(`email:${senderEmail}|${normalizedSubject}|${datePrefix}`);
 
       const { error } = await supabase.from("tkg_signals").insert({
         user_id: userId,
