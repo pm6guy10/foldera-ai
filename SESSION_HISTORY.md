@@ -6,6 +6,15 @@
 
 ## Session Log — 2026-03-25
 
+- **Date:** 2026-03-25 — Remove Playwright from pre-push hook
+- **MODE:** OPS
+- **Commit hash(es):** pending (set after commit)
+- **Files changed:** `.husky/pre-push`, `SESSION_HISTORY.md`
+- **What was verified:** Not run (per task scope).
+- **Any unresolved issues:** `git pull --rebase origin main` skipped per user instruction; no automated tests executed.
+
+## Session Log — 2026-03-25
+
 - **Date:** 2026-03-25 — CLAUDE pre-flight no-rebase rule
 - **MODE:** OPS
 - **Commit hash(es):** `48c63dc`, `d7e6113`
