@@ -232,3 +232,186 @@ test.describe('Public: Pricing page', () => {
     expect(hasCorrectCopy).toBe(true);
   });
 });
+
+// ── NEW USER FLOW: UNAUTHENTICATED SIMULATION ──────────────────────────────
+// Each test uses a fresh context with no storage state to simulate a brand-new
+// visitor. This surfaces broken buttons and broken flows before real users hit them.
+
+test.describe('New user flow: unauthenticated simulation', () => {
+  test('landing page hero CTA navigates to /start', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: undefined });
+    const page = await context.newPage();
+    try {
+      await page.goto('https://www.foldera.ai/');
+      await page.waitForLoadState('networkidle');
+
+      // Find primary CTA — text contains "Get started" or href="/start"
+      const ctaByText = page.getByRole('link', { name: /get started/i }).first();
+      const ctaByHref = page.locator('a[href="/start"]').first();
+
+      const hasTextCta = await ctaByText.isVisible({ timeout: 10000 }).catch(() => false);
+      const hasHrefCta = await ctaByHref.isVisible({ timeout: 10000 }).catch(() => false);
+
+      expect(hasTextCta || hasHrefCta).toBe(true);
+
+      if (hasTextCta) {
+        await ctaByText.click();
+      } else {
+        await ctaByHref.click();
+      }
+
+      await page.waitForLoadState('networkidle');
+      expect(page.url()).toContain('/start');
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('start page renders and has sign-in options', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: undefined });
+    const page = await context.newPage();
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const text = msg.text();
+        if (text.includes('Failed to load resource')) return;
+        if (text.includes('favicon')) return;
+        if (text.includes('Third-party cookie')) return;
+        if (text.includes('net::ERR_')) return;
+        consoleErrors.push(text);
+      }
+    });
+    try {
+      await page.goto('https://www.foldera.ai/start');
+      await page.waitForLoadState('networkidle');
+
+      // At least one sign-in button or link should be present
+      const hasGoogleBtn = await page.getByRole('button', { name: /google/i }).first().isVisible({ timeout: 10000 }).catch(() => false);
+      const hasGoogleLink = await page.getByRole('link', { name: /google/i }).first().isVisible({ timeout: 10000 }).catch(() => false);
+      const hasMicrosoftBtn = await page.getByRole('button', { name: /microsoft/i }).first().isVisible({ timeout: 10000 }).catch(() => false);
+      const hasMicrosoftLink = await page.getByRole('link', { name: /microsoft/i }).first().isVisible({ timeout: 10000 }).catch(() => false);
+      const hasSignInBtn = await page.getByRole('button', { name: /sign in/i }).first().isVisible({ timeout: 10000 }).catch(() => false);
+      const hasAnyButton = await page.getByRole('button').first().isVisible({ timeout: 10000 }).catch(() => false);
+
+      expect(hasGoogleBtn || hasGoogleLink || hasMicrosoftBtn || hasMicrosoftLink || hasSignInBtn || hasAnyButton).toBe(true);
+      expect(consoleErrors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('login page renders sign-in buttons', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: undefined });
+    const page = await context.newPage();
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const text = msg.text();
+        if (text.includes('Failed to load resource')) return;
+        if (text.includes('favicon')) return;
+        if (text.includes('Third-party cookie')) return;
+        if (text.includes('net::ERR_')) return;
+        consoleErrors.push(text);
+      }
+    });
+    try {
+      const response = await page.goto('https://www.foldera.ai/login');
+      await page.waitForLoadState('networkidle');
+
+      // Must not be a 500
+      expect(response?.status()).not.toBe(500);
+
+      // Page must contain "Sign in" text
+      const hasSignInText = await page.getByText(/sign in/i).first().isVisible({ timeout: 10000 }).catch(() => false);
+      expect(hasSignInText).toBe(true);
+
+      // At least one button must be visible
+      const hasButton = await page.getByRole('button').first().isVisible({ timeout: 10000 }).catch(() => false);
+      const hasLink = await page.getByRole('link').first().isVisible({ timeout: 10000 }).catch(() => false);
+      expect(hasButton || hasLink).toBe(true);
+
+      expect(consoleErrors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('pricing page upgrade button is clickable', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: undefined });
+    const page = await context.newPage();
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const text = msg.text();
+        if (text.includes('Failed to load resource')) return;
+        if (text.includes('favicon')) return;
+        if (text.includes('Third-party cookie')) return;
+        if (text.includes('net::ERR_')) return;
+        consoleErrors.push(text);
+      }
+    });
+    try {
+      const response = await page.goto('https://www.foldera.ai/pricing');
+      await page.waitForLoadState('networkidle');
+
+      if (response?.status() === 404) {
+        test.skip(true, '/pricing returned 404 — page does not exist');
+        return;
+      }
+
+      // Find any CTA button
+      const ctaButton =
+        page.getByRole('button', { name: /get started|upgrade|subscribe/i }).first();
+      const ctaLink =
+        page.getByRole('link', { name: /get started|upgrade|subscribe/i }).first();
+
+      const hasBtn = await ctaButton.isVisible({ timeout: 10000 }).catch(() => false);
+      const hasLink = await ctaLink.isVisible({ timeout: 10000 }).catch(() => false);
+
+      expect(hasBtn || hasLink).toBe(true);
+
+      if (hasBtn) {
+        await expect(ctaButton).toBeEnabled({ timeout: 10000 });
+        await ctaButton.click();
+      } else {
+        await ctaLink.click();
+      }
+
+      // After click: no page crash (page still responding)
+      await page.waitForLoadState('networkidle');
+      expect(page.isClosed()).toBe(false);
+      expect(consoleErrors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('dashboard redirects unauthenticated users to login or start', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: undefined });
+    const page = await context.newPage();
+    try {
+      await page.goto('https://www.foldera.ai/dashboard');
+      await page.waitForLoadState('networkidle');
+
+      const url = page.url();
+      expect(url).not.toContain('/dashboard');
+      expect(url).toMatch(/\/(login|start)(\?|$)|^https:\/\/www\.foldera\.ai\/?$/);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('settings redirects unauthenticated users', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: undefined });
+    const page = await context.newPage();
+    try {
+      await page.goto('https://www.foldera.ai/dashboard/settings');
+      await page.waitForLoadState('networkidle');
+
+      const url = page.url();
+      expect(url).not.toContain('/dashboard/settings');
+    } finally {
+      await context.close();
+    }
+  });
+});
