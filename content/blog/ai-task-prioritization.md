@@ -1,6 +1,6 @@
 ---
 title: "AI That Prioritizes My Tasks (By Eliminating Them)"
-description: "AI that prioritizes my tasks by eliminating them."
+description: "The real problem isn't volume — it's choosing what actually matters. Every productivity system I tried helped me organize work, but none removed the decision of what to do next. This one does."
 date: "2026-03-23"
 slug: "ai-task-prioritization"
 ---

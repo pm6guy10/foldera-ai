@@ -85,14 +85,14 @@ function OnboardContent() {
 
   if (loadingExisting) {
     return (
-      <main className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <main className="min-h-screen bg-zinc-950 flex items-start justify-center pt-24">
         <div className="animate-pulse w-8 h-8 rounded-full bg-zinc-800" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
+    <main className="min-h-screen bg-zinc-950 flex items-start justify-center px-6 pt-20 pb-12">
       <div className="w-full max-w-md">
         <p className="text-2xl font-bold text-white mb-6">Foldera</p>
 

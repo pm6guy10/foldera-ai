@@ -191,8 +191,8 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                <p className="text-zinc-400">Your first read arrives tomorrow morning.</p>
-                <p className="text-zinc-600 text-sm mt-2">Foldera is learning your patterns.</p>
+                <p className="text-zinc-400">Nothing queued for today.</p>
+                <p className="text-zinc-600 text-sm mt-2">Your next read arrives at 7am Pacific.</p>
               </>
             )}
           </div>

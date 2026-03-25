@@ -1,6 +1,6 @@
 ---
 title: "Reduce Email Overwhelm (By Handling What You're Avoiding)"
-description: "Reduce email overwhelm by handling what you're avoiding."
+description: "Email overwhelm isn't about volume. You can have 20 emails and feel stressed, or 200 and feel fine. The difference is the invisible backlog — the things you haven't handled. Here's how to clear it without willpower."
 date: "2026-03-21"
 slug: "reduce-email-overwhelm"
 ---

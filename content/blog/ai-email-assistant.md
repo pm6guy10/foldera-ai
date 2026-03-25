@@ -1,6 +1,6 @@
 ---
 title: "AI That Reads My Email and Tells Me What to Do Every Morning"
-description: "AI that reads my email and tells me what to do every morning."
+description: "My inbox wasn't the problem — I could get to zero. The problem was everything after: the decisions, the follow-ups, the threads that quietly stacked up. So I built something that doesn't just read email. It handles it."
 date: "2026-03-24"
 slug: "ai-email-assistant"
 ---

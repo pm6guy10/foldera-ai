@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { useSession } from 'next-auth/react';
 import {
   ArrowRight, Check, Mail, Calendar, MessageSquare,
   Zap, Brain, Briefcase, Code, Coffee, Database, Shield,
@@ -43,6 +44,7 @@ interface RevealProps {
 
 interface NavigationProps {
   scrolled: boolean;
+  isLoggedIn?: boolean;
 }
 
 
@@ -131,7 +133,14 @@ const useInView = (threshold = 0.15): [React.MutableRefObject<HTMLDivElement | n
   const ref = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
-    if (!ref.current || inView) return;
+    if (!ref.current) return;
+    // Check immediately if already visible (handles revisit / logged-in redirect cases)
+    const rect = ref.current.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      setInView(true);
+      return;
+    }
+    if (inView) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -605,7 +614,7 @@ function FeatureCarousel() {
 // ============================================================================
 // NAVIGATION
 // ============================================================================
-function Navigation({ scrolled }: NavigationProps) {
+function Navigation({ scrolled, isLoggedIn }: NavigationProps) {
   return (
     <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${
       scrolled
@@ -623,15 +632,24 @@ function Navigation({ scrolled }: NavigationProps) {
         <div className="hidden md:flex items-center gap-12 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
           <a href="#product" className="hover:text-white transition-colors">Platform</a>
           <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+          <a href="/blog" className="hover:text-white transition-colors">Blog</a>
         </div>
 
         <div className="flex items-center gap-6">
-          <a href="/login" className="hidden sm:block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
-            Sign in
-          </a>
-          <a href="/start" className="px-7 py-3 rounded-full bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-            Get started <ChevronRight className="w-4 h-4" />
-          </a>
+          {isLoggedIn ? (
+            <a href="/dashboard" className="px-7 py-3 rounded-full bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+              Dashboard <ChevronRight className="w-4 h-4" />
+            </a>
+          ) : (
+            <>
+              <a href="/login" className="hidden sm:block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
+                Sign in
+              </a>
+              <a href="/start" className="px-7 py-3 rounded-full bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                Get started <ChevronRight className="w-4 h-4" />
+              </a>
+            </>
+          )}
         </div>
       </div>
     </nav>
@@ -643,6 +661,8 @@ function Navigation({ scrolled }: NavigationProps) {
 // ============================================================================
 export default function App() {
   const [scrolled, setScrolled] = useState(false);
+  const { status } = useSession();
+  const isLoggedIn = status === 'authenticated';
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -682,7 +702,7 @@ export default function App() {
         }
       `}} />
 
-      <Navigation scrolled={scrolled} />
+      <Navigation scrolled={scrolled} isLoggedIn={isLoggedIn} />
 
       {/* ── SIGNAL ENGINE HERO — mechanism visualization ── */}
       <section className="relative overflow-hidden border-b border-white/5">
@@ -810,6 +830,7 @@ export default function App() {
             <nav className="flex flex-wrap justify-center items-center gap-x-12 gap-y-6 text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">
               <a href="#product" className="hover:text-white transition-colors">Platform</a>
               <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+              <a href="/blog" className="hover:text-white transition-colors">Blog</a>
               <a href="/login" className="hover:text-white transition-colors">Sign in</a>
             </nav>
           </div>

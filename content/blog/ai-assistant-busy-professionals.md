@@ -1,6 +1,6 @@
 ---
 title: "AI Assistant for Busy Professionals (That Actually Reduces Work)"
-description: "AI assistant for busy professionals that actually reduces work."
+description: "The issue isn't speed — it's decision load. Every tool I tried made me faster, but still handed all the decisions back to me. A real assistant doesn't wait for instructions. It watches what's happening and prepares the work."
 date: "2026-03-22"
 slug: "ai-assistant-busy-professionals"
 ---
