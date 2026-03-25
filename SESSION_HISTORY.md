@@ -6,6 +6,15 @@
 
 ## Session Log — 2026-03-25
 
+- **Date:** 2026-03-25 — CLAUDE pre-flight no-rebase rule
+- **MODE:** OPS
+- **Commit hash(es):** `48c63dc`, `d7e6113`
+- **Files changed:** `CLAUDE.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
+- **What was verified:** baseline `npm run test:prod` (17 passed, 1 failed — pre-existing login error banner assertion); `npm run build` (passes after clearing `.next`); post-change `npm run test:prod` (same 17 passed, 1 failed)
+- **Any unresolved issues:** `npm run test:prod` still fails `tests/production/smoke.spec.ts:137` (`/login?error=OAuthCallback` banner missing); no rebase performed per prompt.
+
+## Session Log — 2026-03-25
+
 - **Date:** 2026-03-25 — Add missing source_id on document and research_brief artifact signal inserts
 - **MODE:** OPS
 - **Commit hash(es):** pending (set after commit)
