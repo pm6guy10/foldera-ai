@@ -6,6 +6,7 @@
 - Sentry error tracking (Next.js SDK + config, DSN placeholder documented)
 - CLAUDE pre-flight rule updated to prohibit rebases unless Brandon explicitly requests
 - Production `/login?error=OAuthCallback` banner — 25/25 prod E2E now passing (login banner confirmed working March 25)
+- Stripe price ID references updated to live `price_1TF00IRrgMYs6VrdugNcEC9z`
 
 ### DONE (March 24)
 - Generator error visibility (real errors in DB)

@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-25 — Update Stripe price IDs to live value
+  MODE: OPS
+  Commit hash(es): (set after commit)
+  Files changed: `.env.example`, `.env.local.example`, `.env.local`, `docs/archive/FOLDERA_SMOKE_TEST.md`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` passed; `git grep -n "price_1T9coR2NLOgC3SAaVxcM0rEn"` returned no matches; `grep -r ...` unavailable in this shell; direct `Select-String` checks against updated env/docs files returned no matches for the old ID.
+  Any unresolved issues: none
+
 - 2026-03-25 — Fix missing source_id in tkg_signals inserts on directive execution
   MODE: AUDIT
   Commit hash(es): `8195170`

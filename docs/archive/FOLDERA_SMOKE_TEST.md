@@ -128,7 +128,7 @@
 1. **ENCRYPTION_KEY not set in test env** — 21 test failures in `execute-action.test.ts`. Not a production issue.
 2. **NR2 (legacy encryption)** — Microsoft tokens encrypted under pre-rotation key cannot be decrypted. Needs `ENCRYPTION_KEY_LEGACY` or fresh Microsoft re-auth.
 3. **DNS records not added** — `RESEND_DNS_SETUP.md` documents what's needed, but records must be added at the domain registrar.
-4. **STRIPE_PRO_PRICE_ID** — Must be set to `price_1T9coR2NLOgC3SAaVxcM0rEn` in Vercel env.
+4. **STRIPE_PRO_PRICE_ID** — Must be set to `price_1TF00IRrgMYs6VrdugNcEC9z` in Vercel env.
 5. **RESEND_FROM_EMAIL** — Must be set to `Foldera <brief@foldera.ai>` in Vercel env after domain verification.
 6. **No Stripe test completed** — Cannot test with real Stripe card from code. Requires manual verification in Stripe dashboard.
 7. **Mobile 375px visual check** — Layout uses responsive Tailwind classes but no browser-based visual verification performed.

@@ -66,7 +66,7 @@ March 24 production hotfix evidence:
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| Stripe keys configured | CANNOT VERIFY | `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` checked at runtime in checkout/webhook routes. Cannot read Vercel env vars from CI. Brandon must verify in Vercel dashboard. | — |
+| Stripe keys configured | CANNOT VERIFY | `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` checked at runtime in checkout/webhook routes. Cannot read Vercel env vars from CI. Brandon must verify in Vercel dashboard. `STRIPE_PRO_PRICE_ID` should be `price_1TF00IRrgMYs6VrdugNcEC9z` (live). | — |
 | API version | NOTE | Routes use `apiVersion: '2025-08-27.basil'` cast as `any`. This is a future-dated API version string. Verify it matches the Stripe dashboard. | — |
 | Checkout session creation | NOT TESTED | Code exists (commit 650eba5). Route: `/api/stripe/checkout` | — |
 | Webhook handler | NOT TESTED | Route: `/api/stripe/webhook`. Handles `checkout.session.completed`, `invoice.payment_succeeded`, `invoice.payment_failed`, `customer.subscription.deleted` | — |
