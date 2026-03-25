@@ -4,7 +4,7 @@
 
 Every session runs this before any work:
 
-1. Do not run git pull --rebase. Do not rebase under any circumstances unless Brandon explicitly says so in the current prompt. If the worktree is dirty with unrelated files, commit only the task files and leave unrelated changes untouched.
+1. Do not rebase. Commit only task files. Leave unrelated worktree changes untouched.
 2. Read `CLAUDE.md` fully.
 3. Read `LESSONS_LEARNED.md` before every session. Every rule is enforced.
 4. Read `FOLDERA_PRODUCT_SPEC.md`. Confirm the current task maps to a specific item in the spec (cite the section number). Fixes outside the spec require explicit approval.
@@ -81,6 +81,7 @@ Vercel Free allows max 2 cron jobs. The full nightly pipeline is consolidated in
 - Self-referential Foldera signals must be filtered before generator or extraction reads.
 - Session-backed routes use `session.user.id` only. `INGEST_USER_ID` is cron and background only.
 - Production logs must not include directive text, conviction scores, behavioral content, or similar user-private data.
+- When debugging production errors, check Sentry first before querying Supabase.
 - Pushes go to `main`.
 - When running in a worktree, do not create feature branches. Merge your changes into main and push to origin/main before stopping. If you cannot checkout main because a worktree holds it, use git worktree remove to free it first.
 

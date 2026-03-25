@@ -87,6 +87,12 @@ March 24 production hotfix evidence:
 
 **NEXT MOVE:** Wait for next nightly-ops cron (11:00 UTC). Check Vercel logs for `acceptance_gate_result`. If all 8 checks PASS, mark items PROVEN.
 
+### 1.6 Error Monitoring
+
+| Item | Status | Evidence | Blocks |
+|---|---|---|---|
+| Sentry error tracking | BUILT | `@sentry/nextjs` installed, `next.config.mjs` wrapped with `withSentryConfig`, `sentry.client.config.ts`/`sentry.server.config.ts`/`sentry.edge.config.ts` added, `SENTRY_DSN` placeholder documented in `.env.example`. Sentry wizard could not run in this non-TTY environment (`ERR_TTY_INIT_FAILED`), so setup was applied manually. | Needs real DSN + live error confirmation |
+
 ## PHASE 2: PRODUCT INTELLIGENCE (post-integrity)
 
 Only start after Phase 1 is fully PROVEN.

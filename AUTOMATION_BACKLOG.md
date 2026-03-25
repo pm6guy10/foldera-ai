@@ -2,6 +2,7 @@
 
 ### DONE (March 25)
 - Acceptance gate TOKENS check filters expiring rows with missing refresh_token in the DB query
+- Sentry error tracking (Next.js SDK + config, DSN placeholder documented)
 - CLAUDE pre-flight rule updated to prohibit rebases unless Brandon explicitly requests
 
 ### DONE (March 24)
@@ -48,7 +49,6 @@
 - /try page conversion funnel
 - Rate limiting on /api/try/analyze and all public routes
 - Signal dedup across Outlook+Gmail (same email, two signals)
-- Sentry error tracking
 - .env.example for contributors
 - GitHub Actions CI
 - UptimeRobot monitor for /api/health
