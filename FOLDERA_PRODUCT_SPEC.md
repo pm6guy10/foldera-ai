@@ -93,6 +93,12 @@ March 24 production hotfix evidence:
 |---|---|---|---|
 | Sentry error tracking | BUILT | `@sentry/nextjs` installed, `next.config.mjs` wrapped with `withSentryConfig`, `sentry.client.config.ts`/`sentry.server.config.ts`/`sentry.edge.config.ts` added, `SENTRY_DSN` placeholder documented in `.env.example`. Sentry wizard could not run in this non-TTY environment (`ERR_TTY_INIT_FAILED`), so setup was applied manually. | Needs real DSN + live error confirmation |
 
+### 1.7 CI Integrity
+
+| Item | Status | Evidence | Blocks |
+|---|---|---|---|
+| ENCRYPTION_KEY workflow fallback removed | BUILT | `.github/workflows/ci.yml` now requires `secrets.ENCRYPTION_KEY` without a hardcoded default. | — |
+
 ## PHASE 2: PRODUCT INTELLIGENCE (post-integrity)
 
 Only start after Phase 1 is fully PROVEN.

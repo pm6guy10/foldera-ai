@@ -2,11 +2,13 @@
 
 ## NEEDS_REVIEW
 
-- 2026-03-25 — `npm run test:prod` still fails the `/login?error=OAuthCallback` banner assertion (CLAUDE pre-flight change)
-  Production smoke re-ran for the CLAUDE pre-flight rule change; `17 passed, 1 failed` with the same `tests/production/smoke.spec.ts:137` failure (`Public: Login page › shows error param if present`). This session did not touch login rendering; failure remains pre-existing and unresolved.
+- 2026-03-25 — CI workflow change requires production pipeline receipt verification
+  The CI workflow now requires `secrets.ENCRYPTION_KEY` without a hardcoded fallback. Pipeline-verification rules require retriggering production after deploy, querying the database, and showing the receipt; that verification was not run in this session.
 
-- 2026-03-25 — `npm run test:prod` still fails the `/login?error=OAuthCallback` banner assertion
-  Production smoke ran during the acceptance-gate token filter change; `17 passed, 1 failed` with the same `tests/production/smoke.spec.ts:137` failure (`Public: Login page › shows error param if present`). This patch does not touch login rendering; failure remains pre-existing and unresolved.
+- 2026-03-25 — `npm run build` fails collecting page data for `/api/briefing/latest`
+  Build failed with `PageNotFoundError: Cannot find module for page: /api/briefing/latest` during `next build` page data collection. This failure is outside the CI workflow edit scope and was not resolved in this session.
+
+- 2026-03-25 — `/login?error=OAuthCallback` banner RESOLVED. `npm run test:prod` now passes 25/25. Verified March 25.
 
 - 2026-03-24 — Full local `npx playwright test` still fails with mixed local-auth and authenticated-flow assertions after Part 2 stabilization
   This session completed class-level hardening edits and passed focused `vitest` coverage plus `npm run build`. The mandatory omnibus Playwright run still failed (`67 passed, 7 skipped, 21 failed`), with the same local-auth mismatch class present in prior sessions (`tests/production/smoke.spec.ts` authenticated checks hitting `http://localhost:3000` and receiving `/login` or `401`), plus authenticated route spec assertions expecting mocked directive/settings states not reached in the combined run. A single-spec rerun of `tests/e2e/authenticated-routes.spec.ts` for the directive-card case passed in isolation, indicating suite-level state/test-harness interaction remains unresolved.

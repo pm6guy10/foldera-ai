@@ -1,9 +1,11 @@
 # AUTOMATION BACKLOG
 
 ### DONE (March 25)
+- GitHub Actions CI: remove hardcoded ENCRYPTION_KEY fallback in workflow
 - Acceptance gate TOKENS check filters expiring rows with missing refresh_token in the DB query
 - Sentry error tracking (Next.js SDK + config, DSN placeholder documented)
 - CLAUDE pre-flight rule updated to prohibit rebases unless Brandon explicitly requests
+- Production `/login?error=OAuthCallback` banner — 25/25 prod E2E now passing (login banner confirmed working March 25)
 
 ### DONE (March 24)
 - Generator error visibility (real errors in DB)
@@ -50,7 +52,6 @@
 - Rate limiting on /api/try/analyze and all public routes
 - Signal dedup across Outlook+Gmail (same email, two signals)
 - .env.example for contributors
-- GitHub Actions CI
 - UptimeRobot monitor for /api/health
 - DB migrations in code (not manual)
 - Correlation IDs in logs
@@ -61,4 +62,3 @@
 - Duplicate entity cleanup (beyond Yadira)
 - Email send idempotency (prevent double-send on cron double-fire)
 - Local Playwright auth-state mismatch against `http://localhost:3000` still breaks the authenticated production-smoke subset
-- Production `/login?error=OAuthCallback` banner is missing in `npm run test:prod` (`17 passed, 1 failed`)
