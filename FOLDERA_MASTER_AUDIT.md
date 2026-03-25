@@ -2,6 +2,15 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-25 — `npm run test:prod` still fails the `/login?error=OAuthCallback` banner assertion (CLAUDE pre-flight change)
+  Production smoke re-ran for the CLAUDE pre-flight rule change; `17 passed, 1 failed` with the same `tests/production/smoke.spec.ts:137` failure (`Public: Login page › shows error param if present`). This session did not touch login rendering; failure remains pre-existing and unresolved.
+
+- 2026-03-25 — `npm run test:prod` still fails the `/login?error=OAuthCallback` banner assertion
+  Production smoke ran during the acceptance-gate token filter change; `17 passed, 1 failed` with the same `tests/production/smoke.spec.ts:137` failure (`Public: Login page › shows error param if present`). This patch does not touch login rendering; failure remains pre-existing and unresolved.
+
+- 2026-03-24 — Full local `npx playwright test` still fails with mixed local-auth and authenticated-flow assertions after Part 2 stabilization
+  This session completed class-level hardening edits and passed focused `vitest` coverage plus `npm run build`. The mandatory omnibus Playwright run still failed (`67 passed, 7 skipped, 21 failed`), with the same local-auth mismatch class present in prior sessions (`tests/production/smoke.spec.ts` authenticated checks hitting `http://localhost:3000` and receiving `/login` or `401`), plus authenticated route spec assertions expecting mocked directive/settings states not reached in the combined run. A single-spec rerun of `tests/e2e/authenticated-routes.spec.ts` for the directive-card case passed in isolation, indicating suite-level state/test-harness interaction remains unresolved.
+
 - 2026-03-24 — Full local `npx playwright test` still fails outside the `/api/health` endpoint fix scope
   This session fixed the missing `app/api/health/route.ts` contract and verified `npm run build` plus a direct route execution returning HTTP `200`, `content-type: application/json`, and `{"status":"ok","db":true,"env":true,...}`. The required omnibus Playwright run still has the same pre-existing 10 failures unrelated to this patch: one `tests/audit/clickflow.spec.ts` timeout on `/`, plus authenticated `tests/production/smoke.spec.ts` failures tied to missing local authenticated session state (`/dashboard` and `/dashboard/settings` redirecting to `/login`, `/api/auth/session` missing `user`, and `/api/conviction/latest` + `/api/integrations/status` returning `401`).
 

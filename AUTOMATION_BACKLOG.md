@@ -2,6 +2,7 @@
 
 ### DONE (March 25)
 - Acceptance gate TOKENS check filters expiring rows with missing refresh_token in the DB query
+- CLAUDE pre-flight rule updated to prohibit rebases unless Brandon explicitly requests
 
 ### DONE (March 24)
 - Generator error visibility (real errors in DB)
