@@ -1598,3 +1598,16 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 
 ### Supabase / migrations
 - No new migrations. Goal text + current_priority updated via live SQL.
+
+## Session Log — 2026-03-25 (nightly-ops token_refresh_pre ok-wrapper + test mock parity)
+
+- MODE: AUDIT
+- Commit hash(es): PENDING
+- Files changed:
+  - `app/api/cron/nightly-ops/route.ts`
+  - `app/api/cron/nightly-ops/__tests__/route.test.ts`
+- What was verified:
+  - `npx vitest run --exclude ".claude/worktrees/**"` (125 passed, 0 failed)
+  - `npm run build` (pass)
+- Any unresolved issues:
+  - none

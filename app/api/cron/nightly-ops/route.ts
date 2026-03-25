@@ -383,8 +383,12 @@ async function handler(request: NextRequest) {
   try {
     const { runTokenWatchdog } = await import('@/lib/cron/self-heal');
     const tokenResult = await runTokenWatchdog();
-    stages.token_refresh_pre = tokenResult;
-    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'token_refresh_pre', ok: tokenResult.ok }));
+    stages.token_refresh_pre = {
+      ok: true,
+      defense: tokenResult.defense,
+      details: tokenResult.details,
+    };
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'token_refresh_pre', ok: true }));
   } catch (err: any) {
     stages.token_refresh_pre = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'token_refresh_pre', error: err.message }));

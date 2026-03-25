@@ -15,6 +15,7 @@ const runDailyBrief = vi.fn();
 const autoSkipStaleApprovals = vi.fn();
 const toSafeDailyBriefStageStatus = vi.fn((stage: { ok: boolean; results: unknown[] }) => stage);
 const runCommitmentCeilingDefense = vi.fn();
+const runTokenWatchdog = vi.fn();
 const runSelfHeal = vi.fn();
 const runAcceptanceGate = vi.fn();
 const checkConnectorHealth = vi.fn();
@@ -140,6 +141,7 @@ vi.mock('@/lib/cron/daily-brief', () => ({
 
 vi.mock('@/lib/cron/self-heal', () => ({
   runCommitmentCeilingDefense,
+  runTokenWatchdog,
   runSelfHeal,
 }));
 
@@ -180,6 +182,7 @@ describe('nightly-ops route', () => {
     resolveSignalBacklogMode.mockClear();
     autoSkipStaleApprovals.mockResolvedValue({ skipped: 0 });
     runCommitmentCeilingDefense.mockResolvedValue({ ok: true, details: { suppressions: [] } });
+    runTokenWatchdog.mockResolvedValue({ refreshed: 0, failed: 0, skipped: 0 });
     runDailyBrief.mockResolvedValue({
       date: '2026-03-24',
       ok: true,
@@ -321,7 +324,7 @@ describe('nightly-ops route', () => {
     expect(payload.stages.signal_retention_cleanup).toEqual({ ok: true, deleted: 3 });
   });
 
-  it('skips stale signal reset when the all-source backlog is already at least 200', async () => {
+  it('still resets stale signals when the all-source backlog is already at least 200', async () => {
     mockSupabase.staleSignalIds = ['sig-1', 'sig-2'];
     listUsersWithUnprocessedSignals.mockReset();
     countUnprocessedSignals.mockReset();
@@ -338,13 +341,7 @@ describe('nightly-ops route', () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload.stages.signal_processing.reset_stale_signals).toBe(0);
-    expect(mockSupabase.signalResetUpdates).toHaveLength(0);
-    expect(logStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
-      event: 'nightly_ops_stale_reset_skipped',
-      details: expect.objectContaining({
-        total_unprocessed_signals: 250,
-      }),
-    }));
+    expect(payload.stages.signal_processing.reset_stale_signals).toBe(2);
+    expect(mockSupabase.signalResetUpdates).toHaveLength(1);
   });
 });
