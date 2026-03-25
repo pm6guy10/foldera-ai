@@ -4,7 +4,7 @@
 
 Every session runs this before any work:
 
-1. Run `GIT_EDITOR=true git pull --rebase origin main` before making changes. If the worktree is not clean, resolve that without discarding user changes.
+1. Do not run git pull --rebase. Do not rebase under any circumstances unless Brandon explicitly says so in the current prompt. If the worktree is dirty with unrelated files, commit only the task files and leave unrelated changes untouched.
 2. Read `CLAUDE.md` fully.
 3. Read `LESSONS_LEARNED.md` before every session. Every rule is enforced.
 4. Read `FOLDERA_PRODUCT_SPEC.md`. Confirm the current task maps to a specific item in the spec (cite the section number). Fixes outside the spec require explicit approval.
