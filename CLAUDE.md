@@ -193,6 +193,13 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-24 — Class-level stabilization (Part 2 forensic audit remediation)
+  MODE: AUDIT
+  Commit hash(es): `945bc9b`
+  Files changed: `supabase/migrations/20260326000001_unify_check_constraints.sql`, `lib/db/__tests__/check-constraints.test.ts`, `app/error.tsx`, `.github/workflows/ci.yml`, `.husky/pre-push`, `lib/sync/microsoft-sync.ts`, `lib/sync/google-sync.ts`, `lib/signals/signal-processor.ts`, `app/api/cron/nightly-ops/route.ts`, `lib/cron/daily-brief.ts`, `lib/briefing/generator.ts`, `lib/cron/self-heal.ts`, `lib/auth/user-tokens.ts`, `lib/auth/token-store.ts`, `app/providers.tsx`, `app/api/google/connect/route.ts`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`
+  What was verified: baseline `git stash pop` to restore working changes; `npm run build` passed; focused `npx vitest run lib/db/__tests__/check-constraints.test.ts` (4 passed); `npx playwright test tests/e2e/` passed (50 passed, 6 skipped, 0 failed); commit `945bc9b` pushed to `origin/main`
+  Any unresolved issues: (1) `generator-runtime.test.ts` has 2 cross-file module isolation failures when run in the full vitest suite — tests pass in isolation, pre-existing pattern unrelated to this session's changes, needs `--isolate` refactor in a separate session; (2) `supabase/migrations/20260326000001_unify_check_constraints.sql` must be applied to production Supabase DB — requires `npx supabase db push` or manual execution, blocked without DB password from this workspace
+
 - 2026-03-24 — Added `/api/health` route to stop health-check JSON parse failures and alert spam
   MODE: AUDIT
   Commit hash(es): pending (set after commit on `main`)
