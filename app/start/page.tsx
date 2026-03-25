@@ -2,7 +2,7 @@
 
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, Layers } from 'lucide-react';
 
 export default function StartPage() {
   const [loading, setLoading] = useState<string | null>(null);
@@ -20,70 +20,100 @@ export default function StartPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <p className="text-2xl font-bold text-white mb-8">Foldera</p>
-
-        {/* Heading */}
-        <h1 className="text-3xl font-bold text-white">Connect your email.</h1>
-        <p className="text-zinc-400 mt-2">Your first read arrives tomorrow at 7am.</p>
-
-        {error && (
-          <div className="mt-4 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50">
-            <p className="text-sm text-red-300">{error}</p>
+    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* Nav */}
+      <nav className="w-full px-6 py-6 flex items-center justify-between max-w-6xl mx-auto">
+        <a href="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+            <Layers className="w-5 h-5 fill-black" aria-hidden="true" />
           </div>
-        )}
+          <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
+        </a>
+        <a
+          href="/login"
+          className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors"
+        >
+          Sign in
+        </a>
+      </nav>
 
-        {/* OAuth buttons */}
-        <div className="mt-8 space-y-3">
-          <button
-            onClick={() => handleSignIn('google')}
-            disabled={!!loading}
-            className="w-full flex items-center gap-3 bg-zinc-900 border border-zinc-800 text-white py-3 px-4 rounded-2xl hover:bg-zinc-800 transition-colors disabled:opacity-50"
-          >
-            <GoogleIcon />
-            {loading === 'google' ? 'Connecting…' : 'Continue with Google'}
-          </button>
+      {/* Main */}
+      <main className="flex-1 flex items-center justify-center px-6 py-16">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-12">
+            <h1 className="text-5xl font-black tracking-tighter text-white mb-4">Connect your email.</h1>
+            <p className="text-zinc-400 text-lg font-medium leading-relaxed">
+              Your first read arrives tomorrow at 7am.
+            </p>
+          </div>
 
-          <button
-            onClick={() => handleSignIn('azure-ad')}
-            disabled={!!loading}
-            className="w-full flex items-center gap-3 bg-zinc-900 border border-zinc-800 text-white py-3 px-4 rounded-2xl hover:bg-zinc-800 transition-colors disabled:opacity-50"
-          >
-            <MicrosoftIcon />
-            {loading === 'azure-ad' ? 'Connecting…' : 'Continue with Microsoft'}
-          </button>
-        </div>
-
-        {/* What to expect */}
-        <div className="mt-10 space-y-3">
-          {[
-            'Connect — Link your email in one click',
-            'Focus — Tell us what you\u2019re working on',
-            'Sleep — Your first read arrives tomorrow at 7am',
-            'Improve — Every approve and skip makes it smarter',
-          ].map((text, i) => (
-            <div key={i} className="flex items-start gap-3">
-              <span className="text-sm text-zinc-500 w-4 shrink-0">{i + 1}</span>
-              <span className="text-sm text-zinc-500">{text}</span>
+          {error && (
+            <div className="mb-6 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50">
+              <p className="text-sm text-red-300">{error}</p>
             </div>
-          ))}
-        </div>
+          )}
 
-        {/* Footer */}
-        <div className="mt-8 flex items-center justify-center gap-1.5">
-          <Lock className="w-3 h-3 text-zinc-600" />
-          <p className="text-xs text-zinc-600">Your data is encrypted. Delete anytime.</p>
+          <div className="space-y-3 mb-10">
+            <button
+              onClick={() => handleSignIn('google')}
+              disabled={!!loading}
+              className="w-full flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-4 px-6 rounded-2xl transition-all shadow-lg disabled:opacity-60 text-sm"
+            >
+              {loading === 'google' ? (
+                <span className="w-5 h-5 border-2 border-zinc-400 border-t-zinc-900 rounded-full animate-spin" />
+              ) : (
+                <>
+                  <GoogleIcon />
+                  Continue with Google
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => handleSignIn('azure-ad')}
+              disabled={!!loading}
+              className="w-full flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0078d4] font-semibold py-4 px-6 rounded-2xl transition-all shadow-lg disabled:opacity-60 text-sm"
+            >
+              {loading === 'azure-ad' ? (
+                <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <MicrosoftIcon />
+                  Continue with Microsoft
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* What to expect */}
+          <div className="space-y-3 mb-10">
+            {[
+              'Connect — Link your email in one click',
+              'Focus — Tell us what you\u2019re working on',
+              'Sleep — Your first read arrives tomorrow at 7am',
+              'Improve — Every approve and skip makes it smarter',
+            ].map((text, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <span className="text-sm text-zinc-500 w-4 shrink-0">{i + 1}</span>
+                <span className="text-sm text-zinc-400">{text}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-center gap-1.5">
+            <Lock className="w-3 h-3 text-zinc-600" />
+            <p className="text-xs text-zinc-600">Your data is encrypted. Delete anytime.</p>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 
 function GoogleIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true" className="shrink-0">
+    <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
       <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
       <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
       <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
@@ -94,7 +124,7 @@ function GoogleIcon() {
 
 function MicrosoftIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 21 21" aria-hidden="true" className="shrink-0">
+    <svg width="20" height="20" viewBox="0 0 21 21" aria-hidden="true">
       <rect x="1" y="1" width="9" height="9" fill="#f25022" />
       <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
       <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />

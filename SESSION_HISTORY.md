@@ -4,6 +4,22 @@
 
 ## Session Logs
 
+- 2026-03-25 — Frontend jank sweep: start page consistency, font loading, terminal done state, dead code flags
+  MODE: BUILD
+  Commit hash(es): (set after push)
+  Files changed: `app/start/page.tsx`, `app/page.tsx`, `components/dashboard/dashboard-content.tsx`, `components/dashboard/conviction-card.tsx`, `SESSION_HISTORY.md`
+  What was verified: confirmed `DashboardContent` and `ConvictionCard` have zero imports in the codebase (only appear in their own files and SESSION_HISTORY.md); confirmed Inter is already loaded via `app/layout.js` with `next/font/google` applied to body — no additional font config needed; removed `@import url('https://fonts.googleapis.com/...')` from `app/page.tsx` style block, all other styles preserved; redesigned `app/start/page.tsx` to match `login-inner.tsx` visual style (same nav, same card layout, same button colors, same spinner pattern); confirmed dashboard done state is already terminal — no regenerate button present; `npm run build` passed (23/23 static pages, 0 errors)
+  Any unresolved issues: none
+
+## Session Log — 2026-03-25
+
+- **Date:** 2026-03-25 — Remove ENCRYPTION_KEY fallback from CI workflow
+- **MODE:** OPS
+- **Commit hash(es):** pending (set after commit)
+- **Files changed:** `.github/workflows/ci.yml`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
+- **What was verified:** `Select-String -Pattern "0123456789" .github/workflows/ci.yml` (no matches); `npm run build` failed (`PageNotFoundError` for `/api/briefing/latest`).
+- **Any unresolved issues:** Pipeline receipt verification (retrigger production + DB query) not run for this pipeline change; `npm run build` failing; both logged in `FOLDERA_MASTER_AUDIT.md`.
+
 ## Session Log — 2026-03-25
 
 - **Date:** 2026-03-25 — Remove Playwright from pre-push hook

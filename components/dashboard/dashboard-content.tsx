@@ -1,3 +1,4 @@
+// DEAD CODE - not imported anywhere, pending removal
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
