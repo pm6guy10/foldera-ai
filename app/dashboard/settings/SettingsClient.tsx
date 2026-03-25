@@ -84,10 +84,17 @@ export default function SettingsClient() {
     const params = new URLSearchParams(window.location.search);
     const googleConnected = params.get('google_connected') === 'true';
     const microsoftConnected = params.get('microsoft_connected') === 'true';
-    if (!googleConnected && !microsoftConnected) return;
+    const googleError = params.get('google_error');
+    const microsoftError = params.get('microsoft_error');
+
+    // Show OAuth error messages
+    if (googleError) setActionError('Could not connect Google: ' + googleError.replace(/_/g, ' '));
+    if (microsoftError) setActionError('Could not connect Microsoft: ' + microsoftError.replace(/_/g, ' '));
 
     // Clean URL
     window.history.replaceState({}, '', window.location.pathname);
+
+    if (!googleConnected && !microsoftConnected) return;
 
     const provider = googleConnected ? 'google' : 'microsoft';
     const syncUrl = googleConnected ? '/api/google/sync-now' : '/api/microsoft/sync-now';
@@ -207,6 +214,10 @@ export default function SettingsClient() {
 
         {/* Connected accounts */}
         <h2 className="text-lg font-semibold text-white">Connected accounts</h2>
+
+        {actionError && (
+          <p className="mt-2 text-sm text-red-400">{actionError}</p>
+        )}
 
         <div className="mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -380,10 +391,6 @@ export default function SettingsClient() {
           )}
         </div>
 
-        {actionError && (
-          <p className="mt-2 text-sm text-red-400">{actionError}</p>
-        )}
-
         {/* Manual trigger */}
         <h2 className="text-lg font-semibold text-white mt-8">Daily brief</h2>
         <div className="mt-3 bg-zinc-900 rounded-xl p-4">
@@ -406,15 +413,32 @@ export default function SettingsClient() {
                   // Partial success — show what happened
                   const parts: string[] = [];
                   const stages = data.stages as Record<string, any>;
+                  const brief = stages.daily_brief;
                   if (stages.sync_microsoft?.ok === false) parts.push('Microsoft sync failed');
                   if (stages.sync_google?.ok === false) parts.push('Google sync failed');
-                  if (stages.daily_brief?.ok === false && stages.daily_brief?.generate?.status !== 'skipped') {
-                    parts.push('Brief generation failed');
+                  if (brief?.ok === false) {
+                    // Distinguish signal processing failure from true generation failure
+                    const sigStatus = brief?.signal_processing?.status;
+                    const genStatus = brief?.generate?.status;
+                    const sendStatus = brief?.send?.status;
+                    if (sigStatus === 'failed') {
+                      parts.push('Signal processing incomplete — brief will improve over time');
+                    } else if (genStatus === 'failed') {
+                      parts.push('Brief generation failed');
+                    } else if (sendStatus === 'failed') {
+                      parts.push('Email send failed');
+                    } else {
+                      parts.push('Brief pipeline had an issue');
+                    }
                   }
                   if (parts.length > 0) {
-                    setGenerateState('error');
+                    // Only treat as error if it's a true failure, not just signal backlog
+                    const isSignalBacklogOnly =
+                      parts.length === 1 &&
+                      parts[0].startsWith('Signal processing incomplete');
+                    setGenerateState(isSignalBacklogOnly ? 'success' : 'error');
                     setGenerateMessage(parts.join('. ') + '.');
-                  } else if (!data.ok && stages.daily_brief) {
+                  } else if (!data.ok && brief) {
                     setGenerateState('success');
                     setGenerateMessage('Done. No directive today — check back at 7am.');
                   } else {

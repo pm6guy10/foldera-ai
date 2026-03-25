@@ -8,6 +8,7 @@ node_modules
 .env*.local
 test-results/
 audit-output/
+output/
 
 # Production test auth state (contains session cookies)
 tests/production/auth-state.json
