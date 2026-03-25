@@ -48,31 +48,16 @@ export async function saveUserToken(
     updated_at: now,
   };
 
-  const { data: existing } = await supabase
+  const { error } = await supabase
     .from('user_tokens')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('provider', provider)
-    .maybeSingle();
+    .upsert(
+      { ...row, created_at: now },
+      { onConflict: 'user_id,provider', ignoreDuplicates: false },
+    );
 
-  if (existing) {
-    const { error } = await supabase
-      .from('user_tokens')
-      .update(row)
-      .eq('user_id', userId)
-      .eq('provider', provider);
-    if (error) {
-      console.error(`[user-tokens] update failed:`, error.message);
-      throw error;
-    }
-  } else {
-    const { error } = await supabase
-      .from('user_tokens')
-      .insert({ ...row, created_at: now });
-    if (error) {
-      console.error(`[user-tokens] insert failed:`, error.message);
-      throw error;
-    }
+  if (error) {
+    console.error(`[user-tokens] upsert failed:`, error.message);
+    throw error;
   }
 
   console.log(`[user-tokens] saved ${provider} token for user ${userId}`);
@@ -151,7 +136,8 @@ export async function getAllUsersWithProvider(
     .from('user_tokens')
     .select('user_id')
     .eq('provider', provider)
-    .not('access_token', 'is', null);
+    .not('access_token', 'is', null)
+    .is('disconnected_at', null);
 
   if (error) {
     console.error(`[user-tokens] getAllUsersWithProvider(${provider}) failed:`, error.message);

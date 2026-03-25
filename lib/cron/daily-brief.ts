@@ -1404,24 +1404,6 @@ export async function runDailySend(
         continue;
       }
 
-      // Dedup: skip if ANY email was already sent today for this user (any action)
-      const { count: alreadySentCount } = await supabase
-        .from('tkg_actions')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .gte('generated_at', todayStart)
-        .not('execution_result->daily_brief_sent_at', 'is', null);
-
-      if ((alreadySentCount ?? 0) > 0) {
-        results.push({
-          code: 'email_already_sent',
-          meta: { dedup: true, sent_count_today: alreadySentCount },
-          success: true,
-          userId,
-        });
-        continue;
-      }
-
       const { data: actions, error: actionsError } = await supabase
         .from('tkg_actions')
         .select('id, action_type, directive_text, reason, confidence, execution_result, generated_at')

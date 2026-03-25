@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const maybeSingleSpy = vi.fn();
+const upsertSpy = vi.fn();
 const updateEqSpy = vi.fn();
 const updateSpy = vi.fn();
-const insertSpy = vi.fn();
 
 vi.mock('@/lib/db/client', () => ({
   createServerClient: () => ({
@@ -13,21 +12,8 @@ vi.mock('@/lib/db/client', () => ({
       }
 
       return {
-        select() {
-          return {
-            eq() {
-              return {
-                eq() {
-                  return {
-                    maybeSingle: maybeSingleSpy,
-                  };
-                },
-              };
-            },
-          };
-        },
+        upsert: upsertSpy,
         update: updateSpy,
-        insert: insertSpy,
       };
     },
   }),
@@ -42,12 +28,11 @@ vi.mock('@/lib/crypto/token-encryption', () => ({
 describe('saveUserToken', () => {
   beforeEach(() => {
     vi.resetModules();
-    maybeSingleSpy.mockReset();
+    upsertSpy.mockReset();
     updateEqSpy.mockReset();
     updateSpy.mockReset();
-    insertSpy.mockReset();
 
-    maybeSingleSpy.mockResolvedValue({ data: null, error: null });
+    upsertSpy.mockResolvedValue({ error: null });
     updateEqSpy.mockResolvedValue({ error: null });
     updateSpy.mockReturnValue({
       eq() {
@@ -56,7 +41,6 @@ describe('saveUserToken', () => {
         };
       },
     });
-    insertSpy.mockResolvedValue({ error: null });
   });
 
   it('rejects test-prefixed tokens before any database write', async () => {
@@ -69,9 +53,8 @@ describe('saveUserToken', () => {
       expires_at: Date.now() + 60_000,
     })).rejects.toThrow('Refusing to persist test token value');
 
-    expect(maybeSingleSpy).not.toHaveBeenCalled();
+    expect(upsertSpy).not.toHaveBeenCalled();
     expect(updateSpy).not.toHaveBeenCalled();
-    expect(insertSpy).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith('[user-tokens] rejected test token write for google user user-1');
 
     warnSpy.mockRestore();
@@ -88,20 +71,22 @@ describe('saveUserToken', () => {
       email: 'user@example.com',
     });
 
-    expect(maybeSingleSpy).toHaveBeenCalledTimes(1);
-    expect(insertSpy).toHaveBeenCalledWith(expect.objectContaining({
-      provider: 'google',
-      refresh_token: 'enc:1//real_refresh_token',
-      access_token: 'enc:ya29.real_access_token',
-      disconnected_at: null,
-      email: 'user@example.com',
-    }));
+    expect(upsertSpy).toHaveBeenCalledTimes(1);
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'google',
+        refresh_token: 'enc:1//real_refresh_token',
+        access_token: 'enc:ya29.real_access_token',
+        disconnected_at: null,
+        email: 'user@example.com',
+      }),
+      { onConflict: 'user_id,provider', ignoreDuplicates: false },
+    );
 
     logSpy.mockRestore();
   });
 
-  it('clears disconnected_at when updating an existing row', async () => {
-    maybeSingleSpy.mockResolvedValue({ data: { id: 'tok-1' }, error: null });
+  it('clears disconnected_at when writing with upsert', async () => {
     const { saveUserToken } = await import('../user-tokens');
 
     await saveUserToken('user-1', 'microsoft', {
@@ -110,11 +95,14 @@ describe('saveUserToken', () => {
       expires_at: Date.now() + 60_000,
     });
 
-    expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
-      access_token: 'enc:valid_access_token',
-      refresh_token: 'enc:valid_refresh_token',
-      disconnected_at: null,
-    }));
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        access_token: 'enc:valid_access_token',
+        refresh_token: 'enc:valid_refresh_token',
+        disconnected_at: null,
+      }),
+      { onConflict: 'user_id,provider', ignoreDuplicates: false },
+    );
   });
 });
 

@@ -10,6 +10,11 @@ const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
 const ONBOARDING_SOURCES = ['onboarding_bucket', 'onboarding_stated', 'onboarding_marker'] as const;
 
 async function setOnboardingClaim(token: JWT): Promise<JWT> {
+  // Once onboarded, the claim is permanent. Skip DB query.
+  if (token.hasOnboarded === true) {
+    return token;
+  }
+
   if (!token.userId || typeof token.userId !== 'string') {
     return { ...token, hasOnboarded: false };
   }
@@ -295,8 +300,10 @@ export function getAuthOptions(): NextAuthOptions {
                 console.warn(`[auth][jwt] SKIPPED token persist — missing: userId=${!!resolvedUserId} access=${!!account.access_token}`);
               }
             } catch (err: any) {
-              // Non-fatal — JWT still works; log and move on
-              console.error(`[auth][jwt] FAILED to persist OAuth tokens: ${err.message}`, err.stack ?? '');
+              // FATAL during initial sign-in: if tokens don't persist,
+              // background sync will silently fail. Block the session.
+              console.error(`[auth][jwt] FATAL — token persist failed, blocking sign-in: ${err.message}`, err.stack ?? '');
+              throw new Error(`Token persistence failed for ${account.provider}: ${err.message}`);
             }
           } else if (token.expiresAt && token.refreshToken) {
             // --- Subsequent request: check if access token needs refresh ---
@@ -313,30 +320,10 @@ export function getAuthOptions(): NextAuthOptions {
           }
           return await setOnboardingClaim(token);
         } catch (outerErr: any) {
-          // Catch-all: if anything in the jwt callback throws, log it
-          // and still return the token so the sign-in doesn't break.
           console.error('[auth] CRITICAL — jwt callback threw:', outerErr?.message ?? outerErr, outerErr?.stack ?? '');
-
-          // Fallback: resolve userId from user_tokens by email so session-backed routes don't 401
-          if (!token.userId && token.email) {
-            try {
-              const supabase = createServerClient();
-              const { data } = await supabase
-                .from('user_tokens')
-                .select('user_id')
-                .eq('email', token.email as string)
-                .limit(1)
-                .maybeSingle();
-              if (data?.user_id) {
-                token.userId = data.user_id;
-                console.log('[auth][jwt] FALLBACK userId from user_tokens:', data.user_id);
-              }
-            } catch (fallbackErr: any) {
-              console.error('[auth][jwt] FALLBACK also failed:', fallbackErr?.message);
-            }
-          }
-
-          return await setOnboardingClaim(token);
+          // Do NOT attempt fallback resolution. If the JWT callback fails critically,
+          // return the token as-is. Routes that require userId will 401, which is correct.
+          return token;
         }
       },
       async session({ session, token }) {
