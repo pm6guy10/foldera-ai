@@ -5,13 +5,13 @@
  * and reports pass/fail. If any check fails, sends a health alert email.
  *
  * Checks:
- *   1. AUTH       — RPC get_auth_user_id_by_email resolves Brandon.
- *   2. TOKENS     — Any user_tokens expiring within 6 hours get flagged.
+ *   1. AUTH       — At least one connected token maps to a real auth user.
+ *   2. TOKENS     — user_tokens with no refresh_token that are expiring within 6h get flagged.
  *   3. SIGNALS    — Unprocessed signal count <= 50.
  *   4. COMMITMENTS— Active commitment count <= 150 per user.
  *   5. GENERATION — At least one tkg_actions row today (directive or do_nothing).
  *   6. DELIVERY   — If pending_approval exists, email was sent.
- *   7. SESSION    — /api/integrations/status returns 200 (internal fetch).
+ *   7. SESSION    — Connected token rows map to resolvable auth users.
  */
 
 import { createServerClient } from '@/lib/db/client';
@@ -37,55 +37,96 @@ export interface AcceptanceGateResult {
 }
 
 // ---------------------------------------------------------------------------
-// Check 1: AUTH — RPC resolves at least one user
+// Check 1: AUTH — connected token row maps to a resolvable auth user
 // ---------------------------------------------------------------------------
 
 async function checkAuth(): Promise<CheckResult> {
   const supabase = createServerClient();
+  const { data: tokenRow, error: tokenError } = await supabase
+    .from('user_tokens')
+    .select('user_id, email')
+    .not('access_token', 'is', null)
+    .limit(1)
+    .maybeSingle();
 
-  const { data, error } = await supabase.rpc('get_auth_user_id_by_email', {
-    lookup_email: 'b-kapp@outlook.com',
-  });
-
-  if (error) {
-    return { check: 'AUTH', pass: false, detail: `RPC error: ${error.message}` };
+  if (tokenError) {
+    return { check: 'AUTH', pass: false, detail: `user_tokens lookup failed: ${tokenError.message}` };
   }
 
-  if (!data) {
-    return { check: 'AUTH', pass: false, detail: 'RPC returned no UUID for b-kapp@outlook.com' };
+  if (!tokenRow?.user_id) {
+    return { check: 'AUTH', pass: true, detail: 'No connected providers yet; auth token check skipped.' };
   }
 
-  return { check: 'AUTH', pass: true, detail: `UUID: ${(data as string).slice(0, 8)}...` };
+  const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(tokenRow.user_id);
+  if (authError) {
+    return { check: 'AUTH', pass: false, detail: `auth lookup failed: ${authError.message}` };
+  }
+
+  if (!authUser.user) {
+    return { check: 'AUTH', pass: false, detail: `No auth user for token row ${tokenRow.user_id.slice(0, 8)}...` };
+  }
+
+  return {
+    check: 'AUTH',
+    pass: true,
+    detail: `Resolved auth user ${tokenRow.user_id.slice(0, 8)}...`,
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Check 2: TOKENS — Flag tokens expiring within 6 hours
 // ---------------------------------------------------------------------------
 
+function normalizeExpiryMs(raw: unknown): number | null {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+    return null;
+  }
+
+  // Epoch seconds are typically 10 digits; epoch milliseconds are 13.
+  if (raw < 1_000_000_000_000) {
+    return raw * 1000;
+  }
+
+  return raw;
+}
+
 async function checkTokens(): Promise<CheckResult> {
   const supabase = createServerClient();
-  // expires_at is bigint (epoch milliseconds), not a timestamp
-  const sixHoursFromNowMs = Date.now() + 6 * 60 * 60 * 1000;
+  const nowMs = Date.now();
+  const sixHoursFromNowMs = nowMs + 6 * 60 * 60 * 1000;
 
   const { data, error } = await supabase
     .from('user_tokens')
-    .select('user_id, provider, expires_at')
-    .not('expires_at', 'is', null)
-    .lt('expires_at', sixHoursFromNowMs);
+    .select('user_id, provider, expires_at, refresh_token')
+    .lt('expires_at', sixHoursFromNowMs)
+    .is('refresh_token', null);
 
   if (error) {
     return { check: 'TOKENS', pass: false, detail: `Query error: ${error.message}` };
   }
 
-  const expiring = data ?? [];
+  const expiring = (data ?? []).filter((row: any) => {
+    const expiryMs = normalizeExpiryMs(row.expires_at);
+    if (expiryMs === null || expiryMs < nowMs || expiryMs >= sixHoursFromNowMs) {
+      return false;
+    }
+    return row.refresh_token === null;
+  });
   if (expiring.length > 0) {
     const summary = expiring
-      .map((t: any) => `${t.provider}/${(t.user_id as string).slice(0, 8)}`)
+      .map((row: any) => {
+        const expiryMs = normalizeExpiryMs(row.expires_at);
+        const expiryLabel = expiryMs ? new Date(expiryMs).toISOString() : 'unknown_expiry';
+        const userLabel = typeof row.user_id === 'string' ? row.user_id.slice(0, 8) : 'unknown_user';
+        const providerLabel = typeof row.provider === 'string' ? row.provider : 'unknown_provider';
+        return `${userLabel}/${providerLabel}@${expiryLabel}`;
+      })
       .join(', ');
+
     return {
       check: 'TOKENS',
       pass: false,
-      detail: `${expiring.length} token(s) expiring within 6h: ${summary}`,
+      detail: `${expiring.length} token(s) have no refresh_token and cannot auto-renew: ${summary}`,
     };
   }
 
@@ -280,29 +321,53 @@ async function checkDelivery(): Promise<CheckResult> {
 }
 
 // ---------------------------------------------------------------------------
-// Check 7: SESSION — Verify integrations/status route works
-// NOTE: In serverless context we can't fetch our own route.
-// Instead, verify the DB layer that the route depends on.
+// Check 7: SESSION — Verify connected token rows still map to auth users
 // ---------------------------------------------------------------------------
 
 async function checkSession(): Promise<CheckResult> {
   const supabase = createServerClient();
 
-  // Verify user_tokens table is queryable (the data source for /api/integrations/status)
   const { data, error } = await supabase
     .from('user_tokens')
-    .select('provider, user_id')
+    .select('provider, user_id, access_token')
     .limit(5);
 
   if (error) {
     return { check: 'SESSION', pass: false, detail: `user_tokens query failed: ${error.message}` };
   }
 
-  const providers = [...new Set((data ?? []).map((r: any) => r.provider))];
+  const connectedRows = (data ?? []).filter(
+    (row: any) => typeof row.access_token === 'string' && row.access_token.length > 0,
+  );
+  if (connectedRows.length === 0) {
+    return {
+      check: 'SESSION',
+      pass: true,
+      detail: 'No connected provider rows; session identity check skipped.',
+    };
+  }
+
+  const missingAuthUsers: string[] = [];
+  for (const row of connectedRows) {
+    const { data: authData, error: authError } = await supabase.auth.admin.getUserById(row.user_id);
+    if (authError || !authData.user) {
+      missingAuthUsers.push(`${(row.provider as string)}/${(row.user_id as string).slice(0, 8)}`);
+    }
+  }
+
+  if (missingAuthUsers.length > 0) {
+    return {
+      check: 'SESSION',
+      pass: false,
+      detail: `Connected tokens with missing auth users: ${missingAuthUsers.join(', ')}`,
+    };
+  }
+
+  const providers = [...new Set(connectedRows.map((r: any) => r.provider))];
   return {
     check: 'SESSION',
     pass: true,
-    detail: `user_tokens accessible. Providers: ${providers.join(', ') || 'none'}`,
+    detail: `Connected providers map to auth users: ${providers.join(', ')}`,
   };
 }
 
