@@ -97,6 +97,14 @@ export async function POST(request: Request) {
     }
 
     const brief = await runDailyBrief({ userIds: [userId] });
+
+    // Run ceiling again after signal processing extracted new commitments
+    try {
+      await runCommitmentCeilingDefense();
+    } catch (err) {
+      console.warn('[run-brief] post-brief commitment ceiling defense failed:', err);
+    }
+
     let send = brief.send;
     let manualSendFallbackAttempted = false;
 

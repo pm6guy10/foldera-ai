@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-25 — Commitment ceiling now runs immediately before scoring inside daily-brief generation
+  MODE: BUILD
+  Commit hash(es): (set after push)
+  Files changed: `lib/cron/daily-brief.ts`, `app/api/settings/run-brief/route.ts`, `SESSION_HISTORY.md`
+  What was verified: traced execution path — runDailyBrief() calls runDailyGenerate() which calls processUnextractedSignals() (extracts new commitments) then calls generateDirective() (scorer runs here); ceiling was running before runDailyBrief but after extraction fills commitments back above 150; fix: added runCommitmentCeilingDefense() call immediately before generateDirective() in daily-brief.ts (line ~1051) so scorer always sees <=150 commitments; also added second ceiling call in run-brief/route.ts after runDailyBrief() returns; imported self-heal into daily-brief.ts; `npm run build` passed
+  Any unresolved issues: none
+
 - 2026-03-25 — Frontend jank sweep: start page consistency, font loading, terminal done state, dead code flags
   MODE: BUILD
   Commit hash(es): (set after push)

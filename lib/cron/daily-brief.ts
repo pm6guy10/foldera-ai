@@ -55,6 +55,7 @@ import {
   getVerifiedDailyBriefRecipientEmail,
 } from '@/lib/auth/daily-brief-users';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { runCommitmentCeilingDefense } from '@/lib/cron/self-heal';
 
 type DailyBriefFailureCode =
   | 'signal_processing_failed'
@@ -1046,6 +1047,14 @@ export async function runDailyGenerate(
           userId,
         });
         continue;
+      }
+
+      // Run ceiling defense immediately before scoring so the scorer sees <=150 commitments
+      // even if signal processing just extracted new ones during this run
+      try {
+        await runCommitmentCeilingDefense();
+      } catch (err) {
+        console.warn('[daily-brief] pre-generate commitment ceiling defense failed:', err);
       }
 
       let directive;
