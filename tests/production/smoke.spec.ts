@@ -147,7 +147,7 @@ test.describe('Public: Login page', () => {
   test('shows error param if present', async ({ browser }) => {
     // Use a fresh unauthenticated context — authenticated users get redirected
     // away from /login before the error banner can render.
-    const context = await browser.newContext();
+    const context = await browser.newContext({ storageState: undefined });
     const page = await context.newPage();
     await page.goto('https://www.foldera.ai/login?error=OAuthCallback');
     await page.waitForLoadState('networkidle');
