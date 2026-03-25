@@ -125,7 +125,7 @@ function buildWinner(): ScoredLoop {
         summary: 'MAS3 hiring manager thread',
       },
     ],
-    relationshipContext: '- MAS3 Hiring Manager <manager@example.com> (Hiring)',
+    relationshipContext: '- MAS3 Hiring Manager <manager@mas3corp.com> (Hiring)',
   };
 }
 
@@ -193,7 +193,7 @@ describe('generateDirective runtime failures', () => {
           directive: 'Send the follow-up email to the MAS3 hiring manager today.',
           artifact_type: 'send_message',
           artifact: {
-            to: 'manager@example.com',
+            to: 'manager@mas3corp.com',
             subject: 'MAS3 timeline follow-up',
             body: 'Hi,\n\nI wanted to follow up on the MAS3 interview timeline.\n\nThank you,\nBrandon',
           },
@@ -229,7 +229,7 @@ describe('generateDirective runtime failures', () => {
   "directive": "Send the follow-up email to the MAS3 hiring manager today.",
   "artifact_type": "send_message",
   "artifact": {
-    "to": "manager@example.com",
+    "to": "manager@mas3corp.com",
     "subject": "MAS3 timeline follow-up",
     "body": "Hi,\\n\\nI wanted to follow up on the MAS3 interview timeline.\\n\\nThank you,\\nBrandon"
   },
