@@ -398,6 +398,7 @@ async function executeArtifact(
         const { error: decErr } = await supabase.from('tkg_signals').insert({
           user_id: userId,
           source: 'artifact',
+          source_id: `artifact-decision-${actionId}`,
           type: 'document',
           content: encrypt(`Decision: ${recommendation}\n\nOptions: ${JSON.stringify(options).slice(0, 4000)}`),
           content_hash: contentHash,
@@ -430,6 +431,7 @@ async function executeArtifact(
         const { error: affErr } = await supabase.from('tkg_signals').insert({
           user_id: userId,
           source: 'artifact',
+          source_id: `artifact-wait-${actionId}`,
           type: 'document',
           content: encrypt(waitBody),
           content_hash: contentHash,
