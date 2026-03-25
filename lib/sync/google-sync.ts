@@ -348,7 +348,7 @@ async function syncDrive(
 
       const { error } = await supabase.from('tkg_signals').insert({
         user_id: userId,
-        source: 'google_drive',
+        source: 'drive',
         source_id: file.id,
         type: 'file_modified',
         content: encrypt(content),
@@ -446,9 +446,17 @@ export async function syncGoogle(userId: string): Promise<GoogleSyncResult> {
     errors.push(`drive: ${err.message}`);
   }
 
-  // Update last_synced_at even on partial success
-  if (gmailSignals > 0 || calendarSignals > 0 || driveSignals > 0 || errors.length === 0) {
+  // Only advance sync timestamp when ALL sub-syncs succeeded.
+  // If any sub-sync failed, keep the old timestamp so the next run retries
+  // the same window. Dedup via content_hash prevents duplicate signals.
+  // This prevents the Class C data loss pattern (partial success advancing
+  // the timestamp past failed sub-syncs' data windows).
+  if (errors.length === 0) {
     await updateSyncTimestamp(userId, 'google');
+  } else {
+    console.warn(
+      `[google-sync] user=${userId} timestamp NOT advanced due to ${errors.length} sub-sync error(s): ${errors.join('; ')}`,
+    );
   }
 
   console.log(

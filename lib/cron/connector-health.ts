@@ -5,7 +5,7 @@ const HEALTH_ALERT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface ConnectorHealthFlag {
   provider: 'google' | 'microsoft';
-  sourceKey: 'google_calendar' | 'google_drive' | 'onedrive';
+  sourceKey: 'google_calendar' | 'drive' | 'onedrive';
   sourceLabel: 'Google Calendar' | 'Google Drive' | 'OneDrive';
 }
 
@@ -43,10 +43,10 @@ function buildFlagsForRow(row: UserTokenRow, signalCounts: Record<string, number
         sourceLabel: 'Google Calendar',
       });
     }
-    if ((signalCounts.google_drive ?? 0) === 0) {
+    if ((signalCounts.drive ?? 0) === 0) {
       flags.push({
         provider: 'google',
-        sourceKey: 'google_drive',
+        sourceKey: 'drive',
         sourceLabel: 'Google Drive',
       });
     }

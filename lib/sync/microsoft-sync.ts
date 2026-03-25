@@ -754,15 +754,17 @@ export async function syncMicrosoft(
     errors.push(`tasks: ${err.message}`);
   }
 
-  // Update last_synced_at even on partial success
-  if (
-    mailSignals > 0 ||
-    calendarSignals > 0 ||
-    fileSignals > 0 ||
-    taskSignals > 0 ||
-    errors.length === 0
-  ) {
+  // Only advance sync timestamp when ALL sub-syncs succeeded.
+  // If any sub-sync failed, keep the old timestamp so the next run retries
+  // the same window. Dedup via content_hash prevents duplicate signals.
+  // This prevents the Class C data loss pattern (partial success advancing
+  // the timestamp past failed sub-syncs' data windows).
+  if (errors.length === 0) {
     await updateSyncTimestamp(userId, "microsoft");
+  } else {
+    console.warn(
+      `[microsoft-sync] user=${userId} timestamp NOT advanced due to ${errors.length} sub-sync error(s): ${errors.join('; ')}`,
+    );
   }
 
   const total = mailSignals + calendarSignals + fileSignals + taskSignals;

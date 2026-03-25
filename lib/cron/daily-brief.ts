@@ -121,7 +121,11 @@ export interface SafeDailyBriefStageStatus {
   summary: string;
 }
 
-const CONFIDENCE_THRESHOLD = 70; // LLM self-rated 0-100 scale — see THRESHOLD REFERENCE above
+// Must match DIRECTIVE_CONFIDENCE_THRESHOLD in generator.ts (45).
+// Previously was 70, which created zombie actions: actions persisted at confidence
+// 45-69 were never reconciled (too low for the 70 threshold) but were sent by
+// the send stage (which doesn't check confidence). Aligning prevents the gap.
+const CONFIDENCE_THRESHOLD = 45;
 const DAILY_SIGNAL_BATCH_SIZE = 5;
 
 /** Extract both scorer EV and generator confidence for structured logging. */
@@ -893,7 +897,7 @@ async function runSignalProcessingForUser(
         code: 'stale_signal_backlog_remaining',
         detail: 'Unprocessed signals older than 24 hours remained after the signal-processing budget.',
         meta,
-        success: true,
+        success: false,
         userId,
       };
     }

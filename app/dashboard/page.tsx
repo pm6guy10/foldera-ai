@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState(false);
 
   // Handle email deep-link params (approve/skip from morning email)
   useEffect(() => {
@@ -68,12 +69,19 @@ export default function DashboardPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setFetchError(false);
     try {
       const res = await fetch('/api/conviction/latest');
+      if (!res.ok) {
+        setFetchError(true);
+        setAction(null);
+        return;
+      }
       const data = await res.json().catch(() => ({}));
       setAccountCreatedAt(typeof data?.account_created_at === 'string' ? data.account_created_at : null);
       setAction(data?.id ? data : null);
     } catch {
+      setFetchError(true);
       setAccountCreatedAt(null);
       setAction(null);
     } finally {
@@ -163,6 +171,16 @@ export default function DashboardPage() {
           <div className="mt-20 text-center">
             {flash && <p className="text-white text-base mb-2">{flash}</p>}
             <p className="text-zinc-500 text-sm">Your next read arrives at 7am Pacific.</p>
+          </div>
+        ) : fetchError ? (
+          <div className="mt-20 text-center">
+            <p className="text-zinc-400">Something went wrong loading your dashboard.</p>
+            <button
+              onClick={load}
+              className="mt-4 text-sm text-emerald-500 hover:text-emerald-400 transition-colors"
+            >
+              Try again
+            </button>
           </div>
         ) : !action ? (
           <div className="mt-20 text-center">

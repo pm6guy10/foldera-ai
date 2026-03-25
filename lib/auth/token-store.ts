@@ -33,12 +33,13 @@ export async function getGoogleTokens(userId: string): Promise<GoogleTokens | nu
   const tokens: GoogleTokens = {
     access_token: row.access_token,
     refresh_token: row.refresh_token,
+    // expires_at is normalized to seconds in user_tokens; expiry_date is ms for googleapis
     expiry_date: row.expires_at,
   };
 
   // Check if token needs refresh (5 min buffer)
-  // Google expires_at is stored as epoch ms in user_tokens
-  if (tokens.expiry_date && tokens.expiry_date < Date.now() + 5 * 60 * 1000) {
+  // expires_at is now normalized to epoch SECONDS by saveUserToken
+  if (tokens.expiry_date && tokens.expiry_date < Date.now() / 1000 + 5 * 60) {
     return await refreshGoogleTokens(userId, tokens);
   }
 
@@ -64,10 +65,11 @@ async function refreshGoogleTokens(userId: string, tokens: GoogleTokens): Promis
     const newTokens: GoogleTokens = {
       access_token: credentials.access_token!,
       refresh_token: credentials.refresh_token || tokens.refresh_token,
+      // credentials.expiry_date is in ms; saveUserToken auto-normalizes to seconds
       expiry_date: credentials.expiry_date || Date.now() + 3600 * 1000,
     };
 
-    // Persist refreshed tokens to user_tokens
+    // Persist refreshed tokens — saveUserToken normalizes ms to seconds
     await saveUserToken(userId, 'google', {
       access_token: newTokens.access_token,
       refresh_token: newTokens.refresh_token,

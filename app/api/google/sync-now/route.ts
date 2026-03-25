@@ -38,7 +38,7 @@ export async function POST() {
       );
     }
 
-    const total = result.gmail_signals + result.calendar_signals;
+    const total = result.gmail_signals + result.calendar_signals + result.drive_signals;
 
     return NextResponse.json({ ok: true, total, ...result });
   } catch (err: any) {

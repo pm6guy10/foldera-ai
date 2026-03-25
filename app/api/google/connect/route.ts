@@ -17,11 +17,16 @@ import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
+// Must match the scopes in lib/auth/auth-options.ts GoogleProvider config.
+// Previously this was a subset (missing gmail.send, userinfo.profile, full calendar),
+// which meant standalone-connected users had fewer permissions than sign-in users.
 const SCOPES = [
-  'https://www.googleapis.com/auth/gmail.readonly',
-  'https://www.googleapis.com/auth/calendar.readonly',
-  'https://www.googleapis.com/auth/drive.readonly',
   'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/drive.readonly',
 ];
 
 export async function GET() {

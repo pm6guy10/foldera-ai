@@ -531,27 +531,14 @@ async function processBatch(
     }
     if (!Array.isArray(extractions)) extractions = [];
   } catch (error: unknown) {
-    // Parse failed even after extraction attempt — mark all signals in this
-    // batch as processed with empty extractions so they don't stall the pipeline
-    result.errors.push(`parse: ${error instanceof Error ? error.message : String(error)}`);
-    if (dryRun) {
-      result.signals_processed += decryptedBatch.length;
-      return result;
-    }
-    for (const signal of decryptedBatch) {
-      const updateSignalResult = await supabase
-        .from('tkg_signals')
-        .update({
-          processed: true,
-          extracted_entities: [],
-          extracted_commitments: [],
-          extracted_dates: null,
-        })
-        .eq('id', signal.id);
-      if (!updateSignalResult.error) {
-        result.signals_processed++;
-      }
-    }
+    // Parse failed — do NOT mark signals as processed. They will be retried
+    // on the next run. This prevents the Class E data loss pattern (signal
+    // consumed with zero extraction on transient LLM output issues).
+    // Signals that fail extraction repeatedly will eventually be quarantined
+    // by the stale-signal mechanism in self-heal (24h+ old with processed=false).
+    const errMsg = error instanceof Error ? error.message : String(error);
+    result.errors.push(`parse: ${errMsg}`);
+    console.error(`[signal-processor] LLM parse failure — ${decryptedBatch.length} signals left unprocessed for retry: ${errMsg}`);
     return result;
   }
 

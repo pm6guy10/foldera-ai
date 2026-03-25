@@ -98,11 +98,16 @@ export default function SettingsClient() {
           const count = data.total ?? 0;
           setSyncStatus(`Synced ${count} signal${count !== 1 ? 's' : ''} from ${provider === 'google' ? 'Google' : 'Microsoft'}.`);
         } else {
-          setSyncStatus('Sync started. Your data will be ready shortly.');
+          const payload = await res.json().catch(() => ({}));
+          const apiError =
+            payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string'
+              ? payload.error
+              : null;
+          setSyncStatus(apiError ?? `Could not sync ${provider === 'google' ? 'Google' : 'Microsoft'} right now.`);
         }
       })
       .catch(() => {
-        setSyncStatus('Sync started. Your data will be ready shortly.');
+        setSyncStatus(`Could not sync ${provider === 'google' ? 'Google' : 'Microsoft'} right now.`);
       })
       .finally(() => {
         // Clear status after 6 seconds
@@ -227,7 +232,7 @@ export default function SettingsClient() {
           <div className="mt-1 px-4 space-y-0.5">
             <SourceLine label="Gmail" count={sourceCounts['gmail'] ?? 0} providerActive={true} />
             <SourceLine label="Calendar" count={sourceCounts['google_calendar'] ?? 0} providerActive={true} />
-            <SourceLine label="Drive" count={sourceCounts['google_drive'] ?? 0} providerActive={true} />
+            <SourceLine label="Drive" count={sourceCounts['drive'] ?? 0} providerActive={true} />
           </div>
         )}
 
@@ -314,7 +319,7 @@ export default function SettingsClient() {
             <p className="text-sm font-medium text-white">{planLabel}</p>
             {planDetail && <p className="text-sm text-zinc-500">{planDetail}</p>}
           </div>
-          {subscription?.plan === 'pro' && subscription?.status !== 'active' && (
+          {subscription?.plan !== 'pro' && (
             <button
               onClick={async () => {
                 const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });

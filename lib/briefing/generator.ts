@@ -624,12 +624,14 @@ function checkGenerationEligibility(ctx: StructuredContext): EligibilityResult {
     return { eligible: false, reason: 'Already acted on this topic in the last 7 days' };
   }
 
-  // Must have at least one anchor for a grounded artifact
+  // Must have at least one anchor for a grounded artifact.
+  // write_document, wait_rationale, and do_nothing are groundable without a recipient or time.
+  // send_message and schedule_block require a real recipient or due date.
+  const SELF_GROUNDABLE_TYPES = new Set(['write_document', 'wait_rationale', 'do_nothing']);
   const hasAnchor =
     ctx.has_real_recipient ||
     ctx.has_due_date_or_time_anchor ||
-    // write_document and wait_rationale can be grounded without recipient/time
-    true; // We allow write_document and wait_rationale as always-groundable
+    SELF_GROUNDABLE_TYPES.has(ctx.candidate_class);
 
   if (!hasAnchor) {
     return { eligible: false, reason: 'No real recipient, due date, or groundable artifact type' };

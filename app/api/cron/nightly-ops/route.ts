@@ -415,10 +415,10 @@ async function handler(request: NextRequest) {
   // Stage 3: Passive rejection (auto-skip stale pending_approval > 24h)
   try {
     const passive = await autoSkipStaleApprovals();
-    stages.passive_rejection = passive;
+    stages.passive_rejection = { ok: true, ...passive };
     console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'passive_rejection', ...passive }));
   } catch (err: any) {
-    stages.passive_rejection = { skipped: 0, error: err.message };
+    stages.passive_rejection = { ok: false, skipped: 0, error: err.message };
   }
 
   // Stage 4: Daily brief (generate + send)
@@ -503,8 +503,12 @@ async function handler(request: NextRequest) {
   }
 
   const durationMs = Date.now() - startTime;
+  // Strict allOk: every stage MUST have an explicit `ok: true` field.
+  // Stages without `ok` or with `ok: false` are treated as failures.
+  // This prevents the Class B silent-success pattern where stages returning
+  // objects without an `ok` field were counted as successes.
   const allOk = Object.values(stages).every(
-    (s) => s && typeof s === 'object' && (s as any).ok !== false,
+    (s) => s && typeof s === 'object' && (s as any).ok === true,
   );
 
   const summary = { ok: allOk, duration_ms: durationMs, stages };

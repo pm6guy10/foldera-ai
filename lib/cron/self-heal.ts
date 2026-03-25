@@ -225,26 +225,20 @@ async function defense3SignalBacklogDrain(): Promise<DefenseResult> {
       });
       totalProcessed += extraction.signals_processed;
 
-      // If nothing was processed but signals remain, they may be undecryptable
-      if (extraction.signals_processed === 0 && remaining > 0) {
-        // Mark remaining old signals as dead_key by setting processed=true with empty extractions
+      // Only mark signals as dead_key when we have PROOF they are undecryptable:
+      // the extraction must have returned deferred_signal_ids (ciphertext failures).
+      // Previously, signals_processed === 0 could mean spend cap hit, API down, or
+      // parse failure — none of which warrant permanently marking signals as dead_key.
+      const deferredIds = extraction.deferred_signal_ids ?? [];
+      if (deferredIds.length > 0) {
         const supabase = createServerClient();
-        const { data: staleSignals } = await supabase
+        // Only mark the specific signals that were identified as undecryptable
+        const staleDeferredIds = deferredIds.slice(0, 100);
+        await supabase
           .from('tkg_signals')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('processed', false)
-          .lt('created_at', staleCutoffIso)
-          .limit(100);
-
-        if (staleSignals && staleSignals.length > 0) {
-          const ids = staleSignals.map((s) => s.id);
-          await supabase
-            .from('tkg_signals')
-            .update({ processed: true, metadata: { dead_key: true, marked_at: new Date().toISOString() } })
-            .in('id', ids);
-          deadKeyMarked += ids.length;
-        }
+          .update({ processed: true, metadata: { dead_key: true, marked_at: new Date().toISOString() } })
+          .in('id', staleDeferredIds);
+        deadKeyMarked += staleDeferredIds.length;
       }
     } catch (err: any) {
       totalFailed++;

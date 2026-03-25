@@ -6,6 +6,14 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+echo "Running unit tests..."
+npx vitest run --exclude ".claude/worktrees/**"
+
+if [ $? -ne 0 ]; then
+  echo "UNIT TESTS FAILED. Push rejected."
+  exit 1
+fi
+
 echo "Running E2E tests..."
 npx playwright test tests/e2e/
 

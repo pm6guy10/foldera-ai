@@ -36,13 +36,25 @@ export async function saveUserToken(
   const supabase = createServerClient();
   const now = new Date().toISOString();
 
+  // Normalize expires_at to epoch SECONDS. This is the single enforcement point
+  // that prevents the Class D token expiry unit mismatch. Google callbacks store
+  // milliseconds, Microsoft stores seconds, NextAuth stores seconds. We normalize
+  // here so all downstream consumers can assume seconds.
+  let expiresAtSec = params.expires_at;
+  // If the value is clearly in milliseconds (> year 2100 in seconds = 4102444800),
+  // convert to seconds. This heuristic is safe because epoch seconds won't exceed
+  // 4102444800 until the year 2100.
+  if (expiresAtSec > 4_102_444_800) {
+    expiresAtSec = Math.floor(expiresAtSec / 1000);
+  }
+
   const row = {
     user_id: userId,
     provider,
     refresh_token: encryptToken(params.refresh_token),
     access_token: encryptToken(params.access_token),
     disconnected_at: null,
-    expires_at: params.expires_at,
+    expires_at: expiresAtSec,
     email: params.email ?? null,
     scopes: params.scopes ?? null,
     updated_at: now,

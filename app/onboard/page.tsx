@@ -24,17 +24,22 @@ function OnboardContent() {
   const [freeText, setFreeText] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(isEdit);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Pre-populate when editing
   useEffect(() => {
     if (!isEdit) return;
+    setLoadError(null);
     fetch('/api/onboard/set-goals')
       .then((r) => r.json())
       .then((data) => {
         if (data.buckets) setSelected(new Set(data.buckets));
         if (data.freeText) setFreeText(data.freeText);
       })
-      .catch(() => {})
+      .catch(() => {
+        setLoadError('Could not load your existing focus areas. Try again.');
+      })
       .finally(() => setLoadingExisting(false));
   }, [isEdit]);
 
@@ -49,8 +54,9 @@ function OnboardContent() {
 
   const submit = async (skipped: boolean) => {
     setSaving(true);
+    setSubmitError(null);
     try {
-      await fetch('/api/onboard/set-goals', {
+      const response = await fetch('/api/onboard/set-goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -59,10 +65,22 @@ function OnboardContent() {
           skipped,
         }),
       });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        const errorMessage =
+          payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string'
+            ? payload.error
+            : 'Could not save focus areas. Try again.';
+        setSubmitError(errorMessage);
+        return;
+      }
+      router.push(isEdit ? '/dashboard/settings' : '/dashboard');
     } catch {
-      // Best-effort — redirect anyway
+      setSubmitError('Could not save focus areas. Try again.');
+      return;
+    } finally {
+      setSaving(false);
     }
-    router.push(isEdit ? '/dashboard/settings' : '/dashboard');
   };
 
   if (loadingExisting) {
@@ -133,6 +151,12 @@ function OnboardContent() {
             </button>
           )}
         </div>
+        {loadError && (
+          <p className="mt-3 text-xs text-red-400">{loadError}</p>
+        )}
+        {submitError && (
+          <p className="mt-2 text-xs text-red-400">{submitError}</p>
+        )}
       </div>
     </main>
   );
