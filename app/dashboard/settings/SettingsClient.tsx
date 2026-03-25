@@ -38,6 +38,10 @@ export default function SettingsClient() {
   const [goalBuckets, setGoalBuckets] = useState<string[]>([]);
   const [goalFreeText, setGoalFreeText] = useState<string | null>(null);
   const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
+  const [disconnecting, setDisconnecting] = useState<'google' | 'microsoft' | null>(null);
+  const [connectingProvider, setConnectingProvider] = useState<'google' | 'microsoft' | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [upgrading, setUpgrading] = useState(false);
 
   const refreshIntegrationsStatus = useCallback(async () => {
     const response = await fetch('/api/integrations/status');
@@ -114,6 +118,13 @@ export default function SettingsClient() {
         setTimeout(() => setSyncStatus(null), 6000);
       });
   }, [status, refreshIntegrationsStatus]);
+
+  // Auto-clear actionError after 5 seconds
+  useEffect(() => {
+    if (!actionError) return;
+    const t = setTimeout(() => setActionError(null), 5000);
+    return () => clearTimeout(t);
+  }, [actionError]);
 
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
@@ -210,21 +221,33 @@ export default function SettingsClient() {
           {google?.is_active ? (
             <button
               onClick={async () => {
-                const response = await fetch('/api/google/disconnect', { method: 'POST' });
-                if (response.ok) {
-                  await refreshIntegrationsStatus().catch(() => {});
+                setDisconnecting('google');
+                setActionError(null);
+                try {
+                  const response = await fetch('/api/google/disconnect', { method: 'POST' });
+                  if (response.ok) {
+                    await refreshIntegrationsStatus().catch(() => {});
+                  } else {
+                    setActionError('Could not disconnect Google. Try again.');
+                  }
+                } catch {
+                  setActionError('Network error disconnecting Google.');
+                } finally {
+                  setDisconnecting(null);
                 }
               }}
-              className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              disabled={disconnecting === 'google'}
+              className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
-              Disconnect
+              {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
             </button>
           ) : (
             <button
-              onClick={() => { window.location.href = '/api/google/connect'; }}
-              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors"
+              onClick={() => { setConnectingProvider('google'); window.location.href = '/api/google/connect'; }}
+              disabled={connectingProvider === 'google'}
+              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
-              Connect
+              {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
             </button>
           )}
         </div>
@@ -249,21 +272,33 @@ export default function SettingsClient() {
           {microsoft?.is_active ? (
             <button
               onClick={async () => {
-                const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
-                if (response.ok) {
-                  await refreshIntegrationsStatus().catch(() => {});
+                setDisconnecting('microsoft');
+                setActionError(null);
+                try {
+                  const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
+                  if (response.ok) {
+                    await refreshIntegrationsStatus().catch(() => {});
+                  } else {
+                    setActionError('Could not disconnect Microsoft. Try again.');
+                  }
+                } catch {
+                  setActionError('Network error disconnecting Microsoft.');
+                } finally {
+                  setDisconnecting(null);
                 }
               }}
-              className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              disabled={disconnecting === 'microsoft'}
+              className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
-              Disconnect
+              {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
             </button>
           ) : (
             <button
-              onClick={() => { window.location.href = '/api/microsoft/connect'; }}
-              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors"
+              onClick={() => { setConnectingProvider('microsoft'); window.location.href = '/api/microsoft/connect'; }}
+              disabled={connectingProvider === 'microsoft'}
+              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
-              Connect
+              {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
             </button>
           )}
         </div>
@@ -322,16 +357,32 @@ export default function SettingsClient() {
           {subscription?.plan !== 'pro' && (
             <button
               onClick={async () => {
-                const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-                const d = await res.json().catch(() => ({}));
-                if (d.url) window.location.href = d.url;
+                setUpgrading(true);
+                try {
+                  const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+                  const d = await res.json().catch(() => ({}));
+                  if (d.url) {
+                    window.location.href = d.url;
+                  } else {
+                    setActionError('Could not start checkout. Try again.');
+                    setUpgrading(false);
+                  }
+                } catch {
+                  setActionError('Network error. Try again.');
+                  setUpgrading(false);
+                }
               }}
-              className="text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg px-3 py-1.5 text-white font-medium transition-colors"
+              disabled={upgrading}
+              className="text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg px-3 py-1.5 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
-              Upgrade
+              {upgrading ? 'Loading…' : 'Upgrade'}
             </button>
           )}
         </div>
+
+        {actionError && (
+          <p className="mt-2 text-sm text-red-400">{actionError}</p>
+        )}
 
         {/* Manual trigger */}
         <h2 className="text-lg font-semibold text-white mt-8">Daily brief</h2>
