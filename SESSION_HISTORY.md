@@ -6,6 +6,15 @@
 
 ## Session Log — 2026-03-25
 
+- **Date:** 2026-03-25 — Add missing source_id on document and research_brief artifact signal inserts
+- **MODE:** OPS
+- **Commit hash(es):** pending (set after commit)
+- **Files changed:** `lib/conviction/execute-action.ts`, `SESSION_HISTORY.md`
+- **What was verified:** Not run (per task scope).
+- **Any unresolved issues:** `git pull --rebase origin main` skipped per user instruction; no automated tests executed.
+
+## Session Log — 2026-03-25
+
 - **Date:** 2026-03-25 — Acceptance gate TOKENS check filters refresh_token-null expiries in DB query
 - **MODE:** OPS
 - **Commit hash(es):** `d6df2d0`

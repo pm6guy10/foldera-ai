@@ -319,6 +319,7 @@ async function executeArtifact(
           .insert({
             user_id: userId,
             source: 'artifact',
+            source_id: `artifact-doc-${actionId}`,
             type: 'document',
             content: encrypt(`Document: ${title}\n\n${content.slice(0, 50000)}`),
             content_hash: contentHash,
@@ -369,6 +370,7 @@ async function executeArtifact(
           .insert({
             user_id: userId,
             source: 'artifact',
+            source_id: `artifact-research-${actionId}`,
             type: 'research',
             content: encrypt(`Research: ${recommended}\n\nFindings: ${findings.slice(0, 50000)}`),
             content_hash: contentHash,
