@@ -8,6 +8,7 @@ import {
 import { syncGoogle } from '@/lib/sync/google-sync';
 import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
 import { apiError } from '@/lib/utils/api-error';
+import { runCommitmentCeilingDefense } from '@/lib/cron/self-heal';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +87,14 @@ export async function POST(request: Request) {
       runManualSync('microsoft', userId),
       runManualSync('google', userId),
     ]);
+
+    // Run ceiling defense before generation so scorer isn't drowning in 900+ commitments
+    try {
+      await runCommitmentCeilingDefense();
+    } catch (err) {
+      console.warn('[run-brief] commitment ceiling defense failed:', err);
+      // Non-blocking — continue to generation
+    }
 
     const brief = await runDailyBrief({ userIds: [userId] });
     let send = brief.send;
