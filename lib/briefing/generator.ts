@@ -556,6 +556,8 @@ function buildStructuredContext(
   let can_execute_without_editing = true;
   if (actionType === 'send_message' && !has_real_recipient) {
     can_execute_without_editing = false;
+    // Override: cannot send to nobody — force to write_document so the LLM cannot fabricate a recipient
+    winner.suggestedActionType = 'write_document';
   }
 
   const has_due_date_or_time_anchor = candidate_due_date !== null ||
@@ -752,7 +754,10 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   sections.push(
     'CRITICAL: Use ONLY real names, emails, dates, and details from the context above. ' +
     'NEVER use bracket placeholders like [Name], [Company], [Date]. ' +
-    'If a detail is unknown, write around it. Every field must contain real content.',
+    'If a detail is unknown, write around it. Every field must contain real content. ' +
+    'If action_type is send_message, the "to" field MUST be a real email address extracted from the signals above. ' +
+    'If no real email exists in the signals, change action_type to write_document instead. ' +
+    'NEVER invent a person\'s name or email.',
   );
 
   return sections.join('\n\n');

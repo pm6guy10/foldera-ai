@@ -173,9 +173,12 @@ async function cleanupSignalForRetry(
   supabase: ReturnType<typeof createServerClient>,
   signalId: string,
 ): Promise<void> {
-  const { error } = await supabase.from('tkg_signals').delete().eq('id', signalId);
+  const { error } = await supabase
+    .from('tkg_signals')
+    .update({ processed: true })
+    .eq('id', signalId);
   if (error) {
-    console.error('[conversation-extractor] Failed to cleanup signal after extraction failure:', error.message);
+    console.error('[conversation-extractor] Failed to mark signal as failed after extraction failure:', error.message);
   }
 }
 

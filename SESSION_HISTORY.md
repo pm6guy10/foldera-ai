@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-25 — Fix self_feed delete bug + generator hallucination guard
+  MODE: AUDIT
+  Commit hash(es): (set after commit)
+  Files changed: `lib/extraction/conversation-extractor.ts`, `lib/briefing/generator.ts`
+  What was verified: confirmed `generation_status` column does not exist on `tkg_signals` — fix uses `processed: true` only; confirmed `winner.suggestedActionType` is mutable on `ScoredLoop`; traced `cleanupSignalForRetry` call site (lines 249, 544) — both paths now update instead of delete; traced `buildStructuredContext` — override fires before `actionType` is re-read in `getDirectiveConstraintViolations` (line 570); CRITICAL system prompt addition prevents LLM from fabricating recipient even if override misses a path; `npm run build` passed
+  Any unresolved issues: none
+
 - 2026-03-25 — Update Stripe price IDs to live value
   MODE: OPS
   Commit hash(es): (set after commit)
