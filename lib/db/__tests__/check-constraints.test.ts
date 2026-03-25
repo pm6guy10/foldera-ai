@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 const SIGNAL_SOURCES = new Set([
   'gmail', 'outlook', 'google_calendar', 'outlook_calendar',
-  'drive', 'google_drive', 'onedrive', 'microsoft_todo',
+  'drive', 'onedrive', 'microsoft_todo',
   'slack', 'notion', 'dropbox',
   'uploaded_document', 'manual_entry',
   'claude_conversation', 'chatgpt_conversation',
@@ -39,7 +39,7 @@ describe('CHECK constraint contract', () => {
   it('signal sources cover all app-written values', () => {
     const appValues = [
       'gmail', 'outlook', 'google_calendar', 'outlook_calendar',
-      'drive', 'google_drive', 'onedrive', 'microsoft_todo',
+      'drive', 'onedrive', 'microsoft_todo',
       'notion', 'user_feedback', 'artifact', 'resend_webhook',
     ];
     for (const v of appValues) {

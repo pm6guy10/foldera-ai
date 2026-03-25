@@ -45,32 +45,19 @@ export async function POST(request: Request) {
     }));
 
   const supabase = createServerClient();
-
-  // Clear existing current priorities
-  await supabase
-    .from('tkg_goals')
-    .update({ current_priority: false })
-    .eq('user_id', userId)
-    .eq('current_priority', true);
-
-  if (cleaned.length === 0) {
-    return NextResponse.json({ updated: 0 });
-  }
-
-  // Insert new current priorities
-  const rows = cleaned.map(p => ({
-    user_id: userId,
+  const rows = cleaned.map((p) => ({
     goal_text: p.text,
     goal_category: p.category,
     priority: 5,
-    source: 'manual' as const,
-    current_priority: true,
   }));
 
-  const { error: insertErr } = await supabase.from('tkg_goals').insert(rows);
+  const { error: rpcError } = await supabase.rpc('replace_current_priorities', {
+    p_user_id: userId,
+    p_rows: rows,
+  });
 
-  if (insertErr) {
-    console.error('[priorities/update] insert failed:', insertErr.message);
+  if (rpcError) {
+    console.error('[priorities/update] atomic replace failed:', rpcError.message);
     return NextResponse.json({ error: 'Failed to save priorities' }, { status: 500 });
   }
 

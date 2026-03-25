@@ -52,9 +52,12 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
     return { status: 'none', plan: null, daysRemaining: 0, isReadOnly: true };
   }
 
-  const now       = Date.now();
-  const periodEnd = new Date(data.current_period_end).getTime();
-  const daysRemaining = Math.max(0, Math.ceil((periodEnd - now) / (1000 * 60 * 60 * 24)));
+  const now = Date.now();
+  const periodEnd = data.current_period_end ? new Date(data.current_period_end).getTime() : null;
+  const hasPeriodEnd = typeof periodEnd === 'number' && Number.isFinite(periodEnd);
+  const daysRemaining = hasPeriodEnd
+    ? Math.max(0, Math.ceil(((periodEnd as number) - now) / (1000 * 60 * 60 * 24)))
+    : 0;
 
   if (data.status === 'cancelled') {
     return { status: 'cancelled', plan: data.plan, daysRemaining: 0, isReadOnly: true };
@@ -65,7 +68,7 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
   }
 
   if (data.status === 'active') {
-    if (periodEnd < now) {
+    if (hasPeriodEnd && (periodEnd as number) < now) {
       return { status: 'expired', plan: data.plan, daysRemaining: 0, isReadOnly: true };
     }
 

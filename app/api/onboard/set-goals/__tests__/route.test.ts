@@ -13,6 +13,7 @@ const mockSupabase = {
     },
   },
   from: vi.fn(),
+  rpc: vi.fn(),
 };
 
 vi.mock('next-auth', () => ({
@@ -38,12 +39,9 @@ vi.mock('@/lib/utils/api-error', () => ({
 }));
 
 describe('POST /api/onboard/set-goals', () => {
-  let insertMock: ReturnType<typeof vi.fn>;
-
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    insertMock = vi.fn(() => Promise.resolve({ error: null }));
     getServerSession.mockResolvedValue({
       user: {
         id: 'user-1',
@@ -54,6 +52,7 @@ describe('POST /api/onboard/set-goals', () => {
       error: error instanceof Error ? error.message : String(error),
     }), { status: 500 }));
     sendResendEmail.mockResolvedValue({ data: { id: 'email-1' }, error: null });
+    mockSupabase.rpc.mockResolvedValue({ error: null });
     mockSupabase.auth.admin.getUserById.mockResolvedValue({
       data: {
         user: {
@@ -65,22 +64,6 @@ describe('POST /api/onboard/set-goals', () => {
     });
     mockSupabase.auth.admin.updateUserById.mockResolvedValue({ data: {}, error: null });
     mockSupabase.from.mockImplementation((table: string) => {
-      if (table === 'tkg_goals') {
-        return {
-          delete: () => ({
-            eq: () => ({
-              in: () => Promise.resolve({ error: null }),
-            }),
-          }),
-          insert: insertMock,
-          select: () => ({
-            eq: () => ({
-              in: () => Promise.resolve({ data: [], error: null }),
-            }),
-          }),
-        };
-      }
-
       if (table === 'user_tokens') {
         return {
           select: () => ({
@@ -107,24 +90,27 @@ describe('POST /api/onboard/set-goals', () => {
     }) as never);
 
     expect(response.status).toBe(200);
-    expect(insertMock).toHaveBeenCalledWith([
-      {
-        user_id: 'user-1',
-        goal_text: 'Professional development and advancement in current role',
-        goal_category: 'career',
-        priority: 3,
-        current_priority: true,
-        source: 'onboarding_bucket',
-      },
-      {
-        user_id: 'user-1',
-        goal_text: '__ONBOARDING_COMPLETE__',
-        goal_category: 'other',
-        priority: 1,
-        current_priority: false,
-        source: 'onboarding_marker',
-      },
-    ]);
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('replace_onboarding_goals', {
+      p_user_id: 'user-1',
+      p_rows: [
+        {
+          user_id: 'user-1',
+          goal_text: 'Professional development and advancement in current role',
+          goal_category: 'career',
+          priority: 3,
+          current_priority: true,
+          source: 'onboarding_bucket',
+        },
+        {
+          user_id: 'user-1',
+          goal_text: '__ONBOARDING_COMPLETE__',
+          goal_category: 'other',
+          priority: 1,
+          current_priority: false,
+          source: 'onboarding_marker',
+        },
+      ],
+    });
     expect(sendResendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         subject: "You're connected — your first read arrives tomorrow",

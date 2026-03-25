@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConvictionDirective, GenerationRunLog } from '@/lib/briefing/types';
-import { runDailyGenerate, runDailySend } from '../daily-brief';
+import { getTriggerResponseStatus, runDailyGenerate, runDailySend } from '../daily-brief';
 import { generateDirective, validateDirectiveForPersistence } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
@@ -561,5 +561,23 @@ describe('runDailyGenerate candidate logging', () => {
     expect(result.message).toContain('No brief email was sent for 1 user');
     expect(result.message).toContain('drafted_email recipient must be a real email address');
     expect(sendDailyDirective).not.toHaveBeenCalled();
+  });
+});
+
+describe('getTriggerResponseStatus', () => {
+  it('returns 207 when any stage is partial', () => {
+    expect(getTriggerResponseStatus(
+      { attempted: 1, errors: [], failed: 0, status: 'ok', succeeded: 1, summary: 'ok' },
+      { attempted: 1, errors: ['one failed'], failed: 1, status: 'partial', succeeded: 0, summary: 'partial' },
+      { attempted: 1, errors: [], failed: 0, status: 'ok', succeeded: 1, summary: 'ok' },
+    )).toBe(207);
+  });
+
+  it('returns 500 when any stage fails', () => {
+    expect(getTriggerResponseStatus(
+      { attempted: 1, errors: [], failed: 0, status: 'ok', succeeded: 1, summary: 'ok' },
+      { attempted: 1, errors: ['failed'], failed: 1, status: 'failed', succeeded: 0, summary: 'failed' },
+      { attempted: 1, errors: [], failed: 0, status: 'ok', succeeded: 1, summary: 'ok' },
+    )).toBe(500);
   });
 });

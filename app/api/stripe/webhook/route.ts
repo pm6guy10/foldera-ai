@@ -2,7 +2,7 @@
  * POST /api/stripe/webhook
  *
  * Handles Stripe webhook events:
- *   checkout.session.completed  → create trial user_subscriptions row
+ *   checkout.session.completed  → create active pro user_subscriptions row
  *   invoice.payment_succeeded   → update status to active
  *   invoice.payment_failed      → update status to past_due
  *   customer.subscription.deleted → update status to cancelled + schedule deletion
@@ -56,8 +56,9 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       console.warn('[stripe/webhook] checkout.session.completed missing client_reference_id');
     } else {
-      // Trial ends 14 days from now (matches trial_period_days in checkout)
-      const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      // Session completed means billing is active; set a provisional period end
+      // until invoice.payment_succeeded provides the exact Stripe period end.
+      const provisionalPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
       const { error } = await supabase
         .from('user_subscriptions')
@@ -66,9 +67,9 @@ export async function POST(request: NextRequest) {
             user_id:                userId,
             stripe_customer_id:     customerId ?? null,
             stripe_subscription_id: subId ?? null,
-            plan:                   'trial',
+            plan:                   'pro',
             status:                 'active',
-            current_period_end:     trialEnd,
+            current_period_end:     provisionalPeriodEnd,
           },
           { onConflict: 'user_id' }
         );

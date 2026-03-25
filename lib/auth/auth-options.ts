@@ -3,11 +3,10 @@ import type { JWT } from 'next-auth/jwt';
 import GoogleProvider from 'next-auth/providers/google';
 import AzureADProvider from 'next-auth/providers/azure-ad';
 import { resolveSupabaseAuthUserId } from '@/lib/auth/supabase-auth-user';
-import { createServerClient } from '@/lib/db/client';
+import { hasCompletedOnboarding } from '@/lib/auth/onboarding-state';
 
 const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
-const ONBOARDING_SOURCES = ['onboarding_bucket', 'onboarding_stated', 'onboarding_marker'] as const;
 
 async function setOnboardingClaim(token: JWT): Promise<JWT> {
   // Once onboarded, the claim is permanent. Skip DB query.
@@ -20,20 +19,9 @@ async function setOnboardingClaim(token: JWT): Promise<JWT> {
   }
 
   try {
-    const supabase = createServerClient();
-    const { count, error } = await supabase
-      .from('tkg_goals')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', token.userId)
-      .in('source', [...ONBOARDING_SOURCES]);
-
-    if (error) {
-      throw error;
-    }
-
     return {
       ...token,
-      hasOnboarded: (count ?? 0) > 0,
+      hasOnboarded: await hasCompletedOnboarding(token.userId),
     };
   } catch (err) {
     console.error('[auth][jwt] FAILED to load onboarding status:', err);
@@ -236,8 +224,7 @@ export function getAuthOptions(): NextAuthOptions {
         return true;
       },
       async jwt({ token, account, user }) {
-        try {
-          if (account && user) {
+        if (account && user) {
             // --- Initial sign-in: store OAuth tokens in JWT ---
             console.log(`[auth][jwt] INITIAL SIGN-IN — provider: ${account.provider}, email: ${user.email}, has_access_token: ${!!account.access_token}, has_refresh_token: ${!!account.refresh_token}, expires_at: ${account.expires_at}, scope: ${(account as any).scope ?? 'none'}`);
             token.accessToken = account.access_token;
@@ -318,13 +305,7 @@ export function getAuthOptions(): NextAuthOptions {
               }
             }
           }
-          return await setOnboardingClaim(token);
-        } catch (outerErr: any) {
-          console.error('[auth] CRITICAL — jwt callback threw:', outerErr?.message ?? outerErr, outerErr?.stack ?? '');
-          // Do NOT attempt fallback resolution. If the JWT callback fails critically,
-          // return the token as-is. Routes that require userId will 401, which is correct.
-          return token;
-        }
+        return await setOnboardingClaim(token);
       },
       async session({ session, token }) {
         // Use the resolved Supabase UUID stored during sign-in.

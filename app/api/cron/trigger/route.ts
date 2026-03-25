@@ -106,13 +106,23 @@ async function handler(request: NextRequest) {
     stages.daily_brief = { ok: false, error: err.message };
   }
 
-  const allOk = Object.values(stages).every(
-    (s) => s && typeof s === 'object' && (s as any).ok !== false,
+  const syncMicrosoftFailed = (stages.sync_microsoft as { ok?: boolean } | undefined)?.ok === false;
+  const syncGoogleFailed = (stages.sync_google as { ok?: boolean } | undefined)?.ok === false;
+  const passiveRejectionError = Boolean(
+    (stages.passive_rejection as { error?: string } | undefined)?.error,
   );
+  const dailyBriefHttpStatus =
+    (stages.daily_brief as { httpStatus?: number } | undefined)?.httpStatus ??
+    ((stages.daily_brief as { ok?: boolean } | undefined)?.ok === false ? 500 : 200);
+
+  const hasFailure = syncMicrosoftFailed || syncGoogleFailed || passiveRejectionError || dailyBriefHttpStatus >= 500;
+  const hasPartial = !hasFailure && dailyBriefHttpStatus === 207;
+  const responseStatus = hasFailure ? 500 : (hasPartial ? 207 : 200);
+  const allOk = responseStatus === 200;
 
   return NextResponse.json(
     { ok: allOk, stages },
-    { status: allOk ? 200 : 207 },
+    { status: responseStatus },
   );
 }
 

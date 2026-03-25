@@ -20,13 +20,19 @@ async function handler(request: NextRequest) {
 
   try {
     const result = await runDailySend();
+    const sendStatus = toSafeDailyBriefStageStatus(result);
+    const status =
+      sendStatus.status === 'failed'
+        ? 500
+        : (sendStatus.status === 'partial' ? 207 : 200);
+
     return NextResponse.json({
       date: result.date,
       send: {
-        ...toSafeDailyBriefStageStatus(result),
+        ...sendStatus,
         results: result.results,
       },
-    });
+    }, { status });
   } catch (error: unknown) {
     return apiError(error, 'cron/daily-send');
   }

@@ -8,7 +8,7 @@ interface UserSubscriptionRow {
 }
 
 function isActivePaidSubscription(subscription: UserSubscriptionRow): boolean {
-  return subscription.status === 'active' && subscription.plan === 'pro';
+  return subscription.status === 'active' && (subscription.plan === 'pro' || subscription.plan === 'trial');
 }
 
 export async function filterDailyBriefEligibleUserIds(

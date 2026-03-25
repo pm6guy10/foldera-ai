@@ -13,6 +13,7 @@ import { apiError } from '@/lib/utils/api-error';
 import { buildContextGreeting } from '@/lib/briefing/context-builder';
 
 export const dynamic = 'force-dynamic';
+const MIN_PENDING_CONFIDENCE = 70;
 
 function startOfTodayIso(): string {
   const start = new Date();
@@ -78,7 +79,11 @@ export async function GET(request: Request) {
       const generatedAt = typeof candidate.generated_at === 'string' ? candidate.generated_at : '';
       return generatedAt >= startOfTodayIso();
     });
-    const action = (todaysCandidates.length > 0 ? todaysCandidates : candidates)[0];
+    const rankedCandidates = (todaysCandidates.length > 0 ? todaysCandidates : candidates).filter((candidate) => {
+      const artifact = extractArtifact(candidate as Record<string, unknown>);
+      return artifact !== undefined && typeof candidate.confidence === 'number' && candidate.confidence >= MIN_PENDING_CONFIDENCE;
+    });
+    const action = rankedCandidates[0];
 
     if (!action) {
       return NextResponse.json({

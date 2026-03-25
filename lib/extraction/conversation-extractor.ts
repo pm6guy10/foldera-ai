@@ -169,6 +169,16 @@ ${EXTRACTION_JSON_SCHEMA}`,
 
 const EXTRACTION_SYSTEM = SOURCE_PROMPTS.conversation;
 
+async function cleanupSignalForRetry(
+  supabase: ReturnType<typeof createServerClient>,
+  signalId: string,
+): Promise<void> {
+  const { error } = await supabase.from('tkg_signals').delete().eq('id', signalId);
+  if (error) {
+    console.error('[conversation-extractor] Failed to cleanup signal after extraction failure:', error.message);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
@@ -189,6 +199,7 @@ export async function extractFromConversation(
     .select('id')
     .eq('user_id', userId)
     .eq('content_hash', contentHash)
+    .eq('processed', true)
     .maybeSingle();
 
   if (existing) {
@@ -235,10 +246,12 @@ export async function extractFromConversation(
     const cleaned = raw.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
     payload = JSON.parse(cleaned);
   } catch {
-    console.error('[conversation-extractor] Failed to parse Claude response:', raw.slice(0, 200));
+    await cleanupSignalForRetry(supabase, signal.id);
+    throw new Error(`Failed to parse Claude extraction response: ${raw.slice(0, 200)}`);
   }
 
-  // 4. Get or create 'self' entity for the user
+  try {
+    // 4. Get or create 'self' entity for the user
   // No unique constraint on (user_id, name) exists yet, so select first to avoid duplicates
   let { data: selfEntity } = await supabase
     .from('tkg_entities')
@@ -248,7 +261,7 @@ export async function extractFromConversation(
     .maybeSingle();
 
   if (!selfEntity) {
-    const { data: created } = await supabase
+    const { data: created, error: createSelfError } = await supabase
       .from('tkg_entities')
       .insert({
         user_id: userId,
@@ -260,6 +273,9 @@ export async function extractFromConversation(
       })
       .select('id')
       .single();
+    if (createSelfError) {
+      throw new Error(`Failed to create self entity: ${createSelfError.message}`);
+    }
     selfEntity = created;
   }
 
@@ -286,18 +302,23 @@ export async function extractFromConversation(
 
     // Dedup: check which canonical_forms already exist for this user
     const canonicalForms = rows.map((r) => r.canonical_form);
-    const { data: existingRows } = await supabase
+    const { data: existingRows, error: existingRowsError } = await supabase
       .from('tkg_commitments')
       .select('canonical_form')
       .eq('user_id', userId)
       .in('canonical_form', canonicalForms);
+    if (existingRowsError) {
+      throw new Error(`Failed to query existing commitments: ${existingRowsError.message}`);
+    }
     const existingSet = new Set((existingRows ?? []).map((r) => r.canonical_form));
     const newRows = rows.filter((r) => !existingSet.has(r.canonical_form) && !isNonCommitment(r.description));
 
     if (newRows.length > 0) {
       const { error: commitError } = await supabase.from('tkg_commitments').insert(newRows);
-      if (!commitError) decisionsWritten = newRows.length;
-      else console.error('[conversation-extractor] Commitment write error:', commitError.message);
+      if (commitError) {
+        throw new Error(`Commitment write error: ${commitError.message}`);
+      }
+      decisionsWritten = newRows.length;
     }
   }
 
@@ -305,11 +326,14 @@ export async function extractFromConversation(
   let patternsUpdated = 0;
   if (selfId && payload.patterns.length > 0) {
     // Fetch current patterns blob
-    const { data: entityRow } = await supabase
+    const { data: entityRow, error: entityRowError } = await supabase
       .from('tkg_entities')
       .select('patterns')
       .eq('id', selfId)
       .single();
+    if (entityRowError) {
+      throw new Error(`Pattern fetch error: ${entityRowError.message}`);
+    }
 
     const existing = (entityRow?.patterns as Record<string, any>) || {};
     const merged = { ...existing };
@@ -330,8 +354,10 @@ export async function extractFromConversation(
       .update({ patterns: merged, patterns_updated_at: new Date().toISOString() })
       .eq('id', selfId);
 
-    if (!patternError) patternsUpdated = payload.patterns.length;
-    else console.error('[conversation-extractor] Pattern write error:', patternError.message);
+    if (patternError) {
+      throw new Error(`Pattern write error: ${patternError.message}`);
+    }
+    patternsUpdated = payload.patterns.length;
   }
 
   // 7. Persist extracted goals → tkg_goals (upsert by user_id + goal_text match)
@@ -349,20 +375,26 @@ export async function extractFromConversation(
       }
 
       // Check if this goal already exists for this user
-      const { data: existing } = await supabase
+      const { data: existing, error: existingGoalError } = await supabase
         .from('tkg_goals')
         .select('id, status')
         .eq('user_id', userId)
         .eq('goal_text', g.description)
         .maybeSingle();
+      if (existingGoalError) {
+        throw new Error(`Goal lookup error: ${existingGoalError.message}`);
+      }
 
       if (existing) {
         // Update metadata but never overwrite status (user may have marked it achieved/abandoned)
-        const { data: currentGoal } = await supabase
+        const { data: currentGoal, error: currentGoalError } = await supabase
           .from('tkg_goals')
           .select('confidence, priority')
           .eq('id', existing.id)
           .single();
+        if (currentGoalError) {
+          throw new Error(`Goal metadata fetch error: ${currentGoalError.message}`);
+        }
 
         const currentConfidence = currentGoal?.confidence ?? 50;
         const currentPriority = currentGoal?.priority ?? 3;
@@ -378,7 +410,7 @@ export async function extractFromConversation(
           console.log(`[conversation-extractor] goal_promoted: "${g.description.slice(0, 80)}" priority ${currentPriority} → ${newPriority}`);
         }
 
-        await supabase
+        const { error: updateGoalError } = await supabase
           .from('tkg_goals')
           .update({
             goal_type,
@@ -390,6 +422,9 @@ export async function extractFromConversation(
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
+        if (updateGoalError) {
+          throw new Error(`Goal update error: ${updateGoalError.message}`);
+        }
       } else {
         // -------------------------------------------------------------------
         // Goal consolidation (fuzzy dedup): before inserting, check for
@@ -419,11 +454,14 @@ export async function extractFromConversation(
           return union > 0 ? intersection / union : 0;
         }
 
-        const { data: allActiveGoals } = await supabase
+        const { data: allActiveGoals, error: allActiveGoalsError } = await supabase
           .from('tkg_goals')
           .select('id, goal_text, confidence')
           .eq('user_id', userId)
           .eq('status', 'active');
+        if (allActiveGoalsError) {
+          throw new Error(`Goal consolidation query error: ${allActiveGoalsError.message}`);
+        }
 
         const newGoalWords = goalWords(g.description);
         let consolidated = false;
@@ -433,13 +471,16 @@ export async function extractFromConversation(
           const sim = jaccardSimilarity(newGoalWords, existingWords);
           if (sim > 0.5) {
             // Near-duplicate — reinforce existing goal instead of inserting
-            await supabase
+            const { error: consolidateError } = await supabase
               .from('tkg_goals')
               .update({
                 confidence: Math.min(100, (existingGoal.confidence ?? 50) + 5),
                 updated_at: new Date().toISOString(),
               })
               .eq('id', existingGoal.id);
+            if (consolidateError) {
+              throw new Error(`Goal consolidation update error: ${consolidateError.message}`);
+            }
             console.log(`[conversation-extractor] goal_consolidated: "${g.description.slice(0, 60)}" → existing "${existingGoal.goal_text.slice(0, 60)}" (sim=${sim.toFixed(2)})`);
             consolidated = true;
             break;
@@ -459,7 +500,7 @@ export async function extractFromConversation(
           };
           const goal_category = domainMap[g.domain?.toLowerCase() ?? ''] ?? 'other';
 
-          await supabase
+          const { error: insertGoalError } = await supabase
             .from('tkg_goals')
             .insert({
               user_id: userId,
@@ -475,22 +516,32 @@ export async function extractFromConversation(
               source: 'extracted',
               updated_at: new Date().toISOString(),
             });
+          if (insertGoalError) {
+            throw new Error(`Goal insert error: ${insertGoalError.message}`);
+          }
         }
       }
     }
   }
 
   // 8. Mark signal as processed
-  await supabase
+  const { error: markProcessedError } = await supabase
     .from('tkg_signals')
     .update({ processed: true })
     .eq('id', signal.id);
+  if (markProcessedError) {
+    throw new Error(`Signal processed update error: ${markProcessedError.message}`);
+  }
 
-  return {
-    signalId: signal.id,
-    decisionsWritten,
-    patternsUpdated,
-    tokensUsed,
-    raw: payload,
-  };
+    return {
+      signalId: signal.id,
+      decisionsWritten,
+      patternsUpdated,
+      tokensUsed,
+      raw: payload,
+    };
+  } catch (error) {
+    await cleanupSignalForRetry(supabase, signal.id);
+    throw error;
+  }
 }

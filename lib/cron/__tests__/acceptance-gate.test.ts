@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const rpc = vi.fn();
 const from = vi.fn();
+const getUserById = vi.fn();
 const sendResendEmail = vi.fn();
 const logStructuredEvent = vi.fn();
 const anthropicCreate = vi.fn();
 
 vi.mock('@/lib/db/client', () => ({
   createServerClient: () => ({
-    rpc,
     from,
+    auth: {
+      admin: {
+        getUserById,
+      },
+    },
   }),
 }));
 
@@ -34,12 +38,42 @@ function tableResponse(table: string) {
   switch (table) {
     case 'user_tokens':
       return {
-        select: () => ({
-          not: () => ({
-            lt: () => Promise.resolve({ data: [], error: null }),
-          }),
-          limit: () => Promise.resolve({ data: [{ provider: 'google', user_id: 'user-1' }], error: null }),
-        }),
+        select: (columns: string) => {
+          if (columns.includes('email')) {
+            return {
+              not: () => ({
+                limit: () => ({
+                  maybeSingle: () => Promise.resolve({
+                    data: { user_id: 'user-1', email: 'owner@example.com' },
+                    error: null,
+                  }),
+                }),
+              }),
+            };
+          }
+
+          if (columns.includes('expires_at')) {
+            return {
+              not: () => Promise.resolve({
+                data: [],
+                error: null,
+              }),
+            };
+          }
+
+          if (columns.includes('access_token')) {
+            return {
+              limit: () => Promise.resolve({
+                data: [{ provider: 'google', user_id: 'user-1', access_token: 'encrypted-token' }],
+                error: null,
+              }),
+            };
+          }
+
+          return {
+            limit: () => Promise.resolve({ data: [], error: null }),
+          };
+        },
       };
     case 'tkg_signals':
       return {
@@ -79,8 +113,8 @@ describe('runAcceptanceGate', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    rpc.mockResolvedValue({ data: 'user-1', error: null });
     from.mockImplementation((table: string) => tableResponse(table));
+    getUserById.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
     anthropicCreate.mockResolvedValue({ id: 'msg-1' });
     sendResendEmail.mockResolvedValue({ data: { id: 'email-1' }, error: null });
   });
@@ -107,3 +141,4 @@ describe('runAcceptanceGate', () => {
     );
   });
 });
+

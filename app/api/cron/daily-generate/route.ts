@@ -20,17 +20,24 @@ async function handler(request: NextRequest) {
 
   try {
     const result = await runDailyGenerate();
+    const generateStatus = toSafeDailyBriefStageStatus(result);
+    const signalStatus = toSafeDailyBriefStageStatus(result.signalProcessing);
+    const status =
+      generateStatus.status === 'failed' || signalStatus.status === 'failed'
+        ? 500
+        : (generateStatus.status === 'partial' || signalStatus.status === 'partial' ? 207 : 200);
+
     return NextResponse.json({
       date: result.date,
       generate: {
-        ...toSafeDailyBriefStageStatus(result),
+        ...generateStatus,
         results: result.results,
       },
       signal_processing: {
-        ...toSafeDailyBriefStageStatus(result.signalProcessing),
+        ...signalStatus,
         results: result.signalProcessing.results,
       },
-    });
+    }, { status });
   } catch (error: unknown) {
     return apiError(error, 'cron/daily-generate');
   }

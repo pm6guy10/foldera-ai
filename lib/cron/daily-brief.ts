@@ -1722,14 +1722,12 @@ export function getTriggerResponseStatus(
   generate: SafeDailyBriefStageStatus,
   send: SafeDailyBriefStageStatus,
 ): number {
-  const acceptable = ['ok', 'skipped', 'partial'];
-  if (
-    acceptable.includes(signalProcessing.status) &&
-    acceptable.includes(generate.status) &&
-    acceptable.includes(send.status)
-  ) {
-    return 200;
+  const statuses = [signalProcessing.status, generate.status, send.status];
+  if (statuses.includes('failed')) {
+    return 500;
   }
-
-  return 500;
+  if (statuses.includes('partial')) {
+    return 207;
+  }
+  return 200;
 }

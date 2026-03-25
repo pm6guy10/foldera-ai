@@ -38,13 +38,6 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id;
     const now = new Date().toISOString();
 
-    // Delete existing onboarding goals (full replace on edit)
-    await supabase
-      .from('tkg_goals')
-      .delete()
-      .eq('user_id', userId)
-      .in('source', ['onboarding_bucket', 'onboarding_stated', 'onboarding_marker']);
-
     const rows: Record<string, unknown>[] = [];
 
     // Map bucket labels to goals
@@ -83,11 +76,12 @@ export async function POST(req: NextRequest) {
       source: 'onboarding_marker',
     });
 
-    if (rows.length > 0) {
-      const { error } = await supabase.from('tkg_goals').insert(rows);
-      if (error) {
-        return apiError(error, 'onboard/set-goals');
-      }
+    const { error: replaceError } = await supabase.rpc('replace_onboarding_goals', {
+      p_user_id: userId,
+      p_rows: rows,
+    });
+    if (replaceError) {
+      return apiError(replaceError, 'onboard/set-goals');
     }
 
     try {
