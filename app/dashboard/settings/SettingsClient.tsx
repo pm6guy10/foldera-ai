@@ -408,9 +408,19 @@ export default function SettingsClient() {
                   const stages = data.stages as Record<string, any>;
                   if (stages.sync_microsoft?.ok === false) parts.push('Microsoft sync failed');
                   if (stages.sync_google?.ok === false) parts.push('Google sync failed');
-                  if (stages.daily_brief?.ok === false) parts.push('Brief generation failed');
-                  setGenerateState(parts.length > 0 ? 'error' : 'success');
-                  setGenerateMessage(parts.length > 0 ? parts.join('. ') + '.' : 'Done.');
+                  if (stages.daily_brief?.ok === false && stages.daily_brief?.generate?.status !== 'skipped') {
+                    parts.push('Brief generation failed');
+                  }
+                  if (parts.length > 0) {
+                    setGenerateState('error');
+                    setGenerateMessage(parts.join('. ') + '.');
+                  } else if (!data.ok && stages.daily_brief) {
+                    setGenerateState('success');
+                    setGenerateMessage('Done. No directive today — check back at 7am.');
+                  } else {
+                    setGenerateState('success');
+                    setGenerateMessage('Done.');
+                  }
                 } else {
                   setGenerateState('error');
                   setGenerateMessage(data?.error || 'Something went wrong.');
