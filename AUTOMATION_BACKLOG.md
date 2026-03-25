@@ -1,5 +1,8 @@
 # AUTOMATION BACKLOG
 
+### DONE (March 25)
+- Acceptance gate TOKENS check filters expiring rows with missing refresh_token in the DB query
+
 ### DONE (March 24)
 - Generator error visibility (real errors in DB)
 - api_usage schema fix (endpoint column)

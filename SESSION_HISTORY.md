@@ -4,6 +4,15 @@
 
 ## Session Logs
 
+## Session Log — 2026-03-25
+
+- **Date:** 2026-03-25 — Acceptance gate TOKENS check filters refresh_token-null expiries in DB query
+- **MODE:** OPS
+- **Commit hash(es):** `d6df2d0`
+- **Files changed:** `lib/cron/acceptance-gate.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
+- **What was verified:** `npm run build` (passes; warnings: browserslist data out of date, `/api/onboard/check` dynamic server usage message)
+- **Any unresolved issues:** Required pre-change baseline tests (`npm run test:prod` / `npx playwright test`) were not run; repo-wide dirty worktree pre-existed this session; `git pull --rebase origin main` skipped per user instruction.
+
 ## Session Log — 2026-03-13
 
 ### Files changed

@@ -80,7 +80,7 @@ March 24 production hotfix evidence:
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| acceptance-gate.ts script | BUILT | `lib/cron/acceptance-gate.ts`, now with 8 checks: AUTH, TOKENS, SIGNALS, COMMITMENTS, GENERATION, DELIVERY, SESSION, API_CREDIT_CANARY. The new canary makes a minimal Anthropic Haiku request and sends a Resend alert if credits appear exhausted. | — |
+| acceptance-gate.ts script | BUILT | `lib/cron/acceptance-gate.ts`, now with 8 checks: AUTH, TOKENS, SIGNALS, COMMITMENTS, GENERATION, DELIVERY, SESSION, API_CREDIT_CANARY. The new canary makes a minimal Anthropic Haiku request and sends a Resend alert if credits appear exhausted. TOKENS now only flags expiring tokens without `refresh_token` via the DB query to avoid false failures for short-lived access tokens. | — |
 | Wired into nightly-ops | BUILT | Stage 6 in `app/api/cron/nightly-ops/route.ts` | First live fire unproven |
 | Alert on failure | BUILT | Sends to b.kapp1010@gmail.com via Resend on any FAIL | — |
 | CLAUDE.md/AGENTS.md updated | DONE | Session log appended | — |
