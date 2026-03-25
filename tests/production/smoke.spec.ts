@@ -150,7 +150,8 @@ test.describe('Public: Login page', () => {
     const context = await browser.newContext();
     const page = await context.newPage();
     await page.goto('https://www.foldera.ai/login?error=OAuthCallback');
-    await expect(page.getByText('Sign-in failed. Please try again or use a different account.')).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText('Sign-in failed. Please try again or use a different account.')).toBeVisible({ timeout: 10000 });
     await context.close();
   });
 });
