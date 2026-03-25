@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-25 — Fix missing source_id in tkg_signals inserts on directive execution
+  MODE: AUDIT
+  Commit hash(es): `8195170`
+  Files changed: `lib/conviction/execute-action.ts`
+  What was verified: schema confirmed source_id is text/nullable; traced all 5 tkg_signals insert paths in execute-action.ts; identified decision_frame and wait_rationale/affirmation cases missing source_id; added `artifact-decision-${actionId}` and `artifact-wait-${actionId}` respectively; grep confirmed all 5 inserts now carry source_id; `npx vitest run --exclude ".claude/worktrees/**" lib/conviction/__tests__/execute-action.test.ts` passed 10/10; `npm run build` passed; pushed to main
+  Any unresolved issues: schema shows source_id as nullable (is_nullable: YES) which contradicts the NOT NULL constraint error in last_error — may be a trigger or recently-applied migration not yet reflected in information_schema; fix is correct regardless since source_id was clearly missing from two insert paths
+
 - 2026-03-25 — Commitment ceiling now runs immediately before scoring inside daily-brief generation
   MODE: BUILD
   Commit hash(es): (set after push)
