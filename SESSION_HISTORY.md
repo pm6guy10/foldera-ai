@@ -1641,3 +1641,17 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
   - `npm run build` (pass)
 - Any unresolved issues:
   - none
+
+## Session Log — 2026-03-25 (weekly automated production audit + adversarial bug finder)
+
+- MODE: BUILD (Opus 4.6)
+- Commit hash(es): PENDING
+- Files changed:
+  - `tests/production/audit.spec.ts` (new)
+  - `.github/workflows/weekly-audit.yml` (new)
+  - `package.json` (added test:audit script)
+- What was verified:
+  - `npx tsc --noEmit --strict false tests/production/audit.spec.ts` — 0 errors
+  - `npm run build` — passed
+- Any unresolved issues:
+  - Audit suite is reporter-only; all tests always pass. Findings are written to audit-report.json and audit-summary.md. Run: npm run test:audit

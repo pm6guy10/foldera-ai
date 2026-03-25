@@ -1,0 +1,57 @@
+name: Weekly Production Audit
+
+on:
+  schedule:
+    - cron: '0 12 * * 1'  # Every Monday 12:00 UTC / 5am PT
+  workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Write auth state
+        run: |
+          mkdir -p tests/production
+          echo '${{ secrets.FOLDERA_AUTH_STATE }}' > tests/production/auth-state.json
+        env:
+          FOLDERA_AUTH_STATE: ${{ secrets.FOLDERA_AUTH_STATE }}
+
+      - name: Run production audit
+        run: npm run test:audit
+        env:
+          PLAYWRIGHT_AUTH_STATE_PATH: tests/production/auth-state.json
+        continue-on-error: true  # Never block main on audit findings
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-report-${{ github.run_number }}
+          path: |
+            tests/production/audit-report.json
+            tests/production/audit-summary.md
+            tests/production/screenshots/
+          retention-days: 30
+
+      - name: Post summary to job
+        if: always()
+        run: |
+          if [ -f tests/production/audit-summary.md ]; then
+            cat tests/production/audit-summary.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No audit summary generated." >> $GITHUB_STEP_SUMMARY
+          fi
