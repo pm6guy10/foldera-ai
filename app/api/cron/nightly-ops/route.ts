@@ -35,7 +35,7 @@ import { runCommitmentCeilingDefense, runSelfHeal } from '@/lib/cron/self-heal';
 import { runAcceptanceGate } from '@/lib/cron/acceptance-gate';
 import { checkConnectorHealth } from '@/lib/cron/connector-health';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
-import { TEST_USER_ID, SIGNAL_RETENTION_DAYS } from '@/lib/config/constants';
+import { TEST_USER_ID, SIGNAL_RETENTION_DAYS, daysMs } from '@/lib/config/constants';
 import { runBehavioralGraph } from '@/lib/signals/behavioral-graph';
 
 export const dynamic = 'force-dynamic';
@@ -291,7 +291,7 @@ async function listNightlyBriefUserIds(): Promise<string[]> {
 
 async function purgeOldExtractedSignals(userIds: string[]): Promise<{ ok: boolean; deleted: number }> {
   const supabase = createServerClient();
-  const cutoffIso = new Date(Date.now() - SIGNAL_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const cutoffIso = new Date(Date.now() - daysMs(SIGNAL_RETENTION_DAYS)).toISOString();
   let deleted = 0;
 
   for (const userId of userIds) {

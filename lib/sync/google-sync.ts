@@ -13,6 +13,7 @@ import { createServerClient } from '@/lib/db/client';
 import { getUserToken, updateSyncTimestamp, saveUserToken } from '@/lib/auth/user-tokens';
 import { encrypt } from '@/lib/encryption';
 import { createHash } from 'crypto';
+import { MS_90D } from '@/lib/config/constants';
 
 function hash(content: string): string {
   return createHash('sha256').update(content).digest('hex');
@@ -426,7 +427,7 @@ export async function syncGoogle(userId: string): Promise<GoogleSyncResult> {
 
   const isFirstSync = !token.last_synced_at;
   const sinceMs = isFirstSync
-    ? Date.now() - 90 * 24 * 60 * 60 * 1000 // 90 days ago
+    ? Date.now() - MS_90D // 90 days ago
     : new Date(token.last_synced_at!).getTime();
 
   const oauth2 = getOAuth2Client(userId, token);

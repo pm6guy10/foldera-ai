@@ -18,6 +18,7 @@ import {
 } from "@/lib/auth/user-tokens";
 import { encrypt } from "@/lib/encryption";
 import { createHash } from "crypto";
+import { MS_90D } from '@/lib/config/constants';
 
 function hash(content: string): string {
   return createHash("sha256").update(content).digest("hex");
@@ -711,7 +712,7 @@ export async function syncMicrosoft(
   const tokenMeta = await getUserToken(userId, "microsoft");
   const isFirstSync = !tokenMeta?.last_synced_at;
   const sinceMs = isFirstSync
-    ? Date.now() - 90 * 24 * 60 * 60 * 1000 // 90 days ago
+    ? Date.now() - MS_90D // 90 days ago
     : new Date(tokenMeta!.last_synced_at!).getTime();
   const sinceIso = new Date(sinceMs).toISOString();
   const calendarUntilIso = new Date(

@@ -1,6 +1,17 @@
+import { timingSafeEqual } from 'crypto';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
+
+/**
+ * Constant-time Bearer token comparison.
+ * Prevents timing-based brute-force attacks on CRON_SECRET.
+ */
+function isValidBearerToken(authHeader: string, secret: string): boolean {
+  const expected = `Bearer ${secret}`;
+  if (authHeader.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected));
+}
 
 /**
  * Resolves the authenticated userId for non-cron routes.
@@ -30,7 +41,7 @@ export function resolveCronUser(
 ): { userId: string } | NextResponse {
   const authHeader = request.headers.get('authorization') ?? '';
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || !isValidBearerToken(authHeader, cronSecret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -53,7 +64,7 @@ export function validateCronAuth(
 ): NextResponse | null {
   const authHeader = request.headers.get('authorization') ?? '';
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || !isValidBearerToken(authHeader, cronSecret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   return null;
