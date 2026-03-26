@@ -110,7 +110,17 @@ export default function SettingsClient() {
     if (!googleConnected && !microsoftConnected) return;
 
     const provider = googleConnected ? 'google' : 'microsoft';
+    const providerKey = googleConnected ? 'google' : 'azure_ad';
     const syncUrl = googleConnected ? '/api/google/sync-now' : '/api/microsoft/sync-now';
+
+    // Optimistic: flip card to Connected immediately before sync finishes
+    setIntegrations(prev => {
+      const existing = prev.find(i => i.provider === providerKey);
+      if (existing) {
+        return prev.map(i => i.provider === providerKey ? { ...i, is_active: true } : i);
+      }
+      return [...prev, { provider: providerKey, is_active: true }];
+    });
 
     setSyncStatus(`Syncing your ${provider === 'google' ? 'Google' : 'Microsoft'} data…`);
 
