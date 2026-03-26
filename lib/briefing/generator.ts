@@ -466,6 +466,102 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
   return entries;
 }
 
+/**
+ * Pre-compute behavioral avoidance signals before the LLM call.
+ * Detects: received emails with no reply sent, and aging open commitments.
+ * These are passed as facts to the prompt so the model doesn't have to infer
+ * avoidance from 3 signal snippets alone.
+ */
+async function buildAvoidanceObservations(
+  userId: string,
+  winner: ScoredLoop,
+  signalEvidence: SignalSnippet[],
+): Promise<AvoidanceObservation[]> {
+  const supabase = createServerClient();
+  const observations: AvoidanceObservation[] = [];
+  const now = Date.now();
+
+  // 1. Received emails with no reply sent in the last 14 days
+  const fourteenDaysAgo = new Date(now - daysMs(14)).toISOString();
+  const { data: sentRows } = await supabase
+    .from('tkg_signals')
+    .select('content, occurred_at')
+    .eq('user_id', userId)
+    .eq('type', 'email_sent')
+    .gte('occurred_at', fourteenDaysAgo)
+    .limit(20);
+
+  // Build set of addresses/names we have replied to
+  const repliedToTokens = new Set<string>();
+  for (const row of sentRows ?? []) {
+    const dec = decryptWithStatus((row.content as string) ?? '');
+    if (dec.usedFallback) continue;
+    const toMatch = dec.plaintext.match(/^To:\s*(.+?)(?:\n|$)/im);
+    if (!toMatch) continue;
+    const toStr = toMatch[1].toLowerCase();
+    const emails = toStr.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/g) ?? [];
+    for (const e of emails) repliedToTokens.add(e);
+    // Also index name fragments for fuzzy matching (e.g. "yadira" matches "yadira.gonzalez@...")
+    const nameTokens = toStr.match(/\b[a-z]{3,}\b/g) ?? [];
+    for (const t of nameTokens) repliedToTokens.add(t);
+  }
+
+  // Check signal evidence authors against replied-to set
+  for (const sig of signalEvidence) {
+    if (!sig.author || sig.source === 'email_sent' || !sig.subject) continue;
+    const authorLower = sig.author.toLowerCase();
+    const replied = [...repliedToTokens].some(
+      (r) => authorLower.includes(r) || r.includes(authorLower.split('@')[0] ?? ''),
+    );
+    if (!replied) {
+      const daysAgo = Math.round((now - new Date(sig.date).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysAgo >= 2) {
+        observations.push({
+          type: 'no_reply_sent',
+          severity: daysAgo >= 5 ? 'high' : 'medium',
+          observation: `${sig.author} sent "${sig.subject.slice(0, 60)}" ${daysAgo} day${daysAgo === 1 ? '' : 's'} ago — no reply sent.`,
+        });
+      }
+    }
+  }
+
+  // 2. Aging open commitments from this candidate's source signals
+  const commitmentIds = (winner.sourceSignals ?? [])
+    .filter((s) => s.kind === 'commitment' && s.id)
+    .map((s) => s.id!)
+    .slice(0, 5);
+
+  if (commitmentIds.length > 0) {
+    const { data: commitRows } = await supabase
+      .from('tkg_commitments')
+      .select('description, made_at')
+      .in('id', commitmentIds)
+      .limit(3);
+
+    for (const row of commitRows ?? []) {
+      const madeAt = row.made_at ? new Date(row.made_at as string).getTime() : null;
+      if (!madeAt) continue;
+      const ageDays = Math.round((now - madeAt) / (1000 * 60 * 60 * 24));
+      if (ageDays >= 7) {
+        observations.push({
+          type: 'commitment_aging',
+          severity: ageDays >= 21 ? 'high' : 'medium',
+          observation: `Commitment "${(row.description as string ?? '').slice(0, 80)}" has been open ${ageDays} days with no completion signal.`,
+        });
+      }
+    }
+  }
+
+  // Highest severity first, cap at 3
+  return observations
+    .sort((a, b) =>
+      a.severity === 'high' && b.severity !== 'high' ? -1
+      : b.severity === 'high' && a.severity !== 'high' ? 1
+      : 0,
+    )
+    .slice(0, 3);
+}
+
 // ---------------------------------------------------------------------------
 // Part 3 — Structured context (preprocessing)
 // ---------------------------------------------------------------------------
@@ -475,6 +571,12 @@ interface CompressedSignal {
   occurred_at: string;
   entity: string | null;
   summary: string;
+}
+
+interface AvoidanceObservation {
+  type: 'no_reply_sent' | 'commitment_aging';
+  severity: 'high' | 'medium';
+  observation: string;
 }
 
 interface StructuredContext {
@@ -514,6 +616,8 @@ interface StructuredContext {
   conviction_math: string | null;
   // Weekly behavioral history from signal_summaries (last 8 weeks, oldest first)
   behavioral_history: string | null;
+  // Pre-computed avoidance signals — facts the model can reference directly
+  avoidance_observations: AvoidanceObservation[];
 }
 
 function buildStructuredContext(
@@ -529,6 +633,7 @@ function buildStructuredContext(
   alreadySent?: string[],
   convictionDecision?: import('./conviction-engine').ConvictionDecision | null,
   behavioralHistory?: string | null,
+  avoidanceObservations?: AvoidanceObservation[],
 ): StructuredContext {
   // Sort signals chronologically and take top 3 — full body so the model reads a mini-thread
   const supporting_signals: CompressedSignal[] = signalEvidence
@@ -679,6 +784,7 @@ function buildStructuredContext(
         ].filter(Boolean).join('\n')
       : null,
     behavioral_history: behavioralHistory ?? null,
+    avoidance_observations: avoidanceObservations ?? [],
   };
 }
 
@@ -804,6 +910,20 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     `"This moves [user] toward [specific goal] because [specific non-obvious gap] means [specific action] is right on [today's date]." ` +
     `If you cannot complete that sentence, output wait_rationale — but only with a specific behavioral insight the user genuinely didn't know, not a status report.`,
   );
+
+  // Avoidance observations — pre-computed facts, not inferences.
+  // These give the model the specific signals it needs to detect avoidance without
+  // having to infer them from 3 signal snippets alone.
+  if (ctx.avoidance_observations.length > 0) {
+    const obsLines = ctx.avoidance_observations.map((o, i) => {
+      const badge = o.severity === 'high' ? '[HIGH]' : '[MEDIUM]';
+      return `${i + 1}. ${badge} ${o.observation}`;
+    });
+    sections.push(
+      `AVOIDANCE_SIGNALS (pre-computed facts — reference directly, do not rephrase):\n` +
+      obsLines.join('\n'),
+    );
+  }
 
   // Behavioral mirrors — what the model must hold while reading everything else.
   // Anti-patterns and revealed preferences give the model permission to name what the user can't see.
@@ -2436,8 +2556,8 @@ export async function generateDirective(
       console.error(`[generator] goalGapAnalysis failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // Fetch sent mail (14d) and weekly behavioral history in parallel
-    const [alreadySentResult, behavioralHistoryResult] = await Promise.allSettled([
+    // Fetch sent mail (14d), weekly behavioral history, and avoidance observations in parallel
+    const [alreadySentResult, behavioralHistoryResult, avoidanceObservationsResult] = await Promise.allSettled([
       // Sent mail — what user has already done; model must not re-suggest
       (async (): Promise<string[]> => {
         const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
@@ -2485,10 +2605,14 @@ export async function generateDirective(
           })
           .join('\n\n');
       })(),
+
+      // Pre-computed avoidance signals — unopened replies and aging commitments
+      buildAvoidanceObservations(userId, hydratedWinner, signalEvidence),
     ]);
 
     const alreadySent = alreadySentResult.status === 'fulfilled' ? alreadySentResult.value : [];
     const behavioralHistory = behavioralHistoryResult.status === 'fulfilled' ? behavioralHistoryResult.value : null;
+    const avoidanceObservations = avoidanceObservationsResult.status === 'fulfilled' ? avoidanceObservationsResult.value : [];
 
     // Part 3: Build structured context (conviction math + behavioral history injected when available)
     const ctx = buildStructuredContext(
@@ -2500,6 +2624,7 @@ export async function generateDirective(
       alreadySent,
       convictionDecision,
       behavioralHistory,
+      avoidanceObservations,
     );
 
     // Part 4: Evidence gating — check eligibility before calling LLM
