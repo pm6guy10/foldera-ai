@@ -741,12 +741,16 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     `What is visible only when you hold all three simultaneously?\n\n` +
     `4. COUNTDOWN NOT YET VISIBLE — What deadline or closing window is implied by the situation ` +
     `but not yet named by the user? Not the date they stated — the one the signals imply.\n\n` +
-    `RULE: You may not fire an artifact unless it passes all four questions. ` +
-    `If you cannot complete the sentence "This moves [user] toward [specific goal] because ` +
-    `[specific non-obvious gap] means [specific action] is right on [today's date]" — ` +
-    `output wait_rationale. wait_rationale is suppressed before delivery. The user sees nothing.\n\n` +
-    `If emptyDirective or buildNoSendGenerationLog do not exist, create them as minimal ` +
-    `stubs — emptyDirective returns null, buildNoSendGenerationLog writes to console.error only.`,
+    `RULE: There are two paths to a valid artifact:\n\n` +
+    `PATH A — COMMITMENT (CANDIDATE_CLASS contains "commitment"): ` +
+    `An open loop the user already committed to. Produce the finished artifact directly. ` +
+    `You do not need to find a non-obvious angle — the work itself is the value. ` +
+    `Write the complete, ready-to-send message or document. Do not output wait_rationale for commitment candidates.\n\n` +
+    `PATH B — SIGNAL (everything else): Apply all four questions above. ` +
+    `You may not fire an artifact unless you can complete the sentence ` +
+    `"This moves [user] toward [specific goal] because [specific non-obvious gap] means ` +
+    `[specific action] is right on [today's date]." If you cannot, output wait_rationale. ` +
+    `wait_rationale is suppressed before delivery. The user sees nothing.`,
   );
 
   // Behavioral mirrors — what the model must hold while reading everything else.
