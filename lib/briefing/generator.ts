@@ -705,7 +705,23 @@ function checkGenerationEligibility(ctx: StructuredContext): EligibilityResult {
 function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   const sections: string[] = [];
 
-  // Behavioral mirrors FIRST — these are what the model must hold while reading everything else.
+  // Gate 2: Goal-primacy constraint — model may not output any artifact unless it can
+  // complete the sentence below with real data. If it cannot, it must output wait_rationale,
+  // which the pipeline will suppress entirely (no dashboard delivery, no DB write).
+  sections.push(
+    `RULE: You may not output any artifact unless you can complete this sentence ` +
+    `with real data from the context — no placeholders, no inferences:\n\n` +
+    `  "This moves [user] toward [specific goal text] because [specific behavioral gap ` +
+    `from the signals] means [specific action] is the right move on [today's date]."\n\n` +
+    `If you cannot complete that sentence, output wait_rationale with ` +
+    `why_wait = the missing piece (no goal anchor / no behavioral gap / no timing pressure).\n\n` +
+    `If you output wait_rationale, that is not an artifact — it is a signal that the ` +
+    `candidate pool is empty today. Do not deliver it to the user.\n\n` +
+    `If emptyDirective or buildNoSendGenerationLog do not exist, create them as minimal ` +
+    `stubs — emptyDirective returns null, buildNoSendGenerationLog writes to console.error only.`,
+  );
+
+  // Behavioral mirrors — what the model must hold while reading everything else.
   // Anti-patterns and revealed preferences give the model permission to name what the user can't see.
   if (ctx.behavioral_mirrors.length > 0) {
     sections.push(
@@ -2288,26 +2304,8 @@ export async function generateDirective(
     if (!payloadResult.payload) {
       const failureReason = formatValidationFailureReason('Generation validation failed:', payloadResult.issues);
 
-      // Try wait_rationale fallback if the candidate has grounding
-      if (ctx.has_recent_evidence) {
-        const waitFallback = buildDeterministicWaitRationale(hydratedWinner, failureReason);
-        logStructuredEvent({
-          event: 'generation_fallback', level: 'warn', userId,
-          artifactType: 'wait_rationale', generationStatus: 'deterministic_fallback',
-          details: { scope: 'generator', original_issues: payloadResult.issues },
-        });
-
-        return {
-          directive: waitFallback.directive,
-          action_type: 'do_nothing',
-          confidence: 0,
-          reason: failureReason,
-          evidence: [],
-          embeddedArtifact: waitFallback.artifact,
-          embeddedArtifactType: waitFallback.artifact_type,
-          generationLog: buildNoSendGenerationLog(failureReason, 'generation', scored.candidateDiscovery),
-        } as ConvictionDirective & { embeddedArtifact?: Record<string, unknown>; embeddedArtifactType?: string };
-      }
+      // wait_rationale fallback removed — goal-primacy gate suppresses all wait_rationale
+      // outputs before they reach the dashboard. If generation validation fails, return empty.
 
       return emptyDirective(
         failureReason,
@@ -2316,6 +2314,20 @@ export async function generateDirective(
     }
 
     const payload = payloadResult.payload;
+
+    // Gate 3: wait_rationale is a signal that the goal-primacy constraint couldn't be met.
+    // It never reaches the dashboard — suppress it here before any persistence.
+    if (payload.artifact_type === 'wait_rationale') {
+      logStructuredEvent({
+        event: 'generation_skipped', level: 'info', userId,
+        artifactType: 'wait_rationale', generationStatus: 'goal_primacy_gate_suppressed',
+        details: { scope: 'generator', why_wait: (payload.artifact as Record<string, unknown>)?.why_wait ?? '' },
+      });
+      return emptyDirective(
+        'Goal-primacy gate: candidate could not be anchored to a goal today.',
+        buildNoSendGenerationLog('goal_primacy_gate_suppressed', 'generation', scored.candidateDiscovery),
+      );
+    }
 
     // Part 5b: Consecutive duplicate suppression — reject if >70% similar to last 3 directives
     const duplicateCheck = await checkConsecutiveDuplicate(userId, payload.directive);

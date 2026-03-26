@@ -2578,7 +2578,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Score each candidate (v4: Gemini scoring function)
   // -----------------------------------------------------------------------
 
-  const scored: ScoredLoop[] = [];
+  let scored: ScoredLoop[] = [];
   const approvalHistory = await getApprovalHistory(userId);
 
   for (const c of candidates) {
@@ -2914,13 +2914,24 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     }
   }
 
-  // No-goal penalty: any candidate (including emergent) that doesn't connect
-  // to an active goal is effectively unranked. System introspection and
-  // commitment-decay emergent patterns never match a user goal.
-  for (const s of scored) {
-    if (!s.matchedGoal) {
-      s.score = Math.max(0, s.score - 50);
-    }
+  // Goal-primacy gate: hard drop any non-emergent candidate with no goal anchor.
+  // Emergent patterns (anti-patterns, divergences) are exempt — they ARE goal diagnosis.
+  // Everything else must connect to a stated goal before competing.
+  const beforeGoalGate = scored.length;
+  scored = scored.filter((s) => s.matchedGoal !== null || s.type === 'emergent');
+  if (scored.length < beforeGoalGate) {
+    logStructuredEvent({
+      event: 'scorer_goal_primacy_gate',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'scoring',
+      details: {
+        scope: 'scorer',
+        dropped: beforeGoalGate - scored.length,
+        remaining: scored.length,
+      },
+    });
   }
 
   // Sort by score descending
