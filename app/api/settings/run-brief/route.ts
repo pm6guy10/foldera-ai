@@ -11,6 +11,7 @@ import { apiError } from '@/lib/utils/api-error';
 import { runCommitmentCeilingDefense } from '@/lib/cron/self-heal';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 interface ManualSyncStageResult {
   ok: boolean;

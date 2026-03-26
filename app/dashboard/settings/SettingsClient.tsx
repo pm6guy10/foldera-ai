@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 
@@ -26,7 +25,6 @@ const ALL_BUCKETS = [
 
 export default function SettingsClient() {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,6 +41,11 @@ export default function SettingsClient() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [upgrading, setUpgrading] = useState(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
+  const [editingFocus, setEditingFocus] = useState(false);
+  const [editBuckets, setEditBuckets] = useState<Set<string>>(new Set());
+  const [editFreeText, setEditFreeText] = useState('');
+  const [savingFocus, setSavingFocus] = useState(false);
+  const [focusSaveError, setFocusSaveError] = useState<string | null>(null);
 
   const refreshIntegrationsStatus = useCallback(async () => {
     const response = await fetch('/api/integrations/status');
@@ -149,6 +152,41 @@ export default function SettingsClient() {
       errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [actionError]);
+
+  const handleEditFocus = () => {
+    setEditBuckets(new Set(goalBuckets));
+    setEditFreeText(goalFreeText ?? '');
+    setFocusSaveError(null);
+    setEditingFocus(true);
+  };
+
+  const handleSaveFocus = async () => {
+    setSavingFocus(true);
+    setFocusSaveError(null);
+    try {
+      const res = await fetch('/api/onboard/set-goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          buckets: Array.from(editBuckets),
+          freeText: editFreeText.trim() || null,
+          skipped: false,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setFocusSaveError(typeof d.error === 'string' ? d.error : 'Could not save. Try again.');
+        return;
+      }
+      setGoalBuckets(Array.from(editBuckets));
+      setGoalFreeText(editFreeText.trim() || null);
+      setEditingFocus(false);
+    } catch {
+      setFocusSaveError('Network error. Try again.');
+    } finally {
+      setSavingFocus(false);
+    }
+  };
 
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
@@ -363,36 +401,94 @@ export default function SettingsClient() {
         {/* ── Focus areas ── */}
         <SectionHeading className="mt-10">Your focus areas</SectionHeading>
         <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
-          {activeBuckets.length === 0 && !goalFreeText ? (
-            <p className="text-sm text-zinc-500">No focus areas set.</p>
+          {!editingFocus ? (
+            <>
+              {activeBuckets.length === 0 && !goalFreeText ? (
+                <p className="text-sm text-zinc-500">No focus areas set.</p>
+              ) : (
+                <>
+                  {activeBuckets.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {activeBuckets.map((label) => (
+                        <span
+                          key={label}
+                          className="rounded-lg py-1.5 px-3 text-xs font-medium bg-cyan-500/15 border border-cyan-500/40 text-cyan-300"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {goalFreeText && (
+                    <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
+                      <span className="text-zinc-500 text-xs uppercase tracking-wide mr-1.5">Goal:</span>
+                      {goalFreeText}
+                    </p>
+                  )}
+                </>
+              )}
+              <button
+                onClick={handleEditFocus}
+                className="mt-4 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
+              >
+                Edit focus areas →
+              </button>
+            </>
           ) : (
             <>
-              {activeBuckets.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {activeBuckets.map((label) => (
-                    <span
+              <div className="grid grid-cols-2 gap-2">
+                {ALL_BUCKETS.map((label) => {
+                  const active = editBuckets.has(label);
+                  return (
+                    <button
                       key={label}
-                      className="rounded-lg py-1.5 px-3 text-xs font-medium bg-cyan-500/15 border border-cyan-500/40 text-cyan-300"
+                      onClick={() => {
+                        setEditBuckets(prev => {
+                          const next = new Set(prev);
+                          if (next.has(label)) next.delete(label);
+                          else next.add(label);
+                          return next;
+                        });
+                      }}
+                      className={`rounded-xl py-2.5 px-3 text-sm font-medium transition-colors border text-left ${
+                        active
+                          ? 'bg-cyan-500/15 border-cyan-500/50 text-cyan-300'
+                          : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                      }`}
                     >
                       {label}
-                    </span>
-                  ))}
-                </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <input
+                type="text"
+                value={editFreeText}
+                onChange={(e) => setEditFreeText(e.target.value)}
+                placeholder="e.g., land the MAS3 role at HCA"
+                className="mt-3 w-full bg-zinc-800 border border-zinc-700 rounded-xl py-2.5 px-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50"
+              />
+              {focusSaveError && (
+                <p className="mt-2 text-xs text-red-400">{focusSaveError}</p>
               )}
-              {goalFreeText && (
-                <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
-                  <span className="text-zinc-500 text-xs uppercase tracking-wide mr-1.5">Goal:</span>
-                  {goalFreeText}
-                </p>
-              )}
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={handleSaveFocus}
+                  disabled={savingFocus}
+                  className="flex-1 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-wait text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
+                >
+                  {savingFocus ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  onClick={() => setEditingFocus(false)}
+                  disabled={savingFocus}
+                  className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl py-2.5 text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </>
           )}
-          <button
-            onClick={() => router.push('/onboard?edit=true')}
-            className="mt-4 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
-          >
-            Edit focus areas →
-          </button>
         </div>
 
         {/* ── Subscription ── */}
@@ -443,7 +539,7 @@ export default function SettingsClient() {
         <SectionHeading className="mt-10">Daily brief</SectionHeading>
         <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
           <p className="text-sm text-zinc-400 mb-4">
-            Sync your email and calendar, then generate and send today&apos;s brief.
+            Sync your email and calendar, then generate and send today&apos;s brief. Takes up to 60 seconds.
           </p>
           <button
             disabled={generateState === 'loading'}

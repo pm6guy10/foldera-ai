@@ -50,7 +50,8 @@ export async function GET() {
       .from('tkg_signals')
       .select('source')
       .eq('user_id', session.user.id)
-      .eq('processed', true);
+      .eq('processed', true)
+      .limit(10000);
 
     const sourceCounts: Record<string, number> = {};
     for (const row of (signalRows ?? [])) {
