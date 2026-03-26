@@ -294,23 +294,29 @@ export interface GoalGapEntry {
   priority: number;
   category: string;
   signal_count_14d: number;
+  signal_count_30d: number;
+  signal_count_90d: number;
   action_count_14d: number;
+  commitment_count: number;
   gap_level: 'HIGH' | 'MEDIUM' | 'LOW';
   gap_description: string;
 }
 
 /**
- * For every active (non-placeholder) goal, count how many signals and
- * completed actions relate to it in the last 14 days.  Then compute the
- * gap between stated priority and actual behavior.
+ * For every active (non-placeholder) goal, count how many signals, actions,
+ * and commitments relate to it across 14d / 30d / 90d windows.
+ * Uses decrypted signal content for keyword matching.
+ * Computes behavioral divergence: stated priority vs. actual signal density.
  *
- * Returns up to 5 goals ordered by priority descending.
+ * Returns up to 5 goals ordered by gap severity descending.
  */
 async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
   const supabase = createServerClient();
-  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const now = Date.now();
+  const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const ninetyDaysAgo  = new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString();
 
-  // 1. Fetch all active goals (exclude placeholder sources)
+  // 1. Active goals (exclude onboarding placeholders)
   const { data: goalRows } = await supabase
     .from('tkg_goals')
     .select('goal_text, priority, goal_category, source')
@@ -325,17 +331,17 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
 
   if (goals.length === 0) return [];
 
-  // 2. Fetch recent signals (14d) — just counts per category/keyword
+  // 2. Signals last 90d — decrypt content for real keyword matching
   const { data: signalRows } = await supabase
     .from('tkg_signals')
     .select('content, source, occurred_at')
     .eq('user_id', userId)
     .eq('processed', true)
-    .gte('occurred_at', fourteenDaysAgo)
+    .gte('occurred_at', ninetyDaysAgo)
     .order('occurred_at', { ascending: false })
-    .limit(200);
+    .limit(400);
 
-  // 3. Fetch recent completed actions (14d)
+  // 3. Completed actions last 14d
   const { data: actionRows } = await supabase
     .from('tkg_actions')
     .select('directive_text, action_type, status, generated_at')
@@ -344,75 +350,111 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
     .gte('generated_at', fourteenDaysAgo)
     .limit(100);
 
-  const signals = signalRows ?? [];
-  const actions = actionRows ?? [];
+  // 4. Active commitments (plaintext descriptions)
+  const { data: commitmentRows } = await supabase
+    .from('tkg_commitments')
+    .select('description, category, made_at')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .gte('made_at', ninetyDaysAgo)
+    .limit(200);
 
-  // Build keyword sets for each goal
-  const goalKeywordSets = goals.map((g) => {
-    const words = g.goal_text
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .split(/\s+/)
-      .filter((w) => w.length >= 4);
-    return { ...g, keywords: words };
-  });
+  // Decrypt signals once — reused across all goals
+  const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+  type DecryptedSignal = { text: string; occurred_at: string };
+  const decryptedSignals: DecryptedSignal[] = [];
+  for (const s of signalRows ?? []) {
+    const dec = decryptWithStatus((s.content as string) ?? '');
+    if (dec.usedFallback) continue;
+    decryptedSignals.push({ text: dec.plaintext.toLowerCase(), occurred_at: s.occurred_at as string });
+  }
+
+  const actions = actionRows ?? [];
+  const commitments = (commitmentRows ?? []) as Array<{ description: string; category: string | null; made_at: string | null }>;
+
+  // Keyword extractor (≥4 char words from goal text)
+  const makeKeywords = (text: string) =>
+    text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w) => w.length >= 4);
 
   const entries: GoalGapEntry[] = [];
 
-  for (const goal of goalKeywordSets) {
-    // Count signals matching this goal by keyword overlap or category
-    let signalCount = 0;
-    for (const s of signals) {
-      const content = ((s.content as string) ?? '').toLowerCase();
-      const catMatch = (s.source as string ?? '').toLowerCase().includes(goal.goal_category);
-      const kwMatch = goal.keywords.length > 0 &&
-        goal.keywords.filter((kw) => content.includes(kw)).length >= Math.min(2, goal.keywords.length);
-      if (catMatch || kwMatch) signalCount++;
+  for (const goal of goals) {
+    const kws = makeKeywords(goal.goal_text);
+    const minMatch = Math.min(1, kws.length); // 1-keyword match is enough
+
+    const matchesKws = (text: string) =>
+      kws.length > 0 && kws.filter((kw) => text.includes(kw)).length >= minMatch;
+
+    // Signal density across 14d / 30d / 90d windows
+    let count14 = 0, count30 = 0, count90 = 0;
+    for (const s of decryptedSignals) {
+      if (!matchesKws(s.text)) continue;
+      count90++;
+      if (s.occurred_at >= thirtyDaysAgo) count30++;
+      if (s.occurred_at >= fourteenDaysAgo) count14++;
     }
 
-    // Count actions matching this goal
+    // Action count (14d)
     let actionCount = 0;
     for (const a of actions) {
       const text = ((a.directive_text as string) ?? '').toLowerCase();
-      const kwMatch = goal.keywords.length > 0 &&
-        goal.keywords.filter((kw) => text.includes(kw)).length >= Math.min(2, goal.keywords.length);
-      if (kwMatch) actionCount++;
+      if (matchesKws(text)) actionCount++;
     }
 
-    // Compute gap: high priority + low activity = HIGH gap
+    // Commitment count (category match or keyword match in description)
+    let commitmentCount = 0;
+    for (const c of commitments) {
+      const catMatch = (c.category ?? '').toLowerCase() === goal.goal_category.toLowerCase();
+      const kwMatch  = matchesKws(c.description.toLowerCase());
+      if (catMatch || kwMatch) commitmentCount++;
+    }
+
+    // Gap computation using density trajectory (not just 14d snapshot)
+    // Velocity: is activity increasing (30d rate > 90d/3 average) or flat/declining?
+    const rate90  = count90 / 3;   // monthly average over 90d
+    const accelerating = count30 > rate90 * 1.2;
+    const decelerating = count30 < rate90 * 0.5 && count90 > 5;
+
     let gap_level: GoalGapEntry['gap_level'];
     let gap_description: string;
 
-    if (goal.priority >= 4 && signalCount <= 3 && actionCount === 0) {
+    if (goal.priority >= 4 && count90 <= 5) {
       gap_level = 'HIGH';
-      gap_description = `Stated top priority, near-zero behavioral footprint. ${signalCount} signal${signalCount !== 1 ? 's' : ''} in 14 days, 0 completed actions.`;
-    } else if (goal.priority >= 3 && (signalCount <= 5 || actionCount === 0)) {
-      gap_level = signalCount > 10 && actionCount === 0 ? 'MEDIUM' : (signalCount <= 5 ? 'HIGH' : 'LOW');
-      gap_description = signalCount > 10 && actionCount === 0
-        ? `High signal activity (${signalCount}), but no conversion to completed actions.`
-        : `${signalCount} signal${signalCount !== 1 ? 's' : ''} in 14 days, ${actionCount} completed action${actionCount !== 1 ? 's' : ''}.`;
-    } else {
+      gap_description = `Priority ${goal.priority} goal — ${count90} signals in 90 days. Near-zero behavioral footprint.${commitmentCount > 0 ? ` ${commitmentCount} open commitment${commitmentCount !== 1 ? 's' : ''} tracked.` : ''}`;
+    } else if (goal.priority >= 4 && count90 > 5 && actionCount === 0 && !accelerating) {
+      gap_level = 'HIGH';
+      gap_description = `${count90} signals (${count30} last 30d) but 0 completed actions. Observing, not executing.${decelerating ? ' Activity declining.' : ''}`;
+    } else if (goal.priority >= 3 && count30 < rate90 * 0.6) {
+      gap_level = 'MEDIUM';
+      gap_description = `${count30} signals last 30d vs ${Math.round(rate90)} avg/mo — activity declining vs stated priority.`;
+    } else if (accelerating && goal.priority >= 3) {
       gap_level = 'LOW';
-      gap_description = `${signalCount} signals, ${actionCount} completed actions in 14 days — behavior and priority are roughly aligned.`;
+      gap_description = `${count30} signals last 30d — accelerating. Behavior aligns with priority.`;
+    } else {
+      gap_level = count90 === 0 ? 'HIGH' : 'LOW';
+      gap_description = count90 === 0
+        ? `0 signals in 90 days. Goal may be stale or mislabeled.`
+        : `${count90} signals over 90d (${count30} last 30d). Behavior roughly matches priority.`;
     }
 
     entries.push({
       goal_text: goal.goal_text,
       priority: goal.priority,
       category: goal.goal_category,
-      signal_count_14d: signalCount,
+      signal_count_14d: count14,
+      signal_count_30d: count30,
+      signal_count_90d: count90,
       action_count_14d: actionCount,
+      commitment_count: commitmentCount,
       gap_level,
       gap_description,
     });
   }
 
-  // Sort: HIGH gaps first, then by priority descending
   const gapOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
   entries.sort((a, b) => {
     const gapDiff = gapOrder[a.gap_level] - gapOrder[b.gap_level];
-    if (gapDiff !== 0) return gapDiff;
-    return b.priority - a.priority;
+    return gapDiff !== 0 ? gapDiff : b.priority - a.priority;
   });
 
   return entries;
@@ -464,6 +506,8 @@ interface StructuredContext {
   behavioral_mirrors: string[];
   // Conviction math: inferred burn rate, runway, EV comparison — injected when available
   conviction_math: string | null;
+  // Weekly behavioral history from signal_summaries (last 8 weeks, oldest first)
+  behavioral_history: string | null;
 }
 
 function buildStructuredContext(
@@ -478,6 +522,7 @@ function buildStructuredContext(
   divergences?: import('./scorer').RevealedGoalDivergence[],
   alreadySent?: string[],
   convictionDecision?: import('./conviction-engine').ConvictionDecision | null,
+  behavioralHistory?: string | null,
 ): StructuredContext {
   // Sort signals chronologically and take top 3 — full body so the model reads a mini-thread
   const supporting_signals: CompressedSignal[] = signalEvidence
@@ -627,6 +672,7 @@ function buildStructuredContext(
           `KEY HEDGE: ${convictionDecision.keyHedge}`,
         ].filter(Boolean).join('\n')
       : null,
+    behavioral_history: behavioralHistory ?? null,
   };
 }
 
@@ -762,12 +808,14 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     );
   }
 
-  // Goal-gap analysis — primary analytical lens
+  // Goal-gap analysis — real behavioral divergence with 14/30/90d density trajectory
   if (ctx.goal_gap_analysis.length > 0) {
     const gapLines = ctx.goal_gap_analysis.map((g) => {
-      return `[priority ${g.priority}] ${g.goal_text}\n  → ${g.signal_count_14d} signals in 14 days, ${g.action_count_14d} completed actions\n  → Gap: ${g.gap_level} — ${g.gap_description}`;
+      const density = `${g.signal_count_14d} signals (14d) / ${g.signal_count_30d} (30d) / ${g.signal_count_90d} (90d)`;
+      const extras = g.commitment_count > 0 ? ` ${g.commitment_count} open commitment${g.commitment_count !== 1 ? 's' : ''}.` : '';
+      return `[p${g.priority}] ${g.goal_text}\n  → Signal density: ${density}. Actions completed 14d: ${g.action_count_14d}.${extras}\n  → Gap: ${g.gap_level} — ${g.gap_description}`;
     });
-    sections.push(`GOAL_GAP_ANALYSIS:\nYour primary question: which goal has the biggest gap between stated priority and actual behavior? Start there. Then find the one finished action that closes the most important gap.\n\n${gapLines.join('\n\n')}`);
+    sections.push(`GOAL_GAP_ANALYSIS:\nBehavioral divergence between stated priorities and actual signal density over 14/30/90 days.\nYour primary question: which goal has the biggest gap? Start there. Find the one finished artifact that closes the most important gap.\n\n${gapLines.join('\n\n')}`);
   }
 
   // Conviction math — inferred burn, runway, EV comparison. When present, the model MUST
@@ -779,6 +827,12 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
       `If the math says bridge, produce the one specific bridge action.\n\n` +
       ctx.conviction_math,
     );
+  }
+
+  // Behavioral history — weekly summaries from the last 8 weeks.
+  // Gives the model long-term trajectory, not just the 7-day snapshot.
+  if (ctx.behavioral_history) {
+    sections.push(`BEHAVIORAL_HISTORY (last 8 weeks — oldest first):\n${ctx.behavioral_history}`);
   }
 
   // User identity context — gives the LLM judgment about what matters
@@ -2370,33 +2424,61 @@ export async function generateDirective(
       console.error(`[generator] goalGapAnalysis failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // Fetch sent mail from last 14d — model needs to know what user has already done
-    const alreadySent: string[] = [];
-    try {
-      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-      const { data: sentRows } = await supabase
-        .from('tkg_signals')
-        .select('content, occurred_at')
-        .eq('user_id', userId)
-        .eq('type', 'email_sent')
-        .gte('occurred_at', fourteenDaysAgo)
-        .order('occurred_at', { ascending: false })
-        .limit(15);
-      for (const row of sentRows ?? []) {
-        const dec = decryptWithStatus(row.content as string ?? '');
-        if (dec.usedFallback) continue;
-        const decText = dec.plaintext;
-        const lines = decText.split('\n').filter((l) => l.trim());
-        const subj = lines.find((l) => /^Subject:/i.test(l))?.replace(/^Subject:\s*/i, '').slice(0, 80);
-        const to = lines.find((l) => /^To:/i.test(l))?.replace(/^To:\s*/i, '').slice(0, 60);
-        const date = new Date(row.occurred_at as string).toISOString().slice(0, 10);
-        if (subj || to) alreadySent.push(`[${date}]${to ? ` To: ${to}` : ''}${subj ? ` — ${subj}` : ''}`);
-      }
-    } catch {
-      // non-blocking
-    }
+    // Fetch sent mail (14d) and weekly behavioral history in parallel
+    const [alreadySentResult, behavioralHistoryResult] = await Promise.allSettled([
+      // Sent mail — what user has already done; model must not re-suggest
+      (async (): Promise<string[]> => {
+        const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: sentRows } = await supabase
+          .from('tkg_signals')
+          .select('content, occurred_at')
+          .eq('user_id', userId)
+          .eq('type', 'email_sent')
+          .gte('occurred_at', fourteenDaysAgo)
+          .order('occurred_at', { ascending: false })
+          .limit(15);
+        const lines: string[] = [];
+        for (const row of sentRows ?? []) {
+          const dec = decryptWithStatus(row.content as string ?? '');
+          if (dec.usedFallback) continue;
+          const text = dec.plaintext;
+          const rowLines = text.split('\n').filter((l) => l.trim());
+          const subj = rowLines.find((l) => /^Subject:/i.test(l))?.replace(/^Subject:\s*/i, '').slice(0, 80);
+          const to = rowLines.find((l) => /^To:/i.test(l))?.replace(/^To:\s*/i, '').slice(0, 60);
+          const date = new Date(row.occurred_at as string).toISOString().slice(0, 10);
+          if (subj || to) lines.push(`[${date}]${to ? ` To: ${to}` : ''}${subj ? ` — ${subj}` : ''}`);
+        }
+        return lines;
+      })(),
 
-    // Part 3: Build structured context (conviction math injected when available)
+      // Weekly behavioral history — last 8 weeks of signal_summaries
+      (async (): Promise<string | null> => {
+        const { data: summaries } = await supabase
+          .from('signal_summaries')
+          .select('week_start, week_end, signal_count, themes, people, summary, emotional_tone')
+          .eq('user_id', userId)
+          .order('week_start', { ascending: false })
+          .limit(8);
+        if (!summaries || summaries.length === 0) return null;
+        // Oldest first so the model reads chronologically
+        const ordered = [...summaries].reverse();
+        return ordered
+          .map((s) => {
+            const themes = Array.isArray(s.themes) ? (s.themes as string[]).slice(0, 4).join(', ') : '';
+            const people = Array.isArray(s.people) ? (s.people as string[]).slice(0, 4).join(', ') : '';
+            const tone = s.emotional_tone ? ` Tone: ${s.emotional_tone}.` : '';
+            const themeStr = themes ? ` Themes: ${themes}.` : '';
+            const peopleStr = people ? ` People: ${people}.` : '';
+            return `Week of ${s.week_start}: ${s.signal_count} signals.${themeStr}${peopleStr}${tone}\n  ${(s.summary as string ?? '').slice(0, 200)}`;
+          })
+          .join('\n\n');
+      })(),
+    ]);
+
+    const alreadySent = alreadySentResult.status === 'fulfilled' ? alreadySentResult.value : [];
+    const behavioralHistory = behavioralHistoryResult.status === 'fulfilled' ? behavioralHistoryResult.value : null;
+
+    // Part 3: Build structured context (conviction math + behavioral history injected when available)
     const ctx = buildStructuredContext(
       hydratedWinner, guardrails, userId, signalEvidence, insight,
       goalsForContext,
@@ -2405,6 +2487,7 @@ export async function generateDirective(
       scored.divergences,
       alreadySent,
       convictionDecision,
+      behavioralHistory,
     );
 
     // Part 4: Evidence gating — check eligibility before calling LLM
