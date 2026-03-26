@@ -484,7 +484,7 @@ async function reconcilePendingApprovalQueue(
     .select('id, generated_at, confidence, action_type, directive_text, reason, execution_result')
     .eq('user_id', userId)
     .eq('status', 'pending_approval')
-    .order('generated_at', { ascending: false })
+    .order('confidence', { ascending: false })
     .limit(20);
 
   if (error) {
@@ -1011,6 +1011,44 @@ export async function runDailyGenerate(
           userId,
         });
         continue;
+      }
+
+      // Recovery: if a high-confidence directive was user-skipped today (skip_reason IS NULL
+      // means no auto-suppression reason was recorded — i.e. it went through the execute-action
+      // skip path), restore it to pending_approval rather than generating do_nothing.
+      {
+        const { data: recoverable } = await supabase
+          .from('tkg_actions')
+          .select('id, confidence, action_type, directive_text, execution_result')
+          .eq('user_id', userId)
+          .eq('status', 'skipped')
+          .is('skip_reason', null)
+          .neq('action_type', 'do_nothing')
+          .gte('confidence', 70)
+          .gte('generated_at', todayStart)
+          .order('confidence', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recoverable) {
+          await supabase
+            .from('tkg_actions')
+            .update({ status: 'pending_approval', skip_reason: null })
+            .eq('id', recoverable.id);
+
+          results.push({
+            code: 'pending_approval_reused',
+            meta: {
+              ...cleanupMeta,
+              action_id: recoverable.id,
+              artifact_present: extractArtifact(recoverable.execution_result) !== null,
+              recovered: true,
+            },
+            success: true,
+            userId,
+          });
+          continue;
+        }
       }
 
       // NOTE: We intentionally do NOT check for a persisted no_send blocker here.

@@ -96,8 +96,9 @@ const mockSupabase = {
         select() {
           const state = {
             filters: {} as Record<string, unknown>,
-            gteField: null as string | null,
-            gteValue: null as string | null,
+            gteFilters: [] as Array<{ field: string; value: string | number }>,
+            isNullFilters: [] as Array<{ field: string; isNull: boolean }>,
+            neqFilters: [] as Array<{ field: string; value: unknown }>,
             notField: null as string | null,
             notValue: null as unknown,
             orderField: null as string | null,
@@ -109,9 +110,16 @@ const mockSupabase = {
               state.filters[field] = value;
               return query;
             },
-            gte(field: string, value: string) {
-              state.gteField = field;
-              state.gteValue = value;
+            gte(field: string, value: string | number) {
+              state.gteFilters.push({ field, value });
+              return query;
+            },
+            is(field: string, value: null | boolean) {
+              state.isNullFilters.push({ field, isNull: value === null });
+              return query;
+            },
+            neq(field: string, value: unknown) {
+              state.neqFilters.push({ field, value });
               return query;
             },
             not(field: string, _operator: string, value: unknown) {
@@ -122,11 +130,10 @@ const mockSupabase = {
                   const filterMatches = Object.entries(state.filters)
                     .every(([filterField, filterValue]) => row[filterField] === filterValue);
                   if (!filterMatches) return false;
-                  if (state.gteField && state.gteValue) {
-                    const fieldValue = row[state.gteField];
-                    if (!(typeof fieldValue === 'string' && fieldValue >= state.gteValue)) {
-                      return false;
-                    }
+                  for (const { field: gf, value: gv } of state.gteFilters) {
+                    const fv = row[gf];
+                    if (typeof fv === 'string' && typeof gv === 'string' && fv < gv) return false;
+                    if (typeof fv === 'number' && typeof gv === 'number' && fv < gv) return false;
                   }
                   if (field === 'execution_result->daily_brief_sent_at') {
                     const sentAt = (row.execution_result as Record<string, unknown> | undefined)?.daily_brief_sent_at;
@@ -149,11 +156,21 @@ const mockSupabase = {
                 rows = rows.filter((row) => row[field] === value);
               }
 
-              if (state.gteField && state.gteValue) {
+              for (const { field: gf, value: gv } of state.gteFilters) {
                 rows = rows.filter((row) => {
-                  const fieldValue = row[state.gteField];
-                  return typeof fieldValue === 'string' && fieldValue >= state.gteValue!;
+                  const fv = row[gf];
+                  if (typeof fv === 'string' && typeof gv === 'string') return fv >= gv;
+                  if (typeof fv === 'number' && typeof gv === 'number') return fv >= gv;
+                  return false;
                 });
+              }
+
+              for (const { field: isf, isNull } of state.isNullFilters) {
+                rows = rows.filter((row) => isNull ? row[isf] == null : row[isf] != null);
+              }
+
+              for (const { field: nf, value: nv } of state.neqFilters) {
+                rows = rows.filter((row) => row[nf] !== nv);
               }
 
               if (state.orderField) {
@@ -169,10 +186,18 @@ const mockSupabase = {
                 });
               }
 
-              return Promise.resolve({
-                data: rows.slice(0, count),
-                error: null,
-              });
+              const sliced = rows.slice(0, count);
+              return {
+                then(resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) {
+                  return Promise.resolve({ data: sliced, error: null }).then(resolve, reject);
+                },
+                catch(reject: (e: unknown) => unknown) {
+                  return Promise.resolve({ data: sliced, error: null }).catch(reject);
+                },
+                maybeSingle() {
+                  return Promise.resolve({ data: sliced[0] ?? null, error: null });
+                },
+              };
             },
           };
 
@@ -525,6 +550,58 @@ describe('runDailyGenerate candidate logging', () => {
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates).toHaveLength(2);
     expect((saved.execution_result as Record<string, any>).generation_log.reason).toBe(
       'Acceptance gate blocked send because fewer than 3 candidates were evaluated.',
+    );
+  });
+
+  it('recovers a user-skipped high-confidence directive instead of generating do_nothing', async () => {
+    const skippedId = 'skipped-good-action-1';
+    mockSupabase.actionRows = [
+      {
+        id: skippedId,
+        user_id: USER_ID,
+        status: 'skipped',
+        skip_reason: null,
+        action_type: 'send_message',
+        directive_text: 'Email Cheryl about reference coordination.',
+        confidence: 82,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          artifact: {
+            type: 'email',
+            to: 'cheryl.anderson1@dshs.wa.gov',
+            subject: 'Reference Check Coordination',
+            body: 'Hi Cheryl,',
+            draft_type: 'email_compose',
+          },
+        },
+      },
+    ];
+
+    const result = await runDailyGenerate({ userIds: [USER_ID] });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'pending_approval_reused',
+        success: true,
+        meta: expect.objectContaining({
+          action_id: skippedId,
+          artifact_present: true,
+          recovered: true,
+        }),
+      }),
+    ]);
+
+    // Should NOT have generated a new directive
+    expect(generateDirective).not.toHaveBeenCalled();
+
+    // Should have restored the action to pending_approval
+    expect(mockSupabase.updatedActions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: skippedId,
+          payload: expect.objectContaining({ status: 'pending_approval' }),
+        }),
+      ]),
     );
   });
 

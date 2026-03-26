@@ -195,7 +195,7 @@ class SelectQuery {
 
   limit(count: number) {
     this.state.limitCount = count;
-    return this.execute();
+    return this;
   }
 
   maybeSingle() {
