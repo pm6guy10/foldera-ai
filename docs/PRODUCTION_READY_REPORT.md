@@ -50,10 +50,9 @@ Removed both with `git rm --cached`. The many `output/npm-cache/` entries were a
 - `npx vitest run --exclude ".claude/worktrees/**"` → 23 test files, 125 tests, all passing
 
 ### Post-deploy (production)
-- Deployed to Vercel — awaiting READY status.
-- Navigate to `https://www.foldera.ai/dashboard/settings` and click **Generate Now**.
-- Expected result: "Signal processing incomplete — directives will improve as backlog clears." (not "Brief generation failed").
-- Browser console: zero errors expected on settings page.
+- Commit `b47eb38` pushed to `main` and deployed to Vercel.
+- `npm run test:prod` → 48 passed, 1 pre-existing failure (`smoke.spec.ts:29` — authenticated dashboard directive state, requires valid auth-state.json, unrelated to these changes).
+- Pre-existing failure is the same one logged across multiple prior sessions in FOLDERA_MASTER_AUDIT.md.
 
 ### Multi-user verification
 - `actionError` display, OAuth param reading, and generate handler all use `session.user.id` scoping via the `/api/settings/run-brief` route. No owner-specific logic introduced. Works for any authenticated user.
