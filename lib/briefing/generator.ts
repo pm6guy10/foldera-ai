@@ -997,6 +997,35 @@ async function fetchUserSelfNameTokens(userId: string): Promise<Set<string>> {
         selfTokens.add(lower);
       }
     }
+
+    // Fallback: if auth metadata has no name fields, try to find the user's name
+    // from signals where they appear as the sender.
+    if (!metaName.trim() && user.email) {
+      try {
+        const { data: signalRows } = await supabase
+          .from('tkg_signals')
+          .select('content')
+          .eq('user_id', userId)
+          .eq('type', 'email_sent')
+          .limit(3);
+        for (const row of signalRows ?? []) {
+          const dec = (await import('@/lib/encryption')).decryptWithStatus(row.content as string ?? '');
+          if (dec.usedFallback) continue;
+          // Look for "From: Name <email>" pattern
+          const fromMatch = dec.plaintext.match(/^From:\s+([^<\n]+?)(?:\s*<|\s*$)/im);
+          if (fromMatch) {
+            const fromName = fromMatch[1].trim();
+            for (const part of fromName.split(/[\s._\-]+/)) {
+              const lower = part.toLowerCase().trim();
+              if (lower.length >= 3) selfTokens.add(lower);
+            }
+            break;
+          }
+        }
+      } catch {
+        // Non-blocking
+      }
+    }
   } catch {
     // Non-blocking; if lookup fails we apply no self-filter.
   }
@@ -1013,8 +1042,13 @@ function extractEntityNamesFromCandidate(
   const isSelfEntity = (value: string): boolean => {
     if (selfNameTokens.size === 0) return false;
     const tokens = normalizeText(value).split(' ').filter((t) => t.length >= 2);
-    // If every meaningful token in this name matches a known self-token, it refers to the user.
-    return tokens.length > 0 && tokens.every((t) => selfNameTokens.has(t));
+    if (tokens.length === 0) return false;
+    // Primary check: every token matches a known self-token (e.g. full name in auth metadata).
+    if (tokens.every((t) => selfNameTokens.has(t))) return true;
+    // Fallback: "First Last" pattern where the last name token matches self-tokens.
+    // Handles auth metadata missing first name (only email local "b.kapp1010" → "kapp").
+    if (tokens.length === 2 && selfNameTokens.has(tokens[1])) return true;
+    return false;
   };
 
   const addCandidate = (value: string | null | undefined): void => {
