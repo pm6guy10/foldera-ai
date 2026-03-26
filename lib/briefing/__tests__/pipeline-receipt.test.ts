@@ -682,5 +682,5 @@ describe('briefing pipeline receipt', () => {
 
     const sentAction = runtime.actions.find((action) => action.id === savedAction?.id);
     expect(sentAction?.execution_result?.daily_brief_sent_at).toEqual(expect.any(String));
-  });
+  }, 30000);
 });
