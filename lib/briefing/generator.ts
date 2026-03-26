@@ -20,6 +20,11 @@ import {
 import { researchWinner } from './researcher';
 import type { ResearchInsight } from './researcher';
 import { decryptWithStatus } from '@/lib/encryption';
+import {
+  APPROVAL_LOOKBACK_MS,
+  CONFIDENCE_PERSIST_THRESHOLD,
+  daysMs,
+} from '@/lib/config/constants';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -27,8 +32,7 @@ import { decryptWithStatus } from '@/lib/encryption';
 
 const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
 const GENERATION_MODEL = 'claude-sonnet-4-20250514';
-const APPROVAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
-const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = 45;
+const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
 const STALE_SIGNAL_THRESHOLD_DAYS = 14;
 
 /**
@@ -313,8 +317,8 @@ export interface GoalGapEntry {
 async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
   const supabase = createServerClient();
   const now = Date.now();
-  const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString();
-  const ninetyDaysAgo  = new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const fourteenDaysAgo = new Date(now - daysMs(14)).toISOString();
+  const ninetyDaysAgo  = new Date(now - daysMs(90)).toISOString();
 
   // 1. Active goals (exclude onboarding placeholders)
   const { data: goalRows } = await supabase
@@ -360,7 +364,7 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
     .limit(200);
 
   // Decrypt signals once — reused across all goals
-  const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(now - daysMs(30)).toISOString();
   type DecryptedSignal = { text: string; occurred_at: string };
   const decryptedSignals: DecryptedSignal[] = [];
   for (const s of signalRows ?? []) {
@@ -1526,7 +1530,7 @@ async function fetchWinnerSignalEvidence(
   winner: ScoredLoop,
 ): Promise<SignalSnippet[]> {
   const supabase = createServerClient();
-  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
 
   const sourceIds = (winner.sourceSignals ?? [])
     .map((s) => s.id)
@@ -1943,7 +1947,7 @@ function buildDeterministicWaitRationale(
   winner: ScoredLoop,
   reason: string,
 ): GeneratedDirectivePayload {
-  const tripwireDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const tripwireDate = new Date(Date.now() + daysMs(7)).toISOString().slice(0, 10);
   return {
     directive: `Hold on "${winner.title.slice(0, 60)}" — waiting for new evidence before acting.`,
     artifact_type: 'wait_rationale',
@@ -2428,7 +2432,7 @@ export async function generateDirective(
     const [alreadySentResult, behavioralHistoryResult] = await Promise.allSettled([
       // Sent mail — what user has already done; model must not re-suggest
       (async (): Promise<string[]> => {
-        const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+        const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
         const { data: sentRows } = await supabase
           .from('tkg_signals')
           .select('content, occurred_at')

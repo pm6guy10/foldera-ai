@@ -18,6 +18,7 @@
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus } from '@/lib/encryption';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { daysMs } from '@/lib/config/constants';
 import type {
   ActionType,
   CandidateScoreBreakdown,
@@ -361,7 +362,7 @@ function extractGoalDateUrgency(goalText: string): number | null {
     if (month !== undefined && day >= 1 && day <= 31) {
       const targetDate = new Date(now.getFullYear(), month, day);
       // If the date is in the past this year, try next year
-      if (targetDate.getTime() < now.getTime() - 24 * 60 * 60 * 1000) {
+      if (targetDate.getTime() < now.getTime() - daysMs(1)) {
         targetDate.setFullYear(now.getFullYear() + 1);
       }
       daysUntil = (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
@@ -433,7 +434,7 @@ async function getFreshness(
   loopType: string,
 ): Promise<number> {
   const supabase = createServerClient();
-  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  const threeDaysAgo = new Date(Date.now() - daysMs(3)).toISOString();
 
   try {
     // Check for recent pending_approval/executed actions with similar directive text
@@ -495,7 +496,7 @@ async function getActionTypeApprovalRate(
   actionType: string,
 ): Promise<number> {
   const supabase = createServerClient();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
 
   try {
     const { data: actions } = await supabase
@@ -542,8 +543,8 @@ async function getEntitySkipPenalty(
   candidateTitle: string,
 ): Promise<number> {
   const supabase = createServerClient();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
+  const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
 
   const names = extractPersonNames(`${candidateTitle} ${candidateContent}`);
   if (names.length === 0) return 0;
@@ -696,7 +697,7 @@ export function computeCandidateScore(args: {
 
 async function getApprovalHistory(userId: string): Promise<ApprovalAction[]> {
   const supabase = createServerClient();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
 
   try {
     const { data } = await supabase
@@ -741,7 +742,7 @@ async function getDaysSinceLastSurface(
   candidateTitle: string,
 ): Promise<number> {
   const supabase = createServerClient();
-  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  const threeDaysAgo = new Date(Date.now() - daysMs(3)).toISOString();
 
   try {
     const { data: recentActions } = await supabase
@@ -806,7 +807,7 @@ async function enrichRelationshipContext(
   }
 
   // Find recent signals mentioning this person
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
   try {
     const { data: signals } = await supabase
       .from('tkg_signals')
@@ -901,7 +902,7 @@ function inferDomain(
  */
 export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDivergence[]> {
   const supabase = createServerClient();
-  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
 
   const [signalsRes, goalsRes] = await Promise.all([
     supabase
@@ -1044,8 +1045,8 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
  */
 export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]> {
   const supabase = createServerClient();
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysAgo = new Date(Date.now() - daysMs(7)).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
   const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
   const antiPatterns: AntiPattern[] = [];
 
@@ -1341,7 +1342,7 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
 
 export async function detectEmergentPatterns(userId: string): Promise<EmergentPattern[]> {
   const supabase = createServerClient();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
   const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const patterns: EmergentPattern[] = [];
 
@@ -1705,8 +1706,8 @@ function extractDeadlines(text: string): number[] {
   // Relative: "today", "tomorrow", "this week"
   const lower = text.toLowerCase();
   if (/\btoday\b/.test(lower)) dates.push(Date.now());
-  if (/\btomorrow\b/.test(lower)) dates.push(Date.now() + 24 * 60 * 60 * 1000);
-  if (/\bthis week\b/.test(lower)) dates.push(Date.now() + 5 * 24 * 60 * 60 * 1000);
+  if (/\btomorrow\b/.test(lower)) dates.push(Date.now() + daysMs(1));
+  if (/\bthis week\b/.test(lower)) dates.push(Date.now() + daysMs(5));
   return dates;
 }
 
@@ -1754,7 +1755,7 @@ function detectCrossLoopConnections(topLoops: ScoredLoop[]): CrossLoopConnection
       if (deadlinesA.length > 0 && deadlinesB.length > 0) {
         const earliestA = Math.min(...deadlinesA);
         const earliestB = Math.min(...deadlinesB);
-        const daysBetween = Math.abs(earliestA - earliestB) / (24 * 60 * 60 * 1000);
+        const daysBetween = Math.abs(earliestA - earliestB) / daysMs(1);
 
         // Within 3 days of each other — potential dependency
         if (daysBetween <= 3 && daysBetween > 0) {
@@ -2073,8 +2074,8 @@ function extractDirectiveEntity(directiveText: string): string | null {
 
 async function checkAndCreateAutoSuppressions(userId: string): Promise<void> {
   const supabase = createServerClient();
-  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
+  const sevenDaysAgo = new Date(Date.now() - daysMs(7)).toISOString();
 
   try {
     // --- Phase 1: Auto-create suppressions from 3+ skips ---
@@ -2207,8 +2208,8 @@ async function checkAndCreateAutoSuppressions(userId: string): Promise<void> {
 
 export async function scoreOpenLoops(userId: string): Promise<ScorerResult | null> {
   const supabase = createServerClient();
-  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-  const oneHundredEightyDaysAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+  const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
+  const oneHundredEightyDaysAgo = new Date(Date.now() - daysMs(180)).toISOString();
 
   // -----------------------------------------------------------------------
   // PRE-SCORING: Anti-Pattern Detection (Session 3)
@@ -3000,7 +3001,7 @@ export async function computeUserState(userId: string): Promise<{
   lastDirectiveAgeHours: number;
 }> {
   const supabase = createServerClient();
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysAgo = new Date(Date.now() - daysMs(7)).toISOString();
 
   const { data: recentActions } = await supabase
     .from('tkg_actions')

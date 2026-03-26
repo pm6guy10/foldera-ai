@@ -124,8 +124,13 @@ async function syncGmail(
 
       if (!error) inserted++;
       // Duplicate hash → silently skip (expected on incremental syncs)
-    } catch {
-      // Skip individual message errors
+    } catch (msgErr: unknown) {
+      // Log non-duplicate failures so we have visibility into systematic problems.
+      const isDuplicate =
+        msgErr instanceof Error && msgErr.message?.includes('duplicate');
+      if (!isDuplicate) {
+        console.warn(`[google-sync] Failed to persist message for user ${userId}:`, msgErr instanceof Error ? msgErr.message : String(msgErr));
+      }
     }
   }
 
@@ -365,8 +370,8 @@ async function syncDrive(
       });
 
       if (!error) inserted++;
-    } catch {
-      // Skip individual file errors
+    } catch (fileErr: unknown) {
+      console.warn(`[google-sync] Failed to persist Drive file for user ${userId}:`, fileErr instanceof Error ? fileErr.message : String(fileErr));
     }
   }
 

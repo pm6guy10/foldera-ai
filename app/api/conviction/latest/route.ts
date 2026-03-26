@@ -11,9 +11,10 @@ import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { apiError } from '@/lib/utils/api-error';
 import { buildContextGreeting } from '@/lib/briefing/context-builder';
+import { CONFIDENCE_SEND_THRESHOLD } from '@/lib/config/constants';
 
 export const dynamic = 'force-dynamic';
-const MIN_PENDING_CONFIDENCE = 70;
+const MIN_PENDING_CONFIDENCE = CONFIDENCE_SEND_THRESHOLD;
 
 function startOfTodayIso(): string {
   const start = new Date();

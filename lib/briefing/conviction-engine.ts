@@ -22,6 +22,7 @@
 
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus } from '@/lib/encryption';
+import { daysMs } from '@/lib/config/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -83,7 +84,7 @@ export interface ConvictionDecision {
  */
 export async function inferMonthlyBurn(userId: string): Promise<number | null> {
   const supabase = createServerClient();
-  const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+  const sixtyDaysAgo = new Date(Date.now() - daysMs(60)).toISOString();
 
   try {
     const { data: signals } = await supabase
@@ -132,7 +133,7 @@ export async function inferPrimaryOutcomeProbability(
   goalText: string,
 ): Promise<{ probability: number; confidence: number; signals: string[] }> {
   const supabase = createServerClient();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
 
   const positiveSignals: string[] = [];
   let rawProbability = 0.3; // base rate for job offer closing
@@ -199,8 +200,8 @@ export async function inferHardDeadline(
   userId: string,
 ): Promise<{ date: Date | null; source: string | null; confidence: number }> {
   const supabase = createServerClient();
-  const ninetyDaysAhead = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const ninetyDaysAhead = new Date(Date.now() + daysMs(90)).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
 
   try {
     const { data: signals } = await supabase

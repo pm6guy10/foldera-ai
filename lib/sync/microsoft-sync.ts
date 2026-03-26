@@ -368,8 +368,8 @@ async function syncMail(
       });
 
       if (!error) inserted++;
-    } catch {
-      // Skip individual message errors
+    } catch (msgErr: unknown) {
+      console.warn(`[microsoft-sync] Failed to persist mail for user ${userId}:`, msgErr instanceof Error ? msgErr.message : String(msgErr));
     }
   }
 
@@ -660,8 +660,8 @@ async function syncTasks(
 
         if (!error) inserted++;
       }
-    } catch {
-      // Skip individual list errors
+    } catch (listErr: unknown) {
+      console.warn(`[microsoft-sync] Failed to persist task list for user ${userId}:`, listErr instanceof Error ? listErr.message : String(listErr));
     }
   }
 
