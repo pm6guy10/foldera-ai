@@ -58,7 +58,7 @@ const CONSULTING_DECISION_PATTERNS: ConstraintPattern[] = [
   {
     code: 'consulting_decision_frame',
     message: 'directive uses imperative coaching language — telling the user what to do rather than presenting a finished artifact',
-    pattern: /\b(stop creating|stop doing|pause all|focus exclusively on|focus energy on|you need to|you must|you should|requires intervention|intervention required)\b/i,
+    pattern: /\b(stop creating|stop doing|pause all|focus exclusively on|focus energy on|requires intervention|intervention required)\b/i,
   },
 ];
 
@@ -151,7 +151,7 @@ const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
     {
       code: 'decision_menu',
       message: 'directive is phrased as an unresolved decision menu instead of one concrete recommendation',
-      pattern: /\b(decide whether|whether to)\b|\?/i,
+      pattern: /\b(decide whether|whether to)\b/i,
     },
     {
       code: 'goal_rewrite_relitigation',
