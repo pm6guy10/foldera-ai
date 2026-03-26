@@ -741,16 +741,16 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     `What is visible only when you hold all three simultaneously?\n\n` +
     `4. COUNTDOWN NOT YET VISIBLE — What deadline or closing window is implied by the situation ` +
     `but not yet named by the user? Not the date they stated — the one the signals imply.\n\n` +
-    `RULE: There are two paths to a valid artifact:\n\n` +
-    `PATH A — COMMITMENT (CANDIDATE_CLASS contains "commitment"): ` +
-    `An open loop the user already committed to. Produce the finished artifact directly. ` +
-    `You do not need to find a non-obvious angle — the work itself is the value. ` +
-    `Write the complete, ready-to-send message or document. Do not output wait_rationale for commitment candidates.\n\n` +
-    `PATH B — SIGNAL (everything else): Apply all four questions above. ` +
-    `You may not fire an artifact unless you can complete the sentence ` +
-    `"This moves [user] toward [specific goal] because [specific non-obvious gap] means ` +
-    `[specific action] is right on [today's date]." If you cannot, output wait_rationale. ` +
-    `wait_rationale is suppressed before delivery. The user sees nothing.`,
+    `RULE — TWO PATHS:\n\n` +
+    `PATH A: CANDIDATE_CLASS is "commitment"\n` +
+    `This is work the user already committed to. Produce the finished artifact. ` +
+    `MANDATORY: wait_rationale is FORBIDDEN for commitment candidates. ` +
+    `If send_message recipient email is not in the signals, produce write_document instead (a ready-to-use prep brief, draft, or research note). ` +
+    `write_document ALWAYS passes PATH A. Do the work.\n\n` +
+    `PATH B: CANDIDATE_CLASS is anything else\n` +
+    `Apply the four questions above. You may only fire if you can complete: ` +
+    `"This moves [user] toward [specific goal] because [specific non-obvious gap] means [specific action] is right on [today's date]." ` +
+    `If you cannot, output wait_rationale. wait_rationale is suppressed before delivery.`,
   );
 
   // Behavioral mirrors — what the model must hold while reading everything else.
