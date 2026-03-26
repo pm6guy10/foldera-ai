@@ -237,6 +237,17 @@ test.describe('Public: Pricing page', () => {
 // Each test uses a fresh context with no storage state to simulate a brand-new
 // visitor. This surfaces broken buttons and broken flows before real users hit them.
 
+// ── Schema health — catches migration drift before it reaches users ─────────
+test.describe('Schema health', () => {
+  test('/api/health reports schema ok', async ({ request }) => {
+    const res = await request.get('https://www.foldera.ai/api/health');
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.db).toBe(true);
+    expect(body.schema, `Schema degraded — missing: ${JSON.stringify(body.schema_errors ?? [])}`).toBe('ok');
+  });
+});
+
 test.describe('New user flow: unauthenticated simulation', () => {
   test('landing page hero CTA navigates to /start', async ({ browser }) => {
     const context = await browser.newContext({ storageState: undefined });

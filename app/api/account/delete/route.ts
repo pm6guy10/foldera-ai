@@ -28,7 +28,7 @@ export async function POST() {
     await supabase.from('tkg_signals').delete().eq('user_id', userId);
     await supabase.from('tkg_entities').delete().eq('user_id', userId);
     await supabase.from('tkg_goals').delete().eq('user_id', userId);
-    await supabase.from('tkg_patterns').delete().eq('user_id', userId);
+    await supabase.from('tkg_pattern_metrics').delete().eq('user_id', userId);
 
     const { error } = await supabase.auth.admin.deleteUser(userId);
     if (error) {
