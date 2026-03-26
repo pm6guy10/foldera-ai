@@ -71,8 +71,8 @@ export async function GET() {
     const rpcCalls: Array<{ fn: string; params: Record<string, unknown> }> = [
       { fn: 'get_auth_user_id_by_email',  params: { lookup_email: '__health_check__' } },
       // null-UUID rows don't exist, so delete/update is a safe no-op
-      { fn: 'replace_onboarding_goals',   params: { p_user_id: '00000000-0000-0000-0000-000000000000', p_rows: '[]' } },
-      { fn: 'replace_current_priorities', params: { p_user_id: '00000000-0000-0000-0000-000000000000', p_rows: '[]' } },
+      { fn: 'replace_onboarding_goals',   params: { p_user_id: '00000000-0000-0000-0000-000000000000', p_rows: [] } },
+      { fn: 'replace_current_priorities', params: { p_user_id: '00000000-0000-0000-0000-000000000000', p_rows: [] } },
     ];
     for (const { fn, params } of rpcCalls) {
       try {
