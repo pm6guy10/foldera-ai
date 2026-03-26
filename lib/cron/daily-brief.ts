@@ -478,6 +478,7 @@ async function reconcilePendingApprovalQueue(
   error: Error | null;
   preservedAction: PendingActionRow | null;
   skippedActionIds: string[];
+  recentDoNothingGeneratedAt: string | null;
 }> {
   const { data, error } = await supabase
     .from('tkg_actions')
@@ -488,12 +489,13 @@ async function reconcilePendingApprovalQueue(
     .limit(20);
 
   if (error) {
-    return { error, preservedAction: null, skippedActionIds: [] };
+    return { error, preservedAction: null, skippedActionIds: [], recentDoNothingGeneratedAt: null };
   }
 
   const rows = (data ?? []) as PendingActionRow[];
   let preservedAction: PendingActionRow | null = null;
   const skippedActionIds: string[] = [];
+  let recentDoNothingGeneratedAt: string | null = null;
 
   for (const row of rows) {
     const artifact = extractArtifact(row.execution_result);
@@ -516,6 +518,12 @@ async function reconcilePendingApprovalQueue(
         ? 'Auto-suppressed stale pending action before daily brief generation.'
         : 'Auto-suppressed invalid pending action before daily brief generation.';
 
+      // Track the most recent do_nothing generated today so callers can skip
+      // re-generation rather than creating a new do_nothing row every run.
+      if (isDoNothing && isToday && row.generated_at > (recentDoNothingGeneratedAt ?? '')) {
+        recentDoNothingGeneratedAt = row.generated_at;
+      }
+
       const { error: updateError } = await supabase
         .from('tkg_actions')
         .update({
@@ -530,7 +538,7 @@ async function reconcilePendingApprovalQueue(
         .eq('id', row.id);
 
       if (updateError) {
-        return { error: updateError, preservedAction: null, skippedActionIds };
+        return { error: updateError, preservedAction: null, skippedActionIds, recentDoNothingGeneratedAt: null };
       }
 
       skippedActionIds.push(row.id);
@@ -561,7 +569,7 @@ async function reconcilePendingApprovalQueue(
       .eq('id', row.id);
 
     if (updateError) {
-      return { error: updateError, preservedAction: null, skippedActionIds };
+      return { error: updateError, preservedAction: null, skippedActionIds, recentDoNothingGeneratedAt: null };
     }
 
     skippedActionIds.push(row.id);
@@ -571,6 +579,7 @@ async function reconcilePendingApprovalQueue(
     error: null,
     preservedAction,
     skippedActionIds,
+    recentDoNothingGeneratedAt,
   };
 }
 
@@ -670,6 +679,12 @@ function buildWaitRationale(
   const candidateCount = discovery?.candidateCount ?? 0;
   const topCandidates = discovery?.topCandidates ?? [];
 
+  // When Gate 3 preserved the model's behavioral insight, use it as the lead.
+  // fullContext carries the model's why_wait text from the suppressed wait_rationale output.
+  const modelInsight = typeof directive.fullContext === 'string' && directive.fullContext.trim()
+    ? directive.fullContext.trim()
+    : null;
+
   // Build context: what was evaluated and why nothing was sent
   const contextParts: string[] = [];
   if (candidateCount > 0) {
@@ -688,10 +703,15 @@ function buildWaitRationale(
     contextParts.push('No actionable candidates were found today.');
   }
 
-  const context = contextParts.join('\n');
+  // Prefer the model's specific behavioral insight over the mechanical candidate-list summary.
+  const context = modelInsight
+    ? `${modelInsight}\n\n${contextParts.join('\n')}`
+    : contextParts.join('\n');
   const evidence = reason;
 
-  const directiveText = candidateCount > 0
+  const directiveText = modelInsight
+    ? modelInsight
+    : candidateCount > 0
     ? `Nothing cleared the bar today — ${candidateCount} candidates evaluated, none ready to send.`
     : 'Nothing cleared the bar today.';
 
@@ -1049,6 +1069,27 @@ export async function runDailyGenerate(
           });
           continue;
         }
+      }
+
+      // Cooldown: if reconciliation just suppressed a do_nothing generated within
+      // the last 4 hours AND signal processing found no new signals this run,
+      // skip re-generation. The generator would produce the same do_nothing again,
+      // creating an endless persist → suppress → persist cycle with LLM spend.
+      const DO_NOTHING_COOLDOWN_MS = 4 * 60 * 60 * 1000;
+      if (
+        pendingQueue.recentDoNothingGeneratedAt &&
+        Date.now() - new Date(pendingQueue.recentDoNothingGeneratedAt).getTime() < DO_NOTHING_COOLDOWN_MS &&
+        signalResult.success &&
+        (signalResult.meta as Record<string, unknown> | undefined)?.['processed_fresh_signals_count'] === 0
+      ) {
+        results.push({
+          code: 'no_send_reused',
+          detail: 'do_nothing cooldown — no new signals processed since last attempt',
+          meta: cleanupMeta,
+          success: true,
+          userId,
+        });
+        continue;
       }
 
       // NOTE: We intentionally do NOT check for a persisted no_send blocker here.

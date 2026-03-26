@@ -802,7 +802,7 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     `PATH B: CANDIDATE_CLASS is anything else\n` +
     `Apply the four questions above. You may only fire if you can complete: ` +
     `"This moves [user] toward [specific goal] because [specific non-obvious gap] means [specific action] is right on [today's date]." ` +
-    `If you cannot, output wait_rationale. wait_rationale is suppressed before delivery.`,
+    `If you cannot complete that sentence, output wait_rationale — but only with a specific behavioral insight the user genuinely didn't know, not a status report.`,
   );
 
   // Behavioral mirrors — what the model must hold while reading everything else.
@@ -2176,22 +2176,28 @@ async function generatePayload(
     }
 
     // Commitment override: if the model returned wait_rationale for a commitment candidate,
-    // convert it to write_document before validation so the goal-primacy gate never fires.
+    // convert to write_document. Build content from signal context, not the model's why_wait
+    // (which is internal reasoning about why it can't act — not a useful document body).
     if (parsed && parsed.artifact_type === 'wait_rationale' && ctx.candidate_class === 'commitment') {
-      const whyWait = (parsed.artifact as Record<string, unknown>)?.why_wait;
+      const signalLines = ctx.supporting_signals
+        .slice(0, 3)
+        .map((s) => `- ${s.summary || s.entity || ''}`.trim())
+        .filter((line) => line.length > 2);
+      const signalContext = signalLines.length > 0
+        ? `\n\nRelated signals:\n${signalLines.join('\n')}`
+        : '';
       parsed = {
         ...parsed,
+        directive: `Prep brief ready for: ${ctx.candidate_title.slice(0, 80)}`,
         artifact_type: 'write_document',
         artifact: {
           title: `Prep brief: ${ctx.candidate_title.slice(0, 80)}`,
-          content: typeof whyWait === 'string' && whyWait.trim()
-            ? whyWait
-            : `Ready-to-use reference document for: ${ctx.candidate_title}`,
+          content: `Committed action: ${ctx.candidate_title}${signalContext}\n\nReview the above context and execute when ready.`,
           document_purpose: 'Reference material for the committed action',
           target_reader: 'Brandon',
         },
       };
-      console.error('[generator] Commitment candidate: converted wait_rationale → write_document');
+      console.error('[generator] Commitment candidate: converted wait_rationale → write_document (prep brief)');
     }
 
     const issues = validateGeneratedArtifact(parsed, ctx);
@@ -2551,8 +2557,7 @@ export async function generateDirective(
     if (!payloadResult.payload) {
       const failureReason = formatValidationFailureReason('Generation validation failed:', payloadResult.issues);
 
-      // wait_rationale fallback removed — goal-primacy gate suppresses all wait_rationale
-      // outputs before they reach the dashboard. If generation validation fails, return empty.
+      // Generation validation failed after all retries. Return empty — no LLM output to preserve.
 
       return emptyDirective(
         failureReason,
@@ -2562,18 +2567,25 @@ export async function generateDirective(
 
     const payload = payloadResult.payload;
 
-    // Gate 3: wait_rationale is a signal that the goal-primacy constraint couldn't be met.
-    // It never reaches the dashboard — suppress it here before any persistence.
+    // Gate 3: wait_rationale means the goal-primacy constraint couldn't be met.
+    // Preserve the model's behavioral insight in fullContext so buildWaitRationale can surface it.
     if (payload.artifact_type === 'wait_rationale') {
+      const whyWait = (payload.artifact as Record<string, unknown>)?.why_wait;
+      const modelInsight = typeof whyWait === 'string' ? whyWait.trim() : '';
       logStructuredEvent({
         event: 'generation_skipped', level: 'info', userId,
         artifactType: 'wait_rationale', generationStatus: 'goal_primacy_gate_suppressed',
-        details: { scope: 'generator', why_wait: (payload.artifact as Record<string, unknown>)?.why_wait ?? '' },
+        details: { scope: 'generator', why_wait: modelInsight },
       });
-      return emptyDirective(
-        'Goal-primacy gate: candidate could not be anchored to a goal today.',
-        buildNoSendGenerationLog('goal_primacy_gate_suppressed', 'generation', scored.candidateDiscovery),
-      );
+      return {
+        directive: GENERATION_FAILED_SENTINEL,
+        action_type: 'do_nothing',
+        confidence: 0,
+        reason: 'Goal-primacy gate: candidate could not be anchored to a goal today.',
+        evidence: [],
+        fullContext: modelInsight || undefined,
+        generationLog: buildNoSendGenerationLog('goal_primacy_gate_suppressed', 'generation', scored.candidateDiscovery),
+      };
     }
 
     // Part 5b: Consecutive duplicate suppression — reject if >70% similar to last 3 directives
