@@ -194,6 +194,14 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-26 — Infrastructure hardening: shared constants, security fixes, behavioral graph, 504 fix
+  MODE: AUDIT
+  Commit hash(es): `9be7891`, `6d97588`, `8973b5f`, `c795885`, `83c09c8`, `a57d722`
+  Files changed: `lib/signals/behavioral-graph.ts` (new), `lib/config/constants.ts` (new), `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `lib/briefing/conviction-engine.ts`, `lib/cron/daily-brief.ts`, `app/api/conviction/latest/route.ts`, `app/api/cron/nightly-ops/route.ts`, `lib/sync/google-sync.ts`, `lib/sync/microsoft-sync.ts`, `lib/auth/resolve-user.ts`, `tests/e2e/authenticated-routes.spec.ts`
+  What was verified: `npm run build` passed; `npx vitest run` passed; pre-push E2E gate (50+ passed, 6 skipped); `npm run test:prod` 51/51 passed
+  Changes: (1) `lib/signals/behavioral-graph.ts` — new module computing per-entity interaction density (14d/30d/90d windows), silence detection (≥5 signals, last >30d), velocity (14d vs 90d rate), written to `tkg_entities.patterns.bx_stats`; wired into nightly-ops Sunday stage. (2) `lib/config/constants.ts` — single source of truth for CONFIDENCE_PERSIST_THRESHOLD=45, CONFIDENCE_SEND_THRESHOLD=70, SIGNAL_RETENTION_DAYS=180, daysMs(), MS_7D/14D/30D/90D, APPROVAL_LOOKBACK_MS, TEST_USER_ID; all 30+ inline `n*24*60*60*1000` expressions replaced. (3) `lib/auth/resolve-user.ts` — replaced `!==` with `crypto.timingSafeEqual()` for CRON_SECRET; prevents timing-based brute-force. (4) `app/api/settings/run-brief/route.ts` — removed all-users `runCommitmentCeilingDefense()` calls from interactive path (was adding 15-30s overhead and causing 504s); raised `maxDuration` to 120s. (5) Fixed silent catch blocks in google-sync and microsoft-sync.
+  Any unresolved issues: P0 audit items still open: env var validation at startup (currently crashes at handler time), non-atomic commitment suppression in self-heal.ts, encryption key fallback logging. P1: generator.ts (2,637L) and scorer.ts (3,029L) need splitting into smaller modules. P2: missing DB indexes on tkg_signals (user_id, processed), (user_id, occurred_at) columns.
+
 - 2026-03-26 — Professional Infrastructure & Clean House Audit
   MODE: AUDIT
   Commit hash(es): `eeee07f`, `f2a08c9`, `9724149`, `bde1190`, `524e639`
