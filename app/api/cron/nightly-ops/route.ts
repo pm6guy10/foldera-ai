@@ -36,6 +36,7 @@ import { runAcceptanceGate } from '@/lib/cron/acceptance-gate';
 import { checkConnectorHealth } from '@/lib/cron/connector-health';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { TEST_USER_ID, SIGNAL_RETENTION_DAYS } from '@/lib/config/constants';
+import { runBehavioralGraph } from '@/lib/signals/behavioral-graph';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min
@@ -443,7 +444,18 @@ async function handler(request: NextRequest) {
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'signal_processing', error: err.message }));
   }
 
-  // Stage 2b: Complete suppressed commitments
+  // Stage 2b: Behavioral graph — per-entity interaction stats (no decryption, metadata only)
+  try {
+    const bxResult = await runBehavioralGraph(nightlyBriefUserIds);
+    stages.behavioral_graph = bxResult;
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'behavioral_graph', ...bxResult }));
+  } catch (err: any) {
+    Sentry.captureException(err);
+    stages.behavioral_graph = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'behavioral_graph', error: err.message }));
+  }
+
+  // Stage 2c: Complete suppressed commitments
   try {
     const updatedCount = await completeSuppressedCommitments();
     stages.suppressed_commitments = { ok: true, updated: updatedCount };
