@@ -51,6 +51,21 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
   "REFERENCE_RISK: DVA supervisor reference may be required. Resolve before HR stage."
 - Surfaced as a blindspot note, not a task
 
+### DONE (March 26) — House-Cleaning Audit + Sentry Wiring
+- **Sentry fully wired**: `captureException` added to all 6 critical locations (api-error.ts central handler, generator.ts outer catch, all 16 nightly-ops stage catches, conviction/execute, React error boundary). First real Sentry alert confirmed received within minutes of deploy.
+- **Sentry config migrated**: `sentry.server/edge.config.ts` replaced with `instrumentation.ts` per Next.js v10 SDK requirement. `global-error.tsx` added for root React render errors. `onRouterTransitionStart` hook added to `instrumentation-client.ts`. Zero Sentry warnings on build.
+- **Sentry DSN added to `.env.local`**: Was missing from local environment; now matches Vercel.
+- **api-error.ts `[object Object]` fixed**: `getMessage()` now extracts `.message` from Supabase error objects (plain objects, not `instanceof Error`). Sentry now shows real error titles instead of `[object Object]`.
+- **Approve/Skip double-submit fixed**: `executing` state added to dashboard buttons; both disabled during POST with `finally {}` cleanup.
+- **Date.now() hydration mismatch fixed**: Moved out of render body into `load()` useEffect state — was computing `isNewAccount` at SSR time and client time diverging.
+- **Email subject/recipient truncation**: Added `truncate` class to prevent mobile overflow on long addresses/subjects.
+- **Account deletion atomic**: All 8 delete operations now check their error result; throws early with table names if any fail. Previously could leave orphaned `user_tokens`/`user_subscriptions` rows on partial failure.
+- **Settings silent catch fixed**: `.catch(() => {})` replaced with logged error handler on initial settings data fetch.
+- **Signal extraction batch size raised**: `BATCH_SIZE` and `DEFAULT_MAX_SIGNALS` 5 → 20. New users clear 100-signal backlog in 5 nights instead of 20.
+- **api_usage composite index**: Migration `20260326000002_api_usage_index.sql` adds `idx_api_usage_user_date ON api_usage(user_id, created_at DESC)`. Eliminates full table scan on spend cap check at 100+ users.
+- **pipeline-receipt test timeout extended**: Set explicit 30s `it()` timeout — was timing out at 5s in full suite due to module isolation overhead during real LLM call.
+- **Idempotency guard confirmed existing**: `reconcilePendingApprovalQueue` already handles duplicate `pending_approval` rows via `preservedAction` — audit concern was already resolved.
+
 ### DONE (March 26)
 - Signal snippet depth: 300→1400 chars, chronological mini-thread
 - Behavioral mirrors: anti-patterns + divergences travel to generator even when they don't win

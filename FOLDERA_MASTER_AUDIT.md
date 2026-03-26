@@ -2,6 +2,15 @@
 
 ## NEEDS_REVIEW
 
+- 2026-03-26 — `api_usage` composite index migration exists in code but not applied to production DB
+  `supabase/migrations/20260326000002_api_usage_index.sql` adds `idx_api_usage_user_date ON api_usage(user_id, created_at DESC)`. Needs `npx supabase db push` or manual execution against production. Spend cap queries will continue to do full table scans until applied. Non-breaking; apply at next maintenance window.
+
+- 2026-03-26 — `20260326000001_unify_check_constraints.sql` and `20260326000002_api_usage_index.sql` not confirmed applied to production
+  Both migrations exist in source but require DB-level application. Blocked without Supabase project password from this workspace. Log current state so next session can verify.
+
+- 2026-03-26 — Post-change `npm run test:prod` timed out while running production smoke
+  Baseline `npm run test:prod` timed out before the change, and the post-change rerun timed out after 180s. The new Path B smoke test could not be re-validated under the full prod suite because the command did not complete within the timeout window.
+
 - 2026-03-25 — CI workflow change requires production pipeline receipt verification
   The CI workflow now requires `secrets.ENCRYPTION_KEY` without a hardcoded fallback. Pipeline-verification rules require retriggering production after deploy, querying the database, and showing the receipt; that verification was not run in this session.
 
