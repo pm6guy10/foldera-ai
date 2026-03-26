@@ -2203,24 +2203,6 @@ export async function generateDirective(
       loadRecentActionGuardrails(userId),
     ]);
 
-    // CE-1: Run conviction engine in parallel with the rest of context-building.
-    // This is non-blocking — if burn rate cannot be inferred, it returns null
-    // and the generator continues normally without the math section.
-    let convictionDecision: import('./conviction-engine').ConvictionDecision | null = null;
-    try {
-      const topGoalText = scored?.winner?.matchedGoal?.text ?? scored?.winner?.title ?? '';
-      if (topGoalText) {
-        const { runConvictionEngine } = await import('./conviction-engine');
-        convictionDecision = await runConvictionEngine(userId, topGoalText);
-        if (convictionDecision) {
-          console.log(`[generator] conviction math loaded: runway=${convictionDecision.situationModel.runwayMonths}mo, prob=${convictionDecision.situationModel.primaryOutcomeProbability}, stopSecondGuessing=${convictionDecision.stopSecondGuessing}`);
-        }
-      }
-    } catch (ceErr) {
-      // Non-blocking — log and continue without conviction math
-      console.warn(`[generator] conviction engine failed (non-fatal): ${ceErr instanceof Error ? ceErr.message : String(ceErr)}`);
-    }
-
     if (!scored?.winner) {
       return emptyDirective(
         'No ranked daily brief candidate.',
@@ -2228,7 +2210,31 @@ export async function generateDirective(
       );
     }
 
-    const hydratedWinner = await hydrateWinnerRelationshipContext(userId, scored.winner);
+    // CE-1: Run conviction engine in parallel with winner hydration — both only need userId.
+    // Non-blocking: if burn rate cannot be inferred, returns null; generator continues normally.
+    const topGoalText = scored.winner.matchedGoal?.text ?? scored.winner.title ?? '';
+    const [hydratedWinner, convictionDecision] = await Promise.all([
+      hydrateWinnerRelationshipContext(userId, scored.winner),
+      topGoalText
+        ? (async (): Promise<import('./conviction-engine').ConvictionDecision | null> => {
+            try {
+              const { runConvictionEngine } = await import('./conviction-engine');
+              // Hard 4-second cap so conviction math never blocks the pipeline
+              const result = await Promise.race([
+                runConvictionEngine(userId, topGoalText),
+                new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+              ]);
+              if (result) {
+                console.log(`[generator] conviction math: prob=${result.situationModel.primaryOutcomeProbability}, stopSecondGuessing=${result.stopSecondGuessing}`);
+              }
+              return result;
+            } catch (ceErr) {
+              console.warn(`[generator] conviction engine failed (non-fatal): ${ceErr instanceof Error ? ceErr.message : String(ceErr)}`);
+              return null;
+            }
+          })()
+        : Promise.resolve(null),
+    ]);
 
     // Fetch signal evidence
     let signalEvidence: SignalSnippet[] = [];
