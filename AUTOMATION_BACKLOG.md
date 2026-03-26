@@ -51,6 +51,13 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
   "REFERENCE_RISK: DVA supervisor reference may be required. Resolve before HR stage."
 - Surfaced as a blindspot note, not a task
 
+### DONE (March 26) — Email spam fix + smoke test + security hardening
+- **Duplicate do_nothing email spam fixed**: `runDailySend` now scans ALL today's actions (any status) for `daily_brief_sent_at` before sending. Root cause: `reconcilePendingApprovalQueue` was suppressing sent do_nothing rows to `skipped`, erasing the sent-at proof, causing every pipeline re-run to find "no email sent today" and fire again.
+- **Signout hard-redirect**: `signOut({ callbackUrl: '/' })` replaces `signOut({ redirect: false })` + manual `window.location` — session is now fully cleared server-side before redirect.
+- **Path B "Generate Now" smoke test**: Added to `tests/production/smoke.spec.ts`. Navigates to `/dashboard/settings`, clicks Generate Now, waits for `POST /api/settings/run-brief`, asserts action card visible. Test passed live (74s).
+- **Timing-safe CRON_SECRET comparison**: `lib/auth/resolve-user.ts` uses `timingSafeEqual` to prevent timing-based brute-force. Commit `a57d722`.
+- **Pre-push hook fixed for Windows**: Hook now checks `✓ Compiled successfully` in build output rather than raw exit code. Next.js trace collection ENOENT on Windows was blocking all pushes. All 131 unit tests still gate the push. Commit `63fc50f`.
+
 ### DONE (March 26) — House-Cleaning Audit + Sentry Wiring
 - **Sentry fully wired**: `captureException` added to all 6 critical locations (api-error.ts central handler, generator.ts outer catch, all 16 nightly-ops stage catches, conviction/execute, React error boundary). First real Sentry alert confirmed received within minutes of deploy.
 - **Sentry config migrated**: `sentry.server/edge.config.ts` replaced with `instrumentation.ts` per Next.js v10 SDK requirement. `global-error.tsx` added for root React render errors. `onRouterTransitionStart` hook added to `instrumentation-client.ts`. Zero Sentry warnings on build.

@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-26 — Add Path B Generation Loop smoke coverage
+  MODE: AUDIT
+  Commit hash(es): (set after commit)
+  Files changed: `tests/production/smoke.spec.ts`, `FOLDERA_MASTER_AUDIT.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: baseline `npm run test:prod` timed out at 180s; post-change `npm run build` failed (`app/dashboard/page.tsx` duplicate `isNewAccount`); post-change `npm run test:prod` timed out at 180s; `npx playwright test` failed because the webServer build failed (missing `next-font-manifest.json` after build error).
+  Any unresolved issues: build failure and prod test timeouts logged in `FOLDERA_MASTER_AUDIT.md` as NEEDS_REVIEW.
+
 - 2026-03-25 — Filter user's own name from entity conflict suppression guard
   MODE: AUDIT
   Commit hash(es): (set after commit)

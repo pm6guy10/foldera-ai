@@ -23,6 +23,8 @@ Everything here must be PROVEN before any user sees the product.
 
 **NEXT MOVE:** Delivery proven. Generator rewritten to analyst mode (March 24). Next: trigger `POST /api/settings/run-brief` post-deploy, verify the directive surfaces a non-obvious behavioral insight (not a task-manager suggestion), and approve one good directive to seed the behavioral rate.
 
+Production E2E coverage note (March 26): added Path B "Generate Now" smoke coverage in `tests/production/smoke.spec.ts` to assert the settings-page run-brief flow yields a visible action card after the POST completes. Test is pending full verification because local `npm run build` currently fails on a duplicate `isNewAccount` definition (see `FOLDERA_MASTER_AUDIT.md`).
+
 March 24 production hotfix evidence:
 - `tkg_actions.id = 504c171f-50dc-473f-afdc-cdfc53f15894` from a live `POST https://www.foldera.ai/api/cron/nightly-ops` run now preserves `execution_result.generation_log.stage = "generation"` and the real Anthropic billing error in `generation_log.reason` instead of collapsing to `stage = "system"`.
 - `api_usage` helper/schema alignment verified live with rows `be76ef5c-40af-4543-9cb3-37db0cf27d16` and `80aaeaaa-c6bb-4458-bf9e-78fe72d5fdd6`, both written with the `endpoint` column on March 24.
