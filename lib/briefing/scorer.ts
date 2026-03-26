@@ -124,6 +124,10 @@ export interface ScorerResult {
   winner: ScoredLoop;
   deprioritized: DeprioritizedLoop[];
   candidateDiscovery: GenerationCandidateDiscoveryLog;
+  /** Anti-patterns detected regardless of whether they won scoring */
+  antiPatterns: AntiPattern[];
+  /** Revealed-preference divergences detected regardless of whether they won scoring */
+  divergences: RevealedGoalDivergence[];
 }
 
 export interface CrossLoopConnection {
@@ -2946,6 +2950,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     winner,
     deprioritized,
     candidateDiscovery: buildCandidateDiscoveryLog(winner, scored, suppressedCandidates, null),
+    antiPatterns,
+    divergences,
   };
 }
 

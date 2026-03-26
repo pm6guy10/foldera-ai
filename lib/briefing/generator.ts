@@ -457,6 +457,9 @@ interface StructuredContext {
   user_identity_context: string | null;
   // Goal-gap analysis (all active goals with behavioral gap)
   goal_gap_analysis: GoalGapEntry[];
+  // Behavioral mirrors: anti-patterns + revealed-preference divergences from scorer
+  // Surfaced even when they didn't win scoring, so the model can reference them as context
+  behavioral_mirrors: string[];
 }
 
 function buildStructuredContext(
@@ -467,6 +470,8 @@ function buildStructuredContext(
   insight: ResearchInsight | null,
   userGoals?: Array<{ goal_text: string; priority: number; goal_category: string }>,
   goalGapAnalysis?: GoalGapEntry[],
+  antiPatterns?: import('./scorer').AntiPattern[],
+  divergences?: import('./scorer').RevealedGoalDivergence[],
 ): StructuredContext {
   // Sort signals chronologically and take top 3 — full body so the model reads a mini-thread
   const supporting_signals: CompressedSignal[] = signalEvidence
@@ -603,7 +608,32 @@ function buildStructuredContext(
     researcher_insight: insight,
     user_identity_context: buildUserIdentityContext(userGoals ?? []),
     goal_gap_analysis: goalGapAnalysis ?? [],
+    behavioral_mirrors: buildBehavioralMirrors(antiPatterns ?? [], divergences ?? []),
   };
+}
+
+function buildBehavioralMirrors(
+  antiPatterns: import('./scorer').AntiPattern[],
+  divergences: import('./scorer').RevealedGoalDivergence[],
+): string[] {
+  const mirrors: string[] = [];
+
+  for (const ap of antiPatterns.slice(0, 2)) {
+    mirrors.push(`[${ap.type.toUpperCase()}] ${ap.insight}`);
+  }
+
+  for (const div of divergences.slice(0, 2)) {
+    const pct = Math.round(
+      (div.revealedSignalCount / (div.revealedSignalCount + div.statedSignalCount + 1)) * 100,
+    );
+    mirrors.push(
+      `[REVEALED_PREFERENCE] You say "${div.statedGoal.text}" is priority ${div.statedGoal.priority}/5, ` +
+      `but ${pct}% of your last 14 days of signals are on ${div.revealedDomain} (${div.revealedSignalCount} signals vs ${div.statedSignalCount} on your stated goal). ` +
+      `Are you avoiding the work, or has the goal changed?`,
+    );
+  }
+
+  return mirrors;
 }
 
 /**
@@ -675,7 +705,16 @@ function checkGenerationEligibility(ctx: StructuredContext): EligibilityResult {
 function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   const sections: string[] = [];
 
-  // Goal-gap analysis FIRST — this is the primary analytical lens
+  // Behavioral mirrors FIRST — these are what the model must hold while reading everything else.
+  // Anti-patterns and revealed preferences give the model permission to name what the user can't see.
+  if (ctx.behavioral_mirrors.length > 0) {
+    sections.push(
+      `BEHAVIORAL_MIRROR:\nThese patterns were detected in the user's behavior. You may reference them in your artifact if they are directly relevant to the candidate. Do not invent additional patterns.\n\n` +
+      ctx.behavioral_mirrors.map((m, i) => `${i + 1}. ${m}`).join('\n\n'),
+    );
+  }
+
+  // Goal-gap analysis — primary analytical lens
   if (ctx.goal_gap_analysis.length > 0) {
     const gapLines = ctx.goal_gap_analysis.map((g) => {
       return `[priority ${g.priority}] ${g.goal_text}\n  → ${g.signal_count_14d} signals in 14 days, ${g.action_count_14d} completed actions\n  → Gap: ${g.gap_level} — ${g.gap_description}`;
@@ -2190,6 +2229,8 @@ export async function generateDirective(
       hydratedWinner, guardrails, userId, signalEvidence, insight,
       goalsForContext,
       goalGapAnalysis,
+      scored.antiPatterns,
+      scored.divergences,
     );
 
     // Part 4: Evidence gating — check eligibility before calling LLM
