@@ -29,6 +29,16 @@ export default function DashboardPage() {
   const [flash, setFlash] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState(false);
 
+  // Handle ?generated=true from settings run-brief success
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('generated') === 'true') {
+      window.history.replaceState({}, '', window.location.pathname);
+      setFlash('Brief generated and sent.');
+      setTimeout(() => setFlash(null), 4000);
+    }
+  }, []);
+
   // Handle email deep-link params (approve/skip from morning email)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -150,7 +160,7 @@ export default function DashboardPage() {
 
       {/* Content */}
       <main className="pt-20 pb-8 px-4 max-w-2xl mx-auto">
-        {/* Flash message (from deep-link errors or actions) */}
+        {/* Flash message (from deep-link errors, actions, or settings redirect) */}
         {flash && !done && (
           <div className="mb-4 px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-700">
             <p className="text-sm text-zinc-300">{flash}</p>

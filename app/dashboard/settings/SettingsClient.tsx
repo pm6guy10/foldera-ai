@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Settings } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 interface Integration {
   provider: string;
@@ -55,6 +55,15 @@ export default function SettingsClient() {
     setSourceCounts(data.sourceCounts || {});
   }, []);
 
+  // On mount: check for connecting_provider localStorage flag (set before OAuth redirect)
+  useEffect(() => {
+    const provider = localStorage.getItem('connecting_provider');
+    if (provider) {
+      localStorage.removeItem('connecting_provider');
+      setSyncStatus(`Reconnecting ${provider === 'google' ? 'Google' : 'Microsoft'}…`);
+    }
+  }, []);
+
   useEffect(() => {
     if (status === 'loading') return; // keep loading=true while session resolves
     if (status !== 'authenticated') { setLoading(false); return; }
@@ -100,7 +109,7 @@ export default function SettingsClient() {
     const provider = googleConnected ? 'google' : 'microsoft';
     const syncUrl = googleConnected ? '/api/google/sync-now' : '/api/microsoft/sync-now';
 
-    setSyncStatus(`Syncing your ${provider === 'google' ? 'Google' : 'Microsoft'} data...`);
+    setSyncStatus(`Syncing your ${provider === 'google' ? 'Google' : 'Microsoft'} data…`);
 
     fetch(syncUrl, { method: 'POST' })
       .then(async (res) => {
@@ -148,15 +157,10 @@ export default function SettingsClient() {
 
   const handleSignOut = async () => {
     try {
-      // Use redirect:false so we control the redirect.
-      // If CSRF fetch fails silently, signOut() resolves without
-      // clearing the cookie — the hard redirect below still lands
-      // the user on / where no session-gated content is shown.
       await signOut({ redirect: false, callbackUrl: '/' });
     } catch {
       // signOut threw (network/CSRF failure) — fall through
     }
-    // Always force a hard navigation to clear client-side state
     window.location.href = '/';
   };
 
@@ -202,11 +206,14 @@ export default function SettingsClient() {
     );
   }
 
-  const planLabel = subscription?.plan === 'pro' ? 'Pro' : 'Free';
+  const isPro = subscription?.plan === 'pro';
+  const planLabel = isPro ? 'Pro' : 'Free';
   const planDetail =
     subscription?.status === 'active' ? 'Active' :
     subscription?.status === 'past_due' ? 'Payment past due'
     : '';
+
+  const activeBuckets = goalBuckets.filter(b => ALL_BUCKETS.includes(b));
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -220,21 +227,27 @@ export default function SettingsClient() {
           </div>
         )}
 
-        {/* Connected accounts */}
-        <h2 className="text-lg font-semibold text-white">Connected accounts</h2>
-
         {actionError && (
-          <p ref={errorRef} className="mt-2 text-sm text-red-400">{actionError}</p>
+          <p ref={errorRef} className="mb-4 text-sm text-red-400">{actionError}</p>
         )}
 
-        <div className="mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        {/* Connected accounts */}
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mb-3">Connected accounts</h2>
+
+        {/* Google */}
+        <div className={`bg-zinc-900 rounded-xl p-4 flex items-center justify-between border-l-2 ${google?.is_active ? 'border-emerald-500/50' : 'border-zinc-700'}`}>
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             <GoogleIcon />
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-medium text-white">Google</p>
               <p className={`text-sm ${google?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
                 {google?.is_active ? (google.sync_email || 'Connected') : 'Not connected'}
               </p>
+              {google?.is_active && (
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  {sourceCounts['gmail'] ?? 0} Gmail · {sourceCounts['google_calendar'] ?? 0} Calendar · {sourceCounts['drive'] ?? 0} Drive
+                </p>
+              )}
             </div>
           </div>
           {google?.is_active ? (
@@ -242,50 +255,58 @@ export default function SettingsClient() {
               onClick={async () => {
                 setDisconnecting('google');
                 setActionError(null);
+                // Optimistic update — swap UI immediately before background refresh
+                setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
                 try {
                   const response = await fetch('/api/google/disconnect', { method: 'POST' });
                   if (response.ok) {
-                    await refreshIntegrationsStatus().catch(() => {});
+                    refreshIntegrationsStatus().catch(() => {});
                   } else {
                     setActionError('Could not disconnect Google. Try again.');
+                    // Revert optimistic update on failure
+                    await refreshIntegrationsStatus().catch(() => {});
                   }
                 } catch {
                   setActionError('Network error disconnecting Google.');
+                  await refreshIntegrationsStatus().catch(() => {});
                 } finally {
                   setDisconnecting(null);
                 }
               }}
               disabled={disconnecting === 'google'}
-              className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="ml-3 shrink-0 text-xs border border-zinc-600 hover:border-zinc-400 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
               {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
             </button>
           ) : (
             <button
-              onClick={() => { setConnectingProvider('google'); window.location.href = '/api/google/connect'; }}
+              onClick={() => {
+                setConnectingProvider('google');
+                localStorage.setItem('connecting_provider', 'google');
+                window.location.href = '/api/google/connect';
+              }}
               disabled={connectingProvider === 'google'}
-              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="ml-3 shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
               {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
             </button>
           )}
         </div>
-        {google?.is_active && (
-          <div className="mt-1 px-4 space-y-0.5">
-            <SourceLine label="Gmail" count={sourceCounts['gmail'] ?? 0} providerActive={true} />
-            <SourceLine label="Calendar" count={sourceCounts['google_calendar'] ?? 0} providerActive={true} />
-            <SourceLine label="Drive" count={sourceCounts['drive'] ?? 0} providerActive={true} />
-          </div>
-        )}
 
-        <div className="mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        {/* Microsoft */}
+        <div className={`mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between border-l-2 ${microsoft?.is_active ? 'border-emerald-500/50' : 'border-zinc-700'}`}>
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             <MicrosoftIcon />
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-medium text-white">Microsoft</p>
               <p className={`text-sm ${microsoft?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
                 {microsoft?.is_active ? (microsoft.sync_email || 'Connected') : 'Not connected'}
               </p>
+              {microsoft?.is_active && (
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  {sourceCounts['outlook'] ?? 0} Mail · {sourceCounts['outlook_calendar'] ?? 0} Calendar · {sourceCounts['onedrive'] ?? 0} OneDrive
+                </p>
+              )}
             </div>
           </div>
           {microsoft?.is_active ? (
@@ -293,65 +314,62 @@ export default function SettingsClient() {
               onClick={async () => {
                 setDisconnecting('microsoft');
                 setActionError(null);
+                // Optimistic update — swap UI immediately before background refresh
+                setIntegrations(prev => prev.map(i =>
+                  i.provider === 'azure_ad' ? { ...i, is_active: false, sync_email: undefined } : i
+                ));
                 try {
                   const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
                   if (response.ok) {
-                    await refreshIntegrationsStatus().catch(() => {});
+                    refreshIntegrationsStatus().catch(() => {});
                   } else {
                     setActionError('Could not disconnect Microsoft. Try again.');
+                    await refreshIntegrationsStatus().catch(() => {});
                   }
                 } catch {
                   setActionError('Network error disconnecting Microsoft.');
+                  await refreshIntegrationsStatus().catch(() => {});
                 } finally {
                   setDisconnecting(null);
                 }
               }}
               disabled={disconnecting === 'microsoft'}
-              className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="ml-3 shrink-0 text-xs border border-zinc-600 hover:border-zinc-400 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
               {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
             </button>
           ) : (
             <button
-              onClick={() => { setConnectingProvider('microsoft'); window.location.href = '/api/microsoft/connect'; }}
+              onClick={() => {
+                setConnectingProvider('microsoft');
+                localStorage.setItem('connecting_provider', 'microsoft');
+                window.location.href = '/api/microsoft/connect';
+              }}
               disabled={connectingProvider === 'microsoft'}
-              className="text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg px-3 py-1 text-white transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="ml-3 shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
               {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
             </button>
           )}
         </div>
-        {microsoft?.is_active && (
-          <div className="mt-1 px-4 space-y-0.5">
-            <SourceLine label="Mail" count={sourceCounts['outlook'] ?? 0} providerActive={true} />
-            <SourceLine label="Calendar" count={sourceCounts['outlook_calendar'] ?? 0} providerActive={true} />
-            <SourceLine label="OneDrive" count={sourceCounts['onedrive'] ?? 0} providerActive={true} />
-          </div>
-        )}
 
         {/* Focus areas */}
-        <h2 className="text-lg font-semibold text-white mt-8">Your focus areas</h2>
-        <div className="mt-3 bg-zinc-900 rounded-xl p-4">
-          {goalBuckets.length === 0 && !goalFreeText ? (
-            <p className="text-sm text-zinc-500">No focus areas set yet.</p>
+        <div className="border-t border-zinc-800 mt-10" />
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mt-4 mb-3">Your focus areas</h2>
+        <div className="bg-zinc-900 rounded-xl p-4">
+          {activeBuckets.length === 0 && !goalFreeText ? (
+            <p className="text-sm text-zinc-500">No focus areas set.</p>
           ) : (
             <>
               <div className="flex flex-wrap gap-2">
-                {ALL_BUCKETS.map((label) => {
-                  const active = goalBuckets.includes(label);
-                  return (
-                    <span
-                      key={label}
-                      className={`rounded-lg py-1.5 px-3 text-xs font-medium ${
-                        active
-                          ? 'bg-cyan-500/15 border border-cyan-500/50 text-cyan-300'
-                          : 'bg-zinc-800 border border-zinc-800 text-zinc-600'
-                      }`}
-                    >
-                      {label}
-                    </span>
-                  );
-                })}
+                {activeBuckets.map((label) => (
+                  <span
+                    key={label}
+                    className="rounded-lg py-1.5 px-3 text-xs font-medium bg-cyan-500/15 border border-cyan-500/50 text-cyan-300"
+                  >
+                    {label}
+                  </span>
+                ))}
               </div>
               {goalFreeText && (
                 <p className="mt-3 text-sm text-zinc-300">{goalFreeText}</p>
@@ -367,13 +385,19 @@ export default function SettingsClient() {
         </div>
 
         {/* Subscription */}
-        <h2 className="text-lg font-semibold text-white mt-8">Subscription</h2>
-        <div className="mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
+        <div className="border-t border-zinc-800 mt-10" />
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mt-4 mb-3">Subscription</h2>
+        <div className="bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-white">{planLabel}</p>
             {planDetail && <p className="text-sm text-zinc-500">{planDetail}</p>}
+            {isPro ? (
+              <p className="text-xs text-zinc-500 mt-0.5">Finished artifacts, every morning.</p>
+            ) : (
+              <p className="text-xs text-zinc-400 mt-0.5">Upgrade to unlock finished artifacts.</p>
+            )}
           </div>
-          {subscription?.plan !== 'pro' && (
+          {!isPro && (
             <button
               onClick={async () => {
                 setUpgrading(true);
@@ -399,9 +423,10 @@ export default function SettingsClient() {
           )}
         </div>
 
-        {/* Manual trigger */}
-        <h2 className="text-lg font-semibold text-white mt-8">Daily brief</h2>
-        <div className="mt-3 bg-zinc-900 rounded-xl p-4">
+        {/* Daily brief */}
+        <div className="border-t border-zinc-800 mt-10" />
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mt-4 mb-3">Daily brief</h2>
+        <div className="bg-zinc-900 rounded-xl p-4">
           <p className="text-sm text-zinc-400 mb-3">
             Sync your email and calendar, then generate and send today&apos;s brief.
           </p>
@@ -415,10 +440,8 @@ export default function SettingsClient() {
                 const data = await res.json().catch(() => null);
                 if (res.ok && data?.ok) {
                   setGenerateState('success');
-                  setGenerateMessage('Brief generated and sent. Redirecting to dashboard…');
-                  setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+                  window.location.href = '/dashboard?generated=true';
                 } else if (res.ok && data?.stages) {
-                  // Partial success — show what happened
                   const parts: string[] = [];
                   const stages = data.stages as Record<string, any>;
                   const signalFailed = stages.daily_brief?.signal_processing?.status === 'failed';
@@ -428,18 +451,19 @@ export default function SettingsClient() {
                   if (stages.sync_microsoft?.ok === false) parts.push('Microsoft sync failed');
                   if (stages.sync_google?.ok === false) parts.push('Google sync failed');
                   if (parts.length > 0) {
-                    // Only treat as error if it's a true failure, not just signal backlog
                     const isSignalBacklogOnly =
                       parts.length === 1 &&
                       parts[0].startsWith('Signal processing incomplete');
-                    setGenerateState(isSignalBacklogOnly ? 'success' : 'error');
-                    setGenerateMessage(parts.join('. ') + '.');
-                  } else if (!data.ok && stages.daily_brief) {
-                    setGenerateState('success');
-                    setGenerateMessage('Done. No directive today — check back at 7am.');
+                    if (isSignalBacklogOnly) {
+                      setGenerateState('success');
+                      window.location.href = '/dashboard?generated=true';
+                    } else {
+                      setGenerateState('error');
+                      setGenerateMessage(parts.join('. ') + '.');
+                    }
                   } else {
                     setGenerateState('success');
-                    setGenerateMessage('Done.');
+                    window.location.href = '/dashboard?generated=true';
                   }
                 } else {
                   setGenerateState('error');
@@ -466,14 +490,15 @@ export default function SettingsClient() {
         </div>
 
         {/* Account */}
-        <h2 className="text-lg font-semibold text-white mt-8">Account</h2>
+        <div className="border-t border-zinc-800 mt-10" />
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mt-4 mb-3">Account</h2>
         {session?.user?.email && (
-          <p className="text-sm text-zinc-500 mt-1">{session.user.email}</p>
+          <p className="text-sm text-zinc-500 mb-3">{session.user.email}</p>
         )}
 
         <button
           onClick={handleSignOut}
-          className="mt-3 w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl py-3 text-sm font-medium transition-colors"
+          className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl py-3 text-sm font-medium transition-colors"
         >
           Sign out
         </button>
@@ -498,8 +523,11 @@ function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-10 bg-zinc-950 border-b border-zinc-800 h-14">
       <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4">
-        <Link href="/dashboard" className="text-lg font-bold text-white">Foldera</Link>
-        <Settings className="w-5 h-5 text-white" />
+        <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors">
+          <ChevronLeft className="w-5 h-5" />
+        </Link>
+        <span className="text-sm font-semibold text-white">Settings</span>
+        <div className="w-5" />
       </div>
     </header>
   );
@@ -507,8 +535,8 @@ function Header() {
 
 function GoogleIcon() {
   return (
-    <div className="w-8 h-8 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
-      <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
+    <div className="w-9 h-9 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
         <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
         <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
@@ -518,23 +546,10 @@ function GoogleIcon() {
   );
 }
 
-function SourceLine({ label, count, providerActive }: { label: string; count: number; providerActive: boolean }) {
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="text-zinc-500">{label}:</span>
-      <span className={count > 0 ? 'text-zinc-400' : 'text-zinc-600'}>
-        {count} signal{count !== 1 ? 's' : ''}
-      </span>
-      {count === 0 && providerActive && <span className="text-zinc-500">awaiting sync</span>}
-      {count === 0 && !providerActive && <span className="text-amber-500/70">reconnect</span>}
-    </div>
-  );
-}
-
 function MicrosoftIcon() {
   return (
-    <div className="w-8 h-8 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
-      <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true">
+    <div className="w-9 h-9 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true">
         <rect x="1" y="1" width="9" height="9" fill="#f25022" />
         <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
         <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
