@@ -462,6 +462,8 @@ interface StructuredContext {
   // Behavioral mirrors: anti-patterns + revealed-preference divergences from scorer
   // Surfaced even when they didn't win scoring, so the model can reference them as context
   behavioral_mirrors: string[];
+  // Conviction math: inferred burn rate, runway, EV comparison — injected when available
+  conviction_math: string | null;
 }
 
 function buildStructuredContext(
@@ -475,6 +477,7 @@ function buildStructuredContext(
   antiPatterns?: import('./scorer').AntiPattern[],
   divergences?: import('./scorer').RevealedGoalDivergence[],
   alreadySent?: string[],
+  convictionDecision?: import('./conviction-engine').ConvictionDecision | null,
 ): StructuredContext {
   // Sort signals chronologically and take top 3 — full body so the model reads a mini-thread
   const supporting_signals: CompressedSignal[] = signalEvidence
@@ -613,6 +616,17 @@ function buildStructuredContext(
     goal_gap_analysis: goalGapAnalysis ?? [],
     already_sent_14d: alreadySent ?? [],
     behavioral_mirrors: buildBehavioralMirrors(antiPatterns ?? [], divergences ?? []),
+    conviction_math: convictionDecision
+      ? [
+          `CONVICTION MATH (inferred from signals — not user-provided):`,
+          convictionDecision.math,
+          ``,
+          `OPTIMAL ACTION: ${convictionDecision.optimalAction}`,
+          convictionDecision.stopSecondGuessing ? `STOP SECOND-GUESSING: The math is definitive. Do not hedge.` : ``,
+          `CATASTROPHIC SCENARIO (${convictionDecision.catastrophicProbability}% probability): ${convictionDecision.catastrophicScenario}`,
+          `KEY HEDGE: ${convictionDecision.keyHedge}`,
+        ].filter(Boolean).join('\n')
+      : null,
   };
 }
 
@@ -750,6 +764,17 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
       return `[priority ${g.priority}] ${g.goal_text}\n  → ${g.signal_count_14d} signals in 14 days, ${g.action_count_14d} completed actions\n  → Gap: ${g.gap_level} — ${g.gap_description}`;
     });
     sections.push(`GOAL_GAP_ANALYSIS:\nYour primary question: which goal has the biggest gap between stated priority and actual behavior? Start there. Then find the one finished action that closes the most important gap.\n\n${gapLines.join('\n\n')}`);
+  }
+
+  // Conviction math — inferred burn, runway, EV comparison. When present, the model MUST
+  // anchor its recommendation to this math rather than producing generic suggestions.
+  if (ctx.conviction_math) {
+    sections.push(
+      `CONVICTION_MATH:\nThis is inferred from financial and career signals in the data — the user did NOT provide this.\n` +
+      `Your artifact must be consistent with the optimal action below. If the math says wait, do not suggest pursuing distractions. ` +
+      `If the math says bridge, produce the one specific bridge action.\n\n` +
+      ctx.conviction_math,
+    );
   }
 
   // User identity context — gives the LLM judgment about what matters
@@ -2144,6 +2169,24 @@ export async function generateDirective(
       loadRecentActionGuardrails(userId),
     ]);
 
+    // CE-1: Run conviction engine in parallel with the rest of context-building.
+    // This is non-blocking — if burn rate cannot be inferred, it returns null
+    // and the generator continues normally without the math section.
+    let convictionDecision: import('./conviction-engine').ConvictionDecision | null = null;
+    try {
+      const topGoalText = scored?.winner?.matchedGoal?.text ?? scored?.winner?.title ?? '';
+      if (topGoalText) {
+        const { runConvictionEngine } = await import('./conviction-engine');
+        convictionDecision = await runConvictionEngine(userId, topGoalText);
+        if (convictionDecision) {
+          console.log(`[generator] conviction math loaded: runway=${convictionDecision.situationModel.runwayMonths}mo, prob=${convictionDecision.situationModel.primaryOutcomeProbability}, stopSecondGuessing=${convictionDecision.stopSecondGuessing}`);
+        }
+      }
+    } catch (ceErr) {
+      // Non-blocking — log and continue without conviction math
+      console.warn(`[generator] conviction engine failed (non-fatal): ${ceErr instanceof Error ? ceErr.message : String(ceErr)}`);
+    }
+
     if (!scored?.winner) {
       return emptyDirective(
         'No ranked daily brief candidate.',
@@ -2287,7 +2330,7 @@ export async function generateDirective(
       // non-blocking
     }
 
-    // Part 3: Build structured context
+    // Part 3: Build structured context (conviction math injected when available)
     const ctx = buildStructuredContext(
       hydratedWinner, guardrails, userId, signalEvidence, insight,
       goalsForContext,
@@ -2295,6 +2338,7 @@ export async function generateDirective(
       scored.antiPatterns,
       scored.divergences,
       alreadySent,
+      convictionDecision,
     );
 
     // Part 4: Evidence gating — check eligibility before calling LLM

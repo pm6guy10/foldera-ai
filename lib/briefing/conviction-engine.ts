@@ -292,17 +292,20 @@ export async function runConvictionEngine(
     missingInputs,
   };
 
-  // Decision paths
+  // Decision paths — labels derived from top goal text, not hardcoded
   const runway = runwayMonths ?? 3;
   const timeToConsultingIncomeDays = 45; // realistic minimum
-  const timeToJobIncomeDays = 30; // first paycheck after April start
+  const timeToJobIncomeDays = 30; // typical first paycheck after start
+
+  // Shorten goal text for labels (first 60 chars)
+  const goalLabel = topGoalText.length > 60 ? topGoalText.slice(0, 57) + '...' : topGoalText;
 
   const waitPath: DecisionPath = {
-    label: 'Wait for primary outcome (MAS3)',
+    label: `Wait for primary outcome: ${goalLabel}`,
     expectedValueMonths: runway * prob + (runway - 1) * (1 - prob),
     probability: prob,
-    outcomeIfWorks: `Income starts ~30 days from offer. Runway covers the gap. Baby arrives with income flowing.`,
-    outcomeIfFails: `No income. Runway hits zero in ${runway} months. Full restart from Ellensburg.`,
+    outcomeIfWorks: `Primary outcome resolves. Income or milestone ~${timeToJobIncomeDays} days out. Runway covers the gap.`,
+    outcomeIfFails: `Primary outcome fails. Runway hits zero in ~${runway} months. Must pivot from scratch.`,
     timeToFirstIncome: timeToJobIncomeDays,
   };
 
@@ -310,8 +313,8 @@ export async function runConvictionEngine(
     label: 'Pursue bridge income (consulting/contract)',
     expectedValueMonths: runway + 1.5, // rough: extends runway if closes
     probability: 0.4, // consulting close probability in <60 days
-    outcomeIfWorks: `Extends runway ~6 weeks. Reduces pressure on MAS3 timeline.`,
-    outcomeIfFails: `Splits attention, delays MAS3 follow-through, no material income gain.`,
+    outcomeIfWorks: `Extends runway ~6 weeks. Reduces pressure on primary outcome timeline.`,
+    outcomeIfFails: `Splits attention, delays primary outcome follow-through, no material income gain.`,
     timeToFirstIncome: timeToConsultingIncomeDays,
   };
 
@@ -326,26 +329,27 @@ export async function runConvictionEngine(
   const math = [
     `Monthly burn: $${burn.toLocaleString()}`,
     `Runway: ~${runway} months`,
-    `MAS3 probability: ${Math.round(prob * 100)}%`,
+    `Primary outcome probability: ${Math.round(prob * 100)}%`,
+    `Goal: ${goalLabel}`,
     ``,
     `Wait path EV: ${waitEV.toFixed(1)} months of safety`,
     `Bridge path EV: ${bridgeEV.toFixed(1)} months of safety`,
     ``,
     `At ${Math.round(prob * 100)}% probability and ${runway}mo runway:`,
     optimalIsWait
-      ? `Waiting dominates. Consulting won't close before MAS3 resolves anyway (${timeToConsultingIncomeDays}d minimum).`
-      : `Bridge income recommended — MAS3 probability too low to rely on alone.`,
+      ? `Waiting dominates. Consulting won't close before primary outcome resolves anyway (${timeToConsultingIncomeDays}d minimum).`
+      : `Bridge income recommended — primary outcome probability too low to rely on alone.`,
   ].join('\n');
 
   return {
     optimalAction: optimalIsWait
-      ? `Wait for MAS3. Do not split attention on consulting. The math supports it.`
-      : `Pursue one specific bridge income source in parallel. MAS3 probability is not high enough to wait alone.`,
+      ? `Stay focused on the primary outcome. Do not split attention on consulting. The math supports it.`
+      : `Pursue one specific bridge income source in parallel. Primary outcome probability is not high enough to wait alone.`,
     math,
     stopSecondGuessing: prob >= 0.6 && runway >= 2,
-    catastrophicScenario: `MAS3 falls through AND no bridge income in place before runway hits zero`,
+    catastrophicScenario: `Primary outcome fails AND no bridge income in place before runway hits zero`,
     catastrophicProbability: catastrophicProb,
-    keyHedge: `Resolve ESD waiver — extends runway independent of MAS3 outcome`,
+    keyHedge: `Identify one concrete action that extends runway independent of primary outcome`,
     paths: [waitPath, bridgePath],
     situationModel: situation,
   };
