@@ -293,9 +293,7 @@ export default function SettingsClient() {
                   setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
                   try {
                     const response = await fetch('/api/google/disconnect', { method: 'POST' });
-                    if (response.ok) {
-                      refreshIntegrationsStatus().catch(() => {});
-                    } else {
+                    if (!response.ok) {
                       setActionError('Could not disconnect Google. Try again.');
                       await refreshIntegrationsStatus().catch(() => {});
                     }
@@ -357,9 +355,7 @@ export default function SettingsClient() {
                   ));
                   try {
                     const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
-                    if (response.ok) {
-                      refreshIntegrationsStatus().catch(() => {});
-                    } else {
+                    if (!response.ok) {
                       setActionError('Could not disconnect Microsoft. Try again.');
                       await refreshIntegrationsStatus().catch(() => {});
                     }
