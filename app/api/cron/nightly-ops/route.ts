@@ -545,10 +545,21 @@ async function handler(request: NextRequest) {
   const dayOfWeek = new Date().getUTCDay();
   if (dayOfWeek === 0) {
     try {
-      const { refreshGoalContext } = await import('@/lib/cron/goal-refresh');
+      const { refreshGoalContext, inferGoalsFromBehavior, abandonRejectedGoals } = await import('@/lib/cron/goal-refresh');
       const refreshResult = await refreshGoalContext();
       (stages as any).goal_refresh = refreshResult;
       console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'goal_refresh', ...refreshResult }));
+
+      // Infer new goals from behavioral signal patterns (runs after refresh so inferred
+      // goals aren't immediately re-inferred in the same cycle)
+      const inferResult = await inferGoalsFromBehavior();
+      (stages as any).goal_infer = inferResult;
+      console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'goal_infer', ...inferResult }));
+
+      // CE-5: auto-abandon goals that have a rejection signal in their thread
+      const abandonResult = await abandonRejectedGoals();
+      (stages as any).goal_abandon = abandonResult;
+      console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'goal_abandon', ...abandonResult }));
     } catch (err: any) {
       (stages as any).goal_refresh = { ok: false, error: err.message };
       console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'goal_refresh', error: err.message }));

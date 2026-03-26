@@ -91,8 +91,8 @@ Rewrite the goal text to include specific entity names (people, organizations, j
     }
   }
 
-  // --- Goal decay: demote goals with no signal reinforcement in 30+ days ---
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // --- Goal decay: demote goals with no signal reinforcement in 21+ days ---
+  const thirtyDaysAgo = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString();
   let decayed = 0;
 
   for (const userId of userIds) {
@@ -122,6 +122,115 @@ Rewrite the goal text to include specific entity names (people, organizations, j
   }
 
   return { ok: true, updated, skipped, decayed };
+}
+
+// ---------------------------------------------------------------------------
+// CE-5: Rejection signal → auto-abandon
+// ---------------------------------------------------------------------------
+
+/**
+ * For each active goal, scan the last 90 days of signals for rejection language
+ * that matches the goal's key entities or theme keywords.
+ *
+ * If a goal has a rejection signal in its thread, set status='abandoned'.
+ * This fires weekly alongside refreshGoalContext (Sunday nightly-ops).
+ */
+export async function abandonRejectedGoals(): Promise<{ ok: boolean; abandoned: number }> {
+  const supabase = createServerClient();
+
+  const REJECTION_PATTERNS = [
+    /\bposition\s+(?:has\s+been\s+|will\s+be\s+)filled\b/i,
+    /\b(?:not|no\s+longer)\s+(?:moving|proceeding|advancing)\s+forward\b/i,
+    /\bwe(?:'ve|'ve| have)\s+(?:decided|chosen)\s+to\s+(?:move\s+forward\s+with|select)\s+(?:another|a\s+different)\b/i,
+    /\b(?:application|candidacy|your\s+application)\s+(?:has\s+been|was)\s+(?:not\s+selected|rejected|unsuccessful|declined)\b/i,
+    /\bwe\s+won't\s+be\s+moving\s+forward\b/i,
+    /\bthe\s+(?:position|role|opening)\s+(?:has|will)\s+(?:been\s+)?filled\b/i,
+    /\bregret\s+to\s+inform.{0,80}(?:not|unable|decided\s+not)\b/i,
+  ];
+
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Load all active goals for all users
+  const { data: activeGoals } = await supabase
+    .from('tkg_goals')
+    .select('id, user_id, goal_text, source')
+    .eq('status', 'active')
+    .not('source', 'in', '("onboarding_bucket","onboarding_marker")');
+
+  if (!activeGoals || activeGoals.length === 0) return { ok: true, abandoned: 0 };
+
+  // Group goals by user to batch signal queries
+  const byUser = new Map<string, Array<typeof activeGoals[0]>>();
+  for (const goal of activeGoals) {
+    if (!byUser.has(goal.user_id)) byUser.set(goal.user_id, []);
+    byUser.get(goal.user_id)!.push(goal);
+  }
+
+  let abandoned = 0;
+
+  for (const [userId, goals] of byUser) {
+    const { data: signals } = await supabase
+      .from('tkg_signals')
+      .select('content, occurred_at')
+      .eq('user_id', userId)
+      .eq('processed', true)
+      .gte('occurred_at', ninetyDaysAgo)
+      .order('occurred_at', { ascending: false })
+      .limit(200);
+
+    if (!signals || signals.length === 0) continue;
+
+    // Decrypt signals once per user
+    const decrypted: string[] = [];
+    for (const s of signals) {
+      const dec = decryptWithStatus((s.content as string) ?? '');
+      if (!dec.usedFallback && dec.plaintext.length > 20) {
+        decrypted.push(dec.plaintext);
+      }
+    }
+
+    for (const goal of goals) {
+      // Extract meaningful keywords from goal text (4+ chars, skip common words)
+      const STOP_WORDS = new Set(['that', 'this', 'with', 'from', 'have', 'will', 'been', 'your', 'their', 'they', 'into', 'path', 'primary', 'focus', 'until', 'window', 'resolves']);
+      const keywords = (goal.goal_text as string)
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length >= 4 && !STOP_WORDS.has(w))
+        .slice(0, 8);
+
+      if (keywords.length < 2) continue;
+
+      for (const text of decrypted) {
+        const lower = text.toLowerCase();
+        // Signal must mention at least 2 goal keywords to be considered part of this thread
+        const matches = keywords.filter((k) => lower.includes(k)).length;
+        if (matches < 2) continue;
+
+        // Check for rejection language in this signal
+        const isRejection = REJECTION_PATTERNS.some((p) => p.test(text));
+        if (!isRejection) continue;
+
+        // Abandon the goal
+        const { error } = await supabase
+          .from('tkg_goals')
+          .update({ status: 'abandoned', updated_at: new Date().toISOString() })
+          .eq('id', goal.id);
+
+        if (!error) {
+          abandoned++;
+          console.log(JSON.stringify({
+            event: 'goal_auto_abandoned',
+            user_id_hash: userId.slice(0, 12),
+            goal_id: goal.id,
+            reason: 'rejection_signal_detected',
+          }));
+        }
+        break; // One rejection signal is enough; move to next goal
+      }
+    }
+  }
+
+  return { ok: true, abandoned };
 }
 
 // ---------------------------------------------------------------------------
