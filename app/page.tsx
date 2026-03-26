@@ -55,7 +55,7 @@ const SCENARIOS: Scenario[] = [
   {
     id: 'job',
     icon: Briefcase,
-    label: 'The job you keep almost taking',
+    label: 'The decision it found in your signals',
     chaos: [
       { type: 'doc', text: '\u201cI keep second-guessing this decision\u201d' },
       { type: 'email', text: 'Recruiter follow-up (3 days old, unread)' },
@@ -72,7 +72,7 @@ const SCENARIOS: Scenario[] = [
   {
     id: 'builder',
     icon: Code,
-    label: 'The feature you\u2019re hiding behind',
+    label: 'The relationship you were drifting from',
     chaos: [
       { type: 'doc', text: '\u201cOne more feature before I launch\u201d' },
       { type: 'tab', text: '12 open tabs: competitors, not customers' },
@@ -89,7 +89,7 @@ const SCENARIOS: Scenario[] = [
   {
     id: 'life',
     icon: Coffee,
-    label: 'The 47 open tabs',
+    label: 'The 47 threads it resolved while you slept',
     chaos: [
       { type: 'email', text: 'Registration deadline: tomorrow (opened, not acted on)' },
       { type: 'message', text: 'Lease renewal \u2014 \u201cI\u2019ll do it this weekend\u201d' },
@@ -205,14 +205,15 @@ function SignalEngineHero() {
       {/* Headlines & CTA */}
       <Reveal>
         <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
-          Finished work, every morning.
+          A model of you. One move a day.
         </div>
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-5 leading-[1.08]">
           Your next move,<br className="hidden md:block" /> already prepared.
         </h1>
         <p className="text-base md:text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed mb-8">
-          Foldera reads your email and calendar, finds what matters most, and prepares the work before you wake up.
+          Foldera reads your email, calendar, and behavior. It builds a graph of your goals, commitments, and the people you&apos;re actually engaging with — versus the ones you&apos;re drifting from. Every morning it finds the single highest-leverage gap and closes it. Finished work, handed to you.
         </p>
+        <p className="text-sm text-zinc-600 mb-8 -mt-4">The longer you use it, the sharper it gets.</p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
             href="/start"

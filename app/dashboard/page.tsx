@@ -21,8 +21,45 @@ type ArtifactWithDraftedEmail = {
 
 type ActionWithDomain = ConvictionAction & { domain?: string };
 
+interface ModelEntity {
+  name: string;
+  total_interactions: number;
+  days_since_contact: number | null;
+}
+
+interface ModelGoal {
+  text: string;
+  priority: number;
+  category: string;
+}
+
+interface ModelInsight {
+  label: string;
+  category: string;
+  signal_count: number;
+  entity_name?: string;
+}
+
+interface ModelState {
+  days_active: number;
+  signal_count: number;
+  signals_processed: number;
+  top_entities: ModelEntity[];
+  stated_goals: ModelGoal[];
+  behavioral_insights: ModelInsight[];
+  approval_stats: {
+    total: number;
+    approved: number;
+    skipped: number;
+    approval_rate: number | null;
+  };
+  avg_confidence_last_7d: number | null;
+  avg_confidence_last_30d: number | null;
+}
+
 export default function DashboardPage() {
   const [action, setAction] = useState<ActionWithDomain | null>(null);
+  const [modelState, setModelState] = useState<ModelState | null>(null);
   const [accountCreatedAt, setAccountCreatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
@@ -83,17 +120,24 @@ export default function DashboardPage() {
     setLoading(true);
     setFetchError(false);
     try {
-      const res = await fetch('/api/conviction/latest');
-      if (!res.ok) {
+      const [convRes, modelRes] = await Promise.all([
+        fetch('/api/conviction/latest'),
+        fetch('/api/model/state'),
+      ]);
+      if (!convRes.ok) {
         setFetchError(true);
         setAction(null);
         return;
       }
-      const data = await res.json().catch(() => ({}));
+      const data = await convRes.json().catch(() => ({}));
       const createdAt = typeof data?.account_created_at === 'string' ? data.account_created_at : null;
       setAccountCreatedAt(createdAt);
       setIsNewAccount(createdAt !== null && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000);
       setAction(data?.id ? data : null);
+      if (modelRes.ok) {
+        const ms = await modelRes.json().catch(() => null);
+        setModelState(ms ?? null);
+      }
     } catch {
       setFetchError(true);
       setAccountCreatedAt(null);
@@ -203,8 +247,8 @@ export default function DashboardPage() {
           <div className="mt-20 text-center">
             {isNewAccount ? (
               <>
-                <p className="text-zinc-400">Your first read arrives tomorrow at 7am Pacific.</p>
-                <p className="text-zinc-600 text-sm mt-2">Foldera is syncing your email and calendar now.</p>
+                <p className="text-zinc-400">Foldera is building your model.</p>
+                <p className="text-zinc-600 text-sm mt-2">It&apos;s reading your email and calendar — your first directive arrives tomorrow at 7am Pacific.</p>
               </>
             ) : (
               <>
@@ -300,6 +344,67 @@ export default function DashboardPage() {
         {/* Footer — only when directive shown */}
         {!loading && !done && action && (
           <p className="text-xs text-zinc-600 text-center mt-8">Your next read arrives at 7am Pacific</p>
+        )}
+
+        {/* Your model — shown when signal data exists */}
+        {!loading && !done && modelState && modelState.signal_count > 5 && (
+          <div className="mt-8 border border-zinc-800 rounded-2xl p-5">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-semibold tracking-widest text-emerald-500 uppercase">Your model</span>
+              </div>
+              <span className="text-xs text-zinc-600">
+                {modelState.days_active}d · {modelState.signal_count.toLocaleString()} signals
+              </span>
+            </div>
+
+            {/* Top people */}
+            {modelState.top_entities.length > 0 && (
+              <div className="mb-4">
+                <p className="text-[11px] text-zinc-500 uppercase tracking-wide mb-2">People it&apos;s tracking</p>
+                <div className="space-y-1.5">
+                  {modelState.top_entities.slice(0, 3).map((entity, i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <span className="text-sm text-zinc-300">{entity.name}</span>
+                      <span className="text-xs text-zinc-600">
+                        {entity.days_since_contact !== null
+                          ? entity.days_since_contact === 0
+                            ? 'today'
+                            : `${entity.days_since_contact}d ago`
+                          : `${entity.total_interactions} interactions`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Behavioral insights */}
+            {modelState.behavioral_insights.length > 0 && (
+              <div className="mb-4 bg-zinc-900 rounded-xl p-3">
+                <p className="text-[11px] text-zinc-500 uppercase tracking-wide mb-2">What it inferred</p>
+                {modelState.behavioral_insights.slice(0, 2).map((insight, i) => (
+                  <p key={i} className="text-xs text-zinc-400 leading-relaxed">
+                    ▸ {insight.label}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {/* Learning stats */}
+            <div className="flex items-center gap-4 text-xs text-zinc-600">
+              {modelState.approval_stats.approval_rate !== null && (
+                <span>Approve rate: {modelState.approval_stats.approval_rate}%</span>
+              )}
+              {modelState.avg_confidence_last_7d !== null && modelState.avg_confidence_last_30d !== null && (
+                <span>
+                  Conviction: {modelState.avg_confidence_last_30d} → {modelState.avg_confidence_last_7d}
+                </span>
+              )}
+            </div>
+          </div>
         )}
       </main>
     </div>
