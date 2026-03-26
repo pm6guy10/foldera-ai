@@ -35,12 +35,6 @@ const REQUIRED_COLUMNS: [string, string][] = [
   ['tkg_pattern_metrics','user_id'],
 ];
 
-// RPC names — verified by calling with a dummy arg and accepting any non-404 result
-const REQUIRED_RPCS = [
-  'replace_onboarding_goals',
-  'replace_current_priorities',
-  'get_auth_user_id_by_email',
-] as const;
 
 export async function GET() {
   const supabase = createServerClient();
@@ -72,15 +66,20 @@ export async function GET() {
       }
     }
 
-    // RPC existence: missing function returns PGRST202 or similar
-    for (const fn of REQUIRED_RPCS) {
+    // RPC existence: call each with valid (but harmless) params.
+    // PGRST202 = function not found by PostgREST, 42883 = undefined function.
+    const rpcCalls: Array<{ fn: string; params: Record<string, unknown> }> = [
+      { fn: 'get_auth_user_id_by_email',  params: { lookup_email: '__health_check__' } },
+      // null-UUID rows don't exist, so delete/update is a safe no-op
+      { fn: 'replace_onboarding_goals',   params: { p_user_id: '00000000-0000-0000-0000-000000000000', p_rows: '[]' } },
+      { fn: 'replace_current_priorities', params: { p_user_id: '00000000-0000-0000-0000-000000000000', p_rows: '[]' } },
+    ];
+    for (const { fn, params } of rpcCalls) {
       try {
-        const { error } = await supabase.rpc(fn as 'get_auth_user_id_by_email', { lookup_email: '__health__' } as never);
-        // PGRST202 = function not found, 42883 = function does not exist
+        const { error } = await supabase.rpc(fn as 'get_auth_user_id_by_email', params as never);
         if (error?.code === 'PGRST202' || error?.code === '42883') {
           schemaErrors.push(`rpc missing: ${fn}`);
         }
-        // Any other error (e.g. wrong args for replace_* rpcs) just means it exists
       } catch {
         schemaErrors.push(`rpc check failed: ${fn}`);
       }
