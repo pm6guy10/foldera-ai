@@ -7,6 +7,7 @@
  * Feedback is written to tkg_signals with idempotent keys.
  */
 
+import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { executeAction } from '@/lib/conviction/execute-action';
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
       result: result.result,
     });
   } catch (error) {
+    Sentry.captureException(error, { tags: { route: 'conviction/execute', userId } });
     console.error('[conviction/execute] execute failed:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Execution failed' }, { status: 500 });
   }

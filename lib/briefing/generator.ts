@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
 import type {
@@ -2661,6 +2662,7 @@ export async function generateDirective(
     return directive;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    Sentry.captureException(error, { tags: { scope: 'generator', userId: userId?.substring(0, 8) } });
     console.error(`[generator] generateDirective failed: ${errorMessage}`);
     logStructuredEvent({
       event: 'directive_generation_failed', level: 'error', userId,

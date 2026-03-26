@@ -5,6 +5,7 @@
  * Use in every API route for 500/404 and for any catch that returns to the client.
  */
 
+import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
 
 const GENERIC_MESSAGE = 'Internal server error';
@@ -29,6 +30,10 @@ export function apiError(
   const logLine = context
     ? `[${context}] ${message}`
     : message;
+  Sentry.captureException(err instanceof Error ? err : new Error(message), {
+    tags: { context: context ?? 'unknown' },
+    extra: { requestId },
+  });
   if (requestId) {
     console.error(logLine, { requestId });
   } else {

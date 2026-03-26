@@ -11,6 +11,7 @@
  * Schedule: 0 11 * * * (4am PT / 11:00 UTC)
  */
 
+import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { getAllUsersWithProvider } from '@/lib/auth/user-tokens';
@@ -69,6 +70,7 @@ async function stageSyncMicrosoft(): Promise<SyncResult> {
       if (result.error) failed++;
       else succeeded++;
     } catch (err: any) {
+      Sentry.captureException(err);
       console.error(
         JSON.stringify({ event: 'nightly_ops_sync_error', userId, error: err.message }),
       );
@@ -99,6 +101,7 @@ async function stageSyncGoogle(): Promise<SyncResult> {
       if (result.error) failed++;
       else succeeded++;
     } catch (err: any) {
+      Sentry.captureException(err);
       console.error(
         JSON.stringify({ event: 'nightly_ops_sync_error', provider: 'google', userId, error: err.message }),
       );
@@ -356,6 +359,7 @@ async function handler(request: NextRequest) {
     stages.signal_retention_cleanup = cleanupResult;
     console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'signal_retention_cleanup', ...cleanupResult }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.signal_retention_cleanup = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'signal_retention_cleanup', error: err.message }));
   }
@@ -373,6 +377,7 @@ async function handler(request: NextRequest) {
       ok: ceilingResult.ok,
     }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.commitment_ceiling_pre = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'commitment_ceiling_pre', error: err.message }));
   }
@@ -389,6 +394,7 @@ async function handler(request: NextRequest) {
     };
     console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'token_refresh_pre', ok: true }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.token_refresh_pre = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'token_refresh_pre', error: err.message }));
   }
@@ -399,6 +405,7 @@ async function handler(request: NextRequest) {
     stages.sync_microsoft = syncResult;
     console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'sync_microsoft', ...syncResult }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.sync_microsoft = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'sync_microsoft', error: err.message }));
   }
@@ -409,6 +416,7 @@ async function handler(request: NextRequest) {
     stages.sync_google = googleSyncResult;
     console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'sync_google', ...googleSyncResult }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.sync_google = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'sync_google', error: err.message }));
   }
@@ -419,6 +427,7 @@ async function handler(request: NextRequest) {
     stages.connector_health = connectorHealth;
     console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'connector_health', ...connectorHealth }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.connector_health = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'connector_health', error: err.message }));
   }
@@ -429,6 +438,7 @@ async function handler(request: NextRequest) {
     stages.signal_processing = signalResult;
     console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'signal_processing', ...signalResult }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.signal_processing = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'signal_processing', error: err.message }));
   }
@@ -444,6 +454,7 @@ async function handler(request: NextRequest) {
       updated: updatedCount,
     }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.suppressed_commitments = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'suppressed_commitments', error: err.message }));
   }
@@ -454,6 +465,7 @@ async function handler(request: NextRequest) {
     stages.passive_rejection = { ok: true, ...passive };
     console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'passive_rejection', ...passive }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.passive_rejection = { ok: false, skipped: 0, error: err.message };
   }
 
@@ -470,6 +482,7 @@ async function handler(request: NextRequest) {
       console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'credit_canary_pre', pass: false }));
     }
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.credit_canary_pre = { ok: false, error: err.message };
   }
 
@@ -494,6 +507,7 @@ async function handler(request: NextRequest) {
       ok: result.ok,
     }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.daily_brief = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'daily_brief', error: err.message }));
   }
@@ -514,6 +528,7 @@ async function handler(request: NextRequest) {
       alert_sent: healResult.alert_sent,
     }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.self_heal = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'self_heal', error: err.message }));
   }
@@ -536,6 +551,7 @@ async function handler(request: NextRequest) {
       checks_total: gateResult.checks.length,
     }));
   } catch (err: any) {
+    Sentry.captureException(err);
     stages.acceptance_gate = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'acceptance_gate', error: err.message }));
   }
@@ -560,6 +576,7 @@ async function handler(request: NextRequest) {
       (stages as any).goal_abandon = abandonResult;
       console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'goal_abandon', ...abandonResult }));
     } catch (err: any) {
+      Sentry.captureException(err);
       (stages as any).goal_refresh = { ok: false, error: err.message };
       console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'goal_refresh', error: err.message }));
     }
