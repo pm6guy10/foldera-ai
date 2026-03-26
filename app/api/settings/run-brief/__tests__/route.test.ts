@@ -8,6 +8,11 @@ const mockRunDailySend = vi.fn();
 const mockToSafeDailyBriefStageStatus = vi.fn();
 const mockSyncGoogle = vi.fn();
 const mockSyncMicrosoft = vi.fn();
+const mockRunCommitmentCeilingDefense = vi.fn();
+
+vi.mock('@/lib/cron/self-heal', () => ({
+  runCommitmentCeilingDefense: mockRunCommitmentCeilingDefense,
+}));
 
 vi.mock('@/lib/auth/resolve-user', () => ({
   resolveUser: mockResolveUser,
@@ -35,6 +40,7 @@ describe('POST /api/settings/run-brief', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    mockRunCommitmentCeilingDefense.mockResolvedValue(undefined);
     mockApiError.mockImplementation((error: unknown) =>
       NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 }));
     mockSyncGoogle.mockResolvedValue({ gmail_signals: 0, calendar_signals: 0, drive_signals: 0, error: 'no_token' });
