@@ -468,13 +468,17 @@ function buildStructuredContext(
   userGoals?: Array<{ goal_text: string; priority: number; goal_category: string }>,
   goalGapAnalysis?: GoalGapEntry[],
 ): StructuredContext {
-  // Compress supporting signals to max 5
-  const supporting_signals: CompressedSignal[] = signalEvidence.slice(0, 5).map((s) => ({
-    source: s.source,
-    occurred_at: s.date,
-    entity: s.author,
-    summary: [s.subject, s.snippet.slice(0, 150)].filter(Boolean).join(' — '),
-  }));
+  // Sort signals chronologically and take top 3 — full body so the model reads a mini-thread
+  const supporting_signals: CompressedSignal[] = signalEvidence
+    .slice()
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+    .slice(0, 3)
+    .map((s) => ({
+      source: s.source,
+      occurred_at: s.date,
+      entity: s.author,
+      summary: [s.subject, s.snippet].filter(Boolean).join(' — '),
+    }));
 
   // Extract surgical raw facts: emails, dates, names, subjects
   const surgical_raw_facts: string[] = [];
@@ -1400,13 +1404,13 @@ function parseSignalSnippet(
 
   const lines = plaintext.split('\n').filter((l) => l.trim().length > 0);
   const contentLines = lines.filter((l) => !l.match(/^(From|To|Date|Subject|Cc|Bcc|Re|Fwd):/i));
-  const snippet = contentLines.join(' ').slice(0, 300).trim();
+  const snippet = contentLines.join(' ').slice(0, 1400).trim();
 
   return {
     source: (row.source as string) ?? 'unknown',
     date: row.occurred_at ? new Date(row.occurred_at as string).toISOString().slice(0, 10) : 'unknown',
     subject,
-    snippet: snippet || plaintext.slice(0, 300),
+    snippet: snippet || plaintext.slice(0, 1400),
     author: (row.author as string) ?? null,
   };
 }
