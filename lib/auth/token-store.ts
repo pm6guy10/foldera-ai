@@ -40,7 +40,7 @@ export async function getGoogleTokens(userId: string): Promise<GoogleTokens | nu
   // Check if token needs refresh (5 min buffer)
   // expires_at is now normalized to epoch SECONDS by saveUserToken
   if (tokens.expiry_date && tokens.expiry_date < Date.now() / 1000 + 5 * 60) {
-    return await refreshGoogleTokens(userId, tokens);
+    return await refreshGoogleTokens(userId, tokens, row.email ?? undefined);
   }
 
   return tokens;
@@ -49,7 +49,7 @@ export async function getGoogleTokens(userId: string): Promise<GoogleTokens | nu
 /**
  * Refreshes Google tokens and persists to user_tokens.
  */
-async function refreshGoogleTokens(userId: string, tokens: GoogleTokens): Promise<GoogleTokens | null> {
+async function refreshGoogleTokens(userId: string, tokens: GoogleTokens, email?: string): Promise<GoogleTokens | null> {
   try {
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -70,10 +70,12 @@ async function refreshGoogleTokens(userId: string, tokens: GoogleTokens): Promis
     };
 
     // Persist refreshed tokens — saveUserToken normalizes ms to seconds
+    // Pass email through to prevent it being wiped to null on each refresh
     await saveUserToken(userId, 'google', {
       access_token: newTokens.access_token,
       refresh_token: newTokens.refresh_token,
       expires_at: newTokens.expiry_date,
+      email,
     });
 
     return newTokens;
@@ -100,7 +102,7 @@ export async function getMicrosoftTokens(userId: string): Promise<MicrosoftToken
   // Check if token needs refresh (5 min buffer)
   // Microsoft expires_at is stored as epoch seconds
   if (tokens.expires_at && tokens.expires_at < Date.now() / 1000 + 5 * 60) {
-    return await refreshMicrosoftTokens(userId, tokens);
+    return await refreshMicrosoftTokens(userId, tokens, row.email ?? undefined);
   }
 
   return tokens;
@@ -109,7 +111,7 @@ export async function getMicrosoftTokens(userId: string): Promise<MicrosoftToken
 /**
  * Refreshes Microsoft tokens and persists to user_tokens.
  */
-async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens): Promise<MicrosoftTokens | null> {
+async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens, email?: string): Promise<MicrosoftTokens | null> {
   if (!tokens.refresh_token) {
     console.error('[token-store] No refresh token available for Microsoft — user must re-authenticate');
     return null;
@@ -143,10 +145,12 @@ async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens): 
     };
 
     // Persist refreshed tokens to user_tokens
+    // Pass email through to prevent it being wiped to null on each refresh
     await saveUserToken(userId, 'microsoft', {
       access_token: newTokens.access_token,
       refresh_token: newTokens.refresh_token,
       expires_at: newTokens.expires_at,
+      email,
     });
 
     console.log(`[token-store] Microsoft tokens refreshed for user ${userId}`);
