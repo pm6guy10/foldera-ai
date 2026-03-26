@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -153,8 +153,6 @@ export default function SettingsClient() {
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
 
-  // Scope checks removed — no Reconnect button in the UI.
-
   const handleSignOut = async () => {
     try {
       await signOut({ redirect: false, callbackUrl: '/' });
@@ -185,10 +183,12 @@ export default function SettingsClient() {
       <div className="min-h-screen bg-zinc-950">
         <Header />
         <main className="pt-20 pb-8 px-4 max-w-2xl mx-auto">
-          <div className="animate-pulse space-y-3 mt-4">
+          <div className="animate-pulse space-y-3 mt-6">
             <div className="h-4 w-40 bg-zinc-800 rounded" />
-            <div className="h-16 bg-zinc-900 rounded-xl" />
-            <div className="h-16 bg-zinc-900 rounded-xl" />
+            <div className="h-20 bg-zinc-900 rounded-xl" />
+            <div className="h-20 bg-zinc-900 rounded-xl" />
+            <div className="h-4 w-32 bg-zinc-800 rounded mt-4" />
+            <div className="h-24 bg-zinc-900 rounded-xl" />
           </div>
         </main>
       </div>
@@ -218,184 +218,200 @@ export default function SettingsClient() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <Header />
-      <main className="pt-20 pb-8 px-4 max-w-2xl mx-auto">
+      <main className="pt-20 pb-12 px-4 max-w-2xl mx-auto">
 
         {/* Sync status banner */}
         {syncStatus && (
-          <div className="mb-4 px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+          <div className="mb-5 px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
             <p className="text-sm text-cyan-300">{syncStatus}</p>
           </div>
         )}
 
         {actionError && (
-          <p ref={errorRef} className="mb-4 text-sm text-red-400">{actionError}</p>
+          <p ref={errorRef} className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">{actionError}</p>
         )}
 
-        {/* Connected accounts */}
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mb-3">Connected accounts</h2>
+        {/* ── Connected accounts ── */}
+        <SectionHeading>Connected accounts</SectionHeading>
 
-        {/* Google */}
-        <div className={`bg-zinc-900 rounded-xl p-4 flex items-center justify-between border-l-2 ${google?.is_active ? 'border-emerald-500/50' : 'border-zinc-700'}`}>
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <GoogleIcon />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-white">Google</p>
-              <p className={`text-sm ${google?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                {google?.is_active ? (google.sync_email || 'Connected') : 'Not connected'}
-              </p>
-              {google?.is_active && (
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  {sourceCounts['gmail'] ?? 0} Gmail · {sourceCounts['google_calendar'] ?? 0} Calendar · {sourceCounts['drive'] ?? 0} Drive
+        {/* Google card */}
+        <div className={`bg-zinc-900 rounded-xl border border-zinc-800 border-l-2 overflow-hidden ${google?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700'}`}>
+          <div className="p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <GoogleIcon />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white">Google</p>
+                <p className={`text-xs mt-0.5 truncate ${google?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                  {google?.is_active ? (google.sync_email || 'Connected') : 'Not connected'}
                 </p>
-              )}
+              </div>
             </div>
-          </div>
-          {google?.is_active ? (
-            <button
-              onClick={async () => {
-                setDisconnecting('google');
-                setActionError(null);
-                // Optimistic update — swap UI immediately before background refresh
-                setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
-                try {
-                  const response = await fetch('/api/google/disconnect', { method: 'POST' });
-                  if (response.ok) {
-                    refreshIntegrationsStatus().catch(() => {});
-                  } else {
-                    setActionError('Could not disconnect Google. Try again.');
-                    // Revert optimistic update on failure
+            {google?.is_active ? (
+              <button
+                onClick={async () => {
+                  setDisconnecting('google');
+                  setActionError(null);
+                  // Optimistic update
+                  setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
+                  try {
+                    const response = await fetch('/api/google/disconnect', { method: 'POST' });
+                    if (response.ok) {
+                      refreshIntegrationsStatus().catch(() => {});
+                    } else {
+                      setActionError('Could not disconnect Google. Try again.');
+                      await refreshIntegrationsStatus().catch(() => {});
+                    }
+                  } catch {
+                    setActionError('Network error disconnecting Google.');
                     await refreshIntegrationsStatus().catch(() => {});
+                  } finally {
+                    setDisconnecting(null);
                   }
-                } catch {
-                  setActionError('Network error disconnecting Google.');
-                  await refreshIntegrationsStatus().catch(() => {});
-                } finally {
-                  setDisconnecting(null);
-                }
-              }}
-              disabled={disconnecting === 'google'}
-              className="ml-3 shrink-0 text-xs border border-zinc-600 hover:border-zinc-400 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
-            >
-              {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                setConnectingProvider('google');
-                localStorage.setItem('connecting_provider', 'google');
-                window.location.href = '/api/google/connect';
-              }}
-              disabled={connectingProvider === 'google'}
-              className="ml-3 shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
-            >
-              {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
-            </button>
+                }}
+                disabled={disconnecting === 'google'}
+                className="shrink-0 text-xs border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+              >
+                {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setConnectingProvider('google');
+                  localStorage.setItem('connecting_provider', 'google');
+                  window.location.href = '/api/google/connect';
+                }}
+                disabled={connectingProvider === 'google'}
+                className="shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+              >
+                {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
+              </button>
+            )}
+          </div>
+          {google?.is_active && (
+            <div className="px-4 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-800/60">
+              <SourceLine label="Gmail" count={sourceCounts['gmail'] ?? 0} providerActive={true} />
+              <SourceLine label="Calendar" count={sourceCounts['google_calendar'] ?? 0} providerActive={true} />
+              <SourceLine label="Drive" count={sourceCounts['drive'] ?? 0} providerActive={true} />
+            </div>
           )}
         </div>
 
-        {/* Microsoft */}
-        <div className={`mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between border-l-2 ${microsoft?.is_active ? 'border-emerald-500/50' : 'border-zinc-700'}`}>
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <MicrosoftIcon />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-white">Microsoft</p>
-              <p className={`text-sm ${microsoft?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                {microsoft?.is_active ? (microsoft.sync_email || 'Connected') : 'Not connected'}
-              </p>
-              {microsoft?.is_active && (
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  {sourceCounts['outlook'] ?? 0} Mail · {sourceCounts['outlook_calendar'] ?? 0} Calendar · {sourceCounts['onedrive'] ?? 0} OneDrive
+        {/* Microsoft card */}
+        <div className={`mt-3 bg-zinc-900 rounded-xl border border-zinc-800 border-l-2 overflow-hidden ${microsoft?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700'}`}>
+          <div className="p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <MicrosoftIcon />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white">Microsoft</p>
+                <p className={`text-xs mt-0.5 truncate ${microsoft?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                  {microsoft?.is_active ? (microsoft.sync_email || 'Connected') : 'Not connected'}
                 </p>
-              )}
+              </div>
             </div>
-          </div>
-          {microsoft?.is_active ? (
-            <button
-              onClick={async () => {
-                setDisconnecting('microsoft');
-                setActionError(null);
-                // Optimistic update — swap UI immediately before background refresh
-                setIntegrations(prev => prev.map(i =>
-                  i.provider === 'azure_ad' ? { ...i, is_active: false, sync_email: undefined } : i
-                ));
-                try {
-                  const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
-                  if (response.ok) {
-                    refreshIntegrationsStatus().catch(() => {});
-                  } else {
-                    setActionError('Could not disconnect Microsoft. Try again.');
+            {microsoft?.is_active ? (
+              <button
+                onClick={async () => {
+                  setDisconnecting('microsoft');
+                  setActionError(null);
+                  // Optimistic update
+                  setIntegrations(prev => prev.map(i =>
+                    i.provider === 'azure_ad' ? { ...i, is_active: false, sync_email: undefined } : i
+                  ));
+                  try {
+                    const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
+                    if (response.ok) {
+                      refreshIntegrationsStatus().catch(() => {});
+                    } else {
+                      setActionError('Could not disconnect Microsoft. Try again.');
+                      await refreshIntegrationsStatus().catch(() => {});
+                    }
+                  } catch {
+                    setActionError('Network error disconnecting Microsoft.');
                     await refreshIntegrationsStatus().catch(() => {});
+                  } finally {
+                    setDisconnecting(null);
                   }
-                } catch {
-                  setActionError('Network error disconnecting Microsoft.');
-                  await refreshIntegrationsStatus().catch(() => {});
-                } finally {
-                  setDisconnecting(null);
-                }
-              }}
-              disabled={disconnecting === 'microsoft'}
-              className="ml-3 shrink-0 text-xs border border-zinc-600 hover:border-zinc-400 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
-            >
-              {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                setConnectingProvider('microsoft');
-                localStorage.setItem('connecting_provider', 'microsoft');
-                window.location.href = '/api/microsoft/connect';
-              }}
-              disabled={connectingProvider === 'microsoft'}
-              className="ml-3 shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
-            >
-              {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
-            </button>
+                }}
+                disabled={disconnecting === 'microsoft'}
+                className="shrink-0 text-xs border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+              >
+                {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setConnectingProvider('microsoft');
+                  localStorage.setItem('connecting_provider', 'microsoft');
+                  window.location.href = '/api/microsoft/connect';
+                }}
+                disabled={connectingProvider === 'microsoft'}
+                className="shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+              >
+                {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
+              </button>
+            )}
+          </div>
+          {microsoft?.is_active && (
+            <div className="px-4 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-800/60">
+              <SourceLine label="Mail" count={sourceCounts['outlook'] ?? 0} providerActive={true} />
+              <SourceLine label="Calendar" count={sourceCounts['outlook_calendar'] ?? 0} providerActive={true} />
+              <SourceLine label="OneDrive" count={sourceCounts['onedrive'] ?? 0} providerActive={true} />
+            </div>
           )}
         </div>
 
-        {/* Focus areas */}
-        <div className="border-t border-zinc-800 mt-10" />
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mt-4 mb-3">Your focus areas</h2>
-        <div className="bg-zinc-900 rounded-xl p-4">
+        {/* ── Focus areas ── */}
+        <SectionHeading className="mt-10">Your focus areas</SectionHeading>
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
           {activeBuckets.length === 0 && !goalFreeText ? (
             <p className="text-sm text-zinc-500">No focus areas set.</p>
           ) : (
             <>
-              <div className="flex flex-wrap gap-2">
-                {activeBuckets.map((label) => (
-                  <span
-                    key={label}
-                    className="rounded-lg py-1.5 px-3 text-xs font-medium bg-cyan-500/15 border border-cyan-500/50 text-cyan-300"
-                  >
-                    {label}
-                  </span>
-                ))}
-              </div>
+              {activeBuckets.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {activeBuckets.map((label) => (
+                    <span
+                      key={label}
+                      className="rounded-lg py-1.5 px-3 text-xs font-medium bg-cyan-500/15 border border-cyan-500/40 text-cyan-300"
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              )}
               {goalFreeText && (
-                <p className="mt-3 text-sm text-zinc-300">{goalFreeText}</p>
+                <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
+                  <span className="text-zinc-500 text-xs uppercase tracking-wide mr-1.5">Goal:</span>
+                  {goalFreeText}
+                </p>
               )}
             </>
           )}
           <button
             onClick={() => router.push('/onboard?edit=true')}
-            className="mt-3 text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+            className="mt-4 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
           >
-            Edit focus areas
+            Edit focus areas →
           </button>
         </div>
 
-        {/* Subscription */}
-        <div className="border-t border-zinc-800 mt-10" />
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mt-4 mb-3">Subscription</h2>
-        <div className="bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-white">{planLabel}</p>
-            {planDetail && <p className="text-sm text-zinc-500">{planDetail}</p>}
-            {isPro ? (
-              <p className="text-xs text-zinc-500 mt-0.5">Finished artifacts, every morning.</p>
-            ) : (
-              <p className="text-xs text-zinc-400 mt-0.5">Upgrade to unlock finished artifacts.</p>
-            )}
+        {/* ── Subscription ── */}
+        <SectionHeading className="mt-10">Subscription</SectionHeading>
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`px-2.5 py-1 rounded-md text-xs font-semibold ${isPro ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-zinc-700 text-zinc-400 border border-zinc-600'}`}>
+              {planLabel}
+            </div>
+            <div>
+              {planDetail && (
+                <p className={`text-xs font-medium ${subscription?.status === 'past_due' ? 'text-amber-400' : 'text-zinc-400'}`}>
+                  {planDetail}
+                </p>
+              )}
+              <p className="text-xs text-zinc-500">
+                {isPro ? 'Finished artifacts, every morning.' : 'Upgrade to unlock finished artifacts.'}
+              </p>
+            </div>
           </div>
           {!isPro && (
             <button
@@ -416,18 +432,17 @@ export default function SettingsClient() {
                 }
               }}
               disabled={upgrading}
-              className="text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg px-3 py-1.5 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="shrink-0 text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg px-4 py-2 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
               {upgrading ? 'Loading…' : 'Upgrade'}
             </button>
           )}
         </div>
 
-        {/* Daily brief */}
-        <div className="border-t border-zinc-800 mt-10" />
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mt-4 mb-3">Daily brief</h2>
-        <div className="bg-zinc-900 rounded-xl p-4">
-          <p className="text-sm text-zinc-400 mb-3">
+        {/* ── Daily brief ── */}
+        <SectionHeading className="mt-10">Daily brief</SectionHeading>
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
+          <p className="text-sm text-zinc-400 mb-4">
             Sync your email and calendar, then generate and send today&apos;s brief.
           </p>
           <button
@@ -474,7 +489,7 @@ export default function SettingsClient() {
                 setGenerateMessage('Network error — could not reach the server.');
               }
             }}
-            className={`w-full rounded-xl py-3 text-sm font-medium transition-colors ${
+            className={`w-full rounded-xl py-3 text-sm font-semibold transition-colors ${
               generateState === 'loading'
                 ? 'bg-zinc-700 text-zinc-400 cursor-wait'
                 : 'bg-cyan-600 hover:bg-cyan-500 text-white'
@@ -483,29 +498,33 @@ export default function SettingsClient() {
             {generateState === 'loading' ? 'Running sync + generate…' : 'Generate now'}
           </button>
           {generateMessage && (
-            <p className={`mt-2 text-xs ${generateState === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
+            <p className={`mt-3 text-xs leading-relaxed ${generateState === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
               {generateMessage}
             </p>
           )}
         </div>
 
-        {/* Account */}
-        <div className="border-t border-zinc-800 mt-10" />
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mt-4 mb-3">Account</h2>
-        {session?.user?.email && (
-          <p className="text-sm text-zinc-500 mb-3">{session.user.email}</p>
-        )}
+        {/* ── Account ── */}
+        <SectionHeading className="mt-10">Account</SectionHeading>
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 mb-3">
+          {session?.user?.email && (
+            <p className="text-xs text-zinc-500 mb-1">Signed in as</p>
+          )}
+          {session?.user?.email && (
+            <p className="text-sm text-zinc-300 font-medium">{session.user.email}</p>
+          )}
+        </div>
 
         <button
           onClick={handleSignOut}
-          className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl py-3 text-sm font-medium transition-colors"
+          className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-200 rounded-xl py-3 text-sm font-medium transition-colors"
         >
           Sign out
         </button>
 
         <button
           onClick={handleDeleteAccount}
-          className="mt-3 w-full border border-red-900 hover:border-red-700 text-red-400 hover:text-red-300 rounded-xl py-3 text-sm font-medium transition-colors"
+          className="mt-3 w-full border border-red-900/70 hover:border-red-700 bg-red-950/20 hover:bg-red-950/40 text-red-400 hover:text-red-300 rounded-xl py-3 text-sm font-medium transition-colors"
         >
           {deleteConfirm ? 'Tap again to confirm deletion' : 'Delete account'}
         </button>
@@ -519,17 +538,43 @@ export default function SettingsClient() {
   );
 }
 
+function SectionHeading({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <h2 className={`text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3 ${className}`}>
+      {children}
+    </h2>
+  );
+}
+
 function Header() {
   return (
-    <header className="fixed top-0 left-0 right-0 z-10 bg-zinc-950 border-b border-zinc-800 h-14">
+    <header className="fixed top-0 left-0 right-0 z-10 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 h-14">
       <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4">
-        <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors">
+        <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
           <ChevronLeft className="w-5 h-5" />
+          <span className="text-sm">Dashboard</span>
         </Link>
         <span className="text-sm font-semibold text-white">Settings</span>
-        <div className="w-5" />
+        <div className="w-20" />
       </div>
     </header>
+  );
+}
+
+function SourceLine({ label, count, providerActive }: { label: string; count: number; providerActive: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5 text-xs">
+      <span className="text-zinc-500">{label}:</span>
+      <span className={count > 0 ? 'text-zinc-300 font-medium' : 'text-zinc-600'}>
+        {count.toLocaleString()} {count === 1 ? 'signal' : 'signals'}
+      </span>
+      {count === 0 && providerActive && (
+        <span className="text-amber-500/70 text-xs">· awaiting sync</span>
+      )}
+      {count === 0 && !providerActive && (
+        <span className="text-amber-500 text-xs font-medium">· reconnect</span>
+      )}
+    </div>
   );
 }
 
