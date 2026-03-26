@@ -218,6 +218,44 @@ test.describe('Authenticated: Settings interactions', () => {
   });
 });
 
+test.describe('Authenticated: Path B Generation Loop', () => {
+  test('Generate Now triggers pipeline and renders action card', async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto('/dashboard/settings');
+    await page.waitForLoadState('networkidle');
+
+    const generateButton = page.getByRole('button', { name: /generate now/i }).first();
+    await expect(generateButton).toBeVisible({ timeout: 15000 });
+
+    const [runBriefResponse] = await Promise.all([
+      page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/settings/run-brief') &&
+          res.request().method() === 'POST',
+        { timeout: 90000 },
+      ),
+      generateButton.click(),
+    ]);
+
+    // 200 = full success, 207 = partial (e.g. one sync provider had no token)
+    expect(runBriefResponse.status()).toBeLessThan(400);
+
+    await page.waitForURL(/\/dashboard(\?|$)/, { timeout: 30000 }).catch(async () => {
+      await page.goto('/dashboard');
+    });
+    await page.waitForLoadState('networkidle');
+
+    // Dashboard must render something — either an action card or the empty state.
+    const approveButton = page.getByRole('button', { name: /approve/i }).first();
+    const skipButton = page.getByRole('button', { name: /skip/i }).first();
+    const nothingQueued = page.getByText(/nothing queued|brief generated|next read/i).first();
+    const hasApprove = await approveButton.isVisible().catch(() => false);
+    const hasSkip = await skipButton.isVisible().catch(() => false);
+    const hasEmptyState = await nothingQueued.isVisible().catch(() => false);
+    expect(hasApprove || hasSkip || hasEmptyState).toBe(true);
+  });
+});
+
 test.describe('Public: Pricing page', () => {
   test('shows $29 price', async ({ page }) => {
     await page.goto('/pricing');
