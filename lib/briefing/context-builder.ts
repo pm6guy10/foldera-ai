@@ -72,7 +72,8 @@ async function getGreetingSnapshot(userId: string): Promise<GreetingSnapshot> {
       .from('tkg_commitments')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .eq('status', 'active'),
+      .eq('status', 'active')
+      .is('suppressed_at', null),
     supabase
       .from('tkg_goals')
       .select('goal_text, priority, current_priority')
@@ -123,6 +124,7 @@ export async function buildContextBlock(userId: string): Promise<string> {
       .select('id, description, status, due_at')
       .eq('user_id', userId)
       .eq('status', 'active')
+      .is('suppressed_at', null)
       .order('due_at', { ascending: true, nullsFirst: false })
       .limit(20),
     supabase

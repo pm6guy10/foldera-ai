@@ -361,6 +361,7 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
     .select('description, category, made_at')
     .eq('user_id', userId)
     .eq('status', 'active')
+    .is('suppressed_at', null)
     .gte('made_at', ninetyDaysAgo)
     .limit(200);
 
