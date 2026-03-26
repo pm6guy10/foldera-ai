@@ -60,6 +60,21 @@ vi.mock('@/lib/db/client', () => ({
 
       throw new Error(`Unexpected table ${table}`);
     },
+    auth: {
+      admin: {
+        getUserById: async (_userId: string) => ({
+          data: {
+            user: {
+              id: _userId,
+              email: 'b.kapp1010@gmail.com',
+              user_metadata: { name: 'Brandon Kapp', given_name: 'Brandon', family_name: 'Kapp' },
+              email_confirmed_at: new Date().toISOString(),
+            },
+          },
+          error: null,
+        }),
+      },
+    },
   }),
 }));
 
@@ -330,5 +345,64 @@ describe('generateDirective runtime failures', () => {
     expect(directive.action_type).toBe('do_nothing');
     expect(directive.reason).toContain('already exists in the last 7 days');
     expect(anthropicCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not suppress send_message when the user\'s own name appears in a recent action body', async () => {
+    // Simulate the original bug:
+    // A recently-approved action had "Brandon" in its directive text (e.g. "Hi Brandon, the Teo
+    // thank-you is approved"). "Brandon" appears in the NEW candidate's content too (e.g. "Brandon
+    // asked to follow up with Arman"). Without the fix, "Brandon" gets extracted as a candidate
+    // entity from the new winner's narrative, then matches the old action, and suppresses the
+    // directive. With the fix, "Brandon" is filtered out (it's the user's own name) so the
+    // suppression does NOT fire.
+    const scored = buildScorerResult();
+    scored.winner.title = 'Follow up with Arman on the contract proposal';
+    scored.winner.content = 'Arman asked for a status update. Brandon mentioned this was urgent.';
+    scored.winner.relatedSignals = ['Brandon asked Arman about the contract status last week.'];
+    scored.winner.relationshipContext = '- Arman Petrov <arman.petrov@partnerfirm.io> (Partner)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    // Recent action whose directive_text contains "Brandon" (e.g. from a prior signed-off email).
+    // Without the fix, "Brandon" extracted from the new candidate narrative above would match this
+    // action and suppress generation. With the fix it should be filtered.
+    queueTkgActionsResult([
+      {
+        id: 'action-brandon-mention-1',
+        directive_text: 'Brandon approved the Teo thank-you email — send it now.',
+        execution_result: { artifact: { to: 'teo.approved@othercorp.com', body: 'Thank you note sent.' } },
+        generated_at: new Date().toISOString(),
+        status: 'executed',
+      },
+    ]);
+    // checkConsecutiveDuplicate query
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 80 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Send the follow-up to Arman about the contract proposal status.',
+          artifact_type: 'send_message',
+          artifact: {
+            to: 'arman.petrov@partnerfirm.io',
+            subject: 'Contract proposal status update',
+            body: 'Hi Arman,\n\nI wanted to follow up on the contract proposal status.\n\nBest,\nBrandon',
+          },
+          evidence: 'Arman asked for an update and has not received a reply.',
+          why_now: 'One week has passed without a reply.',
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    // Should NOT be suppressed — "Brandon" is the user's own name, not a contact entity.
+    expect(directive.action_type).not.toBe('do_nothing');
+    expect(directive.reason).not.toContain('Brandon');
+    expect(anthropicCreate).toHaveBeenCalled();
   });
 });

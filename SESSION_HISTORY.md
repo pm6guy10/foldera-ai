@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-25 — Filter user's own name from entity conflict suppression guard
+  MODE: AUDIT
+  Commit hash(es): (set after commit)
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`
+  What was verified: read AGENTS.md, CLAUDE.md, lib/briefing/generator.ts before coding; traced data path `extractEntityNamesFromCandidate -> findRecentEntityActionConflict -> entity match -> suppression`; added `fetchUserSelfNameTokens` using `supabase.auth.admin.getUserById` to get user's own name tokens; added `isSelfEntity` guard inside `extractEntityNamesFromCandidate` to filter user-matching entities; added FIX 2 minimum name length check (< 4 chars); updated `generator-runtime.test.ts` mock to include `auth.admin.getUserById`; added test confirming "Brandon" in a recent action body does NOT suppress a new candidate when user's auth metadata includes "Brandon"; `npx vitest run --exclude ".claude/worktrees/**"` passed (126 passed, 23 test files); `npm run build` passed
+  Any unresolved issues: none
+
 - 2026-03-25 — Fix self_feed delete bug + generator hallucination guard
   MODE: AUDIT
   Commit hash(es): (set after commit)

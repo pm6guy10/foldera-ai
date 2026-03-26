@@ -865,19 +865,64 @@ function extractEntityPhraseCandidates(text: string): string[] {
     });
 }
 
+// Fetch name tokens for the authenticated user so they can be excluded from
+// entity conflict suppression. "Brandon" appearing in an email body (as the
+// sender/recipient greeting) must never block a new directive.
+async function fetchUserSelfNameTokens(userId: string): Promise<Set<string>> {
+  const selfTokens = new Set<string>();
+  try {
+    const supabase = createServerClient();
+    const { data } = await supabase.auth.admin.getUserById(userId);
+    const user = data?.user;
+    if (!user) return selfTokens;
+
+    // Pull name tokens from auth metadata (Google/Microsoft populate these).
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const nameFields = [meta['name'], meta['full_name'], meta['given_name'], meta['family_name']];
+    const metaName = nameFields.filter(Boolean).join(' ');
+
+    // Pull tokens from the local part of the email address (e.g. b.kapp1010 → b, kapp).
+    const emailLocal = (user.email ?? '').split('@')[0];
+
+    const combined = `${metaName} ${emailLocal}`;
+    // Split on whitespace, dots, underscores, hyphens, and digits.
+    for (const part of combined.split(/[\s._\-0-9]+/)) {
+      const lower = part.toLowerCase().trim();
+      if (lower.length >= 2) {
+        selfTokens.add(lower);
+      }
+    }
+  } catch {
+    // Non-blocking; if lookup fails we apply no self-filter.
+  }
+  return selfTokens;
+}
+
 function extractEntityNamesFromCandidate(
   winner: ScoredLoop,
   signalEvidence: SignalSnippet[],
+  selfNameTokens: Set<string>,
 ): string[] {
   const byKey = new Map<string, string>();
+
+  const isSelfEntity = (value: string): boolean => {
+    if (selfNameTokens.size === 0) return false;
+    const tokens = normalizeText(value).split(' ').filter((t) => t.length >= 2);
+    // If every meaningful token in this name matches a known self-token, it refers to the user.
+    return tokens.length > 0 && tokens.every((t) => selfNameTokens.has(t));
+  };
 
   const addCandidate = (value: string | null | undefined): void => {
     if (!value) return;
     const normalized = normalizeText(value);
     if (!normalized) return;
+    // FIX 2: Minimum entity name length — full normalized name must be >= 4 chars.
+    if (normalized.length < 4) return;
     const tokens = normalized.split(' ').filter((token) => token.length >= 3);
     if (tokens.length === 0) return;
     if (tokens.every((token) => ENTITY_NAME_STOPWORDS.has(token))) return;
+    // FIX 3: Never add an entity that resolves to the user's own name.
+    if (isSelfEntity(value)) return;
     if (!byKey.has(normalized)) {
       byKey.set(normalized, value.trim());
     }
@@ -2049,7 +2094,8 @@ export async function generateDirective(
     }
 
     if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType)) {
-      const candidateEntities = extractEntityNamesFromCandidate(hydratedWinner, signalEvidence);
+      const selfNameTokens = await fetchUserSelfNameTokens(userId);
+      const candidateEntities = extractEntityNamesFromCandidate(hydratedWinner, signalEvidence, selfNameTokens);
       const recentEntityConflict = await findRecentEntityActionConflict(userId, candidateEntities);
       if (recentEntityConflict.matched) {
         const suppressionReason = `Suppressed: action for "${recentEntityConflict.entityName}" already exists in the last 7 days.`;
