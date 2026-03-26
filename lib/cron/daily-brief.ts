@@ -497,7 +497,9 @@ async function reconcilePendingApprovalQueue(
   for (const row of rows) {
     const artifact = extractArtifact(row.execution_result);
     const isToday = row.generated_at >= todayStart;
+    const isDoNothing = row.action_type === 'do_nothing';
     const isValid =
+      !isDoNothing &&
       artifact !== null &&
       typeof row.confidence === 'number' &&
       row.confidence >= CONFIDENCE_THRESHOLD;
@@ -507,7 +509,9 @@ async function reconcilePendingApprovalQueue(
         row.execution_result && typeof row.execution_result === 'object'
           ? (row.execution_result as Record<string, unknown>)
           : {};
-      const suppressionReason = !isToday
+      const suppressionReason = isDoNothing
+        ? 'Auto-suppressed do_nothing pending action — never send to user.'
+        : !isToday
         ? 'Auto-suppressed stale pending action before daily brief generation.'
         : 'Auto-suppressed invalid pending action before daily brief generation.';
 
