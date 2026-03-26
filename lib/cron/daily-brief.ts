@@ -1425,6 +1425,32 @@ export async function runDailySend(
         continue;
       }
 
+      // Guard: if any action today was already emailed (daily_brief_sent_at set), do not send again.
+      // reconcilePendingApprovalQueue suppresses do_nothing rows to 'skipped', destroying the sent-at
+      // proof on the original row. We must search across all statuses to catch this case.
+      const { data: todayActions } = await supabase
+        .from('tkg_actions')
+        .select('id, execution_result')
+        .eq('user_id', userId)
+        .gte('generated_at', todayStart)
+        .limit(50);
+      const alreadySentAction = (todayActions ?? []).find((row: Record<string, unknown>) => {
+        const er =
+          row.execution_result && typeof row.execution_result === 'object'
+            ? (row.execution_result as Record<string, unknown>)
+            : null;
+        return typeof er?.daily_brief_sent_at === 'string';
+      });
+      if (alreadySentAction) {
+        results.push({
+          code: 'email_already_sent',
+          meta: { action_id: alreadySentAction.id as string },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
       const { data: actions, error: actionsError } = await supabase
         .from('tkg_actions')
         .select('id, action_type, directive_text, reason, confidence, execution_result, generated_at')
