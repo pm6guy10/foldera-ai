@@ -14,7 +14,21 @@ const NOT_FOUND_MESSAGE = 'Not found';
 function getMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === 'string') return err;
+  // Supabase errors are plain objects with a .message property, not instanceof Error
+  if (err && typeof err === 'object' && 'message' in err && typeof (err as Record<string, unknown>).message === 'string') {
+    return (err as { message: string }).message;
+  }
   return String(err);
+}
+
+function toError(err: unknown, message: string): Error {
+  if (err instanceof Error) return err;
+  const e = new Error(message);
+  if (err && typeof err === 'object') {
+    // Preserve Supabase error fields (code, details, hint) as extra context
+    Object.assign(e, err);
+  }
+  return e;
 }
 
 /**
@@ -30,7 +44,7 @@ export function apiError(
   const logLine = context
     ? `[${context}] ${message}`
     : message;
-  Sentry.captureException(err instanceof Error ? err : new Error(message), {
+  Sentry.captureException(toError(err, message), {
     tags: { context: context ?? 'unknown' },
     extra: { requestId },
   });
