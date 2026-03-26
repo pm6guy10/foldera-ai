@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -42,6 +42,7 @@ export default function SettingsClient() {
   const [connectingProvider, setConnectingProvider] = useState<'google' | 'microsoft' | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [upgrading, setUpgrading] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
 
   const refreshIntegrationsStatus = useCallback(async () => {
     const response = await fetch('/api/integrations/status');
@@ -133,6 +134,13 @@ export default function SettingsClient() {
     return () => clearTimeout(t);
   }, [actionError]);
 
+  // Scroll to error when it appears
+  useEffect(() => {
+    if (actionError && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [actionError]);
+
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
 
@@ -216,7 +224,7 @@ export default function SettingsClient() {
         <h2 className="text-lg font-semibold text-white">Connected accounts</h2>
 
         {actionError && (
-          <p className="mt-2 text-sm text-red-400">{actionError}</p>
+          <p ref={errorRef} className="mt-2 text-sm text-red-400">{actionError}</p>
         )}
 
         <div className="mt-3 bg-zinc-900 rounded-xl p-4 flex items-center justify-between">
@@ -413,24 +421,12 @@ export default function SettingsClient() {
                   // Partial success — show what happened
                   const parts: string[] = [];
                   const stages = data.stages as Record<string, any>;
-                  const brief = stages.daily_brief;
+                  const signalFailed = stages.daily_brief?.signal_processing?.status === 'failed';
+                  const genFailed = stages.daily_brief?.ok === false && stages.daily_brief?.generate?.status !== 'skipped' && !signalFailed;
+                  if (signalFailed) parts.push('Signal processing incomplete — directives will improve as backlog clears');
+                  if (genFailed) parts.push('Brief generation failed');
                   if (stages.sync_microsoft?.ok === false) parts.push('Microsoft sync failed');
                   if (stages.sync_google?.ok === false) parts.push('Google sync failed');
-                  if (brief?.ok === false) {
-                    // Distinguish signal processing failure from true generation failure
-                    const sigStatus = brief?.signal_processing?.status;
-                    const genStatus = brief?.generate?.status;
-                    const sendStatus = brief?.send?.status;
-                    if (sigStatus === 'failed') {
-                      parts.push('Signal processing incomplete — brief will improve over time');
-                    } else if (genStatus === 'failed') {
-                      parts.push('Brief generation failed');
-                    } else if (sendStatus === 'failed') {
-                      parts.push('Email send failed');
-                    } else {
-                      parts.push('Brief pipeline had an issue');
-                    }
-                  }
                   if (parts.length > 0) {
                     // Only treat as error if it's a true failure, not just signal backlog
                     const isSignalBacklogOnly =
@@ -438,7 +434,7 @@ export default function SettingsClient() {
                       parts[0].startsWith('Signal processing incomplete');
                     setGenerateState(isSignalBacklogOnly ? 'success' : 'error');
                     setGenerateMessage(parts.join('. ') + '.');
-                  } else if (!data.ok && brief) {
+                  } else if (!data.ok && stages.daily_brief) {
                     setGenerateState('success');
                     setGenerateMessage('Done. No directive today — check back at 7am.');
                   } else {

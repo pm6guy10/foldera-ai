@@ -1,8 +1,0 @@
-{
-  "name": "foldera-verify",
-  "version": "1.59.0-alpha-1771104257000",
-  "timestamp": 1773721611973,
-  "socketPath": "\\\\.\\pipe\\30853bc5fe020dd3-foldera-verify.sock",
-  "cli": {},
-  "userDataDirPrefix": "C:\\Users\\b-kap\\foldera-ai\\output\\localappdata\\ms-playwright\\daemon\\30853bc5fe020dd3\\ud-foldera-verify"
-}
