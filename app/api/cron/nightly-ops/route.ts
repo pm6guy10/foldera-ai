@@ -34,14 +34,13 @@ import { runCommitmentCeilingDefense, runSelfHeal } from '@/lib/cron/self-heal';
 import { runAcceptanceGate } from '@/lib/cron/acceptance-gate';
 import { checkConnectorHealth } from '@/lib/cron/connector-health';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { TEST_USER_ID, SIGNAL_RETENTION_DAYS } from '@/lib/config/constants';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min
 
-const TEST_USER_ID = '22222222-2222-2222-2222-222222222222';
 const STALE_SIGNAL_RESET_BACKLOG_THRESHOLD = 200;
 const STALE_CUTOFF_HOURS = 24;
-const SIGNAL_RETENTION_DAYS = 180;
 
 // ---------------------------------------------------------------------------
 // Stage 1: Microsoft sync (all users)

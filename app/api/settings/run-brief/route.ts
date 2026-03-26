@@ -8,10 +8,9 @@ import {
 import { syncGoogle } from '@/lib/sync/google-sync';
 import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
 import { apiError } from '@/lib/utils/api-error';
-import { runCommitmentCeilingDefense } from '@/lib/cron/self-heal';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 interface ManualSyncStageResult {
   ok: boolean;
@@ -89,22 +88,9 @@ export async function POST(request: Request) {
       runManualSync('google', userId),
     ]);
 
-    // Run ceiling defense before generation so scorer isn't drowning in 900+ commitments
-    try {
-      await runCommitmentCeilingDefense();
-    } catch (err) {
-      console.warn('[run-brief] commitment ceiling defense failed:', err);
-      // Non-blocking — continue to generation
-    }
-
+    // Ceiling defense is a nightly batch (all users). Running it here per-click
+    // was adding 15-30s overhead and causing 504s. Nightly-ops handles it at 4am.
     const brief = await runDailyBrief({ userIds: [userId] });
-
-    // Run ceiling again after signal processing extracted new commitments
-    try {
-      await runCommitmentCeilingDefense();
-    } catch (err) {
-      console.warn('[run-brief] post-brief commitment ceiling defense failed:', err);
-    }
 
     let send = brief.send;
     let manualSendFallbackAttempted = false;
