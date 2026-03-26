@@ -11,7 +11,7 @@ import * as path from 'path';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-export const MOCK_USER_ID = 'test-user-00000000-0000-0000-0000-000000000001';
+export const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 

@@ -4,7 +4,7 @@ import { encode } from 'next-auth/jwt';
 
 loadEnv({ path: '.env.local' });
 
-const MOCK_USER_ID = 'test-user-00000000-0000-0000-0000-000000000002';
+const MOCK_USER_ID = '00000000-0000-0000-0000-000000000002';
 const SESSION_COOKIE_NAMES = [
   'next-auth.session-token',
   '__Secure-next-auth.session-token',
