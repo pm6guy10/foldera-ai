@@ -88,7 +88,9 @@ export default function SettingsClient() {
         setGoalBuckets(g.buckets ?? []);
         setGoalFreeText(g.freeText ?? null);
       }
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch((err: unknown) => {
+      console.error('[settings] failed to load initial data:', err instanceof Error ? err.message : err);
+    }).finally(() => setLoading(false));
   }, [status]);
 
   // Auto-sync after OAuth connection — makes the product feel alive on day one
@@ -127,8 +129,10 @@ export default function SettingsClient() {
     fetch(syncUrl, { method: 'POST' })
       .then(async (res) => {
         if (res.ok) {
-          const data = await res.json().catch(() => ({}));
-          await refreshIntegrationsStatus().catch(() => {});
+          const data = await res.json().catch(() => ({ total: 0 }));
+          await refreshIntegrationsStatus().catch((err: unknown) => {
+            console.error('[settings] failed to refresh integration status after sync:', err instanceof Error ? err.message : err);
+          });
           const count = data.total ?? 0;
           setSyncStatus(`Synced ${count} signal${count !== 1 ? 's' : ''} from ${provider === 'google' ? 'Google' : 'Microsoft'}.`);
         } else {
@@ -201,13 +205,8 @@ export default function SettingsClient() {
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
 
-  const handleSignOut = async () => {
-    try {
-      await signOut({ redirect: false, callbackUrl: '/' });
-    } catch {
-      // signOut threw (network/CSRF failure) — fall through
-    }
-    window.location.href = '/';
+  const handleSignOut = () => {
+    signOut({ callbackUrl: '/' });
   };
 
   const handleDeleteAccount = async () => {

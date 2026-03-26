@@ -28,6 +28,8 @@ export default function DashboardPage() {
   const [done, setDone] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [isNewAccount, setIsNewAccount] = useState(false);
 
   // Handle ?generated=true from settings run-brief success
   useEffect(() => {
@@ -88,7 +90,9 @@ export default function DashboardPage() {
         return;
       }
       const data = await res.json().catch(() => ({}));
-      setAccountCreatedAt(typeof data?.account_created_at === 'string' ? data.account_created_at : null);
+      const createdAt = typeof data?.account_created_at === 'string' ? data.account_created_at : null;
+      setAccountCreatedAt(createdAt);
+      setIsNewAccount(createdAt !== null && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000);
       setAction(data?.id ? data : null);
     } catch {
       setFetchError(true);
@@ -104,7 +108,8 @@ export default function DashboardPage() {
   }, [load]);
 
   const handleApprove = async () => {
-    if (!action) return;
+    if (!action || executing) return;
+    setExecuting(true);
     try {
       const res = await fetch('/api/conviction/execute', {
         method: 'POST',
@@ -117,11 +122,14 @@ export default function DashboardPage() {
       setFlash('Done. Foldera executed that.');
     } catch (err: unknown) {
       setFlash(err instanceof Error ? err.message : 'Approve failed');
+    } finally {
+      setExecuting(false);
     }
   };
 
   const handleSkip = async () => {
-    if (!action) return;
+    if (!action || executing) return;
+    setExecuting(true);
     try {
       const res = await fetch('/api/conviction/execute', {
         method: 'POST',
@@ -134,6 +142,8 @@ export default function DashboardPage() {
       setFlash('Skipped. Foldera will adjust.');
     } catch (err: unknown) {
       setFlash(err instanceof Error ? err.message : 'Skip failed');
+    } finally {
+      setExecuting(false);
     }
   };
 
@@ -142,9 +152,6 @@ export default function DashboardPage() {
   const isDecision = artifact?.type === 'decision_frame';
   const isWait = artifact?.type === 'wait_rationale';
   const recipient = artifact?.to || artifact?.recipient || '';
-  const isNewAccount =
-    accountCreatedAt !== null &&
-    Date.now() - new Date(accountCreatedAt).getTime() < 24 * 60 * 60 * 1000;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -226,10 +233,10 @@ export default function DashboardPage() {
                 {isEmail && (
                   <div className="bg-zinc-800 rounded-xl p-4">
                     {recipient && (
-                      <p className="text-sm text-zinc-400">To: {recipient}</p>
+                      <p className="text-sm text-zinc-400 truncate">To: {recipient}</p>
                     )}
                     {artifact.subject && (
-                      <p className="text-sm text-white mt-1 font-medium">
+                      <p className="text-sm text-white mt-1 font-medium truncate">
                         Subject: {artifact.subject}
                       </p>
                     )}
@@ -271,14 +278,16 @@ export default function DashboardPage() {
             <div className="mt-6 flex gap-3">
               <button
                 onClick={handleApprove}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-medium transition-colors"
+                disabled={executing}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-medium transition-colors"
               >
-                Approve
+                {executing ? 'Working…' : 'Approve'}
               </button>
               <div className="flex-1 text-center">
                 <button
                   onClick={handleSkip}
-                  className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-3 rounded-xl font-medium transition-colors"
+                  disabled={executing}
+                  className="w-full bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 py-3 rounded-xl font-medium transition-colors"
                 >
                   Skip
                 </button>

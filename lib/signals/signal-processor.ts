@@ -24,8 +24,8 @@ import { isOverDailyLimit } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
-const BATCH_SIZE = 5;
-const DEFAULT_MAX_SIGNALS = 5;
+const BATCH_SIZE = 20;
+const DEFAULT_MAX_SIGNALS = 20;
 const MAX_WARNING_LOGS = 5;
 
 // Sources that write raw signals without entity extraction
