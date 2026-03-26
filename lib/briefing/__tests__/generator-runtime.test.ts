@@ -191,7 +191,8 @@ describe('generateDirective runtime failures', () => {
     const { generateDirective } = await import('../generator');
     const directive = await generateDirective('user-1', { dryRun: true });
 
-    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    // Goal-primacy gate: LLM failure → emptyDirective (sentinel), no wait_rationale delivered
+    expect(directive.directive).toBe('__GENERATION_FAILED__');
     expect(directive.generationLog?.stage).toBe('generation');
     expect(directive.generationLog?.reason).toContain('credit balance too low');
   });
