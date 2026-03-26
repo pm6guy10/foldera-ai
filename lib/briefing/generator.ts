@@ -457,6 +457,8 @@ interface StructuredContext {
   user_identity_context: string | null;
   // Goal-gap analysis (all active goals with behavioral gap)
   goal_gap_analysis: GoalGapEntry[];
+  // Sent mail in last 14d — what the user has already done. Model must not suggest these.
+  already_sent_14d: string[];
   // Behavioral mirrors: anti-patterns + revealed-preference divergences from scorer
   // Surfaced even when they didn't win scoring, so the model can reference them as context
   behavioral_mirrors: string[];
@@ -472,6 +474,7 @@ function buildStructuredContext(
   goalGapAnalysis?: GoalGapEntry[],
   antiPatterns?: import('./scorer').AntiPattern[],
   divergences?: import('./scorer').RevealedGoalDivergence[],
+  alreadySent?: string[],
 ): StructuredContext {
   // Sort signals chronologically and take top 3 — full body so the model reads a mini-thread
   const supporting_signals: CompressedSignal[] = signalEvidence
@@ -608,6 +611,7 @@ function buildStructuredContext(
     researcher_insight: insight,
     user_identity_context: buildUserIdentityContext(userGoals ?? []),
     goal_gap_analysis: goalGapAnalysis ?? [],
+    already_sent_14d: alreadySent ?? [],
     behavioral_mirrors: buildBehavioralMirrors(antiPatterns ?? [], divergences ?? []),
   };
 }
@@ -705,18 +709,28 @@ function checkGenerationEligibility(ctx: StructuredContext): EligibilityResult {
 function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   const sections: string[] = [];
 
-  // Gate 2: Goal-primacy constraint — model may not output any artifact unless it can
-  // complete the sentence below with real data. If it cannot, it must output wait_rationale,
-  // which the pipeline will suppress entirely (no dashboard delivery, no DB write).
+  // Convergent analysis + goal-primacy constraint.
   sections.push(
-    `RULE: You may not output any artifact unless you can complete this sentence ` +
-    `with real data from the context — no placeholders, no inferences:\n\n` +
-    `  "This moves [user] toward [specific goal text] because [specific behavioral gap ` +
-    `from the signals] means [specific action] is the right move on [today's date]."\n\n` +
-    `If you cannot complete that sentence, output wait_rationale with ` +
-    `why_wait = the missing piece (no goal anchor / no behavioral gap / no timing pressure).\n\n` +
-    `If you output wait_rationale, that is not an artifact — it is a signal that the ` +
-    `candidate pool is empty today. Do not deliver it to the user.\n\n` +
+    `CONVERGENT_ANALYSIS:\n` +
+    `You are not a task manager. You are a second brain analyzing someone's life across all domains simultaneously.\n\n` +
+    `The user is intelligent. They have already thought of the obvious moves.\n` +
+    `The only acceptable artifact is one they could not have generated themselves.\n\n` +
+    `Before selecting any artifact type, work through these four questions in order:\n\n` +
+    `1. ALREADY TRIED — Check ALREADY_SENT_14D and RECENT_ACTIONS_7D below.\n` +
+    `   What has the user already done? Any artifact that the user has already attempted — ` +
+    `even reworded — is disqualified. If your candidate appears in either list, discard it and find another angle.\n\n` +
+    `2. NON-OBVIOUS LEVER — What is the second or third move?\n` +
+    `   Not "follow up with X." The thing you only see if you look across ALL signals at once. ` +
+    `What changes the geometry of the problem rather than nudging it?\n\n` +
+    `3. DOMAIN CROSSING — What does career + financial + relationship combined reveal?\n` +
+    `   The stuck feeling lives at the intersection of domains, not inside one of them. ` +
+    `What is visible only when you hold all three simultaneously?\n\n` +
+    `4. COUNTDOWN NOT YET VISIBLE — What deadline or closing window is implied by the situation ` +
+    `but not yet named by the user? Not the date they stated — the one the signals imply.\n\n` +
+    `RULE: You may not fire an artifact unless it passes all four questions. ` +
+    `If you cannot complete the sentence "This moves [user] toward [specific goal] because ` +
+    `[specific non-obvious gap] means [specific action] is right on [today's date]" — ` +
+    `output wait_rationale. wait_rationale is suppressed before delivery. The user sees nothing.\n\n` +
     `If emptyDirective or buildNoSendGenerationLog do not exist, create them as minimal ` +
     `stubs — emptyDirective returns null, buildNoSendGenerationLog writes to console.error only.`,
   );
@@ -780,6 +794,13 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
 
   if (ctx.recent_action_history_7d.length > 0) {
     sections.push(`RECENT_ACTIONS_7D:\n${ctx.recent_action_history_7d.map((a) => `- ${a}`).join('\n')}`);
+  }
+
+  if (ctx.already_sent_14d.length > 0) {
+    sections.push(
+      `ALREADY_SENT_14D (emails the user has already sent — do not suggest these):\n` +
+      ctx.already_sent_14d.map((s) => `- ${s}`).join('\n'),
+    );
   }
 
   // Precomputed booleans
@@ -2240,6 +2261,32 @@ export async function generateDirective(
       console.error(`[generator] goalGapAnalysis failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 
+    // Fetch sent mail from last 14d — model needs to know what user has already done
+    const alreadySent: string[] = [];
+    try {
+      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: sentRows } = await supabase
+        .from('tkg_signals')
+        .select('content, occurred_at')
+        .eq('user_id', userId)
+        .eq('type', 'email_sent')
+        .gte('occurred_at', fourteenDaysAgo)
+        .order('occurred_at', { ascending: false })
+        .limit(15);
+      for (const row of sentRows ?? []) {
+        const dec = decryptWithStatus(row.content as string ?? '');
+        if (dec.usedFallback) continue;
+        const decText = dec.plaintext;
+        const lines = decText.split('\n').filter((l) => l.trim());
+        const subj = lines.find((l) => /^Subject:/i.test(l))?.replace(/^Subject:\s*/i, '').slice(0, 80);
+        const to = lines.find((l) => /^To:/i.test(l))?.replace(/^To:\s*/i, '').slice(0, 60);
+        const date = new Date(row.occurred_at as string).toISOString().slice(0, 10);
+        if (subj || to) alreadySent.push(`[${date}]${to ? ` To: ${to}` : ''}${subj ? ` — ${subj}` : ''}`);
+      }
+    } catch {
+      // non-blocking
+    }
+
     // Part 3: Build structured context
     const ctx = buildStructuredContext(
       hydratedWinner, guardrails, userId, signalEvidence, insight,
@@ -2247,6 +2294,7 @@ export async function generateDirective(
       goalGapAnalysis,
       scored.antiPatterns,
       scored.divergences,
+      alreadySent,
     );
 
     // Part 4: Evidence gating — check eligibility before calling LLM

@@ -526,9 +526,15 @@ async function getActionTypeApprovalRate(
 // ---------------------------------------------------------------------------
 
 /**
- * Extract entity names from candidate content/title, then check if any
- * referenced entity has 3+ consecutive skips in recent tkg_actions.
- * Returns -30 if found, 0 otherwise.
+ * Novelty kill: checks two signals that mean "user already thought of this."
+ *
+ * 1. Sent-mail check — if the user already emailed this entity in the last 14 days,
+ *    the candidate is stale. The system was blind to sent mail; this closes that gap.
+ * 2. Skip threshold — 2+ consecutive skips (down from 3) means the user saw it,
+ *    rejected it, and doesn't want it repackaged. Hard kill.
+ *
+ * Returns -30 (score penalty that triggers exponential suppression) or 0.
+ * Callers that need a hard drop should check the returned value against -30.
  */
 async function getEntitySkipPenalty(
   userId: string,
@@ -537,13 +543,37 @@ async function getEntitySkipPenalty(
 ): Promise<number> {
   const supabase = createServerClient();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Extract person names from candidate
   const names = extractPersonNames(`${candidateTitle} ${candidateContent}`);
   if (names.length === 0) return 0;
 
   try {
-    // Fetch recent skipped/rejected actions to check for consecutive entity skips
+    // --- Check 1: Has user already sent an email to this entity? ---
+    const { data: sentSignals } = await supabase
+      .from('tkg_signals')
+      .select('content')
+      .eq('user_id', userId)
+      .eq('type', 'email_sent')
+      .gte('occurred_at', fourteenDaysAgo)
+      .limit(30);
+
+    if (sentSignals && sentSignals.length > 0) {
+      for (const name of names) {
+        const firstName = name.split(' ')[0].toLowerCase();
+        if (firstName.length < 3) continue;
+        for (const sig of sentSignals) {
+          const dec = decryptWithStatus(sig.content as string ?? '');
+          if (dec.usedFallback) continue;
+          if (dec.plaintext.toLowerCase().includes(firstName)) {
+            // User already emailed this person — this candidate is not novel
+            return -30;
+          }
+        }
+      }
+    }
+
+    // --- Check 2: 2+ consecutive skips = user already considered this ---
     const { data: recentActions } = await supabase
       .from('tkg_actions')
       .select('directive_text, status')
@@ -559,25 +589,22 @@ async function getEntitySkipPenalty(
       const firstName = name.split(' ')[0].toLowerCase();
       if (firstName.length < 3) continue;
 
-      // Find actions mentioning this entity, ordered most-recent-first
-      const entityActions = recentActions.filter((a) => {
-        const text = (a.directive_text as string ?? '').toLowerCase();
-        return text.includes(firstName);
-      });
+      const entityActions = recentActions.filter((a) =>
+        (a.directive_text as string ?? '').toLowerCase().includes(firstName),
+      );
 
-      if (entityActions.length < 3) continue;
+      if (entityActions.length < 2) continue;
 
-      // Count consecutive skips from the most recent action
       let consecutiveSkips = 0;
       for (const a of entityActions) {
-        if ((a.status as string) === 'skipped' || (a.status as string) === 'draft_rejected' || (a.status as string) === 'rejected') {
+        if (['skipped', 'draft_rejected', 'rejected'].includes(a.status as string)) {
           consecutiveSkips++;
         } else {
-          break; // non-skip breaks the streak
+          break;
         }
       }
 
-      if (consecutiveSkips >= 3) return -30;
+      if (consecutiveSkips >= 2) return -30;
     }
 
     return 0;
