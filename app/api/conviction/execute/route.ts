@@ -10,7 +10,6 @@
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { executeAction } from '@/lib/conviction/execute-action';
-import { getSubscriptionStatus } from '@/lib/auth/subscription';
 import { validationError } from '@/lib/utils/api-error';
 import { executeBodySchema } from '@/lib/utils/api-schemas';
 
@@ -28,17 +27,6 @@ export async function POST(request: Request) {
     return validationError(msg);
   }
   const { action_id, decision, skip_reason } = parsed.data;
-
-  // Pro gate: only Pro/trial users can approve. Free users can still skip.
-  if (decision === 'approve') {
-    const sub = await getSubscriptionStatus(userId);
-    if (sub.status !== 'active' && sub.status !== 'active_trial') {
-      return NextResponse.json(
-        { error: 'Upgrade to Pro to execute directives.' },
-        { status: 403 },
-      );
-    }
-  }
 
   try {
     const result = await executeAction({

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/db/client';
+import { checkApiCreditCanary } from '@/lib/cron/acceptance-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,8 +94,23 @@ export async function GET() {
     process.env.ENCRYPTION_KEY
   );
 
+  // ── API credit canary (closes 16-hour blind window between credit exhaustion
+  //    and the 4AM nightly health alert) ──────────────────────────────────────
+  let creditOk = true;
+  let creditError: string | undefined;
+  if (envOk) {
+    try {
+      const canary = await checkApiCreditCanary();
+      creditOk = canary.pass;
+      if (!canary.pass) creditError = canary.detail;
+    } catch (err) {
+      creditOk = false;
+      creditError = err instanceof Error ? err.message : 'canary threw';
+    }
+  }
+
   const schemaOk = schemaErrors.length === 0;
-  const allOk = dbOk && envOk && schemaOk;
+  const allOk = dbOk && envOk && schemaOk && creditOk;
 
   return NextResponse.json({
     status: allOk ? 'ok' : 'degraded',
@@ -102,6 +118,8 @@ export async function GET() {
     db: dbOk,
     env: envOk,
     schema: schemaOk ? 'ok' : 'degraded',
+    credits: creditOk ? 'ok' : 'degraded',
     ...(schemaErrors.length > 0 ? { schema_errors: schemaErrors } : {}),
+    ...(creditError ? { credit_error: creditError } : {}),
   });
 }
