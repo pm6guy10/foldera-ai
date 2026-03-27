@@ -1684,6 +1684,35 @@ async function checkConsecutiveDuplicate(
   }
 }
 
+function isUseful(output: { artifact: string; evidence: string; action: string }): { ok: boolean; reason?: string } {
+  if (!output) return { ok: false, reason: 'no_output' };
+
+  if (!output.artifact || output.artifact.length < 50) {
+    return { ok: false, reason: 'empty_artifact' };
+  }
+
+  if (!output.evidence || output.evidence.length === 0) {
+    return { ok: false, reason: 'no_evidence' };
+  }
+
+  const banned = [
+    'just checking in',
+    'touching base',
+    'wanted to reach out',
+    'following up',
+  ];
+
+  if (banned.some((p) => output.artifact.toLowerCase().includes(p))) {
+    return { ok: false, reason: 'generic_language' };
+  }
+
+  if (!output.action || output.action.length < 5) {
+    return { ok: false, reason: 'no_action' };
+  }
+
+  return { ok: true };
+}
+
 function containsPlaceholderText(value: string): boolean {
   return PLACEHOLDER_PATTERNS.some((p) => p.test(value));
 }
@@ -3073,6 +3102,28 @@ export async function generateDirective(
       return emptyDirective(
         dupReason,
         buildNoSendGenerationLog(dupReason, 'validation', scored.candidateDiscovery),
+      );
+    }
+
+    // Usefulness gate — hard reject before any persistence or send
+    const usefulnessCheck = isUseful({
+      artifact: JSON.stringify(payload.artifact),
+      evidence: payload.evidence,
+      action: payload.directive,
+    });
+    if (!usefulnessCheck.ok) {
+      logStructuredEvent({
+        event: 'usefulness_rejected',
+        level: 'warn',
+        userId,
+        artifactType: payload.artifact_type,
+        generationStatus: 'usefulness_gate_failed',
+        details: { scope: 'generator', reason: usefulnessCheck.reason },
+      });
+      const uselessReason = `Usefulness gate rejected: ${usefulnessCheck.reason}`;
+      return emptyDirective(
+        uselessReason,
+        buildNoSendGenerationLog(uselessReason, 'validation', scored.candidateDiscovery),
       );
     }
 
