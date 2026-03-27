@@ -194,6 +194,14 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-27 — CI flow gate + brief orchestration unification + daily-brief.ts split
+  MODE: AUDIT
+  Commit hash(es): `64674d7` (brief refactor), earlier commits for CI gate
+  Files changed: `lib/cron/daily-brief-types.ts` (new), `lib/cron/daily-brief-status.ts` (new), `lib/cron/daily-brief-generate.ts` (new), `lib/cron/daily-brief-send.ts` (new), `lib/cron/brief-service.ts` (new), `lib/cron/__tests__/brief-service.test.ts` (new), `lib/cron/daily-brief.ts` (rewritten as thin façade), `app/api/settings/run-brief/route.ts`, `app/api/cron/nightly-ops/route.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `playwright.ci.config.ts` (new), `.github/workflows/ci.yml`, `package.json`
+  What was verified: `npm run build` passed; `npx vitest run --exclude ".claude/worktrees/**"` 25 files / 136 tests passed; `npx playwright test --config playwright.ci.config.ts` 34/34 passed (GitHub Actions CI run #75 green)
+  Changes: (1) CI flow gate: new `playwright.ci.config.ts` pins 3 DB-free spec files; `test:ci:e2e` script; CI workflow adds `Install Playwright`, `Generate CI test secret` (ephemeral `NEXTAUTH_SECRET` via openssl), and `E2E flow gate` steps. (2) Brief orchestration unification + split: `daily-brief.ts` (~1856L) split into 5 focused modules + 1 service entrypoint. `lib/cron/brief-service.ts` is now the single authoritative entrypoint for "run brief lifecycle". Both `run-brief` and `nightly-ops` call `runBriefLifecycle()`. `daily-brief.ts` reduced to thin façade (runDailyBrief, autoSkipStaleApprovals, re-exports). All business logic — signal processing, queue reconciliation, no-send persistence, directive generation, send stage, stage formatting — is in the sub-modules.
+  Any unresolved issues: Production E2E (`npm run test:prod`) not run this session — no route contract changes, only internal refactor.
+
 - 2026-03-26 — Infrastructure hardening: shared constants, security fixes, behavioral graph, 504 fix
   MODE: AUDIT
   Commit hash(es): `9be7891`, `6d97588`, `8973b5f`, `c795885`, `83c09c8`, `a57d722`
