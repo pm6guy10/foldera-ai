@@ -258,7 +258,7 @@ async function completeSuppressedCommitments(): Promise<number> {
   const { data: updatedRows, error } = await supabase
     .from('tkg_commitments')
     .update({
-      status: 'completed',
+      status: 'fulfilled',
       updated_at: new Date().toISOString(),
     })
     .not('suppressed_at', 'is', null)
