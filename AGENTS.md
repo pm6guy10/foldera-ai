@@ -62,6 +62,20 @@ This is not optional. No push happens without a session log entry.
 - Do not rebase. Commit only task files. Leave unrelated worktree changes untouched.
 - Push to `main`.
 
+## ABSOLUTE RULE — NO BRANCHES, NO PRs, NO EXCEPTIONS
+
+NEVER create a branch. NEVER create a PR. NEVER use git checkout -b. NEVER use gh pr create.
+
+The only valid final action is:
+  git add -A
+  git commit -m "..."
+  git push origin main
+
+If you are about to create a branch or PR, STOP. Run the three commands above instead.
+If the UI shows "Create PR", do not click it. Run git push origin main in the terminal.
+Brandon is never the middleman. CC never asks Brandon to merge, push, or resolve anything.
+Violating this rule means the session produced zero value regardless of code quality.
+
 ## FLOW Verification Requirement
 
 Any change affecting frontend, auth, onboarding, connectors, or routing must pass the end-to-end flow test suite (tests/e2e/). If E2E tests fail, the task is not complete. Build success is not sufficient.
