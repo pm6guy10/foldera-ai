@@ -100,3 +100,17 @@ Any change affecting frontend, auth, onboarding, connectors, or routing must pas
 - One task per session.
 - No opportunistic refactors, adjacent fixes, or extra docs outside the requested task and required runbook maintenance.
 - If you encounter unrelated issues, mention them only if they block the task or must be logged in the audit.
+
+## Standing Rules Additions (2026-03-20 to 2026-03-26)
+
+- Production Playwright flow commands are now standard: `npm run test:prod`, `npm run test:prod:setup`, and `npm run test:prod:refresh` (commit `fbb1072`, `package.json`, `tests/production/setup-auth.ts`, `tests/production/smoke.spec.ts`, `playwright.prod.config.ts`).
+- Weekly adversarial production audit command exists: `npm run test:audit` (commit `2de4942`, `package.json`, `tests/production/audit.spec.ts`).
+- CI/ops workflows to account for during verification:
+  - `.github/workflows/production-e2e.yml` runs production smoke checks on deploy success, daily schedule, and manual dispatch (commit `371f9ea`).
+  - `.github/workflows/weekly-audit.yml` runs Monday production audit and uploads `tests/production/audit-summary.md`/`audit-report.json` artifacts (commit `2de4942`).
+- New route contracts added:
+  - `GET /api/health` is a schema/env/credit canary JSON contract used by cron health-check and prod smoke tests (commit `e1555d0`, `app/api/health/route.ts`).
+  - `POST /api/dev/stress-test` is a dry-run pipeline stress endpoint for signed-in sessions (commit `9b3e719`, `app/api/dev/stress-test/route.ts`).
+  - `GET /api/model/state` is a read-only behavioral model state endpoint (commit `95c2edf`, `app/api/model/state/route.ts`).
+- Environment variable note: `ALLOW_DEV_ROUTES=true` is required to access dev-only API routes such as `/api/dev/stress-test` (commit `9b3e719`, `app/api/dev/stress-test/route.ts`).
+- Directory structure note: `tests/production/` now contains production auth-state scripts and smoke/audit suites referenced by CI workflows (introduced in commit `fbb1072`, extended in `2de4942`).

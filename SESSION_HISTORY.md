@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-27 — AGENTS.md workflow/command refresh from 7-day commit scan
+  MODE: OPS
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `AGENTS.md`, `SESSION_HISTORY.md`
+  What was verified: `git log --since="2026-03-20"` scan with file-path evidence; `npm run build` (pass); focused scope maintained to AGENTS standing-rule additions only.
+  Any unresolved issues: none
+
 - 2026-03-26 — Add Path B Generation Loop smoke coverage
   MODE: AUDIT
   Commit hash(es): (set after commit)
