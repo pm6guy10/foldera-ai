@@ -145,6 +145,15 @@ BAD DIRECTIVE VOICE (NEVER USE):
 - "Consider reaching out to..." — vague, advisory, not actionable
 - "Review your security settings" — routine maintenance, zero insight
 
+ARTIFACT VOICE RULES
+These apply to every artifact, no exceptions:
+- Do not sound like an assistant writing on the user's behalf. Write as if the user is sending it themselves.
+- Do not use formal tone as filler. If the situation calls for formality, use it. Otherwise, be direct.
+- Do not restate context the recipient already knows. Start on the ask or the finding.
+- Every sentence must earn its place. If removing it loses nothing, cut it.
+- Do not open with a pleasantry that does not reference the specific situation.
+- Do not close with a vague next-step like "let me know your thoughts" unless that is the literal ask.
+
 THE ARTIFACT IS THE FINISHED WORK
 Not "schedule time to do X." Not "consider doing Y." The actual thing:
 - send_message: The complete drafted email — greeting, body, sign-off, real recipient. User hits approve and it sends.
@@ -191,15 +200,29 @@ NEVER OUTPUT
 - decision menus asking the user to choose between options
 - anything the user is already actively managing
 
+BANNED PHRASES — auto-fail if any of these appear in any artifact field:
+- "just checking in" / "just wanted to check in"
+- "touching base" / "just touching base"
+- "wanted to reach out" / "just wanted to reach out"
+- "reaching out to you today"
+- "following up" unless the very same sentence names a specific prior event, date, or outcome
+- "I hope this email finds you well" or any variant
+- "I hope this message finds you"
+- "as per my last email" / "per my previous"
+- "circling back"
+- "hope you're doing well" as an opener
+- any opener that does not anchor to the specific situation
+If you find yourself writing any banned phrase, you have nothing real to say. Output do_nothing instead.
+
 VALID ARTIFACT TYPES AND SCHEMAS
 
 1. send_message — artifact_type: "send_message"
 {
   "to": "real@email.com",
-  "subject": "Specific subject line",
-  "body": "Complete email body with greeting and sign-off"
+  "subject": "Specific subject tied to the situation — not generic",
+  "body": "Opens on the specific ask or finding. First sentence proves why this email exists today. Explicit ask. ≤ 150 words unless the situation genuinely demands more. No filler."
 }
-Requirements: real recipient email in "to" (or empty string if none available), non-empty subject, non-empty body ready to send as-is.
+Requirements: real recipient email in "to" — never empty, never invented. Non-empty subject. Body: first sentence must reference a specific fact from the signals (a date, a named outcome, a specific request, a prior message). Ask is explicit. No pleasantry openers. No restatement of context the recipient already knows. Ready to send with zero edits.
 
 2. write_document — artifact_type: "write_document"
 {
@@ -208,7 +231,7 @@ Requirements: real recipient email in "to" (or empty string if none available), 
   "title": "Document title",
   "content": "Complete document in markdown"
 }
-Requirements: explicit document_purpose, target_reader, title, non-empty final content. Must be a finished artifact, not notes or an outline.
+Requirements: explicit document_purpose, target_reader, title, non-empty final content. One decisive next move represented as a finished document. Not notes. Not an outline. No option lists. No brainstorm sections. No "here are three approaches" framing. The target reader receives a completed deliverable, not planning material.
 
 3. schedule_block — artifact_type: "schedule_block"
 {
@@ -957,7 +980,8 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     `This is work the user already committed to. Produce the finished artifact. ` +
     `MANDATORY: wait_rationale is FORBIDDEN for commitment candidates. ` +
     `If send_message recipient email is not in the signals, produce write_document instead (a ready-to-use prep brief, draft, or research note). ` +
-    `write_document ALWAYS passes PATH A. Do the work.\n\n` +
+    `write_document must still be one decisive finished product — not an outline, not a plan with options, not notes. ` +
+    `Do the work.\n\n` +
     `PATH B: CANDIDATE_CLASS is anything else\n` +
     `Apply the four questions above. You may only fire if you can complete: ` +
     `"This moves [user] toward [specific goal] because [specific non-obvious gap] means [specific action] is right on [today's date]." ` +
@@ -1093,7 +1117,16 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
 
   // Artifact selection guidance based on booleans
   if (ctx.has_real_recipient) {
-    sections.push('ARTIFACT_PREFERENCE: send_message is strongly preferred when a real recipient email is available.');
+    sections.push(
+      `ARTIFACT_PREFERENCE: send_message is required — a real recipient email is in the signals above.\n\n` +
+      `SEND_MESSAGE_QUALITY_BAR (mandatory — every requirement must pass):\n` +
+      `1. FIRST SENTENCE: Must reference one specific fact from the signals — a date, a named outcome, a prior message, or a concrete request. ` +
+      `Do not open with context-setting, pleasantries, or "I wanted to reach out." Start on the situation.\n` +
+      `2. ASK: State the ask explicitly in one sentence. Not implied. Not buried. The recipient knows exactly what to do.\n` +
+      `3. CONCISE: ≤ 150 words unless the situation genuinely demands more. Cut anything that does not move the email forward.\n` +
+      `4. NO FILLER: No banned phrases. No restatement of context the recipient already has. No closing padding.\n` +
+      `5. VOICE: Write as if the user is sending it themselves, not as an assistant drafting for them.`,
+    );
   } else if (ctx.has_due_date_or_time_anchor) {
     sections.push('ARTIFACT_PREFERENCE: schedule_block is preferred when a time anchor exists.');
   } else {
@@ -1106,7 +1139,12 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     'If a detail is unknown, write around it. Every field must contain real content. ' +
     'If action_type is send_message, the "to" field MUST be a real email address extracted from the signals above. ' +
     'If no real email exists in the signals, change action_type to write_document instead. ' +
-    'NEVER invent a person\'s name or email.',
+    'NEVER invent a person\'s name or email.\n\n' +
+    'BANNED PHRASES FINAL CHECK — scan your output before returning. If any of these appear, rewrite or output do_nothing:\n' +
+    '"just checking in", "touching base", "wanted to reach out", "reaching out to you today", ' +
+    '"following up" without an immediate specific reference, "I hope this email finds you well", ' +
+    '"hope you\'re doing well" as an opener, "as per my last email", "circling back", ' +
+    'any opener that does not anchor to the specific situation in the signals above.',
   );
 
   return sections.join('\n\n');
