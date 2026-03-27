@@ -583,8 +583,15 @@ async function syncFiles(
     const ext = getFileExtension(file.name ?? "");
 
     // Extract text content from Word docs and plain text files
+    // Skip DOCX files larger than 500KB — mammoth parsing on large binaries can add 30s+ of latency
+    const DOCX_MAX_PARSE_BYTES = 500 * 1024;
     let fileContent = "";
-    if (ext === ".docx" || TEXT_FILE_EXTENSIONS.has(ext)) {
+    if (ext === ".docx" && (file.size ?? 0) <= DOCX_MAX_PARSE_BYTES) {
+      const text = await downloadFileContent(accessToken, file.id, ext);
+      if (text) {
+        fileContent = `\nContent: ${text}`;
+      }
+    } else if (TEXT_FILE_EXTENSIONS.has(ext)) {
       const text = await downloadFileContent(accessToken, file.id, ext);
       if (text) {
         fileContent = `\nContent: ${text}`;

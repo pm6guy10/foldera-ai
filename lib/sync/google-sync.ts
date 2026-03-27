@@ -246,11 +246,14 @@ function getDriveFileExtension(name: string): string {
  * - .txt, .md: download raw content.
  * - .docx, .pdf: metadata only (binary parsing not available).
  */
+const DOCX_MAX_PARSE_BYTES = 500 * 1024; // 500KB — skip larger files to avoid mammoth latency
+
 async function downloadDriveFileContent(
   oauth2: ReturnType<typeof getOAuth2Client>,
   fileId: string,
   mimeType: string,
   fileName: string,
+  fileSize?: number,
 ): Promise<string | null> {
   const drive = google.drive({ version: 'v3', auth: oauth2 });
 
@@ -269,7 +272,9 @@ async function downloadDriveFileContent(
     const ext = getDriveFileExtension(fileName);
 
     // Word documents — download binary and extract text with mammoth
+    // Skip large files to prevent blocking sync for 30+ seconds
     if (ext === '.docx') {
+      if (fileSize && fileSize > DOCX_MAX_PARSE_BYTES) return null;
       const res = await drive.files.get(
         { fileId, alt: 'media' },
         { responseType: 'arraybuffer' },
@@ -362,7 +367,7 @@ async function syncDrive(
 
       // Download text content when possible
       let fileContentSnippet = '';
-      const textContent = await downloadDriveFileContent(oauth2, file.id, mimeType, fileName);
+      const textContent = await downloadDriveFileContent(oauth2, file.id, mimeType, fileName, file.size ? Number(file.size) : undefined);
       if (textContent) {
         fileContentSnippet = `\nContent: ${textContent}`;
       }

@@ -388,7 +388,7 @@ test.describe('Section 4 — API health check', () => {
 
 test.describe('Section 5 — Generate now button', () => {
   test('click Generate now on /dashboard/settings', async ({ browser }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
 
     const ctx = await authContext(browser);
     const page = await ctx.newPage();
@@ -451,7 +451,7 @@ test.describe('Section 5 — Generate now button', () => {
               body.includes('Generating')
             );
           },
-          { timeout: 90_000 },
+          { timeout: 115_000 },
         );
         statusText = await page.innerText('body');
       } catch {

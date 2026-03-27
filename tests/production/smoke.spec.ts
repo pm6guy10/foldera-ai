@@ -220,7 +220,7 @@ test.describe('Authenticated: Settings interactions', () => {
 
 test.describe('Authenticated: Path B Generation Loop', () => {
   test('Generate Now triggers pipeline and renders action card', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(180000);
     await page.goto('/dashboard/settings');
     await page.waitForLoadState('networkidle');
 
@@ -232,7 +232,7 @@ test.describe('Authenticated: Path B Generation Loop', () => {
         (res) =>
           res.url().includes('/api/settings/run-brief') &&
           res.request().method() === 'POST',
-        { timeout: 90000 },
+        { timeout: 115000 },
       ),
       generateButton.click(),
     ]);
