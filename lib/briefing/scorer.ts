@@ -2697,8 +2697,12 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const entities = entitiesRes.data ?? [];
   // Filter out onboarding placeholder goals — only extracted, manual, and onboarding_stated goals feed the scorer
   const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker']);
+  // Also filter out any constraint-note rows that slipped into the scoring pool with priority >= 3.
+  // These should live at priority 1-2 as suppression goals; if miscategorized they corrupt scoring.
+  const CONSTRAINT_NOTE_PREFIX = /^(DO NOT|Check |Reference slate|Build Foldera in overflow)/i;
   const goals = ((goalsRes.data ?? []) as Array<GoalRow & { source?: string }>)
-    .filter((g) => !PLACEHOLDER_GOAL_SOURCES.has(g.source ?? '')) as GoalRow[];
+    .filter((g) => !PLACEHOLDER_GOAL_SOURCES.has(g.source ?? ''))
+    .filter((g) => !CONSTRAINT_NOTE_PREFIX.test(g.goal_text)) as GoalRow[];
   const goalKeywordIndex = buildGoalKeywordIndex(goals);
   logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
 
@@ -3037,28 +3041,42 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   let scored: ScoredLoop[] = [];
   const approvalHistory = await getApprovalHistory(userId);
 
+  // Contact action types — suppression goals that reference a person/entity only
+  // block outreach actions, not document/research/decision artifacts.
+  const CONTACT_ACTION_TYPES = new Set<ActionType>(['send_message', 'schedule']);
+
   for (const c of candidates) {
     // Check suppression goals BEFORE scoring — zero the score if matched
     const candidateText = `${c.title} ${c.content}`.toLowerCase();
-    let isSuppressed = false;
+    let suppressedByGoal: string | null = null;
     for (const { pattern, goalText } of suppressionEntities) {
       if (pattern.test(c.title) || pattern.test(c.content)) {
-        suppressedCandidates++;
-        isSuppressed = true;
-        logStructuredEvent({
-          event: 'candidate_suppressed',
-          level: 'info',
-          userId,
-          artifactType: artifactTypeForAction(c.actionType),
-          generationStatus: 'suppressed_by_goal',
-          details: {
-            scope: 'scorer',
-            candidate_title: c.title.slice(0, 100),
-            suppression_goal: goalText.slice(0, 120),
-          },
-        });
+        suppressedByGoal = goalText;
         break;
       }
+    }
+
+    // Only apply entity suppression to contact-type actions (send_message, schedule).
+    // Non-contact artifacts (write_document, research, make_decision) for the same
+    // entity are still valid — e.g. "prepare MAS3 interview doc" should score normally
+    // even if "DO NOT contact Yadira about MAS3" is a suppression goal.
+    const isSuppressed = suppressedByGoal !== null && CONTACT_ACTION_TYPES.has(c.actionType);
+
+    if (suppressedByGoal !== null) {
+      suppressedCandidates++;
+      logStructuredEvent({
+        event: isSuppressed ? 'candidate_suppressed' : 'candidate_suppression_skipped',
+        level: 'info',
+        userId,
+        artifactType: artifactTypeForAction(c.actionType),
+        generationStatus: isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+        details: {
+          scope: 'scorer',
+          candidate_title: c.title.slice(0, 100),
+          suppression_goal: suppressedByGoal.slice(0, 120),
+          action_type: c.actionType,
+        },
+      });
     }
 
     if (isSuppressed) {
