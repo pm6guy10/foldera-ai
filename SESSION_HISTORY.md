@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-03-27 — Outlook/signal ingestion hygiene: junk gate, commitment eligibility, suppression guard, schema fix, learning quarantine
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `lib/signals/signal-processor.ts`, `lib/briefing/scorer.ts`, `lib/signals/__tests__/signal-hygiene.test.ts`, `supabase/migrations/20260327000001_add_outcome_closed.sql`, `supabase/migrations/20260327000002_cleanup_malformed_suppressions.sql`
+  What was verified: `npm run build` passed; `npx vitest run --exclude ".claude/worktrees/**"` 28 files / 190 tests passed (21 new hygiene tests all green)
+  Changes: (1) `isJunkEmailSignal()` — signal-level pre-filter for Outlook/Gmail emails; promo/newsletter/spam/security-noise signals still produce entities+topics but ZERO commitments. Junk check runs during the decrypt pass so decrypted content is used. (2) `isEligibleCommitment()` — hard commitment eligibility gate applied to ALL extracted commitments regardless of source; requires real actor, real obligation verb, and non-generic named party. (3) `extractDirectiveEntity()` — removed the n-gram fallback path that produced "anthropicapikey", "a 30", "your stated top goal" etc. as entity keys; now returns null if no proper noun is found. (4) `isMalformedSuppressionKey()` + guard in `checkAndCreateAutoSuppressions()` — validates that any new auto-suppression key is a proper noun (has uppercase, length 3-60, no known junk patterns) before insert. (5) `20260327000001_add_outcome_closed.sql` — adds `outcome_closed BOOLEAN` column to `tkg_actions` (fixes scorer/detectAntiPatterns/detectEmergentPatterns schema mismatch); also sets `feedback_weight = 0` on all pre-2026-03-25 skipped actions to quarantine polluted-era learning signals. (6) `20260327000002_cleanup_malformed_suppressions.sql` — deletes existing malformed auto-suppression goals from `tkg_goals` (those with no uppercase entity, entity <3 or >60 chars, or matching known junk patterns).
+  Any unresolved issues: Migrations must be applied to production Supabase DB — requires `npx supabase db push` or manual execution at next maintenance window. Production E2E (`npm run test:prod`) not run this session — no route contract changes, only pipeline-internal extraction logic changed.
+
 - 2026-03-27 — Multi-candidate viability competition + generation prompt tightening
   MODE: AUDIT
   Commit hash(es): pending (set after commit on `main`)

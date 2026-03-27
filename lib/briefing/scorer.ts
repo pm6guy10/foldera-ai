@@ -2050,6 +2050,35 @@ function classifyKillReason(loop: ScoredLoop, winnerScore: number): Deprioritize
  * Looks for the first capitalized multi-word sequence after common action verbs,
  * or falls back to the first capitalized proper noun phrase.
  */
+/**
+ * Returns true if the extracted entity key is too malformed to be used as an
+ * auto-suppression identifier. Malformed keys include:
+ *   - Pure lowercase word-soup from the old fallback n-gram path
+ *   - Keys shorter than 3 characters
+ *   - Keys with no capital letter (not a proper noun)
+ *   - Known junk fragments from the pollution era
+ *   - Keys longer than 60 chars (clearly multi-sentence garbage)
+ */
+function isMalformedSuppressionKey(key: string): boolean {
+  if (!key || key.length < 3) return true;
+  if (key.length > 60) return true;
+  // Must contain at least one capital letter (proper nouns only)
+  if (!/[A-Z]/.test(key)) return true;
+  // Known pollution-era junk patterns
+  const JUNK_SUPPRESSION_PATTERNS = [
+    /anthropic/i,
+    /apikey/i,
+    /your stated/i,
+    /acknowledge that/i,
+    /commitment system/i,
+    /sorry mother/i,
+    /sorry\s+\w+er/i,
+    /\b(a|an|the|for|and|but|or|nor|so|yet|with|from)\s+\d+\b/i, // "a 30", "for 2"
+  ];
+  if (JUNK_SUPPRESSION_PATTERNS.some(p => p.test(key))) return true;
+  return false;
+}
+
 function extractDirectiveEntity(directiveText: string): string | null {
   if (!directiveText) return null;
 
@@ -2075,15 +2104,10 @@ function extractDirectiveEntity(directiveText: string): string | null {
     if (clean.length >= 4 && /^[A-Z]/.test(clean)) return clean;
   }
 
-  // Fallback: normalized first 6 significant words as topic fingerprint
-  const significant = directiveText
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '')
-    .split(/\s+/)
-    .filter(w => w.length >= 4)
-    .slice(0, 6)
-    .join(' ');
-  return significant || null;
+  // NO FALLBACK: the old n-gram fallback produced malformed keys like
+  // "anthropicapikey", "a 30", "your stated top goal", "sorry mother".
+  // If no proper noun or named entity was found, return null and skip suppression.
+  return null;
 }
 
 async function checkAndCreateAutoSuppressions(userId: string): Promise<void> {
@@ -2116,6 +2140,20 @@ async function checkAndCreateAutoSuppressions(userId: string): Promise<void> {
     // For entities with 3+ skips, check if suppression already exists
     for (const [entityKey, { count, actionIds }] of entitySkips) {
       if (count < 3) continue;
+
+      // Hard guard: only create suppressions for real person names, company names,
+      // domains, or job titles. Reject n-gram fragments and malformed tokens.
+      if (isMalformedSuppressionKey(entityKey)) {
+        logStructuredEvent({
+          event: 'auto_suppression_skipped_malformed_key',
+          level: 'warn',
+          userId,
+          artifactType: null,
+          generationStatus: 'auto_suppression_skipped',
+          details: { scope: 'scorer', entity: entityKey, skip_count: count },
+        });
+        continue;
+      }
 
       // Check for existing suppression goal matching this entity
       const { data: existingGoals } = await supabase

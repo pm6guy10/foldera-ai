@@ -375,7 +375,7 @@ const NON_COMMITMENT_PATTERNS = [
   // Calendar events and appointments (personal, no external recipient)
   /\b(appointment|counseling|therapy|doctor|dentist|haircut|pickup|drop.?off|grocery|errand)\b/i,
   // Automated billing and payment notifications
-  /\b(bill\s*payment|payment\s*(?:due|reminder)|auto.?pay|statement\s*(?:ready|available)|account\s*(?:ending|balance)|amount\s*due|update\s*(?:billing|payment)\s*(?:information|method|details))\b/i,
+  /\b(bill\s*payment|payment\s*(?:due|reminder)|auto.?pay|statement\s*(?:ready|available)|account\s*(?:ending|balance)|amount\s*due|update\s*(?:your\s*)?(?:billing|payment)\s*(?:information|method|details))\b/i,
   // System-generated / automated emails
   /\b(no.?reply|noreply|automated|unsubscribe|do.?not.?reply|data\s*export|will\s*be\s*emailed\s*when\s*ready)\b/i,
   // Personal errands
@@ -415,6 +415,112 @@ export function isNonCommitment(description: string): boolean {
   return NON_COMMITMENT_PATTERNS.some((pattern) => pattern.test(description));
 }
 
+// ---------------------------------------------------------------------------
+// Signal-level junk classifier — applied to email/Outlook signals BEFORE
+// commitment extraction. Signals matching these patterns are still processed
+// for entities and topics, but produce ZERO commitments.
+// ---------------------------------------------------------------------------
+
+const JUNK_EMAIL_SUBJECT_PATTERNS = [
+  // Promotional / marketing
+  /\b(?:sale|deal|discount|offer|promo|promotion|coupon|savings?|clearance|limited.?time|special\s+price|% off|off today|shop now|buy now|order now|flash\s+sale|exclusive\s+(?:access|offer|deal|discount))\b/i,
+  // Newsletters and digests
+  /\b(?:newsletter|weekly\s+digest|monthly\s+update|roundup|recap|highlights?|top\s+stories?|daily\s+brief|weekly\s+wrap)\b/i,
+  // Marketing drip / product announcement
+  /\b(?:introducing|announcing|new\s+feature|product\s+update|release\s+notes?|changelog|what['']?s\s+new)\b/i,
+  // Account statements and snapshots (not urgent)
+  /\b(?:account\s+statement|monthly\s+statement|transaction\s+(?:history|summary)|balance\s+summary|statement\s+(?:is\s+)?(?:ready|available)|year.?end\s+summary)\b/i,
+  // Webinar / event spam
+  /\b(?:webinar|virtual\s+event|online\s+summit|register\s+now|save\s+your\s+seat|join\s+us\s+(?:for|on)|recording\s+available|watch\s+(?:the\s+)?replay)\b/i,
+  // Rewards / loyalty noise
+  /\b(?:reward(?:s)?\s+(?:points?|update|summary|earned)|points?\s+(?:earned|available|expire)|loyalty\s+program|member\s+exclusive)\b/i,
+  // Billing noise (account snapshots, not real overdue notices)
+  /\b(?:your\s+(?:bill|invoice|receipt|payment)\s+is\s+(?:ready|available|processed)|payment\s+(?:received|processed|confirmed))\b/i,
+];
+
+const JUNK_EMAIL_SENDER_PATTERNS = [
+  /\b(?:noreply|no-reply|donotreply|do-not-reply|notifications?|alerts?|mailer|newsletter|campaigns?|marketing|promotions?|deals?|offers?)\b/i,
+  // Known bulk/transactional sender domains
+  /\b(?:mailchimp|sendgrid|constantcontact|klaviyo|marketo|hubspot|salesforce\s*email|brevo|campaign\s*monitor)\b/i,
+];
+
+const JUNK_EMAIL_BODY_PATTERNS = [
+  // Unsubscribe indicator (definitive bulk email marker)
+  /\b(?:unsubscribe|manage\s+(?:your\s+)?(?:email\s+)?preferences?|opt\s*out|email\s+preferences?|update\s+preferences?)\b/i,
+  // Promotional body language
+  /\b(?:limited.?time|ends?\s+(?:soon|tonight|sunday|monday)|today\s+only|don['']?t\s+miss|hurry|act\s+now|claim\s+(?:your|this)|exclusive\s+for\s+(?:you|members?))\b/i,
+  // Account / system snapshot noise
+  /\b(?:this\s+is\s+an?\s+automated\s+(?:email|message|notification)|you['']?re\s+receiving\s+this\s+(?:email|message)\s+because)\b/i,
+  // Security-only alerts (no user action required on our side)
+  /\b(?:sign.?in\s+from\s+(?:a\s+)?new\s+device|new\s+sign.?in\s+(?:detected|from)|someone\s+signed\s+in|login\s+attempt|access\s+attempt)\b/i,
+];
+
+/**
+ * Returns true if an email/Outlook signal is junk (promo, newsletter, account
+ * snapshot, spam, or system noise). Junk signals still produce entities and
+ * topics, but NEVER produce commitments.
+ *
+ * Only call this for email-class sources (outlook, gmail).
+ */
+export function isJunkEmailSignal(source: string, content: string): boolean {
+  const emailSources = new Set(['outlook', 'gmail', 'outlook_calendar', 'google_calendar']);
+  if (!emailSources.has(source)) return false;
+
+  // Extract subject line if present
+  const subjectMatch = content.match(/^Subject:\s*(.+)$/im);
+  const subject = subjectMatch?.[1]?.trim() ?? '';
+
+  // Extract From line for sender check
+  const fromMatch = content.match(/^From:\s*(.+)$/im);
+  const from = fromMatch?.[1]?.trim() ?? '';
+
+  if (subject && JUNK_EMAIL_SUBJECT_PATTERNS.some(p => p.test(subject))) return true;
+  if (from && JUNK_EMAIL_SENDER_PATTERNS.some(p => p.test(from))) return true;
+
+  // Body check (first 3000 chars to cap cost)
+  const body = content.slice(0, 3000);
+  if (JUNK_EMAIL_BODY_PATTERNS.some(p => p.test(body))) return true;
+
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Commitment eligibility gate — hard requirements before any commitment is
+// inserted into tkg_commitments, regardless of source or signal type.
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if the extracted commitment meets the minimum bar to be
+ * stored as a real commitment. Requires:
+ *   - A real actor (non-empty "who" that is not a generic placeholder)
+ *   - A real obligation (description long enough to be meaningful)
+ *   - A named relationship (who or to_whom must be a real person token)
+ *   - Not matching any NON_COMMITMENT_PATTERNS (already checked by caller)
+ */
+export function isEligibleCommitment(commitment: { description: string; who?: string; to_whom?: string | null; category?: string }): boolean {
+  const desc = (commitment.description ?? '').trim();
+  // Too short to be meaningful
+  if (desc.length < 12) return false;
+
+  const who = (commitment.who ?? '').trim();
+  const toWhom = (commitment.to_whom ?? '').trim();
+
+  // Must have at least one named party that looks like a real person or org
+  // (not a generic pronoun or empty string)
+  const GENERIC_ACTORS = new Set(['i', 'me', 'you', 'we', 'they', 'it', 'user', 'unknown', 'n/a', '']);
+  const whoIsReal = who.length >= 2 && !GENERIC_ACTORS.has(who.toLowerCase());
+  const toWhomIsReal = toWhom.length >= 2 && !GENERIC_ACTORS.has(toWhom.toLowerCase());
+
+  if (!whoIsReal && !toWhomIsReal) return false;
+
+  // Description must look like an obligation — needs an action verb token
+  // (we check for common action-verb starters; if none found, require category != 'other')
+  const ACTION_VERB_RE = /\b(?:send|submit|review|schedule|call|email|write|deliver|complete|finish|prepare|provide|follow\s*up|respond|reply|draft|sign|pay|confirm|book|present|share|update|approve|decide|fix|resolve|close|meet|discuss|negotiate|file|upload|download|deploy|integrate|implement|configure|notify)\b/i;
+  if (!ACTION_VERB_RE.test(desc) && (commitment.category ?? 'other') === 'other') return false;
+
+  return true;
+}
+
 async function processBatch(
   anthropic: Anthropic,
   supabase: ReturnType<typeof createServerClient>,
@@ -436,6 +542,9 @@ async function processBatch(
   // Build prompt with decrypted signal content, skipping signals that are still ciphertext
   const decryptedBatch: RawSignal[] = [];
   const signalTexts: string[] = [];
+  // Track which signal IDs are junk emails — built during decrypt pass so we
+  // don't need to re-decrypt in the extraction pass.
+  const junkSignalIds = new Set<string>();
   let decryptWarningCount = 0;
 
   for (const s of batch) {
@@ -503,6 +612,13 @@ async function processBatch(
         },
       });
       continue;
+    }
+
+    // Signal-level junk check during decrypt pass (we have decrypted content here).
+    // Junk signals still go to LLM for entity/topic extraction but are flagged
+    // so the commitment gate blocks them in the extraction pass below.
+    if (isJunkEmailSignal(s.source, content)) {
+      junkSignalIds.add(s.id);
     }
 
     decryptedBatch.push(s);
@@ -584,8 +700,11 @@ async function processBatch(
     // that generate future directives about themselves (self-referential loop).
     const isFolderaEmail = isFolderaSender(signal.author, signal.content);
 
+    // Signal-level junk gate: junkSignalIds is built during the decrypt pass above.
+    const signalIsJunk = junkSignalIds.has(signal.id);
+
     if (extraction && !isFolderaEmail) {
-      // Upsert persons → tkg_entities
+      // Upsert persons → tkg_entities (always, even for junk signals)
       for (const person of extraction.persons ?? []) {
         if (!person.name?.trim()) continue;
         const entityId = dryRun
@@ -598,17 +717,21 @@ async function processBatch(
       }
 
       // Insert commitments → tkg_commitments (with quality filter)
-      for (const commitment of extraction.commitments ?? []) {
-        if (!commitment.description?.trim()) continue;
-        if (isNonCommitment(commitment.description)) continue;
-        const commitmentId = dryRun
-          ? `dry-run-commitment-${commitmentIds.length + 1}`
-          : await insertCommitment(
-            supabase, userId, selfId, commitment, signal.id, entityIds,
-          );
-        if (commitmentId) {
-          commitmentIds.push(commitmentId);
-          result.commitments_created++;
+      // Junk signals (promo/newsletter/spam) produce ZERO commitments.
+      if (!signalIsJunk) {
+        for (const commitment of extraction.commitments ?? []) {
+          if (!commitment.description?.trim()) continue;
+          if (isNonCommitment(commitment.description)) continue;
+          if (!isEligibleCommitment(commitment)) continue;
+          const commitmentId = dryRun
+            ? `dry-run-commitment-${commitmentIds.length + 1}`
+            : await insertCommitment(
+              supabase, userId, selfId, commitment, signal.id, entityIds,
+            );
+          if (commitmentId) {
+            commitmentIds.push(commitmentId);
+            result.commitments_created++;
+          }
         }
       }
 
