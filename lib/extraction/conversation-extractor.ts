@@ -527,6 +527,62 @@ export async function extractFromConversation(
     }
   }
 
+  // 8a. Persist extracted outcomes — update matched commitments or insert outcome_confirmed signals
+  if (payload.outcomes && payload.outcomes.length > 0) {
+    const { data: openCommitments } = await supabase
+      .from('tkg_commitments')
+      .select('id, description')
+      .eq('user_id', userId)
+      .is('resolution', null)
+      .eq('status', 'active')
+      .limit(30);
+
+    const tokenize = (s: string): Set<string> =>
+      new Set(s.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w) => w.length > 2));
+
+    const jaccard = (a: Set<string>, b: Set<string>): number => {
+      if (a.size === 0 && b.size === 0) return 1;
+      let intersection = 0;
+      for (const w of a) { if (b.has(w)) intersection++; }
+      return intersection / (a.size + b.size - intersection);
+    };
+
+    for (const outcome of payload.outcomes) {
+      if (!outcome.decision_description || !outcome.result) continue;
+      const outcomeWords = tokenize(outcome.decision_description);
+
+      const match = (openCommitments ?? []).find(
+        (c) => jaccard(tokenize(c.description), outcomeWords) > 0.55,
+      );
+
+      if (match) {
+        await supabase
+          .from('tkg_commitments')
+          .update({
+            status: 'fulfilled',
+            resolution: { outcome: outcome.result, resolvedAt: new Date().toISOString() },
+          })
+          .eq('id', match.id);
+      } else {
+        // No matching commitment — insert as outcome_confirmed signal for scorer context
+        await supabase.from('tkg_signals').insert({
+          user_id: userId,
+          source: 'extraction',
+          source_id: signal.id,
+          type: 'outcome_confirmed',
+          content: encrypt(
+            JSON.stringify({
+              description: outcome.decision_description,
+              result: outcome.result,
+              extractedAt: new Date().toISOString(),
+            }),
+          ),
+          processed: true,
+        });
+      }
+    }
+  }
+
   // 8. Mark signal as processed
   const { error: markProcessedError } = await supabase
     .from('tkg_signals')

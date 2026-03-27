@@ -162,14 +162,32 @@ Not "schedule time to do X." Not "consider doing Y." The actual thing:
 - wait_rationale: When genuinely nothing is hiding, show the user something they didn't know about their own behavior. Example: "You've opened [person]'s last 3 emails without replying. Your approval rate on directives is highest between 9-11am. Tomorrow's brief arrives at 9am."
 
 DECISION FRAMEWORK
-1. Is there evidence the user is AVOIDING this? (opened but didn't reply, commitment aging with no action, goal stated but contradicted by behavior)
-   → No avoidance signal = output wait_rationale
-2. Is there a timing window that makes TODAY the day? (deadline within 7 days, expiring access, relationship about to go cold)
-   → No timing pressure = output wait_rationale
-3. Is the artifact 100% ready to execute? (real email address, complete body, no brackets, no placeholders)
+Before writing any artifact, work through these three gates in order. You must find at least one.
+
+GATE 1 — CONTRADICTION
+Is the user's recent behavior contradicting a stated goal, a past commitment, or their own prior pattern?
+Examples: stated top goal but zero signal activity in that domain for 14+ days; committed to something but no follow-up signals in 10+ days; sent a confident message but subsequent signals show avoidance.
+→ Found one: set decision = ACT, name the contradiction precisely in insight.
+
+GATE 2 — PATTERN SHIFT
+Has something materially changed in the signal pattern in the last 7 days vs. the prior baseline?
+Examples: reply latency to a specific person doubled; email volume in a domain spiked or dropped sharply; a recurring thread went silent after consistent activity.
+→ Found one: set decision = ACT, name the shift and the baseline in insight.
+
+GATE 3 — TIMING EDGE
+Is there a hard window closing soon — deadline within 7 days, expiring access, relationship about to cross a cold threshold, offer or opportunity about to lapse?
+→ Found one: set decision = ACT, name the window and expiry in insight.
+
+If NONE of the three gates produce a concrete, data-backed finding → set decision = HOLD.
+HOLD is not failure. A sharp behavioral observation with decision = HOLD is more valuable than a known task dressed as an insight.
+
+Hard rule: Never output an artifact for something the user already knows.
+If the user could have written this directive from memory → HOLD.
+If the artifact restates anything already in RECENT_ACTIONS_7D or ALREADY_SENT_14D → HOLD.
+If no gate fires → HOLD.
+
+5. Is the artifact 100% ready to execute? (real email address, complete body, no brackets, no placeholders)
    → If the user has to rewrite or complete anything = fail
-4. Would the user say "I already knew that"?
-   → If yes = output wait_rationale. The whole point is surfacing what they can't see.
 
 SCORING YOUR OWN OUTPUT (internal check before responding)
 +5: Surfaces something the user is demonstrably avoiding (opened, not replied, aging commitment)
@@ -184,6 +202,11 @@ SCORING YOUR OWN OUTPUT (internal check before responding)
 -3: Advice, coaching, or strategic framing without a concrete artifact
 
 If your internal score is negative, output wait_rationale instead.
+
+CONFIDENCE GROUNDING
+A CONFIDENCE_PRIOR is provided in every context. It is derived from historical approval rate for this action type and entity-level skip patterns.
+Your output confidence must stay within ±15 of the CONFIDENCE_PRIOR. Do not exceed 95.
+If you have no prior context, default to 55 and do not exceed 70 without strong timing evidence.
 
 CORE PRODUCT RULES
 - One directive only. One artifact only.
@@ -260,13 +283,14 @@ Requirements: why_wait must contain a specific behavioral observation the user d
 Requirements: exact_reason, blocked_by.
 
 OUTPUT FORMAT
-Return strict JSON only:
+Return strict JSON only. Field order matters — write insight and decision BEFORE directive and artifact:
 {
-  "directive": "One sentence that makes the user feel SEEN — names the specific avoidance, hidden deadline, or behavioral pattern",
+  "insight": "The one non-obvious thing the user is missing — a contradiction, a pattern shift, or a timing edge they have not noticed. Must be something they could not have surfaced themselves.",
+  "decision": "ACT | HOLD",
+  "directive": "One sentence that makes the user feel SEEN — names the specific finding from insight",
   "artifact_type": "send_message|write_document|schedule_block|wait_rationale|do_nothing",
   "artifact": {},
-  "evidence": "One sentence naming the decisive signal or pattern",
-  "why_now": "One sentence explaining the timing pressure or behavioral insight"
+  "why_now": "One sentence: what makes this the right moment (deadline, velocity change, relationship inflection)"
 }
 
 CRITICAL: Return ONLY a JSON object. No markdown fences, no explanation, no text before or after the JSON. The response must start with { and end with }.`;
@@ -276,10 +300,13 @@ CRITICAL: Return ONLY a JSON object. No markdown fences, no explanation, no text
 // ---------------------------------------------------------------------------
 
 interface GeneratedDirectivePayload {
+  /** The non-obvious finding: a contradiction, pattern shift, or timing edge */
+  insight: string;
+  /** Explicit analyst decision: ACT to produce an artifact, HOLD to surface the insight only */
+  decision: 'ACT' | 'HOLD';
   directive: string;
   artifact_type: ValidArtifactType;
   artifact: Record<string, unknown>;
-  evidence: string;
   why_now: string;
 }
 
@@ -822,6 +849,8 @@ interface StructuredContext {
   relationship_timeline: string | null;
   // Multi-candidate competition context — why this winner beat the alternatives
   competition_context: string | null;
+  // Confidence prior derived from scorer (actionTypeRate + entityPenalty) — bounds generator guessing
+  confidence_prior: number;
 }
 
 function buildStructuredContext(
@@ -950,8 +979,20 @@ function buildStructuredContext(
   });
   const conflicts_with_locked_constraints = constraintViolations.length > 0;
 
+  // For commitment candidates, prepend entity name(s) from relationshipContext so the model
+  // never has to produce a generic "follow up with [uuid]" directive.
+  let selectedCandidate = winner.content.slice(0, 500);
+  if (winner.type === 'commitment' && winner.relationshipContext) {
+    // Extract first name from the relationship context line (format: "Name <email> | role | ...")
+    const firstNameMatch = winner.relationshipContext.match(/^([^\n<|]+)/);
+    const entityNamePrefix = firstNameMatch ? firstNameMatch[1].trim() : null;
+    if (entityNamePrefix && entityNamePrefix !== 'self') {
+      selectedCandidate = `ENTITY: ${entityNamePrefix}\n${selectedCandidate}`;
+    }
+  }
+
   return {
-    selected_candidate: winner.content.slice(0, 500),
+    selected_candidate: selectedCandidate,
     candidate_class: winner.type,
     candidate_title: winner.title,
     candidate_reason: winner.relatedSignals.slice(0, 2).join('; ').slice(0, 300) || winner.content.slice(0, 200),
@@ -993,6 +1034,7 @@ function buildStructuredContext(
     avoidance_observations: avoidanceObservations ?? [],
     relationship_timeline: buildRelationshipTimeline(signalEvidence, winner.title),
     competition_context: competitionContext ?? null,
+    confidence_prior: winner.confidence_prior,
   };
 }
 
@@ -1234,6 +1276,12 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   }
 
   sections.push(`SCORE: ${ctx.candidate_score.toFixed(2)}`);
+
+  sections.push(
+    `CONFIDENCE_PRIOR: ${ctx.confidence_prior}\n` +
+    `This is derived from historical approval rate for this action type and entity-level skip patterns.\n` +
+    `Your output confidence must stay within ±15 of this prior. Do not exceed 95.`,
+  );
 
   if (ctx.candidate_due_date) {
     sections.push(`DUE_DATE: ${ctx.candidate_due_date}`);
@@ -2214,10 +2262,11 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
   }
 
   return {
+    insight: typeof parsed.insight === 'string' ? parsed.insight : (typeof parsed.evidence === 'string' ? parsed.evidence : ''),
+    decision: parsed.decision === 'HOLD' ? 'HOLD' : 'ACT',
     directive: typeof parsed.directive === 'string' ? parsed.directive : '',
     artifact_type: artifactType,
     artifact,
-    evidence: typeof parsed.evidence === 'string' ? parsed.evidence : '',
     why_now: typeof parsed.why_now === 'string' ? parsed.why_now : '',
   };
 }
@@ -2259,7 +2308,7 @@ function validateGeneratedArtifact(
 
   // Directive text checks
   const directive = validateStringField(payload.directive, 'directive', issues);
-  validateStringField(payload.evidence, 'evidence', issues);
+  validateStringField(payload.insight, 'insight', issues);
   validateStringField(payload.why_now, 'why_now', issues);
 
   if (directive && countSentences(directive) !== 1) {
@@ -2337,8 +2386,8 @@ function validateGeneratedArtifact(
   if (payload.directive && BRACKET_PLACEHOLDER_RE.test(payload.directive)) {
     issues.push('directive contains bracket placeholder text');
   }
-  if (payload.evidence && BRACKET_PLACEHOLDER_RE.test(payload.evidence)) {
-    issues.push('evidence contains bracket placeholder text');
+  if (payload.insight && BRACKET_PLACEHOLDER_RE.test(payload.insight)) {
+    issues.push('insight contains bracket placeholder text');
   }
 
   // Secondary: banned coaching language (backup gate)
@@ -2362,7 +2411,7 @@ function validateGeneratedArtifact(
     userId: ctx.locked_constraints ? 'check' : '',
     directive: payload.directive,
     reason: payload.why_now,
-    evidence: [{ description: payload.evidence }],
+    evidence: [{ description: payload.insight }],
     artifact: payload.artifact,
     actionType: artifactTypeToActionType(payload.artifact_type),
   });
@@ -2434,6 +2483,8 @@ function buildDeterministicWaitRationale(
 ): GeneratedDirectivePayload {
   const tripwireDate = new Date(Date.now() + daysMs(7)).toISOString().slice(0, 10);
   return {
+    insight: `No contradiction, pattern shift, or timing edge found for "${winner.title.slice(0, 80)}".`,
+    decision: 'HOLD',
     directive: `Hold on "${winner.title.slice(0, 60)}" — waiting for new evidence before acting.`,
     artifact_type: 'wait_rationale',
     artifact: {
@@ -2442,20 +2493,20 @@ function buildDeterministicWaitRationale(
       tripwire_date: tripwireDate,
       trigger_condition: 'Fresh signal arrives or deadline passes.',
     },
-    evidence: `Based on: ${winner.title.slice(0, 100)}`,
     why_now: reason,
   };
 }
 
 function buildDeterministicDoNothing(reason: string, blockedBy: string): GeneratedDirectivePayload {
   return {
+    insight: 'No viable candidate met all eligibility checks today.',
+    decision: 'HOLD',
     directive: 'No candidate cleared the threshold for an executable artifact today.',
     artifact_type: 'do_nothing',
     artifact: {
       exact_reason: reason,
       blocked_by: blockedBy,
     },
-    evidence: 'No viable candidate met all eligibility checks.',
     why_now: reason,
   };
 }
@@ -2537,7 +2588,7 @@ function computeDirectiveConfidence(result: ScorerResult): number {
 
 function buildEvidenceItems(result: ScorerResult, payload: GeneratedDirectivePayload): EvidenceItem[] {
   const evidence: EvidenceItem[] = [
-    { type: 'signal', description: payload.evidence.trim() },
+    { type: 'signal', description: payload.insight.trim() },
   ];
 
   if (result.winner.matchedGoal) {
@@ -2556,11 +2607,12 @@ function buildEvidenceItems(result: ScorerResult, payload: GeneratedDirectivePay
 
 function buildFullContext(result: ScorerResult, payload: GeneratedDirectivePayload): string {
   const sections = [
+    // Lead with the analyst insight so it's always the first thing surfaced
+    payload.insight?.trim() ? `INSIGHT: ${payload.insight.trim()}` : '',
+    payload.why_now?.trim() ? `WHY NOW: ${payload.why_now.trim()}` : '',
     `Winning loop: ${result.winner.title}`,
     result.winner.content,
-    payload.evidence.trim(),
-    payload.why_now.trim(),
-  ];
+  ].filter(Boolean);
 
   if (result.winner.relationshipContext) {
     sections.push(`Relationship context:\n${result.winner.relationshipContext}`);
@@ -3063,11 +3115,35 @@ export async function generateDirective(
 
     const payload = payloadResult.payload;
 
-    // Gate 3: wait_rationale means the goal-primacy constraint couldn't be met.
+    // Gate 3a: Explicit analyst HOLD decision.
+    // The model found no contradiction, pattern shift, or timing edge worth acting on.
+    // Preserve the insight as fullContext so the caller can see what the analyst observed.
+    if (payload.decision === 'HOLD') {
+      const holdInsight = payload.insight?.trim() ?? '';
+      const holdWhy = payload.why_now?.trim() ?? '';
+      logStructuredEvent({
+        event: 'generation_hold', level: 'info', userId,
+        artifactType: 'do_nothing', generationStatus: 'analyst_hold_decision',
+        details: { scope: 'generator', insight: holdInsight },
+      });
+      return {
+        directive: GENERATION_FAILED_SENTINEL,
+        action_type: 'do_nothing',
+        confidence: 0,
+        reason: holdInsight || 'No contradiction, pattern shift, or timing edge found today.',
+        evidence: [],
+        fullContext: holdInsight
+          ? `${holdInsight}${holdWhy ? `\n\nWhy wait: ${holdWhy}` : ''}`
+          : undefined,
+        generationLog: buildNoSendGenerationLog('analyst_hold_decision', 'generation', scored.candidateDiscovery),
+      };
+    }
+
+    // Gate 3b: wait_rationale means the goal-primacy constraint couldn't be met.
     // Preserve the model's behavioral insight in fullContext so buildWaitRationale can surface it.
     if (payload.artifact_type === 'wait_rationale') {
       const whyWait = (payload.artifact as Record<string, unknown>)?.why_wait;
-      const modelInsight = typeof whyWait === 'string' ? whyWait.trim() : '';
+      const modelInsight = typeof whyWait === 'string' ? whyWait.trim() : payload.insight?.trim() ?? '';
       logStructuredEvent({
         event: 'generation_skipped', level: 'info', userId,
         artifactType: 'wait_rationale', generationStatus: 'goal_primacy_gate_suppressed',
@@ -3108,7 +3184,7 @@ export async function generateDirective(
     // Usefulness gate — hard reject before any persistence or send
     const usefulnessCheck = isUseful({
       artifact: JSON.stringify(payload.artifact),
-      evidence: payload.evidence,
+      evidence: payload.insight,
       action: payload.directive,
     });
     if (!usefulnessCheck.ok) {

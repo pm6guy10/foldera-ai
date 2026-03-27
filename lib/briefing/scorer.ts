@@ -108,6 +108,13 @@ export interface ScoredLoop {
   compoundLoops?: ScoredLoop[];
   connectionType?: 'same_person' | 'temporal_dependency' | 'resource_conflict';
   connectionReason?: string;
+  /** Lifecycle classification assigned during scoring */
+  lifecycle?: CandidateLifecycle;
+  /**
+   * Confidence prior (0–100) derived from actionTypeRate + entityPenalty.
+   * Passed to the generator prompt to bound free-form confidence guessing.
+   */
+  confidence_prior: number;
 }
 
 export type KillReason = 'noise' | 'not_now' | 'trap';
@@ -119,6 +126,46 @@ export interface DeprioritizedLoop {
   killReason: KillReason;
   /** Human-readable explanation of why this multiplier killed it */
   killExplanation: string;
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle state model — universal classification for goals/threads/candidates
+//
+// Applies across all domains: jobs, relationships, admin, product, finance.
+// Classification runs in the scoring layer; only active_now + actionable
+// candidates may reach generation.
+// ---------------------------------------------------------------------------
+
+/** Primary lifecycle state of a candidate */
+export type LifecycleState =
+  | 'active_now'    // Eligible for generation
+  | 'dormant_later' // In memory/context; blocked from daily output until a reentry trigger fires
+  | 'resolved'      // Outcome reached; blocked unless a new signal reopens it
+  | 'trash';        // Definitively avoided; excluded from candidate pool
+
+/** Time horizon derived from urgency / deadline distance */
+export type TimeHorizon =
+  | 'now'       // urgency >= 0.70 — act today
+  | 'near_term' // urgency 0.40–0.69 — act this week
+  | 'later'     // urgency 0.15–0.39 — watch, not yet
+  | 'never';    // urgency < 0.15 and no deadline — de-prioritised
+
+/** Whether this candidate can produce a generation output right now */
+export type Actionability =
+  | 'actionable'    // Stakes + tractability + urgency all clear — full generation eligible
+  | 'hold_only'     // Important but not ready to act on — blocked from generation; stays in context
+  | 'archive_only'; // No goal alignment — excluded (no-goal-primacy gate also catches these)
+
+export interface CandidateLifecycle {
+  state: LifecycleState;
+  horizon: TimeHorizon;
+  actionability: Actionability;
+  /** For dormant_later: what event would reopen this candidate */
+  reentryTrigger?: 'new_signal' | 'user_action' | 'external_milestone' | 'context_change';
+  /** Whether a reentry trigger fired and promoted this from dormant → active_now */
+  reopenedByReentry?: boolean;
+  /** Human-readable explanation of the classification */
+  reason: string;
 }
 
 export interface ScorerResult {
@@ -1887,6 +1934,8 @@ function mergeLoops(conn: CrossLoopConnection): ScoredLoop {
     compoundLoops: [loopA, loopB],
     connectionType,
     connectionReason: reason,
+    // Use the more conservative (lower) prior of the two constituent loops
+    confidence_prior: Math.min(loopA.confidence_prior, loopB.confidence_prior),
   };
 }
 
@@ -2256,6 +2305,314 @@ async function checkAndCreateAutoSuppressions(userId: string): Promise<void> {
       details: { scope: 'scorer', error: err instanceof Error ? err.message : String(err) },
     });
   }
+}
+
+// ---------------------------------------------------------------------------
+// PRE-SCORING: Context validity filter
+// Hard-rejects candidates with closed/rejected/resolved context before they
+// reach scoring or generation.
+//
+// Three rejection classes:
+//   1. rejection_signal_detected   — tkg_signal of type rejection/outcome_feedback
+//                                    names this entity within last 60 days.
+//   2. commitment_appears_resolved — processed signal from last 7 days contains
+//                                    both the entity name and a resolution keyword.
+//   3. historically_avoided        — 3+ consecutive skips for this entity in 30 days.
+//
+// All rejections log event: action_rejected_invalid_context
+// ---------------------------------------------------------------------------
+
+const RESOLUTION_KEYWORDS = [
+  'reference check complete', 'reference completed', 'reference done',
+  'hired', 'offer accepted', 'job offer', 'offer letter', 'accepted the offer',
+  'position filled', 'no longer needed', 'cancelled', 'withdrawn',
+  'completed', 'already sent', 'already done', 'closed',
+  'rejected the offer', 'declined the offer', 'turned down the offer',
+];
+
+interface ValidityRejection {
+  reason: 'rejection_signal_detected' | 'commitment_appears_resolved' | 'historically_avoided';
+  detail: string;
+}
+
+async function filterInvalidContext(
+  userId: string,
+  candidatePool: Array<{ id: string; type: string; title: string; content: string }>,
+  processedSignals: Array<{ content: string; type?: string; occurred_at?: string }>,
+): Promise<Map<string, ValidityRejection>> {
+  const rejected = new Map<string, ValidityRejection>();
+  if (candidatePool.length === 0) return rejected;
+
+  const supabase = createServerClient();
+  const sixtyDaysAgo = new Date(Date.now() - daysMs(60)).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
+  const sevenDaysAgo = new Date(Date.now() - daysMs(7)).toISOString();
+
+  let rejectionTexts: string[] = [];
+  let recentAllActions: Array<{ directive_text: string; status: string; generated_at: string }> = [];
+
+  try {
+    const [rejectionRes, actionsRes] = await Promise.all([
+      supabase
+        .from('tkg_signals')
+        .select('content')
+        .eq('user_id', userId)
+        .in('type', ['rejection', 'user_feedback', 'outcome_feedback'])
+        .gte('occurred_at', sixtyDaysAgo)
+        .order('occurred_at', { ascending: false })
+        .limit(50),
+      // Fetch all terminal-status actions (approved + skipped) to detect consecutive skip runs
+      supabase
+        .from('tkg_actions')
+        .select('directive_text, status, generated_at')
+        .eq('user_id', userId)
+        .gte('generated_at', thirtyDaysAgo)
+        .in('status', ['approved', 'executed', 'skipped', 'draft_rejected', 'rejected'])
+        .order('generated_at', { ascending: false })
+        .limit(150),
+    ]);
+
+    rejectionTexts = (rejectionRes.data ?? []).flatMap((s) => {
+      const dec = decryptWithStatus(s.content as string ?? '');
+      if (dec.usedFallback) return [];
+      return [dec.plaintext.toLowerCase()];
+    });
+
+    recentAllActions = (actionsRes.data ?? []).map((a) => ({
+      directive_text: (a.directive_text as string) ?? '',
+      status: a.status as string,
+      generated_at: a.generated_at as string,
+    }));
+  } catch {
+    // Non-critical — return empty so scoring continues unblocked
+    return rejected;
+  }
+
+  // Processed signals from last 7 days only for resolution detection
+  const recentResolutionTexts = processedSignals
+    .filter((s) => (s.occurred_at ?? '') >= sevenDaysAgo)
+    .map((s) => s.content.toLowerCase());
+
+  for (const c of candidatePool) {
+    const names = extractPersonNames(`${c.title} ${c.content}`);
+    if (names.length === 0) continue;
+
+    for (const name of names) {
+      const firstName = name.split(' ')[0].toLowerCase();
+      if (firstName.length < 3) continue;
+
+      // --- Check 1: explicit rejection signal names this entity ---
+      if (rejectionTexts.some((text) => text.includes(firstName))) {
+        rejected.set(c.id, {
+          reason: 'rejection_signal_detected',
+          detail: `rejection signal matches entity "${firstName}"`,
+        });
+        logStructuredEvent({
+          event: 'action_rejected_invalid_context',
+          level: 'info',
+          userId,
+          artifactType: null,
+          generationStatus: 'pre_generation_rejected',
+          details: {
+            scope: 'scorer',
+            reason: 'rejection_signal_detected',
+            candidate_id: c.id,
+            candidate_type: c.type,
+            candidate_title: c.title.slice(0, 100),
+            matched_entity: firstName,
+          },
+        });
+        break;
+      }
+
+      // --- Check 2: recent signals show this commitment is resolved ---
+      if (c.type === 'commitment') {
+        const resolved = recentResolutionTexts.some(
+          (text) =>
+            text.includes(firstName) &&
+            RESOLUTION_KEYWORDS.some((kw) => text.includes(kw)),
+        );
+        if (resolved) {
+          rejected.set(c.id, {
+            reason: 'commitment_appears_resolved',
+            detail: `resolution keyword found in recent signal for entity "${firstName}"`,
+          });
+          logStructuredEvent({
+            event: 'action_rejected_invalid_context',
+            level: 'info',
+            userId,
+            artifactType: null,
+            generationStatus: 'pre_generation_rejected',
+            details: {
+              scope: 'scorer',
+              reason: 'commitment_appears_resolved',
+              candidate_id: c.id,
+              candidate_type: c.type,
+              candidate_title: c.title.slice(0, 100),
+              matched_entity: firstName,
+            },
+          });
+          break;
+        }
+      }
+
+      // --- Check 3: 3+ consecutive skips = definitively avoided ---
+      // Walk the most-recent-first action list for this entity.
+      // Any non-skip breaks the streak (user re-engaged after skipping).
+      const entityActions = recentAllActions.filter((a) =>
+        a.directive_text.toLowerCase().includes(firstName),
+      );
+      let consecutiveSkips = 0;
+      for (const a of entityActions) {
+        if (['skipped', 'draft_rejected', 'rejected'].includes(a.status)) {
+          consecutiveSkips++;
+        } else {
+          break; // approved/executed resets the streak
+        }
+      }
+      if (consecutiveSkips >= 3) {
+        rejected.set(c.id, {
+          reason: 'historically_avoided',
+          detail: `${consecutiveSkips} consecutive skips for entity "${firstName}" in last 30 days`,
+        });
+        logStructuredEvent({
+          event: 'action_rejected_invalid_context',
+          level: 'info',
+          userId,
+          artifactType: null,
+          generationStatus: 'pre_generation_rejected',
+          details: {
+            scope: 'scorer',
+            reason: 'historically_avoided',
+            candidate_id: c.id,
+            candidate_type: c.type,
+            candidate_title: c.title.slice(0, 100),
+            matched_entity: firstName,
+            consecutive_skips: consecutiveSkips,
+          },
+        });
+        break;
+      }
+    }
+  }
+
+  return rejected;
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if any signal in the already-fetched pool mentions this
+ * candidate's topic within the last `withinDays` days.
+ * Uses keyword overlap (same approach as getFreshness/getDaysSinceLastSurface).
+ * No additional DB call — operates purely on the in-memory signal array.
+ */
+function hasRecentSignalForCandidate(
+  candidateTitle: string,
+  signals: Array<{ content: string; occurred_at?: string }>,
+  withinDays: number = 7,
+): boolean {
+  const cutoff = Date.now() - daysMs(withinDays);
+  const titleWords = new Set(
+    candidateTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(/\s+/)
+      .filter((w) => w.length >= 4),
+  );
+  if (titleWords.size === 0) return false;
+
+  for (const sig of signals) {
+    const sigMs = new Date(sig.occurred_at ?? 0).getTime();
+    if (sigMs < cutoff) continue;
+    const sigText = sig.content.toLowerCase();
+    const overlap = [...titleWords].filter((w) => sigText.includes(w)).length;
+    if (overlap >= 2 || (overlap >= 1 && titleWords.size <= 2)) return true;
+  }
+  return false;
+}
+
+/**
+ * Deterministically classify a candidate's lifecycle state from already-computed
+ * scoring values. Pure function — no async, no DB.
+ *
+ * Rules (applied in priority order):
+ *
+ * trash         entityPenalty <= -30  AND  urgency < 0.25  AND  no recent signal
+ *               → definitively avoided, hard-remove from pool
+ *
+ * dormant_later urgency < 0.25  AND  no recent signal
+ *               → watching, not acting; can re-enter on new signal
+ *
+ * active_now    everything else that passed filterInvalidContext
+ *
+ * Time horizon  derived from urgency:
+ *   now >= 0.70, near_term >= 0.40, later >= 0.15, never < 0.15
+ *
+ * Actionability derived from stakes + tractability + urgency:
+ *   actionable   stakes >= 2 AND tractability >= 0.35 AND urgency >= 0.25
+ *   hold_only    stakes >= 2 but tractability or urgency below threshold
+ *   archive_only stakes < 2 (no goal alignment)
+ *
+ * Domains covered: jobs, relationships, admin, product, finance, and all others.
+ */
+function classifyLifecycle(args: {
+  urgency: number;
+  stakes: number;
+  tractability: number;
+  entityPenalty: number;
+  hasRecentSignal: boolean;
+}): CandidateLifecycle {
+  const { urgency, stakes, tractability, entityPenalty, hasRecentSignal } = args;
+
+  // Time horizon
+  let horizon: TimeHorizon;
+  if (urgency >= 0.70) horizon = 'now';
+  else if (urgency >= 0.40) horizon = 'near_term';
+  else if (urgency >= 0.15) horizon = 'later';
+  else horizon = 'never';
+
+  // Actionability
+  let actionability: Actionability;
+  if (stakes < 2) {
+    actionability = 'archive_only';
+  } else if (tractability >= 0.35 && urgency >= 0.25) {
+    actionability = 'actionable';
+  } else {
+    actionability = 'hold_only';
+  }
+
+  // Trash: entity was explicitly skipped 2+ consecutive times AND low urgency
+  // AND no fresh inbound signal has reopened it.
+  if (entityPenalty <= -30 && urgency < 0.25 && !hasRecentSignal) {
+    return {
+      state: 'trash',
+      horizon,
+      actionability,
+      reason: `Entity skip penalty (${entityPenalty}) with urgency ${urgency.toFixed(2)} and no signal in the last 7 days — candidate is definitively avoided.`,
+    };
+  }
+
+  // Dormant: low urgency and no recent inbound signal — watch but do not generate.
+  // A new inbound signal will be detected immediately above (reopenedByReentry).
+  if (urgency < 0.25 && !hasRecentSignal) {
+    return {
+      state: 'dormant_later',
+      horizon,
+      actionability,
+      reentryTrigger: 'new_signal',
+      reason: `Urgency ${urgency.toFixed(2)} with no signal in the last 7 days — candidate is dormant until a reentry trigger fires (new_signal, user_action, external_milestone, or context_change).`,
+    };
+  }
+
+  return {
+    state: 'active_now',
+    horizon,
+    actionability,
+    reason: `Urgency ${urgency.toFixed(2)}, stakes ${stakes}, tractability ${tractability.toFixed(2)} — candidate is active and eligible based on lifecycle criteria.`,
+  };
 }
 
 export async function scoreOpenLoops(userId: string): Promise<ScorerResult | null> {
@@ -2634,6 +2991,25 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     }));
   }
 
+  // PRE-SCORING: Context validity filter
+  // Hard-removes candidates with closed/rejected/resolved context before the
+  // scoring loop runs. Rejected candidates never reach generation.
+  const invalidContextRejections = await filterInvalidContext(
+    userId,
+    candidates,
+    signals as Array<{ content: string; type?: string; occurred_at?: string }>,
+  );
+  if (invalidContextRejections.size > 0) {
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      if (invalidContextRejections.has(candidates[i].id)) candidates.splice(i, 1);
+    }
+    console.log(JSON.stringify({
+      event: 'scorer_validity_filter',
+      rejected: invalidContextRejections.size,
+      remaining: candidates.length,
+    }));
+  }
+
   if (candidates.length === 0) {
     // No goal-connected candidates. Goalless emergent patterns (commitment_decay,
     // signal_velocity) are system metrics, not user-serving. Return null for a
@@ -2701,6 +3077,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         },
         relatedSignals: [],
         sourceSignals: c.sourceSignals,
+        confidence_prior: 30, // suppressed candidate — use floor prior
       });
       continue;
     }
@@ -2781,6 +3158,27 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       relationshipContext = await enrichRelationshipContext(userId, c.entityName, c.entityPatterns);
     }
 
+    // Lifecycle classification — uses already-computed values, no extra DB call.
+    // Check whether any signal in the in-memory pool mentions this candidate in the last 7 days.
+    const hasRecentSig = hasRecentSignalForCandidate(
+      c.title,
+      signals as Array<{ content: string; occurred_at?: string }>,
+    );
+    const lifecycle = classifyLifecycle({
+      urgency: c.urgency,
+      stakes: specificityAdjustedStakes,
+      tractability,
+      entityPenalty,
+      hasRecentSignal: hasRecentSig,
+    });
+
+    // Reentry: if classified dormant_later but a recent signal was found, promote to active_now.
+    if (lifecycle.state === 'dormant_later' && hasRecentSig) {
+      lifecycle.state = 'active_now';
+      lifecycle.reopenedByReentry = true;
+      lifecycle.reason = `Reopened from dormant by new inbound signal within the last 7 days (reentry trigger: new_signal).`;
+    }
+
     scored.push({
       id: c.id,
       type: c.type,
@@ -2804,6 +3202,117 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       relatedSignals: related,
       sourceSignals: c.sourceSignals,
       relationshipContext,
+      lifecycle,
+      confidence_prior: Math.round(
+        Math.max(30, Math.min(85,
+          (geminiBreakdown.behavioral_rate ?? 0.5) * 100 - (entityPenalty < 0 ? 15 : 0),
+        )),
+      ),
+    });
+  }
+
+  // -----------------------------------------------------------------------
+  // Lifecycle eligibility gate
+  //
+  // Enforces the universal lifecycle state model across all domains (jobs,
+  // relationships, admin, product, finance).
+  //
+  // Rules:
+  //   trash        → hard-removed from the pool (excluded entirely)
+  //   dormant_later → score zeroed; stays in pool for context/logs but cannot win
+  //   resolved      → score zeroed; same treatment as dormant
+  //   active_now + hold_only    → score zeroed; in context but not actionable today
+  //   active_now + archive_only → score zeroed; no goal alignment (goal-primacy
+  //                               gate also catches these, belt-and-suspenders)
+  //   active_now + actionable   → proceeds to generation unchanged
+  //
+  // Emergent patterns (anti-patterns, divergences) bypass this gate — they are
+  // diagnostic observations, not goal/thread/candidate state machines.
+  // -----------------------------------------------------------------------
+
+  let lifecycleGateExcluded = 0;
+  const beforeLifecycleGate = scored.length;
+
+  for (let i = scored.length - 1; i >= 0; i--) {
+    const s = scored[i];
+    // Emergent and compound loops bypass lifecycle gating
+    if (s.type === 'emergent' || s.type === 'compound') continue;
+    const lc = s.lifecycle;
+    if (!lc) continue;
+
+    if (lc.state === 'trash') {
+      logStructuredEvent({
+        event: 'lifecycle_gate_trash',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'lifecycle_excluded',
+        details: {
+          scope: 'scorer',
+          candidate_title: s.title.slice(0, 80),
+          horizon: lc.horizon,
+          actionability: lc.actionability,
+          reason: lc.reason,
+        },
+      });
+      scored.splice(i, 1);
+      lifecycleGateExcluded++;
+    } else if (lc.state === 'dormant_later' || lc.state === 'resolved') {
+      // Keep in pool for context / deprioritized log — zero the score so it cannot win
+      s.score = 0;
+      s.breakdown.entityPenalty = -999;
+      logStructuredEvent({
+        event: `lifecycle_gate_${lc.state}`,
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'lifecycle_dormant_or_resolved',
+        details: {
+          scope: 'scorer',
+          candidate_title: s.title.slice(0, 80),
+          state: lc.state,
+          horizon: lc.horizon,
+          reentry_trigger: lc.reentryTrigger,
+          reason: lc.reason,
+        },
+      });
+      lifecycleGateExcluded++;
+    } else if (lc.actionability !== 'actionable') {
+      // active_now but hold_only or archive_only — in context, not generatable today
+      s.score = 0;
+      s.breakdown.entityPenalty = -999;
+      logStructuredEvent({
+        event: 'lifecycle_gate_non_actionable',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'lifecycle_non_actionable',
+        details: {
+          scope: 'scorer',
+          candidate_title: s.title.slice(0, 80),
+          state: lc.state,
+          actionability: lc.actionability,
+          horizon: lc.horizon,
+          reason: lc.reason,
+        },
+      });
+      lifecycleGateExcluded++;
+    }
+  }
+
+  if (lifecycleGateExcluded > 0) {
+    logStructuredEvent({
+      event: 'lifecycle_gate_summary',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'lifecycle_gate',
+      details: {
+        scope: 'scorer',
+        before: beforeLifecycleGate,
+        excluded: lifecycleGateExcluded,
+        remaining: scored.length,
+      },
     });
   }
 
@@ -2877,6 +3386,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           kind: 'emergent',
           summary: signal.slice(0, 160),
         })),
+        confidence_prior: Math.round(Math.max(30, Math.min(85, 0.5 * 100))), // no entity data → neutral prior
       });
 
       logStructuredEvent({
@@ -2938,6 +3448,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           kind: 'emergent',
           summary: point.slice(0, 160),
         })),
+        confidence_prior: Math.round(Math.max(30, Math.min(85, ep.dataConfidence * 100))),
       });
     }
   }
@@ -3018,7 +3529,42 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Sort by score descending
   scored.sort(compareScoredLoops);
 
-  const winner = scored[0];
+  // -----------------------------------------------------------------------
+  // NO_VALID_ACTION gate
+  //
+  // Any candidate with score ≤ SCORED_MIN_THRESHOLD is effectively zeroed
+  // (suppressed by entity penalty, suppression goals, or validity filter).
+  // If no candidate clears the bar, return null — a clean no-send — rather
+  // than forwarding a worthless candidate to the generator.
+  //
+  // Captures:
+  //   - previously-skipped identical directives (same entity + action type
+  //     + goal anchor → suppression_multiplier ≈ 0 from entity penalty)
+  //   - all-suppressed pools (every candidate matched a suppression goal)
+  //   - pools where validity filter removed every real candidate
+  // -----------------------------------------------------------------------
+
+  const SCORED_MIN_THRESHOLD = 0.001;
+  const validScoredCandidates = scored.filter((c) => c.score > SCORED_MIN_THRESHOLD);
+  if (validScoredCandidates.length === 0) {
+    logStructuredEvent({
+      event: 'no_valid_action',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'no_valid_candidates',
+      details: {
+        scope: 'scorer',
+        reason: 'all_candidates_invalid_or_rejected',
+        total_scored: scored.length,
+        below_threshold: scored.length,
+        threshold: SCORED_MIN_THRESHOLD,
+      },
+    });
+    return null;
+  }
+
+  const winner = validScoredCandidates[0];
   if (!winner) return null;
 
   // Build deprioritized loops: top 3 runner-ups with kill reasons

@@ -136,8 +136,20 @@ export async function inferPrimaryOutcomeProbability(
   const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
 
   const positiveSignals: string[] = [];
-  let rawProbability = 0.3; // base rate for job offer closing
-  let confidence = 0.2;
+  // Funnel-stage mapping: mutually exclusive stages, highest stage matched wins.
+  // Replaces additive keyword bumps which stacked uncontrolled across signals.
+  const FUNNEL_STAGES = [
+    { pattern: /offer\s*(letter|extended|received|accepted)/i,          probability: 0.88, label: 'Offer received/accepted' },
+    { pattern: /reference\s*check\s*(complete|done|finished|cleared)/i, probability: 0.80, label: 'Reference check complete' },
+    { pattern: /start\s*date\s*(discussed|confirmed|set)|onboard/i,     probability: 0.75, label: 'Start date discussed' },
+    { pattern: /final\s*(round|interview|stage)/i,                      probability: 0.55, label: 'Final round' },
+    { pattern: /second\s*(round|interview)/i,                           probability: 0.40, label: 'Second round interview' },
+    { pattern: /phone\s*(screen|interview)|first\s*(round|interview)/i, probability: 0.35, label: 'First round interview' },
+    { pattern: /applied|application\s*(sent|submitted|received)/i,      probability: 0.20, label: 'Applied' },
+  ] as const;
+
+  let rawProbability = 0.10; // base rate — no signal yet
+  let confidence = 0.15;
 
   try {
     const { data: signals } = await supabase
@@ -159,25 +171,18 @@ export async function inferPrimaryOutcomeProbability(
       const isRelevant = goalKeywords.some((kw) => text.includes(kw));
       if (!isRelevant) continue;
 
-      // Strong positive signals — each bumps probability
-      if (/reference.*(complete|done|clear|finish)/i.test(dec.plaintext)) {
-        rawProbability += 0.20;
-        positiveSignals.push('Reference check complete');
-        confidence += 0.1;
-      }
-      if (/start date|april|may.*start|onboard/i.test(dec.plaintext)) {
-        rawProbability += 0.15;
-        positiveSignals.push('Start date discussed');
-        confidence += 0.1;
-      }
-      if (/offer|congratulations|selected|position.*fill/i.test(dec.plaintext)) {
-        rawProbability += 0.30;
-        positiveSignals.push('Offer language detected');
-        confidence += 0.2;
-      }
-      if (row.type === 'email_received') {
-        rawProbability += 0.05;
-        confidence += 0.05;
+      // Find the highest funnel stage matched in this signal
+      for (const stage of FUNNEL_STAGES) {
+        if (stage.pattern.test(dec.plaintext)) {
+          if (stage.probability > rawProbability) {
+            rawProbability = stage.probability;
+            confidence = 0.60; // stage match is more reliable than keyword bump
+            if (!positiveSignals.includes(stage.label)) {
+              positiveSignals.push(stage.label);
+            }
+          }
+          break; // each signal contributes at most one stage (highest match wins)
+        }
       }
     }
   } catch {
@@ -212,7 +217,23 @@ export async function inferHardDeadline(
       .gte('occurred_at', thirtyDaysAgo)
       .limit(100);
 
-    if (!signals) return { date: null, source: null, confidence: 0 };
+    if (!signals) {
+      // Fallback: use tripwire_date from the most recent wait_rationale action
+      const { data: lastWait } = await supabase
+        .from('tkg_actions')
+        .select('execution_result')
+        .eq('user_id', userId)
+        .eq('action_type', 'do_nothing')
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .single();
+      const tripwire = (lastWait?.execution_result as Record<string, unknown> | null)?.tripwire_date;
+      if (typeof tripwire === 'string') {
+        const d = new Date(tripwire);
+        if (!isNaN(d.getTime())) return { date: d, source: 'tripwire_date', confidence: 0.5 };
+      }
+      return { date: null, source: null, confidence: 0 };
+    }
 
     // Personal deadline keywords — the things that create hard deadlines
     const hardDeadlinePatterns = [
