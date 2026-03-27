@@ -15,6 +15,7 @@
     "test:prod:setup": "npx tsx tests/production/setup-auth.ts",
     "test:prod": "npx playwright test --config playwright.prod.config.ts",
     "test:prod:ci": "npx playwright test --config playwright.prod.config.ts --reporter=list",
+    "test:ci:e2e": "playwright test --config playwright.ci.config.ts",
     "test:prod:refresh": "npx tsx tests/production/refresh-auth.ts",
     "test:audit": "playwright test tests/production/audit.spec.ts --reporter=list",
     "prepare": "husky"
