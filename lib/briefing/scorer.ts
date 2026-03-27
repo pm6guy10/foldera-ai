@@ -635,6 +635,8 @@ export function computeCandidateScore(args: {
   commitmentId?: string | null;
   approvalHistory: ApprovalAction[];
   now?: Date;
+  /** High-stakes candidates (stakes ≥ 4) get reduced freshness penalty so they aren't buried for 3 days */
+  highStakes?: boolean;
 }): { score: number; breakdown: { stakes_raw: number; stakes_transformed: number; urgency_raw: number; urgency_effective: number; tractability: number; exec_potential: number; behavioral_rate: number; novelty_multiplier: number; suppression_multiplier: number; final_score: number } } {
   const nowMs = (args.now || new Date()).getTime();
   const relevant = args.approvalHistory.filter(a => a.action_type === args.actionType);
@@ -662,9 +664,15 @@ export function computeCandidateScore(args: {
   rate = Math.max(rate, 0.25);
 
   // Analyst mode: surfaced-yesterday topics get crushed — force the system
-  // to find something new rather than repeating what the user just saw
-  const nov = args.daysSinceLastSurface === 1 ? 0.35 : args.daysSinceLastSurface === 2 ? 0.65 : 1.0;
-  const sup = args.entityPenalty < 0 ? Math.exp(args.entityPenalty / 2.0) : 1.0;
+  // to find something new rather than repeating what the user just saw.
+  // Exception: high-stakes entities (stakes ≥ 4) get a reduced freshness penalty
+  // so they aren't buried for 3 days when they are genuinely urgent.
+  const nov = args.highStakes
+    ? (args.daysSinceLastSurface === 1 ? 0.70 : 1.0)   // half-penalty day 1, no penalty day 2+
+    : (args.daysSinceLastSurface === 1 ? 0.35 : args.daysSinceLastSurface === 2 ? 0.65 : 1.0);
+  const sup = args.entityPenalty < 0
+    ? (args.highStakes ? Math.exp(args.entityPenalty / 1.0) : Math.exp(args.entityPenalty / 2.0))
+    : 1.0;
 
   const urgencyFloor = ((args.stakes - 1) / 4) * 0.2;
   const uEff = Math.min(1, args.urgency * 0.9 + urgencyFloor);
@@ -2708,6 +2716,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       entityPenalty,
       daysSinceLastSurface,
       approvalHistory,
+      highStakes: specificityAdjustedStakes >= 4,
     });
 
     // Find related signals: keyword overlap with this loop's content

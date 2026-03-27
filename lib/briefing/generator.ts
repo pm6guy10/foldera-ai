@@ -284,6 +284,7 @@ interface SignalSnippet {
   subject: string | null;
   snippet: string;
   author: string | null;
+  direction: 'sent' | 'received' | 'unknown';
 }
 
 interface GenerateDirectiveOptions {
@@ -571,6 +572,7 @@ interface CompressedSignal {
   occurred_at: string;
   entity: string | null;
   summary: string;
+  direction: 'sent' | 'received' | 'unknown';
 }
 
 interface AvoidanceObservation {
@@ -618,6 +620,8 @@ interface StructuredContext {
   behavioral_history: string | null;
   // Pre-computed avoidance signals — facts the model can reference directly
   avoidance_observations: AvoidanceObservation[];
+  // Chronological thread showing the arc of the winner relationship (sent/received, days since reply)
+  relationship_timeline: string | null;
 }
 
 function buildStructuredContext(
@@ -635,16 +639,17 @@ function buildStructuredContext(
   behavioralHistory?: string | null,
   avoidanceObservations?: AvoidanceObservation[],
 ): StructuredContext {
-  // Sort signals chronologically and take top 3 — full body so the model reads a mini-thread
+  // Sort signals chronologically and take top 7 — full body so the model reads a mini-thread
   const supporting_signals: CompressedSignal[] = signalEvidence
     .slice()
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
-    .slice(0, 3)
+    .slice(0, 7)
     .map((s) => ({
       source: s.source,
       occurred_at: s.date,
       entity: s.author,
       summary: [s.subject, s.snippet].filter(Boolean).join(' — '),
+      direction: s.direction,
     }));
 
   // Extract surgical raw facts: emails, dates, names, subjects
@@ -662,7 +667,7 @@ function buildStructuredContext(
   }
 
   // Extract emails from signals
-  for (const s of signalEvidence.slice(0, 3)) {
+  for (const s of signalEvidence.slice(0, 7)) {
     if (s.subject) surgical_raw_facts.push(`email_subject: ${s.subject.slice(0, 100)}`);
     if (s.author) {
       const authorEmail = s.author.match(emailPattern);
@@ -785,6 +790,7 @@ function buildStructuredContext(
       : null,
     behavioral_history: behavioralHistory ?? null,
     avoidance_observations: avoidanceObservations ?? [],
+    relationship_timeline: buildRelationshipTimeline(signalEvidence, winner.title),
   };
 }
 
@@ -810,6 +816,53 @@ function buildBehavioralMirrors(
   }
 
   return mirrors;
+}
+
+/**
+ * Build a chronological relationship timeline for the winner entity.
+ * Shows the arc of communication — who sent what, when, and whether there was a reply gap.
+ * Returns null if fewer than 2 signals involve the entity (omit section silently).
+ */
+function buildRelationshipTimeline(
+  snippets: SignalSnippet[],
+  winnerEntityName: string,
+): string | null {
+  const nameLower = winnerEntityName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+  const nameTokens = nameLower.split(/\s+/).filter((t) => t.length >= 3);
+
+  const relevant = snippets
+    .filter((s) => {
+      const authorLower = (s.author ?? '').toLowerCase();
+      const subjectLower = (s.subject ?? '').toLowerCase();
+      const snippetLower = s.snippet.toLowerCase();
+      return nameTokens.some((t) =>
+        authorLower.includes(t) || subjectLower.includes(t) || snippetLower.includes(t),
+      );
+    })
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+  if (relevant.length < 2) return null;
+
+  const lines: string[] = [];
+  for (let i = 0; i < relevant.length; i++) {
+    const s = relevant[i];
+    const dirLabel = s.direction === 'sent' ? '[SENT] You' : s.direction === 'received' ? `[RECEIVED] ${s.author ?? 'them'}` : `[${s.author ?? 'unknown'}]`;
+    const preview = s.subject ? `"${s.subject}"` : s.snippet.slice(0, 80);
+    lines.push(`${s.date} ${dirLabel}: ${preview}`);
+
+    // Detect no-reply gap after a received message
+    if (s.direction === 'received') {
+      const nextSent = relevant.slice(i + 1).find((n) => n.direction === 'sent');
+      if (!nextSent) {
+        const gapDays = Math.round((Date.now() - new Date(s.date).getTime()) / (1000 * 60 * 60 * 24));
+        if (gapDays > 3) {
+          lines.push(`[No reply sent — ${gapDays} days]`);
+        }
+      }
+    }
+  }
+
+  return `RELATIONSHIP_TIMELINE:\n${lines.join('\n')}`;
 }
 
 /**
@@ -984,9 +1037,16 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   }
 
   if (ctx.supporting_signals.length > 0) {
-    const signalLines = ctx.supporting_signals.map((s) =>
-      `- [${s.occurred_at}] [${s.source}]${s.entity ? ` From: ${s.entity}` : ''} ${s.summary}`);
+    const signalLines = ctx.supporting_signals.map((s) => {
+      const dirLabel = s.direction === 'sent' ? '[SENT]' : s.direction === 'received' ? '[RECEIVED]' : '';
+      const entityPart = s.entity ? ` ${s.direction === 'sent' ? 'To' : 'From'}: ${s.entity}` : '';
+      return `- [${s.occurred_at}] [${s.source}]${dirLabel ? ` ${dirLabel}` : ''}${entityPart} ${s.summary}`;
+    });
     sections.push(`SUPPORTING_SIGNALS:\n${signalLines.join('\n')}`);
+  }
+
+  if (ctx.relationship_timeline) {
+    sections.push(ctx.relationship_timeline);
   }
 
   if (ctx.surgical_raw_facts.length > 0) {
@@ -1669,7 +1729,7 @@ async function fetchWinnerSignalEvidence(
   if (sourceIds.length > 0) {
     const { data: sourceRows } = await supabase
       .from('tkg_signals')
-      .select('content, source, occurred_at, author')
+      .select('content, source, occurred_at, author, type')
       .in('id', sourceIds);
 
     for (const row of sourceRows ?? []) {
@@ -1689,7 +1749,7 @@ async function fetchWinnerSignalEvidence(
   if (keywords.length > 0 && snippets.length < 8) {
     const { data: contextRows } = await supabase
       .from('tkg_signals')
-      .select('content, source, occurred_at, author')
+      .select('content, source, occurred_at, author, type')
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', fourteenDaysAgo)
@@ -1714,6 +1774,46 @@ async function fetchWinnerSignalEvidence(
     }
   }
 
+  // Entity-targeted 90-day fetch: pull signals that mention the winner entity by email address
+  // This gives the model a real relationship history beyond the 14-day window
+  if (snippets.length < 8 && winner.relationshipContext) {
+    const entityEmailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+    const entityEmails: string[] = [];
+    let emailMatch: RegExpExecArray | null;
+    while ((emailMatch = entityEmailPattern.exec(winner.relationshipContext)) !== null) {
+      entityEmails.push(emailMatch[0].toLowerCase());
+    }
+
+    if (entityEmails.length > 0) {
+      const ninetyDaysAgo = new Date(Date.now() - daysMs(90)).toISOString();
+      const { data: entityRows } = await supabase
+        .from('tkg_signals')
+        .select('content, source, occurred_at, author, type')
+        .eq('user_id', userId)
+        .eq('processed', true)
+        .gte('occurred_at', ninetyDaysAgo)
+        .order('occurred_at', { ascending: false })
+        .limit(30);
+
+      const existingTexts = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
+
+      for (const row of entityRows ?? []) {
+        if (snippets.length >= 8) break;
+        const decrypted = decryptWithStatus(row.content as string ?? '');
+        if (decrypted.usedFallback) continue;
+        const textLower = decrypted.plaintext.toLowerCase();
+        const mentionsEntity = entityEmails.some((email) => textLower.includes(email));
+        if (!mentionsEntity) continue;
+
+        const parsed = parseSignalSnippet(decrypted.plaintext, row);
+        if (parsed && !existingTexts.has(parsed.snippet.slice(0, 60))) {
+          snippets.push(parsed);
+          existingTexts.add(parsed.snippet.slice(0, 60));
+        }
+      }
+    }
+  }
+
   return snippets;
 }
 
@@ -1729,14 +1829,21 @@ function parseSignalSnippet(
 
   const lines = plaintext.split('\n').filter((l) => l.trim().length > 0);
   const contentLines = lines.filter((l) => !l.match(/^(From|To|Date|Subject|Cc|Bcc|Re|Fwd):/i));
-  const snippet = contentLines.join(' ').slice(0, 1400).trim();
+  const snippet = contentLines.join(' ').slice(0, 600).trim();
+
+  const rowType = (row.type as string) ?? '';
+  const direction: 'sent' | 'received' | 'unknown' =
+    rowType === 'email_sent' ? 'sent' :
+    rowType === 'email_received' ? 'received' :
+    'unknown';
 
   return {
     source: (row.source as string) ?? 'unknown',
     date: row.occurred_at ? new Date(row.occurred_at as string).toISOString().slice(0, 10) : 'unknown',
     subject,
-    snippet: snippet || plaintext.slice(0, 1400),
+    snippet: snippet || plaintext.slice(0, 600),
     author: (row.author as string) ?? null,
+    direction,
   };
 }
 
@@ -2251,7 +2358,7 @@ async function generatePayload(
   for (let attempt = 0; attempt < 2; attempt++) {
     const response = await getAnthropic().messages.create({
       model: GENERATION_MODEL,
-      max_tokens: 3200,
+      max_tokens: 4096,
       temperature: 0.15,
       system: SYSTEM_PROMPT,
       messages: attempts,
