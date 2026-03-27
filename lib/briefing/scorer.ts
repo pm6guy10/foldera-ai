@@ -2774,8 +2774,20 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     'asks', 'path', 'post', 'brandon', 'work', 'platform', 'match',
     'contracts', 'analyst', 'program', 'functional', // individual words too generic
   ]);
-  const suppressionEntities: Array<{ pattern: RegExp; goalText: string }> = [];
+  // Only goals starting with "DO NOT" (or similar blocking language) contribute suppression entities.
+  // Positive goals at priority < 3 (e.g. "Prepare MAS3 onboarding materials") must not suppress.
+  const BLOCKING_GOAL_PREFIX = /^(DO NOT|SUPPRESS|BLOCK|NEVER)/i;
+  // Contact-only suppression: "DO NOT contact/reach out/suggest contacting" — blocks send_message
+  // only, not write_document or research. Absolute suppression: everything else DO NOT.
+  const CONTACT_ONLY_PREFIX = /^DO NOT (suggest contacting|contact|reach out to|message|email)/i;
+
+  const suppressionEntities: Array<{ pattern: RegExp; goalText: string; contactOnly: boolean }> = [];
   for (const sg of (suppressionGoalRows ?? []) as GoalRow[]) {
+    // Skip positive goals — only process blocking instructions
+    if (!BLOCKING_GOAL_PREFIX.test(sg.goal_text)) continue;
+
+    const isContactOnly = CONTACT_ONLY_PREFIX.test(sg.goal_text);
+
     // Strategy: extract multi-word proper nouns and acronyms as suppression patterns.
     // Single common words are excluded to avoid false positives.
     const words = sg.goal_text.split(/\s+/);
@@ -2831,6 +2843,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       suppressionEntities.push({
         pattern: new RegExp(entity.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
         goalText: sg.goal_text,
+        contactOnly: isContactOnly,
       });
     }
   }
@@ -3049,18 +3062,22 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     // Check suppression goals BEFORE scoring — zero the score if matched
     const candidateText = `${c.title} ${c.content}`.toLowerCase();
     let suppressedByGoal: string | null = null;
-    for (const { pattern, goalText } of suppressionEntities) {
+    let suppressionIsContactOnly = false;
+    for (const { pattern, goalText, contactOnly } of suppressionEntities) {
       if (pattern.test(c.title) || pattern.test(c.content)) {
         suppressedByGoal = goalText;
+        suppressionIsContactOnly = contactOnly;
         break;
       }
     }
 
-    // Only apply entity suppression to contact-type actions (send_message, schedule).
-    // Non-contact artifacts (write_document, research, make_decision) for the same
-    // entity are still valid — e.g. "prepare MAS3 interview doc" should score normally
-    // even if "DO NOT contact Yadira about MAS3" is a suppression goal.
-    const isSuppressed = suppressedByGoal !== null && CONTACT_ACTION_TYPES.has(c.actionType);
+    // Suppression scope depends on the goal's intent:
+    // - contactOnly=true ("DO NOT contact Keri Nopens"): only blocks send_message/schedule.
+    //   Non-contact artifacts (write_document, make_decision, research) pass through.
+    // - contactOnly=false ("DO NOT suggest Mercor"): blocks ALL artifact types — absolute.
+    const isSuppressed =
+      suppressedByGoal !== null &&
+      (!suppressionIsContactOnly || CONTACT_ACTION_TYPES.has(c.actionType));
 
     if (suppressedByGoal !== null) {
       suppressedCandidates++;
@@ -3075,6 +3092,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           candidate_title: c.title.slice(0, 100),
           suppression_goal: suppressedByGoal.slice(0, 120),
           action_type: c.actionType,
+          contact_only: suppressionIsContactOnly,
         },
       });
     }
