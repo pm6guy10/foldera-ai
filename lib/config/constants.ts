@@ -35,6 +35,15 @@ export const MS_7D  = daysMs(7);
 export const MS_14D = daysMs(14);
 export const MS_30D = daysMs(30);
 export const MS_90D = daysMs(90);
+export const MS_1Y  = daysMs(365);
+export const MS_2Y  = daysMs(730);
+
+/**
+ * How far back to pull signals on a user's FIRST sync (historical backfill).
+ * Emails older than this won't be pulled even on initial connect.
+ * Increase to build a richer historical graph.
+ */
+export const FIRST_SYNC_LOOKBACK_MS = MS_1Y;
 
 /** How far back to look when checking sent-mail history for duplicate suppression. */
 export const APPROVAL_LOOKBACK_MS = MS_7D;

@@ -28,6 +28,7 @@
     "googleapis": "^160.0.0",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.542.0",
+    "mammoth": "^1.12.0",
     "next": "14.2.35",
     "next-auth": "^4.24.11",
     "p-retry": "^6.2.1",

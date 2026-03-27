@@ -4,7 +4,7 @@
  * Background sync job: pulls Outlook mail, calendar events, OneDrive files,
  * and To Do tasks into tkg_signals via Microsoft Graph API.
  *
- * On first connect (last_synced_at is null), pulls the last 90 days.
+ * On first connect (last_synced_at is null), pulls the last year.
  * On subsequent runs, pulls since last_synced_at.
  *
  * Deduplication via content_hash prevents duplicate signals.
@@ -18,7 +18,8 @@ import {
 } from "@/lib/auth/user-tokens";
 import { encrypt } from "@/lib/encryption";
 import { createHash } from "crypto";
-import { MS_90D } from '@/lib/config/constants';
+import mammoth from 'mammoth';
+import { FIRST_SYNC_LOOKBACK_MS } from '@/lib/config/constants';
 
 function hash(content: string): string {
   return createHash("sha256").update(content).digest("hex");
@@ -356,7 +357,7 @@ async function syncMail(
       const datePrefix = date ? new Date(date).toISOString().slice(0, 10) : '';
       const contentHash = hash(`email:${senderEmail}|${normalizedSubject}|${datePrefix}`);
 
-      const { error } = await supabase.from("tkg_signals").insert({
+      const { error } = await supabase.from("tkg_signals").upsert({
         user_id: userId,
         source: "outlook",
         source_id: msg.id,
@@ -366,7 +367,7 @@ async function syncMail(
         author: isSent ? "self" : from,
         occurred_at: new Date(date).toISOString(),
         processed: false,
-      });
+      }, { onConflict: "user_id,content_hash", ignoreDuplicates: true });
 
       if (!error) inserted++;
     } catch (msgErr: unknown) {
@@ -404,7 +405,7 @@ async function syncCalendar(
 
     const contentHash = hash(`outlook-calendar:${event.id}`);
 
-    const { error } = await supabase.from("tkg_signals").insert({
+    const { error } = await supabase.from("tkg_signals").upsert({
       user_id: userId,
       source: "outlook_calendar",
       source_id: event.id,
@@ -416,7 +417,7 @@ async function syncCalendar(
         ? new Date(start).toISOString()
         : new Date().toISOString(),
       processed: false,
-    });
+    }, { onConflict: "user_id,content_hash", ignoreDuplicates: true });
 
     if (!error) inserted++;
   }
@@ -466,13 +467,16 @@ function getFileExtension(name: string): string {
 }
 
 /**
- * Download the first 500 chars of text content for plain text files (.txt, .md)
- * via the Graph /content endpoint.
+ * Download file content from OneDrive.
+ * - .docx: extract text with mammoth
+ * - .txt / .md: raw text
+ * - .xlsx: metadata only (binary, no text extraction)
+ * Returns up to 1500 chars of extracted text, or null if unavailable.
  */
-async function downloadFileTextContent(
-  userId: string,
+async function downloadFileContent(
   accessToken: string,
   fileId: string,
+  ext: string,
 ): Promise<string | null> {
   try {
     const res = await fetch(
@@ -483,8 +487,17 @@ async function downloadFileTextContent(
       },
     );
     if (!res.ok) return null;
+
+    if (ext === ".docx") {
+      const arrayBuffer = await res.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value.trim().slice(0, 1500) || null;
+    }
+
+    // .txt and .md — plain text
     const text = await res.text();
-    return text.slice(0, 500);
+    return text.slice(0, 1500) || null;
   } catch {
     return null;
   }
@@ -495,35 +508,60 @@ async function syncFiles(
   accessToken: string,
   sinceIso: string,
 ): Promise<number> {
-  // Use /me/drive/recent instead of search(q='') which returns 400 on empty query.
+  // Search by last modified date — covers history, not just recently accessed files.
+  // Falls back to /recent if search returns 400 (some tenant configs block it).
   const select =
     "id,name,lastModifiedDateTime,lastModifiedBy,size,webUrl,file,folder";
-  const url = `${GRAPH_BASE}/me/drive/recent?$select=${select}&$top=${FILE_PAGE_SIZE}`;
+  const sinceDate = new Date(sinceIso).getTime();
 
   let files: any[];
   try {
-    files = await graphFetchAll<any>(userId, accessToken, url, {
+    // Microsoft Graph search by modified date with file type filter
+    const filter = encodeURIComponent(
+      `lastModifiedDateTime ge ${sinceIso} and file ne null`,
+    );
+    const searchUrl = `${GRAPH_BASE}/me/drive/root/search(q='')?\$filter=${filter}&\$select=${select}&\$top=${FILE_PAGE_SIZE}`;
+    files = await graphFetchAll<any>(userId, accessToken, searchUrl, {
       maxItems: FILE_MAX_ITEMS,
     });
-  } catch (err: any) {
-    // Files.Read may not be granted yet for existing users — non-fatal
-    if (err.message?.includes("403") || err.message?.includes("Forbidden")) {
+  } catch (searchErr: any) {
+    // Fall back to /recent if search fails
+    if (
+      searchErr.message?.includes("400") ||
+      searchErr.message?.includes("501")
+    ) {
+      try {
+        const recentUrl = `${GRAPH_BASE}/me/drive/recent?$select=${select}&$top=${FILE_PAGE_SIZE}`;
+        files = await graphFetchAll<any>(userId, accessToken, recentUrl, {
+          maxItems: FILE_MAX_ITEMS,
+        });
+      } catch (recentErr: any) {
+        if (
+          recentErr.message?.includes("403") ||
+          recentErr.message?.includes("Forbidden") ||
+          recentErr.message?.includes("400")
+        ) {
+          console.warn(
+            "[microsoft-sync] OneDrive file sync skipped (no access)",
+          );
+          return 0;
+        }
+        throw recentErr;
+      }
+    } else if (
+      searchErr.message?.includes("403") ||
+      searchErr.message?.includes("Forbidden")
+    ) {
       console.warn(
         "[microsoft-sync] Files.Read scope not granted, skipping file sync",
       );
       return 0;
+    } else {
+      throw searchErr;
     }
-    if (err.message?.includes("400")) {
-      console.warn(
-        "[microsoft-sync] OneDrive recent files request failed (400), skipping file sync",
-      );
-      return 0;
-    }
-    throw err;
   }
 
   // Filter to supported file types modified since the sync window
-  const sinceDate = new Date(sinceIso).getTime();
   const fileItems = files.filter((f: any) => {
     if (!f.file) return false; // skip folders
     const ext = getFileExtension(f.name ?? "");
@@ -544,10 +582,10 @@ async function syncFiles(
     const modifiedBy = file.lastModifiedBy?.user?.displayName ?? "";
     const ext = getFileExtension(file.name ?? "");
 
-    // Download text content for plain text files
+    // Extract text content from Word docs and plain text files
     let fileContent = "";
-    if (TEXT_FILE_EXTENSIONS.has(ext)) {
-      const text = await downloadFileTextContent(userId, accessToken, file.id);
+    if (ext === ".docx" || TEXT_FILE_EXTENSIONS.has(ext)) {
+      const text = await downloadFileContent(accessToken, file.id, ext);
       if (text) {
         fileContent = `\nContent: ${text}`;
       }
@@ -567,7 +605,7 @@ async function syncFiles(
       `onedrive:${file.id}:${file.lastModifiedDateTime}`,
     );
 
-    const { error } = await supabase.from("tkg_signals").insert({
+    const { error } = await supabase.from("tkg_signals").upsert({
       user_id: userId,
       source: "onedrive",
       source_id: file.id,
@@ -577,7 +615,7 @@ async function syncFiles(
       author: modifiedBy || "self",
       occurred_at: file.lastModifiedDateTime ?? new Date().toISOString(),
       processed: false,
-    });
+    }, { onConflict: "user_id,content_hash", ignoreDuplicates: true });
 
     if (!error) inserted++;
   }
@@ -647,7 +685,7 @@ async function syncTasks(
           `todo:${task.id}:${task.lastModifiedDateTime}`,
         );
 
-        const { error } = await supabase.from("tkg_signals").insert({
+        const { error } = await supabase.from("tkg_signals").upsert({
           user_id: userId,
           source: "microsoft_todo",
           source_id: task.id,
@@ -657,7 +695,7 @@ async function syncTasks(
           author: "self",
           occurred_at: task.lastModifiedDateTime ?? new Date().toISOString(),
           processed: false,
-        });
+        }, { onConflict: "user_id,content_hash", ignoreDuplicates: true });
 
         if (!error) inserted++;
       }
@@ -712,7 +750,7 @@ export async function syncMicrosoft(
   const tokenMeta = await getUserToken(userId, "microsoft");
   const isFirstSync = !tokenMeta?.last_synced_at;
   const sinceMs = isFirstSync
-    ? Date.now() - MS_90D // 90 days ago
+    ? Date.now() - FIRST_SYNC_LOOKBACK_MS // 1 year back on first connect
     : new Date(tokenMeta!.last_synced_at!).getTime();
   const sinceIso = new Date(sinceMs).toISOString();
   const calendarUntilIso = new Date(

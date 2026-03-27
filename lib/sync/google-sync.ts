@@ -1,9 +1,9 @@
 /**
  * google-sync.ts
  *
- * Background sync job: pulls Gmail messages and Google Calendar events
- * into tkg_signals. On first connect (last_synced_at is null), pulls
- * the last 90 days. On subsequent runs, pulls since last_synced_at.
+ * Background sync job: pulls Gmail messages, Google Calendar events, and
+ * Google Drive files into tkg_signals. On first connect (last_synced_at is
+ * null), pulls the last year. On subsequent runs, pulls since last_synced_at.
  *
  * Deduplication via content_hash prevents duplicate signals.
  */
@@ -13,7 +13,8 @@ import { createServerClient } from '@/lib/db/client';
 import { getUserToken, updateSyncTimestamp, saveUserToken } from '@/lib/auth/user-tokens';
 import { encrypt } from '@/lib/encryption';
 import { createHash } from 'crypto';
-import { MS_90D } from '@/lib/config/constants';
+import mammoth from 'mammoth';
+import { FIRST_SYNC_LOOKBACK_MS } from '@/lib/config/constants';
 
 function hash(content: string): string {
   return createHash('sha256').update(content).digest('hex');
@@ -55,6 +56,9 @@ function getOAuth2Client(
 
 // ── Gmail Sync ─────────────────────────────────────────────────────────────
 
+const GMAIL_PAGE_SIZE = 500;
+const GMAIL_MAX_MESSAGES = 5000; // ~2-5 years depending on volume
+
 async function syncGmail(
   userId: string,
   oauth2: ReturnType<typeof getOAuth2Client>,
@@ -63,13 +67,20 @@ async function syncGmail(
   const gmail = google.gmail({ version: 'v1', auth: oauth2 });
   const afterSec = Math.floor(sinceMs / 1000);
 
-  const list = await gmail.users.messages.list({
-    userId: 'me',
-    q: `after:${afterSec}`,
-    maxResults: 200,
-  });
+  // Paginate through all messages in the lookback window
+  const messageIds: Array<{ id?: string | null }> = [];
+  let pageToken: string | undefined;
+  do {
+    const list = await gmail.users.messages.list({
+      userId: 'me',
+      q: `after:${afterSec}`,
+      maxResults: GMAIL_PAGE_SIZE,
+      pageToken,
+    });
+    messageIds.push(...(list.data.messages ?? []));
+    pageToken = list.data.nextPageToken ?? undefined;
+  } while (pageToken && messageIds.length < GMAIL_MAX_MESSAGES);
 
-  const messageIds = list.data.messages ?? [];
   if (messageIds.length === 0) return 0;
 
   const supabase = createServerClient();
@@ -111,7 +122,7 @@ async function syncGmail(
       const datePrefix = date ? new Date(date).toISOString().slice(0, 10) : '';
       const contentHash = hash(`email:${senderEmail}|${normalizedSubject}|${datePrefix}`);
 
-      const { error } = await supabase.from('tkg_signals').insert({
+      const { error } = await supabase.from('tkg_signals').upsert({
         user_id: userId,
         source: 'gmail',
         source_id: id,
@@ -121,7 +132,7 @@ async function syncGmail(
         author: isSent ? 'self' : from,
         occurred_at: date ? new Date(date).toISOString() : new Date().toISOString(),
         processed: false,
-      });
+      }, { onConflict: 'user_id,content_hash', ignoreDuplicates: true });
 
       if (!error) inserted++;
       // Duplicate hash → silently skip (expected on incremental syncs)
@@ -192,7 +203,7 @@ async function syncCalendar(
 
     const contentHash = hash(`gcal:${event.id}`);
 
-    const { error } = await supabase.from('tkg_signals').insert({
+    const { error } = await supabase.from('tkg_signals').upsert({
       user_id: userId,
       source: 'google_calendar',
       source_id: event.id,
@@ -202,7 +213,7 @@ async function syncCalendar(
       author: organizer || 'self',
       occurred_at: start ? new Date(start).toISOString() : new Date().toISOString(),
       processed: false,
-    });
+    }, { onConflict: 'user_id,content_hash', ignoreDuplicates: true });
 
     if (!error) inserted++;
   }
@@ -222,7 +233,6 @@ const GOOGLE_NATIVE_MIME_MAP: Record<string, string> = {
   'application/vnd.google-apps.spreadsheet': 'text/csv',
 };
 
-const DRIVE_BINARY_EXTENSIONS = new Set(['.docx', '.txt', '.md', '.pdf']);
 const DRIVE_TEXT_EXTENSIONS = new Set(['.txt', '.md']);
 
 function getDriveFileExtension(name: string): string {
@@ -253,18 +263,30 @@ async function downloadDriveFileContent(
         { responseType: 'text' },
       );
       const text = typeof res.data === 'string' ? res.data : String(res.data ?? '');
-      return text.slice(0, 500);
+      return text.slice(0, 1500);
+    }
+
+    const ext = getDriveFileExtension(fileName);
+
+    // Word documents — download binary and extract text with mammoth
+    if (ext === '.docx') {
+      const res = await drive.files.get(
+        { fileId, alt: 'media' },
+        { responseType: 'arraybuffer' },
+      );
+      const buffer = Buffer.from(res.data as ArrayBuffer);
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value.trim().slice(0, 1500);
     }
 
     // Plain text files stored in Drive — download directly
-    const ext = getDriveFileExtension(fileName);
     if (DRIVE_TEXT_EXTENSIONS.has(ext)) {
       const res = await drive.files.get(
         { fileId, alt: 'media' },
         { responseType: 'text' },
       );
       const text = typeof res.data === 'string' ? res.data : String(res.data ?? '');
-      return text.slice(0, 500);
+      return text.slice(0, 1500);
     }
   } catch {
     // Content download failed — fall through to metadata-only
@@ -358,7 +380,7 @@ async function syncDrive(
 
       const contentHash = hash(`gdrive:${file.id}:${file.modifiedTime}`);
 
-      const { error } = await supabase.from('tkg_signals').insert({
+      const { error } = await supabase.from('tkg_signals').upsert({
         user_id: userId,
         source: 'drive',
         source_id: file.id,
@@ -368,7 +390,7 @@ async function syncDrive(
         author: owner,
         occurred_at: file.modifiedTime ?? new Date().toISOString(),
         processed: false,
-      });
+      }, { onConflict: 'user_id,content_hash', ignoreDuplicates: true });
 
       if (!error) inserted++;
     } catch (fileErr: unknown) {
@@ -427,7 +449,7 @@ export async function syncGoogle(userId: string): Promise<GoogleSyncResult> {
 
   const isFirstSync = !token.last_synced_at;
   const sinceMs = isFirstSync
-    ? Date.now() - MS_90D // 90 days ago
+    ? Date.now() - FIRST_SYNC_LOOKBACK_MS // 1 year back on first connect
     : new Date(token.last_synced_at!).getTime();
 
   const oauth2 = getOAuth2Client(userId, token);
