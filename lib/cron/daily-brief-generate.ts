@@ -55,6 +55,19 @@ const DO_NOTHING_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 const PLACEHOLDER_PATTERN =
   /\[(?:NAME|RECIPIENT|EMAIL|PERSON|CONTACT|SUBJECT|DATE|TODO|TBD)\]|\[INSERT[^\]]*\]/i;
 
+/**
+ * Generic opener phrases that indicate the email body has no specific context.
+ * A genuinely grounded email opens with the actual topic, not social filler.
+ */
+const GENERIC_LANGUAGE_PATTERN =
+  /\b(i hope this (message |email )?(finds you well|reaches you well)|just (wanted to )?(check in|reach out|touch base|follow up)|as per my (last|previous) (email|message)|touching base|reaching out to (?:you )?today)\b/i;
+
+/**
+ * Vague subject lines that signal generic / template output.
+ */
+const VAGUE_SUBJECT_PATTERN =
+  /^(re:?\s*)?(follow(ing)? up|quick (question|note|check)|hi|hey|check[- ]?in|catch[- ]?up|touching base|fyi|update|reaching out)\s*\.?$/i;
+
 // ---------------------------------------------------------------------------
 // Pre-generation gate
 // ---------------------------------------------------------------------------
@@ -120,18 +133,50 @@ export function isSendWorthy(
   directive: ConvictionDirective,
   artifact: ConvictionArtifact,
 ): { worthy: boolean; reason: string } {
+  // Must be a real action — do_nothing is a no-send outcome, not a user-facing directive
   if (directive.action_type === 'do_nothing') {
     return { worthy: false, reason: 'do_nothing_directive' };
   }
+
+  // Must clear the send confidence threshold
   if (directive.confidence < CONFIDENCE_SEND_THRESHOLD) {
     return { worthy: false, reason: 'below_send_threshold' };
   }
+
+  // Must be grounded in real context
   if (!directive.evidence || directive.evidence.length === 0) {
     return { worthy: false, reason: 'no_evidence' };
   }
-  if (PLACEHOLDER_PATTERN.test(JSON.stringify(artifact))) {
+
+  const artifactRecord = artifact as unknown as Record<string, unknown>;
+  const artifactJson = JSON.stringify(artifact);
+
+  // Must not contain template placeholders
+  if (PLACEHOLDER_PATTERN.test(artifactJson)) {
     return { worthy: false, reason: 'placeholder_content' };
   }
+
+  // send_message: require a real email recipient and a substantive body
+  if (directive.action_type === 'send_message') {
+    const to = artifactRecord.to;
+    if (typeof to !== 'string' || !to.includes('@')) {
+      return { worthy: false, reason: 'invalid_recipient' };
+    }
+    const body = artifactRecord.body;
+    if (typeof body !== 'string' || body.trim().length < 30) {
+      return { worthy: false, reason: 'body_too_short' };
+    }
+    const subject = artifactRecord.subject;
+    if (typeof subject === 'string' && VAGUE_SUBJECT_PATTERN.test(subject.trim())) {
+      return { worthy: false, reason: 'vague_subject' };
+    }
+  }
+
+  // Must not contain generic opener language that signals no specific context
+  if (GENERIC_LANGUAGE_PATTERN.test(artifactJson)) {
+    return { worthy: false, reason: 'generic_language' };
+  }
+
   return { worthy: true, reason: '' };
 }
 
@@ -835,6 +880,20 @@ export async function runDailyGenerate(
 
       // Gate: single named decision point before any generation work.
       const readiness = evaluateReadiness(signalResult, pendingQueue);
+      logStructuredEvent({
+        event: 'brief_gate_decision',
+        userId,
+        artifactType: null,
+        generationStatus: readiness.decision === 'SEND' ? 'gate_passed' : 'gate_blocked',
+        details: {
+          scope: 'pre_generation_gate',
+          decision: readiness.decision,
+          reason: readiness.reason || 'ok',
+          signal_code: signalResult.code,
+          fresh_signals:
+            (signalResult.meta as Record<string, unknown> | undefined)?.['processed_fresh_signals_count'] ?? 0,
+        },
+      });
 
       if (readiness.decision === 'NO_SEND') {
         results.push({
@@ -1196,12 +1255,23 @@ export async function runDailyGenerate(
         success: true,
         userId,
       });
+      const artifactRecord = artifact as unknown as Record<string, unknown>;
       logStructuredEvent({
         event: 'daily_generate_complete',
         userId,
         artifactType: artifactTypeForAction(directive.action_type),
         generationStatus: 'generated',
-        details: { scope: 'daily-generate', action_id: saved.id, ...extractThresholdValues(directive) },
+        details: {
+          scope: 'daily-generate',
+          action_id: saved.id,
+          ...extractThresholdValues(directive),
+          evidence_count: directive.evidence?.length ?? 0,
+          body_chars: typeof artifactRecord.body === 'string' ? artifactRecord.body.length : null,
+          to_domain: typeof artifactRecord.to === 'string'
+            ? (artifactRecord.to.split('@')[1] ?? null)
+            : null,
+          subject_length: typeof artifactRecord.subject === 'string' ? artifactRecord.subject.length : null,
+        },
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);

@@ -200,4 +200,69 @@ describe('isSendWorthy', () => {
     expect(result.worthy).toBe(false);
     expect(result.reason).toBe('do_nothing_directive');
   });
+
+  // --- New checks ---
+
+  it('blocks send_message with no @ in recipient', () => {
+    const result = isSendWorthy(makeDirective(), makeArtifact({ to: 'Alice' }));
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('invalid_recipient');
+  });
+
+  it('blocks send_message with empty to field', () => {
+    const result = isSendWorthy(makeDirective(), makeArtifact({ to: '' }));
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('invalid_recipient');
+  });
+
+  it('blocks send_message with body shorter than 30 chars', () => {
+    const result = isSendWorthy(makeDirective(), makeArtifact({ body: 'Short.' }));
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('body_too_short');
+  });
+
+  it('blocks send_message with vague subject "Follow up"', () => {
+    const result = isSendWorthy(makeDirective(), makeArtifact({ subject: 'Follow up' }));
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('vague_subject');
+  });
+
+  it('blocks send_message with vague subject "Following up"', () => {
+    const result = isSendWorthy(makeDirective(), makeArtifact({ subject: 'Following up' }));
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('vague_subject');
+  });
+
+  it('allows subject "Following up on the contract" (not fully generic)', () => {
+    const result = isSendWorthy(makeDirective(), makeArtifact({ subject: 'Following up on the contract' }));
+    expect(result.worthy).toBe(true);
+  });
+
+  it('blocks artifact with generic opener "I hope this email finds you well"', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ body: 'I hope this email finds you well. I wanted to discuss the permit.' }),
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('generic_language');
+  });
+
+  it('blocks artifact with "just wanted to reach out"', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ body: 'Hi Alice, just wanted to reach out about the contract status.' }),
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('generic_language');
+  });
+
+  it('allows a specific, grounded body with no generic language', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({
+        body: 'Alice, the signed permit appeal draft you requested by Friday is attached. Let me know if changes are needed.',
+      }),
+    );
+    expect(result.worthy).toBe(true);
+  });
 });
