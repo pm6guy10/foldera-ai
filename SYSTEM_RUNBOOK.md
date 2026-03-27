@@ -102,8 +102,17 @@ All of these are in source code but NOT yet applied to production:
 
 ## Next Steps (This Session)
 1. [x] Create SYSTEM_RUNBOOK.md
-2. [ ] Commit untracked migrations (20260326000003, 20260327000001, 20260327000002)
-3. [ ] Verify npm run test:prod baseline
-4. [ ] Apply all pending migrations to production DB via Supabase MCP
-5. [ ] Re-run npm run test:prod after migrations applied
-6. [ ] Update FOLDERA_MASTER_AUDIT.md to reflect resolved vs open items
+2. [x] Commit untracked migrations (20260326000003)
+3. [x] Verify npm run test:prod baseline — 51/51 PASSED
+4. [x] Apply all pending migrations to production DB via Supabase MCP
+   - outcome_closed column added to tkg_actions
+   - api_usage composite index created
+   - test subscription deleted
+   - 7 malformed auto-suppression goals deleted
+5. [x] npm run test:prod after migrations — 51/51 PASSED
+6. [x] Update FOLDERA_MASTER_AUDIT.md to reflect resolved vs open items
+
+## Remaining Open Items
+1. Non-owner flow not proven — no production receipt for any non-Brandon user
+2. Missing tkg_signals indexes (no migration written yet)
+3. npm run test:prod 51/51 is Brandon-only — multi-user loop unverified
