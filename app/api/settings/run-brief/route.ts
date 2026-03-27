@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
-import {
-  runDailyBrief,
-  runDailySend,
-  toSafeDailyBriefStageStatus,
-} from '@/lib/cron/daily-brief';
+import { runBriefLifecycle } from '@/lib/cron/brief-service';
 import { syncGoogle } from '@/lib/sync/google-sync';
 import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
 import { apiError } from '@/lib/utils/api-error';
@@ -18,24 +14,6 @@ interface ManualSyncStageResult {
   skipped?: boolean;
   error?: string;
   total?: number;
-}
-
-function generatedDirectiveForUser(
-  userId: string,
-  results: Array<{ code: string; userId?: string }>,
-): boolean {
-  return results.some((result) =>
-    result.userId === userId &&
-    (result.code === 'pending_approval_persisted' || result.code === 'pending_approval_reused'));
-}
-
-function emailSentForUser(
-  userId: string,
-  results: Array<{ code: string; userId?: string }>,
-): boolean {
-  return results.some((result) =>
-    result.userId === userId &&
-    (result.code === 'email_sent' || result.code === 'email_already_sent'));
 }
 
 async function runManualSync(
@@ -90,24 +68,12 @@ export async function POST(request: Request) {
 
     // Ceiling defense is a nightly batch (all users). Running it here per-click
     // was adding 15-30s overhead and causing 504s. Nightly-ops handles it at 4am.
-    const brief = await runDailyBrief({ userIds: [userId] });
+    const { result: dailyBrief, sendFallbackAttempted } = await runBriefLifecycle({
+      userIds: [userId],
+      ensureSend: true,
+    });
 
-    let send = brief.send;
-    let manualSendFallbackAttempted = false;
-
-    if (generatedDirectiveForUser(userId, brief.generate.results) && !emailSentForUser(userId, brief.send.results)) {
-      send = await runDailySend({ userIds: [userId] });
-      manualSendFallbackAttempted = true;
-    }
-
-    const signalProcessing = toSafeDailyBriefStageStatus(brief.signal_processing);
-    const generate = toSafeDailyBriefStageStatus(brief.generate);
-    const sendStage = toSafeDailyBriefStageStatus(send);
-    const dailyBriefOk =
-      (signalProcessing.status === 'ok' || signalProcessing.status === 'skipped') &&
-      (generate.status === 'ok' || generate.status === 'skipped') &&
-      (sendStage.status === 'ok' || sendStage.status === 'skipped');
-    const ok = dailyBriefOk && syncMicrosoftResult.ok && syncGoogleResult.ok;
+    const ok = dailyBrief.ok && syncMicrosoftResult.ok && syncGoogleResult.ok;
 
     return NextResponse.json({
       ok,
@@ -115,12 +81,8 @@ export async function POST(request: Request) {
         sync_microsoft: syncMicrosoftResult,
         sync_google: syncGoogleResult,
         daily_brief: {
-          date: brief.date,
-          ok: dailyBriefOk,
-          signal_processing: { ...signalProcessing, results: brief.signal_processing.results },
-          generate: { ...generate, results: brief.generate.results },
-          send: { ...sendStage, results: send.results },
-          manual_send_fallback_attempted: manualSendFallbackAttempted,
+          ...dailyBrief,
+          manual_send_fallback_attempted: sendFallbackAttempted,
         },
       },
     }, { status: ok ? 200 : 207 });

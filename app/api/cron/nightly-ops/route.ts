@@ -28,9 +28,8 @@ import {
 } from '@/lib/signals/signal-processor';
 import {
   autoSkipStaleApprovals,
-  runDailyBrief,
-  toSafeDailyBriefStageStatus,
 } from '@/lib/cron/daily-brief';
+import { runBriefLifecycle } from '@/lib/cron/brief-service';
 import { runCommitmentCeilingDefense, runSelfHeal } from '@/lib/cron/self-heal';
 import { runAcceptanceGate } from '@/lib/cron/acceptance-gate';
 import { checkConnectorHealth } from '@/lib/cron/connector-health';
@@ -500,18 +499,8 @@ async function handler(request: NextRequest) {
 
   // Stage 4: Daily brief (generate + send) — skipped if credit canary failed
   if (!skipDailyBrief) try {
-    const result = await runDailyBrief({ userIds: nightlyBriefUserIds });
-    const signalProcessing = toSafeDailyBriefStageStatus(result.signal_processing);
-    const generate = toSafeDailyBriefStageStatus(result.generate);
-    const send = toSafeDailyBriefStageStatus(result.send);
-
-    stages.daily_brief = {
-      date: result.date,
-      ok: result.ok,
-      signal_processing: { ...signalProcessing, results: result.signal_processing.results },
-      generate: { ...generate, results: result.generate.results },
-      send: { ...send, results: result.send.results },
-    };
+    const { result } = await runBriefLifecycle({ userIds: nightlyBriefUserIds });
+    stages.daily_brief = result;
     console.log(JSON.stringify({
       event: 'nightly_ops_stage',
       stage: 'daily_brief',

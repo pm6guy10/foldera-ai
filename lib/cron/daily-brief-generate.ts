@@ -1,0 +1,1105 @@
+/**
+ * Generate stage for the daily brief pipeline.
+ * Owns: signal processing, pending queue reconciliation, no-send persistence,
+ *       directive generation and persistence, runDailyGenerate orchestration.
+ */
+
+import { createServerClient } from '@/lib/db/client';
+import {
+  buildDirectiveExecutionResult,
+  generateDirective,
+  validateDirectiveForPersistence,
+} from '@/lib/briefing/generator';
+import { generateArtifact } from '@/lib/conviction/artifact-generator';
+import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
+import {
+  countUnprocessedSignals,
+  processUnextractedSignals,
+  resolveSignalBacklogMode,
+} from '@/lib/signals/signal-processor';
+import { summarizeSignals } from '@/lib/signals/summarizer';
+import type {
+  ConvictionArtifact,
+  ConvictionDirective,
+  GenerationCandidateDiscoveryLog,
+  GenerationRunLog,
+} from '@/lib/briefing/types';
+import { filterDailyBriefEligibleUserIds } from '@/lib/auth/daily-brief-users';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { runCommitmentCeilingDefense } from '@/lib/cron/self-heal';
+import { CONFIDENCE_PERSIST_THRESHOLD } from '@/lib/config/constants';
+import type {
+  DailyBriefFailureCode,
+  DailyBriefGenerateRunResult,
+  DailyBriefSignalWindowOptions,
+  DailyBriefUserResult,
+} from './daily-brief-types';
+import {
+  buildGenerateMessage,
+  buildRunResult,
+  buildSignalProcessingMessage,
+  SAFE_ERROR_MESSAGES,
+} from './daily-brief-status';
+
+// Sourced from lib/config/constants.ts — single source of truth.
+const CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
+const DAILY_SIGNAL_BATCH_SIZE = 5;
+const DAILY_SIGNAL_PROCESSING_BUDGET_MS = 20_000;
+
+// ---------------------------------------------------------------------------
+// Small helpers
+// ---------------------------------------------------------------------------
+
+/** Extract both scorer EV and generator confidence for structured logging. */
+function extractThresholdValues(directive: ConvictionDirective | null): {
+  scorer_ev: number | null;
+  generator_confidence: number | null;
+} {
+  if (!directive) return { scorer_ev: null, generator_confidence: null };
+  const topCandidate = directive.generationLog?.candidateDiscovery?.topCandidates?.[0];
+  return {
+    scorer_ev: typeof topCandidate?.score === 'number' ? topCandidate.score : null,
+    generator_confidence: typeof directive.confidence === 'number' ? directive.confidence : null,
+  };
+}
+
+export function artifactTypeForAction(actionType: string | null | undefined): string | null {
+  switch (actionType) {
+    case 'send_message': return 'drafted_email';
+    case 'make_decision': return 'decision_frame';
+    case 'do_nothing': return 'wait_rationale';
+    default: return null;
+  }
+}
+
+export function extractArtifact(executionResult: unknown): ConvictionArtifact | null {
+  if (!executionResult || typeof executionResult !== 'object') return null;
+  const artifact = (executionResult as Record<string, unknown>).artifact;
+  if (!artifact || typeof artifact !== 'object') return null;
+  return artifact as ConvictionArtifact;
+}
+
+export function extractNoSendBlockerReason(record: {
+  reason?: unknown;
+  execution_result?: unknown;
+}): string | null {
+  const executionResult =
+    record.execution_result && typeof record.execution_result === 'object'
+      ? (record.execution_result as Record<string, unknown>)
+      : null;
+  const generationLog =
+    executionResult?.generation_log && typeof executionResult.generation_log === 'object'
+      ? (executionResult.generation_log as Record<string, unknown>)
+      : null;
+  const noSend =
+    executionResult?.no_send && typeof executionResult.no_send === 'object'
+      ? (executionResult.no_send as Record<string, unknown>)
+      : null;
+
+  const candidates = [
+    typeof record.reason === 'string' ? record.reason : null,
+    typeof generationLog?.reason === 'string' ? generationLog.reason : null,
+    typeof noSend?.reason === 'string' ? noSend.reason : null,
+  ];
+
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
+
+export function extractSentAt(executionResult: unknown): string | null {
+  if (!executionResult || typeof executionResult !== 'object') return null;
+  const sentAt = (executionResult as Record<string, unknown>).daily_brief_sent_at;
+  return typeof sentAt === 'string' && sentAt.trim().length > 0 ? sentAt : null;
+}
+
+function buildSyntheticNoSendDirective(
+  reason: string,
+  stage: GenerationRunLog['stage'],
+  candidateDiscovery: GenerationCandidateDiscoveryLog | null = null,
+): ConvictionDirective {
+  return {
+    directive: '__GENERATION_FAILED__',
+    action_type: 'do_nothing',
+    confidence: 0,
+    reason,
+    evidence: [],
+    generationLog: {
+      outcome: 'no_send',
+      stage,
+      reason,
+      candidateFailureReasons: candidateDiscovery
+        ? candidateDiscovery.topCandidates.map((c) =>
+          c.decision === 'selected' ? `Selected candidate blocked: ${reason}` : c.decisionReason)
+        : [reason],
+      candidateDiscovery: candidateDiscovery
+        ? { ...candidateDiscovery, failureReason: candidateDiscovery.failureReason ?? reason }
+        : null,
+    },
+  };
+}
+
+function getCandidateDiscoveryFailureReason(
+  candidateDiscovery: GenerationCandidateDiscoveryLog | null | undefined,
+): string | null {
+  if (!candidateDiscovery) {
+    return 'Candidate discovery log missing from generation output.';
+  }
+  if (candidateDiscovery.candidateCount < 3 || candidateDiscovery.topCandidates.length < 3) {
+    return 'Acceptance gate blocked send because fewer than 3 candidates were evaluated.';
+  }
+  if (candidateDiscovery.selectionMargin === null && !candidateDiscovery.selectionReason?.trim()) {
+    return 'Acceptance gate blocked send because the selection margin or tie-break reason was not logged.';
+  }
+  return null;
+}
+
+export function todayStartIso(): string {
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  return start.toISOString();
+}
+
+function isoHoursAgo(hours: number): string {
+  return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+}
+
+// ---------------------------------------------------------------------------
+// Signal counting helper (used by runSignalProcessingForUser)
+// ---------------------------------------------------------------------------
+
+async function countUnprocessedSignalsOlderThan(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  beforeIso: string,
+  options: DailyBriefSignalWindowOptions = {},
+): Promise<number> {
+  let query = supabase
+    .from('tkg_signals')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .lt('occurred_at', beforeIso);
+
+  if (options.signalCreatedAtGte) {
+    query = query.gte('created_at', options.signalCreatedAtGte);
+  }
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// ---------------------------------------------------------------------------
+// Pending queue reconciliation
+// ---------------------------------------------------------------------------
+
+interface PendingActionRow {
+  action_type: string | null;
+  confidence: number | null;
+  directive_text: string | null;
+  execution_result: unknown;
+  generated_at: string;
+  id: string;
+  reason: string | null;
+}
+
+async function reconcilePendingApprovalQueue(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  todayStart: string,
+): Promise<{
+  error: Error | null;
+  preservedAction: PendingActionRow | null;
+  skippedActionIds: string[];
+  recentDoNothingGeneratedAt: string | null;
+}> {
+  const { data, error } = await supabase
+    .from('tkg_actions')
+    .select('id, generated_at, confidence, action_type, directive_text, reason, execution_result')
+    .eq('user_id', userId)
+    .eq('status', 'pending_approval')
+    .order('confidence', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    return { error, preservedAction: null, skippedActionIds: [], recentDoNothingGeneratedAt: null };
+  }
+
+  const rows = (data ?? []) as PendingActionRow[];
+  let preservedAction: PendingActionRow | null = null;
+  const skippedActionIds: string[] = [];
+  let recentDoNothingGeneratedAt: string | null = null;
+
+  for (const row of rows) {
+    const artifact = extractArtifact(row.execution_result);
+    const isToday = row.generated_at >= todayStart;
+    const isDoNothing = row.action_type === 'do_nothing';
+    const isValid =
+      !isDoNothing &&
+      artifact !== null &&
+      typeof row.confidence === 'number' &&
+      row.confidence >= CONFIDENCE_THRESHOLD;
+
+    if (!isToday || !isValid) {
+      const executionResult =
+        row.execution_result && typeof row.execution_result === 'object'
+          ? (row.execution_result as Record<string, unknown>)
+          : {};
+      const suppressionReason = isDoNothing
+        ? 'Auto-suppressed do_nothing pending action — never send to user.'
+        : !isToday
+        ? 'Auto-suppressed stale pending action before daily brief generation.'
+        : 'Auto-suppressed invalid pending action before daily brief generation.';
+
+      if (isDoNothing && isToday && row.generated_at > (recentDoNothingGeneratedAt ?? '')) {
+        recentDoNothingGeneratedAt = row.generated_at;
+      }
+
+      const { error: updateError } = await supabase
+        .from('tkg_actions')
+        .update({
+          status: 'skipped',
+          skip_reason: suppressionReason,
+          execution_result: {
+            ...executionResult,
+            auto_suppressed_at: new Date().toISOString(),
+            auto_suppression_reason: suppressionReason,
+          },
+        })
+        .eq('id', row.id);
+
+      if (updateError) {
+        return { error: updateError, preservedAction: null, skippedActionIds, recentDoNothingGeneratedAt: null };
+      }
+
+      skippedActionIds.push(row.id);
+      continue;
+    }
+
+    if (!preservedAction) {
+      preservedAction = row;
+      continue;
+    }
+
+    const executionResult =
+      row.execution_result && typeof row.execution_result === 'object'
+        ? (row.execution_result as Record<string, unknown>)
+        : {};
+    const suppressionReason = 'Auto-suppressed duplicate pending action before daily brief generation.';
+    const { error: updateError } = await supabase
+      .from('tkg_actions')
+      .update({
+        status: 'skipped',
+        skip_reason: suppressionReason,
+        execution_result: {
+          ...executionResult,
+          auto_suppressed_at: new Date().toISOString(),
+          auto_suppression_reason: suppressionReason,
+        },
+      })
+      .eq('id', row.id);
+
+    if (updateError) {
+      return { error: updateError, preservedAction: null, skippedActionIds, recentDoNothingGeneratedAt: null };
+    }
+
+    skippedActionIds.push(row.id);
+  }
+
+  return { error: null, preservedAction, skippedActionIds, recentDoNothingGeneratedAt };
+}
+
+// ---------------------------------------------------------------------------
+// No-send persistence
+// ---------------------------------------------------------------------------
+
+export async function findPersistedNoSendBlocker(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  sinceIso: string,
+): Promise<{ error: Error | null; id: string | null; reason: string | null }> {
+  const { data, error } = await supabase
+    .from('tkg_actions')
+    .select('id, reason, execution_result, generated_at')
+    .eq('user_id', userId)
+    .eq('status', 'skipped')
+    .gte('generated_at', sinceIso)
+    .order('generated_at', { ascending: false })
+    .limit(10);
+
+  if (error) return { error, id: null, reason: null };
+
+  const blocker = (data ?? []).find((candidate) => {
+    const executionResult =
+      candidate.execution_result && typeof candidate.execution_result === 'object'
+        ? (candidate.execution_result as Record<string, unknown>)
+        : null;
+    return executionResult?.outcome_type === 'no_send';
+  });
+
+  if (!blocker) return { error: null, id: null, reason: null };
+
+  return {
+    error: null,
+    id: blocker.id as string,
+    reason: extractNoSendBlockerReason(blocker),
+  };
+}
+
+function buildNoSendGenerationLog(
+  directive: ConvictionDirective,
+  reason: string,
+  stage: GenerationRunLog['stage'],
+): GenerationRunLog {
+  const candidateDiscovery = directive.generationLog?.candidateDiscovery
+    ? {
+      ...directive.generationLog.candidateDiscovery,
+      failureReason: directive.generationLog.candidateDiscovery.failureReason ?? reason,
+    }
+    : null;
+
+  return {
+    outcome: 'no_send',
+    stage,
+    reason,
+    candidateFailureReasons: candidateDiscovery
+      ? candidateDiscovery.topCandidates.map((c) =>
+        c.decision === 'selected' ? `Selected candidate blocked: ${reason}` : c.decisionReason)
+      : [reason],
+    candidateDiscovery,
+  };
+}
+
+function buildNoSendExecutionResult(
+  directive: ConvictionDirective,
+  reason: string,
+  stage: GenerationRunLog['stage'],
+): Record<string, unknown> {
+  return buildDirectiveExecutionResult({
+    directive,
+    briefOrigin: 'daily_cron',
+    extras: {
+      outcome_type: 'no_send',
+      generation_log: directive.generationLog?.outcome === 'no_send'
+        ? directive.generationLog
+        : buildNoSendGenerationLog(directive, reason, stage),
+      no_send: { reason, stage },
+    },
+  });
+}
+
+function buildWaitRationale(
+  directive: ConvictionDirective,
+  reason: string,
+): { directiveText: string; artifact: Record<string, unknown> } {
+  const discovery = directive.generationLog?.candidateDiscovery;
+  const candidateCount = discovery?.candidateCount ?? 0;
+  const topCandidates = discovery?.topCandidates ?? [];
+  const modelInsight = typeof directive.fullContext === 'string' && directive.fullContext.trim()
+    ? directive.fullContext.trim()
+    : null;
+
+  const contextParts: string[] = [];
+  if (candidateCount > 0) {
+    contextParts.push(`Foldera evaluated ${candidateCount} candidates today.`);
+  }
+  for (const candidate of topCandidates.slice(0, 3)) {
+    const action = candidate.actionType ?? 'action';
+    const score = typeof candidate.score === 'number' ? candidate.score.toFixed(2) : '?';
+    const goalText = candidate.targetGoal?.text
+      ? ` (goal: ${candidate.targetGoal.text.slice(0, 80)})`
+      : '';
+    const blocked = candidate.decision === 'selected' ? ' [BLOCKED by constraint]' : '';
+    contextParts.push(`• ${action} scored ${score}${goalText}${blocked}`);
+  }
+  if (contextParts.length === 0) {
+    contextParts.push('No actionable candidates were found today.');
+  }
+
+  const context = modelInsight
+    ? `${modelInsight}\n\n${contextParts.join('\n')}`
+    : contextParts.join('\n');
+  const directiveText = modelInsight
+    ? modelInsight
+    : candidateCount > 0
+    ? `Nothing cleared the bar today — ${candidateCount} candidates evaluated, none ready to send.`
+    : 'Nothing cleared the bar today.';
+
+  return {
+    directiveText,
+    artifact: {
+      type: 'wait_rationale',
+      context,
+      evidence: reason,
+      tripwires: topCandidates
+        .filter((c) => c.decision === 'selected')
+        .slice(0, 3)
+        .map((c) => `Unblocked when: constraint on "${c.targetGoal?.text?.slice(0, 60) ?? 'unknown'}" is lifted`),
+    },
+  };
+}
+
+async function persistNoSendOutcome(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  directive: ConvictionDirective,
+  reason: string,
+  stage: GenerationRunLog['stage'],
+): Promise<{ id: string } | null> {
+  const executionResult = buildNoSendExecutionResult(directive, reason, stage);
+  const waitRationale = buildWaitRationale(directive, reason);
+
+  const { data, error } = await supabase
+    .from('tkg_actions')
+    .insert({
+      user_id: userId,
+      action_type: 'do_nothing',
+      directive_text: waitRationale.directiveText,
+      reason,
+      status: 'pending_approval',
+      confidence: 45,
+      evidence: directive.evidence,
+      generated_at: new Date().toISOString(),
+      generation_attempts: 1,
+      artifact: waitRationale.artifact,
+      execution_result: {
+        ...executionResult,
+        artifact: waitRationale.artifact,
+      },
+    })
+    .select('id')
+    .single();
+
+  if (error || !data?.id) return null;
+  return { id: data.id };
+}
+
+// ---------------------------------------------------------------------------
+// User resolution
+// ---------------------------------------------------------------------------
+
+export async function resolveDailyBriefUserIds(explicitUserIds?: string[]): Promise<string[]> {
+  const uniqueExplicitUserIds = [...new Set((explicitUserIds ?? []).filter(Boolean))];
+  if (uniqueExplicitUserIds.length > 0) return uniqueExplicitUserIds;
+  return getEligibleDailyBriefUserIds();
+}
+
+async function getEligibleDailyBriefUserIds(): Promise<string[]> {
+  const supabase = createServerClient();
+  const { data: entities, error } = await supabase
+    .from('tkg_entities')
+    .select('user_id')
+    .eq('name', 'self');
+
+  if (error) throw error;
+
+  const userIds = [...new Set((entities ?? []).map((e: { user_id: string }) => e.user_id))];
+  if (userIds.length === 0) return [];
+  return filterDailyBriefEligibleUserIds(userIds, supabase);
+}
+
+// ---------------------------------------------------------------------------
+// Signal processing stage (per user)
+// ---------------------------------------------------------------------------
+
+async function runSignalProcessingForUser(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  options: DailyBriefSignalWindowOptions = {},
+): Promise<DailyBriefUserResult> {
+  const staleCutoffIso = isoHoursAgo(24);
+  const deadline = Date.now() + DAILY_SIGNAL_PROCESSING_BUDGET_MS;
+
+  try {
+    const staleBefore = await countUnprocessedSignalsOlderThan(supabase, userId, staleCutoffIso, options);
+    const totalBeforeAllSources = await countUnprocessedSignals(userId, {
+      createdAtGte: options.signalCreatedAtGte,
+      includeAllSources: true,
+    });
+    const totalBefore = await countUnprocessedSignals(userId, { createdAtGte: options.signalCreatedAtGte });
+    const backlogMode = resolveSignalBacklogMode(totalBeforeAllSources);
+
+    logStructuredEvent({
+      event: 'daily_brief_signal_mode',
+      userId,
+      artifactType: null,
+      generationStatus: 'mode_selected',
+      details: {
+        scope: 'daily-brief',
+        nightly_ops_signal_mode: backlogMode.mode,
+        total_unprocessed_signals_before_processing: totalBeforeAllSources,
+        signal_batch_size: backlogMode.maxSignals,
+        max_signal_rounds: backlogMode.rounds,
+      },
+    });
+
+    let signalsProcessed = 0;
+    let summariesCreated = 0;
+    let staleAfter = staleBefore;
+    let totalAfter = totalBefore;
+    const deferredSignalIds = new Set<string>();
+    const errors: string[] = [];
+
+    while (Date.now() < deadline) {
+      const extraction = await processUnextractedSignals(userId, {
+        createdAtGte: options.signalCreatedAtGte,
+        maxSignals: DAILY_SIGNAL_BATCH_SIZE,
+        prioritizeOlderThanIso: staleCutoffIso,
+        quarantineDeferredOlderThanIso: staleCutoffIso,
+      });
+      signalsProcessed += extraction.signals_processed;
+      for (const signalId of extraction.deferred_signal_ids ?? []) deferredSignalIds.add(signalId);
+      for (const err of extraction.errors ?? []) errors.push(err);
+
+      staleAfter = await countUnprocessedSignalsOlderThan(supabase, userId, staleCutoffIso, options);
+      totalAfter = await countUnprocessedSignals(userId, { createdAtGte: options.signalCreatedAtGte });
+
+      if (extraction.signals_processed === 0) break;
+      if (staleAfter === 0 && totalAfter === 0) break;
+    }
+
+    try {
+      summariesCreated = await summarizeSignals(userId);
+      if (summariesCreated > 0) {
+        logStructuredEvent({
+          event: 'daily_generate_summary',
+          userId,
+          artifactType: null,
+          generationStatus: 'summary_complete',
+          details: { scope: 'daily-brief', summaries_created: summariesCreated },
+        });
+      }
+    } catch (sumErr: unknown) {
+      errors.push(sumErr instanceof Error ? sumErr.message : String(sumErr));
+      logStructuredEvent({
+        event: 'daily_generate_summary_failed',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'summary_failed',
+        details: {
+          scope: 'daily-brief',
+          error: sumErr instanceof Error ? sumErr.message : String(sumErr),
+        },
+      });
+    }
+
+    const meta = {
+      processed_fresh_signals_count: signalsProcessed,
+      stale_unprocessed_signals_before_generation: staleAfter,
+      stale_unprocessed_signals_before_generation_initial: staleBefore,
+      summaries_created: summariesCreated,
+      total_unprocessed_signals_before_processing_all_sources: totalBeforeAllSources,
+      total_unprocessed_signals_after_processing: totalAfter,
+      total_unprocessed_signals_before_processing: totalBefore,
+      deferred_signal_ids: [...deferredSignalIds],
+      route_budget_exhausted: Date.now() >= deadline,
+    };
+
+    if (staleAfter >= 10) {
+      return {
+        code: 'stale_signal_backlog_remaining',
+        detail: `${staleAfter} unprocessed signals older than 24 hours remained after the signal-processing budget.`,
+        meta,
+        success: false,
+        userId,
+      };
+    }
+
+    if (errors.length > 0 && signalsProcessed === 0 && totalBefore > 0) {
+      return {
+        code: 'signal_processing_failed',
+        detail: errors.join(' '),
+        meta: { ...meta, errors },
+        success: false,
+        userId,
+      };
+    }
+
+    return {
+      code: totalBefore === 0 ? 'no_unprocessed_signals' : 'signals_caught_up',
+      meta: { ...meta, errors },
+      success: true,
+      userId,
+    };
+  } catch (error: unknown) {
+    return {
+      code: 'signal_processing_failed',
+      detail: error instanceof Error ? error.message : String(error),
+      success: false,
+      userId,
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// runDailyGenerate — generate stage entrypoint
+// ---------------------------------------------------------------------------
+
+export async function runDailyGenerate(
+  options: DailyBriefSignalWindowOptions = {},
+): Promise<DailyBriefGenerateRunResult> {
+  const supabase = createServerClient();
+  const date = new Date().toISOString().slice(0, 10);
+  const todayStart = todayStartIso();
+
+  const { error: expireError } = await supabase
+    .from('user_subscriptions')
+    .update({ status: 'expired' })
+    .eq('plan', 'trial')
+    .eq('status', 'active')
+    .lte('current_period_end', new Date().toISOString());
+
+  if (expireError) throw expireError;
+
+  const eligibleUserIds = await resolveDailyBriefUserIds(options.userIds);
+  if (eligibleUserIds.length === 0) {
+    const emptySignalStage = buildRunResult(
+      date,
+      'Signal processing skipped because no eligible users with graph data were available.',
+      [],
+    );
+    return {
+      ...buildRunResult(date, 'No eligible users with graph data.', []),
+      signalProcessing: emptySignalStage,
+    };
+  }
+
+  const signalResults: DailyBriefUserResult[] = [];
+  const results: DailyBriefUserResult[] = [];
+
+  for (const userId of eligibleUserIds) {
+    const signalResult = await runSignalProcessingForUser(supabase, userId, options);
+    signalResults.push(signalResult);
+
+    try {
+      const pendingQueue = await reconcilePendingApprovalQueue(supabase, userId, todayStart);
+      if (pendingQueue.error) {
+        results.push({
+          code: 'directive_persist_failed',
+          detail: pendingQueue.error.message,
+          success: false,
+          userId,
+        });
+        continue;
+      }
+
+      const cleanupMeta = {
+        skipped_pending_action_ids: pendingQueue.skippedActionIds,
+        signal_processing: signalResult.meta ?? {},
+      };
+
+      if (pendingQueue.preservedAction) {
+        results.push({
+          code: 'pending_approval_reused',
+          meta: {
+            ...cleanupMeta,
+            action_id: pendingQueue.preservedAction.id,
+            artifact_present: extractArtifact(pendingQueue.preservedAction.execution_result) !== null,
+            daily_brief_sent_at: extractSentAt(pendingQueue.preservedAction.execution_result),
+          },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
+      // Recovery: if a high-confidence directive was user-skipped today (skip_reason IS NULL),
+      // restore it to pending_approval rather than generating do_nothing.
+      {
+        const { data: recoverable } = await supabase
+          .from('tkg_actions')
+          .select('id, confidence, action_type, directive_text, execution_result')
+          .eq('user_id', userId)
+          .eq('status', 'skipped')
+          .is('skip_reason', null)
+          .neq('action_type', 'do_nothing')
+          .gte('confidence', 70)
+          .gte('generated_at', todayStart)
+          .order('confidence', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recoverable) {
+          await supabase
+            .from('tkg_actions')
+            .update({ status: 'pending_approval', skip_reason: null })
+            .eq('id', recoverable.id);
+
+          results.push({
+            code: 'pending_approval_reused',
+            meta: {
+              ...cleanupMeta,
+              action_id: recoverable.id,
+              artifact_present: extractArtifact(recoverable.execution_result) !== null,
+              recovered: true,
+            },
+            success: true,
+            userId,
+          });
+          continue;
+        }
+      }
+
+      // Cooldown: if reconciliation just suppressed a do_nothing generated within
+      // the last 4 hours AND signal processing found no new signals, skip re-generation.
+      const DO_NOTHING_COOLDOWN_MS = 4 * 60 * 60 * 1000;
+      if (
+        pendingQueue.recentDoNothingGeneratedAt &&
+        Date.now() - new Date(pendingQueue.recentDoNothingGeneratedAt).getTime() < DO_NOTHING_COOLDOWN_MS &&
+        signalResult.success &&
+        (signalResult.meta as Record<string, unknown> | undefined)?.['processed_fresh_signals_count'] === 0
+      ) {
+        results.push({
+          code: 'no_send_reused',
+          detail: 'do_nothing cooldown — no new signals processed since last attempt',
+          meta: cleanupMeta,
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
+      if (!signalResult.success) {
+        const preconditionReason =
+          signalResult.detail?.trim() || SAFE_ERROR_MESSAGES[signalResult.code as DailyBriefFailureCode];
+        const savedNoSend = await persistNoSendOutcome(
+          supabase,
+          userId,
+          buildSyntheticNoSendDirective(preconditionReason, 'system'),
+          preconditionReason,
+          'system',
+        );
+
+        if (!savedNoSend) {
+          results.push({
+            code: 'directive_persist_failed',
+            detail: 'Failed to persist pre-generation no-send evidence.',
+            success: false,
+            userId,
+          });
+          continue;
+        }
+
+        results.push({
+          code: 'no_send_persisted',
+          detail: preconditionReason,
+          meta: { ...cleanupMeta, action_id: savedNoSend.id },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
+      // Run ceiling defense immediately before scoring
+      try {
+        await runCommitmentCeilingDefense();
+      } catch (err) {
+        console.warn('[daily-brief] pre-generate commitment ceiling defense failed:', err);
+      }
+
+      let directive;
+      try {
+        directive = await generateDirective(userId);
+      } catch (genErr: unknown) {
+        const message = genErr instanceof Error ? genErr.message : String(genErr);
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'error',
+          userId,
+          artifactType: null,
+          generationStatus: 'generation_failed',
+          details: { scope: 'daily-generate', error: message },
+        });
+        results.push({
+          code: 'generation_failed',
+          detail: message,
+          meta: cleanupMeta,
+          success: false,
+          userId,
+        });
+        continue;
+      }
+
+      if (directive.directive === '__GENERATION_FAILED__') {
+        const savedNoSend = await persistNoSendOutcome(
+          supabase, userId, directive, directive.reason, directive.generationLog?.stage ?? 'generation',
+        );
+
+        if (!savedNoSend) {
+          logStructuredEvent({
+            event: 'daily_generate_failed',
+            level: 'error',
+            userId,
+            artifactType: null,
+            generationStatus: 'persist_failed',
+            details: { scope: 'daily-generate', error: 'Failed to persist no-send outcome.' },
+          });
+          results.push({
+            code: 'directive_persist_failed',
+            detail: 'Failed to persist no-send outcome.',
+            meta: cleanupMeta,
+            success: false,
+            userId,
+          });
+          continue;
+        }
+
+        results.push({
+          code: 'no_send_persisted',
+          detail: directive.reason,
+          meta: {
+            ...cleanupMeta,
+            action_id: savedNoSend.id,
+            candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
+            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            ...extractThresholdValues(directive),
+          },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
+      const candidateDiscoveryFailure = getCandidateDiscoveryFailureReason(
+        directive.generationLog?.candidateDiscovery,
+      );
+      if (candidateDiscoveryFailure) {
+        const savedNoSend = await persistNoSendOutcome(
+          supabase,
+          userId,
+          buildSyntheticNoSendDirective(
+            candidateDiscoveryFailure,
+            'validation',
+            directive.generationLog?.candidateDiscovery ?? null,
+          ),
+          candidateDiscoveryFailure,
+          'validation',
+        );
+        if (!savedNoSend) {
+          results.push({
+            code: 'directive_persist_failed',
+            detail: 'Failed to persist acceptance-gated no-send outcome.',
+            meta: cleanupMeta,
+            success: false,
+            userId,
+          });
+          continue;
+        }
+
+        results.push({
+          code: 'no_send_persisted',
+          detail: candidateDiscoveryFailure,
+          meta: {
+            ...cleanupMeta,
+            action_id: savedNoSend.id,
+            candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
+            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            ...extractThresholdValues(directive),
+          },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
+      let artifact = null;
+      try {
+        artifact = await generateArtifact(userId, directive);
+      } catch (artErr: unknown) {
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'warn',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'artifact_failed',
+          details: {
+            scope: 'daily-generate',
+            error: artErr instanceof Error ? artErr.message : String(artErr),
+          },
+        });
+      }
+
+      if (!artifact) {
+        const savedNoSend = await persistNoSendOutcome(supabase, userId, directive, 'Artifact generation failed.', 'artifact');
+        if (!savedNoSend) {
+          results.push({
+            code: 'directive_persist_failed',
+            detail: 'Failed to persist artifact-generation no-send outcome.',
+            meta: cleanupMeta,
+            success: false,
+            userId,
+          });
+          continue;
+        }
+        results.push({
+          code: 'no_send_persisted',
+          detail: 'Artifact generation failed.',
+          meta: {
+            ...cleanupMeta,
+            action_id: savedNoSend.id,
+            candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
+            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            ...extractThresholdValues(directive),
+          },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
+      const persistenceIssues = validateDirectiveForPersistence({ userId, directive, artifact });
+      if (persistenceIssues.length > 0) {
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'warn',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'persistence_validation_failed',
+          details: { scope: 'daily-generate', issues: persistenceIssues },
+        });
+        const savedNoSend = await persistNoSendOutcome(
+          supabase,
+          userId,
+          directive,
+          `Directive rejected by persistence validation: ${persistenceIssues.join('; ')}`,
+          'validation',
+        );
+        if (!savedNoSend) {
+          results.push({
+            code: 'directive_persist_failed',
+            detail: 'Failed to persist persistence-validation no-send outcome.',
+            meta: cleanupMeta,
+            success: false,
+            userId,
+          });
+          continue;
+        }
+        results.push({
+          code: 'no_send_persisted',
+          detail: `Directive rejected by persistence validation: ${persistenceIssues.join('; ')}`,
+          meta: {
+            ...cleanupMeta,
+            action_id: savedNoSend.id,
+            candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
+            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            ...extractThresholdValues(directive),
+          },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
+      const { data: saved, error: saveErr } = await supabase
+        .from('tkg_actions')
+        .insert({
+          user_id: userId,
+          action_type: directive.action_type,
+          directive_text: directive.directive,
+          reason: directive.reason,
+          status: 'pending_approval',
+          confidence: directive.confidence,
+          evidence: directive.evidence,
+          generated_at: new Date().toISOString(),
+          generation_attempts: 1,
+          artifact: artifact ?? null,
+          execution_result: buildDirectiveExecutionResult({ directive, artifact, briefOrigin: 'daily_cron' }),
+        })
+        .select('id')
+        .single();
+
+      if (saveErr || !saved?.id) {
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'error',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'persist_failed',
+          details: { scope: 'daily-generate', error: saveErr?.message ?? 'Missing inserted action id' },
+        });
+        results.push({
+          code: 'directive_persist_failed',
+          detail: saveErr?.message ?? 'Missing inserted action id',
+          meta: cleanupMeta,
+          success: false,
+          userId,
+        });
+        continue;
+      }
+
+      // Self-feed: ingest the directive as a signal for future context
+      try {
+        const date = new Date().toISOString().slice(0, 10);
+        const feedText = [
+          `[Foldera Directive — ${date}]`,
+          `Action: ${directive.action_type}`,
+          `Directive: ${directive.directive}`,
+        ].join('\n');
+        await extractFromConversation(feedText, userId);
+      } catch (feedErr: unknown) {
+        const message = feedErr instanceof Error ? feedErr.message : String(feedErr);
+        if (!message.includes('already ingested')) {
+          logStructuredEvent({
+            event: 'daily_generate_self_feed_failed',
+            level: 'warn',
+            userId,
+            artifactType: artifactTypeForAction(directive.action_type),
+            generationStatus: 'self_feed_failed',
+            details: { scope: 'daily-generate', error: message },
+          });
+        }
+      }
+
+      results.push({
+        code: 'pending_approval_persisted',
+        meta: {
+          ...cleanupMeta,
+          action_id: saved.id,
+          artifact_type: artifact.type,
+          artifact_valid: true,
+          candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
+          top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+          ...extractThresholdValues(directive),
+        },
+        success: true,
+        userId,
+      });
+      logStructuredEvent({
+        event: 'daily_generate_complete',
+        userId,
+        artifactType: artifactTypeForAction(directive.action_type),
+        generationStatus: 'generated',
+        details: { scope: 'daily-generate', action_id: saved.id, ...extractThresholdValues(directive) },
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      logStructuredEvent({
+        event: 'daily_generate_failed',
+        level: 'error',
+        userId,
+        artifactType: null,
+        generationStatus: 'failed',
+        details: { scope: 'daily-generate', error: message },
+      });
+      results.push({
+        code: 'generation_failed',
+        detail: message,
+        success: false,
+        userId,
+      });
+    }
+  }
+
+  return {
+    ...buildRunResult(date, buildGenerateMessage(results, eligibleUserIds.length), results),
+    signalProcessing: buildRunResult(
+      date,
+      buildSignalProcessingMessage(signalResults, eligibleUserIds.length),
+      signalResults,
+    ),
+  };
+}

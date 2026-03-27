@@ -3,9 +3,7 @@ import { NextResponse } from 'next/server';
 
 const mockResolveUser = vi.fn();
 const mockApiError = vi.fn();
-const mockRunDailyBrief = vi.fn();
-const mockRunDailySend = vi.fn();
-const mockToSafeDailyBriefStageStatus = vi.fn();
+const mockRunBriefLifecycle = vi.fn();
 const mockSyncGoogle = vi.fn();
 const mockSyncMicrosoft = vi.fn();
 const mockRunCommitmentCeilingDefense = vi.fn();
@@ -18,10 +16,8 @@ vi.mock('@/lib/auth/resolve-user', () => ({
   resolveUser: mockResolveUser,
 }));
 
-vi.mock('@/lib/cron/daily-brief', () => ({
-  runDailyBrief: mockRunDailyBrief,
-  runDailySend: mockRunDailySend,
-  toSafeDailyBriefStageStatus: mockToSafeDailyBriefStageStatus,
+vi.mock('@/lib/cron/brief-service', () => ({
+  runBriefLifecycle: mockRunBriefLifecycle,
 }));
 
 vi.mock('@/lib/sync/google-sync', () => ({
@@ -35,6 +31,28 @@ vi.mock('@/lib/sync/microsoft-sync', () => ({
 vi.mock('@/lib/utils/api-error', () => ({
   apiError: mockApiError,
 }));
+
+function makeBriefResult(userId: string, sendFallbackAttempted = false) {
+  return {
+    result: {
+      date: '2026-03-24',
+      ok: true,
+      signal_processing: {
+        attempted: 1, errors: [], failed: 0, status: 'ok', succeeded: 1, summary: 'ok',
+        results: [{ code: 'no_unprocessed_signals', success: true, userId }],
+      },
+      generate: {
+        attempted: 1, errors: [], failed: 0, status: 'ok', succeeded: 1, summary: 'ok',
+        results: [{ code: 'pending_approval_persisted', success: true, userId }],
+      },
+      send: {
+        attempted: 1, errors: [], failed: 0, status: 'ok', succeeded: 1, summary: 'ok',
+        results: [{ code: 'email_sent', success: true, userId }],
+      },
+    },
+    sendFallbackAttempted,
+  };
+}
 
 describe('POST /api/settings/run-brief', () => {
   beforeEach(() => {
@@ -51,14 +69,6 @@ describe('POST /api/settings/run-brief', () => {
       task_signals: 0,
       error: 'no_token',
     });
-    mockToSafeDailyBriefStageStatus.mockImplementation((result: { results: Array<{ success: boolean }> }) => ({
-      attempted: result.results.length,
-      errors: [],
-      failed: result.results.filter((entry) => !entry.success).length,
-      status: result.results.every((entry) => entry.success) ? 'ok' : 'partial',
-      succeeded: result.results.filter((entry) => entry.success).length,
-      summary: 'summary',
-    }));
   });
 
   it('returns auth response when the session is missing', async () => {
@@ -74,36 +84,13 @@ describe('POST /api/settings/run-brief', () => {
   it('runs the manual brief for any authenticated user instead of blocking non-owner sessions', async () => {
     const userId = '22222222-2222-2222-2222-222222222222';
     mockResolveUser.mockResolvedValue({ userId });
-    mockRunDailyBrief.mockResolvedValue({
-      date: '2026-03-24',
-      ok: true,
-      signal_processing: {
-        date: '2026-03-24',
-        message: 'Signals were ready.',
-        results: [{ code: 'no_unprocessed_signals', success: true, userId }],
-        succeeded: 1,
-        total: 1,
-      },
-      generate: {
-        date: '2026-03-24',
-        message: 'A valid pending_approval action exists.',
-        results: [{ code: 'pending_approval_persisted', success: true, userId }],
-        succeeded: 1,
-        total: 1,
-      },
-      send: {
-        date: '2026-03-24',
-        message: 'Sent briefs for 1 eligible user.',
-        results: [{ code: 'email_sent', success: true, userId }],
-        succeeded: 1,
-        total: 1,
-      },
-    });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
     const { POST } = await import('../route');
 
     const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
 
-    expect(mockRunDailyBrief).toHaveBeenCalledWith({ userIds: [userId] });
+    // Route must pass ensureSend: true so the service handles the send fallback
+    expect(mockRunBriefLifecycle).toHaveBeenCalledWith({ userIds: [userId], ensureSend: true });
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.ok).toBe(true);
@@ -112,46 +99,14 @@ describe('POST /api/settings/run-brief', () => {
     ]);
   });
 
-  it('reuses the shared send stage as a fallback when generation succeeded but no email was sent', async () => {
+  it('surfaces manual_send_fallback_attempted = true from the service when the send fallback ran', async () => {
     const userId = '33333333-3333-3333-3333-333333333333';
     mockResolveUser.mockResolvedValue({ userId });
-    mockRunDailyBrief.mockResolvedValue({
-      date: '2026-03-24',
-      ok: false,
-      signal_processing: {
-        date: '2026-03-24',
-        message: 'Signals were ready.',
-        results: [{ code: 'signals_caught_up', success: true, userId }],
-        succeeded: 1,
-        total: 1,
-      },
-      generate: {
-        date: '2026-03-24',
-        message: 'A valid pending_approval action exists.',
-        results: [{ code: 'pending_approval_persisted', success: true, userId }],
-        succeeded: 1,
-        total: 1,
-      },
-      send: {
-        date: '2026-03-24',
-        message: 'No generated brief was available to send.',
-        results: [{ code: 'no_generated_directive', success: false, userId }],
-        succeeded: 0,
-        total: 1,
-      },
-    });
-    mockRunDailySend.mockResolvedValue({
-      date: '2026-03-24',
-      message: 'Sent briefs for 1 eligible user.',
-      results: [{ code: 'email_sent', success: true, userId }],
-      succeeded: 1,
-      total: 1,
-    });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, true));
     const { POST } = await import('../route');
 
     const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
 
-    expect(mockRunDailySend).toHaveBeenCalledWith({ userIds: [userId] });
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.stages.daily_brief.manual_send_fallback_attempted).toBe(true);
@@ -160,39 +115,14 @@ describe('POST /api/settings/run-brief', () => {
     ]);
   });
 
-  it('does not retry send when generation produced an explicit no-send result', async () => {
+  it('surfaces manual_send_fallback_attempted = false when the service did not retry send', async () => {
     const userId = '44444444-4444-4444-4444-444444444444';
     mockResolveUser.mockResolvedValue({ userId });
-    mockRunDailyBrief.mockResolvedValue({
-      date: '2026-03-24',
-      ok: true,
-      signal_processing: {
-        date: '2026-03-24',
-        message: 'Signals were ready.',
-        results: [{ code: 'no_unprocessed_signals', success: true, userId }],
-        succeeded: 1,
-        total: 1,
-      },
-      generate: {
-        date: '2026-03-24',
-        message: 'No pending_approval brief was persisted.',
-        results: [{ code: 'no_send_persisted', success: true, userId }],
-        succeeded: 1,
-        total: 1,
-      },
-      send: {
-        date: '2026-03-24',
-        message: 'No brief email was sent for 1 user.',
-        results: [{ code: 'no_send_blocker_persisted', success: true, userId }],
-        succeeded: 1,
-        total: 1,
-      },
-    });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
     const { POST } = await import('../route');
 
     const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
 
-    expect(mockRunDailySend).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.stages.daily_brief.manual_send_fallback_attempted).toBe(false);
