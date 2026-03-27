@@ -123,6 +123,12 @@ export interface DeprioritizedLoop {
 
 export interface ScorerResult {
   winner: ScoredLoop;
+  /**
+   * Top 3 raw scored candidates (winner + up to 2 runner-ups) before kill-reason
+   * classification. Used by the generator's viability competition pass so it can
+   * pick a different final winner when the top scorer is less executable.
+   */
+  topCandidates: ScoredLoop[];
   deprioritized: DeprioritizedLoop[];
   candidateDiscovery: GenerationCandidateDiscoveryLog;
   /** Anti-patterns detected regardless of whether they won scoring */
@@ -2996,6 +3002,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
   return {
     winner,
+    topCandidates: scored.slice(0, 3),
     deprioritized,
     candidateDiscovery: buildCandidateDiscoveryLog(winner, scored, suppressedCandidates, null),
     antiPatterns,

@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-03-27 — Multi-candidate viability competition + generation prompt tightening
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `lib/briefing/__tests__/winner-selection.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` passed; `npx vitest run --exclude ".claude/worktrees/**"` 27 files / 172 tests passed (9 new winner-selection tests).
+  Changes: (1) Generation prompt tightening: SYSTEM_PROMPT ARTIFACT VOICE RULES block (no filler, no assistant tone), BANNED PHRASES block ("just checking in", "touching base", "wanted to reach out", "following up" without specifics, generic openers). `send_message` schema requirements: first sentence must anchor to a specific signal fact, explicit ask, ≤150 words. `write_document`: one decisive move, no option lists. Per-run SEND_MESSAGE_QUALITY_BAR injected when has_real_recipient. (2) Multi-candidate viability competition: `ScorerResult.topCandidates` (top 3 raw scored loops) added to scorer interface + return. `selectFinalWinner()` pure function exported from generator — applies viability multipliers to top 3 candidates before hydration: commitment/compound +12%, send_message without email -20%, signal ≤2d +8%, signal >10d -12%, already-acted-recently (72% token similarity) → disqualify. Injects `CANDIDATE_COMPETITION` string into prompt via `competition_context` field in `StructuredContext`. Collapse point moved from `scored.winner` (unconditional) to `finalWinner` (competition-selected). `buildStructuredContext` now accepts `competitionContext` optional param. `buildPromptFromStructuredContext` emits it before CRITICAL block. 9 unit tests cover: single candidate, top scorer, send_message-no-email downgrade, commitment bonus, already-acted-recently disqualify, all-disqualified fallback, competition context string, fresh signal bonus.
+  Any unresolved issues: Production E2E (`npm run test:prod`) not run this session — no route contract changes, no UI changes, backend-only prompt + architecture changes.
+
 - 2026-03-27 — Two-gate send enforcement + send-quality calibration
   MODE: AUDIT
   Commit hash(es): `ac9e16a` (two-gate enforcement), `cca65e4` (send-quality calibration)

@@ -587,6 +587,181 @@ async function buildAvoidanceObservations(
 }
 
 // ---------------------------------------------------------------------------
+// Part 2b — Multi-candidate competition: select the most viable final winner
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply a viability layer on top of the scorer's raw ranking.
+ *
+ * The scorer ranks by behavioral loop score (stakes × urgency × tractability).
+ * That score is the right signal for WHICH tension matters most — but it cannot
+ * know whether the top-ranked candidate can actually produce an executable artifact.
+ *
+ * This function evaluates the top 3 scored candidates on execution viability and
+ * selects the one most likely to produce an artifact the user can approve without
+ * editing. It may select candidate #2 or #3 over the scorer's #1 when the #1 lacks
+ * a real recipient, has aging signals, or was already acted on recently.
+ *
+ * Returns the final winner plus a competition context string injected into the
+ * generation prompt so the LLM knows why this candidate beat the others.
+ */
+export function selectFinalWinner(
+  topCandidates: import('./scorer').ScoredLoop[],
+  guardrails: { approvedRecently: RecentActionRow[]; skippedRecently?: RecentSkippedActionRow[] },
+): { winner: import('./scorer').ScoredLoop; competitionContext: string } {
+  if (topCandidates.length === 0) throw new Error('selectFinalWinner: empty candidate list');
+  if (topCandidates.length === 1) return { winner: topCandidates[0], competitionContext: '' };
+
+  const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+
+  interface Rated {
+    candidate: import('./scorer').ScoredLoop;
+    viabilityScore: number;
+    note: string;
+    disqualified: boolean;
+    disqualifyReason: string | null;
+  }
+
+  const rated: Rated[] = topCandidates.map((candidate) => {
+    // 1. Dedup: disqualify if user was shown a similar directive in the last 7 days.
+    //    Uses the same 72% token-similarity threshold as buildStructuredContext so
+    //    the eligibility check and selection check are consistent.
+    const candNorm = candidate.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const alreadyActed = guardrails.approvedRecently.some((r) => {
+      if (!r.directive_text) return false;
+      const norm = r.directive_text
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const tA = new Set(candNorm.split(' ').filter((t) => t.length >= 4));
+      const tB = new Set(norm.split(' ').filter((t) => t.length >= 4));
+      if (!tA.size || !tB.size) return false;
+      let inter = 0;
+      for (const t of tA) if (tB.has(t)) inter++;
+      return inter / new Set([...tA, ...tB]).size >= 0.72;
+    });
+    if (alreadyActed) {
+      return {
+        candidate,
+        viabilityScore: 0,
+        note: '',
+        disqualified: true,
+        disqualifyReason: 'already acted on this topic in the last 7 days',
+      };
+    }
+
+    // 2. Viability multipliers applied to raw scorer score.
+    let mult = 1.0;
+    const notes: string[] = [];
+
+    // Commitment/compound: real obligations the user already committed to.
+    // These always produce a finished artifact — highest resolution value.
+    if (candidate.type === 'commitment' || candidate.type === 'compound') {
+      mult *= 1.12;
+      notes.push('real commitment');
+    }
+
+    // Email presence in raw candidate data (pre-hydration scan).
+    // extractAllEmailAddresses() needs a hydrated winner; at this stage we scan
+    // the raw content, relatedSignals, and sourceSignal summaries directly.
+    const rawText = [
+      candidate.content,
+      ...(candidate.relatedSignals ?? []),
+      ...(candidate.sourceSignals ?? []).map((s) => s.summary ?? ''),
+    ].join(' ');
+    EMAIL_RE.lastIndex = 0;
+    const emailHits = rawText.match(EMAIL_RE)?.filter(
+      (e) => !e.includes('example') && !e.includes('placeholder') && !e.includes('noreply'),
+    ) ?? [];
+
+    if (candidate.suggestedActionType === 'send_message') {
+      if (emailHits.length > 0) {
+        notes.push('send_message with email in signals');
+      } else {
+        // Will be force-downgraded to write_document after hydration.
+        // Penalise so a rival candidate with a real recipient can win.
+        mult *= 0.80;
+        notes.push('send_message — no email in signals, will downgrade');
+      }
+    }
+
+    // Signal recency: fresher evidence → more actionable artifact today.
+    const signalDates = (candidate.sourceSignals ?? [])
+      .map((s) => s.occurredAt)
+      .filter((d): d is string => Boolean(d))
+      .map((d) => new Date(d).getTime())
+      .filter((t) => !Number.isNaN(t));
+    const newestMs = signalDates.length > 0 ? Math.max(...signalDates) : 0;
+    const ageDays = newestMs > 0 ? (Date.now() - newestMs) / (1000 * 60 * 60 * 24) : 14;
+    if (ageDays <= 2) {
+      mult *= 1.08;
+      notes.push('signal ≤2d');
+    } else if (ageDays <= 5) {
+      mult *= 1.03;
+    } else if (ageDays > 10) {
+      mult *= 0.88;
+      notes.push(`signal ${Math.round(ageDays)}d old`);
+    }
+
+    return {
+      candidate,
+      viabilityScore: candidate.score * mult,
+      note: notes.join('; ') || 'base score',
+      disqualified: false,
+      disqualifyReason: null,
+    };
+  });
+
+  // Sort: disqualified last, then viabilityScore desc
+  rated.sort((a, b) => {
+    if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
+    return b.viabilityScore - a.viabilityScore;
+  });
+
+  const top = rated[0];
+
+  // Pathological fallback: all disqualified → trust raw scorer
+  if (top.disqualified) {
+    return { winner: topCandidates[0], competitionContext: '' };
+  }
+
+  // Build competition context for the generation prompt.
+  // Tells the LLM which candidates were evaluated and why the winner beat them —
+  // giving it permission to write a more decisive, grounded artifact.
+  const beaten = rated.slice(1).filter((r) => !r.disqualified);
+  const dropped = rated.slice(1).filter((r) => r.disqualified);
+  const lines: string[] = [
+    `Winner: "${top.candidate.title.slice(0, 100)}" (raw score ${top.candidate.score.toFixed(2)}, type: ${top.candidate.type}; viability: ${top.note})`,
+  ];
+  for (const r of beaten) {
+    const pct =
+      top.viabilityScore > 0
+        ? ((top.viabilityScore - r.viabilityScore) / top.viabilityScore * 100).toFixed(0)
+        : '0';
+    lines.push(
+      `Beaten: "${r.candidate.title.slice(0, 100)}" — raw ${r.candidate.score.toFixed(2)}, ${pct}% below winner on viability (${r.note || 'base score'})`,
+    );
+  }
+  for (const r of dropped) {
+    lines.push(
+      `Dropped: "${r.candidate.title.slice(0, 100)}" — ${r.disqualifyReason ?? 'disqualified'}`,
+    );
+  }
+
+  const competitionContext =
+    `CANDIDATE_COMPETITION (${rated.length} candidate${rated.length !== 1 ? 's' : ''} evaluated — final winner selected on execution viability, not just scorer rank):\n` +
+    lines.join('\n') + '\n' +
+    `This context proves why you are generating for this candidate today. Use it to write a specific, grounded artifact — not a generic follow-up.`;
+
+  return { winner: top.candidate, competitionContext };
+}
+
+// ---------------------------------------------------------------------------
 // Part 3 — Structured context (preprocessing)
 // ---------------------------------------------------------------------------
 
@@ -645,6 +820,8 @@ interface StructuredContext {
   avoidance_observations: AvoidanceObservation[];
   // Chronological thread showing the arc of the winner relationship (sent/received, days since reply)
   relationship_timeline: string | null;
+  // Multi-candidate competition context — why this winner beat the alternatives
+  competition_context: string | null;
 }
 
 function buildStructuredContext(
@@ -661,6 +838,7 @@ function buildStructuredContext(
   convictionDecision?: import('./conviction-engine').ConvictionDecision | null,
   behavioralHistory?: string | null,
   avoidanceObservations?: AvoidanceObservation[],
+  competitionContext?: string | null,
 ): StructuredContext {
   // Sort signals chronologically and take top 7 — full body so the model reads a mini-thread
   const supporting_signals: CompressedSignal[] = signalEvidence
@@ -814,6 +992,7 @@ function buildStructuredContext(
     behavioral_history: behavioralHistory ?? null,
     avoidance_observations: avoidanceObservations ?? [],
     relationship_timeline: buildRelationshipTimeline(signalEvidence, winner.title),
+    competition_context: competitionContext ?? null,
   };
 }
 
@@ -1131,6 +1310,10 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     sections.push('ARTIFACT_PREFERENCE: schedule_block is preferred when a time anchor exists.');
   } else {
     sections.push('ARTIFACT_PREFERENCE: write_document is the default when no recipient or time anchor exists.');
+  }
+
+  if (ctx.competition_context) {
+    sections.push(ctx.competition_context);
   }
 
   sections.push(
@@ -2573,11 +2756,18 @@ export async function generateDirective(
       );
     }
 
+    // Part 2b: Multi-candidate viability competition — select final winner from top candidates
+    // before any hydration or expensive DB work fires on the wrong candidate.
+    const { winner: finalWinner, competitionContext } = selectFinalWinner(
+      scored.topCandidates ?? [scored.winner],
+      guardrails,
+    );
+
     // CE-1: Run conviction engine in parallel with winner hydration — both only need userId.
     // Non-blocking: if burn rate cannot be inferred, returns null; generator continues normally.
-    const topGoalText = scored.winner.matchedGoal?.text ?? scored.winner.title ?? '';
+    const topGoalText = finalWinner.matchedGoal?.text ?? finalWinner.title ?? '';
     const [hydratedWinner, convictionDecision] = await Promise.all([
-      hydrateWinnerRelationshipContext(userId, scored.winner),
+      hydrateWinnerRelationshipContext(userId, finalWinner),
       topGoalText
         ? (async (): Promise<import('./conviction-engine').ConvictionDecision | null> => {
             try {
@@ -2658,7 +2848,7 @@ export async function generateDirective(
 
     // Research phase
     let insight: ResearchInsight | null = null;
-    if (scored.winner.score >= 2.0) {
+    if (finalWinner.score >= 2.0) {
       try {
         insight = await researchWinner(userId, hydratedWinner, { dryRun: options.dryRun });
       } catch {
@@ -2677,7 +2867,7 @@ export async function generateDirective(
         generationStatus: 'researcher_skipped',
         details: {
           scope: 'generator',
-          winner_score: scored.winner.score,
+          winner_score: finalWinner.score,
           threshold: 2.0,
         },
       });
@@ -2776,6 +2966,7 @@ export async function generateDirective(
       convictionDecision,
       behavioralHistory,
       avoidanceObservations,
+      competitionContext,
     );
 
     // Part 4: Evidence gating — check eligibility before calling LLM
@@ -2943,8 +3134,8 @@ export async function generateDirective(
       details: {
         scope: 'generator',
         action_type: artifactTypeToActionType(payload.artifact_type),
-        winner_type: scored.winner.type,
-        score: Number(scored.winner.score.toFixed(2)),
+        winner_type: finalWinner.type,
+        score: Number(finalWinner.score.toFixed(2)),
       },
     });
 
