@@ -288,6 +288,74 @@ export interface RelationshipHealthSummary {
   recommendation: string;
 }
 
+// ---------------------------------------------------------------------------
+// Decision Payload — the single canonical object governing directive generation.
+// The generator RENDERS this payload. It does not choose the action.
+// ---------------------------------------------------------------------------
+
+export type ReadinessState = 'SEND' | 'NO_SEND' | 'INSUFFICIENT_SIGNAL';
+
+export type ValidArtifactTypeCanonical =
+  | 'send_message'
+  | 'write_document'
+  | 'schedule_block'
+  | 'wait_rationale'
+  | 'do_nothing';
+
+export interface DecisionPayload {
+  /** Commitment/signal/relationship ID from the scorer winner */
+  winner_id: string;
+  /** Candidate type from scorer: commitment, signal, relationship, emergent, compound, growth */
+  source_type: string;
+  /** Lifecycle stage of the underlying entity */
+  lifecycle_state: 'active' | 'at_risk' | 'stale' | 'resolved' | 'unknown';
+  /** Gate: if not SEND, no directive may be generated */
+  readiness_state: ReadinessState;
+  /** The action the system decided. The LLM may NOT change this. */
+  recommended_action: ValidArtifactTypeCanonical;
+  /** Who or what the action applies to (entity name, email, or description) */
+  action_target: string;
+  /** Concrete persisted reasons — the scorer's evidence, not LLM prose */
+  justification_facts: string[];
+  /** Scorer confidence (0-100). Must meet threshold or generation is blocked. */
+  confidence_score: number;
+  /** Whether the newest supporting signal is within the staleness window */
+  freshness_state: 'fresh' | 'aging' | 'stale';
+  /** Non-empty array = generation is blocked. Each entry is a specific reason. */
+  blocking_reasons: string[];
+  /** Matched goal text from scorer, if any */
+  matched_goal: string | null;
+  /** Matched goal priority (1-5), null if no goal match */
+  matched_goal_priority: number | null;
+  /** Raw scorer score */
+  scorer_score: number;
+}
+
+/**
+ * Validates a DecisionPayload. Returns blocking_reasons if the payload
+ * is not in a SEND state. If this returns a non-empty array, generation
+ * MUST NOT proceed.
+ */
+export function validateDecisionPayload(dp: DecisionPayload): string[] {
+  const errors: string[] = [];
+  if (dp.readiness_state !== 'SEND') {
+    errors.push(`readiness_state is ${dp.readiness_state}, not SEND`);
+  }
+  if (dp.blocking_reasons.length > 0) {
+    errors.push(...dp.blocking_reasons);
+  }
+  if (!dp.recommended_action || dp.recommended_action === 'do_nothing') {
+    errors.push('recommended_action is do_nothing or null');
+  }
+  if (dp.justification_facts.length === 0) {
+    errors.push('no justification_facts — cannot generate without evidence');
+  }
+  if (dp.freshness_state === 'stale') {
+    errors.push('freshness_state is stale — evidence too old to act on');
+  }
+  return errors;
+}
+
 export interface BriefingDeliveryConfig {
   sendEmail: boolean;
   emailAddress?: string;

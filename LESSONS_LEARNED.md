@@ -104,3 +104,20 @@ CC cannot test real OAuth flows, session persistence, or redirect chains in its 
 - Dashboard rendering failures
 
 Every deploy must pass this suite. "Build passed" is not verification. "Production E2E passed" is verification.
+
+## 10. The LLM Cannot Be the Authority for Persisted Action
+
+The LLM generates text and artifact content. It does not choose what gets persisted.
+
+**The bug class**: any system where `action_type` is derived from `payload.artifact_type` (LLM output) is a system where a hostile, confused, or hallucinating model can corrupt the intent. This happened in production: the scorer said `send_message`, the LLM said `wait_rationale`, and `wait_rationale` persisted.
+
+**The fix class**: a `DecisionPayload` computed deterministically from scorer output becomes the canonical authority before the LLM is called. The LLM renders prose and artifact content. It cannot change the action. Drift is logged, not followed.
+
+**The proof class**: adversarial tests must feed a well-formed hostile LLM response and assert that the canonical action persists unchanged. If the tests pass, the authority leak is structurally impossible, not just currently absent.
+
+Rules locked:
+- `DecisionPayload.recommended_action` is the only source of truth for `action_type`
+- `LLM.artifact_type` is a diagnostic field; it is logged and never persisted
+- If the payload is stale, blocked, or insufficient, the LLM is never called at all
+- Any in-flight conversion of LLM artifact type (e.g., `wait_rationale → write_document` inside render path) must be removed — it masks drift before detection
+- Adversarial proof tests (hostile drift, false-positive render, renderer-only contract) are mandatory for any system that calls an LLM and persists an action

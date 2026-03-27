@@ -355,7 +355,9 @@ describe('usefulness gate — execution proof', () => {
     console.log('VALID2 result.confidence:', result.confidence);
 
     expect(result.directive).not.toBe(SENTINEL);
-    expect(result.action_type).toBe('write_document');
+    // After DecisionPayload enforcement: action_type comes from scorer's suggestedActionType
+    // (send_message), not from LLM's artifact_type (write_document). The scorer is authoritative.
+    expect(result.action_type).toBe('send_message');
     expect(mockLogStructuredEvent).not.toHaveBeenCalledWith(
       expect.objectContaining({ event: 'usefulness_rejected' })
     );

@@ -6,10 +6,13 @@ import type {
   ChiefOfStaffBriefing,
   ConvictionArtifact,
   ConvictionDirective,
+  DecisionPayload,
   EvidenceItem,
   GenerationCandidateDiscoveryLog,
   GenerationRunLog,
+  ValidArtifactTypeCanonical,
 } from './types';
+import { validateDecisionPayload } from './types';
 import type { DeprioritizedLoop, ScoredLoop, ScorerResult } from './scorer';
 import { scoreOpenLoops } from './scorer';
 import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
@@ -789,6 +792,96 @@ export function selectFinalWinner(
 }
 
 // ---------------------------------------------------------------------------
+// Decision Payload — the canonical binding decision from scorer to generator.
+// The generator RENDERS this; it does not choose the action.
+// ---------------------------------------------------------------------------
+
+function actionTypeToArtifactType(at: ActionType): ValidArtifactTypeCanonical {
+  switch (at) {
+    case 'send_message': return 'send_message';
+    case 'write_document': return 'write_document';
+    case 'schedule': return 'schedule_block';
+    case 'do_nothing': return 'do_nothing';
+    case 'make_decision': return 'write_document';
+    case 'research': return 'write_document';
+    default: return 'do_nothing';
+  }
+}
+
+function buildDecisionPayload(
+  winner: ScoredLoop,
+  ctx: StructuredContext,
+  confidence: number,
+): DecisionPayload {
+  // Determine freshness
+  const signalDates = (winner.sourceSignals ?? [])
+    .map((s) => s.occurredAt)
+    .filter((d): d is string => Boolean(d))
+    .map((d) => new Date(d).getTime())
+    .filter((t) => !Number.isNaN(t));
+  const newestMs = signalDates.length > 0 ? Math.max(...signalDates) : 0;
+  const ageDays = newestMs > 0
+    ? (Date.now() - newestMs) / (1000 * 60 * 60 * 24)
+    : STALE_SIGNAL_THRESHOLD_DAYS + 1;
+  const freshness_state: DecisionPayload['freshness_state'] =
+    ageDays <= 7 ? 'fresh' : ageDays <= STALE_SIGNAL_THRESHOLD_DAYS ? 'aging' : 'stale';
+
+  // Determine recommended_action — deterministic from scorer, not LLM
+  let recommended_action: ValidArtifactTypeCanonical = actionTypeToArtifactType(winner.suggestedActionType);
+
+  // Pre-compute action validity: send_message without a recipient → write_document
+  if (recommended_action === 'send_message' && !ctx.has_real_recipient) {
+    recommended_action = 'write_document';
+  }
+
+  // Build justification facts from concrete evidence
+  const justification_facts: string[] = [];
+  if (winner.matchedGoal) {
+    justification_facts.push(`Matched goal [p${winner.matchedGoal.priority}]: ${winner.matchedGoal.text}`);
+  }
+  for (const sig of winner.relatedSignals.slice(0, 3)) {
+    justification_facts.push(`Signal: ${sig.slice(0, 200)}`);
+  }
+  if (winner.relationshipContext) {
+    justification_facts.push(`Relationship context: ${winner.relationshipContext.slice(0, 200)}`);
+  }
+  if (ctx.candidate_due_date) {
+    justification_facts.push(`Due date: ${ctx.candidate_due_date}`);
+  }
+
+  // Build blocking reasons
+  const blocking_reasons: string[] = [];
+  if (!ctx.has_recent_evidence) blocking_reasons.push('No recent evidence (all signals older than 14 days)');
+  if (ctx.conflicts_with_locked_constraints) blocking_reasons.push('Conflicts with locked constraints');
+  if (ctx.already_acted_recently) blocking_reasons.push('Already acted on this topic in the last 7 days');
+  if (freshness_state === 'stale') blocking_reasons.push('Evidence is stale');
+
+  // Determine readiness
+  let readiness_state: DecisionPayload['readiness_state'] = 'SEND';
+  if (blocking_reasons.length > 0) readiness_state = 'NO_SEND';
+  if (justification_facts.length === 0) readiness_state = 'INSUFFICIENT_SIGNAL';
+  if (recommended_action === 'do_nothing') readiness_state = 'NO_SEND';
+
+  return {
+    winner_id: winner.id,
+    source_type: winner.type,
+    lifecycle_state: winner.lifecycle?.state === 'resolved' ? 'resolved'
+      : winner.lifecycle?.state === 'active_now' ? 'active'
+      : 'unknown',
+    readiness_state,
+    recommended_action,
+    action_target: winner.title.slice(0, 200),
+    justification_facts,
+    confidence_score: confidence,
+    freshness_state,
+    blocking_reasons,
+    matched_goal: winner.matchedGoal?.text ?? null,
+    matched_goal_priority: winner.matchedGoal?.priority ?? null,
+    scorer_score: winner.score,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Part 3 — Structured context (preprocessing)
 // ---------------------------------------------------------------------------
 
@@ -958,13 +1051,10 @@ function buildStructuredContext(
   const decision_already_made = already_acted_recently;
 
   // Can execute: send_message needs email, write_document always can, schedule needs time anchor
+  // NOTE: the pre-LLM action override (send_message → write_document) is now handled by
+  // DecisionPayload construction. We still compute can_execute_without_editing for context.
   const actionType = winner.suggestedActionType;
-  let can_execute_without_editing = true;
-  if (actionType === 'send_message' && !has_real_recipient) {
-    can_execute_without_editing = false;
-    // Override: cannot send to nobody — force to write_document so the LLM cannot fabricate a recipient
-    winner.suggestedActionType = 'write_document';
-  }
+  const can_execute_without_editing = !(actionType === 'send_message' && !has_real_recipient);
 
   const has_due_date_or_time_anchor = candidate_due_date !== null ||
     /\b(deadline|due|by\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|next week|end of))\b/i.test(winner.content);
@@ -2710,30 +2800,11 @@ async function generatePayload(
       });
     }
 
-    // Commitment override: if the model returned wait_rationale for a commitment candidate,
-    // convert to write_document. Build content from signal context, not the model's why_wait
-    // (which is internal reasoning about why it can't act — not a useful document body).
-    if (parsed && parsed.artifact_type === 'wait_rationale' && ctx.candidate_class === 'commitment') {
-      const signalLines = ctx.supporting_signals
-        .slice(0, 3)
-        .map((s) => `- ${s.summary || s.entity || ''}`.trim())
-        .filter((line) => line.length > 2);
-      const signalContext = signalLines.length > 0
-        ? `\n\nRelated signals:\n${signalLines.join('\n')}`
-        : '';
-      parsed = {
-        ...parsed,
-        directive: `Prep brief ready for: ${ctx.candidate_title.slice(0, 80)}`,
-        artifact_type: 'write_document',
-        artifact: {
-          title: `Prep brief: ${ctx.candidate_title.slice(0, 80)}`,
-          content: `Committed action: ${ctx.candidate_title}${signalContext}\n\nReview the above context and execute when ready.`,
-          document_purpose: 'Reference material for the committed action',
-          target_reader: 'Brandon',
-        },
-      };
-      console.error('[generator] Commitment candidate: converted wait_rationale → write_document (prep brief)');
-    }
+    // REMOVED: Legacy commitment wait_rationale → write_document conversion.
+    // With DecisionPayload, the canonical action comes from the scorer, not the LLM.
+    // If the LLM returns wait_rationale when the scorer said send_message, drift
+    // detection will log it and the canonical action persists unchanged.
+    // The LLM's raw artifact_type must reach drift detection unmodified.
 
     const issues = validateGeneratedArtifact(parsed, ctx);
     lastIssues = issues;
@@ -3050,34 +3121,55 @@ export async function generateDirective(
       competitionContext,
     );
 
-    // Part 4: Evidence gating — check eligibility before calling LLM
-    const eligibility = checkGenerationEligibility(ctx);
-    if (!eligibility.eligible) {
+    // =====================================================================
+    // DECISION PAYLOAD — the canonical binding contract.
+    // All action selection happens HERE. The LLM renders; it does not decide.
+    // =====================================================================
+
+    const confidence = computeDirectiveConfidence(scored);
+    const decisionPayload = buildDecisionPayload(hydratedWinner, ctx, confidence);
+
+    // Gate: validate the decision payload. If not SEND, no directive is generated.
+    const payloadErrors = validateDecisionPayload(decisionPayload);
+    if (payloadErrors.length > 0) {
+      const blockReason = `DecisionPayload blocked: ${payloadErrors.join('; ')}`;
       logStructuredEvent({
         event: 'generation_skipped', level: 'warn', userId,
-        artifactType: null, generationStatus: 'eligibility_gate_failed',
-        details: { scope: 'generator', reason: eligibility.reason },
+        artifactType: null, generationStatus: 'decision_payload_blocked',
+        details: {
+          scope: 'generator',
+          readiness_state: decisionPayload.readiness_state,
+          recommended_action: decisionPayload.recommended_action,
+          blocking_reasons: decisionPayload.blocking_reasons,
+          payload_errors: payloadErrors,
+        },
       });
-
-      // Deterministic do_nothing — no LLM call
-      const fallbackPayload = buildDeterministicDoNothing(
-        eligibility.reason,
-        `Candidate: ${hydratedWinner.title.slice(0, 80)}`,
+      return emptyDirective(
+        blockReason,
+        buildNoSendGenerationLog(blockReason, 'validation', scored.candidateDiscovery),
       );
-
-      return {
-        directive: fallbackPayload.directive,
-        action_type: 'do_nothing',
-        confidence: 0,
-        reason: eligibility.reason,
-        evidence: [],
-        embeddedArtifact: fallbackPayload.artifact,
-        embeddedArtifactType: fallbackPayload.artifact_type,
-        generationLog: buildNoSendGenerationLog(eligibility.reason, 'validation', scored.candidateDiscovery),
-      } as ConvictionDirective & { embeddedArtifact?: Record<string, unknown>; embeddedArtifactType?: string };
     }
 
-    // Generate with LLM
+    // Confidence threshold gate (still applies after payload validation)
+    const dynamicThreshold = await loadDirectiveConfidenceThreshold(userId);
+    if (confidence < dynamicThreshold) {
+      logStructuredEvent({
+        event: 'generation_skipped', level: 'warn', userId,
+        artifactType: decisionPayload.recommended_action,
+        generationStatus: 'below_confidence_threshold',
+        details: { scope: 'generator', confidence, threshold: dynamicThreshold },
+      });
+      return emptyDirective(
+        'No directive cleared the confidence bar.',
+        buildNoSendGenerationLog('No directive cleared the confidence bar.', 'validation', scored.candidateDiscovery),
+      );
+    }
+
+    // =====================================================================
+    // LLM RENDERING — the model writes prose and artifact content.
+    // It does NOT choose the action type. That is locked by decisionPayload.
+    // =====================================================================
+
     let payloadResult: { issues: string[]; payload: GeneratedDirectivePayload | null };
     try {
       payloadResult = await generatePayload(userId, ctx, options);
@@ -3090,10 +3182,7 @@ export async function generateDirective(
         userId,
         artifactType: null,
         generationStatus: 'generation_request_failed',
-        details: {
-          scope: 'generator',
-          error: errorMessage,
-        },
+        details: { scope: 'generator', error: errorMessage },
       });
       payloadResult = {
         issues: [`Generation request failed: ${errorMessage}`],
@@ -3101,12 +3190,9 @@ export async function generateDirective(
       };
     }
 
-    // Part 6: If generation fails, deterministic fallback
+    // If LLM generation fails entirely, deterministic fallback
     if (!payloadResult.payload) {
       const failureReason = formatValidationFailureReason('Generation validation failed:', payloadResult.issues);
-
-      // Generation validation failed after all retries. Return empty — no LLM output to preserve.
-
       return emptyDirective(
         failureReason,
         buildNoSendGenerationLog(failureReason, 'generation', scored.candidateDiscovery),
@@ -3115,15 +3201,37 @@ export async function generateDirective(
 
     const payload = payloadResult.payload;
 
-    // Gate 3a: Explicit analyst HOLD decision.
-    // The model found no contradiction, pattern shift, or timing edge worth acting on.
-    // Preserve the insight as fullContext so the caller can see what the analyst observed.
+    // =====================================================================
+    // POST-LLM ENFORCEMENT: the canonical action is from decisionPayload,
+    // NOT from the LLM's artifact_type. Log any drift for diagnostics.
+    // =====================================================================
+
+    const canonicalAction = decisionPayload.recommended_action;
+    const llmAttemptedAction = payload.artifact_type;
+
+    if (llmAttemptedAction !== canonicalAction) {
+      logStructuredEvent({
+        event: 'llm_action_drift_overridden',
+        level: 'warn',
+        userId,
+        artifactType: canonicalAction,
+        generationStatus: 'action_drift_corrected',
+        details: {
+          scope: 'generator',
+          canonical_action: canonicalAction,
+          llm_attempted_action: llmAttemptedAction,
+          winner_id: decisionPayload.winner_id,
+        },
+      });
+    }
+
+    // Gate: explicit HOLD from LLM (model found nothing worth rendering).
+    // This is the ONLY LLM-driven gate — it can decline to render, but not change the action.
     if (payload.decision === 'HOLD') {
       const holdInsight = payload.insight?.trim() ?? '';
-      const holdWhy = payload.why_now?.trim() ?? '';
       logStructuredEvent({
         event: 'generation_hold', level: 'info', userId,
-        artifactType: 'do_nothing', generationStatus: 'analyst_hold_decision',
+        artifactType: canonicalAction, generationStatus: 'analyst_hold_decision',
         details: { scope: 'generator', insight: holdInsight },
       });
       return {
@@ -3132,40 +3240,17 @@ export async function generateDirective(
         confidence: 0,
         reason: holdInsight || 'No contradiction, pattern shift, or timing edge found today.',
         evidence: [],
-        fullContext: holdInsight
-          ? `${holdInsight}${holdWhy ? `\n\nWhy wait: ${holdWhy}` : ''}`
-          : undefined,
         generationLog: buildNoSendGenerationLog('analyst_hold_decision', 'generation', scored.candidateDiscovery),
       };
     }
 
-    // Gate 3b: wait_rationale means the goal-primacy constraint couldn't be met.
-    // Preserve the model's behavioral insight in fullContext so buildWaitRationale can surface it.
-    if (payload.artifact_type === 'wait_rationale') {
-      const whyWait = (payload.artifact as Record<string, unknown>)?.why_wait;
-      const modelInsight = typeof whyWait === 'string' ? whyWait.trim() : payload.insight?.trim() ?? '';
-      logStructuredEvent({
-        event: 'generation_skipped', level: 'info', userId,
-        artifactType: 'wait_rationale', generationStatus: 'goal_primacy_gate_suppressed',
-        details: { scope: 'generator', why_wait: modelInsight },
-      });
-      return {
-        directive: GENERATION_FAILED_SENTINEL,
-        action_type: 'do_nothing',
-        confidence: 0,
-        reason: 'Goal-primacy gate: candidate could not be anchored to a goal today.',
-        evidence: [],
-        fullContext: modelInsight || undefined,
-        generationLog: buildNoSendGenerationLog('goal_primacy_gate_suppressed', 'generation', scored.candidateDiscovery),
-      };
-    }
-
-    // Part 5b: Consecutive duplicate suppression — reject if >70% similar to last 3 directives
+    // Consecutive duplicate suppression
     const duplicateCheck = await checkConsecutiveDuplicate(userId, payload.directive);
     if (duplicateCheck.isDuplicate) {
+      const dupReason = `Duplicate directive suppressed (${Math.round((duplicateCheck.similarity ?? 0) * 100)}% similar to recent action ${duplicateCheck.matchingActionId})`;
       logStructuredEvent({
         event: 'duplicate_directive_suppressed', level: 'warn', userId,
-        artifactType: payload.artifact_type, generationStatus: 'duplicate_suppressed',
+        artifactType: canonicalAction, generationStatus: 'duplicate_suppressed',
         details: {
           scope: 'generator',
           new_directive: payload.directive.slice(0, 100),
@@ -3173,15 +3258,13 @@ export async function generateDirective(
           similarity: duplicateCheck.similarity,
         },
       });
-
-      const dupReason = `Duplicate directive suppressed (${Math.round((duplicateCheck.similarity ?? 0) * 100)}% similar to recent action ${duplicateCheck.matchingActionId})`;
       return emptyDirective(
         dupReason,
         buildNoSendGenerationLog(dupReason, 'validation', scored.candidateDiscovery),
       );
     }
 
-    // Usefulness gate — hard reject before any persistence or send
+    // Usefulness gate
     const usefulnessCheck = isUseful({
       artifact: JSON.stringify(payload.artifact),
       evidence: payload.insight,
@@ -3189,44 +3272,30 @@ export async function generateDirective(
     });
     if (!usefulnessCheck.ok) {
       logStructuredEvent({
-        event: 'usefulness_rejected',
-        level: 'warn',
-        userId,
-        artifactType: payload.artifact_type,
-        generationStatus: 'usefulness_gate_failed',
+        event: 'usefulness_rejected', level: 'warn', userId,
+        artifactType: canonicalAction, generationStatus: 'usefulness_gate_failed',
         details: { scope: 'generator', reason: usefulnessCheck.reason },
       });
-      const uselessReason = `Usefulness gate rejected: ${usefulnessCheck.reason}`;
       return emptyDirective(
-        uselessReason,
-        buildNoSendGenerationLog(uselessReason, 'validation', scored.candidateDiscovery),
+        `Usefulness gate rejected: ${usefulnessCheck.reason}`,
+        buildNoSendGenerationLog(`Usefulness gate rejected: ${usefulnessCheck.reason}`, 'validation', scored.candidateDiscovery),
       );
     }
 
-    // Confidence check — load per-user dynamic threshold from DB
-    const confidence = computeDirectiveConfidence(scored);
-    const dynamicThreshold = await loadDirectiveConfidenceThreshold(userId);
-    if (confidence < dynamicThreshold) {
-      logStructuredEvent({
-        event: 'generation_skipped', level: 'warn', userId,
-        artifactType: payload.artifact_type, generationStatus: 'below_confidence_threshold',
-        details: { scope: 'generator', confidence, threshold: dynamicThreshold },
-      });
-      return emptyDirective(
-        'No directive cleared the confidence bar.',
-        buildNoSendGenerationLog('No directive cleared the confidence bar.', 'validation', scored.candidateDiscovery),
-      );
-    }
+    // =====================================================================
+    // FINAL DIRECTIVE — action_type comes from decisionPayload, not LLM.
+    // The LLM contributed: directive text, artifact content, insight, why_now.
+    // =====================================================================
 
     const directive = {
       directive: payload.directive.trim(),
-      action_type: artifactTypeToActionType(payload.artifact_type),
+      action_type: artifactTypeToActionType(canonicalAction),
       confidence,
       reason: payload.why_now.trim(),
       evidence: buildEvidenceItems(scored, payload),
       fullContext: buildFullContext({ ...scored, winner: hydratedWinner }, payload),
       embeddedArtifact: payload.artifact,
-      embeddedArtifactType: payload.artifact_type,
+      embeddedArtifactType: canonicalAction,
       generationLog: buildSelectedGenerationLog(scored.candidateDiscovery),
     } as ConvictionDirective & {
       embeddedArtifact?: Record<string, unknown>;
@@ -3242,7 +3311,7 @@ export async function generateDirective(
     if (persistenceIssues.length > 0) {
       logStructuredEvent({
         event: 'generation_skipped', level: 'warn', userId,
-        artifactType: payload.artifact_type, generationStatus: 'persistence_validation_failed',
+        artifactType: canonicalAction, generationStatus: 'persistence_validation_failed',
         details: { scope: 'generator', issues: persistenceIssues },
       });
       return emptyDirective(
@@ -3257,10 +3326,13 @@ export async function generateDirective(
 
     logStructuredEvent({
       event: 'directive_generated', userId,
-      artifactType: payload.artifact_type, generationStatus: 'generated',
+      artifactType: canonicalAction, generationStatus: 'generated',
       details: {
         scope: 'generator',
-        action_type: artifactTypeToActionType(payload.artifact_type),
+        action_type: artifactTypeToActionType(canonicalAction),
+        canonical_action: canonicalAction,
+        llm_attempted_action: llmAttemptedAction,
+        action_drift: llmAttemptedAction !== canonicalAction,
         winner_type: finalWinner.type,
         score: Number(finalWinner.score.toFixed(2)),
       },

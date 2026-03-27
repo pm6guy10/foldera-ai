@@ -121,7 +121,21 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - Scorer commitment loaders verified to explicitly enforce suppressed_at IS NULL
 - /api/health route now returns JSON status for cron health-check
 
+### DONE (March 27) — DecisionPayload authority enforcement + adversarial proof
+- **DecisionPayload type added** (`lib/briefing/types.ts`): canonical binding contract between scorer and generator. Fields: `winner_id`, `source_type`, `lifecycle_state`, `readiness_state` (SEND/NO_SEND/INSUFFICIENT_SIGNAL), `recommended_action` (ValidArtifactTypeCanonical), `justification_facts`, `freshness_state`, `blocking_reasons`, `confidence_score`, `matched_goal`.
+- **`validateDecisionPayload()` added**: pure function that blocks on NO_SEND readiness, do_nothing action, empty justification_facts, stale freshness, or any blocking_reason. Returns string[] of errors.
+- **`buildDecisionPayload()` added to generator**: deterministically computes canonical action from scorer winner + context. Handles send_message→write_document downgrade when no recipient. Checks guardrails for blocking reasons.
+- **LLM artifact_type authority removed**: Final `action_type` now comes from `decisionPayload.recommended_action` exclusively. LLM's `artifact_type` is captured as `llmAttemptedAction` for diagnostics only and can never affect persisted action.
+- **Drift detection added**: when `llm_attempted_action !== canonical_action`, logs `llm_action_drift_overridden` event with both values. The drift class is now observable and permanently overridden.
+- **Legacy commitment conversion removed** (`generatePayload` lines 2806-2826): the `wait_rationale → write_document` mutation inside generatePayload was masking raw LLM drift before detection. Removed. LLM's raw artifact_type now reaches drift detection unmodified.
+- **Suppression entity scoping** (prior commit `a9ad01b`/`16b617d`): entity suppression is now action-type-aware (CONTACT_ACTION_TYPES only) and scoped to DO NOT goals only. Non-blocking goals (prep materials, research) no longer produce suppression entities.
+- **Decision payload gate**: if `validateDecisionPayload` returns errors, `generation_skipped` event fires with `generationStatus: 'decision_payload_blocked'` and generator returns `emptyDirective`. LLM is never called.
+- **Adversarial proof tests** (`decision-payload-adversarial.test.ts`): 6 tests in 3 suites — Test A (hostile drift: raw wait_rationale ≠ send_message → drift logged, canonical wins), Test B (hostile false-positive: stale payload blocked before LLM called), Test C (renderer-only: schedule_block drift logged, action_type=send_message; write_document no-drift logged with action_drift:false). All pass.
+- **Unit tests** (`decision-payload.test.ts`): 15 tests covering payload validation (SEND passes, NO_SEND/INSUFFICIENT blocks, do_nothing blocks, stale blocks, empty facts blocks, multiple errors) and action drift invariant. All pass.
+- **Full suite**: 32 test files, 226 tests. Build clean.
+
 ### OPEN (Priority order)
+- Trigger production run and confirm canonical action_type persists in tkg_actions row (not do_nothing)
 - Blog formatting fix (prose typography, Codex queued)
 - Brandon reconnects Google with all scopes
 - Brandon sets focus areas on settings page

@@ -194,6 +194,14 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-27 — DecisionPayload authority enforcement + adversarial proof tests
+  MODE: OVERRIDE / AUDIT
+  Commit hash(es): pending (uncommitted — types.ts, generator.ts, 2 new test files, usefulness-gate.test.ts update)
+  Files changed: `lib/briefing/types.ts` (new DecisionPayload type + validateDecisionPayload), `lib/briefing/generator.ts` (buildDecisionPayload, canonical authority enforcement, legacy conversion removed), `lib/briefing/__tests__/decision-payload.test.ts` (new — 15 unit tests), `lib/briefing/__tests__/decision-payload-adversarial.test.ts` (new — 6 adversarial proof tests), `lib/briefing/__tests__/usefulness-gate.test.ts` (updated assertion for canonical authority)
+  What was verified: `npx vitest run lib/briefing/__tests__/decision-payload-adversarial.test.ts` — 6/6 passed; `npx vitest run --exclude ".claude/worktrees/**"` — 32 files, 226 tests passed; `npm run build` passed
+  Changes: (1) `DecisionPayload` type + `validateDecisionPayload()` in types.ts — canonical binding contract between scorer and generator. (2) `buildDecisionPayload()` added to generator — deterministically computes canonical action, freshness, blocking reasons from scorer winner. (3) `generateDirective()` rewritten to enforce canonical authority: DecisionPayload validated before LLM is called; after LLM, `canonicalAction = decisionPayload.recommended_action` is the only source for persisted `action_type`. (4) Legacy `wait_rationale → write_document` commitment conversion removed from `generatePayload` — was masking raw LLM drift before detection. (5) Drift detection: `llm_action_drift_overridden` event logs both canonical and attempted actions. (6) Suppression entity scoping (prior commits a9ad01b/16b617d): contact-only suppression for CONTACT_ACTION_TYPES, DO NOT goals only.
+  Any unresolved issues: Production verification not yet run (no deploy this session — pending push). The `do_nothing` generation issue that initiated this session required suppression fix (prior commits) + DecisionPayload enforcement. Live trigger needed to confirm non-do_nothing action persists in tkg_actions.
+
 - 2026-03-27 — CI flow gate + brief orchestration unification + daily-brief.ts split
   MODE: AUDIT
   Commit hash(es): `64674d7` (brief refactor), earlier commits for CI gate
