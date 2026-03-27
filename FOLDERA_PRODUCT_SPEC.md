@@ -178,8 +178,14 @@ Only start after Phase 1 is fully PROVEN.
 | Item | Status | Evidence |
 |---|---|---|
 | `computeUserState()` helper export | BUILT | March 23 late session: exported from `lib/briefing/scorer.ts` without wiring it into nightly-ops. Local runtime check returned valid JSON for owner `e40b7cd8-4925-42f7-bc99-5022969f1d22` and test user `22222222-2222-2222-2222-222222222222`. |
+| Two-gate send enforcement (`evaluateReadiness`) | BUILT | March 27: `ReadinessDecision = 'SEND' \| 'NO_SEND' \| 'INSUFFICIENT_SIGNAL'` + `ReadinessCheckResult` added to `daily-brief-types.ts`. Pure `evaluateReadiness()` exported from `daily-brief-generate.ts` — replaces scattered cooldown and signal-failure early-returns with a single named gate. SEND → proceed to generation. NO_SEND → cooldown active, return `no_send_reused` silently. INSUFFICIENT_SIGNAL → processing failed, persist `skipped` action. 27 unit tests cover all branches. Commits `ac9e16a`, `cca65e4`. |
+| Post-generation quality gate (`isSendWorthy`) | BUILT | March 27: Pure `isSendWorthy(directive, artifact)` kill switch with 7 checks: `do_nothing_directive`, `below_send_threshold` (< 70), `no_evidence`, `placeholder_content` (`[NAME]`, `[INSERT ...]` etc.), `invalid_recipient` (no `@`), `body_too_short` (< 30 chars), `vague_subject` (generic openers), `generic_language` ("I hope this finds you well", "just wanted to reach out"). Worthy directives proceed; blocked directives persist as `skipped`. |
+| Silence enforcement | BUILT | March 27: `persistNoSendOutcome` now writes `status='skipped'`. `runDailySend` queries `status=pending_approval` — no-send outcomes never reach the send queue. No email, no UI card, no wait_rationale surfaced on NO_SEND or INSUFFICIENT_SIGNAL paths. |
+| Approve feedback signal slot | BUILT | March 27: Main `tkg_actions` insert includes `approve: null` in `execution_result`. Updated by approve/skip actions. Feedback signal for future quality calibration. |
+| Gate decision logging | BUILT | March 27: `brief_gate_decision` log event emitted per-user per-run with `decision`, `reason`, `signal_code`, `fresh_signals`. `daily_generate_complete` enhanced with `evidence_count`, `body_chars`, `to_domain`, `subject_length` (no PII). |
+| Dev send-quality review endpoint | BUILT | March 27: `GET /api/dev/send-log` — `ALLOW_DEV_ROUTES=true` + valid session required. Returns last 10 `pending_approval` actions: `id`, `action_type`, `confidence`, `artifact_type`, `to_domain`, `subject`, `body_chars`, `evidence_count`, `approve`. 404 in production. |
 
-**NEXT MOVE:** Wire `computeUserState()` into the caller/orchestrator in a separate prompt once nightly data confirms the scorer quality changes improve approval odds.
+**NEXT MOVE:** Wire `computeUserState()` into the caller/orchestrator in a separate prompt once nightly data confirms the scorer quality changes improve approval odds. Monitor `brief_gate_decision` logs to calibrate the 4-hour cooldown threshold and SEND ratio over time.
 
 ## PHASE 3: GROWTH READY (post-intelligence)
 

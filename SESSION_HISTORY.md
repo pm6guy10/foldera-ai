@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-03-27 — Two-gate send enforcement + send-quality calibration
+  MODE: AUDIT
+  Commit hash(es): `ac9e16a` (two-gate enforcement), `cca65e4` (send-quality calibration)
+  Files changed: `lib/cron/daily-brief-types.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/brief-service.ts`, `lib/cron/__tests__/evaluate-readiness.test.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `app/api/dev/send-log/route.ts`
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` passed (all tests including 27 new evaluate-readiness tests); `npm run build` passed; `npm run test:prod` 51/51 passed.
+  Changes: (1) Two-gate enforcement: added `ReadinessDecision = 'SEND' | 'NO_SEND' | 'INSUFFICIENT_SIGNAL'` and `ReadinessCheckResult` to `daily-brief-types.ts`. Exported pure `evaluateReadiness()` function from `daily-brief-generate.ts` — replaces scattered cooldown and signal-failure checks (lines 747–795) with a single named decision point. Exported pure `isSendWorthy()` post-generation kill switch with 7 checks: do_nothing, below_send_threshold, no_evidence, placeholder_content, invalid_recipient, body_too_short, vague_subject, generic_language. (2) Silence enforcement: `persistNoSendOutcome` changed to `status='skipped'` so `runDailySend` (queries `status=pending_approval`) never sees no-send actions as email candidates. `approve: null` added to `execution_result` of main insert as manual feedback slot. (3) Gate decision logging: `brief_gate_decision` log event emitted per-user with decision, reason, signal_code, fresh_signals. Enhanced `daily_generate_complete` log adds quality metrics (evidence_count, body_chars, to_domain, subject_length — no PII). (4) Dev review endpoint: `GET /api/dev/send-log` returns last 10 `pending_approval` actions with quality metrics; requires `ALLOW_DEV_ROUTES=true` and valid session. `brief-service.ts` updated with two-gate JSDoc. 27 new unit tests (evaluateReadiness × 9, isSendWorthy × 18).
+  Any unresolved issues: none
+
 - 2026-03-27 — AGENTS.md workflow/command refresh from 7-day commit scan
   MODE: OPS
   Commit hash(es): pending (set after commit on `main`)
