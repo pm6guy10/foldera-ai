@@ -1066,6 +1066,12 @@ const PLACEHOLDER_PATTERNS = [
   /\[your\s/i,
   /\[insert\b/i,
   /\bTODO\b/,
+  // Prose-form placeholders — content the model invented but doesn't actually have
+  /\bcontact\s+information\s+(?:to\s+be\s+)?(?:provided|available)\s+(?:upon\s+request|on\s+request|when\s+available)\b/i,
+  /\bto\s+be\s+(?:provided|confirmed|determined|supplied|filled\s+in)\s+(?:upon\s+request|later|by\s+candidate|separately)\b/i,
+  /\binformation\s+not\s+(?:available|provided|known|on\s+file)\s+in\s+(?:signals?|system)\b/i,
+  /\bprevious\s+workplace\b/i,
+  /\bformer\s+(?:employer|company|organization|workplace)\b/i,
 ];
 
 const BANNED_LANGUAGE_PATTERNS = [

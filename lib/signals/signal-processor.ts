@@ -402,6 +402,13 @@ const NON_COMMITMENT_PATTERNS = [
   // Vercel deployment notifications (infrastructure noise)
   /\b(?:vercel|deployment|deploy(?:ed|ing)?)\s+(?:failed|succeeded|ready|error|build|complete|cancel)/i,
   /\b(?:build\s+(?:failed|succeeded|error|complete)|production\s+deployment)\b/i,
+  // Job application procedural steps — HR requests to the candidate, not personal commitments
+  // "provide Nicole Vreeland's contact information as a reference" is HR asking, not you committing
+  /\bprovide\s+\w[\w\s''-]{0,40}'?s?\s+(?:contact\s+(?:information|info|details?)|phone|email)\b/i,
+  /\b(?:supervisor|professional|personal)\s+reference\s+(?:contact|information|info)\b/i,
+  /\bsubmit\s+(?:your\s+)?(?:application|resume|cv|references?)\b/i,
+  /\bcomplete\s+(?:your\s+)?(?:background\s+check|onboarding|new\s+hire|paperwork|i-?9|w-?4)\b/i,
+  /\bprovide\s+(?:your\s+)?(?:references?|supervisor\s+references?|two\s+references?|three\s+references?)\b/i,
 ];
 
 export function isNonCommitment(description: string): boolean {
