@@ -498,7 +498,7 @@ describe('runDailyGenerate candidate logging', () => {
     expect(result.message).toContain('No pending_approval brief was persisted');
     expect(result.message).toContain('No ranked daily brief candidate.');
     const saved = mockSupabase.insertedActions[0];
-    expect(saved.status).toBe('pending_approval');
+    expect(saved.status).toBe('skipped');
     expect((saved.execution_result as Record<string, any>).outcome_type).toBe('no_send');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.failureReason).toBe('No ranked daily brief candidate.');
   });
@@ -517,7 +517,7 @@ describe('runDailyGenerate candidate logging', () => {
       }),
     ]);
     const saved = mockSupabase.insertedActions[0];
-    expect(saved.status).toBe('pending_approval');
+    expect(saved.status).toBe('skipped');
     expect((saved.execution_result as Record<string, any>).generation_log.outcome).toBe('no_send');
     expect((saved.execution_result as Record<string, any>).generation_log.stage).toBe('artifact');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateFailureReasons[0]).toContain('Artifact generation failed.');
@@ -546,7 +546,7 @@ describe('runDailyGenerate candidate logging', () => {
     ]);
     expect(generateArtifact).not.toHaveBeenCalled();
     const saved = mockSupabase.insertedActions[0];
-    expect(saved.status).toBe('pending_approval');
+    expect(saved.status).toBe('skipped');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates).toHaveLength(2);
     expect((saved.execution_result as Record<string, any>).generation_log.reason).toBe(
       'Acceptance gate blocked send because fewer than 3 candidates were evaluated.',

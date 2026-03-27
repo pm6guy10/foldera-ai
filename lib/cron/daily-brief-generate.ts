@@ -27,12 +27,13 @@ import type {
 import { filterDailyBriefEligibleUserIds } from '@/lib/auth/daily-brief-users';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { runCommitmentCeilingDefense } from '@/lib/cron/self-heal';
-import { CONFIDENCE_PERSIST_THRESHOLD } from '@/lib/config/constants';
+import { CONFIDENCE_PERSIST_THRESHOLD, CONFIDENCE_SEND_THRESHOLD } from '@/lib/config/constants';
 import type {
   DailyBriefFailureCode,
   DailyBriefGenerateRunResult,
   DailyBriefSignalWindowOptions,
   DailyBriefUserResult,
+  ReadinessCheckResult,
 } from './daily-brief-types';
 import {
   buildGenerateMessage,
@@ -45,6 +46,94 @@ import {
 const CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
 const DAILY_SIGNAL_BATCH_SIZE = 5;
 const DAILY_SIGNAL_PROCESSING_BUDGET_MS = 20_000;
+const DO_NOTHING_COOLDOWN_MS = 4 * 60 * 60 * 1000;
+
+/**
+ * Placeholder patterns that indicate a draft was not grounded in real context.
+ * Matches exact tokens like [NAME] and prefix tokens like [INSERT relevant detail].
+ */
+const PLACEHOLDER_PATTERN =
+  /\[(?:NAME|RECIPIENT|EMAIL|PERSON|CONTACT|SUBJECT|DATE|TODO|TBD)\]|\[INSERT[^\]]*\]/i;
+
+// ---------------------------------------------------------------------------
+// Pre-generation gate
+// ---------------------------------------------------------------------------
+
+/**
+ * Decide whether generation should run for a user.
+ *
+ * Pure function — no DB access, no side effects.
+ *
+ * SEND              — proceed to generateDirective()
+ * NO_SEND           — cooldown active; return no_send_reused silently
+ * INSUFFICIENT_SIGNAL — stale backlog / no signals; persist skipped evidence, stay silent
+ */
+export function evaluateReadiness(
+  signalResult: DailyBriefUserResult,
+  pendingQueue: { recentDoNothingGeneratedAt: string | null },
+): ReadinessCheckResult {
+  // 1. Hard blockers — processing failed or stale backlog too large
+  if (!signalResult.success) {
+    const reason =
+      signalResult.detail?.trim() ||
+      SAFE_ERROR_MESSAGES[signalResult.code as DailyBriefFailureCode] ||
+      'Signal processing blocked generation.';
+    return { decision: 'INSUFFICIENT_SIGNAL', reason, stage: 'system' };
+  }
+
+  const freshSignals =
+    (signalResult.meta as Record<string, unknown> | undefined)?.['processed_fresh_signals_count'] as
+      | number
+      | undefined ?? 0;
+
+  // 2. Cooldown — do_nothing generated < 4h ago AND no fresh signals this run
+  if (pendingQueue.recentDoNothingGeneratedAt && freshSignals === 0) {
+    const ageMs = Date.now() - new Date(pendingQueue.recentDoNothingGeneratedAt).getTime();
+    if (ageMs < DO_NOTHING_COOLDOWN_MS) {
+      return {
+        decision: 'NO_SEND',
+        reason: 'No new signals since recent no-send decision.',
+        stage: 'system',
+      };
+    }
+  }
+
+  return { decision: 'SEND', reason: '', stage: 'system' };
+}
+
+// ---------------------------------------------------------------------------
+// Post-generation quality gate
+// ---------------------------------------------------------------------------
+
+/**
+ * Final send-worthiness check after artifact generation.
+ *
+ * Pure function — no DB access, no side effects.
+ *
+ * Blocks:
+ *   - do_nothing directives (never email a wait_rationale)
+ *   - confidence below the send threshold (70)
+ *   - zero evidence (not grounded in real context)
+ *   - placeholder strings in the artifact body
+ */
+export function isSendWorthy(
+  directive: ConvictionDirective,
+  artifact: ConvictionArtifact,
+): { worthy: boolean; reason: string } {
+  if (directive.action_type === 'do_nothing') {
+    return { worthy: false, reason: 'do_nothing_directive' };
+  }
+  if (directive.confidence < CONFIDENCE_SEND_THRESHOLD) {
+    return { worthy: false, reason: 'below_send_threshold' };
+  }
+  if (!directive.evidence || directive.evidence.length === 0) {
+    return { worthy: false, reason: 'no_evidence' };
+  }
+  if (PLACEHOLDER_PATTERN.test(JSON.stringify(artifact))) {
+    return { worthy: false, reason: 'placeholder_content' };
+  }
+  return { worthy: true, reason: '' };
+}
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -459,7 +548,7 @@ async function persistNoSendOutcome(
       action_type: 'do_nothing',
       directive_text: waitRationale.directiveText,
       reason,
-      status: 'pending_approval',
+      status: 'skipped',
       confidence: 45,
       evidence: directive.evidence,
       generated_at: new Date().toISOString(),
@@ -744,18 +833,13 @@ export async function runDailyGenerate(
         }
       }
 
-      // Cooldown: if reconciliation just suppressed a do_nothing generated within
-      // the last 4 hours AND signal processing found no new signals, skip re-generation.
-      const DO_NOTHING_COOLDOWN_MS = 4 * 60 * 60 * 1000;
-      if (
-        pendingQueue.recentDoNothingGeneratedAt &&
-        Date.now() - new Date(pendingQueue.recentDoNothingGeneratedAt).getTime() < DO_NOTHING_COOLDOWN_MS &&
-        signalResult.success &&
-        (signalResult.meta as Record<string, unknown> | undefined)?.['processed_fresh_signals_count'] === 0
-      ) {
+      // Gate: single named decision point before any generation work.
+      const readiness = evaluateReadiness(signalResult, pendingQueue);
+
+      if (readiness.decision === 'NO_SEND') {
         results.push({
           code: 'no_send_reused',
-          detail: 'do_nothing cooldown — no new signals processed since last attempt',
+          detail: readiness.reason,
           meta: cleanupMeta,
           success: true,
           userId,
@@ -763,17 +847,14 @@ export async function runDailyGenerate(
         continue;
       }
 
-      if (!signalResult.success) {
-        const preconditionReason =
-          signalResult.detail?.trim() || SAFE_ERROR_MESSAGES[signalResult.code as DailyBriefFailureCode];
+      if (readiness.decision === 'INSUFFICIENT_SIGNAL') {
         const savedNoSend = await persistNoSendOutcome(
           supabase,
           userId,
-          buildSyntheticNoSendDirective(preconditionReason, 'system'),
-          preconditionReason,
-          'system',
+          buildSyntheticNoSendDirective(readiness.reason, readiness.stage),
+          readiness.reason,
+          readiness.stage,
         );
-
         if (!savedNoSend) {
           results.push({
             code: 'directive_persist_failed',
@@ -783,16 +864,17 @@ export async function runDailyGenerate(
           });
           continue;
         }
-
         results.push({
           code: 'no_send_persisted',
-          detail: preconditionReason,
-          meta: { ...cleanupMeta, action_id: savedNoSend.id },
+          detail: readiness.reason,
+          meta: { ...cleanupMeta, action_id: savedNoSend.id, readiness_decision: readiness.decision },
           success: true,
           userId,
         });
         continue;
       }
+
+      // readiness.decision === 'SEND' — proceed to generation
 
       // Run ceiling defense immediately before scoring
       try {
@@ -994,6 +1076,49 @@ export async function runDailyGenerate(
         continue;
       }
 
+      // Post-generation quality gate — block outputs that are not worth sending.
+      const sendWorthiness = isSendWorthy(directive, artifact);
+      if (!sendWorthiness.worthy) {
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'warn',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'quality_gate_failed',
+          details: { scope: 'daily-generate', quality_gate_reason: sendWorthiness.reason },
+        });
+        const savedNoSend = await persistNoSendOutcome(
+          supabase,
+          userId,
+          directive,
+          `Output blocked by quality gate: ${sendWorthiness.reason}`,
+          'validation',
+        );
+        if (!savedNoSend) {
+          results.push({
+            code: 'directive_persist_failed',
+            detail: 'Failed to persist quality-gate no-send outcome.',
+            meta: cleanupMeta,
+            success: false,
+            userId,
+          });
+          continue;
+        }
+        results.push({
+          code: 'no_send_persisted',
+          detail: `Output blocked by quality gate: ${sendWorthiness.reason}`,
+          meta: {
+            ...cleanupMeta,
+            action_id: savedNoSend.id,
+            quality_gate_reason: sendWorthiness.reason,
+            ...extractThresholdValues(directive),
+          },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
       const { data: saved, error: saveErr } = await supabase
         .from('tkg_actions')
         .insert({
@@ -1007,7 +1132,10 @@ export async function runDailyGenerate(
           generated_at: new Date().toISOString(),
           generation_attempts: 1,
           artifact: artifact ?? null,
-          execution_result: buildDirectiveExecutionResult({ directive, artifact, briefOrigin: 'daily_cron' }),
+          execution_result: {
+            ...buildDirectiveExecutionResult({ directive, artifact, briefOrigin: 'daily_cron' }),
+            approve: null,
+          },
         })
         .select('id')
         .single();

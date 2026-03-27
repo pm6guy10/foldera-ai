@@ -67,3 +67,17 @@ export interface SafeDailyBriefStageStatus {
   succeeded: number;
   summary: string;
 }
+
+/**
+ * Pre-generation gate decision.
+ *   SEND              — fresh signal activity detected; proceed to generateDirective()
+ *   NO_SEND           — cooldown active; skip silently, no DB write
+ *   INSUFFICIENT_SIGNAL — no new signals / processing error; persist skipped evidence, stay silent
+ */
+export type ReadinessDecision = 'SEND' | 'NO_SEND' | 'INSUFFICIENT_SIGNAL';
+
+export interface ReadinessCheckResult {
+  decision: ReadinessDecision;
+  reason: string;
+  stage: 'system';
+}

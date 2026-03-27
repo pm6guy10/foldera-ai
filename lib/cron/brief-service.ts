@@ -10,6 +10,24 @@
  * The send fallback (retry send when generate succeeded but send did not
  * confirm delivery) is opt-in via `ensureSend: true`.  Manual runs set
  * this flag; nightly cron does not need it.
+ *
+ * ## Two-gate enforcement (inside runDailyGenerate, per user)
+ *
+ * Pre-generation gate — evaluateReadiness():
+ *   SEND              — fresh signal activity; proceed to generateDirective()
+ *   NO_SEND           — cooldown active; return no_send_reused, no email, no UI card
+ *   INSUFFICIENT_SIGNAL — stale backlog or no new signals; persist skipped evidence, stay silent
+ *
+ * Post-generation gate — isSendWorthy():
+ *   worthy: true  — directive passes all quality checks; insert pending_approval
+ *   worthy: false — output blocked (do_nothing / low confidence / no evidence / placeholder);
+ *                   persist skipped evidence, stay silent
+ *
+ * Silence is literal: no-send paths use status='skipped' in tkg_actions so
+ * runDailySend never finds them as email candidates.
+ *
+ * The approve field (null | true | false) on persisted directives is the
+ * feedback signal for future quality improvement.
  */
 
 import { runDailyBrief, runDailySend } from './daily-brief';

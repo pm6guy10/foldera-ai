@@ -1,0 +1,203 @@
+import { describe, expect, it } from 'vitest';
+import { evaluateReadiness, isSendWorthy } from '../daily-brief-generate';
+import type { DailyBriefUserResult } from '../daily-brief-types';
+import type { ConvictionArtifact, ConvictionDirective } from '@/lib/briefing/types';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function makeSignalResult(
+  code: DailyBriefUserResult['code'],
+  success: boolean,
+  freshSignals = 0,
+  detail?: string,
+): DailyBriefUserResult {
+  return {
+    code,
+    success,
+    detail,
+    meta: { processed_fresh_signals_count: freshSignals },
+  };
+}
+
+const NO_COOLDOWN = { recentDoNothingGeneratedAt: null };
+const RECENT_DO_NOTHING = {
+  recentDoNothingGeneratedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 min ago
+};
+const EXPIRED_DO_NOTHING = {
+  recentDoNothingGeneratedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5h ago
+};
+
+// ---------------------------------------------------------------------------
+// evaluateReadiness
+// ---------------------------------------------------------------------------
+
+describe('evaluateReadiness', () => {
+  it('returns INSUFFICIENT_SIGNAL when signal_processing_failed', () => {
+    const result = evaluateReadiness(
+      makeSignalResult('signal_processing_failed', false, 0, 'processing error'),
+      NO_COOLDOWN,
+    );
+    expect(result.decision).toBe('INSUFFICIENT_SIGNAL');
+    expect(result.stage).toBe('system');
+    expect(result.reason).toContain('processing error');
+  });
+
+  it('returns INSUFFICIENT_SIGNAL when stale_signal_backlog_remaining', () => {
+    const result = evaluateReadiness(
+      makeSignalResult('stale_signal_backlog_remaining', false),
+      NO_COOLDOWN,
+    );
+    expect(result.decision).toBe('INSUFFICIENT_SIGNAL');
+  });
+
+  it('returns SEND when no_unprocessed_signals and no cooldown (signals already pre-processed)', () => {
+    // Signals may have been processed by a prior sync step; entity summaries exist.
+    // isSendWorthy() handles silence if the generator produces do_nothing.
+    const result = evaluateReadiness(
+      makeSignalResult('no_unprocessed_signals', true, 0),
+      NO_COOLDOWN,
+    );
+    expect(result.decision).toBe('SEND');
+  });
+
+  it('returns NO_SEND when cooldown active and no fresh signals', () => {
+    const result = evaluateReadiness(
+      makeSignalResult('signals_caught_up', true, 0),
+      RECENT_DO_NOTHING,
+    );
+    expect(result.decision).toBe('NO_SEND');
+    expect(result.reason).toMatch(/no new signals/i);
+  });
+
+  it('returns SEND when signals_caught_up with fresh signals', () => {
+    const result = evaluateReadiness(
+      makeSignalResult('signals_caught_up', true, 12),
+      NO_COOLDOWN,
+    );
+    expect(result.decision).toBe('SEND');
+  });
+
+  it('returns SEND when no_unprocessed_signals but fresh signals > 0 (processed externally)', () => {
+    const result = evaluateReadiness(
+      makeSignalResult('no_unprocessed_signals', true, 5),
+      NO_COOLDOWN,
+    );
+    expect(result.decision).toBe('SEND');
+  });
+
+  it('returns SEND when cooldown expired (> 4h) even with zero fresh signals', () => {
+    const result = evaluateReadiness(
+      makeSignalResult('signals_caught_up', true, 0),
+      EXPIRED_DO_NOTHING,
+    );
+    expect(result.decision).toBe('SEND');
+  });
+
+  it('returns NO_SEND when no_unprocessed_signals and cooldown is active', () => {
+    // No new signals processed AND do_nothing was recent → cooldown wins
+    const result = evaluateReadiness(
+      makeSignalResult('no_unprocessed_signals', true, 0),
+      RECENT_DO_NOTHING,
+    );
+    expect(result.decision).toBe('NO_SEND');
+  });
+
+  it('returns SEND when signals_caught_up with fresh signals and expired cooldown', () => {
+    const result = evaluateReadiness(
+      makeSignalResult('signals_caught_up', true, 3),
+      EXPIRED_DO_NOTHING,
+    );
+    expect(result.decision).toBe('SEND');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isSendWorthy
+// ---------------------------------------------------------------------------
+
+function makeDirective(overrides: Partial<ConvictionDirective> = {}): ConvictionDirective {
+  return {
+    directive: 'Send a follow-up to Alice about the contract.',
+    action_type: 'send_message',
+    confidence: 82,
+    reason: 'No response in 5 days on a time-sensitive contract.',
+    evidence: [{ type: 'email', summary: 'Contract email from Alice 5 days ago', date: '2026-03-20' }],
+    generationLog: null,
+    ...overrides,
+  } as unknown as ConvictionDirective;
+}
+
+function makeArtifact(overrides: Partial<ConvictionArtifact> = {}): ConvictionArtifact {
+  return {
+    type: 'drafted_email',
+    subject: 'Following up on the contract',
+    body: 'Hi Alice, just checking in on the status of the contract we discussed.',
+    to: 'alice@example.com',
+    ...overrides,
+  } as unknown as ConvictionArtifact;
+}
+
+describe('isSendWorthy', () => {
+  it('returns worthy:true for a valid send_message directive', () => {
+    const result = isSendWorthy(makeDirective(), makeArtifact());
+    expect(result.worthy).toBe(true);
+  });
+
+  it('blocks do_nothing directives', () => {
+    const result = isSendWorthy(makeDirective({ action_type: 'do_nothing' }), makeArtifact());
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('do_nothing_directive');
+  });
+
+  it('blocks directives below send threshold (< 70)', () => {
+    const result = isSendWorthy(makeDirective({ confidence: 65 }), makeArtifact());
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('below_send_threshold');
+  });
+
+  it('blocks directives with no evidence', () => {
+    const result = isSendWorthy(makeDirective({ evidence: [] }), makeArtifact());
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('no_evidence');
+  });
+
+  it('blocks artifacts with placeholder content [NAME]', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ body: 'Hi [NAME], following up on the contract.' }),
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('placeholder_content');
+  });
+
+  it('blocks artifacts with placeholder [RECIPIENT]', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ to: '[RECIPIENT]' }),
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('placeholder_content');
+  });
+
+  it('blocks artifacts with [INSERT placeholder]', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ body: 'Please [INSERT relevant detail] before replying.' }),
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('placeholder_content');
+  });
+
+  it('allows confidence exactly at threshold (70)', () => {
+    const result = isSendWorthy(makeDirective({ confidence: 70 }), makeArtifact());
+    expect(result.worthy).toBe(true);
+  });
+
+  it('blocks do_nothing even with high confidence', () => {
+    const result = isSendWorthy(makeDirective({ action_type: 'do_nothing', confidence: 95 }), makeArtifact());
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('do_nothing_directive');
+  });
+});
