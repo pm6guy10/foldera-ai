@@ -116,3 +116,28 @@ All of these are in source code but NOT yet applied to production:
 1. Non-owner flow not proven — no production receipt for any non-Brandon user
 2. Missing tkg_signals indexes (no migration written yet)
 3. npm run test:prod 51/51 is Brandon-only — multi-user loop unverified
+
+---
+
+## Usefulness Gate (added 2026-03-27)
+
+### CURRENT STATE
+- usefulness gate: implemented — `lib/briefing/generator.ts`, commit `cf8b5d0`
+- usefulness gate: execution-proofed — `lib/briefing/__tests__/usefulness-gate.test.ts`, commit `3a2fb11`
+- 7/7 test cases passed against real `generateDirective()` call path with mocked Anthropic
+- production: deployed and stable (Vercel build passed on both commits)
+
+### KNOWN TRUTHS
+- `generic_language` ("just checking in", "touching base", "wanted to reach out", "following up") is the only check **uniquely enforced by `isUseful`** — these phrases are NOT in `BANNED_LANGUAGE_PATTERNS`, so they pass structural validation and only `isUseful` blocks them
+- `empty_artifact`, `no_evidence`, `no_action` are caught upstream by `validateGeneratedArtifact` before `isUseful` fires — defense-in-depth
+- `generateDirective()` returns `GENERATION_FAILED_SENTINEL` on any rejection; callers check this and skip `tkg_actions` insert and email send
+- Stage evidence: rejected by `isUseful` → `generationLog.stage = "validation"` (not "generation") — distinguishable in logs
+
+### OPEN ITEMS
+- non-owner full loop verification still unverified (per ACCEPTANCE_GATE.md)
+- no new open items from this gate implementation
+
+### RULES GOING FORWARD
+- no feature without execution proof
+- no claim without logs or test output
+- every completed feature must have: scoped diff → deploy → execution proof → regression test
