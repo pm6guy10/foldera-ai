@@ -114,6 +114,12 @@ const FEATURES: FeatureItem[] = [
   { icon: Layers, title: 'It replaces the system', desc: 'Not another app to check. The whole point is that you stop managing and start deciding yes or no.' },
 ];
 
+const HERO_PROOF_LINES = [
+  'You’ve opened this thread 6 times and never replied. I drafted the exact response.',
+  'Response time jumped from 2h → 3 days. Send now before it dies.',
+  'You keep revisiting this role but haven’t applied. Email is ready.',
+];
+
 // ============================================================================
 // HOOKS
 // ============================================================================
@@ -195,6 +201,45 @@ const AmbientGrid = () => (
   </div>
 );
 
+function LiveProofStrip() {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (prefersReducedMotion || paused) return;
+    const interval = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setIndex((prev) => (prev + 1) % HERO_PROOF_LINES.length);
+        setVisible(true);
+      }, 130);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, [paused, prefersReducedMotion]);
+
+  return (
+    <div
+      className="w-full max-w-2xl mt-5 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-sm px-4 sm:px-5 py-3 text-left shadow-[inset_0_0_24px_rgba(6,182,212,0.06)]"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1.5">What Foldera catches</p>
+      <div className="h-11 sm:h-10 overflow-hidden">
+        <p
+          key={index}
+          className={`text-sm sm:text-[15px] leading-5 text-zinc-200 transition-all duration-150 ${
+            visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'
+          }`}
+        >
+          {HERO_PROOF_LINES[index]}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 
 // ============================================================================
 // SIGNAL ENGINE HERO — mechanism visualization
@@ -222,6 +267,7 @@ function SignalEngineHero() {
             Get started free <ChevronRight className="w-4 h-4" />
           </a>
         </div>
+        <LiveProofStrip />
       </Reveal>
 
       {/* The Mechanism: inputs → convergence → directive */}
