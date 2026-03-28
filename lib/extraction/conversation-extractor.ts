@@ -247,7 +247,13 @@ export async function extractFromConversation(
   let payload: ExtractionPayload = { decisions: [], outcomes: [], patterns: [], goals: [] };
   try {
     const cleaned = raw.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
-    payload = JSON.parse(cleaned);
+    const parsed = JSON.parse(cleaned);
+    payload = {
+      decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
+      outcomes: Array.isArray(parsed.outcomes) ? parsed.outcomes : [],
+      patterns: Array.isArray(parsed.patterns) ? parsed.patterns : [],
+      goals: Array.isArray(parsed.goals) ? parsed.goals : [],
+    };
   } catch {
     await cleanupSignalForRetry(supabase, signal.id);
     throw new Error(`Failed to parse Claude extraction response: ${raw.slice(0, 200)}`);

@@ -265,7 +265,7 @@ function buildSyntheticNoSendDirective(
       stage,
       reason,
       candidateFailureReasons: candidateDiscovery
-        ? candidateDiscovery.topCandidates.map((c) =>
+        ? (candidateDiscovery.topCandidates ?? []).map((c) =>
           c.decision === 'selected' ? `Selected candidate blocked: ${reason}` : c.decisionReason)
         : [reason],
       candidateDiscovery: candidateDiscovery
@@ -281,7 +281,7 @@ function getCandidateDiscoveryFailureReason(
   if (!candidateDiscovery) {
     return 'Candidate discovery log missing from generation output.';
   }
-  if (candidateDiscovery.candidateCount < 3 || candidateDiscovery.topCandidates.length < 3) {
+  if (candidateDiscovery.candidateCount < 3 || (candidateDiscovery.topCandidates?.length ?? 0) < 3) {
     return 'Acceptance gate blocked send because fewer than 3 candidates were evaluated.';
   }
   if (candidateDiscovery.selectionMargin === null && !candidateDiscovery.selectionReason?.trim()) {
@@ -500,7 +500,7 @@ function buildNoSendGenerationLog(
     stage,
     reason,
     candidateFailureReasons: candidateDiscovery
-      ? candidateDiscovery.topCandidates.map((c) =>
+      ? (candidateDiscovery.topCandidates ?? []).map((c) =>
         c.decision === 'selected' ? `Selected candidate blocked: ${reason}` : c.decisionReason)
       : [reason],
     candidateDiscovery,
@@ -996,7 +996,7 @@ export async function runDailyGenerate(
             ...cleanupMeta,
             action_id: savedNoSend.id,
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
-            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
             ...extractThresholdValues(directive),
           },
           success: true,
@@ -1038,7 +1038,7 @@ export async function runDailyGenerate(
             ...cleanupMeta,
             action_id: savedNoSend.id,
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
-            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
             ...extractThresholdValues(directive),
           },
           success: true,
@@ -1083,7 +1083,7 @@ export async function runDailyGenerate(
             ...cleanupMeta,
             action_id: savedNoSend.id,
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
-            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
             ...extractThresholdValues(directive),
           },
           success: true,
@@ -1126,7 +1126,7 @@ export async function runDailyGenerate(
             ...cleanupMeta,
             action_id: savedNoSend.id,
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
-            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+            top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
             ...extractThresholdValues(directive),
           },
           success: true,
@@ -1249,7 +1249,7 @@ export async function runDailyGenerate(
           artifact_type: artifact.type,
           artifact_valid: true,
           candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
-          top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates.length ?? 0,
+          top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
           ...extractThresholdValues(directive),
         },
         success: true,

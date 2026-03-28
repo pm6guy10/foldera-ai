@@ -32,6 +32,7 @@ export default function SettingsClient() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [generateState, setGenerateState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
+  const lastGenerateRef = useRef<number>(0);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [goalBuckets, setGoalBuckets] = useState<string[]>([]);
   const [goalFreeText, setGoalFreeText] = useState<string | null>(null);
@@ -547,56 +548,76 @@ export default function SettingsClient() {
             Sync your email and calendar, then generate and send today&apos;s brief. Takes up to 60 seconds.
           </p>
           <button
-            disabled={generateState === 'loading'}
+            disabled={generateState === 'loading' || generateState === 'success'}
             onClick={async () => {
+              // 30-second cooldown — prevents accidental multi-fire
+              const now = Date.now();
+              if (now - lastGenerateRef.current < 30_000) {
+                setGenerateMessage('Please wait 30 seconds before trying again.');
+                return;
+              }
+              lastGenerateRef.current = now;
               setGenerateState('loading');
               setGenerateMessage(null);
               try {
                 const res = await fetch('/api/settings/run-brief', { method: 'POST' });
                 const data = await res.json().catch(() => null);
+
+                // Generation succeeded at the route level — redirect
                 if (res.ok && data?.ok) {
                   setGenerateState('success');
                   window.location.href = '/dashboard?generated=true';
-                } else if (res.ok && data?.stages) {
-                  const parts: string[] = [];
+                  return;
+                }
+
+                // Partial success — check individual stages
+                if (res.ok && data?.stages) {
                   const stages = data.stages as Record<string, any>;
-                  const signalFailed = stages.daily_brief?.signal_processing?.status === 'failed';
-                  const genFailed = stages.daily_brief?.generate?.status === 'failed';
-                  if (signalFailed) parts.push('Signal processing incomplete — directives will improve as backlog clears');
-                  if (genFailed) parts.push('Brief generation failed');
-                  if (stages.sync_microsoft?.ok === false) parts.push('Microsoft sync failed');
-                  if (stages.sync_google?.ok === false) parts.push('Google sync failed');
-                  if (parts.length > 0) {
-                    const isSignalBacklogOnly =
-                      parts.length === 1 &&
-                      parts[0].startsWith('Signal processing incomplete');
-                    if (isSignalBacklogOnly) {
-                      setGenerateState('success');
-                      window.location.href = '/dashboard?generated=true';
-                    } else {
-                      setGenerateState('error');
-                      setGenerateMessage(parts.join('. ') + '.');
-                    }
-                  } else {
+                  const genStatus = stages.daily_brief?.generate?.status;
+
+                  // If generation itself succeeded, redirect regardless of sync/send status.
+                  // The directive is in the DB — user can approve from dashboard.
+                  if (genStatus === 'ok') {
                     setGenerateState('success');
                     window.location.href = '/dashboard?generated=true';
+                    return;
                   }
-                } else {
+
+                  // Signal backlog with no generation failure — still redirect
+                  const signalOnly = stages.daily_brief?.signal_processing?.status === 'failed' && genStatus !== 'failed';
+                  if (signalOnly) {
+                    setGenerateState('success');
+                    window.location.href = '/dashboard?generated=true';
+                    return;
+                  }
+
+                  // Actual failures — show specific message
+                  const parts: string[] = [];
+                  if (genStatus === 'failed') parts.push('Brief generation failed');
+                  if (stages.sync_microsoft?.ok === false) parts.push('Microsoft sync issue');
+                  if (stages.sync_google?.ok === false) parts.push('Google sync issue');
                   setGenerateState('error');
-                  setGenerateMessage(data?.error || 'Something went wrong.');
+                  setGenerateMessage(parts.length > 0 ? parts.join('. ') + '.' : 'Something went wrong.');
+                  return;
                 }
+
+                // Non-OK response (500, 504, etc.)
+                setGenerateState('error');
+                setGenerateMessage(data?.error || 'Request failed. Try again in 30 seconds.');
               } catch {
                 setGenerateState('error');
-                setGenerateMessage('Network error — could not reach the server.');
+                setGenerateMessage('Network error — try again in 30 seconds.');
               }
             }}
             className={`w-full rounded-xl py-3 text-sm font-semibold transition-colors ${
               generateState === 'loading'
                 ? 'bg-zinc-700 text-zinc-400 cursor-wait'
-                : 'bg-cyan-600 hover:bg-cyan-500 text-white'
+                : generateState === 'success'
+                  ? 'bg-emerald-700 text-emerald-300 cursor-default'
+                  : 'bg-cyan-600 hover:bg-cyan-500 text-white'
             }`}
           >
-            {generateState === 'loading' ? 'Running sync + generate…' : 'Generate now'}
+            {generateState === 'loading' ? 'Running sync + generate…' : generateState === 'success' ? 'Redirecting…' : 'Generate now'}
           </button>
           {generateMessage && (
             <p className={`mt-3 text-xs leading-relaxed ${generateState === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
