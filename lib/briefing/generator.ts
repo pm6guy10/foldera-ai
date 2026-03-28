@@ -2302,18 +2302,10 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
   if (typeof parsed.action === 'string') {
     const action = parsed.action as string;
 
+    // NO_ACTION is no longer valid — DecisionPayload already validated the candidate.
+    // Return null to trigger retry, which will ask the LLM to produce a real artifact.
     if (action === 'NO_ACTION') {
-      return {
-        insight: typeof parsed.reason === 'string' ? parsed.reason : 'Discrepancy conditions not met.',
-        decision: 'HOLD',
-        directive: typeof parsed.reason === 'string' ? parsed.reason : 'No qualifying discrepancy found.',
-        artifact_type: 'do_nothing',
-        artifact: {
-          exact_reason: typeof parsed.reason === 'string' ? parsed.reason : 'Discrepancy gate: condition not met.',
-          blocked_by: 'discrepancy_engine',
-        },
-        why_now: '',
-      };
+      return null;
     }
 
     if (action === 'send_message' && parsed.message && typeof parsed.message === 'object') {
@@ -2693,7 +2685,10 @@ function computeDirectiveConfidence(result: ScorerResult): number {
     (evidenceDepth * 0.12) +
     (margin * 0.10);
 
-  return Math.max(40, Math.min(95, Math.round(40 + (composite * 55))));
+  // Floor at 50: if DecisionPayload said SEND, the candidate has been validated.
+  // The LLM just needs to render it. Confidence below the persist threshold (45)
+  // would block the directive from ever being saved.
+  return Math.max(50, Math.min(95, Math.round(40 + (composite * 55))));
 }
 
 // ---------------------------------------------------------------------------
