@@ -35,7 +35,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
-const GENERATION_MODEL = 'claude-sonnet-4-20250514';
+const GENERATION_MODEL = 'claude-haiku-4-5-20251001';
 const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
 const STALE_SIGNAL_THRESHOLD_DAYS = 14;
 
