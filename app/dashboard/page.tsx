@@ -67,6 +67,7 @@ export default function DashboardPage() {
   const [fetchError, setFetchError] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [isNewAccount, setIsNewAccount] = useState(false);
+  const [surfaceVisible, setSurfaceVisible] = useState(false);
 
   // Handle ?generated=true from settings run-brief success
   useEffect(() => {
@@ -151,6 +152,17 @@ export default function DashboardPage() {
     load();
   }, [load]);
 
+  // Subtle surface reveal whenever a directive is present.
+  useEffect(() => {
+    if (!action || loading || done || fetchError) {
+      setSurfaceVisible(false);
+      return;
+    }
+    setSurfaceVisible(false);
+    const raf = window.requestAnimationFrame(() => setSurfaceVisible(true));
+    return () => window.cancelAnimationFrame(raf);
+  }, [action, loading, done, fetchError]);
+
   const handleApprove = async () => {
     if (!action || executing) return;
     setExecuting(true);
@@ -201,7 +213,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* Fixed header */}
       <header className="fixed top-0 left-0 right-0 z-10 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 h-14">
-        <div className="max-w-3xl mx-auto h-full flex items-center justify-between px-4">
+        <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4">
           <span className="text-lg font-bold text-white">Foldera</span>
           <Link href="/dashboard/settings">
             <Settings className="w-5 h-5 text-zinc-500 hover:text-white transition-colors" />
@@ -210,15 +222,15 @@ export default function DashboardPage() {
       </header>
 
       {/* Content */}
-      <main className="pt-20 pb-14 px-4 max-w-3xl mx-auto">
+      <main className="pt-20 pb-14 px-4 max-w-2xl mx-auto">
         {/* Flash message (from deep-link errors, actions, or settings redirect) */}
         {flash && !done && (
-          <div className="mb-6 px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-800">
+          <div className="mb-5 px-4 py-3 rounded-xl bg-zinc-900/60 border border-zinc-800/70">
             <p className="text-sm text-zinc-300">{flash}</p>
           </div>
         )}
         {loading ? (
-          <div className="animate-pulse space-y-4 mt-4">
+          <div className="animate-pulse space-y-4 mt-4 max-w-xl">
             <div className="h-3 w-20 bg-zinc-800 rounded" />
             <div className="h-6 bg-zinc-800 rounded w-full" />
             <div className="h-6 bg-zinc-800 rounded w-4/5" />
@@ -229,12 +241,12 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : done ? (
-          <div className="mt-20 text-center">
+          <div className="mt-14 text-center">
             {flash && <p className="text-white text-base mb-2">{flash}</p>}
             <p className="text-zinc-500 text-sm">Your next read arrives at 7am Pacific.</p>
           </div>
         ) : fetchError ? (
-          <div className="mt-20 text-center">
+          <div className="mt-14 text-center">
             <p className="text-zinc-400">Something went wrong loading your dashboard.</p>
             <button
               onClick={load}
@@ -244,8 +256,8 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : !action ? (
-          <div className="mt-10 md:mt-12">
-            <div className="mx-auto max-w-2xl rounded-2xl border border-zinc-800/70 bg-zinc-900/45 px-6 py-7 md:px-7 md:py-8 text-center">
+          <div className="mt-8 md:mt-10">
+            <div className="mx-auto max-w-xl rounded-2xl border border-zinc-800/60 bg-zinc-900/35 px-6 py-7 md:px-7 md:py-8 text-center">
               <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">Today&apos;s queue</p>
               {isNewAccount ? (
                 <>
@@ -263,7 +275,11 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-zinc-900/55 border border-zinc-800/70 rounded-2xl p-6 md:p-7">
+          <div
+            className={`rounded-2xl border border-zinc-800/60 bg-zinc-900/65 px-6 py-7 md:px-8 md:py-8 transition-all duration-300 ease-out ${
+              surfaceVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'
+            }`}
+          >
             {/* Domain badge */}
             {action.domain && (
               <p className="text-xs uppercase tracking-wide text-emerald-500">
@@ -272,15 +288,19 @@ export default function DashboardPage() {
             )}
 
             {/* Directive text */}
-            <p className="text-xl md:text-2xl font-semibold text-white mt-3 leading-relaxed">
+            <p className="text-2xl md:text-3xl font-semibold text-white mt-3 leading-tight">
               {action.directive}
             </p>
 
             {/* Artifact */}
             {artifact && (
-              <div className="mt-6">
+              <div
+                className={`mt-6 border-t border-zinc-800/70 pt-5 transition-all duration-300 ease-out ${
+                  surfaceVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'
+                }`}
+              >
                 {isEmail && (
-                  <div className="bg-zinc-800/65 rounded-xl p-4 md:p-5 border border-zinc-700/40">
+                  <div className="rounded-xl bg-zinc-950/40 p-4 md:p-5">
                     {recipient && (
                       <p className="text-sm text-zinc-400 truncate">To: {recipient}</p>
                     )}
@@ -300,7 +320,7 @@ export default function DashboardPage() {
                 {isDecision && artifact.options && (
                   <div className="grid grid-cols-2 gap-3">
                     {artifact.options.slice(0, 2).map((opt, i) => (
-                      <div key={i} className="bg-zinc-800/70 rounded-xl p-4 border border-zinc-700/40">
+                      <div key={i} className="bg-zinc-950/30 rounded-xl p-4">
                         <p className="text-sm font-medium text-white">{opt.option}</p>
                         <p className="text-xs text-zinc-400 mt-1">{opt.rationale}</p>
                       </div>
@@ -309,7 +329,7 @@ export default function DashboardPage() {
                 )}
 
                 {isWait && (
-                  <div className="bg-zinc-800/70 rounded-xl p-4 border border-zinc-700/40">
+                  <div className="bg-zinc-950/30 rounded-xl p-4">
                     {artifact.context && (
                       <p className="text-sm text-zinc-300">Why wait: {artifact.context}</p>
                     )}
@@ -324,7 +344,7 @@ export default function DashboardPage() {
             )}
 
             {/* Action buttons */}
-            <div className="mt-6 flex gap-3">
+            <div className="mt-7 flex gap-2.5">
               <button
                 onClick={handleApprove}
                 disabled={executing}
@@ -336,7 +356,7 @@ export default function DashboardPage() {
                 <button
                   onClick={handleSkip}
                   disabled={executing}
-                  className="w-full bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 py-3 rounded-xl font-medium transition-colors"
+                  className="w-full bg-zinc-900/50 border border-zinc-700/70 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 py-3 rounded-xl font-medium transition-colors"
                 >
                   Skip
                 </button>
@@ -348,14 +368,14 @@ export default function DashboardPage() {
 
         {/* Footer — only when directive shown */}
         {!loading && !done && action && (
-          <p className="text-xs text-zinc-600 text-center mt-8">Your next read arrives at 7am Pacific</p>
+          <p className="text-xs text-zinc-600 text-center mt-6">Your next read arrives at 7am Pacific</p>
         )}
 
         {/* Your model — shown when signal data exists */}
         {!loading && !done && modelState && modelState.signal_count > 5 && (
-          <div className="mt-8 border border-zinc-800/65 rounded-2xl p-5 md:p-6 bg-zinc-900/35">
+          <div className="mt-6 border border-zinc-800/40 rounded-xl p-4 md:p-5 bg-zinc-900/20">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-xs font-semibold tracking-widest text-emerald-500 uppercase">Your model</span>
@@ -367,7 +387,7 @@ export default function DashboardPage() {
 
             {/* Top people */}
             {modelState.top_entities.length > 0 && (
-              <div className="mb-4">
+              <div className="mb-3">
                 <p className="text-[11px] text-zinc-500 uppercase tracking-wide mb-2">People it&apos;s tracking</p>
                 <div className="space-y-1.5">
                   {modelState.top_entities.slice(0, 3).map((entity, i) => (
@@ -388,7 +408,7 @@ export default function DashboardPage() {
 
             {/* Behavioral insights */}
             {modelState.behavioral_insights.length > 0 && (
-              <div className="mb-4 bg-zinc-900/70 rounded-xl p-3 border border-zinc-800/50">
+              <div className="mb-3 bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/40">
                 <p className="text-[11px] text-zinc-500 uppercase tracking-wide mb-2">What it inferred</p>
                 {modelState.behavioral_insights.slice(0, 2).map((insight, i) => (
                   <p key={i} className="text-xs text-zinc-400 leading-relaxed">
