@@ -420,7 +420,7 @@ export interface GoogleSyncResult {
  * Run Google sync for a user. On first connect (no last_synced_at),
  * pulls 90 days. On subsequent runs, pulls since last sync.
  */
-export async function syncGoogle(userId: string): Promise<GoogleSyncResult> {
+export async function syncGoogle(userId: string, options?: { maxLookbackMs?: number }): Promise<GoogleSyncResult> {
   const token = await getUserToken(userId, 'google');
   if (!token) {
     return { gmail_signals: 0, calendar_signals: 0, drive_signals: 0, is_first_sync: false, error: 'no_token' };
@@ -454,7 +454,7 @@ export async function syncGoogle(userId: string): Promise<GoogleSyncResult> {
 
   const isFirstSync = !token.last_synced_at;
   const sinceMs = isFirstSync
-    ? Date.now() - FIRST_SYNC_LOOKBACK_MS // 1 year back on first connect
+    ? Date.now() - (options?.maxLookbackMs ?? FIRST_SYNC_LOOKBACK_MS)
     : new Date(token.last_synced_at!).getTime();
 
   const oauth2 = getOAuth2Client(userId, token);

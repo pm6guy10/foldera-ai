@@ -1742,3 +1742,14 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Root cause: emergent-repetition_suppression candidates score 0.91 by hardcoded formula, beat all real commitment candidates, then always fail the Discrepancy Engine gate (no thread, no goal) → do_nothing loop. Fix 1: filter emergent candidates with no matchedGoal before final sort. Fix 2: filter future-dated calendar events from supporting_signals before hasRealThread and hoursSinceLast checks.
 - Any unresolved issues:
   - Production receipt pending — Brandon must trigger Generate Now after deploy and verify tkg_actions latest row shows a real commitment candidate (not emergent-repetition_suppression)
+
+---
+
+## 2026-03-27 — Fix Generate Now 504 timeout bug class
+- MODE: AUDIT
+- Commit hash(es): pending
+- Files changed: `app/api/settings/run-brief/route.ts`, `lib/sync/google-sync.ts`, `lib/sync/microsoft-sync.ts`
+- What was verified: `npx vitest run --exclude ".claude/worktrees/**"` — 32 files, 226 tests passed; `npm run build` — clean
+- Root cause: syncGoogle() on first connect looks back 1 year with no timeout. Vercel Hobby kills functions at 60s. Sync ate the entire budget and scoring never ran.
+- Fix: (1) 15s timeout wrapper on both sync calls in run-brief — if sync is slow, abandon and score with existing signals. (2) 7-day lookback cap for manual Generate Now runs (nightly cron unchanged, keeps full lookback + 300s budget). (3) Same pattern for Microsoft sync. Guarantees Generate Now completes within ~30s.
+- Any unresolved issues: Production receipt pending — Brandon must trigger Generate Now after deploy and verify it completes in <30s.

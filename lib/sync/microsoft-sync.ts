@@ -735,6 +735,7 @@ export interface MicrosoftSyncResult {
  */
 export async function syncMicrosoft(
   userId: string,
+  options?: { maxLookbackMs?: number },
 ): Promise<MicrosoftSyncResult> {
   // Get token from user_tokens, refreshing if expired
   const validToken = await getValidMicrosoftToken(userId);
@@ -757,7 +758,7 @@ export async function syncMicrosoft(
   const tokenMeta = await getUserToken(userId, "microsoft");
   const isFirstSync = !tokenMeta?.last_synced_at;
   const sinceMs = isFirstSync
-    ? Date.now() - FIRST_SYNC_LOOKBACK_MS // 1 year back on first connect
+    ? Date.now() - (options?.maxLookbackMs ?? FIRST_SYNC_LOOKBACK_MS)
     : new Date(tokenMeta!.last_synced_at!).getTime();
   const sinceIso = new Date(sinceMs).toISOString();
   const calendarUntilIso = new Date(
