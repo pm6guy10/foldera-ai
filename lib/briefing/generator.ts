@@ -3020,6 +3020,11 @@ export async function generateDirective(
 
     const candidateBlockLog: Array<{ title: string; reasons: string[] }> = [];
 
+    // Hoist self-name tokens fetch — called once for all candidates, not once per candidate.
+    // If this returns empty (auth metadata missing name), entity suppression is skipped
+    // to avoid false positives (can't distinguish "Brandon" the user from "Brandon" the contact).
+    const selfNameTokens = await fetchUserSelfNameTokens(userId);
+
     for (const { candidate: currentCandidate, disqualified, disqualifyReason } of rankedCandidates) {
       // Skip disqualified candidates (already acted recently, etc.)
       if (disqualified) {
@@ -3043,8 +3048,9 @@ export async function generateDirective(
       }
 
       // --- Per-candidate: entity suppression ---
-      if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType)) {
-        const selfNameTokens = await fetchUserSelfNameTokens(userId);
+      // Skip entirely if we have no self-name tokens — can't filter self vs other, so
+      // entity suppression would produce false positives for every candidate.
+      if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType) && selfNameTokens.size > 0) {
         const candidateEntities = extractEntityNamesFromCandidate(hydratedWinner, signalEvidence, selfNameTokens);
         const recentEntityConflict = await findRecentEntityActionConflict(userId, candidateEntities);
         if (recentEntityConflict.matched) {
