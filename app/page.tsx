@@ -261,7 +261,12 @@ function SignalEngineHero() {
         <p className="text-base md:text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed mb-5 md:mb-8">
           Your inbox isn&apos;t random. There&apos;s a pattern in what slips, stalls, and gets ignored. Foldera finds it, picks what matters, and hands it back finished.
         </p>
-        <p className="text-sm text-zinc-600 mb-5 md:mb-8 -mt-2 md:-mt-4">No credit card required</p>
+        <div className="mb-5 md:mb-8 -mt-2 md:-mt-4">
+          <p className="inline-flex items-center gap-2 rounded-full border border-cyan-400/35 bg-cyan-500/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] text-cyan-100 shadow-[0_0_24px_rgba(6,182,212,0.14)]">
+            <Lock className="h-3.5 w-3.5 text-cyan-300" aria-hidden="true" />
+            No credit card required
+          </p>
+        </div>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
           <a
             href="/start"
