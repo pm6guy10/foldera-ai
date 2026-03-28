@@ -950,18 +950,40 @@ function buildStructuredContext(
   avoidanceObservations?: AvoidanceObservation[],
   competitionContext?: string | null,
 ): StructuredContext {
-  // Sort signals chronologically and take top 7 — full body so the model reads a mini-thread
-  const supporting_signals: CompressedSignal[] = signalEvidence
+  // Type-diverse signal sampling: guarantee calendar, task, file, and drive
+  // signals get representation instead of being buried under email volume.
+  // Bloodhound approach: cast a wide net across signal types, then fill
+  // remaining slots chronologically.
+  const EMAIL_SOURCES = new Set(['gmail', 'outlook']);
+  const sorted = signalEvidence
     .slice()
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
-    .slice(0, 7)
-    .map((s) => ({
-      source: s.source,
-      occurred_at: s.date,
-      entity: s.author,
-      summary: [s.subject, s.snippet].filter(Boolean).join(' — '),
-      direction: s.direction,
-    }));
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+  const MAX_SIGNALS = 15;
+  const nonEmailSignals = sorted.filter((s) => !EMAIL_SOURCES.has(s.source));
+  const emailSignals = sorted.filter((s) => EMAIL_SOURCES.has(s.source));
+
+  // Take up to 6 non-email signals first (calendar, tasks, files, drive)
+  const diverse = nonEmailSignals.slice(0, 6);
+  const usedIds = new Set(diverse.map((s) => `${s.source}:${s.date}:${s.author}`));
+
+  // Fill remaining slots with chronological mix
+  for (const s of sorted) {
+    if (diverse.length >= MAX_SIGNALS) break;
+    const key = `${s.source}:${s.date}:${s.author}`;
+    if (!usedIds.has(key)) {
+      diverse.push(s);
+      usedIds.add(key);
+    }
+  }
+
+  const supporting_signals: CompressedSignal[] = diverse.map((s) => ({
+    source: s.source,
+    occurred_at: s.date,
+    entity: s.author,
+    summary: [s.subject, s.snippet].filter(Boolean).join(' — '),
+    direction: s.direction,
+  }));
 
   // Extract surgical raw facts: emails, dates, names, subjects
   const surgical_raw_facts: string[] = [];
@@ -2167,20 +2189,21 @@ async function fetchWinnerSignalEvidence(
     .split(/\s+/)
     .filter((w) => w.length >= 5);
 
-  if (keywords.length > 0 && snippets.length < 8) {
+  if (keywords.length > 0 && snippets.length < 12) {
+    const ninetyDaysAgoEvidence = new Date(Date.now() - daysMs(90)).toISOString();
     const { data: contextRows } = await supabase
       .from('tkg_signals')
       .select('content, source, occurred_at, author, type')
       .eq('user_id', userId)
       .eq('processed', true)
-      .gte('occurred_at', fourteenDaysAgo)
+      .gte('occurred_at', ninetyDaysAgoEvidence)
       .order('occurred_at', { ascending: false })
-      .limit(50);
+      .limit(150);
 
     const existingTexts = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
 
     for (const row of contextRows ?? []) {
-      if (snippets.length >= 8) break;
+      if (snippets.length >= 12) break;
       const decrypted = decryptWithStatus(row.content as string ?? '');
       if (decrypted.usedFallback) continue;
       const text = decrypted.plaintext.toLowerCase();
@@ -2219,7 +2242,7 @@ async function fetchWinnerSignalEvidence(
       const existingTexts = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
 
       for (const row of entityRows ?? []) {
-        if (snippets.length >= 8) break;
+        if (snippets.length >= 12) break;
         const decrypted = decryptWithStatus(row.content as string ?? '');
         if (decrypted.usedFallback) continue;
         const textLower = decrypted.plaintext.toLowerCase();

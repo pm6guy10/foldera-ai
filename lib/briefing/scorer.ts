@@ -2649,6 +2649,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       .limit(50),
 
     // Signals (last 180 days — decay applied during scoring)
+    // Load 200 to capture email + calendar + file + task signals
     supabase
       .from('tkg_signals')
       .select('id, content, source, occurred_at, author, type')
@@ -2656,17 +2657,17 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       .gte('occurred_at', oneHundredEightyDaysAgo)
       .eq('processed', true)
       .order('occurred_at', { ascending: false })
-      .limit(50),
+      .limit(200),
 
-    // Cooling relationships (last interaction > 14 days ago)
+    // Entities — both cooling (>14d) and active relationships
+    // Active relationships provide context; cooling ones surface re-engagement
     supabase
       .from('tkg_entities')
       .select('id, name, last_interaction, total_interactions, patterns')
       .eq('user_id', userId)
       .neq('name', 'self')
-      .lt('last_interaction', fourteenDaysAgo)
-      .order('last_interaction', { ascending: true })
-      .limit(10),
+      .order('total_interactions', { ascending: false })
+      .limit(30),
 
     // Active goals — P1 = most important, load all priorities
     supabase
@@ -2705,15 +2706,17 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const goalKeywordIndex = buildGoalKeywordIndex(goals);
   logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
 
-  // Also fetch ALL recent signals (not just 7d) for context enrichment
+  // Context enrichment signals — 90-day window with 150 limit so the scorer
+  // can find keyword overlap across email, calendar, files, and tasks.
+  const ninetyDaysAgoContext = new Date(Date.now() - daysMs(90)).toISOString();
   const { data: allRecentSignals } = await supabase
     .from('tkg_signals')
     .select('content, source, occurred_at')
     .eq('user_id', userId)
-    .gte('occurred_at', fourteenDaysAgo)
+    .gte('occurred_at', ninetyDaysAgoContext)
     .eq('processed', true)
     .order('occurred_at', { ascending: false })
-    .limit(50);
+    .limit(150);
 
   let contextDecryptSkips = 0;
   const decryptedSignals = (allRecentSignals ?? [])
