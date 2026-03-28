@@ -22,9 +22,28 @@ const mockGetDirectiveConstraintViolations = vi.fn();
 const mockGetPinnedConstraintPrompt = vi.fn();
 const mockLogStructuredEvent = vi.fn();
 
-const queryResult = { data: [], error: null };
+// Qualifying signal: received email 72h ago with no reply — satisfies all 4 discrepancy filters
+const SIGNAL_72H_AGO = new Date(Date.now() - 72 * 3600000).toISOString();
+const qualifyingSignal = {
+  id: 'sig-db-1',
+  // Proper email format: Subject header is required for parseSignalSnippet to extract subject,
+  // which is required for buildAvoidanceObservations to detect no-reply-sent pattern.
+  content: 'From: Steven Goulden <sgoulden@nyc.gov>\nTo: brandon@example.com\nSubject: FOIL-2025-025-00440 Appeal Deadline April 10\n\nPlease respond to proceed with your FOIL appeal before the deadline.',
+  source: 'email_received',
+  occurred_at: SIGNAL_72H_AGO,
+  author: 'sgoulden@nyc.gov',
+  type: 'email_received',
+};
+const signalQueryResult = { data: [qualifyingSignal], error: null };
+const emptyResult = { data: [], error: null };
 
 function makeLimitQuery(table: string) {
+  // Return a qualifying received signal for tkg_signals so the discrepancy gate passes:
+  // - hasRealThread: supporting_signals.length > 0
+  // - hasNoReply: avoidance_observations detects received email with no reply
+  // - meetsTimeThreshold: 72h > 48h
+  // - tiedToOutcome: set by winner.matchedGoal in buildWinner()
+  const result = table === 'tkg_signals' ? signalQueryResult : emptyResult;
   return {
     eq() { return this; },
     neq() { return this; },
@@ -33,7 +52,7 @@ function makeLimitQuery(table: string) {
     not() { return this; },
     is() { return this; },
     order() { return this; },
-    limit() { return Promise.resolve(queryResult); },
+    limit() { return Promise.resolve(result); },
   };
 }
 
@@ -76,7 +95,9 @@ vi.mock('@/lib/utils/structured-logger', () => ({
 }));
 
 vi.mock('@/lib/encryption', () => ({
-  decryptWithStatus: (_value: unknown) => ({ ok: true, value: String(_value) }),
+  // Return correct shape: { plaintext, usedFallback } — used by buildAvoidanceObservations
+  // to detect no-reply patterns from the email thread
+  decryptWithStatus: (_value: unknown) => ({ plaintext: String(_value), usedFallback: false }),
 }));
 
 // Anthropic mock — returns whatever response we configure
@@ -203,8 +224,10 @@ describe('TEST A — Hostile action drift', () => {
     const { generateDirective } = await import('../generator');
     const result = await generateDirective('user-1', { dryRun: true });
 
-    // INVARIANT: write_document persists, not send_message
-    expect(result.action_type).toBe('write_document');
+    // INVARIANT: discrepancy gate forces send_message regardless of scorer suggestion.
+    // The scorer said write_document, but the gate's final authority overrides it.
+    // The LLM returned send_message which happens to match the gate — no drift logged.
+    expect(result.action_type).toBe('send_message');
   });
 });
 
@@ -345,17 +368,20 @@ describe('TEST C — Renderer-only contract', () => {
     const { generateDirective } = await import('../generator');
     const result = await generateDirective('user-1', { dryRun: true });
 
-    expect(result.action_type).toBe('write_document');
+    // INVARIANT: discrepancy gate forces send_message regardless of scorer suggestion.
+    // Scorer said write_document, LLM returned write_document, but gate overrides to send_message.
+    // Drift IS logged: canonical=send_message, llm_attempted=write_document.
+    expect(result.action_type).toBe('send_message');
 
-    // directive_generated log includes canonical_action
+    // directive_generated log must show gate's canonical action (send_message), not scorer's (write_document)
     const genCalls = mockLogStructuredEvent.mock.calls.filter(
       (c: unknown[]) => (c[0] as Record<string, unknown>).event === 'directive_generated',
     );
     expect(genCalls.length).toBe(1);
     expect((genCalls[0][0] as Record<string, unknown>).details).toEqual(
       expect.objectContaining({
-        canonical_action: 'write_document',
-        action_drift: false,
+        canonical_action: 'send_message',
+        action_drift: true,
       }),
     );
   });

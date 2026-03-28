@@ -556,17 +556,17 @@ function setAnthropicPipelineMocks() {
       ]);
     }
 
-    if (system.includes("You are Foldera's behavioral analyst")) {
+    // New Discrepancy Engine prompt. Returns new output format.
+    if (system.includes('FOLDERA DISCREPANCY ENGINE') || system.includes("You are Foldera's behavioral analyst")) {
       return anthropicResponse({
-        directive: 'Alex Morgan asked for the signed permit appeal draft by Friday and you have not replied, so this email acknowledges the commitment before the deadline slips.',
-        artifact_type: 'send_message',
-        artifact: {
+        action: 'send_message',
+        confidence: 82,
+        reason: 'Alex Morgan requested the signed permit appeal draft by Friday and you have not replied — thread is 72h old.',
+        message: {
           to: 'alex@example.com',
           subject: 'Signed permit appeal draft by Friday',
           body: 'Hi Alex,\n\nI have the signed permit appeal draft ready and will send the final copy by Friday afternoon.\n\nBest,\nBrandon',
         },
-        evidence: 'Alex Morgan requested the signed permit appeal draft by Friday and the signal has no reply from you.',
-        why_now: 'The deadline is this week and the thread is already aging.',
       });
     }
 

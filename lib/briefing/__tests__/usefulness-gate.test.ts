@@ -29,6 +29,19 @@ const mockLogStructuredEvent = vi.fn();
 const queryResult = { data: [], error: null };
 const tkgActionsResultsQueue: Array<{ data: unknown[]; error: null }> = [];
 
+// Qualifying signal: received email 72h ago — satisfies all 4 discrepancy gate filters.
+// Subject header required for parseSignalSnippet + buildAvoidanceObservations no-reply detection.
+const SIGNAL_72H_AGO = new Date(Date.now() - 72 * 3600000).toISOString();
+const qualifyingSignal = {
+  id: 'sig-db-1',
+  content: 'From: Steven Goulden <sgoulden@nyc.gov>\nTo: brandon@example.com\nSubject: FOIL-2025-025-00440 Appeal Deadline April 10\n\nPlease respond to proceed with your FOIL appeal before the deadline.',
+  source: 'email_received',
+  occurred_at: SIGNAL_72H_AGO,
+  author: 'sgoulden@nyc.gov',
+  type: 'email_received',
+};
+const signalQueryResult = { data: [qualifyingSignal], error: null };
+
 function makeLimitQuery(table: string, result = queryResult) {
   return {
     eq() { return this; },
@@ -36,6 +49,7 @@ function makeLimitQuery(table: string, result = queryResult) {
     in() { return this; },
     gte() { return this; },
     not() { return this; },
+    is() { return this; },
     order() { return this; },
     limit() {
       if (table === 'tkg_actions' && tkgActionsResultsQueue.length > 0) {
@@ -50,11 +64,14 @@ function makeSignalsQuery() {
   return {
     select() {
       return {
-        in() { return Promise.resolve(queryResult); },
+        in() { return Promise.resolve(signalQueryResult); },
         eq() { return this; },
+        neq() { return this; },
         gte() { return this; },
+        not() { return this; },
+        is() { return this; },
         order() { return this; },
-        limit() { return Promise.resolve(queryResult); },
+        limit() { return Promise.resolve(signalQueryResult); },
       };
     },
   };
@@ -95,6 +112,12 @@ vi.mock('@/lib/briefing/pinned-constraints', () => ({
   getPinnedConstraintPrompt: mockGetPinnedConstraintPrompt,
 }));
 vi.mock('@/lib/utils/structured-logger', () => ({ logStructuredEvent: mockLogStructuredEvent }));
+
+// Encryption mock — buildAvoidanceObservations calls decryptWithStatus on signal content.
+// Return correct shape { plaintext, usedFallback } so the no-reply observer works.
+vi.mock('@/lib/encryption', () => ({
+  decryptWithStatus: (_value: unknown) => ({ plaintext: String(_value), usedFallback: false }),
+}));
 
 const anthropicCreate = vi.fn();
 vi.mock('@anthropic-ai/sdk', () => ({

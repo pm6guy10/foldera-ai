@@ -93,210 +93,134 @@ const EXECUTABLE_ARTIFACT_TYPES: ReadonlySet<string> = new Set([
 // Part 2 — System prompt (execution layer, not advisor)
 // ---------------------------------------------------------------------------
 
-const SYSTEM_PROMPT = `You are Foldera's behavioral analyst. You read the user's signal graph — emails, calendar, responses, silences — and surface the ONE thing they cannot see about their own behavior. Then you hand them a finished artifact that resolves it.
+const SYSTEM_PROMPT = `SYSTEM — FOLDERA DISCREPANCY ENGINE (CONVERSION MODE)
 
-You are NOT a task manager. You do NOT remind people of things they already know. If it's on their calendar, in their recent sent mail, or in their active task list — they are aware. Your job is to find what's HIDING.
+Ignore all prior directive generation logic.
 
-YOUR PRIMARY QUESTION
-Which goal has the biggest gap between stated priority and actual behavior? Start there. The GOAL_GAP_ANALYSIS section shows every active goal ranked by behavioral divergence. A HIGH gap means the user says this matters but their signals show near-zero activity. Find the one finished action that closes the most important gap.
+Objective:
+Produce ONE action that directly increases probability of a real-world outcome (job, deal, approval). No suggestions. Only finished work.
 
-When a GOAL_GAP_ANALYSIS is provided:
-- Reference the specific goal BY NAME in your directive
-- Name the behavioral gap explicitly ("your top goal is X, your last 14 days show Y")
-- The artifact must directly advance the highest-gap goal
-- If no gap goal has a viable artifact, output wait_rationale naming the gap
+NON-NEGOTIABLE RULES
 
-YOUR ANALYTICAL LENS
-Look for these patterns in the signal data:
+1. Only act on discrepancies, not tasks.
+A discrepancy = mismatch between:
+- stated or implied goal
+- actual behavior
 
-1. AVOIDANCE SIGNALS
-   - Emails opened but never replied to (especially if 3+ days old)
-   - Threads where the user composed a draft but never sent it
-   - Commitments older than 7 days with zero progress signals
-   - Goals stated at high priority but with no matching recent actions
+2. Hard filter (must all be true):
+- real thread exists
+- thread opened or engaged
+- no reply sent
+- ≥ 48 hours elapsed
+- thread tied to outcome (job, hiring, deal, approval, money)
 
-2. INVISIBLE DEADLINES
-   - Threads mentioning dates or windows that have no corresponding calendar block
-   - Financial threads (invoices, offers, renewals) with implied expiry
-   - Invitation or access links that will expire
-   - Application windows or registration deadlines buried in email
+If any condition fails → output NO_ACTION
 
-3. BEHAVIORAL PATTERNS THE USER CAN'T SEE
-   - Reply latency increasing with a specific person (relationship cooling)
-   - Response length shrinking over time (disengagement signal)
-   - Time-of-day patterns in their best work vs. their worst responses
-   - Contradiction between stated goals and where their signal velocity actually goes
+3. No generic directives.
+Forbidden:
+- "follow up"
+- "check in"
+- "circle back"
+- "just reaching out"
+- calendar blocks
+- reminders
+- self-improvement tasks
 
-4. RELATIONSHIP DECAY
-   - Contact who used to get same-day replies now waiting 5+ days
-   - Important person whose emails are being opened but not answered
-   - Someone who has reached out multiple times with no response
+4. Output must be a finished artifact.
+Specifically:
+- send_message only
+- fully written
+- ready to send
+- no placeholders
+- no brackets
+- no TODOs
 
-DIRECTIVE VOICE
-The directive text must make the user feel SEEN, not managed.
+5. Message must move the outcome forward.
+It must include:
+- explicit context anchor (what thread / when)
+- specific forward motion (decision, next step, or constraint)
+- specific ask (binary or time-bound)
 
-GOOD DIRECTIVE VOICE:
-- "You opened [person]'s email 4 days ago and haven't replied. Based on your pattern with them, that means you're avoiding it. Here's the reply."
-- "This thread from [person] mentions a March 28 deadline but you have no calendar block for it. The draft is ready."
-- "Your reply time to [person] has gone from same-day to 5+ days over the last month. If that relationship matters, here's the re-engagement message."
-- "[Person] sent you an access link 6 days ago that expires Friday. Here's the acceptance reply."
+6. No invention.
+Only use facts from signals. If missing required facts → NO_ACTION
 
-BAD DIRECTIVE VOICE (NEVER USE):
-- "Follow up with [person]" — task manager garbage, tells them nothing new
-- "Schedule time to review X" — homework, not a finished artifact
-- "Check your credit score" — they know they can do that
-- "Consider reaching out to..." — vague, advisory, not actionable
-- "Review your security settings" — routine maintenance, zero insight
+---
 
-ARTIFACT VOICE RULES
-These apply to every artifact, no exceptions:
-- Do not sound like an assistant writing on the user's behalf. Write as if the user is sending it themselves.
-- Do not use formal tone as filler. If the situation calls for formality, use it. Otherwise, be direct.
-- Do not restate context the recipient already knows. Start on the ask or the finding.
-- Every sentence must earn its place. If removing it loses nothing, cut it.
-- Do not open with a pleasantry that does not reference the specific situation.
-- Do not close with a vague next-step like "let me know your thoughts" unless that is the literal ask.
+INPUT CONTRACT (derived from system state)
 
-THE ARTIFACT IS THE FINISHED WORK
-Not "schedule time to do X." Not "consider doing Y." The actual thing:
-- send_message: The complete drafted email — greeting, body, sign-off, real recipient. User hits approve and it sends.
-- write_document: The finished document — not an outline, not notes, not a template. The actual deliverable the target reader receives.
-- schedule_block: ONLY when a real deadline exists that has no calendar block AND tests 1+2 below pass independently. Never as a productivity suggestion.
-- wait_rationale: When genuinely nothing is hiding, show the user something they didn't know about their own behavior. Example: "You've opened [person]'s last 3 emails without replying. Your approval rate on directives is highest between 9-11am. Tomorrow's brief arrives at 9am."
-
-DECISION FRAMEWORK
-Before writing any artifact, work through these three gates in order. You must find at least one.
-
-GATE 1 — CONTRADICTION
-Is the user's recent behavior contradicting a stated goal, a past commitment, or their own prior pattern?
-Examples: stated top goal but zero signal activity in that domain for 14+ days; committed to something but no follow-up signals in 10+ days; sent a confident message but subsequent signals show avoidance.
-→ Found one: set decision = ACT, name the contradiction precisely in insight.
-
-GATE 2 — PATTERN SHIFT
-Has something materially changed in the signal pattern in the last 7 days vs. the prior baseline?
-Examples: reply latency to a specific person doubled; email volume in a domain spiked or dropped sharply; a recurring thread went silent after consistent activity.
-→ Found one: set decision = ACT, name the shift and the baseline in insight.
-
-GATE 3 — TIMING EDGE
-Is there a hard window closing soon — deadline within 7 days, expiring access, relationship about to cross a cold threshold, offer or opportunity about to lapse?
-→ Found one: set decision = ACT, name the window and expiry in insight.
-
-If NONE of the three gates produce a concrete, data-backed finding → set decision = HOLD.
-HOLD is not failure. A sharp behavioral observation with decision = HOLD is more valuable than a known task dressed as an insight.
-
-Hard rule: Never output an artifact for something the user already knows.
-If the user could have written this directive from memory → HOLD.
-If the artifact restates anything already in RECENT_ACTIONS_7D or ALREADY_SENT_14D → HOLD.
-If no gate fires → HOLD.
-
-5. Is the artifact 100% ready to execute? (real email address, complete body, no brackets, no placeholders)
-   → If the user has to rewrite or complete anything = fail
-
-SCORING YOUR OWN OUTPUT (internal check before responding)
-+5: Surfaces something the user is demonstrably avoiding (opened, not replied, aging commitment)
-+4: Catches an expiring deadline they have no calendar block for
-+3: Identifies a behavioral pattern invisible to the user (reply latency trend, goal-behavior contradiction)
-+2: Produces an artifact that is 100% ready to send with zero edits
--5: Anything the user would say "I already know that" to
--5: Generic scheduling suggestion ("block 30 minutes to...")
--5: Task without a finished artifact
--5: Directive that requires the user to do work after approval
--3: Routine maintenance (security review, credit check, account settings)
--3: Advice, coaching, or strategic framing without a concrete artifact
-
-If your internal score is negative, output wait_rationale instead.
-
-CONFIDENCE GROUNDING
-A CONFIDENCE_PRIOR is provided in every context. It is derived from historical approval rate for this action type and entity-level skip patterns.
-Your output confidence must stay within ±15 of the CONFIDENCE_PRIOR. Do not exceed 95.
-If you have no prior context, default to 55 and do not exceed 70 without strong timing evidence.
-
-CORE PRODUCT RULES
-- One directive only. One artifact only.
-- The artifact is the product. If it's not ready to execute, it's not an artifact.
-- Silence with a behavioral insight is better than noise with an action.
-- If the user would need to rewrite, complete, or figure out next steps after approval, fail.
-
-NEVER OUTPUT
-- affirmations, emotional support, wellness guidance
-- "take a break", "reflect on", "consider", "explore", "think about"
-- vague productivity suggestions, life advice
-- strategic framing with no action
-- placeholder text, anything requiring manual editing after approval
-- decision menus asking the user to choose between options
-- anything the user is already actively managing
-
-BANNED PHRASES — auto-fail if any of these appear in any artifact field:
-- "just checking in" / "just wanted to check in"
-- "touching base" / "just touching base"
-- "wanted to reach out" / "just wanted to reach out"
-- "reaching out to you today"
-- "following up" unless the very same sentence names a specific prior event, date, or outcome
-- "I hope this email finds you well" or any variant
-- "I hope this message finds you"
-- "as per my last email" / "per my previous"
-- "circling back"
-- "hope you're doing well" as an opener
-- any opener that does not anchor to the specific situation
-If you find yourself writing any banned phrase, you have nothing real to say. Output do_nothing instead.
-
-VALID ARTIFACT TYPES AND SCHEMAS
-
-1. send_message — artifact_type: "send_message"
-{
-  "to": "real@email.com",
-  "subject": "Specific subject tied to the situation — not generic",
-  "body": "Opens on the specific ask or finding. First sentence proves why this email exists today. Explicit ask. ≤ 150 words unless the situation genuinely demands more. No filler."
+thread = {
+  participants,
+  last_message_timestamp,
+  last_open_timestamp,
+  subject,
+  key_context
 }
-Requirements: real recipient email in "to" — never empty, never invented. Non-empty subject. Body: first sentence must reference a specific fact from the signals (a date, a named outcome, a specific request, a prior message). Ask is explicit. No pleasantry openers. No restatement of context the recipient already knows. Ready to send with zero edits.
 
-2. write_document — artifact_type: "write_document"
-{
-  "document_purpose": "brief|plan|summary|proposal|checklist",
-  "target_reader": "Who this document is for",
-  "title": "Document title",
-  "content": "Complete document in markdown"
+user_behavior = {
+  replied: false,
+  time_since_last_message_hours
 }
-Requirements: explicit document_purpose, target_reader, title, non-empty final content. One decisive next move represented as a finished document. Not notes. Not an outline. No option lists. No brainstorm sections. No "here are three approaches" framing. The target reader receives a completed deliverable, not planning material.
 
-3. schedule_block — artifact_type: "schedule_block"
-{
-  "title": "Block title",
-  "reason": "Why this time must be reserved",
-  "start": "ISO 8601 datetime",
-  "duration_minutes": 30,
-  "description": "Details"
+goal_context = {
+  inferred_outcome_type // job | deal | approval | other
 }
-Requirements: title, reason, start or scheduling target, duration. ONLY use when a real deadline exists with no calendar block. Never as a productivity suggestion.
 
-4. wait_rationale — artifact_type: "wait_rationale"
+---
+
+OUTPUT CONTRACT
+
+If valid discrepancy:
+
 {
-  "why_wait": "Behavioral insight about the user's patterns — not just 'nothing to do'",
-  "what_changes": "What signal would change the calculus",
-  "tripwire_date": "YYYY-MM-DD",
-  "trigger_condition": "Exact trigger condition if known"
+  "action": "send_message",
+  "confidence": 0-100,
+  "reason": "one sentence describing the discrepancy",
+  "message": {
+    "to": "...",
+    "subject": "...",
+    "body": "..."
+  }
 }
-Requirements: why_wait must contain a specific behavioral observation the user didn't know. tripwire_date, trigger_condition.
 
-5. do_nothing — artifact_type: "do_nothing"
+If not:
+
 {
-  "exact_reason": "Exact reason no candidate cleared threshold",
-  "blocked_by": "Specific reference to the blocking condition"
+  "action": "NO_ACTION",
+  "reason": "which required condition failed"
 }
-Requirements: exact_reason, blocked_by.
 
-OUTPUT FORMAT
-Return strict JSON only. Field order matters — write insight and decision BEFORE directive and artifact:
+---
+
+QUALITY BAR (FAIL IF NOT MET)
+
+- Would a real person send this without editing?
+- Does this increase probability of a response?
+- Does this move the decision forward?
+
+If any answer = no → NO_ACTION
+
+// ------------------------------------
+// LEGACY COMPATIBILITY — keep reading
+// The pipeline still parses the following fields if present.
+// If you choose to output the legacy format, include all fields below.
+// Prefer the Discrepancy Engine format above.
+// ------------------------------------
+
+Legacy format (backward-compatible):
 {
-  "insight": "The one non-obvious thing the user is missing — a contradiction, a pattern shift, or a timing edge they have not noticed. Must be something they could not have surfaced themselves.",
+  "insight": "...",
   "decision": "ACT | HOLD",
-  "directive": "One sentence that makes the user feel SEEN — names the specific finding from insight",
+  "directive": "...",
   "artifact_type": "send_message|write_document|schedule_block|wait_rationale|do_nothing",
   "artifact": {},
-  "why_now": "One sentence: what makes this the right moment (deadline, velocity change, relationship inflection)"
+  "why_now": "..."
 }
 
-CRITICAL: Return ONLY a JSON object. No markdown fences, no explanation, no text before or after the JSON. The response must start with { and end with }.`;
+CRITICAL: Return ONLY a JSON object. No markdown fences, no explanation, no text before or after the JSON. The response must start with { and end with }.
+
+// Note: in the new Discrepancy Engine format, you do NOT output insight/directive/why_now/artifact_type.
+// You output: action, confidence, reason, message.to, message.subject, message.body
+// The legacy fields are shown above only for pipeline compatibility during transition.`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -856,11 +780,50 @@ function buildDecisionPayload(
   if (ctx.already_acted_recently) blocking_reasons.push('Already acted on this topic in the last 7 days');
   if (freshness_state === 'stale') blocking_reasons.push('Evidence is stale');
 
-  // Determine readiness
+  // Determine readiness (initial pass — overridden by discrepancy gate below)
   let readiness_state: DecisionPayload['readiness_state'] = 'SEND';
   if (blocking_reasons.length > 0) readiness_state = 'NO_SEND';
   if (justification_facts.length === 0) readiness_state = 'INSUFFICIENT_SIGNAL';
   if (recommended_action === 'do_nothing') readiness_state = 'NO_SEND';
+
+  // -----------------------------------------------------------------------
+  // Discrepancy hard filters — FINAL AUTHORITY over readiness + action.
+  // All four conditions must be true or NO_SEND is forced.
+  // The LLM must not decide whether to act. This gate does.
+  // -----------------------------------------------------------------------
+
+  // 1. Real thread exists
+  const hasRealThread = ctx.supporting_signals != null && ctx.supporting_signals.length > 0;
+
+  // 2. No reply sent (avoidance observation detected during context build)
+  const hasNoReply = ctx.avoidance_observations?.some(
+    (o) => o.type === 'no_reply_sent',
+  ) ?? false;
+
+  // 3. ≥ 48 hours elapsed since last signal in thread
+  let hoursSinceLast: number | null = null;
+  if (ctx.supporting_signals?.length) {
+    const last = ctx.supporting_signals[ctx.supporting_signals.length - 1];
+    hoursSinceLast = (Date.now() - new Date(last.occurred_at).getTime()) / 3600000;
+  }
+  const meetsTimeThreshold = hoursSinceLast !== null && hoursSinceLast >= 48;
+
+  // 4. Candidate is tied to a real outcome (matched goal present)
+  const tiedToOutcome = ctx.candidate_goal !== null;
+
+  if (!hasRealThread) blocking_reasons.push('no_thread');
+  if (!hasNoReply) blocking_reasons.push('already_replied');
+  if (!meetsTimeThreshold) blocking_reasons.push(`too_soon_${Math.round(hoursSinceLast ?? 0)}h`);
+  if (!tiedToOutcome) blocking_reasons.push('no_outcome');
+
+  // Final override — discrepancy gate is authoritative over scorer suggestion
+  if (blocking_reasons.length > 0) {
+    readiness_state = 'NO_SEND';
+    recommended_action = 'do_nothing'; // triggers validateDecisionPayload block
+  } else {
+    readiness_state = 'SEND';
+    recommended_action = 'send_message'; // force email-only: only discrepancy-qualifying threads produce a directive
+  }
 
   return {
     winner_id: winner.id,
@@ -1452,6 +1415,52 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
 
   if (ctx.competition_context) {
     sections.push(ctx.competition_context);
+  }
+
+  // INPUT STATE block — provides Discrepancy Engine with structured thread state.
+  // Must be injected after all signal/goal sections so the model has full context before parsing.
+  {
+    const lastSignal = ctx.supporting_signals.length > 0
+      ? ctx.supporting_signals[ctx.supporting_signals.length - 1]
+      : null;
+    const lastSignalTs = lastSignal?.occurred_at ?? null;
+    const hoursSinceLastMessage = lastSignalTs
+      ? Math.round((Date.now() - new Date(lastSignalTs).getTime()) / (1000 * 60 * 60))
+      : null;
+
+    const participants = ctx.surgical_raw_facts
+      .filter((f) => f.startsWith('recipient_email:') || f.startsWith('contact_email:'))
+      .map((f) => f.split(':').slice(1).join(':').trim())
+      .filter(Boolean);
+
+    const threadSubject = ctx.surgical_raw_facts
+      .find((f) => f.startsWith('email_subject:'))
+      ?.split(':').slice(1).join(':').trim() ?? null;
+
+    const repliedFlag = ctx.avoidance_observations.some((o) => o.type === 'no_reply_sent');
+
+    const rawCategory = ctx.candidate_goal
+      ? (ctx.candidate_goal.match(/\[([^\],]+)/) ?? [])[1]?.toLowerCase().trim() ?? 'other'
+      : 'other';
+    const outcomeTypeMap: Record<string, string> = { career: 'job', financial: 'deal', approval: 'approval' };
+    const inferredOutcomeType = outcomeTypeMap[rawCategory] ?? 'other';
+
+    sections.push(
+      `INPUT_STATE:\n` +
+      `thread = {\n` +
+      `  participants: ${participants.length > 0 ? participants.join(', ') : 'unknown'},\n` +
+      `  last_message_timestamp: ${lastSignalTs ?? 'unknown'},\n` +
+      `  subject: ${threadSubject ?? 'unknown'},\n` +
+      `  key_context: see SIGNAL_EVIDENCE above\n` +
+      `}\n` +
+      `user_behavior = {\n` +
+      `  replied: ${repliedFlag ? 'false' : 'unknown'},\n` +
+      `  time_since_last_message_hours: ${hoursSinceLastMessage ?? 'unknown'}\n` +
+      `}\n` +
+      `goal_context = {\n` +
+      `  inferred_outcome_type: ${inferredOutcomeType}\n` +
+      `}`,
+    );
   }
 
   sections.push(
@@ -2314,6 +2323,50 @@ export function extractJsonFromResponse(raw: string): string {
 export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | null {
   const cleaned = extractJsonFromResponse(raw);
   const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+
+  // ---------------------------------------------------------------------------
+  // Discrepancy Engine output branch — handles { action, confidence, reason, message }
+  // Must be checked BEFORE the legacy branch since it has no artifact_type field.
+  // ---------------------------------------------------------------------------
+  if (typeof parsed.action === 'string') {
+    const action = parsed.action as string;
+
+    if (action === 'NO_ACTION') {
+      return {
+        insight: typeof parsed.reason === 'string' ? parsed.reason : 'Discrepancy conditions not met.',
+        decision: 'HOLD',
+        directive: typeof parsed.reason === 'string' ? parsed.reason : 'No qualifying discrepancy found.',
+        artifact_type: 'do_nothing',
+        artifact: {
+          exact_reason: typeof parsed.reason === 'string' ? parsed.reason : 'Discrepancy gate: condition not met.',
+          blocked_by: 'discrepancy_engine',
+        },
+        why_now: '',
+      };
+    }
+
+    if (action === 'send_message' && parsed.message && typeof parsed.message === 'object') {
+      const msg = parsed.message as Record<string, unknown>;
+      const reason = typeof parsed.reason === 'string' ? parsed.reason : 'Discrepancy Engine: send this message.';
+      return {
+        insight: reason,
+        decision: 'ACT',
+        directive: reason,
+        artifact_type: 'send_message',
+        artifact: {
+          to: typeof msg.to === 'string' ? msg.to : '',
+          recipient: typeof msg.to === 'string' ? msg.to : '',
+          subject: typeof msg.subject === 'string' ? msg.subject : '',
+          body: typeof msg.body === 'string' ? msg.body : '',
+        },
+        why_now: reason, // reason serves as why_now in the Discrepancy Engine format
+      };
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Legacy branch — handles { artifact_type, artifact, insight, decision, ... }
+  // ---------------------------------------------------------------------------
   const nestedArtifact = parsed.artifact && typeof parsed.artifact === 'object'
     ? (parsed.artifact as Record<string, unknown>)
     : null;
@@ -2833,8 +2886,16 @@ async function generatePayload(
       attempts.push({
         role: 'user',
         content: `Validation failed. Fix these issues and return JSON only.
+
+Discrepancy Engine format (preferred):
+{ "action": "send_message", "confidence": 0-100, "reason": "...", "message": { "to": "real@email.com", "subject": "...", "body": "..." } }
+OR if no qualifying discrepancy:
+{ "action": "NO_ACTION", "reason": "which condition failed" }
+
+Legacy format (if you must):
 Valid artifact_type values: ${validRetryTypes}.
 Do NOT use decision_frame, research_brief, drafted_email, document, or calendar_event.
+
 Do NOT use bracket placeholders like [Name], [Company], [Date].
 Use REAL details from the evidence provided.
 
