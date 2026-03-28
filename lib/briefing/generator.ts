@@ -1625,6 +1625,39 @@ async function fetchUserSelfNameTokens(userId: string): Promise<Set<string>> {
   return selfTokens;
 }
 
+// Extracts entity names ONLY from winner.relationshipContext (confirmed contacts).
+// Used for entity suppression — email body narrative text is excluded because
+// greeting names like "Dear Brandon" leak the user's own name as a false entity.
+// For each name, both the full name AND the first name are added so that partial
+// action-history matches (e.g. "Email Yadira" vs "Yadira Clapper") still fire.
+function extractRelationshipContextEntities(
+  winner: ScoredLoop,
+  selfNameTokens: Set<string>,
+): string[] {
+  const byKey = new Map<string, string>();
+  const isSelf = (value: string): boolean => {
+    if (selfNameTokens.size === 0) return false;
+    const tokens = normalizeText(value).split(' ').filter((t) => t.length >= 2);
+    return tokens.length > 0 && tokens.every((t) => selfNameTokens.has(t));
+  };
+  const add = (name: string): void => {
+    if (!name || isSelf(name)) return;
+    const normalized = normalizeText(name);
+    if (normalized.length >= 3 && !byKey.has(normalized)) byKey.set(normalized, name.trim());
+  };
+  for (const line of (winner.relationshipContext ?? '').split('\n')) {
+    const match = line.match(/^\s*-\s*([^<(]+?)(?:\s*<|\s*\(|$)/);
+    if (match) {
+      const name = match[1].trim();
+      add(name);
+      // Also add first name alone — action history may only contain given name.
+      const firstName = name.split(/\s+/)[0];
+      if (firstName && firstName !== name) add(firstName);
+    }
+  }
+  return [...byKey.values()].slice(0, 6);
+}
+
 function extractEntityNamesFromCandidate(
   winner: ScoredLoop,
   signalEvidence: SignalSnippet[],
@@ -3057,10 +3090,11 @@ export async function generateDirective(
       }
 
       // --- Per-candidate: entity suppression ---
-      // Skip entirely if we have no self-name tokens — can't filter self vs other, so
-      // entity suppression would produce false positives for every candidate.
-      if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType) && selfNameTokens.size > 0) {
-        const candidateEntities = extractEntityNamesFromCandidate(hydratedWinner, signalEvidence, selfNameTokens);
+      // Entity suppression: only check confirmed relationship contacts (from relationshipContext),
+      // never from narrative text. Email body greetings ("Dear Brandon") would otherwise
+      // leak the user's own name as a false suppression target.
+      if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType)) {
+        const candidateEntities = extractRelationshipContextEntities(hydratedWinner, selfNameTokens);
         const recentEntityConflict = await findRecentEntityActionConflict(userId, candidateEntities);
         if (recentEntityConflict.matched) {
           candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [`entity_suppressed:${recentEntityConflict.entityName}`] });
