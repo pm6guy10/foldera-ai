@@ -53,6 +53,21 @@ const PLACEHOLDER_PATTERNS = [
   /\b(option a|option b)\b/i,
 ];
 
+/**
+ * Patterns that indicate generic social filler — the opposite of leverage.
+ * If the user could easily have written it themselves, the artifact fails.
+ */
+const GENERIC_FILLER_PATTERNS = [
+  /hope you'?r?e? (?:doing )?well/i,
+  /just (?:checking|reaching) (?:in|out)/i,
+  /would love to (?:catch up|reconnect|connect)/i,
+  /hope things are going well/i,
+  /hope (?:all is|everything'?s?) well/i,
+  /wanted to (?:touch base|circle back)/i,
+  /it'?s? been (?:a while|too long|a bit)/i,
+  /let'?s? (?:grab|get) (?:coffee|lunch|a drink)/i,
+];
+
 
 // ---------------------------------------------------------------------------
 // Context loaders — pull graph data relevant to the artifact
@@ -262,52 +277,74 @@ ${relationships.slice(0, 400)}`;
   switch (flavor) {
     case 'person':
       return {
-        system: `You write short, natural, ready-to-send outreach messages.
-Rules (non-negotiable):
-- Output is the actual message — greeting, body, sign-off — nothing else
-- Specific and personal: use the person's name and the concrete situation
+        system: `You write short, high-leverage outreach messages that create FORWARD MOTION.
+The message must do one of:
+- Ask for a concrete decision or next step
+- Unblock a stalled thread with a specific proposal
+- Reference the actual context (project, deliverable, conversation) and advance it
+
+FORBIDDEN (hard reject — your output will be thrown away if it contains any of these):
+- "Hope you're doing well" or any variant
+- "Just checking in" or "reaching out"
+- "Would love to catch up / reconnect / connect"
+- "It's been a while"
+- "Let's grab coffee"
+- Any vague warmth without a concrete ask or proposal
+- Generic relationship-maintenance language
+
+Rules:
 - Under 150 words
-- No analysis, no INSIGHT/WHY NOW labels, no scoring language, no relationship lists
+- Reference specific context from the analysis (project names, deliverables, dates)
+- End with a concrete ask — not "let me know if you'd like to chat"
+- No analysis, no INSIGHT/WHY NOW labels, no scoring language
 - Do not mention Foldera or any analytics system
 
 Return ONLY valid JSON:
 {"type":"document","title":"<3-7 word action title>","content":"<the ready-to-send message>"}`,
         user: `${shared}
 
-Write the outreach message. Return JSON only.`,
+Write a message that creates forward motion. Return JSON only.`,
       };
 
     case 'deadline':
       return {
-        system: `You write concrete execution steps for time-sensitive situations.
+        system: `You write pre-filled execution artifacts for time-sensitive commitments.
+The output must reduce consequence, not merely acknowledge risk.
+
 Rules (non-negotiable):
 - Numbered steps, each completable in under 10 minutes
-- Fill in names, dates, and details — no placeholders
+- Fill in ALL names, dates, amounts, and details from the analysis — no placeholders
+- Each step must be a concrete action verb (send, call, submit, book, draft), not commentary
+- Include the specific constraint or deadline driving urgency
 - No analysis, no INSIGHT/WHY NOW labels, no scoring language
-- No vague instructions like "consider" or "think about"
+- No vague instructions like "consider", "think about", or "review your options"
 
 Return ONLY valid JSON:
 {"type":"document","title":"<3-7 word action title>","content":"<numbered execution steps in markdown>"}`,
         user: `${shared}
 
-Write the execution steps. Return JSON only.`,
+Write pre-filled execution steps that reduce consequence. Return JSON only.`,
       };
 
     case 'goal':
     default:
       return {
-        system: `You write concrete action plans for stalled goals.
+        system: `You write decision frames or concrete action plans that convert hesitation into motion.
+The output must close ambiguity — not restate the problem.
+
 Rules (non-negotiable):
-- 3-5 specific actions with clear owners and timeframes
-- Fill in all details — no placeholders
+- If the stall is caused by indecision: frame the decision with 2 options, constraints, and a recommendation
+- If the stall is caused by inaction: list 3-5 concrete next steps with specific timeframes
+- Fill in ALL details from the analysis — names, dates, amounts, deliverables
+- Each action must be completable in under 30 minutes
 - No analysis, no INSIGHT/WHY NOW labels, no scoring language
-- Every action is something the person can start today
+- No vague language like "revisit", "explore", or "align on"
 
 Return ONLY valid JSON:
-{"type":"document","title":"<3-7 word action title>","content":"<concrete action plan in markdown>"}`,
+{"type":"document","title":"<3-7 word action title>","content":"<decision frame or action plan in markdown>"}`,
         user: `${shared}
 
-Write the action plan. Return JSON only.`,
+Convert this stall into forward motion. Return JSON only.`,
       };
   }
 }
@@ -352,11 +389,24 @@ Behavioral patterns: ${context.patterns}`;
       return {
         system: `${base}
 
-You are drafting an email. Produce a complete, ready-to-send email.
+You are drafting an email that creates FORWARD MOTION.
+The email must advance a real situation — not maintain a relationship.
 Use the relationship history and recent signals to personalize tone and content.
 If the directive references a specific person, use their name, company, and email address from Relationships when available.
 Never invent a recipient email address.
 Never use placeholders.
+
+FORBIDDEN (your output will be rejected if it contains any of these):
+- "Hope you're doing well" or any variant
+- "Just checking in" or "reaching out"
+- "Would love to catch up / reconnect"
+- Any warm-but-empty opener without a concrete ask
+- Generic relationship maintenance
+
+Every email must:
+- Reference a specific project, deliverable, decision, or thread
+- End with a concrete ask or proposal (not "let me know")
+- Create a reason for the recipient to respond with substance
 ${directive.requires_search ? 'Use web search to find any current information needed (job postings, events, contact info).' : ''}
 
 Return ONLY valid JSON:
@@ -376,7 +426,7 @@ ${briefingContext}
 ${directive.search_context ? `SEARCH CONTEXT: ${directive.search_context}` : ''}
 ${contextBlock}
 
-Produce the email. Return JSON only.`,
+Write an email that creates forward motion. Return JSON only.`,
       };
 
     case 'write_document':
@@ -541,6 +591,10 @@ function normalizeStringArray(value: unknown): string[] {
 
 function containsPlaceholderText(value: string): boolean {
   return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function containsGenericFiller(value: string): boolean {
+  return GENERIC_FILLER_PATTERNS.some((pattern) => pattern.test(value));
 }
 
 export async function generateArtifact(
@@ -746,6 +800,9 @@ function validateArtifact(
       if (containsPlaceholderText(subject.trim()) || containsPlaceholderText(body.trim())) {
         throw new Error('Email artifact contains placeholder text');
       }
+      if (containsGenericFiller(body.trim())) {
+        throw new Error('Email artifact contains generic filler — must create forward motion');
+      }
       return {
         type: 'email',
         to: recipient,
@@ -761,6 +818,9 @@ function validateArtifact(
       }
       if (containsPlaceholderText(a.title.trim()) || containsPlaceholderText(a.content.trim())) {
         throw new Error('Document artifact contains placeholder text');
+      }
+      if (containsGenericFiller(a.content.trim())) {
+        throw new Error('Document artifact contains generic filler — must create forward motion');
       }
       return {
         type: 'document',
