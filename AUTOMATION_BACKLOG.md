@@ -1,5 +1,23 @@
 # AUTOMATION BACKLOG
 
+### P0 — GENERATOR CONFIDENCE PROMPT CALIBRATION (next session, 2026-03-28)
+**The brain loads data but the LLM returns confidence 0 every time.**
+
+Production evidence (nightly-ops 2026-03-28):
+- 4 candidates scored, scorer_ev = 2.03
+- generator_confidence = 0 → "directive confidence is below the send threshold"
+- Data expansion deployed (200 signals, 90d context, 30 entities, type-diverse evidence) — no effect on LLM confidence
+
+Root cause: the generator prompt demands multi-signal convergence, cross-domain corroboration, and "something the user couldn't generate themselves." With the current signal density (mostly email, some calendar), the LLM can't meet that bar and returns 0.
+
+**Fix approach:**
+1. Recalibrate the prompt's confidence scale — 50 should mean "reasonable single-source action", not "multiple domains confirm"
+2. Lower the convergence demand: a single strong email thread with a clear next step IS enough for confidence 60-70
+3. The send threshold is 70. The prompt needs to allow 70+ for well-evidenced single-domain actions
+4. Test by triggering Generate Now and verifying confidence > 0 with a real sendable directive
+
+**Also:** duplicate Vercel deploys — each push triggers 2 builds (GitHub integration + deploy hook). Remove the deploy hook in Vercel settings.
+
 ### CONVICTION ENGINE — next build (locked 2026-03-26)
 Core insight: Foldera is not a mirror and not a task manager. It is a conviction engine.
 The user should never have to state their burn rate, outcome probability, or hard deadline.

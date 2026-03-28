@@ -194,6 +194,14 @@ No change exists in a vacuum. Before committing ANY edit, trace the full depende
 
 ## Session Logs
 
+- 2026-03-28 — Brain data expansion + priority inversion fix + spend cap separation + skipSpendCap for manual runs
+  MODE: AUDIT
+  Commit hash(es): `96b50d2` (data expansion), `8517a32` (skipSpendCap), `282a765` (spend cap separation), `28054c2` (priority inversion), `6868d62` (pipeline unblock), `4abda4f` (signal drain + Sentry)
+  Files changed: `lib/briefing/scorer.ts`, `lib/briefing/generator.ts`, `lib/utils/api-tracker.ts`, `lib/cron/daily-brief-types.ts`, `lib/cron/daily-brief-generate.ts`, `app/api/settings/run-brief/route.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `AUTOMATION_BACKLOG.md`, `LESSONS_LEARNED.md`
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` (32 files, 226 tests passed); `npm run build` passed; pushed to main; Vercel deploy `dpl_BfLgEP3FjMJgviZ1reB547bLrbsY` READY; production nightly-ops triggered — 4 candidates scored (scorer_ev 2.03), behavioral graph updated (280 entities, 59 silent), but generator_confidence = 0 persists
+  Changes: (1) Priority inversion fix: P1 goals now score highest (6 sites fixed). (2) Spend cap separation: getDailySpend excludes extraction traffic. (3) skipSpendCap: manual Generate Now bypasses spend cap entirely — testing is free. (4) Brain data expansion: scorer signals 50→200, context enrichment 14d→90d (150), entities 10 cooling→30 by interaction count, evidence keyword search 14d→90d (150), snippet cap 8→12, buildStructuredContext 7→15 with type diversity (calendar/tasks/files/drive get priority slots). (5) Pipeline unblock: skipStaleGate, discrepancy gate relaxed, vague penalty softened.
+  Any unresolved issues: **P0** generator_confidence = 0 despite expanded data. Root cause: generator prompt demands multi-signal convergence the data can't support. Prompt confidence calibration is the next session's top priority. Also: duplicate Vercel deploys (GitHub integration + deploy hook both firing).
+
 - 2026-03-27 — DecisionPayload authority enforcement + adversarial proof tests
   MODE: OVERRIDE / AUDIT
   Commit hash(es): pending (uncommitted — types.ts, generator.ts, 2 new test files, usefulness-gate.test.ts update)

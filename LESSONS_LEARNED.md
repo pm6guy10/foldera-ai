@@ -121,3 +121,13 @@ Rules locked:
 - If the payload is stale, blocked, or insufficient, the LLM is never called at all
 - Any in-flight conversion of LLM artifact type (e.g., `wait_rationale → write_document` inside render path) must be removed — it masks drift before detection
 - Adversarial proof tests (hostile drift, false-positive render, renderer-only contract) are mandatory for any system that calls an LLM and persists an action
+
+## 11. Data Width Before Prompt Tuning
+
+Expanding data windows (signals, entities, evidence) is necessary but not sufficient. The generator prompt's confidence scale must match what the data can actually support.
+
+**The bug class**: scorer loads thin data (50 signals, 10 entities, 14-day evidence) → LLM prompt demands "multi-domain convergence" → LLM returns confidence 0 → no directive ever sends. Expanding data to 200 signals / 30 entities / 90-day windows still returns confidence 0 because the prompt bar is calibrated for a data density that doesn't exist yet.
+
+**The fix class**: calibrate the prompt's confidence scale to the actual signal landscape. A strong single-domain email thread with clear next step = confidence 60-70, not 0. Multi-domain convergence is a bonus, not a requirement. The send threshold is 70 — the prompt must allow 70+ for well-evidenced single-source actions.
+
+**The priority inversion**: P1 goals had priority number 1, but scorer used raw number as weight, giving P5 goals 5x influence. Fixed by inverting to `(6 - priority)`. Always verify that priority=1 means most important throughout the entire pipeline, not just at insert time.
