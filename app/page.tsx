@@ -208,12 +208,12 @@ function SignalEngineHero() {
           A model of you. One move a day.
         </div>
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-5 leading-[1.08]">
-          Your next move,<br className="hidden md:block" /> already prepared.
+          You missed it.<br className="hidden md:block" /> Foldera didn’t.
         </h1>
         <p className="text-base md:text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed mb-8">
-          Foldera reads your email, calendar, and behavior. It builds a graph of your goals, commitments, and the people you&apos;re actually engaging with — versus the ones you&apos;re drifting from. Every morning it finds the single highest-leverage gap and closes it. Finished work, handed to you.
+          Your inbox isn&apos;t random. There&apos;s a pattern in what slips, stalls, and gets ignored. Foldera finds it, picks what matters, and hands it back finished.
         </p>
-        <p className="text-sm text-zinc-600 mb-8 -mt-4">The longer you use it, the sharper it gets.</p>
+        <p className="text-sm text-zinc-600 mb-8 -mt-4">No credit card required</p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
             href="/start"
@@ -302,6 +302,15 @@ function ScenarioDemos() {
   const [phase, setPhase] = useState<'chaos' | 'clarity'>('chaos');
   const [progress, setProgress] = useState(0);
   const prefersReducedMotion = usePrefersReducedMotion();
+  const touchStartX = useRef<number | null>(null);
+
+  const showPrev = useCallback(() => {
+    setActiveTab((prev) => (prev - 1 + SCENARIOS.length) % SCENARIOS.length);
+  }, []);
+
+  const showNext = useCallback(() => {
+    setActiveTab((prev) => (prev + 1) % SCENARIOS.length);
+  }, []);
 
   const runDemo = useCallback(() => {
     if (prefersReducedMotion) {
@@ -339,10 +348,18 @@ function ScenarioDemos() {
   const isProcessing = phase === 'chaos' && progress > 40;
 
   return (
-    <div className="w-full max-w-6xl mx-auto relative z-10 px-6">
+    <div className="w-full max-w-6xl mx-auto relative z-10 px-4 sm:px-6">
       <div className={`relative w-full aspect-[4/3] md:aspect-[21/10] rounded-[2rem] bg-black/40 backdrop-blur-3xl border transition-all duration-1000 overflow-hidden shadow-2xl ${
         isProcessing ? 'border-cyan-500/45 shadow-[0_0_80px_-25px_rgba(6,182,212,0.32)]' : 'border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,1)]'
-      }`}>
+      }`}
+      onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null; }}
+      onTouchEnd={(e) => {
+        if (touchStartX.current === null) return;
+        const deltaX = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+        if (Math.abs(deltaX) < 36) return;
+        if (deltaX < 0) showNext();
+        if (deltaX > 0) showPrev();
+      }}>
         {/* Window chrome */}
         <div className="absolute top-0 left-0 w-full h-12 bg-white/[0.02] border-b border-white/5 z-40 flex items-center px-4 backdrop-blur-xl">
           <div className="flex gap-2">
@@ -353,6 +370,10 @@ function ScenarioDemos() {
           <div className="mx-auto flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/50 border border-white/5 text-[10px] font-mono text-zinc-500 font-bold uppercase tracking-widest shadow-inner">
             <Lock className="w-3 h-3" /> foldera.engine
           </div>
+        </div>
+        <div className="absolute top-14 right-3 z-40 md:hidden flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-400/30 bg-black/60 text-[10px] text-cyan-300 font-black uppercase tracking-[0.18em]">
+          <span>Swipe</span>
+          <span className="text-cyan-400/80">↔</span>
         </div>
 
         {/* Subtle background glow */}
@@ -397,20 +418,21 @@ function ScenarioDemos() {
           <div className={`absolute inset-0 pt-12 p-6 md:p-12 flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${
             phase === 'clarity' ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'
           }`}>
-          <div className="w-full max-w-lg rounded-[2rem] bg-zinc-950/90 backdrop-blur-2xl border border-white/10 overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,1)] ring-1 ring-white/5">
+          <div className="w-full max-w-lg rounded-[2rem] bg-zinc-950/90 backdrop-blur-2xl border border-cyan-400/30 overflow-hidden shadow-[0_44px_100px_-20px_rgba(0,0,0,1),_0_0_40px_rgba(6,182,212,0.14)] ring-1 ring-cyan-300/15">
             <div className="h-1 w-full bg-gradient-to-r from-cyan-500 to-cyan-300" />
-            <div className="p-6 md:p-8 border-b border-white/5 bg-white/[0.01] flex items-start gap-5 text-left">
-              <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]">
+            <div className="p-5 md:p-8 border-b border-white/5 bg-white/[0.02] flex items-start gap-4 text-left">
+              <div className="p-3.5 rounded-2xl bg-cyan-500/12 border border-cyan-400/35 shadow-[inset_0_0_22px_rgba(6,182,212,0.15)]">
                 <Check className="w-6 h-6 text-cyan-400" />
               </div>
               <div className="flex-1 pt-1">
-                <p className="text-white font-black tracking-tight text-xl">{current.clarity.action}</p>
-                <p className="text-zinc-400 font-medium text-sm mt-1">{current.clarity.subject}</p>
+                <p className="text-[10px] text-cyan-300 font-black uppercase tracking-[0.18em] mb-2">Finished work</p>
+                <p className="text-white font-black tracking-tight text-lg sm:text-xl">{current.clarity.action}</p>
+                <p className="text-zinc-300 font-medium text-sm mt-1.5">{current.clarity.subject}</p>
               </div>
             </div>
-            <div className="p-6 md:p-8 space-y-8 bg-black/50 text-left">
-              <p className="text-zinc-300 leading-relaxed text-sm md:text-base font-medium">{current.clarity.desc}</p>
-              <button className="w-full group flex items-center justify-center gap-3 py-4 rounded-xl bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-colors duration-200 shadow-[0_0_24px_rgba(255,255,255,0.1)] active:scale-95">
+            <div className="p-5 md:p-8 space-y-5 bg-black/45 text-left">
+              <p className="text-zinc-200 leading-relaxed text-sm md:text-base font-medium">{current.clarity.desc}</p>
+              <button className="w-full group flex items-center justify-center gap-3 py-4 rounded-xl bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-colors duration-200 shadow-[0_0_24px_rgba(255,255,255,0.16)] active:scale-95">
                 <Zap className="w-4 h-4 fill-black" />
                 {current.clarity.button}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -420,19 +442,40 @@ function ScenarioDemos() {
         </div>
       </div>
 
-      {/* Scenario dots */}
-      <div className="flex justify-center gap-4 mt-10 relative z-10">
-        {SCENARIOS.map((s, i) => {
-          const isActive = activeTab === i;
-          return (
-            <button
-              key={s.id}
-              onClick={() => { setActiveTab(i); }}
-              className={`h-1.5 rounded-full transition-all duration-500 ${isActive ? 'bg-cyan-400 w-12 shadow-[0_0_15px_rgba(34,211,238,0.6)]' : 'bg-white/20 w-4 hover:bg-white/40'}`}
-              aria-label={`Scenario ${i + 1}: ${s.label}`}
-            />
-          );
-        })}
+      {/* Mobile controls + pagination */}
+      <div className="mt-7 md:mt-10 relative z-10 flex flex-col items-center gap-4">
+        <div className="md:hidden flex items-center gap-2">
+          <button
+            type="button"
+            onClick={showPrev}
+            className="px-3.5 py-2 rounded-full border border-white/20 bg-zinc-950/80 text-zinc-200 text-[10px] font-black uppercase tracking-[0.16em] active:scale-95"
+            aria-label="Show previous scenario"
+          >
+            Prev
+          </button>
+          <button
+            type="button"
+            onClick={showNext}
+            className="px-3.5 py-2 rounded-full border border-cyan-400/45 bg-cyan-500/12 text-cyan-100 text-[10px] font-black uppercase tracking-[0.16em] active:scale-95"
+            aria-label="Show next scenario"
+          >
+            Next
+          </button>
+        </div>
+        <div className="flex items-center justify-center gap-3 md:gap-4">
+          {SCENARIOS.map((s, i) => {
+            const isActive = activeTab === i;
+            return (
+              <button
+                key={s.id}
+                onClick={() => { setActiveTab(i); }}
+                className={`h-2.5 rounded-full border transition-all duration-300 ${isActive ? 'bg-cyan-300 border-cyan-200 w-11 shadow-[0_0_20px_rgba(34,211,238,0.9)]' : 'bg-zinc-800 border-zinc-600/80 w-5 hover:bg-zinc-700'}`}
+                aria-label={`Scenario ${i + 1}: ${s.label}`}
+                aria-current={isActive ? 'true' : 'false'}
+              />
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -450,8 +493,8 @@ const FlipSection = memo(() => {
       <div className="max-w-6xl mx-auto relative z-10">
         <Reveal>
           <div className="text-center mb-24">
-            <h2 className="text-5xl md:text-6xl font-black text-white mb-6 tracking-tighter">The Flip</h2>
-            <p className="text-zinc-400 text-xl font-medium">Same data. Different intelligence.</p>
+            <h2 className="text-5xl md:text-6xl font-black text-white mb-6 tracking-tighter">Same data. Better outcomes.</h2>
+            <p className="text-zinc-400 text-xl font-medium">The value isn&apos;t more information. It&apos;s seeing what matters before it becomes a problem.</p>
           </div>
         </Reveal>
 
@@ -518,11 +561,10 @@ const MathConsole = memo(() => {
         <Reveal>
           <div className="text-center mb-20">
             <h2 className="text-5xl md:text-6xl font-black tracking-tighter text-white mb-8">
-              The engine keeps the math backstage.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#38bdf8] to-[#22d3ee]">You just get the work.</span>
+              You don&apos;t keep track. It does.
             </h2>
             <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed">
-              Foldera reads the history, narrows the day to one live thread, and drafts the finished artifact before you even open the dashboard.
+              Deadlines. Replies. Patterns. Risk. Foldera handles the math and gives you the move.
             </p>
           </div>
         </Reveal>
@@ -589,8 +631,8 @@ function FeatureCarousel() {
       <AmbientGrid />
       <div className="max-w-6xl mx-auto px-6 relative z-10">
         <Reveal className="mb-20 text-left md:text-center">
-          <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">Not another app<br />to check.</h2>
-          <p className="text-zinc-400 text-xl md:text-2xl font-medium">Foldera replaces the system, not adds to it.</p>
+          <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">Stop checking.<br />Start finishing.</h2>
+          <p className="text-zinc-400 text-xl md:text-2xl font-medium">Foldera doesn&apos;t ask for more attention. It gives some back.</p>
         </Reveal>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {FEATURES.map((feature, i) => {
@@ -745,13 +787,16 @@ export default function App() {
         <div className="max-w-6xl mx-auto relative z-10">
           <Reveal className="text-center mb-14 md:mb-16 px-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white mb-6">
-              Now imagine a month of<br />
+              One move changes the outcome.<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-cyan-400">
-                your real data.
+                What you’re already missing
               </span>
             </h2>
             <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed">
-              Here&apos;s what Foldera does with your email, calendar, and conversations.
+              Foldera finds it and gives it to you finished.<br />
+              The follow-up you didn&apos;t send.<br />
+              The reply that went cold.<br />
+              The decision you stalled.
             </p>
           </Reveal>
           <Reveal delay={150}>
@@ -765,12 +810,12 @@ export default function App() {
         <AmbientGrid />
         <div className="max-w-6xl mx-auto px-6 relative z-10">
           <Reveal className="mb-16 md:mb-20 max-w-4xl text-left">
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">You decide yes or no.<br />Foldera does the rest.</h2>
-            <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl font-medium leading-relaxed">Three steps. No prompting. No managing. Just finished work, every morning.</p>
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">It finds what changed.<br />One decision. Done.</h2>
+            <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl font-medium leading-relaxed">Not another list. Not another reminder. Foldera sees what is drifting, what is exposed, and what needs action now. Approve it or skip it. No planning. No prompts.</p>
           </Reveal>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {(['Connect', 'Synthesize', 'Execute'] as const).map((title, i) => (
+            {(['Connect', 'Decide', 'Execute'] as const).map((title, i) => (
               <Reveal key={i} delay={i * 100}>
                 <div className="relative p-10 md:p-12 rounded-[2rem] bg-zinc-950/80 backdrop-blur-xl border border-white/[0.08] group hover:border-cyan-500/40 transition-all duration-700 h-full overflow-hidden shadow-2xl shadow-black/40 hover:shadow-[0_0_60px_rgba(6,182,212,0.15)] hover:-translate-y-2 text-left">
                   <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
@@ -780,9 +825,9 @@ export default function App() {
                     {title}
                   </h3>
                   <p className="text-zinc-400 text-base md:text-lg leading-relaxed relative z-10 font-medium group-hover:text-zinc-300 transition-colors">
-                    {i === 0 && 'Connect your email. Foldera reads your sent folder, your calendar, your conversations \u2014 and starts finding the patterns you can\u2019t see from inside them.'}
-                    {i === 1 && 'Overnight, the engine maps what it found to what matters. By morning, the work is done: emails drafted, decisions framed, follow-ups queued.'}
-                    {i === 2 && 'One tap to approve. One tap to skip. Either way, the engine learns. Day 7 is smarter than day 1. Day 30 is a different product.'}
+                    {i === 0 && 'It reads what already happened.'}
+                    {i === 1 && 'It finds the one move that changes the outcome.'}
+                    {i === 2 && 'It gives it back ready to send.'}
                   </p>
                 </div>
               </Reveal>
@@ -803,7 +848,7 @@ export default function App() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.1)_0%,transparent_50%)] pointer-events-none" aria-hidden="true" />
         <Reveal className="max-w-6xl mx-auto px-6 relative z-10">
           <div className="text-center mb-20 md:mb-24">
-            <h2 className="text-6xl md:text-[8rem] font-black tracking-tighter text-white mb-8 leading-none">One plan.<br />Full power.</h2>
+            <h2 className="text-6xl md:text-[8rem] font-black tracking-tighter text-white mb-8 leading-none">One plan.<br />No decisions.</h2>
             <p className="text-zinc-400 text-xl md:text-3xl font-medium tracking-tight">Finished work, every morning.</p>
           </div>
           <div className="max-w-lg mx-auto perspective-1000">
