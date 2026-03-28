@@ -717,7 +717,8 @@ function buildDecisionPayload(
 
   // Build blocking reasons
   const blocking_reasons: string[] = [];
-  if (!ctx.has_recent_evidence) blocking_reasons.push('No recent evidence (all signals older than 14 days)');
+  // Discrepancy candidates: absence of signals IS the evidence — skip freshness gates
+  if (!ctx.has_recent_evidence && winner.type !== 'discrepancy') blocking_reasons.push('No recent evidence (all signals older than 14 days)');
   // Constraint violations are ADVISORY pre-LLM, not hard blocks.
   // The constraint info is in the prompt via ctx.locked_constraints.
   // Post-LLM validation (validateDirectiveForPersistence) enforces constraints on the final artifact.
@@ -732,7 +733,7 @@ function buildDecisionPayload(
     });
   }
   if (ctx.already_acted_recently) blocking_reasons.push('Already acted on this topic in the last 7 days');
-  if (freshness_state === 'stale') blocking_reasons.push('Evidence is stale');
+  if (freshness_state === 'stale' && winner.type !== 'discrepancy') blocking_reasons.push('Evidence is stale');
 
   // Determine readiness (initial pass — overridden by discrepancy gate below)
   let readiness_state: DecisionPayload['readiness_state'] = 'SEND';
@@ -3093,7 +3094,9 @@ export async function generateDirective(
       // Entity suppression: only check confirmed relationship contacts (from relationshipContext),
       // never from narrative text. Email body greetings ("Dear Brandon") would otherwise
       // leak the user's own name as a false suppression target.
-      if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType)) {
+      // Discrepancy candidates are structural patterns, not confirmed relationship contacts.
+      // Skip entity suppression — hydrated context may contain the user's own name as a co-participant.
+      if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType) && currentCandidate.type !== 'discrepancy') {
         const candidateEntities = extractRelationshipContextEntities(hydratedWinner, selfNameTokens);
         const recentEntityConflict = await findRecentEntityActionConflict(userId, candidateEntities);
         if (recentEntityConflict.matched) {
