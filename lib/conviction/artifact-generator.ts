@@ -610,11 +610,15 @@ export async function generateArtifact(
       // If canonical action is write_document but LLM produced a wait_rationale,
       // convert directly — discrepancy candidates write analysis prose that is
       // perfectly valid as a document artifact without a second LLM call.
+      // Skip this shortcut when the context is a raw analysis dump (contains
+      // INSIGHT:/WHY NOW:/Winning loop: headers) — those must fall through to
+      // the isAnalysisDump LLM transformation path below instead of leaking raw.
       if (
         directive.action_type === 'write_document' &&
         d.embeddedArtifact?.type === 'wait_rationale' &&
         typeof d.embeddedArtifact?.context === 'string' &&
-        d.embeddedArtifact.context.length > 20
+        d.embeddedArtifact.context.length > 20 &&
+        !isAnalysisDump(d.embeddedArtifact.context)
       ) {
         return {
           type: 'document',
@@ -815,6 +819,9 @@ function validateArtifact(
       const a = parsed as DocumentArtifact;
       if (!isNonEmptyString(a.title) || !isNonEmptyString(a.content)) {
         throw new Error('Document artifact missing required fields');
+      }
+      if (isAnalysisDump(a.content.trim())) {
+        throw new Error('Document artifact contains raw analysis dump — must be transformed before surfacing to user');
       }
       if (containsPlaceholderText(a.title.trim()) || containsPlaceholderText(a.content.trim())) {
         throw new Error('Document artifact contains placeholder text');
