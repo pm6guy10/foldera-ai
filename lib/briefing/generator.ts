@@ -1568,7 +1568,16 @@ async function fetchUserSelfNameTokens(userId: string): Promise<Set<string>> {
     // Pull name tokens from auth metadata (Google/Microsoft populate these).
     const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
     const nameFields = [meta['name'], meta['full_name'], meta['given_name'], meta['family_name']];
-    const metaName = nameFields.filter(Boolean).join(' ');
+    // Also check provider identity data — Google OAuth name fields live in
+    // identities[0].identity_data, not in user_metadata, for most Supabase setups.
+    const identityNames: string[] = [];
+    for (const identity of (user.identities ?? [])) {
+      const idData = (identity.identity_data ?? {}) as Record<string, unknown>;
+      for (const key of ['name', 'full_name', 'given_name', 'family_name']) {
+        if (typeof idData[key] === 'string' && idData[key]) identityNames.push(idData[key] as string);
+      }
+    }
+    const metaName = [...nameFields.filter(Boolean), ...identityNames].join(' ');
 
     // Pull tokens from the local part of the email address (e.g. b.kapp1010 → b, kapp).
     const emailLocal = (user.email ?? '').split('@')[0];
