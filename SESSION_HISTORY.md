@@ -6,7 +6,7 @@
 
 - 2026-03-28 — Authenticated dashboard/settings calm UI polish (presentation-only)
   MODE: AUDIT
-  Commit hash(es): pending (set after commit on `main`)
+  Commit hash(es): `70d7b5c`
   Files changed: `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build` passed; `npx playwright test tests/e2e/authenticated-routes.spec.ts` passed (11/11); full `npx playwright test` remains unstable in this workspace (pre-existing production/audit failures and one subsequent webServer ENOENT startup failure)
   Any unresolved issues: omnibus Playwright run still not green in local environment; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
