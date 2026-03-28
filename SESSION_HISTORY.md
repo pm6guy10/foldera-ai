@@ -1807,3 +1807,4 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Any unresolved issues:
   - Pre-existing production/auth Playwright failures (redirect-to-login/API 401 expectations) and one clickflow timeout remain outside homepage mobile-layout scope.
 
+
