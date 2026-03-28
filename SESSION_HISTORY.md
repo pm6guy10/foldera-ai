@@ -1795,3 +1795,15 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Root cause: syncGoogle() on first connect looks back 1 year with no timeout. Vercel Hobby kills functions at 60s. Sync ate the entire budget and scoring never ran.
 - Fix: (1) 15s timeout wrapper on both sync calls in run-brief — if sync is slow, abandon and score with existing signals. (2) 7-day lookback cap for manual Generate Now runs (nightly cron unchanged, keeps full lookback + 300s budget). (3) Same pattern for Microsoft sync. Guarantees Generate Now completes within ~30s.
 - Any unresolved issues: Production receipt pending — Brandon must trigger Generate Now after deploy and verify it completes in <30s.
+
+## Session Log — 2026-03-28 (mobile hero demo containment fix)
+- MODE: AUDIT
+- Commit hash(es): pending
+- Files changed:
+  - app/page.tsx
+- What was verified:
+  - npm run build — passed
+  - npx playwright test — failed (111 passed, 11 failed, 6 skipped)
+- Any unresolved issues:
+  - Pre-existing production/auth Playwright failures (redirect-to-login/API 401 expectations) and one clickflow timeout remain outside homepage mobile-layout scope.
+

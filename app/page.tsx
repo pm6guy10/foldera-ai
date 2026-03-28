@@ -395,7 +395,7 @@ function ScenarioDemos() {
 
   return (
     <div className="w-full max-w-6xl mx-auto relative z-10 px-4 sm:px-6">
-      <div className={`relative w-full aspect-[4/3] md:aspect-[21/10] rounded-[2rem] bg-black/40 backdrop-blur-3xl border transition-all duration-1000 overflow-hidden shadow-2xl ${
+      <div className={`relative w-full h-[430px] sm:h-[470px] md:h-auto md:aspect-[21/10] rounded-[2rem] bg-black/40 backdrop-blur-3xl border transition-all duration-1000 overflow-hidden shadow-2xl ${
         isProcessing ? 'border-cyan-500/45 shadow-[0_0_80px_-25px_rgba(6,182,212,0.32)]' : 'border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,1)]'
       }`}
       onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null; }}
@@ -407,17 +407,17 @@ function ScenarioDemos() {
         if (deltaX > 0) showPrev();
       }}>
         {/* Window chrome */}
-        <div className="absolute top-0 left-0 w-full h-12 bg-white/[0.02] border-b border-white/5 z-40 flex items-center px-4 backdrop-blur-xl">
+        <div className="absolute top-0 left-0 w-full h-11 md:h-12 bg-white/[0.02] border-b border-white/5 z-40 flex items-center px-3 md:px-4 backdrop-blur-xl">
           <div className="flex gap-2">
             <div className="w-3 h-3 rounded-full bg-zinc-700/50" />
             <div className="w-3 h-3 rounded-full bg-zinc-700/50" />
             <div className="w-3 h-3 rounded-full bg-zinc-700/50" />
           </div>
-          <div className="mx-auto flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/50 border border-white/5 text-[10px] font-mono text-zinc-500 font-bold uppercase tracking-widest shadow-inner">
+          <div className="mx-auto flex items-center gap-2 px-3 md:px-4 py-1.5 rounded-full bg-black/50 border border-white/5 text-[9px] md:text-[10px] font-mono text-zinc-500 font-bold uppercase tracking-widest shadow-inner">
             <Lock className="w-3 h-3" /> foldera.engine
           </div>
         </div>
-        <div className="absolute top-14 right-3 z-40 md:hidden flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-400/30 bg-black/60 text-[10px] text-cyan-300 font-black uppercase tracking-[0.18em]">
+        <div className="absolute top-12 right-3 z-40 md:hidden flex items-center gap-2 px-2.5 py-1 rounded-full border border-cyan-400/25 bg-black/55 text-[9px] text-cyan-300/90 font-black uppercase tracking-[0.16em]">
           <span>Swipe</span>
           <span className="text-cyan-400/80">↔</span>
         </div>
@@ -428,7 +428,7 @@ function ScenarioDemos() {
         }`} />
 
         {/* Chaos layer */}
-        <div className={`absolute inset-0 pt-20 p-6 md:p-12 flex flex-col items-center justify-center transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        <div className={`absolute inset-0 pt-14 md:pt-20 px-4 pb-4 md:p-12 flex flex-col items-center justify-start md:justify-center transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           phase === 'chaos' ? 'opacity-100 z-10' : 'opacity-0 blur-xl scale-110 pointer-events-none'
         }`}>
           <div className="w-full max-w-xl relative perspective-1000">
@@ -438,20 +438,20 @@ function ScenarioDemos() {
               return (
                 <div
                   key={`${activeTab}-${idx}`}
-                  className="absolute w-full flex items-center gap-4 p-4 md:p-5 rounded-2xl bg-zinc-900/80 backdrop-blur-md border border-white/10 text-sm md:text-base text-zinc-200 shadow-2xl transition-all duration-[800ms] ease-out"
+                  className="absolute w-full flex items-center gap-3 md:gap-4 p-3.5 md:p-5 rounded-xl md:rounded-2xl bg-zinc-900/80 backdrop-blur-md border border-white/10 text-[13px] md:text-base text-zinc-200 shadow-2xl transition-all duration-[800ms] ease-out"
                   style={{
-                    top: `${idx * 65}px`,
+                    top: `${idx * 50}px`,
                     zIndex: 10 - idx,
                     transitionDelay: `${idx * 60}ms`,
                     transform: progress > 30
-                      ? 'translateZ(-100px) translateY(100px) scale(0.8) rotateX(20deg)'
+                      ? 'translateZ(-60px) translateY(68px) scale(0.84) rotateX(16deg)'
                       : `translateZ(0) translateY(0) translateX(${translateX}) rotateZ(${rotate})`,
                   }}
                 >
-                  <div className="p-2.5 rounded-xl bg-black border border-white/10 shadow-inner">
+                  <div className="p-2 rounded-lg md:rounded-xl bg-black border border-white/10 shadow-inner">
                     <ChaosIcon type={item.type} />
                   </div>
-                  <span className="flex-1 font-semibold tracking-tight">{item.text}</span>
+                  <span className="flex-1 font-semibold tracking-tight leading-snug">{item.text}</span>
                   <div className="w-2 h-2 rounded-full bg-zinc-600" />
                 </div>
               );
@@ -461,24 +461,24 @@ function ScenarioDemos() {
 
 
         {/* Clarity layer */}
-          <div className={`absolute inset-0 pt-12 p-6 md:p-12 flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${
+          <div className={`absolute inset-0 pt-14 md:pt-12 px-4 pb-4 md:p-12 flex items-start md:items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${
             phase === 'clarity' ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'
           }`}>
-          <div className="w-full max-w-lg rounded-[2rem] bg-zinc-950/90 backdrop-blur-2xl border border-cyan-400/30 overflow-hidden shadow-[0_44px_100px_-20px_rgba(0,0,0,1),_0_0_40px_rgba(6,182,212,0.14)] ring-1 ring-cyan-300/15">
+          <div className="w-full max-w-lg rounded-[1.5rem] md:rounded-[2rem] bg-zinc-950/90 backdrop-blur-2xl border border-cyan-400/30 overflow-hidden shadow-[0_44px_100px_-20px_rgba(0,0,0,1),_0_0_40px_rgba(6,182,212,0.14)] ring-1 ring-cyan-300/15">
             <div className="h-1 w-full bg-gradient-to-r from-cyan-500 to-cyan-300" />
-            <div className="p-5 md:p-8 border-b border-white/5 bg-white/[0.02] flex items-start gap-4 text-left">
-              <div className="p-3.5 rounded-2xl bg-cyan-500/12 border border-cyan-400/35 shadow-[inset_0_0_22px_rgba(6,182,212,0.15)]">
-                <Check className="w-6 h-6 text-cyan-400" />
+            <div className="p-4 md:p-8 border-b border-white/5 bg-white/[0.02] flex items-start gap-3 md:gap-4 text-left">
+              <div className="p-3 md:p-3.5 rounded-xl md:rounded-2xl bg-cyan-500/12 border border-cyan-400/35 shadow-[inset_0_0_22px_rgba(6,182,212,0.15)]">
+                <Check className="w-5 h-5 md:w-6 md:h-6 text-cyan-400" />
               </div>
               <div className="flex-1 pt-1">
                 <p className="text-[10px] text-cyan-300 font-black uppercase tracking-[0.18em] mb-2">Finished work</p>
-                <p className="text-white font-black tracking-tight text-lg sm:text-xl">{current.clarity.action}</p>
-                <p className="text-zinc-300 font-medium text-sm mt-1.5">{current.clarity.subject}</p>
+                <p className="text-white font-black tracking-tight text-base sm:text-xl">{current.clarity.action}</p>
+                <p className="text-zinc-300 font-medium text-[13px] sm:text-sm mt-1.5 leading-snug">{current.clarity.subject}</p>
               </div>
             </div>
-            <div className="p-5 md:p-8 space-y-5 bg-black/45 text-left">
-              <p className="text-zinc-200 leading-relaxed text-sm md:text-base font-medium">{current.clarity.desc}</p>
-              <button className="w-full group flex items-center justify-center gap-3 py-4 rounded-xl bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-colors duration-200 shadow-[0_0_24px_rgba(255,255,255,0.16)] active:scale-95">
+            <div className="p-4 md:p-8 space-y-4 md:space-y-5 bg-black/45 text-left">
+              <p className="text-zinc-200 leading-relaxed text-[13px] md:text-base font-medium">{current.clarity.desc}</p>
+              <button className="w-full group flex items-center justify-center gap-3 py-3.5 md:py-4 rounded-xl bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-colors duration-200 shadow-[0_0_24px_rgba(255,255,255,0.16)] active:scale-95">
                 <Zap className="w-4 h-4 fill-black" />
                 {current.clarity.button}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -489,7 +489,7 @@ function ScenarioDemos() {
       </div>
 
       {/* Mobile controls + pagination */}
-      <div className="mt-7 md:mt-10 relative z-10 flex flex-col items-center gap-4">
+      <div className="mt-4 md:mt-10 relative z-10 flex flex-col items-center gap-3 md:gap-4">
         <div className="md:hidden flex items-center gap-2">
           <button
             type="button"
