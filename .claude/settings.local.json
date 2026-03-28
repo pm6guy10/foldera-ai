@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(node .claude/tmp/replacement.js)",
+      "Bash(npx vitest:*)"
+    ]
+  }
+}
