@@ -719,7 +719,7 @@ function Navigation({ scrolled, isLoggedIn }: NavigationProps) {
           <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.3)]">
             <Layers className="w-5 h-5 fill-black" aria-hidden="true" />
           </div>
-          <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
+          <span className="hidden sm:inline text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
         </a>
 
         <div className="hidden md:flex items-center gap-12 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
