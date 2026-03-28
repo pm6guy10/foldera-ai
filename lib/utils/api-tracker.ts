@@ -94,10 +94,12 @@ export async function getDailySpend(userId: string): Promise<number> {
   const todayUTC = new Date();
   todayUTC.setUTCHours(0, 0, 0, 0);
 
+  // Exclude extraction traffic — it has its own separate cap
   const { data, error } = await supabase
     .from('api_usage')
     .select('estimated_cost')
     .eq('user_id', userId)
+    .not('endpoint', 'in', '("extraction","signal_extraction")')
     .gte('created_at', todayUTC.toISOString());
 
   if (error) {
