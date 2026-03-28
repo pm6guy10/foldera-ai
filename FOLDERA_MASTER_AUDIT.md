@@ -2,6 +2,22 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-03-28 — Local QA gate still failing outside landing-page scope
+
+This landing-page polish session ran the mandatory QA gate before and after changes.
+
+- Baseline `npx playwright test`: 111 passed, 11 failed, 6 skipped
+- Post-change `npm run build`: passed
+- Post-change `npx playwright test`: 111 passed, 11 failed, 6 skipped
+
+The 11 failing specs are unchanged from baseline and are not caused by `app/page.tsx`:
+- `tests/audit/clickflow.spec.ts` timeout on `/`
+- Authenticated production-smoke tests redirecting to `/login` on localhost and related API 401 assertions
+- Settings connect/disconnect visibility assertion
+- Generate Now button visibility assertion in production smoke
+
+Status: `NEEDS_REVIEW` (pre-existing local auth/test-harness failures, unchanged by this patch).
+
 ### P0 — RESOLVED 2026-03-27 (This Session) — Production DB Migrations Applied
 
 All previously pending migrations have been applied to production and verified:

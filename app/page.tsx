@@ -166,8 +166,8 @@ const Reveal = memo<RevealProps>(({ children, delay = 0, className = '' }) => {
   const motionClasses = prefersReducedMotion
     ? 'opacity-100 translate-y-0 scale-100'
     : inView
-      ? 'opacity-100 translate-y-0 scale-100 duration-[1000ms]'
-      : 'opacity-0 translate-y-12 scale-[0.95] duration-[1000ms]';
+      ? 'opacity-100 translate-y-0 scale-100 duration-700'
+      : 'opacity-0 translate-y-8 scale-[0.98] duration-700';
   return (
     <div
       ref={ref}
@@ -201,7 +201,7 @@ const AmbientGrid = () => (
 // ============================================================================
 function SignalEngineHero() {
   return (
-    <div className="w-full max-w-7xl mx-auto px-6 pt-28 pb-12 text-center relative z-10 flex flex-col items-center">
+    <div className="w-full max-w-6xl mx-auto px-6 pt-28 pb-20 text-center relative z-10 flex flex-col items-center">
       {/* Headlines & CTA */}
       <Reveal>
         <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
@@ -225,21 +225,21 @@ function SignalEngineHero() {
       </Reveal>
 
       {/* The Mechanism: inputs → convergence → directive */}
-      <div className="w-full mt-8 md:mt-12 relative flex flex-col items-center">
+      <div className="w-full mt-10 md:mt-14 relative flex flex-col items-center">
         {/* Background Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/[0.04] blur-[150px] rounded-full pointer-events-none z-0" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] h-[440px] bg-cyan-500/[0.025] blur-[140px] rounded-full pointer-events-none z-0" />
 
         {/* Signal input chips — what Foldera reads */}
-        <div className="flex items-center justify-center gap-3 sm:gap-4 mb-0 relative z-10">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
+        <div className="flex items-center justify-center gap-3 sm:gap-4 mb-1 relative z-10">
+          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
             <Mail className="w-3 h-3 text-zinc-500" />
             <span>23 emails</span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
+          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
             <Calendar className="w-3 h-3 text-zinc-500" />
             <span>8 events</span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
+          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
             <MessageSquare className="w-3 h-3 text-zinc-500" />
             <span>3 threads</span>
           </div>
@@ -248,14 +248,15 @@ function SignalEngineHero() {
         {/* Convergence line + processing dot */}
         <div className="flex flex-col items-center my-0 relative z-10">
           <div className="w-[1px] h-5 bg-gradient-to-b from-zinc-700/0 to-zinc-600/60" />
-          <div className="w-7 h-7 rounded-full bg-[#0a0a0f] border border-zinc-600/50 flex items-center justify-center hero-process-dot">
+          <div className="w-7 h-7 rounded-full bg-[#0a0a0f] border border-zinc-600/50 flex items-center justify-center hero-process-dot relative">
+            <span className="hero-ignition" aria-hidden="true" />
             <Brain className="w-3.5 h-3.5 text-cyan-400/70" />
           </div>
           <div className="w-[1px] h-5 bg-gradient-to-b from-cyan-500/40 to-cyan-500/0" />
         </div>
 
         {/* Directive Output Card — the payoff, always visible */}
-        <div className="relative z-30 w-full max-w-[400px] hero-output">
+        <div className="relative z-30 w-full max-w-[420px] hero-output">
           <div className="rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/40 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.15)] flex flex-col text-left overflow-hidden">
             <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
             <div className="p-5 sm:p-6 border-b border-white/10">
@@ -279,12 +280,12 @@ function SignalEngineHero() {
               </div>
             </div>
             <div className="p-4 flex gap-3 bg-white/[0.02] border-t border-white/10">
-              <a href="/start" className="flex-1 bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+              <button type="button" className="flex-1 bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)]">
                 <Check className="w-4 h-4" /> Approve
-              </a>
-              <a href="/start" className="px-6 bg-zinc-900 border border-white/20 text-zinc-300 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:text-white hover:border-white/40 transition-colors flex items-center justify-center">
+              </button>
+              <button type="button" className="px-6 bg-zinc-900 border border-white/20 text-zinc-500 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center">
                 Skip
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -338,9 +339,9 @@ function ScenarioDemos() {
   const isProcessing = phase === 'chaos' && progress > 40;
 
   return (
-    <div className="w-full max-w-5xl mx-auto relative z-10 px-4">
+    <div className="w-full max-w-6xl mx-auto relative z-10 px-6">
       <div className={`relative w-full aspect-[4/3] md:aspect-[21/10] rounded-[2rem] bg-black/40 backdrop-blur-3xl border transition-all duration-1000 overflow-hidden shadow-2xl ${
-        isProcessing ? 'border-cyan-500/50 shadow-[0_0_100px_-20px_rgba(6,182,212,0.4)]' : 'border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,1)]'
+        isProcessing ? 'border-cyan-500/45 shadow-[0_0_80px_-25px_rgba(6,182,212,0.32)]' : 'border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,1)]'
       }`}>
         {/* Window chrome */}
         <div className="absolute top-0 left-0 w-full h-12 bg-white/[0.02] border-b border-white/5 z-40 flex items-center px-4 backdrop-blur-xl">
@@ -393,9 +394,9 @@ function ScenarioDemos() {
 
 
         {/* Clarity layer */}
-        <div className={`absolute inset-0 pt-12 p-6 md:p-12 flex items-center justify-center transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${
-          phase === 'clarity' ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'
-        }`}>
+          <div className={`absolute inset-0 pt-12 p-6 md:p-12 flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${
+            phase === 'clarity' ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'
+          }`}>
           <div className="w-full max-w-lg rounded-[2rem] bg-zinc-950/90 backdrop-blur-2xl border border-white/10 overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,1)] ring-1 ring-white/5">
             <div className="h-1 w-full bg-gradient-to-r from-cyan-500 to-cyan-300" />
             <div className="p-6 md:p-8 border-b border-white/5 bg-white/[0.01] flex items-start gap-5 text-left">
@@ -409,7 +410,7 @@ function ScenarioDemos() {
             </div>
             <div className="p-6 md:p-8 space-y-8 bg-black/50 text-left">
               <p className="text-zinc-300 leading-relaxed text-sm md:text-base font-medium">{current.clarity.desc}</p>
-              <button className="w-full group flex items-center justify-center gap-3 py-4 rounded-xl bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all duration-300 shadow-[0_0_30px_rgba(255,255,255,0.1)] active:scale-95">
+              <button className="w-full group flex items-center justify-center gap-3 py-4 rounded-xl bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-colors duration-200 shadow-[0_0_24px_rgba(255,255,255,0.1)] active:scale-95">
                 <Zap className="w-4 h-4 fill-black" />
                 {current.clarity.button}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -444,7 +445,7 @@ const FlipSection = memo(() => {
   const [ref, inView] = useInView(0.2);
 
   return (
-    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-40 px-6 bg-[#07070c] relative overflow-hidden border-t border-white/5">
+    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-36 px-6 bg-[#07070c] relative overflow-hidden border-t border-white/5">
       <AmbientGrid />
       <div className="max-w-6xl mx-auto relative z-10">
         <Reveal>
@@ -509,7 +510,7 @@ const MathConsole = memo(() => {
   const [ref, inView] = useInView(0.2);
 
   return (
-    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-40 px-6 bg-[#07070c] border-y border-white/5 relative overflow-hidden">
+    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-36 px-6 bg-[#07070c] border-y border-white/5 relative overflow-hidden">
       <AmbientGrid />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(6,182,212,0.08),transparent_60%)] pointer-events-none" aria-hidden="true" />
 
@@ -584,10 +585,10 @@ MathConsole.displayName = 'MathConsole';
 function FeatureCarousel() {
 
   return (
-    <section id="product" className="py-40 relative bg-[#07070c] border-t border-white/5">
+    <section id="product" className="py-36 relative bg-[#07070c] border-t border-white/5">
       <AmbientGrid />
       <div className="max-w-6xl mx-auto px-6 relative z-10">
-        <Reveal className="mb-24 text-center">
+        <Reveal className="mb-20 text-left md:text-center">
           <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">Not another app<br />to check.</h2>
           <p className="text-zinc-400 text-xl md:text-2xl font-medium">Foldera replaces the system, not adds to it.</p>
         </Reveal>
@@ -646,8 +647,8 @@ function Navigation({ scrolled, isLoggedIn }: NavigationProps) {
               <a href="/login" className="hidden sm:block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
                 Sign in
               </a>
-              <a href="/start" className="px-7 py-3 rounded-full bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                Get started <ChevronRight className="w-4 h-4" />
+            <a href="/start" className="px-7 py-3 rounded-full bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                Get started free <ChevronRight className="w-4 h-4" />
               </a>
             </>
           )}
@@ -681,21 +682,48 @@ export default function App() {
         .perspective-1000 { perspective: 1000px; }
         .rotate-y-12 { transform: rotateY(12deg); }
         .rotate-y-0 { transform: rotateY(0deg); }
-        /* Hero — processing dot glows once */
+        /* Hero signature motion: inputs -> converge -> ignite -> output */
+        .hero-input-chip {
+          animation: hero-input-compress 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .hero-input-chip:nth-child(1) { animation-delay: 60ms; }
+        .hero-input-chip:nth-child(2) { animation-delay: 110ms; }
+        .hero-input-chip:nth-child(3) { animation-delay: 160ms; }
+        @keyframes hero-input-compress {
+          from { opacity: 0.4; transform: translateX(var(--start-x, 0px)) translateY(-2px) scale(0.97); }
+          to { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
+        }
+        .hero-input-chip:nth-child(1) { --start-x: -26px; }
+        .hero-input-chip:nth-child(2) { --start-x: 0px; }
+        .hero-input-chip:nth-child(3) { --start-x: 26px; }
         .hero-process-dot {
-          animation: hero-dot-glow 1.2s ease-out 0.6s both;
+          animation: hero-dot-glow 0.9s ease-out 0.8s both;
+        }
+        .hero-ignition {
+          position: absolute;
+          inset: -8px;
+          border-radius: 999px;
+          pointer-events: none;
+          background:
+            radial-gradient(circle at 50% 50%, rgba(251,191,36,0.32) 0%, rgba(251,191,36,0) 55%),
+            radial-gradient(circle at 50% 50%, rgba(34,211,238,0.22) 0%, rgba(34,211,238,0) 70%);
+          animation: hero-ignition-pulse 650ms ease-out 0.95s both;
         }
         @keyframes hero-dot-glow {
           0% { box-shadow: none; border-color: rgba(82,82,91,0.5); }
-          40% { box-shadow: 0 0 16px rgba(6,182,212,0.4); border-color: rgba(6,182,212,0.5); }
+          45% { box-shadow: 0 0 14px rgba(6,182,212,0.35); border-color: rgba(6,182,212,0.45); }
           100% { box-shadow: 0 0 6px rgba(6,182,212,0.15); border-color: rgba(82,82,91,0.5); }
         }
-        /* Hero — output card appears once after dot glows, stays */
+        @keyframes hero-ignition-pulse {
+          0% { opacity: 0; transform: scale(0.72); }
+          40% { opacity: 1; transform: scale(1.06); }
+          100% { opacity: 0; transform: scale(1.18); }
+        }
         .hero-output {
-          animation: hero-output-in 0.8s ease-out 1s both;
+          animation: hero-output-in 500ms ease-out 1.15s both;
         }
         @keyframes hero-output-in {
-          from { opacity: 0; transform: translateY(12px); }
+          from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
         @media (prefers-reduced-motion: reduce) {
@@ -712,10 +740,10 @@ export default function App() {
       </section>
 
       {/* ── SCENARIO DEMOS — "with a month of your data" ── */}
-      <section className="py-32 relative bg-[#07070c] border-t border-white/5 overflow-hidden">
+      <section className="py-28 md:py-32 relative bg-[#07070c] border-t border-white/5 overflow-hidden">
         <AmbientGrid />
-        <div className="relative z-10">
-          <Reveal className="text-center mb-16 px-6">
+        <div className="max-w-6xl mx-auto relative z-10">
+          <Reveal className="text-center mb-14 md:mb-16 px-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white mb-6">
               Now imagine a month of<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-cyan-400">
@@ -733,12 +761,12 @@ export default function App() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section className="py-40 relative bg-[#07070c] border-t border-white/5">
+      <section className="py-32 md:py-36 relative bg-[#07070c] border-t border-white/5">
         <AmbientGrid />
         <div className="max-w-6xl mx-auto px-6 relative z-10">
-          <Reveal className="mb-24 text-center">
+          <Reveal className="mb-16 md:mb-20 max-w-4xl text-left">
             <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">You decide yes or no.<br />Foldera does the rest.</h2>
-            <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed">Three steps. No prompting. No managing. Just finished work, every morning.</p>
+            <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl font-medium leading-relaxed">Three steps. No prompting. No managing. Just finished work, every morning.</p>
           </Reveal>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -770,11 +798,11 @@ export default function App() {
       <FeatureCarousel />
 
       {/* ── PRICING ── */}
-      <section id="pricing" className="py-48 border-t border-white/5 relative bg-[#07070c] overflow-hidden">
+      <section id="pricing" className="py-40 md:py-44 border-t border-white/5 relative bg-[#07070c] overflow-hidden">
         <AmbientGrid />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.1)_0%,transparent_50%)] pointer-events-none" aria-hidden="true" />
-        <Reveal className="max-w-5xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-24">
+        <Reveal className="max-w-6xl mx-auto px-6 relative z-10">
+          <div className="text-center mb-20 md:mb-24">
             <h2 className="text-6xl md:text-[8rem] font-black tracking-tighter text-white mb-8 leading-none">One plan.<br />Full power.</h2>
             <p className="text-zinc-400 text-xl md:text-3xl font-medium tracking-tight">Finished work, every morning.</p>
           </div>

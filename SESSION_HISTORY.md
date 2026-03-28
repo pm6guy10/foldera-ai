@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-28 — Landing page hierarchy/spacing/motion polish (`app/page.tsx`)
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `app/page.tsx`, `FOLDERA_MASTER_AUDIT.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: baseline `npx playwright test` (111 passed, 11 failed, 6 skipped); post-change `npm run build` passed; post-change `npx playwright test` (111 passed, 11 failed, 6 skipped, unchanged from baseline)
+  Any unresolved issues: pre-existing local Playwright failures remain unchanged; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
+
 - 2026-03-27 — Outlook/signal ingestion hygiene: junk gate, commitment eligibility, suppression guard, schema fix, learning quarantine
   MODE: AUDIT
   Commit hash(es): pending (set after commit on `main`)
