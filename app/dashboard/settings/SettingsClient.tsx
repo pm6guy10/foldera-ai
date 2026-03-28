@@ -561,7 +561,7 @@ export default function SettingsClient() {
                   const parts: string[] = [];
                   const stages = data.stages as Record<string, any>;
                   const signalFailed = stages.daily_brief?.signal_processing?.status === 'failed';
-                  const genFailed = stages.daily_brief?.ok === false && stages.daily_brief?.generate?.status !== 'skipped' && !signalFailed;
+                  const genFailed = stages.daily_brief?.generate?.status === 'failed';
                   if (signalFailed) parts.push('Signal processing incomplete — directives will improve as backlog clears');
                   if (genFailed) parts.push('Brief generation failed');
                   if (stages.sync_microsoft?.ok === false) parts.push('Microsoft sync failed');
