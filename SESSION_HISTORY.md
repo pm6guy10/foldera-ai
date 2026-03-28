@@ -1728,3 +1728,17 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
   - `npm run build` — passed (after clearing stale .next cache)
 - Any unresolved issues:
   - Brandon must complete manual steps: create VERCEL_TOKEN at vercel.com/account/tokens, add VERCEL_TOKEN + VERCEL_ORG_ID + VERCEL_PROJECT_ID as GitHub Actions secrets, and disable Vercel Auto Deploy in project settings
+
+---
+
+## 2026-03-27 — Fix emergent candidates blocking real threads
+- MODE: AUDIT
+- Commit hash(es): pending
+- Files changed: `lib/briefing/scorer.ts` (add emergent-no-goal filter), `lib/briefing/generator.ts` (fix hasRealThread + hoursSinceLast to use past signals only)
+- What was verified:
+  - `npx vitest run lib/briefing/__tests__/decision-payload-adversarial.test.ts` — 6/6 passed
+  - `npx vitest run --exclude ".claude/worktrees/**"` — 32 files, 226 tests passed
+  - `npm run build` — clean
+- Root cause: emergent-repetition_suppression candidates score 0.91 by hardcoded formula, beat all real commitment candidates, then always fail the Discrepancy Engine gate (no thread, no goal) → do_nothing loop. Fix 1: filter emergent candidates with no matchedGoal before final sort. Fix 2: filter future-dated calendar events from supporting_signals before hasRealThread and hoursSinceLast checks.
+- Any unresolved issues:
+  - Production receipt pending — Brandon must trigger Generate Now after deploy and verify tkg_actions latest row shows a real commitment candidate (not emergent-repetition_suppression)

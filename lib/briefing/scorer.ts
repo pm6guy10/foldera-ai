@@ -3562,6 +3562,29 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     });
   }
 
+  // Exclude emergent candidates with no goal anchor — they will
+  // always fail the Discrepancy Engine gate (no_thread, no_outcome)
+  // and block real candidates from being selected.
+  scored = scored.filter((candidate) => {
+    if (candidate.type === 'emergent' && !candidate.matchedGoal) {
+      logStructuredEvent({
+        event: 'emergent_candidate_filtered',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'scoring',
+        details: {
+          scope: 'scorer',
+          id: candidate.id,
+          reason: 'no_goal_anchor_will_fail_discrepancy_gate',
+          score: candidate.score,
+        },
+      });
+      return false;
+    }
+    return true;
+  });
+
   // Sort by score descending
   scored.sort(compareScoredLoops);
 

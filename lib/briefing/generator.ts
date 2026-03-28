@@ -792,18 +792,21 @@ function buildDecisionPayload(
   // The LLM must not decide whether to act. This gate does.
   // -----------------------------------------------------------------------
 
-  // 1. Real thread exists
-  const hasRealThread = ctx.supporting_signals != null && ctx.supporting_signals.length > 0;
+  // 1. Real thread exists (past signals only — future-dated calendar events are excluded)
+  const pastSignals = (ctx.supporting_signals ?? []).filter(
+    (s) => new Date(s.occurred_at).getTime() <= Date.now(),
+  );
+  const hasRealThread = pastSignals.length > 0;
 
   // 2. No reply sent (avoidance observation detected during context build)
   const hasNoReply = ctx.avoidance_observations?.some(
     (o) => o.type === 'no_reply_sent',
   ) ?? false;
 
-  // 3. ≥ 48 hours elapsed since last signal in thread
+  // 3. ≥ 48 hours elapsed since last signal in thread (past signals only)
   let hoursSinceLast: number | null = null;
-  if (ctx.supporting_signals?.length) {
-    const last = ctx.supporting_signals[ctx.supporting_signals.length - 1];
+  if (pastSignals.length > 0) {
+    const last = pastSignals[pastSignals.length - 1];
     hoursSinceLast = (Date.now() - new Date(last.occurred_at).getTime()) / 3600000;
   }
   const meetsTimeThreshold = hoursSinceLast !== null && hoursSinceLast >= 48;
