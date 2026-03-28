@@ -40,6 +40,7 @@ interface RevealProps {
   children: React.ReactNode;
   delay?: number;
   className?: string;
+  alwaysVisible?: boolean;
 }
 
 interface NavigationProps {
@@ -166,10 +167,12 @@ const useInView = (threshold = 0.15): [React.MutableRefObject<HTMLDivElement | n
 // ============================================================================
 // ATOMIC COMPONENTS
 // ============================================================================
-const Reveal = memo<RevealProps>(({ children, delay = 0, className = '' }) => {
+const Reveal = memo<RevealProps>(({ children, delay = 0, className = '', alwaysVisible = false }) => {
   const [ref, inView] = useInView();
   const prefersReducedMotion = usePrefersReducedMotion();
-  const motionClasses = prefersReducedMotion
+  const motionClasses = alwaysVisible
+    ? 'opacity-100 translate-y-0 scale-100'
+    : prefersReducedMotion
     ? 'opacity-100 translate-y-0 scale-100'
     : inView
       ? 'opacity-100 translate-y-0 scale-100 duration-700'
@@ -248,7 +251,7 @@ function SignalEngineHero() {
   return (
     <div className="w-full max-w-6xl mx-auto px-6 pt-28 pb-20 text-center relative z-10 flex flex-col items-center">
       {/* Headlines & CTA */}
-      <Reveal>
+      <Reveal alwaysVisible>
         <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
           A model of you. One move a day.
         </div>
