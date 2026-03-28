@@ -200,8 +200,8 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* Fixed header */}
-      <header className="fixed top-0 left-0 right-0 z-10 bg-zinc-950 border-b border-zinc-800 h-14">
-        <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4">
+      <header className="fixed top-0 left-0 right-0 z-10 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 h-14">
+        <div className="max-w-3xl mx-auto h-full flex items-center justify-between px-4">
           <span className="text-lg font-bold text-white">Foldera</span>
           <Link href="/dashboard/settings">
             <Settings className="w-5 h-5 text-zinc-500 hover:text-white transition-colors" />
@@ -210,10 +210,10 @@ export default function DashboardPage() {
       </header>
 
       {/* Content */}
-      <main className="pt-20 pb-8 px-4 max-w-2xl mx-auto">
+      <main className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
         {/* Flash message (from deep-link errors, actions, or settings redirect) */}
         {flash && !done && (
-          <div className="mb-4 px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-700">
+          <div className="mb-6 px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-800">
             <p className="text-sm text-zinc-300">{flash}</p>
           </div>
         )}
@@ -244,21 +244,23 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : !action ? (
-          <div className="mt-20 text-center">
+          <div className="mt-16 md:mt-20">
+            <div className="mx-auto max-w-xl rounded-2xl border border-zinc-800 bg-zinc-900/60 px-6 py-8 text-center">
             {isNewAccount ? (
               <>
-                <p className="text-zinc-400">Foldera is building your model.</p>
-                <p className="text-zinc-600 text-sm mt-2">It&apos;s reading your email and calendar — your first directive arrives tomorrow at 7am Pacific.</p>
+                <p className="text-zinc-300 text-lg font-medium">Foldera is building your model.</p>
+                <p className="text-zinc-500 text-sm mt-3">It&apos;s reading your email and calendar. Your first directive arrives tomorrow at 7am Pacific.</p>
               </>
             ) : (
               <>
-                <p className="text-zinc-400">Nothing queued for today.</p>
-                <p className="text-zinc-600 text-sm mt-2">Your next read arrives at 7am Pacific.</p>
+                <p className="text-zinc-300 text-lg font-medium">Nothing queued at high confidence.</p>
+                <p className="text-zinc-500 text-sm mt-3">Your next read arrives at 7am Pacific.</p>
               </>
             )}
+            </div>
           </div>
         ) : (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 md:p-7">
             {/* Domain badge */}
             {action.domain && (
               <p className="text-xs uppercase tracking-wide text-emerald-500">
@@ -267,7 +269,7 @@ export default function DashboardPage() {
             )}
 
             {/* Directive text */}
-            <p className="text-xl font-semibold text-white mt-2 leading-relaxed">
+            <p className="text-xl md:text-2xl font-semibold text-white mt-3 leading-relaxed">
               {action.directive}
             </p>
 
@@ -275,7 +277,7 @@ export default function DashboardPage() {
             {artifact && (
               <div className="mt-6">
                 {isEmail && (
-                  <div className="bg-zinc-800 rounded-xl p-4">
+                  <div className="bg-zinc-800/80 rounded-xl p-4 md:p-5 border border-zinc-700/60">
                     {recipient && (
                       <p className="text-sm text-zinc-400 truncate">To: {recipient}</p>
                     )}
@@ -348,7 +350,7 @@ export default function DashboardPage() {
 
         {/* Your model — shown when signal data exists */}
         {!loading && !done && modelState && modelState.signal_count > 5 && (
-          <div className="mt-8 border border-zinc-800 rounded-2xl p-5">
+          <div className="mt-10 border border-zinc-800 rounded-2xl p-5 md:p-6 bg-zinc-900/40">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">

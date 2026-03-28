@@ -1,22 +1,22 @@
 # Foldera Production Audit
 
-**Generated:** 2026-03-28T15:58:48.118Z
+**Generated:** 2026-03-28T16:49:54.558Z
 **Total findings:** 38 (4 errors, 1 warnings, 33 info)
 
 ## ERROR (4)
 
-- **[api-health]** `/api/integrations/status` — 401 in 19ms — shape MISMATCH (expected: { integrations: [] })
+- **[api-health]** `/api/integrations/status` — 401 in 16ms — shape MISMATCH (expected: { integrations: [] })
   > {"error":"Unauthorized"}
-- **[api-health]** `/api/conviction/latest` — 401 in 17ms — shape MISMATCH (expected: status 200 (any body))
+- **[api-health]** `/api/conviction/latest` — 401 in 14ms — shape MISMATCH (expected: status 200 (any body))
   > {"error":"Unauthorized"}
-- **[api-health]** `/api/subscription/status` — 401 in 14ms — shape MISMATCH (expected: { status: string })
+- **[api-health]** `/api/subscription/status` — 401 in 21ms — shape MISMATCH (expected: { status: string })
   > {"error":"Unauthorized"}
-- **[api-health]** `/api/onboard/set-goals` — 401 in 14ms — shape MISMATCH (expected: status 200)
+- **[api-health]** `/api/onboard/set-goals` — 401 in 16ms — shape MISMATCH (expected: status 200)
   > {"error":"Unauthorized"}
 
 ## WARNING (1)
 
-- **[api-health]** `/api/auth/session` — 200 in 30ms — shape MISMATCH (expected: { user: { id, email } })
+- **[api-health]** `/api/auth/session` — 200 in 16ms — shape MISMATCH (expected: { user: { id, email } })
   > {}
 
 ## INFO (33)

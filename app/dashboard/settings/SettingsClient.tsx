@@ -230,7 +230,7 @@ export default function SettingsClient() {
     return (
       <div className="min-h-screen bg-zinc-950">
         <Header />
-        <main className="pt-20 pb-8 px-4 max-w-2xl mx-auto">
+        <main className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
           <div className="animate-pulse space-y-3 mt-6">
             <div className="h-4 w-40 bg-zinc-800 rounded" />
             <div className="h-20 bg-zinc-900 rounded-xl" />
@@ -247,7 +247,7 @@ export default function SettingsClient() {
     return (
       <div className="min-h-screen bg-zinc-950">
         <Header />
-        <main className="pt-20 pb-8 px-4 max-w-2xl mx-auto">
+        <main className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
           <p className="text-zinc-400 text-sm mt-8">Please sign in to view settings.</p>
         </main>
       </div>
@@ -266,11 +266,11 @@ export default function SettingsClient() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <Header />
-      <main className="pt-20 pb-12 px-4 max-w-2xl mx-auto">
+      <main className="pt-20 pb-14 px-4 max-w-3xl mx-auto">
 
         {/* Sync status banner */}
         {syncStatus && (
-          <div className="mb-5 px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+          <div className="mb-6 px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
             <p className="text-sm text-cyan-300">{syncStatus}</p>
           </div>
         )}
@@ -279,134 +279,138 @@ export default function SettingsClient() {
           <p ref={errorRef} className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">{actionError}</p>
         )}
 
-        {/* ── Connected accounts ── */}
-        <SectionHeading>Connected accounts</SectionHeading>
+        {/* ── Connected accounts (primary) ── */}
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 md:p-6">
+          <SectionHeading className="mb-4">Connected accounts</SectionHeading>
+          <p className="text-sm text-zinc-500 mb-5">Choose which accounts Foldera reads.</p>
 
-        {/* Google card */}
-        <div className={`bg-zinc-900 rounded-xl border border-zinc-800 border-l-2 overflow-hidden ${google?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700'}`}>
-          <div className="p-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <GoogleIcon />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-white">Google</p>
-                <p className={`text-xs mt-0.5 truncate ${google?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                  {google?.is_active ? (google.sync_email || 'Connected') : 'Not connected'}
-                </p>
+          {/* Google card */}
+          <div className={`bg-zinc-900 rounded-xl border border-zinc-800 border-l-2 overflow-hidden ${google?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700'}`}>
+            <div className="p-4 md:p-5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <GoogleIcon />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white">Google</p>
+                  <p className={`text-xs mt-0.5 truncate ${google?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                    {google?.is_active ? (google.sync_email || 'Connected') : 'Not connected'}
+                  </p>
+                </div>
               </div>
-            </div>
-            {google?.is_active ? (
-              <button
-                onClick={async () => {
-                  setDisconnecting('google');
-                  setActionError(null);
-                  // Optimistic update
-                  setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
-                  try {
-                    const response = await fetch('/api/google/disconnect', { method: 'POST' });
-                    if (!response.ok) {
-                      setActionError('Could not disconnect Google. Try again.');
+              {google?.is_active ? (
+                <button
+                  onClick={async () => {
+                    setDisconnecting('google');
+                    setActionError(null);
+                    // Optimistic update
+                    setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
+                    try {
+                      const response = await fetch('/api/google/disconnect', { method: 'POST' });
+                      if (!response.ok) {
+                        setActionError('Could not disconnect Google. Try again.');
+                        await refreshIntegrationsStatus().catch(() => {});
+                      }
+                    } catch {
+                      setActionError('Network error disconnecting Google.');
                       await refreshIntegrationsStatus().catch(() => {});
+                    } finally {
+                      setDisconnecting(null);
                     }
-                  } catch {
-                    setActionError('Network error disconnecting Google.');
-                    await refreshIntegrationsStatus().catch(() => {});
-                  } finally {
-                    setDisconnecting(null);
-                  }
-                }}
-                disabled={disconnecting === 'google'}
-                className="shrink-0 text-xs border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
-              >
-                {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  setConnectingProvider('google');
-                  localStorage.setItem('connecting_provider', 'google');
-                  window.location.href = '/api/google/connect';
-                }}
-                disabled={connectingProvider === 'google'}
-                className="shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
-              >
-                {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
-              </button>
+                  }}
+                  disabled={disconnecting === 'google'}
+                  className="shrink-0 text-xs border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                >
+                  {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setConnectingProvider('google');
+                    localStorage.setItem('connecting_provider', 'google');
+                    window.location.href = '/api/google/connect';
+                  }}
+                  disabled={connectingProvider === 'google'}
+                  className="shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                >
+                  {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
+                </button>
+              )}
+            </div>
+            {google?.is_active && (
+              <div className="px-4 md:px-5 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-800/60">
+                <SourceLine label="Gmail" count={sourceCounts['gmail'] ?? 0} providerActive={true} />
+                <SourceLine label="Calendar" count={sourceCounts['google_calendar'] ?? 0} providerActive={true} />
+                <SourceLine label="Drive" count={sourceCounts['drive'] ?? 0} providerActive={true} />
+              </div>
             )}
           </div>
-          {google?.is_active && (
-            <div className="px-4 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-800/60">
-              <SourceLine label="Gmail" count={sourceCounts['gmail'] ?? 0} providerActive={true} />
-              <SourceLine label="Calendar" count={sourceCounts['google_calendar'] ?? 0} providerActive={true} />
-              <SourceLine label="Drive" count={sourceCounts['drive'] ?? 0} providerActive={true} />
-            </div>
-          )}
-        </div>
 
-        {/* Microsoft card */}
-        <div className={`mt-3 bg-zinc-900 rounded-xl border border-zinc-800 border-l-2 overflow-hidden ${microsoft?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700'}`}>
-          <div className="p-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <MicrosoftIcon />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-white">Microsoft</p>
-                <p className={`text-xs mt-0.5 truncate ${microsoft?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                  {microsoft?.is_active ? (microsoft.sync_email || 'Connected') : 'Not connected'}
-                </p>
+          {/* Microsoft card */}
+          <div className={`mt-3 bg-zinc-900 rounded-xl border border-zinc-800 border-l-2 overflow-hidden ${microsoft?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700'}`}>
+            <div className="p-4 md:p-5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <MicrosoftIcon />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white">Microsoft</p>
+                  <p className={`text-xs mt-0.5 truncate ${microsoft?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                    {microsoft?.is_active ? (microsoft.sync_email || 'Connected') : 'Not connected'}
+                  </p>
+                </div>
               </div>
-            </div>
-            {microsoft?.is_active ? (
-              <button
-                onClick={async () => {
-                  setDisconnecting('microsoft');
-                  setActionError(null);
-                  // Optimistic update
-                  setIntegrations(prev => prev.map(i =>
-                    i.provider === 'azure_ad' ? { ...i, is_active: false, sync_email: undefined } : i
-                  ));
-                  try {
-                    const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
-                    if (!response.ok) {
-                      setActionError('Could not disconnect Microsoft. Try again.');
+              {microsoft?.is_active ? (
+                <button
+                  onClick={async () => {
+                    setDisconnecting('microsoft');
+                    setActionError(null);
+                    // Optimistic update
+                    setIntegrations(prev => prev.map(i =>
+                      i.provider === 'azure_ad' ? { ...i, is_active: false, sync_email: undefined } : i
+                    ));
+                    try {
+                      const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
+                      if (!response.ok) {
+                        setActionError('Could not disconnect Microsoft. Try again.');
+                        await refreshIntegrationsStatus().catch(() => {});
+                      }
+                    } catch {
+                      setActionError('Network error disconnecting Microsoft.');
                       await refreshIntegrationsStatus().catch(() => {});
+                    } finally {
+                      setDisconnecting(null);
                     }
-                  } catch {
-                    setActionError('Network error disconnecting Microsoft.');
-                    await refreshIntegrationsStatus().catch(() => {});
-                  } finally {
-                    setDisconnecting(null);
-                  }
-                }}
-                disabled={disconnecting === 'microsoft'}
-                className="shrink-0 text-xs border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
-              >
-                {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  setConnectingProvider('microsoft');
-                  localStorage.setItem('connecting_provider', 'microsoft');
-                  window.location.href = '/api/microsoft/connect';
-                }}
-                disabled={connectingProvider === 'microsoft'}
-                className="shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
-              >
-                {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
-              </button>
+                  }}
+                  disabled={disconnecting === 'microsoft'}
+                  className="shrink-0 text-xs border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                >
+                  {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setConnectingProvider('microsoft');
+                    localStorage.setItem('connecting_provider', 'microsoft');
+                    window.location.href = '/api/microsoft/connect';
+                  }}
+                  disabled={connectingProvider === 'microsoft'}
+                  className="shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                >
+                  {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
+                </button>
+              )}
+            </div>
+            {microsoft?.is_active && (
+              <div className="px-4 md:px-5 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-800/60">
+                <SourceLine label="Mail" count={sourceCounts['outlook'] ?? 0} providerActive={true} />
+                <SourceLine label="Calendar" count={sourceCounts['outlook_calendar'] ?? 0} providerActive={true} />
+                <SourceLine label="OneDrive" count={sourceCounts['onedrive'] ?? 0} providerActive={true} />
+              </div>
             )}
           </div>
-          {microsoft?.is_active && (
-            <div className="px-4 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-800/60">
-              <SourceLine label="Mail" count={sourceCounts['outlook'] ?? 0} providerActive={true} />
-              <SourceLine label="Calendar" count={sourceCounts['outlook_calendar'] ?? 0} providerActive={true} />
-              <SourceLine label="OneDrive" count={sourceCounts['onedrive'] ?? 0} providerActive={true} />
-            </div>
-          )}
-        </div>
+        </section>
 
-        {/* ── Focus areas ── */}
-        <SectionHeading className="mt-10">Your focus areas</SectionHeading>
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
+        {/* ── Focus areas (secondary) ── */}
+        <section className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-5 md:p-6">
+        <SectionHeading className="mb-4">Focus areas</SectionHeading>
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 md:p-5">
           {!editingFocus ? (
             <>
               {activeBuckets.length === 0 && !goalFreeText ? (
@@ -496,10 +500,12 @@ export default function SettingsClient() {
             </>
           )}
         </div>
+        </section>
 
-        {/* ── Subscription ── */}
-        <SectionHeading className="mt-10">Subscription</SectionHeading>
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 flex items-center justify-between gap-4">
+        {/* ── Subscription (tertiary) ── */}
+        <section className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900/20 p-5 md:p-6">
+        <SectionHeading className="mb-4">Subscription</SectionHeading>
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 md:p-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className={`px-2.5 py-1 rounded-md text-xs font-semibold ${isPro ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-zinc-700 text-zinc-400 border border-zinc-600'}`}>
               {planLabel}
@@ -540,10 +546,45 @@ export default function SettingsClient() {
             </button>
           )}
         </div>
+        </section>
 
-        {/* ── Daily brief ── */}
-        <SectionHeading className="mt-10">Daily brief</SectionHeading>
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
+        {/* ── Account (quiet) ── */}
+        <section className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900/20 p-5 md:p-6">
+        <SectionHeading className="mb-4">Account</SectionHeading>
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 mb-3">
+          {session?.user?.email && (
+            <p className="text-xs text-zinc-500 mb-1">Signed in as</p>
+          )}
+          {session?.user?.email && (
+            <p className="text-sm text-zinc-300 font-medium">{session.user.email}</p>
+          )}
+        </div>
+
+        <div className="grid gap-3">
+          <button
+            onClick={handleSignOut}
+            className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-200 rounded-xl py-3 text-sm font-medium transition-colors"
+          >
+            Sign out
+          </button>
+
+          <button
+            onClick={handleDeleteAccount}
+            className="w-full border border-red-900/70 hover:border-red-700 bg-red-950/20 hover:bg-red-950/40 text-red-400 hover:text-red-300 rounded-xl py-3 text-sm font-medium transition-colors"
+          >
+            {deleteConfirm ? 'Tap again to confirm deletion' : 'Delete account'}
+          </button>
+        </div>
+
+        {deleteError && (
+          <p className="mt-2 text-xs text-red-400">{deleteError}</p>
+        )}
+        </section>
+
+        {/* ── Daily brief (tools) ── */}
+        <section className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900/10 p-5 md:p-6">
+        <SectionHeading className="mb-4">Tools</SectionHeading>
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 md:p-5">
           <p className="text-sm text-zinc-400 mb-4">
             Sync your email and calendar, then generate and send today&apos;s brief. Takes up to 60 seconds.
           </p>
@@ -625,36 +666,7 @@ export default function SettingsClient() {
             </p>
           )}
         </div>
-
-        {/* ── Account ── */}
-        <SectionHeading className="mt-10">Account</SectionHeading>
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 mb-3">
-          {session?.user?.email && (
-            <p className="text-xs text-zinc-500 mb-1">Signed in as</p>
-          )}
-          {session?.user?.email && (
-            <p className="text-sm text-zinc-300 font-medium">{session.user.email}</p>
-          )}
-        </div>
-
-        <button
-          onClick={handleSignOut}
-          className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-200 rounded-xl py-3 text-sm font-medium transition-colors"
-        >
-          Sign out
-        </button>
-
-        <button
-          onClick={handleDeleteAccount}
-          className="mt-3 w-full border border-red-900/70 hover:border-red-700 bg-red-950/20 hover:bg-red-950/40 text-red-400 hover:text-red-300 rounded-xl py-3 text-sm font-medium transition-colors"
-        >
-          {deleteConfirm ? 'Tap again to confirm deletion' : 'Delete account'}
-        </button>
-
-        {deleteError && (
-          <p className="mt-2 text-xs text-red-400">{deleteError}</p>
-        )}
-
+        </section>
       </main>
     </div>
   );
@@ -671,7 +683,7 @@ function SectionHeading({ children, className = '' }: { children: ReactNode; cla
 function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-10 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 h-14">
-      <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4">
+      <div className="max-w-3xl mx-auto h-full flex items-center justify-between px-4">
         <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
           <ChevronLeft className="w-5 h-5" />
           <span className="text-sm">Dashboard</span>

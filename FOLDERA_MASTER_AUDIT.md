@@ -2,6 +2,33 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-03-28 — Homepage carousel clarity pass blocked by pre-existing compile errors
+
+Homepage-only edits were applied to `app/page.tsx` in the `ScenarioDemos` carousel area (mobile swipe/tap discoverability, stronger pagination, clearer finished-work focal treatment).
+
+Mandatory QA gate could not complete in this workspace state:
+
+- `npm run build` failed on unrelated existing code in `lib/briefing/scorer.ts` (`tractability` specified more than once at line ~3542).
+- `npx playwright test` failed to start because the web server could not compile (`.next/types/app/(marketing)/blog/[slug]/page.ts` missing).
+
+Status: `NEEDS_REVIEW` (blocking issues are outside homepage scope).
+
+### NEEDS_REVIEW — 2026-03-28 — Landing page copy-only pass still blocked by pre-existing Playwright failures
+
+This copy-only session changed text in `app/page.tsx` and reran the mandatory gate:
+
+- `npm run build` passed
+- `npx playwright test` ended at `111 passed, 11 failed, 6 skipped`
+
+Unresolved failing specs (unchanged known local failures):
+- `tests/audit/clickflow.spec.ts` timeout on `/`
+- `tests/production/smoke.spec.ts` authenticated dashboard/settings redirect + API 401 assertions
+- `tests/production/smoke.spec.ts` login/start authenticated redirect assertions
+- `tests/production/smoke.spec.ts` Google connect/disconnect visibility
+- `tests/production/smoke.spec.ts` Generate Now button visibility
+
+Status: `NEEDS_REVIEW` (outside landing copy scope).
+
 ### NEEDS_REVIEW — 2026-03-28 — Local QA gate still failing outside landing-page scope
 
 This landing-page polish session ran the mandatory QA gate before and after changes.

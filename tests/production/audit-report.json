@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-28T15:58:48.118Z",
+  "timestamp": "2026-03-28T16:49:54.558Z",
   "summary": {
     "total": 38,
     "errors": 4,
@@ -203,35 +203,35 @@
       "severity": "WARNING",
       "category": "api-health",
       "page": "/api/auth/session",
-      "description": "200 in 30ms — shape MISMATCH (expected: { user: { id, email } })",
+      "description": "200 in 16ms — shape MISMATCH (expected: { user: { id, email } })",
       "detail": "{}"
     },
     {
       "severity": "ERROR",
       "category": "api-health",
       "page": "/api/integrations/status",
-      "description": "401 in 19ms — shape MISMATCH (expected: { integrations: [] })",
+      "description": "401 in 16ms — shape MISMATCH (expected: { integrations: [] })",
       "detail": "{\"error\":\"Unauthorized\"}"
     },
     {
       "severity": "ERROR",
       "category": "api-health",
       "page": "/api/conviction/latest",
-      "description": "401 in 17ms — shape MISMATCH (expected: status 200 (any body))",
+      "description": "401 in 14ms — shape MISMATCH (expected: status 200 (any body))",
       "detail": "{\"error\":\"Unauthorized\"}"
     },
     {
       "severity": "ERROR",
       "category": "api-health",
       "page": "/api/subscription/status",
-      "description": "401 in 14ms — shape MISMATCH (expected: { status: string })",
+      "description": "401 in 21ms — shape MISMATCH (expected: { status: string })",
       "detail": "{\"error\":\"Unauthorized\"}"
     },
     {
       "severity": "ERROR",
       "category": "api-health",
       "page": "/api/onboard/set-goals",
-      "description": "401 in 14ms — shape MISMATCH (expected: status 200)",
+      "description": "401 in 16ms — shape MISMATCH (expected: status 200)",
       "detail": "{\"error\":\"Unauthorized\"}"
     },
     {

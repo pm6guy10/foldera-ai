@@ -4,6 +4,27 @@
 
 ## Session Logs
 
+- 2026-03-28 — Authenticated UI structure/spacing cleanup for dashboard + settings
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` passed; `npx playwright test tests/e2e/authenticated-routes.spec.ts tests/e2e/flow-routes.spec.ts` passed (13/13)
+  Any unresolved issues: none for this scoped pass
+
+- 2026-03-28 — Homepage mobile carousel clarity pass (interactive discoverability + proof emphasis)
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `app/page.tsx`, `FOLDERA_MASTER_AUDIT.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: traced carousel data path `SCENARIOS -> ScenarioDemos state -> rendered chaos/clarity layers`; attempted mandatory gate; `npm run build` failed in pre-existing unrelated `lib/briefing/scorer.ts` duplicate property (`tractability`); `npx playwright test` could not start due compile failure (`.next/types/.../blog/[slug]/page.ts` missing)
+  Any unresolved issues: mandatory QA blocked by existing compile errors outside homepage scope; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
+
+- 2026-03-28 — Landing page copy-only clarity pass ("one move" positioning)
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `app/page.tsx`, `FOLDERA_MASTER_AUDIT.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: baseline `npx playwright test` run recorded; post-change `npm run build` passed; post-change `npx playwright test` ended at 111 passed / 11 failed / 6 skipped
+  Any unresolved issues: 11 known local Playwright failures remain outside landing-copy scope; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
+
 - 2026-03-28 — Landing page hierarchy/spacing/motion polish (`app/page.tsx`)
   MODE: AUDIT
   Commit hash(es): pending (set after commit on `main`)
