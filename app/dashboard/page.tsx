@@ -210,7 +210,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Content */}
-      <main className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
+      <main className="pt-20 pb-14 px-4 max-w-3xl mx-auto">
         {/* Flash message (from deep-link errors, actions, or settings redirect) */}
         {flash && !done && (
           <div className="mb-6 px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-800">
@@ -244,23 +244,26 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : !action ? (
-          <div className="mt-16 md:mt-20">
-            <div className="mx-auto max-w-xl rounded-2xl border border-zinc-800 bg-zinc-900/60 px-6 py-8 text-center">
-            {isNewAccount ? (
-              <>
-                <p className="text-zinc-300 text-lg font-medium">Foldera is building your model.</p>
-                <p className="text-zinc-500 text-sm mt-3">It&apos;s reading your email and calendar. Your first directive arrives tomorrow at 7am Pacific.</p>
-              </>
-            ) : (
-              <>
-                <p className="text-zinc-300 text-lg font-medium">Nothing queued at high confidence.</p>
-                <p className="text-zinc-500 text-sm mt-3">Your next read arrives at 7am Pacific.</p>
-              </>
-            )}
+          <div className="mt-10 md:mt-12">
+            <div className="mx-auto max-w-2xl rounded-2xl border border-zinc-800/70 bg-zinc-900/45 px-6 py-7 md:px-7 md:py-8 text-center">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">Today&apos;s queue</p>
+              {isNewAccount ? (
+                <>
+                  <p className="mt-3 text-zinc-200 text-lg font-medium">Foldera is building your model.</p>
+                  <p className="text-zinc-500 text-sm mt-2">
+                    It&apos;s reading your email and calendar. Your first directive arrives tomorrow at 7am Pacific.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-3 text-zinc-200 text-lg font-medium">Nothing queued at high confidence.</p>
+                  <p className="text-zinc-500 text-sm mt-2">Your next read arrives at 7am Pacific.</p>
+                </>
+              )}
             </div>
           </div>
         ) : (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 md:p-7">
+          <div className="bg-zinc-900/55 border border-zinc-800/70 rounded-2xl p-6 md:p-7">
             {/* Domain badge */}
             {action.domain && (
               <p className="text-xs uppercase tracking-wide text-emerald-500">
@@ -277,7 +280,7 @@ export default function DashboardPage() {
             {artifact && (
               <div className="mt-6">
                 {isEmail && (
-                  <div className="bg-zinc-800/80 rounded-xl p-4 md:p-5 border border-zinc-700/60">
+                  <div className="bg-zinc-800/65 rounded-xl p-4 md:p-5 border border-zinc-700/40">
                     {recipient && (
                       <p className="text-sm text-zinc-400 truncate">To: {recipient}</p>
                     )}
@@ -297,7 +300,7 @@ export default function DashboardPage() {
                 {isDecision && artifact.options && (
                   <div className="grid grid-cols-2 gap-3">
                     {artifact.options.slice(0, 2).map((opt, i) => (
-                      <div key={i} className="bg-zinc-800 rounded-xl p-4">
+                      <div key={i} className="bg-zinc-800/70 rounded-xl p-4 border border-zinc-700/40">
                         <p className="text-sm font-medium text-white">{opt.option}</p>
                         <p className="text-xs text-zinc-400 mt-1">{opt.rationale}</p>
                       </div>
@@ -306,7 +309,7 @@ export default function DashboardPage() {
                 )}
 
                 {isWait && (
-                  <div className="bg-zinc-800 rounded-xl p-4">
+                  <div className="bg-zinc-800/70 rounded-xl p-4 border border-zinc-700/40">
                     {artifact.context && (
                       <p className="text-sm text-zinc-300">Why wait: {artifact.context}</p>
                     )}
@@ -350,7 +353,7 @@ export default function DashboardPage() {
 
         {/* Your model — shown when signal data exists */}
         {!loading && !done && modelState && modelState.signal_count > 5 && (
-          <div className="mt-10 border border-zinc-800 rounded-2xl p-5 md:p-6 bg-zinc-900/40">
+          <div className="mt-8 border border-zinc-800/65 rounded-2xl p-5 md:p-6 bg-zinc-900/35">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -385,7 +388,7 @@ export default function DashboardPage() {
 
             {/* Behavioral insights */}
             {modelState.behavioral_insights.length > 0 && (
-              <div className="mb-4 bg-zinc-900 rounded-xl p-3">
+              <div className="mb-4 bg-zinc-900/70 rounded-xl p-3 border border-zinc-800/50">
                 <p className="text-[11px] text-zinc-500 uppercase tracking-wide mb-2">What it inferred</p>
                 {modelState.behavioral_insights.slice(0, 2).map((insight, i) => (
                   <p key={i} className="text-xs text-zinc-400 leading-relaxed">

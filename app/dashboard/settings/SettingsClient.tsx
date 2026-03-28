@@ -279,13 +279,14 @@ export default function SettingsClient() {
           <p ref={errorRef} className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">{actionError}</p>
         )}
 
+        <div className="rounded-2xl border border-zinc-800/70 bg-zinc-900/35 overflow-hidden">
         {/* ── Connected accounts (primary) ── */}
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 md:p-6">
-          <SectionHeading className="mb-4">Connected accounts</SectionHeading>
-          <p className="text-sm text-zinc-500 mb-5">Choose which accounts Foldera reads.</p>
+        <section className="px-5 py-6 md:px-6 md:py-7">
+          <SectionHeading className="mb-3">Connected accounts</SectionHeading>
+          <p className="text-sm text-zinc-500 mb-4">Choose which accounts Foldera reads.</p>
 
           {/* Google card */}
-          <div className={`bg-zinc-900 rounded-xl border border-zinc-800 border-l-2 overflow-hidden ${google?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700'}`}>
+          <div className={`bg-zinc-900/60 rounded-xl border border-zinc-800/70 border-l-2 overflow-hidden ${google?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700/80'}`}>
             <div className="p-4 md:p-5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <GoogleIcon />
@@ -317,7 +318,7 @@ export default function SettingsClient() {
                     }
                   }}
                   disabled={disconnecting === 'google'}
-                  className="shrink-0 text-xs border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                  className="shrink-0 text-xs border border-zinc-700/80 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
                 >
                   {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
                 </button>
@@ -329,7 +330,7 @@ export default function SettingsClient() {
                     window.location.href = '/api/google/connect';
                   }}
                   disabled={connectingProvider === 'google'}
-                  className="shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                  className="shrink-0 text-xs bg-zinc-700/90 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
                 >
                   {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
                 </button>
@@ -345,7 +346,7 @@ export default function SettingsClient() {
           </div>
 
           {/* Microsoft card */}
-          <div className={`mt-3 bg-zinc-900 rounded-xl border border-zinc-800 border-l-2 overflow-hidden ${microsoft?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700'}`}>
+          <div className={`mt-3 bg-zinc-900/60 rounded-xl border border-zinc-800/70 border-l-2 overflow-hidden ${microsoft?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700/80'}`}>
             <div className="p-4 md:p-5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <MicrosoftIcon />
@@ -379,7 +380,7 @@ export default function SettingsClient() {
                     }
                   }}
                   disabled={disconnecting === 'microsoft'}
-                  className="shrink-0 text-xs border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                  className="shrink-0 text-xs border border-zinc-700/80 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
                 >
                   {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
                 </button>
@@ -391,7 +392,7 @@ export default function SettingsClient() {
                     window.location.href = '/api/microsoft/connect';
                   }}
                   disabled={connectingProvider === 'microsoft'}
-                  className="shrink-0 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                  className="shrink-0 text-xs bg-zinc-700/90 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
                 >
                   {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
                 </button>
@@ -408,9 +409,9 @@ export default function SettingsClient() {
         </section>
 
         {/* ── Focus areas (secondary) ── */}
-        <section className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-5 md:p-6">
+        <section className="border-t border-zinc-800/70 px-5 py-6 md:px-6 md:py-7">
         <SectionHeading className="mb-4">Focus areas</SectionHeading>
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 md:p-5">
+        <div className="rounded-xl bg-zinc-900/45 border border-zinc-800/60 p-4 md:p-5">
           {!editingFocus ? (
             <>
               {activeBuckets.length === 0 && !goalFreeText ? (
@@ -503,9 +504,9 @@ export default function SettingsClient() {
         </section>
 
         {/* ── Subscription (tertiary) ── */}
-        <section className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900/20 p-5 md:p-6">
+        <section className="border-t border-zinc-800/70 px-5 py-6 md:px-6 md:py-7">
         <SectionHeading className="mb-4">Subscription</SectionHeading>
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 md:p-5 flex items-center justify-between gap-4">
+        <div className="rounded-xl bg-zinc-900/40 border border-zinc-800/60 p-4 md:p-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className={`px-2.5 py-1 rounded-md text-xs font-semibold ${isPro ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-zinc-700 text-zinc-400 border border-zinc-600'}`}>
               {planLabel}
@@ -549,9 +550,9 @@ export default function SettingsClient() {
         </section>
 
         {/* ── Account (quiet) ── */}
-        <section className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900/20 p-5 md:p-6">
+        <section className="border-t border-zinc-800/70 px-5 py-6 md:px-6 md:py-7">
         <SectionHeading className="mb-4">Account</SectionHeading>
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 mb-3">
+        <div className="rounded-xl bg-zinc-900/40 border border-zinc-800/60 p-4 mb-3">
           {session?.user?.email && (
             <p className="text-xs text-zinc-500 mb-1">Signed in as</p>
           )}
@@ -563,14 +564,14 @@ export default function SettingsClient() {
         <div className="grid gap-3">
           <button
             onClick={handleSignOut}
-            className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-200 rounded-xl py-3 text-sm font-medium transition-colors"
+            className="w-full bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/80 hover:border-zinc-600 text-zinc-200 rounded-xl py-3 text-sm font-medium transition-colors"
           >
             Sign out
           </button>
 
           <button
             onClick={handleDeleteAccount}
-            className="w-full border border-red-900/70 hover:border-red-700 bg-red-950/20 hover:bg-red-950/40 text-red-400 hover:text-red-300 rounded-xl py-3 text-sm font-medium transition-colors"
+            className="w-full border border-red-900/40 hover:border-red-700/70 bg-red-950/10 hover:bg-red-950/20 text-red-400/90 hover:text-red-300 rounded-xl py-3 text-sm font-medium transition-colors"
           >
             {deleteConfirm ? 'Tap again to confirm deletion' : 'Delete account'}
           </button>
@@ -582,9 +583,9 @@ export default function SettingsClient() {
         </section>
 
         {/* ── Daily brief (tools) ── */}
-        <section className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900/10 p-5 md:p-6">
+        <section className="border-t border-zinc-800/70 px-5 py-6 md:px-6 md:py-7">
         <SectionHeading className="mb-4">Tools</SectionHeading>
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 md:p-5">
+        <div className="rounded-xl bg-zinc-900/35 border border-zinc-800/60 p-4 md:p-5">
           <p className="text-sm text-zinc-400 mb-4">
             Sync your email and calendar, then generate and send today&apos;s brief. Takes up to 60 seconds.
           </p>
@@ -667,6 +668,7 @@ export default function SettingsClient() {
           )}
         </div>
         </section>
+        </div>
       </main>
     </div>
   );

@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-28 — Authenticated dashboard/settings calm UI polish (presentation-only)
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` passed; `npx playwright test tests/e2e/authenticated-routes.spec.ts` passed (11/11); full `npx playwright test` remains unstable in this workspace (pre-existing production/audit failures and one subsequent webServer ENOENT startup failure)
+  Any unresolved issues: omnibus Playwright run still not green in local environment; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
+
 - 2026-03-28 — Discrepancy pipeline end-to-end unblock (generator gates + artifact generation)
   MODE: AUDIT
   Commit hash(es): `77c01f2` (entity suppression skip), `645a62c` (freshness_state override), `f8780b2` (wait_rationale conversion + Sentry), `f3d68f8` (write_document fast-path)

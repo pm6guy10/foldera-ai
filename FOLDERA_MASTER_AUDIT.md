@@ -2,6 +2,20 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-03-28 — Authenticated UI polish session blocked by pre-existing full Playwright instability
+
+Scoped UI changes were applied only to authenticated pages (`app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`) with no backend/API/auth logic edits.
+
+Mandatory QA gate results for this session:
+
+- `npm run build` passed (after changes).
+- `npx playwright test tests/e2e/authenticated-routes.spec.ts` passed (11/11).
+- Full `npx playwright test` remains unstable outside this scoped UI pass:
+  - One full run reached many pre-existing failures in `tests/production/smoke.spec.ts` / `tests/audit/clickflow.spec.ts`.
+  - A subsequent full run failed to start webServer (`ENOENT .next/server/pages-manifest.json`) before test execution.
+
+Status: `NEEDS_REVIEW` (local omnibus Playwright instability is pre-existing and outside this presentation-only scope).
+
 ### NEEDS_REVIEW — 2026-03-28 — Homepage carousel clarity pass blocked by pre-existing compile errors
 
 Homepage-only edits were applied to `app/page.tsx` in the `ScenarioDemos` carousel area (mobile swipe/tap discoverability, stronger pagination, clearer finished-work focal treatment).
