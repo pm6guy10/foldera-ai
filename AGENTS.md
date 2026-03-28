@@ -128,3 +128,11 @@ Any change affecting frontend, auth, onboarding, connectors, or routing must pas
   - `GET /api/model/state` is a read-only behavioral model state endpoint (commit `95c2edf`, `app/api/model/state/route.ts`).
 - Environment variable note: `ALLOW_DEV_ROUTES=true` is required to access dev-only API routes such as `/api/dev/stress-test` (commit `9b3e719`, `app/api/dev/stress-test/route.ts`).
 - Directory structure note: `tests/production/` now contains production auth-state scripts and smoke/audit suites referenced by CI workflows (introduced in commit `fbb1072`, extended in `2de4942`).
+
+## Vercel Deployment
+Vercel deploys are triggered by GitHub Actions, NOT by Vercel's automatic git integration. This is because Vercel Hobby blocks deploys from committers who aren't the repo owner (CC and Codex commits were blocked). The workflow at `.github/workflows/deploy.yml` uses VERCEL_TOKEN to deploy on every push to main. Any committer identity works.
+
+Required GitHub Secrets:
+- VERCEL_TOKEN: Vercel personal access token (Settings > Tokens)
+- VERCEL_ORG_ID: team_y2RdnSgeVsCExRheya1QRB5z
+- VERCEL_PROJECT_ID: prj_eG5St3NmUtqYGXJwXsANdZBLYr9N

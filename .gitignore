@@ -3,7 +3,6 @@
 node_modules
 .next
 .vercel/.env*
-.vercel
 .cursor
 .env*.local
 test-results/

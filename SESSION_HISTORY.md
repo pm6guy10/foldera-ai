@@ -1714,3 +1714,17 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
   - `npm run build` — passed
 - Any unresolved issues:
   - Audit suite is reporter-only; all tests always pass. Findings are written to audit-report.json and audit-summary.md. Run: npm run test:audit
+
+---
+
+## 2026-03-27 — Fix Vercel deploys permanently for all committers
+- MODE: OPS
+- Commit hash(es): pending
+- Files changed: `.github/workflows/deploy.yml` (new), `.gitignore` (remove bare `.vercel` line), `AGENTS.md` (add Vercel Deployment section), `.vercel/project.json` (now tracked by git)
+- What was verified:
+  - `.gitignore` bare `.vercel` line removed; `.vercel/.env*` retained for secret safety
+  - `.vercel/project.json` already had correct orgId/projectId — no edits needed
+  - `deploy.yml` created with checkout, vercel pull, vercel build, vercel deploy steps
+  - `npm run build` — passed (after clearing stale .next cache)
+- Any unresolved issues:
+  - Brandon must complete manual steps: create VERCEL_TOKEN at vercel.com/account/tokens, add VERCEL_TOKEN + VERCEL_ORG_ID + VERCEL_PROJECT_ID as GitHub Actions secrets, and disable Vercel Auto Deploy in project settings
