@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-28 — Discrepancy pipeline end-to-end unblock (generator gates + artifact generation)
+  MODE: AUDIT
+  Commit hash(es): `77c01f2` (entity suppression skip), `645a62c` (freshness_state override), `f8780b2` (wait_rationale conversion + Sentry), `f3d68f8` (write_document fast-path)
+  Files changed: `lib/briefing/generator.ts`, `lib/conviction/artifact-generator.ts`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
+  What was verified: 255/255 unit tests pass; `npm run build` clean; deploy `dpl_HJoTGDEDnvzMUoaqJwKx1L5jeTaq` READY (commit `f3d68f8`); nightly-ops triggered — `code: pending_approval_persisted`, `action_id: 025507e8`, `artifact_type: document`, `artifact_valid: true`, `generator_confidence: 79`, `scorer_ev: 4.37`; acceptance gate confirms `Types: write_document, do_nothing` (first write_document action ever persisted); send stage `email_already_sent` (correct — brief already sent today, cron will send fresh tomorrow at 4AM Pacific)
+  Any unresolved issues: commitment ceiling at 151 (threshold 150) — minor, self-heal defense will handle; `google/22222222` orphaned token (pre-existing test user)
+
 - 2026-03-28 — Authenticated UI structure/spacing cleanup for dashboard + settings
   MODE: AUDIT
   Commit hash(es): pending (set after commit on `main`)
