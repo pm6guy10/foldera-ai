@@ -480,7 +480,7 @@ function seedPipelineUser(plaintextSignal: string) {
     user_id: TEST_USER_ID,
     goal_text: 'Send the signed permit appeal draft to Alex Morgan before Friday.',
     goal_category: 'project',
-    priority: 5,
+    priority: 1,
     source: 'manual',
     current_priority: true,
   });

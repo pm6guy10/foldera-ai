@@ -332,7 +332,7 @@ function matchGoal(
     const kws = goalKeywords(g.goal_text);
     const matched = kws.filter(kw => lower.includes(kw));
     if (matched.length >= 2 || (matched.length === 1 && kws.length <= 3)) {
-      if (!best || g.priority > best.priority) {
+      if (!best || g.priority < best.priority) {
         best = { text: g.goal_text, priority: g.priority, category: g.goal_category };
       }
     }
@@ -1905,7 +1905,7 @@ function mergeLoops(conn: CrossLoopConnection): ScoredLoop {
 
   // Use the higher-priority goal match
   const matchedGoal = (loopA.matchedGoal && loopB.matchedGoal)
-    ? (loopA.matchedGoal.priority >= loopB.matchedGoal.priority ? loopA.matchedGoal : loopB.matchedGoal)
+    ? (loopA.matchedGoal.priority <= loopB.matchedGoal.priority ? loopA.matchedGoal : loopB.matchedGoal)
     : loopA.matchedGoal ?? loopB.matchedGoal;
 
   // Combined score: max of the two + 10% boost for the cross-loop insight
@@ -2668,13 +2668,12 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       .order('last_interaction', { ascending: true })
       .limit(10),
 
-    // Active goals with priority >= 3 (source fetched for placeholder filtering)
+    // Active goals — P1 = most important, load all priorities
     supabase
       .from('tkg_goals')
       .select('goal_text, priority, goal_category, source')
       .eq('user_id', userId)
-      .gte('priority', 3)
-      .order('priority', { ascending: false })
+      .order('priority', { ascending: true })
       .limit(20),
   ]);
 
@@ -3118,7 +3117,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       continue;
     }
 
-    const stakes = c.matchedGoal ? c.matchedGoal.priority : 1.0;
+    // Priority 1 = most important → highest stakes. Invert: stakes = 6 - priority
+    // P1 → 5.0, P2 → 4.0, P3 → 3.0, P4 → 2.0, P5 → 1.0
+    const stakes = c.matchedGoal ? (6 - c.matchedGoal.priority) : 1.0;
 
     // Specificity multiplier: reward candidates with concrete details, penalize vague ones
     let specificityAdjustedStakes = stakes;
@@ -3512,8 +3513,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Find the highest-gap goal: highest priority with lowest signal count
   let highestGapGoal: { text: string; gapScore: number } | null = null;
   for (const [text, { priority, signalCount }] of goalGapMap) {
-    // Gap score: priority weight * inverse of signal activity
-    const gapScore = priority * (1 / (1 + signalCount));
+    // Gap score: inverted priority weight (P1=5, P5=1) * inverse of signal activity
+    const gapScore = (6 - priority) * (1 / (1 + signalCount));
     if (!highestGapGoal || gapScore > highestGapGoal.gapScore) {
       highestGapGoal = { text, gapScore };
     }

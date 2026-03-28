@@ -305,12 +305,14 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
     .select('goal_text, priority, goal_category, source')
     .eq('user_id', userId)
     .eq('status', 'active')
-    .order('priority', { ascending: false })
-    .limit(10);
+    .order('priority', { ascending: true })
+    .limit(20);
 
   const goals = (goalRows ?? []).filter(
-    (g: { source?: string | null }) => !PLACEHOLDER_GOAL_SOURCES.has((g.source as string) ?? ''),
-  ).slice(0, 5) as Array<{ goal_text: string; priority: number; goal_category: string }>;
+    (g: { source?: string | null; goal_text?: string }) =>
+      !PLACEHOLDER_GOAL_SOURCES.has((g.source as string) ?? '') &&
+      !(g.goal_text ?? '').startsWith('__'),
+  ).slice(0, 8) as Array<{ goal_text: string; priority: number; goal_category: string }>;
 
   if (goals.length === 0) return [];
 
@@ -402,16 +404,16 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
     let gap_level: GoalGapEntry['gap_level'];
     let gap_description: string;
 
-    if (goal.priority >= 4 && count90 <= 5) {
+    if (goal.priority <= 2 && count90 <= 5) {
       gap_level = 'HIGH';
-      gap_description = `Priority ${goal.priority} goal — ${count90} signals in 90 days. Near-zero behavioral footprint.${commitmentCount > 0 ? ` ${commitmentCount} open commitment${commitmentCount !== 1 ? 's' : ''} tracked.` : ''}`;
-    } else if (goal.priority >= 4 && count90 > 5 && actionCount === 0 && !accelerating) {
+      gap_description = `P${goal.priority} goal — ${count90} signals in 90 days. Near-zero behavioral footprint.${commitmentCount > 0 ? ` ${commitmentCount} open commitment${commitmentCount !== 1 ? 's' : ''} tracked.` : ''}`;
+    } else if (goal.priority <= 2 && count90 > 5 && actionCount === 0 && !accelerating) {
       gap_level = 'HIGH';
       gap_description = `${count90} signals (${count30} last 30d) but 0 completed actions. Observing, not executing.${decelerating ? ' Activity declining.' : ''}`;
-    } else if (goal.priority >= 3 && count30 < rate90 * 0.6) {
+    } else if (goal.priority <= 3 && count30 < rate90 * 0.6) {
       gap_level = 'MEDIUM';
       gap_description = `${count30} signals last 30d vs ${Math.round(rate90)} avg/mo — activity declining vs stated priority.`;
-    } else if (accelerating && goal.priority >= 3) {
+    } else if (accelerating && goal.priority <= 3) {
       gap_level = 'LOW';
       gap_description = `${count30} signals last 30d — accelerating. Behavior aligns with priority.`;
     } else {
