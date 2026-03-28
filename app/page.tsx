@@ -712,7 +712,7 @@ function Navigation({ scrolled, isLoggedIn }: NavigationProps) {
     <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${
       scrolled
         ? 'bg-black/80 backdrop-blur-2xl border-b border-white/5 py-4 shadow-2xl'
-        : 'bg-transparent py-8'
+        : 'bg-transparent py-4 md:py-8'
     }`}>
       <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
         <a href="/" className="flex items-center gap-3 group cursor-pointer focus:outline-none">
@@ -730,7 +730,7 @@ function Navigation({ scrolled, isLoggedIn }: NavigationProps) {
 
         <div className="flex items-center gap-6">
           {isLoggedIn ? (
-            <a href="/dashboard" className="px-7 py-3 rounded-full bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+            <a href="/dashboard" className="px-5 md:px-7 py-2.5 md:py-3 rounded-full bg-white text-black text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
               Dashboard <ChevronRight className="w-4 h-4" />
             </a>
           ) : (
@@ -738,7 +738,7 @@ function Navigation({ scrolled, isLoggedIn }: NavigationProps) {
               <a href="/login" className="hidden sm:block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
                 Sign in
               </a>
-            <a href="/start" className="px-7 py-3 rounded-full bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+            <a href="/start" className="px-5 md:px-7 py-2.5 md:py-3 rounded-full bg-white text-black text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                 Get started free <ChevronRight className="w-4 h-4" />
               </a>
             </>
