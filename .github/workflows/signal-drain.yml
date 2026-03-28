@@ -14,9 +14,9 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          URL="https://www.foldera.ai/api/cron/process-unprocessed-signals?maxSignals=5"
-          MAX_ITERATIONS=20
-          SLEEP_BETWEEN=5
+          URL="https://www.foldera.ai/api/cron/process-unprocessed-signals?maxSignals=10"
+          MAX_ITERATIONS=30
+          SLEEP_BETWEEN=3
           total_processed=0
 
           for i in $(seq 1 $MAX_ITERATIONS); do

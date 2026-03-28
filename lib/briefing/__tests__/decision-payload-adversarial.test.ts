@@ -39,10 +39,9 @@ const emptyResult = { data: [], error: null };
 
 function makeLimitQuery(table: string) {
   // Return a qualifying received signal for tkg_signals so the discrepancy gate passes:
-  // - hasRealThread: supporting_signals.length > 0
-  // - hasNoReply: avoidance_observations detects received email with no reply
-  // - meetsTimeThreshold: 72h > 48h
+  // - hasRealThread: supporting_signals.length > 0 (OR tiedToOutcome)
   // - tiedToOutcome: set by winner.matchedGoal in buildWinner()
+  // Only hard-block condition: no_thread AND no_outcome (both missing)
   const result = table === 'tkg_signals' ? signalQueryResult : emptyResult;
   return {
     eq() { return this; },
@@ -224,10 +223,9 @@ describe('TEST A — Hostile action drift', () => {
     const { generateDirective } = await import('../generator');
     const result = await generateDirective('user-1', { dryRun: true });
 
-    // INVARIANT: discrepancy gate forces send_message regardless of scorer suggestion.
-    // The scorer said write_document, but the gate's final authority overrides it.
-    // The LLM returned send_message which happens to match the gate — no drift logged.
-    expect(result.action_type).toBe('send_message');
+    // INVARIANT: discrepancy gate preserves scorer's recommended_action (write_document).
+    // LLM tried to override to send_message — that's drift, canonical wins.
+    expect(result.action_type).toBe('write_document');
   });
 });
 
@@ -368,20 +366,20 @@ describe('TEST C — Renderer-only contract', () => {
     const { generateDirective } = await import('../generator');
     const result = await generateDirective('user-1', { dryRun: true });
 
-    // INVARIANT: discrepancy gate forces send_message regardless of scorer suggestion.
-    // Scorer said write_document, LLM returned write_document, but gate overrides to send_message.
-    // Drift IS logged: canonical=send_message, llm_attempted=write_document.
-    expect(result.action_type).toBe('send_message');
+    // INVARIANT: discrepancy gate preserves scorer's recommended_action when no hard block.
+    // Scorer said write_document, LLM returned write_document, no hard blocks → write_document flows through.
+    // No drift because canonical matches LLM.
+    expect(result.action_type).toBe('write_document');
 
-    // directive_generated log must show gate's canonical action (send_message), not scorer's (write_document)
+    // directive_generated log must show scorer's canonical action (write_document)
     const genCalls = mockLogStructuredEvent.mock.calls.filter(
       (c: unknown[]) => (c[0] as Record<string, unknown>).event === 'directive_generated',
     );
     expect(genCalls.length).toBe(1);
     expect((genCalls[0][0] as Record<string, unknown>).details).toEqual(
       expect.objectContaining({
-        canonical_action: 'send_message',
-        action_drift: true,
+        canonical_action: 'write_document',
+        action_drift: false,
       }),
     );
   });

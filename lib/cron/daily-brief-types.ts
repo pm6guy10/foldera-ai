@@ -57,6 +57,9 @@ export interface DailyBriefOrchestrationResult {
 export interface DailyBriefSignalWindowOptions {
   signalCreatedAtGte?: string;
   userIds?: string[];
+  /** When true, skip the stale-signal backlog gate so generation proceeds
+   *  even when unprocessed signals remain.  Used for manual "Generate Now". */
+  skipStaleGate?: boolean;
 }
 
 export interface SafeDailyBriefStageStatus {

@@ -733,7 +733,7 @@ async function runSignalProcessingForUser(
       route_budget_exhausted: Date.now() >= deadline,
     };
 
-    if (staleAfter >= 10) {
+    if (staleAfter >= 10 && !options.skipStaleGate) {
       return {
         code: 'stale_signal_backlog_remaining',
         detail: `${staleAfter} unprocessed signals older than 24 hours remained after the signal-processing budget.`,

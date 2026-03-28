@@ -787,9 +787,9 @@ function buildDecisionPayload(
   if (recommended_action === 'do_nothing') readiness_state = 'NO_SEND';
 
   // -----------------------------------------------------------------------
-  // Discrepancy hard filters — FINAL AUTHORITY over readiness + action.
-  // All four conditions must be true or NO_SEND is forced.
-  // The LLM must not decide whether to act. This gate does.
+  // Discrepancy gate — advisory filters on thread quality.
+  // Hard block only on no_thread + no_outcome (both missing = no basis).
+  // Other conditions are soft signals that lower confidence, not hard blocks.
   // -----------------------------------------------------------------------
 
   // 1. Real thread exists (past signals only — future-dated calendar events are excluded)
@@ -803,29 +803,47 @@ function buildDecisionPayload(
     (o) => o.type === 'no_reply_sent',
   ) ?? false;
 
-  // 3. ≥ 48 hours elapsed since last signal in thread (past signals only)
+  // 3. Hours elapsed since last signal in thread (past signals only)
   let hoursSinceLast: number | null = null;
   if (pastSignals.length > 0) {
     const last = pastSignals[pastSignals.length - 1];
     hoursSinceLast = (Date.now() - new Date(last.occurred_at).getTime()) / 3600000;
   }
-  const meetsTimeThreshold = hoursSinceLast !== null && hoursSinceLast >= 48;
+  const meetsTimeThreshold = hoursSinceLast !== null && hoursSinceLast >= 24;
 
   // 4. Candidate is tied to a real outcome (matched goal present)
   const tiedToOutcome = ctx.candidate_goal !== null;
 
-  if (!hasRealThread) blocking_reasons.push('no_thread');
-  if (!hasNoReply) blocking_reasons.push('already_replied');
-  if (!meetsTimeThreshold) blocking_reasons.push(`too_soon_${Math.round(hoursSinceLast ?? 0)}h`);
-  if (!tiedToOutcome) blocking_reasons.push('no_outcome');
+  // Hard block: no thread AND no goal = no basis to act at all
+  if (!hasRealThread && !tiedToOutcome) {
+    blocking_reasons.push('no_thread_no_outcome');
+  }
 
-  // Final override — discrepancy gate is authoritative over scorer suggestion
-  if (blocking_reasons.length > 0) {
+  // Log soft signals for diagnostics (NOT in blocking_reasons — that array
+  // feeds validateDecisionPayload which hard-blocks on any entry)
+  const softSignals: string[] = [];
+  if (!hasRealThread && tiedToOutcome) softSignals.push('no_thread_but_goal_anchored');
+  if (!meetsTimeThreshold && hasRealThread) softSignals.push(`recent_activity_${Math.round(hoursSinceLast ?? 0)}h`);
+  if (!hasNoReply && hasRealThread) softSignals.push('user_already_replied');
+  if (softSignals.length > 0) {
+    logStructuredEvent({
+      event: 'discrepancy_soft_signals', level: 'info', userId: 'system',
+      artifactType: null, generationStatus: 'soft_signal',
+      details: { scope: 'discrepancy_gate', signals: softSignals, hoursSinceLast, winner_id: winner.id },
+    });
+  }
+
+  const hardBlocked = blocking_reasons.length > 0;
+  if (hardBlocked) {
     readiness_state = 'NO_SEND';
-    recommended_action = 'do_nothing'; // triggers validateDecisionPayload block
+    recommended_action = 'do_nothing';
   } else {
     readiness_state = 'SEND';
-    recommended_action = 'send_message'; // force email-only: only discrepancy-qualifying threads produce a directive
+    // If scorer suggested a non-contact action (write_document, schedule_block),
+    // preserve it instead of forcing send_message
+    if (recommended_action === 'do_nothing') {
+      recommended_action = 'send_message';
+    }
   }
 
   return {
@@ -1849,7 +1867,6 @@ function isUseful(output: { artifact: string; evidence: string; action: string }
     'just checking in',
     'touching base',
     'wanted to reach out',
-    'following up',
   ];
 
   if (banned.some((p) => output.artifact.toLowerCase().includes(p))) {

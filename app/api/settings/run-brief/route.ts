@@ -87,6 +87,7 @@ export async function POST(request: Request) {
     const { result: dailyBrief, sendFallbackAttempted } = await runBriefLifecycle({
       userIds: [userId],
       ensureSend: true,
+      skipStaleGate: true,
     });
 
     const ok = dailyBrief.ok && syncMicrosoftResult.ok && syncGoogleResult.ok;

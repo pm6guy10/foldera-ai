@@ -3131,9 +3131,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     const specificitySignals = [hasEntityReference, hasEmail, hasPhone, hasDate].filter(Boolean).length;
 
     if (words.length < 10 && specificitySignals === 0) {
-      // Vague candidates with no concrete details are almost certainly
-      // "things the user already knows" — penalize hard in analyst mode
-      specificityAdjustedStakes = stakes * 0.25;
+      // Vague candidates with no concrete details get a moderate penalty
+      // but not a kill shot — short descriptions can still be actionable
+      specificityAdjustedStakes = stakes * 0.5;
     } else if (specificitySignals >= 2) {
       // Candidates with multiple concrete signals (email + date, entity + date)
       // are more likely to contain hidden insights — boost aggressively
