@@ -54,7 +54,7 @@ export async function GET(request: Request) {
       .limit(20);
 
     if (error) {
-      throw error;
+      throw new Error(error.message ?? JSON.stringify(error));
     }
 
     // Build context greeting (runs even if no action, for empty state)

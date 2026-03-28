@@ -3,6 +3,14 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 
+/** Standard UUID v4 format check (also accepts nil UUID). */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Returns true when the string is a syntactically valid UUID. */
+export function isValidUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
 /**
  * Constant-time Bearer token comparison.
  * Prevents timing-based brute-force attacks on CRON_SECRET.
@@ -24,6 +32,13 @@ export async function resolveUser(
 ): Promise<{ userId: string } | NextResponse> {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Guard against corrupted/non-UUID session IDs (e.g. "test-user-..." from bots)
+  // that would cause Postgres "invalid input syntax for type uuid" errors.
+  if (!isValidUuid(session.user.id)) {
+    console.error(`[resolve-user] invalid UUID in session: ${session.user.id}`);
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

@@ -134,7 +134,21 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - **Unit tests** (`decision-payload.test.ts`): 15 tests covering payload validation (SEND passes, NO_SEND/INSUFFICIENT blocks, do_nothing blocks, stale blocks, empty facts blocks, multiple errors) and action drift invariant. All pass.
 - **Full suite**: 32 test files, 226 tests. Build clean.
 
+### DONE (March 28) — Signal backlog drain + Sentry fixes + Supabase hardening
+- **Signal backlog drain**: 1,372 unprocessed email signals (gmail/outlook/outlook_calendar) accumulated because nightly-ops 60s Vercel Hobby timeout killed processing before it could finish. Created `scripts/drain-backlog.sh` and GitHub Actions cron (`.github/workflows/signal-drain.yml`, every 2h, 20 iterations x 5 signals) to process backlog independently. Drain in progress — encryption key confirmed working (not a key mismatch).
+- **Sentry: invalid UUID guard**: `test-user-00000000-...` string was reaching Postgres as a UUID. Added `isValidUuid()` in `lib/auth/resolve-user.ts` + `app/api/onboard/check/route.ts`. Returns 401 instead of crashing.
+- **Sentry: [object Object] in conviction/latest**: Supabase `PostgrestError` (plain object) thrown raw. Wrapped in `new Error(error.message ?? JSON.stringify(error))`.
+- **Sentry: tkg_commitments status_check**: Row with `status='completed'` (invalid) from before constraint was added. No bad rows remain — constraint blocked insertion. One-time, resolved.
+- **Supabase RLS**: Enabled on `tkg_constraints` + added `service_role_all` policy.
+- **Duplicate index**: Dropped `idx_api_usage_daily` (identical to `idx_api_usage_user_date`).
+- **Function search_path**: Set `search_path = ''` on `get_auth_user_id_by_email`.
+- **Performance indexes**: Created `idx_tkg_signals_user_processed_occurred (user_id, processed, occurred_at DESC)` and `idx_tkg_signals_user_created (user_id, created_at)`. Top query (670ms avg) should drop significantly.
+- **MFA**: TOTP already enabled. SMS MFA requires Supabase Pro — skipped.
+- **Leaked password protection**: Requires Supabase dashboard toggle — noted for manual action.
+- Migration file: `supabase/migrations/20260328000001_security_and_perf_fixes.sql` (all applied to production).
+
 ### OPEN (Priority order)
+- Enable leaked password protection (Supabase Auth dashboard toggle)
 - Trigger production run and confirm canonical action_type persists in tkg_actions row (not do_nothing)
 - Blog formatting fix (prose typography, Codex queued)
 - Brandon reconnects Google with all scopes
