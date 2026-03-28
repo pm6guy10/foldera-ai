@@ -224,7 +224,7 @@ function LiveProofStrip() {
 
   return (
     <div
-      className="w-full max-w-2xl mt-5 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-sm px-4 sm:px-5 py-3 text-left shadow-[inset_0_0_24px_rgba(6,182,212,0.06)]"
+      className="w-full max-w-2xl mt-4 md:mt-5 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-sm px-4 sm:px-5 py-3 text-left shadow-[inset_0_0_24px_rgba(6,182,212,0.06)]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -249,20 +249,20 @@ function LiveProofStrip() {
 // ============================================================================
 function SignalEngineHero() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-6 pt-28 pb-20 text-center relative z-10 flex flex-col items-center">
+    <div className="w-full max-w-6xl mx-auto px-6 pt-20 md:pt-28 pb-12 md:pb-20 text-center relative z-10 flex flex-col items-center">
       {/* Headlines & CTA */}
       <Reveal alwaysVisible>
-        <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
+        <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] mb-4 md:mb-6">
           A model of you. One move a day.
         </div>
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-5 leading-[1.08]">
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-4 md:mb-5 leading-[1.08]">
           You missed it.<br className="hidden md:block" /> Foldera didn’t.
         </h1>
-        <p className="text-base md:text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed mb-8">
+        <p className="text-base md:text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed mb-5 md:mb-8">
           Your inbox isn&apos;t random. There&apos;s a pattern in what slips, stalls, and gets ignored. Foldera finds it, picks what matters, and hands it back finished.
         </p>
-        <p className="text-sm text-zinc-600 mb-8 -mt-4">No credit card required</p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <p className="text-sm text-zinc-600 mb-5 md:mb-8 -mt-2 md:-mt-4">No credit card required</p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
           <a
             href="/start"
             className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
@@ -274,7 +274,7 @@ function SignalEngineHero() {
       </Reveal>
 
       {/* The Mechanism: inputs → convergence → directive */}
-      <div className="w-full mt-10 md:mt-14 relative flex flex-col items-center">
+      <div className="w-full mt-6 md:mt-14 relative flex flex-col items-center">
         {/* Background Glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] h-[440px] bg-cyan-500/[0.025] blur-[140px] rounded-full pointer-events-none z-0" />
 
@@ -398,7 +398,7 @@ function ScenarioDemos() {
 
   return (
     <div className="w-full max-w-6xl mx-auto relative z-10 px-4 sm:px-6">
-      <div className={`relative w-full h-[430px] sm:h-[470px] md:h-auto md:aspect-[21/10] rounded-[2rem] bg-black/40 backdrop-blur-3xl border transition-all duration-1000 overflow-hidden shadow-2xl ${
+      <div className={`relative w-full h-[380px] sm:h-[470px] md:h-auto md:aspect-[21/10] rounded-[2rem] bg-black/40 backdrop-blur-3xl border transition-all duration-1000 overflow-hidden shadow-2xl ${
         isProcessing ? 'border-cyan-500/45 shadow-[0_0_80px_-25px_rgba(6,182,212,0.32)]' : 'border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,1)]'
       }`}
       onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null; }}
@@ -410,7 +410,7 @@ function ScenarioDemos() {
         if (deltaX > 0) showPrev();
       }}>
         {/* Window chrome */}
-        <div className="absolute top-0 left-0 w-full h-11 md:h-12 bg-white/[0.02] border-b border-white/5 z-40 flex items-center px-3 md:px-4 backdrop-blur-xl">
+        <div className="absolute top-0 left-0 w-full h-10 md:h-12 bg-white/[0.02] border-b border-white/5 z-40 flex items-center px-3 md:px-4 backdrop-blur-xl">
           <div className="flex gap-2">
             <div className="w-3 h-3 rounded-full bg-zinc-700/50" />
             <div className="w-3 h-3 rounded-full bg-zinc-700/50" />
@@ -420,7 +420,7 @@ function ScenarioDemos() {
             <Lock className="w-3 h-3" /> foldera.engine
           </div>
         </div>
-        <div className="absolute top-12 right-3 z-40 md:hidden flex items-center gap-2 px-2.5 py-1 rounded-full border border-cyan-400/25 bg-black/55 text-[9px] text-cyan-300/90 font-black uppercase tracking-[0.16em]">
+        <div className="absolute top-11 right-3 z-40 md:hidden flex items-center gap-2 px-2.5 py-1 rounded-full border border-cyan-400/25 bg-black/55 text-[9px] text-cyan-300/90 font-black uppercase tracking-[0.16em]">
           <span>Swipe</span>
           <span className="text-cyan-400/80">↔</span>
         </div>
@@ -431,7 +431,7 @@ function ScenarioDemos() {
         }`} />
 
         {/* Chaos layer */}
-        <div className={`absolute inset-0 pt-14 md:pt-20 px-4 pb-4 md:p-12 flex flex-col items-center justify-start md:justify-center transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        <div className={`absolute inset-0 pt-11 md:pt-20 px-4 pb-4 md:p-12 flex flex-col items-center justify-start md:justify-center transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           phase === 'chaos' ? 'opacity-100 z-10' : 'opacity-0 blur-xl scale-110 pointer-events-none'
         }`}>
           <div className="w-full max-w-xl relative perspective-1000">
@@ -464,7 +464,7 @@ function ScenarioDemos() {
 
 
         {/* Clarity layer */}
-          <div className={`absolute inset-0 pt-14 md:pt-12 px-4 pb-4 md:p-12 flex items-start md:items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${
+          <div className={`absolute inset-0 pt-11 md:pt-12 px-4 pb-4 md:p-12 flex items-start md:items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${
             phase === 'clarity' ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'
           }`}>
           <div className="w-full max-w-lg rounded-[1.5rem] md:rounded-[2rem] bg-zinc-950/90 backdrop-blur-2xl border border-cyan-400/30 overflow-hidden shadow-[0_44px_100px_-20px_rgba(0,0,0,1),_0_0_40px_rgba(6,182,212,0.14)] ring-1 ring-cyan-300/15">
@@ -831,10 +831,10 @@ export default function App() {
       </section>
 
       {/* ── SCENARIO DEMOS — "with a month of your data" ── */}
-      <section className="py-28 md:py-32 relative bg-[#07070c] border-t border-white/5 overflow-hidden">
+      <section className="py-20 md:py-32 relative bg-[#07070c] border-t border-white/5 overflow-hidden">
         <AmbientGrid />
         <div className="max-w-6xl mx-auto relative z-10">
-          <Reveal className="text-center mb-14 md:mb-16 px-6">
+          <Reveal className="text-center mb-8 md:mb-16 px-6">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white mb-6">
               One move changes the outcome.<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-cyan-400">
