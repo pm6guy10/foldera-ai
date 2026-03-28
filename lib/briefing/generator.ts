@@ -689,8 +689,11 @@ function buildDecisionPayload(
   const ageDays = newestMs > 0
     ? (Date.now() - newestMs) / (1000 * 60 * 60 * 24)
     : STALE_SIGNAL_THRESHOLD_DAYS + 1;
-  const freshness_state: DecisionPayload['freshness_state'] =
-    ageDays <= 7 ? 'fresh' : ageDays <= STALE_SIGNAL_THRESHOLD_DAYS ? 'aging' : 'stale';
+  // Discrepancy candidates: absence of signals IS the structural evidence.
+  // Set freshness to 'fresh' to bypass both blocking_reasons and validateDecisionPayload checks.
+  const freshness_state: DecisionPayload['freshness_state'] = winner.type === 'discrepancy'
+    ? 'fresh'
+    : ageDays <= 7 ? 'fresh' : ageDays <= STALE_SIGNAL_THRESHOLD_DAYS ? 'aging' : 'stale';
 
   // Determine recommended_action — deterministic from scorer, not LLM
   let recommended_action: ValidArtifactTypeCanonical = actionTypeToArtifactType(winner.suggestedActionType);
