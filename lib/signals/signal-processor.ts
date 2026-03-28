@@ -409,6 +409,14 @@ const NON_COMMITMENT_PATTERNS = [
   /\bsubmit\s+(?:your\s+)?(?:application|resume|cv|references?)\b/i,
   /\bcomplete\s+(?:your\s+)?(?:background\s+check|onboarding|new\s+hire|paperwork|i-?9|w-?4)\b/i,
   /\bprovide\s+(?:your\s+)?(?:references?|supervisor\s+references?|two\s+references?|three\s+references?)\b/i,
+  // Automated financial credit / reward notifications (zero-agency: no action needed)
+  /\b(?:credit\s+(?:has\s+been\s+)?applied|cash\s*back\s+(?:credited|earned|applied)|reward\s*(?:credit|points?\s+(?:earned|applied|credited))|bonus\s+(?:miles?|points?|cash)\s+(?:earned|applied|credited)|you(?:['']?ve)?\s+(?:been\s+)?(?:awarded|credited)\s+\$?[\d])/i,
+  // Transaction / payment confirmation (informational, no user action needed)
+  /\b(?:payment\s+(?:has\s+been\s+)?(?:confirmed|received|processed|successful|posted)|transaction\s+(?:has\s+been\s+)?(?:confirmed|complete|posted|processed)|direct\s+deposit\s+(?:received|posted)|wire\s+(?:transfer\s+)?(?:received|processed|complete)|deposit\s+(?:has\s+been\s+)?(?:posted|confirmed|credited))\b/i,
+  // Order / booking / subscription confirmations (zero-agency)
+  /\b(?:order\s+(?:has\s+been\s+)?(?:confirmed|placed|shipped|delivered|is\s+on\s+its\s+way)|booking\s+(?:is\s+)?confirmed|reservation\s+(?:is\s+)?confirmed|subscription\s+(?:has\s+been\s+)?(?:renewed|confirmed|activated|reactivated))\b/i,
+  // Generic "you will be notified" / passive receipt messages (zero-agency)
+  /\b(?:you\s+will\s+(?:be\s+notified|receive\s+an?\s+email)|you(?:['']?ve)?\s+received\s+(?:a|your)\s+(?:confirmation|receipt|statement))\b/i,
 ];
 
 export function isNonCommitment(description: string): boolean {

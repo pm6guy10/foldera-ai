@@ -2680,6 +2680,34 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   ]);
 
   const commitments = commitmentsRes.data ?? [];
+
+  // Near-duplicate dedup: commitments are sometimes extracted multiple times
+  // from follow-up emails about the same underlying task. Group by the first
+  // 6 meaningful words of the description; keep only the highest-risk_score
+  // variant per group so the scored pool doesn't waste slots on repetition.
+  {
+    const STOP = new Set(['the', 'a', 'an', 'to', 'for', 'and', 'or', 'in', 'on', 'at', 'of', 'my', 'your', 'with', 'i', 'will']);
+    const dedupMap = new Map<string, typeof commitments[0]>();
+    for (const c of commitments) {
+      const key = (c.description as string ?? '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((w: string) => w.length > 1 && !STOP.has(w))
+        .slice(0, 6)
+        .join(' ');
+      const existing = dedupMap.get(key);
+      if (!existing || ((c.risk_score as number) ?? 0) > ((existing.risk_score as number) ?? 0)) {
+        dedupMap.set(key, c);
+      }
+    }
+    const dupeCount = commitments.length - dedupMap.size;
+    if (dupeCount > 0) {
+      console.log(JSON.stringify({ event: 'scorer_commitment_dedup', before: commitments.length, after: dedupMap.size, dupes: dupeCount }));
+      commitments.splice(0, commitments.length, ...[...dedupMap.values()]);
+    }
+  }
+
   let scoringDecryptSkips = 0;
   const signals = (signalsRes.data ?? [])
     .map((signal: any) => {
@@ -2866,6 +2894,26 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       continue;
     }
 
+    // Skip expired/past-due commitments that have no valid next step.
+    // A commitment whose deadline passed more than 30 days ago is either
+    // abandoned or was handled informally. It cannot produce a valid
+    // SEND or WRITE_DOCUMENT action without a clear current trigger.
+    const deadlineDate = (c.due_at as string | null) || (c.implied_due_at as string | null);
+    if (deadlineDate) {
+      const daysOverdue = (Date.now() - new Date(deadlineDate).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysOverdue > 30) {
+        logStructuredEvent({
+          event: 'stale_overdue_commitment_filtered',
+          level: 'info',
+          userId,
+          artifactType: null,
+          generationStatus: 'filtered',
+          details: { scope: 'scorer', commitment_id: c.id, days_overdue: Math.round(daysOverdue), description: (c.description as string).slice(0, 80) },
+        });
+        continue;
+      }
+    }
+
     const text = `${c.description}${sourceCtx ? ' — ' + sourceCtx : ''}`;
     const mg = matchGoal(text, goals);
     const actionType = inferActionType(text, 'commitment');
@@ -2980,6 +3028,12 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     /\b(?:unauthorized|suspicious)\s+(?:login|access|sign.?in|activity)\b/i,
     // Foldera self-referential (backup for the explicit filter above)
     /\bFoldera\s+(?:Directive|directive|system)\b/i,
+    // Automated financial notifications (credit applied, payment confirmed — zero-agency)
+    /\b(?:credit\s+(?:has\s+been\s+)?applied|cash\s*back\s+(?:credited|earned)|reward\s*(?:credit|points?\s+(?:earned|credited))|payment\s+(?:has\s+been\s+)?(?:confirmed|received|processed)|transaction\s+(?:confirmed|complete|posted)|direct\s+deposit\s+(?:received|posted)|deposit\s+(?:posted|confirmed|credited)|wire\s+(?:transfer\s+)?(?:received|complete))\b/i,
+    // Zero-agency order / booking / subscription confirmations
+    /\b(?:order\s+(?:confirmed|shipped|delivered|is\s+on\s+its\s+way|has\s+been\s+placed)|booking\s+(?:is\s+)?confirmed|reservation\s+(?:is\s+)?confirmed|subscription\s+(?:renewed|confirmed|activated))\b/i,
+    // Account / credit score informational updates (no action produces a SEND or WRITE)
+    /\b(?:account\s+(?:statement|balance)\s+(?:is\s+)?(?:ready|available)|credit\s+(?:score|report)\s+(?:updated|available|changed)|your\s+statement\s+(?:is\s+)?(?:ready|available))\b/i,
   ];
 
   const preScoringCount = candidates.length;

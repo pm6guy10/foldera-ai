@@ -190,6 +190,33 @@ describe('isNonCommitment — confirms junk descriptions are blocked', () => {
     expect(isNonCommitment('Follow up with the client about the Q2 budget proposal')).toBe(false);
     expect(isNonCommitment('Schedule a kickoff call with the new engineering team')).toBe(false);
   });
+
+  // ---- New: financial notifications ----
+  it('blocks automated financial credit / reward notifications', () => {
+    expect(isNonCommitment('Cash back credited to your account')).toBe(true);
+    expect(isNonCommitment('Your reward credit has been applied')).toBe(true);
+    expect(isNonCommitment('Bonus points earned on your last purchase')).toBe(true);
+  });
+
+  it('blocks payment / transaction confirmations (zero-agency)', () => {
+    expect(isNonCommitment('Your payment has been confirmed')).toBe(true);
+    expect(isNonCommitment('Transaction has been confirmed — thank you')).toBe(true);
+    expect(isNonCommitment('Direct deposit received for pay period ending March 28')).toBe(true);
+    expect(isNonCommitment('Wire transfer received and posted to your account')).toBe(true);
+  });
+
+  it('blocks order and subscription confirmations (zero-agency)', () => {
+    expect(isNonCommitment('Your order has been confirmed and is on its way')).toBe(true);
+    expect(isNonCommitment('Your subscription has been renewed automatically')).toBe(true);
+    expect(isNonCommitment('Your booking is confirmed for April 4')).toBe(true);
+  });
+
+  it('does NOT block real financial action items', () => {
+    // These require the user to DO something — they should not be filtered
+    expect(isNonCommitment('Send invoice to Sarah for March deliverables')).toBe(false);
+    expect(isNonCommitment('Reply to Fidelity about the rollover transfer')).toBe(false);
+    expect(isNonCommitment('Review the loan terms and confirm acceptance with Marcus')).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
