@@ -219,7 +219,7 @@ function SignalEngineHero() {
             href="/start"
             className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
           >
-            Get started <ChevronRight className="w-4 h-4" />
+            Get started free <ChevronRight className="w-4 h-4" />
           </a>
         </div>
       </Reveal>
@@ -841,9 +841,13 @@ export default function App() {
                 <Lock className="w-3.5 h-3.5" aria-hidden="true" /> AES-256
               </div>
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 text-center md:text-right" suppressHydrationWarning>
-              &copy; {new Date().getFullYear()} Foldera AI &bull; Built for execution
-            </p>
+            <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 text-center md:text-right">
+              <a href="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</a>
+              <a href="/terms" className="hover:text-zinc-400 transition-colors">Terms</a>
+              <p suppressHydrationWarning>
+                &copy; {new Date().getFullYear()} Foldera AI &bull; Built for execution
+              </p>
+            </div>
           </div>
         </div>
       </footer>
