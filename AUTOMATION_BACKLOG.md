@@ -1,22 +1,29 @@
 # AUTOMATION BACKLOG
 
-### P0 — GENERATOR CONFIDENCE PROMPT CALIBRATION (next session, 2026-03-28)
-**The brain loads data but the LLM returns confidence 0 every time.**
+### P0 — DISCREPANCY DETECTOR: GENERATOR FRESHNESS GATE EXEMPTION (next session)
 
-Production evidence (nightly-ops 2026-03-28):
-- 4 candidates scored, scorer_ev = 2.03
-- generator_confidence = 0 → "directive confidence is below the send threshold"
-- Data expansion deployed (200 signals, 90d context, 30 entities, type-diverse evidence) — no effect on LLM confidence
+**Status:** Discrepancy detector is live (`fab67f4`). Real production candidates produced and survived scorer gates. Blocked at the generator by two issues.
 
-Root cause: the generator prompt demands multi-signal convergence, cross-domain corroboration, and "something the user couldn't generate themselves." With the current signal density (mostly email, some calendar), the LLM can't meet that bar and returns 0.
+**Production evidence (nightly-ops 2026-03-28, deploy fab67f4):**
+- scorer_ev = 4.37 (up from ~2.03 in prior sessions)
+- Top 3 candidates are ALL discrepancies — open-loop fallbacks displaced entirely
+- `drift` — "Goal drift: Provide financially for pregnant wife and three children" (P1, zero signal/commitment activity)
+- `exposure` — "Commitment due in 0d: Participate in Global Prayer & Fasting"
+- `risk` — "High-value relationship at risk: krista" (≥15 interactions, silent)
 
-**Fix approach:**
-1. Recalibrate the prompt's confidence scale — 50 should mean "reasonable single-source action", not "multiple domains confirm"
-2. Lower the convergence demand: a single strong email thread with a clear next step IS enough for confidence 60-70
-3. The send threshold is 70. The prompt needs to allow 70+ for well-evidenced single-domain actions
-4. Test by triggering Generate Now and verifying confidence > 0 with a real sendable directive
+**Why they were blocked:**
 
-**Also:** duplicate Vercel deploys — each push triggers 2 builds (GitHub integration + deploy hook). Remove the deploy hook in Vercel settings.
+1. **Freshness gate** (`drift` + `exposure`): generator rejects candidates where `freshness_state = stale` (evidence > 14 days old). For discrepancy candidates, absence of recent signals IS the evidence — the gate makes no sense for structural gaps. Fix: in `lib/briefing/generator.ts`, add `|| winner.type === 'discrepancy'` to bypass the freshness rejection.
+
+2. **Entity suppression false positive** (`risk`): `entity_suppressed:Brandon Kapp` — krista's hydrated relationship context contains "Brandon Kapp" as a co-participant. `selfNameTokens` doesn't have "brandon"+"kapp" in production (OAuth identity_data not returning given_name/family_name for this account). Simplest fix: skip entity suppression entirely when `winner.type === 'discrepancy'` (discrepancy candidates are about structural patterns, not confirmed relationship contacts).
+
+**Fix sequence:**
+1. Generator freshness gate: add `|| winner.type === 'discrepancy'` to the freshness bypass condition
+2. Entity suppression: add `&& winner.type !== 'discrepancy'` to the CONTACT_ACTION_TYPES check
+3. Trigger nightly-ops, confirm a discrepancy candidate reaches the LLM, confirm `generator_confidence > 45`
+4. Read the actual artifact text — is it a genuine discrepancy observation or a renamed task?
+
+**Duplicate Vercel deploys: FIXED** — removed `.github/workflows/deploy.yml` in commit `ec7b333`. Confirmed single deploy per push from `ec7b333` onward.
 
 ### CONVICTION ENGINE — next build (locked 2026-03-26)
 Core insight: Foldera is not a mirror and not a task manager. It is a conviction engine.
