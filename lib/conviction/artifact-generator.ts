@@ -473,6 +473,27 @@ export async function generateArtifact(
     }
   }
 
+  // Fast-path for write_document: build the document from the directive's own
+  // content so null/invalid embedded artifacts cannot reach the fallback LLM call.
+  // fullContext contains the LLM's full insight + WHY NOW analysis; reason is a
+  // one-sentence fallback. Either is sufficient for a valid DocumentArtifact.
+  if (directive.action_type === 'write_document') {
+    const fullCtx = (directive as any).fullContext;
+    const bodyContent =
+      typeof fullCtx === 'string' && fullCtx.trim().length > 20
+        ? fullCtx.trim()
+        : typeof directive.reason === 'string' && directive.reason.trim().length > 10
+          ? directive.reason.trim()
+          : null;
+    if (bodyContent) {
+      return {
+        type: 'document',
+        title: directive.directive.slice(0, 120).replace(/\.$/, '').trim(),
+        content: bodyContent,
+      } as DocumentArtifact;
+    }
+  }
+
   // Load context in parallel
   const [relationships, signals, goals, patterns] = await Promise.all([
     loadRelationshipContext(userId, directive.directive),
