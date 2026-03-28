@@ -557,7 +557,7 @@ function setAnthropicPipelineMocks() {
     }
 
     // New Discrepancy Engine prompt. Returns new output format.
-    if (system.includes('FOLDERA DISCREPANCY ENGINE') || system.includes("You are Foldera's behavioral analyst")) {
+    if (system.includes('FOLDERA ARTIFACT RENDERER') || system.includes('FOLDERA DISCREPANCY ENGINE') || system.includes("You are Foldera's behavioral analyst")) {
       return anthropicResponse({
         action: 'send_message',
         confidence: 82,

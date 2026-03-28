@@ -93,134 +93,63 @@ const EXECUTABLE_ARTIFACT_TYPES: ReadonlySet<string> = new Set([
 // Part 2 — System prompt (execution layer, not advisor)
 // ---------------------------------------------------------------------------
 
-const SYSTEM_PROMPT = `SYSTEM — FOLDERA DISCREPANCY ENGINE (CONVERSION MODE)
+const SYSTEM_PROMPT = `SYSTEM — FOLDERA ARTIFACT RENDERER
 
-Ignore all prior directive generation logic.
+You produce finished artifacts for a personal AI assistant. The scoring system has already
+selected and validated the best candidate. Your job is to render a high-quality artifact.
 
-Objective:
-Produce ONE action that directly increases probability of a real-world outcome (job, deal, approval). No suggestions. Only finished work.
+RULES
 
-NON-NEGOTIABLE RULES
+1. You MUST produce an artifact. The candidate has been validated — do not refuse or decline.
 
-1. Only act on discrepancies, not tasks.
-A discrepancy = mismatch between:
-- stated or implied goal
-- actual behavior
+2. Output must be a finished artifact.
+- Fully written, ready to use
+- No placeholders, no brackets, no TODOs
+- Only use facts from the signals provided
 
-2. Hard filter (must all be true):
-- real thread exists
-- thread opened or engaged
-- no reply sent
-- ≥ 48 hours elapsed
-- thread tied to outcome (job, hiring, deal, approval, money)
+3. No generic content.
+Forbidden openers/phrases:
+- "follow up", "check in", "circle back", "just reaching out"
+- "I hope this email finds you well", "touching base"
+- Any opener not anchored to specific evidence
 
-If any condition fails → output NO_ACTION
+4. Every artifact must include:
+- Explicit context anchor (what thread / when / who)
+- Specific forward motion (decision, next step, or concrete ask)
+- Real names, dates, and details from the signals — never invented
 
-3. No generic directives.
-Forbidden:
-- "follow up"
-- "check in"
-- "circle back"
-- "just reaching out"
-- calendar blocks
-- reminders
-- self-improvement tasks
-
-4. Output must be a finished artifact.
-Specifically:
-- send_message only
-- fully written
-- ready to send
-- no placeholders
-- no brackets
-- no TODOs
-
-5. Message must move the outcome forward.
-It must include:
-- explicit context anchor (what thread / when)
-- specific forward motion (decision, next step, or constraint)
-- specific ask (binary or time-bound)
-
-6. No invention.
-Only use facts from signals. If missing required facts → NO_ACTION
+5. Confidence: rate 0-100 based on evidence quality.
+- 70+ = strong single-source evidence with clear next step
+- 50-69 = reasonable evidence, some inference required
+- Below 50 = thin evidence, action may not be appropriate
 
 ---
 
-INPUT CONTRACT (derived from system state)
+OUTPUT FORMAT
 
-thread = {
-  participants,
-  last_message_timestamp,
-  last_open_timestamp,
-  subject,
-  key_context
-}
-
-user_behavior = {
-  replied: false,
-  time_since_last_message_hours
-}
-
-goal_context = {
-  inferred_outcome_type // job | deal | approval | other
-}
-
----
-
-OUTPUT CONTRACT
-
-If valid discrepancy:
-
+Preferred (Discrepancy Engine):
 {
   "action": "send_message",
   "confidence": 0-100,
-  "reason": "one sentence describing the discrepancy",
+  "reason": "one sentence describing why this action matters now",
   "message": {
-    "to": "...",
+    "to": "real@email.com",
     "subject": "...",
     "body": "..."
   }
 }
 
-If not:
-
-{
-  "action": "NO_ACTION",
-  "reason": "which required condition failed"
-}
-
----
-
-QUALITY BAR (FAIL IF NOT MET)
-
-- Would a real person send this without editing?
-- Does this increase probability of a response?
-- Does this move the decision forward?
-
-If any answer = no → NO_ACTION
-
-// ------------------------------------
-// LEGACY COMPATIBILITY — keep reading
-// The pipeline still parses the following fields if present.
-// If you choose to output the legacy format, include all fields below.
-// Prefer the Discrepancy Engine format above.
-// ------------------------------------
-
-Legacy format (backward-compatible):
+Legacy format (also accepted):
 {
   "insight": "...",
-  "decision": "ACT | HOLD",
-  "directive": "...",
+  "decision": "ACT",
+  "directive": "one sentence describing the action",
   "artifact_type": "send_message|write_document|schedule_block|wait_rationale|do_nothing",
   "artifact": {},
   "why_now": "..."
 }
 
-CRITICAL: Return ONLY a JSON object. No markdown fences, no explanation, no text before or after the JSON. The response must start with { and end with }.
-
-// Note: in the new Discrepancy Engine format, you do NOT output insight/directive/why_now/artifact_type.
-// You output: action, confidence, reason, message.to, message.subject, message.body
-// The legacy fields are shown above only for pipeline compatibility during transition.`;
+CRITICAL: Return ONLY a JSON object. No markdown fences, no explanation, no text before or after the JSON. The response must start with { and end with }.`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1281,21 +1210,15 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   // Convergent analysis + goal-primacy constraint.
   sections.push(
     `CONVERGENT_ANALYSIS:\n` +
-    `You are not a task manager. You are a second brain analyzing someone's life across all domains simultaneously.\n\n` +
-    `The user is intelligent. They have already thought of the obvious moves.\n` +
-    `The only acceptable artifact is one they could not have generated themselves.\n\n` +
-    `Before selecting any artifact type, work through these four questions in order:\n\n` +
+    `You are a second brain. Your job: produce one finished artifact the user can act on today.\n\n` +
+    `The scorer has already selected the best candidate and validated it against the user's goals.\n` +
+    `Your job is NOT to second-guess whether this candidate is worth acting on — it is.\n` +
+    `Your job IS to produce the highest-quality artifact for this specific candidate.\n\n` +
+    `Before writing, check two things:\n\n` +
     `1. ALREADY TRIED — Check ALREADY_SENT_14D and RECENT_ACTIONS_7D below.\n` +
-    `   What has the user already done? Any artifact that the user has already attempted — ` +
-    `even reworded — is disqualified. If your candidate appears in either list, discard it and find another angle.\n\n` +
-    `2. NON-OBVIOUS LEVER — What is the second or third move?\n` +
-    `   Not "follow up with X." The thing you only see if you look across ALL signals at once. ` +
-    `What changes the geometry of the problem rather than nudging it?\n\n` +
-    `3. DOMAIN CROSSING — What does career + financial + relationship combined reveal?\n` +
-    `   The stuck feeling lives at the intersection of domains, not inside one of them. ` +
-    `What is visible only when you hold all three simultaneously?\n\n` +
-    `4. COUNTDOWN NOT YET VISIBLE — What deadline or closing window is implied by the situation ` +
-    `but not yet named by the user? Not the date they stated — the one the signals imply.\n\n` +
+    `   If the user already sent something very similar, find a different angle or new information to include.\n\n` +
+    `2. SPECIFICITY — Ground every sentence in concrete facts from the signals: names, dates, subjects, amounts.\n` +
+    `   Generic advice is forbidden. Every artifact must reference specific evidence.\n\n` +
     `RULE — TWO PATHS:\n\n` +
     `PATH A: CANDIDATE_CLASS is "commitment"\n` +
     `This is work the user already committed to. Produce the finished artifact. ` +
@@ -1304,9 +1227,10 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     `write_document must still be one decisive finished product — not an outline, not a plan with options, not notes. ` +
     `Do the work.\n\n` +
     `PATH B: CANDIDATE_CLASS is anything else\n` +
-    `Apply the four questions above. You may only fire if you can complete: ` +
-    `"This moves [user] toward [specific goal] because [specific non-obvious gap] means [specific action] is right on [today's date]." ` +
-    `If you cannot complete that sentence, output wait_rationale — but only with a specific behavioral insight the user genuinely didn't know, not a status report.`,
+    `Produce the artifact that moves the user closest to the matched goal. ` +
+    `A single strong email thread IS enough evidence. You do not need cross-domain convergence. ` +
+    `If the signals show a clear next step, produce it. If the signals show a gap the user hasn't addressed, name it and close it.\n\n` +
+    `OUTPUT RULE: You MUST output decision "ACT". HOLD is not available. The candidate has already been validated.`,
   );
 
   // Avoidance observations — pre-computed facts, not inferences.
@@ -2936,11 +2860,9 @@ async function generatePayload(
 
 Discrepancy Engine format (preferred):
 { "action": "send_message", "confidence": 0-100, "reason": "...", "message": { "to": "real@email.com", "subject": "...", "body": "..." } }
-OR if no qualifying discrepancy:
-{ "action": "NO_ACTION", "reason": "which condition failed" }
 
 Legacy format (if you must):
-Valid artifact_type values: ${validRetryTypes}.
+Valid artifact_type values: ${validRetryTypes}. decision MUST be "ACT".
 Do NOT use decision_frame, research_brief, drafted_email, document, or calendar_event.
 
 Do NOT use bracket placeholders like [Name], [Company], [Date].
@@ -3333,23 +3255,16 @@ export async function generateDirective(
       });
     }
 
-    // Gate: explicit HOLD from LLM (model found nothing worth rendering).
-    // This is the ONLY LLM-driven gate — it can decline to render, but not change the action.
+    // Log if LLM attempted HOLD — but do NOT gate on it.
+    // DecisionPayload is the authority. If the payload said SEND, the LLM must render.
+    // The LLM's HOLD was the #1 cause of confidence=0: the demanding prompt made the
+    // LLM default to HOLD, hardcoding confidence to 0 and bypassing the computed confidence.
     if (payload.decision === 'HOLD') {
-      const holdInsight = payload.insight?.trim() ?? '';
       logStructuredEvent({
-        event: 'generation_hold', level: 'info', userId,
-        artifactType: canonicalAction, generationStatus: 'analyst_hold_decision',
-        details: { scope: 'generator', insight: holdInsight },
+        event: 'llm_hold_overridden', level: 'info', userId,
+        artifactType: canonicalAction, generationStatus: 'hold_overridden_by_payload',
+        details: { scope: 'generator', insight: payload.insight?.trim() ?? '' },
       });
-      return {
-        directive: GENERATION_FAILED_SENTINEL,
-        action_type: 'do_nothing',
-        confidence: 0,
-        reason: holdInsight || 'No contradiction, pattern shift, or timing edge found today.',
-        evidence: [],
-        generationLog: buildNoSendGenerationLog('analyst_hold_decision', 'generation', scored.candidateDiscovery),
-      };
     }
 
     // Consecutive duplicate suppression
