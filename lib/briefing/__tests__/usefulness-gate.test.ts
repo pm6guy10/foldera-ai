@@ -294,7 +294,7 @@ describe('usefulness gate — execution proof', () => {
     // THIS is the case that isUseful uniquely catches
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        event: 'usefulness_rejected',
+        event: 'candidate_blocked',
         details: expect.objectContaining({ reason: 'generic_language' }),
       })
     );

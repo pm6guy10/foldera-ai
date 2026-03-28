@@ -263,10 +263,11 @@ describe('TEST B — Hostile false-positive render (blocked payload)', () => {
     expect(result.action_type).toBe('do_nothing');
     expect(result.confidence).toBe(0);
 
-    // DecisionPayload validation must have fired
+    // DecisionPayload validation must have fired — in the candidate loop the event is
+    // 'candidate_blocked' (not 'generation_skipped') when DecisionPayload validation fails.
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        event: 'generation_skipped',
+        event: 'candidate_blocked',
         generationStatus: 'decision_payload_blocked',
       }),
     );

@@ -214,9 +214,9 @@ describe('generateDirective runtime failures', () => {
     const { generateDirective } = await import('../generator');
     const directive = await generateDirective('user-1', { dryRun: true });
 
-    // Goal-primacy gate: LLM failure → emptyDirective (sentinel), no wait_rationale delivered
+    // Candidate fallback: LLM failure → candidate blocked → all candidates exhausted → emptyDirective
     expect(directive.directive).toBe('__GENERATION_FAILED__');
-    expect(directive.generationLog?.stage).toBe('generation');
+    expect(directive.generationLog?.stage).toBe('validation');
     expect(directive.generationLog?.reason).toContain('credit balance too low');
   });
 
@@ -245,15 +245,9 @@ describe('generateDirective runtime failures', () => {
     const { generateDirective } = await import('../generator');
     await generateDirective('user-1', { dryRun: true });
 
+    // The candidate loop silently skips research when score < 2.0 — no event is emitted,
+    // but researchWinner must NOT have been called.
     expect(mockResearchWinner).not.toHaveBeenCalled();
-    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
-      event: 'researcher_skipped_low_score',
-      generationStatus: 'researcher_skipped',
-      details: expect.objectContaining({
-        winner_score: 1.9,
-        threshold: 2.0,
-      }),
-    }));
   });
 
   it('extracts JSON from prefixed non-json fenced responses and logs the raw payload preview', async () => {
@@ -333,9 +327,13 @@ describe('generateDirective runtime failures', () => {
     const directive = await generateDirective('user-1', { dryRun: true });
 
     expect(directive.action_type).toBe('do_nothing');
-    expect(directive.reason).toContain('already exists in the last 7 days');
+    // When entity suppression blocks all candidates, reason is the "All N candidates blocked"
+    // summary containing "entity_suppressed:<EntityName>".
+    expect(directive.reason).toContain('entity_suppressed');
     expect(anthropicCreate).not.toHaveBeenCalled();
+    // The per-candidate suppression event fires with the entity details.
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_skipped_entity_suppression',
       generationStatus: 'recent_entity_action_suppressed',
       details: expect.objectContaining({
         entity_name: expect.stringContaining('Yadira'),
@@ -367,7 +365,8 @@ describe('generateDirective runtime failures', () => {
     const directive = await generateDirective('user-2', { dryRun: true });
 
     expect(directive.action_type).toBe('do_nothing');
-    expect(directive.reason).toContain('already exists in the last 7 days');
+    // Entity suppression blocks all candidates — reason contains "entity_suppressed:<EntityName>".
+    expect(directive.reason).toContain('entity_suppressed');
     expect(anthropicCreate).not.toHaveBeenCalled();
   });
 

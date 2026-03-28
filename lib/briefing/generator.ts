@@ -492,12 +492,12 @@ async function buildAvoidanceObservations(
  * Returns the final winner plus a competition context string injected into the
  * generation prompt so the LLM knows why this candidate beat the others.
  */
-export function selectFinalWinner(
+export function selectRankedCandidates(
   topCandidates: import('./scorer').ScoredLoop[],
   guardrails: { approvedRecently: RecentActionRow[]; skippedRecently?: RecentSkippedActionRow[] },
-): { winner: import('./scorer').ScoredLoop; competitionContext: string } {
-  if (topCandidates.length === 0) throw new Error('selectFinalWinner: empty candidate list');
-  if (topCandidates.length === 1) return { winner: topCandidates[0], competitionContext: '' };
+): { ranked: Array<{ candidate: import('./scorer').ScoredLoop; note: string; disqualified: boolean; disqualifyReason: string | null }>; competitionContext: string } {
+  if (topCandidates.length === 0) throw new Error('selectRankedCandidates: empty candidate list');
+  if (topCandidates.length === 1) return { ranked: [{ candidate: topCandidates[0], note: 'only candidate', disqualified: false, disqualifyReason: null }], competitionContext: '' };
 
   const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 
@@ -612,9 +612,9 @@ export function selectFinalWinner(
 
   const top = rated[0];
 
-  // Pathological fallback: all disqualified → trust raw scorer
+  // Pathological fallback: all disqualified → still return ranked list so fallback loop can try
   if (top.disqualified) {
-    return { winner: topCandidates[0], competitionContext: '' };
+    return { ranked: rated.map(r => ({ candidate: r.candidate, note: r.note, disqualified: r.disqualified, disqualifyReason: r.disqualifyReason })), competitionContext: '' };
   }
 
   // Build competition context for the generation prompt.
@@ -645,7 +645,16 @@ export function selectFinalWinner(
     lines.join('\n') + '\n' +
     `This context proves why you are generating for this candidate today. Use it to write a specific, grounded artifact — not a generic follow-up.`;
 
-  return { winner: top.candidate, competitionContext };
+  return { ranked: rated.map(r => ({ candidate: r.candidate, note: r.note, disqualified: r.disqualified, disqualifyReason: r.disqualifyReason })), competitionContext };
+}
+
+// Backward-compat wrapper — callers that only need the top pick
+export function selectFinalWinner(
+  topCandidates: import('./scorer').ScoredLoop[],
+  guardrails: { approvedRecently: RecentActionRow[]; skippedRecently?: RecentSkippedActionRow[] },
+): { winner: import('./scorer').ScoredLoop; competitionContext: string } {
+  const { ranked, competitionContext } = selectRankedCandidates(topCandidates, guardrails);
+  return { winner: ranked[0].candidate, competitionContext };
 }
 
 // ---------------------------------------------------------------------------
@@ -709,7 +718,19 @@ function buildDecisionPayload(
   // Build blocking reasons
   const blocking_reasons: string[] = [];
   if (!ctx.has_recent_evidence) blocking_reasons.push('No recent evidence (all signals older than 14 days)');
-  if (ctx.conflicts_with_locked_constraints) blocking_reasons.push('Conflicts with locked constraints');
+  // Constraint violations are ADVISORY pre-LLM, not hard blocks.
+  // The constraint info is in the prompt via ctx.locked_constraints.
+  // Post-LLM validation (validateDirectiveForPersistence) enforces constraints on the final artifact.
+  // Blocking here kills generation based on scorer summary text, which is too aggressive.
+  if (ctx.conflicts_with_locked_constraints) {
+    // Log typed constraint codes for auditability
+    const typedReasons = (ctx.constraint_violation_codes ?? []).map(c => `CONSTRAINT:${c}`).join(', ');
+    logStructuredEvent({
+      event: 'constraint_advisory', level: 'info', userId: 'system',
+      artifactType: null, generationStatus: 'constraint_advisory',
+      details: { scope: 'decision_payload', typed_violations: typedReasons || 'unknown', note: 'Constraint match on scorer text — advisory only' },
+    });
+  }
   if (ctx.already_acted_recently) blocking_reasons.push('Already acted on this topic in the last 7 days');
   if (freshness_state === 'stale') blocking_reasons.push('Evidence is stale');
 
@@ -838,6 +859,7 @@ interface StructuredContext {
   can_execute_without_editing: boolean;
   has_due_date_or_time_anchor: boolean;
   conflicts_with_locked_constraints: boolean;
+  constraint_violation_codes: string[];
   // Enrichment
   researcher_insight: ResearchInsight | null;
   // User identity context (dynamic, from goals)
@@ -1007,6 +1029,7 @@ function buildStructuredContext(
     actionType: winner.suggestedActionType,
   });
   const conflicts_with_locked_constraints = constraintViolations.length > 0;
+  const constraint_violation_codes = constraintViolations.map(v => v.code);
 
   // For commitment candidates, prepend entity name(s) from relationshipContext so the model
   // never has to produce a generic "follow up with [uuid]" directive.
@@ -1043,6 +1066,7 @@ function buildStructuredContext(
     can_execute_without_editing,
     has_due_date_or_time_anchor,
     conflicts_with_locked_constraints,
+    constraint_violation_codes,
     researcher_insight: insight,
     user_identity_context: buildUserIdentityContext(userGoals ?? []),
     goal_gap_analysis: goalGapAnalysis ?? [],
@@ -1168,37 +1192,8 @@ ${lines.join('\n')}
 // Part 4 — Evidence gating (before LLM call)
 // ---------------------------------------------------------------------------
 
-interface EligibilityResult {
-  eligible: boolean;
-  reason: string;
-}
-
-function checkGenerationEligibility(ctx: StructuredContext): EligibilityResult {
-  if (!ctx.has_recent_evidence) {
-    return { eligible: false, reason: 'No recent evidence (all signals older than 14 days)' };
-  }
-  if (ctx.conflicts_with_locked_constraints) {
-    return { eligible: false, reason: 'Candidate conflicts with locked constraints' };
-  }
-  if (ctx.already_acted_recently) {
-    return { eligible: false, reason: 'Already acted on this topic in the last 7 days' };
-  }
-
-  // Must have at least one anchor for a grounded artifact.
-  // write_document, wait_rationale, and do_nothing are groundable without a recipient or time.
-  // send_message and schedule_block require a real recipient or due date.
-  const SELF_GROUNDABLE_TYPES = new Set(['write_document', 'wait_rationale', 'do_nothing']);
-  const hasAnchor =
-    ctx.has_real_recipient ||
-    ctx.has_due_date_or_time_anchor ||
-    SELF_GROUNDABLE_TYPES.has(ctx.candidate_class);
-
-  if (!hasAnchor) {
-    return { eligible: false, reason: 'No real recipient, due date, or groundable artifact type' };
-  }
-
-  return { eligible: true, reason: 'Passed all eligibility checks' };
-}
+// checkGenerationEligibility was removed — it was dead code (never called).
+// Eligibility is determined by DecisionPayload validation (validateDecisionPayload).
 
 // ---------------------------------------------------------------------------
 // Part 2 continued — Build prompt from structured context
@@ -2933,150 +2928,31 @@ export async function generateDirective(
       );
     }
 
-    // Part 2b: Multi-candidate viability competition — select final winner from top candidates
-    // before any hydration or expensive DB work fires on the wrong candidate.
-    const { winner: finalWinner, competitionContext } = selectFinalWinner(
+    // Part 2b: Rank all candidates by viability before trying each one.
+    const { ranked: rankedCandidates, competitionContext } = selectRankedCandidates(
       scored.topCandidates ?? [scored.winner],
       guardrails,
     );
+    console.log(`[generator] ${rankedCandidates.length} candidates ranked for user ${userId.slice(0, 8)}`);
 
-    // CE-1: Run conviction engine in parallel with winner hydration — both only need userId.
-    // Non-blocking: if burn rate cannot be inferred, returns null; generator continues normally.
-    const topGoalText = finalWinner.matchedGoal?.text ?? finalWinner.title ?? '';
-    const [hydratedWinner, convictionDecision] = await Promise.all([
-      hydrateWinnerRelationshipContext(userId, finalWinner),
-      topGoalText
-        ? (async (): Promise<import('./conviction-engine').ConvictionDecision | null> => {
-            try {
-              const { runConvictionEngine } = await import('./conviction-engine');
-              // Hard 4-second cap so conviction math never blocks the pipeline
-              const result = await Promise.race([
-                runConvictionEngine(userId, topGoalText),
-                new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
-              ]);
-              if (result) {
-                console.log(`[generator] conviction math: prob=${result.situationModel.primaryOutcomeProbability}, stopSecondGuessing=${result.stopSecondGuessing}`);
-              }
-              return result;
-            } catch (ceErr) {
-              console.warn(`[generator] conviction engine failed (non-fatal): ${ceErr instanceof Error ? ceErr.message : String(ceErr)}`);
-              return null;
-            }
-          })()
-        : Promise.resolve(null),
-    ]);
+    // =====================================================================
+    // USER-LEVEL DATA (shared across all candidates — fetch once)
+    // =====================================================================
 
-    // Fetch signal evidence
-    let signalEvidence: SignalSnippet[] = [];
-    try {
-      signalEvidence = await fetchWinnerSignalEvidence(userId, hydratedWinner);
-    } catch (ctxErr: unknown) {
-      // Non-blocking but log context degradation so it's visible in Sentry/Vercel
-      logStructuredEvent({
-        event: 'generator_signal_evidence_failed',
-        level: 'warn',
-        userId,
-        artifactType: null,
-        generationStatus: 'context_degraded',
-        details: {
-          scope: 'generator',
-          stage: 'fetchWinnerSignalEvidence',
-          error: ctxErr instanceof Error ? ctxErr.message : String(ctxErr),
-        },
-      });
-    }
-
-    if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType)) {
-      const selfNameTokens = await fetchUserSelfNameTokens(userId);
-      const candidateEntities = extractEntityNamesFromCandidate(hydratedWinner, signalEvidence, selfNameTokens);
-      const recentEntityConflict = await findRecentEntityActionConflict(userId, candidateEntities);
-      if (recentEntityConflict.matched) {
-        const suppressionReason = `Suppressed: action for "${recentEntityConflict.entityName}" already exists in the last 7 days.`;
-        const fallbackPayload = buildDeterministicDoNothing(
-          suppressionReason,
-          `Recent action id ${recentEntityConflict.actionId}`,
-        );
-
-        logStructuredEvent({
-          event: 'generation_skipped',
-          level: 'info',
-          userId,
-          artifactType: hydratedWinner.suggestedActionType === 'schedule' ? 'schedule_block' : 'send_message',
-          generationStatus: 'recent_entity_action_suppressed',
-          details: {
-            scope: 'generator',
-            entity_name: recentEntityConflict.entityName,
-            action_id: recentEntityConflict.actionId,
-          },
-        });
-
-        return {
-          directive: fallbackPayload.directive,
-          action_type: 'do_nothing',
-          confidence: 0,
-          reason: suppressionReason,
-          evidence: [],
-          embeddedArtifact: fallbackPayload.artifact,
-          embeddedArtifactType: fallbackPayload.artifact_type,
-          generationLog: buildNoSendGenerationLog(suppressionReason, 'validation', scored.candidateDiscovery),
-        } as ConvictionDirective & { embeddedArtifact?: Record<string, unknown>; embeddedArtifactType?: string };
-      }
-    }
-
-    // Research phase
-    let insight: ResearchInsight | null = null;
-    if (finalWinner.score >= 2.0) {
-      try {
-        insight = await researchWinner(userId, hydratedWinner, { dryRun: options.dryRun });
-      } catch {
-        logStructuredEvent({
-          event: 'researcher_fallthrough', level: 'warn', userId,
-          artifactType: null, generationStatus: 'researcher_fallthrough',
-          details: { scope: 'generator' },
-        });
-      }
-    } else {
-      logStructuredEvent({
-        event: 'researcher_skipped_low_score',
-        level: 'info',
-        userId,
-        artifactType: null,
-        generationStatus: 'researcher_skipped',
-        details: {
-          scope: 'generator',
-          winner_score: finalWinner.score,
-          threshold: 2.0,
-        },
-      });
-    }
-
-    // Fetch user goals for identity context (top 5 by priority, exclude placeholders)
     const supabase = createServerClient();
-    const { data: userGoalsData } = await supabase
-      .from('tkg_goals')
-      .select('goal_text, priority, goal_category, source')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .order('priority', { ascending: false })
-      .limit(10);
 
-    const goalsForContext = ((userGoalsData ?? []) as Array<{ goal_text: string; priority: number; goal_category: string; source?: string }>)
-      .filter((g) => !PLACEHOLDER_GOAL_SOURCES.has(g.source ?? ''))
-      .slice(0, 5);
-    console.log(`[generator] goalsForContext: ${goalsForContext.length} goals for user ${userId.slice(0, 8)}`);
-
-    // Build goal-gap analysis (parallel-safe, queries its own data)
-    let goalGapAnalysis: GoalGapEntry[] = [];
-    try {
-      goalGapAnalysis = await buildGoalGapAnalysis(userId);
-      console.log(`[generator] goalGapAnalysis: ${goalGapAnalysis.length} entries, top gap: ${goalGapAnalysis[0]?.gap_level ?? 'none'}`);
-    } catch (err) {
-      console.error(`[generator] goalGapAnalysis failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-
-    // Fetch sent mail (14d), weekly behavioral history, and avoidance observations in parallel
-    const [alreadySentResult, behavioralHistoryResult, avoidanceObservationsResult] = await Promise.allSettled([
-      // Sent mail — what user has already done; model must not re-suggest
+    const [userGoalsResult, goalGapResult, alreadySentResult, behavioralHistoryResult] = await Promise.allSettled([
+      // Goals
+      supabase
+        .from('tkg_goals')
+        .select('goal_text, priority, goal_category, source')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('priority', { ascending: false })
+        .limit(10),
+      // Goal-gap analysis
+      buildGoalGapAnalysis(userId),
+      // Sent mail 14d
       (async (): Promise<string[]> => {
         const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
         const { data: sentRows } = await supabase
@@ -3100,8 +2976,7 @@ export async function generateDirective(
         }
         return lines;
       })(),
-
-      // Weekly behavioral history — last 8 weeks of signal_summaries
+      // Weekly behavioral history
       (async (): Promise<string | null> => {
         const { data: summaries } = await supabase
           .from('signal_summaries')
@@ -3110,7 +2985,6 @@ export async function generateDirective(
           .order('week_start', { ascending: false })
           .limit(8);
         if (!summaries || summaries.length === 0) return null;
-        // Oldest first so the model reads chronologically
         const ordered = [...summaries].reverse();
         return ordered
           .map((s) => {
@@ -3123,72 +2997,156 @@ export async function generateDirective(
           })
           .join('\n\n');
       })(),
-
-      // Pre-computed avoidance signals — unopened replies and aging commitments
-      buildAvoidanceObservations(userId, hydratedWinner, signalEvidence),
     ]);
 
+    const goalsForContext = ((
+      userGoalsResult.status === 'fulfilled' ? (userGoalsResult.value.data ?? []) : []
+    ) as Array<{ goal_text: string; priority: number; goal_category: string; source?: string }>)
+      .filter((g) => !PLACEHOLDER_GOAL_SOURCES.has(g.source ?? ''))
+      .slice(0, 5);
+    const goalGapAnalysis: GoalGapEntry[] = goalGapResult.status === 'fulfilled' ? goalGapResult.value : [];
     const alreadySent = alreadySentResult.status === 'fulfilled' ? alreadySentResult.value : [];
     const behavioralHistory = behavioralHistoryResult.status === 'fulfilled' ? behavioralHistoryResult.value : null;
-    const avoidanceObservations = avoidanceObservationsResult.status === 'fulfilled' ? avoidanceObservationsResult.value : [];
+    console.log(`[generator] goalsForContext: ${goalsForContext.length}, goalGapAnalysis: ${goalGapAnalysis.length}`);
 
-    // Part 3: Build structured context (conviction math + behavioral history injected when available)
-    const ctx = buildStructuredContext(
-      hydratedWinner, guardrails, userId, signalEvidence, insight,
-      goalsForContext,
-      goalGapAnalysis,
-      scored.antiPatterns,
-      scored.divergences,
-      alreadySent,
-      convictionDecision,
-      behavioralHistory,
-      avoidanceObservations,
-      competitionContext,
-    );
-
-    // =====================================================================
-    // DECISION PAYLOAD — the canonical binding contract.
-    // All action selection happens HERE. The LLM renders; it does not decide.
-    // =====================================================================
-
-    const confidence = computeDirectiveConfidence(scored);
-    const decisionPayload = buildDecisionPayload(hydratedWinner, ctx, confidence);
-
-    // Gate: validate the decision payload. If not SEND, no directive is generated.
-    const payloadErrors = validateDecisionPayload(decisionPayload);
-    if (payloadErrors.length > 0) {
-      const blockReason = `DecisionPayload blocked: ${payloadErrors.join('; ')}`;
-      logStructuredEvent({
-        event: 'generation_skipped', level: 'warn', userId,
-        artifactType: null, generationStatus: 'decision_payload_blocked',
-        details: {
-          scope: 'generator',
-          readiness_state: decisionPayload.readiness_state,
-          recommended_action: decisionPayload.recommended_action,
-          blocking_reasons: decisionPayload.blocking_reasons,
-          payload_errors: payloadErrors,
-        },
-      });
-      return emptyDirective(
-        blockReason,
-        buildNoSendGenerationLog(blockReason, 'validation', scored.candidateDiscovery),
-      );
-    }
-
-    // Confidence threshold gate (still applies after payload validation)
     const dynamicThreshold = await loadDirectiveConfidenceThreshold(userId);
-    if (confidence < dynamicThreshold) {
-      logStructuredEvent({
-        event: 'generation_skipped', level: 'warn', userId,
-        artifactType: decisionPayload.recommended_action,
-        generationStatus: 'below_confidence_threshold',
-        details: { scope: 'generator', confidence, threshold: dynamicThreshold },
-      });
-      return emptyDirective(
-        'No directive cleared the confidence bar.',
-        buildNoSendGenerationLog('No directive cleared the confidence bar.', 'validation', scored.candidateDiscovery),
+    const confidence = computeDirectiveConfidence(scored);
+
+    // =====================================================================
+    // CANDIDATE FALLBACK LOOP — try each candidate in rank order.
+    // Only do expensive work (hydration, research, LLM) for the first
+    // candidate that passes DecisionPayload validation.
+    // =====================================================================
+
+    const candidateBlockLog: Array<{ title: string; reasons: string[] }> = [];
+
+    for (const { candidate: currentCandidate, disqualified, disqualifyReason } of rankedCandidates) {
+      // Skip disqualified candidates (already acted recently, etc.)
+      if (disqualified) {
+        candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [disqualifyReason ?? 'disqualified'] });
+        continue;
+      }
+
+      // --- Per-candidate: hydrate ---
+      const hydratedWinner = await hydrateWinnerRelationshipContext(userId, currentCandidate);
+
+      // --- Per-candidate: signal evidence ---
+      let signalEvidence: SignalSnippet[] = [];
+      try {
+        signalEvidence = await fetchWinnerSignalEvidence(userId, hydratedWinner);
+      } catch (ctxErr: unknown) {
+        logStructuredEvent({
+          event: 'generator_signal_evidence_failed', level: 'warn', userId,
+          artifactType: null, generationStatus: 'context_degraded',
+          details: { scope: 'generator', stage: 'fetchWinnerSignalEvidence', error: ctxErr instanceof Error ? ctxErr.message : String(ctxErr) },
+        });
+      }
+
+      // --- Per-candidate: entity suppression ---
+      if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType)) {
+        const selfNameTokens = await fetchUserSelfNameTokens(userId);
+        const candidateEntities = extractEntityNamesFromCandidate(hydratedWinner, signalEvidence, selfNameTokens);
+        const recentEntityConflict = await findRecentEntityActionConflict(userId, candidateEntities);
+        if (recentEntityConflict.matched) {
+          candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [`entity_suppressed:${recentEntityConflict.entityName}`] });
+          logStructuredEvent({
+            event: 'candidate_skipped_entity_suppression', level: 'info', userId,
+            artifactType: null, generationStatus: 'recent_entity_action_suppressed',
+            details: { scope: 'generator', entity_name: recentEntityConflict.entityName, action_id: recentEntityConflict.actionId },
+          });
+          continue; // Try next candidate
+        }
+      }
+
+      // --- Per-candidate: research ---
+      let insight: ResearchInsight | null = null;
+      if (currentCandidate.score >= 2.0) {
+        try {
+          insight = await researchWinner(userId, hydratedWinner, { dryRun: options.dryRun });
+        } catch {
+          logStructuredEvent({
+            event: 'researcher_fallthrough', level: 'warn', userId,
+            artifactType: null, generationStatus: 'researcher_fallthrough',
+            details: { scope: 'generator' },
+          });
+        }
+      }
+
+      // --- Per-candidate: avoidance observations ---
+      let avoidanceObservations: Awaited<ReturnType<typeof buildAvoidanceObservations>> = [];
+      try {
+        avoidanceObservations = await buildAvoidanceObservations(userId, hydratedWinner, signalEvidence);
+      } catch { /* non-blocking */ }
+
+      // --- Per-candidate: conviction engine (only for first viable candidate) ---
+      let convictionDecision: import('./conviction-engine').ConvictionDecision | null = null;
+      const topGoalText = currentCandidate.matchedGoal?.text ?? currentCandidate.title ?? '';
+      if (topGoalText) {
+        try {
+          const { runConvictionEngine } = await import('./conviction-engine');
+          convictionDecision = await Promise.race([
+            runConvictionEngine(userId, topGoalText),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+          ]);
+        } catch (ceErr) {
+          console.warn(`[generator] conviction engine failed (non-fatal): ${ceErr instanceof Error ? ceErr.message : String(ceErr)}`);
+        }
+      }
+
+      // --- Build structured context ---
+      const ctx = buildStructuredContext(
+        hydratedWinner, guardrails, userId, signalEvidence, insight,
+        goalsForContext, goalGapAnalysis,
+        scored.antiPatterns, scored.divergences,
+        alreadySent, convictionDecision, behavioralHistory,
+        avoidanceObservations, competitionContext,
       );
-    }
+
+      // --- DECISION PAYLOAD — the canonical binding contract ---
+      const decisionPayload = buildDecisionPayload(hydratedWinner, ctx, confidence);
+      const payloadErrors = validateDecisionPayload(decisionPayload);
+
+      if (payloadErrors.length > 0) {
+        // Log typed reasons and try next candidate
+        candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: payloadErrors });
+        logStructuredEvent({
+          event: 'candidate_blocked', level: 'info', userId,
+          artifactType: null, generationStatus: 'decision_payload_blocked',
+          details: {
+            scope: 'generator',
+            candidate_title: currentCandidate.title.slice(0, 80),
+            candidate_index: rankedCandidates.indexOf(rankedCandidates.find(r => r.candidate === currentCandidate)!),
+            readiness_state: decisionPayload.readiness_state,
+            blocking_reasons: decisionPayload.blocking_reasons,
+            payload_errors: payloadErrors,
+          },
+        });
+        continue; // ← THE FIX: try next candidate instead of dying
+      }
+
+      // Confidence threshold gate
+      if (confidence < dynamicThreshold) {
+        candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [`confidence_${confidence}_below_${dynamicThreshold}`] });
+        logStructuredEvent({
+          event: 'candidate_blocked', level: 'info', userId,
+          artifactType: decisionPayload.recommended_action,
+          generationStatus: 'below_confidence_threshold',
+          details: { scope: 'generator', confidence, threshold: dynamicThreshold },
+        });
+        continue;
+      }
+
+      // =====================================================================
+      // THIS CANDIDATE PASSED — proceed with LLM generation.
+      // Log the fallback path so we can see which candidates were skipped.
+      // =====================================================================
+
+      if (candidateBlockLog.length > 0) {
+        console.log(`[generator] candidate fallback: skipped ${candidateBlockLog.length} candidate(s) before finding viable #${rankedCandidates.indexOf(rankedCandidates.find(r => r.candidate === currentCandidate)!) + 1}`);
+        for (const bl of candidateBlockLog) {
+          console.log(`[generator]   skipped: "${bl.title}" — ${bl.reasons.join('; ')}`);
+        }
+      }
 
     // =====================================================================
     // LLM RENDERING — the model writes prose and artifact content.
@@ -3215,13 +3173,16 @@ export async function generateDirective(
       };
     }
 
-    // If LLM generation fails entirely, deterministic fallback
+    // If LLM generation fails entirely, try next candidate
     if (!payloadResult.payload) {
       const failureReason = formatValidationFailureReason('Generation validation failed:', payloadResult.issues);
-      return emptyDirective(
-        failureReason,
-        buildNoSendGenerationLog(failureReason, 'generation', scored.candidateDiscovery),
-      );
+      candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [`llm_failed:${failureReason.slice(0, 200)}`] });
+      logStructuredEvent({
+        event: 'candidate_blocked', level: 'warn', userId,
+        artifactType: null, generationStatus: 'llm_generation_failed',
+        details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), issues: payloadResult.issues },
+      });
+      continue;
     }
 
     const payload = payloadResult.payload;
@@ -3262,42 +3223,33 @@ export async function generateDirective(
       });
     }
 
-    // Consecutive duplicate suppression
+    // Consecutive duplicate suppression — candidate-specific, try next
     const duplicateCheck = await checkConsecutiveDuplicate(userId, payload.directive);
     if (duplicateCheck.isDuplicate) {
-      const dupReason = `Duplicate directive suppressed (${Math.round((duplicateCheck.similarity ?? 0) * 100)}% similar to recent action ${duplicateCheck.matchingActionId})`;
+      const dupReason = `duplicate_${Math.round((duplicateCheck.similarity ?? 0) * 100)}pct_similar`;
+      candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [dupReason] });
       logStructuredEvent({
-        event: 'duplicate_directive_suppressed', level: 'warn', userId,
+        event: 'candidate_blocked', level: 'warn', userId,
         artifactType: canonicalAction, generationStatus: 'duplicate_suppressed',
-        details: {
-          scope: 'generator',
-          new_directive: payload.directive.slice(0, 100),
-          matching_action_id: duplicateCheck.matchingActionId,
-          similarity: duplicateCheck.similarity,
-        },
+        details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), matching_action_id: duplicateCheck.matchingActionId, similarity: duplicateCheck.similarity },
       });
-      return emptyDirective(
-        dupReason,
-        buildNoSendGenerationLog(dupReason, 'validation', scored.candidateDiscovery),
-      );
+      continue;
     }
 
-    // Usefulness gate
+    // Usefulness gate — candidate-specific, try next
     const usefulnessCheck = isUseful({
       artifact: JSON.stringify(payload.artifact),
       evidence: payload.insight,
       action: payload.directive,
     });
     if (!usefulnessCheck.ok) {
+      candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [`usefulness:${usefulnessCheck.reason}`] });
       logStructuredEvent({
-        event: 'usefulness_rejected', level: 'warn', userId,
+        event: 'candidate_blocked', level: 'warn', userId,
         artifactType: canonicalAction, generationStatus: 'usefulness_gate_failed',
-        details: { scope: 'generator', reason: usefulnessCheck.reason },
+        details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), reason: usefulnessCheck.reason },
       });
-      return emptyDirective(
-        `Usefulness gate rejected: ${usefulnessCheck.reason}`,
-        buildNoSendGenerationLog(`Usefulness gate rejected: ${usefulnessCheck.reason}`, 'validation', scored.candidateDiscovery),
-      );
+      continue;
     }
 
     // =====================================================================
@@ -3320,26 +3272,20 @@ export async function generateDirective(
       embeddedArtifactType?: string;
     };
 
-    // Persistence validation
+    // Persistence validation — candidate-specific, try next
     const persistenceIssues = validateDirectiveForPersistence({
       userId,
       directive,
       artifact: payload.artifact,
     });
     if (persistenceIssues.length > 0) {
+      candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: persistenceIssues.map(i => `persistence:${i}`) });
       logStructuredEvent({
-        event: 'generation_skipped', level: 'warn', userId,
+        event: 'candidate_blocked', level: 'warn', userId,
         artifactType: canonicalAction, generationStatus: 'persistence_validation_failed',
-        details: { scope: 'generator', issues: persistenceIssues },
+        details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), issues: persistenceIssues },
       });
-      return emptyDirective(
-        formatValidationFailureReason('Directive rejected by persistence validation:', persistenceIssues),
-        buildNoSendGenerationLog(
-          formatValidationFailureReason('Directive rejected by persistence validation:', persistenceIssues),
-          'validation',
-          scored.candidateDiscovery,
-        ),
-      );
+      continue;
     }
 
     logStructuredEvent({
@@ -3351,12 +3297,37 @@ export async function generateDirective(
         canonical_action: canonicalAction,
         llm_attempted_action: llmAttemptedAction,
         action_drift: llmAttemptedAction !== canonicalAction,
-        winner_type: finalWinner.type,
-        score: Number(finalWinner.score.toFixed(2)),
+        winner_type: currentCandidate.type,
+        score: Number(currentCandidate.score.toFixed(2)),
       },
     });
 
     return directive;
+    } // end candidate fallback loop
+
+    // =====================================================================
+    // ALL CANDIDATES BLOCKED — no viable candidate found.
+    // Log detailed fallback trace so we can audit false positives.
+    // =====================================================================
+
+    const allBlockReasons = candidateBlockLog.map(
+      (bl) => `"${bl.title}" → ${bl.reasons.join('; ')}`,
+    ).join(' | ');
+    const summaryReason = `All ${rankedCandidates.length} candidates blocked: ${allBlockReasons}`;
+    console.log(`[generator] ${summaryReason}`);
+    logStructuredEvent({
+      event: 'all_candidates_blocked', level: 'warn', userId,
+      artifactType: null, generationStatus: 'all_candidates_blocked',
+      details: {
+        scope: 'generator',
+        candidate_count: rankedCandidates.length,
+        block_log: candidateBlockLog,
+      },
+    });
+    return emptyDirective(
+      summaryReason,
+      buildNoSendGenerationLog(summaryReason, 'validation', scored.candidateDiscovery),
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     Sentry.captureException(error, { tags: { scope: 'generator', userId: userId?.substring(0, 8) } });
