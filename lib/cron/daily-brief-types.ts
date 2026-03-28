@@ -60,6 +60,8 @@ export interface DailyBriefSignalWindowOptions {
   /** When true, skip the stale-signal backlog gate so generation proceeds
    *  even when unprocessed signals remain.  Used for manual "Generate Now". */
   skipStaleGate?: boolean;
+  /** When true, skip the daily API spend cap so manual runs are free to test. */
+  skipSpendCap?: boolean;
 }
 
 export interface SafeDailyBriefStageStatus {

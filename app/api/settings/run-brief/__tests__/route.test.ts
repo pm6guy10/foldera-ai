@@ -90,7 +90,7 @@ describe('POST /api/settings/run-brief', () => {
     const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
 
     // Route must pass ensureSend + skipStaleGate so manual runs bypass backlog gate
-    expect(mockRunBriefLifecycle).toHaveBeenCalledWith({ userIds: [userId], ensureSend: true, skipStaleGate: true });
+    expect(mockRunBriefLifecycle).toHaveBeenCalledWith({ userIds: [userId], ensureSend: true, skipStaleGate: true, skipSpendCap: true });
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.ok).toBe(true);

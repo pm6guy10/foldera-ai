@@ -944,7 +944,9 @@ export async function runDailyGenerate(
 
       let directive;
       try {
-        directive = await generateDirective(userId);
+        directive = await generateDirective(userId, {
+          skipSpendCap: options.skipSpendCap,
+        });
       } catch (genErr: unknown) {
         const message = genErr instanceof Error ? genErr.message : String(genErr);
         logStructuredEvent({

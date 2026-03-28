@@ -266,6 +266,8 @@ interface SignalSnippet {
 
 interface GenerateDirectiveOptions {
   dryRun?: boolean;
+  /** Skip daily spend cap check — used for manual Generate Now so testing doesn't cost money */
+  skipSpendCap?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -2967,7 +2969,7 @@ export async function generateDirective(
   options: GenerateDirectiveOptions = {},
 ): Promise<ConvictionDirective> {
   try {
-    if (!options.dryRun && await isOverDailyLimit(userId)) {
+    if (!options.dryRun && !options.skipSpendCap && await isOverDailyLimit(userId)) {
       logStructuredEvent({
         event: 'generation_skipped', level: 'warn', userId,
         artifactType: null, generationStatus: 'daily_cap_reached',
