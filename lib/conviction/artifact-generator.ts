@@ -17,6 +17,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import * as Sentry from '@sentry/nextjs';
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus } from '@/lib/encryption';
 import type {
@@ -453,7 +454,22 @@ export async function generateArtifact(
     try {
       return validateArtifact(directive.action_type, d.embeddedArtifact);
     } catch {
-      // Fall through to generation
+      // If canonical action is write_document but LLM produced a wait_rationale,
+      // convert directly — discrepancy candidates write analysis prose that is
+      // perfectly valid as a document artifact without a second LLM call.
+      if (
+        directive.action_type === 'write_document' &&
+        d.embeddedArtifact?.type === 'wait_rationale' &&
+        typeof d.embeddedArtifact?.context === 'string' &&
+        d.embeddedArtifact.context.length > 20
+      ) {
+        return {
+          type: 'document',
+          title: directive.directive.slice(0, 120).replace(/\.$/, '').trim(),
+          content: d.embeddedArtifact.context.trim(),
+        } as DocumentArtifact;
+      }
+      // Fall through to generation for all other mismatches
     }
   }
 
@@ -521,6 +537,10 @@ export async function generateArtifact(
     // Validate type matches expected
     return validateArtifact(directive.action_type, parsed);
   } catch (err) {
+    Sentry.captureException(err instanceof Error ? err : new Error(String(err)), {
+      tags: { scope: 'artifact-generator', userId: userId?.substring(0, 8) },
+      extra: { actionType: directive.action_type },
+    });
     logStructuredEvent({
       event: 'artifact_generation_failed',
       level: 'warn',
