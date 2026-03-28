@@ -26,6 +26,7 @@ import type {
   GenerationCandidateLog,
   GenerationCandidateSource,
 } from './types';
+import { detectDiscrepancies } from './discrepancy-detector';
 
 // ---------------------------------------------------------------------------
 // Self-referential signal filter — excludes Foldera's own directive outputs
@@ -93,7 +94,7 @@ export interface MatchedGoal {
 
 export interface ScoredLoop {
   id: string;
-  type: 'commitment' | 'signal' | 'relationship' | 'emergent' | 'compound' | 'growth';
+  type: 'commitment' | 'signal' | 'relationship' | 'emergent' | 'compound' | 'growth' | 'discrepancy';
   title: string;
   content: string;
   suggestedActionType: ActionType;
@@ -3494,6 +3495,77 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   }
 
   // -----------------------------------------------------------------------
+  // Discrepancy detection: structural gap candidates (PRIMARY).
+  // Discrepancies surface before open-loop fallbacks. Both compete in the
+  // same scored pool — discrepancies win because their stakes/urgency values
+  // reflect structural importance, not signal recency.
+  // -----------------------------------------------------------------------
+  const discrepancies = detectDiscrepancies({ commitments, entities, goals, decryptedSignals });
+  if (discrepancies.length > 0) {
+    logStructuredEvent({
+      event: 'discrepancy_candidates_detected',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'scoring',
+      details: {
+        scope: 'scorer',
+        count: discrepancies.length,
+        classes: discrepancies.map((d) => d.class),
+        titles: discrepancies.map((d) => d.title.slice(0, 60)),
+      },
+    });
+  }
+  for (const d of discrepancies) {
+    const daysSinceLastSurface = await getDaysSinceLastSurface(userId, d.title);
+    const { score, breakdown: geminiBreakdown } = computeCandidateScore({
+      stakes: d.stakes,
+      urgency: d.urgency,
+      tractability: 0.70, // structural gaps are always tractable — a decision is always available
+      actionType: d.suggestedActionType,
+      entityPenalty: 0,
+      daysSinceLastSurface,
+      approvalHistory,
+      highStakes: d.stakes >= 4,
+    });
+    scored.push({
+      id: d.id,
+      type: 'discrepancy',
+      title: d.title,
+      content: d.content,
+      suggestedActionType: d.suggestedActionType,
+      matchedGoal: d.matchedGoal,
+      score,
+      breakdown: {
+        stakes: d.stakes,
+        urgency: d.urgency,
+        freshness: 1.0,
+        actionTypeRate: geminiBreakdown.behavioral_rate,
+        entityPenalty: 0,
+        ...geminiBreakdown,
+      },
+      relatedSignals: [],
+      sourceSignals: d.sourceSignals,
+      confidence_prior: Math.round(Math.max(45, Math.min(85, d.urgency * 80))),
+    });
+    logStructuredEvent({
+      event: 'discrepancy_candidate_scored',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'scoring',
+      details: {
+        scope: 'scorer',
+        id: d.id,
+        class: d.class,
+        title: d.title.slice(0, 80),
+        score,
+        evidence: d.evidence,
+      },
+    });
+  }
+
+  // -----------------------------------------------------------------------
   // Goal-gap multiplier: candidates that directly address the highest-gap
   // goal (stated high priority, near-zero behavioral activity) get a 1.5x
   // boost. This ensures the scorer surfaces goal-aligned candidates, not
@@ -3550,7 +3622,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Emergent patterns (anti-patterns, divergences) are exempt — they ARE goal diagnosis.
   // Everything else must connect to a stated goal before competing.
   const beforeGoalGate = scored.length;
-  scored = scored.filter((s) => s.matchedGoal !== null || s.type === 'emergent');
+  scored = scored.filter((s) => s.matchedGoal !== null || s.type === 'emergent' || s.type === 'discrepancy');
   if (scored.length < beforeGoalGate) {
     logStructuredEvent({
       event: 'scorer_goal_primacy_gate',
