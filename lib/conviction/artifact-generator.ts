@@ -214,6 +214,105 @@ async function loadPatterns(userId: string): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
+// Discrepancy transformation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * True when fullContext is a raw analysis dump from buildFullContext() in generator.ts
+ * (contains internal section headers that must never surface to users).
+ */
+function isAnalysisDump(text: string): boolean {
+  return /^(INSIGHT:|WHY NOW:|Winning loop:|Runner-ups rejected:)/m.test(text);
+}
+
+type DiscrepancyFlavor = 'person' | 'deadline' | 'goal';
+
+/**
+ * Infer what kind of finished artifact the discrepancy should become.
+ * person  → sendable outreach message
+ * deadline → pre-filled execution steps
+ * goal    → concrete action plan
+ */
+function detectDiscrepancyFlavor(directive: ConvictionDirective): DiscrepancyFlavor {
+  const text = `${directive.directive} ${directive.reason ?? ''}`.toLowerCase();
+  if (/silent|reach out|reconnect|relationship|contact|follow.?up/i.test(text)) return 'person';
+  if (/due|deadline|overdue|stalled.*commit|commitment|exposure|at.?risk/i.test(text)) return 'deadline';
+  return 'goal';
+}
+
+/**
+ * Build a transformation prompt that strips all analysis metadata and
+ * produces a single finished, zero-thinking-required artifact.
+ */
+function buildDiscrepancyTransformPrompt(
+  directive: ConvictionDirective,
+  flavor: DiscrepancyFlavor,
+  relationships: string,
+): { system: string; user: string } {
+  const fullCtx = ((directive as any).fullContext as string | undefined) ?? directive.reason ?? '';
+
+  const shared = `
+SITUATION: ${directive.directive}
+REASON: ${directive.reason ?? ''}
+ANALYSIS:
+${fullCtx.slice(0, 900)}
+RELATIONSHIPS:
+${relationships.slice(0, 400)}`;
+
+  switch (flavor) {
+    case 'person':
+      return {
+        system: `You write short, natural, ready-to-send outreach messages.
+Rules (non-negotiable):
+- Output is the actual message — greeting, body, sign-off — nothing else
+- Specific and personal: use the person's name and the concrete situation
+- Under 150 words
+- No analysis, no INSIGHT/WHY NOW labels, no scoring language, no relationship lists
+- Do not mention Foldera or any analytics system
+
+Return ONLY valid JSON:
+{"type":"document","title":"<3-7 word action title>","content":"<the ready-to-send message>"}`,
+        user: `${shared}
+
+Write the outreach message. Return JSON only.`,
+      };
+
+    case 'deadline':
+      return {
+        system: `You write concrete execution steps for time-sensitive situations.
+Rules (non-negotiable):
+- Numbered steps, each completable in under 10 minutes
+- Fill in names, dates, and details — no placeholders
+- No analysis, no INSIGHT/WHY NOW labels, no scoring language
+- No vague instructions like "consider" or "think about"
+
+Return ONLY valid JSON:
+{"type":"document","title":"<3-7 word action title>","content":"<numbered execution steps in markdown>"}`,
+        user: `${shared}
+
+Write the execution steps. Return JSON only.`,
+      };
+
+    case 'goal':
+    default:
+      return {
+        system: `You write concrete action plans for stalled goals.
+Rules (non-negotiable):
+- 3-5 specific actions with clear owners and timeframes
+- Fill in all details — no placeholders
+- No analysis, no INSIGHT/WHY NOW labels, no scoring language
+- Every action is something the person can start today
+
+Return ONLY valid JSON:
+{"type":"document","title":"<3-7 word action title>","content":"<concrete action plan in markdown>"}`,
+        user: `${shared}
+
+Write the action plan. Return JSON only.`,
+      };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // System prompts per artifact type
 // ---------------------------------------------------------------------------
 
@@ -473,14 +572,62 @@ export async function generateArtifact(
     }
   }
 
-  // Fast-path for write_document: build the document from the directive's own
-  // content so null/invalid embedded artifacts cannot reach the fallback LLM call.
-  // fullContext contains the LLM's full insight + WHY NOW analysis; reason is a
-  // one-sentence fallback. Either is sufficient for a valid DocumentArtifact.
+  // Fast-path for write_document — two cases:
+  //
+  // 1. Analysis dump (fullContext has INSIGHT/WHY NOW/Winning loop headers):
+  //    Transform into a finished, flavor-appropriate artifact via LLM.
+  //    This is the primary case for discrepancy candidates.
+  //
+  // 2. Already-finished content (no analysis markers):
+  //    Return as-is — no LLM call needed.
   if (directive.action_type === 'write_document') {
-    const fullCtx = (directive as any).fullContext;
+    const fullCtx = (directive as any).fullContext as string | undefined;
+
+    if (typeof fullCtx === 'string' && fullCtx.trim().length > 20 && isAnalysisDump(fullCtx)) {
+      // Transform: analysis → finished artifact
+      const flavor = detectDiscrepancyFlavor(directive);
+      const relationships = await loadRelationshipContext(userId, directive.directive);
+      const { system, user } = buildDiscrepancyTransformPrompt(directive, flavor, relationships);
+
+      try {
+        const response = await getAnthropic().messages.create({
+          model: ARTIFACT_MODEL,
+          max_tokens: 800,
+          temperature: 0.2 as any,
+          system,
+          messages: [{ role: 'user', content: user }],
+        });
+
+        await trackApiCall({
+          userId,
+          model: ARTIFACT_MODEL,
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+          callType: 'artifact',
+        });
+
+        const textBlocks = response.content.filter(
+          (b): b is Anthropic.TextBlock => b.type === 'text',
+        );
+        const raw = textBlocks.map((b) => b.text).join('');
+        let cleaned = raw.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
+        if (!cleaned.startsWith('{')) {
+          const firstBrace = cleaned.indexOf('{');
+          const lastBrace = cleaned.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace > firstBrace) {
+            cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+          }
+        }
+        const parsed = JSON.parse(cleaned);
+        return validateArtifact('write_document', parsed);
+      } catch {
+        // Transformation failed — fall through to standard LLM generation below
+      }
+    }
+
+    // Non-analysis content: use as-is
     const bodyContent =
-      typeof fullCtx === 'string' && fullCtx.trim().length > 20
+      typeof fullCtx === 'string' && fullCtx.trim().length > 20 && !isAnalysisDump(fullCtx)
         ? fullCtx.trim()
         : typeof directive.reason === 'string' && directive.reason.trim().length > 10
           ? directive.reason.trim()
