@@ -2,6 +2,19 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside multi-run ranking proof scope
+
+This session changed ranking proof tests only:
+- `lib/briefing/__tests__/holy-crap-multi-run-proof.fixtures.ts`
+- `lib/briefing/__tests__/holy-crap-multi-run-proof.test.ts`
+
+Mandatory QA gate results for this session:
+- `npm run build` passed.
+- `npx playwright test` still fails on the pre-existing local authenticated production-smoke harness class (`tests/production/smoke.spec.ts` localhost redirect/session/API auth assertions and Generate-Now visibility) plus one clickflow artifact write timeout.
+- `npm run test:prod` passed (`51/51`) against production config.
+
+Status: `NEEDS_REVIEW` (remaining local omnibus failures are unchanged and outside this backend ranking-proof test addition).
+
 ### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside ranking-invariant backend scope
 
 This session changed backend ranking only:

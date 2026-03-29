@@ -1860,4 +1860,25 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Any unresolved issues:
   - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke expectations and one clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
 
+## Session Log — 2026-03-29 (holy-crap multi-run proof for ranking consistency)
+- MODE: AUDIT
+- Commit hash(es): pending (set after commit on `main`)
+- Files changed:
+  - `lib/briefing/__tests__/holy-crap-multi-run-proof.fixtures.ts`
+  - `lib/briefing/__tests__/holy-crap-multi-run-proof.test.ts`
+  - `AUTOMATION_BACKLOG.md`
+  - `FOLDERA_PRODUCT_SPEC.md`
+  - `FOLDERA_MASTER_AUDIT.md`
+  - `SYSTEM_RUNBOOK.md`
+  - `SESSION_HISTORY.md`
+- What was verified:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/holy-crap-multi-run-proof.test.ts lib/briefing/__tests__/scorer-ranking-invariants.test.ts lib/briefing/__tests__/winner-selection.test.ts` (18/18 passed)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__` (14 files, 178 tests passed)
+  - deterministic run receipt script over shared fixtures: `10 runs attempted`, `10 PASS`, `0 SOFT_FAIL`, `0 HARD_FAIL`, `repeatedWeakClasses=[]`
+  - `npm run build` (pass)
+  - `npx playwright test` (111 passed, 11 failed, 6 skipped — unchanged pre-existing local authenticated production-smoke/clickflow failures)
+  - `npm run test:prod` (51/51 passed)
+- Any unresolved issues:
+  - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke harness assertions and clickflow artifact timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
 

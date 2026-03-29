@@ -1,5 +1,34 @@
 # AUTOMATION BACKLOG
 
+### P0 — HOLY-CRAP MULTI-RUN PROOF: ranking consistency under repeated pipeline runs (2026-03-29)
+
+**Status: RESOLVED.** Deterministic 10-run proof now exists in tests and all runs pass the quality rubric.
+
+**What was added:**
+- `lib/briefing/__tests__/holy-crap-multi-run-proof.fixtures.ts`
+  - 10 deterministic pipeline fixtures covering hiring drift, approval timing asymmetry, relationship decay risk, repeated avoidance, goal-behavior mismatch, and strong outcome commitments.
+  - Shared run evaluator that traces: raw top 3 -> invariant-ranked top 3 -> final winner -> artifact rendering -> persistence validation.
+- `lib/briefing/__tests__/holy-crap-multi-run-proof.test.ts`
+  - Enforces audit acceptance target: `PASS >= 8/10`, `SOFT_FAIL <= 2`, `HARD_FAIL = 0`.
+  - Enforces stop-rule guard: no repeated HARD_FAIL class.
+  - Enforces structural invariants per run: top 3 actionable, persisted artifact valid, send decision valid, winner non-generic.
+
+**Proof (this session):**
+- Run receipt script using shared fixtures reported:
+  - `runsAttempted: 10`
+  - `passCount: 10`
+  - `softFailCount: 0`
+  - `hardFailCount: 0`
+  - `repeatedWeakClasses: []`
+- Targeted tests:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/holy-crap-multi-run-proof.test.ts lib/briefing/__tests__/scorer-ranking-invariants.test.ts lib/briefing/__tests__/winner-selection.test.ts` (18 passed)
+- Full relevant suite:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__` (14 files, 178 passed)
+
+**Result:**
+- No weak-class winner survived in the 10-run audit.
+- No repeated failure class discovered, so no additional blocker-fix cycle was required by stop-rule.
+
 ### P0 — RANKING INVARIANT ENFORCEMENT: weak candidates cannot win (2026-03-29)
 
 **Status: RESOLVED.** Scorer + generator now hard-block weak classes and enforce discrepancy priority structurally.

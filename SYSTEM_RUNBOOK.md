@@ -95,6 +95,7 @@ Before ending:
     - applies discrepancy-priority over generic task classes
   - `lib/briefing/generator.ts` `selectRankedCandidates` now disqualifies schedule-only/obvious candidates and preserves discrepancy priority in viability ranking.
   - Tests: `lib/briefing/__tests__/scorer-ranking-invariants.test.ts` + `lib/briefing/__tests__/winner-selection.test.ts` additions.
+  - Multi-run proof: `lib/briefing/__tests__/holy-crap-multi-run-proof.fixtures.ts` + `holy-crap-multi-run-proof.test.ts` run 10 deterministic end-to-end ranking scenarios and enforce audit thresholds (`PASS >= 8/10`, no repeated HARD_FAIL class). Latest receipt: `10/10 PASS`.
 
 ### Pending Migrations NOT in Production DB
 All of these are in source code but NOT yet applied to production:
