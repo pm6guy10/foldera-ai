@@ -1,5 +1,30 @@
 # AUTOMATION BACKLOG
 
+### P0 — ARTIFACT QUALITY ENFORCEMENT: Analysis-dump write_document leakage blocked (2026-03-29)
+
+**Status: RESOLVED.** Persisted/sent document artifacts now reject internal reasoning scaffolds and pipeline commentary structurally.
+
+**Root cause (exact):**
+- `lib/conviction/artifact-generator.ts` used a narrow `isAnalysisDump()` regex (`INSIGHT|WHY NOW|Winning loop|Runner-ups rejected` only).
+- Variants such as scorer/winner/rejection commentary were not matched, so write-document fast paths accepted raw analysis text as finished documents.
+- Leak points were:
+  - embedded wait-rationale → document shortcut path
+  - `fullContext` write-document non-analysis fast path
+  - write-document validation path relying on the same narrow detector
+
+**Fixes shipped (defense-in-depth):**
+- Replaced narrow detection with broader analysis-scaffolding detection (headers + inline meta commentary).
+- Added write-document structural checks for finished-document quality.
+- Added deterministic write-document fallback repair that strips analysis scaffolding when transform output is invalid.
+- Added persistence-time artifact structural gate in `daily-brief-generate` (`getArtifactPersistenceIssues`) so invalid artifacts cannot be inserted as `pending_approval`.
+
+**Required proof (this session):**
+- `npx vitest run --exclude ".claude/worktrees/**" lib/conviction/__tests__/artifact-generator.test.ts lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts` (16 passed)
+- `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__ lib/conviction/__tests__ lib/cron/__tests__` (all passed)
+- `npm run build` (passed)
+- `npm run test:prod` (51/51 passed)
+- `npx playwright test` still fails on pre-existing local authenticated production-smoke harness issues (see `FOLDERA_MASTER_AUDIT.md` NEEDS_REVIEW entry for this date)
+
 ### P1 — COMMITMENT HYGIENE: Paid-transaction log entries blocked (2026-03-28)
 
 **Status: RESOLVED.** Past-paid transaction logs are now blocked at two layers:

@@ -68,6 +68,159 @@ const GENERIC_FILLER_PATTERNS = [
   /let'?s? (?:grab|get) (?:coffee|lunch|a drink)/i,
 ];
 
+/**
+ * Internal-analysis scaffolding markers that must never surface in persisted
+ * user artifacts. These are backend/meta labels, not finished-document prose.
+ */
+const ANALYSIS_HEADER_LINE_PATTERNS = [
+  /^\s*(?:#+\s*)?(?:INSIGHT|WHY NOW|WINNING LOOP|RELATIONSHIP CONTEXT|RUNNER[\s-]?UPS?(?:\s+REJECTED)?|CONFIDENCE RATIONALE|CANDIDATE COMPETITION|SCORER|SCORE|DECISION PAYLOAD|INTERNAL ANALYSIS|PIPELINE)\s*[:\-]/i,
+  /^\s*(?:runner[\s-]?ups?|runner[\s-]?up)\s+rejected\b/i,
+];
+
+const ANALYSIS_META_LINE_PATTERNS = [
+  /^\s*Beaten:\s*/i,
+  /^\s*Selected because\b/i,
+  /^\s*Rejected because\b/i,
+  /^\s*This candidate\b/i,
+  /^\s*Winner\b.*\b(?:score|scorer|beat|won|selected)\b/i,
+  /^\s*-\s*(?:rejected because|beaten:|this candidate|winner)\b/i,
+];
+
+const ANALYSIS_INLINE_PATTERNS = [
+  /\brunner[\s-]?ups?\s+rejected\b/i,
+  /\brejected because\b/i,
+  /\bconfidence rationale\b/i,
+  /\bcandidate competition\b/i,
+  /\bthis candidate\b.{0,120}\b(?:winner|won|beat|score|scorer|selected)\b/i,
+  /\bwinner\b.{0,80}\b(?:score|scorer|beat|won|selected)\b/i,
+  /\bscorer[_\s-]?(?:score|note|rationale|decision)\b/i,
+  /\bscore\s*[:=]\s*\d/i,
+];
+
+function hasAnalysisScaffoldingLine(text: string): boolean {
+  return (
+    ANALYSIS_HEADER_LINE_PATTERNS.some((pattern) => pattern.test(text)) ||
+    ANALYSIS_META_LINE_PATTERNS.some((pattern) => pattern.test(text))
+  );
+}
+
+/**
+ * Exported for persistence-time defense-in-depth checks.
+ */
+export function hasAnalysisScaffolding(text: string): boolean {
+  if (typeof text !== 'string') return false;
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  const lines = trimmed.split(/\r?\n/);
+  if (lines.some((line) => hasAnalysisScaffoldingLine(line))) {
+    return true;
+  }
+
+  return ANALYSIS_INLINE_PATTERNS.some((pattern) => pattern.test(trimmed));
+}
+
+function countDocumentParagraphs(value: string): number {
+  return value
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0)
+    .length;
+}
+
+function getFinishedDocumentIssues(title: string, content: string): string[] {
+  const issues: string[] = [];
+
+  if (!isNonEmptyString(title) || title.trim().length < 4) {
+    issues.push('Document title is required and must be specific');
+  }
+  if (!isNonEmptyString(content) || content.trim().length < 30) {
+    issues.push('Document content is too short to be a finished artifact');
+  }
+  if (hasAnalysisScaffolding(title)) {
+    issues.push('Document title contains internal analysis scaffolding');
+  }
+  if (hasAnalysisScaffolding(content)) {
+    issues.push('Document content contains internal analysis scaffolding');
+  }
+  if (isNonEmptyString(content) && countDocumentParagraphs(content) === 0) {
+    issues.push('Document content must include readable body text');
+  }
+
+  return issues;
+}
+
+function buildDeterministicDocumentFallback(
+  directive: ConvictionDirective,
+  rawContext: string,
+): DocumentArtifact | null {
+  const lines = rawContext.split(/\r?\n/);
+  const kept: string[] = [];
+  const signals: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (kept.length > 0 && kept[kept.length - 1] !== '') kept.push('');
+      continue;
+    }
+    if (hasAnalysisScaffoldingLine(trimmed)) continue;
+    if (ANALYSIS_INLINE_PATTERNS.some((pattern) => pattern.test(trimmed))) continue;
+
+    // Remove markdown bullets from scaffold-heavy context and keep the fact.
+    const normalized = trimmed.replace(/^[-*]\s+/, '').trim();
+    if (normalized.length > 0) {
+      signals.push(normalized);
+    }
+  }
+
+  const uniqueSignals = [...new Set(signals)].slice(0, 6);
+  if (uniqueSignals.length === 0) return null;
+
+  kept.push(`Objective: ${directive.directive.trim()}`);
+  kept.push('');
+  kept.push('Execution Notes:');
+  for (const signal of uniqueSignals) {
+    kept.push(`- ${signal}`);
+  }
+
+  const content = kept.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  const title = directive.directive.slice(0, 120).replace(/\.$/, '').trim();
+  const issues = getFinishedDocumentIssues(title, content);
+  if (issues.length > 0) return null;
+
+  return {
+    type: 'document',
+    title,
+    content,
+  };
+}
+
+export function getArtifactPersistenceIssues(
+  actionType: string,
+  artifact: ConvictionArtifact | Record<string, unknown> | null,
+): string[] {
+  const issues: string[] = [];
+  if (!artifact || typeof artifact !== 'object') {
+    return ['artifact is required before persistence'];
+  }
+
+  const record = artifact as Record<string, unknown>;
+  if (actionType === 'write_document') {
+    const title = isNonEmptyString(record.title) ? record.title.trim() : '';
+    const content = isNonEmptyString(record.content) ? record.content.trim() : '';
+    issues.push(...getFinishedDocumentIssues(title, content));
+  }
+
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value === 'string' && hasAnalysisScaffolding(value)) {
+      issues.push(`artifact.${key} contains internal analysis scaffolding`);
+    }
+  }
+
+  return [...new Set(issues)];
+}
+
 
 // ---------------------------------------------------------------------------
 // Context loaders — pull graph data relevant to the artifact
@@ -237,7 +390,7 @@ async function loadPatterns(userId: string): Promise<string> {
  * (contains internal section headers that must never surface to users).
  */
 function isAnalysisDump(text: string): boolean {
-  return /^(INSIGHT:|WHY NOW:|Winning loop:|Runner-ups rejected:)/m.test(text);
+  return hasAnalysisScaffolding(text);
 }
 
 type DiscrepancyFlavor = 'person' | 'deadline' | 'goal';
@@ -626,6 +779,15 @@ export async function generateArtifact(
           content: d.embeddedArtifact.context.trim(),
         } as DocumentArtifact;
       }
+
+      if (
+        directive.action_type === 'write_document' &&
+        typeof d.embeddedArtifact?.context === 'string' &&
+        d.embeddedArtifact.context.trim().length > 20
+      ) {
+        const deterministic = buildDeterministicDocumentFallback(directive, d.embeddedArtifact.context);
+        if (deterministic) return deterministic;
+      }
       // Fall through to generation for all other mismatches
     }
   }
@@ -679,7 +841,10 @@ export async function generateArtifact(
         const parsed = JSON.parse(cleaned);
         return validateArtifact('write_document', parsed);
       } catch {
-        // Transformation failed — fall through to standard LLM generation below
+        // Transformation failed — deterministic repair before standard LLM fallback.
+        const deterministic = buildDeterministicDocumentFallback(directive, fullCtx);
+        if (deterministic) return deterministic;
+        // Fall through to standard LLM generation below.
       }
     }
 
@@ -820,14 +985,15 @@ function validateArtifact(
       if (!isNonEmptyString(a.title) || !isNonEmptyString(a.content)) {
         throw new Error('Document artifact missing required fields');
       }
-      if (isAnalysisDump(a.content.trim())) {
-        throw new Error('Document artifact contains raw analysis dump — must be transformed before surfacing to user');
-      }
       if (containsPlaceholderText(a.title.trim()) || containsPlaceholderText(a.content.trim())) {
         throw new Error('Document artifact contains placeholder text');
       }
       if (containsGenericFiller(a.content.trim())) {
         throw new Error('Document artifact contains generic filler — must create forward motion');
+      }
+      const documentIssues = getFinishedDocumentIssues(a.title.trim(), a.content.trim());
+      if (documentIssues.length > 0) {
+        throw new Error(documentIssues.join('; '));
       }
       return {
         type: 'document',

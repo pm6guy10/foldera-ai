@@ -10,7 +10,7 @@ import {
   generateDirective,
   validateDirectiveForPersistence,
 } from '@/lib/briefing/generator';
-import { generateArtifact } from '@/lib/conviction/artifact-generator';
+import { generateArtifact, getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import {
   countUnprocessedSignals,
@@ -1094,7 +1094,10 @@ export async function runDailyGenerate(
         continue;
       }
 
-      const persistenceIssues = validateDirectiveForPersistence({ userId, directive, artifact });
+      const persistenceIssues = [
+        ...getArtifactPersistenceIssues(directive.action_type, artifact),
+        ...validateDirectiveForPersistence({ userId, directive, artifact }),
+      ];
       if (persistenceIssues.length > 0) {
         logStructuredEvent({
           event: 'daily_generate_failed',

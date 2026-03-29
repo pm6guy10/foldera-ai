@@ -1814,4 +1814,27 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Any unresolved issues:
   - Pre-existing production/auth Playwright failures (redirect-to-login/API 401 expectations) and one clickflow timeout remain outside homepage mobile-layout scope.
 
+## Session Log — 2026-03-29 (artifact quality enforcement: block analysis-dump write_document artifacts)
+- MODE: AUDIT
+- Commit hash(es): pending
+- Files changed:
+  - lib/conviction/artifact-generator.ts
+  - lib/conviction/__tests__/artifact-generator.test.ts
+  - lib/cron/daily-brief-generate.ts
+  - lib/cron/__tests__/daily-brief.test.ts
+  - lib/cron/__tests__/manual-send.test.ts
+  - AUTOMATION_BACKLOG.md
+  - FOLDERA_PRODUCT_SPEC.md
+  - FOLDERA_MASTER_AUDIT.md
+  - SYSTEM_RUNBOOK.md
+  - SESSION_HISTORY.md
+- What was verified:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/conviction/__tests__/artifact-generator.test.ts lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts` (16 passed)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__ lib/conviction/__tests__ lib/cron/__tests__` (all passed)
+  - `npm run build` (pass)
+  - `npx playwright test` (112 passed, 10 failed, 6 skipped — pre-existing local authenticated-smoke harness failures)
+  - `npm run test:prod` (51/51 passed)
+- Any unresolved issues:
+  - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke expectations; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
 

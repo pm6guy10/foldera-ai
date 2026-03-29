@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConvictionDirective, GenerationRunLog } from '@/lib/briefing/types';
 import { getTriggerResponseStatus, runDailyGenerate, runDailySend } from '../daily-brief';
 import { generateDirective, validateDirectiveForPersistence } from '@/lib/briefing/generator';
-import { generateArtifact } from '@/lib/conviction/artifact-generator';
+import { generateArtifact, getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
 import { countUnprocessedSignals, processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
@@ -233,6 +233,7 @@ vi.mock('@/lib/briefing/generator', async () => {
 
 vi.mock('@/lib/conviction/artifact-generator', () => ({
   generateArtifact: vi.fn(),
+  getArtifactPersistenceIssues: vi.fn(),
 }));
 
 vi.mock('@/lib/extraction/conversation-extractor', () => ({
@@ -398,6 +399,7 @@ describe('runDailyGenerate candidate logging', () => {
     vi.mocked(generateDirective).mockReset();
     vi.mocked(validateDirectiveForPersistence).mockReset();
     vi.mocked(generateArtifact).mockReset();
+    vi.mocked(getArtifactPersistenceIssues).mockReset();
     vi.mocked(extractFromConversation).mockClear();
     vi.mocked(countUnprocessedSignals).mockReset();
     mockResolveSignalBacklogMode.mockClear();
@@ -406,6 +408,7 @@ describe('runDailyGenerate candidate logging', () => {
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockReset();
     vi.mocked(sendDailyDirective).mockClear();
     vi.mocked(validateDirectiveForPersistence).mockReturnValue([]);
+    vi.mocked(getArtifactPersistenceIssues).mockReturnValue([]);
     vi.mocked(countUnprocessedSignals).mockResolvedValue(0);
   });
 
@@ -522,6 +525,33 @@ describe('runDailyGenerate candidate logging', () => {
     expect((saved.execution_result as Record<string, any>).generation_log.stage).toBe('artifact');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateFailureReasons[0]).toContain('Artifact generation failed.');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[0].decision).toBe('selected');
+    expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
+  });
+
+  it('does not persist pending_approval when artifact structural validation fails', async () => {
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Reference talking points for MAS3',
+      body: 'Hi Holly,\n\nCould you send the two strongest reference talking points for MAS3?\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+    vi.mocked(getArtifactPersistenceIssues).mockReturnValue([
+      'artifact.body contains internal analysis scaffolding',
+    ]);
+
+    const result = await runDailyGenerate();
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'no_send_persisted',
+        detail: expect.stringContaining('artifact.body contains internal analysis scaffolding'),
+        success: true,
+      }),
+    ]);
+    expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
+    expect(mockSupabase.insertedActions.some((row) => row.status === 'skipped')).toBe(true);
   });
 
   it('persists explicit no-send outcomes when fewer than 3 candidates were evaluated', async () => {

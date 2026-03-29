@@ -63,6 +63,8 @@ vi.mock('@sentry/nextjs', () => ({
 /** Exact format that leaks from buildFullContext() in generator.ts */
 const ANALYSIS_DUMP =
   'INSIGHT: test\n\nWHY NOW: test\n\nWinning loop: test\n\nRunner-ups rejected:\n- test';
+const HOSTILE_META_DUMP =
+  'Insight - drift\nWhy now - timing\nThis candidate won because score: 4.7\nRunner ups rejected because low tractability\nClient asked for revised budget by Friday.';
 
 function anthropicResponse(content: string) {
   return {
@@ -128,5 +130,47 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const result = await generateArtifact('user-1', { ...BASE_WRITE_DOCUMENT_DIRECTIVE });
 
     expect(result).toBeNull();
+  });
+
+  it('accepts a clean finished write_document artifact', async () => {
+    const directive: any = {
+      ...BASE_WRITE_DOCUMENT_DIRECTIVE,
+      fullContext: 'Action Plan\n\n1. Draft the final proposal package.\n2. Send it by 4pm with explicit approval ask.',
+    };
+
+    const result = await generateArtifact('user-1', directive);
+
+    expect(result).toEqual({
+      type: 'document',
+      title: 'Address financial runway concern',
+      content: 'Action Plan\n\n1. Draft the final proposal package.\n2. Send it by 4pm with explicit approval ask.',
+    });
+  });
+
+  it('rejects hostile meta commentary variants that are not finished documents', async () => {
+    mockCreate.mockResolvedValue(anthropicResponse(HOSTILE_META_DUMP));
+
+    const result = await generateArtifact('user-1', { ...BASE_WRITE_DOCUMENT_DIRECTIVE });
+
+    expect(result).toBeNull();
+  });
+
+  it('fallback repair path returns finished document text, not analysis scaffolding', async () => {
+    mockCreate.mockResolvedValue(anthropicResponse(ANALYSIS_DUMP));
+
+    const directive: any = {
+      ...BASE_WRITE_DOCUMENT_DIRECTIVE,
+      fullContext: HOSTILE_META_DUMP,
+    };
+
+    const result = await generateArtifact('user-1', directive);
+
+    expect(result).not.toBeNull();
+    const content = (result as any).content as string;
+    expect(content).not.toMatch(/insight/i);
+    expect(content).not.toMatch(/why now/i);
+    expect(content).not.toMatch(/runner[\s-]?ups?/i);
+    expect(content).not.toMatch(/rejected because/i);
+    expect(content).not.toMatch(/this candidate/i);
   });
 });

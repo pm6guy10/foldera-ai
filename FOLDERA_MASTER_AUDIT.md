@@ -2,6 +2,20 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside artifact-quality backend scope
+
+This session changed backend artifact generation/persistence safety only:
+- `lib/conviction/artifact-generator.ts`
+- `lib/cron/daily-brief-generate.ts`
+- related unit tests
+
+Mandatory QA gate results for this session:
+- `npm run build` passed.
+- `npx playwright test` still fails on the pre-existing local authenticated production-smoke harness class (`tests/production/smoke.spec.ts` redirects/API auth assertions and Generate Now visibility on localhost).
+- `npm run test:prod` passed (`51/51`) against production config.
+
+Status: `NEEDS_REVIEW` (remaining local omnibus failures are pre-existing and outside this backend artifact enforcement patch).
+
 ### NEEDS_REVIEW — 2026-03-28 — Full local Playwright suite still fails outside paid-transaction hygiene scope
 
 This backend session changed only candidate-quality filters (`lib/signals/signal-processor.ts`, `lib/briefing/scorer.ts`) plus regression tests.

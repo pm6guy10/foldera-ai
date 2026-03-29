@@ -174,6 +174,7 @@ vi.mock('@/lib/briefing/generator', () => ({
 
 vi.mock('@/lib/conviction/artifact-generator', () => ({
   generateArtifact: vi.fn(),
+  getArtifactPersistenceIssues: vi.fn().mockReturnValue([]),
 }));
 
 vi.mock('@/lib/extraction/conversation-extractor', () => ({

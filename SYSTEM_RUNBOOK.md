@@ -66,16 +66,24 @@ Before ending:
 
 ---
 
-## Current Operating Status (updated 2026-03-28)
+## Current Operating Status (updated 2026-03-29)
 
 ### Build
 - Status: PASSING
-- Last verified: 2026-03-28 (`npm run build` passes)
+- Last verified: 2026-03-29 (`npm run build` passes)
 
 ### Production Tests (npm run test:prod)
 - Status: PASSING
-- Last confirmed pass: 51/51 on 2026-03-28 (this session)
+- Last confirmed pass: 51/51 on 2026-03-29 (this session)
 - Local omnibus note: full `npx playwright test` still has pre-existing local-auth failures (`112 passed, 10 failed, 6 skipped`) and is tracked in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
+### Artifact Quality (write_document)
+- Status: HARDENED
+- Last verified: 2026-03-29
+- Evidence:
+  - `lib/conviction/artifact-generator.ts` now blocks analysis scaffolding variants (not only exact `INSIGHT`/`WHY NOW` labels), enforces finished-document structure, and repairs/falls through safely.
+  - `lib/cron/daily-brief-generate.ts` now enforces artifact persistence checks (`getArtifactPersistenceIssues`) before any `pending_approval` insert.
+  - `lib/conviction/__tests__/artifact-generator.test.ts` + `lib/cron/__tests__/daily-brief.test.ts` cover analysis rejection, clean acceptance, hostile-meta rejection, fallback safety, and invalid-artifact no-persist behavior.
 
 ### Pending Migrations NOT in Production DB
 All of these are in source code but NOT yet applied to production:
@@ -115,6 +123,7 @@ All of these are in source code but NOT yet applied to production:
 1. Non-owner flow not proven — no production receipt for any non-Brandon user
 2. Missing tkg_signals indexes (no migration written yet)
 3. npm run test:prod 51/51 is Brandon-only — multi-user loop unverified
+4. Local omnibus `npx playwright test` still fails with pre-existing localhost authenticated-smoke harness mismatches; tracked as `NEEDS_REVIEW` in `FOLDERA_MASTER_AUDIT.md`
 
 ---
 
