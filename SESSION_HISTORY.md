@@ -1936,4 +1936,23 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Any unresolved issues:
   - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke assertions; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
 
+## Session Log — 2026-03-29 (real-data artifact proof: decision-enforcement repair on LLM fallback)
+- MODE: AUDIT
+- Commit hash(es): pending (set after commit on `main`)
+- Files changed:
+  - `lib/briefing/generator.ts`
+  - `lib/briefing/__tests__/generator-runtime.test.ts`
+  - `FOLDERA_MASTER_AUDIT.md`
+  - `SESSION_HISTORY.md`
+- What was verified:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/cron/__tests__/evaluate-readiness.test.ts` (40 passed)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__ lib/cron/__tests__` (all passed)
+  - `npm run build` (pass)
+  - `npx playwright test` (`111 passed, 11 failed, 6 skipped` — unchanged pre-existing localhost authenticated-smoke/clickflow failures)
+  - `npm run test:prod` (51/51 passed)
+  - Real-data owner run before fix (production nightly receipt + DB row `99b53d9d-8063-466d-b8c0-e98cb997c597`) produced `no_send` with decision-enforcement failure class.
+  - Real-data owner rerun after fix (same owner data path via `generateDirective` + `generateArtifact` + persistence/send-worthiness checks) produced `send_message`, confidence 76, empty persistence issues, and `sendWorthiness.worthy=true`.
+- Any unresolved issues:
+  - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke harness assertions and one clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
 

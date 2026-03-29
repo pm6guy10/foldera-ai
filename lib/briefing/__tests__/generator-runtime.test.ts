@@ -467,4 +467,53 @@ describe('generateDirective runtime failures', () => {
     expect(directive.directive).not.toBe('__GENERATION_FAILED__');
     expect(directive.action_type).toBe('send_message');
   });
+
+  it('repairs decision-enforcement-only failures with a deterministic write_document fallback', async () => {
+    const scored = buildScorerResult();
+    scored.winner.type = 'commitment';
+    scored.winner.suggestedActionType = 'write_document';
+    scored.winner.title = "Commitment due in 0d: Webinar 'Algoritmo Zero' launch decision";
+    scored.winner.content = 'Webinar launch ownership is unresolved and cutoff is 2026-03-30.';
+    scored.winner.relationshipContext = '- Webinar Owner <owner@algoritmozero.com> (Partner)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Write up webinar notes.',
+          artifact_type: 'write_document',
+          artifact: {
+            document_purpose: 'summary',
+            target_reader: 'team',
+            title: 'Webinar notes',
+            content: 'This document summarizes the current webinar status, outstanding prep, and recent thread updates for reference.',
+          },
+          evidence: 'Webinar launch remains unresolved.',
+          why_now: 'Timing is getting tight.',
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(anthropicCreate).toHaveBeenCalledTimes(2);
+    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    expect(directive.action_type).toBe('write_document');
+    const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    expect(embeddedArtifact?.content).toContain('Decision required:');
+    expect(embeddedArtifact?.content).toContain('Ask:');
+    expect(embeddedArtifact?.content).toContain('Consequence:');
+    expect(String(embeddedArtifact?.content)).toContain('owner');
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_repaired',
+      generationStatus: 'decision_enforcement_repaired',
+    }));
+  });
 });

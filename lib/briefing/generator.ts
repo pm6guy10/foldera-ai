@@ -2852,6 +2852,98 @@ export function validateDirectiveForPersistence(input: {
   return [...new Set(issues)];
 }
 
+function normalizeValidationIssue(issue: string): string {
+  return issue.replace(/^Generation validation failed:\s*/i, '').trim();
+}
+
+function isDecisionEnforcementIssue(issue: string): boolean {
+  return normalizeValidationIssue(issue).startsWith('decision_enforcement:');
+}
+
+function shouldAttemptDecisionEnforcementRepair(
+  issues: string[],
+  actionType: ValidArtifactTypeCanonical,
+): boolean {
+  if (issues.length === 0) return false;
+  if (actionType !== 'send_message' && actionType !== 'write_document') return false;
+  return issues.every((issue) => isDecisionEnforcementIssue(issue));
+}
+
+function resolveDecisionDeadline(candidateDueDate: string | null): string {
+  const dueMatch = candidateDueDate?.match(/\b20\d{2}-\d{2}-\d{2}\b/);
+  const date = dueMatch?.[0] ?? new Date(Date.now() + daysMs(1)).toISOString().slice(0, 10);
+  return `5:00 PM PT on ${date}`;
+}
+
+function cleanDecisionTarget(value: string): string {
+  const cleaned = value
+    .replace(/^Commitment due in \d+d:\s*/i, '')
+    .replace(/^Avoidance pattern:\s*/i, '')
+    .replace(/^Timing risk:\s*/i, '')
+    .trim();
+  return cleaned.slice(0, 110) || 'the active thread';
+}
+
+function buildDecisionEnforcedFallbackPayload(input: {
+  winner: ScoredLoop;
+  actionType: ValidArtifactTypeCanonical;
+  candidateDueDate: string | null;
+}): GeneratedDirectivePayload | null {
+  const target = cleanDecisionTarget(input.winner.title);
+  const deadline = resolveDecisionDeadline(input.candidateDueDate);
+  const askLine = `Ask: confirm the decision and name one accountable owner by ${deadline}.`;
+  const consequenceLine = `Consequence: if unresolved by ${deadline}, timeline slips and dependent work stays blocked.`;
+  const insight = `Ownership and timing for "${target}" are still unresolved.`;
+  const whyNow = `Missing a committed decision by ${deadline} creates avoidable execution risk.`;
+
+  if (input.actionType === 'send_message') {
+    const recipient = extractAllEmailAddresses(input.winner)[0];
+    if (!recipient) return null;
+
+    return {
+      insight,
+      decision: 'ACT',
+      directive: `Send a decision request that secures one accountable owner and a committed answer by ${deadline}.`,
+      artifact_type: 'send_message',
+      artifact: {
+        to: recipient,
+        recipient,
+        subject: `Decision needed by ${deadline}: ${target.slice(0, 58)}`,
+        body: [
+          `Can you confirm the decision for "${target}" and assign one accountable owner by ${deadline}?`,
+          '',
+          consequenceLine,
+        ].join('\n'),
+      },
+      why_now: whyNow,
+    };
+  }
+
+  if (input.actionType === 'write_document') {
+    return {
+      insight,
+      decision: 'ACT',
+      directive: `Publish a decision memo that locks owner accountability and deadline by ${deadline}.`,
+      artifact_type: 'write_document',
+      artifact: {
+        document_purpose: 'proposal',
+        target_reader: 'decision owner',
+        title: `Decision lock: ${target}`,
+        content: [
+          `Decision required: confirm the decision path for "${target}" and assign one accountable owner.`,
+          '',
+          askLine,
+          '',
+          consequenceLine,
+        ].join('\n'),
+      },
+      why_now: whyNow,
+    };
+  }
+
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Part 6 — Deterministic fallback templates
 // ---------------------------------------------------------------------------
@@ -3461,6 +3553,49 @@ export async function generateDirective(
     }
 
     // If LLM generation fails entirely, try next candidate
+    if (!payloadResult.payload) {
+      if (shouldAttemptDecisionEnforcementRepair(payloadResult.issues, decisionPayload.recommended_action)) {
+        const originalIssues = [...payloadResult.issues];
+        const repairedPayload = buildDecisionEnforcedFallbackPayload({
+          winner: hydratedWinner,
+          actionType: decisionPayload.recommended_action,
+          candidateDueDate: ctx.candidate_due_date,
+        });
+
+        if (repairedPayload) {
+          const repairedIssues = validateGeneratedArtifact(repairedPayload, ctx);
+          if (repairedIssues.length === 0) {
+            payloadResult = { issues: [], payload: repairedPayload };
+            logStructuredEvent({
+              event: 'candidate_repaired',
+              level: 'info',
+              userId,
+              artifactType: decisionPayload.recommended_action,
+              generationStatus: 'decision_enforcement_repaired',
+              details: {
+                scope: 'generator',
+                candidate_title: currentCandidate.title.slice(0, 80),
+                repaired_from_issues: originalIssues,
+              },
+            });
+          } else {
+            logStructuredEvent({
+              event: 'candidate_repair_failed',
+              level: 'warn',
+              userId,
+              artifactType: decisionPayload.recommended_action,
+              generationStatus: 'decision_enforcement_repair_failed',
+              details: {
+                scope: 'generator',
+                candidate_title: currentCandidate.title.slice(0, 80),
+                repaired_issues: repairedIssues,
+              },
+            });
+          }
+        }
+      }
+    }
+
     if (!payloadResult.payload) {
       const failureReason = formatValidationFailureReason('Generation validation failed:', payloadResult.issues);
       candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [`llm_failed:${failureReason.slice(0, 200)}`] });
