@@ -1907,7 +1907,7 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 
 ## Session Log — 2026-03-29 (artifact conversion pass: force decision-leverage artifacts)
 - MODE: AUDIT
-- Commit hash(es): pending (set after commit on `main`)
+- Commit hash(es): `b422668`
 - Files changed:
   - `lib/briefing/generator.ts`
   - `lib/cron/daily-brief-generate.ts`
