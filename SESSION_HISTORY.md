@@ -2019,3 +2019,19 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
   - production owner rerun receipt captured after deploy (see session output)
 - Any unresolved issues:
   - None within scoped blocker fix.
+
+## Session Log — 2026-03-29 (signal sensitive-data minimization gate in processor)
+- MODE: AUDIT
+- Commit hash(es): pending (set after commit on `main`)
+- Files changed:
+  - `lib/signals/signal-processor.ts`
+  - `lib/signals/__tests__/signal-processor.test.ts`
+  - `FOLDERA_MASTER_AUDIT.md`
+  - `SESSION_HISTORY.md`
+- What was verified:
+  - `npx vitest run lib/signals/__tests__/signal-processor.test.ts lib/signals/__tests__/signal-hygiene.test.ts` (29/29 passed)
+  - `npx vitest run lib/signals/__tests__` (29/29 passed)
+  - `npm run build` (pass)
+  - `npx playwright test` (`111 passed, 11 failed, 6 skipped` — unchanged pre-existing localhost authenticated-smoke/clickflow failures)
+- Any unresolved issues:
+  - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke harness assertions and one clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.

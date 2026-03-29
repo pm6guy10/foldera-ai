@@ -72,6 +72,11 @@ interface SignalExtraction {
   topics: ExtractedTopic[];
 }
 
+interface SensitiveDetectionResult {
+  isSensitive: boolean;
+  types: string[];
+}
+
 interface ProcessResult {
   signals_processed: number;
   entities_upserted: number;
@@ -100,6 +105,7 @@ export const LOW_BACKLOG_MAX_SIGNAL_ROUNDS = 3;
 export const HIGH_BACKLOG_SIGNAL_BATCH_SIZE = 100;
 export const HIGH_BACKLOG_MAX_SIGNAL_ROUNDS = 10;
 export const HIGH_BACKLOG_SIGNAL_THRESHOLD = 100;
+export const SENSITIVE_REDACTION_TOKEN = '[REDACTED_SENSITIVE]';
 
 export interface SignalBacklogMode {
   maxSignals: number;
@@ -425,6 +431,63 @@ export function isNonCommitment(description: string): boolean {
   return NON_COMMITMENT_PATTERNS.some((pattern) => pattern.test(description));
 }
 
+const SENSITIVE_PATTERNS: Array<{ type: string; pattern: RegExp }> = [
+  { type: 'ssn', pattern: /\b\d{3}-\d{2}-\d{4}\b/ },
+  { type: 'ssn', pattern: /\bsocial\s+security\b/i },
+  { type: 'bank_account', pattern: /\b(?:account|acct)\s*(?:number|no\.?)?\s*[:#]?\s*\d{6,17}\b/i },
+  { type: 'routing_number', pattern: /\brouting\s*(?:number|no\.?)?\s*[:#]?\s*\d{9}\b/i },
+  { type: 'payment_card', pattern: /\b(?:\d[ -]*?){13,19}\b/ },
+  { type: 'identity_document', pattern: /\bdriver'?s?\s+license\b/i },
+  { type: 'identity_document', pattern: /\bpassport\b/i },
+  { type: 'identity_document', pattern: /\bidentity\s+document\b/i },
+  { type: 'tax_document', pattern: /\birs\b/i },
+  { type: 'tax_document', pattern: /\bw-?2\b/i },
+  { type: 'tax_document', pattern: /\b1099\b/i },
+  { type: 'tax_document', pattern: /\btax\s+return\b/i },
+];
+
+function stripAttachmentContent(rawContent: string): string {
+  const lines = rawContent.split('\n');
+  const keptLines: string[] = [];
+  let skippingAttachmentBlock = false;
+
+  for (const line of lines) {
+    const attachmentHeader = /^\s*(?:attachment|attached file|file name)\s*[:\-]/i.test(line);
+    const attachmentStart = /^\s*\[(?:attachment|file|pdf|image):/i.test(line);
+    const attachmentEnd = /^\s*\[\/(?:attachment|file|pdf|image)\]/i.test(line);
+
+    if (attachmentHeader || attachmentStart) {
+      skippingAttachmentBlock = true;
+      continue;
+    }
+
+    if (attachmentEnd) {
+      skippingAttachmentBlock = false;
+      continue;
+    }
+
+    if (!skippingAttachmentBlock) {
+      keptLines.push(line);
+    }
+  }
+
+  return keptLines.join('\n');
+}
+
+export function detectSensitiveContent(content: string): SensitiveDetectionResult {
+  const sensitiveTypes = new Set<string>();
+  for (const candidate of SENSITIVE_PATTERNS) {
+    if (candidate.pattern.test(content)) {
+      sensitiveTypes.add(candidate.type);
+    }
+  }
+
+  return {
+    isSensitive: sensitiveTypes.size > 0,
+    types: [...sensitiveTypes],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Signal-level junk classifier — applied to email/Outlook signals BEFORE
 // commitment extraction. Signals matching these patterns are still processed
@@ -551,6 +614,7 @@ async function processBatch(
 
   // Build prompt with decrypted signal content, skipping signals that are still ciphertext
   const decryptedBatch: RawSignal[] = [];
+  const sensitiveSignalMap = new Map<string, string[]>();
   const signalTexts: string[] = [];
   // Track which signal IDs are junk emails — built during decrypt pass so we
   // don't need to re-decrypt in the extraction pass.
@@ -624,21 +688,63 @@ async function processBatch(
       continue;
     }
 
+    const contentSansAttachments = stripAttachmentContent(content);
+    const sensitive = detectSensitiveContent(contentSansAttachments);
+    if (sensitive.isSensitive) {
+      sensitiveSignalMap.set(s.id, sensitive.types);
+      if (!dryRun) {
+        const redactionMetadata = [{
+          sensitive_flag: true,
+          sensitive_types: sensitive.types,
+        }];
+        const redactResult = await supabase
+          .from('tkg_signals')
+          .update({
+            content: encrypt(SENSITIVE_REDACTION_TOKEN),
+            processed: true,
+            extracted_entities: [],
+            extracted_commitments: [],
+            extracted_dates: redactionMetadata,
+          })
+          .eq('id', s.id);
+        if (redactResult.error) {
+          result.errors.push(`sensitive_redact: ${redactResult.error.message}`);
+        }
+      }
+
+      result.signals_processed += 1;
+      logStructuredEvent({
+        event: 'signal_sensitive_redacted',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'sensitive_redacted',
+        details: {
+          scope: 'signal-processor',
+          signalId: s.id,
+          sensitive_types: sensitive.types,
+        },
+      });
+      continue;
+    }
+
     // Signal-level junk check during decrypt pass (we have decrypted content here).
     // Junk signals still go to LLM for entity/topic extraction but are flagged
     // so the commitment gate blocks them in the extraction pass below.
-    if (isJunkEmailSignal(s.source, content)) {
+    if (isJunkEmailSignal(s.source, contentSansAttachments)) {
       junkSignalIds.add(s.id);
     }
 
     decryptedBatch.push(s);
-    const trimmed = content.length > 2000 ? content.slice(0, 2000) + '...' : content;
+    const trimmed = contentSansAttachments.length > 2000 ? contentSansAttachments.slice(0, 2000) + '...' : contentSansAttachments;
     signalTexts.push(`--- Signal ID: ${s.id} | Source: ${s.source} | Type: ${s.type} ---\n${trimmed}`);
   }
 
   // If all signals were ciphertext, nothing to extract
   if (decryptedBatch.length === 0) {
-    result.errors.push('decrypt: no decryptable signals in batch');
+    if (sensitiveSignalMap.size === 0) {
+      result.errors.push('decrypt: no decryptable signals in batch');
+    }
     return result;
   }
 

@@ -2,6 +2,20 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside signal sensitive-data backend scope
+
+This session changed backend signal-processing safety only:
+- `lib/signals/signal-processor.ts`
+- `lib/signals/__tests__/signal-processor.test.ts`
+
+Mandatory QA gate results for this session:
+- `npx vitest run lib/signals/__tests__/signal-processor.test.ts lib/signals/__tests__/signal-hygiene.test.ts` passed (`29/29`).
+- `npx vitest run lib/signals/__tests__` passed (`29/29`).
+- `npm run build` passed.
+- `npx playwright test` still fails on the pre-existing localhost authenticated production-smoke harness class (`tests/production/smoke.spec.ts` redirect/session/API-auth assertions and Generate Now visibility) plus one existing `tests/audit/clickflow.spec.ts` timeout.
+
+Status: `NEEDS_REVIEW` (remaining local omnibus failures are unchanged and outside this backend sensitive-data gate patch).
+
 ### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside causal-grounding backend scope
 
 This session changed backend generator grounding logic + causal tests only:

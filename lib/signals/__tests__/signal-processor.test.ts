@@ -571,3 +571,153 @@ describe('processUnextractedSignals entity freshness', () => {
     expect(signals[0].extracted_entities).toEqual(['entity-canonical']);
   });
 });
+
+describe('processUnextractedSignals sensitive data gate', () => {
+  const USER_ID = '33333333-3333-3333-3333-333333333333';
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    mockIsOverDailyLimit.mockResolvedValue(false);
+    mockTrackApiCall.mockResolvedValue(undefined);
+    mockRecoverMicrosoftSignalContent.mockResolvedValue(null);
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+  });
+
+  it('detectSensitiveContent classifies high-risk patterns', async () => {
+    const { detectSensitiveContent } = await import('@/lib/signals/signal-processor');
+    const content = [
+      'SSN: 123-45-6789',
+      'Routing number: 021000021',
+      'Bank account number: 12345678901',
+      'W-2 tax form included',
+      'Driver license attached',
+    ].join('\n');
+    const result = detectSensitiveContent(content);
+
+    expect(result.isSensitive).toBe(true);
+    expect(result.types.sort()).toEqual([
+      'bank_account',
+      'identity_document',
+      'routing_number',
+      'ssn',
+      'tax_document',
+    ]);
+  });
+
+  it('redacts sensitive signals and blocks downstream extraction', async () => {
+    const entities: EntityRow[] = [
+      {
+        id: 'self-1',
+        user_id: USER_ID,
+        name: 'self',
+        display_name: 'You',
+        patterns: {},
+      },
+    ];
+    const signals: SignalRow[] = [
+      {
+        id: 'signal-sensitive-1',
+        user_id: USER_ID,
+        source: 'gmail',
+        source_id: 'gmail-sensitive-1',
+        type: 'email_received',
+        content: 'Please process this IRS form. SSN 123-45-6789 and routing number 021000021 are in this message.',
+        author: 'Payroll Team <payroll@example.com>',
+        occurred_at: '2026-03-29T10:00:00.000Z',
+        processed: false,
+      },
+    ];
+    const supabase = createSupabaseMock({ entities, signals });
+
+    vi.doMock('@/lib/db/client', () => ({
+      createServerClient: () => supabase,
+    }));
+
+    const { processUnextractedSignals, SENSITIVE_REDACTION_TOKEN } = await import('@/lib/signals/signal-processor');
+    const result = await processUnextractedSignals(USER_ID, { maxSignals: 1 });
+
+    expect(result.signals_processed).toBe(1);
+    expect(result.entities_upserted).toBe(0);
+    expect(result.commitments_created).toBe(0);
+    expect(mockMessagesCreate).not.toHaveBeenCalled();
+    expect(mockTrackApiCall).not.toHaveBeenCalled();
+    expect(signals[0].processed).toBe(true);
+    expect(signals[0].content).toBe(SENSITIVE_REDACTION_TOKEN);
+    expect(signals[0].extracted_entities).toEqual([]);
+    expect(signals[0].extracted_commitments).toEqual([]);
+    expect(signals[0].extracted_dates).toEqual([{
+      sensitive_flag: true,
+      sensitive_types: ['ssn', 'routing_number', 'tax_document'],
+    }]);
+  });
+
+  it('ignores attachment-only sensitive content and keeps non-sensitive extraction path', async () => {
+    const entities: EntityRow[] = [
+      {
+        id: 'self-1',
+        user_id: USER_ID,
+        name: 'self',
+        display_name: 'You',
+        patterns: {},
+      },
+    ];
+    const signals: SignalRow[] = [
+      {
+        id: 'signal-attachment-1',
+        user_id: USER_ID,
+        source: 'gmail',
+        source_id: 'gmail-attachment-1',
+        type: 'email_received',
+        content: [
+          'From: Alex <alex@example.com>',
+          'Subject: Meeting follow up',
+          '',
+          'Can we review the launch plan tomorrow?',
+          '[Attachment: tax.pdf]',
+          'SSN 123-45-6789',
+          'Routing number 021000021',
+          '[/Attachment]',
+        ].join('\n'),
+        author: 'Alex <alex@example.com>',
+        occurred_at: '2026-03-29T10:30:00.000Z',
+        processed: false,
+      },
+    ];
+    const supabase = createSupabaseMock({ entities, signals });
+
+    vi.doMock('@/lib/db/client', () => ({
+      createServerClient: () => supabase,
+    }));
+
+    mockMessagesCreate.mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify([
+            {
+              signal_id: 'signal-attachment-1',
+              persons: [],
+              commitments: [],
+              topics: [],
+            },
+          ]),
+        },
+      ],
+      usage: {
+        input_tokens: 10,
+        output_tokens: 20,
+      },
+    });
+
+    const { processUnextractedSignals } = await import('@/lib/signals/signal-processor');
+    const result = await processUnextractedSignals(USER_ID, { maxSignals: 1 });
+
+    expect(result.signals_processed).toBe(1);
+    expect(mockMessagesCreate).toHaveBeenCalledOnce();
+    expect(signals[0].processed).toBe(true);
+    expect(signals[0].content).not.toBe('[REDACTED_SENSITIVE]');
+    expect(signals[0].extracted_entities).toEqual([]);
+    expect(signals[0].extracted_commitments).toEqual([]);
+  });
+});
