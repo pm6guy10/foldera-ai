@@ -1839,7 +1839,7 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 
 ## Session Log — 2026-03-29 (ranking invariant enforcement: weak candidates cannot win)
 - MODE: AUDIT
-- Commit hash(es): pending
+- Commit hash(es): `7da3018`
 - Files changed:
   - lib/briefing/scorer.ts
   - lib/briefing/generator.ts
