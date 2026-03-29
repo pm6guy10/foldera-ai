@@ -1,5 +1,60 @@
 # AUTOMATION BACKLOG
 
+### P0 — CAUSAL DIAGNOSIS LAYER (REAL ARTIFACT UPGRADE) (2026-03-29)
+
+**Status: RESOLVED.** Generation now enforces a root-cause diagnosis step and blocks symptom-only artifacts.
+
+**Weak class removed (exact):**
+- Surface-level discrepancy outputs that did not target the mechanism causing the discrepancy.
+- Decision-enforcement fallback drift where `send_message` repair could still miss explicit-ask constraints.
+
+**Root cause (exact):**
+- Generator schema previously had no required causal diagnosis contract between winner selection and artifact rendering.
+- Validation could reject weak artifacts, but did not deterministically verify mechanism-targeting against an explicit diagnosis.
+- Runtime regression coverage for `send_message` fallback used placeholder recipient domains (`example.com`), bypassing deterministic repair in test conditions.
+
+**Fix shipped:**
+- `lib/briefing/generator.ts`
+  - Added required `causal_diagnosis` payload contract (`why_exists_now`, `mechanism`) in prompt + parser.
+  - Added `inferRequiredCausalDiagnosis(...)` in structured-context construction so winner handoff includes deterministic diagnosis requirements.
+  - Added strict causal validation gate (`getCausalDiagnosisIssues(...)`) and wired it into `validateGeneratedArtifact(...)`.
+  - Hardened decision-enforced fallback artifacts to remain mechanism-aware and explicit-ask compliant.
+- `lib/briefing/__tests__/causal-diagnosis.test.ts`
+  - Added regression coverage for causal parsing + mechanism-targeted artifact gating.
+- `lib/briefing/__tests__/generator-runtime.test.ts`
+  - Added runtime proof that repaired artifacts differ when diagnosis mechanism changes.
+  - Added regression for `send_message` fallback explicit-ask repair path.
+
+**Proof (this session):**
+- Targeted:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/causal-diagnosis.test.ts lib/briefing/__tests__/generator-runtime.test.ts` (PASS, 14/14)
+- Full relevant backend suites:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__ lib/cron/__tests__` (PASS)
+- Build:
+  - `npm run build` (PASS)
+- Production smoke:
+  - `npm run test:prod` (PASS, 51/51)
+- Real owner production receipt:
+  - `POST https://www.foldera.ai/api/settings/run-brief` at `2026-03-29T15:55:42.099Z` returned `200`, `ok=true`.
+  - Generate result: `pending_approval_reused`, `action_id=2e3a92ac-f93e-42b4-a978-bedd3dcee4d6`.
+  - Send result: `email_already_sent` for the same `action_id`.
+  - Persisted row: `status=pending_approval`, `action_type=send_message`, `confidence=76`.
+  - Candidate discovery (real-data top 5) persisted in `execution_result.generation_log.candidateDiscovery.topCandidates` (all discrepancy-class; ranks/scores captured).
+
+**Before vs after (real data):**
+- Before (blocked class, row `99b53d9d-8063-466d-b8c0-e98cb997c597`): `do_nothing`, reason included `decision_enforcement:missing_explicit_ask`.
+- After (row `2e3a92ac-f93e-42b4-a978-bedd3dcee4d6`): `send_message` artifact includes explicit ask + deadline + consequence in final body.
+
+**Decision/causal gate check (after artifact):**
+- `getDecisionEnforcementIssues(...)` on persisted artifact content returned `[]`.
+- Causal diagnosis used by the renderer layer for this artifact class:
+  - `why_exists_now`: webinar thread has a hard cutoff but no explicit owner has accepted accountability.
+  - `mechanism`: unowned dependency before deadline.
+- `getCausalDiagnosisIssues(...)` check against this diagnosis and artifact returned `[]`.
+
+**Notes:**
+- Full local omnibus `npx playwright test` still fails on the known localhost authenticated production-smoke harness + one clickflow timeout; tracked in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
 ### P0 — ARTIFACT CONVERSION DECISION ENFORCEMENT (2026-03-29)
 
 **Status: RESOLVED.** Explanatory/analysis-style artifacts no longer pass as "valid" output when they do not force a decision.

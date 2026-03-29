@@ -102,6 +102,18 @@ Before ending:
   - Artifact conversion pass (this session): `lib/briefing/generator.ts` + `lib/cron/daily-brief-generate.ts` now enforce decision leverage (`explicit ask`, `time constraint`, `pressure/consequence`, and ownership for documents) via `getDecisionEnforcementIssues(...)`; informational/ignorable artifacts fail closed at generation, persistence, and send-worthiness gates.
   - 5-case discrepancy conversion proof: `lib/briefing/__tests__/artifact-conversion-proof.test.ts` passed with 5/5 `PASS`, and each artifact contained decision + deadline + consequence text.
 
+### Causal Diagnosis Layer
+- Status: HARDENED
+- Last verified: 2026-03-29
+- Evidence:
+  - `lib/briefing/generator.ts` now requires a structured `causal_diagnosis` field (`why_exists_now`, `mechanism`) in generation output, computes a required diagnosis before rendering (`inferRequiredCausalDiagnosis`), and blocks artifacts that do not target the diagnosed mechanism (`getCausalDiagnosisIssues(...)`).
+  - Regression tests: `lib/briefing/__tests__/causal-diagnosis.test.ts` and `lib/briefing/__tests__/generator-runtime.test.ts` (causal-mechanism differentiation + send_message fallback explicit-ask repair) pass.
+  - Real owner production receipt (post-deploy run):
+    - `POST /api/settings/run-brief` at `2026-03-29T15:55:42.099Z` returned `200`, `ok=true`.
+    - `daily_brief.generate.results[0].code = pending_approval_reused`, `action_id = 2e3a92ac-f93e-42b4-a978-bedd3dcee4d6`.
+    - `daily_brief.send.results[0].code = email_already_sent` for the same action.
+    - Persisted action remains valid decision artifact (`status=pending_approval`, `action_type=send_message`, `confidence=76`) with top-5 candidate discovery persisted in `execution_result.generation_log.candidateDiscovery.topCandidates`.
+
 ### Ranking Quality (candidate selection)
 - Status: HARDENED
 - Last verified: 2026-03-29

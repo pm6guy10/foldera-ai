@@ -1955,4 +1955,32 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Any unresolved issues:
   - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke harness assertions and one clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
 
+## Session Log — 2026-03-29 (causal diagnosis layer real-artifact upgrade)
+- MODE: AUDIT
+- Commit hash(es): pending (set after commit on `main`)
+- Files changed:
+  - `lib/briefing/generator.ts`
+  - `lib/briefing/__tests__/generator-runtime.test.ts`
+  - `AUTOMATION_BACKLOG.md`
+  - `FOLDERA_PRODUCT_SPEC.md`
+  - `FOLDERA_MASTER_AUDIT.md`
+  - `SYSTEM_RUNBOOK.md`
+  - `SESSION_HISTORY.md`
+- What was verified:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/causal-diagnosis.test.ts lib/briefing/__tests__/generator-runtime.test.ts` (14/14 passed)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__ lib/cron/__tests__` (all passed)
+  - `npm run build` (pass)
+  - `npx playwright test` (`111 passed, 11 failed, 6 skipped` — unchanged pre-existing localhost authenticated-smoke/clickflow failures)
+  - `npm run test:prod` (51/51 passed)
+  - Live owner production receipt:
+    - `POST /api/settings/run-brief` at `2026-03-29T15:55:42.099Z` returned `200`, `ok=true`
+    - `daily_brief.generate.results[0]`: `pending_approval_reused`, `action_id=2e3a92ac-f93e-42b4-a978-bedd3dcee4d6`
+    - `daily_brief.send.results[0]`: `email_already_sent` for the same action
+    - persisted row confirms `status=pending_approval`, `action_type=send_message`, `confidence=76`, and top-5 candidate discovery persisted in generation log
+  - Real-data before/after class:
+    - before row `99b53d9d-8063-466d-b8c0-e98cb997c597` (`do_nothing`) blocked on `decision_enforcement:missing_explicit_ask`
+    - after row `2e3a92ac-f93e-42b4-a978-bedd3dcee4d6` (`send_message`) contains explicit ask + deadline + consequence
+- Any unresolved issues:
+  - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke harness assertions and one clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
 

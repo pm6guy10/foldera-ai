@@ -3195,6 +3195,16 @@ function buildDecisionEnforcedFallbackPayload(input: {
   if (input.actionType === 'send_message') {
     const recipient = extractAllEmailAddresses(input.winner)[0];
     if (!recipient) return null;
+    const mechanismAsk = copy.ask.replace(/^Ask:\s*/i, '').trim();
+    const explicitAsk = (() => {
+      if (!mechanismAsk) {
+        return `Can you confirm the decision for "${target}" and name the owner by ${deadline}?`;
+      }
+      const withCanYou = /\bcan you\b/i.test(mechanismAsk)
+        ? mechanismAsk
+        : `Can you ${mechanismAsk.charAt(0).toLowerCase()}${mechanismAsk.slice(1)}`;
+      return /[?]$/.test(withCanYou) ? withCanYou : `${withCanYou}?`;
+    })();
 
     return {
       insight: copy.insight,
@@ -3207,7 +3217,7 @@ function buildDecisionEnforcedFallbackPayload(input: {
         recipient,
         subject: `Decision needed by ${deadline}: ${target.slice(0, 58)}`,
         body: [
-          copy.ask.replace(/^Ask:\s*/i, ''),
+          explicitAsk,
           '',
           copy.consequence,
         ].join('\n'),
