@@ -75,7 +75,22 @@ Before ending:
 ### Production Tests (npm run test:prod)
 - Status: PASSING
 - Last confirmed pass: 51/51 on 2026-03-29 (this session)
-- Local omnibus note: full `npx playwright test` still has pre-existing local-auth failures (`112 passed, 10 failed, 6 skipped`) and is tracked in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+- Local omnibus note: full `npx playwright test` still has pre-existing local-auth failures (`111 passed, 11 failed, 6 skipped`) and is tracked in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
+### Non-Owner Depth
+- Status: BLOCKED (now explicitly enforced)
+- Last verified: 2026-03-29
+- Evidence:
+  - Acceptance gate now includes `NON_OWNER_DEPTH` and excludes synthetic `TEST_USER_ID` from `AUTH`/`TOKENS`/`SESSION`.
+  - Post-deploy nightly receipt:
+    - `SESSION`: `pass=true`, `detail="Connected providers map to auth users: microsoft, google"`
+    - `NON_OWNER_DEPTH`: `pass=false`, `detail="No connected non-owner users (owner-only run)."`
+  - Production DB receipt:
+    - `connected_user_ids`: owner + synthetic test user only
+    - `real_non_owner_connected_user_ids`: `[]`
+    - `non_owner_subscriptions`: `[]`
+    - `non_owner_actions_today`: `[]`
+  - Deepest non-owner stage reached: `token_refresh_pre` (synthetic user only), then blocked before daily brief eligibility.
 
 ### Artifact Quality (write_document)
 - Status: HARDENED
@@ -120,21 +135,17 @@ All of these are in source code but NOT yet applied to production:
 ---
 
 ## Next Steps (This Session)
-1. [x] Create SYSTEM_RUNBOOK.md
-2. [x] Commit untracked migrations (20260326000003)
-3. [x] Verify npm run test:prod baseline — 51/51 PASSED
-4. [x] Apply all pending migrations to production DB via Supabase MCP
-   - outcome_closed column added to tkg_actions
-   - api_usage composite index created
-   - test subscription deleted
-   - 7 malformed auto-suppression goals deleted
-5. [x] npm run test:prod after migrations — 51/51 PASSED
-6. [x] Update FOLDERA_MASTER_AUDIT.md to reflect resolved vs open items
+1. [x] Trace non-owner production path end-to-end (`nightly-ops` -> `runBriefLifecycle` -> generate/send/persistence).
+2. [x] Capture live non-owner depth receipts from production (`nightly-ops` response + DB queries).
+3. [x] Implement structural blocker fix: acceptance-gate `NON_OWNER_DEPTH` + synthetic-user exclusion from auth/session checks.
+4. [x] Add regression tests for blocker class (`lib/cron/__tests__/acceptance-gate.test.ts`).
+5. [x] Verify targeted + relevant suites (`vitest`), `npm run build`, `npm run test:prod`.
+6. [x] Re-trigger production and confirm blocker is now explicit (`NON_OWNER_DEPTH` fail with exact reason).
 
 ## Remaining Open Items
-1. Non-owner flow not proven — no production receipt for any non-Brandon user
+1. No real connected non-owner account in production (owner-only run) — `NON_OWNER_DEPTH` fails by design until this is true.
 2. Missing tkg_signals indexes (no migration written yet)
-3. npm run test:prod 51/51 is Brandon-only — multi-user loop unverified
+3. npm run test:prod 51/51 is Brandon-session coverage; true non-owner end-to-end loop still unverified
 4. Local omnibus `npx playwright test` still fails with pre-existing localhost authenticated-smoke harness mismatches; tracked as `NEEDS_REVIEW` in `FOLDERA_MASTER_AUDIT.md`
 
 ---

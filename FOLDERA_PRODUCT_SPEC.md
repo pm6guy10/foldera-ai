@@ -1,7 +1,7 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 29, 2026 (artifact quality enforcement hardened — analysis-dump documents blocked)
-Next Review: Monday March 24, 2026
+Last Updated: March 29, 2026 (non-owner depth enforcement added to acceptance gate)
+Next Review: Monday March 30, 2026
 
 ## HOW TO USE THIS FILE
 
@@ -58,7 +58,8 @@ March 24 production hotfix evidence:
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| Test user gets own directive | PROVEN | Action rows for user 22222222 (multiple runs). Latest: `fb02af62` do_nothing on 2026-03-22. March 24 manual run-brief route now scopes sync/generate/send to `session.user.id` instead of the owner-only cron proxy path; route/unit tests cover authenticated non-owner access plus explicit per-user send scope. | — |
+| Test user gets own directive | PARTIAL | Action rows exist for user `22222222`, but this is a synthetic cron-excluded user with no auth row and no deliverable email. It does not satisfy real non-owner production proof depth. | Not a valid real-user proof path |
+| Real connected non-owner reaches generate/persist/send in production | NOT PROVEN | 2026-03-29 production receipt: connected users were owner + synthetic `22222222` only; `real_non_owner_connected_user_ids=[]`; `non_owner_actions_today=[]`; acceptance gate `NON_OWNER_DEPTH` failed with `"No connected non-owner users (owner-only run)."`. | Need at least one real connected non-owner account with active subscription |
 | Test user gets email | NOT PROVEN | `no_verified_email` — test user has fake email `gate2-test@foldera.ai` | Need real OAuth signup with deliverable address |
 | Stranger onboarding flow (code paths) | VERIFIED | Code audit: empty goals→graceful, empty signals→null/wait_rationale, 90d first-sync, no hardcoded user IDs, trial banner only for past_due. March 23 follow-up: middleware now routes authenticated `/login` and `/start` to `/dashboard` or `/onboard` via the JWT `hasOnboarded` claim instead of a per-request `/api/onboard/check` fetch; dashboard/onboard pages no longer do client-side auth redirects. Local `npm run build` + `npx playwright test tests/e2e/` passed. | — |
 | Stranger onboarding flow (live) | NOT TESTED | Requires real OAuth sign-up with a real email address. Cannot be automated without browser. | Manual test needed |
@@ -83,12 +84,12 @@ March 24 production hotfix evidence:
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| acceptance-gate.ts script | BUILT | `lib/cron/acceptance-gate.ts`, now with 8 checks: AUTH, TOKENS, SIGNALS, COMMITMENTS, GENERATION, DELIVERY, SESSION, API_CREDIT_CANARY. The new canary makes a minimal Anthropic Haiku request and sends a Resend alert if credits appear exhausted. TOKENS now only flags expiring tokens without `refresh_token` via the DB query to avoid false failures for short-lived access tokens. | — |
+| acceptance-gate.ts script | BUILT (strengthened) | `lib/cron/acceptance-gate.ts` now enforces 9 checks: AUTH, TOKENS, API_CREDIT_CANARY, SIGNALS, COMMITMENTS, GENERATION, DELIVERY, SESSION, NON_OWNER_DEPTH. `NON_OWNER_DEPTH` requires a real non-owner (not owner, not synthetic test user) to reach persisted send/no-send evidence the same day. `AUTH`/`TOKENS`/`SESSION` now exclude `TEST_USER_ID` to prevent synthetic-token false failures. | Real non-owner account currently absent in prod |
 | Wired into nightly-ops | BUILT | Stage 6 in `app/api/cron/nightly-ops/route.ts` | First live fire unproven |
 | Alert on failure | BUILT | Sends to b.kapp1010@gmail.com via Resend on any FAIL | — |
 | CLAUDE.md/AGENTS.md updated | DONE | Session log appended | — |
 
-**NEXT MOVE:** Wait for next nightly-ops cron (11:00 UTC). Check Vercel logs for `acceptance_gate_result`. If all 8 checks PASS, mark items PROVEN.
+**NEXT MOVE:** Provision or connect at least one real non-owner production account, then rerun nightly-ops and confirm `NON_OWNER_DEPTH` flips to PASS with non-owner action/send receipts.
 
 ### 1.6 Error Monitoring
 

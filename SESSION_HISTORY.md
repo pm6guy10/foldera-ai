@@ -1881,4 +1881,28 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Any unresolved issues:
   - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke harness assertions and clickflow artifact timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
 
+## Session Log — 2026-03-29 (non-owner production proof pass: acceptance-gate non-owner depth enforcement)
+- MODE: AUDIT
+- Commit hash(es): `6662c87`, `PENDING_DOC_COMMIT`
+- Files changed:
+  - `lib/cron/acceptance-gate.ts`
+  - `lib/cron/__tests__/acceptance-gate.test.ts`
+  - `AUTOMATION_BACKLOG.md`
+  - `FOLDERA_PRODUCT_SPEC.md`
+  - `FOLDERA_MASTER_AUDIT.md`
+  - `SYSTEM_RUNBOOK.md`
+  - `SESSION_HISTORY.md`
+- What was verified:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/cron/__tests__/acceptance-gate.test.ts` (3 passed)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/cron/__tests__` (6 files, 46 passed)
+  - `npm run build` (pass)
+  - `npx playwright test` (`111 passed, 11 failed, 6 skipped` — pre-existing localhost authenticated-smoke + clickflow failures)
+  - `npm run test:prod` (51/51 passed)
+  - Production nightly receipt before deploy: acceptance gate ended at `SESSION` failure due synthetic `google/22222222` and had no explicit non-owner-depth invariant
+  - Production nightly receipt after deploy: `SESSION` passes and `NON_OWNER_DEPTH` fails with exact blocker (`No connected non-owner users (owner-only run).`)
+  - Production DB receipt after deploy: `real_non_owner_connected_user_ids=[]`, `non_owner_subscriptions=[]`, `non_owner_actions_today=[]`
+- Any unresolved issues:
+  - No real connected non-owner production account exists yet, so end-to-end non-owner loop cannot be proven at generate/persist/send/approve depth.
+  - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated-smoke harness assertions and clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
 

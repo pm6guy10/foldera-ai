@@ -1,5 +1,44 @@
 # AUTOMATION BACKLOG
 
+### P0 — NON-OWNER PRODUCTION DEPTH PROOF (2026-03-29)
+
+**Status: PARTIALLY RESOLVED (structural enforcement shipped), BLOCKED on production data reality.**
+
+**Root cause (exact):**
+- Production had no real connected non-owner account path. Connected token users were only:
+  - owner: `e40b7cd8-4925-42f7-bc99-5022969f1d22`
+  - synthetic test user: `22222222-2222-2222-2222-222222222222` (no auth user, no subscription, no valid send path)
+- Acceptance gate could fail for the wrong reason (`SESSION` on synthetic test token) and did not explicitly enforce real non-owner production depth.
+
+**Fix shipped (commit `6662c87`):**
+- `lib/cron/acceptance-gate.ts`
+  - Added `NON_OWNER_DEPTH` check requiring at least one real non-owner (not owner, not test user) with:
+    - connected token
+    - resolvable auth user
+    - active paid/trial subscription
+    - same-day persisted send/no-send evidence in `tkg_actions`
+  - Excluded `TEST_USER_ID` from `AUTH`, `TOKENS`, and `SESSION` checks to remove synthetic-user false failures.
+- `lib/cron/__tests__/acceptance-gate.test.ts`
+  - Added regression coverage:
+    - owner+synthetic-only environment fails `NON_OWNER_DEPTH`
+    - synthetic token no longer fails `SESSION`
+    - real non-owner with persisted evidence passes `NON_OWNER_DEPTH`
+
+**Production proof receipt (after deploy):**
+- Nightly run response now includes:
+  - `SESSION: pass=true, detail=\"Connected providers map to auth users: microsoft, google\"`
+  - `NON_OWNER_DEPTH: pass=false, detail=\"No connected non-owner users (owner-only run).\"`
+- Daily brief stage still runs for owner only:
+  - `daily_generate.results[0].userId = e40b7cd8-4925-42f7-bc99-5022969f1d22`
+  - no non-owner `daily_generate` or `daily_send` results present.
+
+**Remaining blocker (single highest-leverage class):**
+- No real connected non-owner account exists in production, so full non-owner loop (ingest → score → generate → persist → send → approve) cannot execute yet.
+- DB receipt confirms:
+  - `real_non_owner_connected_user_ids: []`
+  - `non_owner_subscriptions: []`
+  - `non_owner_actions_today: []`
+
 ### P0 — HOLY-CRAP MULTI-RUN PROOF: ranking consistency under repeated pipeline runs (2026-03-29)
 
 **Status: RESOLVED.** Deterministic 10-run proof now exists in tests and all runs pass the quality rubric.

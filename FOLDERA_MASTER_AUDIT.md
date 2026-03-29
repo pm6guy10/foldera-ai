@@ -2,6 +2,37 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside non-owner-depth backend scope
+
+This session changed backend acceptance-gate logic only:
+- `lib/cron/acceptance-gate.ts`
+- `lib/cron/__tests__/acceptance-gate.test.ts`
+
+Mandatory QA gate results for this session:
+- `npm run build` passed.
+- `npx playwright test` still fails on the pre-existing localhost-authenticated production-smoke harness class (redirect-to-login + API 401 expectations on localhost) plus one existing clickflow timeout.
+- `npm run test:prod` passed (`51/51`) after deploy.
+
+Status: `NEEDS_REVIEW` (remaining local omnibus failures are pre-existing and outside this backend acceptance-gate patch).
+
+### P0 — OPEN 2026-03-29 — Real non-owner production depth still blocked (now explicitly enforced)
+
+What changed:
+- Acceptance gate now has explicit `NON_OWNER_DEPTH` check and excludes synthetic `TEST_USER_ID` from `AUTH`/`TOKENS`/`SESSION`.
+- Production now fails for the correct blocker class, not synthetic-token noise:
+  - `SESSION`: PASS
+  - `NON_OWNER_DEPTH`: FAIL (`"No connected non-owner users (owner-only run)."`)
+
+Production receipt evidence:
+- Connected token users in DB: owner `e40b7cd8-4925-42f7-bc99-5022969f1d22` + synthetic `22222222-2222-2222-2222-222222222222`.
+- Real connected non-owner users: `[]`
+- Non-owner subscriptions: `[]`
+- Non-owner actions today: `[]`
+- Nightly `daily_brief.generate.results` and `daily_brief.send.results` only include owner userId.
+
+Remaining blocker:
+- No real connected non-owner account exists in production, so ingest/score/generate/persist/send/approve cannot be proven at non-owner depth.
+
 ### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside multi-run ranking proof scope
 
 This session changed ranking proof tests only:
@@ -150,8 +181,8 @@ Covers: multi-candidate viability, Outlook hygiene, SYSTEM_RUNBOOK creation, all
 - `tkg_signals (user_id, occurred_at)` — no index exists; full table scans on signal freshness queries
 - No migration written yet. Add at next infrastructure window.
 
-### P2 — Non-Owner Flow Not Proven
-Primary goal per SYSTEM_RUNBOOK is 3 consecutive successful runs for a non-Brandon user. No session has produced verified output for a non-owner user with production DB proof. The system works for `e40b7cd8` (Brandon) only as far as E2E receipts show.
+### P2 — Non-Owner Flow Not Proven (superseded)
+Superseded by **P0 — OPEN 2026-03-29 — Real non-owner production depth still blocked (now explicitly enforced)**. Keep this entry for historical context only.
 
 ---
 
