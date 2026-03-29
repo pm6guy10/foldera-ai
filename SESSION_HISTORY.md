@@ -1938,7 +1938,7 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 
 ## Session Log — 2026-03-29 (real-data artifact proof: decision-enforcement repair on LLM fallback)
 - MODE: AUDIT
-- Commit hash(es): pending (set after commit on `main`)
+- Commit hash(es): `6e4ec14`
 - Files changed:
   - `lib/briefing/generator.ts`
   - `lib/briefing/__tests__/generator-runtime.test.ts`
