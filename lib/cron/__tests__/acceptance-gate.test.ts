@@ -1,10 +1,116 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { OWNER_USER_ID } from '@/lib/auth/constants';
+import { TEST_USER_ID } from '@/lib/config/constants';
+
+type Row = Record<string, any>;
+type TableName = 'user_tokens' | 'tkg_signals' | 'tkg_commitments' | 'tkg_actions' | 'user_subscriptions';
+
+interface MockDb {
+  user_tokens: Row[];
+  tkg_signals: Row[];
+  tkg_commitments: Row[];
+  tkg_actions: Row[];
+  user_subscriptions: Row[];
+}
 
 const from = vi.fn();
 const getUserById = vi.fn();
 const sendResendEmail = vi.fn();
 const logStructuredEvent = vi.fn();
 const anthropicCreate = vi.fn();
+
+let mockDb: MockDb;
+const authUsers = new Map<string, Row | null>();
+
+function cloneRows(rows: Row[]): Row[] {
+  return rows.map((row) => ({ ...row }));
+}
+
+function createQuery(rows: Row[], selectOptions?: { count?: string; head?: boolean }) {
+  let workingRows = cloneRows(rows);
+  let limitValue: number | null = null;
+  let orderValue: { column: string; ascending: boolean } | null = null;
+
+  const execute = async () => {
+    let resultRows = cloneRows(workingRows);
+    if (orderValue) {
+      const { column, ascending } = orderValue;
+      resultRows.sort((a, b) => {
+        const av = a[column];
+        const bv = b[column];
+        if (av === bv) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        if (av < bv) return ascending ? -1 : 1;
+        return ascending ? 1 : -1;
+      });
+    }
+    if (typeof limitValue === 'number') {
+      resultRows = resultRows.slice(0, limitValue);
+    }
+    if (selectOptions?.head) {
+      return { count: resultRows.length, error: null };
+    }
+    return { data: resultRows, error: null };
+  };
+
+  const query: any = {
+    eq(column: string, value: unknown) {
+      workingRows = workingRows.filter((row) => row[column] === value);
+      return query;
+    },
+    neq(column: string, value: unknown) {
+      workingRows = workingRows.filter((row) => row[column] !== value);
+      return query;
+    },
+    is(column: string, value: unknown) {
+      if (value === null) {
+        workingRows = workingRows.filter((row) => row[column] == null);
+      } else {
+        workingRows = workingRows.filter((row) => row[column] === value);
+      }
+      return query;
+    },
+    not(column: string, operator: string, value: unknown) {
+      if (operator === 'is' && value === null) {
+        workingRows = workingRows.filter((row) => row[column] != null);
+      } else {
+        workingRows = workingRows.filter((row) => row[column] !== value);
+      }
+      return query;
+    },
+    lt(column: string, value: any) {
+      workingRows = workingRows.filter((row) => row[column] < value);
+      return query;
+    },
+    gte(column: string, value: any) {
+      workingRows = workingRows.filter((row) => row[column] >= value);
+      return query;
+    },
+    in(column: string, values: unknown[]) {
+      const allowed = new Set(values);
+      workingRows = workingRows.filter((row) => allowed.has(row[column]));
+      return query;
+    },
+    order(column: string, options?: { ascending?: boolean }) {
+      orderValue = { column, ascending: options?.ascending !== false };
+      return query;
+    },
+    limit(value: number) {
+      limitValue = value;
+      return query;
+    },
+    maybeSingle: async () => {
+      const result = await execute();
+      const data = (result as { data?: Row[] }).data ?? [];
+      return { data: data[0] ?? null, error: null };
+    },
+    then: (resolve: (value: any) => unknown, reject: (reason?: any) => unknown) =>
+      execute().then(resolve, reject),
+  };
+
+  return query;
+}
 
 vi.mock('@/lib/db/client', () => ({
   createServerClient: () => ({
@@ -34,87 +140,84 @@ vi.mock('@anthropic-ai/sdk', () => ({
   },
 }));
 
-function tableResponse(table: string) {
-  switch (table) {
-    case 'user_tokens':
-      return {
-        select: (columns: string) => {
-          if (columns.includes('email')) {
-            return {
-              not: () => ({
-                limit: () => ({
-                  maybeSingle: () => Promise.resolve({
-                    data: { user_id: 'user-1', email: 'owner@example.com' },
-                    error: null,
-                  }),
-                }),
-              }),
-            };
-          }
-
-          if (columns.includes('expires_at')) {
-            return {
-              not: () => Promise.resolve({
-                data: [],
-                error: null,
-              }),
-            };
-          }
-
-          if (columns.includes('access_token')) {
-            return {
-              limit: () => Promise.resolve({
-                data: [{ provider: 'google', user_id: 'user-1', access_token: 'encrypted-token' }],
-                error: null,
-              }),
-            };
-          }
-
-          return {
-            limit: () => Promise.resolve({ data: [], error: null }),
-          };
-        },
-      };
-    case 'tkg_signals':
-      return {
-        select: () => ({
-          eq: () => Promise.resolve({ count: 0, error: null }),
-        }),
-      };
-    case 'tkg_commitments':
-      return {
-        select: () => ({
-          is: () => Promise.resolve({ data: [], error: null }),
-        }),
-      };
-    case 'tkg_actions':
-      return {
-        select: () => ({
-          gte: () => ({
-            limit: () => Promise.resolve({
-              data: [{ id: 'action-1', user_id: 'user-1', action_type: 'send_message', status: 'executed' }],
-              error: null,
-            }),
-            in: () => Promise.resolve({
-              data: [{ id: 'action-1', user_id: 'user-1', status: 'executed', execution_result: { resend_id: 'resend-1' } }],
-              error: null,
-            }),
-          }),
-        }),
-      };
-    default:
-      return {
-        select: () => Promise.resolve({ data: [], error: null }),
-      };
-  }
-}
-
 describe('runAcceptanceGate', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    from.mockImplementation((table: string) => tableResponse(table));
-    getUserById.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+
+    const nowIso = new Date().toISOString();
+    const tomorrowMs = Date.now() + 24 * 60 * 60 * 1000;
+    const nonOwnerUserId = 'non-owner-1';
+
+    mockDb = {
+      user_tokens: [
+        {
+          user_id: OWNER_USER_ID,
+          provider: 'google',
+          email: 'owner@example.com',
+          access_token: 'owner-token',
+          refresh_token: 'owner-refresh',
+          expires_at: tomorrowMs,
+          disconnected_at: null,
+        },
+        {
+          user_id: nonOwnerUserId,
+          provider: 'google',
+          email: 'member@example.com',
+          access_token: 'member-token',
+          refresh_token: 'member-refresh',
+          expires_at: tomorrowMs,
+          disconnected_at: null,
+        },
+        {
+          user_id: TEST_USER_ID,
+          provider: 'google',
+          email: 'test@example.com',
+          access_token: 'test-token',
+          refresh_token: null,
+          expires_at: Date.now() + 1_000,
+          disconnected_at: null,
+        },
+      ],
+      tkg_signals: [],
+      tkg_commitments: [],
+      tkg_actions: [
+        {
+          id: 'owner-action-1',
+          user_id: OWNER_USER_ID,
+          action_type: 'send_message',
+          status: 'executed',
+          execution_result: { resend_id: 'resend-owner' },
+          generated_at: nowIso,
+        },
+        {
+          id: 'member-action-1',
+          user_id: nonOwnerUserId,
+          action_type: 'do_nothing',
+          status: 'skipped',
+          execution_result: { outcome_type: 'no_send' },
+          generated_at: nowIso,
+        },
+      ],
+      user_subscriptions: [
+        { user_id: nonOwnerUserId, plan: 'trial', status: 'active' },
+      ],
+    };
+
+    authUsers.clear();
+    authUsers.set(OWNER_USER_ID, { id: OWNER_USER_ID, email: 'owner@example.com' });
+    authUsers.set(nonOwnerUserId, { id: nonOwnerUserId, email: 'member@example.com' });
+
+    from.mockImplementation((table: TableName) => ({
+      select: (_columns: string, options?: { count?: string; head?: boolean }) =>
+        createQuery((mockDb as Record<TableName, Row[]>)[table] ?? [], options),
+    }));
+
+    getUserById.mockImplementation(async (userId: string) => ({
+      data: { user: authUsers.get(userId) ?? null },
+      error: null,
+    }));
+
     anthropicCreate.mockResolvedValue({ id: 'msg-1' });
     sendResendEmail.mockResolvedValue({ data: { id: 'email-1' }, error: null });
   });
@@ -140,5 +243,43 @@ describe('runAcceptanceGate', () => {
       }),
     );
   });
-});
 
+  it('fails NON_OWNER_DEPTH when only owner and synthetic test token users are connected', async () => {
+    mockDb.user_tokens = mockDb.user_tokens.filter((row) => row.user_id !== 'non-owner-1');
+    mockDb.user_subscriptions = [];
+    mockDb.tkg_actions = mockDb.tkg_actions.filter((row) => row.user_id === OWNER_USER_ID);
+    authUsers.delete('non-owner-1');
+
+    const { runAcceptanceGate } = await import('../acceptance-gate');
+    const result = await runAcceptanceGate();
+
+    const nonOwnerCheck = result.checks.find((check) => check.check === 'NON_OWNER_DEPTH');
+    const sessionCheck = result.checks.find((check) => check.check === 'SESSION');
+
+    expect(nonOwnerCheck).toMatchObject({
+      check: 'NON_OWNER_DEPTH',
+      pass: false,
+      detail: 'No connected non-owner users (owner-only run).',
+    });
+    expect(sessionCheck).toMatchObject({
+      check: 'SESSION',
+      pass: true,
+    });
+  });
+
+  it('passes NON_OWNER_DEPTH when a real non-owner has active subscription and persisted evidence', async () => {
+    const { runAcceptanceGate } = await import('../acceptance-gate');
+    const result = await runAcceptanceGate();
+
+    expect(result.ok).toBe(true);
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          check: 'NON_OWNER_DEPTH',
+          pass: true,
+          detail: 'Non-owner production depth verified for 1 user(s).',
+        }),
+      ]),
+    );
+  });
+});

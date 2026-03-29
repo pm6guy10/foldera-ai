@@ -5,19 +5,22 @@
  * and reports pass/fail. If any check fails, sends a health alert email.
  *
  * Checks:
- *   1. AUTH       — At least one connected token maps to a real auth user.
- *   2. TOKENS     — user_tokens with no refresh_token that are expiring within 6h get flagged.
- *   3. SIGNALS    — Unprocessed signal count <= 50.
- *   4. COMMITMENTS— Active commitment count <= 150 per user.
- *   5. GENERATION — At least one tkg_actions row today (directive or do_nothing).
- *   6. DELIVERY   — If pending_approval exists, email was sent.
- *   7. SESSION    — Connected token rows map to resolvable auth users.
+ *   1. AUTH           — At least one connected non-test token maps to a real auth user.
+ *   2. TOKENS         — non-test tokens with no refresh_token that are expiring within 6h get flagged.
+ *   3. SIGNALS        — Unprocessed signal count <= 50.
+ *   4. COMMITMENTS    — Active commitment count <= 150 per user.
+ *   5. GENERATION     — At least one tkg_actions row today (directive or do_nothing).
+ *   6. DELIVERY       — If pending_approval exists, email was sent.
+ *   7. SESSION        — Connected non-test token rows map to resolvable auth users.
+ *   8. NON_OWNER_DEPTH— At least one real non-owner reached persisted generate/send decision today.
  */
 
 import { createServerClient } from '@/lib/db/client';
 import Anthropic from '@anthropic-ai/sdk';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { renderPlaintextEmailHtml, sendResendEmail } from '@/lib/email/resend';
+import { OWNER_USER_ID } from '@/lib/auth/constants';
+import { TEST_USER_ID } from '@/lib/config/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,6 +49,7 @@ async function checkAuth(): Promise<CheckResult> {
     .from('user_tokens')
     .select('user_id, email')
     .not('access_token', 'is', null)
+    .neq('user_id', TEST_USER_ID)
     .limit(1)
     .maybeSingle();
 
@@ -99,7 +103,8 @@ async function checkTokens(): Promise<CheckResult> {
     .from('user_tokens')
     .select('user_id, provider, expires_at, refresh_token')
     .lt('expires_at', sixHoursFromNowMs)
-    .is('refresh_token', null);
+    .is('refresh_token', null)
+    .neq('user_id', TEST_USER_ID);
 
   if (error) {
     return { check: 'TOKENS', pass: false, detail: `Query error: ${error.message}` };
@@ -329,8 +334,11 @@ async function checkSession(): Promise<CheckResult> {
 
   const { data, error } = await supabase
     .from('user_tokens')
-    .select('provider, user_id, access_token')
-    .limit(5);
+    .select('provider, user_id, access_token, disconnected_at')
+    .is('disconnected_at', null)
+    .not('access_token', 'is', null)
+    .neq('user_id', TEST_USER_ID)
+    .limit(20);
 
   if (error) {
     return { check: 'SESSION', pass: false, detail: `user_tokens query failed: ${error.message}` };
@@ -372,6 +380,133 @@ async function checkSession(): Promise<CheckResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Check 8: NON_OWNER_DEPTH — real non-owner reached generate/send decision
+// ---------------------------------------------------------------------------
+
+async function checkNonOwnerDepth(): Promise<CheckResult> {
+  const supabase = createServerClient();
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+  const todayStartIso = todayStart.toISOString();
+
+  const { data: connectedRows, error: tokenError } = await supabase
+    .from('user_tokens')
+    .select('user_id')
+    .is('disconnected_at', null)
+    .not('access_token', 'is', null)
+    .neq('user_id', OWNER_USER_ID)
+    .neq('user_id', TEST_USER_ID);
+
+  if (tokenError) {
+    return { check: 'NON_OWNER_DEPTH', pass: false, detail: `user_tokens lookup failed: ${tokenError.message}` };
+  }
+
+  const connectedUserIds = [...new Set((connectedRows ?? []).map((row) => row.user_id as string).filter(Boolean))];
+  if (connectedUserIds.length === 0) {
+    return {
+      check: 'NON_OWNER_DEPTH',
+      pass: false,
+      detail: 'No connected non-owner users (owner-only run).',
+    };
+  }
+
+  const authEligibleUserIds: string[] = [];
+  for (const userId of connectedUserIds) {
+    const { data, error } = await supabase.auth.admin.getUserById(userId);
+    if (error || !data.user) continue;
+    authEligibleUserIds.push(userId);
+  }
+
+  if (authEligibleUserIds.length === 0) {
+    return {
+      check: 'NON_OWNER_DEPTH',
+      pass: false,
+      detail: `Connected non-owner users exist (${connectedUserIds.length}) but none map to auth users.`,
+    };
+  }
+
+  const { data: subscriptions, error: subscriptionError } = await supabase
+    .from('user_subscriptions')
+    .select('user_id, plan, status')
+    .in('user_id', authEligibleUserIds);
+
+  if (subscriptionError) {
+    return {
+      check: 'NON_OWNER_DEPTH',
+      pass: false,
+      detail: `user_subscriptions lookup failed: ${subscriptionError.message}`,
+    };
+  }
+
+  const paidUserIds = new Set(
+    (subscriptions ?? [])
+      .filter((row) => row.status === 'active' && (row.plan === 'pro' || row.plan === 'trial'))
+      .map((row) => row.user_id as string),
+  );
+  const eligibleUserIds = authEligibleUserIds.filter((id) => paidUserIds.has(id));
+
+  if (eligibleUserIds.length === 0) {
+    return {
+      check: 'NON_OWNER_DEPTH',
+      pass: false,
+      detail: `Connected/authenticated non-owner users exist (${authEligibleUserIds.length}) but none are active paid/trial.`,
+    };
+  }
+
+  const { data: actions, error: actionError } = await supabase
+    .from('tkg_actions')
+    .select('id, user_id, status, execution_result')
+    .gte('generated_at', todayStartIso)
+    .in('user_id', eligibleUserIds);
+
+  if (actionError) {
+    return {
+      check: 'NON_OWNER_DEPTH',
+      pass: false,
+      detail: `tkg_actions lookup failed: ${actionError.message}`,
+    };
+  }
+
+  const nonOwnerActions = actions ?? [];
+  if (nonOwnerActions.length === 0) {
+    return {
+      check: 'NON_OWNER_DEPTH',
+      pass: false,
+      detail: `No non-owner actions generated today for ${eligibleUserIds.length} eligible user(s).`,
+    };
+  }
+
+  const usersWithDepthEvidence = new Set<string>();
+  for (const row of nonOwnerActions) {
+    const executionResult =
+      row.execution_result && typeof row.execution_result === 'object'
+        ? (row.execution_result as Record<string, unknown>)
+        : null;
+    const hasSendEvidence =
+      typeof executionResult?.daily_brief_sent_at === 'string' ||
+      typeof executionResult?.resend_id === 'string';
+    const hasNoSendEvidence = executionResult?.outcome_type === 'no_send';
+    if (hasSendEvidence || hasNoSendEvidence) {
+      usersWithDepthEvidence.add(row.user_id as string);
+    }
+  }
+
+  if (usersWithDepthEvidence.size === 0) {
+    return {
+      check: 'NON_OWNER_DEPTH',
+      pass: false,
+      detail: `Non-owner actions exist (${nonOwnerActions.length}) but none include send/no-send persistence evidence.`,
+    };
+  }
+
+  return {
+    check: 'NON_OWNER_DEPTH',
+    pass: true,
+    detail: `Non-owner production depth verified for ${usersWithDepthEvidence.size} user(s).`,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Alert on failure
 // ---------------------------------------------------------------------------
 
@@ -408,7 +543,7 @@ export async function runAcceptanceGate(): Promise<AcceptanceGateResult> {
   const startTime = Date.now();
   const checks: CheckResult[] = [];
 
-  // Run all 7 checks sequentially (each is a quick DB query)
+  // Run all checks sequentially (each is a quick DB query)
   const checkFns = [
     checkAuth,
     checkTokens,
@@ -418,6 +553,7 @@ export async function runAcceptanceGate(): Promise<AcceptanceGateResult> {
     checkGeneration,
     checkDelivery,
     checkSession,
+    checkNonOwnerDepth,
   ];
 
   for (const fn of checkFns) {
