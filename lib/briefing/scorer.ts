@@ -105,6 +105,12 @@ const NOISE_CANDIDATE_PATTERNS = [
   /\b(?:order\s+(?:confirmed|shipped|delivered|is\s+on\s+its\s+way|has\s+been\s+placed)|booking\s+(?:is\s+)?confirmed|reservation\s+(?:is\s+)?confirmed|subscription\s+(?:renewed|confirmed|activated))\b/i,
   // Account / credit score informational updates (no action produces a SEND or WRITE)
   /\b(?:account\s+(?:statement|balance)\s+(?:is\s+)?(?:ready|available)|credit\s+(?:score|report)\s+(?:updated|available|changed)|your\s+statement\s+(?:is\s+)?(?:ready|available))\b/i,
+  // Recipient-side billing/notification language
+  /\b(will be (charged|collected|automatically|posted))\b/i,
+  /\b(if (you are )?interested)\b/i,
+  /\b(payment (received|processed|posted))\b/i,
+  /\b(explore exclusive|claim your|redeem your|unlock your)\b/i,
+  /\b(register for .*(webinar|event|conference|session))\b/i,
 ];
 
 export function isNoiseCandidateText(...texts: string[]): boolean {

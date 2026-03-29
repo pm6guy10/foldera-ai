@@ -594,6 +594,73 @@ export function isEligibleCommitment(commitment: { description: string; who?: st
   return true;
 }
 
+export function isUserTheActor(
+  commitment: {
+    description: string;
+    category?: string;
+    canonical_form?: string;
+  },
+  signalContent = '',
+): boolean {
+  const description = (commitment.description ?? '').trim();
+  if (description.length === 0) return false;
+  const lower = description.toLowerCase();
+
+  const canonical = typeof commitment.canonical_form === 'string' && commitment.canonical_form.trim().length > 0
+    ? commitment.canonical_form
+    : `SYNC:${(commitment.category ?? 'other').trim()}:`;
+  const canonicalLower = canonical.toLowerCase();
+
+  const notificationRecipientPatterns = [
+    /\bwill be (?:charged|collected|automatically|posted)\b/i,
+    /\bhas been (?:processed|received|applied)\b/i,
+    /\bif (?:you are )?interested\b/i,
+    /\b(?:to receive|you will receive|you have been selected)\b/i,
+    /\b(?:explore exclusive|claim your|redeem your|unlock your)\b/i,
+    /\bpayment (?:received|processed|posted)\b/i,
+    /\bsend .* to (?:user|you)\b/i,
+  ];
+  if (notificationRecipientPatterns.some((pattern) => pattern.test(lower))) return false;
+
+  if (/\bregister for .*(?:webinars?|event|conference|session)\b/i.test(lower)) return false;
+  if (/\bparticipate in .*(?:research|study|survey|role)\b/i.test(lower)) return false;
+
+  const isPaymentFinancial = canonicalLower.startsWith('sync:payment_financial:');
+  if (
+    isPaymentFinancial &&
+    /\b(?:payment (?:received|processed|posted)|will be (?:charged|collected|posted)|has been (?:processed|received|applied))\b/i.test(lower)
+  ) {
+    return false;
+  }
+
+  const isAttendParticipate = canonicalLower.startsWith('sync:attend_participate:');
+  if (
+    isAttendParticipate &&
+    /\b(?:webinar|exclusive|reveal|insights|opportunity)\b/i.test(lower) &&
+    !/\b(?:rsvp(?:'d)?|signed up|registered|accepted invite)\b/i.test(lower)
+  ) {
+    return false;
+  }
+
+  const isProvideInformation = canonicalLower.startsWith('sync:provide_information:');
+  if (
+    isProvideInformation &&
+    /\b(?:record (?:your )?screen|share (?:the )?loom|clear (?:your )?cache|try (?:a )?different browser|refresh (?:the )?page)\b/i.test(lower)
+  ) {
+    return false;
+  }
+
+  const signalLower = signalContent.toLowerCase();
+  const looksInboundEmail = /(^|\n)\s*from:\s+/i.test(signalLower) &&
+    /(^|\n)\s*to:\s+/i.test(signalLower) &&
+    !/\[sent email:/i.test(signalLower);
+  if (looksInboundEmail && /\bparticipate in .*(?:research|study|survey|role)\b/i.test(lower)) {
+    return false;
+  }
+
+  return true;
+}
+
 async function processBatch(
   anthropic: Anthropic,
   supabase: ReturnType<typeof createServerClient>,
@@ -839,6 +906,10 @@ async function processBatch(
           if (!commitment.description?.trim()) continue;
           if (isNonCommitment(commitment.description)) continue;
           if (!isEligibleCommitment(commitment)) continue;
+          if (!isUserTheActor(commitment, signal.content)) {
+            console.log(`[signal-processor] Commitment skipped (user is recipient, not actor): ${commitment.description.substring(0, 80)}`);
+            continue;
+          }
           const commitmentId = dryRun
             ? `dry-run-commitment-${commitmentIds.length + 1}`
             : await insertCommitment(

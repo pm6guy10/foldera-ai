@@ -19,5 +19,15 @@ describe('isNoiseCandidateText', () => {
       ),
     ).toBe(false);
   });
-});
 
+  it('filters recipient-side billing and payment notification patterns', () => {
+    expect(isNoiseCandidateText('Insurance payment will be collected via automatic bill pay')).toBe(true);
+    expect(isNoiseCandidateText('Payment processed and will be posted to account')).toBe(true);
+  });
+
+  it('filters obvious promotional recipient language', () => {
+    expect(isNoiseCandidateText('If you are interested, send pricing preferences')).toBe(true);
+    expect(isNoiseCandidateText('Explore exclusive partner offer and claim your reward')).toBe(true);
+    expect(isNoiseCandidateText('Register for TechBytes webinar session on AI readiness')).toBe(true);
+  });
+});

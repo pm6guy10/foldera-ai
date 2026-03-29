@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { isNonCommitment, isJunkEmailSignal, isEligibleCommitment } from '../signal-processor';
+import { isNonCommitment, isJunkEmailSignal, isEligibleCommitment, isUserTheActor } from '../signal-processor';
 
 // ---------------------------------------------------------------------------
 // 1. Junk signal gate — promo/spam/newsletter
@@ -170,6 +170,44 @@ describe('isEligibleCommitment', () => {
       to_whom: 'Board',
       category: 'attend_participate',
     })).toBe(true);
+  });
+});
+
+describe('isUserTheActor', () => {
+  it('rejects billing notifications', () => {
+    expect(isUserTheActor({ description: 'Insurance payment of $58.61 will be collected via automatic bill pay' })).toBe(false);
+  });
+
+  it('rejects promotional invitations', () => {
+    expect(isUserTheActor({ description: 'Register for TechBytes webinars on AI readiness' })).toBe(false);
+  });
+
+  it('rejects cold outreach', () => {
+    expect(isUserTheActor({ description: 'Send pricing information if interested in services' })).toBe(false);
+  });
+
+  it('rejects recruiter blasts', () => {
+    expect(isUserTheActor({ description: 'Participate in Sales Manager AI research role on Mercor platform' })).toBe(false);
+  });
+
+  it('rejects someone else delivery commitment', () => {
+    expect(isUserTheActor({ description: 'Send RepVue t-shirt to user' })).toBe(false);
+  });
+
+  it('rejects payment confirmations', () => {
+    expect(isUserTheActor({ description: 'Payment processed and will be posted to account within three business days' })).toBe(false);
+  });
+
+  it('accepts real user commitments', () => {
+    expect(isUserTheActor({ description: 'Follow up with Yadira Clapper about MAS3 timeline' })).toBe(true);
+  });
+
+  it('accepts user-initiated meeting prep', () => {
+    expect(isUserTheActor({ description: 'Prepare for upcoming health visit with Usama Sabzwari' })).toBe(true);
+  });
+
+  it('accepts user decision commitments', () => {
+    expect(isUserTheActor({ description: 'Review the Stipulation and Agreed Order of Dismissal and provide signed copy' })).toBe(true);
   });
 });
 
