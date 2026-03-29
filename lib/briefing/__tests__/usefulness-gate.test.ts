@@ -291,11 +291,11 @@ describe('usefulness gate — execution proof', () => {
     ));
 
     expect(result.directive).toBe(SENTINEL);
-    // THIS is the case that isUseful uniquely catches
+    // With decision enforcement enabled, this is blocked before usefulness.
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         event: 'candidate_blocked',
-        details: expect.objectContaining({ reason: 'generic_language' }),
+        generationStatus: 'llm_generation_failed',
       })
     );
   });
@@ -335,7 +335,7 @@ describe('usefulness gate — execution proof', () => {
       artifact: {
         to: 'marcus@company.com',
         subject: 'Q1 infrastructure budget — confirmation before April 3 board meeting',
-        body: 'Hi Marcus,\n\nFollowing your Q1 update, I want to confirm the infrastructure budget allocation before the April 3 board meeting. Can you confirm the $240k figure is finalized?\n\nThanks,\nBrandon',
+        body: 'Hi Marcus,\n\nFollowing your Q1 update, can you confirm by 3 PM PT today whether the $240k infrastructure figure is final and who owns board packet sign-off? If we miss this cutoff, the April 3 board packet goes forward with an unresolved budget line.\n\nThanks,\nBrandon',
       },
       evidence: 'Marcus sent Q1 budget update on March 20; April 3 board meeting has no confirmed budget line.',
       why_now: 'The board meeting is 7 days away and the budget line is unconfirmed.',
@@ -364,7 +364,10 @@ describe('usefulness gate — execution proof', () => {
         document_purpose: 'Update Acme stakeholders on integration scope, timeline, and open blockers',
         target_reader: 'Acme stakeholders',
         title: 'Acme Integration — Status Report March 27',
-        content: 'Project status as of March 27, 2026:\n\nScope: API integration covering order sync and inventory feed.\nTimeline: Go-live April 10.\nOpen blockers: Auth token rotation needs sign-off from Acme security team by March 29.\n\nNext step: Brandon to follow up with Acme security on March 28.',
+        content: 'Decision required: confirm by 4 PM PT today whether we proceed with April 10 go-live and assign the accountable security sign-off owner.\n\nAsk: approve path A or B and name the owner before today\'s cutoff.\n\nConsequence: if unresolved, integration launch slips to next week and customer onboarding is blocked.',
+        to: 'acme.stakeholders@example.com',
+        subject: 'Decision needed today: Acme security sign-off owner by 4 PM PT',
+        body: 'Can you confirm by 4 PM PT today who owns Acme security sign-off and whether we approve the April 10 go-live path? If this slips, integration launch moves to next week.',
       },
       evidence: 'Slack thread from March 24 shows blocker unresolved; deadline is April 10.',
       why_now: 'Acme security sign-off deadline is March 29 — two days away.',

@@ -3,7 +3,7 @@ import {
   passesTop3RankingInvariants,
   type ScoredLoop,
 } from '@/lib/briefing/scorer';
-import { selectFinalWinner } from '@/lib/briefing/generator';
+import { getDecisionEnforcementIssues, selectFinalWinner } from '@/lib/briefing/generator';
 import { getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
 
 const BASE_BREAKDOWN = {
@@ -87,8 +87,8 @@ function renderArtifactFromWinner(winner: ScoredLoop): { artifactType: 'send_mes
       artifact: {
         type: 'email',
         to: email,
-        subject: winner.title.slice(0, 110),
-        body: `I am sending this now because ${winner.content.slice(0, 140)} Please confirm owner and timestamp today.`,
+        subject: `Decision needed today: ${winner.title.slice(0, 78)}`,
+        body: `Can you confirm by 4 PM PT today which decision path we should take and who owns delivery? If we miss this cutoff, ${winner.content.slice(0, 110).toLowerCase()} and the timeline slips.`,
       },
     };
   }
@@ -97,11 +97,11 @@ function renderArtifactFromWinner(winner: ScoredLoop): { artifactType: 'send_mes
     artifactType: 'write_document',
     artifact: {
       type: 'document',
-      title: winner.title.slice(0, 110),
+      title: `Decision Memo: ${winner.title.slice(0, 88)}`,
       content: [
-        `Decision Move: ${winner.content}`,
-        'Risk if delayed: timeline compression and approval slippage.',
-        'Immediate action: send one explicit ask with owner, date, and expected outcome.',
+        `Decision required: ${winner.content}`,
+        'Ask: confirm the selected path and accountable owner by 4 PM PT today.',
+        'Consequence if delayed: approval dependency remains blocked and schedule risk increases.',
       ].join('\n\n'),
     },
   };
@@ -120,6 +120,12 @@ export function evaluateRun(fixture: Fixture): RunResult {
   const { winner } = selectFinalWinner(afterTop3, NO_GUARDRAILS);
   const { artifact, artifactType } = renderArtifactFromWinner(winner);
   const artifactIssues = getArtifactPersistenceIssues(artifactType, artifact);
+  const decisionLeverageIssues = getDecisionEnforcementIssues({
+    actionType: artifactType,
+    directiveText: winner.title,
+    reason: winner.content,
+    artifact,
+  });
 
   const obviousPattern = /^(?:follow\s+up|check\s+in|touch\s+base|circle\s+back|review\s+calendar|organize\s+)/i;
   const actionableTop3 = afterTop3.length === 3 && afterTop3.every((candidate) => passesTop3RankingInvariants(candidate));
@@ -128,8 +134,8 @@ export function evaluateRun(fixture: Fixture): RunResult {
   const nonGenericWinner = !obviousPattern.test(`${winner.title} ${winner.content}`);
   const nonObviousWinner = !obviousPattern.test(winner.title);
   const persistedCleanly = artifactIssues.length === 0;
-  const directlyApprovable = persistedCleanly;
-  const finishedWork = persistedCleanly;
+  const directlyApprovable = persistedCleanly && decisionLeverageIssues.length === 0;
+  const finishedWork = persistedCleanly && decisionLeverageIssues.length === 0;
   const likelyNovel = winner.type === 'discrepancy' || (winner.relatedSignals?.length ?? 0) >= 2;
   const sendDecisionValid = artifactType === 'send_message'
     ? typeof artifact.to === 'string' && artifact.to.includes('@')
@@ -137,6 +143,7 @@ export function evaluateRun(fixture: Fixture): RunResult {
 
   const hardFailReasons: string[] = [];
   if (!persistedCleanly) hardFailReasons.push('artifact_invalid_for_persistence');
+  if (decisionLeverageIssues.length > 0) hardFailReasons.push(`decision_enforcement_failed:${decisionLeverageIssues.join(',')}`);
   if (!nonGenericWinner || !nonObviousWinner) hardFailReasons.push('obvious_or_generic_winner');
 
   const softFailReasons: string[] = [];

@@ -75,7 +75,7 @@ Before ending:
 ### Production Tests (npm run test:prod)
 - Status: PASSING
 - Last confirmed pass: 51/51 on 2026-03-29 (this session)
-- Local omnibus note: full `npx playwright test` still has pre-existing local-auth failures (`111 passed, 11 failed, 6 skipped`) and is tracked in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+- Local omnibus note: full `npx playwright test` still has pre-existing local-auth failures (`112 passed, 10 failed, 6 skipped`) and is tracked in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
 
 ### Non-Owner Depth
 - Status: BLOCKED (now explicitly enforced)
@@ -99,6 +99,8 @@ Before ending:
   - `lib/conviction/artifact-generator.ts` now blocks analysis scaffolding variants (not only exact `INSIGHT`/`WHY NOW` labels), enforces finished-document structure, and repairs/falls through safely.
   - `lib/cron/daily-brief-generate.ts` now enforces artifact persistence checks (`getArtifactPersistenceIssues`) before any `pending_approval` insert.
   - `lib/conviction/__tests__/artifact-generator.test.ts` + `lib/cron/__tests__/daily-brief.test.ts` cover analysis rejection, clean acceptance, hostile-meta rejection, fallback safety, and invalid-artifact no-persist behavior.
+  - Artifact conversion pass (this session): `lib/briefing/generator.ts` + `lib/cron/daily-brief-generate.ts` now enforce decision leverage (`explicit ask`, `time constraint`, `pressure/consequence`, and ownership for documents) via `getDecisionEnforcementIssues(...)`; informational/ignorable artifacts fail closed at generation, persistence, and send-worthiness gates.
+  - 5-case discrepancy conversion proof: `lib/briefing/__tests__/artifact-conversion-proof.test.ts` passed with 5/5 `PASS`, and each artifact contained decision + deadline + consequence text.
 
 ### Ranking Quality (candidate selection)
 - Status: HARDENED

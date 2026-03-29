@@ -407,15 +407,15 @@ describe('generateDirective runtime failures', () => {
       content: [{
         type: 'text',
         text: JSON.stringify({
-          directive: 'Send the follow-up to Arman about the contract proposal status.',
+          directive: 'Request Arman\'s yes/no contract decision and owner assignment by 4 PM PT today.',
           artifact_type: 'send_message',
           artifact: {
             to: 'arman.petrov@partnerfirm.io',
-            subject: 'Contract proposal status update',
-            body: 'Hi Arman,\n\nI wanted to follow up on the contract proposal status.\n\nBest,\nBrandon',
+            subject: 'Decision needed today: contract path owner by 4 PM PT',
+            body: 'Hi Arman,\n\nCan you confirm by 4 PM PT today whether we should proceed with contract path A or B, and name the owner for execution? If we miss this cutoff, legal review slips to next week.\n\nBest,\nBrandon',
           },
           evidence: 'Arman asked for an update and has not received a reply.',
-          why_now: 'One week has passed without a reply.',
+          why_now: 'The unresolved owner blocks legal review and today is the last workable decision window.',
         }),
       }],
     });
@@ -427,5 +427,44 @@ describe('generateDirective runtime failures', () => {
     expect(directive.action_type).not.toBe('do_nothing');
     expect(directive.reason).not.toContain('Brandon');
     expect(anthropicCreate).toHaveBeenCalled();
+  });
+
+  it('forces discrepancy winners to default to send_message when recipient context exists', async () => {
+    const scored = buildScorerResult();
+    scored.winner.type = 'discrepancy';
+    scored.winner.id = 'discrepancy_avoidance_commitment-1';
+    scored.winner.suggestedActionType = 'make_decision';
+    scored.winner.title = 'Avoidance pattern: reviewer deferred approval three times with no owner';
+    scored.winner.content = 'Reviewer deferred approval three times and requested an explicit owner by today.';
+    scored.winner.relationshipContext = '- Approver Team <approver@example.com> (Final approver)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 80 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Request a yes/no decision with owner assignment by 4 PM PT today.',
+          artifact_type: 'send_message',
+          artifact: {
+            to: 'approver@example.com',
+            subject: 'Decision needed today: owner + approval path by 4 PM PT',
+            body: 'Can you confirm by 4 PM PT today whether we proceed with approval path A or B, and name the owner? If we miss this, the launch packet slips to next week.',
+          },
+          evidence: 'Approval deferred three times with no owner assignment.',
+          why_now: 'Deadline is today and the unresolved owner blocks execution.',
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    expect(directive.action_type).toBe('send_message');
   });
 });

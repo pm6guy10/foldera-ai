@@ -119,10 +119,10 @@ describe('evaluateReadiness', () => {
 
 function makeDirective(overrides: Partial<ConvictionDirective> = {}): ConvictionDirective {
   return {
-    directive: 'Send a follow-up to Alice about the contract.',
+    directive: 'Can you confirm by 4 PM PT today whether we approve contract filing and assign the submission owner?',
     action_type: 'send_message',
     confidence: 82,
-    reason: 'No response in 5 days on a time-sensitive contract.',
+    reason: 'If we miss today\'s cutoff, the filing window slips and contract execution risk increases.',
     evidence: [{ type: 'email', summary: 'Contract email from Alice 5 days ago', date: '2026-03-20' }],
     generationLog: null,
     ...overrides,
@@ -132,8 +132,8 @@ function makeDirective(overrides: Partial<ConvictionDirective> = {}): Conviction
 function makeArtifact(overrides: Partial<ConvictionArtifact> = {}): ConvictionArtifact {
   return {
     type: 'drafted_email',
-    subject: 'Following up on the contract',
-    body: 'Hi Alice, just checking in on the status of the contract we discussed.',
+    subject: 'Decision needed today: contract filing owner by 4 PM PT',
+    body: 'Hi Alice,\n\nCan you confirm by 4 PM PT today whether we should file the contract now, and name the owner for submission? If we miss this cutoff, filing slips and execution risk increases.\n\nThanks,\nBrandon',
     to: 'alice@example.com',
     ...overrides,
   } as unknown as ConvictionArtifact;
@@ -233,9 +233,10 @@ describe('isSendWorthy', () => {
     expect(result.reason).toBe('vague_subject');
   });
 
-  it('allows subject "Following up on the contract" (not fully generic)', () => {
+  it('blocks subject "Following up on the contract" as obvious first-layer advice', () => {
     const result = isSendWorthy(makeDirective(), makeArtifact({ subject: 'Following up on the contract' }));
-    expect(result.worthy).toBe(true);
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('decision_enforcement_passive_or_ignorable_tone');
   });
 
   it('blocks artifact with generic opener "I hope this email finds you well"', () => {
@@ -260,7 +261,7 @@ describe('isSendWorthy', () => {
     const result = isSendWorthy(
       makeDirective(),
       makeArtifact({
-        body: 'Alice, the signed permit appeal draft you requested by Friday is attached. Let me know if changes are needed.',
+        body: 'Alice, can you confirm by 2 PM PT today whether the signed permit appeal draft is approved, and name who owns final filing? If we miss this cutoff, the filing window slips.',
       }),
     );
     expect(result.worthy).toBe(true);

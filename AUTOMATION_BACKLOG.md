@@ -1,5 +1,44 @@
 # AUTOMATION BACKLOG
 
+### P0 — ARTIFACT CONVERSION DECISION ENFORCEMENT (2026-03-29)
+
+**Status: RESOLVED.** Explanatory/analysis-style artifacts no longer pass as "valid" output when they do not force a decision.
+
+**Weak class removed (exact):**
+- Artifacts that explained the situation but did not force ownership, deadline, or consequence.
+- Examples previously slipping through:
+  - "follow-up/check-in" style outputs
+  - no explicit ask
+  - no decision deadline
+  - no consequence/pressure language
+
+**Root cause (exact):**
+- Artifact validity checks enforced schema/shape, but not decision leverage.
+- `send_message`/`write_document` outputs could pass persistence gates without explicit ask + time constraint + pressure/consequence.
+
+**Fix shipped (this session):**
+- `lib/briefing/generator.ts`
+  - Added `getDecisionEnforcementIssues(...)` and wired it into:
+    - generation validation (`validateGeneratedArtifact`)
+    - persistence validation (`validateDirectiveForPersistence`)
+  - Added discrepancy conversion rule in `buildDecisionPayload`: discrepancy winners with recipient context default to `send_message` action type.
+- `lib/cron/daily-brief-generate.ts`
+  - `isSendWorthy(...)` now fails closed on decision-enforcement violations before persistence/send.
+- Regression tests added/updated:
+  - `lib/briefing/__tests__/artifact-decision-enforcement.test.ts`
+  - `lib/briefing/__tests__/artifact-conversion-proof.test.ts`
+  - `lib/cron/__tests__/evaluate-readiness.test.ts`
+  - `lib/cron/__tests__/daily-brief.test.ts`
+
+**Proof (this session):**
+- `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__ lib/cron/__tests__` (PASS)
+- 5-case conversion harness receipt (fixtures 1-5): all 5 `PASS`; top noise candidates demoted out of winner slot; decision artifacts produced for each winner with ask + deadline + consequence.
+- `npm run build` (PASS)
+- `npm run test:prod` (PASS, `51/51`)
+
+**Notes:**
+- `npx playwright test` still fails on pre-existing localhost authenticated production-smoke assertions; tracked in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
 ### P0 — NON-OWNER PRODUCTION DEPTH PROOF (2026-03-29)
 
 **Status: PARTIALLY RESOLVED (structural enforcement shipped), BLOCKED on production data reality.**

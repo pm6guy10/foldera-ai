@@ -757,6 +757,12 @@ function buildDecisionPayload(
   // Determine recommended_action — deterministic from scorer, not LLM
   let recommended_action: ValidArtifactTypeCanonical = actionTypeToArtifactType(winner.suggestedActionType);
 
+  // Discrepancy conversion rule: when we have a real recipient, default to
+  // send_message so the artifact forces a real-world response/decision.
+  if (winner.type === 'discrepancy' && ctx.has_real_recipient) {
+    recommended_action = 'send_message';
+  }
+
   // Pre-compute action validity: send_message without a recipient → write_document
   if (recommended_action === 'send_message' && !ctx.has_real_recipient) {
     recommended_action = 'write_document';
@@ -1956,6 +1962,155 @@ function isDecisionMenu(value: string): boolean {
     (lower.includes(' or ') && /\b(decide|choose|whether|abandon|commit|pivot)\b/.test(lower));
 }
 
+const PASSIVE_OR_IGNORABLE_PATTERNS = [
+  /\bjust checking in\b/i,
+  /\bfollow(?:ing)? up\b/i,
+  /\btouching base\b/i,
+  /\bcircling back\b/i,
+  /\bwanted to\b/i,
+  /\breaching out\b/i,
+  /\bwhen you get a chance\b/i,
+  /\bno rush\b/i,
+];
+
+const OBVIOUS_FIRST_LAYER_PATTERNS = [
+  /\b(?:just\s+)?(?:follow(?:ing)?\s+up|check(?:ing)?\s+in|touch(?:ing)?\s+base|circle\s+back)\b/i,
+  /\bstatus\s+update\b/i,
+  /\bquick\s+check\b/i,
+];
+
+const EXPLICIT_ASK_PATTERNS = [
+  /\bcan you\b/i,
+  /\bplease confirm\b/i,
+  /\bplease approve\b/i,
+  /\bapprove or reject\b/i,
+  /\bwhich option\b/i,
+  /\breply with\b/i,
+  /\bconfirm (?:yes|no)\b/i,
+  /\bdecision required\b/i,
+  /\bneeds your decision\b/i,
+  /\bname the owner\b/i,
+  /\bassign (?:an )?owner\b/i,
+];
+
+const TIME_CONSTRAINT_PATTERNS = [
+  /\bby\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/i,
+  /\bby\s+(?:today|tonight|tomorrow|eod|end of day|friday|monday|tuesday|wednesday|thursday|saturday|sunday)\b/i,
+  /\bbefore\s+(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|today|tomorrow|eod|deadline|cutoff|close)\b/i,
+  /\bwithin\s+\d+\s*(?:hour|hours|day|days)\b/i,
+  /\bdeadline\b/i,
+  /\bcutoff\b/i,
+  /\b\d{4}-\d{2}-\d{2}\b/,
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+\d{1,2}\b/i,
+];
+
+const PRESSURE_OR_CONSEQUENCE_PATTERNS = [
+  /\bif we miss\b/i,
+  /\botherwise\b/i,
+  /\bor we\b/i,
+  /\bblocks?\b/i,
+  /\bblocked\b/i,
+  /\brisk\b/i,
+  /\bslip(?:s|ped)?\b/i,
+  /\bmiss(?:es|ed)?\s+(?:the\s+)?(?:deadline|window|cutoff)\b/i,
+  /\bcompeting\b/i,
+  /\bdependency\b/i,
+  /\bconsequence\b/i,
+];
+
+const OWNERSHIP_PATTERNS = [
+  /\bowner\b/i,
+  /\baccountable\b/i,
+  /\bresponsible\b/i,
+  /\bassign\b/i,
+];
+
+const REWRITE_REQUIRED_PATTERNS = [
+  /\btemplate\b/i,
+  /\bfill in\b/i,
+  /\bto be completed\b/i,
+  /\badd details\b/i,
+];
+
+const SUMMARY_ONLY_PATTERNS = [
+  /\bthis (?:document|note|summary) summarizes\b/i,
+  /\boverview\b/i,
+  /\bfor reference\b/i,
+  /\bbackground only\b/i,
+];
+
+function normalizeDecisionActionType(actionType: string): 'send_message' | 'write_document' | 'other' {
+  if (actionType === 'send_message') return 'send_message';
+  if (actionType === 'write_document' || actionType === 'make_decision' || actionType === 'research') {
+    return 'write_document';
+  }
+  return 'other';
+}
+
+function textHasAny(text: string, patterns: RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+function getArtifactTextForDecisionEnforcement(
+  actionType: 'send_message' | 'write_document',
+  artifact: Record<string, unknown>,
+): string {
+  if (actionType === 'send_message') {
+    const subject = isNonEmptyString(artifact.subject) ? artifact.subject.trim() : '';
+    const body = isNonEmptyString(artifact.body) ? artifact.body.trim() : '';
+    return `${subject}\n${body}`.trim();
+  }
+
+  const title = isNonEmptyString(artifact.title) ? artifact.title.trim() : '';
+  const content = isNonEmptyString(artifact.content) ? artifact.content.trim() : '';
+  return `${title}\n${content}`.trim();
+}
+
+export function getDecisionEnforcementIssues(input: {
+  actionType: string;
+  directiveText: string;
+  reason: string;
+  artifact: ConvictionArtifact | Record<string, unknown> | null;
+}): string[] {
+  const normalizedType = normalizeDecisionActionType(input.actionType);
+  if (normalizedType === 'other') return [];
+  if (!input.artifact || typeof input.artifact !== 'object') {
+    return ['decision_enforcement:missing_artifact'];
+  }
+
+  const artifactRecord = input.artifact as Record<string, unknown>;
+  const artifactText = getArtifactTextForDecisionEnforcement(normalizedType, artifactRecord);
+  const combinedText = `${input.directiveText}\n${input.reason}\n${artifactText}`.trim();
+  const issues: string[] = [];
+
+  if (!textHasAny(combinedText, EXPLICIT_ASK_PATTERNS)) {
+    issues.push('decision_enforcement:missing_explicit_ask');
+  }
+  if (!textHasAny(combinedText, TIME_CONSTRAINT_PATTERNS)) {
+    issues.push('decision_enforcement:missing_time_constraint');
+  }
+  if (!textHasAny(combinedText, PRESSURE_OR_CONSEQUENCE_PATTERNS)) {
+    issues.push('decision_enforcement:missing_pressure_or_consequence');
+  }
+  if (textHasAny(combinedText, PASSIVE_OR_IGNORABLE_PATTERNS)) {
+    issues.push('decision_enforcement:passive_or_ignorable_tone');
+  }
+  if (textHasAny(combinedText, OBVIOUS_FIRST_LAYER_PATTERNS)) {
+    issues.push('decision_enforcement:obvious_first_layer_advice');
+  }
+  if (normalizedType === 'write_document' && textHasAny(combinedText, SUMMARY_ONLY_PATTERNS)) {
+    issues.push('decision_enforcement:summary_without_decision');
+  }
+  if (normalizedType === 'write_document' && !textHasAny(combinedText, OWNERSHIP_PATTERNS)) {
+    issues.push('decision_enforcement:missing_owner_assignment');
+  }
+  if (textHasAny(combinedText, REWRITE_REQUIRED_PATTERNS)) {
+    issues.push('decision_enforcement:requires_rewriting');
+  }
+
+  return [...new Set(issues)];
+}
+
 function extractAllEmailAddresses(winner: ScoredLoop): string[] {
   const emails = new Set<string>();
   const emailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
@@ -2601,6 +2756,15 @@ function validateGeneratedArtifact(
     issues.push('directive uses coaching/advice language');
   }
 
+  issues.push(
+    ...getDecisionEnforcementIssues({
+      actionType: payload.artifact_type,
+      directiveText: payload.directive ?? '',
+      reason: payload.why_now ?? '',
+      artifact: payload.artifact ?? null,
+    }),
+  );
+
   // Dedup check against recent actions
   const recentApproved = ctx.recent_action_history_7d
     .filter((a) => a.includes('APPROVED'))
@@ -2675,6 +2839,15 @@ export function validateDirectiveForPersistence(input: {
   for (const v of constraintViolations) {
     issues.push(v.message);
   }
+
+  issues.push(
+    ...getDecisionEnforcementIssues({
+      actionType: input.directive.action_type,
+      directiveText: input.directive.directive,
+      reason: input.directive.reason,
+      artifact: input.artifact,
+    }),
+  );
 
   return [...new Set(issues)];
 }

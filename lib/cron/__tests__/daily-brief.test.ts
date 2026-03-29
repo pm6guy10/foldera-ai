@@ -379,10 +379,10 @@ function buildGenerationLog(overrides: Partial<GenerationRunLog> = {}): Generati
 
 function buildDirective(overrides: Partial<ConvictionDirective> = {}): ConvictionDirective {
   return {
-    directive: 'Draft the reference follow-up email to Holly today.',
+    directive: 'Can you confirm by 4 PM PT today whether you will send two MAS3 reference talking points, and who owns final packet delivery?',
     action_type: 'send_message',
     confidence: 82,
-    reason: 'Reference prep is the highest-leverage move before the final MAS3 selection window closes.',
+    reason: 'The interview packet closes tomorrow; if we miss this cutoff, MAS3 hiring momentum slips.',
     evidence: [
       { type: 'signal', description: 'Outlook thread requesting MAS3 reference material.' },
     ],
@@ -417,8 +417,8 @@ describe('runDailyGenerate candidate logging', () => {
     vi.mocked(generateArtifact).mockResolvedValue({
       type: 'email',
       to: 'holly@example.com',
-      subject: 'Reference talking points for MAS3',
-      body: 'Hi Holly,\n\nCould you send the two strongest reference talking points for MAS3?\n\nThanks,\nBrandon',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
       draft_type: 'email_compose',
     });
 
@@ -447,8 +447,8 @@ describe('runDailyGenerate candidate logging', () => {
     vi.mocked(generateArtifact).mockResolvedValue({
       type: 'email',
       to: 'holly@example.com',
-      subject: 'Reference talking points for MAS3',
-      body: 'Hi Holly,\n\nCould you send the two strongest reference talking points for MAS3?\n\nThanks,\nBrandon',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
       draft_type: 'email_compose',
     });
 
@@ -533,8 +533,8 @@ describe('runDailyGenerate candidate logging', () => {
     vi.mocked(generateArtifact).mockResolvedValue({
       type: 'email',
       to: 'holly@example.com',
-      subject: 'Reference talking points for MAS3',
-      body: 'Hi Holly,\n\nCould you send the two strongest reference talking points for MAS3?\n\nThanks,\nBrandon',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
       draft_type: 'email_compose',
     });
     vi.mocked(getArtifactPersistenceIssues).mockReturnValue([

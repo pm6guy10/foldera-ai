@@ -183,7 +183,14 @@ describe('TEST A — Hostile action drift', () => {
       decision: 'ACT',  // Note: even says ACT, but tries to slip in wait_rationale
       directive: 'There is nothing requiring urgent action at this particular time.',
       artifact_type: 'wait_rationale',  // <-- HOSTILE: tries to override send_message
-      artifact: { why_wait: 'No clear next step identified in recent signals', tripwire_date: '2026-04-01', trigger_condition: 'New correspondence from Records Officer' },
+      artifact: {
+        why_wait: 'No clear next step identified in recent signals',
+        tripwire_date: '2026-04-01',
+        trigger_condition: 'New correspondence from Records Officer',
+        to: 'sgoulden@nyc.gov',
+        subject: 'Decision needed by 4 PM PT today: FOIL appeal acceptance',
+        body: 'Can you confirm by 4 PM PT today whether this FOIL appeal submission is accepted, and who is the accountable owner for next-step review? If we miss this cutoff, the statutory appeal timeline is at risk.',
+      },
       why_now: 'Situation is stable and no new developments warrant immediate action.',
     };
 
@@ -216,7 +223,13 @@ describe('TEST A — Hostile action drift', () => {
       decision: 'ACT',
       directive: 'Send email to Steven Goulden about FOIL appeal.',
       artifact_type: 'send_message',  // <-- HOSTILE: tries to override write_document
-      artifact: { to: 'sgoulden@nyc.gov', subject: 'FOIL Appeal', body: 'Dear Mr. Goulden...' },
+      artifact: {
+        to: 'sgoulden@nyc.gov',
+        subject: 'Decision needed by 4 PM PT today: FOIL appeal review owner',
+        body: 'Can you confirm by 4 PM PT today whether the FOIL appeal is accepted for review and who owns the legal response? If this is not confirmed today, the filing window slips.',
+        title: 'FOIL Appeal Decision Brief',
+        content: 'Decision required: confirm acceptance path and owner by 4 PM PT today. Consequence: filing window slips if unresolved.',
+      },
       why_now: 'Deadline approaching.',
     };
 
@@ -321,7 +334,15 @@ describe('TEST C — Renderer-only contract', () => {
       decision: 'ACT',
       directive: 'Schedule a one-hour FOIL appeal preparation session for April 8.',
       artifact_type: llmAction,
-      artifact: { title: 'FOIL Appeal Prep', start: '2026-04-08T10:00:00Z', duration_minutes: 60, reason: 'Prepare appeal documents before April 10 deadline' },
+      artifact: {
+        title: 'FOIL Appeal Prep',
+        start: '2026-04-08T10:00:00Z',
+        duration_minutes: 60,
+        reason: 'Prepare appeal documents before April 10 deadline',
+        to: 'sgoulden@nyc.gov',
+        subject: 'Decision needed by 4 PM PT today: FOIL appeal submission path',
+        body: 'Can you confirm by 4 PM PT today whether we proceed with FOIL submission path A or B and who owns final filing? If we miss this, the deadline window closes.',
+      },
       why_now: 'The April 10 FOIL deadline is two days away and prep has not started.',
     };
 
@@ -359,7 +380,7 @@ describe('TEST C — Renderer-only contract', () => {
         title: 'FOIL Appeal Letter — FOIL-2025-025-00440',
         document_purpose: 'Formal appeal of FOIL denial to NYC Records Officer',
         target_reader: 'Steven Goulden, Records Officer',
-        content: 'Dear Mr. Goulden,\n\nI am writing to formally appeal the denial of my FOIL request, reference number FOIL-2025-025-00440, dated March 15, 2026. The denial cited exemption under Public Officers Law §87(2)(g), but the requested records do not fall within that exemption.\n\nPlease reconsider this determination.\n\nSincerely,\nBrandon Kapp',
+        content: 'Decision required: confirm acceptance of FOIL-2025-025-00440 appeal and assign the accountable review owner.\n\nAsk: provide yes/no acceptance and owner assignment by 4 PM PT today.\n\nConsequence: if unresolved, statutory appeal timing risk increases and filing slips.',
       },
       why_now: 'The statutory appeal deadline is April 10 — 14 days from the denial date.',
     };

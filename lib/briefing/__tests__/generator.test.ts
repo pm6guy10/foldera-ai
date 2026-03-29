@@ -99,7 +99,7 @@ describe('daily brief pinned constraints', () => {
         type: 'email',
         to: 'holly@example.com',
         subject: 'Reference talking points for MAS3',
-        body: 'Hi Holly,\n\nCould you send the two or three strongest talking points you would use for my MAS3 candidacy?\n\nThanks,\nBrandon',
+        body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today the two or three strongest talking points you would use for my MAS3 candidacy, and who should own final packaging? If we miss this cutoff, the reference packet slips past the interview decision window.\n\nThanks,\nBrandon',
         draft_type: 'email_compose',
       },
     });

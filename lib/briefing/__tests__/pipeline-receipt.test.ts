@@ -565,7 +565,7 @@ function setAnthropicPipelineMocks() {
         message: {
           to: 'alex@example.com',
           subject: 'Signed permit appeal draft by Friday',
-          body: 'Hi Alex,\n\nI have the signed permit appeal draft ready and will send the final copy by Friday afternoon.\n\nBest,\nBrandon',
+          body: 'Hi Alex,\n\nCan you confirm by 4 PM PT today that this signed permit appeal draft is approved for filing, and who owns final submission? If we miss this cutoff, the filing window slips and creates deadline risk.\n\nBest,\nBrandon',
         },
       });
     }

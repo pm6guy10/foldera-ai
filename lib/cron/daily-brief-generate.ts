@@ -8,6 +8,7 @@ import { createServerClient } from '@/lib/db/client';
 import {
   buildDirectiveExecutionResult,
   generateDirective,
+  getDecisionEnforcementIssues,
   validateDirectiveForPersistence,
 } from '@/lib/briefing/generator';
 import { generateArtifact, getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
@@ -175,6 +176,17 @@ export function isSendWorthy(
   // Must not contain generic opener language that signals no specific context
   if (GENERIC_LANGUAGE_PATTERN.test(artifactJson)) {
     return { worthy: false, reason: 'generic_language' };
+  }
+
+  const decisionIssues = getDecisionEnforcementIssues({
+    actionType: directive.action_type,
+    directiveText: directive.directive,
+    reason: directive.reason,
+    artifact: artifactRecord,
+  });
+  if (decisionIssues.length > 0) {
+    const firstIssue = decisionIssues[0].replace('decision_enforcement:', '');
+    return { worthy: false, reason: `decision_enforcement_${firstIssue}` };
   }
 
   return { worthy: true, reason: '' };

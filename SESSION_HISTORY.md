@@ -1905,4 +1905,35 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
   - No real connected non-owner production account exists yet, so end-to-end non-owner loop cannot be proven at generate/persist/send/approve depth.
   - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated-smoke harness assertions and clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
 
+## Session Log — 2026-03-29 (artifact conversion pass: force decision-leverage artifacts)
+- MODE: AUDIT
+- Commit hash(es): pending (set after commit on `main`)
+- Files changed:
+  - `lib/briefing/generator.ts`
+  - `lib/cron/daily-brief-generate.ts`
+  - `lib/briefing/__tests__/artifact-decision-enforcement.test.ts`
+  - `lib/briefing/__tests__/artifact-conversion-proof.test.ts`
+  - `lib/briefing/__tests__/generator-runtime.test.ts`
+  - `lib/briefing/__tests__/generator.test.ts`
+  - `lib/briefing/__tests__/decision-payload-adversarial.test.ts`
+  - `lib/briefing/__tests__/pipeline-receipt.test.ts`
+  - `lib/briefing/__tests__/holy-crap-multi-run-proof.fixtures.ts`
+  - `lib/briefing/__tests__/usefulness-gate.test.ts`
+  - `lib/cron/__tests__/evaluate-readiness.test.ts`
+  - `lib/cron/__tests__/daily-brief.test.ts`
+  - `AUTOMATION_BACKLOG.md`
+  - `FOLDERA_PRODUCT_SPEC.md`
+  - `FOLDERA_MASTER_AUDIT.md`
+  - `SYSTEM_RUNBOOK.md`
+  - `SESSION_HISTORY.md`
+- What was verified:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/cron/__tests__/evaluate-readiness.test.ts lib/cron/__tests__/daily-brief.test.ts` (37 passed)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__ lib/cron/__tests__` (all passed)
+  - `npm run build` (pass)
+  - `npx playwright test` (112 passed, 10 failed, 6 skipped — pre-existing localhost authenticated-smoke harness failures)
+  - `npm run test:prod` (51/51 passed)
+  - 5-case conversion proof receipt (fixture evaluator): all 5 cases `PASS`, discrepancy winner selected, artifact persisted cleanly, directly approvable.
+- Any unresolved issues:
+  - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke assertions; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
 
