@@ -1983,4 +1983,26 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Any unresolved issues:
   - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke harness assertions and one clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
 
+## Session Log — 2026-03-29 (causal grounding authority fix in generator)
+- MODE: AUDIT
+- Commit hash(es): `PENDING`
+- Files changed:
+  - `lib/briefing/generator.ts`
+  - `lib/briefing/__tests__/causal-diagnosis.test.ts`
+  - `AUTOMATION_BACKLOG.md`
+  - `FOLDERA_PRODUCT_SPEC.md`
+  - `FOLDERA_MASTER_AUDIT.md`
+  - `SYSTEM_RUNBOOK.md`
+  - `SESSION_HISTORY.md`
+- What was verified:
+  - `npx vitest run lib/briefing/__tests__/causal-diagnosis.test.ts lib/briefing/__tests__/generator-runtime.test.ts` (14 passed)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__ lib/cron/__tests__` (all passed)
+  - `npm run build` (pass)
+  - `npx playwright test` (`111 passed, 11 failed, 6 skipped` — unchanged pre-existing localhost authenticated-smoke/clickflow failures)
+  - `npm run test:prod` (51/51 passed)
+  - Owner production receipt call: `POST https://www.foldera.ai/api/settings/run-brief` returned `200 ok=true` and reused pending action `2e3a92ac-f93e-42b4-a978-bedd3dcee4d6`; `send` stage returned `email_already_sent`.
+  - Owner latest action receipt: `GET /api/conviction/latest` returned top-5 candidate discovery in `execution_result.generation_log.candidateDiscovery.topCandidates` and persisted `send_message` artifact.
+- Any unresolved issues:
+  - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke harness assertions and one clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
 

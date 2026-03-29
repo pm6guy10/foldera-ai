@@ -1,5 +1,45 @@
 # AUTOMATION BACKLOG
 
+### P0 — CAUSAL GROUNDING AUTHORITY FIX (2026-03-29)
+
+**Status: RESOLVED.** Template diagnosis is no longer authoritative in prompt or selection.
+
+**Weak class removed (exact):**
+- Fake causal authority where `REQUIRED_CAUSAL_DIAGNOSIS` acted as truth and weak model outputs could ride template scaffolding.
+
+**Root cause (exact):**
+- Prompt contract injected required diagnosis as authoritative instruction.
+- Generator accepted resolved diagnosis without deterministic grounding checks for model-produced diagnosis.
+
+**Fix shipped:**
+- `lib/briefing/generator.ts`
+  - `buildPromptFromStructuredContext`: replaced authoritative `REQUIRED_CAUSAL_DIAGNOSIS` block with non-authoritative `MECHANISM_HINT`.
+  - `parseGeneratedPayload`: tracks whether causal diagnosis came from model (`causal_diagnosis_from_model`).
+  - `getCausalDiagnosisIssues`: added deterministic grounding checks + issue codes for:
+    - missing time reference
+    - meta/internal mechanism language
+    - why-now restatement
+    - insufficient signal grounding (must connect >=2 concrete anchors)
+  - `generatePayload` fallback selection: uses model diagnosis only when grounding passes; otherwise falls back to template with source tagging:
+    - `llm_grounded`
+    - `llm_ungrounded_fallback`
+    - `template_fallback`
+  - `validateGeneratedArtifact`: validates against the accepted diagnosis actually used.
+- `lib/briefing/__tests__/causal-diagnosis.test.ts`
+  - Added grounding regression coverage and fallback/non-grounding acceptance checks.
+
+**Proof (this session):**
+- Targeted tests:
+  - `npx vitest run lib/briefing/__tests__/causal-diagnosis.test.ts lib/briefing/__tests__/generator-runtime.test.ts` (PASS)
+- Full relevant suites:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__ lib/cron/__tests__` (PASS)
+- Build:
+  - `npm run build` (PASS)
+- Production smoke:
+  - `npm run test:prod` (PASS, 51/51)
+- Local omnibus:
+  - `npx playwright test` fails on pre-existing localhost authenticated production-smoke/auth-state class + one clickflow timeout (logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`).
+
 ### P0 — CAUSAL DIAGNOSIS LAYER (REAL ARTIFACT UPGRADE) (2026-03-29)
 
 **Status: RESOLVED.** Generation now enforces a root-cause diagnosis step and blocks symptom-only artifacts.

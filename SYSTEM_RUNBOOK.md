@@ -113,6 +113,12 @@ Before ending:
     - `daily_brief.generate.results[0].code = pending_approval_reused`, `action_id = 2e3a92ac-f93e-42b4-a978-bedd3dcee4d6`.
     - `daily_brief.send.results[0].code = email_already_sent` for the same action.
     - Persisted action remains valid decision artifact (`status=pending_approval`, `action_type=send_message`, `confidence=76`) with top-5 candidate discovery persisted in `execution_result.generation_log.candidateDiscovery.topCandidates`.
+  - Grounding-authority hardening (same date):
+    - Prompt now uses non-authoritative `MECHANISM_HINT` instead of authoritative required diagnosis.
+    - Model-produced diagnosis is accepted only if deterministic grounding passes (time reference + >=2 concrete signal anchors + non-restatement + non-meta mechanism).
+    - Fallback selection source is tagged at selection point (`llm_grounded`, `llm_ungrounded_fallback`, `template_fallback`) and used for validation decisions.
+    - Validation now checks artifact against the accepted diagnosis actually used.
+    - Verification: targeted causal/runtime tests PASS; full `lib/briefing` + `lib/cron` suites PASS; `npm run build` PASS; `npm run test:prod` PASS.
 
 ### Ranking Quality (candidate selection)
 - Status: HARDENED

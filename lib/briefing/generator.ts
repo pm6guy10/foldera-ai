@@ -173,6 +173,10 @@ interface GeneratedDirectivePayload {
   insight: string;
   /** Root-cause diagnosis that explains why this discrepancy exists now */
   causal_diagnosis: CausalDiagnosis;
+  /** Where the accepted causal diagnosis came from after grounding checks */
+  causal_diagnosis_source?: 'llm_grounded' | 'llm_ungrounded_fallback' | 'template_fallback';
+  /** True when the model explicitly returned causal_diagnosis fields */
+  causal_diagnosis_from_model?: boolean;
   /** Explicit analyst decision: ACT to produce an artifact, HOLD to surface the insight only */
   decision: 'ACT' | 'HOLD';
   directive: string;
@@ -1493,15 +1497,20 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   );
 
   sections.push(
-    `REQUIRED_CAUSAL_DIAGNOSIS:\n` +
+    `MECHANISM_HINT (non-authoritative fallback hypothesis):\n` +
     `why_exists_now: ${ctx.required_causal_diagnosis.why_exists_now}\n` +
     `mechanism: ${ctx.required_causal_diagnosis.mechanism}\n\n` +
-    `Your JSON MUST include:\n` +
+    `You MUST produce your own evidence-grounded causal diagnosis in JSON:\n` +
     `"causal_diagnosis": {\n` +
     `  "why_exists_now": "...",\n` +
     `  "mechanism": "..."\n` +
-    `}\n` +
-    `The artifact must resolve this mechanism directly. Surface-level follow-ups are invalid.`,
+    `}\n\n` +
+    `Grounding rules:\n` +
+    `- Connect at least TWO concrete supporting signals from this context.\n` +
+    `- Include at least one explicit date/time marker.\n` +
+    `- Explain why this discrepancy exists NOW.\n` +
+    `- Do NOT restate CANDIDATE_TITLE.\n` +
+    `- Treat MECHANISM_HINT as fallback only if your grounded diagnosis is weak.`,
   );
 
   if (ctx.candidate_goal) {
@@ -2282,13 +2291,12 @@ export function getCausalDiagnosisIssues(input: {
   artifact: ConvictionArtifact | Record<string, unknown> | null;
   causalDiagnosis: CausalDiagnosis | null | undefined;
   candidateTitle: string;
+  supportingSignals?: CompressedSignal[];
+  mode?: 'full' | 'grounding_only';
+  enforceGrounding?: boolean;
 }): string[] {
-  const normalizedType = normalizeDecisionActionType(input.actionType);
-  if (normalizedType === 'other') return [];
-  if (!input.artifact || typeof input.artifact !== 'object') {
-    return ['causal_diagnosis:missing_artifact'];
-  }
-
+  const mode = input.mode ?? 'full';
+  const enforceGrounding = input.enforceGrounding ?? true;
   const diagnosis = normalizeCausalDiagnosis(input.causalDiagnosis);
   if (!diagnosis) {
     return ['causal_diagnosis:missing'];
@@ -2297,15 +2305,70 @@ export function getCausalDiagnosisIssues(input: {
   const issues: string[] = [];
   const whyExistsNow = diagnosis.why_exists_now.trim();
   const mechanism = diagnosis.mechanism.trim();
+  const diagnosisText = `${whyExistsNow}\n${mechanism}`.trim();
+  const normalizedDiagnosis = normalizeText(diagnosisText);
+  const candidateNorm = normalizeText(input.candidateTitle ?? '');
 
-  if (whyExistsNow.length < 20) {
-    issues.push('causal_diagnosis:why_exists_now_too_short');
+  const DIAGNOSIS_DATE_TIME_RE = /(?:\b\d{4}-\d{2}-\d{2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+\d{1,2}\b|\b(?:today|tomorrow|tonight|this week|next week|by\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)|before\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)|deadline|cutoff)\b)/i;
+  const META_MECHANISM_RE = /\b(candidate|winner|scor(?:e|er)|pipeline|analysis|rationale|confidence|section|meta)\b/i;
+  const WHY_NOW_META_RE = /\b(this discrepancy|the discrepancy|same issue|same problem|still unresolved)\b/i;
+  const NOW_CAUSALITY_RE = /\b(now|today|currently|because|after|since|as of|before|by)\b/i;
+
+  if (enforceGrounding) {
+    if (whyExistsNow.length < 20) {
+      issues.push('causal_diagnosis:why_exists_now_too_short');
+    }
+    if (mechanism.length < 12) {
+      issues.push('causal_diagnosis:mechanism_too_short');
+    }
+    if (!DIAGNOSIS_DATE_TIME_RE.test(diagnosisText)) {
+      issues.push('causal_diagnosis:missing_time_reference');
+    }
+    if (META_MECHANISM_RE.test(mechanism)) {
+      issues.push('causal_diagnosis:mechanism_meta_or_internal');
+    }
+    if (!NOW_CAUSALITY_RE.test(whyExistsNow)) {
+      issues.push('causal_diagnosis:why_exists_now_missing_causal_anchor');
+    }
+    if (CAUSAL_META_PATTERNS.some((pattern) => pattern.test(diagnosisText))) {
+      issues.push('causal_diagnosis:internal_meta_language');
+    }
+    if (
+      WHY_NOW_META_RE.test(whyExistsNow) ||
+      (candidateNorm && similarityScore(normalizeText(whyExistsNow), candidateNorm) >= 0.82)
+    ) {
+      issues.push('causal_diagnosis:why_exists_now_restates_discrepancy');
+    }
+
+    if (input.supportingSignals && input.supportingSignals.length > 0) {
+      const anchors = new Set<string>();
+      for (const signal of input.supportingSignals.slice(0, 8)) {
+        if (isNonEmptyString(signal.occurred_at)) anchors.add(signal.occurred_at.toLowerCase());
+        if (isNonEmptyString(signal.entity)) anchors.add(signal.entity.toLowerCase());
+        if (isNonEmptyString(signal.source)) anchors.add(signal.source.toLowerCase());
+        for (const token of normalizeText(signal.summary ?? '').split(' ').filter((t) => t.length >= 5).slice(0, 5)) {
+          anchors.add(token);
+        }
+      }
+      let hitCount = 0;
+      for (const anchor of anchors) {
+        if (anchor && normalizedDiagnosis.includes(anchor)) hitCount += 1;
+        if (hitCount >= 2) break;
+      }
+      if (hitCount < 2) {
+        issues.push('causal_diagnosis:insufficient_signal_grounding');
+      }
+    }
   }
-  if (mechanism.length < 12) {
-    issues.push('causal_diagnosis:mechanism_too_short');
+
+  if (mode === 'grounding_only') {
+    return [...new Set(issues)];
   }
-  if (CAUSAL_META_PATTERNS.some((pattern) => pattern.test(`${whyExistsNow}\n${mechanism}`))) {
-    issues.push('causal_diagnosis:internal_meta_language');
+
+  const normalizedType = normalizeDecisionActionType(input.actionType);
+  if (normalizedType === 'other') return [];
+  if (!input.artifact || typeof input.artifact !== 'object') {
+    return ['causal_diagnosis:missing_artifact'];
   }
 
   const mechanismClass = classifyCausalMechanism(`${whyExistsNow} ${mechanism}`);
@@ -2320,7 +2383,6 @@ export function getCausalDiagnosisIssues(input: {
     issues.push('causal_diagnosis:surface_follow_up_mismatch');
   }
 
-  const candidateNorm = normalizeText(input.candidateTitle ?? '');
   const artifactNorm = normalizeText(combinedText);
   if (
     candidateNorm &&
@@ -2774,6 +2836,7 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
   const cleaned = extractJsonFromResponse(raw);
   const parsed = JSON.parse(cleaned) as Record<string, unknown>;
   const parsedCausalDiagnosis = normalizeCausalDiagnosis(parsed.causal_diagnosis);
+  const causalDiagnosisFromModel = Boolean(parsedCausalDiagnosis);
 
   // ---------------------------------------------------------------------------
   // Discrepancy Engine output branch — handles { action, confidence, reason, message }
@@ -2794,6 +2857,7 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
       return {
         insight: reason,
         causal_diagnosis: parsedCausalDiagnosis ?? { why_exists_now: '', mechanism: '' },
+        causal_diagnosis_from_model: causalDiagnosisFromModel,
         decision: 'ACT',
         directive: reason,
         artifact_type: 'send_message',
@@ -2851,6 +2915,7 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
   return {
     insight: typeof parsed.insight === 'string' ? parsed.insight : (typeof parsed.evidence === 'string' ? parsed.evidence : ''),
     causal_diagnosis: parsedCausalDiagnosis ?? { why_exists_now: '', mechanism: '' },
+    causal_diagnosis_from_model: causalDiagnosisFromModel,
     decision: parsed.decision === 'HOLD' ? 'HOLD' : 'ACT',
     directive: typeof parsed.directive === 'string' ? parsed.directive : '',
     artifact_type: artifactType,
@@ -3011,6 +3076,8 @@ function validateGeneratedArtifact(
       artifact: payload.artifact ?? null,
       causalDiagnosis: payload.causal_diagnosis ?? null,
       candidateTitle: ctx.candidate_title,
+      supportingSignals: ctx.supporting_signals,
+      enforceGrounding: payload.causal_diagnosis_source === 'llm_grounded',
     }),
   );
 
@@ -3487,7 +3554,36 @@ async function generatePayload(
     try {
       parsed = parseGeneratedPayload(raw);
       if (parsed) {
-        parsed = withResolvedCausalDiagnosis(parsed, ctx.required_causal_diagnosis);
+        const llmDiagnosis = normalizeCausalDiagnosis(parsed.causal_diagnosis);
+        const hasModelDiagnosis = parsed.causal_diagnosis_from_model === true && Boolean(llmDiagnosis);
+
+        let acceptedDiagnosis = ctx.required_causal_diagnosis;
+        let diagnosisSource: 'llm_grounded' | 'llm_ungrounded_fallback' | 'template_fallback' = 'template_fallback';
+
+        if (hasModelDiagnosis && llmDiagnosis) {
+          const groundingIssues = getCausalDiagnosisIssues({
+            actionType: parsed.artifact_type,
+            directiveText: parsed.directive ?? '',
+            reason: parsed.why_now ?? '',
+            artifact: parsed.artifact ?? null,
+            causalDiagnosis: llmDiagnosis,
+            candidateTitle: ctx.candidate_title,
+            supportingSignals: ctx.supporting_signals,
+            mode: 'grounding_only',
+          });
+          if (groundingIssues.length === 0) {
+            acceptedDiagnosis = llmDiagnosis;
+            diagnosisSource = 'llm_grounded';
+          } else {
+            diagnosisSource = 'llm_ungrounded_fallback';
+          }
+        }
+
+        parsed = {
+          ...parsed,
+          causal_diagnosis: acceptedDiagnosis,
+          causal_diagnosis_source: diagnosisSource,
+        };
       }
     } catch (e) {
       parseError = e instanceof Error ? e.message : String(e);

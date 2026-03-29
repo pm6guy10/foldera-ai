@@ -2,6 +2,19 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside causal-grounding backend scope
+
+This session changed backend generator grounding logic + causal tests only:
+- `lib/briefing/generator.ts`
+- `lib/briefing/__tests__/causal-diagnosis.test.ts`
+
+Mandatory QA gate results for this session:
+- `npm run build` passed.
+- `npx playwright test` failed on the pre-existing localhost authenticated production-smoke class (`tests/production/smoke.spec.ts` redirect/session/API-auth assertions + Generate Now visibility) and one existing `tests/audit/clickflow.spec.ts` timeout.
+- `npm run test:prod` passed (`51/51`) against production config.
+
+Status: `NEEDS_REVIEW` (remaining local omnibus failures are unchanged and outside this backend grounding-authority patch).
+
 ### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside causal-diagnosis backend scope
 
 This session changed backend generator/tests/docs only:
