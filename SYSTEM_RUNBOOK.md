@@ -66,17 +66,16 @@ Before ending:
 
 ---
 
-## Current Operating Status (updated 2026-03-27)
+## Current Operating Status (updated 2026-03-28)
 
 ### Build
 - Status: PASSING
-- Last verified: This session (npm run build passes)
+- Last verified: 2026-03-28 (`npm run build` passes)
 
 ### Production Tests (npm run test:prod)
-- Status: IN PROGRESS — running baseline now
-- Last confirmed pass: 51/51 on 2026-03-27 (two-gate enforcement session)
-- Sessions since last confirmed pass: multi-candidate viability (8952369), Outlook hygiene (f7b34f7)
-  — NEITHER ran npm run test:prod
+- Status: PASSING
+- Last confirmed pass: 51/51 on 2026-03-28 (this session)
+- Local omnibus note: full `npx playwright test` still has pre-existing local-auth failures (`112 passed, 10 failed, 6 skipped`) and is tracked in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
 
 ### Pending Migrations NOT in Production DB
 All of these are in source code but NOT yet applied to production:

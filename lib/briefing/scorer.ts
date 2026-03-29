@@ -74,6 +74,45 @@ function isInternalNoSend(executionResult: unknown): boolean {
   return (executionResult as Record<string, unknown>).outcome_type === 'no_send';
 }
 
+const NOISE_CANDIDATE_PATTERNS = [
+  // Tool/account/security management
+  /\b(?:review|check|audit|secure)\s+(?:your\s+)?(?:Google|Microsoft|Apple|Robinhood|account|security|settings|permissions)\b/i,
+  // Credit/billing monitoring
+  /\b(?:check|monitor|review)\s+(?:your\s+)?(?:credit\s*score|credit\s*report|billing|payment\s*method)\b/i,
+  // Grant/revoke access to tools
+  /\b(?:grant(?:ed)?|revoke)\s+(?:Claude|Foldera|app|access|permission)\b/i,
+  // Newsletter/spam registrations
+  /\b(?:register\s+for|complete\s+registration|sign\s+up\s+for)\s+.{0,40}(?:program|initiative|workshop|training|webinar|event)\b/i,
+  // Generic "check X" without urgency (not goal-connected)
+  /^check\s+(?:email|account|status|update)\b/i,
+  // Schedule-a-block-to-review pattern (homework disguised as action)
+  /\bschedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session)\s+(?:to\s+)?(?:review|check|assess|audit)\b/i,
+  // Generic scheduling suggestions (analyst mode: never suggest blocking time)
+  /\bschedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session)\b/i,
+  // Generic follow-up without specifics
+  /^follow\s+up\s+(?:with|on)\s+/i,
+  // Update billing/payment
+  /\bupdate\s+(?:billing|payment)\s+(?:information|method|details)\b/i,
+  // Security alerts
+  /\b(?:unauthorized|suspicious)\s+(?:login|access|sign.?in|activity)\b/i,
+  // Foldera self-referential (backup for the explicit filter above)
+  /\bFoldera\s+(?:Directive|directive|system)\b/i,
+  // Automated financial notifications (credit applied, payment confirmed — zero-agency)
+  /\b(?:credit\s+(?:has\s+been\s+)?applied|cash\s*back\s+(?:credited|earned)|reward\s*(?:credit|points?\s+(?:earned|credited))|payment\s+(?:has\s+been\s+)?(?:confirmed|received|processed)|transaction\s+(?:confirmed|complete|posted)|direct\s+deposit\s+(?:received|posted)|deposit\s+(?:posted|confirmed|credited)|wire\s+(?:transfer\s+)?(?:received|complete))\b/i,
+  // Paid transaction logs with dollar amounts ("Paid $7.00", "Paid Abbie Lee $20.00")
+  /\bpaid\s+(?:[A-Za-z][\w'-]{0,24}\s+){0,5}\$?\d[\d,]*(?:\.\d{2})?\b/i,
+  // Zero-agency order / booking / subscription confirmations
+  /\b(?:order\s+(?:confirmed|shipped|delivered|is\s+on\s+its\s+way|has\s+been\s+placed)|booking\s+(?:is\s+)?confirmed|reservation\s+(?:is\s+)?confirmed|subscription\s+(?:renewed|confirmed|activated))\b/i,
+  // Account / credit score informational updates (no action produces a SEND or WRITE)
+  /\b(?:account\s+(?:statement|balance)\s+(?:is\s+)?(?:ready|available)|credit\s+(?:score|report)\s+(?:updated|available|changed)|your\s+statement\s+(?:is\s+)?(?:ready|available))\b/i,
+];
+
+export function isNoiseCandidateText(...texts: string[]): boolean {
+  return NOISE_CANDIDATE_PATTERNS.some((pattern) =>
+    texts.some((text) => typeof text === 'string' && pattern.test(text)),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -3005,41 +3044,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // the candidate pool even when the generator correctly downgrades them.
   // -----------------------------------------------------------------------
 
-  const NOISE_CANDIDATE_PATTERNS = [
-    // Tool/account/security management
-    /\b(?:review|check|audit|secure)\s+(?:your\s+)?(?:Google|Microsoft|Apple|Robinhood|account|security|settings|permissions)\b/i,
-    // Credit/billing monitoring
-    /\b(?:check|monitor|review)\s+(?:your\s+)?(?:credit\s*score|credit\s*report|billing|payment\s*method)\b/i,
-    // Grant/revoke access to tools
-    /\b(?:grant(?:ed)?|revoke)\s+(?:Claude|Foldera|app|access|permission)\b/i,
-    // Newsletter/spam registrations
-    /\b(?:register\s+for|complete\s+registration|sign\s+up\s+for)\s+.{0,40}(?:program|initiative|workshop|training|webinar|event)\b/i,
-    // Generic "check X" without urgency (not goal-connected)
-    /^check\s+(?:email|account|status|update)\b/i,
-    // Schedule-a-block-to-review pattern (homework disguised as action)
-    /\bschedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session)\s+(?:to\s+)?(?:review|check|assess|audit)\b/i,
-    // Generic scheduling suggestions (analyst mode: never suggest blocking time)
-    /\bschedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session)\b/i,
-    // Generic follow-up without specifics
-    /^follow\s+up\s+(?:with|on)\s+/i,
-    // Update billing/payment
-    /\bupdate\s+(?:billing|payment)\s+(?:information|method|details)\b/i,
-    // Security alerts
-    /\b(?:unauthorized|suspicious)\s+(?:login|access|sign.?in|activity)\b/i,
-    // Foldera self-referential (backup for the explicit filter above)
-    /\bFoldera\s+(?:Directive|directive|system)\b/i,
-    // Automated financial notifications (credit applied, payment confirmed — zero-agency)
-    /\b(?:credit\s+(?:has\s+been\s+)?applied|cash\s*back\s+(?:credited|earned)|reward\s*(?:credit|points?\s+(?:earned|credited))|payment\s+(?:has\s+been\s+)?(?:confirmed|received|processed)|transaction\s+(?:confirmed|complete|posted)|direct\s+deposit\s+(?:received|posted)|deposit\s+(?:posted|confirmed|credited)|wire\s+(?:transfer\s+)?(?:received|complete))\b/i,
-    // Zero-agency order / booking / subscription confirmations
-    /\b(?:order\s+(?:confirmed|shipped|delivered|is\s+on\s+its\s+way|has\s+been\s+placed)|booking\s+(?:is\s+)?confirmed|reservation\s+(?:is\s+)?confirmed|subscription\s+(?:renewed|confirmed|activated))\b/i,
-    // Account / credit score informational updates (no action produces a SEND or WRITE)
-    /\b(?:account\s+(?:statement|balance)\s+(?:is\s+)?(?:ready|available)|credit\s+(?:score|report)\s+(?:updated|available|changed)|your\s+statement\s+(?:is\s+)?(?:ready|available))\b/i,
-  ];
-
   const preScoringCount = candidates.length;
   for (let i = candidates.length - 1; i >= 0; i--) {
     const c = candidates[i];
-    const isNoise = NOISE_CANDIDATE_PATTERNS.some((p) => p.test(c.title) || p.test(c.content));
+    const isNoise = isNoiseCandidateText(c.title, c.content);
     if (isNoise) {
       logStructuredEvent({
         event: 'candidate_noise_filtered',

@@ -205,6 +205,12 @@ describe('isNonCommitment — confirms junk descriptions are blocked', () => {
     expect(isNonCommitment('Wire transfer received and posted to your account')).toBe(true);
   });
 
+  it('blocks past paid-transaction logs with dollar amounts', () => {
+    expect(isNonCommitment('Paid $7.00 for eggs')).toBe(true);
+    expect(isNonCommitment('Paid Abbie Lee $20.00 for 2 loaves')).toBe(true);
+    expect(isNonCommitment('Paid Mike $45 for concert tickets')).toBe(true);
+  });
+
   it('blocks order and subscription confirmations (zero-agency)', () => {
     expect(isNonCommitment('Your order has been confirmed and is on its way')).toBe(true);
     expect(isNonCommitment('Your subscription has been renewed automatically')).toBe(true);
@@ -216,6 +222,7 @@ describe('isNonCommitment — confirms junk descriptions are blocked', () => {
     expect(isNonCommitment('Send invoice to Sarah for March deliverables')).toBe(false);
     expect(isNonCommitment('Reply to Fidelity about the rollover transfer')).toBe(false);
     expect(isNonCommitment('Review the loan terms and confirm acceptance with Marcus')).toBe(false);
+    expect(isNonCommitment('Pay Abbie Lee $20.00 by Friday')).toBe(false);
   });
 });
 

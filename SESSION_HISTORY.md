@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-28 — Paid-transaction noise class removed from extraction + scoring
+  MODE: AUDIT
+  Commit hash(es): pending (set after commit on `main`)
+  Files changed: `lib/signals/signal-processor.ts`, `lib/briefing/scorer.ts`, `lib/signals/__tests__/signal-hygiene.test.ts`, `lib/briefing/__tests__/scorer-noise-filter.test.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `FOLDERA_MASTER_AUDIT.md`, `SYSTEM_RUNBOOK.md`, `SESSION_HISTORY.md`
+  What was verified: baseline regression capture `npx vitest run lib/signals/__tests__/signal-hygiene.test.ts lib/briefing/__tests__/scorer-noise-filter.test.ts` failed before fix (4 failing assertions: paid-log class slipped + scorer helper absent); post-fix same suite passed (26/26); `npx vitest run lib/briefing/__tests__/scorer-benchmark.test.ts` passed; `npm run build` passed; baseline full `npx playwright test` was `111 passed / 11 failed / 6 skipped`; post-change full `npx playwright test` was `112 passed / 10 failed / 6 skipped`; `npm run test:prod` passed `51/51`
+  Any unresolved issues: local omnibus `npx playwright test` still fails 10 production-smoke assertions tied to local auth/session harness expectations; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`
+
 - 2026-03-28 — Authenticated dashboard/settings calm UI polish (presentation-only)
   MODE: AUDIT
   Commit hash(es): `70d7b5c`

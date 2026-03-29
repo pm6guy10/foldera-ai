@@ -413,6 +413,8 @@ const NON_COMMITMENT_PATTERNS = [
   /\b(?:credit\s+(?:has\s+been\s+)?applied|cash\s*back\s+(?:credited|earned|applied)|reward\s*(?:credit|points?\s+(?:earned|applied|credited))|bonus\s+(?:miles?|points?|cash)\s+(?:earned|applied|credited)|you(?:['']?ve)?\s+(?:been\s+)?(?:awarded|credited)\s+\$?[\d])/i,
   // Transaction / payment confirmation (informational, no user action needed)
   /\b(?:payment\s+(?:has\s+been\s+)?(?:confirmed|received|processed|successful|posted)|transaction\s+(?:has\s+been\s+)?(?:confirmed|complete|posted|processed)|direct\s+deposit\s+(?:received|posted)|wire\s+(?:transfer\s+)?(?:received|processed|complete)|deposit\s+(?:has\s+been\s+)?(?:posted|confirmed|credited))\b/i,
+  // Past-tense paid transaction logs with amounts (already done; zero-agency)
+  /\bpaid\s+(?:[A-Za-z][\w'-]{0,24}\s+){0,5}\$?\d[\d,]*(?:\.\d{2})?\b/i,
   // Order / booking / subscription confirmations (zero-agency)
   /\b(?:order\s+(?:has\s+been\s+)?(?:confirmed|placed|shipped|delivered|is\s+on\s+its\s+way)|booking\s+(?:is\s+)?confirmed|reservation\s+(?:is\s+)?confirmed|subscription\s+(?:has\s+been\s+)?(?:renewed|confirmed|activated|reactivated))\b/i,
   // Generic "you will be notified" / passive receipt messages (zero-agency)

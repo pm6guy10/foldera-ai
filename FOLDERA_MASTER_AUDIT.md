@@ -2,6 +2,18 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-03-28 — Full local Playwright suite still fails outside paid-transaction hygiene scope
+
+This backend session changed only candidate-quality filters (`lib/signals/signal-processor.ts`, `lib/briefing/scorer.ts`) plus regression tests.
+
+Mandatory QA gate results for this session:
+
+- `npm run build` passed.
+- `npx playwright test` improved from baseline (`111 passed / 11 failed / 6 skipped`) to (`112 passed / 10 failed / 6 skipped`) but still fails on authenticated local production-smoke expectations (`/dashboard` and `/dashboard/settings` redirected to `/login`, API 401 assertions, and Generate Now visibility).
+- `npm run test:prod` passed (`51/51`) against production config.
+
+Status: `NEEDS_REVIEW` (remaining local omnibus failures are pre-existing auth-state/test-harness issues outside this backend noise-filter patch).
+
 ### NEEDS_REVIEW — 2026-03-28 — Authenticated UI polish session blocked by pre-existing full Playwright instability
 
 Scoped UI changes were applied only to authenticated pages (`app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`) with no backend/API/auth logic edits.

@@ -1,5 +1,14 @@
 # AUTOMATION BACKLOG
 
+### P1 — COMMITMENT HYGIENE: Paid-transaction log entries blocked (2026-03-28)
+
+**Status: RESOLVED.** Past-paid transaction logs are now blocked at two layers:
+- `lib/signals/signal-processor.ts` `NON_COMMITMENT_PATTERNS` now rejects `Paid $...` and `Paid Name $...` descriptions before persistence into `tkg_commitments`.
+- `lib/briefing/scorer.ts` noise gate now rejects the same class via exported `isNoiseCandidateText()` for defense-in-depth against older polluted rows.
+- Regression proof: `lib/signals/__tests__/signal-hygiene.test.ts` and new `lib/briefing/__tests__/scorer-noise-filter.test.ts`.
+
+Remaining related issue (still OPEN): artifact analysis dump leak (`INSIGHT:/WHY NOW:/Runner-ups:` visible in document content) — `isAnalysisDump()` in commit `b5a056e` does not yet catch the discrepancy `write_document` variant.
+
 ### P0 — DISCREPANCY PIPELINE: FULLY UNBLOCKED ✓ (2026-03-28)
 
 **Status: RESOLVED.** Discrepancy candidates now reach `pending_approval` with a valid `DocumentArtifact`. First confirmed production receipt: action `025507e8`, `artifact_type: document`, `artifact_valid: true`, `generator_confidence: 79`, `scorer_ev: 4.37`. Send stage returned `email_already_sent` (correct — brief already sent earlier today; nightly cron will send fresh tomorrow).
