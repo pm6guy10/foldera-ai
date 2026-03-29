@@ -2006,3 +2006,16 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
   - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke harness assertions and one clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
 
 
+## Session Log — 2026-03-29 (stale pending_approval reuse blocker fix)
+- MODE: AUDIT
+- Commit hash(es): `736297d`
+- Files changed:
+  - `lib/cron/daily-brief-generate.ts`
+  - `lib/cron/__tests__/daily-brief.test.ts`
+  - `SESSION_HISTORY.md`
+- What was verified:
+  - `npx vitest run lib/cron/__tests__/daily-brief.test.ts` (pass)
+  - `npm run build` (pass)
+  - production owner rerun receipt captured after deploy (see session output)
+- Any unresolved issues:
+  - None within scoped blocker fix.
