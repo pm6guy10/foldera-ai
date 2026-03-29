@@ -1985,7 +1985,7 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 
 ## Session Log — 2026-03-29 (causal grounding authority fix in generator)
 - MODE: AUDIT
-- Commit hash(es): `PENDING`
+- Commit hash(es): `d0ce275`
 - Files changed:
   - `lib/briefing/generator.ts`
   - `lib/briefing/__tests__/causal-diagnosis.test.ts`
