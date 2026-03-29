@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const validateCronAuth = vi.fn();
@@ -162,6 +162,9 @@ vi.mock('@/lib/utils/structured-logger', () => ({
 
 describe('nightly-ops route', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-24T12:00:00Z'));
+
     vi.resetModules();
     vi.clearAllMocks();
 
@@ -215,6 +218,10 @@ describe('nightly-ops route', () => {
     mockSupabase.nightlyBriefUserIds = ['user-1', '22222222-2222-2222-2222-222222222222'];
     mockSupabase.signalResetUpdates = [];
     mockSupabase.signalDeleteCountByUser = {};
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('keeps the original low-cap signal processing behavior when the backlog is below 100', async () => {
