@@ -1862,7 +1862,7 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 
 ## Session Log — 2026-03-29 (holy-crap multi-run proof for ranking consistency)
 - MODE: AUDIT
-- Commit hash(es): pending (set after commit on `main`)
+- Commit hash(es): `aa89e81`
 - Files changed:
   - `lib/briefing/__tests__/holy-crap-multi-run-proof.fixtures.ts`
   - `lib/briefing/__tests__/holy-crap-multi-run-proof.test.ts`
