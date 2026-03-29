@@ -123,6 +123,11 @@ Forbidden openers/phrases:
 - 50-69 = reasonable evidence, some inference required
 - Below 50 = thin evidence, action may not be appropriate
 
+6. Include a structured causal diagnosis.
+- "why_exists_now": why the discrepancy exists today
+- "mechanism": root cause creating the discrepancy
+- The artifact must resolve this mechanism, not restate surface symptoms.
+
 ---
 
 OUTPUT FORMAT
@@ -132,6 +137,10 @@ Preferred (Discrepancy Engine):
   "action": "send_message",
   "confidence": 0-100,
   "reason": "one sentence describing why this action matters now",
+  "causal_diagnosis": {
+    "why_exists_now": "...",
+    "mechanism": "..."
+  },
   "message": {
     "to": "real@email.com",
     "subject": "...",
@@ -142,6 +151,10 @@ Preferred (Discrepancy Engine):
 Legacy format (also accepted):
 {
   "insight": "...",
+  "causal_diagnosis": {
+    "why_exists_now": "...",
+    "mechanism": "..."
+  },
   "decision": "ACT",
   "directive": "one sentence describing the action",
   "artifact_type": "send_message|write_document|schedule_block|wait_rationale|do_nothing",
@@ -158,12 +171,19 @@ CRITICAL: Return ONLY a JSON object. No markdown fences, no explanation, no text
 interface GeneratedDirectivePayload {
   /** The non-obvious finding: a contradiction, pattern shift, or timing edge */
   insight: string;
+  /** Root-cause diagnosis that explains why this discrepancy exists now */
+  causal_diagnosis: CausalDiagnosis;
   /** Explicit analyst decision: ACT to produce an artifact, HOLD to surface the insight only */
   decision: 'ACT' | 'HOLD';
   directive: string;
   artifact_type: ValidArtifactType;
   artifact: Record<string, unknown>;
   why_now: string;
+}
+
+interface CausalDiagnosis {
+  why_exists_now: string;
+  mechanism: string;
 }
 
 interface RecentActionRow {
@@ -952,6 +972,112 @@ interface StructuredContext {
   competition_context: string | null;
   // Confidence prior derived from scorer (actionTypeRate + entityPenalty) — bounds generator guessing
   confidence_prior: number;
+  // Canonical root-cause diagnosis inferred before rendering.
+  required_causal_diagnosis: CausalDiagnosis;
+}
+
+type CausalMechanismClass =
+  | 'unowned_dependency'
+  | 'timing_asymmetry'
+  | 'avoidance_pattern'
+  | 'relationship_cooling'
+  | 'contradiction_drift'
+  | 'hidden_approval_blocker'
+  | 'general';
+
+function normalizeCausalDiagnosis(value: unknown): CausalDiagnosis | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const whyExistsNow = typeof record.why_exists_now === 'string'
+    ? record.why_exists_now.trim()
+    : '';
+  const mechanism = typeof record.mechanism === 'string'
+    ? record.mechanism.trim()
+    : '';
+  if (!whyExistsNow || !mechanism) return null;
+  return {
+    why_exists_now: whyExistsNow,
+    mechanism,
+  };
+}
+
+function classifyCausalMechanism(text: string): CausalMechanismClass {
+  const lower = text.toLowerCase();
+  if (/\b(approval|approver|sign[-\s]?off|final decision|gatekeeper)\b/.test(lower)) {
+    return 'hidden_approval_blocker';
+  }
+  if (/\b(owner|ownership|accountable|dependency|blocked|blocker|handoff)\b/.test(lower)) {
+    return 'unowned_dependency';
+  }
+  if (/\b(avoidance|no reply|no-response|defer|deferred|stalled thread|silence)\b/.test(lower)) {
+    return 'avoidance_pattern';
+  }
+  if (/\b(contradiction|mismatch|drift|says|stated goal|goal vs|inconsistent)\b/.test(lower)) {
+    return 'contradiction_drift';
+  }
+  if (/\b(deadline|due|timing|window|cutoff|late|slip)\b/.test(lower)) {
+    return 'timing_asymmetry';
+  }
+  if (/\b(relationship|cooling|reciprocity|asymmetric effort|unanswered)\b/.test(lower)) {
+    return 'relationship_cooling';
+  }
+  return 'general';
+}
+
+function inferRequiredCausalDiagnosis(input: {
+  winner: ScoredLoop;
+  candidateDueDate: string | null;
+  avoidanceObservations: AvoidanceObservation[];
+}): CausalDiagnosis {
+  const combinedText = [
+    input.winner.title,
+    input.winner.content,
+    ...input.winner.relatedSignals.slice(0, 2),
+    ...input.avoidanceObservations.map((o) => o.observation),
+  ].join(' ');
+  const mechanismClass = classifyCausalMechanism(combinedText);
+  const deadline = input.candidateDueDate
+    ? `by ${input.candidateDueDate}`
+    : 'in the next 24 hours';
+  const target = input.winner.title.slice(0, 96);
+
+  switch (mechanismClass) {
+    case 'hidden_approval_blocker':
+      return {
+        why_exists_now: `The thread is active but the final approval owner for "${target}" is still implicit ${deadline}.`,
+        mechanism: 'Hidden approval blocker: decision authority is not explicitly assigned.',
+      };
+    case 'unowned_dependency':
+      return {
+        why_exists_now: `Work is waiting on "${target}" and no accountable owner has accepted the dependency ${deadline}.`,
+        mechanism: 'Unowned dependency before deadline.',
+      };
+    case 'avoidance_pattern':
+      return {
+        why_exists_now: `Signals show unresolved contact and no committed response path for "${target}" ${deadline}.`,
+        mechanism: 'Avoidance pattern: uncomfortable decision kept open instead of forced closed.',
+      };
+    case 'relationship_cooling':
+      return {
+        why_exists_now: `Recent effort is asymmetric around "${target}" and response quality is cooling as timing pressure rises.`,
+        mechanism: 'Relationship cooling after asymmetric effort.',
+      };
+    case 'contradiction_drift':
+      return {
+        why_exists_now: `The behavior around "${target}" conflicts with the stated outcome and the contradiction is now creating execution drag.`,
+        mechanism: 'Contradiction between stated commitment and actual dependency state.',
+      };
+    case 'timing_asymmetry':
+      return {
+        why_exists_now: `The time window on "${target}" is closing faster than ownership/decision throughput.`,
+        mechanism: 'Timing asymmetry: decision latency is now larger than remaining execution window.',
+      };
+    default:
+      return {
+        why_exists_now: `The discrepancy around "${target}" persists because the decision boundary is still ambiguous ${deadline}.`,
+        mechanism: 'Unclear ownership and unresolved decision boundary.',
+      };
+  }
 }
 
 function buildStructuredContext(
@@ -1112,6 +1238,12 @@ function buildStructuredContext(
     }
   }
 
+  const required_causal_diagnosis = inferRequiredCausalDiagnosis({
+    winner,
+    candidateDueDate: candidate_due_date,
+    avoidanceObservations: avoidanceObservations ?? [],
+  });
+
   return {
     selected_candidate: selectedCandidate,
     candidate_class: winner.type,
@@ -1157,6 +1289,7 @@ function buildStructuredContext(
     relationship_timeline: buildRelationshipTimeline(signalEvidence, winner.title),
     competition_context: competitionContext ?? null,
     confidence_prior: winner.confidence_prior,
+    required_causal_diagnosis,
   };
 }
 
@@ -1357,6 +1490,18 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     `CANDIDATE_TITLE:\n${ctx.candidate_title}`,
     `CANDIDATE_CLASS:\n${ctx.candidate_class}`,
     `CANDIDATE_EVIDENCE:\n${ctx.selected_candidate}`,
+  );
+
+  sections.push(
+    `REQUIRED_CAUSAL_DIAGNOSIS:\n` +
+    `why_exists_now: ${ctx.required_causal_diagnosis.why_exists_now}\n` +
+    `mechanism: ${ctx.required_causal_diagnosis.mechanism}\n\n` +
+    `Your JSON MUST include:\n` +
+    `"causal_diagnosis": {\n` +
+    `  "why_exists_now": "...",\n` +
+    `  "mechanism": "..."\n` +
+    `}\n` +
+    `The artifact must resolve this mechanism directly. Surface-level follow-ups are invalid.`,
   );
 
   if (ctx.candidate_goal) {
@@ -2039,6 +2184,25 @@ const SUMMARY_ONLY_PATTERNS = [
   /\bbackground only\b/i,
 ];
 
+const CAUSAL_META_PATTERNS = [
+  /\binsight\s*:/i,
+  /\bwhy now\s*:/i,
+  /\brunner[- ]?ups?\b/i,
+  /\bscor(?:e|er)\b/i,
+  /\bconfidence rationale\b/i,
+  /\bthis candidate\b/i,
+];
+
+const CAUSAL_MECHANISM_ANCHORS: Record<CausalMechanismClass, RegExp[]> = {
+  hidden_approval_blocker: [/\bapprove|approval|sign[-\s]?off|owner|accountable\b/i],
+  unowned_dependency: [/\bowner|accountable|assign|responsible|dependency|blocked\b/i],
+  avoidance_pattern: [/\bconfirm|decide|commit|reply|respond\b/i],
+  relationship_cooling: [/\breply|response|respond|commitment|ownership\b/i],
+  contradiction_drift: [/\bdecide|choose|commit|trade[-\s]?off|priority\b/i],
+  timing_asymmetry: [/\bby\b|\bbefore\b|\bdeadline\b|\bcutoff\b|\bwindow\b/i],
+  general: [/\bdecide|confirm|assign|commit|owner|deadline\b/i],
+};
+
 function normalizeDecisionActionType(actionType: string): 'send_message' | 'write_document' | 'other' {
   if (actionType === 'send_message') return 'send_message';
   if (actionType === 'write_document' || actionType === 'make_decision' || actionType === 'research') {
@@ -2106,6 +2270,66 @@ export function getDecisionEnforcementIssues(input: {
   }
   if (textHasAny(combinedText, REWRITE_REQUIRED_PATTERNS)) {
     issues.push('decision_enforcement:requires_rewriting');
+  }
+
+  return [...new Set(issues)];
+}
+
+export function getCausalDiagnosisIssues(input: {
+  actionType: string;
+  directiveText: string;
+  reason: string;
+  artifact: ConvictionArtifact | Record<string, unknown> | null;
+  causalDiagnosis: CausalDiagnosis | null | undefined;
+  candidateTitle: string;
+}): string[] {
+  const normalizedType = normalizeDecisionActionType(input.actionType);
+  if (normalizedType === 'other') return [];
+  if (!input.artifact || typeof input.artifact !== 'object') {
+    return ['causal_diagnosis:missing_artifact'];
+  }
+
+  const diagnosis = normalizeCausalDiagnosis(input.causalDiagnosis);
+  if (!diagnosis) {
+    return ['causal_diagnosis:missing'];
+  }
+
+  const issues: string[] = [];
+  const whyExistsNow = diagnosis.why_exists_now.trim();
+  const mechanism = diagnosis.mechanism.trim();
+
+  if (whyExistsNow.length < 20) {
+    issues.push('causal_diagnosis:why_exists_now_too_short');
+  }
+  if (mechanism.length < 12) {
+    issues.push('causal_diagnosis:mechanism_too_short');
+  }
+  if (CAUSAL_META_PATTERNS.some((pattern) => pattern.test(`${whyExistsNow}\n${mechanism}`))) {
+    issues.push('causal_diagnosis:internal_meta_language');
+  }
+
+  const mechanismClass = classifyCausalMechanism(`${whyExistsNow} ${mechanism}`);
+  const artifactText = getArtifactTextForDecisionEnforcement(normalizedType, input.artifact as Record<string, unknown>);
+  const combinedText = `${input.directiveText}\n${input.reason}\n${artifactText}`.trim();
+  const mechanismAnchors = CAUSAL_MECHANISM_ANCHORS[mechanismClass] ?? [];
+  if (mechanismAnchors.length > 0 && !textHasAny(combinedText, mechanismAnchors)) {
+    issues.push('causal_diagnosis:artifact_not_mechanism_targeted');
+  }
+
+  if (textHasAny(combinedText, PASSIVE_OR_IGNORABLE_PATTERNS) && mechanismClass !== 'general') {
+    issues.push('causal_diagnosis:surface_follow_up_mismatch');
+  }
+
+  const candidateNorm = normalizeText(input.candidateTitle ?? '');
+  const artifactNorm = normalizeText(combinedText);
+  if (
+    candidateNorm &&
+    artifactNorm &&
+    artifactNorm.length < 220 &&
+    similarityScore(candidateNorm, artifactNorm) >= 0.82 &&
+    mechanismClass !== 'general'
+  ) {
+    issues.push('causal_diagnosis:surface_restatement_only');
   }
 
   return [...new Set(issues)];
@@ -2549,6 +2773,7 @@ export function extractJsonFromResponse(raw: string): string {
 export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | null {
   const cleaned = extractJsonFromResponse(raw);
   const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+  const parsedCausalDiagnosis = normalizeCausalDiagnosis(parsed.causal_diagnosis);
 
   // ---------------------------------------------------------------------------
   // Discrepancy Engine output branch — handles { action, confidence, reason, message }
@@ -2568,6 +2793,7 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
       const reason = typeof parsed.reason === 'string' ? parsed.reason : 'Discrepancy Engine: send this message.';
       return {
         insight: reason,
+        causal_diagnosis: parsedCausalDiagnosis ?? { why_exists_now: '', mechanism: '' },
         decision: 'ACT',
         directive: reason,
         artifact_type: 'send_message',
@@ -2624,6 +2850,7 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
 
   return {
     insight: typeof parsed.insight === 'string' ? parsed.insight : (typeof parsed.evidence === 'string' ? parsed.evidence : ''),
+    causal_diagnosis: parsedCausalDiagnosis ?? { why_exists_now: '', mechanism: '' },
     decision: parsed.decision === 'HOLD' ? 'HOLD' : 'ACT',
     directive: typeof parsed.directive === 'string' ? parsed.directive : '',
     artifact_type: artifactType,
@@ -2650,6 +2877,17 @@ function validateStringField(
     issues.push(`${label} contains placeholder text`);
   }
   return trimmed;
+}
+
+function withResolvedCausalDiagnosis(
+  payload: GeneratedDirectivePayload,
+  requiredDiagnosis: CausalDiagnosis,
+): GeneratedDirectivePayload {
+  const resolved = normalizeCausalDiagnosis(payload.causal_diagnosis) ?? requiredDiagnosis;
+  return {
+    ...payload,
+    causal_diagnosis: resolved,
+  };
 }
 
 function validateGeneratedArtifact(
@@ -2765,6 +3003,17 @@ function validateGeneratedArtifact(
     }),
   );
 
+  issues.push(
+    ...getCausalDiagnosisIssues({
+      actionType: payload.artifact_type,
+      directiveText: payload.directive ?? '',
+      reason: payload.why_now ?? '',
+      artifact: payload.artifact ?? null,
+      causalDiagnosis: payload.causal_diagnosis ?? null,
+      candidateTitle: ctx.candidate_title,
+    }),
+  );
+
   // Dedup check against recent actions
   const recentApproved = ctx.recent_action_history_7d
     .filter((a) => a.includes('APPROVED'))
@@ -2860,13 +3109,17 @@ function isDecisionEnforcementIssue(issue: string): boolean {
   return normalizeValidationIssue(issue).startsWith('decision_enforcement:');
 }
 
+function isCausalDiagnosisIssue(issue: string): boolean {
+  return normalizeValidationIssue(issue).startsWith('causal_diagnosis:');
+}
+
 function shouldAttemptDecisionEnforcementRepair(
   issues: string[],
   actionType: ValidArtifactTypeCanonical,
 ): boolean {
   if (issues.length === 0) return false;
   if (actionType !== 'send_message' && actionType !== 'write_document') return false;
-  return issues.every((issue) => isDecisionEnforcementIssue(issue));
+  return issues.every((issue) => isDecisionEnforcementIssue(issue) || isCausalDiagnosisIssue(issue));
 }
 
 function resolveDecisionDeadline(candidateDueDate: string | null): string {
@@ -2884,24 +3137,68 @@ function cleanDecisionTarget(value: string): string {
   return cleaned.slice(0, 110) || 'the active thread';
 }
 
+function buildCausalFallbackCopy(input: {
+  diagnosis: CausalDiagnosis;
+  target: string;
+  deadline: string;
+}): { ask: string; consequence: string; insight: string; whyNow: string } {
+  const mechanismClass = classifyCausalMechanism(
+    `${input.diagnosis.why_exists_now} ${input.diagnosis.mechanism}`,
+  );
+
+  switch (mechanismClass) {
+    case 'relationship_cooling':
+      return {
+        ask: `Ask: require a direct yes/no response on "${input.target}" by ${input.deadline}.`,
+        consequence: `Consequence: if no response by ${input.deadline}, trust and decision priority continue to decay.`,
+        insight: `Response asymmetry around "${input.target}" is creating decision drag.`,
+        whyNow: `Waiting past ${input.deadline} reinforces the cooling pattern and weakens decision leverage.`,
+      };
+    case 'timing_asymmetry':
+      return {
+        ask: `Ask: lock the final decision and owner for "${input.target}" by ${input.deadline}.`,
+        consequence: `Consequence: if unresolved by ${input.deadline}, the execution window closes before owners can act.`,
+        insight: `Decision latency is now larger than the remaining execution window for "${input.target}".`,
+        whyNow: `The time window expires faster than ownership is being assigned.`,
+      };
+    case 'hidden_approval_blocker':
+      return {
+        ask: `Ask: name the final approver and decision owner for "${input.target}" by ${input.deadline}.`,
+        consequence: `Consequence: if approval ownership stays implicit past ${input.deadline}, dependent work remains blocked.`,
+        insight: `Approval authority for "${input.target}" remains implicit, so no one can close the decision.`,
+        whyNow: `The approval gate is active now and must be explicit before ${input.deadline}.`,
+      };
+    default:
+      return {
+        ask: `Ask: confirm the decision and name one accountable owner by ${input.deadline}.`,
+        consequence: `Consequence: if unresolved by ${input.deadline}, timeline slips and dependent work stays blocked.`,
+        insight: `Ownership and timing for "${input.target}" are still unresolved.`,
+        whyNow: `Missing a committed decision by ${input.deadline} creates avoidable execution risk.`,
+      };
+  }
+}
+
 function buildDecisionEnforcedFallbackPayload(input: {
   winner: ScoredLoop;
   actionType: ValidArtifactTypeCanonical;
   candidateDueDate: string | null;
+  causalDiagnosis: CausalDiagnosis;
 }): GeneratedDirectivePayload | null {
   const target = cleanDecisionTarget(input.winner.title);
   const deadline = resolveDecisionDeadline(input.candidateDueDate);
-  const askLine = `Ask: confirm the decision and name one accountable owner by ${deadline}.`;
-  const consequenceLine = `Consequence: if unresolved by ${deadline}, timeline slips and dependent work stays blocked.`;
-  const insight = `Ownership and timing for "${target}" are still unresolved.`;
-  const whyNow = `Missing a committed decision by ${deadline} creates avoidable execution risk.`;
+  const copy = buildCausalFallbackCopy({
+    diagnosis: input.causalDiagnosis,
+    target,
+    deadline,
+  });
 
   if (input.actionType === 'send_message') {
     const recipient = extractAllEmailAddresses(input.winner)[0];
     if (!recipient) return null;
 
     return {
-      insight,
+      insight: copy.insight,
+      causal_diagnosis: input.causalDiagnosis,
       decision: 'ACT',
       directive: `Send a decision request that secures one accountable owner and a committed answer by ${deadline}.`,
       artifact_type: 'send_message',
@@ -2910,18 +3207,19 @@ function buildDecisionEnforcedFallbackPayload(input: {
         recipient,
         subject: `Decision needed by ${deadline}: ${target.slice(0, 58)}`,
         body: [
-          `Can you confirm the decision for "${target}" and assign one accountable owner by ${deadline}?`,
+          copy.ask.replace(/^Ask:\s*/i, ''),
           '',
-          consequenceLine,
+          copy.consequence,
         ].join('\n'),
       },
-      why_now: whyNow,
+      why_now: copy.whyNow,
     };
   }
 
   if (input.actionType === 'write_document') {
     return {
-      insight,
+      insight: copy.insight,
+      causal_diagnosis: input.causalDiagnosis,
       decision: 'ACT',
       directive: `Publish a decision memo that locks owner accountability and deadline by ${deadline}.`,
       artifact_type: 'write_document',
@@ -2932,12 +3230,12 @@ function buildDecisionEnforcedFallbackPayload(input: {
         content: [
           `Decision required: confirm the decision path for "${target}" and assign one accountable owner.`,
           '',
-          askLine,
+          copy.ask,
           '',
-          consequenceLine,
+          copy.consequence,
         ].join('\n'),
       },
-      why_now: whyNow,
+      why_now: copy.whyNow,
     };
   }
 
@@ -2955,6 +3253,10 @@ function buildDeterministicWaitRationale(
   const tripwireDate = new Date(Date.now() + daysMs(7)).toISOString().slice(0, 10);
   return {
     insight: `No contradiction, pattern shift, or timing edge found for "${winner.title.slice(0, 80)}".`,
+    causal_diagnosis: {
+      why_exists_now: `No actionable discrepancy emerged for "${winner.title.slice(0, 80)}".`,
+      mechanism: 'Insufficient causal signal to force a decision safely.',
+    },
     decision: 'HOLD',
     directive: `Hold on "${winner.title.slice(0, 60)}" — waiting for new evidence before acting.`,
     artifact_type: 'wait_rationale',
@@ -2971,6 +3273,10 @@ function buildDeterministicWaitRationale(
 function buildDeterministicDoNothing(reason: string, blockedBy: string): GeneratedDirectivePayload {
   return {
     insight: 'No viable candidate met all eligibility checks today.',
+    causal_diagnosis: {
+      why_exists_now: 'No candidate had enough evidence to infer a reliable root-cause mechanism.',
+      mechanism: 'Insufficient verified evidence for mechanism-level action.',
+    },
     decision: 'HOLD',
     directive: 'No candidate cleared the threshold for an executable artifact today.',
     artifact_type: 'do_nothing',
@@ -3065,6 +3371,13 @@ function buildEvidenceItems(result: ScorerResult, payload: GeneratedDirectivePay
     { type: 'signal', description: payload.insight.trim() },
   ];
 
+  if (payload.causal_diagnosis?.mechanism) {
+    evidence.push({
+      type: 'pattern',
+      description: `Causal mechanism: ${payload.causal_diagnosis.mechanism}`,
+    });
+  }
+
   if (result.winner.matchedGoal) {
     evidence.push({
       type: 'goal',
@@ -3083,6 +3396,9 @@ function buildFullContext(result: ScorerResult, payload: GeneratedDirectivePaylo
   const sections = [
     // Lead with the analyst insight so it's always the first thing surfaced
     payload.insight?.trim() ? `INSIGHT: ${payload.insight.trim()}` : '',
+    payload.causal_diagnosis?.why_exists_now?.trim() || payload.causal_diagnosis?.mechanism?.trim()
+      ? `CAUSAL_DIAGNOSIS:\n- why_exists_now: ${payload.causal_diagnosis.why_exists_now.trim()}\n- mechanism: ${payload.causal_diagnosis.mechanism.trim()}`
+      : '',
     payload.why_now?.trim() ? `WHY NOW: ${payload.why_now.trim()}` : '',
     `Winning loop: ${result.winner.title}`,
     result.winner.content,
@@ -3160,6 +3476,9 @@ async function generatePayload(
     let parseError: string | null = null;
     try {
       parsed = parseGeneratedPayload(raw);
+      if (parsed) {
+        parsed = withResolvedCausalDiagnosis(parsed, ctx.required_causal_diagnosis);
+      }
     } catch (e) {
       parseError = e instanceof Error ? e.message : String(e);
       parsed = null;
@@ -3227,6 +3546,7 @@ Do NOT use decision_frame, research_brief, drafted_email, document, or calendar_
 
 Do NOT use bracket placeholders like [Name], [Company], [Date].
 Use REAL details from the evidence provided.
+Include causal_diagnosis with both why_exists_now and mechanism fields.
 
 Issues:
 - ${issues.join('\n- ')}`,
@@ -3560,6 +3880,7 @@ export async function generateDirective(
           winner: hydratedWinner,
           actionType: decisionPayload.recommended_action,
           candidateDueDate: ctx.candidate_due_date,
+          causalDiagnosis: ctx.required_causal_diagnosis,
         });
 
         if (repairedPayload) {

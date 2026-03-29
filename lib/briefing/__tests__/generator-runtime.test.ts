@@ -516,4 +516,81 @@ describe('generateDirective runtime failures', () => {
       generationStatus: 'decision_enforcement_repaired',
     }));
   });
+  it('produces different repaired artifacts when causal diagnosis mechanism changes', async () => {
+    const scored = buildScorerResult();
+    scored.winner.type = 'commitment';
+    scored.winner.suggestedActionType = 'write_document';
+    scored.winner.title = 'Approval thread drift before legal cutoff';
+    scored.winner.content = 'Approval keeps moving without owner assignment and cutoff is 2026-03-30.';
+    scored.winner.relationshipContext = '- Legal Approver (Approver)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Write a quick update.',
+          artifact_type: 'write_document',
+          artifact: {
+            document_purpose: 'summary',
+            target_reader: 'team',
+            title: 'Status update',
+            content: 'This document summarizes the current status for reference.',
+          },
+          evidence: 'Approval path remains unresolved.',
+          why_now: 'Need to keep things moving.',
+          causal_diagnosis: {
+            why_exists_now: 'The approver requested a decision but no owner accepted dependency ownership.',
+            mechanism: 'Unowned dependency before a legal deadline.',
+          },
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const depDirective = await generateDirective('user-1', { dryRun: true });
+    const depArtifact = (depDirective as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    expect(depDirective.action_type).toBe('write_document');
+    expect(String(depArtifact?.content)).toContain('owner');
+
+    scored.winner.title = 'Relationship cooling after asymmetric effort in partner thread';
+    scored.winner.content = 'Two substantive updates were sent, but responses remained non-committal with no direct yes/no answer.';
+    scored.winner.relatedSignals = ['Message sent Monday with no direct commitment response by Wednesday.'];
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Write a quick update.',
+          artifact_type: 'write_document',
+          artifact: {
+            document_purpose: 'summary',
+            target_reader: 'team',
+            title: 'Status update',
+            content: 'This document summarizes the current status for reference.',
+          },
+          evidence: 'Engagement is cooling and reply asymmetry increased.',
+          why_now: 'Need to keep things moving.',
+          causal_diagnosis: {
+            why_exists_now: 'You sent two substantive updates and got non-committal responses.',
+            mechanism: 'Relationship cooling after asymmetric effort.',
+          },
+        }),
+      }],
+    });
+
+    const relDirective = await generateDirective('user-1', { dryRun: true });
+    const relArtifact = (relDirective as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    expect(relDirective.action_type).toBe('write_document');
+
+    expect(depArtifact?.content).not.toEqual(relArtifact?.content);
+    expect(String(relArtifact?.content)).toContain('Relationship cooling');
+  });
 });
+
