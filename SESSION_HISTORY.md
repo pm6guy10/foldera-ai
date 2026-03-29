@@ -1957,7 +1957,7 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 
 ## Session Log — 2026-03-29 (causal diagnosis layer real-artifact upgrade)
 - MODE: AUDIT
-- Commit hash(es): pending (set after commit on `main`)
+- Commit hash(es): `682a8db`
 - Files changed:
   - `lib/briefing/generator.ts`
   - `lib/briefing/__tests__/generator-runtime.test.ts`
