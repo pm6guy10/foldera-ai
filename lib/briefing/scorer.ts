@@ -113,6 +113,23 @@ export function isNoiseCandidateText(...texts: string[]): boolean {
   );
 }
 
+const OBVIOUS_FIRST_LAYER_PATTERNS = [
+  /^\s*(?:follow\s+up|check\s+in|touch\s+base|circle\s+back)\b/i,
+  /\b(?:just\s+checking\s+in|just\s+reaching\s+out|quick\s+follow\s+up)\b/i,
+  /^\s*schedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session)\b/i,
+];
+
+const OUTCOME_SIGNAL_PATTERNS = [
+  /\b(?:offer|hiring|interview|approval|deadline|due|board|review|reference|contract)\b/i,
+  /\b(?:\$|budget|cash|spend|invoice|payment|claim|settlement|revenue)\b/i,
+  /\b(?:partner|client|manager|recruiter|relationship|stakeholder)\b/i,
+];
+
+const DUPLICATE_STOPWORDS = new Set([
+  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'have', 'will', 'your',
+  'about', 'after', 'before', 'just', 'quick', 'update', 'send', 'write', 'follow', 'check',
+]);
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -222,6 +239,20 @@ export interface ScorerResult {
   antiPatterns: AntiPattern[];
   /** Revealed-preference divergences detected regardless of whether they won scoring */
   divergences: RevealedGoalDivergence[];
+}
+
+export interface RankingInvariantDiagnostic {
+  id: string;
+  originalScore: number;
+  adjustedScore: number;
+  passed: boolean;
+  hardRejectReasons: string[];
+  penaltyReasons: string[];
+}
+
+export interface RankingInvariantResult {
+  ranked: ScoredLoop[];
+  diagnostics: RankingInvariantDiagnostic[];
 }
 
 export interface CrossLoopConnection {
@@ -988,6 +1019,217 @@ function inferDomain(
 ): string {
   if (matchedGoal) return matchedGoal.category;
   return inferGoalCategory(text, goalKeywordIndex) ?? fallbackCategory;
+}
+
+export function isSendOrWriteCapableAction(actionType: ActionType): boolean {
+  return (
+    actionType === 'send_message'
+    || actionType === 'write_document'
+    || actionType === 'make_decision'
+    || actionType === 'research'
+  );
+}
+
+function normalizeForDuplicate(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .map((token) => (token.length > 4 && token.endsWith('s') ? token.slice(0, -1) : token))
+    .filter((token) => token.length >= 4 && !DUPLICATE_STOPWORDS.has(token));
+}
+
+function jaccardSimilarity(a: string[], b: string[]): number {
+  if (a.length === 0 || b.length === 0) return 0;
+  const aSet = new Set(a);
+  const bSet = new Set(b);
+  let intersection = 0;
+  for (const token of aSet) {
+    if (bSet.has(token)) intersection++;
+  }
+  const union = new Set([...aSet, ...bSet]).size;
+  return union > 0 ? intersection / union : 0;
+}
+
+function computeEvidenceDensity(candidate: ScoredLoop): number {
+  const combined = `${candidate.title} ${candidate.content}`;
+  const hasConcrete = /@|\$|\b\d{4}-\d{2}-\d{2}\b|\b[A-Z0-9]{5,}\b/.test(combined);
+  let density = 0;
+  if (candidate.matchedGoal) density += 1;
+  if ((candidate.relatedSignals?.length ?? 0) > 0) density += 1;
+  if ((candidate.sourceSignals?.length ?? 0) > 0) density += 1;
+  if (hasConcrete) density += 1;
+  if (candidate.type === 'discrepancy') density += 1;
+  return density;
+}
+
+function isObviousFirstLayerAdvice(candidate: ScoredLoop): boolean {
+  const combined = `${candidate.title}\n${candidate.content}`.trim();
+  return OBVIOUS_FIRST_LAYER_PATTERNS.some((pattern) => pattern.test(combined));
+}
+
+function isOutcomeLinkedCandidate(candidate: ScoredLoop): boolean {
+  if (candidate.type === 'discrepancy') return true;
+  if (candidate.matchedGoal) return true;
+  const combined = `${candidate.title} ${candidate.content}`;
+  return OUTCOME_SIGNAL_PATTERNS.some((pattern) => pattern.test(combined));
+}
+
+function isDecisionMovingCandidate(candidate: ScoredLoop): boolean {
+  if (!isOutcomeLinkedCandidate(candidate)) return false;
+  if (candidate.type === 'discrepancy') return true;
+  return (candidate.breakdown.stakes ?? 0) >= 2 || (candidate.breakdown.urgency ?? 0) >= 0.6;
+}
+
+function getInvariantFailureReasons(candidate: ScoredLoop): string[] {
+  const lifecycle = candidate.lifecycle;
+  const actionableNow = lifecycle
+    ? lifecycle.state === 'active_now' && lifecycle.actionability === 'actionable'
+    : candidate.score > 0;
+  const reasons: string[] = [];
+  const obviousAdvice = isObviousFirstLayerAdvice(candidate);
+  const routineMaintenance = isNoiseCandidateText(candidate.title, candidate.content);
+  const evidenceDensity = computeEvidenceDensity(candidate);
+  const alreadyKnown = (candidate.breakdown.freshness ?? 1) <= 0.35 || (candidate.breakdown.entityPenalty ?? 0) <= -20;
+
+  if (!actionableNow) reasons.push('non_actionable');
+  if (!isSendOrWriteCapableAction(candidate.suggestedActionType)) reasons.push('not_send_or_write_capable');
+  if (!isDecisionMovingCandidate(candidate)) reasons.push('not_decision_moving');
+  if (routineMaintenance) reasons.push('routine_maintenance');
+  if (obviousAdvice) reasons.push('obvious_first_layer_advice');
+  if (alreadyKnown) reasons.push('already_known_pattern');
+  if (evidenceDensity < 2) reasons.push('weak_evidence_density');
+  return reasons;
+}
+
+export function passesTop3RankingInvariants(candidate: ScoredLoop): boolean {
+  return getInvariantFailureReasons(candidate).length === 0;
+}
+
+export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantResult {
+  const ranked = scored.map((candidate) => ({
+    ...candidate,
+    breakdown: { ...candidate.breakdown },
+  }));
+
+  const diagnostics = new Map<string, RankingInvariantDiagnostic>();
+  const ensureDiagnostic = (candidate: ScoredLoop): RankingInvariantDiagnostic => {
+    const existing = diagnostics.get(candidate.id);
+    if (existing) return existing;
+    const created: RankingInvariantDiagnostic = {
+      id: candidate.id,
+      originalScore: candidate.score,
+      adjustedScore: candidate.score,
+      passed: true,
+      hardRejectReasons: [],
+      penaltyReasons: [],
+    };
+    diagnostics.set(candidate.id, created);
+    return created;
+  };
+
+  for (const candidate of ranked) {
+    const diag = ensureDiagnostic(candidate);
+    const hardRejectReasons = getInvariantFailureReasons(candidate);
+    if (hardRejectReasons.length > 0) {
+      candidate.score = 0;
+      diag.hardRejectReasons.push(...hardRejectReasons);
+      diag.passed = false;
+      continue;
+    }
+
+    let multiplier = 1;
+    if ((candidate.breakdown.freshness ?? 1) <= 0.65) {
+      multiplier *= 0.8;
+      diag.penaltyReasons.push('low_novelty_penalty');
+    }
+    if ((candidate.breakdown.entityPenalty ?? 0) < 0) {
+      multiplier *= 0.8;
+      diag.penaltyReasons.push('already_considered_penalty');
+    }
+    if (computeEvidenceDensity(candidate) === 2) {
+      multiplier *= 0.9;
+      diag.penaltyReasons.push('thin_evidence_penalty');
+    }
+    candidate.score *= multiplier;
+  }
+
+  // Collapse near-duplicate candidates across all non-zero rows.
+  const survivors = ranked
+    .filter((candidate) => candidate.score > 0)
+    .sort(compareScoredLoops);
+  for (const candidate of survivors) {
+    if (candidate.score <= 0) continue;
+    const candidateTokens = normalizeForDuplicate(`${candidate.title} ${candidate.content}`);
+    for (const other of survivors) {
+      if (other.id === candidate.id || other.score <= 0) continue;
+      const otherTokens = normalizeForDuplicate(`${other.title} ${other.content}`);
+      const similarity = jaccardSimilarity(candidateTokens, otherTokens);
+      if (similarity >= 0.58 && candidate.score >= other.score) {
+        other.score = 0;
+        const diag = ensureDiagnostic(other);
+        diag.passed = false;
+        diag.hardRejectReasons.push(`duplicate_like_with_${candidate.id}`);
+      }
+    }
+  }
+
+  // Discrepancy priority invariant: when a valid discrepancy exists, generic tasks must lose.
+  const qualifiedDiscrepancies = ranked.filter(
+    (candidate) => candidate.type === 'discrepancy' && candidate.score > 0 && passesTop3RankingInvariants(candidate),
+  );
+
+  if (qualifiedDiscrepancies.length > 0) {
+    for (const candidate of ranked) {
+      if (candidate.score <= 0) continue;
+      const diag = ensureDiagnostic(candidate);
+      if (candidate.type === 'discrepancy') {
+        candidate.score *= 1.2;
+        diag.penaltyReasons.push('discrepancy_priority_boost');
+        continue;
+      }
+      const strongOutcomeCommitment =
+        candidate.type === 'commitment'
+        && candidate.breakdown.stakes >= 3
+        && candidate.breakdown.urgency >= 0.6
+        && computeEvidenceDensity(candidate) >= 3;
+      const penalty = strongOutcomeCommitment ? 0.88 : 0.55;
+      candidate.score *= penalty;
+      diag.penaltyReasons.push(strongOutcomeCommitment
+        ? 'discrepancy_priority_softened_task_penalty'
+        : 'discrepancy_priority_task_penalty');
+    }
+
+    const topDiscrepancy = ranked
+      .filter((candidate) => candidate.type === 'discrepancy' && candidate.score > 0)
+      .sort(compareScoredLoops)[0];
+    const topNonDiscrepancy = ranked
+      .filter((candidate) => candidate.type !== 'discrepancy' && candidate.score > 0)
+      .sort(compareScoredLoops)[0];
+
+    if (
+      topDiscrepancy
+      && topNonDiscrepancy
+      && topDiscrepancy.score <= topNonDiscrepancy.score
+    ) {
+      topDiscrepancy.score = topNonDiscrepancy.score + 0.001;
+      ensureDiagnostic(topDiscrepancy).penaltyReasons.push('discrepancy_priority_forced_over_task');
+    }
+  }
+
+  ranked.sort(compareScoredLoops);
+  for (const candidate of ranked) {
+    const diag = ensureDiagnostic(candidate);
+    diag.adjustedScore = candidate.score;
+    if (candidate.score <= 0 || !passesTop3RankingInvariants(candidate)) {
+      diag.passed = false;
+    }
+  }
+
+  return {
+    ranked,
+    diagnostics: [...diagnostics.values()],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -3723,8 +3965,28 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     return true;
   });
 
-  // Sort by score descending
-  scored.sort(compareScoredLoops);
+  // Ranking invariant enforcement
+  // Hard-block weak/obvious/repeated/non-decision-moving candidates and
+  // force discrepancy preference when both discrepancy + task classes exist.
+  const invariantResult = applyRankingInvariants(scored);
+  scored = invariantResult.ranked;
+  const invariantRejected = invariantResult.diagnostics.filter((d) => d.hardRejectReasons.length > 0).length;
+  const invariantPenalized = invariantResult.diagnostics.filter((d) => d.penaltyReasons.length > 0).length;
+  if (invariantRejected > 0 || invariantPenalized > 0) {
+    logStructuredEvent({
+      event: 'ranking_invariant_enforced',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'scoring',
+      details: {
+        scope: 'scorer',
+        rejected: invariantRejected,
+        penalized: invariantPenalized,
+        total: invariantResult.diagnostics.length,
+      },
+    });
+  }
 
   // -----------------------------------------------------------------------
   // NO_VALID_ACTION gate
@@ -3742,7 +4004,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // -----------------------------------------------------------------------
 
   const SCORED_MIN_THRESHOLD = 0.001;
-  const validScoredCandidates = scored.filter((c) => c.score > SCORED_MIN_THRESHOLD);
+  const validScoredCandidates = scored.filter(
+    (c) => c.score > SCORED_MIN_THRESHOLD && passesTop3RankingInvariants(c),
+  );
   if (validScoredCandidates.length === 0) {
     logStructuredEvent({
       event: 'no_valid_action',
@@ -3752,9 +4016,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       generationStatus: 'no_valid_candidates',
       details: {
         scope: 'scorer',
-        reason: 'all_candidates_invalid_or_rejected',
+        reason: 'all_candidates_invalid_or_rejected_by_ranking_invariants',
         total_scored: scored.length,
-        below_threshold: scored.length,
+        below_threshold: scored.filter((c) => c.score <= SCORED_MIN_THRESHOLD).length,
+        failed_invariants: scored.filter((c) => !passesTop3RankingInvariants(c)).length,
         threshold: SCORED_MIN_THRESHOLD,
       },
     });
@@ -3765,7 +4030,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   if (!winner) return null;
 
   // Build deprioritized loops: top 3 runner-ups with kill reasons
-  const runnerUps = scored.slice(1, 4);
+  const runnerUps = validScoredCandidates.slice(1, 4);
   const deprioritized = runnerUps.map(loop => classifyKillReason(loop, winner.score));
 
   logStructuredEvent({
@@ -3783,7 +4048,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
   return {
     winner,
-    topCandidates: scored.slice(0, 3),
+    topCandidates: validScoredCandidates.slice(0, 3),
     deprioritized,
     candidateDiscovery: buildCandidateDiscoveryLog(winner, scored, suppressedCandidates, null),
     antiPatterns,

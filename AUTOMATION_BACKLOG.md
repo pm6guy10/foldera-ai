@@ -1,5 +1,41 @@
 # AUTOMATION BACKLOG
 
+### P0 — RANKING INVARIANT ENFORCEMENT: weak candidates cannot win (2026-03-29)
+
+**Status: RESOLVED.** Scorer + generator now hard-block weak classes and enforce discrepancy priority structurally.
+
+**Root cause (exact):**
+- Ranking relied on raw EV and viability multipliers without a hard invariant layer.
+- Weak classes (`schedule` chores, obvious first-layer advice, low-evidence reminders, duplicate-like variants) could remain score-positive and compete for top slots.
+- Generator viability logic could still let generic tasks outrank meaningful discrepancy candidates.
+
+**Fixes shipped (defense-in-depth):**
+- `lib/briefing/scorer.ts`:
+  - Added `applyRankingInvariants()` and `passesTop3RankingInvariants()`.
+  - Hard rejects non-send/write-capable, obvious-first-layer, routine-maintenance, already-known, and weak-evidence candidates.
+  - Added near-duplicate collapse across scored candidates.
+  - Enforced discrepancy-priority scoring when qualified discrepancies are present.
+  - Wired invariant enforcement into `scoreOpenLoops()` before winner/top-3 selection.
+- `lib/briefing/generator.ts`:
+  - Strengthened `selectRankedCandidates()` with send/write-capable disqualification, obvious-advice disqualification, discrepancy-priority weighting, and novelty penalty.
+  - Added discrepancy forced-over-task tie protection in final viability ranking.
+
+**Proof (this session):**
+- New regression suite: `lib/briefing/__tests__/scorer-ranking-invariants.test.ts` (5 tests)
+  - weak candidate cannot rank #1
+  - duplicate-like candidates collapse
+  - discrepancy beats generic task
+  - obvious first-layer advice loses to stronger discrepancy
+  - top 3 remain invariant-compliant
+- Updated `lib/briefing/__tests__/winner-selection.test.ts` (3 new tests) for final winner constraints.
+- Verification:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/scorer-ranking-invariants.test.ts` (pass)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/winner-selection.test.ts` (pass)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__` (13 files, 177 tests passed)
+  - `npm run build` (pass)
+  - `npm run test:prod` (51/51 passed)
+  - `npx playwright test` still fails on pre-existing local authenticated production-smoke harness expectations; logged in `FOLDERA_MASTER_AUDIT.md` as NEEDS_REVIEW.
+
 ### P0 — ARTIFACT QUALITY ENFORCEMENT: Analysis-dump write_document leakage blocked (2026-03-29)
 
 **Status: RESOLVED.** Persisted/sent document artifacts now reject internal reasoning scaffolds and pipeline commentary structurally.

@@ -2,6 +2,20 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside ranking-invariant backend scope
+
+This session changed backend ranking only:
+- `lib/briefing/scorer.ts`
+- `lib/briefing/generator.ts`
+- ranking regression tests in `lib/briefing/__tests__/`
+
+Mandatory QA gate results for this session:
+- `npm run build` passed.
+- `npx playwright test` still fails on the pre-existing local authenticated production-smoke harness class (`tests/production/smoke.spec.ts` redirect/API-session/Generate-Now visibility assertions on localhost) plus one known clickflow timeout.
+- `npm run test:prod` passed (`51/51`) against production config.
+
+Status: `NEEDS_REVIEW` (remaining local omnibus failures are unchanged and outside this ranking patch).
+
 ### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside artifact-quality backend scope
 
 This session changed backend artifact generation/persistence safety only:

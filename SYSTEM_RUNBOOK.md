@@ -85,6 +85,17 @@ Before ending:
   - `lib/cron/daily-brief-generate.ts` now enforces artifact persistence checks (`getArtifactPersistenceIssues`) before any `pending_approval` insert.
   - `lib/conviction/__tests__/artifact-generator.test.ts` + `lib/cron/__tests__/daily-brief.test.ts` cover analysis rejection, clean acceptance, hostile-meta rejection, fallback safety, and invalid-artifact no-persist behavior.
 
+### Ranking Quality (candidate selection)
+- Status: HARDENED
+- Last verified: 2026-03-29
+- Evidence:
+  - `lib/briefing/scorer.ts` now enforces ranking invariants (`applyRankingInvariants`) before winner/top-3 selection:
+    - hard rejects obvious-first-layer, routine-maintenance, weak-evidence, already-known, and non-send/write-capable candidates
+    - collapses duplicate-like candidates
+    - applies discrepancy-priority over generic task classes
+  - `lib/briefing/generator.ts` `selectRankedCandidates` now disqualifies schedule-only/obvious candidates and preserves discrepancy priority in viability ranking.
+  - Tests: `lib/briefing/__tests__/scorer-ranking-invariants.test.ts` + `lib/briefing/__tests__/winner-selection.test.ts` additions.
+
 ### Pending Migrations NOT in Production DB
 All of these are in source code but NOT yet applied to production:
 

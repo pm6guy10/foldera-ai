@@ -169,4 +169,67 @@ describe('selectFinalWinner', () => {
     const { winner } = selectFinalWinner([staleCand, freshCand], NO_GUARDRAILS);
     expect(winner.id).toBe('fresh');
   });
+
+  it('disqualifies schedule-only candidate from winning final rank', () => {
+    const scheduleOnly = makeCandidate({
+      id: 'schedule-only',
+      score: 4.4,
+      type: 'signal',
+      suggestedActionType: 'schedule',
+      title: 'Schedule a 30 minute block',
+      content: 'Schedule a 30 minute block to think about this.',
+    });
+    const discrepancy = makeCandidate({
+      id: 'discrepancy',
+      score: 3.8,
+      type: 'discrepancy',
+      suggestedActionType: 'write_document',
+      title: 'Timing asymmetry: deadline closes while response window shrinks',
+      content: 'Response window dropped from 7 days to 2 days with no owner reply.',
+    });
+
+    const { winner } = selectFinalWinner([scheduleOnly, discrepancy], NO_GUARDRAILS);
+    expect(winner.id).toBe('discrepancy');
+  });
+
+  it('discrepancy outranks generic follow-up task when both are present', () => {
+    const genericTask = makeCandidate({
+      id: 'generic-task',
+      score: 4.6,
+      type: 'commitment',
+      title: 'Follow up with team',
+      content: 'Follow up with team.',
+    });
+    const discrepancy = makeCandidate({
+      id: 'hidden-risk',
+      score: 3.9,
+      type: 'discrepancy',
+      suggestedActionType: 'write_document',
+      title: 'Unseen risk: approval blocker surfaced late in thread',
+      content: 'New blocker now conflicts with approval timeline and no mitigation plan exists.',
+    });
+
+    const { winner } = selectFinalWinner([genericTask, discrepancy], NO_GUARDRAILS);
+    expect(winner.id).toBe('hidden-risk');
+  });
+
+  it('obvious first-layer advice is disqualified in favor of decision-moving candidate', () => {
+    const obvious = makeCandidate({
+      id: 'obvious',
+      score: 5.0,
+      title: 'Check in with recruiter',
+      content: 'Check in with recruiter.',
+    });
+    const decisionMoving = makeCandidate({
+      id: 'decision-moving',
+      score: 3.7,
+      type: 'discrepancy',
+      suggestedActionType: 'write_document',
+      title: 'Contradiction: runway goal tightened while spend increased',
+      content: 'Runway target reduced while discretionary spend rose 22% this week.',
+    });
+
+    const { winner } = selectFinalWinner([obvious, decisionMoving], NO_GUARDRAILS);
+    expect(winner.id).toBe('decision-moving');
+  });
 });

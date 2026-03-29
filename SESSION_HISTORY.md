@@ -1837,4 +1837,27 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Any unresolved issues:
   - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke expectations; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
 
+## Session Log — 2026-03-29 (ranking invariant enforcement: weak candidates cannot win)
+- MODE: AUDIT
+- Commit hash(es): pending
+- Files changed:
+  - lib/briefing/scorer.ts
+  - lib/briefing/generator.ts
+  - lib/briefing/__tests__/scorer-ranking-invariants.test.ts
+  - lib/briefing/__tests__/winner-selection.test.ts
+  - AUTOMATION_BACKLOG.md
+  - FOLDERA_PRODUCT_SPEC.md
+  - FOLDERA_MASTER_AUDIT.md
+  - SYSTEM_RUNBOOK.md
+  - SESSION_HISTORY.md
+- What was verified:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/scorer-ranking-invariants.test.ts` (5 passed)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/winner-selection.test.ts` (12 passed)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__` (13 files, 177 passed)
+  - `npm run build` (pass)
+  - `npx playwright test` (`111 passed, 11 failed, 6 skipped` — unchanged pre-existing local authenticated production-smoke harness failures)
+  - `npm run test:prod` (51/51 passed)
+- Any unresolved issues:
+  - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke expectations and one clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
 

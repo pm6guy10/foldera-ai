@@ -500,6 +500,9 @@ export function selectRankedCandidates(
   if (topCandidates.length === 1) return { ranked: [{ candidate: topCandidates[0], note: 'only candidate', disqualified: false, disqualifyReason: null }], competitionContext: '' };
 
   const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+  const OBVIOUS_FIRST_LAYER_RE = /^(?:follow\s+up|check\s+in|touch\s+base|circle\s+back|schedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session))\b/i;
+  const SEND_WRITE_ACTIONS = new Set<ActionType>(['send_message', 'write_document', 'make_decision', 'research']);
+  const hasDiscrepancy = topCandidates.some((candidate) => candidate.type === 'discrepancy');
 
   interface Rated {
     candidate: import('./scorer').ScoredLoop;
@@ -510,6 +513,26 @@ export function selectRankedCandidates(
   }
 
   const rated: Rated[] = topCandidates.map((candidate) => {
+    // 0. Hard disqualifiers — top slots must be SEND/WRITE capable, non-generic finished-work candidates.
+    if (!SEND_WRITE_ACTIONS.has(candidate.suggestedActionType)) {
+      return {
+        candidate,
+        viabilityScore: 0,
+        note: '',
+        disqualified: true,
+        disqualifyReason: 'candidate is not send/write capable',
+      };
+    }
+    if (OBVIOUS_FIRST_LAYER_RE.test(candidate.title.trim())) {
+      return {
+        candidate,
+        viabilityScore: 0,
+        note: '',
+        disqualified: true,
+        disqualifyReason: 'obvious first-layer advice',
+      };
+    }
+
     // 1. Dedup: disqualify if user was shown a similar directive in the last 7 days.
     //    Uses the same 72% token-similarity threshold as buildStructuredContext so
     //    the eligibility check and selection check are consistent.
@@ -545,6 +568,23 @@ export function selectRankedCandidates(
     // 2. Viability multipliers applied to raw scorer score.
     let mult = 1.0;
     const notes: string[] = [];
+
+    // Discrepancy priority invariant: if discrepancy candidates exist, tasks lose
+    // unless they are unusually strong, evidence-dense commitments.
+    if (hasDiscrepancy) {
+      if (candidate.type === 'discrepancy') {
+        mult *= 1.2;
+        notes.push('discrepancy-priority boost');
+      } else {
+        const strongCommitment =
+          candidate.type === 'commitment'
+          && candidate.breakdown.stakes >= 3
+          && candidate.breakdown.urgency >= 0.6
+          && ((candidate.relatedSignals?.length ?? 0) + (candidate.sourceSignals?.length ?? 0)) >= 3;
+        mult *= strongCommitment ? 0.88 : 0.55;
+        notes.push(strongCommitment ? 'softened task penalty under discrepancy priority' : 'task penalty under discrepancy priority');
+      }
+    }
 
     // Commitment/compound: real obligations the user already committed to.
     // These always produce a finished artifact — highest resolution value.
@@ -595,6 +635,12 @@ export function selectRankedCandidates(
       notes.push(`signal ${Math.round(ageDays)}d old`);
     }
 
+    // Penalize low-novelty candidates so repeated patterns do not outrank unseen discrepancies.
+    if ((candidate.breakdown.freshness ?? 1) <= 0.65) {
+      mult *= 0.82;
+      notes.push('low novelty');
+    }
+
     return {
       candidate,
       viabilityScore: candidate.score * mult,
@@ -610,7 +656,20 @@ export function selectRankedCandidates(
     return b.viabilityScore - a.viabilityScore;
   });
 
-  const top = rated[0];
+  let top = rated[0];
+
+  const topDiscrepancy = rated
+    .filter((entry) => !entry.disqualified && entry.candidate.type === 'discrepancy')
+    .sort((a, b) => b.viabilityScore - a.viabilityScore)[0];
+  if (topDiscrepancy && !top.disqualified && top.candidate.type !== 'discrepancy' && topDiscrepancy.viabilityScore <= top.viabilityScore) {
+    topDiscrepancy.viabilityScore = top.viabilityScore + 0.001;
+    topDiscrepancy.note = `${topDiscrepancy.note}; discrepancy forced above task`;
+    rated.sort((a, b) => {
+      if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
+      return b.viabilityScore - a.viabilityScore;
+    });
+    top = rated[0];
+  }
 
   // Pathological fallback: all disqualified → still return ranked list so fallback loop can try
   if (top.disqualified) {
