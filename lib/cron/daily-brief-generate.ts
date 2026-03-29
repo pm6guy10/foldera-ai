@@ -356,6 +356,7 @@ async function reconcilePendingApprovalQueue(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
   todayStart: string,
+  options: DailyBriefSignalWindowOptions = {},
 ): Promise<{
   error: Error | null;
   preservedAction: PendingActionRow | null;
@@ -375,6 +376,7 @@ async function reconcilePendingApprovalQueue(
   }
 
   const rows = (data ?? []) as PendingActionRow[];
+  const forceFreshRun = options.forceFreshRun === true;
   let preservedAction: PendingActionRow | null = null;
   const skippedActionIds: string[] = [];
   let recentDoNothingGeneratedAt: string | null = null;
@@ -392,12 +394,14 @@ async function reconcilePendingApprovalQueue(
       typeof row.confidence === 'number' &&
       row.confidence >= CONFIDENCE_THRESHOLD;
 
-    if (!isToday || !isValid) {
+    if (forceFreshRun || !isToday || !isValid) {
       const executionResult =
         row.execution_result && typeof row.execution_result === 'object'
           ? (row.execution_result as Record<string, unknown>)
           : {};
-      const suppressionReason = alreadySent
+      const suppressionReason = forceFreshRun
+        ? 'Auto-suppressed pending action before forced fresh generation.'
+        : alreadySent
         ? 'Auto-suppressed already-sent pending action before daily brief generation.'
         : isDoNothing
         ? 'Auto-suppressed do_nothing pending action — never send to user.'
@@ -827,7 +831,7 @@ export async function runDailyGenerate(
     signalResults.push(signalResult);
 
     try {
-      const pendingQueue = await reconcilePendingApprovalQueue(supabase, userId, todayStart);
+      const pendingQueue = await reconcilePendingApprovalQueue(supabase, userId, todayStart, options);
       if (pendingQueue.error) {
         results.push({
           code: 'directive_persist_failed',
@@ -874,7 +878,7 @@ export async function runDailyGenerate(
           .limit(1)
           .maybeSingle();
 
-        if (recoverable) {
+        if (recoverable && !options.forceFreshRun) {
           await supabase
             .from('tkg_actions')
             .update({ status: 'pending_approval', skip_reason: null })
@@ -1200,6 +1204,24 @@ export async function runDailyGenerate(
         continue;
       }
 
+      const directiveWithInspection = directive as ConvictionDirective & {
+        acceptedCausalDiagnosis?: { mechanism: string; why_exists_now: string };
+        causalDiagnosisSource?: string;
+        winnerSelectionTrace?: {
+          finalWinnerId: string;
+          finalWinnerType: string;
+          finalWinnerReason: string | null;
+          scorerTopId: string;
+          scorerTopType: string;
+          scorerTopDisplacementReason: string | null;
+        };
+      };
+      const inspectionMeta = {
+        accepted_causal_diagnosis: directiveWithInspection.acceptedCausalDiagnosis ?? null,
+        causal_diagnosis_source: directiveWithInspection.causalDiagnosisSource ?? null,
+        winner_selection_trace: directiveWithInspection.winnerSelectionTrace ?? null,
+      };
+
       const { data: saved, error: saveErr } = await supabase
         .from('tkg_actions')
         .insert({
@@ -1214,7 +1236,12 @@ export async function runDailyGenerate(
           generation_attempts: 1,
           artifact: artifact ?? null,
           execution_result: {
-            ...buildDirectiveExecutionResult({ directive, artifact, briefOrigin: 'daily_cron' }),
+            ...buildDirectiveExecutionResult({
+              directive,
+              artifact,
+              briefOrigin: 'daily_cron',
+              extras: { inspection: inspectionMeta },
+            }),
             approve: null,
           },
         })

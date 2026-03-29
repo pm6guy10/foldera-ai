@@ -62,6 +62,8 @@ export interface DailyBriefSignalWindowOptions {
   skipStaleGate?: boolean;
   /** When true, skip the daily API spend cap so manual runs are free to test. */
   skipSpendCap?: boolean;
+  /** When true, never reuse existing pending actions; always force fresh generation. */
+  forceFreshRun?: boolean;
 }
 
 export interface SafeDailyBriefStageStatus {

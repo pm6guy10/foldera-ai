@@ -1,5 +1,41 @@
 # AUTOMATION BACKLOG
 
+### P0 — OWNER-ONLY REAL-DATA BRAIN RECEIPT + FORCED FRESH RUN (2026-03-29)
+
+**Status: PARTIALLY RESOLVED (core blocker fixed, receipt path shipped).**
+
+**Blocker fixed (exact):**
+- stale pending-action reuse during manual owner runs is now structurally bypassable with `forceFreshRun=true`.
+- `reconcilePendingApprovalQueue(...)` now auto-suppresses all existing pending rows when `forceFreshRun` is set and does not allow `pending_approval_reused` or skipped-to-pending recovery in that mode.
+
+**Receipt path added (exact):**
+- `POST /api/dev/brain-receipt` (`app/api/dev/brain-receipt/route.ts`)
+- Owner-only (session user must equal `OWNER_USER_ID`)
+- Forces fresh generation path:
+  - `runDailyGenerate({ userIds:[owner], skipStaleGate:true, skipSpendCap:true, forceFreshRun:true })`
+- Returns structured receipt with:
+  - top 5 candidate logs
+  - final winner trace (when available)
+  - accepted causal diagnosis + source (if present in inspection metadata)
+  - full generated artifact
+  - decision-enforcement result
+  - send-worthiness result
+  - explicit stale-action non-reuse proof against `2e3a92ac-f93e-42b4-a978-bedd3dcee4d6`
+
+**Proof from this session (fresh owner run):**
+- Fresh action created: `3f8369a6-e557-4086-86c2-eab554d40766` at `2026-03-29T20:34:17.957+00:00`
+- `stale_action_not_reused: true` for `2e3a92ac-f93e-42b4-a978-bedd3dcee4d6`
+- top-5 candidates captured in receipt payload
+- full artifact captured (`wait_rationale`)
+- decision enforcement check: pass (`issues=[]`)
+- send-worthiness: blocked (`do_nothing_directive`)
+
+**Open quality blocker revealed by receipt (not new architecture work):**
+- fresh run produced `no_send_persisted` with candidate block reasons:
+  - top discrepancy blocked by `no_thread_no_outcome` payload gate
+  - competing discrepancy failed JSON schema parse in generation response
+- result is legible (goal of this pass), but non-obvious winner quality is still blocked in this specific run.
+
 ### P0 — CAUSAL GROUNDING AUTHORITY FIX (2026-03-29)
 
 **Status: RESOLVED.** Template diagnosis is no longer authoritative in prompt or selection.

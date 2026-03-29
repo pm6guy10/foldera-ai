@@ -2,6 +2,22 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate timed out during owner-only brain-receipt backend pass
+
+This session changed backend-only inspection + fresh-run gating:
+- `lib/cron/daily-brief-types.ts`
+- `lib/cron/daily-brief-generate.ts`
+- `lib/briefing/generator.ts`
+- `app/api/dev/brain-receipt/route.ts`
+- backend tests only
+
+Mandatory QA gate results for this session:
+- `npm run build` passed.
+- `npm run test:prod` passed (`51/51`).
+- `npx playwright test` hit a pre-existing local omnibus instability (`EPIPE` after webServer/log churn) and timed out in this workspace.
+
+Status: `NEEDS_REVIEW` (remaining local omnibus Playwright instability is outside this backend inspection path and unchanged from prior local-harness failures).
+
 ### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate still fails outside signal sensitive-data backend scope
 
 This session changed backend signal-processing safety only:

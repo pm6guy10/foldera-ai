@@ -690,6 +690,60 @@ describe('runDailyGenerate candidate logging', () => {
     );
   });
 
+  it('forceFreshRun suppresses valid pending actions and persists a fresh action instead of reusing', async () => {
+    const reusablePendingId = 'reusable-pending-1';
+    mockSupabase.actionRows = [
+      {
+        id: reusablePendingId,
+        user_id: USER_ID,
+        status: 'pending_approval',
+        action_type: 'send_message',
+        directive_text: 'Previously valid pending action.',
+        confidence: 90,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          artifact: {
+            type: 'email',
+            to: 'owner@example.com',
+            subject: 'Previous',
+            body: 'Previous valid body that would normally be reused.',
+            draft_type: 'email_compose',
+          },
+        },
+      },
+    ];
+
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+
+    const result = await runDailyGenerate({ userIds: [USER_ID], forceFreshRun: true });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'pending_approval_persisted',
+        success: true,
+      }),
+    ]);
+    expect(generateDirective).toHaveBeenCalledTimes(1);
+    expect(mockSupabase.updatedActions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: reusablePendingId,
+          payload: expect.objectContaining({
+            status: 'skipped',
+            skip_reason: 'Auto-suppressed pending action before forced fresh generation.',
+          }),
+        }),
+      ]),
+    );
+  });
+
   it('surfaces a persisted no-send blocker during send when no pending action exists', async () => {
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
     mockSupabase.actionRows = [

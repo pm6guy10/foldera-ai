@@ -4106,6 +4106,10 @@ export async function generateDirective(
     // The LLM contributed: directive text, artifact content, insight, why_now.
     // =====================================================================
 
+    const scorerTopCandidate = scored.topCandidates?.[0] ?? scored.winner;
+    const selectedRatedCandidate = rankedCandidates.find((entry) => entry.candidate.id === currentCandidate.id) ?? null;
+    const scorerTopRatedCandidate = rankedCandidates.find((entry) => entry.candidate.id === scorerTopCandidate.id) ?? null;
+
     const directive = {
       directive: payload.directive.trim(),
       action_type: artifactTypeToActionType(canonicalAction),
@@ -4115,10 +4119,33 @@ export async function generateDirective(
       fullContext: buildFullContext({ ...scored, winner: hydratedWinner }, payload),
       embeddedArtifact: payload.artifact,
       embeddedArtifactType: canonicalAction,
+      acceptedCausalDiagnosis: payload.causal_diagnosis,
+      causalDiagnosisSource: payload.causal_diagnosis_source ?? null,
+      winnerSelectionTrace: {
+        finalWinnerId: currentCandidate.id,
+        finalWinnerType: currentCandidate.type,
+        finalWinnerReason: selectedRatedCandidate?.note ?? null,
+        scorerTopId: scorerTopCandidate.id,
+        scorerTopType: scorerTopCandidate.type,
+        scorerTopDisplacementReason:
+          scorerTopCandidate.id === currentCandidate.id
+            ? null
+            : (scorerTopRatedCandidate?.disqualifyReason ?? scorerTopRatedCandidate?.note ?? 'lower_viability_than_selected_winner'),
+      },
       generationLog: buildSelectedGenerationLog(scored.candidateDiscovery),
     } as ConvictionDirective & {
       embeddedArtifact?: Record<string, unknown>;
       embeddedArtifactType?: string;
+      acceptedCausalDiagnosis?: CausalDiagnosis;
+      causalDiagnosisSource?: string | null;
+      winnerSelectionTrace?: {
+        finalWinnerId: string;
+        finalWinnerType: string;
+        finalWinnerReason: string | null;
+        scorerTopId: string;
+        scorerTopType: string;
+        scorerTopDisplacementReason: string | null;
+      };
     };
 
     // Persistence validation — candidate-specific, try next

@@ -2051,3 +2051,30 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
   - `npx vitest run --exclude ".claude/worktrees/**"` (pass)
 - Any unresolved issues:
   - None in this scoped change.
+
+## Session Log — 2026-03-29 (owner-only real-data brain receipt + forced fresh-run gate)
+- MODE: AUDIT
+- Commit hash(es): pending (set after commit on `main`)
+- Files changed:
+  - `lib/cron/daily-brief-types.ts`
+  - `lib/cron/daily-brief-generate.ts`
+  - `lib/briefing/generator.ts`
+  - `app/api/dev/brain-receipt/route.ts`
+  - `app/api/dev/brain-receipt/__tests__/route.test.ts`
+  - `lib/cron/__tests__/daily-brief.test.ts`
+  - `AUTOMATION_BACKLOG.md`
+  - `FOLDERA_PRODUCT_SPEC.md`
+  - `FOLDERA_MASTER_AUDIT.md`
+  - `SYSTEM_RUNBOOK.md`
+  - `SESSION_HISTORY.md`
+- What was verified:
+  - `npx vitest run app/api/dev/brain-receipt/__tests__/route.test.ts lib/cron/__tests__/daily-brief.test.ts` (pass)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/cron/__tests__ app/api/dev/brain-receipt/__tests__` (50 passed)
+  - `npm run build` (pass)
+  - `npm run test:prod` (51/51 pass)
+  - Fresh owner forced-run receipt captured via backend execution:
+    - action `3f8369a6-e557-4086-86c2-eab554d40766` at `2026-03-29T20:34:17.957+00:00`
+    - stale action `2e3a92ac-f93e-42b4-a978-bedd3dcee4d6` not reused
+    - top-5 candidate discovery persisted in generation log
+- Any unresolved issues:
+  - Full local `npx playwright test` timed out with pre-existing local omnibus instability (`EPIPE` during list reporter output); logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
