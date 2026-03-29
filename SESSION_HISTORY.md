@@ -2035,3 +2035,19 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
   - `npx playwright test` (`111 passed, 11 failed, 6 skipped` — unchanged pre-existing localhost authenticated-smoke/clickflow failures)
 - Any unresolved issues:
   - Full local omnibus `npx playwright test` still fails on pre-existing localhost authenticated production-smoke harness assertions and one clickflow timeout; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+## Session Log — 2026-03-29 (commitment actor-direction filter hardening)
+- MODE: AUDIT
+- Commit hash(es): `d92ca03`
+- Files changed:
+  - `lib/signals/signal-processor.ts`
+  - `lib/briefing/scorer.ts`
+  - `lib/signals/__tests__/signal-hygiene.test.ts`
+  - `lib/briefing/__tests__/scorer-noise-filter.test.ts`
+  - `SESSION_HISTORY.md`
+- What was verified:
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/signals/__tests__/signal-hygiene.test.ts` (pass)
+  - `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/scorer-noise-filter.test.ts` (pass)
+  - `npm run build` (pass)
+  - `npx vitest run --exclude ".claude/worktrees/**"` (pass)
+- Any unresolved issues:
+  - None in this scoped change.
