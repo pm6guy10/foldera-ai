@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { detectDiscrepancies, type Discrepancy } from '../discrepancy-detector';
+import { detectDiscrepancies, getEntityRejectionReasons, type Discrepancy } from '../discrepancy-detector';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -28,13 +28,19 @@ function makeSilentEntity(overrides: Partial<{
   name: string;
   total_interactions: number;
   last_interaction: string | null;
+  signal_count_90d: number;
 }> = {}) {
   return {
     id: overrides.id ?? 'entity-1',
     name: overrides.name ?? 'Alice Smith',
     total_interactions: overrides.total_interactions ?? 8,
     last_interaction: overrides.last_interaction ?? daysAgoISO(45),
-    patterns: { bx_stats: { silence_detected: true } },
+    patterns: {
+      bx_stats: {
+        silence_detected: true,
+        signal_count_90d: overrides.signal_count_90d ?? 3,
+      },
+    },
   };
 }
 
@@ -585,6 +591,240 @@ describe('trust class filtering', () => {
     const entityIds = result.map((d) => d.id);
     expect(entityIds.some((id) => id.includes('trusted-entity'))).toBe(true);
     expect(entityIds.some((id) => id.includes('personal-entity'))).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ENTITY ADMISSION CONTROL — getEntityRejectionReasons + full gate
+// ---------------------------------------------------------------------------
+
+describe('getEntityRejectionReasons — admission control unit tests', () => {
+  const noGoals: any[] = [];
+  const noSignals: string[] = [];
+
+  function makeEntityRow(name: string, total_interactions: number, signal_count_90d: number) {
+    return {
+      id: `test-${name.replace(/\s+/g, '-')}`,
+      name,
+      total_interactions,
+      last_interaction: daysAgoISO(45),
+      patterns: { bx_stats: { silence_detected: true, signal_count_90d } },
+    };
+  }
+
+  it('rejects a medical provider by name pattern', () => {
+    const entity = makeEntityRow('Dr. Sarah Chen', 20, 3);
+    const reasons = getEntityRejectionReasons(entity, noGoals, noSignals);
+    expect(reasons).toContain('medical_or_service_contact');
+  });
+
+  it('rejects an ARNP entity by credential in name', () => {
+    const entity = makeEntityRow('Sam Devore ARNP', 44, 1);
+    const reasons = getEntityRejectionReasons(entity, noGoals, noSignals);
+    expect(reasons).toContain('medical_or_service_contact');
+  });
+
+  it('rejects a health clinic entity by name', () => {
+    const entity = makeEntityRow('Pinnacle Health Care Center', 5, 2);
+    const reasons = getEntityRejectionReasons(entity, noGoals, noSignals);
+    expect(reasons).toContain('medical_or_service_contact');
+  });
+
+  it('rejects an office/utility entity by name', () => {
+    const entity = makeEntityRow('RTKL Office Building', 6, 2);
+    const reasons = getEntityRejectionReasons(entity, noGoals, noSignals);
+    expect(reasons).toContain('office_or_org_entity');
+  });
+
+  it('rejects an entity with signal_count_90d < 2 (low signal density)', () => {
+    const entity = makeEntityRow('Sam Devore', 44, 1);
+    const reasons = getEntityRejectionReasons(entity, noGoals, noSignals);
+    expect(reasons).toContain('low_signal_density');
+  });
+
+  it('rejects mention-inflated entity (total_interactions >> signal_count_90d by 20x)', () => {
+    // 44 total_interactions but only 2 real signals = 22x inflation
+    const entity = makeEntityRow('Sam Devore', 44, 2);
+    const reasons = getEntityRejectionReasons(entity, noGoals, noSignals);
+    expect(reasons).toContain('mention_inflation_only');
+  });
+
+  it('does NOT reject mention inflation when ratio < 20x', () => {
+    const entity = makeEntityRow('Alice Smith', 20, 5); // 4x — reasonable
+    const reasons = getEntityRejectionReasons(entity, noGoals, noSignals);
+    expect(reasons).not.toContain('mention_inflation_only');
+  });
+
+  it('rejects calendar-only contact when all signals look like calendar invites', () => {
+    const entity = makeEntityRow('Sam Devore', 5, 3);
+    const calendarSignals = [
+      'You have a meeting invitation from Sam Devore. Attendees: Brandon. Accept | Decline | Maybe',
+      'Meeting reminder: appointment with Sam Devore. Calendar invite attached.',
+    ];
+    const reasons = getEntityRejectionReasons(entity, noGoals, calendarSignals);
+    expect(reasons).toContain('one_off_calendar_contact');
+  });
+
+  it('does NOT reject calendar-only when signals contain real email context', () => {
+    const entity = makeEntityRow('Alice Smith', 8, 3);
+    const mixedSignals = [
+      'Hi Brandon, following up on our conversation about the consulting proposal. Alice.',
+      'Meeting reminder with Alice Smith. Calendar invite.',
+    ];
+    const reasons = getEntityRejectionReasons(entity, noGoals, mixedSignals);
+    expect(reasons).not.toContain('one_off_calendar_contact');
+  });
+
+  it('adds no_goal_linkage when signals mention entity but contain no outcome keywords', () => {
+    const entity = makeEntityRow('Sam Devore', 5, 3);
+    const noOutcomeSignals = [
+      "Sam confirmed the appointment for next Tuesday at 2pm.",
+      "Don't forget Sam is coming in for the follow-up visit.",
+    ];
+    const reasons = getEntityRejectionReasons(entity, noGoals, noOutcomeSignals);
+    expect(reasons).toContain('no_goal_linkage');
+  });
+
+  it('does NOT add no_goal_linkage when signals contain outcome keywords', () => {
+    const entity = makeEntityRow('Alice Smith', 8, 3);
+    const outcomeSignals = [
+      "Alice Smith is the recruiter at Acme. She's reviewing your application and wants to schedule an interview.",
+      "Alice mentioned the offer would be ready by end of week.",
+    ];
+    const reasons = getEntityRejectionReasons(entity, noGoals, outcomeSignals);
+    expect(reasons).not.toContain('no_goal_linkage');
+  });
+
+  it('does NOT add no_goal_linkage when decryptedSignals is empty (no evidence to analyze)', () => {
+    const entity = makeEntityRow('Sam Devore', 8, 3);
+    const reasons = getEntityRejectionReasons(entity, noGoals, noSignals);
+    expect(reasons).not.toContain('no_goal_linkage');
+  });
+
+  it('passes a valid professional contact with real signals', () => {
+    const entity = makeEntityRow('Alice Smith', 12, 4);
+    const realSignals = [
+      'Alice — thanks for the introduction to the board members. Looking forward to next steps.',
+      'Alice confirmed the proposal review is scheduled for Thursday.',
+    ];
+    const reasons = getEntityRejectionReasons(entity, noGoals, realSignals);
+    // No false positives for a real professional contact
+    expect(reasons).not.toContain('medical_or_service_contact');
+    expect(reasons).not.toContain('office_or_org_entity');
+    expect(reasons).not.toContain('low_signal_density');
+    expect(reasons).not.toContain('mention_inflation_only');
+    expect(reasons).not.toContain('one_off_calendar_contact');
+  });
+});
+
+describe('Entity admission gate — integration (decay/risk do not fire for rejected entities)', () => {
+  it('decay does NOT fire for a medical provider entity even with 10 interactions', () => {
+    const result = detectDiscrepancies({
+      entities: [
+        {
+          id: 'medical-entity',
+          name: 'Dr. Sarah Chen',
+          total_interactions: 10,
+          last_interaction: daysAgoISO(45),
+          patterns: { bx_stats: { silence_detected: true, signal_count_90d: 3 } },
+        },
+      ],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+    expect(result.filter((d) => d.class === 'decay')).toHaveLength(0);
+  });
+
+  it('risk does NOT fire for a mention-inflated entity (44 interactions, 2 signals)', () => {
+    const result = detectDiscrepancies({
+      entities: [
+        {
+          id: 'inflated-entity',
+          name: 'Miranda Williams',
+          total_interactions: 44,
+          last_interaction: daysAgoISO(60),
+          // signal_count_90d=2 → 44/2=22x inflation → rejected
+          patterns: { bx_stats: { silence_detected: true, signal_count_90d: 2 } },
+        },
+      ],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+    expect(result.filter((d) => d.class === 'risk')).toHaveLength(0);
+  });
+
+  it('decay does NOT fire for entity with signal_count_90d < 2', () => {
+    const result = detectDiscrepancies({
+      entities: [
+        {
+          id: 'sparse-entity',
+          name: 'Candice Monroe',
+          total_interactions: 8,
+          last_interaction: daysAgoISO(45),
+          patterns: { bx_stats: { silence_detected: true, signal_count_90d: 1 } },
+        },
+      ],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+    expect(result.filter((d) => d.class === 'decay')).toHaveLength(0);
+  });
+
+  it('medical entity does NOT block a valid professional contact from firing', () => {
+    const result = detectDiscrepancies({
+      entities: [
+        {
+          id: 'medical-entity',
+          name: 'Dr. Sarah Chen',
+          total_interactions: 20,
+          last_interaction: daysAgoISO(60),
+          patterns: { bx_stats: { silence_detected: true, signal_count_90d: 3 } },
+        },
+        {
+          id: 'valid-entity',
+          name: 'Alice Smith',
+          total_interactions: 12,
+          last_interaction: daysAgoISO(45),
+          patterns: { bx_stats: { silence_detected: true, signal_count_90d: 4 } },
+        },
+      ],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+    // Alice Smith passes — should produce a decay or risk discrepancy
+    const entityIds = result.map((d) => d.id);
+    expect(entityIds.some((id) => id.includes('valid-entity'))).toBe(true);
+    expect(entityIds.some((id) => id.includes('medical-entity'))).toBe(false);
+  });
+
+  it('calendar-only entity rejected by admission gate at the integration level', () => {
+    const result = detectDiscrepancies({
+      entities: [
+        {
+          id: 'calendar-only',
+          name: 'Sam Devore',
+          total_interactions: 6,
+          last_interaction: daysAgoISO(30),
+          patterns: { bx_stats: { silence_detected: true, signal_count_90d: 3 } },
+        },
+      ],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [
+        'Meeting invitation from Sam Devore. You have been invited to: Annual Check-up. Accept | Decline.',
+        'Calendar invite: follow-up appointment with Sam Devore. Meeting reminder.',
+      ],
+      now: NOW,
+    });
+    expect(result.filter((d) => d.class === 'decay')).toHaveLength(0);
   });
 });
 

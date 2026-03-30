@@ -111,12 +111,84 @@ const NOISE_CANDIDATE_PATTERNS = [
   /\b(payment (received|processed|posted))\b/i,
   /\b(explore exclusive|claim your|redeem your|unlock your)\b/i,
   /\b(register for .*(webinar|event|conference|session))\b/i,
+  // Medical appointment preparation and follow-through (personal health admin, not goal-directed)
+  /\b(?:prepare\s+for|prep\s+for|get\s+ready\s+for)\s+(?:your\s+)?(?:appointment|checkup|check-up|physical|exam|procedure|surgery|consultation)\b/i,
+  /\b(?:medical|health|dental|vision)\s+(?:appointment|checkup|check-up|follow.?up|reminder)\b/i,
+  /\b(?:schedule|book|make)\s+(?:a\s+)?(?:medical|health|dental|doctor|physician|doctor's|dentist's)\s+(?:appointment|visit|checkup|exam)\b/i,
+  // Auto-renewal and subscription management (zero-agency financial noise)
+  /\b(?:auto.?renew(?:al|s)?|automatically\s+(?:renews?|charged?|billed?)|subscription\s+(?:will|is\s+set\s+to)\s+(?:renew|auto.?renew))\b/i,
+  /\b(?:your\s+(?:subscription|membership|plan)\s+(?:expires?|is\s+expiring|renews?|is\s+up\s+for\s+renewal))\b/i,
+  /\b(?:cancel\s+(?:before|by|to\s+avoid)\s+(?:your\s+)?(?:renewal|being\s+charged|the\s+charge))\b/i,
+  // Wellness/fitness challenges and generic programs (not personal outcome goals)
+  /\b(?:wellness|fitness|health|step|hydration)\s+(?:challenge|program|initiative|week|month|goal)\b/i,
+  /\b(?:track\s+(?:your\s+)?(?:steps?|water|sleep|calories|macros?|workouts?|activity))\b/i,
+  // Third-party service launch/update notices (zero personal consequence)
+  /\b(?:we(?:'ve)?\s+(?:launched|released|updated|upgraded|improved|rolled\s+out)|introducing\s+(?:new|our))\b/i,
+  /\b(?:new\s+(?:feature|update|version|release)|product\s+(?:update|launch|announcement))\b/i,
+  // Food/grocery/meal deliveries (personal consumption, not goal-directed)
+  /\b(?:order\s+(?:from|at)|delivery\s+(?:from|for)|your\s+(?:meal|grocery|food)\s+(?:order|delivery|kit))\b/i,
+  /\b(?:meal\s+kit|hello\s*fresh|blue\s*apron|sun\s*basket|factor\s+meals?|freshly|door\s*dash|grub\s*hub|uber\s*eats)\b/i,
+  // Generic personal errand / household task (buy X, pick up X, call X to schedule)
+  /^(?:buy|pick\s+up|get|grab|order)\s+(?:some\s+)?(?:groceries|milk|eggs|bread|toilet\s+paper|paper\s+towels|cleaning\s+supplies)\b/i,
+  /^(?:call|schedule)\s+(?:the\s+)?(?:plumber|electrician|handyman|contractor|repair\s+(?:person|service)|lawn\s+(?:care|service))\b/i,
 ];
 
 export function isNoiseCandidateText(...texts: string[]): boolean {
   return NOISE_CANDIDATE_PATTERNS.some((pattern) =>
     texts.some((text) => typeof text === 'string' && pattern.test(text)),
   );
+}
+
+/**
+ * Commitment categories that are automatically excluded unless they have
+ * clear goal linkage. These categories represent routine personal admin,
+ * ambient consumer activity, and transactional noise — not owner-relevant outcomes.
+ */
+const COMMITMENT_NOISE_CATEGORIES = new Set([
+  'payment_financial',     // Routine bills, charges, subscriptions — no goal connection needed
+  'attend_participate',    // Generic event attendance without professional consequence
+  'personal_admin',        // Personal errands, household tasks, scheduling
+  'health_wellness',       // Medical appointments, wellness programs — not business outcomes
+  'consumer_purchase',     // Retail purchases, food orders, consumer goods
+]);
+
+/**
+ * Commitment text patterns that indicate trivial personal transactions.
+ * These are commitment-level rejections (distinct from signal-level noise).
+ */
+const TRIVIAL_COMMITMENT_PATTERNS = [
+  // Food and grocery items
+  /\b(?:buy|get|pick\s+up|order|purchase)\s+(?:some\s+)?(?:eggs?|bread|milk|groceries|produce|vegetables?|fruit|meat|chicken|coffee|tea)\b/i,
+  // Consumer goods / household
+  /\b(?:buy|get|order)\s+(?:toilet\s+paper|paper\s+towels?|cleaning|detergent|soap|shampoo)\b/i,
+  // Routine personal tasks without professional consequence
+  /\b(?:call|contact)\s+(?:the\s+)?(?:landlord|plumber|electrician|handyman|repairman|contractor)\b/i,
+  /\b(?:schedule|book|make)\s+(?:an?\s+)?(?:oil\s+change|car\s+wash|haircut|hair\s+(?:cut|appointment))\b/i,
+  // Generic "check on" tasks with no outcome artifact possible
+  /^check\s+on\s+(?:the\s+)?(?:status|update|progress)\s+of\b/i,
+];
+
+/**
+ * Returns true if this commitment candidate can produce an executable,
+ * goal-directed artifact. Returns false for trivial consumer transactions,
+ * personal health admin, routine subscriptions, and ambient noise.
+ *
+ * @param description  Commitment description text
+ * @param category     Commitment category from tkg_commitments.category
+ * @param hasGoalMatch Whether the commitment has keyword overlap with a stated goal
+ */
+export function isExecutableCommitment(
+  description: string,
+  category: string,
+  hasGoalMatch: boolean,
+): boolean {
+  // Noise patterns hard-reject regardless of category or goal match
+  if (TRIVIAL_COMMITMENT_PATTERNS.some((p) => p.test(description))) return false;
+
+  // High-noise categories require a goal match to survive
+  if (COMMITMENT_NOISE_CATEGORIES.has(category) && !hasGoalMatch) return false;
+
+  return true;
 }
 
 const OBVIOUS_FIRST_LAYER_PATTERNS = [
@@ -3207,6 +3279,21 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
     const text = `${c.description}${sourceCtx ? ' — ' + sourceCtx : ''}`;
     const mg = matchGoal(text, goals);
+
+    // Commitment admission gate: reject trivial personal transactions and
+    // high-noise categories that don't connect to a stated goal.
+    if (!isExecutableCommitment(c.description, (c.category as string) ?? '', mg !== null)) {
+      logStructuredEvent({
+        event: 'commitment_admission_filtered',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'filtered',
+        details: { scope: 'scorer', commitment_id: c.id, category: c.category, has_goal_match: mg !== null, description: (c.description as string).slice(0, 80) },
+      });
+      continue;
+    }
+
     const actionType = inferActionType(text, 'commitment');
 
     candidates.push({

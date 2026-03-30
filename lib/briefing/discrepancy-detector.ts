@@ -95,6 +95,154 @@ interface DeltaMetric {
 }
 
 // ---------------------------------------------------------------------------
+// Entity admission-control
+// ---------------------------------------------------------------------------
+
+/**
+ * Medical, clinical, and healthcare provider names.
+ * An entity whose name contains any of these patterns is a service/provider
+ * relationship, not a personal or professional relationship with consequence.
+ */
+const MEDICAL_PROVIDER_PATTERNS = [
+  /\b(?:dr\.?|doctor|physician|md|do|pa-c|np|arnp|crna|rn|lcsw|therapist|counselor|psychiatrist|psychologist)\b/i,
+  /\b(?:health\s*(?:care|center|clinic|system|network|group|plan|services?)|medical\s*(?:center|group|clinic|care|services?)|dental|dentist|orthodontist|optometrist|ophthalmologist|dermatologist|chiropractor|physical\s*therapist|urgent\s*care|emergency\s*(?:room|care|services?))\b/i,
+  /\b(?:hospital|clinic|pharmacy|walgreens|cvs|rite\s*aid|kaiser|mayo|cleveland\s*clinic|humana|cigna|aetna|united\s*health|anthem|blue\s*cross|blue\s*shield)\b/i,
+  /\b(?:pinnacle|summit|valley|mountain|river)\s+(?:health|medical|care|wellness|dental)\b/i,
+  /\b(?:wellness|fitness|gym|yoga|pilates|spa|massage)\s+(?:center|studio|clinic|group)\b/i,
+];
+
+/**
+ * Office, location, organizational, and service-provider entity names.
+ * These are entities extracted from email signatures, headers, or location
+ * fields — not real human relationships.
+ */
+const OFFICE_SERVICE_PATTERNS = [
+  // Physical locations and offices
+  /\b(?:office|building|suite|floor|room|lobby|campus|headquarters|hq|facility|complex)\b/i,
+  // Utilities and municipal services
+  /\b(?:electric|gas|water|utility|utilities|comcast|xfinity|spectrum|verizon|att|t-mobile|usps|fedex|ups|dhl)\b/i,
+  // Insurance and financial services (non-personal)
+  /\b(?:insurance|assurance|mutual|allstate|state\s*farm|geico|progressive|nationwide|liberty\s*mutual|farmers)\b/i,
+  // Real estate and property
+  /\b(?:realty|real\s*estate|property\s*management|landlord|leasing|housing|apartments?|condos?|hoa)\b/i,
+  // Generic organization suffixes without a person name
+  /^(?:the\s+)?[A-Z][\w\s&,-]{3,40}\s+(?:inc\.?|llc\.?|ltd\.?|corp\.?|co\.?|company|group|associates|partners|consulting|solutions|services|agency|firm|bureau|department|division|authority)$/i,
+  // Government/admin entities
+  /\b(?:irs|dmv|dept\.?\s+of|department\s+of|city\s+of|county\s+of|state\s+of|government|federal|municipal|treasury|social\s*security|medicare|medicaid)\b/i,
+  // Food, retail, and consumer brands
+  /\b(?:amazon|walmart|target|costco|whole\s*foods|trader\s*joe|kroger|safeway|doordash|grubhub|uber\s*eats|instacart|ebay|etsy|shopify)\b/i,
+];
+
+/**
+ * Calendar-event signal markers — text patterns that indicate a signal is
+ * a calendar notification rather than a real email conversation.
+ */
+const CALENDAR_EVENT_MARKERS = [
+  /\b(?:calendar\s*invite|meeting\s*invitation|invited\s+you\s+to|you've\s+been\s+invited|event\s+invitation)\b/i,
+  /\b(?:accept|decline|maybe)\b.*\b(?:invite|invitation|event|meeting)\b/i,
+  /\b(?:google\s*calendar|outlook\s*calendar|ical|ics\s+attachment)\b/i,
+  /\b(?:meeting\s+reminder|event\s+reminder|appointment\s+reminder)\b/i,
+  /\borganizer:\s*\w+/i,
+  /\battendees?:\s*\w+/i,
+];
+
+/**
+ * Rejection reason codes for entity admission control.
+ * Machine-readable; logged on every rejection.
+ */
+export type EntityRejectionReason =
+  | 'no_goal_linkage'
+  | 'medical_or_service_contact'
+  | 'office_or_org_entity'
+  | 'mention_inflation_only'
+  | 'one_off_calendar_contact'
+  | 'low_signal_density';
+
+/**
+ * Returns all rejection reasons for an entity candidate, or empty array if the
+ * entity passes admission control and is eligible for discrepancy detection.
+ *
+ * An entity MUST pass ALL checks to be eligible. Even one rejection reason
+ * causes the entity to be excluded from discrepancy candidates.
+ */
+export function getEntityRejectionReasons(
+  entity: EntityRow,
+  goals: GoalRow[],
+  decryptedSignals: string[],
+): EntityRejectionReason[] {
+  const reasons: EntityRejectionReason[] = [];
+  const bxStats = (entity.patterns as any)?.bx_stats;
+  const signal90d = (bxStats?.signal_count_90d as number) ?? 0;
+
+  // A. Medical/service provider — reject regardless of interaction count
+  if (MEDICAL_PROVIDER_PATTERNS.some((p) => p.test(entity.name))) {
+    reasons.push('medical_or_service_contact');
+  }
+
+  // B. Office/org entity — reject regardless of interaction count
+  if (OFFICE_SERVICE_PATTERNS.some((p) => p.test(entity.name))) {
+    reasons.push('office_or_org_entity');
+  }
+
+  // C. Low signal density — interaction count is inflated by name mentions
+  // A real relationship requires at least 2 empirically distinct signals in 90d.
+  if (signal90d < 2) {
+    // Allow if total_interactions is also low (< 5) — might just be new
+    // but still fail for silence-based extractors which require baseline
+    reasons.push('low_signal_density');
+  }
+
+  // D. Mention inflation — total_interactions >> signal_count_90d by 20x+
+  // This is the Sam Devore signal: 44 total_interactions, 1 signal
+  // because every signal that mentions the name increments the counter
+  const totalInteractions = entity.total_interactions;
+  if (signal90d > 0 && totalInteractions > signal90d * 20) {
+    reasons.push('mention_inflation_only');
+  }
+
+  // E. Calendar-only contact — entity only appears in calendar-event signals
+  // Find signals that mention this entity's first name (case-insensitive)
+  const firstName = entity.name.split(/\s+/)[0];
+  if (firstName && firstName.length >= 3) {
+    const mentioningSignals = decryptedSignals.filter((s) =>
+      new RegExp(`\\b${firstName}\\b`, 'i').test(s),
+    );
+    if (
+      mentioningSignals.length > 0 &&
+      mentioningSignals.every((s) => CALENDAR_EVENT_MARKERS.some((p) => p.test(s)))
+    ) {
+      reasons.push('one_off_calendar_contact');
+    }
+  }
+
+  // F. Goal linkage — entity's signals must contain outcome-relevant keywords.
+  // This gates on signal evidence, not entity name vs. goal text (goals don't name people).
+  // Only fires when we have actual signals mentioning the entity to analyze.
+  const OUTCOME_EVIDENCE_PATTERNS = [
+    /\b(?:offer|hiring|hired|interview|approval|approved|contract|deal|partnership|opportunity)\b/i,
+    /\b(?:\$|budget|cash|runway|invoice|payment|revenue|funding|raise|investment|client)\b/i,
+    /\b(?:recruiter|hiring\s+manager|vp|cto|ceo|director|founder|partner|stakeholder|decision\s+maker)\b/i,
+    /\b(?:deadline|due\s+date|by\s+(?:monday|tuesday|wednesday|thursday|friday|eod|end\s+of\s+week))\b/i,
+    /\b(?:follow\s+up|next\s+steps?|proposal|scope|statement\s+of\s+work|sow|nda|term\s+sheet)\b/i,
+  ];
+
+  if (decryptedSignals.length > 0 && firstName && firstName.length >= 3) {
+    const mentioningSignals = decryptedSignals.filter((s) =>
+      new RegExp(`\\b${firstName}\\b`, 'i').test(s),
+    );
+    // Only reject if we found signals mentioning the entity AND none have outcome evidence
+    if (
+      mentioningSignals.length > 0 &&
+      !mentioningSignals.some((s) => OUTCOME_EVIDENCE_PATTERNS.some((p) => p.test(s)))
+    ) {
+      reasons.push('no_goal_linkage');
+    }
+  }
+
+  return reasons;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -146,17 +294,22 @@ function getEntityKey(d: Discrepancy): string | null {
 // Extractor 1: decay — important relationship gone silent
 // ---------------------------------------------------------------------------
 
-function extractDecay(entities: EntityRow[], now: number): Discrepancy[] {
+function extractDecay(
+  entities: EntityRow[],
+  goals: GoalRow[],
+  decryptedSignals: string[],
+  now: number,
+): Discrepancy[] {
   const results: Discrepancy[] = [];
   // risk extractor handles ≥15 interactions — decay handles 5–14
   const decayRange = entities
     .filter((e) => {
       const bxStats = (e.patterns as any)?.bx_stats;
-      return (
-        bxStats?.silence_detected === true &&
-        e.total_interactions >= 5 &&
-        e.total_interactions < 15
-      );
+      if (bxStats?.silence_detected !== true) return false;
+      if (e.total_interactions < 5 || e.total_interactions >= 15) return false;
+      // Full admission gate: reject entities that cannot produce executable artifacts
+      const rejections = getEntityRejectionReasons(e, goals, decryptedSignals);
+      return rejections.length === 0;
     })
     .sort((a, b) => b.total_interactions - a.total_interactions);
 
@@ -359,12 +512,21 @@ function extractAvoidance(
 // Extractor 5: risk — high-value relationship that has gone silent
 // ---------------------------------------------------------------------------
 
-function extractRisk(entities: EntityRow[], now: number): Discrepancy[] {
+function extractRisk(
+  entities: EntityRow[],
+  goals: GoalRow[],
+  decryptedSignals: string[],
+  now: number,
+): Discrepancy[] {
   const results: Discrepancy[] = [];
   const highValue = entities
     .filter((e) => {
       const bxStats = (e.patterns as any)?.bx_stats;
-      return bxStats?.silence_detected === true && e.total_interactions >= 15;
+      if (bxStats?.silence_detected !== true) return false;
+      if (e.total_interactions < 15) return false;
+      // Full admission gate: reject entities that cannot produce executable artifacts
+      const rejections = getEntityRejectionReasons(e, goals, decryptedSignals);
+      return rejections.length === 0;
     })
     .sort((a, b) => b.total_interactions - a.total_interactions);
 
@@ -734,11 +896,11 @@ export function detectDiscrepancies(args: {
     ...extractRelationshipDropout(entities),
     ...extractGoalVelocityMismatch(goals, decryptedSignals),
     // Absence-based (existing)
-    ...extractRisk(entities, nowMs),
+    ...extractRisk(entities, goals, decryptedSignals, nowMs),
     ...extractExposure(commitments, goals, nowMs),
     ...extractAvoidance(commitments, goals, nowMs),
     ...extractDrift(goals, commitments, decryptedSignals),
-    ...extractDecay(entities, nowMs),
+    ...extractDecay(entities, goals, decryptedSignals, nowMs),
   ];
 
   // Sort by urgency × stakes descending
