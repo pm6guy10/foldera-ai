@@ -2097,3 +2097,18 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
   - Production owner fresh receipt call: `POST https://www.foldera.ai/api/dev/brain-receipt` returned `200` with fresh action id `407053ae-2918-4543-aa0c-1d713afd90d9`, and stale action `2e3a92ac-f93e-42b4-a978-bedd3dcee4d6` not reused.
 - Any unresolved issues:
   - Production receipt still surfaced `krista` and `emmett` in top candidates, indicating production DB trust-class migration/backfill has not yet taken effect in runtime data.
+
+## Session Log — 2026-03-29 (make_decision generation validation root-cause fix)
+- MODE: AUDIT
+- Commit hash(es): `5149bda`
+- Files changed:
+  - `lib/briefing/generator.ts`
+  - `lib/briefing/__tests__/generator.test.ts`
+  - `lib/briefing/__tests__/generator-runtime.test.ts`
+- What was verified:
+  - `npx vitest run lib/briefing/__tests__/generator.test.ts lib/briefing/__tests__/generator-runtime.test.ts --exclude ".claude/worktrees/**"` (pass)
+  - `npx vitest run lib/briefing/__tests__ lib/cron/__tests__ --exclude ".claude/worktrees/**"` (pass)
+  - `npm run build` (pass)
+  - `npm run test:prod` (51/51 pass)
+- Any unresolved issues:
+  - Pending post-deploy owner receipt confirmation for financial-runway candidate output path.
