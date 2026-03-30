@@ -3425,6 +3425,27 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   }
 
   // -----------------------------------------------------------------------
+  // Diagnostic: candidate pool composition before any filters
+  // -----------------------------------------------------------------------
+  {
+    const byType = { commitment: 0, signal: 0, relationship: 0 };
+    for (const c of candidates) byType[c.type]++;
+    console.log(JSON.stringify({
+      event: 'scorer_candidate_pool_raw',
+      total: candidates.length,
+      ...byType,
+      sample_signal_entities: candidates
+        .filter(c => c.type === 'signal')
+        .slice(0, 5)
+        .map(c => ({ title: c.title.slice(0, 60), entityName: c.entityName ?? null, actionType: c.actionType })),
+      sample_relationship_entities: candidates
+        .filter(c => c.type === 'relationship')
+        .slice(0, 5)
+        .map(c => ({ title: c.title.slice(0, 60), entityName: c.entityName ?? null, actionType: c.actionType })),
+    }));
+  }
+
+  // -----------------------------------------------------------------------
   // PRE-SCORING: Candidate quality filter
   // Reject housekeeping, tool management, notifications, and spam before
   // they reach the scoring loop. These waste scorer capacity and poison
@@ -3523,6 +3544,16 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   }
 
   if (candidates.length === 0) {
+    console.log(JSON.stringify({
+      event: 'scorer_zero_after_entity_gate',
+      entity_gate_passed: entityGateResult.passed.length,
+      entity_gate_dropped: entityGateResult.dropped.length,
+      verified_entity_count: entityGateResult.verifiedEntities.length,
+      drop_reason_counts: entityGateResult.dropped.reduce((acc, d) => {
+        acc[d.reason] = (acc[d.reason] ?? 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+    }));
     return null;
   }
 
