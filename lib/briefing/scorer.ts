@@ -27,6 +27,7 @@ import type {
   GenerationCandidateSource,
 } from './types';
 import { detectDiscrepancies } from './discrepancy-detector';
+import type { DiscrepancyClass, TriggerMetadata } from './discrepancy-detector';
 
 // ---------------------------------------------------------------------------
 // Self-referential signal filter — excludes Foldera's own directive outputs
@@ -250,6 +251,10 @@ export interface ScoredLoop {
    * Passed to the generator prompt to bound free-form confidence guessing.
    */
   confidence_prior: number;
+  /** Discrepancy class — present only when type === 'discrepancy' */
+  discrepancyClass?: DiscrepancyClass;
+  /** Trigger metadata — present only when type === 'discrepancy' */
+  trigger?: TriggerMetadata;
 }
 
 export type KillReason = 'noise' | 'not_now' | 'trap';
@@ -3948,6 +3953,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       relatedSignals: [],
       sourceSignals: d.sourceSignals,
       confidence_prior: Math.round(Math.max(45, Math.min(85, d.urgency * 80))),
+      discrepancyClass: d.class,
+      trigger: d.trigger,
     });
     logStructuredEvent({
       event: 'discrepancy_candidate_scored',

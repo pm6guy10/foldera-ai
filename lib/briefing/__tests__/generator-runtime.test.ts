@@ -432,9 +432,18 @@ describe('generateDirective runtime failures', () => {
   it('forces discrepancy winners to default to send_message when recipient context exists', async () => {
     const scored = buildScorerResult();
     scored.winner.type = 'discrepancy';
-    scored.winner.id = 'discrepancy_avoidance_commitment-1';
-    scored.winner.suggestedActionType = 'make_decision';
-    scored.winner.title = 'Avoidance pattern: reviewer deferred approval three times with no owner';
+    scored.winner.id = 'discrepancy_deadline_staleness_commitment-1';
+    scored.winner.suggestedActionType = 'send_message';
+    scored.winner.discrepancyClass = 'deadline_staleness' as import('../../briefing/discrepancy-detector').DiscrepancyClass;
+    scored.winner.trigger = {
+      baseline_state: 'Active commitment, last updated 5 days ago',
+      current_state: '2 day(s) until deadline with no movement',
+      delta: '5 days stalled while deadline approaches (2d remaining)',
+      timeframe: '5 day stall, 2d to deadline',
+      outcome_class: 'deadline' as const,
+      why_now: 'Deadline in 2 days and last movement was 5 days ago',
+    };
+    scored.winner.title = 'Deadline staleness: reviewer deferred approval three times with no owner';
     scored.winner.content = 'Reviewer deferred approval three times and requested an explicit owner by today.';
     scored.winner.relationshipContext = '- Approver Team <approver@example.com> (Final approver)';
     mockScoreOpenLoops.mockResolvedValue(scored);

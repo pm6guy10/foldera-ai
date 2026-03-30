@@ -29,6 +29,13 @@ import {
   CONFIDENCE_PERSIST_THRESHOLD,
   daysMs,
 } from '@/lib/config/constants';
+import {
+  TRIGGER_ACTION_MAP,
+  buildTriggerContextBlock,
+  resolveTriggerAction,
+  validateTriggerArtifact,
+} from './trigger-action-map';
+import type { DiscrepancyClass } from './discrepancy-detector';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -806,17 +813,19 @@ function buildDecisionPayload(
     : ageDays <= 7 ? 'fresh' : ageDays <= STALE_SIGNAL_THRESHOLD_DAYS ? 'aging' : 'stale';
 
   // Determine recommended_action — deterministic from scorer, not LLM
-  let recommended_action: ValidArtifactTypeCanonical = actionTypeToArtifactType(winner.suggestedActionType);
+  let recommended_action: ValidArtifactTypeCanonical;
 
-  // Discrepancy conversion rule: when we have a real recipient, default to
-  // send_message so the artifact forces a real-world response/decision.
-  if (winner.type === 'discrepancy' && ctx.has_real_recipient) {
-    recommended_action = 'send_message';
-  }
+  // Trigger → Action Lock: discrepancy candidates use the mapping table.
+  // The mapping table is the single source of truth for trigger→action.
+  if (winner.type === 'discrepancy' && winner.discrepancyClass) {
+    recommended_action = resolveTriggerAction(winner.discrepancyClass, ctx.has_real_recipient) as ValidArtifactTypeCanonical;
+  } else {
+    recommended_action = actionTypeToArtifactType(winner.suggestedActionType);
 
-  // Pre-compute action validity: send_message without a recipient → write_document
-  if (recommended_action === 'send_message' && !ctx.has_real_recipient) {
-    recommended_action = 'write_document';
+    // Legacy conversion rule: send_message without a recipient → write_document
+    if (recommended_action === 'send_message' && !ctx.has_real_recipient) {
+      recommended_action = 'write_document';
+    }
   }
 
   // Build justification facts from concrete evidence
@@ -1005,6 +1014,8 @@ interface StructuredContext {
   confidence_prior: number;
   // Canonical root-cause diagnosis inferred before rendering.
   required_causal_diagnosis: CausalDiagnosis;
+  // Trigger context block — injected for discrepancy candidates only
+  trigger_context: string | null;
 }
 
 type CausalMechanismClass =
@@ -1328,6 +1339,9 @@ function buildStructuredContext(
     competition_context: competitionContext ?? null,
     confidence_prior: winner.confidence_prior,
     required_causal_diagnosis,
+    trigger_context: winner.type === 'discrepancy' && winner.discrepancyClass && winner.trigger
+      ? buildTriggerContextBlock(winner.discrepancyClass, winner.trigger)
+      : null,
   };
 }
 
@@ -1441,6 +1455,11 @@ ${lines.join('\n')}
 
 function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   const sections: string[] = [];
+
+  // TRIGGER_CONTEXT — injected first so the LLM grounds its artifact in the trigger delta.
+  if (ctx.trigger_context) {
+    sections.push(ctx.trigger_context);
+  }
 
   // Convergent analysis + goal-primacy constraint.
   sections.push(
@@ -4274,6 +4293,32 @@ export async function generateDirective(
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), issues: persistenceIssues },
       });
       continue;
+    }
+
+    // Trigger action lock validation — discrepancy candidates only
+    if (currentCandidate.type === 'discrepancy' && currentCandidate.discrepancyClass && currentCandidate.trigger) {
+      const artifactText = typeof payload.artifact === 'object'
+        ? JSON.stringify(payload.artifact)
+        : String(payload.artifact ?? '');
+      const triggerValidation = validateTriggerArtifact(
+        currentCandidate.discrepancyClass,
+        currentCandidate.trigger,
+        artifactText,
+        canonicalAction,
+        currentCandidate.title,
+      );
+      if (!triggerValidation.pass) {
+        logStructuredEvent({
+          event: 'trigger_validation_violations', level: 'warn', userId,
+          artifactType: canonicalAction, generationStatus: 'trigger_advisory',
+          details: {
+            scope: 'trigger_action_lock',
+            trigger_class: currentCandidate.discrepancyClass,
+            violations: triggerValidation.violations,
+            note: 'Advisory — artifact proceeds but violations logged for quality tracking',
+          },
+        });
+      }
     }
 
     logStructuredEvent({
