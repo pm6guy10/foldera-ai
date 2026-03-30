@@ -1,5 +1,26 @@
 # AUTOMATION BACKLOG
 
+### P0 — RELATIONSHIP CANDIDATES FULLY UNBLOCKED (2026-03-30)
+
+**Status: RESOLVED.** Relationship candidates now survive all ranking invariants and are genuinely competitive.
+
+**Root cause (5 separate blockers, all fixed this session):**
+
+1. **Noise pre-filter** (`NOISE_CANDIDATE_PATTERNS[3]` = `^follow\s+up\s+(?:with|on)\s+`) matched every relationship candidate title "Follow up with X". Fixed in prior commit (`69a529c`) with `if (c.type === 'relationship') continue;`.
+
+2. **`isOutcomeLinkedCandidate` false for relationship type** — bare content "mike george: last contact 11 days ago" doesn't match OUTCOME_SIGNAL_PATTERNS and has no matchedGoal. Fixed: relationship type → always true (verified entity interaction IS a board-level outcome).
+
+3. **`computeEvidenceDensity` < 2** — relationship content has no matchedGoal, empty relatedSignals (word overlap too sparse), no @/$//date marker → density=1, failing ≥2 threshold. Fixed: `if (type === 'relationship') density += 1` (entity in tkg_entities = concrete evidence).
+
+4. **`isObviousFirstLayerAdvice` true** — `OBVIOUS_FIRST_LAYER_PATTERNS[0]` = `/^\s*(?:follow\s+up|...)/i` matches canonical relationship title. Fixed: `isRelationship ? false : isObviousFirstLayerAdvice(...)`.
+
+5. **Discrepancy priority penalty 0.55x** — `strongOutcomeCommitment` only covered `type='commitment'`, leaving relationships with the full 0.55x suppression. Fixed: renamed to `strongOutcomeCandidate`, extended to include `type='relationship'` with stakes≥3, urgency≥0.6, density≥3 → 0.88x softened penalty.
+
+**Production proof (commits `193afe5`, `6f58785`, `5750b38`):**
+- Mike George relationship: raw_score 0 → **1.92** (pre-invariant 2.181 × 0.88)
+- Discrepancy (financial runway) still wins at 2.52 — correct ordering
+- 507/507 unit tests pass; 51/51 production smoke tests pass
+
 ### P0 — PERSONAL ENTITY CONTAMINATION ELIMINATED (2026-03-30)
 
 **Status: RESOLVED.** Personal entities (krista, emmett) no longer enter the candidate pool.
