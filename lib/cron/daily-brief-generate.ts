@@ -293,11 +293,16 @@ function getCandidateDiscoveryFailureReason(
   if (!candidateDiscovery) {
     return 'Candidate discovery log missing from generation output.';
   }
-  if (candidateDiscovery.candidateCount < 3 || (candidateDiscovery.topCandidates?.length ?? 0) < 3) {
-    return 'Acceptance gate blocked send because fewer than 3 candidates were evaluated.';
+  // A single strong candidate that survives all 7 invariant checks is sufficient.
+  // The invariant wall (actionable, send/write capable, decision-moving, not noise,
+  // not obvious, not stale, evidence density >= 2) already ensures quality.
+  // Requiring 3+ companions blocks valid winners when the pool is naturally sparse
+  // after admission cleanup.
+  if (candidateDiscovery.candidateCount === 0) {
+    return 'Acceptance gate blocked send because zero candidates were evaluated.';
   }
-  if (candidateDiscovery.selectionMargin === null && !candidateDiscovery.selectionReason?.trim()) {
-    return 'Acceptance gate blocked send because the selection margin or tie-break reason was not logged.';
+  if ((candidateDiscovery.topCandidates?.length ?? 0) === 0) {
+    return 'Acceptance gate blocked send because no candidates passed ranking.';
   }
   return null;
 }

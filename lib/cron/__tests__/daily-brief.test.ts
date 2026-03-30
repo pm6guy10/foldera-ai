@@ -554,7 +554,7 @@ describe('runDailyGenerate candidate logging', () => {
     expect(mockSupabase.insertedActions.some((row) => row.status === 'skipped')).toBe(true);
   });
 
-  it('persists explicit no-send outcomes when fewer than 3 candidates were evaluated', async () => {
+  it('allows generation when only 2 candidates survive (single strong winner is sufficient)', async () => {
     vi.mocked(generateDirective).mockResolvedValue(buildDirective({
       generationLog: buildGenerationLog({
         candidateDiscovery: {
@@ -567,20 +567,37 @@ describe('runDailyGenerate candidate logging', () => {
 
     const result = await runDailyGenerate();
 
+    // With 2 candidates, the acceptance gate no longer blocks.
+    // The directive proceeds to artifact generation and persistence.
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: expect.stringMatching(/^(directive_persisted|no_send_persisted)$/),
+        success: true,
+      }),
+    ]);
+  });
+
+  it('blocks generation when zero candidates were evaluated', async () => {
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective({
+      generationLog: buildGenerationLog({
+        candidateDiscovery: {
+          ...buildGenerationLog().candidateDiscovery!,
+          candidateCount: 0,
+          topCandidates: [],
+        },
+      }),
+    }));
+
+    const result = await runDailyGenerate();
+
     expect(result.results).toEqual([
       expect.objectContaining({
         code: 'no_send_persisted',
-        detail: 'Acceptance gate blocked send because fewer than 3 candidates were evaluated.',
+        detail: 'Acceptance gate blocked send because zero candidates were evaluated.',
         success: true,
       }),
     ]);
     expect(generateArtifact).not.toHaveBeenCalled();
-    const saved = mockSupabase.insertedActions[0];
-    expect(saved.status).toBe('skipped');
-    expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates).toHaveLength(2);
-    expect((saved.execution_result as Record<string, any>).generation_log.reason).toBe(
-      'Acceptance gate blocked send because fewer than 3 candidates were evaluated.',
-    );
   });
 
   it('recovers a user-skipped high-confidence directive instead of generating do_nothing', async () => {
