@@ -484,7 +484,7 @@ function seedPipelineUser(plaintextSignal: string) {
   runtime.goals.push({
     id: 'goal-1',
     user_id: TEST_USER_ID,
-    goal_text: 'Send the signed permit appeal draft to Alex Morgan before Friday.',
+    goal_text: 'Submit the signed permit appeal contract to Alex Morgan (Director) for approval before Friday.',
     goal_category: 'project',
     priority: 1,
     source: 'manual',
@@ -545,7 +545,7 @@ function setAnthropicPipelineMocks() {
           ],
           commitments: [
             {
-              description: 'Send the signed permit appeal draft to Alex Morgan by Friday.',
+              description: 'Submit the signed permit appeal contract to Alex Morgan (Director) for approval by Friday.',
               who: 'self',
               to_whom: 'Alex Morgan',
               due: '2026-03-28T17:00:00.000Z',
@@ -621,8 +621,8 @@ describe('briefing pipeline receipt', () => {
     seedPipelineUser([
       '[Email received: Tue, 24 Mar 2026 08:00:00 -0700]',
       'From: Alex Morgan <alex@example.com>',
-      'Subject: Signed permit appeal draft needed by Friday',
-      'Body: Brandon, can you send the signed permit appeal draft by Friday so we can file it on time?',
+      'Subject: Contract approval — signed permit appeal draft needed by Friday',
+      'Body: Brandon, as Director of Operations I need you to submit the signed permit appeal draft by Friday so we can approve the filing before the deadline expires.',
     ].join('\n'));
 
     setAnthropicPipelineMocks();

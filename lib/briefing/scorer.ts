@@ -28,6 +28,7 @@ import type {
 } from './types';
 import { detectDiscrepancies } from './discrepancy-detector';
 import type { DiscrepancyClass, TriggerMetadata } from './discrepancy-detector';
+import { applyStakesGate } from './stakes-gate';
 
 // ---------------------------------------------------------------------------
 // Self-referential signal filter — excludes Foldera's own directive outputs
@@ -3436,10 +3437,48 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     }));
   }
 
+  // -----------------------------------------------------------------------
+  // PRE-SCORING: Stakes gate — hard filter for board-changing candidates only
+  // Drops every candidate that cannot produce a board-changing outcome
+  // (money, job, approval, deal, deadline). Fail closed.
+  // -----------------------------------------------------------------------
+  const stakesGateResult = applyStakesGate(candidates);
+  if (stakesGateResult.dropped.length > 0) {
+    console.log(JSON.stringify({
+      event: 'stakes_gate_filter',
+      passed: stakesGateResult.passed.length,
+      dropped: stakesGateResult.dropped.length,
+      drop_reasons: stakesGateResult.dropped.map(d => ({
+        id: d.candidate.id,
+        title: d.candidate.title.slice(0, 80),
+        condition: d.failedCondition,
+        reason: d.reason,
+      })),
+    }));
+    for (const d of stakesGateResult.dropped) {
+      logStructuredEvent({
+        event: 'candidate_stakes_gate_dropped',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'stakes_gate_dropped',
+        details: {
+          scope: 'scorer',
+          candidate_id: d.candidate.id,
+          candidate_title: d.candidate.title.slice(0, 100),
+          failed_condition: d.failedCondition,
+          reason: d.reason,
+        },
+      });
+    }
+    // Replace candidates with only those that passed
+    candidates.length = 0;
+    candidates.push(...stakesGateResult.passed);
+  }
+
   if (candidates.length === 0) {
-    // No goal-connected candidates. Goalless emergent patterns (commitment_decay,
-    // signal_velocity) are system metrics, not user-serving. Return null for a
-    // valid no-send rather than surfacing goalless emergent patterns.
+    // No board-changing candidates survived the stakes gate. Return null for
+    // a valid no-send. A correct NO_ACTION is better than a weak directive.
     return null;
   }
 
