@@ -533,6 +533,59 @@ describe('trust class filtering', () => {
 
     expect(result).toHaveLength(0);
   });
+
+  it('ignores personal entities even with high interactions (krista/emmett class)', () => {
+    // Regression: personal entities like krista (52 interactions, silence_detected)
+    // and emmett (14 interactions, silence_detected) were ranking #1 and #3 as
+    // discrepancy_risk and discrepancy_decay candidates in production.
+    const result = detectDiscrepancies({
+      entities: [
+        {
+          ...makeSilentEntity({ id: 'personal-high', name: 'krista', total_interactions: 52 }),
+          trust_class: 'personal' as any,
+        },
+        {
+          ...makeSilentEntity({ id: 'personal-low', name: 'emmett', total_interactions: 14 }),
+          trust_class: 'personal' as any,
+        },
+      ],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+
+    // No discrepancies should be generated from personal entities
+    expect(result).toHaveLength(0);
+    // Specifically: no risk or decay candidates for these entities
+    expect(result.find((d) => d.id.includes('personal-high'))).toBeUndefined();
+    expect(result.find((d) => d.id.includes('personal-low'))).toBeUndefined();
+  });
+
+  it('personal entities do not displace trusted candidates from top slots', () => {
+    // When personal and trusted entities coexist, only trusted entities produce candidates
+    const result = detectDiscrepancies({
+      entities: [
+        {
+          ...makeSilentEntity({ id: 'personal-entity', name: 'krista', total_interactions: 52 }),
+          trust_class: 'personal' as any,
+        },
+        {
+          ...makeSilentEntity({ id: 'trusted-entity', name: 'sam devore', total_interactions: 44 }),
+          trust_class: 'trusted',
+        },
+      ],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+
+    // Only the trusted entity should produce a discrepancy
+    const entityIds = result.map((d) => d.id);
+    expect(entityIds.some((id) => id.includes('trusted-entity'))).toBe(true);
+    expect(entityIds.some((id) => id.includes('personal-entity'))).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
