@@ -1365,3 +1365,176 @@ describe('Delta-based candidates outrank absence-based when both present', () =>
     expect(stalenessIdx).toBeLessThan(avoidanceIdx === -1 ? Infinity : avoidanceIdx);
   });
 });
+
+// ---------------------------------------------------------------------------
+// TriggerMetadata — all discrepancies must include structured state-change data
+// ---------------------------------------------------------------------------
+
+describe('TriggerMetadata enforcement', () => {
+  it('decay trigger has baseline_state, current_state, delta, outcome_class, why_now', () => {
+    const result = detectDiscrepancies({
+      entities: [makeSilentEntity({ name: 'Alice Smith', total_interactions: 8 })],
+      commitments: [],
+      goals: [],
+      decryptedSignals: ['Alice sent proposal for $50k contract deal approval'],
+      now: NOW,
+    });
+    const decay = result.find((d) => d.class === 'decay');
+    expect(decay).toBeDefined();
+    expect(decay!.trigger).toBeDefined();
+    expect(decay!.trigger!.baseline_state).toContain('8 interactions');
+    expect(decay!.trigger!.current_state).toContain('0 interactions');
+    expect(decay!.trigger!.outcome_class).toBe('relationship');
+    expect(decay!.trigger!.why_now.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it('engagement_collapse trigger includes velocity delta', () => {
+    const entity = {
+      id: 'entity-collapse',
+      name: 'Marcus Lee',
+      total_interactions: 20,
+      last_interaction: daysAgoISO(5),
+      patterns: {
+        bx_stats: {
+          silence_detected: false,
+          signal_count_14d: 1,
+          signal_count_30d: 5,
+          signal_count_90d: 18,
+          velocity_ratio: 0.36,
+          open_loop_age_days: 5,
+        },
+      },
+    };
+    const result = detectDiscrepancies({
+      entities: [entity],
+      commitments: [],
+      goals: [],
+      decryptedSignals: ['Marcus sent budget report for $200k funding approval'],
+      now: NOW,
+    });
+    const collapse = result.find((d) => d.class === 'engagement_collapse');
+    expect(collapse).toBeDefined();
+    expect(collapse!.trigger).toBeDefined();
+    expect(collapse!.trigger!.delta).toContain('drop');
+    expect(collapse!.trigger!.outcome_class).toBe('relationship');
+    expect(collapse!.trigger!.baseline_state).toContain('90-day');
+  });
+
+  it('deadline_staleness trigger has deadline outcome_class', () => {
+    const commitment = {
+      id: 'commit-stale',
+      description: 'Submit Q2 budget proposal to board',
+      category: 'project',
+      status: 'active',
+      risk_score: 3,
+      due_at: daysFromNowISO(2),
+      implied_due_at: null,
+      source_context: null,
+      updated_at: daysAgoISO(5),
+    };
+    const result = detectDiscrepancies({
+      entities: [],
+      commitments: [commitment],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+    const staleness = result.find((d) => d.class === 'deadline_staleness');
+    expect(staleness).toBeDefined();
+    expect(staleness!.trigger).toBeDefined();
+    expect(staleness!.trigger!.outcome_class).toBe('deadline');
+    expect(staleness!.trigger!.current_state).toContain('deadline');
+    expect(staleness!.trigger!.why_now).toContain('remain');
+  });
+
+  it('avoidance trigger has stall delta and why_now', () => {
+    const commitment = {
+      id: 'commit-avoid',
+      description: 'Send contract to legal team for review',
+      category: 'project',
+      status: 'at_risk',
+      risk_score: 4,
+      due_at: daysFromNowISO(5),
+      implied_due_at: null,
+      source_context: null,
+      updated_at: daysAgoISO(16),
+    };
+    const result = detectDiscrepancies({
+      entities: [],
+      commitments: [commitment],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+    const avoidance = result.find((d) => d.class === 'avoidance');
+    expect(avoidance).toBeDefined();
+    expect(avoidance!.trigger).toBeDefined();
+    expect(avoidance!.trigger!.delta).toContain('stalled');
+    expect(avoidance!.trigger!.why_now).toContain('stalled');
+  });
+
+  it('goal_velocity_mismatch trigger has financial outcome_class for financial goals', () => {
+    // Build 60+ signals with historical keyword density then recent drop
+    const historicalSignals = Array.from({ length: 40 }, (_, i) =>
+      `Signal ${i}: revenue projection meeting with investor and runway analysis`,
+    );
+    const recentSignals = Array.from({ length: 25 }, (_, i) =>
+      `Signal ${i}: unrelated office admin task and scheduling`,
+    );
+    const allSignals = [...recentSignals, ...historicalSignals];
+
+    const result = detectDiscrepancies({
+      entities: [],
+      commitments: [],
+      goals: [{ goal_text: 'Close revenue projection with investor', priority: 1, goal_category: 'financial' }],
+      decryptedSignals: allSignals,
+      now: NOW,
+    });
+    const velocity = result.find((d) => d.class === 'goal_velocity_mismatch');
+    expect(velocity).toBeDefined();
+    expect(velocity!.trigger).toBeDefined();
+    expect(velocity!.trigger!.outcome_class).toBe('money');
+    expect(velocity!.trigger!.delta).toContain('drop');
+  });
+
+  it('exposure trigger has deadline outcome_class', () => {
+    const commitment = {
+      id: 'commit-exposure',
+      description: 'Deliver client SOW by Friday',
+      category: 'project',
+      status: 'active',
+      risk_score: 2,
+      due_at: daysFromNowISO(3),
+      implied_due_at: null,
+      source_context: null,
+      updated_at: daysAgoISO(1),
+    };
+    const result = detectDiscrepancies({
+      entities: [],
+      commitments: [commitment],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+    const exposure = result.find((d) => d.class === 'exposure');
+    expect(exposure).toBeDefined();
+    expect(exposure!.trigger).toBeDefined();
+    expect(exposure!.trigger!.outcome_class).toBe('deadline');
+    expect(exposure!.trigger!.why_now.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it('drift trigger for career goal has job outcome_class', () => {
+    const result = detectDiscrepancies({
+      entities: [],
+      commitments: [],
+      goals: [{ goal_text: 'Land engineering director position at target company', priority: 1, goal_category: 'career' }],
+      decryptedSignals: ['unrelated grocery shopping list and errands'],
+      now: NOW,
+    });
+    const drift = result.find((d) => d.class === 'drift');
+    expect(drift).toBeDefined();
+    expect(drift!.trigger).toBeDefined();
+    expect(drift!.trigger!.outcome_class).toBe('job');
+    expect(drift!.trigger!.delta).toContain('zero');
+  });
+});

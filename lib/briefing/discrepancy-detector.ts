@@ -55,6 +55,8 @@ export interface Discrepancy {
   sourceSignals: GenerationCandidateSource[];
   /** Matched goal if discrepancy directly addresses a stated goal (e.g. drift) */
   matchedGoal: { text: string; priority: number; category: string } | null;
+  /** Structured state-change metadata. Present on all delta-based triggers. */
+  trigger?: TriggerMetadata;
 }
 
 interface EntityRow {
@@ -92,6 +94,25 @@ interface DeltaMetric {
   delta_pct: number;
   timeframe: string;
   entity?: string;
+}
+
+/**
+ * Trigger metadata — every valid trigger must include structured state-change data.
+ * A trigger fires only when state changed in a way that raises or lowers a real outcome.
+ */
+export interface TriggerMetadata {
+  /** What was normal / established before the change */
+  baseline_state: string;
+  /** What is true now */
+  current_state: string;
+  /** The delta that fired the trigger */
+  delta: string;
+  /** Measurement window */
+  timeframe: string;
+  /** Which outcome class this affects: money, job, approval, deadline, risk */
+  outcome_class: 'money' | 'job' | 'approval' | 'deadline' | 'risk' | 'relationship';
+  /** Why this matters right now — not in general */
+  why_now: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,18 +340,40 @@ function extractDecay(
         ? Math.floor((now - new Date(e.last_interaction).getTime()) / 86400000)
         : null;
     const silentStr = daysSilent != null ? `${daysSilent} days` : 'an extended period';
+    const bx = (e.patterns as any)?.bx_stats;
+    const count90 = (bx?.signal_count_90d ?? 0) as number;
+    const count14 = (bx?.signal_count_14d ?? 0) as number;
+    const baselinePer14d = count90 > 0 ? +(count90 * 14 / 90).toFixed(1) : e.total_interactions > 0 ? +(e.total_interactions * 14 / 365).toFixed(1) : 0;
+
+    const trigger: TriggerMetadata = {
+      baseline_state: `${e.total_interactions} interactions total, ~${baselinePer14d}/14d baseline`,
+      current_state: `0 interactions in ${silentStr}`,
+      delta: `${e.total_interactions} → 0 (silence after ${e.total_interactions} interactions)`,
+      timeframe: `Silent for ${silentStr}`,
+      outcome_class: 'relationship',
+      why_now: daysSilent != null && daysSilent > 45
+        ? `${daysSilent} days of silence crosses the point where reconnection becomes awkward — delay makes recovery harder`
+        : `Relationship with ${e.total_interactions} interactions went to zero — the longer the silence, the harder the restart`,
+    };
+
     results.push({
       id: `discrepancy_decay_${e.id}`,
       class: 'decay',
       title: `Fading connection: ${e.name}`,
       content:
         `Your relationship with ${e.name} has gone silent after ${e.total_interactions} past interactions. ` +
-        `No contact in ${silentStr}. Strong relationships require periodic maintenance — ` +
-        `this one is cooling without intervention.`,
+        `No contact in ${silentStr}. Baseline was ~${baselinePer14d} interactions per 14 days. ` +
+        `Current: 0. This is not drift — it is a temperature drop that is getting harder to reverse.`,
       stakes: Math.min(5, Math.floor(e.total_interactions / 5) + 2),
       urgency: daysSilent != null && daysSilent > 60 ? 0.75 : 0.55,
       suggestedActionType: 'send_message' as ActionType,
-      evidence: `silence_detected=true, total_interactions=${e.total_interactions}, silent_for=${silentStr}`,
+      evidence: JSON.stringify({
+        baseline: `${baselinePer14d} interactions/14d`,
+        current: `0 interactions/14d`,
+        delta_pct: -100,
+        timeframe: `silent for ${silentStr}`,
+        entity: e.name,
+      } satisfies DeltaMetric),
       sourceSignals: [
         {
           kind: 'relationship',
@@ -338,6 +381,7 @@ function extractDecay(
         },
       ],
       matchedGoal: null,
+      trigger,
     });
   }
   return results;
@@ -383,6 +427,17 @@ function extractExposure(
             ? 0.70
             : 0.55;
 
+    const trigger: TriggerMetadata = {
+      baseline_state: `Commitment accepted: "${c.description.slice(0, 80)}"`,
+      current_state: `Due in ${daysUntilDue} day(s), no execution artifact exists`,
+      delta: `commitment → no artifact (${daysUntilDue}d remaining)`,
+      timeframe: `${daysUntilDue} day(s) to deadline`,
+      outcome_class: 'deadline',
+      why_now: daysUntilDue <= 2
+        ? `Due in ${daysUntilDue} day(s) with zero artifacts — this is not a reminder, it is an exposure gap`
+        : `Commitment approaching deadline with no visible execution — the gap is widening daily`,
+    };
+
     results.push({
       id: `discrepancy_exposure_${c.id}`,
       class: 'exposure',
@@ -399,6 +454,7 @@ function extractExposure(
         { kind: 'commitment', id: c.id, summary: c.description.slice(0, 160) },
       ],
       matchedGoal: matchGoal(c.description, goals),
+      trigger,
     });
   }
   return results;
@@ -433,6 +489,15 @@ function extractDrift(
     });
 
     if (!signalHit && !commitmentHit) {
+      const trigger: TriggerMetadata = {
+        baseline_state: `P${g.priority} goal declared: "${g.goal_text.slice(0, 80)}"`,
+        current_state: `Zero matching activity in signals or commitments`,
+        delta: `stated priority → zero observable action`,
+        timeframe: 'current signal and commitment window',
+        outcome_class: g.goal_category === 'financial' ? 'money' : g.goal_category === 'career' ? 'job' : 'risk',
+        why_now: `P${g.priority} goal has no evidence of action — every day without movement is a day the goal drifts further from reality`,
+      };
+
       results.push({
         id: `discrepancy_drift_${g.goal_text.slice(0, 40).replace(/\W+/g, '_')}`,
         class: 'drift',
@@ -453,6 +518,7 @@ function extractDrift(
           priority: g.priority,
           category: g.goal_category,
         },
+        trigger,
       });
     }
   }
@@ -486,6 +552,19 @@ function extractAvoidance(
         : null;
     const stalledStr =
       stalledDays != null ? `${stalledDays} days` : 'an extended period';
+    const dueAt = c.due_at ?? c.implied_due_at;
+    const daysUntilDue = dueAt ? Math.floor((new Date(dueAt).getTime() - now) / 86400000) : null;
+
+    const trigger: TriggerMetadata = {
+      baseline_state: `Commitment accepted as at_risk, last movement ${stalledStr} ago`,
+      current_state: `No forward movement for ${stalledStr}${daysUntilDue != null ? `, ${daysUntilDue}d until due` : ''}`,
+      delta: `active → stalled (${stalledStr} without externalization)`,
+      timeframe: `${stalledStr} stall${daysUntilDue != null ? `, deadline in ${daysUntilDue}d` : ''}`,
+      outcome_class: daysUntilDue != null && daysUntilDue <= 7 ? 'deadline' : 'risk',
+      why_now: stalledDays != null && stalledDays > 21
+        ? `${stalledDays} days stalled — at this point the commitment is effectively abandoned unless a decision forces movement`
+        : `At-risk commitment stalled ${stalledStr} with no send, no decision, no externalization — avoidance is compounding`,
+    };
 
     results.push({
       id: `discrepancy_avoidance_${c.id}`,
@@ -493,16 +572,23 @@ function extractAvoidance(
       title: `Stalled commitment: ${c.description.slice(0, 60)}`,
       content:
         `"${c.description}" has been at-risk for ${stalledStr} with no forward movement. ` +
-        `Repeated avoidance of the same commitment is a pattern, not an oversight. ` +
-        `A decision — proceed, delegate, or drop — needs to be made.`,
+        `No email sent, no document drafted, no decision made. ` +
+        `This is not a planning failure — it is an execution stall. ` +
+        `A decision — proceed, delegate, or drop — needs to be made now.`,
       stakes: 4,
-      urgency: 0.70,
+      urgency: stalledDays != null && stalledDays > 21 ? 0.78 : 0.70,
       suggestedActionType: 'make_decision' as ActionType,
-      evidence: `status=at_risk, stalled_days=${stalledDays}, risk_score=${c.risk_score}`,
+      evidence: JSON.stringify({
+        baseline: `at_risk commitment, last updated ${stalledStr} ago`,
+        current: `no externalization for ${stalledStr}`,
+        delta_pct: -100,
+        timeframe: `${stalledStr} stalled`,
+      } satisfies DeltaMetric),
       sourceSignals: [
         { kind: 'commitment', id: c.id, summary: c.description.slice(0, 160) },
       ],
       matchedGoal: matchGoal(c.description, goals),
+      trigger,
     });
   }
   return results;
@@ -536,19 +622,39 @@ function extractRisk(
         ? Math.floor((now - new Date(e.last_interaction).getTime()) / 86400000)
         : null;
     const silentStr = daysSilent != null ? `${daysSilent} days` : 'an extended period';
+    const bx = (e.patterns as any)?.bx_stats;
+    const count90 = (bx?.signal_count_90d ?? 0) as number;
+    const baselinePer14d = count90 > 0 ? +(count90 * 14 / 90).toFixed(1) : +(e.total_interactions * 14 / 365).toFixed(1);
+
+    const trigger: TriggerMetadata = {
+      baseline_state: `${e.total_interactions} interactions total, ~${baselinePer14d}/14d baseline — one of your highest-value relationships`,
+      current_state: `Complete silence for ${silentStr}`,
+      delta: `${baselinePer14d}/14d → 0/14d (100% drop)`,
+      timeframe: `Silent for ${silentStr}`,
+      outcome_class: 'relationship',
+      why_now: daysSilent != null && daysSilent > 90
+        ? `${daysSilent} days of silence from a ${e.total_interactions}-interaction relationship — this is past the point of casual reconnection`
+        : `High-value relationship (${e.total_interactions} interactions) went dark — every additional day of silence reduces recovery probability`,
+    };
 
     results.push({
       id: `discrepancy_risk_${e.id}`,
       class: 'risk',
       title: `High-value relationship at risk: ${e.name}`,
       content:
-        `${e.name} is one of your most connected relationships (${e.total_interactions} interactions) ` +
+        `${e.name} is one of your most connected relationships (${e.total_interactions} interactions, ~${baselinePer14d}/14d baseline) ` +
         `and has gone completely silent for ${silentStr}. ` +
-        `Losing this relationship has significant downstream consequences.`,
+        `Baseline → 0 is a 100% drop. Losing this relationship has significant downstream consequences.`,
       stakes: 5,
       urgency: daysSilent != null && daysSilent > 90 ? 0.85 : 0.70,
       suggestedActionType: 'send_message' as ActionType,
-      evidence: `silence_detected=true, total_interactions=${e.total_interactions}, silent_for=${silentStr}`,
+      evidence: JSON.stringify({
+        baseline: `${baselinePer14d} interactions/14d`,
+        current: '0 interactions/14d',
+        delta_pct: -100,
+        timeframe: `silent for ${silentStr}`,
+        entity: e.name,
+      } satisfies DeltaMetric),
       sourceSignals: [
         {
           kind: 'relationship',
@@ -556,6 +662,7 @@ function extractRisk(
         },
       ],
       matchedGoal: null,
+      trigger,
     });
   }
   return results;
@@ -605,6 +712,17 @@ function extractEngagementCollapse(entities: EntityRow[]): Discrepancy[] {
       entity: e.name,
     };
 
+    const trigger: TriggerMetadata = {
+      baseline_state: `${baselinePer14d} interactions/14d (90-day average)`,
+      current_state: `${count14} interactions/14d (velocity_ratio=${velocityRatio.toFixed(2)})`,
+      delta: `${deltaPercent}% drop in engagement rate`,
+      timeframe: '14-day vs 90-day baseline',
+      outcome_class: 'relationship',
+      why_now: velocityRatio < 0.3
+        ? `${e.name} engagement dropped ${deltaPercent}% — this is active withdrawal, not gradual fade. Intervention now or relationship loss later.`
+        : `${e.name} engagement rate halved vs baseline — the trend is accelerating downward`,
+    };
+
     results.push({
       id: `discrepancy_collapse_${e.id}`,
       class: 'engagement_collapse',
@@ -624,6 +742,7 @@ function extractEngagementCollapse(entities: EntityRow[]): Discrepancy[] {
         },
       ],
       matchedGoal: null,
+      trigger,
     });
   }
   return results;
@@ -678,6 +797,15 @@ function extractRelationshipDropout(entities: EntityRow[]): Discrepancy[] {
       entity: e.name,
     };
 
+    const trigger: TriggerMetadata = {
+      baseline_state: `${priorWindow} interactions in the 30–90 day window`,
+      current_state: `0 interactions in the last 30 days`,
+      delta: `${priorWindow} → 0 (100% drop, discrete stop)`,
+      timeframe: '30-day vs 30–90-day comparison window',
+      outcome_class: 'relationship',
+      why_now: `${e.name} went from ${priorWindow} interactions to zero — this is a discrete break, not gradual. Last contact ${ageStr} ago.`,
+    };
+
     results.push({
       id: `discrepancy_dropout_${e.id}`,
       class: 'relationship_dropout',
@@ -697,6 +825,7 @@ function extractRelationshipDropout(entities: EntityRow[]): Discrepancy[] {
         },
       ],
       matchedGoal: null,
+      trigger,
     });
   }
   return results;
@@ -754,6 +883,17 @@ function extractDeadlineStaleness(
       timeframe: `${stalledStr} stalled with ${daysUntilDue}d remaining`,
     };
 
+    const trigger: TriggerMetadata = {
+      baseline_state: `Active commitment, last updated ${stalledStr} ago`,
+      current_state: `${daysUntilDue} day(s) until deadline with no movement`,
+      delta: `${stalledStr} stalled while deadline approaches (${daysUntilDue}d remaining)`,
+      timeframe: `${stalledStr} stall, ${daysUntilDue}d to deadline`,
+      outcome_class: 'deadline',
+      why_now: daysUntilDue === 0
+        ? `Deadline is TODAY and last movement was ${stalledStr} ago — execution gap is now visible to stakeholders`
+        : `${daysUntilDue} day(s) remain and execution has been frozen for ${stalledStr} — the window is closing`,
+    };
+
     results.push({
       id: `discrepancy_staleness_${c.id}`,
       class: 'deadline_staleness',
@@ -771,6 +911,7 @@ function extractDeadlineStaleness(
         { kind: 'commitment', id: c.id, summary: c.description.slice(0, 160) },
       ],
       matchedGoal: matchGoal(c.description, goals),
+      trigger,
     });
   }
   return results;
@@ -836,6 +977,17 @@ function extractGoalVelocityMismatch(
       timeframe: 'recent 25 signals vs historical baseline',
     };
 
+    const trigger: TriggerMetadata = {
+      baseline_state: `${historicalMatches} goal-keyword matches across ${historicalSignals.length} historical signals`,
+      current_state: `${recentMatches} matches in last 25 signals`,
+      delta: `${deltaPercent}% drop in goal-aligned activity`,
+      timeframe: 'recent 25 signals vs historical baseline',
+      outcome_class: g.goal_category === 'financial' ? 'money' : g.goal_category === 'career' ? 'job' : 'risk',
+      why_now: velocityRatio < 0.25
+        ? `P${g.priority} goal "${g.goal_text.slice(0, 60)}" activity dropped ${deltaPercent}% — behavior has diverged from stated priority`
+        : `Goal-aligned signal density halved — stated priority is drifting from observable action`,
+    };
+
     results.push({
       id: `discrepancy_velocity_${g.goal_text.slice(0, 40).replace(/\W+/g, '_')}`,
       class: 'goal_velocity_mismatch',
@@ -860,6 +1012,7 @@ function extractGoalVelocityMismatch(
         priority: g.priority,
         category: g.goal_category,
       },
+      trigger,
     });
 
     if (results.length >= MAX_PER_CLASS) break;
@@ -903,8 +1056,19 @@ export function detectDiscrepancies(args: {
     ...extractDecay(entities, goals, decryptedSignals, nowMs),
   ];
 
+  // Auto-fail: reject triggers that cannot produce a leverage artifact
+  const valid = all.filter((d) => {
+    // Must have trigger metadata
+    if (!d.trigger) return true; // legacy absence-based without trigger pass through (shouldn't happen now)
+    // Must have a real why_now (not just "old" or "exists")
+    if (d.trigger.why_now.length < 20) return false;
+    // Must be capable of producing send_message or write_document
+    if (d.suggestedActionType !== 'send_message' && d.suggestedActionType !== 'write_document' && d.suggestedActionType !== 'make_decision') return false;
+    return true;
+  });
+
   // Sort by urgency × stakes descending
-  const sorted = all.sort((a, b) => b.urgency * b.stakes - a.urgency * a.stakes);
+  const sorted = valid.sort((a, b) => b.urgency * b.stakes - a.urgency * a.stakes);
 
   // Entity-level deduplication: one discrepancy per entity, highest score wins
   const seenEntityIds = new Set<string>();
