@@ -148,6 +148,18 @@ export function buildTriggerContextBlock(
 ): string {
   const rule = TRIGGER_ACTION_MAP[triggerClass];
 
+  const documentRules = rule.artifact_shape === 'document' ? [
+    `6. DOCUMENT MUST END with a NEXT_ACTION section in this exact format:`,
+    `   NEXT_ACTION: [one specific action] by [specific deadline]. Owner: [named person or "you"].`,
+    `   This section is mandatory. A document without it fails validation.`,
+    `7. Do NOT start with "INSIGHT:", "WHY NOW:", or any pipeline label. Start with the situation directly.`,
+  ] : [];
+
+  const emailRules = rule.artifact_shape === 'email' ? [
+    `6. EMAIL body MUST name the specific decision or action in the first sentence — not "the decision" but WHAT decision.`,
+    `7. Consequence MUST name the specific outcome that breaks if not resolved — not "timeline slips" but WHICH timeline and WHAT slips.`,
+  ] : [];
+
   return [
     `TRIGGER_CONTEXT (MANDATORY — use in first 2 sentences of artifact):`,
     `  type: ${triggerClass}`,
@@ -161,10 +173,12 @@ export function buildTriggerContextBlock(
     ``,
     `TRIGGER RULES:`,
     `1. Your artifact MUST reference the delta explicitly (${trigger.delta}).`,
-    `2. Your artifact MUST include a forcing function: a yes/no, a schedule, or an approval — not open-ended advice.`,
+    `2. Your artifact MUST include a forcing function: a yes/no, a specific deadline with a named owner, or an approval gate.`,
     `3. Your artifact MUST NOT be self-addressed. It must target another person or produce a decision the user acts on externally.`,
     `4. Your artifact MUST include time pressure derived from the trigger.`,
     `5. Banned phrases for this trigger: ${rule.banned_phrases.map(p => `"${p}"`).join(', ')}`,
+    ...documentRules,
+    ...emailRules,
   ].join('\n');
 }
 

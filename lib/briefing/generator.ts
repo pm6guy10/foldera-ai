@@ -2479,7 +2479,7 @@ export function getCausalDiagnosisIssues(input: {
   return [...new Set(issues)];
 }
 
-function extractAllEmailAddresses(winner: ScoredLoop): string[] {
+function extractAllEmailAddresses(winner: ScoredLoop, userEmails?: Set<string>): string[] {
   const emails = new Set<string>();
   const emailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 
@@ -2509,7 +2509,8 @@ function extractAllEmailAddresses(winner: ScoredLoop): string[] {
   }
 
   return [...emails].filter(
-    (e) => !e.includes('example') && !e.includes('placeholder') && !e.includes('noreply'),
+    (e) => !e.includes('example') && !e.includes('placeholder') && !e.includes('noreply')
+      && !(userEmails && userEmails.has(e)),
   );
 }
 
@@ -3181,6 +3182,23 @@ function validateGeneratedArtifact(
     issues.push('insight contains bracket placeholder text');
   }
 
+  // Internal label leak: reject artifacts that echo pipeline-internal labels into user-facing content
+  const INTERNAL_LABEL_RE = /^(INSIGHT:|WHY NOW:|Winning loop:|CANDIDATE_CLASS:|TRIGGER_CONTEXT:|CONVERGENT_ANALYSIS:)/m;
+  for (const [key, val] of Object.entries(payload.artifact)) {
+    if (typeof val === 'string' && INTERNAL_LABEL_RE.test(val)) {
+      issues.push(`artifact.${key} contains internal pipeline label — LLM echoed prompt structure into output`);
+    }
+  }
+
+  // write_document forcing function check: must contain a concrete next action (yes/no, deadline, decision point)
+  if (payload.artifact_type === 'write_document') {
+    const content = String((payload.artifact as Record<string, unknown>).content ?? '');
+    const hasDecisionPoint = /\b(by\s+\w+day|\bby\s+\d{4}-\d{2}-\d{2}|\bdeadline\b|\bconfirm\b|\bdecide\b|\bchoose\b|\bapprove\b|\bschedule\b|\bcommit\b|\bnext\s+(?:step|action)\b)/i.test(content);
+    if (!hasDecisionPoint) {
+      issues.push('decision_enforcement:missing_forcing_function — write_document must contain a concrete deadline, decision point, or next action');
+    }
+  }
+
   // Secondary: banned coaching language (backup gate)
   if (directive && containsBannedLanguage(directive)) {
     issues.push('directive uses coaching/advice language');
@@ -3377,17 +3395,28 @@ function buildDecisionEnforcedFallbackPayload(input: {
   actionType: ValidArtifactTypeCanonical;
   candidateDueDate: string | null;
   causalDiagnosis: CausalDiagnosis;
+  userEmails?: Set<string>;
 }): GeneratedDirectivePayload | null {
   const target = cleanDecisionTarget(input.winner.title);
   const deadline = resolveDecisionDeadline(input.candidateDueDate);
-  const copy = buildCausalFallbackCopy({
+
+  // If winner has trigger metadata, use it to produce specific copy instead of the generic default.
+  const trig = input.winner.trigger;
+  const triggerGroundedCopy = trig ? {
+    ask: `Confirm: ${trig.delta}. Decision required by ${deadline}.`,
+    consequence: `Consequence: ${trig.why_now}`,
+    insight: `${trig.current_state} (was: ${trig.baseline_state})`,
+    whyNow: trig.why_now,
+  } : null;
+
+  const copy = triggerGroundedCopy ?? buildCausalFallbackCopy({
     diagnosis: input.causalDiagnosis,
     target,
     deadline,
   });
 
   if (input.actionType === 'send_message') {
-    const recipient = extractAllEmailAddresses(input.winner)[0];
+    const recipient = extractAllEmailAddresses(input.winner, input.userEmails)[0];
     if (!recipient) return null;
     const mechanismAsk = copy.ask.replace(/^Ask:\s*/i, '').trim();
     const explicitAsk = (() => {
@@ -4118,6 +4147,7 @@ export async function generateDirective(
           actionType: decisionPayload.recommended_action,
           candidateDueDate: ctx.candidate_due_date,
           causalDiagnosis: ctx.required_causal_diagnosis,
+          userEmails,
         });
 
         if (repairedPayload) {
