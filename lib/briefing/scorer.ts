@@ -29,6 +29,7 @@ import type {
 import { detectDiscrepancies } from './discrepancy-detector';
 import type { DiscrepancyClass, TriggerMetadata } from './discrepancy-detector';
 import { applyStakesGate } from './stakes-gate';
+import { applyEntityRealityGate } from './entity-reality-gate';
 
 // ---------------------------------------------------------------------------
 // Self-referential signal filter — excludes Foldera's own directive outputs
@@ -3435,6 +3436,53 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       rejected: invalidContextRejections.size,
       remaining: candidates.length,
     }));
+  }
+
+  // -----------------------------------------------------------------------
+  // PRE-SCORING: Entity reality gate — drop candidates with unverified entities
+  // Prevents fake or ungrounded entities from entering the scoring pipeline.
+  // -----------------------------------------------------------------------
+  const entityGateResult = applyEntityRealityGate(
+    candidates,
+    (entities as Array<{ name: string; total_interactions: number; trust_class?: string }>),
+    (signals as Array<{ content: string; source?: string; author?: string; type?: string }>),
+  );
+  if (entityGateResult.dropped.length > 0) {
+    console.log(JSON.stringify({
+      event: 'entity_reality_gate_filter',
+      passed: entityGateResult.passed.length,
+      dropped: entityGateResult.dropped.length,
+      verified_entities: entityGateResult.verifiedEntities.length,
+      unverified_entities: entityGateResult.unverifiedEntities,
+      drop_details: entityGateResult.dropped.map(d => ({
+        id: d.candidate.id,
+        title: d.candidate.title.slice(0, 80),
+        entity: d.entity,
+        reason: d.reason,
+      })),
+    }));
+    for (const d of entityGateResult.dropped) {
+      logStructuredEvent({
+        event: 'candidate_entity_gate_dropped',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'entity_gate_dropped',
+        details: {
+          scope: 'scorer',
+          candidate_id: d.candidate.id,
+          candidate_title: d.candidate.title.slice(0, 100),
+          entity: d.entity,
+          reason: d.reason,
+        },
+      });
+    }
+    candidates.length = 0;
+    candidates.push(...entityGateResult.passed);
+  }
+
+  if (candidates.length === 0) {
+    return null;
   }
 
   // -----------------------------------------------------------------------
