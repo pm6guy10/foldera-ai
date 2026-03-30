@@ -667,6 +667,31 @@ export function selectRankedCandidates(
       notes.push('low novelty');
     }
 
+    // --- Winner tier classification ---
+    // Tier 2 (3-way triangulation) outranks Tier 1 (single-signal valid).
+    // Axis 1: Outcome pressure — money, job, approval, deadline, risk
+    const hasOutcomePressure =
+      (candidate.breakdown.stakes ?? 0) >= 2
+      || (candidate.breakdown.urgency ?? 0) >= 0.6
+      || !!candidate.matchedGoal;
+    // Axis 2: Behavioral discrepancy — drift, avoidance, decay, contradiction
+    const hasBehavioralDiscrepancy =
+      candidate.type === 'discrepancy'
+      || (candidate.breakdown.entityPenalty ?? 0) < -5;
+    // Axis 3: Execution anchor — real recipient, real thread, real entity
+    const hasExecutionAnchor =
+      emailHits.length > 0
+      || (candidate.relatedSignals?.length ?? 0) >= 2;
+
+    const triangulationAxes = [hasOutcomePressure, hasBehavioralDiscrepancy, hasExecutionAnchor].filter(Boolean).length;
+    if (triangulationAxes >= 3) {
+      mult *= 1.35;
+      notes.push('tier-2 triangulated (outcome+discrepancy+anchor)');
+    } else if (triangulationAxes >= 2) {
+      mult *= 1.10;
+      notes.push(`tier-1+ (${triangulationAxes}/3 axes)`);
+    }
+
     return {
       candidate,
       viabilityScore: candidate.score * mult,
@@ -1101,6 +1126,7 @@ function buildStructuredContext(
   behavioralHistory?: string | null,
   avoidanceObservations?: AvoidanceObservation[],
   competitionContext?: string | null,
+  userEmails?: Set<string>,
 ): StructuredContext {
   // Type-diverse signal sampling: guarantee calendar, task, file, and drive
   // signals get representation instead of being buried under email volume.
@@ -1188,7 +1214,13 @@ function buildStructuredContext(
   }
   const uniqueEmails = [...new Set(allEmails)];
 
-  const has_real_recipient = uniqueEmails.length > 0;
+  // Filter out the user's own email addresses — self-addressed send_message
+  // artifacts are never valid external actions.
+  const externalEmails = userEmails && userEmails.size > 0
+    ? uniqueEmails.filter((e) => !userEmails.has(e.toLowerCase()))
+    : uniqueEmails;
+
+  const has_real_recipient = externalEmails.length > 0;
 
   // Check signal freshness
   const signalDates = (winner.sourceSignals ?? [])
@@ -1848,6 +1880,35 @@ async function fetchUserSelfNameTokens(userId: string): Promise<Set<string>> {
     // Non-blocking; if lookup fails we apply no self-filter.
   }
   return selfTokens;
+}
+
+/**
+ * Fetch the user's own email addresses from Supabase auth.
+ * Used to exclude self-addressed emails from recipient lists.
+ * Returns lowercased email addresses.
+ */
+export async function fetchUserEmailAddresses(userId: string): Promise<Set<string>> {
+  const emails = new Set<string>();
+  try {
+    const supabase = createServerClient();
+    const { data } = await supabase.auth.admin.getUserById(userId);
+    const user = data?.user;
+    if (!user) return emails;
+
+    // Primary email
+    if (user.email) emails.add(user.email.toLowerCase());
+
+    // Provider emails from identities (Google, Microsoft, etc.)
+    for (const identity of (user.identities ?? [])) {
+      const idData = (identity.identity_data ?? {}) as Record<string, unknown>;
+      if (typeof idData['email'] === 'string' && idData['email']) {
+        emails.add((idData['email'] as string).toLowerCase());
+      }
+    }
+  } catch {
+    // Non-blocking; if lookup fails we apply no self-filter.
+  }
+  return emails;
 }
 
 // Extracts entity names ONLY from winner.relationshipContext (confirmed contacts).
@@ -3866,7 +3927,10 @@ export async function generateDirective(
     // Hoist self-name tokens fetch — called once for all candidates, not once per candidate.
     // If this returns empty (auth metadata missing name), entity suppression is skipped
     // to avoid false positives (can't distinguish "Brandon" the user from "Brandon" the contact).
-    const selfNameTokens = await fetchUserSelfNameTokens(userId);
+    const [selfNameTokens, userEmails] = await Promise.all([
+      fetchUserSelfNameTokens(userId),
+      fetchUserEmailAddresses(userId),
+    ]);
 
     for (const { candidate: currentCandidate, disqualified, disqualifyReason } of rankedCandidates) {
       // Skip disqualified candidates (already acted recently, etc.)
@@ -3952,6 +4016,7 @@ export async function generateDirective(
         scored.antiPatterns, scored.divergences,
         alreadySent, convictionDecision, behavioralHistory,
         avoidanceObservations, competitionContext,
+        userEmails,
       );
 
       // --- DECISION PAYLOAD — the canonical binding contract ---

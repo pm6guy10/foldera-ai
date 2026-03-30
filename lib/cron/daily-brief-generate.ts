@@ -7,6 +7,7 @@
 import { createServerClient } from '@/lib/db/client';
 import {
   buildDirectiveExecutionResult,
+  fetchUserEmailAddresses,
   generateDirective,
   getDecisionEnforcementIssues,
   validateDirectiveForPersistence,
@@ -62,6 +63,13 @@ const PLACEHOLDER_PATTERN =
  */
 const GENERIC_LANGUAGE_PATTERN =
   /\b(i hope this (message |email )?(finds you well|reaches you well)|just (wanted to )?(check in|reach out|touch base|follow up)|as per my (last|previous) (email|message)|touching base|reaching out to (?:you )?today)\b/i;
+
+/**
+ * Weak winner patterns — auto-fail artifact classes that do not force a reply,
+ * decision, approval, or deadline movement. These are polished sludge.
+ */
+const WEAK_WINNER_PATTERN =
+  /\b(wanted to (loop|circle|reconnect)|keep(ing)? you (in the loop|posted|updated)|thought (you('d| would) want to know|i'?d share)|sharing (an update|some thoughts)|for your (awareness|reference|records)|no action (needed|required)|just (a )?(heads[- ]?up|quick note|friendly reminder)|hope(fully)? this helps|let me know (if|what) you think)\b/i;
 
 /**
  * Vague subject lines that signal generic / template output.
@@ -133,6 +141,7 @@ export function evaluateReadiness(
 export function isSendWorthy(
   directive: ConvictionDirective,
   artifact: ConvictionArtifact,
+  userEmails?: Set<string>,
 ): { worthy: boolean; reason: string } {
   // Must be a real action — do_nothing is a no-send outcome, not a user-facing directive
   if (directive.action_type === 'do_nothing') {
@@ -163,6 +172,10 @@ export function isSendWorthy(
     if (typeof to !== 'string' || !to.includes('@')) {
       return { worthy: false, reason: 'invalid_recipient' };
     }
+    // Self-addressed emails are never valid external actions.
+    if (userEmails && userEmails.size > 0 && userEmails.has(to.toLowerCase())) {
+      return { worthy: false, reason: 'self_addressed' };
+    }
     const body = artifactRecord.body;
     if (typeof body !== 'string' || body.trim().length < 30) {
       return { worthy: false, reason: 'body_too_short' };
@@ -176,6 +189,12 @@ export function isSendWorthy(
   // Must not contain generic opener language that signals no specific context
   if (GENERIC_LANGUAGE_PATTERN.test(artifactJson)) {
     return { worthy: false, reason: 'generic_language' };
+  }
+
+  // Must not be a weak winner — polished sludge that doesn't force a reply,
+  // decision, approval, or deadline movement.
+  if (WEAK_WINNER_PATTERN.test(artifactJson)) {
+    return { worthy: false, reason: 'weak_winner_no_pressure' };
   }
 
   const decisionIssues = getDecisionEnforcementIssues({
@@ -832,6 +851,7 @@ export async function runDailyGenerate(
   const results: DailyBriefUserResult[] = [];
 
   for (const userId of eligibleUserIds) {
+    const userEmails = await fetchUserEmailAddresses(userId);
     const signalResult = await runSignalProcessingForUser(supabase, userId, options);
     signalResults.push(signalResult);
 
@@ -1167,7 +1187,7 @@ export async function runDailyGenerate(
       }
 
       // Post-generation quality gate — block outputs that are not worth sending.
-      const sendWorthiness = isSendWorthy(directive, artifact);
+      const sendWorthiness = isSendWorthy(directive, artifact, userEmails);
       if (!sendWorthiness.worthy) {
         logStructuredEvent({
           event: 'daily_generate_failed',

@@ -266,4 +266,104 @@ describe('isSendWorthy', () => {
     );
     expect(result.worthy).toBe(true);
   });
+
+  // --- Self-address guard ---
+
+  it('blocks send_message addressed to the user\'s own email', () => {
+    const userEmails = new Set(['b-kapp@outlook.com', 'brandon@foldera.ai']);
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ to: 'b-kapp@outlook.com' }),
+      userEmails,
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('self_addressed');
+  });
+
+  it('blocks self-addressed email with case mismatch', () => {
+    const userEmails = new Set(['b-kapp@outlook.com']);
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ to: 'B-Kapp@Outlook.com' }),
+      userEmails,
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('self_addressed');
+  });
+
+  it('allows send_message to an external recipient when userEmails provided', () => {
+    const userEmails = new Set(['b-kapp@outlook.com']);
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ to: 'alice@example.com' }),
+      userEmails,
+    );
+    expect(result.worthy).toBe(true);
+  });
+
+  it('does not block when userEmails is undefined (backwards compatible)', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ to: 'b-kapp@outlook.com' }),
+    );
+    expect(result.worthy).toBe(true);
+  });
+
+  it('does not block when userEmails is empty set', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ to: 'b-kapp@outlook.com' }),
+      new Set(),
+    );
+    expect(result.worthy).toBe(true);
+  });
+
+  // --- Weak winner auto-fail ---
+
+  it('blocks "just a heads up" soft contact maintenance', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ body: 'Hi Alice, just a heads up about the upcoming changes to the project timeline and deliverables.' }),
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('weak_winner_no_pressure');
+  });
+
+  it('blocks "keeping you in the loop" no-pressure language', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ body: 'Alice, keeping you in the loop on the latest developments with the contract review process.' }),
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('weak_winner_no_pressure');
+  });
+
+  it('blocks "no action needed" explicit non-pressure', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ body: 'Hi Alice, no action needed from your side. I just wanted to share the updated figures for Q2.' }),
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('weak_winner_no_pressure');
+  });
+
+  it('blocks "for your awareness" passive language', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ body: 'Sending this for your awareness — the vendor contract auto-renews in two weeks.' }),
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('weak_winner_no_pressure');
+  });
+
+  it('allows a pressure-bearing artifact with deadline and explicit ask', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({
+        subject: 'Decision needed: contract filing owner by 4 PM PT today',
+        body: 'Alice, can you confirm by 4 PM PT today whether we should file the contract now, and name the owner for submission? If we miss this cutoff, filing slips and execution risk increases.',
+      }),
+    );
+    expect(result.worthy).toBe(true);
+  });
 });
