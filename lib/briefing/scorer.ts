@@ -3455,6 +3455,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const preScoringCount = candidates.length;
   for (let i = candidates.length - 1; i >= 0; i--) {
     const c = candidates[i];
+    // Relationship candidates are exempt from noise filtering — they come from
+    // verified entities in tkg_entities with real interaction history, not from
+    // raw signal/commitment text that could be spam or housekeeping.
+    if (c.type === 'relationship') continue;
     const isNoise = isNoiseCandidateText(c.title, c.content);
     if (isNoise) {
       logStructuredEvent({
