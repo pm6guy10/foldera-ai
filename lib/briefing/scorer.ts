@@ -1145,6 +1145,9 @@ function computeEvidenceDensity(candidate: ScoredLoop): number {
   if ((candidate.sourceSignals?.length ?? 0) > 0) density += 1;
   if (hasConcrete) density += 1;
   if (candidate.type === 'discrepancy') density += 1;
+  // Relationship candidates: the entity's presence in tkg_entities (verified interaction history)
+  // is itself concrete evidence — equivalent to a confirmed source signal.
+  if (candidate.type === 'relationship') density += 1;
   return density;
 }
 
@@ -1155,6 +1158,9 @@ function isObviousFirstLayerAdvice(candidate: ScoredLoop): boolean {
 
 function isOutcomeLinkedCandidate(candidate: ScoredLoop): boolean {
   if (candidate.type === 'discrepancy') return true;
+  // Verified relationship candidates from tkg_entities ARE inherently outcome-linked —
+  // maintaining a high-value relationship is a board-level outcome (career, revenue, referral).
+  if (candidate.type === 'relationship') return true;
   if (candidate.matchedGoal) return true;
   const combined = `${candidate.title} ${candidate.content}`;
   return OUTCOME_SIGNAL_PATTERNS.some((pattern) => pattern.test(combined));
@@ -1173,7 +1179,11 @@ function getInvariantFailureReasons(candidate: ScoredLoop): string[] {
     : candidate.score > 0;
   const reasons: string[] = [];
   const obviousAdvice = isObviousFirstLayerAdvice(candidate);
-  const routineMaintenance = isNoiseCandidateText(candidate.title, candidate.content);
+  // Relationship candidates are exempt from noise filtering — "Follow up with X" is their canonical
+  // title format (built from tkg_entities), not routine maintenance in the noise-filter sense.
+  const routineMaintenance = candidate.type === 'relationship'
+    ? false
+    : isNoiseCandidateText(candidate.title, candidate.content);
   const evidenceDensity = computeEvidenceDensity(candidate);
   const alreadyKnown = (candidate.breakdown.freshness ?? 1) <= 0.35 || (candidate.breakdown.entityPenalty ?? 0) <= -20;
 
