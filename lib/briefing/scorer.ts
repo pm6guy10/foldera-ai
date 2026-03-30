@@ -3094,10 +3094,32 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     })
     .filter((signal: any) => signal && !isSelfReferentialSignal(signal.content));
   const entities = entitiesRes.data ?? [];
-  // Entity ID → name map so commitment candidates can resolve promisor/promisee
+  // Entity ID → name map so commitment candidates can resolve promisor/promisee.
+  // Seed from loaded entities, then batch-resolve any missing commitment actor IDs.
   const entityIdToName = new Map<string, string>();
   for (const e of entities) {
     entityIdToName.set(e.id, e.name as string);
+  }
+  // Batch-resolve promisor/promisee IDs not in the top-30 entity set
+  {
+    const missingIds = new Set<string>();
+    for (const c of commitments) {
+      const pid = c.promisor_id as string | null;
+      const eid = c.promisee_id as string | null;
+      if (pid && !entityIdToName.has(pid)) missingIds.add(pid);
+      if (eid && !entityIdToName.has(eid)) missingIds.add(eid);
+    }
+    if (missingIds.size > 0) {
+      const { data: extras } = await supabase
+        .from('tkg_entities')
+        .select('id, name')
+        .in('id', [...missingIds]);
+      if (extras) {
+        for (const e of extras) {
+          entityIdToName.set(e.id, e.name as string);
+        }
+      }
+    }
   }
   // Filter out onboarding placeholder goals — only extracted, manual, and onboarding_stated goals feed the scorer
   const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker']);
@@ -3310,10 +3332,16 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
     // Resolve entity name from promisor/promisee — commitments are entity-grounded
     // through DB relationships even when the description text omits proper names.
+    // Prefer promisee (the person acted upon), skip "self".
+    const resolveEntity = (id: string | null): string | undefined => {
+      if (!id) return undefined;
+      const name = entityIdToName.get(id);
+      if (!name || name.toLowerCase() === 'self') return undefined;
+      return name;
+    };
     const commitEntityName =
-      entityIdToName.get(c.promisee_id as string) ??
-      entityIdToName.get(c.promisor_id as string) ??
-      undefined;
+      resolveEntity(c.promisee_id as string) ??
+      resolveEntity(c.promisor_id as string);
 
     candidates.push({
       id: c.id,
