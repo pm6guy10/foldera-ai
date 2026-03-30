@@ -2078,3 +2078,22 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
     - top-5 candidate discovery persisted in generation log
 - Any unresolved issues:
   - Full local `npx playwright test` timed out with pre-existing local omnibus instability (`EPIPE` during list reporter output); logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
+## Session Log — 2026-03-29 (entity/commitment trust decontamination filter)
+- MODE: AUDIT
+- Commit hash(es): `ef3a4c5`
+- Files changed:
+  - `lib/signals/signal-processor.ts`
+  - `lib/signals/__tests__/signal-hygiene.test.ts`
+  - `lib/briefing/scorer.ts`
+  - `lib/briefing/discrepancy-detector.ts`
+  - `lib/briefing/__tests__/discrepancy-detector.test.ts`
+  - `lib/briefing/__tests__/pipeline-receipt.test.ts`
+  - `supabase/migrations/20260330000001_add_trust_classification.sql`
+- What was verified:
+  - `npx vitest run lib/signals/__tests__/signal-hygiene.test.ts lib/signals/__tests__/signal-processor.test.ts lib/briefing/__tests__/discrepancy-detector.test.ts lib/briefing/__tests__/pipeline-receipt.test.ts` (99 passed)
+  - `npm run build` (pass)
+  - `npm run test:prod` (51/51 pass)
+  - Production owner fresh receipt call: `POST https://www.foldera.ai/api/dev/brain-receipt` returned `200` with fresh action id `407053ae-2918-4543-aa0c-1d713afd90d9`, and stale action `2e3a92ac-f93e-42b4-a978-bedd3dcee4d6` not reused.
+- Any unresolved issues:
+  - Production receipt still surfaced `krista` and `emmett` in top candidates, indicating production DB trust-class migration/backfill has not yet taken effect in runtime data.
