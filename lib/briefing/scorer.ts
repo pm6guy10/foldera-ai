@@ -1285,14 +1285,17 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
         diag.penaltyReasons.push('discrepancy_priority_boost');
         continue;
       }
-      const strongOutcomeCommitment =
-        candidate.type === 'commitment'
+      // High-stakes relationship candidates (P1/P2 goal-matched, urgent, dense evidence)
+      // receive the same softer penalty as strong commitment candidates — they represent
+      // verified entities with real interaction history and board-level outcomes.
+      const strongOutcomeCandidate =
+        (candidate.type === 'commitment' || candidate.type === 'relationship')
         && candidate.breakdown.stakes >= 3
         && candidate.breakdown.urgency >= 0.6
         && computeEvidenceDensity(candidate) >= 3;
-      const penalty = strongOutcomeCommitment ? 0.88 : 0.55;
+      const penalty = strongOutcomeCandidate ? 0.88 : 0.55;
       candidate.score *= penalty;
-      diag.penaltyReasons.push(strongOutcomeCommitment
+      diag.penaltyReasons.push(strongOutcomeCandidate
         ? 'discrepancy_priority_softened_task_penalty'
         : 'discrepancy_priority_task_penalty');
     }
