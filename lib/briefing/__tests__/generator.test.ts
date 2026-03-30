@@ -135,6 +135,32 @@ describe('generator response parsing', () => {
       }),
     });
   });
+
+  it('parses discrepancy-engine write_document action payloads without artifact_type', () => {
+    const raw = JSON.stringify({
+      action: 'write_document',
+      reason: 'Signal velocity on the runway goal dropped sharply this week.',
+      artifact: {
+        content: 'Decision required: lock contingency owner by 5 PM PT today.',
+      },
+      causal_diagnosis: {
+        why_exists_now: 'The June 2026 runway goal had fewer decision-thread updates this week than last week.',
+        mechanism: 'Critical runway planning shifted into passive tracking without assigned owner accountability.',
+      },
+    });
+
+    expect(parseGeneratedPayload(raw)).toMatchObject({
+      artifact_type: 'write_document',
+      decision: 'ACT',
+      insight: 'Signal velocity on the runway goal dropped sharply this week.',
+      directive: 'Signal velocity on the runway goal dropped sharply this week.',
+      artifact: expect.objectContaining({
+        document_purpose: 'decision memo',
+        target_reader: 'decision owner',
+        content: 'Decision required: lock contingency owner by 5 PM PT today.',
+      }),
+    });
+  });
 });
 
 describe('system_introspection constraint (global — all users)', () => {

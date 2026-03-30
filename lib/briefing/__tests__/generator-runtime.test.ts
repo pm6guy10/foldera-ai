@@ -63,7 +63,7 @@ function makeSignalsQuery() {
 vi.mock('@/lib/db/client', () => ({
   createServerClient: () => ({
     from(table: string) {
-      if (table === 'tkg_actions' || table === 'tkg_goals') {
+      if (table === 'tkg_actions' || table === 'tkg_goals' || table === 'tkg_entities') {
         return {
           select() {
             return makeLimitQuery(table);
@@ -642,5 +642,6 @@ describe('generateDirective runtime failures', () => {
     expect(depArtifact?.content).not.toEqual(relArtifact?.content);
     expect(String(relArtifact?.content)).toContain('Relationship cooling');
   });
+
 });
 

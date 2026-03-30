@@ -162,7 +162,9 @@ Legacy format (also accepted):
   "why_now": "..."
 }
 
-CRITICAL: Return ONLY a JSON object. No markdown fences, no explanation, no text before or after the JSON. The response must start with { and end with }.`;
+CRITICAL: Return ONLY a JSON object. No markdown fences, no explanation, no text before or after the JSON. The response must start with { and end with }.
+
+For "action", valid values are: send_message, write_document, schedule_block, wait_rationale, do_nothing.`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1656,8 +1658,8 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     'CRITICAL: Use ONLY real names, emails, dates, and details from the context above. ' +
     'NEVER use bracket placeholders like [Name], [Company], [Date]. ' +
     'If a detail is unknown, write around it. Every field must contain real content. ' +
-    'If action_type is send_message, the "to" field MUST be a real email address extracted from the signals above. ' +
-    'If no real email exists in the signals, change action_type to write_document instead. ' +
+    'If artifact_type is send_message, the "to" field MUST be a real email address extracted from the signals above. ' +
+    'If no real email exists in the signals, change artifact_type to write_document instead. ' +
     'NEVER invent a person\'s name or email.\n\n' +
     'BANNED PHRASES FINAL CHECK — scan your output before returning. If any of these appear, rewrite or output do_nothing:\n' +
     '"just checking in", "touching base", "wanted to reach out", "reaching out to you today", ' +
@@ -2851,25 +2853,70 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
       return null;
     }
 
-    if (action === 'send_message' && parsed.message && typeof parsed.message === 'object') {
-      const msg = parsed.message as Record<string, unknown>;
-      const reason = typeof parsed.reason === 'string' ? parsed.reason : 'Discrepancy Engine: send this message.';
-      return {
-        insight: reason,
-        causal_diagnosis: parsedCausalDiagnosis ?? { why_exists_now: '', mechanism: '' },
-        causal_diagnosis_from_model: causalDiagnosisFromModel,
-        decision: 'ACT',
-        directive: reason,
-        artifact_type: 'send_message',
-        artifact: {
-          to: typeof msg.to === 'string' ? msg.to : '',
-          recipient: typeof msg.to === 'string' ? msg.to : '',
-          subject: typeof msg.subject === 'string' ? msg.subject : '',
-          body: typeof msg.body === 'string' ? msg.body : '',
-        },
-        why_now: reason, // reason serves as why_now in the Discrepancy Engine format
+    const artifactType = normalizeArtifactType(action);
+    if (!artifactType) return null;
+
+    const reason = typeof parsed.reason === 'string' ? parsed.reason.trim() : '';
+    const insight = typeof parsed.insight === 'string' ? parsed.insight.trim()
+      : (typeof parsed.evidence === 'string' ? parsed.evidence.trim() : reason);
+    const whyNow = typeof parsed.why_now === 'string' ? parsed.why_now.trim() : reason;
+    const directiveSource = typeof parsed.directive === 'string' && parsed.directive.trim().length > 0
+      ? parsed.directive.trim()
+      : (reason || insight || 'Deliver the requested artifact now.');
+    const sentenceParts = directiveSource
+      .split(/(?<=[.!?])\s+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const directive = sentenceParts[0] ?? directiveSource;
+
+    const nestedArtifact = parsed.artifact && typeof parsed.artifact === 'object'
+      ? { ...(parsed.artifact as Record<string, unknown>) }
+      : {};
+    let artifact: Record<string, unknown> = { ...nestedArtifact };
+
+    if (artifactType === 'send_message') {
+      const message = parsed.message && typeof parsed.message === 'object'
+        ? (parsed.message as Record<string, unknown>)
+        : {};
+      const to = typeof message.to === 'string'
+        ? message.to
+        : (typeof artifact.to === 'string'
+          ? artifact.to
+          : (typeof artifact.recipient === 'string' ? artifact.recipient : ''));
+      artifact = {
+        ...artifact,
+        to,
+        recipient: to,
+        subject: typeof message.subject === 'string'
+          ? message.subject
+          : (typeof artifact.subject === 'string' ? artifact.subject : ''),
+        body: typeof message.body === 'string'
+          ? message.body
+          : (typeof artifact.body === 'string' ? artifact.body : ''),
+      };
+    } else if (artifactType === 'write_document') {
+      artifact = {
+        document_purpose: typeof artifact.document_purpose === 'string' ? artifact.document_purpose : 'decision memo',
+        target_reader: typeof artifact.target_reader === 'string' ? artifact.target_reader : 'decision owner',
+        title: typeof artifact.title === 'string'
+          ? artifact.title
+          : (directive.slice(0, 120) || 'Decision memo'),
+        content: typeof artifact.content === 'string'
+          ? artifact.content
+          : (reason || insight || 'Document the decision and accountable owner.'),
       };
     }
+
+    return {
+      insight,
+      causal_diagnosis: parsedCausalDiagnosis ?? { why_exists_now: '', mechanism: '' },
+      causal_diagnosis_from_model: causalDiagnosisFromModel,
+      decision: 'ACT',
+      directive,
+      artifact_type: artifactType,
+      artifact,
+      why_now: whyNow,
+    };
   }
 
   // ---------------------------------------------------------------------------
