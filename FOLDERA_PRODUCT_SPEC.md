@@ -1,7 +1,7 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 29, 2026 (artifact conversion decision-enforcement gate added)
-Next Review: Monday March 30, 2026
+Last Updated: March 30, 2026 (trigger→action lock: deterministic mapping for all 9 discrepancy classes)
+Next Review: Monday March 31, 2026
 
 ## HOW TO USE THIS FILE
 
@@ -18,7 +18,7 @@ Everything here must be PROVEN before any user sees the product.
 | Email sends every morning | PROVEN | Cron fires daily at 11:00 UTC. Actions generated every day March 21-22. Multiple Resend IDs confirmed. wait_rationale fallback works. | — |
 | Slim wait_rationale (one line) | PROVEN | Resend 9f8ed15d, commit 9033644 | — |
 | Real directive email (not just wait_rationale) | YELLOW | Directives generate and send. March 24: generator rewritten to behavioral-analyst mode. March 28: discrepancy detection live — scorer_ev 4.37, all top 3 candidates are discrepancies. Generator freshness gate blocks them (stale evidence rejection). Fix in progress. | Generator freshness exemption for discrepancy type |
-| Discrepancy detection | PROVEN | commit `fab67f4` (2026-03-28). 9 extractors (5 absence + 4 delta). 59 unit tests. March 30: trust_class decontamination deployed (commit `ef3a4c5`) — personal entities (krista, emmett) eliminated from candidate pool. Fresh receipt: sam devore (trusted, #1), financial runway (#2). Action `4d5188bf`: `send_message`, confidence=77, `pending_approval`. | — |
+| Discrepancy detection | PROVEN | commit `fab67f4` (2026-03-28). 9 extractors (5 absence + 4 delta). 59 unit tests. March 30: trust_class decontamination deployed (commit `ef3a4c5`) — personal entities (krista, emmett) eliminated from candidate pool. Fresh receipt: sam devore (trusted, #1), financial runway (#2). Action `4d5188bf`: `send_message`, confidence=77, `pending_approval`. March 30: Trigger→Action Lock deployed (commit `17ce0b6`) — all 9 classes have deterministic action mapping, TRIGGER_CONTEXT prompt injection, post-gen validation. 62 enforcement tests. | — |
 | Cron fires at 4am PT (11:00 UTC) | PROVEN | vercel.json `0 11 * * *`. Actions generated at 09:12 UTC on March 22 (cron run). Daily generation confirmed. | — |
 | Approve/skip buttons in email | FIXED | DB mechanics verified (skip a9d165df, approve 78333ac2). Dashboard had silent error swallowing + auth redirect dropped params. Fixed in this session. | Deploy needed to verify live |
 
