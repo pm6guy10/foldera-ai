@@ -1,5 +1,25 @@
 # AUTOMATION BACKLOG
 
+### P0 — PERSONAL ENTITY CONTAMINATION ELIMINATED (2026-03-30)
+
+**Status: RESOLVED.** Personal entities (krista, emmett) no longer enter the candidate pool.
+
+**Root cause (exact):**
+- Trust-class migration (`20260330000001`) added `trust_class` column and backfilled `junk`/`transactional` but NOT `personal`. The runtime `classifySignalTrustClass()` classified new signals as `personal`, and `mergeTrustClass()` propagated to entities, but the scorer/discrepancy queries had no `.in('trust_class', ['trusted', 'unclassified'])` filter until commit `ef3a4c5`.
+- Between migration apply and code deploy, entities with `trust_class='personal'` (krista: 52 interactions, emmett: 14 interactions) still passed the old unfiltered entity query and entered the discrepancy detector's `risk` and `decay` extractors.
+- These personal entities ranked #1 and #3 (scores 3.23 and 2.50), displacing the real financial runway candidate at #2 (score 2.52). Both hit `no_thread_no_outcome` in generation, blocking the entire pipeline.
+
+**Fix (commit `ef3a4c5`, deployed via `dpl_12btEZnRtxnhMAyTPf84ZP7rpDwu`):**
+- `scorer.ts`: added `.in('trust_class', ['trusted', 'unclassified'])` to all 4 entity/commitment queries (scoreOpenLoops, detectAntiPatterns, detectEmergentPatterns).
+- `discrepancy-detector.ts`: added redundant in-memory trust_class filter at detector entry point.
+- Regression tests: 2 new cases in `discrepancy-detector.test.ts` — personal entities produce zero candidates; personal entities do not displace trusted candidates.
+
+**Production proof (fresh owner receipt `4d5188bf`):**
+- Top 5: sam devore (trusted, #1, score 3.11), financial runway (#2, 2.52), miranda (#3, 2.41), candice (#4), commitment (#5).
+- Winner: sam devore → `send_message`, confidence=77, `pending_approval`.
+- Contamination check: krista=false, emmett=false.
+- **PASS**: fresh winner comes from a real business contact, not personal contamination.
+
 ### P0 — OWNER-ONLY REAL-DATA BRAIN RECEIPT + FORCED FRESH RUN (2026-03-29)
 
 **Status: PARTIALLY RESOLVED (core blocker fixed, receipt path shipped).**
