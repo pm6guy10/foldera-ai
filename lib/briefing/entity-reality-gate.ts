@@ -213,8 +213,9 @@ export function buildVerifiedEntitySet(
 // ---------------------------------------------------------------------------
 
 function findPrimaryEntity(c: EntityGateCandidate): string | null {
-  // Relationship candidates have an explicit entityName
-  if (c.type === 'relationship' && c.entityName) {
+  // Explicit entityName (relationship candidates, or commitment candidates
+  // with a resolved promisor/promisee entity from the DB)
+  if (c.entityName) {
     return c.entityName.toLowerCase().trim();
   }
 

@@ -3010,7 +3010,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     // Open commitments (last 14 days or no deadline), excluding user-suppressed ones
     supabase
       .from('tkg_commitments')
-      .select('id, description, category, status, risk_score, due_at, implied_due_at, source_context, updated_at, trust_class')
+      .select('id, description, category, status, risk_score, due_at, implied_due_at, source_context, updated_at, trust_class, promisor_id, promisee_id')
       .eq('user_id', userId)
       .in('trust_class', ['trusted', 'unclassified'])
       .in('status', ['active', 'at_risk'])
@@ -3094,6 +3094,11 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     })
     .filter((signal: any) => signal && !isSelfReferentialSignal(signal.content));
   const entities = entitiesRes.data ?? [];
+  // Entity ID → name map so commitment candidates can resolve promisor/promisee
+  const entityIdToName = new Map<string, string>();
+  for (const e of entities) {
+    entityIdToName.set(e.id, e.name as string);
+  }
   // Filter out onboarding placeholder goals — only extracted, manual, and onboarding_stated goals feed the scorer
   const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker']);
   // Also filter out any constraint-note rows that slipped into the scoring pool with priority >= 3.
@@ -3303,6 +3308,13 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
     const actionType = inferActionType(text, 'commitment');
 
+    // Resolve entity name from promisor/promisee — commitments are entity-grounded
+    // through DB relationships even when the description text omits proper names.
+    const commitEntityName =
+      entityIdToName.get(c.promisee_id as string) ??
+      entityIdToName.get(c.promisor_id as string) ??
+      undefined;
+
     candidates.push({
       id: c.id,
       type: 'commitment',
@@ -3320,6 +3332,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           summary: c.description,
         },
       ],
+      entityName: commitEntityName,
     });
   }
 

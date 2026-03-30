@@ -198,8 +198,9 @@ function hasDecisionLeverage(c: StakesCandidate): boolean {
   // Informational-only signals have zero leverage
   if (INFORMATIONAL_ONLY_PATTERNS.some(p => p.test(text))) return false;
 
-  // Action types that imply leverage
-  if (c.actionType === 'make_decision' || c.actionType === 'schedule') return true;
+  // Action types that imply leverage — send_message forces a response from
+  // someone with authority to answer, which IS decision leverage.
+  if (c.actionType === 'make_decision' || c.actionType === 'schedule' || c.actionType === 'send_message') return true;
 
   // Check for decision leverage language
   return DECISION_LEVERAGE_PATTERNS.some(p => p.test(text));
