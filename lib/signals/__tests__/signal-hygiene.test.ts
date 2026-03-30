@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { isNonCommitment, isJunkEmailSignal, isEligibleCommitment, isUserTheActor } from '../signal-processor';
+import { isNonCommitment, isJunkEmailSignal, isEligibleCommitment, isUserTheActor, classifySignalTrustClass } from '../signal-processor';
 
 // ---------------------------------------------------------------------------
 // 1. Junk signal gate — promo/spam/newsletter
@@ -110,6 +110,38 @@ describe('isJunkEmailSignal', () => {
     const content = 'Meeting with Sarah - Q2 Planning';
     expect(isJunkEmailSignal('microsoft_todo', content)).toBe(false);
     expect(isJunkEmailSignal('notion', content)).toBe(false);
+  });
+});
+
+describe('classifySignalTrustClass', () => {
+  it('classifies promotional sender signals as junk', () => {
+    const trust = classifySignalTrustClass(
+      'gmail',
+      'email_received',
+      'newsletter@marketing.example.com',
+      'Subject: Weekly digest\nUnsubscribe anytime.',
+    );
+    expect(trust).toBe('junk');
+  });
+
+  it('classifies transactional shipping/return signals as transactional', () => {
+    const trust = classifySignalTrustClass(
+      'gmail',
+      'email_received',
+      'updates@shop.example.com',
+      'Your order confirmation and shipment tracking details are ready.',
+    );
+    expect(trust).toBe('transactional');
+  });
+
+  it('defaults business coordination signals to trusted', () => {
+    const trust = classifySignalTrustClass(
+      'outlook',
+      'email_received',
+      'sarah@partnerco.com',
+      'Subject: Q2 proposal review\nCan you send your feedback by Friday?',
+    );
+    expect(trust).toBe('trusted');
   });
 });
 

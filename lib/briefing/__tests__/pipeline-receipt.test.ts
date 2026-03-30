@@ -309,12 +309,18 @@ class InsertQuery {
         row.created_at = new Date().toISOString();
       }
       if (this.table === 'commitments') {
+        if (!row.trust_class) {
+          row.trust_class = 'unclassified';
+        }
         if (row.suppressed_at === undefined) {
           row.suppressed_at = null;
         }
         if (!row.updated_at) {
           row.updated_at = new Date().toISOString();
         }
+      }
+      if (this.table === 'entities' && !row.trust_class) {
+        row.trust_class = 'unclassified';
       }
       this.rows.push(row);
     }

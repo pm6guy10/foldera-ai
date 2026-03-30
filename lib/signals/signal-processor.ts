@@ -72,6 +72,8 @@ interface SignalExtraction {
   topics: ExtractedTopic[];
 }
 
+export type TrustClass = 'trusted' | 'junk' | 'transactional' | 'personal' | 'unclassified';
+
 interface SensitiveDetectionResult {
   isSensitive: boolean;
   types: string[];
@@ -557,6 +559,57 @@ export function isJunkEmailSignal(source: string, content: string): boolean {
   return false;
 }
 
+const TRANSACTIONAL_SIGNAL_PATTERNS = [
+  /\b(?:order\s*(?:confirmation|number|#)|receipt|invoice|shipment|shipped|delivery|tracking|return(?:ed|s)?|refund)\b/i,
+  /\b(?:password\s*reset|security\s*alert|verification\s*code|two[- ]?factor|2fa|sign.?in\s*alert|new\s*device)\b/i,
+  /\b(?:billing\s*statement|payment\s*(?:received|processed|confirmed)|direct\s*deposit)\b/i,
+];
+
+const PERSONAL_SIGNAL_PATTERNS = [
+  /\b(?:wife|husband|son|daughter|mom|mother|dad|father|sister|brother|family|friend)\b/i,
+];
+
+function containsBulkSenderPattern(author: string): boolean {
+  const lower = author.toLowerCase();
+  if (!lower) return false;
+  if (/\b(?:noreply|no-reply|newsletter|marketing)\b/i.test(lower)) return true;
+  if (/@[a-z0-9.-]*amazonses\.com\b/i.test(lower)) return true;
+  return JUNK_EMAIL_SENDER_PATTERNS.some((pattern) => pattern.test(author));
+}
+
+export function classifySignalTrustClass(
+  source: string,
+  signalType: string,
+  author: string | null | undefined,
+  content: string,
+): TrustClass {
+  const safeAuthor = author ?? '';
+  const safeContent = content ?? '';
+
+  if (containsBulkSenderPattern(safeAuthor) || isJunkEmailSignal(source, safeContent)) {
+    return 'junk';
+  }
+
+  if (TRANSACTIONAL_SIGNAL_PATTERNS.some((pattern) => pattern.test(safeContent))) {
+    return 'transactional';
+  }
+
+  if (signalType === 'email_received' && PERSONAL_SIGNAL_PATTERNS.some((pattern) => pattern.test(`${safeAuthor}\n${safeContent}`))) {
+    return 'personal';
+  }
+
+  return 'trusted';
+}
+
+function mergeTrustClass(existing: TrustClass | null | undefined, incoming: TrustClass): TrustClass {
+  const current: TrustClass = existing ?? 'unclassified';
+  if (current === incoming) return current;
+  if (current === 'trusted' || incoming === 'trusted') return 'trusted';
+  if (current === 'unclassified') return incoming;
+  if (incoming === 'unclassified') return current;
+  return 'unclassified';
+}
+
 // ---------------------------------------------------------------------------
 // Commitment eligibility gate — hard requirements before any commitment is
 // inserted into tkg_commitments, regardless of source or signal type.
@@ -682,6 +735,7 @@ async function processBatch(
   // Build prompt with decrypted signal content, skipping signals that are still ciphertext
   const decryptedBatch: RawSignal[] = [];
   const sensitiveSignalMap = new Map<string, string[]>();
+  const trustClassBySignalId = new Map<string, TrustClass>();
   const signalTexts: string[] = [];
   // Track which signal IDs are junk emails — built during decrypt pass so we
   // don't need to re-decrypt in the extraction pass.
@@ -801,6 +855,10 @@ async function processBatch(
     if (isJunkEmailSignal(s.source, contentSansAttachments)) {
       junkSignalIds.add(s.id);
     }
+    trustClassBySignalId.set(
+      s.id,
+      classifySignalTrustClass(s.source, s.type, s.author, contentSansAttachments),
+    );
 
     decryptedBatch.push(s);
     const trimmed = contentSansAttachments.length > 2000 ? contentSansAttachments.slice(0, 2000) + '...' : contentSansAttachments;
@@ -885,6 +943,7 @@ async function processBatch(
 
     // Signal-level junk gate: junkSignalIds is built during the decrypt pass above.
     const signalIsJunk = junkSignalIds.has(signal.id);
+    const signalTrustClass = trustClassBySignalId.get(signal.id) ?? 'unclassified';
 
     if (extraction && !isFolderaEmail) {
       // Upsert persons → tkg_entities (always, even for junk signals)
@@ -892,7 +951,7 @@ async function processBatch(
         if (!person.name?.trim()) continue;
         const entityId = dryRun
           ? `dry-run-entity-${entityIds.length + 1}`
-          : await upsertEntity(supabase, userId, person, signal.occurred_at);
+          : await upsertEntity(supabase, userId, person, signal.occurred_at, signalTrustClass);
         if (entityId) {
           entityIds.push(entityId);
           result.entities_upserted++;
@@ -913,7 +972,7 @@ async function processBatch(
           const commitmentId = dryRun
             ? `dry-run-commitment-${commitmentIds.length + 1}`
             : await insertCommitment(
-              supabase, userId, selfId, commitment, signal.id, entityIds,
+              supabase, userId, selfId, commitment, signal.id, entityIds, signalTrustClass,
             );
           if (commitmentId) {
             commitmentIds.push(commitmentId);
@@ -1040,6 +1099,7 @@ async function upsertEntity(
   userId: string,
   person: ExtractedPerson,
   signalOccurredAt: string | null,
+  signalTrustClass: TrustClass,
 ): Promise<string | null> {
   const name = person.name.trim();
   const nameLower = name.toLowerCase();
@@ -1059,6 +1119,7 @@ async function upsertEntity(
         }
         if (person.role) updates.role = person.role;
         if (person.company) updates.company = person.company;
+        updates.trust_class = mergeTrustClass((match.trust_class as TrustClass | null | undefined), signalTrustClass);
       }
 
       const existingLastInteraction = normalizeInteractionTimestamp(match.last_interaction ?? null);
@@ -1091,6 +1152,7 @@ async function upsertEntity(
       role: person.role ?? null,
       company: person.company ?? null,
       patterns: {},
+      trust_class: signalTrustClass,
       total_interactions: 1,
       last_interaction: signalInteractionAt ?? new Date().toISOString(),
     })
@@ -1129,6 +1191,7 @@ async function findExistingEntityMatches(
   last_interaction: string | null;
   role?: string | null;
   company?: string | null;
+  trust_class?: string | null;
 }>> {
   const matches = new Map<string, {
     id: string;
@@ -1144,7 +1207,7 @@ async function findExistingEntityMatches(
   if (person.email) {
     const emailMatchesResult = await supabase
       .from('tkg_entities')
-      .select('id, name, emails, primary_email, total_interactions, last_interaction, role, company')
+      .select('id, name, emails, primary_email, total_interactions, last_interaction, role, company, trust_class')
       .eq('user_id', userId)
       .contains('emails', [person.email]);
 
@@ -1159,7 +1222,7 @@ async function findExistingEntityMatches(
 
   const nameMatchResult = await supabase
     .from('tkg_entities')
-    .select('id, name, emails, primary_email, total_interactions, last_interaction, role, company')
+    .select('id, name, emails, primary_email, total_interactions, last_interaction, role, company, trust_class')
     .eq('user_id', userId)
     .ilike('name', normalizedName)
     .maybeSingle();
@@ -1201,6 +1264,7 @@ async function insertCommitment(
   commitment: ExtractedCommitment,
   signalId: string,
   entityIds: string[],
+  signalTrustClass: TrustClass,
 ): Promise<string | null> {
   // Try to find the promisor entity; fall back to self
   let promisorId = selfId ?? null;
@@ -1260,6 +1324,7 @@ async function insertCommitment(
       due_at: commitment.due ? new Date(commitment.due).toISOString() : null,
       source: 'signal_extraction',
       source_id: signalId,
+      trust_class: signalTrustClass,
       status: 'active',
       risk_score: 0,
     })

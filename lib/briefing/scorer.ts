@@ -1418,8 +1418,9 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
         .limit(500),
       supabase
         .from('tkg_commitments')
-        .select('id, description, status, created_at, due_at, updated_at')
+        .select('id, description, status, created_at, due_at, updated_at, trust_class')
         .eq('user_id', userId)
+        .in('trust_class', ['trusted', 'unclassified'])
         .is('suppressed_at', null)
         .gte('created_at', thirtyDaysAgo)
         .order('created_at', { ascending: false })
@@ -1709,8 +1710,9 @@ export async function detectEmergentPatterns(userId: string): Promise<EmergentPa
       // All commitments (active + done for follow-through comparison)
       supabase
         .from('tkg_commitments')
-        .select('id, description, status, created_at, due_at')
+        .select('id, description, status, created_at, due_at, trust_class')
         .eq('user_id', userId)
+        .in('trust_class', ['trusted', 'unclassified'])
         .is('suppressed_at', null)
         .gte('created_at', thirtyDaysAgo)
         .order('created_at', { ascending: false })
@@ -2929,8 +2931,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     // Open commitments (last 14 days or no deadline), excluding user-suppressed ones
     supabase
       .from('tkg_commitments')
-      .select('id, description, category, status, risk_score, due_at, implied_due_at, source_context, updated_at')
+      .select('id, description, category, status, risk_score, due_at, implied_due_at, source_context, updated_at, trust_class')
       .eq('user_id', userId)
+      .in('trust_class', ['trusted', 'unclassified'])
       .in('status', ['active', 'at_risk'])
       .is('suppressed_at', null)
       .order('risk_score', { ascending: false })
@@ -2951,8 +2954,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     // Active relationships provide context; cooling ones surface re-engagement
     supabase
       .from('tkg_entities')
-      .select('id, name, last_interaction, total_interactions, patterns')
+      .select('id, name, last_interaction, total_interactions, patterns, trust_class')
       .eq('user_id', userId)
+      .in('trust_class', ['trusted', 'unclassified'])
       .neq('name', 'self')
       .order('total_interactions', { ascending: false })
       .limit(30),

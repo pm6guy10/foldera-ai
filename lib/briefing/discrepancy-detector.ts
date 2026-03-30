@@ -63,6 +63,7 @@ interface EntityRow {
   last_interaction: string | null;
   total_interactions: number;
   patterns: Record<string, unknown> | null;
+  trust_class?: 'trusted' | 'junk' | 'transactional' | 'personal' | 'unclassified' | null;
 }
 
 interface CommitmentRow {
@@ -75,6 +76,7 @@ interface CommitmentRow {
   implied_due_at: string | null;
   source_context: string | null;
   updated_at: string | null;
+  trust_class?: 'trusted' | 'junk' | 'transactional' | 'personal' | 'unclassified' | null;
 }
 
 interface GoalRow {
@@ -721,7 +723,9 @@ export function detectDiscrepancies(args: {
   now?: Date;
 }): Discrepancy[] {
   const nowMs = (args.now ?? new Date()).getTime();
-  const { commitments, entities, goals, decryptedSignals } = args;
+  const commitments = args.commitments.filter((c) => (c.trust_class ?? 'unclassified') === 'trusted' || (c.trust_class ?? 'unclassified') === 'unclassified');
+  const entities = args.entities.filter((e) => (e.trust_class ?? 'unclassified') === 'trusted' || (e.trust_class ?? 'unclassified') === 'unclassified');
+  const { goals, decryptedSignals } = args;
 
   const all: Discrepancy[] = [
     // Delta-based first (higher urgency scores — float to top naturally)

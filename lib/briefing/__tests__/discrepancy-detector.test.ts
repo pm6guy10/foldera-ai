@@ -517,6 +517,24 @@ describe('detectDiscrepancies — ordering and output limits', () => {
   });
 });
 
+describe('trust class filtering', () => {
+  it('ignores junk and transactional entities/commitments', () => {
+    const result = detectDiscrepancies({
+      entities: [
+        { ...makeSilentEntity({ id: 'junk-entity', total_interactions: 22 }), trust_class: 'junk' },
+      ],
+      commitments: [
+        { ...makeCommitment({ id: 'txn-commit', due_at: daysFromNowISO(2) }), trust_class: 'transactional' },
+      ],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+
+    expect(result).toHaveLength(0);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // ID stability
 // ---------------------------------------------------------------------------
