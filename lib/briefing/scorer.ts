@@ -1178,10 +1178,12 @@ function getInvariantFailureReasons(candidate: ScoredLoop): string[] {
     ? lifecycle.state === 'active_now' && lifecycle.actionability === 'actionable'
     : candidate.score > 0;
   const reasons: string[] = [];
-  const obviousAdvice = isObviousFirstLayerAdvice(candidate);
-  // Relationship candidates are exempt from noise filtering — "Follow up with X" is their canonical
-  // title format (built from tkg_entities), not routine maintenance in the noise-filter sense.
-  const routineMaintenance = candidate.type === 'relationship'
+  // Relationship candidates are exempt from both noise and obvious-advice checks.
+  // "Follow up with X" is their canonical title format (built from tkg_entities) —
+  // it looks like a generic phrase but represents a verified entity with real interaction history.
+  const isRelationship = candidate.type === 'relationship';
+  const obviousAdvice = isRelationship ? false : isObviousFirstLayerAdvice(candidate);
+  const routineMaintenance = isRelationship
     ? false
     : isNoiseCandidateText(candidate.title, candidate.content);
   const evidenceDensity = computeEvidenceDensity(candidate);
