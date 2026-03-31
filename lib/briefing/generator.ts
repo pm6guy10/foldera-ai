@@ -1231,7 +1231,16 @@ function buildStructuredContext(
     ? uniqueEmails.filter((e) => !userEmails.has(e.toLowerCase()))
     : uniqueEmails;
 
-  const has_real_recipient = externalEmails.length > 0;
+  // Goal-linked discrepancy winners (id: discrepancy_velocity_* or discrepancy_drift_*)
+  // have NO dedicated person entity — only a goal. Signal evidence emails are from
+  // unrelated senders in the evidence window, not from a specific recipient for this action.
+  // Counting them as has_real_recipient causes the LLM to pick a random email as `to`.
+  // For goal-linked discrepancies, only relationship-context emails count.
+  const isGoalLinkedDiscrepancy = winner.type === 'discrepancy' &&
+    !(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(winner.id));
+  const has_real_recipient = isGoalLinkedDiscrepancy
+    ? (surgical_raw_facts.some((f) => f.startsWith('recipient_email:')))
+    : externalEmails.length > 0;
 
   // Check signal freshness
   const signalDates = (winner.sourceSignals ?? [])
