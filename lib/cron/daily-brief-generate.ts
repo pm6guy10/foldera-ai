@@ -193,19 +193,26 @@ export function evaluateBottomGate(
     }
   }
 
-  // 3. Concrete ask — must ask someone to DO something
-  if (!CONCRETE_ASK_PATTERN.test(combined)) {
-    blocked_reasons.push('NO_CONCRETE_ASK');
-  }
+  // 3–5. Concrete ask, real pressure, and social motion checks.
+  // send_message emails are exempt: warm reconnection emails (relationship decay candidates)
+  // naturally have no hard deadline or explicit request. Quality for outbound emails is
+  // already enforced by isSendWorthy (real recipient, body length, banned phrases, etc.).
+  // These three checks are designed for documents and commitment artifacts, not personal email.
+  if (directive.action_type !== 'send_message') {
+    // 3. Concrete ask — must ask someone to DO something
+    if (!CONCRETE_ASK_PATTERN.test(combined)) {
+      blocked_reasons.push('NO_CONCRETE_ASK');
+    }
 
-  // 4. Real-world pressure — deadline, consequence, or forcing function
-  if (!REAL_PRESSURE_PATTERN.test(combined)) {
-    blocked_reasons.push('NO_REAL_PRESSURE');
-  }
+    // 4. Real-world pressure — deadline, consequence, or forcing function
+    if (!REAL_PRESSURE_PATTERN.test(combined)) {
+      blocked_reasons.push('NO_REAL_PRESSURE');
+    }
 
-  // 5. Generic social motion — polished relationship maintenance with no purpose
-  if (SOCIAL_MOTION_PATTERN.test(combined)) {
-    blocked_reasons.push('GENERIC_SOCIAL_MOTION');
+    // 5. Generic social motion — polished relationship maintenance with no purpose
+    if (SOCIAL_MOTION_PATTERN.test(combined)) {
+      blocked_reasons.push('GENERIC_SOCIAL_MOTION');
+    }
   }
 
   // 6. Non-executable artifact — framework/reflection/questions, not a finished product

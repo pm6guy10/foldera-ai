@@ -87,50 +87,69 @@ describe('evaluateBottomGate', () => {
     expect(result.blocked_reasons).toContain('NO_EXTERNAL_TARGET');
   });
 
-  // --- BLOCK: no concrete ask ---
-  it('blocks a directive with no concrete ask', () => {
+  // --- BLOCK: no concrete ask (write_document — send_message is exempt) ---
+  it('blocks a write_document with no concrete ask', () => {
     const directive = makeDirective({
-      directive: 'The spending pattern shows a contradiction with stated cash goals.',
+      action_type: 'write_document',
+      directive: 'Prepare the spending analysis for Sarah Chen before the Friday deadline.',
       reason: 'Behavioral observation from recent signals.',
     });
-    const artifact = makeEmailArtifact({
-      subject: 'Spending observation',
-      body: 'Hi Sarah, I noticed the spending is higher than expected this month. The deadline is Friday.',
+    const artifact = makeDocArtifact({
+      title: 'Spending analysis',
+      content: 'Sarah Chen — spending is higher than expected this month. The deadline is Friday.',
     });
     const result = evaluateBottomGate(directive, artifact);
     expect(result.pass).toBe(false);
     expect(result.blocked_reasons).toContain('NO_CONCRETE_ASK');
   });
 
-  // --- BLOCK: no real pressure ---
-  it('blocks a directive with no deadline or consequence', () => {
+  // --- BLOCK: no real pressure (write_document — send_message is exempt) ---
+  it('blocks a write_document with no deadline or consequence', () => {
     const directive = makeDirective({
-      directive: 'Send Sarah Chen the updated numbers.',
+      action_type: 'write_document',
+      directive: 'Share the updated numbers with Sarah Chen.',
       reason: 'She mentioned wanting the latest figures.',
     });
-    const artifact = makeEmailArtifact({
-      subject: 'Updated numbers',
-      body: 'Hi Sarah, could you confirm these revised numbers look correct?',
+    const artifact = makeDocArtifact({
+      title: 'Updated numbers',
+      content: 'Sarah Chen, could you confirm these revised numbers look correct?',
     });
     const result = evaluateBottomGate(directive, artifact);
     expect(result.pass).toBe(false);
     expect(result.blocked_reasons).toContain('NO_REAL_PRESSURE');
   });
 
-  // --- BLOCK: generic social motion ---
-  it('blocks generic social check-in emails', () => {
+  // --- BLOCK: generic social motion (write_document — send_message is exempt) ---
+  it('blocks a write_document with generic social motion language', () => {
     const directive = makeDirective({
-      directive: 'Send a message to reconnect with Mike Thompson by Friday.',
+      action_type: 'write_document',
+      directive: 'Draft a reconnect note for Mike Thompson by Friday.',
       reason: 'Relationship cooling detected — last contact 30 days ago. Deadline is Friday.',
     });
-    const artifact = makeEmailArtifact({
-      to: 'mike@example.com',
-      subject: 'Catching up',
-      body: 'Hi Mike, just to say hi and see how things are going. Could you confirm a time to catch up by Friday?',
+    const artifact = makeDocArtifact({
+      title: 'Mike Thompson — reconnect note',
+      content:
+        'Just to say hi — Mike Thompson. Could you confirm a good time to catch up by Friday?',
     });
     const result = evaluateBottomGate(directive, artifact);
     expect(result.pass).toBe(false);
     expect(result.blocked_reasons).toContain('GENERIC_SOCIAL_MOTION');
+  });
+
+  // --- PASS: warm reconnection send_message bypasses ask/pressure/social checks ---
+  it('passes a warm reconnection send_message with no hard ask or deadline', () => {
+    const directive = makeDirective({
+      directive: 'Reach out to reconnect with Mike Thompson.',
+      reason: 'Relationship cooling detected — last contact 35 days ago.',
+    });
+    const artifact = makeEmailArtifact({
+      to: 'mike@example.com',
+      subject: 'Checking in',
+      body: 'Hi Mike, hope all is well. I have been thinking about our conversation at the conference and wanted to reconnect.',
+    });
+    const result = evaluateBottomGate(directive, artifact);
+    expect(result.pass).toBe(true);
+    expect(result.blocked_reasons).toEqual([]);
   });
 
   // --- BLOCK: non-executable artifact ---
