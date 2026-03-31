@@ -1614,7 +1614,7 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
       'If a detail is unknown, write around it. Every field must contain real content. ' +
       'If artifact_type is send_message, the "to" field MUST be a real email address from the recipient line above. ' +
       'NEVER invent a person\'s name or email.\n\n' +
-      'BANNED PHRASES FINAL CHECK — scan your output before returning. If any of these appear, rewrite or output do_nothing:\n' +
+      'BANNED PHRASES FINAL CHECK — scan your output before returning. If any of these appear, rewrite the email until none remain. Do NOT output do_nothing:\n' +
       '"just checking in", "touching base", "wanted to reach out", "reaching out to you today", ' +
       '"following up" without an immediate specific reference, "I hope this email finds you well", ' +
       '"hope you\'re doing well" as an opener, "as per my last email", "circling back", ' +
@@ -3534,13 +3534,24 @@ function isCausalDiagnosisIssue(issue: string): boolean {
   return normalizeValidationIssue(issue).startsWith('causal_diagnosis:');
 }
 
+// Catches: "do_nothing exact_reason is required", "do_nothing blocked_by is required"
+// These appear when the LLM incorrectly outputs do_nothing for a send_message/write_document candidate.
+function isDoNothingSchemaIssue(issue: string): boolean {
+  return issue.startsWith('do_nothing ');
+}
+
 function shouldAttemptDecisionEnforcementRepair(
   issues: string[],
   actionType: ValidArtifactTypeCanonical,
 ): boolean {
   if (issues.length === 0) return false;
   if (actionType !== 'send_message' && actionType !== 'write_document') return false;
-  return issues.every((issue) => isDecisionEnforcementIssue(issue) || isCausalDiagnosisIssue(issue));
+  return issues.every(
+    (issue) =>
+      isDecisionEnforcementIssue(issue) ||
+      isCausalDiagnosisIssue(issue) ||
+      isDoNothingSchemaIssue(issue),
+  );
 }
 
 function resolveDecisionDeadline(candidateDueDate: string | null): string {
@@ -4001,9 +4012,16 @@ async function generatePayload(
       // reinforcing preamble/fence patterns from the first attempt.
       const assistantContent = parsed ? JSON.stringify(parsed) : raw;
       attempts.push({ role: 'assistant', content: assistantContent });
-      const validRetryTypes = ctx.candidate_class === 'commitment'
-        ? 'send_message, write_document, schedule_block'
-        : 'send_message, write_document, schedule_block, wait_rationale, do_nothing';
+      // If the first attempt returned do_nothing for a non-commitment candidate, strip do_nothing
+      // from the valid retry types — prevents the LLM from just adding the missing schema fields
+      // to a do_nothing output and "passing" validation with the wrong action type.
+      const prevAttemptWasDoNothing =
+        parsed?.artifact_type === 'do_nothing' ||
+        issues.some((i) => i.startsWith('do_nothing '));
+      const validRetryTypes =
+        ctx.candidate_class === 'commitment' || prevAttemptWasDoNothing
+          ? 'send_message, write_document, schedule_block'
+          : 'send_message, write_document, schedule_block, wait_rationale, do_nothing';
       attempts.push({
         role: 'user',
         content: `Validation failed. Fix these issues and return JSON only.
