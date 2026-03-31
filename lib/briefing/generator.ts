@@ -1026,6 +1026,10 @@ interface StructuredContext {
   required_causal_diagnosis: CausalDiagnosis;
   // Trigger context block — injected for discrepancy candidates only
   trigger_context: string | null;
+  // Human-readable recipient brief — name, email, role, last contact, context.
+  // Populated for send_message candidates with a confirmed external recipient.
+  // When present, buildPromptFromStructuredContext strips system metrics entirely.
+  recipient_brief: string | null;
 }
 
 type CausalMechanismClass =
@@ -1373,6 +1377,9 @@ function buildStructuredContext(
     trigger_context: winner.type === 'discrepancy' && winner.discrepancyClass && winner.trigger
       ? buildTriggerContextBlock(winner.discrepancyClass, winner.trigger)
       : null,
+    recipient_brief: has_real_recipient
+      ? buildRecipientBrief(winner.relationshipContext ?? null, signalEvidence)
+      : null,
   };
 }
 
@@ -1484,8 +1491,138 @@ ${lines.join('\n')}
 // Part 2 continued — Build prompt from structured context
 // ---------------------------------------------------------------------------
 
+/**
+ * Parse winner.relationshipContext into a concise human-readable recipient block.
+ * Format of relationshipContext line: "- Name <email> (role, company, N interactions): pattern"
+ * Used by the send_message minimal-prompt path to give the LLM a clean person description
+ * instead of a wall of system metrics.
+ */
+function buildRecipientBrief(
+  relationshipContext: string | null,
+  signalEvidence: SignalSnippet[],
+): string | null {
+  if (!relationshipContext) return null;
+
+  const firstLine = relationshipContext.split('\n')[0].replace(/^-\s*/, '');
+
+  const nameMatch = firstLine.match(/^([^<(]+)/);
+  const name = nameMatch ? nameMatch[1].trim() : null;
+  if (!name || name.toLowerCase() === 'unknown') return null;
+
+  const emailMatch = firstLine.match(/<([^@\s>]+@[^@\s>]+\.[^@\s>]+)>/);
+  const email = emailMatch ? emailMatch[1] : null;
+
+  // Extract role/company from parens, stripping the "N interactions" count
+  const parenMatch = firstLine.match(/\(([^)]+)\)/);
+  let roleCompany: string | null = null;
+  if (parenMatch) {
+    const parts = parenMatch[1].split(',').map((p) => p.trim());
+    const nonInteraction = parts.filter((p) => !/^\d+\s+interaction/.test(p));
+    if (nonInteraction.length > 0) roleCompany = nonInteraction.join(', ');
+  }
+
+  // Extract relationship description (text after closing paren colon)
+  const patternMatch = firstLine.match(/\):\s*(.+)$/);
+  const pattern = patternMatch ? patternMatch[1].trim() : null;
+
+  // Last contact from most recent signal date
+  const sortedDates = signalEvidence
+    .map((s) => s.date)
+    .filter(Boolean)
+    .sort()
+    .reverse();
+  const lastContactDate = sortedDates.length > 0
+    ? new Date(sortedDates[0]).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : null;
+
+  const lines: string[] = [`${name}${email ? ` <${email}>` : ''}`];
+  if (roleCompany) lines.push(`Role: ${roleCompany}`);
+  if (lastContactDate) lines.push(`Last contact: ${lastContactDate}`);
+  if (pattern) lines.push(`Context: ${pattern}`);
+
+  return lines.join('\n');
+}
+
 function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   const sections: string[] = [];
+
+  // For send_message with a confirmed external recipient: strip all system metrics and pipeline
+  // labels. The LLM should see the person and the signals — not discrepancy classes, signal
+  // density numbers, causal diagnosis mechanisms, or scorer breakdowns.
+  if (ctx.has_real_recipient && ctx.recipient_brief) {
+    const m: string[] = [];
+
+    m.push(
+      `Write an email from the user to:\n${ctx.recipient_brief}\n\nTODAY: ${today()}`,
+    );
+
+    if (ctx.supporting_signals.length > 0) {
+      const signalLines = ctx.supporting_signals.slice(0, 8).map((s) => {
+        const dir = s.direction === 'sent' ? '[You →]' : s.direction === 'received' ? '[← Them]' : '';
+        return `- ${s.occurred_at}${dir ? ` ${dir}` : ''} ${s.summary}`;
+      });
+      m.push(`RECENT SIGNALS:\n${signalLines.join('\n')}`);
+    }
+
+    if (ctx.already_sent_14d.length > 0) {
+      m.push(
+        `ALREADY SENT — do not repeat these:\n` +
+        ctx.already_sent_14d.map((s) => `- ${s}`).join('\n'),
+      );
+    }
+
+    if (ctx.recent_action_history_7d.length > 0) {
+      m.push(`RECENT_ACTIONS_7D:\n${ctx.recent_action_history_7d.map((a) => `- ${a}`).join('\n')}`);
+    }
+
+    m.push(
+      `CONFIDENCE_PRIOR: ${ctx.confidence_prior}\n` +
+      `Your output confidence must stay within ±15 of this prior. Do not exceed 95.`,
+    );
+
+    m.push(
+      `SEND_MESSAGE_ARTIFACT_RULES (apply these before writing a single word):\n\n` +
+      `You are drafting a real email from Brandon Kapp to a specific person.\n` +
+      `Write it exactly as a competent professional would write it. Short. Warm but not gushing. Clear reason for writing. One ask or one piece of information. No filler.\n\n` +
+      `NEVER include:\n` +
+      `- Metrics, percentages, or system language ("52% drop", "signal density", "goal-aligned activity")\n` +
+      `- "Decision required by" or deadline ultimatums that sound like a system alert\n` +
+      `- "Can you confirm" as an opener\n` +
+      `- Any language that sounds like a dashboard alert or automated report\n` +
+      `- The word "goal", "commitment", "discrepancy", "signal", or "artifact"\n` +
+      `- Any reference to Foldera or the system generating this email\n\n` +
+      `ALWAYS include:\n` +
+      `- A natural greeting using their first name\n` +
+      `- A specific reason for reaching out tied to real context (their role, a past interaction, a shared project, a job posting, a recent event)\n` +
+      `- One clear sentence about what Brandon wants or is sharing\n` +
+      `- A warm close\n\n` +
+      `Example tone (do not copy verbatim — adapt every detail to the actual context from the signals):\n` +
+      `"Hi Cheryl, I hope things are going well with the WA Cares rollout. I interviewed with the panel back in January and wanted to stay connected as the program grows. If any regional roles come up, I'd love to be considered. Best, Brandon"\n\n` +
+      `The email must be something Brandon would actually send without editing. If context is thin, keep it short and genuine rather than long and vague.\n\n` +
+      `SEND_MESSAGE_QUALITY_BAR (mandatory — every requirement must pass):\n` +
+      `1. FIRST SENTENCE: Must reference one specific fact from the signals — a date, a named outcome, a prior message, or a concrete request. ` +
+      `Do not open with context-setting, pleasantries, or "I wanted to reach out." Start on the situation.\n` +
+      `2. ASK: State the ask explicitly in one sentence. Not implied. Not buried. The recipient knows exactly what to do.\n` +
+      `3. CONCISE: ≤ 150 words unless the situation genuinely demands more. Cut anything that does not move the email forward.\n` +
+      `4. NO FILLER: No banned phrases. No restatement of context the recipient already has. No closing padding.\n` +
+      `5. VOICE: Write as if the user is sending it themselves, not as an assistant drafting for them.`,
+    );
+
+    m.push(
+      'CRITICAL: Use ONLY real names, emails, dates, and details from the context above. ' +
+      'NEVER use bracket placeholders like [Name], [Company], [Date]. ' +
+      'If a detail is unknown, write around it. Every field must contain real content. ' +
+      'If artifact_type is send_message, the "to" field MUST be a real email address from the recipient line above. ' +
+      'NEVER invent a person\'s name or email.\n\n' +
+      'BANNED PHRASES FINAL CHECK — scan your output before returning. If any of these appear, rewrite or output do_nothing:\n' +
+      '"just checking in", "touching base", "wanted to reach out", "reaching out to you today", ' +
+      '"following up" without an immediate specific reference, "I hope this email finds you well", ' +
+      '"hope you\'re doing well" as an opener, "as per my last email", "circling back", ' +
+      'any opener that does not anchor to the specific situation in the signals above.',
+    );
+
+    return m.join('\n\n');
+  }
 
   // TRIGGER_CONTEXT — injected first so the LLM grounds its artifact in the trigger delta.
   if (ctx.trigger_context) {

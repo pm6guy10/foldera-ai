@@ -4,9 +4,17 @@
 
 ## Session Logs
 
-- 2026-03-31 — Lower send threshold for entity-linked discrepancy candidates
+- 2026-03-31 — Strip system metrics from send_message LLM context, provide human-readable recipient brief only
   MODE: AUDIT
   Commit hash(es): pending
+  Files changed: `lib/briefing/generator.ts`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` passed; `npx vitest run lib/briefing/__tests__/` (32 files, 569 tests passed)
+  Changes: (1) Added `recipient_brief: string | null` to `StructuredContext` interface. (2) Added `buildRecipientBrief()` helper that parses `winner.relationshipContext` (name, email, role/company, last contact date, relationship pattern) into a concise human-readable string. (3) Populated `recipient_brief` in `buildStructuredContext` return when `has_real_recipient === true`. (4) Added early-return path at the top of `buildPromptFromStructuredContext`: when `has_real_recipient && recipient_brief`, the LLM sees only: recipient brief, condensed signals (no class labels), already-sent guard, confidence prior, SEND_MESSAGE_ARTIFACT_RULES, and CRITICAL/BANNED-PHRASES. All discrepancy class labels, signal density metrics, causal diagnosis blocks, goal-gap analysis numbers, behavioral mirrors, behavioral history, conviction math, mechanism hints, INPUT_STATE, and PRECOMPUTED_FLAGS are stripped from this path.
+  Any unresolved issues: None
+
+- 2026-03-31 — Lower send threshold for entity-linked discrepancy candidates
+  MODE: AUDIT
+  Commit hash(es): `17e4e1e`
   Files changed: `lib/cron/daily-brief-generate.ts`, `SESSION_HISTORY.md`
   What was verified: `npm run build` passed; `npx vitest run lib/briefing/__tests__/` (32 files, 569 tests passed)
   Changes: `isSendWorthy()` — discrepancy candidates with a confirmed external email recipient now use a send threshold of 65 instead of 70. Detection: `generationLog.candidateDiscovery.topCandidates[0].candidateType === 'discrepancy'` AND `action_type === 'send_message'` AND artifact has a valid `@` recipient. All other candidates retain the 70 threshold.
