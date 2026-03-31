@@ -290,8 +290,19 @@ export function isSendWorthy(
     return { worthy: false, reason: 'do_nothing_directive' };
   }
 
+  const artifactRecord = artifact as unknown as Record<string, unknown>;
+
+  // Discrepancy candidates with a confirmed external email recipient use a lower send floor (65 vs 70).
+  // They have already passed multiple scorer gates; absence-of-signal is itself their evidence.
+  const isDiscrepancyWithRecipient =
+    directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType === 'discrepancy' &&
+    directive.action_type === 'send_message' &&
+    typeof artifactRecord.to === 'string' &&
+    (artifactRecord.to as string).includes('@');
+  const effectiveSendThreshold = isDiscrepancyWithRecipient ? 65 : CONFIDENCE_SEND_THRESHOLD;
+
   // Must clear the send confidence threshold
-  if (directive.confidence < CONFIDENCE_SEND_THRESHOLD) {
+  if (directive.confidence < effectiveSendThreshold) {
     return { worthy: false, reason: 'below_send_threshold' };
   }
 
@@ -300,7 +311,6 @@ export function isSendWorthy(
     return { worthy: false, reason: 'no_evidence' };
   }
 
-  const artifactRecord = artifact as unknown as Record<string, unknown>;
   const artifactJson = JSON.stringify(artifact);
 
   // Must not contain template placeholders

@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-03-31 — Lower send threshold for entity-linked discrepancy candidates
+  MODE: AUDIT
+  Commit hash(es): pending
+  Files changed: `lib/cron/daily-brief-generate.ts`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` passed; `npx vitest run lib/briefing/__tests__/` (32 files, 569 tests passed)
+  Changes: `isSendWorthy()` — discrepancy candidates with a confirmed external email recipient now use a send threshold of 65 instead of 70. Detection: `generationLog.candidateDiscovery.topCandidates[0].candidateType === 'discrepancy'` AND `action_type === 'send_message'` AND artifact has a valid `@` recipient. All other candidates retain the 70 threshold.
+  Any unresolved issues: None
+
 - 2026-03-31 — Hard bottom gate: block operationally empty winners before pending_approval
   MODE: AUDIT
   Commit hash(es): `835ab43`
