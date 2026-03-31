@@ -1536,9 +1536,10 @@ export async function runDailyGenerate(
         continue;
       }
 
+      const candidateType = directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType;
       const persistenceIssues = [
         ...getArtifactPersistenceIssues(directive.action_type, artifact),
-        ...validateDirectiveForPersistence({ userId, directive, artifact }),
+        ...validateDirectiveForPersistence({ userId, directive, artifact, candidateType }),
       ];
       if (persistenceIssues.length > 0) {
         logStructuredEvent({

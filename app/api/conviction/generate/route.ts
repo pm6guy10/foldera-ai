@@ -116,10 +116,12 @@ export async function POST(request: Request) {
       );
     }
 
+    const candidateType = directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType;
     const persistenceIssues = validateDirectiveForPersistence({
       userId,
       directive,
       artifact,
+      candidateType,
     });
     if (persistenceIssues.length > 0) {
       return NextResponse.json(
