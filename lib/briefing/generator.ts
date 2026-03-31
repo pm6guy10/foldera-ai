@@ -3416,41 +3416,50 @@ function validateGeneratedArtifact(
     }
   }
 
-  // write_document forcing function check: must contain a concrete next action (yes/no, deadline, decision point)
-  if (payload.artifact_type === 'write_document') {
-    const content = String((payload.artifact as Record<string, unknown>).content ?? '');
-    const hasDecisionPoint = /\b(by\s+\w+day|\bby\s+\d{4}-\d{2}-\d{2}|\bdeadline\b|\bconfirm\b|\bdecide\b|\bchoose\b|\bapprove\b|\bschedule\b|\bcommit\b|\bnext\s+(?:step|action)\b)/i.test(content);
-    if (!hasDecisionPoint) {
-      issues.push('decision_enforcement:missing_forcing_function — write_document must contain a concrete deadline, decision point, or next action');
-    }
-  }
-
   // Secondary: banned coaching language (backup gate)
   if (directive && containsBannedLanguage(directive)) {
     issues.push('directive uses coaching/advice language');
   }
 
-  issues.push(
-    ...getDecisionEnforcementIssues({
-      actionType: payload.artifact_type,
-      directiveText: payload.directive ?? '',
-      reason: payload.why_now ?? '',
-      artifact: payload.artifact ?? null,
-    }),
-  );
+  // Discrepancy candidates (relationship decay, risk, engagement collapse, etc.) produce
+  // warm reconnect or relationship-maintenance artifacts, not commitment decision memos.
+  // These artifacts will never have explicit deadlines, consequence language, or
+  // mechanism-targeted diagnostic anchors — that's correct behaviour, not a failure.
+  // Skip the decision enforcement and causal diagnosis gates for discrepancy candidates.
+  const isDiscrepancyCandidate = ctx.candidate_class === 'discrepancy';
 
-  issues.push(
-    ...getCausalDiagnosisIssues({
-      actionType: payload.artifact_type,
-      directiveText: payload.directive ?? '',
-      reason: payload.why_now ?? '',
-      artifact: payload.artifact ?? null,
-      causalDiagnosis: payload.causal_diagnosis ?? null,
-      candidateTitle: ctx.candidate_title,
-      supportingSignals: ctx.supporting_signals,
-      enforceGrounding: payload.causal_diagnosis_source === 'llm_grounded',
-    }),
-  );
+  if (!isDiscrepancyCandidate) {
+    // write_document forcing function check: must contain a concrete next action
+    if (payload.artifact_type === 'write_document') {
+      const content = String((payload.artifact as Record<string, unknown>).content ?? '');
+      const hasDecisionPoint = /\b(by\s+\w+day|\bby\s+\d{4}-\d{2}-\d{2}|\bdeadline\b|\bconfirm\b|\bdecide\b|\bchoose\b|\bapprove\b|\bschedule\b|\bcommit\b|\bnext\s+(?:step|action)\b)/i.test(content);
+      if (!hasDecisionPoint) {
+        issues.push('decision_enforcement:missing_forcing_function — write_document must contain a concrete deadline, decision point, or next action');
+      }
+    }
+
+    issues.push(
+      ...getDecisionEnforcementIssues({
+        actionType: payload.artifact_type,
+        directiveText: payload.directive ?? '',
+        reason: payload.why_now ?? '',
+        artifact: payload.artifact ?? null,
+      }),
+    );
+
+    issues.push(
+      ...getCausalDiagnosisIssues({
+        actionType: payload.artifact_type,
+        directiveText: payload.directive ?? '',
+        reason: payload.why_now ?? '',
+        artifact: payload.artifact ?? null,
+        causalDiagnosis: payload.causal_diagnosis ?? null,
+        candidateTitle: ctx.candidate_title,
+        supportingSignals: ctx.supporting_signals,
+        enforceGrounding: payload.causal_diagnosis_source === 'llm_grounded',
+      }),
+    );
+  }
 
   // Dedup check against recent actions
   const recentApproved = ctx.recent_action_history_7d
@@ -4085,7 +4094,7 @@ async function generatePayload(
         parsed?.artifact_type === 'do_nothing' ||
         issues.some((i) => i.startsWith('do_nothing '));
       const validRetryTypes =
-        ctx.candidate_class === 'commitment' || prevAttemptWasDoNothing
+        ctx.candidate_class === 'commitment' || ctx.candidate_class === 'discrepancy' || prevAttemptWasDoNothing
           ? 'send_message, write_document, schedule_block'
           : 'send_message, write_document, schedule_block, wait_rationale, do_nothing';
       attempts.push({
