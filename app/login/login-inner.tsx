@@ -35,7 +35,7 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
       </nav>
 
       {/* Main */}
-      <main className="flex-1 flex items-center justify-center px-6 py-16">
+      <main className="flex-1 flex items-center justify-center px-6 py-6">
         <div className="w-full max-w-md">
           <div className="text-center mb-12">
             <h1 className="text-5xl font-black tracking-tighter text-white mb-4">Sign in.</h1>

@@ -3,10 +3,10 @@ import type { Metadata } from 'next';
 import { getAllBlogPosts } from '@/lib/blog';
 
 export const metadata: Metadata = {
-  title: 'Foldera Blog',
+  title: 'Blog — Foldera',
   description: 'Notes on AI workflows, email triage, and reducing busywork with Foldera.',
   openGraph: {
-    title: 'Foldera Blog',
+    title: 'Blog — Foldera',
     description: 'Notes on AI workflows, email triage, and reducing busywork with Foldera.',
   },
 };

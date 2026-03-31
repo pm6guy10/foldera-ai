@@ -2136,3 +2136,14 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
   - `npm run test:prod` (51/51 pass)
 - Any unresolved issues:
   - Pending post-deploy owner receipt confirmation for financial-runway candidate output path.
+
+## 2026-03-31 — UI/UX audit + fix: pricing CTA, mobile nav, login centering, free/pro tiers, title tags
+- MODE: FLOW
+- Commit hash(es): pending
+- Files changed: `app/pricing/page.tsx` (CheckoutButton fix, two-tier free/pro layout, consistent nav), `app/pricing/layout.tsx` (new — metadata title), `app/login/login-inner.tsx` (py-16→py-6 vertical centering), `app/login/page.tsx` (metadata export), `app/page.tsx` (hamburger mobile nav, pricing section two-tier rewrite), `app/dashboard/layout.tsx` (metadata export), `app/(marketing)/blog/page.tsx` (title update), `app/layout.js` (title template), `tests/e2e/public-routes.spec.ts` (pricing CTA test updated for link→button polymorphism), `AUTOMATION_BACKLOG.md`
+- What was verified:
+  - `npm run build` — clean, 0 errors
+  - `npx playwright test tests/e2e/` — 51 passed, 1 pre-existing failure (resend webhook auth ordering, logged in backlog)
+  - `npm run test:prod` — 51/51 passed
+- Any unresolved issues:
+  - `tests/e2e/backend-safety-gates.spec.ts:372` resend webhook ordering (pre-existing, logged in AUTOMATION_BACKLOG.md)

@@ -8,7 +8,10 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://foldera.ai'),
-  title: "Foldera — Finished work, every morning",
+  title: {
+    default: "Foldera — Finished work, every morning",
+    template: "%s — Foldera",
+  },
   description: "Foldera ingests your chaos, computes conviction, and delivers executable actions. You just approve or skip.",
   icons: {
     icon: [

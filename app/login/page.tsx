@@ -1,4 +1,10 @@
+import type { Metadata } from 'next';
 import { LoginInner } from './login-inner';
+
+export const metadata: Metadata = {
+  title: 'Sign in — Foldera',
+  description: 'Sign in to Foldera. Finished work, every morning.',
+};
 
 export default async function LoginPage({
   searchParams,

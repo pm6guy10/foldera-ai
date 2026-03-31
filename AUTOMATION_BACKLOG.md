@@ -557,3 +557,4 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - Duplicate entity cleanup (beyond Yadira)
 - Email send idempotency (prevent double-send on cron double-fire)
 - Local Playwright auth-state mismatch against `http://localhost:3000` still breaks the authenticated production-smoke subset
+- `tests/e2e/backend-safety-gates.spec.ts:372` — resend webhook returns 401 (auth check) before 400 (body validation); test expects 400 for empty body; pre-existing ordering issue in `/api/resend/webhook/route.ts`, not introduced by any current session

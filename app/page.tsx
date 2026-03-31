@@ -713,10 +713,18 @@ function FeatureCarousel() {
 // NAVIGATION
 // ============================================================================
 function Navigation({ scrolled, isLoggedIn }: NavigationProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const navLinks = [
+    { label: 'Platform', href: '#product' },
+    { label: 'Pricing', href: '#pricing' },
+    { label: 'Blog', href: '/blog' },
+  ];
+
   return (
     <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${
       scrolled
-        ? 'bg-black/80 backdrop-blur-2xl border-b border-white/5 py-4 shadow-2xl'
+        ? 'bg-black/90 backdrop-blur-2xl border-b border-white/5 py-4 shadow-2xl'
         : 'bg-transparent py-4 md:py-8'
     }`}>
       <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
@@ -727,13 +735,14 @@ function Navigation({ scrolled, isLoggedIn }: NavigationProps) {
           <span className="hidden sm:inline text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
         </a>
 
+        {/* Desktop links */}
         <div className="hidden md:flex items-center gap-12 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
-          <a href="#product" className="hover:text-white transition-colors">Platform</a>
-          <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-          <a href="/blog" className="hover:text-white transition-colors">Blog</a>
+          {navLinks.map((l) => (
+            <a key={l.label} href={l.href} className="hover:text-white transition-colors">{l.label}</a>
+          ))}
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           {isLoggedIn ? (
             <a href="/dashboard" className="px-5 md:px-7 py-2.5 md:py-3 rounded-full bg-white text-black text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
               Dashboard <ChevronRight className="w-4 h-4" />
@@ -743,13 +752,52 @@ function Navigation({ scrolled, isLoggedIn }: NavigationProps) {
               <a href="/login" className="hidden sm:block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
                 Sign in
               </a>
-            <a href="/start" className="px-5 md:px-7 py-2.5 md:py-3 rounded-full bg-white text-black text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+              <a href="/start" className="hidden sm:flex px-5 md:px-7 py-2.5 md:py-3 rounded-full bg-white text-black text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                 Get started free <ChevronRight className="w-4 h-4" />
               </a>
+              {/* Hamburger — mobile only */}
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="sm:hidden flex flex-col items-center justify-center gap-[5px] w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors focus:outline-none"
+                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={menuOpen}
+              >
+                <span className={`w-5 h-0.5 bg-white transition-all duration-200 ${menuOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
+                <span className={`w-5 h-0.5 bg-white transition-all duration-200 ${menuOpen ? 'opacity-0' : ''}`} />
+                <span className={`w-5 h-0.5 bg-white transition-all duration-200 ${menuOpen ? '-rotate-45 -translate-y-[7px]' : ''}`} />
+              </button>
             </>
           )}
         </div>
       </div>
+
+      {/* Mobile dropdown */}
+      {menuOpen && (
+        <div className="sm:hidden absolute top-full left-0 w-full bg-black/95 backdrop-blur-2xl border-b border-white/10 px-6 py-5 flex flex-col gap-4 shadow-2xl">
+          {navLinks.map((l) => (
+            <a
+              key={l.label}
+              href={l.href}
+              onClick={() => setMenuOpen(false)}
+              className="text-[13px] font-black uppercase tracking-[0.2em] text-zinc-400 hover:text-white transition-colors py-1"
+            >
+              {l.label}
+            </a>
+          ))}
+          <div className="border-t border-white/10 pt-4 flex flex-col gap-3">
+            <a href="/login" className="text-[13px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors py-1">
+              Sign in
+            </a>
+            <a
+              href="/start"
+              className="w-full py-3.5 rounded-xl bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+            >
+              Get started free <ChevronRight className="w-4 h-4" />
+            </a>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
@@ -897,32 +945,78 @@ export default function App() {
       <FeatureCarousel />
 
       {/* ── PRICING ── */}
-      <section id="pricing" className="py-40 md:py-44 border-t border-white/5 relative bg-[#07070c] overflow-hidden">
+      <section id="pricing" className="py-32 md:py-40 border-t border-white/5 relative bg-[#07070c] overflow-hidden">
         <AmbientGrid />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.1)_0%,transparent_50%)] pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.08)_0%,transparent_50%)] pointer-events-none" aria-hidden="true" />
         <Reveal className="max-w-6xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-20 md:mb-24">
-            <h2 className="text-6xl md:text-[8rem] font-black tracking-tighter text-white mb-8 leading-none">One plan.<br />No decisions.</h2>
-            <p className="text-zinc-400 text-xl md:text-3xl font-medium tracking-tight">Finished work, every morning.</p>
+          <div className="text-center mb-16 md:mb-20">
+            <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white mb-6 leading-none">One plan.<br />No decisions.</h2>
+            <p className="text-zinc-400 text-xl font-medium tracking-tight">Start reading for free. Upgrade when you want the finished work.</p>
           </div>
-          <div className="max-w-lg mx-auto perspective-1000">
-            <div className="rounded-[3rem] p-[1px] bg-gradient-to-b from-cyan-400/50 via-blue-500/10 to-transparent shadow-[0_0_150px_rgba(6,182,212,0.2)] hover:shadow-[0_0_200px_rgba(6,182,212,0.3)] transition-shadow duration-1000 group">
-              <div className="rounded-[calc(3rem-1px)] bg-zinc-950/90 backdrop-blur-3xl p-12 md:p-16 relative overflow-hidden text-center group-hover:-translate-y-2 transition-transform duration-700">
+
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+
+            {/* FREE */}
+            <div className="rounded-[2.5rem] bg-zinc-950/80 border border-white/10 p-10 md:p-12 flex flex-col">
+              <div className="mb-8">
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-4 bg-white/5 border border-white/10 px-4 py-2 rounded-lg inline-block">
+                  Free forever
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-6xl font-black text-white tracking-tighter">$0</span>
+                  <span className="text-zinc-500 font-bold tracking-widest uppercase text-xs">/mo</span>
+                </div>
+                <p className="text-zinc-400 text-sm mt-3 leading-relaxed font-medium">
+                  The read — one directive every morning that tells you what matters.
+                </p>
+              </div>
+              <ul className="space-y-4 mb-10 flex-1">
+                {['Email + calendar sync', 'One directive every morning', 'See what matters and why', 'Approve or skip in one tap', 'Encrypted at rest'].map((f) => (
+                  <li key={f} className="flex items-center gap-4 text-zinc-300">
+                    <div className="p-1 rounded-full bg-white/5 border border-white/15 shrink-0">
+                      <Check className="w-3.5 h-3.5 text-zinc-400 shrink-0" aria-hidden="true" />
+                    </div>
+                    <span className="text-sm font-medium tracking-tight">{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="/start"
+                className="w-full py-4 rounded-2xl border border-white/20 text-zinc-300 font-black uppercase tracking-[0.2em] text-xs hover:border-white/40 hover:text-white transition-all flex items-center justify-center gap-3 active:scale-95"
+              >
+                Start free — no card <ChevronRight className="w-4 h-4" aria-hidden="true" />
+              </a>
+            </div>
+
+            {/* PRO */}
+            <div className="rounded-[2.5rem] p-[1px] bg-gradient-to-b from-cyan-400/50 via-blue-500/10 to-transparent shadow-[0_0_120px_rgba(6,182,212,0.2)] hover:shadow-[0_0_180px_rgba(6,182,212,0.3)] transition-shadow duration-1000 group">
+              <div className="rounded-[calc(2.5rem-1px)] bg-zinc-950/90 backdrop-blur-3xl p-10 md:p-12 relative overflow-hidden flex flex-col h-full group-hover:-translate-y-1 transition-transform duration-700">
                 <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                <div className="mb-14 relative z-10">
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-6 bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 rounded-lg inline-block shadow-inner">Professional</p>
-                  <div className="flex items-baseline justify-center gap-2">
-                    <span className="text-8xl font-black text-white tracking-tighter">$29</span>
+                <div className="mb-8 relative z-10">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-4 bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 rounded-lg inline-block shadow-inner">
+                    Professional
+                  </p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-6xl font-black text-white tracking-tighter">$29</span>
                     <span className="text-zinc-500 font-bold tracking-widest uppercase text-xs">/mo</span>
                   </div>
+                  <p className="text-zinc-400 text-sm mt-3 leading-relaxed font-medium">
+                    The finished work — drafted emails and documents, ready to approve.
+                  </p>
                 </div>
-                <ul className="space-y-6 mb-16 relative z-10 text-left">
-                  {['Email + calendar sync', 'One directive every morning', 'Drafted emails + documents', 'Approve or skip in one tap', 'Encrypted at rest', 'Gets smarter every day'].map((f) => (
-                    <li key={f} className="flex items-center gap-5 text-white">
-                      <div className="p-1 rounded-full bg-cyan-500/10 border border-cyan-500/30">
-                        <Check className="w-4 h-4 text-cyan-400 shrink-0" aria-hidden="true" />
+                <ul className="space-y-4 mb-10 relative z-10 flex-1">
+                  <li className="flex items-center gap-4 text-zinc-500">
+                    <div className="p-1 rounded-full bg-white/5 border border-white/10 shrink-0">
+                      <Check className="w-3.5 h-3.5 text-zinc-600 shrink-0" aria-hidden="true" />
+                    </div>
+                    <span className="text-sm font-medium tracking-tight italic">Everything in Free, plus:</span>
+                  </li>
+                  {['Drafted emails, ready to send', 'Drafted documents and decision frames', 'Approve & send in one tap', 'Artifacts delivered every morning', 'Gets smarter every day'].map((f) => (
+                    <li key={f} className="flex items-center gap-4 text-white">
+                      <div className="p-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 shrink-0">
+                        <Check className="w-3.5 h-3.5 text-cyan-400 shrink-0" aria-hidden="true" />
                       </div>
-                      <span className="text-lg font-bold tracking-tight text-zinc-200">{f}</span>
+                      <span className="text-sm font-bold tracking-tight text-zinc-200">{f}</span>
                     </li>
                   ))}
                 </ul>
@@ -932,11 +1026,12 @@ export default function App() {
                 >
                   Get started free <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </a>
-                <p className="text-center text-zinc-500 text-[10px] uppercase tracking-[0.2em] font-black mt-8 leading-relaxed relative z-10">
+                <p className="text-center text-zinc-500 text-[10px] uppercase tracking-[0.2em] font-black mt-6 leading-relaxed relative z-10">
                   No credit card required.
                 </p>
               </div>
             </div>
+
           </div>
         </Reveal>
       </section>

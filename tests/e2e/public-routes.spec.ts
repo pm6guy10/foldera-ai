@@ -135,9 +135,13 @@ test.describe('Pricing page /pricing', () => {
 
   test('CTA button is visible', async ({ page }) => {
     await page.goto('/pricing');
-    const cta = page.getByRole('button', { name: /(get started free|continue to checkout)/i });
-    await expect(cta).toBeVisible();
-    // Button text varies by auth state: "Get started free" or "Continue to checkout"
+    // Unauthenticated: CTA is an <a> link; authenticated: CTA is a <button>.
+    // Match either role with the expected text.
+    const ctaLink = page.getByRole('link', { name: /get started free/i }).first();
+    const ctaButton = page.getByRole('button', { name: /continue to checkout/i });
+    const linkVisible = await ctaLink.isVisible().catch(() => false);
+    const buttonVisible = await ctaButton.isVisible().catch(() => false);
+    expect(linkVisible || buttonVisible).toBe(true);
   });
 
   test('loads with price visible — mobile 390px', async ({ page }) => {
