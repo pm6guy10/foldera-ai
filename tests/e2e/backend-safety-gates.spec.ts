@@ -381,7 +381,9 @@ test.describe('Backend safety gates', () => {
       }),
     );
 
-    expect(result.response.status()).toBe(400);
+    // svix signature verification runs before body validation;
+    // an empty body fails the signature check → 401, not 400.
+    expect(result.response.status()).toBe(401);
     expect(result.response.status()).not.toBe(500);
   });
 });

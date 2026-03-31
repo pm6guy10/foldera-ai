@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-31T22:52:56.703Z",
+  "timestamp": "2026-03-31T23:23:29.738Z",
   "summary": {
     "total": 39,
     "errors": 0,
@@ -12,6 +12,12 @@
       "category": "meta",
       "page": "public/",
       "description": "Page title: \"Foldera — Finished work, every morning\""
+    },
+    {
+      "severity": "INFO",
+      "category": "button",
+      "page": "public/",
+      "description": "Button: \"(no text)\" disabled=false"
     },
     {
       "severity": "INFO",
@@ -65,7 +71,7 @@
       "severity": "INFO",
       "category": "meta",
       "page": "public/login",
-      "description": "Page title: \"Foldera — Finished work, every morning\""
+      "description": "Page title: \"Sign in — Foldera — Foldera\""
     },
     {
       "severity": "INFO",
@@ -101,49 +107,43 @@
       "severity": "INFO",
       "category": "meta",
       "page": "public/pricing",
-      "description": "Page title: \"Foldera — Finished work, every morning\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/pricing",
-      "description": "Button: \"GET STARTED FREE\" disabled=false"
+      "description": "Page title: \"Pricing — Foldera — Foldera\""
     },
     {
       "severity": "INFO",
       "category": "meta",
       "page": "public/blog",
-      "description": "Page title: \"Foldera Blog\""
+      "description": "Page title: \"Blog — Foldera — Foldera\""
     },
     {
       "severity": "INFO",
       "category": "meta",
       "page": "public/blog/ai-email-assistant",
-      "description": "Page title: \"AI That Reads My Email and Tells Me What to Do Every Morning\""
+      "description": "Page title: \"AI That Reads My Email and Tells Me What to Do Every Morning — Foldera\""
     },
     {
       "severity": "INFO",
       "category": "meta",
       "page": "public/blog/ai-task-prioritization",
-      "description": "Page title: \"AI That Prioritizes My Tasks (By Eliminating Them)\""
+      "description": "Page title: \"AI That Prioritizes My Tasks (By Eliminating Them) — Foldera\""
     },
     {
       "severity": "INFO",
       "category": "meta",
       "page": "public/blog/best-ai-tools-solopreneurs-2026",
-      "description": "Page title: \"Best AI Tools for Solopreneurs 2026\""
+      "description": "Page title: \"Best AI Tools for Solopreneurs 2026 — Foldera\""
     },
     {
       "severity": "INFO",
       "category": "meta",
       "page": "public/blog/reduce-email-overwhelm",
-      "description": "Page title: \"Reduce Email Overwhelm (By Handling What You're Avoiding)\""
+      "description": "Page title: \"Reduce Email Overwhelm (By Handling What You're Avoiding) — Foldera\""
     },
     {
       "severity": "INFO",
       "category": "meta",
       "page": "public/blog/ai-assistant-busy-professionals",
-      "description": "Page title: \"AI Assistant for Busy Professionals (That Actually Reduces Work)\""
+      "description": "Page title: \"AI Assistant for Busy Professionals (That Actually Reduces Work) — Foldera\""
     },
     {
       "severity": "INFO",
@@ -209,42 +209,42 @@
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/auth/session",
-      "description": "200 in 650ms — shape OK (expected: { user: { id, email } })",
+      "description": "200 in 760ms — shape OK (expected: { user: { id, email } })",
       "detail": "{\"user\":{\"name\":\"Brandon Kapp\",\"email\":\"b-kapp@outlook.com\",\"image\":\"data:image/jpeg;base64, iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcd"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/integrations/status",
-      "description": "200 in 35ms — shape OK (expected: { integrations: [] })",
-      "detail": "{\"integrations\":[{\"provider\":\"google\",\"is_active\":true,\"sync_email\":null,\"last_synced_at\":\"2026-03-31T22:46:01.989+00:00\",\"scopes\":null},{\"provider\":\"azure_ad\",\"is_active\":true,\"sync_email\":null,\"last"
+      "description": "200 in 122ms — shape OK (expected: { integrations: [] })",
+      "detail": "{\"integrations\":[{\"provider\":\"google\",\"is_active\":true,\"sync_email\":\"b.kapp1010@gmail.com\",\"last_synced_at\":null,\"scopes\":\"https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/a"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/conviction/latest",
-      "description": "200 in 930ms — shape OK (expected: status 200 (any body))",
-      "detail": "{\"id\":\"8f538825-b50f-4147-8d9d-971255d9ccd5\",\"userId\":\"e40b7cd8-4925-42f7-bc99-5022969f1d22\",\"directive\":\"Send a decision request that secures one accountable owner and a committed answer by 5:00 PM P"
+      "description": "200 in 967ms — shape OK (expected: status 200 (any body))",
+      "detail": "{\"context_greeting\":\"Tuesday evening. 105 active commitments. Top priority: Resolve ESD overpayment waiver (Claim 2MFDBB-007, RCW 50.20.190, hardship waiver submitted, follow up 800-318-6022 if no res"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/subscription/status",
-      "description": "200 in 682ms — shape OK (expected: { status: string })",
+      "description": "200 in 741ms — shape OK (expected: { status: string })",
       "detail": "{\"plan\":\"pro\",\"status\":\"active\",\"daysRemaining\":999}"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/onboard/set-goals",
-      "description": "200 in 820ms — shape OK (expected: status 200)",
+      "description": "200 in 708ms — shape OK (expected: status 200)",
       "detail": "{\"buckets\":[\"Business ops\",\"Relationships\",\"Job search\",\"Financial\",\"Health & family\"],\"freeText\":\"Be a stronger spiritual leader\"}"
     },
     {
       "severity": "INFO",
       "category": "generate-now",
       "page": "settings/generate-now",
-      "description": "Success: \"generated and sent\" appeared after 7274ms"
+      "description": "Success: \"generated and sent\" appeared after 70418ms"
     }
   ]
 }

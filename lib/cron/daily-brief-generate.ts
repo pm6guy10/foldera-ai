@@ -345,26 +345,32 @@ export function isSendWorthy(
     }
   }
 
-  // Must not contain generic opener language that signals no specific context
-  if (GENERIC_LANGUAGE_PATTERN.test(artifactJson)) {
-    return { worthy: false, reason: 'generic_language' };
-  }
+  // Discrepancy candidates (relationship decay, risk, engagement collapse) produce
+  // warm reconnect emails that intentionally have no decision-enforcement language,
+  // no generic opener ban, and no weak-winner test — quality is enforced by the
+  // recipient/body/subject checks above and the scorer gates that chose this candidate.
+  if (!isDiscrepancyWithRecipient) {
+    // Must not contain generic opener language that signals no specific context
+    if (GENERIC_LANGUAGE_PATTERN.test(artifactJson)) {
+      return { worthy: false, reason: 'generic_language' };
+    }
 
-  // Must not be a weak winner — polished sludge that doesn't force a reply,
-  // decision, approval, or deadline movement.
-  if (WEAK_WINNER_PATTERN.test(artifactJson)) {
-    return { worthy: false, reason: 'weak_winner_no_pressure' };
-  }
+    // Must not be a weak winner — polished sludge that doesn't force a reply,
+    // decision, approval, or deadline movement.
+    if (WEAK_WINNER_PATTERN.test(artifactJson)) {
+      return { worthy: false, reason: 'weak_winner_no_pressure' };
+    }
 
-  const decisionIssues = getDecisionEnforcementIssues({
-    actionType: directive.action_type,
-    directiveText: directive.directive,
-    reason: directive.reason,
-    artifact: artifactRecord,
-  });
-  if (decisionIssues.length > 0) {
-    const firstIssue = decisionIssues[0].replace('decision_enforcement:', '');
-    return { worthy: false, reason: `decision_enforcement_${firstIssue}` };
+    const decisionIssues = getDecisionEnforcementIssues({
+      actionType: directive.action_type,
+      directiveText: directive.directive,
+      reason: directive.reason,
+      artifact: artifactRecord,
+    });
+    if (decisionIssues.length > 0) {
+      const firstIssue = decisionIssues[0].replace('decision_enforcement:', '');
+      return { worthy: false, reason: `decision_enforcement_${firstIssue}` };
+    }
   }
 
   return { worthy: true, reason: '' };
@@ -699,6 +705,27 @@ export function todayStartIso(): string {
   const start = new Date();
   start.setUTCHours(0, 0, 0, 0);
   return start.toISOString();
+}
+
+/**
+ * Returns the start of the Pacific-time "day" expressed in UTC.
+ * We anchor at 08:00 UTC which is midnight PST (UTC-8).
+ * In PDT (UTC-7) this is 1:00 AM, which is still safely before the
+ * 4:00 AM PT / 11:00 UTC cron window.
+ *
+ * Why this matters: evening test/manual sessions (e.g. 7 PM PT = 02:00 UTC)
+ * fall BEFORE 08:00 UTC, so they belong to "yesterday's PT day" and do NOT
+ * set the already-sent flag that would block the morning cron.
+ */
+export function ptDayStartIso(): string {
+  const now = new Date();
+  const anchor = new Date(now);
+  anchor.setUTCHours(8, 0, 0, 0);
+  // If we haven't yet crossed 08:00 UTC today, step back to yesterday's 08:00
+  if (now.getTime() < anchor.getTime()) {
+    anchor.setUTCDate(anchor.getUTCDate() - 1);
+  }
+  return anchor.toISOString();
 }
 
 function isoHoursAgo(hours: number): string {

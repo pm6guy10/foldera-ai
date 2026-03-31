@@ -19,8 +19,8 @@ import {
   extractArtifact,
   extractSentAt,
   findPersistedNoSendBlocker,
+  ptDayStartIso,
   resolveDailyBriefUserIds,
-  todayStartIso,
 } from './daily-brief-generate';
 
 export async function runDailySend(
@@ -28,7 +28,9 @@ export async function runDailySend(
 ): Promise<DailyBriefRunResult> {
   const supabase = createServerClient();
   const date = new Date().toISOString().slice(0, 10);
-  const todayStart = todayStartIso();
+  // Use PT-anchored day boundary (08:00 UTC) so evening test/manual sends
+  // don't block the 11:00 UTC (4 AM PT) cron from delivering the morning email.
+  const todayStart = ptDayStartIso();
 
   const eligibleUserIds = await resolveDailyBriefUserIds(options.userIds);
   if (eligibleUserIds.length === 0) {

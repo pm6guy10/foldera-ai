@@ -15,7 +15,7 @@ import type {
 import { validateDecisionPayload } from './types';
 import type { DeprioritizedLoop, ScoredLoop, ScorerResult } from './scorer';
 import { scoreOpenLoops } from './scorer';
-import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
+import { isOverDailyLimit, isOverManualCallLimit, trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import {
   getDirectiveConstraintViolations,
@@ -3496,6 +3496,7 @@ export function validateDirectiveForPersistence(input: {
   userId: string;
   directive: ConvictionDirective;
   artifact: ConvictionArtifact | Record<string, unknown> | null;
+  candidateType?: string;
 }): string[] {
   const issues: string[] = [];
 
@@ -3536,14 +3537,19 @@ export function validateDirectiveForPersistence(input: {
     issues.push(v.message);
   }
 
-  issues.push(
-    ...getDecisionEnforcementIssues({
-      actionType: input.directive.action_type,
-      directiveText: input.directive.directive,
-      reason: input.directive.reason,
-      artifact: input.artifact,
-    }),
-  );
+  // Discrepancy candidates (relationship decay, risk, etc.) produce warm reconnect or
+  // relationship-maintenance artifacts. These naturally have no explicit asks, deadlines,
+  // or consequence language — skip decision enforcement for them.
+  if (input.candidateType !== 'discrepancy') {
+    issues.push(
+      ...getDecisionEnforcementIssues({
+        actionType: input.directive.action_type,
+        directiveText: input.directive.directive,
+        reason: input.directive.reason,
+        artifact: input.artifact,
+      }),
+    );
+  }
 
   return [...new Set(issues)];
 }
@@ -4170,6 +4176,20 @@ export async function generateDirective(
       );
     }
 
+    // Manual/interactive runs bypass the spend cap (skipSpendCap=true) but are
+    // still bounded by a per-day call count so smoke tests can't burn $2.50/day.
+    if (!options.dryRun && options.skipSpendCap && await isOverManualCallLimit(userId)) {
+      logStructuredEvent({
+        event: 'generation_skipped', level: 'warn', userId,
+        artifactType: null, generationStatus: 'manual_call_limit_reached',
+        details: { scope: 'generator' },
+      });
+      return emptyDirective(
+        'Manual directive call limit reached for today.',
+        buildNoSendGenerationLog('Manual directive call limit reached for today.', 'system', null),
+      );
+    }
+
     const [scored, guardrails] = await Promise.all([
       scoreOpenLoops(userId),
       loadRecentActionGuardrails(userId),
@@ -4664,6 +4684,7 @@ export async function generateDirective(
       userId,
       directive,
       artifact: payload.artifact,
+      candidateType: currentCandidate.type,
     });
     if (persistenceIssues.length > 0) {
       candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: persistenceIssues.map(i => `persistence:${i}`) });

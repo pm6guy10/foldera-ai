@@ -16,6 +16,10 @@ import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 const DAILY_SPEND_CAP_USD = 1.00;
 export const EXTRACTION_DAILY_CAP = 2.00;
+// Max directive-generation LLM calls per UTC day for manual/interactive runs.
+// Applies only when skipSpendCap=true (Generate Now, smoke tests).
+// Cron runs are bounded by DAILY_SPEND_CAP_USD instead.
+const MAX_MANUAL_DIRECTIVE_CALLS_PER_DAY = 30;
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const SONNET_MODEL = ['claude', 'sonnet-4-20250514'].join('-');
 const SONNET_46_MODEL = ['claude', 'sonnet-4-6'].join('-');
@@ -164,6 +168,52 @@ export async function isOverDailyLimit(userId: string, callType?: string): Promi
     return true;
   }
   return false;
+}
+
+/**
+ * Returns true if the user has exceeded the per-day manual directive call cap.
+ * This guard applies to interactive/test runs that bypass the spend cap
+ * (skipSpendCap=true). It prevents smoke-test suites from burning $2.50/day
+ * on repeated Generate Now calls.
+ *
+ * Counts directive + directive_retry api_usage rows since UTC midnight.
+ * Fails open (returns false) on DB error so legitimate users are never hard-blocked.
+ */
+export async function isOverManualCallLimit(userId: string): Promise<boolean> {
+  try {
+    const supabase = createServerClient();
+    const todayUTC = new Date();
+    todayUTC.setUTCHours(0, 0, 0, 0);
+
+    const { count, error } = await supabase
+      .from('api_usage')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .in('endpoint', ['directive', 'directive_retry'])
+      .gte('created_at', todayUTC.toISOString());
+
+    if (error) return false;
+
+    const callCount = count ?? 0;
+    if (callCount >= MAX_MANUAL_DIRECTIVE_CALLS_PER_DAY) {
+      logStructuredEvent({
+        event: 'manual_directive_call_limit_reached',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'manual_call_limit_reached',
+        details: {
+          scope: 'api-tracker',
+          call_count: callCount,
+          max_calls: MAX_MANUAL_DIRECTIVE_CALLS_PER_DAY,
+        },
+      });
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 /**
