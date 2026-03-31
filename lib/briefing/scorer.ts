@@ -4192,6 +4192,22 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // reflect structural importance, not signal recency.
   // -----------------------------------------------------------------------
   const discrepancies = detectDiscrepancies({ commitments, entities, goals, decryptedSignals });
+  console.log(JSON.stringify({
+    event: 'discrepancy_detection_debug',
+    entity_count: entities.length,
+    entity_sample: entities.slice(0, 5).map(e => ({
+      name: e.name, ti: e.total_interactions,
+      silence: (e.patterns as any)?.bx_stats?.silence_detected,
+      s90d: (e.patterns as any)?.bx_stats?.signal_count_90d,
+    })),
+    commitment_count: commitments.length,
+    goal_count: goals.length,
+    signal_count: decryptedSignals.length,
+    discrepancy_count: discrepancies.length,
+    discrepancy_classes: discrepancies.map(d => d.class),
+    discrepancy_titles: discrepancies.map(d => d.title.slice(0, 80)),
+    scored_before_discrepancy: scored.length,
+  }));
   if (discrepancies.length > 0) {
     logStructuredEvent({
       event: 'discrepancy_candidates_detected',
@@ -4461,6 +4477,18 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // -----------------------------------------------------------------------
 
   const SCORED_MIN_THRESHOLD = 0.001;
+  console.log(JSON.stringify({
+    event: 'pre_final_gate_debug',
+    scored_count: scored.length,
+    scored_sample: scored.slice(0, 5).map(s => ({
+      id: s.id?.slice(0, 40),
+      type: s.type,
+      title: s.title?.slice(0, 60),
+      score: s.score,
+      invariant_pass: passesTop3RankingInvariants(s),
+      invariant_reasons: getInvariantFailureReasons(s),
+    })),
+  }));
   const validScoredCandidates = scored.filter(
     (c) => c.score > SCORED_MIN_THRESHOLD && passesTop3RankingInvariants(c),
   );
