@@ -3409,33 +3409,136 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     });
   }
 
-  // 3. Cooling relationships
+  // 3. Contextual relationships — only build candidates with open threads
+  //
+  // Bare silence (entity exists, no recent contact) is NOT a reason to build a
+  // relationship candidate.  The discrepancy decay extractor handles silence.
+  //
+  // A relationship candidate requires at least one concrete open thread:
+  //   (a) an open commitment (active/at_risk) where the entity is promisor or promisee, OR
+  //   (b) a recent signal (≤14 days) that mentions this entity by name.
+  //
+  // Without either, the generator has no context and produces generic "just
+  // checking in" artifacts that are always skipped.
+
+  // Pre-build: entity → open commitments map
+  const entityOpenThreads = new Map<string, Array<{ description: string; due_at: string | null; status: string }>>();
+  for (const c of commitments) {
+    const pid = c.promisor_id as string | null;
+    const eid = c.promisee_id as string | null;
+    for (const linkId of [pid, eid]) {
+      if (!linkId) continue;
+      const existing = entityOpenThreads.get(linkId) ?? [];
+      existing.push({
+        description: (c.description as string) ?? '',
+        due_at: (c.due_at ?? c.implied_due_at ?? null) as string | null,
+        status: c.status as string,
+      });
+      entityOpenThreads.set(linkId, existing);
+    }
+  }
+
+  // Pre-build: entity name → recent signal snippets (case-insensitive, ≤14 days)
+  const fourteenDaysMs = daysMs(14);
+  const entityRecentSignals = new Map<string, string[]>();
+  for (const e of entities) {
+    const nameLower = (e.name as string).toLowerCase();
+    const nameTokens = nameLower.split(/\s+/).filter((t: string) => t.length >= 3);
+    if (nameTokens.length === 0) continue;
+    const snippets: string[] = [];
+    for (const sig of signals) {
+      const sigAge = Date.now() - new Date(sig.occurred_at as string ?? 0).getTime();
+      if (sigAge > fourteenDaysMs) continue;
+      const sigLower = (sig.content as string).toLowerCase();
+      // Require all name tokens (first + last) to appear in the signal
+      if (nameTokens.every((t: string) => sigLower.includes(t))) {
+        snippets.push((sig.content as string).slice(0, 200));
+        if (snippets.length >= 3) break;
+      }
+    }
+    if (snippets.length > 0) entityRecentSignals.set(e.id, snippets);
+  }
+
+  let relationshipSkippedNoThread = 0;
   for (const e of entities) {
     const daysSince = Math.floor(
       (Date.now() - new Date(e.last_interaction as string).getTime()) / (1000 * 60 * 60 * 24),
     );
-    const text = `${e.name}: last contact ${daysSince} days ago, ${e.total_interactions} total interactions`;
-    const mg = matchGoal(text, goals);
+
+    const openThreads = entityOpenThreads.get(e.id) ?? [];
+    const recentSnippets = entityRecentSignals.get(e.id) ?? [];
+    const hasOpenThread = openThreads.length > 0;
+    const hasRecentSignal = recentSnippets.length > 0;
+
+    // Gate: no open thread AND no recent signal → skip entirely
+    if (!hasOpenThread && !hasRecentSignal) {
+      relationshipSkippedNoThread++;
+      continue;
+    }
+
+    // Build enriched content from whatever context exists
+    const contextParts: string[] = [];
+    if (hasOpenThread) {
+      const threadDesc = openThreads[0].description.slice(0, 120);
+      const dueStr = openThreads[0].due_at
+        ? ` (due ${new Date(openThreads[0].due_at).toISOString().slice(0, 10)})`
+        : '';
+      contextParts.push(`Open thread: ${threadDesc}${dueStr}`);
+      if (openThreads.length > 1) contextParts.push(`+${openThreads.length - 1} more open threads`);
+    }
+    if (hasRecentSignal) {
+      contextParts.push(`Recent context: ${recentSnippets[0].slice(0, 150)}`);
+    }
+    contextParts.push(`Last contact ${daysSince} days ago, ${e.total_interactions} total interactions`);
+
+    const content = `${e.name}: ${contextParts.join('. ')}`;
+    const mg = matchGoal(content, goals);
+
+    // Action type: send_message only when there's a concrete open commitment
+    // giving the generator something specific to draft about.
+    // Otherwise make_decision — "here's the context, should you act?"
+    const actionType: ActionType = hasOpenThread ? 'send_message' : 'make_decision';
+
+    // Title: reflect the actual thread, not generic "Follow up with"
+    const title = hasOpenThread
+      ? `${e.name}: ${openThreads[0].description.slice(0, 60)}`
+      : `${e.name}: ${recentSnippets[0].slice(0, 60)}`;
 
     candidates.push({
       id: e.id,
       type: 'relationship',
-      title: `Follow up with ${e.name}`,
-      content: text,
-      actionType: 'send_message',
+      title,
+      content,
+      actionType,
       urgency: relationshipUrgency(daysSince),
       matchedGoal: mg,
-      domain: inferDomain(mg, text, goalKeywordIndex, 'relationship'),
+      domain: inferDomain(mg, content, goalKeywordIndex, 'relationship'),
       sourceSignals: [
         {
           kind: 'relationship',
           id: e.id,
           occurredAt: e.last_interaction as string | undefined,
-          summary: `Follow up with ${e.name}`,
+          summary: title,
         },
       ],
       entityPatterns: e.patterns,
       entityName: e.name,
+    });
+  }
+
+  if (relationshipSkippedNoThread > 0) {
+    logStructuredEvent({
+      event: 'relationship_candidates_gated',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'scoring',
+      details: {
+        scope: 'scorer',
+        skipped_no_thread: relationshipSkippedNoThread,
+        passed: entities.length - relationshipSkippedNoThread,
+        total_entities: entities.length,
+      },
     });
   }
 
