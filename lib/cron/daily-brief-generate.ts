@@ -78,6 +78,148 @@ const VAGUE_SUBJECT_PATTERN =
   /^(re:?\s*)?(follow(ing)? up|quick (question|note|check)|hi|hey|check[- ]?in|catch[- ]?up|touching base|fyi|update|reaching out)\s*\.?$/i;
 
 // ---------------------------------------------------------------------------
+// Hard bottom gate — blocks operationally empty winners before persistence
+// ---------------------------------------------------------------------------
+
+export type BottomGateBlockReason =
+  | 'NO_EXTERNAL_TARGET'
+  | 'NO_CONCRETE_ASK'
+  | 'NO_REAL_PRESSURE'
+  | 'SELF_REFERENTIAL_DOCUMENT'
+  | 'GENERIC_SOCIAL_MOTION'
+  | 'NON_EXECUTABLE_ARTIFACT';
+
+export interface BottomGateResult {
+  pass: boolean;
+  blocked_reasons: BottomGateBlockReason[];
+}
+
+/**
+ * Checks for an external person/entity the artifact is directed at.
+ * write_document artifacts that talk only about the user = self-referential.
+ * send_message artifacts must have a real external recipient.
+ */
+const EXTERNAL_TARGET_PATTERN =
+  /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?:'s)?\b|@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}/;
+
+/**
+ * Concrete ask: a direct question, request, or action directed at another person.
+ * Not "I should reflect" or "consider the following" — but "can you confirm",
+ * "please send", "reply by", "let's schedule".
+ */
+const CONCRETE_ASK_PATTERN =
+  /\b(can you|could you|would you|will you|please\s+\w+|I need you to|confirm (by|whether|that|if)|reply (by|with|to)|send (me|us|the)|schedule (a |the )?|approve (the |this )?|decide (on |by |whether )|commit to|sign off on|let('s| us) (schedule|set|finalize|lock|confirm))\b|\?\s*$/im;
+
+/**
+ * Real-world pressure: deadline, consequence, external forcing function.
+ * Not "it would be nice" but "by Friday", "before the deadline", "or we lose".
+ */
+const REAL_PRESSURE_PATTERN =
+  /\b(by\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|end of (day|week|month)|close of business|COB|EOD|EOW|\w+day\b|20\d{2}-\d{2}-\d{2})|\bdeadline\b|\bexpir(es?|ing|ation)\b|\boverdue\b|\blast chance\b|\bfinal\b|\burgent\b|\bbefore\s+(the|we|it|they)\b|\bwindow clos(es?|ing)\b|\bif (not|no|we don't)\b.*\b(lose|miss|fail|forfeit|expire|default)\b|\bconsequence\b|\bat risk\b|\btime.sensitive\b|\bdue\s+(date|by|on)\b)\b/i;
+
+/**
+ * Self-referential document: the artifact is a memo/reflection/framework directed
+ * at the user themselves, not at any external party.
+ */
+const SELF_REFERENTIAL_DOC_PATTERN =
+  /\b(reflect(ion|ing)?(\s+on)?|my (thoughts|analysis|framework|plan|priorities|goals|observations)|personal (note|memo|journal|reflection)|note to self|internal (memo|review|analysis)|self[- ]assessment|brainstorm(ing)?(\s+session)?|thinking (through|about)|consider(ing|ation of)? (my|your|the following))\b/i;
+
+/**
+ * Generic social motion: reaching out just to maintain the relationship,
+ * with no concrete business purpose, ask, or forcing function.
+ */
+const SOCIAL_MOTION_PATTERN =
+  /\b(just (to )?(say hi|stay in touch|maintain|keep the connection|reconnect)|catch(ing)? up (on|with) life|see how (you're|you are|things are) (doing|going)|been (a while|too long)|miss(ing)? (you|our|catching)|long time no (see|talk|hear)|thinking (of|about) you|how('s| is| are) (everything|things|life|the family))\b/i;
+
+/**
+ * Non-executable artifact: a document that is a framework, set of questions,
+ * reflection, or analysis — not something that can be sent/used as-is.
+ */
+const NON_EXECUTABLE_ARTIFACT_PATTERN =
+  /\b(key (questions|considerations|takeaways|themes)|things to (consider|think about|reflect on)|questions (to ask|for) (yourself|consideration)|framework for (thinking|deciding|evaluating)|areas (of|for) (focus|consideration|improvement)|action items (to consider|for review)|potential (approaches|strategies|options to explore)|next steps.{0,20}(to consider|to think|for reflection)|food for thought)\b/i;
+
+/**
+ * Hard bottom gate: blocks operationally empty winners before pending_approval.
+ *
+ * Pure function — no DB, no side effects.
+ *
+ * Checks:
+ *   1. External execution target exists
+ *   2. Concrete ask exists
+ *   3. Real-world pressure exists
+ *   4. Not a self-referential document
+ *   5. Not generic social motion
+ *   6. Artifact is immediately executable
+ *
+ * If ANY check fails, the winner is blocked and never reaches pending_approval.
+ */
+export function evaluateBottomGate(
+  directive: ConvictionDirective,
+  artifact: ConvictionArtifact,
+): BottomGateResult {
+  const blocked_reasons: BottomGateBlockReason[] = [];
+
+  const artifactRecord = artifact as unknown as Record<string, unknown>;
+  const directiveText = directive.directive ?? '';
+  const reason = directive.reason ?? '';
+
+  // Build combined text for pattern matching
+  const artifactBody =
+    (typeof artifactRecord.body === 'string' ? artifactRecord.body : '') +
+    (typeof artifactRecord.content === 'string' ? artifactRecord.content : '') +
+    (typeof artifactRecord.subject === 'string' ? artifactRecord.subject : '') +
+    (typeof artifactRecord.title === 'string' ? artifactRecord.title : '');
+  const combined = `${directiveText}\n${reason}\n${artifactBody}`;
+
+  // 1. Self-referential document — check FIRST because this is the primary memo-sludge class
+  if (
+    (directive.action_type === 'write_document' || directive.action_type === 'make_decision') &&
+    SELF_REFERENTIAL_DOC_PATTERN.test(combined)
+  ) {
+    blocked_reasons.push('SELF_REFERENTIAL_DOCUMENT');
+  }
+
+  // 2. External execution target
+  //    send_message must have a real recipient; write_document must reference someone external
+  if (directive.action_type === 'send_message') {
+    const to = artifactRecord.to;
+    if (typeof to !== 'string' || !to.includes('@')) {
+      blocked_reasons.push('NO_EXTERNAL_TARGET');
+    }
+  } else {
+    // write_document / make_decision — must mention a real external person
+    if (!EXTERNAL_TARGET_PATTERN.test(combined)) {
+      blocked_reasons.push('NO_EXTERNAL_TARGET');
+    }
+  }
+
+  // 3. Concrete ask — must ask someone to DO something
+  if (!CONCRETE_ASK_PATTERN.test(combined)) {
+    blocked_reasons.push('NO_CONCRETE_ASK');
+  }
+
+  // 4. Real-world pressure — deadline, consequence, or forcing function
+  if (!REAL_PRESSURE_PATTERN.test(combined)) {
+    blocked_reasons.push('NO_REAL_PRESSURE');
+  }
+
+  // 5. Generic social motion — polished relationship maintenance with no purpose
+  if (SOCIAL_MOTION_PATTERN.test(combined)) {
+    blocked_reasons.push('GENERIC_SOCIAL_MOTION');
+  }
+
+  // 6. Non-executable artifact — framework/reflection/questions, not a finished product
+  if (NON_EXECUTABLE_ARTIFACT_PATTERN.test(combined)) {
+    blocked_reasons.push('NON_EXECUTABLE_ARTIFACT');
+  }
+
+  return {
+    pass: blocked_reasons.length === 0,
+    blocked_reasons,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Pre-generation gate
 // ---------------------------------------------------------------------------
 
@@ -1221,6 +1363,58 @@ export async function runDailyGenerate(
             ...cleanupMeta,
             action_id: savedNoSend.id,
             quality_gate_reason: sendWorthiness.reason,
+            ...extractThresholdValues(directive),
+          },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
+      // -----------------------------------------------------------------------
+      // HARD BOTTOM GATE — blocks operationally empty / fortune-cookie winners
+      // -----------------------------------------------------------------------
+      const bottomGate = evaluateBottomGate(directive, artifact);
+      if (!bottomGate.pass) {
+        const blockDetail = `Hard bottom gate blocked: ${bottomGate.blocked_reasons.join(', ')}`;
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'warn',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'bottom_gate_blocked',
+          details: {
+            scope: 'daily-generate',
+            blocked_reasons: bottomGate.blocked_reasons,
+            directive_text: directive.directive,
+            action_type: directive.action_type,
+            confidence: directive.confidence,
+          },
+        });
+        const savedNoSend = await persistNoSendOutcome(
+          supabase,
+          userId,
+          directive,
+          blockDetail,
+          'validation',
+        );
+        if (!savedNoSend) {
+          results.push({
+            code: 'directive_persist_failed',
+            detail: 'Failed to persist bottom-gate no-send outcome.',
+            meta: cleanupMeta,
+            success: false,
+            userId,
+          });
+          continue;
+        }
+        results.push({
+          code: 'no_send_persisted',
+          detail: blockDetail,
+          meta: {
+            ...cleanupMeta,
+            action_id: savedNoSend.id,
+            bottom_gate_blocked_reasons: bottomGate.blocked_reasons,
             ...extractThresholdValues(directive),
           },
           success: true,
