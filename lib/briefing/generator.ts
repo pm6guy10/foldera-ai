@@ -1233,12 +1233,24 @@ function buildStructuredContext(
   // have NO dedicated person entity — only a goal. Signal evidence emails are from
   // unrelated senders in the evidence window, not from a specific recipient for this action.
   // Counting them as has_real_recipient causes the LLM to pick a random email as `to`.
-  // For goal-linked discrepancies, only relationship-context emails count.
   const isGoalLinkedDiscrepancy = winner.type === 'discrepancy' &&
     !(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(winner.id));
+
+  // Entity-linked discrepancies (decay/risk/exposure/avoidance — UUID in id) have a
+  // dedicated person entity from the DB. The entity's email from relationshipContext
+  // is already in surgical_raw_facts as `recipient_email:` (see extraction above).
+  // Use that as the primary source — it is more reliable than signal sender history.
+  const hasRecipientEmailInContext = surgical_raw_facts.some((f) => {
+    if (!f.startsWith('recipient_email:')) return false;
+    const email = f.slice('recipient_email: '.length).trim().toLowerCase();
+    return !userEmails || userEmails.size === 0 || !userEmails.has(email);
+  });
+
   const has_real_recipient = isGoalLinkedDiscrepancy
-    ? (surgical_raw_facts.some((f) => f.startsWith('recipient_email:')))
-    : externalEmails.length > 0;
+    // Goal-linked: only entity-db emails count (never random signal senders)
+    ? hasRecipientEmailInContext
+    // Entity-linked or non-discrepancy: entity-db email OR external signal senders
+    : (hasRecipientEmailInContext || externalEmails.length > 0);
 
   // Check signal freshness
   const signalDates = (winner.sourceSignals ?? [])
