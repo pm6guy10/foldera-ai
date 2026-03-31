@@ -253,6 +253,8 @@ export interface ScoredLoop {
    * Passed to the generator prompt to bound free-form confidence guessing.
    */
   confidence_prior: number;
+  /** Entity name for convergence matching across candidate types */
+  entityName?: string;
   /** Discrepancy class — present only when type === 'discrepancy' */
   discrepancyClass?: DiscrepancyClass;
   /** Trigger metadata — present only when type === 'discrepancy' */
@@ -3803,6 +3805,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         },
         relatedSignals: [],
         sourceSignals: c.sourceSignals,
+        entityName: c.entityName,
         confidence_prior: 30, // suppressed candidate — use floor prior
       });
       continue;
@@ -3929,6 +3932,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       },
       relatedSignals: related,
       sourceSignals: c.sourceSignals,
+      entityName: c.entityName,
       relationshipContext,
       lifecycle,
       confidence_prior: Math.round(
@@ -4233,6 +4237,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       },
       relatedSignals: [],
       sourceSignals: d.sourceSignals,
+      entityName: d.entityName,
       confidence_prior: Math.round(Math.max(45, Math.min(85, d.urgency * 80))),
       discrepancyClass: d.class,
       trigger: d.trigger,
@@ -4252,6 +4257,73 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         evidence: d.evidence,
       },
     });
+  }
+
+  // -----------------------------------------------------------------------
+  // Convergence scoring: candidates that independently corroborate a
+  // discrepancy get a cross-signal boost. This is the triangulation engine —
+  // when multiple evidence streams (discrepancy + commitment/signal/relationship)
+  // point at the same entity or goal, the convergence multiplier surfaces them.
+  // -----------------------------------------------------------------------
+  const discrepancyEntityNames = new Set<string>();
+  const discrepancyGoalTexts = new Set<string>();
+  for (const s of scored) {
+    if (s.type !== 'discrepancy') continue;
+    if (s.entityName) discrepancyEntityNames.add(s.entityName.toLowerCase());
+    if (s.matchedGoal) discrepancyGoalTexts.add(s.matchedGoal.text);
+  }
+
+  if (discrepancyEntityNames.size > 0 || discrepancyGoalTexts.size > 0) {
+    for (const s of scored) {
+      if (s.type === 'discrepancy') continue; // discrepancies don't boost themselves
+      let convergenceAxes = 0;
+      const convergenceReasons: string[] = [];
+
+      // Axis 1: entity convergence — candidate references same person as a discrepancy
+      const candidateEntity = (s.entityName ?? '').toLowerCase();
+      if (candidateEntity && discrepancyEntityNames.has(candidateEntity)) {
+        convergenceAxes++;
+        convergenceReasons.push(`entity:${candidateEntity}`);
+      }
+
+      // Axis 2: goal convergence — candidate's matched goal matches a discrepancy's goal
+      if (s.matchedGoal && discrepancyGoalTexts.has(s.matchedGoal.text)) {
+        convergenceAxes++;
+        convergenceReasons.push(`goal:${s.matchedGoal.text.slice(0, 40)}`);
+      }
+
+      // Axis 3: content convergence — candidate title/content mentions a discrepancy entity
+      if (convergenceAxes === 0) {
+        for (const eName of discrepancyEntityNames) {
+          const firstName = eName.split(/\s+/)[0];
+          if (firstName && firstName.length >= 3 && s.title.toLowerCase().includes(firstName)) {
+            convergenceAxes++;
+            convergenceReasons.push(`content:${firstName}`);
+            break;
+          }
+        }
+      }
+
+      if (convergenceAxes > 0) {
+        const boost = convergenceAxes >= 2 ? 1.50 : 1.35;
+        s.score *= boost;
+        logStructuredEvent({
+          event: 'convergence_boost',
+          level: 'info',
+          userId,
+          artifactType: null,
+          generationStatus: 'scoring',
+          details: {
+            scope: 'scorer',
+            candidate_title: s.title.slice(0, 80),
+            convergence_axes: convergenceAxes,
+            reasons: convergenceReasons,
+            boost,
+            boosted_score: s.score,
+          },
+        });
+      }
+    }
   }
 
   // -----------------------------------------------------------------------

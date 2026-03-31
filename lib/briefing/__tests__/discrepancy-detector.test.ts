@@ -636,10 +636,18 @@ describe('getEntityRejectionReasons — admission control unit tests', () => {
     expect(reasons).toContain('office_or_org_entity');
   });
 
-  it('rejects an entity with signal_count_90d < 2 (low signal density)', () => {
-    const entity = makeEntityRow('Sam Devore', 44, 1);
-    const reasons = getEntityRejectionReasons(entity, noGoals, noSignals);
-    expect(reasons).toContain('low_signal_density');
+  it('rejects low signal density only when total_interactions < 5', () => {
+    // Post-migration: total_interactions reflects real email/calendar counts.
+    // Entities with ≥5 real interactions are valid even with low 90d signal density.
+    const lowInteractions = makeEntityRow('New Contact', 3, 1);
+    expect(getEntityRejectionReasons(lowInteractions, noGoals, noSignals)).toContain('low_signal_density');
+
+    // High interactions + low 90d density = valid (interactions predate 90d window)
+    const highInteractions = makeEntityRow('Sam Devore', 44, 1);
+    const reasons = getEntityRejectionReasons(highInteractions, noGoals, noSignals);
+    expect(reasons).not.toContain('low_signal_density');
+    // Still caught by mention_inflation (44/1 = 44x > 20x)
+    expect(reasons).toContain('mention_inflation_only');
   });
 
   it('rejects mention-inflated entity (total_interactions >> signal_count_90d by 20x)', () => {
@@ -757,13 +765,35 @@ describe('Entity admission gate — integration (decay/risk do not fire for reje
     expect(result.filter((d) => d.class === 'risk')).toHaveLength(0);
   });
 
-  it('decay does NOT fire for entity with signal_count_90d < 2', () => {
+  it('decay DOES fire for entity with signal_count_90d < 2 but total_interactions >= 5 (post-migration real counts)', () => {
     const result = detectDiscrepancies({
       entities: [
         {
           id: 'sparse-entity',
           name: 'Candice Monroe',
           total_interactions: 8,
+          last_interaction: daysAgoISO(45),
+          patterns: { bx_stats: { silence_detected: true, signal_count_90d: 1 } },
+        },
+      ],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+    // Post-migration: 8 real interactions is a verified relationship — low 90d density
+    // just means the interactions predate the window, which is exactly what decay detects
+    expect(result.filter((d) => d.class === 'decay')).toHaveLength(1);
+    expect(result[0].entityName).toBe('Candice Monroe');
+  });
+
+  it('decay does NOT fire for entity with total_interactions < 5 and signal_count_90d < 2', () => {
+    const result = detectDiscrepancies({
+      entities: [
+        {
+          id: 'new-entity',
+          name: 'New Contact',
+          total_interactions: 3,
           last_interaction: daysAgoISO(45),
           patterns: { bx_stats: { silence_detected: true, signal_count_90d: 1 } },
         },

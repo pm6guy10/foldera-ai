@@ -55,6 +55,8 @@ export interface Discrepancy {
   sourceSignals: GenerationCandidateSource[];
   /** Matched goal if discrepancy directly addresses a stated goal (e.g. drift) */
   matchedGoal: { text: string; priority: number; category: string } | null;
+  /** Entity name for convergence matching — present on entity-scoped discrepancies */
+  entityName?: string;
   /** Structured state-change metadata. Present on all delta-based triggers. */
   trigger?: TriggerMetadata;
 }
@@ -205,18 +207,18 @@ export function getEntityRejectionReasons(
     reasons.push('office_or_org_entity');
   }
 
-  // C. Low signal density — interaction count is inflated by name mentions
-  // A real relationship requires at least 2 empirically distinct signals in 90d.
-  if (signal90d < 2) {
-    // Allow if total_interactions is also low (< 5) — might just be new
-    // but still fail for silence-based extractors which require baseline
+  // C. Low signal density — post-migration total_interactions only counts real
+  // email/calendar signals. If total_interactions >= 5, the relationship is
+  // empirically verified regardless of 90d signal window (interactions may
+  // predate the 90d window, which is exactly what decay candidates detect).
+  const totalInteractions = entity.total_interactions;
+  if (signal90d < 2 && totalInteractions < 5) {
     reasons.push('low_signal_density');
   }
 
   // D. Mention inflation — total_interactions >> signal_count_90d by 20x+
-  // This is the Sam Devore signal: 44 total_interactions, 1 signal
-  // because every signal that mentions the name increments the counter
-  const totalInteractions = entity.total_interactions;
+  // Post-migration this should be rare since total_interactions is clean,
+  // but keep as safety net for edge cases.
   if (signal90d > 0 && totalInteractions > signal90d * 20) {
     reasons.push('mention_inflation_only');
   }
@@ -381,6 +383,7 @@ function extractDecay(
         },
       ],
       matchedGoal: null,
+      entityName: e.name,
       trigger,
     });
   }
@@ -662,6 +665,7 @@ function extractRisk(
         },
       ],
       matchedGoal: null,
+      entityName: e.name,
       trigger,
     });
   }
@@ -742,6 +746,7 @@ function extractEngagementCollapse(entities: EntityRow[]): Discrepancy[] {
         },
       ],
       matchedGoal: null,
+      entityName: e.name,
       trigger,
     });
   }
@@ -825,6 +830,7 @@ function extractRelationshipDropout(entities: EntityRow[]): Discrepancy[] {
         },
       ],
       matchedGoal: null,
+      entityName: e.name,
       trigger,
     });
   }
