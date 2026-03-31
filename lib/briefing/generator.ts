@@ -1672,6 +1672,24 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   if (ctx.has_real_recipient) {
     sections.push(
       `ARTIFACT_PREFERENCE: send_message is required — a real recipient email is in the signals above.\n\n` +
+      `SEND_MESSAGE_ARTIFACT_RULES (apply these before writing a single word):\n\n` +
+      `You are drafting a real email from Brandon Kapp to a specific person.\n` +
+      `Write it exactly as a competent professional would write it. Short. Warm but not gushing. Clear reason for writing. One ask or one piece of information. No filler.\n\n` +
+      `NEVER include:\n` +
+      `- Metrics, percentages, or system language ("52% drop", "signal density", "goal-aligned activity")\n` +
+      `- "Decision required by" or deadline ultimatums that sound like a system alert\n` +
+      `- "Can you confirm" as an opener\n` +
+      `- Any language that sounds like a dashboard alert or automated report\n` +
+      `- The word "goal", "commitment", "discrepancy", "signal", or "artifact"\n` +
+      `- Any reference to Foldera or the system generating this email\n\n` +
+      `ALWAYS include:\n` +
+      `- A natural greeting using their first name\n` +
+      `- A specific reason for reaching out tied to real context (their role, a past interaction, a shared project, a job posting, a recent event)\n` +
+      `- One clear sentence about what Brandon wants or is sharing\n` +
+      `- A warm close\n\n` +
+      `Example tone (do not copy verbatim — adapt every detail to the actual context from the signals):\n` +
+      `"Hi Cheryl, I hope things are going well with the WA Cares rollout. I interviewed with the panel back in January and wanted to stay connected as the program grows. If any regional roles come up, I'd love to be considered. Best, Brandon"\n\n` +
+      `The email must be something Brandon would actually send without editing. If context is thin, keep it short and genuine rather than long and vague.\n\n` +
       `SEND_MESSAGE_QUALITY_BAR (mandatory — every requirement must pass):\n` +
       `1. FIRST SENTENCE: Must reference one specific fact from the signals — a date, a named outcome, a prior message, or a concrete request. ` +
       `Do not open with context-setting, pleasantries, or "I wanted to reach out." Start on the situation.\n` +
