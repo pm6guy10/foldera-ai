@@ -1264,6 +1264,8 @@ function buildStructuredContext(
   // Entity-linked discrepancies (decay/risk/exposure/avoidance — UUID in id) have a
   // dedicated person entity from the DB. The entity's email from relationshipContext
   // is already in surgical_raw_facts as `recipient_email:` (see extraction above).
+  const isEntityLinkedDiscrepancy = winner.type === 'discrepancy' && !isGoalLinkedDiscrepancy;
+
   // Use that as the primary source — it is more reliable than signal sender history.
   const hasRecipientEmailInContext = surgical_raw_facts.some((f) => {
     if (!f.startsWith('recipient_email:')) return false;
@@ -1271,10 +1273,13 @@ function buildStructuredContext(
     return !userEmails || userEmails.size === 0 || !userEmails.has(email);
   });
 
-  const has_real_recipient = isGoalLinkedDiscrepancy
-    // Goal-linked: only entity-db emails count (never random signal senders)
+  // For entity-linked discrepancies, ONLY the entity's DB email counts as a confirmed
+  // recipient. Signal senders in the evidence window are unrelated parties, not the
+  // target person — using them causes the LLM to address emails to random senders.
+  const has_real_recipient = (isGoalLinkedDiscrepancy || isEntityLinkedDiscrepancy)
+    // Discrepancy (goal-linked or entity-linked): only entity-db email counts
     ? hasRecipientEmailInContext
-    // Entity-linked or non-discrepancy: entity-db email OR external signal senders
+    // Non-discrepancy (commitment, signal, relationship): entity-db email OR signal senders
     : (hasRecipientEmailInContext || externalEmails.length > 0);
 
   // Check signal freshness
@@ -1621,7 +1626,10 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
       'CRITICAL: Use ONLY real names, emails, dates, and details from the context above. ' +
       'NEVER use bracket placeholders like [Name], [Company], [Date]. ' +
       'If a detail is unknown, write around it. Every field must contain real content. ' +
-      'If artifact_type is send_message, the "to" field MUST be a real email address from the recipient line above. ' +
+      'For the "to" field: use ONLY the email address shown in angle brackets <email@domain.com> in the recipient line at the top of this prompt. ' +
+      'Do NOT use any email address from the signals — those are senders, not recipients. ' +
+      'Do NOT use the user\'s own email address. ' +
+      'If the recipient line has NO email address in angle brackets, output write_document instead of send_message. ' +
       'NEVER invent a person\'s name or email.\n\n' +
       'BANNED PHRASES FINAL CHECK — scan your output before returning. If any of these appear, rewrite the email until none remain. Do NOT output do_nothing:\n' +
       '"just checking in", "touching base", "wanted to reach out", "reaching out to you today", ' +
