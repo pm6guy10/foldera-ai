@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-03-28T16:49:54.558Z",
+  "timestamp": "2026-03-30T17:09:14.922Z",
   "summary": {
-    "total": 38,
-    "errors": 4,
-    "warnings": 1,
-    "info": 33
+    "total": 39,
+    "errors": 0,
+    "warnings": 0,
+    "info": 39
   },
   "findings": [
     {
@@ -30,6 +30,18 @@
       "category": "button",
       "page": "public/",
       "description": "Button: \"APPROVE & SEND\" disabled=false"
+    },
+    {
+      "severity": "INFO",
+      "category": "button",
+      "page": "public/",
+      "description": "Button: \"Prev\" disabled=false"
+    },
+    {
+      "severity": "INFO",
+      "category": "button",
+      "page": "public/",
+      "description": "Button: \"Next\" disabled=false"
     },
     {
       "severity": "INFO",
@@ -147,18 +159,18 @@
     },
     {
       "severity": "INFO",
+      "category": "button-effect",
+      "page": "interact/",
+      "description": "Button \"APPROVE & SEND\" changed page content"
+    },
+    {
+      "severity": "INFO",
       "category": "button-ok",
       "page": "interact/",
       "description": "Button \"APPROVE & SEND\" clicked — no errors"
     },
     {
       "severity": "INFO",
-      "category": "button-ok",
-      "page": "interact/",
-      "description": "Button \"\" clicked — no errors"
-    },
-    {
-      "severity": "INFO",
       "category": "button-effect",
       "page": "interact/",
       "description": "Button \"\" changed page content"
@@ -183,62 +195,56 @@
     },
     {
       "severity": "INFO",
-      "category": "auth-guard",
-      "page": "auth/dashboard",
-      "description": "Auth guard redirect from /dashboard → http://localhost:3000/login?callbackUrl=%2Fdashboard"
+      "category": "button-effect",
+      "page": "interact/",
+      "description": "Button \"\" changed page content"
     },
     {
       "severity": "INFO",
-      "category": "auth-guard",
-      "page": "auth/dashboard/settings",
-      "description": "Auth guard redirect from /dashboard/settings → http://localhost:3000/login?callbackUrl=%2Fdashboard%2Fsettings"
+      "category": "button-ok",
+      "page": "interact/",
+      "description": "Button \"\" clicked — no errors"
     },
     {
       "severity": "INFO",
-      "category": "auth-guard",
-      "page": "auth/onboard?edit=true",
-      "description": "Auth guard redirect from /onboard?edit=true → http://localhost:3000/login?callbackUrl=%2Fonboard%3Fedit%3Dtrue"
-    },
-    {
-      "severity": "WARNING",
       "category": "api-health",
       "page": "/api/auth/session",
-      "description": "200 in 16ms — shape MISMATCH (expected: { user: { id, email } })",
-      "detail": "{}"
-    },
-    {
-      "severity": "ERROR",
-      "category": "api-health",
-      "page": "/api/integrations/status",
-      "description": "401 in 16ms — shape MISMATCH (expected: { integrations: [] })",
-      "detail": "{\"error\":\"Unauthorized\"}"
-    },
-    {
-      "severity": "ERROR",
-      "category": "api-health",
-      "page": "/api/conviction/latest",
-      "description": "401 in 14ms — shape MISMATCH (expected: status 200 (any body))",
-      "detail": "{\"error\":\"Unauthorized\"}"
-    },
-    {
-      "severity": "ERROR",
-      "category": "api-health",
-      "page": "/api/subscription/status",
-      "description": "401 in 21ms — shape MISMATCH (expected: { status: string })",
-      "detail": "{\"error\":\"Unauthorized\"}"
-    },
-    {
-      "severity": "ERROR",
-      "category": "api-health",
-      "page": "/api/onboard/set-goals",
-      "description": "401 in 16ms — shape MISMATCH (expected: status 200)",
-      "detail": "{\"error\":\"Unauthorized\"}"
+      "description": "200 in 582ms — shape OK (expected: { user: { id, email } })",
+      "detail": "{\"user\":{\"name\":\"Brandon Kapp\",\"email\":\"b-kapp@outlook.com\",\"image\":\"data:image/jpeg;base64, iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcd"
     },
     {
       "severity": "INFO",
-      "category": "auth-guard",
+      "category": "api-health",
+      "page": "/api/integrations/status",
+      "description": "200 in 78ms — shape OK (expected: { integrations: [] })",
+      "detail": "{\"integrations\":[{\"provider\":\"azure_ad\",\"is_active\":true,\"sync_email\":null,\"last_synced_at\":\"2026-03-30T16:57:29.935+00:00\",\"scopes\":null},{\"provider\":\"google\",\"is_active\":true,\"sync_email\":null,\"last"
+    },
+    {
+      "severity": "INFO",
+      "category": "api-health",
+      "page": "/api/conviction/latest",
+      "description": "200 in 1038ms — shape OK (expected: status 200 (any body))",
+      "detail": "{\"id\":\"b4970602-b752-4ea3-b7cd-8ac8aa4c7deb\",\"userId\":\"e40b7cd8-4925-42f7-bc99-5022969f1d22\",\"directive\":\"Publish a decision memo that locks owner accountability and deadline by 5:00 PM PT on 2026-03-"
+    },
+    {
+      "severity": "INFO",
+      "category": "api-health",
+      "page": "/api/subscription/status",
+      "description": "200 in 775ms — shape OK (expected: { status: string })",
+      "detail": "{\"plan\":\"pro\",\"status\":\"active\",\"daysRemaining\":999}"
+    },
+    {
+      "severity": "INFO",
+      "category": "api-health",
+      "page": "/api/onboard/set-goals",
+      "description": "200 in 697ms — shape OK (expected: status 200)",
+      "detail": "{\"buckets\":[\"Business ops\",\"Relationships\",\"Job search\",\"Financial\",\"Health & family\"],\"freeText\":\"Be a stronger spiritual leader\"}"
+    },
+    {
+      "severity": "INFO",
+      "category": "generate-now",
       "page": "settings/generate-now",
-      "description": "Redirected to http://localhost:3000/login?callbackUrl=%2Fdashboard%2Fsettings — skipping Generate now test"
+      "description": "Success: \"generated and sent\" appeared after 8838ms"
     }
   ]
 }

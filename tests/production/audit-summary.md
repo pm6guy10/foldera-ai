@@ -1,30 +1,16 @@
 # Foldera Production Audit
 
-**Generated:** 2026-03-28T16:49:54.558Z
-**Total findings:** 38 (4 errors, 1 warnings, 33 info)
+**Generated:** 2026-03-30T17:09:14.922Z
+**Total findings:** 39 (0 errors, 0 warnings, 39 info)
 
-## ERROR (4)
-
-- **[api-health]** `/api/integrations/status` — 401 in 16ms — shape MISMATCH (expected: { integrations: [] })
-  > {"error":"Unauthorized"}
-- **[api-health]** `/api/conviction/latest` — 401 in 14ms — shape MISMATCH (expected: status 200 (any body))
-  > {"error":"Unauthorized"}
-- **[api-health]** `/api/subscription/status` — 401 in 21ms — shape MISMATCH (expected: { status: string })
-  > {"error":"Unauthorized"}
-- **[api-health]** `/api/onboard/set-goals` — 401 in 16ms — shape MISMATCH (expected: status 200)
-  > {"error":"Unauthorized"}
-
-## WARNING (1)
-
-- **[api-health]** `/api/auth/session` — 200 in 16ms — shape MISMATCH (expected: { user: { id, email } })
-  > {}
-
-## INFO (33)
+## INFO (39)
 
 - **[meta]** `public/` — Page title: "Foldera — Finished work, every morning"
 - **[button]** `public/` — Button: "APPROVE" disabled=false
 - **[button]** `public/` — Button: "SKIP" disabled=false
 - **[button]** `public/` — Button: "APPROVE & SEND" disabled=false
+- **[button]** `public/` — Button: "Prev" disabled=false
+- **[button]** `public/` — Button: "Next" disabled=false
 - **[button]** `public/` — Button: "(no text)" disabled=false
 - **[button]** `public/` — Button: "(no text)" disabled=false
 - **[button]** `public/` — Button: "(no text)" disabled=false
@@ -44,13 +30,22 @@
 - **[meta]** `public/blog/ai-assistant-busy-professionals` — Page title: "AI Assistant for Busy Professionals (That Actually Reduces Work)"
 - **[button-ok]** `interact/` — Button "APPROVE" clicked — no errors
 - **[button-ok]** `interact/` — Button "SKIP" clicked — no errors
+- **[button-effect]** `interact/` — Button "APPROVE & SEND" changed page content
 - **[button-ok]** `interact/` — Button "APPROVE & SEND" clicked — no errors
-- **[button-ok]** `interact/` — Button "" clicked — no errors
 - **[button-effect]** `interact/` — Button "" changed page content
 - **[button-ok]** `interact/` — Button "" clicked — no errors
 - **[button-effect]** `interact/` — Button "" changed page content
 - **[button-ok]** `interact/` — Button "" clicked — no errors
-- **[auth-guard]** `auth/dashboard` — Auth guard redirect from /dashboard → http://localhost:3000/login?callbackUrl=%2Fdashboard
-- **[auth-guard]** `auth/dashboard/settings` — Auth guard redirect from /dashboard/settings → http://localhost:3000/login?callbackUrl=%2Fdashboard%2Fsettings
-- **[auth-guard]** `auth/onboard?edit=true` — Auth guard redirect from /onboard?edit=true → http://localhost:3000/login?callbackUrl=%2Fonboard%3Fedit%3Dtrue
-- **[auth-guard]** `settings/generate-now` — Redirected to http://localhost:3000/login?callbackUrl=%2Fdashboard%2Fsettings — skipping Generate now test
+- **[button-effect]** `interact/` — Button "" changed page content
+- **[button-ok]** `interact/` — Button "" clicked — no errors
+- **[api-health]** `/api/auth/session` — 200 in 582ms — shape OK (expected: { user: { id, email } })
+  > {"user":{"name":"Brandon Kapp","email":"b-kapp@outlook.com","image":"data:image/jpeg;base64, iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcd
+- **[api-health]** `/api/integrations/status` — 200 in 78ms — shape OK (expected: { integrations: [] })
+  > {"integrations":[{"provider":"azure_ad","is_active":true,"sync_email":null,"last_synced_at":"2026-03-30T16:57:29.935+00:00","scopes":null},{"provider":"google","is_active":true,"sync_email":null,"last
+- **[api-health]** `/api/conviction/latest` — 200 in 1038ms — shape OK (expected: status 200 (any body))
+  > {"id":"b4970602-b752-4ea3-b7cd-8ac8aa4c7deb","userId":"e40b7cd8-4925-42f7-bc99-5022969f1d22","directive":"Publish a decision memo that locks owner accountability and deadline by 5:00 PM PT on 2026-03-
+- **[api-health]** `/api/subscription/status` — 200 in 775ms — shape OK (expected: { status: string })
+  > {"plan":"pro","status":"active","daysRemaining":999}
+- **[api-health]** `/api/onboard/set-goals` — 200 in 697ms — shape OK (expected: status 200)
+  > {"buckets":["Business ops","Relationships","Job search","Financial","Health & family"],"freeText":"Be a stronger spiritual leader"}
+- **[generate-now]** `settings/generate-now` — Success: "generated and sent" appeared after 8838ms
