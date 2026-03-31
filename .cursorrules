@@ -26,6 +26,16 @@
 - Every fix must include: what changed, build pass, 
   test pass, production verification.
 
+## After Every Push
+- Update SESSION_HISTORY.md with: date, commit hash, 
+  files changed, what was verified, what remains unproven
+- Update CURRENT_STATE.md section B (what is broken) 
+  to remove anything you just fixed
+- If a fix closes an AUTOMATION_BACKLOG.md item, mark 
+  it DONE with the commit hash and date
+
+These updates are part of the commit. Not separate.
+
 ## Locked Decisions (never change without asking)
 - Pricing: Free forever + Pro $29/mo
 - Tagline: "Finished work, every morning"
