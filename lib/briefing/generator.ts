@@ -4313,10 +4313,35 @@ export async function generateDirective(
     const selectedRatedCandidate = rankedCandidates.find((entry) => entry.candidate.id === currentCandidate.id) ?? null;
     const scorerTopRatedCandidate = rankedCandidates.find((entry) => entry.candidate.id === scorerTopCandidate.id) ?? null;
 
+    // When the actual generation winner is NOT the scorer's top pick (fallback occurred),
+    // re-derive confidence from the actual winner's breakdown so that a low-tractability
+    // scorer winner (e.g. goal_velocity_mismatch with tractability=0.30) does not drag
+    // the confidence below the send threshold for an entity-linked fallback winner.
+    let effectiveConfidence = confidence;
+    if (currentCandidate.id !== scorerTopCandidate.id && currentCandidate.breakdown) {
+      const fb = currentCandidate.breakdown;
+      const fbStakes = Math.min(1, fb.stakes / 5);
+      const fbUrgency = Math.max(0, Math.min(1, fb.urgency));
+      const fbTractability = Math.max(0, Math.min(1, fb.tractability));
+      const fbFreshness = Math.max(0, Math.min(1, fb.freshness));
+      const fbEvidenceDepth = Math.min(1,
+        ((currentCandidate.relatedSignals.length > 0 ? Math.min(currentCandidate.relatedSignals.length, 3) : 0) +
+          (currentCandidate.matchedGoal ? 2 : 0) +
+          (hydratedWinner.relationshipContext ? 2 : 0)) / 7,
+      );
+      const deprioritizedScore = scored.deprioritized[0]?.score ?? 0;
+      const fbMargin = currentCandidate.score <= 0
+        ? 0
+        : Math.max(0, Math.min(1, (currentCandidate.score - deprioritizedScore) / Math.max(currentCandidate.score, 0.01)));
+      const fbComposite = (fbStakes * 0.24) + (fbUrgency * 0.18) + (fbTractability * 0.24) +
+        (fbFreshness * 0.12) + (fbEvidenceDepth * 0.12) + (fbMargin * 0.10);
+      effectiveConfidence = Math.max(50, Math.min(95, Math.round(40 + (fbComposite * 55))));
+    }
+
     const directive = {
       directive: payload.directive.trim(),
       action_type: artifactTypeToActionType(canonicalAction),
-      confidence,
+      confidence: effectiveConfidence,
       reason: payload.why_now.trim(),
       evidence: buildEvidenceItems(scored, payload),
       fullContext: buildFullContext({ ...scored, winner: hydratedWinner }, payload),
