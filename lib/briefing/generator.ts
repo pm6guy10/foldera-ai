@@ -795,6 +795,7 @@ function buildDecisionPayload(
   winner: ScoredLoop,
   ctx: StructuredContext,
   confidence: number,
+  lockedContactNames?: Set<string>,
 ): DecisionPayload {
   // Determine freshness
   const signalDates = (winner.sourceSignals ?? [])
@@ -863,6 +864,15 @@ function buildDecisionPayload(
   if (ctx.already_acted_recently) blocking_reasons.push('Already acted on this topic in the last 7 days');
   if (freshness_state === 'stale' && winner.type !== 'discrepancy') blocking_reasons.push('Evidence is stale');
 
+  // Hard block: entity is in tkg_constraints locked_contact — never contact regardless of signal state.
+  // Checked before generation so the LLM never even sees the candidate.
+  if (recommended_action === 'send_message' && lockedContactNames && lockedContactNames.size > 0 && winner.entityName) {
+    const normalized = winner.entityName.replace(/\s+/g, '').toLowerCase();
+    if (lockedContactNames.has(normalized)) {
+      blocking_reasons.push('locked_contact_suppression');
+    }
+  }
+
   // Determine readiness (initial pass — overridden by discrepancy gate below)
   let readiness_state: DecisionPayload['readiness_state'] = 'SEND';
   if (blocking_reasons.length > 0) readiness_state = 'NO_SEND';
@@ -897,8 +907,10 @@ function buildDecisionPayload(
   // 4. Candidate is tied to a real outcome (matched goal present)
   const tiedToOutcome = ctx.candidate_goal !== null;
 
-  // Hard block: no thread AND no goal = no basis to act at all
-  if (!hasRealThread && !tiedToOutcome) {
+  // Hard block: no thread AND no goal = no basis to act at all.
+  // Discrepancy candidates are exempt: absence of signals / drift / decay IS the
+  // structural evidence for this class. Blocking them here inverts the logic.
+  if (!hasRealThread && !tiedToOutcome && winner.type !== 'discrepancy') {
     blocking_reasons.push('no_thread_no_outcome');
   }
 
@@ -4017,9 +4029,32 @@ export async function generateDirective(
     // Hoist self-name tokens fetch — called once for all candidates, not once per candidate.
     // If this returns empty (auth metadata missing name), entity suppression is skipped
     // to avoid false positives (can't distinguish "Brandon" the user from "Brandon" the contact).
-    const [selfNameTokens, userEmails] = await Promise.all([
+    const [selfNameTokens, userEmails, lockedContacts] = await Promise.all([
       fetchUserSelfNameTokens(userId),
       fetchUserEmailAddresses(userId),
+      // Fetch locked contacts from tkg_constraints once — hard blocks any send_message to these entities.
+      (async (): Promise<Set<string>> => {
+        const set = new Set<string>();
+        try {
+          const { data } = await supabase
+            .from('tkg_constraints')
+            .select('normalized_entity')
+            .eq('user_id', userId)
+            .eq('constraint_type', 'locked_contact')
+            .eq('is_active', true);
+          for (const row of data ?? []) {
+            if (row.normalized_entity) set.add((row.normalized_entity as string).toLowerCase());
+          }
+        } catch {
+          // Non-blocking — if the fetch fails, proceed without suppression
+          logStructuredEvent({
+            event: 'locked_contacts_fetch_failed', level: 'warn', userId,
+            artifactType: null, generationStatus: 'locked_contacts_degraded',
+            details: { scope: 'generator' },
+          });
+        }
+        return set;
+      })(),
     ]);
 
     for (const { candidate: currentCandidate, disqualified, disqualifyReason } of rankedCandidates) {
@@ -4110,7 +4145,7 @@ export async function generateDirective(
       );
 
       // --- DECISION PAYLOAD — the canonical binding contract ---
-      const decisionPayload = buildDecisionPayload(hydratedWinner, ctx, confidence);
+      const decisionPayload = buildDecisionPayload(hydratedWinner, ctx, confidence, lockedContacts);
       const payloadErrors = validateDecisionPayload(decisionPayload);
 
       if (payloadErrors.length > 0) {
