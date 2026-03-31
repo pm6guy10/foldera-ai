@@ -156,13 +156,13 @@ describe('resolveTriggerAction — deterministic mapping', () => {
   it('deadline_staleness → write_document (no recipient)', () => {
     expect(resolveTriggerAction('deadline_staleness', false)).toBe('write_document');
   });
-  it('drift → write_document always', () => {
-    expect(resolveTriggerAction('drift', true)).toBe('write_document');
-    expect(resolveTriggerAction('drift', false)).toBe('write_document');
+  it('drift → send_message (with recipient), do_nothing (no recipient)', () => {
+    expect(resolveTriggerAction('drift', true)).toBe('send_message');
+    expect(resolveTriggerAction('drift', false)).toBe('do_nothing');
   });
-  it('goal_velocity_mismatch → write_document always', () => {
-    expect(resolveTriggerAction('goal_velocity_mismatch', true)).toBe('write_document');
-    expect(resolveTriggerAction('goal_velocity_mismatch', false)).toBe('write_document');
+  it('goal_velocity_mismatch → send_message (with recipient), do_nothing (no recipient)', () => {
+    expect(resolveTriggerAction('goal_velocity_mismatch', true)).toBe('send_message');
+    expect(resolveTriggerAction('goal_velocity_mismatch', false)).toBe('do_nothing');
   });
   it('exposure → write_document always', () => {
     expect(resolveTriggerAction('exposure', true)).toBe('write_document');
@@ -259,14 +259,14 @@ describe('validateTriggerArtifact — enforcement', () => {
     expect(result.violations.some(v => v.includes('missing_explicit_ask'))).toBe(true);
   });
 
-  // GOOD: drift trigger with write_document
-  it('PASS: drift trigger with valid write_document artifact', () => {
+  // GOOD: drift trigger now requires send_message (external action)
+  it('PASS: drift trigger with valid send_message artifact', () => {
     const result = validateTriggerArtifact(
       'drift',
       TRIGGERS.drift,
-      'Your stated priority is Series A funding, but zero observable action has been taken. Decision required: schedule 3 investor meetings this week or formally deprioritize this goal. Please confirm by Friday.',
-      'write_document',
-      null,
+      'Your stated priority is Series A funding, but zero observable action has been taken. Can you send the updated term sheet by Friday so we can schedule 3 investor meetings this week?',
+      'send_message',
+      'Investor Relations Lead',
     );
     expect(result.pass).toBe(true);
   });
@@ -277,8 +277,8 @@ describe('validateTriggerArtifact — enforcement', () => {
       'drift',
       TRIGGERS.drift,
       'You have zero observable action on Series A. You might want to consider reaching out to investors.',
-      'write_document',
-      null,
+      'send_message',
+      'Investor',
     );
     expect(result.pass).toBe(false);
     expect(result.violations.some(v => v.includes('banned_phrase'))).toBe(true);

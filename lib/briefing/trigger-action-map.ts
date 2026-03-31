@@ -85,16 +85,19 @@ export const TRIGGER_ACTION_MAP: Record<DiscrepancyClass, TriggerActionRule> = {
     banned_phrases: [...COMMON_BANNED],
   },
 
-  // --- GOAL_BEHAVIOR_DIVERGENCE → write_document ---
+  // --- GOAL_BEHAVIOR_DIVERGENCE → send_message ---
+  // Internal drift MUST produce an external action (email to someone who can
+  // move the goal forward). A self-directed memo is sludge — it changes nothing.
+  // If no recipient exists, resolveTriggerAction returns do_nothing.
   drift: {
-    primary_action: 'write_document',
-    artifact_shape: 'document',
+    primary_action: 'send_message',
+    artifact_shape: 'email',
     required_elements: ['explicit_ask', 'trigger_delta_reference', 'forcing_function'],
     banned_phrases: [...COMMON_BANNED, 'consider', 'you might want to', 'perhaps'],
   },
   goal_velocity_mismatch: {
-    primary_action: 'write_document',
-    artifact_shape: 'document',
+    primary_action: 'send_message',
+    artifact_shape: 'email',
     required_elements: ['explicit_ask', 'trigger_delta_reference', 'forcing_function'],
     banned_phrases: [...COMMON_BANNED, 'consider', 'you might want to', 'perhaps'],
   },
@@ -119,8 +122,19 @@ export const TRIGGER_ACTION_MAP: Record<DiscrepancyClass, TriggerActionRule> = {
 // ---------------------------------------------------------------------------
 
 /**
+ * Internal-drift classes that MUST have a real recipient.
+ * Without one, write_document degenerates to a self-directed memo (sludge).
+ * These fall back to do_nothing instead of write_document.
+ */
+const RECIPIENT_REQUIRED_CLASSES: ReadonlySet<DiscrepancyClass> = new Set([
+  'drift',
+  'goal_velocity_mismatch',
+]);
+
+/**
  * Resolve the deterministic action for a trigger class.
- * For send_message triggers: falls back to write_document if no recipient.
+ * For send_message triggers: falls back to write_document if no recipient,
+ * EXCEPT for internal-drift classes which fall back to do_nothing.
  */
 export function resolveTriggerAction(
   triggerClass: DiscrepancyClass,
@@ -128,6 +142,11 @@ export function resolveTriggerAction(
 ): ActionType {
   const rule = TRIGGER_ACTION_MAP[triggerClass];
   if (rule.primary_action === 'send_message' && !hasRecipient) {
+    // Internal drift without a recipient = no external action possible = do_nothing.
+    // A self-directed document artifact for these classes is sludge.
+    if (RECIPIENT_REQUIRED_CLASSES.has(triggerClass)) {
+      return 'do_nothing';
+    }
     return 'write_document';
   }
   return rule.primary_action;
