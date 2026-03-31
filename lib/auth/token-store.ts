@@ -37,9 +37,10 @@ export async function getGoogleTokens(userId: string): Promise<GoogleTokens | nu
     expiry_date: row.expires_at,
   };
 
-  // Check if token needs refresh (5 min buffer)
-  // expires_at is now normalized to epoch SECONDS by saveUserToken
-  if (tokens.expiry_date && tokens.expiry_date < Date.now() / 1000 + 5 * 60) {
+  // Proactively refresh if token expires within 6 hours so background cron
+  // runs never hit an expired token mid-execution (LESSONS_LEARNED rule #2).
+  // expires_at is normalized to epoch SECONDS by saveUserToken.
+  if (tokens.expiry_date && tokens.expiry_date < Date.now() / 1000 + 6 * 3600) {
     return await refreshGoogleTokens(userId, tokens, row.email ?? undefined);
   }
 
@@ -99,9 +100,10 @@ export async function getMicrosoftTokens(userId: string): Promise<MicrosoftToken
     expires_at: row.expires_at,
   };
 
-  // Check if token needs refresh (5 min buffer)
-  // Microsoft expires_at is stored as epoch seconds
-  if (tokens.expires_at && tokens.expires_at < Date.now() / 1000 + 5 * 60) {
+  // Proactively refresh if token expires within 6 hours so background cron
+  // runs never hit an expired token mid-execution (LESSONS_LEARNED rule #2).
+  // Microsoft expires_at is stored as epoch seconds.
+  if (tokens.expires_at && tokens.expires_at < Date.now() / 1000 + 6 * 3600) {
     return await refreshMicrosoftTokens(userId, tokens, row.email ?? undefined);
   }
 

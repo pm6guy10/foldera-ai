@@ -1,13 +1,16 @@
 /**
  * POST /api/google/disconnect
  *
- * Disconnects the user's Google account by deleting the token from user_tokens.
+ * Disconnects the user's Google account by soft-disconnecting the token row
+ * in user_tokens (preserves row, clears secrets). Matches Microsoft's pattern.
+ * Soft-disconnect ensures the row survives for auditing and reconnect flows —
+ * saveUserToken upserts with disconnected_at=null to restore on reconnect.
  */
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
-import { deleteUserToken, getUserToken } from '@/lib/auth/user-tokens';
+import { softDisconnectUserToken } from '@/lib/auth/user-tokens';
 import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -21,13 +24,7 @@ export async function POST() {
   const userId = session.user.id;
 
   try {
-    const existing = await getUserToken(userId, 'google');
-    if (!existing) {
-      return NextResponse.json({ error: 'Google account not connected' }, { status: 404 });
-    }
-
-    await deleteUserToken(userId, 'google');
-
+    await softDisconnectUserToken(userId, 'google');
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
     return apiError(err, 'google/disconnect');

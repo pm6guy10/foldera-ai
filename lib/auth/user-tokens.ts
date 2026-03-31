@@ -33,6 +33,10 @@ export async function saveUserToken(
     throw new Error('Refusing to persist test token value');
   }
 
+  if (!params.refresh_token) {
+    console.warn(`[user-tokens] empty refresh_token for ${provider} user ${userId} — token will not support background refresh`);
+  }
+
   const supabase = createServerClient();
   const now = new Date().toISOString();
 
@@ -95,6 +99,7 @@ export async function getUserToken(
     .select('refresh_token, access_token, expires_at, email, last_synced_at')
     .eq('user_id', userId)
     .eq('provider', provider)
+    .is('disconnected_at', null)
     .maybeSingle();
 
   if (error || !data) return null;

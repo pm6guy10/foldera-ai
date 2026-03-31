@@ -25,7 +25,8 @@ export async function GET() {
     const { data, error } = await supabase
       .from('user_tokens')
       .select('provider, email, last_synced_at, scopes, access_token')
-      .eq('user_id', session.user.id);
+      .eq('user_id', session.user.id)
+      .is('disconnected_at', null);
 
     if (error) {
       throw error;
