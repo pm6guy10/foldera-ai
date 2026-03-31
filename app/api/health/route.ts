@@ -115,6 +115,7 @@ export async function GET() {
   return NextResponse.json({
     status: allOk ? 'ok' : 'degraded',
     ts: new Date().toISOString(),
+    build: '2026-03-30-convergence',
     db: dbOk,
     env: envOk,
     schema: schemaOk ? 'ok' : 'degraded',
