@@ -4402,7 +4402,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     const { score, breakdown: geminiBreakdown } = computeCandidateScore({
       stakes: d.stakes,
       urgency: d.urgency,
-      tractability: 0.70, // structural gaps are always tractable — a decision is always available
+      // goal_velocity_mismatch is purely statistical — no grounded thread, no specific recipient.
+      // Lower tractability prevents it from beating real thread-grounded candidates.
+      tractability: d.class === 'goal_velocity_mismatch' ? 0.30 : 0.70,
       actionType: d.suggestedActionType,
       entityPenalty: 0,
       daysSinceLastSurface,
