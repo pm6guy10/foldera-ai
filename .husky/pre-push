@@ -1,13 +1,18 @@
 echo "Running build check..."
-BUILD_OUTPUT=$(npm run build 2>&1)
-echo "$BUILD_OUTPUT" | tail -20
+
+# On Windows, capturing large build output in a variable fails silently.
+# Pipe directly so stdout is streamed. Use tee to a temp file to test for success.
+TMPFILE=$(mktemp)
+npm run build 2>&1 | tee "$TMPFILE"
 
 # On Windows, Next.js build traces fail with ENOENT on .next/server files even when
 # compilation succeeds. Pass if compilation succeeded regardless of trace errors.
-if echo "$BUILD_OUTPUT" | grep -q "Compiled successfully"; then
+if grep -q "Compiled successfully" "$TMPFILE"; then
   echo "Build compiled successfully."
-elif [ $? -ne 0 ]; then
+  rm -f "$TMPFILE"
+else
   echo "BUILD FAILED. Push rejected."
+  rm -f "$TMPFILE"
   exit 1
 fi
 
