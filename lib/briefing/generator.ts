@@ -922,11 +922,9 @@ function buildDecisionPayload(
     recommended_action = 'do_nothing';
   } else {
     readiness_state = 'SEND';
-    // If scorer suggested a non-contact action (write_document, schedule_block),
-    // preserve it instead of forcing send_message
-    if (recommended_action === 'do_nothing') {
-      recommended_action = 'send_message';
-    }
+    // do_nothing set by resolveTriggerAction (RECIPIENT_REQUIRED_CLASSES without a recipient)
+    // must be preserved — validateDecisionPayload will block the candidate so the generator
+    // falls through to the next one. Do NOT override to send_message here.
   }
 
   return {
