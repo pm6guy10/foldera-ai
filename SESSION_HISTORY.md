@@ -2147,3 +2147,16 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
   - `npm run test:prod` — 51/51 passed
 - Any unresolved issues:
   - `tests/e2e/backend-safety-gates.spec.ts:372` resend webhook ordering (pre-existing, logged in AUTOMATION_BACKLOG.md)
+
+---
+
+- 2026-03-31 — Added 85 short-form SEO blog posts from Foldera SEO Blog Batch 30
+- MODE: OPS
+- Commit hash(es): pending
+- Files changed: `content/blog/how-to-keep-track-of-email-follow-ups-without-a-spreadsheet.md`, `content/blog/why-do-i-forget-to-reply-to-important-emails.md`, `content/blog/best-way-to-manage-email-follow-ups-for-busy-professionals.md`, `content/blog/how-to-stop-missing-important-emails-at-work.md`, `content/blog/how-to-remember-to-follow-up-with-someone.md`, `content/blog/how-to-organize-email-follow-ups-automatically.md`, `content/blog/how-to-stop-email-overwhelm-without-inbox-zero.md`, `content/blog/what-is-the-best-ai-tool-for-email-follow-ups.md`, `content/blog/ai-assistant-for-email-management-that-actually-saves-time.md`, `content/blog/how-to-prioritize-emails-when-everything-feels-important.md`, and 75 more blog post files (posts 11–85)
+- What was verified:
+  - `npm run build` — clean pass; blog index shows `[+87 more paths]` covering all 85 new posts plus the 2 previously named ones
+  - 90 total markdown files in `content/blog/` (5 original + 85 new)
+  - Sequential dates from 2026-03-15 backward to 2025-12-21 (one per day)
+  - Each post has frontmatter (title, description, date, slug), 3-paragraph body, and CTA link to foldera.ai
+- Any unresolved issues: none
