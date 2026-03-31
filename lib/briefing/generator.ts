@@ -171,7 +171,16 @@ Legacy format (also accepted):
 
 CRITICAL: Return ONLY a JSON object. No markdown fences, no explanation, no text before or after the JSON. The response must start with { and end with }.
 
-For "action", valid values are: send_message, write_document, schedule_block, wait_rationale, do_nothing.`;
+For "action", valid values are: send_message, write_document, schedule_block, wait_rationale, do_nothing.
+
+MANDATORY RULE — EMAIL PATH:
+If the user prompt starts with "Write an email from the user to:", you are on the EMAIL PATH.
+On the EMAIL PATH:
+- do_nothing is ABSOLUTELY FORBIDDEN. You must write the email.
+- wait_rationale is FORBIDDEN. You must write the email.
+- If the signals are thin, write a SHORT warm email. Thin context = short email, not do_nothing.
+- A 3-sentence genuine email is always better than do_nothing.
+- NEVER output do_nothing when asked to write an email.`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -3620,14 +3629,24 @@ function buildDecisionEnforcedFallbackPayload(input: {
   const target = cleanDecisionTarget(input.winner.title);
   const deadline = resolveDecisionDeadline(input.candidateDueDate);
 
-  // If winner has trigger metadata, use it to produce specific copy instead of the generic default.
+  // If winner has trigger metadata, use it to produce specific copy.
+  // But skip trigger metadata that contains system metric strings (e.g. "52% drop in
+  // goal-aligned activity", "signal density halved") — those are internal labels not
+  // suitable for human-facing artifact copy.
   const trig = input.winner.trigger;
-  const triggerGroundedCopy = trig ? {
-    ask: `Confirm: ${trig.delta}. Decision required by ${deadline}.`,
-    consequence: `Consequence: ${trig.why_now}`,
-    insight: `${trig.current_state} (was: ${trig.baseline_state})`,
-    whyNow: trig.why_now,
-  } : null;
+  const SYSTEM_METRIC_RE = /\b\d+%|\bsignal\s+density\b|\bgoal.aligned\b|\bsignal\s+count\b|\bactivity\s+drop\b|\bdrop\s+in\b/i;
+  const triggerHasSystemMetrics =
+    trig &&
+    (SYSTEM_METRIC_RE.test(trig.delta ?? '') || SYSTEM_METRIC_RE.test(trig.why_now ?? ''));
+  const triggerGroundedCopy =
+    trig && !triggerHasSystemMetrics
+      ? {
+          ask: `Confirm: ${trig.delta}. Decision required by ${deadline}.`,
+          consequence: `Consequence: ${trig.why_now}`,
+          insight: `${trig.current_state} (was: ${trig.baseline_state})`,
+          whyNow: trig.why_now,
+        }
+      : null;
 
   const copy = triggerGroundedCopy ?? buildCausalFallbackCopy({
     diagnosis: input.causalDiagnosis,
