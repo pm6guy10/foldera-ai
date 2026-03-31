@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-03-31 — Frontend polish sweep: blog fix, login/start improvements, dashboard empty state, mobile responsiveness
+  MODE: FLOW
+  Commit hash(es): pending
+  Files changed: `next.config.mjs`, `app/login/login-inner.tsx`, `app/login/page.tsx`, `app/pricing/layout.tsx`, `app/start/page.tsx`, `app/dashboard/page.tsx`, `playwright.ci.config.ts`, `tests/production/screenshots/*.png`
+  What was verified: 34/34 CI e2e tests passed (`npx playwright test --config playwright.ci.config.ts`); `npx next build` exit 0; screenshots captured for /, /login, /start, /pricing, /blog all showing clean professional UI
+  Changes: (1) `next.config.mjs`: Added `serverComponentsExternalPackages` for gray-matter/remark/esprima — fixed `/blog/[slug]` vendor chunk crash. (2) `app/login/page.tsx` + `app/pricing/layout.tsx`: Removed duplicate "— Foldera" suffix from page titles (root layout already adds template). (3) `app/login/login-inner.tsx`: Added ambient background grid/glow, tightened form to max-w-sm, improved button shadow/active-scale, added border separator above footer links. (4) `app/start/page.tsx`: Consistent layout/styling with login page. (5) `app/dashboard/page.tsx`: New-account empty state shows pulsing cyan dot + "Check connection status" link; returning-user empty state shows circle icon + "Generate now" link to settings; done state shows emerald check circle. (6) `playwright.ci.config.ts`: `reuseExistingServer: true` so tests run against an already-started server without conflict.
+  Any unresolved issues: Dashboard authenticated states require live auth session to screenshot; verified via passing authenticated-routes e2e tests.
+
 - 2026-03-31 — Strip system metrics from send_message LLM context, provide human-readable recipient brief only
   MODE: AUDIT
   Commit hash(es): pending

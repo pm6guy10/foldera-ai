@@ -242,7 +242,12 @@ export default function DashboardPage() {
           </div>
         ) : done ? (
           <div className="mt-14 text-center">
-            {flash && <p className="text-white text-base mb-2">{flash}</p>}
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
+                <span className="text-emerald-400 text-lg">✓</span>
+              </div>
+            </div>
+            {flash && <p className="text-white text-base font-medium mb-2">{flash}</p>}
             <p className="text-zinc-500 text-sm">Your next read arrives at 7am Pacific.</p>
           </div>
         ) : fetchError ? (
@@ -257,19 +262,47 @@ export default function DashboardPage() {
           </div>
         ) : !action ? (
           <div className="mt-8 md:mt-10">
-            <div className="mx-auto max-w-xl rounded-2xl border border-zinc-800/60 bg-zinc-900/35 px-6 py-7 md:px-7 md:py-8 text-center">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">Today&apos;s queue</p>
+            <div className="mx-auto max-w-xl rounded-2xl border border-zinc-800/60 bg-zinc-900/35 px-6 py-8 md:px-7 md:py-10 text-center">
               {isNewAccount ? (
                 <>
-                  <p className="mt-3 text-zinc-200 text-lg font-medium">Foldera is building your model.</p>
-                  <p className="text-zinc-500 text-sm mt-2">
-                    It&apos;s reading your email and calendar. Your first directive arrives tomorrow at 7am Pacific.
+                  {/* Pulsing indicator */}
+                  <div className="flex items-center justify-center mb-5">
+                    <div className="relative">
+                      <div className="w-3 h-3 rounded-full bg-cyan-500" />
+                      <div className="absolute inset-0 rounded-full bg-cyan-500 animate-ping opacity-40" />
+                    </div>
+                  </div>
+                  <p className="text-zinc-100 text-base font-semibold mb-2">Foldera is building your model.</p>
+                  <p className="text-zinc-500 text-sm leading-relaxed">
+                    It&apos;s reading your email and calendar now. Your first directive arrives tomorrow at 7am Pacific.
                   </p>
+                  <Link
+                    href="/dashboard/settings"
+                    className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
+                  >
+                    Check connection status
+                    <Settings className="w-3 h-3" />
+                  </Link>
                 </>
               ) : (
                 <>
-                  <p className="mt-3 text-zinc-200 text-lg font-medium">Nothing queued at high confidence.</p>
-                  <p className="text-zinc-500 text-sm mt-2">Your next read arrives at 7am Pacific.</p>
+                  {/* Empty checkmark circle */}
+                  <div className="flex items-center justify-center mb-5">
+                    <div className="w-10 h-10 rounded-full border border-zinc-700 bg-zinc-900 flex items-center justify-center">
+                      <span className="text-zinc-600 text-lg">·</span>
+                    </div>
+                  </div>
+                  <p className="text-zinc-200 text-base font-semibold mb-2">You&apos;re clear for now.</p>
+                  <p className="text-zinc-500 text-sm leading-relaxed">
+                    Nothing queued at high confidence. Your next read arrives at 7am Pacific.
+                  </p>
+                  <Link
+                    href="/dashboard/settings"
+                    className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors"
+                  >
+                    Generate now
+                    <Settings className="w-3 h-3" />
+                  </Link>
                 </>
               )}
             </div>

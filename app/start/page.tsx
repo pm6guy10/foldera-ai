@@ -20,14 +20,20 @@ export default function StartPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* Ambient background glow */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:40px_40px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.06)_0%,transparent_60%)]" />
+      </div>
+
       {/* Nav */}
-      <nav className="w-full px-6 py-6 flex items-center justify-between max-w-6xl mx-auto">
+      <nav className="relative z-10 w-full px-6 py-5 flex items-center justify-between max-w-6xl mx-auto border-b border-white/5">
         <a href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-            <Layers className="w-5 h-5 fill-black" aria-hidden="true" />
+          <div className="w-9 h-9 rounded-xl bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_24px_rgba(255,255,255,0.2)]">
+            <Layers className="w-4 h-4 fill-black" aria-hidden="true" />
           </div>
-          <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
+          <span className="text-lg font-black tracking-tighter text-white uppercase">Foldera</span>
         </a>
         <a
           href="/login"
@@ -38,26 +44,26 @@ export default function StartPage() {
       </nav>
 
       {/* Main */}
-      <main className="flex-1 flex items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-12">
-            <h1 className="text-5xl font-black tracking-tighter text-white mb-4">Connect your email.</h1>
-            <p className="text-zinc-400 text-lg font-medium leading-relaxed">
+      <main className="relative z-10 flex-1 flex items-center justify-center px-6 pb-16">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-black tracking-tighter text-white mb-2">Connect your email.</h1>
+            <p className="text-zinc-500 text-sm font-medium leading-relaxed">
               Your first read arrives tomorrow at 7am.
             </p>
           </div>
 
           {error && (
-            <div className="mb-6 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50">
+            <div className="mb-5 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50">
               <p className="text-sm text-red-300">{error}</p>
             </div>
           )}
 
-          <div className="space-y-3 mb-10">
+          <div className="space-y-3 mb-6">
             <button
               onClick={() => handleSignIn('google')}
               disabled={!!loading}
-              className="w-full flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-4 px-6 rounded-2xl transition-all shadow-lg disabled:opacity-60 text-sm"
+              className="w-full flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-3.5 px-6 rounded-2xl transition-all shadow-[0_0_24px_rgba(255,255,255,0.1)] disabled:opacity-60 text-sm active:scale-[0.98]"
             >
               {loading === 'google' ? (
                 <span className="w-5 h-5 border-2 border-zinc-400 border-t-zinc-900 rounded-full animate-spin" />
@@ -72,7 +78,7 @@ export default function StartPage() {
             <button
               onClick={() => handleSignIn('azure-ad')}
               disabled={!!loading}
-              className="w-full flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0078d4] font-semibold py-4 px-6 rounded-2xl transition-all shadow-lg disabled:opacity-60 text-sm"
+              className="w-full flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0078d4] font-semibold py-3.5 px-6 rounded-2xl transition-all shadow-[0_0_24px_rgba(0,164,239,0.15)] disabled:opacity-60 text-sm active:scale-[0.98]"
             >
               {loading === 'azure-ad' ? (
                 <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -86,16 +92,16 @@ export default function StartPage() {
           </div>
 
           {/* What to expect */}
-          <div className="space-y-3 mb-10">
+          <div className="rounded-2xl bg-zinc-900/40 border border-white/5 p-4 mb-5 space-y-2.5">
             {[
-              'Connect — Link your email in one click',
-              'Focus — Tell us what you\u2019re working on',
-              'Sleep — Your first read arrives tomorrow at 7am',
-              'Improve — Every approve and skip makes it smarter',
-            ].map((text, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <span className="text-sm text-zinc-500 w-4 shrink-0">{i + 1}</span>
-                <span className="text-sm text-zinc-400">{text}</span>
+              { n: '1', text: 'Connect — Link your email in one click' },
+              { n: '2', text: 'Focus — Tell us what you\u2019re working on' },
+              { n: '3', text: 'Sleep — Your first read arrives tomorrow at 7am' },
+              { n: '4', text: 'Improve — Every approve and skip makes it smarter' },
+            ].map(({ n, text }) => (
+              <div key={n} className="flex items-start gap-3">
+                <span className="text-xs text-zinc-600 w-4 shrink-0 font-mono mt-0.5">{n}</span>
+                <span className="text-xs text-zinc-400 leading-relaxed">{text}</span>
               </div>
             ))}
           </div>

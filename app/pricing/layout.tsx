@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Pricing — Foldera',
+  title: 'Pricing',
   description: 'Free forever for the daily read. $29/mo unlocks the finished work — drafted emails and documents ready to approve.',
 };
 
