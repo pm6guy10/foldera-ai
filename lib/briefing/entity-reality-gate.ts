@@ -47,7 +47,13 @@ export type EntityDropReason =
   | 'unverified_entity'
   | 'single_appearance_no_email'
   | 'newsletter_promo_source'
-  | 'no_entity_detected';
+  | 'no_entity_detected'
+  /** send_message: no email found in structured metadata or text */
+  | 'no_external_routing_address'
+  /** send_message: routing email resolves to the authenticated user */
+  | 'self_addressed'
+  /** send_message: entity is an abstract noun / department, not a routable person */
+  | 'abstract_target_only';
 
 export interface EntityGateResult {
   passed: EntityGateCandidate[];
@@ -272,6 +278,69 @@ function isEntityVerified(entity: string, verifiedSet: Set<string>): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// send_message routing helpers
+// ---------------------------------------------------------------------------
+
+// Single-token abstract department/role words — not routable persons.
+const ABSTRACT_TARGET_WORDS = new Set([
+  'financial', 'finance', 'hr', 'humanresources', 'legal', 'team', 'department',
+  'management', 'leadership', 'organization', 'admin', 'administration',
+  'billing', 'sales', 'marketing', 'support', 'operations', 'engineering',
+  'executive', 'board', 'committee', 'group', 'vendor', 'client', 'customer',
+  'accounting', 'payroll', 'procurement', 'compliance', 'security', 'policy',
+]);
+
+function isAbstractTarget(entity: string): boolean {
+  const lower = entity.toLowerCase().trim().replace(/\s+/g, '');
+  if (ABSTRACT_TARGET_WORDS.has(lower)) return true;
+  // Two-word phrases like "human resources", "executive team"
+  const lowerSpaced = entity.toLowerCase().trim();
+  return ABSTRACT_TARGET_WORDS.has(lowerSpaced);
+}
+
+/**
+ * Extract a routing email for send_message candidates.
+ * Priority:
+ *   1. Structured author — angle-bracket format (e.g. "Jane <jane@co.com>")
+ *   2. Plain email in candidate author string
+ *   3. Email in title + content text
+ *   4. Signal history author matching the primary entity name
+ * Handles complex strings like "Financial Department billing@company.com" by extracting the actual email.
+ */
+function extractRoutingEmail(
+  c: EntityGateCandidate,
+  primaryEntity: string,
+  signalHistory: SignalRecord[],
+): string | null {
+  const emailRe = /([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/;
+  // 1. Structured author — angle-bracket format first
+  if (c.author) {
+    const angleBracket = c.author.match(/<([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})>/);
+    if (angleBracket) return angleBracket[1].toLowerCase();
+    // Plain email anywhere in author string
+    const plain = c.author.match(emailRe);
+    if (plain) return plain[1].toLowerCase();
+  }
+  // 2. Free-text fallback — title + content
+  const textMatch = `${c.title} ${c.content}`.match(emailRe);
+  if (textMatch) return textMatch[1].toLowerCase();
+  // 3. Signal history — find a signal whose author matches the primary entity
+  const entityTokens = primaryEntity.toLowerCase().split(/\s+/).filter(t => t.length >= 2);
+  for (const s of signalHistory) {
+    if (!s.author) continue;
+    const authorLower = s.author.toLowerCase();
+    // Require all entity name tokens to appear in the author string
+    if (entityTokens.length > 0 && entityTokens.every(t => authorLower.includes(t))) {
+      const angleBracket = s.author.match(/<([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})>/);
+      if (angleBracket) return angleBracket[1].toLowerCase();
+      const plain = s.author.match(emailRe);
+      if (plain) return plain[1].toLowerCase();
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Main gate
 // ---------------------------------------------------------------------------
 
@@ -279,6 +348,8 @@ export function applyEntityRealityGate(
   candidates: EntityGateCandidate[],
   knownEntities: EntityRecord[],
   signalHistory: SignalRecord[],
+  /** User's own email addresses — used to block self-addressed send_message candidates */
+  userEmails?: Set<string>,
 ): EntityGateResult {
   const verifiedSet = buildVerifiedEntitySet(knownEntities, signalHistory);
   const verifiedEntities: string[] = [...verifiedSet];
@@ -307,6 +378,28 @@ export function applyEntityRealityGate(
 
     // Check verification
     if (isEntityVerified(primaryEntity, verifiedSet)) {
+      // 4. For send_message: require a routable, non-self external email address.
+      //    Name-only and abstract department targets are not sufficient.
+      //    Discrepancy candidates bypass this gate entirely (added post-scoring).
+      if (c.actionType === 'send_message') {
+        // Drop abstract/department nouns — they can never resolve to a routable person.
+        // (e.g. "Financial", "HR Team", "Management") — not real recipients.
+        if (isAbstractTarget(primaryEntity)) {
+          dropped.push({ candidate: c, entity: primaryEntity, reason: 'abstract_target_only' });
+          if (!unverifiedEntities.includes(primaryEntity)) unverifiedEntities.push(primaryEntity);
+          continue;
+        }
+        // If a routing email IS resolvable at gate time (from author or text), check
+        // that it is not the user's own address. Real-person candidates without an
+        // email in candidate text are allowed through — hydration fetches the email
+        // from the entity DB, and isSendWorthy() handles the final self-addressed check.
+        const routingEmail = extractRoutingEmail(c, primaryEntity, signalHistory);
+        if (routingEmail && userEmails && userEmails.size > 0 && userEmails.has(routingEmail)) {
+          dropped.push({ candidate: c, entity: primaryEntity, reason: 'self_addressed' });
+          if (!unverifiedEntities.includes(primaryEntity)) unverifiedEntities.push(primaryEntity);
+          continue;
+        }
+      }
       passed.push(c);
       continue;
     }

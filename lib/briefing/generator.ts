@@ -2586,6 +2586,29 @@ async function hydrateWinnerRelationshipContext(
 
   const supabase = createServerClient();
 
+  // Discrepancy candidates: entity ID is embedded in the candidate ID.
+  // Format: discrepancy_{class}_{uuid} — extract the UUID and fetch that entity
+  // directly so the correct recipient email is always in context.
+  // Text matching alone fails here because the decay content doesn't mention
+  // the entity's email, so the LLM falls back to the authenticated user's address.
+  if (winner.type === 'discrepancy') {
+    const uuidMatch = winner.id.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+    if (uuidMatch) {
+      const entityId = uuidMatch[1];
+      const { data: entity } = await supabase
+        .from('tkg_entities')
+        .select('name, display_name, primary_email, emails, role, company, total_interactions, patterns')
+        .eq('user_id', userId)
+        .eq('id', entityId)
+        .neq('name', 'self')
+        .single();
+      if (entity) {
+        const line = formatEntityLine(entity as Record<string, unknown>);
+        return { ...winner, relationshipContext: line };
+      }
+    }
+  }
+
   const commitmentSourceIds = (winner.sourceSignals ?? [])
     .filter((s) => s.kind === 'commitment' && typeof s.id === 'string')
     .map((s) => s.id as string);

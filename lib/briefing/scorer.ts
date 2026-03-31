@@ -3155,6 +3155,20 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Self-learn: auto-create/lift suppression goals from skip patterns
   await checkAndCreateAutoSuppressions(userId);
 
+  // Fetch user's own email addresses for self-addressed routing check at the entity gate.
+  const selfEmails = new Set<string>();
+  try {
+    const { data: authUserData } = await supabase.auth.admin.getUserById(userId);
+    const authUser = authUserData?.user;
+    if (authUser?.email) selfEmails.add(authUser.email.toLowerCase());
+    for (const identity of (authUser?.identities ?? [])) {
+      const email = (identity.identity_data as Record<string, unknown>)?.['email'];
+      if (typeof email === 'string' && email) selfEmails.add(email.toLowerCase());
+    }
+  } catch {
+    // Non-blocking — if lookup fails the self-addressed check in isSendWorthy still catches it
+  }
+
   // Parallel data fetch
   const [commitmentsRes, signalsRes, entitiesRes, goalsRes] = await Promise.all([
     // Open commitments (last 14 days or no deadline), excluding user-suppressed ones
@@ -3793,6 +3807,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     candidates,
     (entities as Array<{ name: string; total_interactions: number; trust_class?: string }>),
     (signals as Array<{ content: string; source?: string; author?: string; type?: string }>),
+    selfEmails,
   );
   if (entityGateResult.dropped.length > 0) {
     console.log(JSON.stringify({
