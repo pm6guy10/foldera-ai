@@ -3657,6 +3657,45 @@ function buildDecisionEnforcedFallbackPayload(input: {
   if (input.actionType === 'send_message') {
     const recipient = extractAllEmailAddresses(input.winner, input.userEmails)[0];
     if (!recipient) return null;
+
+    // For relationship decay/risk candidates, produce a warm reconnect email
+    // rather than the "decision required by" template which is designed for commitments.
+    const isRelationshipReconnect =
+      input.winner.discrepancyClass &&
+      ['decay', 'risk', 'engagement_collapse', 'relationship_dropout'].includes(
+        input.winner.discrepancyClass,
+      ) &&
+      Boolean(input.winner.entityName);
+
+    if (isRelationshipReconnect) {
+      const rawFirst = (input.winner.entityName ?? 'there').split(/\s+/)[0];
+      const firstName = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1).toLowerCase();
+      const simpleDate = new Date(Date.now() + daysMs(7)).toISOString().slice(0, 10);
+      return {
+        insight: `Relationship with ${input.winner.entityName} has gone silent — reconnection attempt before the window closes.`,
+        causal_diagnosis: input.causalDiagnosis,
+        decision: 'ACT',
+        directive: `Send ${firstName} a short reconnect note asking if they're open to catching up by ${simpleDate}.`,
+        artifact_type: 'send_message',
+        artifact: {
+          to: recipient,
+          recipient,
+          subject: `From Brandon Kapp`,
+          body: [
+            `Hi ${firstName},`,
+            ``,
+            `It's been a while since we last connected. Can you confirm if you're open to a brief catch-up by ${simpleDate}?`,
+            ``,
+            `If there's no reply, I'll take that as a sign the timing isn't right. But I didn't want that risk of losing touch to pass without asking.`,
+            ``,
+            `Best,`,
+            `Brandon`,
+          ].join('\n'),
+        },
+        why_now: `${input.winner.entityName} has been unreachable — delay past ${simpleDate} increases the risk of losing this connection permanently.`,
+      };
+    }
+
     const mechanismAsk = copy.ask.replace(/^Ask:\s*/i, '').trim();
     const explicitAsk = (() => {
       if (!mechanismAsk) {
