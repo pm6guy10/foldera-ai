@@ -4431,6 +4431,12 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       approvalHistory,
       highStakes: d.stakes >= 4,
     });
+    // Penalize recipientless self-referential discrepancies so entity-linked
+    // decay/risk candidates (with real people and real emails) always rank above
+    // goal_velocity_mismatch or drift alerts that have no external target.
+    const isRecipientlessStatistical =
+      (d.class === 'goal_velocity_mismatch' || d.class === 'drift') && !d.entityName;
+    const finalScore = isRecipientlessStatistical ? score * 0.4 : score;
     scored.push({
       id: d.id,
       type: 'discrepancy',
@@ -4438,7 +4444,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       content: d.content,
       suggestedActionType: d.suggestedActionType,
       matchedGoal: d.matchedGoal,
-      score,
+      score: finalScore,
       breakdown: {
         stakes: d.stakes,
         urgency: d.urgency,
@@ -4454,7 +4460,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       discrepancyClass: d.class,
       trigger: d.trigger,
     });
-    diag.discrepancies.push({ id: d.id, class: d.class, title: d.title.slice(0, 100), entityName: d.entityName, score, stakes: d.stakes, urgency: d.urgency });
+    diag.discrepancies.push({ id: d.id, class: d.class, title: d.title.slice(0, 100), entityName: d.entityName, score: finalScore, stakes: d.stakes, urgency: d.urgency });
     logStructuredEvent({
       event: 'discrepancy_candidate_scored',
       level: 'info',
@@ -4466,7 +4472,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         id: d.id,
         class: d.class,
         title: d.title.slice(0, 80),
-        score,
+        score: finalScore,
+        score_raw: score,
+        recipientless_penalty: isRecipientlessStatistical,
         evidence: d.evidence,
       },
     });
