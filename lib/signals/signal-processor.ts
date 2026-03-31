@@ -951,7 +951,7 @@ async function processBatch(
         if (!person.name?.trim()) continue;
         const entityId = dryRun
           ? `dry-run-entity-${entityIds.length + 1}`
-          : await upsertEntity(supabase, userId, person, signal.occurred_at, signalTrustClass);
+          : await upsertEntity(supabase, userId, person, signal.occurred_at, signalTrustClass, signal.source as string | undefined);
         if (entityId) {
           entityIds.push(entityId);
           result.entities_upserted++;
@@ -1094,16 +1094,32 @@ async function recoverAndReencryptMicrosoftSignal(
   return recoveredContent;
 }
 
+// Signal sources that represent real human interactions (emails you sent/received,
+// calendar events you attended). These increment total_interactions and update
+// last_interaction on an entity.
+//
+// Passive sources (conversation_ingest, notion, task, etc.) still create the
+// entity record so it can be referenced by commitments and goal-matching, but
+// they do NOT count as interactions — otherwise a person mentioned 50 times in
+// ingested Claude chat transcripts looks identical to someone you emailed 50 times.
+const REAL_INTERACTION_SOURCES = new Set([
+  'gmail', 'google_calendar',          // Google sync
+  'outlook', 'outlook_calendar',       // Microsoft sync
+  'email', 'calendar',                 // generic aliases used in tests / ingest
+]);
+
 async function upsertEntity(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
   person: ExtractedPerson,
   signalOccurredAt: string | null,
   signalTrustClass: TrustClass,
+  signalSource?: string,
 ): Promise<string | null> {
   const name = person.name.trim();
   const nameLower = name.toLowerCase();
   const signalInteractionAt = normalizeInteractionTimestamp(signalOccurredAt);
+  const isRealInteraction = REAL_INTERACTION_SOURCES.has(signalSource ?? '');
 
   const existingMatches = await findExistingEntityMatches(supabase, userId, person, nameLower);
   const existing = existingMatches[0] ?? null;
@@ -1112,7 +1128,12 @@ async function upsertEntity(
     for (const match of existingMatches) {
       const updates: Record<string, any> = {};
       if (match.id === existing.id) {
-        updates.total_interactions = (match.total_interactions ?? 0) + 1;
+        // Only real interactions count toward total_interactions and last_interaction.
+        // Passive mentions (conversation_ingest, notion, task) create/find the entity
+        // but do not increment the interaction counter.
+        if (isRealInteraction) {
+          updates.total_interactions = (match.total_interactions ?? 0) + 1;
+        }
         if (person.email && !(match.emails ?? []).includes(person.email)) {
           updates.emails = [...(match.emails ?? []), person.email];
           updates.primary_email = match.primary_email ?? match.emails?.[0] ?? person.email;
@@ -1123,7 +1144,7 @@ async function upsertEntity(
       }
 
       const existingLastInteraction = normalizeInteractionTimestamp(match.last_interaction ?? null);
-      if (!existingLastInteraction || (signalInteractionAt && signalInteractionAt > existingLastInteraction)) {
+      if (isRealInteraction && (!existingLastInteraction || (signalInteractionAt && signalInteractionAt > existingLastInteraction))) {
         updates.last_interaction = signalInteractionAt ?? new Date().toISOString();
       }
 
@@ -1139,7 +1160,8 @@ async function upsertEntity(
     return existing.id;
   }
 
-  // Insert new entity
+  // Insert new entity — passive sources start at 0 interactions with no last_interaction
+  // so they don't pollute relationship scoring with mention-only counts.
   const createEntityResult = await supabase
     .from('tkg_entities')
     .insert({
@@ -1153,8 +1175,8 @@ async function upsertEntity(
       company: person.company ?? null,
       patterns: {},
       trust_class: signalTrustClass,
-      total_interactions: 1,
-      last_interaction: signalInteractionAt ?? new Date().toISOString(),
+      total_interactions: isRealInteraction ? 1 : 0,
+      last_interaction: isRealInteraction ? (signalInteractionAt ?? new Date().toISOString()) : null,
     })
     .select('id')
     .single();
