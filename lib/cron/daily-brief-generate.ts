@@ -379,6 +379,216 @@ export function artifactTypeForAction(actionType: string | null | undefined): st
   }
 }
 
+// ---------------------------------------------------------------------------
+// Outcome Receipt — production-visible observability at the winner/persistence
+// boundary.  Answers: why did this winner exist, why was it allowed or blocked,
+// and is the final artifact sendable?
+// ---------------------------------------------------------------------------
+
+export interface WinnerReceipt {
+  winner_candidate_id: string | null;
+  winner_type: string | null;
+  discrepancy_class: string | null;
+  action_type: string | null;
+  artifact_type: string | null;
+  matched_goal: string | null;
+  external_target: string | null;
+  concrete_ask: boolean;
+  pressure_signal: boolean;
+  why_now: string | null;
+  top_3_runner_ups: Array<{
+    id: string;
+    type: string;
+    title: string;
+    score: number;
+    why_lost: string;
+  }>;
+}
+
+export interface PersistenceReceipt {
+  external_target_present: boolean;
+  concrete_ask_present: boolean;
+  real_pressure_present: boolean;
+  immediately_usable: boolean;
+  self_referential: boolean;
+  generic_social_motion: boolean;
+  blocked_reason: string | null;
+  allowed_reason: string | null;
+}
+
+export interface ArtifactReceipt {
+  artifact_text: string | null;
+  artifact_is_sendable: boolean;
+  artifact_changes_probability_now: boolean;
+  artifact_requires_more_thinking: boolean;
+  artifact_pass_fail: 'PASS' | 'FAIL';
+}
+
+export interface OutcomeReceipt {
+  winner: WinnerReceipt;
+  persistence: PersistenceReceipt;
+  artifact: ArtifactReceipt;
+  generated_at: string;
+}
+
+/**
+ * Build the winner receipt from the directive's generation log.
+ * Extracts: who won, why, what goal it matches, and who lost.
+ */
+function buildWinnerReceipt(
+  directive: ConvictionDirective,
+): WinnerReceipt {
+  const discovery = directive.generationLog?.candidateDiscovery;
+  const topCandidates = discovery?.topCandidates ?? [];
+  const winner = topCandidates.find((c) => c.decision === 'selected') ?? topCandidates[0] ?? null;
+
+  const runnerUps = topCandidates
+    .filter((c) => c !== winner)
+    .slice(0, 3)
+    .map((c) => ({
+      id: c.id,
+      type: c.candidateType,
+      title: c.id.slice(0, 60),
+      score: c.score,
+      why_lost: c.decisionReason || `score ${c.score} < winner`,
+    }));
+
+  return {
+    winner_candidate_id: winner?.id ?? null,
+    winner_type: winner?.candidateType ?? null,
+    discrepancy_class: null, // populated below if available
+    action_type: directive.action_type ?? null,
+    artifact_type: artifactTypeForAction(directive.action_type) ?? null,
+    matched_goal: winner?.targetGoal?.text ?? null,
+    external_target: extractExternalTarget(directive),
+    concrete_ask: CONCRETE_ASK_PATTERN.test(
+      `${directive.directive ?? ''}\n${directive.reason ?? ''}`,
+    ),
+    pressure_signal: REAL_PRESSURE_PATTERN.test(
+      `${directive.directive ?? ''}\n${directive.reason ?? ''}`,
+    ),
+    why_now: discovery?.selectionReason ?? null,
+    top_3_runner_ups: runnerUps,
+  };
+}
+
+/** Extract the external target (email to: or named person) from directive+artifact. */
+function extractExternalTarget(directive: ConvictionDirective): string | null {
+  const evidence = directive.evidence ?? [];
+  // Check for email recipient in evidence
+  for (const ev of evidence) {
+    const emailMatch = ev.description?.match(/[\w.-]+@[\w.-]+\.\w{2,}/);
+    if (emailMatch) return emailMatch[0];
+  }
+  // Fallback: first capitalized proper noun in directive text
+  const nameMatch = (directive.directive ?? '').match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
+  return nameMatch?.[1] ?? null;
+}
+
+/**
+ * Build the persistence receipt by running the same checks the bottom gate uses.
+ * If the bottom gate passed, `allowed_reason` explains why. If blocked, `blocked_reason` explains why.
+ */
+function buildPersistenceReceipt(
+  directive: ConvictionDirective,
+  artifact: ConvictionArtifact,
+  bottomGate: BottomGateResult,
+): PersistenceReceipt {
+  const artifactRecord = artifact as unknown as Record<string, unknown>;
+  const directiveText = directive.directive ?? '';
+  const reason = directive.reason ?? '';
+  const artifactBody =
+    (typeof artifactRecord.body === 'string' ? artifactRecord.body : '') +
+    (typeof artifactRecord.content === 'string' ? artifactRecord.content : '') +
+    (typeof artifactRecord.subject === 'string' ? artifactRecord.subject : '') +
+    (typeof artifactRecord.title === 'string' ? artifactRecord.title : '');
+  const combined = `${directiveText}\n${reason}\n${artifactBody}`;
+
+  const hasExternalTarget =
+    directive.action_type === 'send_message'
+      ? typeof artifactRecord.to === 'string' && (artifactRecord.to as string).includes('@')
+      : EXTERNAL_TARGET_PATTERN.test(combined);
+
+  return {
+    external_target_present: hasExternalTarget,
+    concrete_ask_present: CONCRETE_ASK_PATTERN.test(combined),
+    real_pressure_present: REAL_PRESSURE_PATTERN.test(combined),
+    immediately_usable: !NON_EXECUTABLE_ARTIFACT_PATTERN.test(combined),
+    self_referential: SELF_REFERENTIAL_DOC_PATTERN.test(combined),
+    generic_social_motion: SOCIAL_MOTION_PATTERN.test(combined),
+    blocked_reason: bottomGate.pass ? null : bottomGate.blocked_reasons.join(', '),
+    allowed_reason: bottomGate.pass
+      ? 'All 6 bottom-gate checks passed'
+      : null,
+  };
+}
+
+/**
+ * Build the artifact receipt — machine judgment on the final artifact.
+ */
+function buildArtifactReceipt(
+  directive: ConvictionDirective,
+  artifact: ConvictionArtifact,
+): ArtifactReceipt {
+  const artifactRecord = artifact as unknown as Record<string, unknown>;
+  const artifactBody =
+    (typeof artifactRecord.body === 'string' ? artifactRecord.body : '') +
+    (typeof artifactRecord.content === 'string' ? artifactRecord.content : '');
+
+  const artifactText = artifactBody.slice(0, 2000) || null;
+
+  // Is it sendable? Must have real content, no placeholders, no generic openers
+  const hasPlaceholder = PLACEHOLDER_PATTERN.test(JSON.stringify(artifact));
+  const hasGenericLanguage = GENERIC_LANGUAGE_PATTERN.test(JSON.stringify(artifact));
+  const hasWeakWinner = WEAK_WINNER_PATTERN.test(JSON.stringify(artifact));
+  const isSendable = !hasPlaceholder && !hasGenericLanguage && !hasWeakWinner && artifactBody.length >= 30;
+
+  // Does it change probability now? Must have a concrete ask + pressure
+  const combined = `${directive.directive ?? ''}\n${directive.reason ?? ''}\n${artifactBody}`;
+  const changesProb = CONCRETE_ASK_PATTERN.test(combined) && REAL_PRESSURE_PATTERN.test(combined);
+
+  // Does it require more thinking? Non-executable patterns signal this
+  const requiresMoreThinking = NON_EXECUTABLE_ARTIFACT_PATTERN.test(combined);
+
+  return {
+    artifact_text: artifactText,
+    artifact_is_sendable: isSendable,
+    artifact_changes_probability_now: changesProb,
+    artifact_requires_more_thinking: requiresMoreThinking,
+    artifact_pass_fail: isSendable && changesProb && !requiresMoreThinking ? 'PASS' : 'FAIL',
+  };
+}
+
+/**
+ * Build the full outcome receipt combining all three sub-receipts.
+ */
+export function buildOutcomeReceipt(
+  directive: ConvictionDirective,
+  artifact: ConvictionArtifact,
+  bottomGate: BottomGateResult,
+): OutcomeReceipt {
+  return {
+    winner: buildWinnerReceipt(directive),
+    persistence: buildPersistenceReceipt(directive, artifact, bottomGate),
+    artifact: buildArtifactReceipt(directive, artifact),
+    generated_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Build a blocked outcome receipt when persistence is denied.
+ */
+export function buildBlockedOutcomeReceipt(
+  directive: ConvictionDirective,
+  artifact: ConvictionArtifact,
+  bottomGate: BottomGateResult,
+): OutcomeReceipt {
+  const receipt = buildOutcomeReceipt(directive, artifact, bottomGate);
+  // Override artifact pass_fail — it was blocked regardless of artifact quality
+  receipt.artifact.artifact_pass_fail = 'FAIL';
+  return receipt;
+}
+
 export function extractArtifact(executionResult: unknown): ConvictionArtifact | null {
   if (!executionResult || typeof executionResult !== 'object') return null;
   const artifact = (executionResult as Record<string, unknown>).artifact;
@@ -1331,13 +1541,24 @@ export async function runDailyGenerate(
       // Post-generation quality gate — block outputs that are not worth sending.
       const sendWorthiness = isSendWorthy(directive, artifact, userEmails);
       if (!sendWorthiness.worthy) {
+        // Build a receipt even for quality-gate blocks so the reason is visible
+        const qualityGateReceipt = buildBlockedOutcomeReceipt(
+          directive,
+          artifact,
+          { pass: false, blocked_reasons: [] }, // no bottom-gate reasons — quality gate is separate
+        );
+        qualityGateReceipt.persistence.blocked_reason = `quality_gate: ${sendWorthiness.reason}`;
         logStructuredEvent({
           event: 'daily_generate_failed',
           level: 'warn',
           userId,
           artifactType: artifactTypeForAction(directive.action_type),
           generationStatus: 'quality_gate_failed',
-          details: { scope: 'daily-generate', quality_gate_reason: sendWorthiness.reason },
+          details: {
+            scope: 'daily-generate',
+            quality_gate_reason: sendWorthiness.reason,
+            outcome_receipt: qualityGateReceipt,
+          },
         });
         const savedNoSend = await persistNoSendOutcome(
           supabase,
@@ -1363,6 +1584,7 @@ export async function runDailyGenerate(
             ...cleanupMeta,
             action_id: savedNoSend.id,
             quality_gate_reason: sendWorthiness.reason,
+            outcome_receipt: qualityGateReceipt,
             ...extractThresholdValues(directive),
           },
           success: true,
@@ -1377,6 +1599,7 @@ export async function runDailyGenerate(
       const bottomGate = evaluateBottomGate(directive, artifact);
       if (!bottomGate.pass) {
         const blockDetail = `Hard bottom gate blocked: ${bottomGate.blocked_reasons.join(', ')}`;
+        const blockedReceipt = buildBlockedOutcomeReceipt(directive, artifact, bottomGate);
         logStructuredEvent({
           event: 'daily_generate_failed',
           level: 'warn',
@@ -1389,6 +1612,7 @@ export async function runDailyGenerate(
             directive_text: directive.directive,
             action_type: directive.action_type,
             confidence: directive.confidence,
+            outcome_receipt: blockedReceipt,
           },
         });
         const savedNoSend = await persistNoSendOutcome(
@@ -1415,6 +1639,7 @@ export async function runDailyGenerate(
             ...cleanupMeta,
             action_id: savedNoSend.id,
             bottom_gate_blocked_reasons: bottomGate.blocked_reasons,
+            outcome_receipt: blockedReceipt,
             ...extractThresholdValues(directive),
           },
           success: true,
@@ -1441,6 +1666,10 @@ export async function runDailyGenerate(
         winner_selection_trace: directiveWithInspection.winnerSelectionTrace ?? null,
       };
 
+      // Build the outcome receipt — the single source of truth for "why did
+      // this winner exist and why was it allowed to persist?"
+      const outcomeReceipt = buildOutcomeReceipt(directive, artifact, bottomGate);
+
       const { data: saved, error: saveErr } = await supabase
         .from('tkg_actions')
         .insert({
@@ -1462,6 +1691,7 @@ export async function runDailyGenerate(
               extras: { inspection: inspectionMeta },
             }),
             approve: null,
+            outcome_receipt: outcomeReceipt,
           },
         })
         .select('id')
@@ -1518,6 +1748,7 @@ export async function runDailyGenerate(
           artifact_valid: true,
           candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
           top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
+          outcome_receipt: outcomeReceipt,
           ...extractThresholdValues(directive),
         },
         success: true,
