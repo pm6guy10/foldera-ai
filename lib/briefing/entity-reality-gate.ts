@@ -24,6 +24,10 @@ export interface EntityGateCandidate {
   domain: string;
   sourceSignals: GenerationCandidateSource[];
   entityName?: string;
+  /** Structured sender/author from the underlying signal record (e.g. "Jane Smith <jane@co.com>").
+   *  Used before regex text-extraction so real threads survive the gate even when the entity
+   *  name is absent from the decrypted body text. */
+  author?: string;
 }
 
 export interface EntityRecord {
@@ -212,14 +216,45 @@ export function buildVerifiedEntitySet(
 // Entity verification check for a single candidate
 // ---------------------------------------------------------------------------
 
+/**
+ * Extract a canonical entity name from a raw author/sender string.
+ * Handles "Display Name <email@domain.com>" and plain email formats.
+ */
+function entityFromAuthor(author: string): string | null {
+  if (!author || author.trim().length < 3) return null;
+  // "Display Name <email>" — prefer the display name
+  const nameAngle = author.match(/^([^<]+)</);
+  if (nameAngle) {
+    const name = nameAngle[1].trim().toLowerCase();
+    if (name.length >= 3 && !FALSE_POSITIVE_NAMES.has(name)) return name;
+  }
+  // Just "email@domain" — use local part
+  const emailLocal = author.match(/([a-zA-Z0-9._%+-]+)@/);
+  if (emailLocal) {
+    const local = emailLocal[1].toLowerCase().replace(/[._-]/g, ' ');
+    if (local.length >= 3) return local;
+  }
+  // Plain string (no angle brackets, no @)
+  const plain = author.trim().toLowerCase();
+  return plain.length >= 3 && !FALSE_POSITIVE_NAMES.has(plain) ? plain : null;
+}
+
 function findPrimaryEntity(c: EntityGateCandidate): string | null {
-  // Explicit entityName (relationship candidates, or commitment candidates
-  // with a resolved promisor/promisee entity from the DB)
+  // 1. Explicit entityName — set for relationship candidates and commitment candidates
+  //    with a resolved promisor/promisee entity from the DB.
   if (c.entityName) {
     return c.entityName.toLowerCase().trim();
   }
 
-  // Extract entities from text and return the first one found
+  // 2. Structured author/sender metadata — set for signal candidates from the raw
+  //    signal record's author field. Use this BEFORE regex so real threads are not
+  //    dropped simply because the entity name is absent from the decrypted body text.
+  if (c.author) {
+    const fromAuthor = entityFromAuthor(c.author);
+    if (fromAuthor) return fromAuthor;
+  }
+
+  // 3. Regex fallback — extract from title + content text.
   const extracted = extractEntitiesFromText(`${c.title} ${c.content}`);
   return extracted.length > 0 ? extracted[0] : null;
 }

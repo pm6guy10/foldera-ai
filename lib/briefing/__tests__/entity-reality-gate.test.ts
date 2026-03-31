@@ -261,6 +261,75 @@ describe('Entity Reality Gate — output structure', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Structured author evidence — signal candidates with author field
+// ---------------------------------------------------------------------------
+
+describe('Entity Reality Gate — structured author evidence (structured > regex)', () => {
+  it('passes signal candidate using author field even when name absent from body text', () => {
+    // Body text has no "First Last" pattern but author field has the real sender.
+    const c = makeCandidate({
+      type: 'signal',
+      title: 'Re: Q3 proposal followup',
+      content: 'Thanks for sending that over. Let me review and get back to you.',
+      author: 'Sarah Chen <sarah@example.com>',
+    });
+    // Sarah Chen is in KNOWN_ENTITIES — verifiedSet has "sarah chen"
+    const result = applyEntityRealityGate([c], KNOWN_ENTITIES, SIGNAL_HISTORY);
+    expect(result.passed).toHaveLength(1);
+    expect(result.dropped).toHaveLength(0);
+  });
+
+  it('passes signal candidate with plain email author (no display name)', () => {
+    // Local part "sam devore" matches verified entity "sam devore"
+    const c = makeCandidate({
+      type: 'signal',
+      title: 'Calendar: project planning',
+      content: 'Block time for project planning meeting.',
+      author: 'sam.devore@devore.com',
+    });
+    const result = applyEntityRealityGate([c], KNOWN_ENTITIES, SIGNAL_HISTORY);
+    expect(result.passed).toHaveLength(1);
+  });
+
+  it('still drops signal candidate when author is unknown AND regex fails', () => {
+    const c = makeCandidate({
+      type: 'signal',
+      title: 'check the status',
+      content: 'need to review the document and update progress.',
+      author: 'noreply@some-promo-service.com',
+    });
+    const result = applyEntityRealityGate([c], KNOWN_ENTITIES, SIGNAL_HISTORY);
+    // noreply resolves to "noreply" as entity — not in verifiedSet → drop
+    expect(result.dropped).toHaveLength(1);
+  });
+
+  it('uses author before regex: author entity wins when body text has a different name', () => {
+    // Body contains "Unknown Stranger" (unverified) but author is Sarah Chen (verified).
+    // Without the fix, regex would find "Unknown Stranger" first and drop.
+    // With the fix, author "Sarah Chen" is checked first → passes.
+    const c = makeCandidate({
+      type: 'signal',
+      title: 'Message from sender',
+      content: 'Unknown Stranger mentioned this task in the thread.',
+      author: 'Sarah Chen <sarah@example.com>',
+    });
+    const result = applyEntityRealityGate([c], KNOWN_ENTITIES, SIGNAL_HISTORY);
+    expect(result.passed).toHaveLength(1);
+  });
+
+  it('falls back to regex when author is absent', () => {
+    // No author field — falls back to regex and finds "Sarah Chen" in text
+    const c = makeCandidate({
+      type: 'signal',
+      title: 'Sarah Chen sent a contract',
+      content: 'Sarah Chen requested the contract by Friday.',
+    });
+    const result = applyEntityRealityGate([c], KNOWN_ENTITIES, SIGNAL_HISTORY);
+    expect(result.passed).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Edge cases
 // ---------------------------------------------------------------------------
 

@@ -3333,6 +3333,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     sourceSignals: GenerationCandidateSource[];
     entityPatterns?: unknown;
     entityName?: string;
+    /** Structured sender from the underlying signal record — passed to entity-reality-gate. */
+    author?: string;
   }> = [];
   let suppressedCandidates = 0;
 
@@ -3548,6 +3550,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           summary: text.slice(0, 160),
         },
       ],
+      // Pass structured author so entity-reality-gate can use it before regex.
+      // Prevents dropping real threads whose entity name is absent from decrypted body text.
+      author: s.author as string | undefined,
     });
   }
 
