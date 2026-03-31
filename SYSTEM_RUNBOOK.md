@@ -66,7 +66,7 @@ Before ending:
 
 ---
 
-## Current Operating Status (updated 2026-03-29)
+## Current Operating Status (updated 2026-03-31)
 
 ### Build
 - Status: PASSING
@@ -93,13 +93,15 @@ Before ending:
   - Deepest non-owner stage reached: `token_refresh_pre` (synthetic user only), then blocked before daily brief eligibility.
 
 ### Artifact Quality (write_document)
-- Status: HARDENED
-- Last verified: 2026-03-29
+- Status: HARDENED + BOTTOM GATE
+- Last verified: 2026-03-31
 - Evidence:
   - `lib/conviction/artifact-generator.ts` now blocks analysis scaffolding variants (not only exact `INSIGHT`/`WHY NOW` labels), enforces finished-document structure, and repairs/falls through safely.
   - `lib/cron/daily-brief-generate.ts` now enforces artifact persistence checks (`getArtifactPersistenceIssues`) before any `pending_approval` insert.
-  - `lib/conviction/__tests__/artifact-generator.test.ts` + `lib/cron/__tests__/daily-brief.test.ts` cover analysis rejection, clean acceptance, hostile-meta rejection, fallback safety, and invalid-artifact no-persist behavior.
-  - Artifact conversion pass (this session): `lib/briefing/generator.ts` + `lib/cron/daily-brief-generate.ts` now enforce decision leverage (`explicit ask`, `time constraint`, `pressure/consequence`, and ownership for documents) via `getDecisionEnforcementIssues(...)`; informational/ignorable artifacts fail closed at generation, persistence, and send-worthiness gates.
+  - **NEW (2026-03-31):** `evaluateBottomGate()` added as final pre-persistence gate. Blocks operationally empty winners that pass all upstream gates but are fortune-cookie output: no external target, no concrete ask, no real pressure, self-referential documents, generic social motion, non-executable artifacts. 6 block reason enums. 11 unit tests.
+  - Production proof: BEFORE (`af60f967` write_document memo-to-self) blocked by `NO_CONCRETE_ASK`. AFTER (`daa49f78` send_message with ask+deadline) survived the gate.
+  - `lib/conviction/__tests__/artifact-generator.test.ts` + `lib/cron/__tests__/daily-brief.test.ts` + `lib/cron/__tests__/bottom-gate.test.ts` cover analysis rejection, clean acceptance, hostile-meta rejection, fallback safety, invalid-artifact no-persist behavior, and operationally empty winner blocking.
+  - Artifact conversion pass: `lib/briefing/generator.ts` + `lib/cron/daily-brief-generate.ts` now enforce decision leverage (`explicit ask`, `time constraint`, `pressure/consequence`, and ownership for documents) via `getDecisionEnforcementIssues(...)`; informational/ignorable artifacts fail closed at generation, persistence, and send-worthiness gates.
   - 5-case discrepancy conversion proof: `lib/briefing/__tests__/artifact-conversion-proof.test.ts` passed with 5/5 `PASS`, and each artifact contained decision + deadline + consequence text.
 
 ### Causal Diagnosis Layer

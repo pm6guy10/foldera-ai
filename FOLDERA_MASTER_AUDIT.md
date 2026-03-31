@@ -2,6 +2,25 @@
 
 ## OPEN — Requires Action
 
+### SHIPPED — 2026-03-31 — Hard bottom gate blocks operationally empty winners before persistence
+
+This session added one gate function + wiring + tests:
+- `lib/cron/daily-brief-generate.ts` (evaluateBottomGate + persistence path wiring)
+- `lib/cron/__tests__/bottom-gate.test.ts` (11 new tests)
+
+Mandatory QA gate results:
+- `npm run build` passed.
+- `npx vitest run --exclude ".claude/worktrees/**"` passed (`45 files, 524 tests`).
+- Pre-push hook passed (`45 files, 524 tests`).
+- Vercel deploy `dpl_ANMqJbrPj52Rm71GZZaKnmS4aXHx` READY.
+- Production `POST /api/settings/run-brief` triggered fresh generation — `daa49f78` persisted as `pending_approval` (send_message, confidence=73) after passing the new gate.
+
+BEFORE/AFTER comparison:
+- BEFORE (`af60f967`): `write_document` memo-to-self, no external person, passive language → gate would block `NO_CONCRETE_ASK`.
+- AFTER (`daa49f78`): `send_message` email with concrete ask, deadline, consequence → gate PASSED.
+
+Status: SHIPPED. Next verification: first organic nightly cron generation under the gate.
+
 ### NEEDS_REVIEW — 2026-03-29 — Full local Playwright gate timed out during owner-only brain-receipt backend pass
 
 This session changed backend-only inspection + fresh-run gating:

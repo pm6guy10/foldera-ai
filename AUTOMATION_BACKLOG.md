@@ -1,5 +1,29 @@
 # AUTOMATION BACKLOG
 
+### P0 — HARD BOTTOM GATE: BLOCK OPERATIONALLY EMPTY WINNERS (2026-03-31)
+
+**Status: SHIPPED.** Commit `835ab43`, deployed `dpl_ANMqJbrPj52Rm71GZZaKnmS4aXHx`.
+
+**Blocker class:** Structurally valid but operationally empty winners — `write_document` memos with no external target, no concrete ask, no real pressure. Pass all existing gates (confidence, evidence, artifact generation) but produce fortune-cookie output the user cannot act on.
+
+**Fix:** `evaluateBottomGate()` in `lib/cron/daily-brief-generate.ts` — 6 checks, all must pass before `pending_approval` insert:
+1. External execution target exists (real person name or email address)
+2. Concrete ask exists (question, request, or imperative directed at someone)
+3. Real-world pressure exists (deadline, consequence, or forcing function)
+4. Not a self-referential document (reflection/memo/analysis to self)
+5. Not generic social motion (just "checking in" / "catching up")
+6. Artifact is immediately executable (not a framework/question-list)
+
+**Block reason enums:** `NO_EXTERNAL_TARGET`, `NO_CONCRETE_ASK`, `NO_REAL_PRESSURE`, `SELF_REFERENTIAL_DOCUMENT`, `GENERIC_SOCIAL_MOTION`, `NON_EXECUTABLE_ARTIFACT`
+
+**Production proof:**
+- BEFORE (`af60f967`, pre-deploy): `write_document` memo "Publish a decision memo that locks owner accountability..." — no real person, passive "Decision required" language. Gate would block with `NO_CONCRETE_ASK`.
+- AFTER (`daa49f78`, post-deploy): `send_message` email with "Can you confirm..." + deadline + consequence. Gate PASSED — external target, concrete ask, real pressure.
+
+**Tests:** 11 unit tests in `lib/cron/__tests__/bottom-gate.test.ts`. 524/524 tests pass across 45 files.
+
+**Next required proof:** Nightly cron run (4 AM PT) — check whether the first organic generation hits the gate or survives. Query: `SELECT id, status, action_type, confidence FROM tkg_actions WHERE generated_at > '2026-04-01' ORDER BY generated_at LIMIT 3`.
+
 ### P0 — RELATIONSHIP CANDIDATES FULLY UNBLOCKED (2026-03-30)
 
 **Status: RESOLVED.** Relationship candidates now survive all ranking invariants and are genuinely competitive.

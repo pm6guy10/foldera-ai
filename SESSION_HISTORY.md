@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-03-31 — Hard bottom gate: block operationally empty winners before pending_approval
+  MODE: AUDIT
+  Commit hash(es): `835ab43`
+  Files changed: `lib/cron/daily-brief-generate.ts`, `lib/cron/__tests__/bottom-gate.test.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_MASTER_AUDIT.md`, `SYSTEM_RUNBOOK.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` passed; `npx vitest run --exclude ".claude/worktrees/**"` (45 files, 524 tests passed); pre-push hook passed; Vercel deploy `dpl_ANMqJbrPj52Rm71GZZaKnmS4aXHx` READY; production `POST /api/settings/run-brief` triggered fresh generation — `daa49f78` persisted as `pending_approval` (send_message, confidence=73) after passing the new gate. BEFORE/AFTER comparison: `af60f967` (write_document memo-to-self) would be blocked by `NO_CONCRETE_ASK`; `daa49f78` (send_message with ask+deadline+consequence) survived the gate.
+  Changes: (1) `evaluateBottomGate()` — pure function, 6 checks: external target, concrete ask, real pressure, not self-referential, not social motion, immediately executable. Block reasons: `NO_EXTERNAL_TARGET`, `NO_CONCRETE_ASK`, `NO_REAL_PRESSURE`, `SELF_REFERENTIAL_DOCUMENT`, `GENERIC_SOCIAL_MOTION`, `NON_EXECUTABLE_ARTIFACT`. (2) Wired into `runDailyGenerate()` between `isSendWorthy` and the `pending_approval` insert. (3) Structured rejection receipt with block reasons emitted to logs and persisted as `no_send`. (4) 11 unit tests covering pass/block for all 6 reason classes.
+  Any unresolved issues: Next verification is first organic nightly cron run under the gate (4 AM PT 2026-04-01). The `to` field on the surviving winner is `onboarding@resend.dev` (default/fallback), not a real business contact — this is a separate upstream issue (generator recipient resolution), not a bottom gate concern.
+
 - 2026-03-28 — Paid-transaction noise class removed from extraction + scoring
   MODE: AUDIT
   Commit hash(es): pending (set after commit on `main`)
