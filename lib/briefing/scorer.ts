@@ -328,6 +328,102 @@ export interface ScorerResult {
   divergences: RevealedGoalDivergence[];
 }
 
+// ---------------------------------------------------------------------------
+// Diagnostic accumulator — captures every candidate drop at every stage.
+// Populated as a side-effect of scoreOpenLoops(); retrieved via
+// getLastScorerDiagnostics() after the call returns.
+// ---------------------------------------------------------------------------
+
+export interface ScorerDropEntry {
+  candidateId: string;
+  type: string;
+  title: string;
+  stage: string;
+  reason: string;
+  score?: number;
+}
+
+export interface ScorerSurvivorEntry {
+  candidateId: string;
+  type: string;
+  title: string;
+  score: number;
+  breakdown: ScoreBreakdown;
+  matchedGoal: string | null;
+  entityName?: string;
+  lifecycle?: CandidateLifecycle;
+  invariantReasons: string[];
+  discrepancyClass?: string;
+}
+
+export interface ScorerDiagnostics {
+  sourceCounts: {
+    commitments_raw: number;
+    commitments_after_dedup: number;
+    signals_raw: number;
+    signals_after_decrypt: number;
+    entities_raw: number;
+    goals_raw: number;
+    goals_after_filter: number;
+  };
+  candidatePool: {
+    commitment: number;
+    signal: number;
+    relationship: number;
+    relationship_skipped_no_thread: number;
+  };
+  filterStages: Array<{
+    stage: string;
+    before: number;
+    after: number;
+    dropped: ScorerDropEntry[];
+  }>;
+  discrepancies: Array<{
+    id: string;
+    class: string;
+    title: string;
+    entityName?: string;
+    score: number;
+    stakes: number;
+    urgency: number;
+  }>;
+  convergenceBoosts: Array<{
+    candidateId: string;
+    title: string;
+    axes: number;
+    reasons: string[];
+    boost: number;
+    boostedScore: number;
+  }>;
+  survivors: ScorerSurvivorEntry[];
+  finalWinner: ScorerSurvivorEntry | null;
+  finalOutcome: 'winner_selected' | 'no_valid_action' | 'zero_candidates_early';
+  earlyExitStage?: string;
+}
+
+let _lastDiagnostics: ScorerDiagnostics | null = null;
+
+export function getLastScorerDiagnostics(): ScorerDiagnostics | null {
+  return _lastDiagnostics;
+}
+
+function initDiagnostics(): ScorerDiagnostics {
+  return {
+    sourceCounts: {
+      commitments_raw: 0, commitments_after_dedup: 0,
+      signals_raw: 0, signals_after_decrypt: 0,
+      entities_raw: 0, goals_raw: 0, goals_after_filter: 0,
+    },
+    candidatePool: { commitment: 0, signal: 0, relationship: 0, relationship_skipped_no_thread: 0 },
+    filterStages: [],
+    discrepancies: [],
+    convergenceBoosts: [],
+    survivors: [],
+    finalWinner: null,
+    finalOutcome: 'zero_candidates_early',
+  };
+}
+
 export interface RankingInvariantDiagnostic {
   id: string;
   originalScore: number;
@@ -3002,6 +3098,9 @@ function classifyLifecycle(args: {
 }
 
 export async function scoreOpenLoops(userId: string): Promise<ScorerResult | null> {
+  const diag = initDiagnostics();
+  _lastDiagnostics = diag;
+
   const supabase = createServerClient();
   const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
   const oneHundredEightyDaysAgo = new Date(Date.now() - daysMs(180)).toISOString();
@@ -3067,6 +3166,10 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   ]);
 
   const commitments = commitmentsRes.data ?? [];
+  diag.sourceCounts.commitments_raw = commitments.length;
+  diag.sourceCounts.signals_raw = (signalsRes.data ?? []).length;
+  diag.sourceCounts.entities_raw = (entitiesRes.data ?? []).length;
+  diag.sourceCounts.goals_raw = (goalsRes.data ?? []).length;
 
   // Near-duplicate dedup: commitments are sometimes extracted multiple times
   // from follow-up emails about the same underlying task. Group by the first
@@ -3093,6 +3196,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       console.log(JSON.stringify({ event: 'scorer_commitment_dedup', before: commitments.length, after: dedupMap.size, dupes: dupeCount }));
       commitments.splice(0, commitments.length, ...[...dedupMap.values()]);
     }
+    diag.sourceCounts.commitments_after_dedup = commitments.length;
   }
 
   let scoringDecryptSkips = 0;
@@ -3110,6 +3214,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       };
     })
     .filter((signal: any) => signal && !isSelfReferentialSignal(signal.content));
+  diag.sourceCounts.signals_after_decrypt = signals.length;
   const entities = entitiesRes.data ?? [];
   // Entity ID → name map so commitment candidates can resolve promisor/promisee.
   // Seed from loaded entities, then batch-resolve any missing commitment actor IDs.
@@ -3146,6 +3251,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const goals = ((goalsRes.data ?? []) as Array<GoalRow & { source?: string }>)
     .filter((g) => !PLACEHOLDER_GOAL_SOURCES.has(g.source ?? ''))
     .filter((g) => !CONSTRAINT_NOTE_PREFIX.test(g.goal_text)) as GoalRow[];
+  diag.sourceCounts.goals_after_filter = goals.length;
   const goalKeywordIndex = buildGoalKeywordIndex(goals);
   logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
 
@@ -3528,6 +3634,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     });
   }
 
+  diag.candidatePool.relationship_skipped_no_thread = relationshipSkippedNoThread;
+
   if (relationshipSkippedNoThread > 0) {
     logStructuredEvent({
       event: 'relationship_candidates_gated',
@@ -3548,8 +3656,11 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Diagnostic: candidate pool composition before any filters
   // -----------------------------------------------------------------------
   {
-    const byType = { commitment: 0, signal: 0, relationship: 0 };
+    const byType: Record<string, number> = { commitment: 0, signal: 0, relationship: 0 };
     for (const c of candidates) byType[c.type]++;
+    diag.candidatePool.commitment = byType.commitment;
+    diag.candidatePool.signal = byType.signal;
+    diag.candidatePool.relationship = byType.relationship;
     console.log(JSON.stringify({
       event: 'scorer_candidate_pool_raw',
       total: candidates.length,
@@ -3573,6 +3684,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // -----------------------------------------------------------------------
 
   const preScoringCount = candidates.length;
+  const noiseDrops: ScorerDropEntry[] = [];
   for (let i = candidates.length - 1; i >= 0; i--) {
     const c = candidates[i];
     // Relationship candidates are exempt from noise filtering — they come from
@@ -3581,6 +3693,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     if (c.type === 'relationship') continue;
     const isNoise = isNoiseCandidateText(c.title, c.content);
     if (isNoise) {
+      noiseDrops.push({ candidateId: c.id, type: c.type, title: c.title.slice(0, 100), stage: 'noise_filter', reason: 'noise_text' });
       logStructuredEvent({
         event: 'candidate_noise_filtered',
         level: 'info',
@@ -3596,6 +3709,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       candidates.splice(i, 1);
     }
   }
+  diag.filterStages.push({ stage: 'noise_filter', before: preScoringCount, after: candidates.length, dropped: noiseDrops });
   if (preScoringCount !== candidates.length) {
     console.log(JSON.stringify({
       event: 'scorer_noise_filter',
@@ -3608,14 +3722,20 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // PRE-SCORING: Context validity filter
   // Hard-removes candidates with closed/rejected/resolved context before the
   // scoring loop runs. Rejected candidates never reach generation.
+  const preValidityCount = candidates.length;
   const invalidContextRejections = await filterInvalidContext(
     userId,
     candidates,
     signals as Array<{ content: string; type?: string; occurred_at?: string }>,
   );
+  const validityDrops: ScorerDropEntry[] = [];
   if (invalidContextRejections.size > 0) {
     for (let i = candidates.length - 1; i >= 0; i--) {
-      if (invalidContextRejections.has(candidates[i].id)) candidates.splice(i, 1);
+      if (invalidContextRejections.has(candidates[i].id)) {
+        const c = candidates[i];
+        validityDrops.push({ candidateId: c.id, type: c.type, title: c.title.slice(0, 100), stage: 'validity_filter', reason: 'invalid_context' });
+        candidates.splice(i, 1);
+      }
     }
     console.log(JSON.stringify({
       event: 'scorer_validity_filter',
@@ -3623,11 +3743,13 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       remaining: candidates.length,
     }));
   }
+  diag.filterStages.push({ stage: 'validity_filter', before: preValidityCount, after: candidates.length, dropped: validityDrops });
 
   // -----------------------------------------------------------------------
   // PRE-SCORING: Entity reality gate — drop candidates with unverified entities
   // Prevents fake or ungrounded entities from entering the scoring pipeline.
   // -----------------------------------------------------------------------
+  const preEntityGateCount = candidates.length;
   const entityGateResult = applyEntityRealityGate(
     candidates,
     (entities as Array<{ name: string; total_interactions: number; trust_class?: string }>),
@@ -3666,6 +3788,11 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     candidates.length = 0;
     candidates.push(...entityGateResult.passed);
   }
+  const entityGateDrops: ScorerDropEntry[] = entityGateResult.dropped.map(d => ({
+    candidateId: d.candidate.id, type: d.candidate.type, title: d.candidate.title.slice(0, 100),
+    stage: 'entity_reality_gate', reason: `${d.reason} (entity: ${d.entity})`,
+  }));
+  diag.filterStages.push({ stage: 'entity_reality_gate', before: preEntityGateCount, after: candidates.length, dropped: entityGateDrops });
 
   if (candidates.length === 0) {
     console.log(JSON.stringify({
@@ -3678,6 +3805,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         return acc;
       }, {} as Record<string, number>),
     }));
+    diag.earlyExitStage = 'entity_reality_gate';
     return null;
   }
 
@@ -3686,6 +3814,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Drops every candidate that cannot produce a board-changing outcome
   // (money, job, approval, deal, deadline). Fail closed.
   // -----------------------------------------------------------------------
+  const preStakesGateCount = candidates.length;
   const stakesGateResult = applyStakesGate(candidates);
   if (stakesGateResult.dropped.length > 0) {
     console.log(JSON.stringify({
@@ -3719,10 +3848,16 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     candidates.length = 0;
     candidates.push(...stakesGateResult.passed);
   }
+  const stakesDrops: ScorerDropEntry[] = stakesGateResult.dropped.map(d => ({
+    candidateId: d.candidate.id, type: d.candidate.type, title: d.candidate.title.slice(0, 100),
+    stage: 'stakes_gate', reason: `${d.failedCondition}: ${d.reason}`,
+  }));
+  diag.filterStages.push({ stage: 'stakes_gate', before: preStakesGateCount, after: candidates.length, dropped: stakesDrops });
 
   if (candidates.length === 0) {
     // No board-changing candidates survived the stakes gate. Return null for
     // a valid no-send. A correct NO_ACTION is better than a weak directive.
+    diag.earlyExitStage = 'stakes_gate';
     return null;
   }
 
@@ -3964,6 +4099,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
   let lifecycleGateExcluded = 0;
   const beforeLifecycleGate = scored.length;
+  const lifecycleDrops: ScorerDropEntry[] = [];
 
   for (let i = scored.length - 1; i >= 0; i--) {
     const s = scored[i];
@@ -3987,6 +4123,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           reason: lc.reason,
         },
       });
+      lifecycleDrops.push({ candidateId: s.id, type: s.type, title: s.title.slice(0, 100), stage: 'lifecycle_gate', reason: `trash: ${lc.reason?.slice(0, 80)}`, score: s.score });
       scored.splice(i, 1);
       lifecycleGateExcluded++;
     } else if (lc.state === 'dormant_later' || lc.state === 'resolved') {
@@ -4008,6 +4145,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           reason: lc.reason,
         },
       });
+      lifecycleDrops.push({ candidateId: s.id, type: s.type, title: s.title.slice(0, 100), stage: 'lifecycle_gate', reason: `${lc.state}: ${lc.reason?.slice(0, 80)}`, score: s.score });
       lifecycleGateExcluded++;
     } else if (lc.actionability !== 'actionable') {
       // active_now but hold_only or archive_only — in context, not generatable today
@@ -4028,9 +4166,11 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           reason: lc.reason,
         },
       });
+      lifecycleDrops.push({ candidateId: s.id, type: s.type, title: s.title.slice(0, 100), stage: 'lifecycle_gate', reason: `non_actionable(${lc.actionability}): ${lc.reason?.slice(0, 80)}`, score: s.score });
       lifecycleGateExcluded++;
     }
   }
+  diag.filterStages.push({ stage: 'lifecycle_gate', before: beforeLifecycleGate, after: scored.filter(s => s.score > 0).length, dropped: lifecycleDrops });
 
   if (lifecycleGateExcluded > 0) {
     logStructuredEvent({
@@ -4258,6 +4398,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       discrepancyClass: d.class,
       trigger: d.trigger,
     });
+    diag.discrepancies.push({ id: d.id, class: d.class, title: d.title.slice(0, 100), entityName: d.entityName, score, stakes: d.stakes, urgency: d.urgency });
     logStructuredEvent({
       event: 'discrepancy_candidate_scored',
       level: 'info',
@@ -4323,6 +4464,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       if (convergenceAxes > 0) {
         const boost = convergenceAxes >= 2 ? 1.50 : 1.35;
         s.score *= boost;
+        diag.convergenceBoosts.push({ candidateId: s.id, title: s.title.slice(0, 80), axes: convergenceAxes, reasons: [...convergenceReasons], boost, boostedScore: s.score });
         logStructuredEvent({
           event: 'convergence_boost',
           level: 'info',
@@ -4399,7 +4541,17 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Emergent patterns (anti-patterns, divergences) are exempt — they ARE goal diagnosis.
   // Everything else must connect to a stated goal before competing.
   const beforeGoalGate = scored.length;
-  scored = scored.filter((s) => s.matchedGoal !== null || s.type === 'emergent' || s.type === 'discrepancy');
+  const goalGateDrops: ScorerDropEntry[] = [];
+  const goalGateKept: typeof scored = [];
+  for (const s of scored) {
+    if (s.matchedGoal !== null || s.type === 'emergent' || s.type === 'discrepancy') {
+      goalGateKept.push(s);
+    } else {
+      goalGateDrops.push({ candidateId: s.id, type: s.type, title: s.title.slice(0, 100), stage: 'goal_primacy_gate', reason: 'no_goal_match', score: s.score });
+    }
+  }
+  scored = goalGateKept;
+  diag.filterStages.push({ stage: 'goal_primacy_gate', before: beforeGoalGate, after: scored.length, dropped: goalGateDrops });
   if (scored.length < beforeGoalGate) {
     logStructuredEvent({
       event: 'scorer_goal_primacy_gate',
@@ -4418,6 +4570,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Exclude emergent candidates with no goal anchor — they will
   // always fail the Discrepancy Engine gate (no_thread, no_outcome)
   // and block real candidates from being selected.
+  const beforeEmergentFilter = scored.length;
+  const emergentDrops: ScorerDropEntry[] = [];
   scored = scored.filter((candidate) => {
     if (candidate.type === 'emergent' && !candidate.matchedGoal) {
       logStructuredEvent({
@@ -4433,18 +4587,28 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
           score: candidate.score,
         },
       });
+      emergentDrops.push({ candidateId: candidate.id, type: candidate.type, title: candidate.title.slice(0, 100), stage: 'emergent_no_goal_filter', reason: 'no_goal_anchor', score: candidate.score });
       return false;
     }
     return true;
   });
+  diag.filterStages.push({ stage: 'emergent_no_goal_filter', before: beforeEmergentFilter, after: scored.length, dropped: emergentDrops });
 
   // Ranking invariant enforcement
   // Hard-block weak/obvious/repeated/non-decision-moving candidates and
   // force discrepancy preference when both discrepancy + task classes exist.
+  const preInvariantCount = scored.length;
   const invariantResult = applyRankingInvariants(scored);
   scored = invariantResult.ranked;
   const invariantRejected = invariantResult.diagnostics.filter((d) => d.hardRejectReasons.length > 0).length;
   const invariantPenalized = invariantResult.diagnostics.filter((d) => d.penaltyReasons.length > 0).length;
+  const invariantDrops: ScorerDropEntry[] = invariantResult.diagnostics
+    .filter(d => d.hardRejectReasons.length > 0)
+    .map(d => {
+      const s = scored.find(c => c.id === d.id) ?? invariantResult.ranked.find(c => c.id === d.id);
+      return { candidateId: d.id, type: s?.type ?? 'unknown', title: s?.title?.slice(0, 100) ?? d.id, stage: 'ranking_invariants', reason: d.hardRejectReasons.join(', '), score: d.adjustedScore };
+    });
+  diag.filterStages.push({ stage: 'ranking_invariants', before: preInvariantCount, after: scored.filter(s => s.score > 0).length, dropped: invariantDrops });
   if (invariantRejected > 0 || invariantPenalized > 0) {
     logStructuredEvent({
       event: 'ranking_invariant_enforced',
@@ -4489,10 +4653,32 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       invariant_reasons: getInvariantFailureReasons(s),
     })),
   }));
+
+  // Build survivors and final-gate drops for diagnostics
+  const finalGateDrops: ScorerDropEntry[] = [];
+  for (const s of scored) {
+    const reasons = getInvariantFailureReasons(s);
+    const survivor: ScorerSurvivorEntry = {
+      candidateId: s.id, type: s.type, title: s.title.slice(0, 120), score: s.score,
+      breakdown: s.breakdown, matchedGoal: s.matchedGoal?.text?.slice(0, 80) ?? null,
+      entityName: s.entityName, lifecycle: s.lifecycle,
+      invariantReasons: reasons, discrepancyClass: s.discrepancyClass,
+    };
+    if (s.score <= SCORED_MIN_THRESHOLD) {
+      finalGateDrops.push({ candidateId: s.id, type: s.type, title: s.title.slice(0, 100), stage: 'final_gate', reason: `score_below_threshold (${s.score})`, score: s.score });
+    } else if (reasons.length > 0) {
+      finalGateDrops.push({ candidateId: s.id, type: s.type, title: s.title.slice(0, 100), stage: 'final_gate', reason: `invariant_fail: ${reasons.join(', ')}`, score: s.score });
+    } else {
+      diag.survivors.push(survivor);
+    }
+  }
+  diag.filterStages.push({ stage: 'final_gate', before: scored.length, after: scored.length - finalGateDrops.length, dropped: finalGateDrops });
+
   const validScoredCandidates = scored.filter(
     (c) => c.score > SCORED_MIN_THRESHOLD && passesTop3RankingInvariants(c),
   );
   if (validScoredCandidates.length === 0) {
+    diag.finalOutcome = 'no_valid_action';
     logStructuredEvent({
       event: 'no_valid_action',
       level: 'info',
@@ -4513,6 +4699,15 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
   const winner = validScoredCandidates[0];
   if (!winner) return null;
+
+  // Populate final winner diagnostic
+  diag.finalOutcome = 'winner_selected';
+  diag.finalWinner = {
+    candidateId: winner.id, type: winner.type, title: winner.title.slice(0, 120), score: winner.score,
+    breakdown: winner.breakdown, matchedGoal: winner.matchedGoal?.text?.slice(0, 80) ?? null,
+    entityName: winner.entityName, lifecycle: winner.lifecycle,
+    invariantReasons: [], discrepancyClass: winner.discrepancyClass,
+  };
 
   // Build deprioritized loops: top 3 runner-ups with kill reasons
   const runnerUps = validScoredCandidates.slice(1, 4);
