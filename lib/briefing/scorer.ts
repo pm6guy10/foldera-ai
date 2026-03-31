@@ -2808,8 +2808,10 @@ const RESOLUTION_KEYWORDS = [
   'reference check complete', 'reference completed', 'reference done',
   'hired', 'offer accepted', 'job offer', 'offer letter', 'accepted the offer',
   'position filled', 'no longer needed', 'cancelled', 'withdrawn',
-  'completed', 'already sent', 'already done', 'closed',
+  'already sent', 'already done',
   'rejected the offer', 'declined the offer', 'turned down the offer',
+  // NOTE: bare "completed" and "closed" removed — too broad, matches
+  // "order completed", "ticket closed", "payment completed" etc.
 ];
 
 interface ValidityRejection {
@@ -2876,18 +2878,43 @@ async function filterInvalidContext(
     .map((s) => s.content.toLowerCase());
 
   for (const c of candidatePool) {
+    // Signal candidates are raw email/calendar text — they contain many
+    // incidental names in headers, footers, signatures, and CC lists.
+    // Person-name-based rejection produces massive false positives on them.
+    // Only commitment and relationship candidates should be subject to
+    // entity-level validity filtering.
+    if (c.type === 'signal') continue;
+
     const names = extractPersonNames(`${c.title} ${c.content}`);
     if (names.length === 0) continue;
 
     for (const name of names) {
-      const firstName = name.split(' ')[0].toLowerCase();
+      const nameParts = name.split(' ');
+      const firstName = nameParts[0].toLowerCase();
+      const hasLastName = nameParts.length >= 2;
       if (firstName.length < 3) continue;
 
+      // Build match pattern: require full name when available, whole-word
+      // first-name match when not (minimum 4 chars to avoid "Jim"→"jimmy" etc.)
+      const matchesInText = (text: string): boolean => {
+        if (hasLastName) {
+          // Full name match (case-insensitive): "caleb gieger" in text
+          return text.includes(name.toLowerCase());
+        }
+        // First-name only: require word boundary and minimum length
+        if (firstName.length < 4) return false;
+        const wordBoundaryPattern = new RegExp(`\\b${firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+        return wordBoundaryPattern.test(text);
+      };
+
       // --- Check 1: explicit rejection signal names this entity ---
-      if (rejectionTexts.some((text) => text.includes(firstName))) {
+      // Requires full-name or whole-word first-name match to prevent
+      // "brandon" in a rejection signal from killing every email mentioning
+      // a different Brandon.
+      if (rejectionTexts.some((text) => matchesInText(text))) {
         rejected.set(c.id, {
           reason: 'rejection_signal_detected',
-          detail: `rejection signal matches entity "${firstName}"`,
+          detail: `rejection signal matches entity "${name}"`,
         });
         logStructuredEvent({
           event: 'action_rejected_invalid_context',
@@ -2901,23 +2928,29 @@ async function filterInvalidContext(
             candidate_id: c.id,
             candidate_type: c.type,
             candidate_title: c.title.slice(0, 100),
-            matched_entity: firstName,
+            matched_entity: name,
           },
         });
         break;
       }
 
       // --- Check 2: recent signals show this commitment is resolved ---
+      // Requires resolution keyword within 200 chars of the name mention
+      // (proximity match) to prevent "order completed" from rejecting an
+      // unrelated commitment that happens to share a person name.
       if (c.type === 'commitment') {
-        const resolved = recentResolutionTexts.some(
-          (text) =>
-            text.includes(firstName) &&
-            RESOLUTION_KEYWORDS.some((kw) => text.includes(kw)),
-        );
+        const resolved = recentResolutionTexts.some((text) => {
+          if (!matchesInText(text)) return false;
+          // Proximity check: find name position, check for keyword within 200 chars
+          const namePos = text.indexOf(hasLastName ? name.toLowerCase() : firstName);
+          if (namePos === -1) return false;
+          const nearbyText = text.slice(Math.max(0, namePos - 200), namePos + name.length + 200);
+          return RESOLUTION_KEYWORDS.some((kw) => nearbyText.includes(kw));
+        });
         if (resolved) {
           rejected.set(c.id, {
             reason: 'commitment_appears_resolved',
-            detail: `resolution keyword found in recent signal for entity "${firstName}"`,
+            detail: `resolution keyword found near entity "${name}" in recent signal`,
           });
           logStructuredEvent({
             event: 'action_rejected_invalid_context',
@@ -2931,7 +2964,7 @@ async function filterInvalidContext(
               candidate_id: c.id,
               candidate_type: c.type,
               candidate_title: c.title.slice(0, 100),
-              matched_entity: firstName,
+              matched_entity: name,
             },
           });
           break;
@@ -2941,8 +2974,9 @@ async function filterInvalidContext(
       // --- Check 3: 3+ consecutive skips = definitively avoided ---
       // Walk the most-recent-first action list for this entity.
       // Any non-skip breaks the streak (user re-engaged after skipping).
+      // Uses full-name or whole-word match (same as above).
       const entityActions = recentAllActions.filter((a) =>
-        a.directive_text.toLowerCase().includes(firstName),
+        matchesInText(a.directive_text.toLowerCase()),
       );
       let consecutiveSkips = 0;
       for (const a of entityActions) {
@@ -2955,7 +2989,7 @@ async function filterInvalidContext(
       if (consecutiveSkips >= 3) {
         rejected.set(c.id, {
           reason: 'historically_avoided',
-          detail: `${consecutiveSkips} consecutive skips for entity "${firstName}" in last 30 days`,
+          detail: `${consecutiveSkips} consecutive skips for entity "${name}" in last 30 days`,
         });
         logStructuredEvent({
           event: 'action_rejected_invalid_context',
@@ -2969,7 +3003,7 @@ async function filterInvalidContext(
             candidate_id: c.id,
             candidate_type: c.type,
             candidate_title: c.title.slice(0, 100),
-            matched_entity: firstName,
+            matched_entity: name,
             consecutive_skips: consecutiveSkips,
           },
         });
