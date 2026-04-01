@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — OPS: Directive generation — Sonnet + FOLDERA CONVICTION ENGINE system prompt; pipeline-receipt mock alignment
+  MODE: OPS
+  Commit hash(es): `eac65c6` (`lib/briefing/generator.ts` — Sonnet + SYSTEM_PROMPT); following commit on `main` adds `pipeline-receipt.test.ts` mock branch, `FOLDERA_PRODUCT_SPEC.md`, and this log entry (pre-push hook required the mock update).
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/pipeline-receipt.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/briefing/__tests__/pipeline-receipt.test.ts` (pass). Pre-push full vitest run after `git push` (expected pass).
+  Any unresolved issues: `npm run test:prod` not run from this workspace after push.
+
 - 2026-04-01 — FLOW: New-user reliability — first-morning fallback, delivery audit, /try, OAuth recovery, multi-user cron, onboard sync
   MODE: FLOW
   Commit hash(es): run `git log -1 --oneline` — subject `ship: new-user reliability — first-morning fallback, delivery audit, /try verification, OAuth recovery, multi-user safety, immediate sync on onboard`

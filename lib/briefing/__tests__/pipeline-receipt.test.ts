@@ -562,12 +562,23 @@ function setAnthropicPipelineMocks() {
       ]);
     }
 
-    // New Discrepancy Engine prompt. Returns new output format.
-    if (system.includes('FOLDERA ARTIFACT RENDERER') || system.includes('FOLDERA DISCREPANCY ENGINE') || system.includes("You are Foldera's behavioral analyst")) {
+    // Directive generation system prompt (artifact renderer / analyst / conviction engine).
+    if (
+      system.includes('FOLDERA ARTIFACT RENDERER') ||
+      system.includes('FOLDERA DISCREPANCY ENGINE') ||
+      system.includes('FOLDERA CONVICTION ENGINE') ||
+      system.includes("You are Foldera's behavioral analyst")
+    ) {
       return anthropicResponse({
         action: 'send_message',
         confidence: 82,
         reason: 'Alex Morgan requested the signed permit appeal draft by Friday and you have not replied — thread is 72h old.',
+        causal_diagnosis: {
+          why_exists_now:
+            'Alex’s email set a Friday deadline for the signed permit appeal draft; the thread has gone unanswered.',
+          mechanism:
+            'A hard external deadline plus no outbound reply leaves approval and filing ownership undefined.',
+        },
         message: {
           to: 'alex@example.com',
           subject: 'Signed permit appeal draft by Friday',

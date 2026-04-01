@@ -185,6 +185,7 @@ Only start after Phase 1 is fully PROVEN.
 | Conversation extraction uses Haiku | BUILT | March 24 cost-control pass: `lib/extraction/conversation-extractor.ts` now uses `claude-haiku-4-5-20251001`. |
 | Goal refresh uses Haiku | BUILT | March 24 cost-control pass: `lib/cron/goal-refresh.ts` now uses `claude-haiku-4-5-20251001`. |
 | Demo analyze route uses Haiku | BUILT | March 24 cost-control pass: `app/api/try/analyze/route.ts` now uses `claude-haiku-4-5-20251001`. |
+| Directive generation uses Sonnet | BUILT | April 1: `lib/briefing/generator.ts` `GENERATION_MODEL` = `claude-sonnet-4-20250514`. `SYSTEM_PROMPT` = FOLDERA CONVICTION ENGINE (analyst-grade finished-artifact bar, causal diagnosis, evidence rules, JSON-only contract, email-path forbids `do_nothing`/`wait_rationale`). `lib/briefing/__tests__/pipeline-receipt.test.ts` Anthropic mock branches on `FOLDERA CONVICTION ENGINE`. |
 | Daily spend cap raised to $1.00 | BUILT | March 24 follow-up: `lib/utils/api-tracker.ts` now enforces `DAILY_SPEND_CAP_USD = 1.00` so manual Generate Now usage does not block the same-day nightly cron run. |
 | Extraction daily cap raised to $2.00 | BUILT | March 24 follow-up: extraction calls (`extraction`, `signal_extraction`) are exempt from the global $0.25 cap and now use `EXTRACTION_DAILY_CAP = 2.00` so backlog backfills are not blocked mid-run. |
 
