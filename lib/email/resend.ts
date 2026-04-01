@@ -276,6 +276,49 @@ export function renderPlaintextEmailHtml(body: string): string {
   return `<div style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#18181b;">${escapeHtml(body)}</div>`;
 }
 
+/**
+ * Transactional email when the user approves a write_document — full artifact inline so they get something in their inbox immediately.
+ */
+export function renderWriteDocumentReadyEmailHtml(opts: {
+  documentTitle: string;
+  documentContent: string;
+}): string {
+  const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
+  const dashboard = `${baseUrl}/dashboard`;
+  const title = opts.documentTitle.trim() || 'Your document';
+  const body = opts.documentContent.slice(0, 50000);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:${EMAIL_BG};">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:${EMAIL_BG};padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+        <tr><td style="padding-bottom:28px;text-align:center;">
+          ${EMAIL_LOGO_MARKUP}
+        </td></tr>
+        <tr><td style="padding:28px 24px;border-radius:16px;background:${EMAIL_CARD};border:1px solid rgba(255,255,255,0.1);">
+          <p style="margin:0 0 8px 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">Your document is ready</p>
+          <p style="margin:0 0 16px 0;font-family:system-ui,-apple-system,sans-serif;font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">You approved this in Foldera</p>
+          <p style="margin:0 0 20px 0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">Here is the full text. Forward it, copy it, or save it — whatever gets the work done.</p>
+          <p style="margin:0 0 8px 0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a;">Document title</p>
+          <p style="margin:0 0 20px 0;font-family:system-ui,-apple-system,sans-serif;font-size:15px;font-weight:600;color:#e4e4e7;">${escapeHtml(title)}</p>
+          <div style="margin:0;padding:16px 18px;border-radius:12px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);">
+            <p style="margin:0 0 10px 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:#71717a;">Full document</p>
+            <div style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#e4e4e7;line-height:1.65;white-space:pre-wrap;word-break:break-word;">${escapeHtml(body)}</div>
+          </div>
+        </td></tr>
+        <tr><td style="padding-top:28px;text-align:center;">
+          <a href="${escapeHtml(dashboard)}" style="display:inline-block;padding:12px 24px;background:${EMAIL_CYAN_BTN};color:#000000;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:12px;">Open dashboard</a>
+          <p style="margin:20px 0 0 0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;color:#52525b;line-height:1.6;">Foldera — Finished work, every morning.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 export async function sendDailyDirective({
   to,
   directives,

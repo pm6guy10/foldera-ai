@@ -11,7 +11,12 @@ import { sendOutlookEmail } from '@/lib/integrations/outlook-client';
 import { createGoogleCalendarEvent } from '@/lib/integrations/google-calendar';
 import { createOutlookCalendarEvent } from '@/lib/integrations/outlook-calendar';
 import { encrypt } from '@/lib/encryption';
-import { renderPlaintextEmailHtml, sendResendEmail } from '@/lib/email/resend';
+import {
+  renderPlaintextEmailHtml,
+  renderWriteDocumentReadyEmailHtml,
+  sendResendEmail,
+} from '@/lib/email/resend';
+import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
 
 export type ExecuteDecision = 'approve' | 'skip' | 'reject';
 
@@ -238,13 +243,19 @@ async function insertFeedbackSignalIdempotent(
   }
 }
 
+type ExecuteArtifactOptions = {
+  actionType?: string;
+  /** Daily brief / dashboard directive line — used as Resend subject for write_document delivery. */
+  directiveTitle?: string | null;
+};
+
 /** Execute a single artifact and return execution result to merge into execution_result. */
 async function executeArtifact(
   userId: string,
   artifact: Record<string, unknown>,
   actionId: string,
   supabase: SupabaseClient,
-  actionType?: string,
+  options?: ExecuteArtifactOptions,
 ): Promise<Record<string, unknown>> {
   const type = (artifact.type as string) ?? '';
   const now = new Date().toISOString();
@@ -264,7 +275,7 @@ async function executeArtifact(
           out.exec_error = 'Invalid email address';
           break;
         }
-        if (actionType === 'send_message') {
+        if (options?.actionType === 'send_message') {
           const delivery = await sendResendEmail({
             from: 'Foldera <brief@foldera.ai>',
             to,
@@ -331,13 +342,66 @@ async function executeArtifact(
         if (docErr) {
           if ((docErr as { code?: string }).code === '23505') {
             out = { ...out, saved: true, saved_at: now, saved_signal_id: null };
-            break;
+          } else {
+            out.exec_error = docErr.message;
+            console.warn('[execute-action] document save failed:', docErr.message);
           }
-          out.exec_error = docErr.message;
-          console.warn('[execute-action] document save failed:', docErr.message);
         } else {
           out = { ...out, saved: true, saved_at: now, saved_signal_id: docRow?.id };
           console.log(`[execute-action] document saved for action ${actionId}`);
+        }
+
+        if (options?.actionType === 'write_document' && out.saved === true) {
+          const userEmail = await getVerifiedDailyBriefRecipientEmail(userId, supabase);
+          const docTitle = title;
+          const docBody = content.slice(0, 50000);
+          const rawSubject = (options.directiveTitle?.trim() || docTitle).replace(/\s+/g, ' ');
+          const subject = rawSubject.slice(0, 200);
+          const textBody = [
+            'Your document is ready',
+            '',
+            'You approved this in Foldera. Full text is below — forward, copy, or file it.',
+            '',
+            `— ${docTitle}`,
+            '',
+            docBody,
+          ].join('\n');
+          if (!userEmail) {
+            out.document_ready_email = { sent: false, reason: 'no_verified_email' };
+            console.warn(`[execute-action] write_document delivery email skipped (no verified email) for ${actionId}`);
+          } else {
+            const delivery = await sendResendEmail({
+              from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
+              to: userEmail,
+              subject,
+              text: textBody,
+              html: renderWriteDocumentReadyEmailHtml({
+                documentTitle: docTitle,
+                documentContent: docBody,
+              }),
+              tags: [
+                { name: 'email_type', value: 'approved_write_document' },
+                { name: 'user_id', value: userId },
+                { name: 'action_id', value: actionId },
+              ],
+            });
+            const resendError =
+              delivery && typeof delivery === 'object' && 'error' in delivery
+                ? (delivery as { error?: { message?: string } | null }).error
+                : null;
+            const resendId =
+              delivery && typeof delivery === 'object' && 'data' in delivery && typeof (delivery as { data?: { id?: unknown } }).data?.id === 'string'
+                ? ((delivery as { data?: { id?: string } }).data?.id ?? null)
+                : null;
+            if (resendError || !resendId) {
+              const errMsg = resendError?.message ?? 'Resend send failed';
+              out.document_ready_email = { sent: false, send_error: errMsg };
+              console.warn(`[execute-action] write_document delivery email failed for ${actionId}:`, errMsg);
+            } else {
+              out.document_ready_email = { sent: true, resend_id: resendId };
+              console.log(`[execute-action] write_document delivery email sent for ${actionId}`);
+            }
+          }
         }
         break;
       }
@@ -519,7 +583,10 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
   const now = new Date().toISOString();
 
   if (artifact) {
-    const run = await executeArtifact(userId, artifact, actionId, supabase, action.action_type as string | undefined);
+    const run = await executeArtifact(userId, artifact, actionId, supabase, {
+      actionType: typeof action.action_type === 'string' ? action.action_type : undefined,
+      directiveTitle: typeof action.directive_text === 'string' ? action.directive_text : null,
+    });
     executionResult = { ...executionResult, ...run, artifact };
   } else {
     executionResult.exec_error = 'No artifact to execute';

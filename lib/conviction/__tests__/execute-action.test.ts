@@ -9,8 +9,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { executeAction } from '../execute-action';
 
-const { sendResendEmail } = vi.hoisted(() => ({
+const { sendResendEmail, getVerifiedDailyBriefRecipientEmail } = vi.hoisted(() => ({
   sendResendEmail: vi.fn(),
+  getVerifiedDailyBriefRecipientEmail: vi.fn(),
 }));
 
 const USER_ID = 'user-1';
@@ -154,7 +155,12 @@ vi.mock('@/lib/encryption', () => ({
 
 vi.mock('@/lib/email/resend', () => ({
   renderPlaintextEmailHtml: vi.fn((body: string) => `<p>${body}</p>`),
+  renderWriteDocumentReadyEmailHtml: vi.fn(() => '<html>write-doc-ready</html>'),
   sendResendEmail,
+}));
+
+vi.mock('@/lib/auth/daily-brief-users', () => ({
+  getVerifiedDailyBriefRecipientEmail,
 }));
 
 describe('executeAction', () => {
@@ -163,6 +169,8 @@ describe('executeAction', () => {
     mockSupabase._signalSelectReturn = null;
     sendResendEmail.mockReset();
     sendResendEmail.mockResolvedValue({ data: { id: 'resend-123' }, error: null });
+    getVerifiedDailyBriefRecipientEmail.mockReset();
+    getVerifiedDailyBriefRecipientEmail.mockResolvedValue('ready-doc@example.com');
   });
 
   it('returns error when action not found', async () => {
@@ -224,6 +232,39 @@ describe('executeAction', () => {
     expect(out.status).toBe('executed');
     expect(out.result?.saved).toBe(true);
     expect(mockSupabase._signalInsertCalls).toBeGreaterThanOrEqual(1);
+    expect(getVerifiedDailyBriefRecipientEmail).toHaveBeenCalledWith(USER_ID, mockSupabase);
+    expect(sendResendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'ready-doc@example.com',
+        subject: 'Test directive',
+        tags: expect.arrayContaining([
+          { name: 'email_type', value: 'approved_write_document' },
+          { name: 'action_id', value: ACTION_ID },
+        ]),
+      }),
+    );
+    expect(out.result?.document_ready_email).toEqual({ sent: true, resend_id: 'resend-123' });
+  });
+
+  it('approve write_document skips delivery email when user has no verified email', async () => {
+    getVerifiedDailyBriefRecipientEmail.mockResolvedValue(null);
+    mockSupabase._actionRow = actionWithArtifact({
+      type: 'document',
+      title: 'Doc',
+      content: 'Content',
+    });
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+    expect(out.status).toBe('executed');
+    expect(out.result?.saved).toBe(true);
+    const writeDocCalls = sendResendEmail.mock.calls.filter(
+      (c) => c[0]?.tags?.some((t: { value?: string }) => t.value === 'approved_write_document'),
+    );
+    expect(writeDocCalls).toHaveLength(0);
+    expect(out.result?.document_ready_email).toEqual({ sent: false, reason: 'no_verified_email' });
   });
 
   it('DraftQueue draft with document in execution_result executes on approve', async () => {
