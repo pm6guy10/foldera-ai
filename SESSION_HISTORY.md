@@ -6,7 +6,7 @@
 
 - 2026-04-01 — FULL WIRING: generator prompt — decay rich short path, response_pattern fetch, trigger timeframe+evidence, breakdown + bx_stats
   MODE: AUDIT
-  Commit hash(es): `304add6`
+  Commit hash(es): `39566e0`
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `lib/briefing/trigger-action-map.ts`, `lib/__tests__/multi-user-safety.test.ts`, `lib/briefing/__tests__/trigger-action-lock.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run lib/briefing/__tests__/trigger-action-lock.test.ts lib/__tests__/multi-user-safety.test.ts lib/briefing/__tests__/generator.test.ts lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/causal-diagnosis.test.ts --exclude ".claude/worktrees/**"` (all passed). Owner should run signed-in `POST /api/dev/brain-receipt` after deploy and confirm server logs show `[generator] FULL_PROMPT_DECAY` containing `response_pattern` lines (when DB has them), `timeframe:`, `CANDIDATE_ANALYSIS`, `delta_metrics`, `ENTITY_ANALYSIS` when bx_stats exist.
   Any unresolved issues: `npm run test:prod` not re-run this session (per user focus on wiring); run after Vercel READY if required by runbook.
