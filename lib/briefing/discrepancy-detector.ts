@@ -27,6 +27,10 @@
  * 15. unresolved_intent — assistant chat captured "I should…" with no directive follow-through
  * 16. convergence — same entity hits 3+ signal buckets within 14 days
  *
+ * CROSS-SIGNAL PATTERNS (not structural gaps):
+ * 17. behavioral_pattern — goal–behavior contradiction, repeated avoidance, momentum drop,
+ *     cross-entity themes, stale commitments without signal follow-through (see extractBehavioralPatterns)
+ *
  * Delta candidates include: baseline metric, current metric, delta %, timeframe, entity.
  *
  * Design constraints:
@@ -55,7 +59,9 @@ export type DiscrepancyClass =
   | 'stale_document'
   | 'document_followup_gap'
   | 'unresolved_intent'
-  | 'convergence';
+  | 'convergence'
+  // Cross-signal patterns (not structural gaps)
+  | 'behavioral_pattern';
 
 export interface Discrepancy {
   id: string;
@@ -110,6 +116,8 @@ interface CommitmentRow {
   implied_due_at: string | null;
   source_context: string | null;
   updated_at: string | null;
+  /** When present (e.g. from scorer), used for behavioral_pattern “said-but-never-did” age. */
+  created_at?: string | null;
   trust_class?: 'trusted' | 'junk' | 'transactional' | 'personal' | 'unclassified' | null;
 }
 
@@ -359,7 +367,7 @@ function matchGoal(
 /** Extract entity ID from entity-scoped discrepancy IDs for deduplication. */
 function getEntityKey(d: Discrepancy): string | null {
   const m = d.id.match(
-    /^discrepancy_(?:decay|risk|collapse|dropout|prep|meeting|docfu|conv)_(.+)$/,
+    /^discrepancy_(?:decay|risk|collapse|dropout|prep|meeting|docfu|conv|bp)_(.+)$/,
   );
   return m ? m[1] : null;
 }
@@ -1703,6 +1711,507 @@ function extractConvergence(structured: StructuredSignalInput[], entities: Entit
 }
 
 // ---------------------------------------------------------------------------
+// Behavioral patterns — cross-signal recognition (not structural gaps)
+// ---------------------------------------------------------------------------
+
+const THIRTY_DAYS_MS = 30 * 86400000;
+const FORTY_FIVE_DAYS_MS = 45 * 86400000;
+const MAX_BEHAVIORAL_PER_PATTERN = 2;
+const MAX_BEHAVIORAL_TOTAL = 6;
+
+const CROSS_ENTITY_THEMES = ['follow up', 'waiting on', 'deadline', 'overdue'] as const;
+
+function isSentStructured(s: StructuredSignalInput): boolean {
+  const src = s.source.toLowerCase();
+  const t = (s.type ?? '').toLowerCase();
+  if (t === 'email_sent' || src === 'email_sent') return true;
+  if (src.includes('outlook_sent')) return true;
+  return false;
+}
+
+function isReceivedStructured(s: StructuredSignalInput): boolean {
+  const src = s.source.toLowerCase();
+  const t = (s.type ?? '').toLowerCase();
+  if (t === 'email_received' || src === 'email_received') return true;
+  if (src.includes('outlook') && !src.includes('sent')) return true;
+  return false;
+}
+
+function entityTokens(ent: EntityRow): string[] {
+  return ent.name.toLowerCase().split(/\s+/).filter((x) => x.length >= 3);
+}
+
+function contentHitsEntity(content: string, ent: EntityRow): boolean {
+  const c = content.toLowerCase();
+  const toks = entityTokens(ent);
+  if (toks.length === 0) return false;
+  return toks.every((t) => c.includes(t));
+}
+
+function countReceivedForEntity(
+  structured: StructuredSignalInput[],
+  ent: EntityRow,
+  nowMs: number,
+  sinceMs: number,
+): { count: number; sampleId: string | null } {
+  let count = 0;
+  let sampleId: string | null = null;
+  for (const s of structured) {
+    if (!isReceivedStructured(s)) continue;
+    const t = new Date(s.occurred_at).getTime();
+    if (t < sinceMs || t > nowMs) continue;
+    if (!contentHitsEntity(s.content, ent)) continue;
+    count++;
+    if (!sampleId) sampleId = s.id;
+  }
+  return { count, sampleId };
+}
+
+function countSentForEntity(
+  structured: StructuredSignalInput[],
+  ent: EntityRow,
+  nowMs: number,
+  sinceMs: number,
+): number {
+  let n = 0;
+  for (const s of structured) {
+    if (!isSentStructured(s)) continue;
+    const t = new Date(s.occurred_at).getTime();
+    if (t < sinceMs || t > nowMs) continue;
+    if (!contentHitsEntity(s.content, ent)) continue;
+    n++;
+  }
+  return n;
+}
+
+function hasReplySignalForEntity(
+  structured: StructuredSignalInput[],
+  ent: EntityRow,
+  nowMs: number,
+  sinceMs: number,
+): boolean {
+  for (const s of structured) {
+    if ((s.type ?? '').toLowerCase() !== 'response_pattern') continue;
+    const t = new Date(s.occurred_at).getTime();
+    if (t < sinceMs || t > nowMs) continue;
+    if (!contentHitsEntity(s.content, ent)) continue;
+    const c = s.content.toLowerCase();
+    if (/\bunreplied|no reply|0\s*repl/i.test(c)) continue;
+    if (/\breplied|you sent|outbound|sent reply/i.test(c)) return true;
+  }
+  return false;
+}
+
+function entityInGoalOrCommitment(ent: EntityRow, goals: GoalRow[], commitments: CommitmentRow[]): boolean {
+  const tok = entityTokens(ent);
+  if (goals.some((g) => tok.some((t) => g.goal_text.toLowerCase().includes(t)))) return true;
+  if (commitments.some((c) => tok.some((t) => c.description.toLowerCase().includes(t)))) return true;
+  return false;
+}
+
+function goalLinkedEntities(goal: GoalRow, entities: EntityRow[]): EntityRow[] {
+  const g = goal.goal_text.toLowerCase();
+  return entities.filter((e) => entityTokens(e).some((t) => g.includes(t)));
+}
+
+function pickTopBehavioral(candidates: Discrepancy[], limit: number): Discrepancy[] {
+  return [...candidates]
+    .sort((a, b) => b.urgency * b.stakes - a.urgency * a.stakes)
+    .slice(0, limit);
+}
+
+/**
+ * Cross-signal behavioral patterns (not single-signal structural gaps).
+ * Pure function — no I/O. At most 2 candidates per pattern, 6 total.
+ */
+export function extractBehavioralPatterns(
+  entities: EntityRow[],
+  goals: GoalRow[],
+  commitments: CommitmentRow[],
+  structured: StructuredSignalInput[],
+  recentDirectives: RecentDirectiveInput[],
+  decryptedSignals: string[],
+  nowMs: number,
+): Discrepancy[] {
+  const since14 = nowMs - FOURTEEN_DAYS_MS;
+  const since7 = nowMs - SEVEN_DAYS_MS;
+  const win15to45Start = nowMs - FORTY_FIVE_DAYS_MS;
+  const win15to45End = nowMs - 15 * 86400000;
+  const since30 = nowMs - THIRTY_DAYS_MS;
+
+  const patternBuckets: Discrepancy[][] = [[], [], [], [], []];
+
+  // --- PATTERN 1: goal–behavior contradiction (goals with priority >= 3 on 1–5 scale) ---
+  const p1Goals = goals.filter((g) => g.priority >= 3);
+  for (const g of p1Goals) {
+    const gkws = textKeywords(g.goal_text);
+    const linked = goalLinkedEntities(g, entities);
+    if (linked.length === 0) continue;
+    for (const ent of linked) {
+      const { count: recv, sampleId } = countReceivedForEntity(structured, ent, nowMs, since14);
+      if (recv < 3) continue;
+      const sent = countSentForEntity(structured, ent, nowMs, since14);
+      if (sent > 0) continue;
+      const goalKwOnInbound = structured.some((s) => {
+        if (!isReceivedStructured(s)) return false;
+        const t = new Date(s.occurred_at).getTime();
+        if (t < since14 || t > nowMs) return false;
+        if (!contentHitsEntity(s.content, ent)) return false;
+        const low = s.content.toLowerCase();
+        return gkws.some((kw) => low.includes(kw));
+      });
+      if (!goalKwOnInbound) continue;
+
+      const shortGoal = g.goal_text.slice(0, 80);
+      const title = `Goal '${shortGoal}' has zero outbound action in 14 days despite ${recv} inbound signals`;
+      const evidenceObj = {
+        pattern: 'goal_behavior_contradiction',
+        goal: g.goal_text,
+        entity: ent.name,
+        inbound_14d: recv,
+        outbound_14d: sent,
+      };
+      const trigger: TriggerMetadata = {
+        baseline_state: `Active inbound threading on ${ent.name} aligned with goal keywords`,
+        current_state: `Zero outbound sends to ${ent.name} in 14 days despite ${recv} inbound signals`,
+        delta: `inbound ${recv} → outbound 0 (goal: ${shortGoal})`,
+        timeframe: '14 days',
+        outcome_class: g.goal_category === 'financial' ? 'money' : g.goal_category === 'career' ? 'job' : 'risk',
+        why_now: `Stated goal "${shortGoal}" is visible in your priorities, but outbound behavior toward ${ent.name} shows avoidance — the pattern is visible across signals even if each inbox item felt small.`,
+      };
+      const primary = ent.primary_email ?? ent.emails?.[0];
+      patternBuckets[0].push({
+        id: `discrepancy_bp_goal_${ent.id}_${g.goal_text.slice(0, 24).replace(/\W+/g, '_')}`,
+        class: 'behavioral_pattern',
+        title,
+        content: title,
+        stakes: Math.min(5, Math.max(1, g.priority)),
+        urgency: 0.85,
+        suggestedActionType: primary ? 'send_message' : 'write_document',
+        evidence: JSON.stringify(evidenceObj),
+        sourceSignals: sampleId
+          ? [{ kind: 'signal', id: sampleId, summary: `Inbound pattern: ${ent.name}` }]
+          : [{ kind: 'signal', summary: `Inbound pattern: ${ent.name}` }],
+        matchedGoal: { text: g.goal_text, priority: g.priority, category: g.goal_category },
+        entityName: ent.name,
+        trigger,
+      });
+      break;
+    }
+  }
+  patternBuckets[0] = pickTopBehavioral(patternBuckets[0], MAX_BEHAVIORAL_PER_PATTERN);
+
+  // --- PATTERN 2: repeated avoidance ---
+  for (const ent of entities) {
+    const { count: recv, sampleId } = countReceivedForEntity(structured, ent, nowMs, since14);
+    if (recv < 3) continue;
+    if (countSentForEntity(structured, ent, nowMs, since14) > 0) continue;
+    if (hasReplySignalForEntity(structured, ent, nowMs, since14)) continue;
+
+    const linked = entityInGoalOrCommitment(ent, goals, commitments);
+    const stakes = linked ? 4 : 3;
+    const urgency = linked ? 0.9 : 0.85;
+    const title = `${recv} received from ${ent.name}, 0 replies in 14 days`;
+    const evidenceObj = {
+      pattern: 'repeated_avoidance',
+      entity: ent.name,
+      received_14d: recv,
+      replies_14d: 0,
+      linked_to_goal_or_commitment: linked,
+    };
+    const trigger: TriggerMetadata = {
+      baseline_state: `Sustained inbound volume from ${ent.name} (${recv} signals in 14d)`,
+      current_state: 'No outbound sends and no logged reply pattern in the same window',
+      delta: `${recv} inbound → 0 outbound/reply (same window)`,
+      timeframe: '14 days',
+      outcome_class: 'relationship',
+      why_now: `Multiple separate inbound signals from ${ent.name} without any reply form a repeatable avoidance pattern — not a single missed email.`,
+    };
+    patternBuckets[1].push({
+      id: `discrepancy_bp_avoid_${ent.id}`,
+      class: 'behavioral_pattern',
+      title,
+      content: title,
+      stakes,
+      urgency,
+      suggestedActionType: 'send_message',
+      evidence: JSON.stringify(evidenceObj),
+      sourceSignals: sampleId
+        ? [{ kind: 'signal', id: sampleId, summary: `${recv} inbound from ${ent.name}` }]
+        : [{ kind: 'signal', summary: `${recv} inbound from ${ent.name}` }],
+      matchedGoal: null,
+      entityName: ent.name,
+      trigger,
+    });
+  }
+  patternBuckets[1] = pickTopBehavioral(patternBuckets[1], MAX_BEHAVIORAL_PER_PATTERN);
+
+  // --- PATTERN 3: momentum then silence (raw counts, not bx_stats) ---
+  for (const ent of entities) {
+    let hi = 0;
+    let lo = 0;
+    let sampleHi: string | null = null;
+    for (const s of structured) {
+      if (!contentHitsEntity(s.content, ent)) continue;
+      const t = new Date(s.occurred_at).getTime();
+      if (t >= win15to45Start && t <= win15to45End) {
+        hi++;
+        if (!sampleHi) sampleHi = s.id;
+      } else if (t >= since14 && t <= nowMs) {
+        lo++;
+      }
+    }
+    const weeksMid = 30 / 7;
+    const rateMid = hi / weeksMid;
+    const rateRecent = lo / 2;
+    if (hi < 9 || lo > 1) continue;
+    const title = `${ent.name} had ${rateMid.toFixed(1)} signals/week, now ${rateRecent.toFixed(1)}/week — momentum lost`;
+    const stakes = Math.min(5, Math.max(3, Math.min(4, 2 + Math.floor(ent.total_interactions / 10))));
+    const evidenceObj = {
+      pattern: 'momentum_then_silence',
+      entity: ent.name,
+      signals_mid_window: hi,
+      signals_last_14d: lo,
+      rate_mid_per_week: +rateMid.toFixed(2),
+      rate_recent_per_week: +rateRecent.toFixed(2),
+    };
+    const trigger: TriggerMetadata = {
+      baseline_state: `${hi} signals in the 15–45 day lookback (~${rateMid.toFixed(1)}/wk)`,
+      current_state: `${lo} signal(s) in the last 14 days (~${rateRecent.toFixed(1)}/wk)`,
+      delta: 'high cross-signal cadence → near-stop (raw counts, all types)',
+      timeframe: '15–45d vs last 14d',
+      outcome_class: 'relationship',
+      why_now: `Activity with ${ent.name} did not taper — it fell off a cliff when comparing mid-window density to the last two weeks.`,
+    };
+    const primary = ent.primary_email ?? ent.emails?.[0];
+    patternBuckets[2].push({
+      id: `discrepancy_bp_mom_${ent.id}`,
+      class: 'behavioral_pattern',
+      title,
+      content: title,
+      stakes,
+      urgency: 0.8,
+      suggestedActionType: primary ? 'send_message' : 'write_document',
+      evidence: JSON.stringify(evidenceObj),
+      sourceSignals: sampleHi
+        ? [{ kind: 'signal', id: sampleHi, summary: `Momentum drop: ${ent.name}` }]
+        : [{ kind: 'signal', summary: `Momentum drop: ${ent.name}` }],
+      matchedGoal: null,
+      entityName: ent.name,
+      trigger,
+    });
+  }
+  for (const g of goals) {
+    const gkws = textKeywords(g.goal_text);
+    if (gkws.length < 2) continue;
+    const minM = Math.min(2, gkws.length);
+    let hi = 0;
+    let lo = 0;
+    let sampleHi: string | null = null;
+    for (const s of structured) {
+      const low = s.content.toLowerCase();
+      if (gkws.filter((kw) => low.includes(kw)).length < minM) continue;
+      const t = new Date(s.occurred_at).getTime();
+      if (t >= win15to45Start && t <= win15to45End) {
+        hi++;
+        if (!sampleHi) sampleHi = s.id;
+      } else if (t >= since14 && t <= nowMs) {
+        lo++;
+      }
+    }
+    const weeksMid = 30 / 7;
+    const rateMid = hi / weeksMid;
+    const rateRecent = lo / 2;
+    if (hi < 9 || lo > 1) continue;
+    const label = g.goal_text.slice(0, 48);
+    const title = `Goal "${label}" had ${rateMid.toFixed(1)} signals/week, now ${rateRecent.toFixed(1)}/week — momentum lost`;
+    const evidenceObj = {
+      pattern: 'momentum_then_silence_goal',
+      goal: g.goal_text,
+      signals_mid_window: hi,
+      signals_last_14d: lo,
+    };
+    const trigger: TriggerMetadata = {
+      baseline_state: `${hi} goal-aligned signals in 15–45d lookback`,
+      current_state: `${lo} goal-aligned signal(s) in last 14d`,
+      delta: 'goal-tagged activity dense then sparse (raw signal counts)',
+      timeframe: '15–45d vs last 14d',
+      outcome_class: g.goal_category === 'financial' ? 'money' : 'job',
+      why_now: `Your stated goal "${label}" had consistent signal density mid-window, then nearly stopped — the cross-signal pattern is the story.`,
+    };
+    patternBuckets[2].push({
+      id: `discrepancy_bp_momgoal_${g.goal_text.slice(0, 30).replace(/\W+/g, '_')}`,
+      class: 'behavioral_pattern',
+      title,
+      content: title,
+      stakes: Math.max(3, Math.min(4, 6 - g.priority)),
+      urgency: 0.8,
+      suggestedActionType: 'write_document',
+      evidence: JSON.stringify(evidenceObj),
+      sourceSignals: sampleHi
+        ? [{ kind: 'signal', id: sampleHi, summary: `Goal momentum: ${label}` }]
+        : [{ kind: 'signal', summary: `Goal momentum: ${label}` }],
+      matchedGoal: { text: g.goal_text, priority: g.priority, category: g.goal_category },
+      trigger,
+    });
+  }
+  patternBuckets[2] = pickTopBehavioral(patternBuckets[2], MAX_BEHAVIORAL_PER_PATTERN);
+
+  // --- PATTERN 4: cross-entity theme (30d structured + decrypted substring) ---
+  for (const theme of CROSS_ENTITY_THEMES) {
+    const hitEntities: EntityRow[] = [];
+    const sampleIds: string[] = [];
+    for (const ent of entities) {
+      let hit = false;
+      for (const s of structured) {
+        const t = new Date(s.occurred_at).getTime();
+        if (t < since30 || t > nowMs) continue;
+        const low = s.content.toLowerCase();
+        if (!low.includes(theme)) continue;
+        if (!contentHitsEntity(s.content, ent)) continue;
+        hit = true;
+        sampleIds.push(s.id);
+        break;
+      }
+      if (!hit && decryptedSignals.length > 0) {
+        const blob = decryptedSignals.join('\n').toLowerCase();
+        if (blob.includes(theme) && entityTokens(ent).every((t) => blob.includes(t))) {
+          hit = true;
+          const sig = structured.find(
+            (s) => {
+              const tt = new Date(s.occurred_at).getTime();
+              return tt >= since30 && tt <= nowMs && s.content.toLowerCase().includes(theme) && contentHitsEntity(s.content, ent);
+            },
+          );
+          if (sig?.id) sampleIds.push(sig.id);
+        }
+      }
+      if (hit) hitEntities.push(ent);
+    }
+    if (hitEntities.length < 3) continue;
+    const top3 = hitEntities.slice(0, 3);
+    const names = top3.map((e) => e.name).join(', ');
+    const title = `${theme} appears across ${hitEntities.length} contacts: ${names}`;
+    const evidenceObj = {
+      pattern: 'cross_entity_theme',
+      theme,
+      entity_count: hitEntities.length,
+      sample_entities: top3.map((e) => e.name),
+    };
+    const trigger: TriggerMetadata = {
+      baseline_state: 'Isolated one-off mentions per person',
+      current_state: `Same theme "${theme}" repeats across ${hitEntities.length} separate contacts`,
+      delta: 'thematic echo across people (unconnected threads)',
+      timeframe: '30 days',
+      outcome_class: 'risk',
+      why_now: `The same unresolved theme showing up with multiple people usually means a blind spot — the inbox hides the pattern until you see it once.`,
+    };
+    const sid = sampleIds.find(Boolean);
+    patternBuckets[3].push({
+      id: `discrepancy_bp_theme_${theme.replace(/\s+/g, '_')}`,
+      class: 'behavioral_pattern',
+      title,
+      content: title,
+      stakes: 4,
+      urgency: 0.8,
+      suggestedActionType: 'write_document',
+      evidence: JSON.stringify(evidenceObj),
+      sourceSignals: sid
+        ? [{ kind: 'signal', id: sid, summary: `Theme "${theme}" × ${hitEntities.length} contacts` }]
+        : [{ kind: 'signal', summary: `Theme "${theme}" × ${hitEntities.length} contacts` }],
+      matchedGoal: null,
+      trigger,
+    });
+  }
+  patternBuckets[3] = pickTopBehavioral(patternBuckets[3], MAX_BEHAVIORAL_PER_PATTERN);
+
+  // --- PATTERN 5: said-but-never-did ---
+  for (const c of commitments) {
+    if (c.status !== 'active') continue;
+    const createdSrc = c.created_at ?? c.updated_at;
+    if (!createdSrc) continue;
+    const ageMs = nowMs - new Date(createdSrc).getTime();
+    if (ageMs < SEVEN_DAYS_MS) continue;
+    const ageDays = Math.floor(ageMs / 86400000);
+    const descLow = c.description.toLowerCase();
+    const ckw = textKeywords(c.description);
+    const minK = Math.min(2, Math.max(1, ckw.length));
+    let anyRecent = false;
+    for (const s of structured) {
+      const t = new Date(s.occurred_at).getTime();
+      if (t < since7 || t > nowMs) continue;
+      const low = s.content.toLowerCase();
+      if (ckw.filter((kw) => low.includes(kw)).length >= minK) {
+        anyRecent = true;
+        break;
+      }
+      if (entities.some((e) => contentHitsEntity(s.content, e) && entityTokens(e).some((tok) => descLow.includes(tok)))) {
+        anyRecent = true;
+        break;
+      }
+    }
+    if (anyRecent) continue;
+
+    let skippedSurfaced = false;
+    const dkw = ckw.filter((w) => w.length >= 4);
+    if (dkw.length > 0) {
+      skippedSurfaced = recentDirectives.some((d) => {
+        const low = d.directive_text.toLowerCase();
+        return dkw.filter((w) => low.includes(w)).length >= Math.min(2, dkw.length);
+      });
+    }
+    let urgency = 0.82 + (skippedSurfaced ? 0.08 : 0);
+    if (urgency > 0.95) urgency = 0.95;
+
+    const shortDesc = c.description.slice(0, 80);
+    const title = `Committed to '${shortDesc}' ${ageDays} days ago — no activity since`;
+    const stakes = Math.max(3, Math.min(5, Math.round((c.risk_score ?? 50) / 15)));
+    const evidenceObj = {
+      pattern: 'said_but_never_did',
+      commitment_id: c.id,
+      age_days: ageDays,
+      prior_directive_overlap: skippedSurfaced,
+    };
+    const trigger: TriggerMetadata = {
+      baseline_state: `Active commitment recorded: "${shortDesc}"`,
+      current_state: 'No signals in the last 7 days reference this commitment or its entities',
+      delta: 'commitment accepted → zero trailing signal footprint for 7d',
+      timeframe: `${ageDays} days since record; last 7d silent`,
+      outcome_class: 'deadline',
+      why_now: skippedSurfaced
+        ? `This commitment already surfaced in a recent directive without follow-on signal movement — the gap is now visible twice.`
+        : `A live commitment with a week of zero related signals means the system sees intent without behavior — that is the pattern.`,
+    };
+    let entHit: EntityRow | null = null;
+    for (const e of entities) {
+      if (entityTokens(e).some((tok) => descLow.includes(tok))) {
+        entHit = e;
+        break;
+      }
+    }
+    const primary = entHit?.primary_email ?? entHit?.emails?.[0];
+    patternBuckets[4].push({
+      id: `discrepancy_bp_commit_${c.id}`,
+      class: 'behavioral_pattern',
+      title,
+      content: title,
+      stakes,
+      urgency,
+      suggestedActionType: primary ? 'send_message' : 'write_document',
+      evidence: JSON.stringify(evidenceObj),
+      sourceSignals: [{ kind: 'commitment', id: c.id, summary: c.description.slice(0, 160) }],
+      matchedGoal: matchGoal(c.description, goals),
+      entityName: entHit?.name,
+      trigger,
+    });
+  }
+  patternBuckets[4] = pickTopBehavioral(patternBuckets[4], MAX_BEHAVIORAL_PER_PATTERN);
+
+  const merged = patternBuckets.flat();
+  return pickTopBehavioral(merged, MAX_BEHAVIORAL_TOTAL);
+}
+
+// ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
 
@@ -1735,7 +2244,16 @@ export function detectDiscrepancies(args: {
     ...extractDocumentFollowupGaps(structured, nowMs),
     ...extractConvergence(structured, entities, nowMs),
     ...extractUnresolvedIntent(structured, entities, recentDirectives, nowMs),
-    // Delta-based first (higher urgency scores — float to top naturally)
+    ...extractBehavioralPatterns(
+      entities,
+      goals,
+      commitments,
+      structured,
+      recentDirectives,
+      decryptedSignals,
+      nowMs,
+    ),
+    // Delta-based (higher urgency scores — float to top naturally)
     ...extractDeadlineStaleness(commitments, goals, nowMs),
     ...extractEngagementCollapse(entities),
     ...extractRelationshipDropout(entities),

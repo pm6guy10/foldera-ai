@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — FLOW: Add `behavioral_pattern` discrepancy class — cross-signal pattern extractor (`extractBehavioralPatterns`) + trigger map + unit tests
+  MODE: FLOW
+  Commit hash(es): (this entry; verify with `git log -1 --oneline` on `main`)
+  Files changed: `lib/briefing/discrepancy-detector.ts`, `lib/briefing/trigger-action-map.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `lib/briefing/__tests__/trigger-action-lock.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run lib/briefing/__tests__/discrepancy-detector.test.ts`; `npx vitest run lib/briefing/__tests__/trigger-action-lock.test.ts`; `npx vitest run --exclude ".claude/worktrees/**"` (584 tests)
+  Any unresolved issues: `npm run test:prod` after Vercel READY per runbook (not run in this session).
+
 - 2026-04-01 — FLOW: Resend “your document is ready” email on write_document approve (full artifact inline; subject = directive title)
   MODE: FLOW
   Commit hash(es): `338b495`

@@ -6,7 +6,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { detectDiscrepancies, getEntityRejectionReasons, type Discrepancy } from '../discrepancy-detector';
+import {
+  detectDiscrepancies,
+  extractBehavioralPatterns,
+  getEntityRejectionReasons,
+  type Discrepancy,
+} from '../discrepancy-detector';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -1624,5 +1629,157 @@ describe('TriggerMetadata enforcement', () => {
     expect(drift!.trigger).toBeDefined();
     expect(drift!.trigger!.outcome_class).toBe('job');
     expect(drift!.trigger!.delta).toContain('zero');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extractBehavioralPatterns (class: behavioral_pattern)
+// ---------------------------------------------------------------------------
+
+describe('extractBehavioralPatterns (class: behavioral_pattern)', () => {
+  const entityAcme = {
+    id: 'ent-acme',
+    name: 'Acme Industries',
+    last_interaction: daysAgoISO(5),
+    total_interactions: 20,
+    patterns: {},
+    primary_email: 'sales@acme.test',
+  };
+
+  it('PATTERN 1: goal–behavior contradiction (inbound ≥3, zero outbound, goal keywords)', () => {
+    const goal = { goal_text: 'Close Acme enterprise deal', priority: 3, goal_category: 'project' as const };
+    const structured = [1, 2, 3].map((i) => ({
+      id: `in-acme-${i}`,
+      source: 'email_received',
+      type: 'email_received',
+      occurred_at: daysAgoISO(i),
+      content: `Thread from Acme Industries about enterprise deal close ${i}`,
+    }));
+    const out = extractBehavioralPatterns(
+      [entityAcme],
+      [goal],
+      [],
+      structured,
+      [],
+      [],
+      now,
+    );
+    const hit = out.filter((d) => d.class === 'behavioral_pattern');
+    const p1 = hit.find((d) => d.title.includes('zero outbound action in 14 days'));
+    expect(p1).toBeDefined();
+    expect(p1!.title).toMatch(/despite 3 inbound signals/);
+    expect(p1!.matchedGoal?.text).toContain('Acme');
+    expect(p1!.sourceSignals[0]?.id).toBeTruthy();
+  });
+
+  it('PATTERN 2: repeated avoidance (3+ received, 0 sent, 0 reply)', () => {
+    const ent = {
+      id: 'ent-pat',
+      name: 'Pat Lee',
+      last_interaction: daysAgoISO(1),
+      total_interactions: 10,
+      patterns: {},
+      primary_email: 'pat@example.com',
+    };
+    const structured = [1, 2, 4].map((i) => ({
+      id: `in-pat-${i}`,
+      source: 'email_received',
+      type: 'email_received',
+      occurred_at: daysAgoISO(i),
+      content: `Question from Pat Lee about the roadmap ${i}`,
+    }));
+    const out = extractBehavioralPatterns([ent], [], [], structured, [], [], now);
+    const hit = out.filter((d) => d.class === 'behavioral_pattern');
+    expect(hit.some((d) => d.title.includes('0 replies in 14 days'))).toBe(true);
+    expect(hit.find((d) => d.title.includes('Pat Lee'))?.suggestedActionType).toBe('send_message');
+  });
+
+  it('PATTERN 3: momentum then silence (dense mid-window, ≤1 in last 14d)', () => {
+    const ent = {
+      id: 'ent-sam',
+      name: 'Sam Stone',
+      last_interaction: daysAgoISO(40),
+      total_interactions: 30,
+      patterns: {},
+      primary_email: null,
+      emails: [] as string[],
+    };
+    const midDays = [40, 38, 36, 34, 32, 30, 28, 26, 24];
+    const structured = midDays.map((d, i) => ({
+      id: `mid-sam-${i}`,
+      source: 'email_received',
+      type: 'email_received',
+      occurred_at: daysAgoISO(d),
+      content: `Sam Stone update batch ${i} on project`,
+    }));
+    const out = extractBehavioralPatterns([ent], [], [], structured, [], [], now);
+    const hit = out.filter((d) => d.class === 'behavioral_pattern' && d.title.includes('momentum lost'));
+    expect(hit.length).toBeGreaterThanOrEqual(1);
+    expect(hit[0].title).toMatch(/Sam Stone/);
+    expect(hit[0].sourceSignals[0]?.id).toBeTruthy();
+  });
+
+  it('PATTERN 4: cross-entity theme', () => {
+    const a = { id: 'e1', name: 'Alice Nova', last_interaction: daysAgoISO(2), total_interactions: 5, patterns: {} };
+    const b = { id: 'e2', name: 'Bob Nova', last_interaction: daysAgoISO(2), total_interactions: 5, patterns: {} };
+    const c = { id: 'e3', name: 'Carol Nova', last_interaction: daysAgoISO(2), total_interactions: 5, patterns: {} };
+    const structured = [
+      { id: 's1', source: 'email_received', type: 'email_received', occurred_at: daysAgoISO(5), content: 'Alice Nova: deadline for review' },
+      { id: 's2', source: 'email_received', type: 'email_received', occurred_at: daysAgoISO(6), content: 'Bob Nova waiting on deadline signoff' },
+      { id: 's3', source: 'email_received', type: 'email_received', occurred_at: daysAgoISO(7), content: 'Carol Nova project deadline tomorrow' },
+    ];
+    const out = extractBehavioralPatterns([a, b, c], [], [], structured, [], [], now);
+    const hit = out.filter((d) => d.class === 'behavioral_pattern' && d.title.toLowerCase().includes('deadline'));
+    expect(hit.length).toBeGreaterThanOrEqual(1);
+    expect(hit[0].title).toMatch(/deadline appears across 3 contacts/);
+    expect(hit[0].suggestedActionType).toBe('write_document');
+  });
+
+  it('PATTERN 5: said-but-never-did (active commitment, aged, no recent signals)', () => {
+    const commitment = {
+      id: 'c-old',
+      description: 'Send revised proposal to Dana Liu',
+      category: 'project',
+      status: 'active',
+      risk_score: 55,
+      due_at: null,
+      implied_due_at: null,
+      source_context: null,
+      updated_at: daysAgoISO(10),
+      created_at: daysAgoISO(10),
+    };
+    const dana = {
+      id: 'ent-dana',
+      name: 'Dana Liu',
+      last_interaction: daysAgoISO(20),
+      total_interactions: 4,
+      patterns: {},
+      primary_email: 'dana@example.com',
+    };
+    const out = extractBehavioralPatterns([dana], [], [commitment], [], [], [], now);
+    const hit = out.filter((d) => d.class === 'behavioral_pattern');
+    expect(hit.some((d) => d.title.includes('no activity since'))).toBe(true);
+    expect(hit.find((d) => d.title.includes('Committed'))?.sourceSignals[0]?.id).toBe('c-old');
+  });
+
+  it('returns no behavioral_pattern when no cross-signal patterns apply', () => {
+    const goal = { goal_text: 'Ship product milestone', priority: 1, goal_category: 'project' as const };
+    const ent = {
+      id: 'ent-active',
+      name: 'Taylor Kim',
+      last_interaction: daysAgoISO(1),
+      total_interactions: 12,
+      patterns: {},
+      primary_email: 't@example.com',
+    };
+    const structured = [1, 2, 3].map((i) => ({
+      id: `sent-${i}`,
+      source: 'email_sent',
+      type: 'email_sent',
+      occurred_at: daysAgoISO(i),
+      content: `Taylor Kim thanks for reply ${i}`,
+    }));
+    const out = extractBehavioralPatterns([ent], [goal], [], structured, [], [], now);
+    expect(out.filter((d) => d.class === 'behavioral_pattern')).toHaveLength(0);
   });
 });

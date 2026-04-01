@@ -154,6 +154,14 @@ const TRIGGERS: Record<DiscrepancyClass, TriggerMetadata> = {
     outcome_class: 'risk',
     why_now: 'The user externalized a commitment to the assistant — without a directive, it stays imaginary.',
   },
+  behavioral_pattern: {
+    baseline_state: 'Repeated inbound thematic signals across multiple contacts',
+    current_state: 'User has not connected the pattern into one consolidated move',
+    delta: 'isolated threads → visible cross-signal theme',
+    timeframe: '30 days',
+    outcome_class: 'risk',
+    why_now: 'The same behavioral shape appears in multiple channels — without naming the pattern, each thread feels like a one-off.',
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -165,7 +173,7 @@ describe('Trigger Action Map — completeness', () => {
     'decay', 'exposure', 'drift', 'avoidance', 'risk',
     'engagement_collapse', 'relationship_dropout', 'deadline_staleness', 'goal_velocity_mismatch',
     'preparation_gap', 'meeting_open_thread', 'schedule_conflict', 'stale_document',
-    'document_followup_gap', 'unresolved_intent', 'convergence',
+    'document_followup_gap', 'unresolved_intent', 'convergence', 'behavioral_pattern',
   ];
 
   it('covers all discrepancy classes', () => {
@@ -230,6 +238,10 @@ describe('resolveTriggerAction — deterministic mapping', () => {
   it('avoidance → write_document always', () => {
     expect(resolveTriggerAction('avoidance', true)).toBe('write_document');
     expect(resolveTriggerAction('avoidance', false)).toBe('write_document');
+  });
+  it('behavioral_pattern → send_message with recipient, write_document without', () => {
+    expect(resolveTriggerAction('behavioral_pattern', true)).toBe('send_message');
+    expect(resolveTriggerAction('behavioral_pattern', false)).toBe('write_document');
   });
 });
 
@@ -444,6 +456,7 @@ describe('Full sweep: all 9 classes have deterministic, non-empty rules', () => 
   const ALL_CLASSES: DiscrepancyClass[] = [
     'decay', 'exposure', 'drift', 'avoidance', 'risk',
     'engagement_collapse', 'relationship_dropout', 'deadline_staleness', 'goal_velocity_mismatch',
+    'behavioral_pattern',
   ];
 
   for (const cls of ALL_CLASSES) {

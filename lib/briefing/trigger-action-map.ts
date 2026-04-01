@@ -153,6 +153,16 @@ export const TRIGGER_ACTION_MAP: Record<DiscrepancyClass, TriggerActionRule> = {
     required_elements: ['explicit_ask', 'trigger_delta_reference', 'time_pressure'],
     banned_phrases: [...COMMON_BANNED],
   },
+  behavioral_pattern: {
+    primary_action: 'send_message',
+    artifact_shape: 'email',
+    required_elements: [
+      'explicit_ask',
+      'trigger_delta_reference',
+      'forcing_function',
+    ],
+    banned_phrases: [...COMMON_BANNED, 'consider', 'you might want to', 'perhaps'],
+  },
 };
 
 // ---------------------------------------------------------------------------
