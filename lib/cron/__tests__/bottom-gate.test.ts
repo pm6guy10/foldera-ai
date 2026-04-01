@@ -203,6 +203,24 @@ describe('evaluateBottomGate', () => {
     expect(result.blocked_reasons).toContain('NON_EXECUTABLE_ARTIFACT');
   });
 
+  it('passes schedule_conflict write_document with numbered steps and anchored date (no external person)', () => {
+    const directive = makeDirective({
+      action_type: 'write_document',
+      discrepancyClass: 'schedule_conflict',
+      directive: 'Resolve overlapping events on 2026-04-02',
+      reason: 'Two calendar events occupy the same window.',
+    });
+    const artifact = makeDocArtifact({
+      type: 'document',
+      title: 'Calendar conflict — 2026-04-02',
+      content:
+        '1. Decide which event keeps the slot on 2026-04-02.\n2. Decline the other in Outlook.\n3. Notify family if plans shift.',
+    });
+    const result = evaluateBottomGate(directive, artifact);
+    expect(result.pass).toBe(true);
+    expect(result.blocked_reasons).toEqual([]);
+  });
+
   // --- Ensure good winners survive ---
   it('passes a send_message with a real business ask and deadline', () => {
     const directive = makeDirective({

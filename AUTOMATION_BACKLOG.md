@@ -24,11 +24,13 @@
 
 ### P1 — Cross-source brain depth — production receipt (2026-03-31)
 
-**Status: CODE SHIPPED; LIVE RECEIPT PENDING.**
+**Status: CODE SHIPPED; LIVE RECEIPT STILL THE PROOF GATE.**
 
 **Scope:** Calendar / drive / conversation / convergence discrepancies; `structuredSignals` + `recentDirectives` inputs; send_message-only entity skip penalty; `mergeUrgencyWithTimeHints`.
 
-**Next proof:** After deploy, owner `POST /api/dev/brain-receipt` with `ALLOW_DEV_ROUTES=true` — confirm `scorer_diagnostics` shows discrepancy classes beyond email-absence patterns, candidate pool larger than pre-change baseline, at least one trace with calendar or drive/conversation `source`, and open-loop `write_document` rows show `entityPenalty: 0` in breakdown. Optional: `npm run test:prod` on green deploy.
+**2026-04-01 brain-quality pass:** Fixed `schedule_conflict` → `write_document` stalling at `Artifact generation failed.` when `loadRelationshipContext()` threw before the Haiku transform try/catch, and aligned discrepancy **transform flavor** + **bottom gate** with `discrepancyClass` (class beats “reconnect” in `reason` text).
+
+**Next proof:** After deploy, owner `POST /api/dev/brain-receipt` with `ALLOW_DEV_ROUTES=true` — expect `pending_approval` or at least non-null artifact for calendar-conflict winner; confirm `scorer_diagnostics` and `npm run test:prod` on green deploy.
 
 ### Ops — Email forwarding (foldera.ai)
 

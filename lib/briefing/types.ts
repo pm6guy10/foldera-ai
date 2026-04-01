@@ -38,6 +38,9 @@ export interface ConvictionDirective {
 
   // Internal generation trace for persistence/debugging only.
   generationLog?: GenerationRunLog;
+
+  /** When the scorer winner is a discrepancy row — used for class-specific artifact transforms. */
+  discrepancyClass?: import('./discrepancy-detector').DiscrepancyClass;
 }
 
 // ---------------------------------------------------------------------------

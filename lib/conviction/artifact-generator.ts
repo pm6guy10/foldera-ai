@@ -30,6 +30,7 @@ import type {
   DecisionFrameArtifact,
   WaitRationaleArtifact,
 } from '@/lib/briefing/types';
+import type { DiscrepancyClass } from '@/lib/briefing/discrepancy-detector';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
@@ -431,12 +432,31 @@ type DiscrepancyFlavor = 'person' | 'deadline' | 'goal';
 
 /**
  * Infer what kind of finished artifact the discrepancy should become.
- * person  → sendable outreach message
- * deadline → pre-filled execution steps
- * goal    → concrete action plan
+ * person  → sendable outreach message (decay / risk only)
+ * deadline → pre-filled execution steps (calendar pressure, exposure, drift, etc.)
+ * goal    → concrete action plan (fallback)
+ *
+ * Class wins over prose: schedule_conflict copy often mentions "reconnect" from runner-up
+ * context — must not route to the person/outreach template for a write_document calendar win.
  */
 function detectDiscrepancyFlavor(directive: ConvictionDirective): DiscrepancyFlavor {
+  const cls = directive.discrepancyClass as DiscrepancyClass | undefined;
+
+  if (cls === 'decay' || cls === 'risk') {
+    return 'person';
+  }
+  if (cls) {
+    return 'deadline';
+  }
+
   const text = `${directive.directive} ${directive.reason ?? ''}`.toLowerCase();
+  if (
+    /\boverlap|double[- ]book|schedule conflict|conflicting events|calendar conflict|both events\b/i.test(
+      text,
+    )
+  ) {
+    return 'deadline';
+  }
   if (/silent|reach out|reconnect|relationship|contact|follow.?up/i.test(text)) return 'person';
   if (/due|deadline|overdue|stalled.*commit|commitment|exposure|at.?risk/i.test(text)) return 'deadline';
   return 'goal';
@@ -840,7 +860,22 @@ export async function generateArtifact(
     if (typeof fullCtx === 'string' && fullCtx.trim().length > 20 && isAnalysisDump(fullCtx)) {
       // Transform: analysis → finished artifact
       const flavor = detectDiscrepancyFlavor(directive);
-      const relationships = await loadRelationshipContext(userId, directive.directive);
+      let relationships = 'No relationship data available.';
+      try {
+        relationships = await loadRelationshipContext(userId, directive.directive);
+      } catch (relErr) {
+        logStructuredEvent({
+          event: 'artifact_relationship_context_failed',
+          level: 'warn',
+          userId,
+          artifactType: null,
+          generationStatus: 'context_load_failed',
+          details: {
+            scope: 'artifact-generator',
+            error: relErr instanceof Error ? relErr.message : String(relErr),
+          },
+        });
+      }
       const { system, user } = buildDiscrepancyTransformPrompt(directive, flavor, relationships);
 
       try {
@@ -875,7 +910,7 @@ export async function generateArtifact(
         const parsed = JSON.parse(cleaned);
         return validateArtifact('write_document', parsed);
       } catch {
-        // Transformation failed — deterministic repair before standard LLM fallback.
+        // Transformation failed — deterministic repair before emergency fallback.
         const deterministic = buildDeterministicDocumentFallback(directive, fullCtx);
         if (deterministic) return deterministic;
         return emergencyWriteDocumentArtifact(directive);

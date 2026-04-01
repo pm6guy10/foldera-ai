@@ -15,10 +15,11 @@
 - **Rate limiting on public routes** — `/api/try/analyze` uses DB-backed `rateLimit()` (5/hour per IP). `/api/resend/webhook` uses a module-level in-memory counter (10/min per IP, best-effort on Vercel cold starts).
 - **Email send idempotency** — `daily-brief-send.ts` checks both `daily_brief_sent_at` (existing guard) and `resend_id` (new guard) before calling Resend. After a successful send, `resend_id` is stored in `execution_result` alongside `daily_brief_sent_at`. Cron double-fire cannot produce duplicate sends.
 - **Hallucination guard in send_message prompt** — Both send_message prompt locations in `generator.ts` now include a `GROUNDING RULE` prohibiting fabricated professional relationships, shared projects, organizational roles, or budget contexts that don't appear in signal data.
+- **Artifact generator resilience + class-aware discrepancy transform** — `loadRelationshipContext()` failures no longer throw out of `generateArtifact()` before the Haiku transform try/catch (they fall back to “No relationship data available.”). `discrepancyClass` is copied onto `ConvictionDirective` for discrepancy winners; `detectDiscrepancyFlavor()` uses class first so `schedule_conflict` never picks the “person” outreach template just because `reason` mentions “reconnect”. `evaluateBottomGate()` has a **schedule_conflict + write_document** path: numbered calendar-resolution steps + ISO date satisfy concrete-move / pressure without requiring an external named recipient.
 
 ## B. WHAT IS BROKEN (REAL)
 
-- **Production brain-receipt not re-run this session** — cross-source candidates need a live `POST /api/dev/brain-receipt` (owner, `ALLOW_DEV_ROUTES`) to confirm pool size, calendar/drive/conversation source traces, and write_document `entityPenalty: 0` in diagnostics.
+- **Post-deploy verification** — After `fix: autonomous brain quality loop`, run owner `POST /api/dev/brain-receipt` once deploy is READY to confirm `schedule_conflict` → `write_document` persists `pending_approval` (not `Artifact generation failed.`).
 - **Convergence depends on name overlap** — `extractConvergence` requires the entity name to appear in signal bodies; calendar titles without names may under-match.
 - **Confidence scores remain variable** — richer candidates help, but thin relationship context still pulls confidence down.
 

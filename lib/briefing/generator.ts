@@ -4783,6 +4783,9 @@ export async function generateDirective(
       fullContext: buildFullContext({ ...scored, winner: hydratedWinner }, payload),
       embeddedArtifact: payload.artifact,
       embeddedArtifactType: canonicalAction,
+      ...(currentCandidate.type === 'discrepancy' && currentCandidate.discrepancyClass
+        ? { discrepancyClass: currentCandidate.discrepancyClass }
+        : {}),
       acceptedCausalDiagnosis: payload.causal_diagnosis,
       causalDiagnosisSource: payload.causal_diagnosis_source ?? null,
       winnerSelectionTrace: {

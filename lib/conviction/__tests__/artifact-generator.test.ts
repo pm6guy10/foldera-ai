@@ -179,4 +179,27 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(content).not.toMatch(/rejected because/i);
     expect(content).not.toMatch(/this candidate/i);
   });
+
+  it('schedule_conflict discrepancy uses deadline transform, not person outreach, even if reason mentions reconnect', async () => {
+    mockCreate.mockResolvedValue(
+      anthropicResponse(
+        '1. Decide which event keeps the 2026-04-02 slot.\n2. Decline or reschedule the other in your calendar app.\n3. Text anyone affected before end of day.',
+      ),
+    );
+
+    const directive: any = {
+      ...BASE_WRITE_DOCUMENT_DIRECTIVE,
+      discrepancyClass: 'schedule_conflict',
+      directive: 'Resolve overlapping calendar events on 2026-04-02',
+      reason: 'Parents visiting creates a natural opportunity to reconnect',
+      fullContext: ANALYSIS_DUMP,
+    };
+
+    await generateArtifact('user-1', directive);
+
+    expect(mockCreate).toHaveBeenCalled();
+    const firstCall = mockCreate.mock.calls[0]?.[0] as { system?: string };
+    expect(firstCall?.system ?? '').toMatch(/time-sensitive|Numbered steps|execution/i);
+    expect(firstCall?.system ?? '').not.toMatch(/outreach messages|150 words/i);
+  });
 });

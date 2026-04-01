@@ -177,6 +177,10 @@ export function evaluateBottomGate(
     (typeof artifactRecord.title === 'string' ? artifactRecord.title : '');
   const combined = `${directiveText}\n${reason}\n${artifactBody}`;
 
+  const scheduleConflictWriteDoc =
+    directive.action_type === 'write_document' &&
+    directive.discrepancyClass === 'schedule_conflict';
+
   // 1. Self-referential document — check FIRST because this is the primary memo-sludge class
   if (
     (directive.action_type === 'write_document' || directive.action_type === 'make_decision') &&
@@ -193,8 +197,9 @@ export function evaluateBottomGate(
       blocked_reasons.push('NO_EXTERNAL_TARGET');
     }
   } else {
-    // write_document / make_decision — must mention a real external person
-    if (!EXTERNAL_TARGET_PATTERN.test(combined)) {
+    // write_document / make_decision — must mention a real external person,
+    // except pure calendar trade-offs (double-booking) where the user resolves their own schedule.
+    if (!EXTERNAL_TARGET_PATTERN.test(combined) && !scheduleConflictWriteDoc) {
       blocked_reasons.push('NO_EXTERNAL_TARGET');
     }
   }
@@ -205,14 +210,31 @@ export function evaluateBottomGate(
   // already enforced by isSendWorthy (real recipient, body length, banned phrases, etc.).
   // These three checks are designed for documents and commitment artifacts, not personal email.
   if (directive.action_type !== 'send_message') {
-    // 3. Concrete ask — must ask someone to DO something
-    if (!CONCRETE_ASK_PATTERN.test(combined)) {
-      blocked_reasons.push('NO_CONCRETE_ASK');
-    }
+    if (scheduleConflictWriteDoc) {
+      const hasAnchoredTime =
+        REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
+      const hasExecutableMotion =
+        CONCRETE_ASK_PATTERN.test(combined) ||
+        /\b\d+\.\s/m.test(artifactBody) ||
+        /\b(reschedule|decline|cancel|move|protect (?:the |your )?time|choose|prioritize|block|notify)\b/i.test(
+          artifactBody,
+        );
+      if (!hasAnchoredTime) {
+        blocked_reasons.push('NO_REAL_PRESSURE');
+      }
+      if (!hasExecutableMotion) {
+        blocked_reasons.push('NO_CONCRETE_ASK');
+      }
+    } else {
+      // 3. Concrete ask — must ask someone to DO something
+      if (!CONCRETE_ASK_PATTERN.test(combined)) {
+        blocked_reasons.push('NO_CONCRETE_ASK');
+      }
 
-    // 4. Real-world pressure — deadline, consequence, or forcing function
-    if (!REAL_PRESSURE_PATTERN.test(combined)) {
-      blocked_reasons.push('NO_REAL_PRESSURE');
+      // 4. Real-world pressure — deadline, consequence, or forcing function
+      if (!REAL_PRESSURE_PATTERN.test(combined)) {
+        blocked_reasons.push('NO_REAL_PRESSURE');
+      }
     }
 
     // 5. Generic social motion — polished relationship maintenance with no purpose

@@ -140,6 +140,12 @@ Expanding data windows (signals, entities, evidence) is necessary but not suffic
 
 This applies to: validation functions, lifecycle gates, auth guards, confidence thresholds, trust class logic — anything that is called from more than one place.
 
+## 14. Async Helpers Outside Inner try/catch Can Still Null the Whole Artifact
+
+`generateArtifact()` wrapped the Anthropic call in `try/catch`, but `await loadRelationshipContext()` ran **before** that try. Any Supabase error (or transient DB failure) propagated to `runDailyGenerate`, which only catches `generateArtifact` errors by leaving `artifact === null` — producing `Artifact generation failed.` even though `write_document` has emergency fallbacks inside the inner catch.
+
+**Rule:** For any pipeline stage that must never return `null` for a canonical action type, every `await` on the hot path must either sit inside the same `try` as the recovery logic or have its own `try/catch` with a safe default. “Inner catch covers LLM failures” is false if an outer await throws first.
+
 ## 13. Entity Skip Penalty Applies Only When Email Is Required
 
 A flat `entityPenalty` (e.g. −30) for every candidate type kills calendar-, drive-, and conversation-shaped loops that never had an inbox match. **Rule**: apply skip/entity penalties only when the locked action is `send_message`. For `write_document`, `make_decision`, and `schedule`, entity match is not a prerequisite to act — keep `entityPenalty: 0` on those paths unless a separate product rule says otherwise.
