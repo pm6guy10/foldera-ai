@@ -45,7 +45,7 @@ export const TRIGGER_ACTION_MAP: Record<DiscrepancyClass, TriggerActionRule> = {
   decay: {
     primary_action: 'send_message',
     artifact_shape: 'email',
-    required_elements: ['explicit_ask', 'time_pressure', 'trigger_delta_reference'],
+    required_elements: ['explicit_ask', 'trigger_delta_reference', 'concrete_last_interaction'],
     banned_phrases: [...COMMON_BANNED],
   },
   risk: {
@@ -194,6 +194,21 @@ export function resolveTriggerAction(
 // Build TRIGGER_CONTEXT prompt section from TriggerMetadata
 // ---------------------------------------------------------------------------
 
+function formatEvidenceForTriggerContext(evidenceJson: string): string {
+  const raw = evidenceJson.trim();
+  if (!raw) return '';
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+}
+
+export interface BuildTriggerContextOptions {
+  /** Discrepancy detector JSON delta metrics (e.g. DeltaMetric). */
+  evidenceJson?: string | null;
+}
+
 /**
  * Build the TRIGGER_CONTEXT prompt block injected into the generator.
  * This is the first thing the LLM sees about the candidate — it MUST
@@ -202,8 +217,48 @@ export function resolveTriggerAction(
 export function buildTriggerContextBlock(
   triggerClass: DiscrepancyClass,
   trigger: TriggerMetadata,
+  options?: BuildTriggerContextOptions,
 ): string {
   const rule = TRIGGER_ACTION_MAP[triggerClass];
+  const evidenceBlock =
+    options?.evidenceJson?.trim() ?
+      [
+        `  delta_metrics (structured evidence):`,
+        ...formatEvidenceForTriggerContext(options.evidenceJson).split('\n').map((l) => `    ${l}`),
+      ]
+    : [];
+
+  // Decay: silence is the signal — do not demand deadline/consequence language that
+  // forces generic "catch up" copy. Specific last-thread + why-now + ask instead.
+  if (triggerClass === 'decay' && rule.artifact_shape === 'email') {
+    return [
+      `TRIGGER_CONTEXT (MANDATORY — relationship decay, use in artifact; do not paraphrase as "time passed"):`,
+      `  type: decay`,
+      `  baseline: ${trigger.baseline_state}`,
+      `  current: ${trigger.current_state}`,
+      `  delta: ${trigger.delta}`,
+      `  timeframe: ${trigger.timeframe}`,
+      `  why_now: ${trigger.why_now}`,
+      `  outcome_class: ${trigger.outcome_class}`,
+      `  locked_action: ${rule.primary_action}`,
+      `  artifact_shape: email`,
+      ...evidenceBlock,
+      ``,
+      `DECAY_RECONNECTION_RULE:`,
+      `Do not write "it's been a while", "been a while", "just checking in", or generic check-in language.`,
+      `The email must reference:`,
+      `  — Something specific from your last interaction with this person (subject, topic, or thread from context above).`,
+      `  — A concrete reason this reconnection matters NOW (use why_now + delta; not only elapsed time).`,
+      `  — A specific ask or topic that matches what this person can actually help with (their role, past thread, or linked goal).`,
+      `If you cannot find specific context in the prompt to satisfy all three, output do_nothing. Generic reconnection emails are worse than no email.`,
+      ``,
+      `TRIGGER RULES (decay):`,
+      `1. Open with a concrete callback to the last interaction — not a vague preamble.`,
+      `2. Tie the ask to delta/why_now (pattern collapse, stalled thread, or goal at risk) without internal metrics jargon.`,
+      `3. One clear ask; no filler closings.`,
+      `4. Banned phrases: ${rule.banned_phrases.map(p => `"${p}"`).join(', ')}`,
+    ].join('\n');
+  }
 
   const documentRules = rule.artifact_shape === 'document' ? [
     `6. DOCUMENT MUST END with a NEXT_ACTION section in this exact format:`,
@@ -223,10 +278,12 @@ export function buildTriggerContextBlock(
     `  baseline: ${trigger.baseline_state}`,
     `  current: ${trigger.current_state}`,
     `  delta: ${trigger.delta}`,
+    `  timeframe: ${trigger.timeframe}`,
     `  why_now: ${trigger.why_now}`,
     `  outcome_class: ${trigger.outcome_class}`,
     `  locked_action: ${rule.primary_action}`,
     `  artifact_shape: ${rule.artifact_shape}`,
+    ...evidenceBlock,
     ``,
     `TRIGGER RULES:`,
     `1. Your artifact MUST reference the delta explicitly (${trigger.delta}).`,

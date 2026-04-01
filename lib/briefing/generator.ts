@@ -37,6 +37,7 @@ import {
   resolveTriggerAction,
   validateTriggerArtifact,
 } from './trigger-action-map';
+import type { EntityBehavioralStats } from '@/lib/signals/behavioral-graph';
 import type { DiscrepancyClass } from './discrepancy-detector';
 import { effectiveDiscrepancyClassForGates } from './effective-discrepancy-class';
 import {
@@ -1080,10 +1081,14 @@ export interface StructuredContext {
   trigger_context: string | null;
   // Human-readable recipient brief — name, email, role, last contact, context.
   // Populated for send_message candidates with a confirmed external recipient.
-  // When present, buildPromptFromStructuredContext strips system metrics entirely.
+  // When present, non-decay send_message path strips most system metrics; decay keeps rich context.
   recipient_brief: string | null;
   /** Discrepancy subclass when candidate_class is discrepancy (e.g. schedule_conflict). */
   discrepancy_class: string | null;
+  /** Scorer breakdown — why this candidate ranked (internal; do not paste raw numbers into user emails). */
+  candidate_analysis: string;
+  /** Per-entity bx_stats when available (discrepancy UUID entity, etc.). */
+  entity_analysis: string | null;
 }
 
 type CausalMechanismClass =
@@ -1256,6 +1261,94 @@ export function applyScheduleConflictCanonicalUserFacingCopy(
 
   payload.directive = directiveLine;
   payload.why_now = whyNow;
+}
+
+function parseBxStatsFromPatterns(patterns: unknown): EntityBehavioralStats | null {
+  if (!patterns || typeof patterns !== 'object') return null;
+  const bx = (patterns as Record<string, unknown>).bx_stats;
+  if (!bx || typeof bx !== 'object') return null;
+  const b = bx as Record<string, unknown>;
+  if (
+    typeof b.signal_count_14d !== 'number' ||
+    typeof b.signal_count_30d !== 'number' ||
+    typeof b.signal_count_90d !== 'number' ||
+    typeof b.silence_detected !== 'boolean' ||
+    typeof b.computed_at !== 'string'
+  ) {
+    return null;
+  }
+  const vr = b.velocity_ratio;
+  if (vr !== null && typeof vr !== 'number') return null;
+  const ola = b.open_loop_age_days;
+  if (ola !== null && typeof ola !== 'number') return null;
+  return {
+    signal_count_14d: b.signal_count_14d,
+    signal_count_30d: b.signal_count_30d,
+    signal_count_90d: b.signal_count_90d,
+    velocity_ratio: vr as number | null,
+    silence_detected: b.silence_detected,
+    open_loop_age_days: ola as number | null,
+    computed_at: b.computed_at,
+  };
+}
+
+function buildCandidateAnalysisBlock(winner: ScoredLoop): string {
+  const b = winner.breakdown;
+  const lines: string[] = [
+    'CANDIDATE_ANALYSIS (scorer rationale — internal grounding; do not dump raw metrics into the user-facing email):',
+    `- aggregate_score: ${winner.score.toFixed(2)}`,
+    `- stakes: ${b.stakes}`,
+    `- urgency: ${b.urgency}`,
+    `- tractability: ${b.tractability}`,
+    `- freshness: ${b.freshness}`,
+    `- action_type_approval_rate: ${b.actionTypeRate}`,
+    `- entity_penalty: ${b.entityPenalty}`,
+  ];
+  if (b.specificityAdjustedStakes != null) {
+    lines.push(`- specificity_adjusted_stakes: ${b.specificityAdjustedStakes}`);
+  }
+  if (b.urgency_effective != null) lines.push(`- urgency_effective: ${b.urgency_effective}`);
+  if (b.exec_potential != null) lines.push(`- exec_potential: ${b.exec_potential}`);
+  if (b.behavioral_rate != null) lines.push(`- behavioral_rate: ${b.behavioral_rate}`);
+  if (b.novelty_multiplier != null) lines.push(`- novelty_multiplier: ${b.novelty_multiplier}`);
+  if (b.suppression_multiplier != null) lines.push(`- suppression_multiplier: ${b.suppression_multiplier}`);
+  return lines.join('\n');
+}
+
+function buildEntityAnalysisBlock(bx: EntityBehavioralStats | null | undefined): string | null {
+  if (!bx) return null;
+  return [
+    'ENTITY_ANALYSIS (behavioral graph / bx_stats — internal context for relationship dynamics):',
+    `- signal_count_14d: ${bx.signal_count_14d}`,
+    `- signal_count_30d: ${bx.signal_count_30d}`,
+    `- signal_count_90d: ${bx.signal_count_90d}`,
+    `- velocity_ratio: ${bx.velocity_ratio === null ? 'null' : bx.velocity_ratio.toFixed(2)}`,
+    `- silence_detected: ${bx.silence_detected}`,
+    `- open_loop_age_days: ${bx.open_loop_age_days === null ? 'null' : bx.open_loop_age_days}`,
+    `- computed_at: ${bx.computed_at}`,
+  ].join('\n');
+}
+
+async function enrichWinnerWithEntityBxStats(userId: string, winner: ScoredLoop): Promise<ScoredLoop> {
+  if (winner.entityBxStats != null) {
+    return winner;
+  }
+  if (winner.type !== 'discrepancy') return winner;
+  const uuidMatch = winner.id.match(
+    /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
+  );
+  if (!uuidMatch) return winner;
+  const supabase = createServerClient();
+  const { data: entity } = await supabase
+    .from('tkg_entities')
+    .select('patterns')
+    .eq('user_id', userId)
+    .eq('id', uuidMatch[1])
+    .neq('name', 'self')
+    .maybeSingle();
+  const bx = parseBxStatsFromPatterns(entity?.patterns);
+  if (!bx) return winner;
+  return { ...winner, entityBxStats: bx };
 }
 
 function buildStructuredContext(
@@ -1466,7 +1559,8 @@ function buildStructuredContext(
     selected_candidate: selectedCandidate,
     candidate_class: winner.type,
     candidate_title: winner.title,
-    candidate_reason: winner.relatedSignals.slice(0, 2).join('; ').slice(0, 300) || winner.content.slice(0, 200),
+    candidate_reason:
+      winner.relatedSignals.slice(0, 5).join('; ').slice(0, 800) || winner.content.slice(0, 200),
     candidate_goal: winner.matchedGoal
       ? `${winner.matchedGoal.text} [${winner.matchedGoal.category}, p${winner.matchedGoal.priority}]`
       : null,
@@ -1516,9 +1610,12 @@ function buildStructuredContext(
     competition_context: competitionContext ?? null,
     confidence_prior: winner.confidence_prior,
     required_causal_diagnosis,
-    trigger_context: winner.type === 'discrepancy' && winner.discrepancyClass && winner.trigger
-      ? buildTriggerContextBlock(winner.discrepancyClass, winner.trigger)
-      : null,
+    trigger_context:
+      winner.type === 'discrepancy' && winner.discrepancyClass && winner.trigger
+        ? buildTriggerContextBlock(winner.discrepancyClass, winner.trigger, {
+            evidenceJson: winner.discrepancyEvidence ?? null,
+          })
+        : null,
     recipient_brief: (() => {
       if (!has_real_recipient) return null;
       const brief = buildRecipientBrief(winner.relationshipContext ?? null, signalEvidence);
@@ -1531,6 +1628,8 @@ function buildStructuredContext(
     discrepancy_class:
       winner.discrepancyClass ??
       (winner.id.startsWith('discrepancy_conflict_') ? 'schedule_conflict' : null),
+    candidate_analysis: buildCandidateAnalysisBlock(winner),
+    entity_analysis: buildEntityAnalysisBlock(winner.entityBxStats),
   };
 }
 
@@ -1808,7 +1907,42 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
       m.push(ctx.trigger_context);
     }
 
-    if (ctx.supporting_signals.length > 0) {
+    if (isDecayReconnect) {
+      m.push(ctx.candidate_analysis);
+      if (ctx.entity_analysis) {
+        m.push(ctx.entity_analysis);
+      }
+      m.push(`CANDIDATE_TITLE:\n${ctx.candidate_title}`);
+      m.push(`CANDIDATE_CLASS:\n${ctx.candidate_class}`);
+      m.push(`CANDIDATE_EVIDENCE:\n${ctx.selected_candidate}`);
+      if (ctx.candidate_context_enrichment) {
+        m.push(ctx.candidate_context_enrichment);
+      }
+      if (ctx.avoidance_observations.length > 0) {
+        const obsLines = ctx.avoidance_observations.map((o, i) => {
+          const badge = o.severity === 'high' ? '[HIGH]' : '[MEDIUM]';
+          return `${i + 1}. ${badge} ${o.observation}`;
+        });
+        m.push(
+          `AVOIDANCE_SIGNALS (pre-computed facts — reference directly, do not rephrase):\n` +
+            obsLines.join('\n'),
+        );
+      }
+      if (ctx.behavioral_mirrors.length > 0) {
+        m.push(
+          `BEHAVIORAL_MIRROR:\nThese patterns were detected in the user's behavior. You may reference them in your artifact if they are directly relevant to the candidate. Do not invent additional patterns.\n\n` +
+            ctx.behavioral_mirrors.map((mir, i) => `${i + 1}. ${mir}`).join('\n\n'),
+        );
+      }
+      if (ctx.supporting_signals.length > 0) {
+        const signalLines = ctx.supporting_signals.map((s) => {
+          const dirLabel = s.direction === 'sent' ? '[SENT]' : s.direction === 'received' ? '[RECEIVED]' : '';
+          const entityPart = s.entity ? ` ${s.direction === 'sent' ? 'To' : 'From'}: ${s.entity}` : '';
+          return `- [${s.occurred_at}] [${s.source}]${dirLabel ? ` ${dirLabel}` : ''}${entityPart} ${s.summary}`;
+        });
+        m.push(`SUPPORTING_SIGNALS:\n${signalLines.join('\n')}`);
+      }
+    } else if (ctx.supporting_signals.length > 0) {
       const signalLines = ctx.supporting_signals.slice(0, 8).map((s) => {
         const dir = s.direction === 'sent' ? '[You →]' : s.direction === 'received' ? '[← Them]' : '';
         return `- ${s.occurred_at}${dir ? ` ${dir}` : ''} ${s.summary}`;
@@ -2028,6 +2162,11 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
   }
 
   sections.push(`SCORE: ${ctx.candidate_score.toFixed(2)}`);
+
+  sections.push(ctx.candidate_analysis);
+  if (ctx.entity_analysis) {
+    sections.push(ctx.entity_analysis);
+  }
 
   sections.push(
     `CONFIDENCE_PRIOR: ${ctx.confidence_prior}\n` +
@@ -3140,6 +3279,8 @@ async function hydrateWinnerRelationshipContext(
       if (entity) {
         const line = formatEntityLine(entity as Record<string, unknown>);
         const record = entity as Record<string, unknown>;
+        const bx = parseBxStatsFromPatterns(record.patterns);
+        const bxField = bx ? { entityBxStats: bx } : {};
         const nameForIntel = isNonEmptyString(record.display_name)
           ? record.display_name.trim()
           : isNonEmptyString(record.name)
@@ -3154,7 +3295,7 @@ async function hydrateWinnerRelationshipContext(
             // non-blocking
           }
         }
-        return { ...winner, relationshipContext: merged };
+        return { ...winner, relationshipContext: merged, ...bxField };
       }
     }
   }
@@ -3388,6 +3529,34 @@ async function fetchWinnerSignalEvidence(
           existingTexts.add(parsed.snippet.slice(0, 60));
         }
       }
+
+      // Derived reply-latency / unreplied-thread / RSVP lines (type response_pattern), entity-scoped
+      const RESPONSE_PATTERN_DECAY_CAP = 20;
+      const rpExisting = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
+      const ninetyRpIso = new Date(Date.now() - daysMs(90)).toISOString();
+      const { data: rpRows } = await supabase
+        .from('tkg_signals')
+        .select('content, source, occurred_at, author, type')
+        .eq('user_id', userId)
+        .eq('type', 'response_pattern')
+        .eq('processed', true)
+        .gte('occurred_at', ninetyRpIso)
+        .order('occurred_at', { ascending: false })
+        .limit(120);
+
+      let rpAdded = 0;
+      for (const row of rpRows ?? []) {
+        if (rpAdded >= RESPONSE_PATTERN_DECAY_CAP) break;
+        const decrypted = decryptWithStatus(row.content as string ?? '');
+        if (decrypted.usedFallback) continue;
+        const parsed = parseSignalSnippet(decrypted.plaintext, row);
+        if (!parsed) continue;
+        if (!signalSnippetMatchesDecayEntity(parsed, anchors)) continue;
+        if (rpExisting.has(parsed.snippet.slice(0, 60))) continue;
+        snippets.push(parsed);
+        rpExisting.add(parsed.snippet.slice(0, 60));
+        rpAdded++;
+      }
     }
   }
 
@@ -3446,7 +3615,8 @@ function parseSignalSnippet(
   plaintext: string,
   row: Record<string, unknown>,
 ): SignalSnippet | null {
-  if (!plaintext || plaintext.length < 20) return null;
+  const rowType = (row.type as string) ?? '';
+  if (!plaintext || (plaintext.length < 20 && rowType !== 'response_pattern')) return null;
 
   let subject: string | null = null;
   const subjectMatch = plaintext.match(/(?:Subject|Re|Fwd):\s*(.+?)(?:\n|$)/i);
@@ -3456,7 +3626,6 @@ function parseSignalSnippet(
   const contentLines = lines.filter((l) => !l.match(/^(From|To|Date|Subject|Cc|Bcc|Re|Fwd):/i));
   const snippet = contentLines.join(' ').slice(0, 600).trim();
 
-  const rowType = (row.type as string) ?? '';
   const direction: 'sent' | 'received' | 'unknown' =
     rowType === 'email_sent' ? 'sent' :
     rowType === 'email_received' ? 'received' :
@@ -4451,6 +4620,10 @@ async function generatePayload(
 ): Promise<{ issues: string[]; payload: GeneratedDirectivePayload | null }> {
   const prompt = buildPromptFromStructuredContext(ctx);
 
+  if (ctx.candidate_class === 'discrepancy' && ctx.discrepancy_class === 'decay') {
+    console.log(`[generator] FULL_PROMPT_DECAY user=${userId.slice(0, 8)} len=${prompt.length}\n${prompt}`);
+  }
+
   // Log prompt prefix so identity context is visible in structured logs
   logStructuredEvent({
     event: 'generation_prompt_preview',
@@ -4827,8 +5000,9 @@ export async function generateDirective(
         continue;
       }
 
-      // --- Per-candidate: hydrate ---
-      const hydratedWinner = await hydrateWinnerRelationshipContext(userId, currentCandidate);
+      // --- Per-candidate: hydrate + entity bx_stats for discrepancy UUID winners ---
+      let hydratedWinner = await hydrateWinnerRelationshipContext(userId, currentCandidate);
+      hydratedWinner = await enrichWinnerWithEntityBxStats(userId, hydratedWinner);
 
       // --- Per-candidate: signal evidence ---
       let signalEvidence: SignalSnippet[] = [];
@@ -4840,24 +5014,6 @@ export async function generateDirective(
           artifactType: null, generationStatus: 'context_degraded',
           details: { scope: 'generator', stage: 'fetchWinnerSignalEvidence', error: ctxErr instanceof Error ? ctxErr.message : String(ctxErr) },
         });
-      }
-
-      // TEMP: decay evidence proof — remove after brain-receipt verification
-      if (
-        hydratedWinner.type === 'discrepancy' &&
-        hydratedWinner.discrepancyClass === 'decay'
-      ) {
-        console.log(
-          JSON.stringify({
-            event: 'decay_signal_evidence_debug',
-            userId,
-            winner_id: hydratedWinner.id,
-            snippets_count: signalEvidence.length,
-            snippet_previews: signalEvidence.map(
-              (s) => `${(s.subject ?? '').slice(0, 80)} | ${s.snippet.slice(0, 120)}`,
-            ),
-          }),
-        );
       }
 
       // --- Per-candidate: entity suppression ---

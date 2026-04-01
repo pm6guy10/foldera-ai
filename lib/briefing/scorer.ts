@@ -325,6 +325,10 @@ export interface ScoredLoop {
   discrepancyClass?: DiscrepancyClass;
   /** Trigger metadata — present only when type === 'discrepancy' */
   trigger?: TriggerMetadata;
+  /** Structured delta metrics JSON from discrepancy detector — passed to prompt TRIGGER_CONTEXT. */
+  discrepancyEvidence?: string;
+  /** Entity behavioral graph stats (bx_stats) when entity row was resolved — prompt ENTITY_ANALYSIS. */
+  entityBxStats?: import('@/lib/signals/behavioral-graph').EntityBehavioralStats | null;
   /** Optional override for discrepancy action resolution (e.g. unresolved_intent → schedule). */
   discrepancyPreferredAction?: ActionType;
 }
@@ -4593,6 +4597,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       confidence_prior: Math.round(Math.max(45, Math.min(85, mergedDiscUrgency * 80))),
       discrepancyClass: d.class,
       trigger: d.trigger,
+      discrepancyEvidence: d.evidence,
       discrepancyPreferredAction: d.discrepancyPreferredAction,
     });
     diag.discrepancies.push({ id: d.id, class: d.class, title: d.title.slice(0, 100), entityName: d.entityName, score: finalScore, stakes: d.stakes, urgency: mergedDiscUrgency });

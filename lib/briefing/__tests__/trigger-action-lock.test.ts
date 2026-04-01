@@ -245,6 +245,7 @@ describe('buildTriggerContextBlock', () => {
       expect(block).toContain(`baseline: ${trigger.baseline_state}`);
       expect(block).toContain(`current: ${trigger.current_state}`);
       expect(block).toContain(`delta: ${trigger.delta}`);
+      expect(block).toContain(`timeframe: ${trigger.timeframe}`);
       expect(block).toContain(`why_now: ${trigger.why_now}`);
       expect(block).toContain(`outcome_class: ${trigger.outcome_class}`);
       expect(block).toContain('locked_action:');
@@ -252,6 +253,15 @@ describe('buildTriggerContextBlock', () => {
       expect(block).toContain('TRIGGER RULES');
       expect(block).toContain('Banned phrases');
     }
+  });
+
+  it('includes formatted delta_metrics when evidenceJson is provided', () => {
+    const block = buildTriggerContextBlock('engagement_collapse', TRIGGERS.engagement_collapse, {
+      evidenceJson: '{"baseline":"3/14d","delta_pct":-67}',
+    });
+    expect(block).toContain('delta_metrics');
+    expect(block).toContain('baseline');
+    expect(block).toContain('-67');
   });
 
   it('delta-based triggers include delta in the prompt rules', () => {

@@ -166,12 +166,19 @@ describe('multi-user safety', () => {
     expect(prompt).toContain('the user');
   });
 
-  it('buildPromptFromStructuredContext decay discrepancy short path omits goal/conviction blocks', () => {
+  it('buildPromptFromStructuredContext decay discrepancy short path keeps rich context without full convergent stack', () => {
     const ctx = {
       has_real_recipient: true,
       recipient_brief: 'Cheryl Anderson <cheryl@example.com>',
       candidate_class: 'discrepancy',
       discrepancy_class: 'decay',
+      candidate_title: 'Relationship cooling: Cheryl Anderson',
+      selected_candidate: 'Prior thread went quiet after Q4 planning; silence is the structural signal.',
+      candidate_context_enrichment: null,
+      candidate_analysis:
+        'CANDIDATE_ANALYSIS (scorer rationale — internal grounding; do not dump raw metrics into the user-facing email):\n- aggregate_score: 4.20',
+      entity_analysis:
+        'ENTITY_ANALYSIS (behavioral graph / bx_stats — internal context for relationship dynamics):\n- velocity_ratio: 0.35',
       supporting_signals: [
         {
           source: 'gmail',
@@ -180,7 +187,18 @@ describe('multi-user safety', () => {
           summary: 'Q4 planning thread',
           direction: 'received',
         },
+        {
+          source: 'gmail',
+          occurred_at: '2026-01-10',
+          entity: 'outlook_calendar',
+          summary: 'Follow-up meeting invite',
+          direction: 'unknown',
+        },
       ],
+      avoidance_observations: [
+        { type: 'no_reply_sent' as const, severity: 'medium' as const, observation: 'No outbound reply to last inbound from Cheryl in 12d.' },
+      ],
+      behavioral_mirrors: ['[SIGNAL_VELOCITY] Test mirror line.'],
       already_sent_14d: [],
       recent_action_history_7d: [],
       confidence_prior: 75,
@@ -191,6 +209,12 @@ describe('multi-user safety', () => {
     const prompt = buildPromptFromStructuredContext(ctx);
     expect(prompt).toContain('Write an email from the user to:');
     expect(prompt).toContain('DECAY_RECONNECTION_RULE');
+    expect(prompt).toContain('CANDIDATE_EVIDENCE');
+    expect(prompt).toContain('CANDIDATE_ANALYSIS');
+    expect(prompt).toContain('ENTITY_ANALYSIS');
+    expect(prompt).toContain('SUPPORTING_SIGNALS');
+    expect(prompt).toContain('AVOIDANCE_SIGNALS');
+    expect(prompt).toContain('BEHAVIORAL_MIRROR');
     expect(prompt).not.toContain('CONVERGENT_ANALYSIS');
     expect(prompt).not.toContain('CONVICTION_MATH');
     expect(prompt).toContain('do_nothing');
