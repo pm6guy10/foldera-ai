@@ -199,6 +199,9 @@ describe('multi-user safety', () => {
         { type: 'no_reply_sent' as const, severity: 'medium' as const, observation: 'No outbound reply to last inbound from Cheryl in 12d.' },
       ],
       behavioral_mirrors: ['[SIGNAL_VELOCITY] Test mirror line.'],
+      response_pattern_lines: [
+        '- [2026-01-11] [response_pattern] cheryl@example.com: Unreplied inbound thread 9d',
+      ],
       already_sent_14d: [],
       recent_action_history_7d: [],
       confidence_prior: 75,
@@ -216,6 +219,9 @@ describe('multi-user safety', () => {
     expect(prompt).toContain('SUPPORTING_SIGNALS');
     expect(prompt).toContain('AVOIDANCE_SIGNALS');
     expect(prompt).toContain('BEHAVIORAL_MIRROR');
+    expect(prompt).toContain('RESPONSE_PATTERN_LINES');
+    expect(prompt).toContain('[response_pattern]');
+    expect(prompt).toContain('velocity_ratio');
     expect(prompt).not.toContain('CONVERGENT_ANALYSIS');
     expect(prompt).not.toContain('CONVICTION_MATH');
     expect(prompt).toContain('do_nothing');

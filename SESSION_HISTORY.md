@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — Wire full bx_stats + response_pattern lines into LLM prompt; recipient-short competition_context; non-prod decay full-prompt log
+  MODE: AUDIT
+  Commit hash(es): `86de9aa`
+  Files changed: `lib/briefing/generator.ts`, `lib/__tests__/multi-user-safety.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (572 tests)
+  Any unresolved issues: `npm run test:prod` after Vercel READY per runbook.
+
 - 2026-04-01 — DecisionPayload render lock: canonical artifact validation, CANONICAL_ACTION prompt preamble, executable-only retries, trigger hard-fail vs soft advisory
   MODE: AUDIT
   Commit hash(es): `bd16119`

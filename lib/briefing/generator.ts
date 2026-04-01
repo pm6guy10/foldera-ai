@@ -272,6 +272,8 @@ interface SignalSnippet {
   snippet: string;
   author: string | null;
   direction: 'sent' | 'received' | 'unknown';
+  /** Original `tkg_signals.type` when present (e.g. response_pattern). */
+  row_type?: string | null;
 }
 
 interface GenerateDirectiveOptions {
@@ -1092,6 +1094,8 @@ export interface StructuredContext {
   avoidance_observations: AvoidanceObservation[];
   // Chronological thread showing the arc of the winner relationship (sent/received, days since reply)
   relationship_timeline: string | null;
+  /** Formatted lines from `tkg_signals.type = response_pattern` (reply latency, RSVP, unreplied thread). */
+  response_pattern_lines?: string[];
   // Multi-candidate competition context — why this winner beat the alternatives
   competition_context: string | null;
   // Confidence prior derived from scorer (actionTypeRate + entityPenalty) — bounds generator guessing
@@ -1365,7 +1369,27 @@ function buildEntityAnalysisBlock(
   if (!bx) return null;
   const name = (entityName ?? '').trim() || 'entity';
   const vr = bx.velocity_ratio === null ? 'null' : bx.velocity_ratio.toFixed(2);
-  return `(INTERNAL CONTEXT - do not paste into artifact)\nENTITY_ANALYSIS: ${name} velocity_ratio=${vr}, 14d=${bx.signal_count_14d}, 30d=${bx.signal_count_30d}, 90d=${bx.signal_count_90d}`;
+  const ola = bx.open_loop_age_days === null ? 'null' : String(bx.open_loop_age_days);
+  return (
+    `(INTERNAL CONTEXT - do not paste into artifact)\n` +
+    `ENTITY_ANALYSIS (entity behavioral stats / bx_stats — internal reasoning only; never paste into user-facing email):\n` +
+    `- entity: ${name}\n` +
+    `- velocity_ratio: ${vr} (14d rate vs 90d baseline; <1 = cooling)\n` +
+    `- signal_count_14d: ${bx.signal_count_14d}\n` +
+    `- signal_count_30d: ${bx.signal_count_30d}\n` +
+    `- signal_count_90d: ${bx.signal_count_90d}\n` +
+    `- silence_detected: ${bx.silence_detected}\n` +
+    `- open_loop_age_days: ${ola}\n` +
+    `- bx_stats_computed_at: ${bx.computed_at}`
+  );
+}
+
+function buildResponsePatternPromptBlock(lines: string[]): string | null {
+  if (lines.length === 0) return null;
+  return (
+    `RESPONSE_PATTERN_LINES (derived reply/RSVP/latency rows — internal; use facts in natural language only):\n` +
+    lines.join('\n')
+  );
 }
 
 async function enrichWinnerWithEntityBxStats(userId: string, winner: ScoredLoop): Promise<ScoredLoop> {
@@ -1420,6 +1444,15 @@ function buildStructuredContext(
   const sorted = signalEvidence
     .slice()
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+  const response_pattern_lines = sorted
+    .filter((s) => s.row_type === 'response_pattern')
+    .slice(0, 24)
+    .map((s) => {
+      const head = [s.subject, s.snippet].filter(Boolean).join(' — ');
+      const auth = s.author?.trim() ? `${s.author.trim()}: ` : '';
+      return `- [${s.date}] [response_pattern] ${auth}${head.slice(0, 280)}`;
+    });
 
   const maxSignals =
     winner.type === 'discrepancy' && winner.discrepancyClass === 'decay' ? 40 : 15;
@@ -1647,6 +1680,7 @@ function buildStructuredContext(
         ? winner.entityName
         : winner.title,
     ),
+    response_pattern_lines,
     competition_context: competitionContext ?? null,
     confidence_prior: winner.confidence_prior,
     required_causal_diagnosis,
@@ -1924,6 +1958,7 @@ export function buildPromptFromStructuredContext(
   const preamble = committedArtifactType
     ? `${buildCanonicalActionPreamble(committedArtifactType).trim()}\n\n`
     : '';
+  const responsePatternSection = buildResponsePatternPromptBlock(ctx.response_pattern_lines ?? []);
   const sections: string[] = [];
   const wantPhrase = ctx.user_first_name.trim()
     ? `One clear sentence about what ${ctx.user_first_name} wants or is sharing`
@@ -1998,6 +2033,14 @@ export function buildPromptFromStructuredContext(
 
     if (ctx.relationship_timeline) {
       m.push(ctx.relationship_timeline);
+    }
+
+    if (responsePatternSection) {
+      m.push(responsePatternSection);
+    }
+
+    if (ctx.competition_context) {
+      m.push(ctx.competition_context);
     }
 
     if (isDecayReconnect) {
@@ -2213,6 +2256,9 @@ export function buildPromptFromStructuredContext(
   sections.push(ctx.candidate_analysis);
   if (ctx.entity_analysis) {
     sections.push(ctx.entity_analysis);
+  }
+  if (responsePatternSection) {
+    sections.push(responsePatternSection);
   }
 
   sections.push(
@@ -3713,6 +3759,7 @@ function parseSignalSnippet(
     snippet: snippet || plaintext.slice(0, 600),
     author: (row.author as string) ?? null,
     direction,
+    row_type: rowType || null,
   };
 }
 
@@ -4714,6 +4761,14 @@ async function generatePayload(
 ): Promise<{ issues: string[]; payload: GeneratedDirectivePayload | null }> {
   const committed = options.committedArtifactType;
   const prompt = buildPromptFromStructuredContext(ctx, committed);
+
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    ctx.candidate_class === 'discrepancy' &&
+    ctx.discrepancy_class === 'decay'
+  ) {
+    console.log(`[generator] decay_candidate_full_prompt\n${prompt}`);
+  }
 
   // Log prompt prefix so identity context is visible in structured logs
   logStructuredEvent({
