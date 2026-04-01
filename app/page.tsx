@@ -102,9 +102,9 @@ const SCENARIOS: Scenario[] = [
 ];
 
 const FEATURES: FeatureItem[] = [
-  { icon: Database, title: 'It reads your history', desc: 'Email, calendar, conversations. Foldera ingests what you\u2019ve already written and finds the patterns you can\u2019t see from inside them.' },
+  { icon: Database, title: 'It connects the dots', desc: 'Loose ends, patterns, and commitments — woven into one picture so what matters doesn\u2019t hide in the noise.' },
   { icon: Brain, title: 'It picks the one thing', desc: 'Dozens of threads, one winner. The engine scores what matters most and ignores the rest.' },
-  { icon: Zap, title: 'It drafts the email', desc: 'No prompting. No chatting. You wake up to a finished draft \u2014 ready to send with one tap.' },
+  { icon: Zap, title: 'It drafts the move', desc: 'No prompting. No chatting. You wake up to finished work — ready to send with one tap.' },
   { icon: Shield, title: 'It stays private', desc: 'Your data never trains anyone else\u2019s model. AES-256 encryption. Delete everything anytime.' },
   { icon: Terminal, title: 'It gets smarter', desc: 'Every approval and every skip teaches the engine what matters to you. Day 30 is unrecognizable from day 1.' },
   { icon: LayoutGrid, title: 'It replaces the system', desc: 'Not another app to check. The whole point is that you stop managing and start deciding yes or no.' },
@@ -352,18 +352,18 @@ function HeroDirectiveDemo() {
             <p className="text-zinc-200 text-sm leading-relaxed">{slide.artifact}</p>
           </div>
         </div>
-        <div className="p-4 flex gap-3 bg-white/[0.02] border-t border-white/10">
+        <div className="p-4 flex flex-col max-[400px]:flex-col sm:flex-row gap-3 bg-white/[0.02] border-t border-white/10 max-[400px]:[&>button]:w-full">
           <button
             type="button"
             onClick={advance}
-            className="flex-1 bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-colors"
+            className="flex-1 min-h-[48px] bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-colors"
           >
             <Check className="w-4 h-4" aria-hidden="true" /> Approve
           </button>
           <button
             type="button"
             onClick={advance}
-            className="px-6 bg-zinc-900 border border-white/20 text-zinc-500 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+            className="w-full sm:w-auto sm:px-6 min-h-[48px] bg-zinc-900 border border-white/20 text-zinc-500 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
           >
             Skip
           </button>
@@ -378,17 +378,17 @@ function HeroDirectiveDemo() {
 // ============================================================================
 function SignalEngineHero() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-6 pt-20 md:pt-28 pb-12 md:pb-20 text-center relative z-10 flex flex-col items-center">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-20 md:pt-28 pb-12 md:pb-20 text-center relative z-10 flex flex-col items-center min-w-0">
       {/* Headlines & CTA */}
       <Reveal alwaysVisible>
         <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] mb-4 md:mb-6">
           A model of you. One move a day.
         </div>
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-4 md:mb-5 leading-[1.08]">
+        <h1 className="text-3xl sm:text-5xl md:text-7xl font-black tracking-tighter text-white mb-4 md:mb-5 leading-[1.08] px-1">
           You missed it.<br className="hidden md:block" /> Foldera didn’t.
         </h1>
-        <p className="text-base md:text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed mb-5 md:mb-8">
-          Your inbox isn&apos;t random. There&apos;s a pattern in what slips, stalls, and gets ignored. Foldera finds it, picks what matters, and hands it back finished.
+        <p className="text-base md:text-xl text-zinc-400 max-w-xl mx-auto font-medium leading-relaxed mb-5 md:mb-8 px-4">
+          What keeps stalling isn&apos;t random. Foldera finds what slipped, drafts the response, and hands you one tap to send.
         </p>
         <div className="mb-5 md:mb-8 -mt-2 md:-mt-4">
           <p className="inline-flex items-center gap-2 rounded-full border border-cyan-400/35 bg-cyan-500/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] text-cyan-100 shadow-[0_0_24px_rgba(6,182,212,0.14)]">
@@ -396,10 +396,10 @@ function SignalEngineHero() {
             No credit card required
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+        <div className="w-full max-w-xl mx-auto px-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4">
           <a
             href="/start"
-            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+            className="w-full sm:w-auto min-h-[48px] px-8 py-4 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all duration-150 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
           >
             Get started free <ChevronRight className="w-4 h-4" />
           </a>
@@ -412,19 +412,19 @@ function SignalEngineHero() {
         {/* Background Glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] h-[440px] bg-cyan-500/[0.025] blur-[140px] rounded-full pointer-events-none z-0" />
 
-        {/* Signal input chips — what Foldera reads */}
-        <div className="flex items-center justify-center gap-3 sm:gap-4 mb-1 relative z-10">
+        {/* Signal chips — abstract inputs (details live on /start) */}
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-1 relative z-10 max-w-md mx-auto">
           <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
-            <Mail className="w-3 h-3 text-zinc-500" />
-            <span>23 emails</span>
+            <Zap className="w-3 h-3 text-zinc-500 shrink-0" />
+            <span>High-signal items</span>
           </div>
           <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
-            <Calendar className="w-3 h-3 text-zinc-500" />
-            <span>8 events</span>
+            <LayoutGrid className="w-3 h-3 text-zinc-500 shrink-0" />
+            <span>Cross-thread patterns</span>
           </div>
           <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] font-semibold">
-            <MessageSquare className="w-3 h-3 text-zinc-500" />
-            <span>3 threads</span>
+            <Brain className="w-3 h-3 text-zinc-500 shrink-0" />
+            <span>One ranked move</span>
           </div>
         </div>
 
@@ -498,8 +498,8 @@ function ScenarioDemos() {
   const isProcessing = phase === 'chaos' && progress > 40;
 
   return (
-    <div className="w-full max-w-6xl mx-auto relative z-10 px-4 sm:px-6">
-      <div className={`relative w-full h-[380px] sm:h-[470px] md:h-auto md:aspect-[21/10] rounded-[2rem] bg-black/40 backdrop-blur-3xl border transition-all duration-1000 overflow-hidden shadow-2xl ${
+    <div className="w-full max-w-6xl mx-auto relative z-10 px-2 sm:px-6 min-w-0">
+      <div className={`relative w-full max-w-full h-[380px] sm:h-[470px] md:h-auto md:aspect-[21/10] rounded-[2rem] bg-black/40 backdrop-blur-3xl border transition-all duration-1000 overflow-hidden shadow-2xl ${
         isProcessing ? 'border-cyan-500/45 shadow-[0_0_80px_-25px_rgba(6,182,212,0.32)]' : 'border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,1)]'
       }`}
       onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null; }}
@@ -538,7 +538,7 @@ function ScenarioDemos() {
           <div className="w-full max-w-xl relative perspective-1000">
             {current.chaos.map((item, idx) => {
               const rotate = idx % 2 === 0 ? '-2deg' : '2deg';
-              const translateX = idx % 2 === 0 ? '-15px' : '15px';
+              const translateX = idx % 2 === 0 ? '-8px' : '8px';
               return (
                 <div
                   key={`${activeTab}-${idx}`}
@@ -645,17 +645,17 @@ const FlipSection = memo(() => {
   const [ref, inView] = useInView(0.2);
 
   return (
-    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-36 px-6 bg-[#07070c] relative overflow-hidden border-t border-white/5">
+    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-24 md:py-36 px-4 sm:px-6 bg-[#07070c] relative overflow-x-hidden border-t border-white/5">
       <AmbientGrid />
-      <div className="max-w-6xl mx-auto relative z-10">
+      <div className="max-w-6xl mx-auto relative z-10 min-w-0">
         <Reveal>
-          <div className="text-center mb-24">
-            <h2 className="text-5xl md:text-6xl font-black text-white mb-6 tracking-tighter">Same data. Better outcomes.</h2>
+          <div className="text-center mb-16 md:mb-24">
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-white mb-6 tracking-tighter">Same data. Better outcomes.</h2>
             <p className="text-zinc-400 text-xl font-medium">The value isn&apos;t more information. It&apos;s seeing what matters before it becomes a problem.</p>
           </div>
         </Reveal>
 
-        <div className="grid md:grid-cols-2 gap-8 relative perspective-1000">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 relative perspective-1000">
           <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent" aria-hidden="true" />
 
           {/* Left — what you see */}
@@ -664,10 +664,10 @@ const FlipSection = memo(() => {
               <Eye className="w-4 h-4" /> What you see
             </div>
             <div className="space-y-4">
-              {[
-                { label: 'Unread emails', val: '47', color: 'text-rose-400' },
-                { label: 'Overdue tasks', val: '12', color: 'text-amber-400' },
-                { label: 'Pending decisions', val: '8', color: 'text-zinc-400' },
+                {[
+                { label: 'Open loops', val: '47', color: 'text-rose-400' },
+                { label: 'Slipping deadlines', val: '12', color: 'text-amber-400' },
+                { label: 'Stalled decisions', val: '8', color: 'text-zinc-400' },
               ].map((item, i) => (
                 <div key={i} className="flex items-center justify-between p-6 rounded-2xl bg-[#0a0a0a] border border-white/5 shadow-inner">
                   <span className="text-zinc-400 font-bold">{item.label}</span>
@@ -740,9 +740,9 @@ const MathConsole = memo(() => {
             <div className="p-8 md:p-12 space-y-8 text-zinc-400 leading-relaxed bg-black/60 break-words text-left font-sans">
               <div>
                 <span className="text-cyan-400 font-bold text-sm">01</span>
-                <span className="text-white font-bold text-sm ml-3">Read your email, calendar, and conversations</span>
+                <span className="text-white font-bold text-sm ml-3">Finds what you missed. Drafts the response.</span>
                 <br />
-                <span className="text-zinc-600 font-medium mt-2 inline-block text-sm">Pull the unfinished threads that actually matter.</span>
+                <span className="text-zinc-600 font-medium mt-2 inline-block text-sm">One tap to send — no digging, no rewrites.</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '500ms' }}>
@@ -756,12 +756,12 @@ const MathConsole = memo(() => {
                 <span className="text-cyan-400 font-bold text-sm">03</span>
                 <span className="text-white font-bold text-sm ml-3">Draft the finished artifact</span>
                 <br />
-                <span className="text-zinc-600 font-medium mt-2 inline-block text-sm">The email, document, or calendar hold — with the details already filled in.</span>
+                <span className="text-zinc-600 font-medium mt-2 inline-block text-sm">The reply, document, or decision frame — details already filled in.</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '2200ms' }}>
                 <span className="text-cyan-400 font-bold text-sm">04</span>
-                <span className="text-white font-bold text-sm ml-3">Deliver one read to your inbox</span>
+                <span className="text-white font-bold text-sm ml-3">Deliver one move every morning</span>
                 <br />
                 <div className="mt-4 bg-cyan-500/10 border border-cyan-500/20 p-4 rounded-xl inline-block">
                   <span className="text-cyan-400 font-bold text-xs sm:text-sm tracking-widest">
@@ -784,14 +784,14 @@ MathConsole.displayName = 'MathConsole';
 function FeatureCarousel() {
 
   return (
-    <section id="product" className="py-36 relative bg-[#07070c] border-t border-white/5">
+    <section id="product" className="py-24 md:py-36 relative bg-[#07070c] border-t border-white/5 overflow-x-hidden">
       <AmbientGrid />
-      <div className="max-w-6xl mx-auto px-6 relative z-10">
-        <Reveal className="mb-20 text-left md:text-center">
-          <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">Stop checking.<br />Start finishing.</h2>
-          <p className="text-zinc-400 text-xl md:text-2xl font-medium">Foldera doesn&apos;t ask for more attention. It gives some back.</p>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 min-w-0">
+        <Reveal className="mb-12 md:mb-20 text-left md:text-center">
+          <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">Stop checking.<br />Start finishing.</h2>
+          <p className="text-zinc-400 text-base md:text-2xl font-medium">Foldera doesn&apos;t ask for more attention. It gives some back.</p>
         </Reveal>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
           {FEATURES.map((feature, i) => {
             const Icon = feature.icon;
             return (
@@ -893,7 +893,7 @@ export default function App() {
       </section>
 
       {/* ── SCENARIO DEMOS — "with a month of your data" ── */}
-      <section className="py-20 md:py-32 relative bg-[#07070c] border-t border-white/5 overflow-hidden">
+      <section className="py-20 md:py-32 relative bg-[#07070c] border-t border-white/5 overflow-x-hidden">
         <AmbientGrid />
         <div className="max-w-6xl mx-auto relative z-10">
           <Reveal className="text-center mb-8 md:mb-16 px-6">
@@ -926,7 +926,7 @@ export default function App() {
           </Reveal>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {(['Connect', 'Decide', 'Execute'] as const).map((title, i) => (
+            {(['Gather', 'Decide', 'Finish'] as const).map((title, i) => (
               <Reveal key={i} delay={i * 100}>
                 <div className="relative p-10 md:p-12 rounded-[2rem] bg-zinc-950/80 backdrop-blur-xl border border-white/[0.08] group hover:border-cyan-500/40 transition-all duration-700 h-full overflow-hidden shadow-2xl shadow-black/40 hover:shadow-[0_0_60px_rgba(6,182,212,0.15)] hover:-translate-y-2 text-left">
                   <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
@@ -935,10 +935,10 @@ export default function App() {
                     <span className="text-cyan-400 text-[10px] tracking-[0.2em] uppercase font-mono bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-md shadow-inner">{`Step 0${i + 1}`}</span>
                     {title}
                   </h3>
-                  <p className="text-zinc-400 text-base md:text-lg leading-relaxed relative z-10 font-medium group-hover:text-zinc-300 transition-colors">
-                    {i === 0 && 'It reads what already happened.'}
-                    {i === 1 && 'It finds the one move that changes the outcome.'}
-                    {i === 2 && 'It gives it back ready to send.'}
+                  <p className="text-zinc-400 text-base md:text-lg leading-relaxed relative z-10 font-medium group-hover:text-zinc-300 transition-colors duration-150">
+                    {i === 0 && 'Your context becomes one canvas — before you open a single tool.'}
+                    {i === 1 && 'The highest-stakes move surfaces first. Everything else waits.'}
+                    {i === 2 && 'Approve and it sends. Skip and the model learns.'}
                   </p>
                 </div>
               </Reveal>
@@ -957,30 +957,35 @@ export default function App() {
       <section id="pricing" className="py-32 md:py-40 border-t border-white/5 relative bg-[#07070c] overflow-hidden">
         <AmbientGrid />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.08)_0%,transparent_50%)] pointer-events-none" aria-hidden="true" />
-        <Reveal className="max-w-2xl mx-auto px-6 relative z-10">
+        <Reveal className="max-w-2xl mx-auto px-4 sm:px-6 relative z-10 w-full min-w-0">
           <div className="text-center mb-14 md:mb-16">
-            <h2 className="text-5xl md:text-6xl font-black tracking-tighter text-white mb-5 leading-none">
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter text-white mb-5 leading-none">
               Start free.<br />Upgrade when it clicks.
             </h2>
-            <p className="text-zinc-400 text-xl font-medium leading-relaxed">
-              Your first 3 artifacts are on us. Full quality.
-              After that, blurred previews show you what Foldera found.
-              Unlock everything for $29/mo.
+            <p className="text-lg md:text-xl text-zinc-400 max-w-xl mx-auto font-medium leading-relaxed">
+              Your first 3 artifacts are on us at full quality. After that, previews stay visible until you go Pro.
             </p>
           </div>
 
-          {/* Single card */}
-          <div className="max-w-lg mx-auto mb-16">
-            <div className="rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/30 p-10 md:p-12 shadow-[0_0_80px_rgba(6,182,212,0.12)]">
+          {/* Free + Pro — one vertical stack, premium weight on Pro */}
+          <div className="max-w-lg mx-auto mb-16 space-y-6 w-full min-w-0">
+            <div className="rounded-2xl border border-white/10 bg-zinc-950/70 backdrop-blur-sm p-6 sm:p-8 text-center shadow-inner">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-3">Free</p>
+              <div className="flex items-baseline justify-center gap-2 mb-2">
+                <span className="text-4xl font-black text-white tracking-tighter">$0</span>
+              </div>
+              <p className="text-zinc-500 text-sm leading-relaxed">Daily directive plus your first three finished artifacts. No card.</p>
+            </div>
+            <div className="rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/30 p-6 sm:p-10 md:p-12 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),0_0_80px_rgba(6,182,212,0.12)]">
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-6 bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 rounded-lg inline-block">
                 Professional
               </p>
               <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-6xl font-black text-white tracking-tighter">$29</span>
+                <span className="text-5xl sm:text-6xl font-black text-white tracking-tighter">$29</span>
                 <span className="text-zinc-500 font-bold tracking-widest uppercase text-xs">/mo</span>
               </div>
               <p className="text-zinc-400 font-medium mb-8">Finished work, every morning.</p>
-              <ul className="space-y-4 mb-10">
+              <ul className="space-y-4 mb-10 text-left">
                 {[
                   'Drafted emails, ready to send',
                   'Documents and decision frames',
@@ -988,17 +993,17 @@ export default function App() {
                   'Gets smarter every day',
                   'Cancel anytime',
                 ].map((f) => (
-                  <li key={f} className="flex items-center gap-4 text-white">
-                    <div className="p-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 shrink-0">
+                  <li key={f} className="flex items-start gap-4 text-white">
+                    <div className="p-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 shrink-0 mt-0.5">
                       <Check className="w-3.5 h-3.5 text-cyan-400 shrink-0" aria-hidden="true" />
                     </div>
-                    <span className="text-sm font-bold tracking-tight text-zinc-200">{f}</span>
+                    <span className="text-sm font-bold tracking-tight text-zinc-200 leading-relaxed">{f}</span>
                   </li>
                 ))}
               </ul>
               <a
                 href="/start"
-                className="w-full py-5 rounded-2xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95"
+                className="w-full max-w-full min-h-[56px] py-5 mx-0 rounded-2xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all duration-150 flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
               >
                 Get started free <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </a>

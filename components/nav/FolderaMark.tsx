@@ -11,8 +11,7 @@ const boxClass: Record<NonNullable<FolderaMarkProps['size']>, string> = {
 };
 
 /**
- * PNG mark with a subtle frosted plate — foldera-icon.png has an opaque dark plate;
- * the container blends it into dark nav/footers.
+ * SVG glyph on a frosted plate — transparent mark reads cleanly on dark chrome.
  */
 export function FolderaMark({ size = 'md', className = '' }: FolderaMarkProps) {
   return (
@@ -20,9 +19,9 @@ export function FolderaMark({ size = 'md', className = '' }: FolderaMarkProps) {
       className={`inline-flex shrink-0 items-center justify-center ${boxClass[size]} ${className}`}
     >
       <img
-        src="/foldera-icon.png"
+        src="/foldera-glyph.svg"
         alt="Foldera"
-        className="h-full w-full object-contain rounded-md"
+        className="h-full w-full object-contain"
         width={28}
         height={28}
       />

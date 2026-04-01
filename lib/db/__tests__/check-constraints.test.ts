@@ -33,6 +33,12 @@ const COMMITMENT_SOURCES = new Set([
   'task_sync', 'meeting_notes', 'chat_message',
 ]);
 
+const GOAL_SOURCES = new Set([
+  'extracted', 'manual', 'auto_suppression',
+  'onboarding_bucket', 'onboarding_stated', 'onboarding_marker',
+  'system_config',
+]);
+
 // --- Tests ---
 
 describe('CHECK constraint contract', () => {
@@ -75,6 +81,17 @@ describe('CHECK constraint contract', () => {
     ];
     for (const v of appValues) {
       expect(COMMITMENT_SOURCES.has(v), `Missing commitment source: ${v}`).toBe(true);
+    }
+  });
+
+  it('goal sources cover all app-written values', () => {
+    const appValues = [
+      'extracted', 'manual', 'auto_suppression',
+      'onboarding_bucket', 'onboarding_stated', 'onboarding_marker',
+      'system_config',
+    ];
+    for (const v of appValues) {
+      expect(GOAL_SOURCES.has(v), `Missing goal source: ${v}`).toBe(true);
     }
   });
 });

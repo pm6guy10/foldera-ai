@@ -8,24 +8,27 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main id="main" className="min-h-screen bg-[#07070c] text-white">
-      <nav className="border-b border-white/5 py-6 px-6">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <a href="/" className="flex items-center gap-3">
+    <main id="main" className="min-h-screen bg-[#07070c] text-white overflow-x-hidden">
+      <nav className="border-b border-white/5 py-6 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3 min-w-0">
+          <a href="/" className="flex items-center gap-3 min-w-0">
             <FolderaMark />
-            <span className="text-lg font-black tracking-tighter uppercase">Foldera</span>
+            <span className="text-lg font-black tracking-tighter uppercase truncate">Foldera</span>
           </a>
-          <a href="/" className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
+          <a
+            href="/"
+            className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors shrink-0 min-h-[44px] inline-flex items-center"
+          >
             Back to home
           </a>
         </div>
       </nav>
 
-      <div className="max-w-3xl mx-auto px-6 py-20">
-        <h1 className="text-4xl font-black tracking-tight mb-4">Terms of Service</h1>
-        <p className="text-zinc-400 text-sm mb-12">Last updated: March 2026</p>
+      <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20 w-full min-w-0">
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">Terms of Service</h1>
+        <p className="text-zinc-400 text-sm mb-10 sm:mb-12">Last updated: March 2026</p>
 
-        <div className="prose prose-invert prose-zinc max-w-none prose-headings:font-black prose-headings:tracking-tight prose-headings:text-white prose-p:text-zinc-300 prose-p:leading-relaxed prose-strong:text-white prose-a:text-cyan-400 prose-a:no-underline prose-a:hover:text-cyan-300 space-y-10 text-sm">
+        <div className="prose prose-invert prose-zinc max-w-none prose-headings:font-black prose-headings:tracking-tight prose-headings:text-white prose-p:text-zinc-300 prose-p:leading-relaxed prose-strong:text-white prose-a:text-cyan-400 prose-a:no-underline prose-a:hover:text-cyan-300 space-y-8 sm:space-y-10 text-sm leading-relaxed break-words">
           <section>
             <h2 className="text-white text-lg font-bold mb-3">Service</h2>
             <p>

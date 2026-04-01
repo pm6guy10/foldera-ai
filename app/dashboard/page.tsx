@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { FolderaMark } from '@/components/nav/FolderaMark';
 import { signOut, useSession } from 'next-auth/react';
@@ -47,6 +47,9 @@ export default function DashboardPage() {
   const [subPlan, setSubPlan] = useState<string | null>(null);
   const [subStatus, setSubStatus] = useState<string | null>(null);
   const [lastDecision, setLastDecision] = useState<'approve' | 'skip' | null>(null);
+
+  const loadAbortRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(false);
 
   // Handle ?generated=true from settings run-brief success
   // Handle ?upgraded=true from Stripe checkout success
@@ -125,16 +128,23 @@ export default function DashboardPage() {
   }, []);
 
   const load = useCallback(async () => {
+    loadAbortRef.current?.abort();
+    const ac = new AbortController();
+    loadAbortRef.current = ac;
+
     setLoading(true);
     setFetchError(false);
     try {
       const [convRes, subRes] = await Promise.all([
-        fetch('/api/conviction/latest'),
-        fetch('/api/subscription/status'),
+        fetch('/api/conviction/latest', { signal: ac.signal }),
+        fetch('/api/subscription/status', { signal: ac.signal }),
       ]);
+
+      if (ac.signal.aborted) return;
 
       if (subRes.ok) {
         const sub = await subRes.json().catch(() => ({}));
+        if (ac.signal.aborted) return;
         setSubPlan(typeof sub.plan === 'string' ? sub.plan : null);
         setSubStatus(typeof sub.status === 'string' ? sub.status : null);
       } else {
@@ -142,26 +152,37 @@ export default function DashboardPage() {
         setSubStatus(null);
       }
 
+      if (ac.signal.aborted) return;
+
       if (!convRes.ok) {
         setFetchError(true);
         setAction(null);
         return;
       }
       const data = await convRes.json().catch(() => ({}));
+      if (ac.signal.aborted) return;
       setIsSubscribed(data?.is_subscribed === true);
       setAction(data?.id ? data : null);
-    } catch {
+    } catch (e: unknown) {
+      if (ac.signal.aborted) return;
       setFetchError(true);
       setAction(null);
       setSubPlan(null);
       setSubStatus(null);
     } finally {
-      setLoading(false);
+      if (!ac.signal.aborted && isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    load();
+    isMountedRef.current = true;
+    void load();
+    return () => {
+      isMountedRef.current = false;
+      loadAbortRef.current?.abort();
+    };
   }, [load]);
 
   const handleApprove = async () => {
@@ -240,7 +261,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white">
+    <div className="min-h-screen bg-[#07070c] text-white overflow-x-hidden selection:bg-cyan-500/30 selection:text-white">
       {/* Ambient grid */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
@@ -257,13 +278,13 @@ export default function DashboardPage() {
             <span className="text-sm font-black tracking-tighter text-white uppercase truncate">Foldera</span>
           </Link>
           <div className="flex items-center gap-1 shrink-0">
-            <Link href="/dashboard/settings" className="p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center" aria-label="Settings">
+            <Link href="/dashboard/settings" className="min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center" aria-label="Settings">
               <Settings className="w-5 h-5" />
             </Link>
             <button
               type="button"
               onClick={() => signOut({ callbackUrl: '/' })}
-              className="p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center"
+              className="min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center"
               aria-label="Sign out"
             >
               <LogOut className="w-5 h-5" />
@@ -273,7 +294,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Content */}
-      <main id="main" className="relative z-10 pt-20 pb-14 px-4 max-w-2xl mx-auto">
+      <main id="main" className="relative z-10 pt-20 pb-14 px-4 max-w-2xl mx-auto w-full min-w-0">
         {isOwner && (
           <div className="flex gap-1 p-1 rounded-xl bg-zinc-900/80 border border-white/10 mb-6 max-w-md">
             <button
@@ -314,21 +335,27 @@ export default function DashboardPage() {
         {flash && !done && (
           <div
             role="status"
-            className="mb-5 px-4 py-3.5 rounded-xl bg-zinc-950/90 border border-cyan-500/25 backdrop-blur-md shadow-[0_12px_40px_-12px_rgba(0,0,0,0.8)]"
+            className="mb-5 w-full max-w-full mx-0 px-4 py-3.5 rounded-xl bg-zinc-950/90 border border-cyan-500/25 backdrop-blur-md shadow-[0_12px_40px_-12px_rgba(0,0,0,0.8)]"
           >
-            <p className="text-sm text-zinc-200 font-medium">{flash}</p>
+            <p className="text-sm text-zinc-200 font-medium break-words">{flash}</p>
           </div>
         )}
 
         {loading ? (
-          <div className="animate-pulse space-y-4 mt-8 max-w-xl">
-            <div className="h-2 w-24 bg-zinc-800 rounded" />
-            <div className="h-7 bg-zinc-800/60 rounded-lg w-full" />
-            <div className="h-7 bg-zinc-800/60 rounded-lg w-4/5" />
-            <div className="h-40 bg-zinc-800/40 rounded-2xl mt-4" />
-            <div className="flex gap-3 mt-4">
-              <div className="h-14 bg-zinc-800/60 rounded-xl flex-1" />
-              <div className="h-14 bg-zinc-800/40 rounded-xl w-28" />
+          <div
+            key="dashboard-directive-skeleton"
+            className="mt-8 max-w-xl animate-pulse"
+            aria-hidden
+          >
+            <div className="space-y-4">
+              <div className="h-2 w-24 bg-zinc-800 rounded" />
+              <div className="h-7 bg-zinc-800/60 rounded-lg w-full" />
+              <div className="h-7 bg-zinc-800/60 rounded-lg w-4/5" />
+              <div className="h-40 bg-zinc-800/40 rounded-2xl mt-4" />
+              <div className="flex gap-3 mt-4">
+                <div className="h-14 bg-zinc-800/60 rounded-xl flex-1" />
+                <div className="h-14 bg-zinc-800/40 rounded-xl w-28" />
+              </div>
             </div>
           </div>
         ) : done ? (
@@ -352,22 +379,23 @@ export default function DashboardPage() {
           <div className="mt-20 text-center">
             <p className="text-zinc-400 text-sm">Something went wrong loading your dashboard.</p>
             <button
-              onClick={load}
-              className="mt-4 text-[10px] font-black uppercase tracking-[0.15em] text-cyan-400 hover:text-cyan-300 transition-colors"
+              type="button"
+              onClick={() => void load()}
+              className="mt-4 min-h-[44px] text-[10px] font-black uppercase tracking-[0.15em] text-cyan-400 hover:text-cyan-300 transition-colors"
             >
               Try again
             </button>
           </div>
         ) : !action ? (
-          <div className="mt-12">
-            <div className="mx-auto max-w-lg rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-10 text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
+          <div className="mt-12 px-0">
+            <div className="mx-auto max-w-lg rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-8 sm:p-10 text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
               <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse mx-auto mb-6" />
               <p className="text-zinc-200 text-lg font-medium">Your next read arrives tomorrow morning.</p>
               <p className="text-zinc-500 text-sm mt-2">Foldera is learning from your patterns.</p>
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl bg-[#0a0a0f] border border-cyan-500/20 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.15)] overflow-hidden transition-all duration-300 ease-out">
+          <div className="rounded-2xl bg-[#0a0a0f] border border-cyan-500/20 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.15)] overflow-hidden transition-all duration-300 ease-out max-sm:mx-0 w-full min-w-0">
             {/* Cyan top accent */}
             <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
 
@@ -470,11 +498,12 @@ export default function DashboardPage() {
             )}
 
             {/* Action buttons */}
-            <div className="p-4 flex gap-3 bg-white/[0.02] border-t border-white/10">
+            <div className="p-4 flex flex-row gap-3 max-[400px]:flex-col bg-white/[0.02] border-t border-white/10 max-[400px]:[&>button]:w-full">
               <button
+                type="button"
                 onClick={handleApprove}
                 disabled={executing}
-                className="flex-1 min-h-[56px] bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                className="flex-1 w-full sm:w-auto min-h-[56px] bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
               >
                 {executing ? (
                   <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -483,9 +512,10 @@ export default function DashboardPage() {
                 )}
               </button>
               <button
+                type="button"
                 onClick={handleSkip}
                 disabled={executing}
-                className="px-6 min-h-[56px] bg-zinc-900 border border-white/20 text-zinc-400 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[5.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                className="w-full sm:w-auto sm:px-6 min-h-[56px] bg-zinc-900 border border-white/20 text-zinc-400 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:min-w-[5.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
               >
                 {executing ? (
                   <span className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />

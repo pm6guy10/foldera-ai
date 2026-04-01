@@ -155,7 +155,7 @@ export async function abandonRejectedGoals(): Promise<{ ok: boolean; abandoned: 
     .from('tkg_goals')
     .select('id, user_id, goal_text, source')
     .eq('status', 'active')
-    .not('source', 'in', '("onboarding_bucket","onboarding_marker")');
+    .not('source', 'in', '("onboarding_bucket","onboarding_marker","system_config")');
 
   if (!activeGoals || activeGoals.length === 0) return { ok: true, abandoned: 0 };
 
@@ -238,7 +238,7 @@ export async function abandonRejectedGoals(): Promise<{ ok: boolean; abandoned: 
 // ---------------------------------------------------------------------------
 
 /** Goal sources that are onboarding placeholders — excluded from matching. */
-const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker']);
+const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker', 'system_config']);
 
 /**
  * Scan the last 14 days of tkg_signals for recurring entities, themes, and

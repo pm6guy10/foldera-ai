@@ -34,7 +34,7 @@ function StartContent() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-hidden selection:bg-cyan-500/30 selection:text-white">
+    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-x-hidden selection:bg-cyan-500/30 selection:text-white">
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.10)_0%,transparent_60%)]" />
@@ -42,12 +42,12 @@ function StartContent() {
 
       <NavAuthMinimal variant="start" />
 
-      <main id="main" className="relative z-10 flex-1 flex items-center justify-center px-6 pb-16">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-10">
+      <main id="main" className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 pb-16 w-full min-w-0">
+        <div className="w-full max-w-md mx-auto">
+          <div className="text-center mb-10 px-1">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-3">Finished work, every morning.</p>
-            <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-white leading-tight">Get started with Foldera</h1>
-            <p className="mt-4 text-zinc-400 text-sm leading-relaxed max-w-sm mx-auto">One secure sign-in. Then Foldera goes to work.</p>
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tighter text-white leading-tight">Get started with Foldera</h1>
+            <p className="mt-4 text-zinc-400 text-base leading-relaxed max-w-sm mx-auto">One secure sign-in. Then Foldera goes to work.</p>
           </div>
 
           {error && (
@@ -93,16 +93,16 @@ function StartContent() {
             </button>
           </div>
 
-          <div className="rounded-2xl bg-zinc-950/80 border border-white/10 backdrop-blur-xl p-5 mb-5 space-y-3">
+          <div className="rounded-2xl bg-zinc-950/80 border border-white/10 backdrop-blur-xl p-5 mb-5 space-y-4">
             {[
               { n: '01', text: 'Sign in — one tap with Google or Microsoft' },
               { n: '02', text: 'Focus — tell us what you\u2019re working on' },
               { n: '03', text: 'Rest — your first read arrives tomorrow morning' },
               { n: '04', text: 'Improve — every approve and skip trains the model' },
             ].map(({ n, text }) => (
-              <div key={n} className="flex items-start gap-4">
-                <span className="text-[11px] text-cyan-400 w-6 shrink-0 font-black tabular-nums">{n}</span>
-                <span className="text-xs text-zinc-400 leading-relaxed font-medium">{text}</span>
+              <div key={n} className="flex items-start gap-4 min-w-0">
+                <span className="text-[11px] text-cyan-400 w-8 shrink-0 font-black tabular-nums pt-0.5">{n}</span>
+                <span className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-medium min-w-0">{text}</span>
               </div>
             ))}
           </div>

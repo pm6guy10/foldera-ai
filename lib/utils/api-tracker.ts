@@ -263,3 +263,43 @@ export async function getSpendSummary(userId: string): Promise<{
     capPct: Math.min(100, Math.round((todayUSD / DAILY_SPEND_CAP_USD) * 100)),
   };
 }
+
+/**
+ * Sum estimated_cost for api_usage rows since UTC midnight where endpoint matches.
+ * Used for per-agent cron spend caps (user_id may be null).
+ */
+export async function getGlobalEndpointSpendToday(endpoint: string): Promise<number> {
+  try {
+    const supabase = createServerClient();
+    const todayUTC = new Date();
+    todayUTC.setUTCHours(0, 0, 0, 0);
+
+    const { data, error } = await supabase
+      .from('api_usage')
+      .select('estimated_cost')
+      .eq('endpoint', endpoint)
+      .gte('created_at', todayUTC.toISOString());
+
+    if (error) {
+      throw error;
+    }
+
+    return (data ?? []).reduce((sum: number, row: { estimated_cost: string | number }) => {
+      return sum + Number(row.estimated_cost);
+    }, 0);
+  } catch (error) {
+    logStructuredEvent({
+      event: 'agent_spend_query_failed',
+      level: 'warn',
+      userId: null,
+      artifactType: null,
+      generationStatus: 'spend_query_failed',
+      details: {
+        scope: 'api-tracker',
+        endpoint,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
+    return 0;
+  }
+}

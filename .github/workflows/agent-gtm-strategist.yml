@@ -1,0 +1,20 @@
+# 14:00 UTC — Reddit listening + draft replies.
+name: Agent — GTM Strategist
+on:
+  schedule:
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke agent-runner
+        env:
+          BASE: ${{ secrets.AGENT_BASE_URL }}
+          SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$BASE" && test -n "$SECRET"
+          curl -sS -f -X POST "$BASE/api/cron/agent-runner?agent=gtm_strategist" \
+            -H "Authorization: Bearer $SECRET" \
+            -H "Accept: application/json"

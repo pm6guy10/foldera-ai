@@ -1,0 +1,20 @@
+# Fridays 15:00 UTC — weekly product intelligence.
+name: Agent — Self Optimizer
+on:
+  schedule:
+    - cron: '0 15 * * 5'
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke agent-runner
+        env:
+          BASE: ${{ secrets.AGENT_BASE_URL }}
+          SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$BASE" && test -n "$SECRET"
+          curl -sS -f -X POST "$BASE/api/cron/agent-runner?agent=self_optimizer" \
+            -H "Authorization: Bearer $SECRET" \
+            -H "Accept: application/json"

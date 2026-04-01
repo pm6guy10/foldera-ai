@@ -1,0 +1,24 @@
+# After each push to main — Playwright screenshots + Sonnet critique → DraftQueue.
+name: Agent — UI Critic
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  ui-critic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+      - name: Run UI critic script
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          AGENT_UI_BASE_URL: ${{ secrets.AGENT_BASE_URL }}
+        run: npx tsx scripts/agent-ui-critic.ts

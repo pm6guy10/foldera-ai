@@ -49,20 +49,20 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#07070c] text-white antialiased selection:bg-cyan-500/30 selection:text-white">
+    <div className="min-h-screen bg-[#07070c] text-white antialiased overflow-x-hidden selection:bg-cyan-500/30 selection:text-white">
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
       </div>
 
       <NavPublic scrolled platformHref="/#product" />
 
-      <main id="main" className="relative z-10 px-6 pt-24 pb-12 sm:px-8 lg:px-12">
-        <article className="mx-auto max-w-2xl">
+      <main id="main" className="relative z-10 px-4 pt-24 pb-12 sm:px-8 lg:px-12 w-full min-w-0">
+        <article className="mx-auto max-w-full sm:max-w-2xl w-full min-w-0">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1.5 text-zinc-500 text-xs font-black uppercase tracking-[0.2em] hover:text-white transition-colors mb-10"
+            className="inline-flex items-center gap-1.5 text-zinc-500 text-xs font-black uppercase tracking-[0.2em] hover:text-white transition-colors mb-10 min-h-[44px] min-w-[44px] -ml-2 pl-2 py-2 rounded-lg"
           >
-            <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+            <ChevronLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
             Back to blog
           </Link>
 
@@ -72,9 +72,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <p className="mt-4 text-base leading-relaxed text-zinc-400">{post.description}</p>
           </header>
 
-          <div className="overflow-x-auto">
+          <div className="max-w-full overflow-x-auto">
             <div
-              className="prose prose-invert prose-zinc max-w-2xl mx-auto prose-headings:font-black prose-headings:tracking-tight prose-headings:text-white prose-p:text-zinc-300 prose-p:leading-relaxed prose-strong:text-white prose-a:text-cyan-400 prose-a:no-underline prose-a:hover:text-cyan-300 prose-th:text-white prose-td:text-zinc-300 prose-li:text-zinc-300 prose-code:text-cyan-300 prose-code:bg-zinc-900 prose-code:px-1 prose-code:rounded"
+              className="prose prose-invert prose-zinc max-w-full sm:max-w-2xl mx-auto prose-headings:font-black prose-headings:tracking-tight prose-headings:text-white prose-p:text-zinc-300 prose-p:leading-relaxed prose-strong:text-white prose-a:text-cyan-400 prose-a:no-underline prose-a:hover:text-cyan-300 prose-th:text-white prose-td:text-zinc-300 prose-li:text-zinc-300 prose-code:text-cyan-300 prose-code:bg-zinc-900 prose-code:px-1 prose-code:rounded prose-img:max-w-full prose-img:h-auto"
               dangerouslySetInnerHTML={{ __html: post.contentHtml }}
             />
           </div>

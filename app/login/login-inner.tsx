@@ -18,7 +18,7 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-hidden selection:bg-cyan-500/30 selection:text-white">
+    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-x-hidden selection:bg-cyan-500/30 selection:text-white">
       {/* Ambient background glow */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
@@ -28,18 +28,18 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
       <NavAuthMinimal variant="login" />
 
       {/* Main — slightly above-center for better visual balance */}
-      <main id="main" className="relative z-10 flex-1 flex items-center justify-center px-6 pb-16">
-        <div className="w-full max-w-sm">
+      <main id="main" className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 pb-16 w-full min-w-0">
+        <div className="w-full max-w-sm mx-auto">
           {/* Heading */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 px-1">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-3">Finished work, every morning.</p>
-            <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-white leading-tight">Sign in.</h1>
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tighter text-white leading-tight">Sign in.</h1>
           </div>
 
           {errorMessage && (
             <div
               role="alert"
-              className="mb-5 px-4 py-3.5 rounded-xl bg-red-950/70 border border-red-500/40 border-l-4 border-l-red-400 flex gap-3 items-start"
+              className="mb-5 w-full mx-0 sm:mx-0 px-4 py-3.5 rounded-xl bg-red-950/70 border border-red-500/40 border-l-4 border-l-red-400 flex gap-3 items-start"
             >
               <span className="text-red-400 text-lg leading-none mt-0.5" aria-hidden="true">
                 !
@@ -50,6 +50,7 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
 
           <div className="space-y-3 mb-6">
             <button
+              type="button"
               onClick={() => handleSignIn('google')}
               disabled={!!loadingProvider}
               className="w-full min-h-[56px] flex items-center justify-center gap-3 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-2xl transition-all duration-150 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
@@ -65,9 +66,10 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
             </button>
 
             <button
+              type="button"
               onClick={() => handleSignIn('azure-ad')}
               disabled={!!loadingProvider}
-              className="w-full flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0090d6] font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-2xl transition-all shadow-[0_0_20px_rgba(0,164,239,0.22)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-wait"
+              className="w-full min-h-[56px] flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0090d6] font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-2xl transition-all shadow-[0_0_20px_rgba(0,164,239,0.22)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
             >
               {loadingProvider === 'azure-ad' ? (
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />

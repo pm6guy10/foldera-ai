@@ -1,0 +1,20 @@
+# 10:30 UTC — before nightly pipeline; probes routes + DB heuristics.
+name: Agent — Health Watchdog
+on:
+  schedule:
+    - cron: '30 10 * * *'
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke agent-runner
+        env:
+          BASE: ${{ secrets.AGENT_BASE_URL }}
+          SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$BASE" && test -n "$SECRET"
+          curl -sS -f -X POST "$BASE/api/cron/agent-runner?agent=health_watchdog" \
+            -H "Authorization: Bearer $SECRET" \
+            -H "Accept: application/json"

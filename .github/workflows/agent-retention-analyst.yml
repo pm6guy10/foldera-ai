@@ -1,0 +1,20 @@
+# Wednesdays 15:00 UTC — re-engagement drafts.
+name: Agent — Retention Analyst
+on:
+  schedule:
+    - cron: '0 15 * * 3'
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke agent-runner
+        env:
+          BASE: ${{ secrets.AGENT_BASE_URL }}
+          SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$BASE" && test -n "$SECRET"
+          curl -sS -f -X POST "$BASE/api/cron/agent-runner?agent=retention_analyst" \
+            -H "Authorization: Bearer $SECRET" \
+            -H "Accept: application/json"

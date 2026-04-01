@@ -1,168 +1,12 @@
 {
-  "timestamp": "2026-04-01T05:58:12.097Z",
+  "timestamp": "2026-04-01T06:09:47.192Z",
   "summary": {
-    "total": 47,
+    "total": 21,
     "errors": 0,
     "warnings": 0,
-    "info": 47
+    "info": 21
   },
   "findings": [
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/",
-      "description": "Page title: \"Foldera — Finished work, every morning\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"APPROVE\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"SKIP\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"APPROVE & SEND\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"Prev\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"Next\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/login",
-      "description": "Page title: \"Sign in — Foldera\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/login",
-      "description": "Button: \"CONTINUE WITH GOOGLE\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/login",
-      "description": "Button: \"CONTINUE WITH MICROSOFT\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/start",
-      "description": "Page title: \"Foldera — Finished work, every morning\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/start",
-      "description": "Button: \"CONTINUE WITH GOOGLE\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/start",
-      "description": "Button: \"CONTINUE WITH MICROSOFT\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/pricing",
-      "description": "Page title: \"Pricing — Foldera\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/pricing",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/blog",
-      "description": "Page title: \"Blog — Foldera — Foldera\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/blog",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/blog/ai-email-assistant",
-      "description": "Page title: \"AI That Reads My Email and Tells Me What to Do Every Morning — Foldera\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/blog/ai-email-assistant",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/blog/ai-task-prioritization",
-      "description": "Page title: \"AI That Prioritizes My Tasks (By Eliminating Them) — Foldera\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/blog/ai-task-prioritization",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/blog/best-ai-tools-solopreneurs-2026",
-      "description": "Page title: \"Best AI Tools for Solopreneurs 2026 — Foldera\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/blog/best-ai-tools-solopreneurs-2026",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
     {
       "severity": "INFO",
       "category": "meta",
@@ -257,42 +101,42 @@
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/auth/session",
-      "description": "200 in 576ms — shape OK (expected: { user: { id, email } })",
+      "description": "200 in 721ms — shape OK (expected: { user: { id, email } })",
       "detail": "{\"user\":{\"name\":\"Brandon Kapp\",\"email\":\"b-kapp@outlook.com\",\"image\":\"data:image/jpeg;base64, iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcd"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/integrations/status",
-      "description": "200 in 62ms — shape OK (expected: { integrations: [] })",
-      "detail": "{\"integrations\":[{\"provider\":\"azure_ad\",\"is_active\":true,\"sync_email\":null,\"last_synced_at\":\"2026-04-01T05:56:08.871+00:00\",\"scopes\":null},{\"provider\":\"google\",\"is_active\":true,\"sync_email\":null,\"last"
+      "description": "200 in 63ms — shape OK (expected: { integrations: [] })",
+      "detail": "{\"integrations\":[{\"provider\":\"google\",\"is_active\":true,\"sync_email\":null,\"last_synced_at\":\"2026-04-01T05:57:42.753+00:00\",\"scopes\":null},{\"provider\":\"azure_ad\",\"is_active\":true,\"sync_email\":null,\"last"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/conviction/latest",
-      "description": "200 in 1088ms — shape OK (expected: status 200 (any body))",
+      "description": "200 in 1109ms — shape OK (expected: status 200 (any body))",
       "detail": "{\"id\":\"729ede47-01a4-4f29-85dd-349b2e105a00\",\"userId\":\"e40b7cd8-4925-42f7-bc99-5022969f1d22\",\"directive\":\"Financial runway expires in 3 months with no documented contingency; Cheryl's administrative r"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/subscription/status",
-      "description": "200 in 652ms — shape OK (expected: { status: string })",
+      "description": "200 in 551ms — shape OK (expected: { status: string })",
       "detail": "{\"plan\":\"pro\",\"status\":\"active\",\"daysRemaining\":999}"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/onboard/set-goals",
-      "description": "200 in 712ms — shape OK (expected: status 200)",
+      "description": "200 in 781ms — shape OK (expected: status 200)",
       "detail": "{\"buckets\":[\"Business ops\",\"Relationships\",\"Job search\",\"Financial\",\"Health & family\"],\"freeText\":\"Be a stronger spiritual leader\"}"
     },
     {
       "severity": "INFO",
       "category": "generate-now",
       "page": "settings/generate-now",
-      "description": "Success: \"generated and sent\" appeared after 6272ms"
+      "description": "Success: \"generated and sent\" appeared after 7324ms"
     }
   ]
 }

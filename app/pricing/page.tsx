@@ -107,7 +107,7 @@ function ProCheckoutButton() {
 
 export default function PricingPage() {
   return (
-    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased selection:bg-cyan-500/30 selection:text-white">
+    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-x-hidden selection:bg-cyan-500/30 selection:text-white">
 
       <NavPublic scrolled platformHref="/#product" />
 
@@ -116,11 +116,11 @@ export default function PricingPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.06)_0%,transparent_50%)] pointer-events-none" />
       </div>
 
-      <main id="main" className="relative z-10 flex-1 px-6 pt-24 pb-16 md:pb-24 md:pt-28">
-        <div className="max-w-5xl mx-auto">
+      <main id="main" className="relative z-10 flex-1 px-4 sm:px-6 pt-24 pb-16 md:pb-24 md:pt-28 w-full min-w-0">
+        <div className="max-w-5xl mx-auto w-full min-w-0">
 
-          <div className="text-center mb-14 md:mb-16">
-            <h1 className="text-5xl md:text-6xl font-black tracking-tighter text-white mb-5 leading-none">
+          <div className="text-center mb-14 md:mb-16 px-1">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter text-white mb-5 leading-none">
               Start free.<br />Upgrade when it clicks.
             </h1>
             <p className="text-lg md:text-xl text-zinc-400 font-medium max-w-xl mx-auto leading-relaxed">
@@ -128,7 +128,7 @@ export default function PricingPage() {
             </p>
           </div>
 
-          <div className="rounded-[2rem] border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl p-6 md:p-10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] max-w-5xl mx-auto mb-16 md:mb-20">
+          <div className="rounded-[2rem] border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl p-4 sm:p-6 md:p-10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] max-w-5xl mx-4 sm:mx-auto mb-16 md:mb-20 w-[calc(100%-2rem)] sm:w-auto max-w-full min-w-0">
           <div className="grid gap-8 md:grid-cols-2 md:gap-10">
             {/* Free */}
             <div className="rounded-[2rem] bg-[#0a0a0f] border border-white/10 p-10 md:p-12 flex flex-col">
@@ -165,17 +165,17 @@ export default function PricingPage() {
                 Professional
               </p>
               <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-6xl font-black text-white tracking-tighter">$29</span>
+                <span className="text-5xl md:text-6xl font-black text-white tracking-tighter">$29</span>
                 <span className="text-zinc-500 font-bold tracking-widest uppercase text-xs">/mo</span>
               </div>
               <p className="text-zinc-400 font-medium mb-8">Finished work, every morning.</p>
               <ul className="space-y-4 mb-10 flex-1">
                 {PRO_FEATURES.map((f) => (
-                  <li key={f} className="flex items-center gap-4 text-white">
-                    <div className="p-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 shrink-0">
+                  <li key={f} className="flex items-start gap-4 text-white">
+                    <div className="p-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 shrink-0 mt-0.5">
                       <Check className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />
                     </div>
-                    <span className="text-sm font-bold tracking-tight text-zinc-200">{f}</span>
+                    <span className="text-sm font-bold tracking-tight text-zinc-200 leading-relaxed">{f}</span>
                   </li>
                 ))}
               </ul>
@@ -184,11 +184,11 @@ export default function PricingPage() {
           </div>
           </div>
 
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-2xl mx-auto px-1 w-full min-w-0">
             {FAQ.map(({ q, a }) => (
               <div key={q} className="mb-8">
-                <p className="text-white font-bold text-sm mb-2">{q}</p>
-                <p className="text-zinc-400 text-sm">{a}</p>
+                <p className="text-white font-bold text-sm mb-2 leading-snug">{q}</p>
+                <p className="text-zinc-400 text-sm leading-relaxed break-words">{a}</p>
               </div>
             ))}
           </div>

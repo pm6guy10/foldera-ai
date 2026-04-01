@@ -316,7 +316,7 @@ export default function SettingsClient() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
       </div>
       <Header onSignOut={handleSignOut} />
-      <main id="main" className="relative z-10 pt-20 pb-14 px-4 max-w-3xl mx-auto space-y-10">
+      <main id="main" className="relative z-10 pt-20 pb-14 px-4 max-w-3xl mx-auto space-y-8 w-full min-w-0">
 
         {/* Sync status banner */}
         {syncStatus && (
@@ -338,7 +338,7 @@ export default function SettingsClient() {
           <div className="px-5 py-6 md:px-6 space-y-3">
             {/* Google card */}
             <div className={`rounded-2xl border border-white/10 overflow-hidden min-h-[5.75rem] ${google?.is_active ? 'border-l-2 border-l-emerald-500' : ''}`}>
-              <div className="bg-zinc-950/60 p-4 md:p-5 flex items-center justify-between gap-3 min-h-[5.75rem]">
+              <div className="bg-zinc-950/60 p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 min-h-[5.75rem]">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <GoogleIcon />
                   <div className="min-w-0">
@@ -362,19 +362,20 @@ export default function SettingsClient() {
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
+                <div className="flex flex-col w-full md:w-auto md:items-end gap-2 shrink-0">
                   {google?.is_active && google.needs_reconnect && (
                     <button
                       type="button"
                       onClick={startGoogleOAuth}
                       disabled={connectingProvider === 'google'}
-                      className="min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-cyan-500 text-black hover:bg-cyan-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-cyan-500 text-black hover:bg-cyan-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
                     >
                       {connectingProvider === 'google' ? 'Opening…' : 'Reconnect'}
                     </button>
                   )}
                   {google?.is_active ? (
                     <button
+                      type="button"
                       onClick={async () => {
                         setDisconnecting('google');
                         setActionError(null);
@@ -393,15 +394,16 @@ export default function SettingsClient() {
                         }
                       }}
                       disabled={disconnecting === 'google'}
-                      className="min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
                     >
                       {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
                     </button>
                   ) : (
                     <button
+                      type="button"
                       onClick={startGoogleOAuth}
                       disabled={connectingProvider === 'google'}
-                      className="min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
                     >
                       {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
                     </button>
@@ -425,7 +427,7 @@ export default function SettingsClient() {
 
             {/* Microsoft card */}
             <div className={`rounded-2xl border border-white/10 overflow-hidden ${microsoft?.is_active ? 'border-l-2 border-l-cyan-400' : ''}`}>
-              <div className="bg-zinc-950/60 p-4 md:p-5 flex items-center justify-between gap-3">
+              <div className="bg-zinc-950/60 p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <MicrosoftIcon />
                   <div className="min-w-0">
@@ -449,19 +451,20 @@ export default function SettingsClient() {
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
+                <div className="flex flex-col w-full md:w-auto md:items-end gap-2 shrink-0">
                   {microsoft?.is_active && microsoft.needs_reconnect && (
                     <button
                       type="button"
                       onClick={startMicrosoftOAuth}
                       disabled={connectingProvider === 'microsoft'}
-                      className="min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-cyan-500 text-black hover:bg-cyan-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-cyan-500 text-black hover:bg-cyan-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
                     >
                       {connectingProvider === 'microsoft' ? 'Opening…' : 'Reconnect'}
                     </button>
                   )}
                   {microsoft?.is_active ? (
                     <button
+                      type="button"
                       onClick={async () => {
                         setDisconnecting('microsoft');
                         setActionError(null);
@@ -482,15 +485,16 @@ export default function SettingsClient() {
                         }
                       }}
                       disabled={disconnecting === 'microsoft'}
-                      className="min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
                     >
                       {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
                     </button>
                   ) : (
                     <button
+                      type="button"
                       onClick={startMicrosoftOAuth}
                       disabled={connectingProvider === 'microsoft'}
-                      className="min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
                     >
                       {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
                     </button>
@@ -586,7 +590,7 @@ export default function SettingsClient() {
                   value={editFreeText}
                   onChange={(e) => setEditFreeText(e.target.value)}
                   placeholder="e.g., land the MAS3 role at HCA"
-                  className="mt-3 w-full bg-zinc-900/60 border border-white/10 rounded-xl py-2.5 px-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50"
+                  className="mt-3 w-full min-h-[44px] bg-zinc-900/60 border border-white/10 rounded-xl py-2.5 px-3 text-base text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50"
                 />
                 {focusSaveError && (
                   <p className="mt-2 text-xs text-red-400">{focusSaveError}</p>
@@ -827,12 +831,20 @@ export default function SettingsClient() {
             {session?.user?.email && (
               <div className="rounded-xl bg-zinc-900/40 border border-white/5 px-4 py-3">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-1">Signed in as</p>
-                <p className="text-sm text-zinc-300 font-medium">{session.user.email}</p>
+                <p className="text-sm text-zinc-300 font-medium break-all">{session.user.email}</p>
               </div>
             )}
             <button
+              type="button"
+              onClick={handleSignOut}
+              className="w-full min-h-[48px] sm:hidden border border-white/10 hover:border-white/20 bg-zinc-900/40 hover:bg-zinc-900/70 text-zinc-300 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
+            >
+              Sign out
+            </button>
+            <button
+              type="button"
               onClick={handleDeleteAccount}
-              className="w-full border border-red-900/40 hover:border-red-700/60 bg-transparent hover:bg-red-950/10 text-red-500/70 hover:text-red-400 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
+              className="w-full min-h-[48px] border border-red-900/40 hover:border-red-700/60 bg-transparent hover:bg-red-950/10 text-red-500/70 hover:text-red-400 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
             >
               {deleteConfirm ? 'Tap again to confirm deletion' : 'Delete account'}
             </button>
@@ -888,10 +900,10 @@ function Header({ onSignOut }: { onSignOut: () => void }) {
         <button
           type="button"
           onClick={onSignOut}
-          className="flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.12em] shrink-0 min-w-[7rem] justify-end"
+          className="max-sm:hidden flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.12em] shrink-0 min-w-[7rem] min-h-[44px] justify-end"
         >
           <LogOut className="w-4 h-4" aria-hidden="true" />
-          <span className="hidden sm:inline">Sign out</span>
+          <span>Sign out</span>
         </button>
       </div>
     </header>
