@@ -4,6 +4,20 @@
 
 ## Session Logs
 
+- 2026-04-01 — Decay evidence: deep entity-targeted `tkg_signals` scan (500 / retention window)
+  MODE: FIX
+  Commit hash(es): pending
+  Files changed: `lib/briefing/generator.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run lib/briefing/__tests__/discrepancy-detector.test.ts lib/briefing/__tests__/generator.test.ts --exclude ".claude/worktrees/**"` (123 passed). Local `POST /api/dev/brain-receipt` → **401** (no owner session) — **no live `decay_signal_evidence_debug` or artifact from this workspace**; owner must run signed-in dev or prod after deploy and grep server logs for `decay_signal_evidence_debug`.
+  Any unresolved issues: Remove TEMP `decay_signal_evidence_debug` log after Cheryl/interview proof.
+
+- 2026-04-01 — FIX: Export `enrichRelationshipContext` from scorer (CI build)
+  MODE: FIX
+  Commit hash(es): (see `git log -1` on main after push)
+  Files changed: `lib/briefing/scorer.ts`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` passed after `export async function enrichRelationshipContext` — fixes `generator.ts` import used by `hydrateWinnerRelationshipContext`.
+  Any unresolved issues: Local WIP `scorer.ts` was stashed as `scorer-wip`; run `git stash pop` to restore if still needed.
+
 - 2026-04-01 — FIX: Decay discrepancy generator — isolate recipient path, evidence, conviction; SYSTEM decay exception
   MODE: FIX
   Commit hash(es): `613e859`

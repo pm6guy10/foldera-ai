@@ -1169,7 +1169,8 @@ async function getDaysSinceLastSurface(
 // Relationship enrichment (v2: new)
 // ---------------------------------------------------------------------------
 
-async function enrichRelationshipContext(
+/** Exported for `generator.ts` hydration (`hydrateWinnerRelationshipContext`). */
+export async function enrichRelationshipContext(
   userId: string,
   entityName: string,
   entityPatterns: unknown,
