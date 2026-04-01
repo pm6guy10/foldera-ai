@@ -6,7 +6,7 @@
 
 - 2026-04-01 — OPS: Multi-user hardening — subscription parity, pinned map, ops alerts, scorer/generator self-name
   MODE: OPS
-  Commit hash(es): `e2f581b`
+  Commit hash(es): `7df05d8`
   Files changed: `lib/auth/subscription.ts` (removed owner hardcoded pro bypass), `lib/auth/daily-brief-users.ts` (eligibility from `user_subscriptions` only), `lib/briefing/pinned-constraints.ts` (owner-only MAS3 via `PINNED_BRIEF_FOR_USER` map — locked contacts stay per-user in `tkg_constraints`), `lib/cron/acceptance-gate.ts` (alerts → `brief@foldera.ai`), `lib/briefing/generator.ts` (generic email-local self token + digit strip), `lib/briefing/scorer.ts` (removed static `brandon` stopword; `fetchUserFirstNameStopTokens` from auth), `app/api/dev/brain-receipt/route.ts` (DEV ONLY comment), `lib/__tests__/multi-user-safety.test.ts` (subscription none, scorer/generator graceful paths)
   What was verified: `npx vitest run --exclude ".claude/worktrees/**"` (pass). Supabase MCP: owner `e40b7cd8…` already has `user_subscriptions` row `(pro, active)` — `ON CONFLICT (user_id)` not applicable (no unique on `user_id` in project DDL). `app/terms`, `app/privacy`: no `b.kapp1010@gmail.com`.
   Any unresolved issues: Local Windows `npm run build` / Playwright `webServer` may flake (`.next` rename, cache); re-run clean build and `npx playwright test tests/e2e/` on a stable host. Pinned MAS3 remains owner-keyed in code until DB-backed pins exist.
