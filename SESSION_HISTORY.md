@@ -6,7 +6,7 @@
 
 - 2026-04-01 — FLOW: Resend “your document is ready” email on write_document approve (full artifact inline; subject = directive title)
   MODE: FLOW
-  Commit hash(es): pending
+  Commit hash(es): `338b495`
   Files changed: `lib/conviction/execute-action.ts`, `lib/email/resend.ts`, `lib/conviction/__tests__/execute-action.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; manual Resend log check left to Brandon after approve in prod
   Any unresolved issues: none.
