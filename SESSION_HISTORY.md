@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — Decay reconnect: stop instructing delta paste + validate against pipeline metric echo in artifact
+  MODE: AUDIT
+  Commit hash(es): `8d4aab6`
+  Files changed: `lib/briefing/trigger-action-map.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/trigger-action-lock.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run lib/briefing/__tests__/trigger-action-lock.test.ts --exclude ".claude/worktrees/**"`
+  Any unresolved issues: `npm run test:prod` after Vercel READY per runbook if deploy applies.
+
 - 2026-04-01 — FIX PROMPT INSTRUCTION: forbid pasting ENTITY_ANALYSIS/CANDIDATE_ANALYSIS/TRIGGER metrics into send_message bodies; SYSTEM_PROMPT + internal block prefixes + SEND_MESSAGE NEVER rules
   MODE: AUDIT
   Commit hash(es): `0f4e73e`

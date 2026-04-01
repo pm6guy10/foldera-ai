@@ -220,6 +220,26 @@ function summarizeEvidenceDelta(evidenceJson: string | null | undefined): string
   }
 }
 
+/**
+ * True when user-facing copy looks like scorer/trigger pipeline notation was pasted in.
+ * Used for decay reconnect emails where the model used to echo "8 → 0", "/14d", "~0.2", etc.
+ */
+export function artifactContainsDecayPipelineLeak(text: string): boolean {
+  const t = text;
+  if (/\b\d+\s*interactions?\s+total\b/i.test(t)) return true;
+  if (/\/\d+d\b/i.test(t)) return true;
+  if (/~\s*\d+\.\d+/i.test(t)) return true;
+  if (/\d+\s*→\s*\d+/.test(t)) return true;
+  if (/→\s*0\b/.test(t)) return true;
+  if (/\(silence after \d+/i.test(t)) return true;
+  if (/with \d+\s*→/i.test(t)) return true;
+  if (/\bvelocity_ratio\s*=/i.test(t)) return true;
+  return false;
+}
+
+const DECAY_NATURAL_THEME_RE =
+  /(silence|quiet|reconnect|reach out|touch base|heard from|catch up|follow up|last (?:time|note|email|thread|message|conversation)|while\s+since|months?\s+without|days?\s+without|haven'?t\s+heard)/i;
+
 export interface BuildTriggerContextOptions {
   /** Discrepancy detector JSON delta metrics (e.g. DeltaMetric). */
   evidenceJson?: string | null;
@@ -250,7 +270,9 @@ export function buildTriggerContextBlock(
   // forces generic "catch up" copy. Specific last-thread + why-now + ask instead.
   if (triggerClass === 'decay' && rule.artifact_shape === 'email') {
     return [
-      `TRIGGER_CONTEXT (MANDATORY — relationship decay, use in artifact; do not paraphrase as "time passed"):`,
+      `TRIGGER_CONTEXT (relationship decay — INTERNAL LINES BELOW ARE FOR REASONING ONLY):`,
+      `  Do NOT paste baseline/current/delta/timeframe lines, interaction counts, "/Nd" rates, "~0.x" values, arrows (→), or the word "baseline" into the email subject or body.`,
+      `  Translate stakes into normal human language (last thread, topic, silence, awkwardness, goal risk). The recipient must not see pipeline metrics.`,
       `  type: decay`,
       `  baseline: ${trigger.baseline_state}`,
       `  current: ${trigger.current_state}`,
@@ -268,13 +290,13 @@ export function buildTriggerContextBlock(
       `Do not write "it's been a while", "been a while", "just checking in", or generic check-in language.`,
       `The email must reference:`,
       `  — Something specific from your last interaction with this person (subject, topic, or thread from context above).`,
-      `  — A concrete reason this reconnection matters NOW (use why_now + delta; not only elapsed time).`,
+      `  — A concrete reason this reconnection matters NOW (use the human meaning of why_now — stalled thread, relationship cooling, goal at risk — not a recap of the internal delta line).`,
       `  — A specific ask or topic that matches what this person can actually help with (their role, past thread, or linked goal).`,
       `If you cannot find specific context in the prompt to satisfy all three, output do_nothing. Generic reconnection emails are worse than no email.`,
       ``,
       `TRIGGER RULES (decay):`,
       `1. Open with a concrete callback to the last interaction — not a vague preamble.`,
-      `2. Tie the ask to delta/why_now (pattern collapse, stalled thread, or goal at risk) without internal metrics jargon.`,
+      `2. Tie the ask to the relationship situation (silence, last topic, why it matters now) using only natural language — zero internal metrics.`,
       `3. One clear ask; no filler closings.`,
       `4. Banned phrases: ${rule.banned_phrases.map(p => `"${p}"`).join(', ')}`,
     ].join('\n');
@@ -367,12 +389,20 @@ export function validateTriggerArtifact(
   // 3. Must not be self-addressed (artifact "to" field = user themselves)
   // This is checked by the caller who knows the user's identity
 
-  // 4. Must reference the trigger delta (at least part of it)
-  // Extract key terms from the delta for fuzzy matching
-  const deltaTerms = extractKeyTerms(trigger.delta);
-  const deltaHit = deltaTerms.some(term => lower.includes(term.toLowerCase()));
-  if (!deltaHit && deltaTerms.length > 0) {
-    violations.push(`missing_delta_reference: artifact does not reference the trigger delta`);
+  // 4. Delta / theme reference (decay: natural relationship theme only — do not require echoing delta tokens)
+  if (triggerClass === 'decay') {
+    if (artifactContainsDecayPipelineLeak(artifactText)) {
+      violations.push('decay_pipeline_metric_echo: artifact contains internal metric notation');
+    }
+    if (!DECAY_NATURAL_THEME_RE.test(artifactText)) {
+      violations.push('missing_relationship_decay_theme: artifact should reflect silence, last thread, or reconnection in plain language');
+    }
+  } else {
+    const deltaTerms = extractKeyTerms(trigger.delta);
+    const deltaHit = deltaTerms.some(term => lower.includes(term.toLowerCase()));
+    if (!deltaHit && deltaTerms.length > 0) {
+      violations.push(`missing_delta_reference: artifact does not reference the trigger delta`);
+    }
   }
 
   // 5. Must contain an explicit ask (question mark, imperative, or decision point)

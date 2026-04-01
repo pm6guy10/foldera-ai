@@ -33,6 +33,7 @@ import {
 import { resolveUserPromptNames, type UserPromptNames } from '@/lib/auth/user-display-name';
 import {
   TRIGGER_ACTION_MAP,
+  artifactContainsDecayPipelineLeak,
   buildTriggerContextBlock,
   resolveTriggerAction,
   validateTriggerArtifact,
@@ -4039,6 +4040,18 @@ function validateGeneratedArtifact(
   for (const [key, val] of Object.entries(payload.artifact)) {
     if (typeof val === 'string' && INTERNAL_LABEL_RE.test(val)) {
       issues.push(`artifact.${key} contains internal pipeline label — LLM echoed prompt structure into output`);
+    }
+  }
+
+  if (
+    ctx.candidate_class === 'discrepancy' &&
+    ctx.discrepancy_class === 'decay' &&
+    payload.artifact_type === 'send_message'
+  ) {
+    const a = payload.artifact as Record<string, unknown>;
+    const combined = `${String(a.subject ?? '')}\n${String(a.body ?? '')}`;
+    if (artifactContainsDecayPipelineLeak(combined)) {
+      issues.push('send_message echoes internal decay metrics — rewrite subject/body in natural language only');
     }
   }
 

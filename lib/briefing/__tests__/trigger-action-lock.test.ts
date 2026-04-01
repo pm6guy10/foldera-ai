@@ -14,6 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   TRIGGER_ACTION_MAP,
+  artifactContainsDecayPipelineLeak,
   resolveTriggerAction,
   buildTriggerContextBlock,
   validateTriggerArtifact,
@@ -298,6 +299,15 @@ describe('validateTriggerArtifact — enforcement', () => {
     );
     expect(result.pass).toBe(true);
     expect(result.violations).toHaveLength(0);
+  });
+
+  it('FAIL: decay artifact that pastes pipeline metrics (→, /14d, interactions total)', () => {
+    const bad =
+      'We went from 6 interactions total, ~0.2/14d baseline → 0. Reply by 2026-04-08 with 6 → 0 (silence after 6 interactions). Can you confirm?';
+    expect(artifactContainsDecayPipelineLeak(bad)).toBe(true);
+    const result = validateTriggerArtifact('decay', TRIGGERS.decay, bad, 'send_message', 'Pat');
+    expect(result.pass).toBe(false);
+    expect(result.violations.some(v => v.includes('decay_pipeline_metric_echo'))).toBe(true);
   });
 
   // BAD: wrong action type
