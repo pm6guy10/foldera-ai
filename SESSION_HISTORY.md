@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — AUDIT: schedule_conflict directive/reason forced from scorer (calendar lead vs LLM drift)
+  MODE: AUDIT
+  Commit hash(es): (after push)
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run lib/briefing/__tests__/generator.test.ts lib/briefing/__tests__/generator-runtime.test.ts`; production `POST /api/dev/brain-receipt` post-deploy (see chat).
+  Any unresolved issues: None once receipt `directive_text` matches calendar title.
+
 - 2026-04-01 — OPS: Reconcile claimed backend fixes vs production — schedule_conflict quality gate
   MODE: OPS
   Commit hash(es): `89f4f54`

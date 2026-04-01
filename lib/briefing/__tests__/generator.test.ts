@@ -5,7 +5,13 @@ import {
   getCandidateConstraintViolations,
   getDirectiveConstraintViolations,
 } from '../pinned-constraints';
-import { extractJsonFromResponse, parseGeneratedPayload, validateDirectiveForPersistence } from '../generator';
+import {
+  applyScheduleConflictCanonicalUserFacingCopy,
+  extractJsonFromResponse,
+  parseGeneratedPayload,
+  validateDirectiveForPersistence,
+} from '../generator';
+import type { ScoredLoop } from '../scorer';
 import type { ConvictionDirective } from '../types';
 
 function buildDirective(overrides: Partial<ConvictionDirective>): ConvictionDirective {
@@ -263,5 +269,43 @@ describe('consulting_decision_frame constraint (global — all users)', () => {
       reason: 'The offer letter expires Friday and a response is required.',
     });
     expect(violations.some((v) => v.code === 'consulting_decision_frame')).toBe(false);
+  });
+});
+
+describe('applyScheduleConflictCanonicalUserFacingCopy', () => {
+  it('overrides LLM directive and why_now from scorer discrepancy fields', () => {
+    const raw = JSON.stringify({
+      insight: 'x',
+      causal_diagnosis: { why_exists_now: 'a', mechanism: 'b' },
+      decision: 'ACT',
+      directive: 'Parents visiting creates reconnect opportunity.',
+      artifact_type: 'write_document',
+      artifact: { type: 'document', title: 'T', content: '1. Open calendar' },
+      why_now: 'Wrong why.',
+    });
+    const payload = parseGeneratedPayload(raw);
+    expect(payload).not.toBeNull();
+
+    const winner = {
+      id: 'discrepancy_conflict_sig_a_sig_b',
+      type: 'discrepancy',
+      title: 'Overlapping events on 2026-04-02',
+      content:
+        'You have overlapping calendar commitments on 2026-04-02: "Baby Hannah\'s Bday" and "Parents visit". Which takes priority?',
+      discrepancyClass: 'schedule_conflict',
+      trigger: {
+        baseline_state: 'Non-overlapping',
+        current_state: 'Overlap',
+        delta: 'double-booked',
+        timeframe: '2026-04-02',
+        outcome_class: 'deadline',
+        why_now:
+          'Overlapping events force an explicit priority call — otherwise you default under pressure in the moment.',
+      },
+    } as ScoredLoop;
+
+    applyScheduleConflictCanonicalUserFacingCopy(payload!, winner);
+    expect(payload!.directive).toBe('Overlapping events on 2026-04-02.');
+    expect(payload!.why_now).toContain('explicit priority');
   });
 });

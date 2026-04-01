@@ -1216,6 +1216,35 @@ function enrichCandidateContext(winner: ScoredLoop, evidenceSortedChrono: Signal
   return `CONTEXT_ENRICHMENT (${cls}):\n${parts.join('\n')}`;
 }
 
+/**
+ * Calendar double-booking must surface calendar copy in the lead — the LLM often drifts to
+ * relationship/reconnect framing when enrichment mentions family. Scorer title/content/trigger stay aligned.
+ */
+export function applyScheduleConflictCanonicalUserFacingCopy(
+  payload: GeneratedDirectivePayload,
+  winner: ScoredLoop,
+): void {
+  if (winner.type !== 'discrepancy') return;
+  const isScheduleConflict =
+    winner.discrepancyClass === 'schedule_conflict' || winner.id.startsWith('discrepancy_conflict_');
+  if (!isScheduleConflict) return;
+
+  const rawTitle = winner.title.split(/\r?\n/)[0]?.trim() ?? '';
+  if (!rawTitle) return;
+  const directiveLine = (rawTitle.endsWith('.') ? rawTitle : `${rawTitle}.`).slice(0, 220).replace(/\s+/g, ' ');
+
+  let whyNow = winner.trigger?.why_now?.trim();
+  if (!whyNow) {
+    const c = winner.content.trim();
+    const m = c.match(/^[\s\S]{1,400}?[.!?](?:\s|$)/);
+    whyNow = m ? m[0].trim() : c.slice(0, 320);
+  }
+  if (whyNow.length > 400) whyNow = `${whyNow.slice(0, 397)}...`;
+
+  payload.directive = directiveLine;
+  payload.why_now = whyNow;
+}
+
 function buildStructuredContext(
   winner: ScoredLoop,
   guardrails: { approvedRecently: RecentActionRow[]; skippedRecently: RecentSkippedActionRow[] },
@@ -4710,6 +4739,7 @@ export async function generateDirective(
     }
 
     const payload = payloadResult.payload;
+    applyScheduleConflictCanonicalUserFacingCopy(payload, currentCandidate);
 
     // =====================================================================
     // POST-LLM ENFORCEMENT: the canonical action is from decisionPayload,
