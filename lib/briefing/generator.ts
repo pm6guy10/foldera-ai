@@ -166,6 +166,13 @@ When behavioral_pattern candidates are the winner, lead with the
 cross-signal connection the user hasn't made. Name the pattern
 explicitly in the directive text.
 
+INSIGHT_SCAN_WINNER (apply only when the user prompt includes the INSIGHT_SCAN_WINNER block):
+The winner may come from the Insight Scan — an unsupervised read of raw signals for patterns the user has not named (not structural gap rules). When that block is present:
+1. Lead with the PATTERN, not a generic task or reminder.
+2. The directive states what they have not connected about their own behavior; the artifact is still finished work (email or document) framed as: what the footprint shows, then the concrete move.
+3. Never say "Foldera noticed", "the system detected", or "I detected" — state the pattern as observable fact.
+4. Do not replace the pattern with a shallow follow-up line; the user should feel the blind spot was named.
+
 QUALITY EXAMPLES:
 
 Good directive: "4 emails from Holly in 12 days, 0 replies. Last time you went silent on a reference contact (Teo, January), it took 3 weeks to re-engage. Holly is your active DVA reference."
@@ -1144,6 +1151,8 @@ export interface StructuredContext {
   recipient_brief: string | null;
   /** Discrepancy subclass when candidate_class is discrepancy (e.g. schedule_conflict). */
   discrepancy_class: string | null;
+  /** True when the winner originated from runInsightScan (see INSIGHT_SCAN_WINNER in system prompt). */
+  insight_scan_winner?: boolean;
   /** Scorer breakdown — why this candidate ranked (internal; do not paste raw numbers into user emails). */
   candidate_analysis: string;
   /** Per-entity bx_stats when available (discrepancy UUID entity, etc.). */
@@ -1736,6 +1745,7 @@ function buildStructuredContext(
     discrepancy_class:
       winner.discrepancyClass ??
       (winner.id.startsWith('discrepancy_conflict_') ? 'schedule_conflict' : null),
+    insight_scan_winner: Boolean(winner.fromInsightScan),
     candidate_analysis: buildCandidateAnalysisBlock(winner),
     entity_analysis: buildEntityAnalysisBlock(winner.entityName, winner.entityBxStats),
   };
@@ -1992,6 +2002,9 @@ export function buildPromptFromStructuredContext(
   const preamble = committedArtifactType
     ? `${buildCanonicalActionPreamble(committedArtifactType).trim()}\n\n`
     : '';
+  const insightScanBanner = ctx.insight_scan_winner
+    ? `INSIGHT_SCAN_WINNER:\nThe scorer elevated a candidate from the Insight Scan (unsupervised pattern read across raw signals — not a structural gap checklist). Follow INSIGHT_SCAN_WINNER rules in the system prompt.\n\n`
+    : '';
   const responsePatternSection = buildResponsePatternPromptBlock(ctx.response_pattern_lines ?? []);
   const sections: string[] = [];
   const wantPhrase = ctx.user_first_name.trim()
@@ -2164,7 +2177,7 @@ export function buildPromptFromStructuredContext(
           'any opener that does not anchor to the specific situation in the signals above.'),
     );
 
-    return `${preamble}${m.join('\n\n')}`;
+    return `${preamble}${insightScanBanner}${m.join('\n\n')}`;
   }
 
   // TRIGGER_CONTEXT — injected first so the LLM grounds its artifact in the trigger delta.
@@ -2482,7 +2495,7 @@ export function buildPromptFromStructuredContext(
     'any opener that does not anchor to the specific situation in the signals above.',
   );
 
-  return `${preamble}${sections.join('\n\n')}`;
+  return `${preamble}${insightScanBanner}${sections.join('\n\n')}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -4323,7 +4336,7 @@ export function validateDirectiveForPersistence(input: {
   // Discrepancy candidates (relationship decay, risk, etc.) produce warm reconnect or
   // relationship-maintenance artifacts. These naturally have no explicit asks, deadlines,
   // or consequence language — skip decision enforcement for them.
-  if (input.candidateType !== 'discrepancy') {
+  if (input.candidateType !== 'discrepancy' && input.candidateType !== 'insight') {
     issues.push(
       ...getDecisionEnforcementIssues({
         actionType: input.directive.action_type,
@@ -5553,7 +5566,7 @@ export async function generateDirective(
       userId,
       directive,
       artifact: payload.artifact,
-      candidateType: currentCandidate.type,
+      candidateType: currentCandidate.fromInsightScan ? 'insight' : currentCandidate.type,
     });
     if (persistenceIssues.length > 0) {
       candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: persistenceIssues.map(i => `persistence:${i}`) });

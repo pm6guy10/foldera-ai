@@ -350,8 +350,8 @@ export function isSendWorthy(
 
   // Discrepancy candidates (relationship decay, risk, exposure) skip quality-gate checks
   // (generic opener, weak winner, decision enforcement) — their absence-of-signal IS the evidence.
-  const isDiscrepancyCandidate =
-    directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType === 'discrepancy';
+  const topCandidateType = directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType;
+  const isDiscrepancyCandidate = topCandidateType === 'discrepancy' || topCandidateType === 'insight';
   const isDiscrepancyWithRecipient =
     isDiscrepancyCandidate &&
     directive.action_type === 'send_message' &&

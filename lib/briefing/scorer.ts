@@ -33,6 +33,7 @@ import {
 import type { DiscrepancyClass, RecentDirectiveInput, TriggerMetadata } from './discrepancy-detector';
 import { applyStakesGate } from './stakes-gate';
 import { applyEntityRealityGate } from './entity-reality-gate';
+import { runInsightScan } from './insight-scan';
 
 // ---------------------------------------------------------------------------
 // Self-referential signal filter — excludes Foldera's own directive outputs
@@ -331,6 +332,8 @@ export interface ScoredLoop {
   entityBxStats?: import('@/lib/signals/behavioral-graph').EntityBehavioralStats | null;
   /** Optional override for discrepancy action resolution (e.g. unresolved_intent → schedule). */
   discrepancyPreferredAction?: ActionType;
+  /** Pre-scorer LLM read of raw signals — discovery log uses candidateType "insight". */
+  fromInsightScan?: boolean;
 }
 
 export type KillReason = 'noise' | 'not_now' | 'trap';
@@ -2579,7 +2582,7 @@ function buildCandidateDiscoveryLog(
     return {
       id: candidate.id,
       rank: index + 1,
-      candidateType: candidate.type,
+      candidateType: candidate.fromInsightScan ? 'insight' : candidate.type,
       ...(logDiscrepancyClass ? { discrepancyClass: logDiscrepancyClass } : {}),
       actionType: candidate.suggestedActionType,
       score: Number(candidate.score.toFixed(2)),
@@ -4049,6 +4052,34 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   let scored: ScoredLoop[] = [];
   const approvalHistory = await getApprovalHistory(userId);
 
+  let insightCandidates: Awaited<ReturnType<typeof runInsightScan>> = [];
+  try {
+    insightCandidates = await runInsightScan({
+      userId,
+      decryptedSignals: signals.map((s: { id: string; content: string; source?: string; type?: string | null; occurred_at?: string; author?: string | null }) => ({
+        id: String(s.id),
+        content: s.content,
+        source: String(s.source ?? ''),
+        type: s.type ?? null,
+        occurred_at: String(s.occurred_at ?? ''),
+        author: s.author ?? null,
+      })),
+      goals: goals.map((g) => ({
+        goal_text: g.goal_text,
+        priority: g.priority,
+        goal_category: g.goal_category,
+      })),
+      entities: entities.map((e) => ({
+        name: e.name as string,
+        total_interactions: typeof e.total_interactions === 'number' ? e.total_interactions : 0,
+        primary_email: e.primary_email as string | null | undefined,
+        last_interaction: e.last_interaction as string | null | undefined,
+      })),
+    });
+  } catch (err) {
+    console.error('[scorer] Insight scan failed, continuing without:', err);
+  }
+
   // Contact action types — suppression goals that reference a person/entity only
   // block outreach actions, not document/research/decision artifacts.
   const CONTACT_ACTION_TYPES = new Set<ActionType>(['send_message', 'schedule']);
@@ -4616,6 +4647,106 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         score_raw: score,
         recipientless_penalty: isRecipientlessStatistical,
         evidence: d.evidence,
+      },
+    });
+  }
+
+  for (const insight of insightCandidates) {
+    const entityMatch = entities.find(
+      (e) =>
+        insight.suggested_entity &&
+        typeof e.name === 'string' &&
+        e.name.toLowerCase() === insight.suggested_entity.toLowerCase(),
+    );
+    const resolvedEmail =
+      insight.suggested_entity_email?.includes('@')
+        ? insight.suggested_entity_email
+        : (entityMatch?.primary_email as string | undefined) ?? undefined;
+
+    const relationshipContext =
+      insight.suggested_action === 'send_message' &&
+      insight.suggested_entity &&
+      resolvedEmail &&
+      resolvedEmail.includes('@')
+        ? `${insight.suggested_entity} <${resolvedEmail}> | insight_scan | behavioral pattern`
+        : undefined;
+
+    const sourceSignals: GenerationCandidateSource[] = insight.evidence_signals.map((id) => {
+      const row = signals.find((s: { id: string }) => String(s.id) === id);
+      return {
+        kind: 'signal',
+        id,
+        source: row?.source ? String(row.source) : 'insight_scan',
+        occurredAt: row?.occurred_at ? String(row.occurred_at) : undefined,
+        summary: row?.content ? String(row.content).slice(0, 200) : '',
+      };
+    });
+
+    const insightTrigger: TriggerMetadata = {
+      baseline_state: "Pattern unnamed in the user's own framing",
+      current_state: 'Cross-signal read suggests a recurring behavioral shape',
+      delta: insight.title,
+      timeframe: 'last_30_days',
+      outcome_class: 'relationship',
+      why_now: insight.content.slice(0, 400),
+    };
+
+    const daysSinceInsightSurface = await getDaysSinceLastSurface(userId, insight.title);
+    const { score: insightScore, breakdown: insightGeminiBreakdown } = computeCandidateScore({
+      stakes: 4,
+      urgency: 0.85,
+      tractability: 0.8,
+      actionType: insight.suggested_action,
+      entityPenalty: 0,
+      daysSinceLastSurface: daysSinceInsightSurface,
+      approvalHistory,
+      highStakes: true,
+    });
+
+    const relatedFromInsight = insight.evidence_signals.map((id) => {
+      const row = signals.find((s: { id: string }) => String(s.id) === id);
+      return row?.content ? String(row.content).slice(0, 140) : id;
+    });
+
+    scored.push({
+      id: insight.id,
+      type: 'discrepancy',
+      title: insight.title,
+      content: insight.content,
+      suggestedActionType: insight.suggested_action,
+      matchedGoal: null,
+      score: insightScore,
+      breakdown: {
+        stakes: 4,
+        urgency: 0.85,
+        freshness: 1.0,
+        actionTypeRate: insightGeminiBreakdown.behavioral_rate,
+        entityPenalty: 0,
+        ...insightGeminiBreakdown,
+      },
+      relatedSignals: relatedFromInsight,
+      sourceSignals,
+      entityName: insight.suggested_entity,
+      relationshipContext,
+      confidence_prior: Math.round(Math.max(50, Math.min(90, insight.confidence))),
+      discrepancyClass: 'behavioral_pattern',
+      trigger: insightTrigger,
+      discrepancyEvidence: insight.grounding,
+      fromInsightScan: true,
+    });
+
+    logStructuredEvent({
+      event: 'insight_scan_candidate_scored',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'scoring',
+      details: {
+        scope: 'scorer',
+        id: insight.id,
+        score: insightScore,
+        pattern_type: insight.pattern_type,
+        title: insight.title.slice(0, 80),
       },
     });
   }
