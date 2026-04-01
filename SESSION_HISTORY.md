@@ -4,9 +4,16 @@
 
 ## Session Logs
 
+- 2026-04-01 — DOCS: Add REVENUE_PROOF.md (GTM gates, funnel math, quality bar, pretend certainty map); cross-ref + Gate 4 blocker in FOLDERA_PRODUCT_SPEC; CLAUDE reference docs + brain-receipt gate update cadence
+  MODE: DOCS
+  Commit hash(es): (set after push)
+  Files changed: `REVENUE_PROOF.md`, `FOLDERA_PRODUCT_SPEC.md`, `CLAUDE.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` (pass)
+  Any unresolved issues: none for this doc-only change.
+
 - 2026-04-01 — Wire full bx_stats + response_pattern lines into LLM prompt; recipient-short competition_context; non-prod decay full-prompt log
   MODE: AUDIT
-  Commit hash(es): `86de9aa`
+  Commit hash(es): `abbeabc`
   Files changed: `lib/briefing/generator.ts`, `lib/__tests__/multi-user-safety.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (572 tests)
   Any unresolved issues: `npm run test:prod` after Vercel READY per runbook.
