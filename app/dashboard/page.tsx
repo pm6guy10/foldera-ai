@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Settings, Layers } from 'lucide-react';
+import { Settings, Layers, Lock } from 'lucide-react';
 import type { ConvictionAction } from '@/lib/briefing/types';
 
 type ArtifactWithDraftedEmail = {
@@ -68,6 +68,8 @@ export default function DashboardPage() {
   const [executing, setExecuting] = useState(false);
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [surfaceVisible, setSurfaceVisible] = useState(false);
+  const [approvedCount, setApprovedCount] = useState(0);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   // Handle ?generated=true from settings run-brief success
   useEffect(() => {
@@ -134,6 +136,8 @@ export default function DashboardPage() {
       const createdAt = typeof data?.account_created_at === 'string' ? data.account_created_at : null;
       setAccountCreatedAt(createdAt);
       setIsNewAccount(createdAt !== null && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000);
+      setApprovedCount(typeof data?.approved_count === 'number' ? data.approved_count : 0);
+      setIsSubscribed(data?.is_subscribed === true);
       setAction(data?.id ? data : null);
       if (modelRes.ok) {
         const ms = await modelRes.json().catch(() => null);
@@ -217,7 +221,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Fixed header */}
-      <header className="fixed top-0 left-0 right-0 z-10 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
         <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4">
           <a href="/" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.15)]">
@@ -225,8 +229,8 @@ export default function DashboardPage() {
             </div>
             <span className="text-sm font-black tracking-tighter text-white uppercase">Foldera</span>
           </a>
-          <Link href="/dashboard/settings">
-            <Settings className="w-5 h-5 text-zinc-500 hover:text-white transition-colors" />
+          <Link href="/dashboard/settings" className="p-2 -mr-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center">
+            <Settings className="w-5 h-5" />
           </Link>
         </div>
       </header>

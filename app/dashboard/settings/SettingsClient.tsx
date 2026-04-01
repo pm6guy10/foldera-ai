@@ -681,7 +681,7 @@ function SectionHeading({ children, className = '' }: { children: ReactNode; cla
 
 function Header() {
   return (
-    <header className="fixed top-0 left-0 right-0 z-10 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
       <div className="max-w-3xl mx-auto h-full flex items-center justify-between px-4">
         <Link href="/dashboard" className="text-zinc-500 hover:text-white transition-colors flex items-center gap-1">
           <ChevronLeft className="w-5 h-5" />
