@@ -401,6 +401,18 @@ async function handler(request: NextRequest) {
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'connector_health', error: err.message }));
   }
 
+  // Stage 1d: Daily brief not-opened engagement signals (24h+ after send)
+  try {
+    const { recordUnopenedDailyBriefSignals } = await import('@/lib/cron/brief-engagement-signals');
+    const engagement = await recordUnopenedDailyBriefSignals();
+    stages.brief_engagement_signals = { ok: true, ...engagement };
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'brief_engagement_signals', ...engagement }));
+  } catch (err: any) {
+    Sentry.captureException(err);
+    stages.brief_engagement_signals = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'brief_engagement_signals', error: err.message }));
+  }
+
   // Stage 2: Signal processing
   try {
     const signalResult = await stageProcessSignals();

@@ -20,6 +20,12 @@ import { encrypt } from "@/lib/encryption";
 import { createHash } from "crypto";
 import mammoth from 'mammoth';
 import { FIRST_SYNC_LOOKBACK_MS } from '@/lib/config/constants';
+import {
+  persistCalendarRsvpAvoidanceSignals,
+  persistResponsePatternSignals,
+  type CalendarIntelEvent,
+  type MailIntelMessage,
+} from '@/lib/sync/derive-mail-intelligence';
 
 function hash(content: string): string {
   return createHash("sha256").update(content).digest("hex");
@@ -207,13 +213,30 @@ interface MicrosoftSignalCoverage {
 
 type MicrosoftMailSignalType = "email_sent" | "email_received";
 
+const MAIL_BODY_PREVIEW = 500;
+
+function headerMapFromInternet(
+  headers: Array<{ name?: string; value?: string }> | undefined,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const h of headers ?? []) {
+    if (h.name && h.value) out[h.name.toLowerCase()] = h.value;
+  }
+  return out;
+}
+
 function formatMicrosoftMailContent(
   msg: any,
   signalType: MicrosoftMailSignalType,
+  options?: { threadMessagesInConversation?: number },
 ): string {
   const isSent = signalType === "email_sent";
   const from = msg.from?.emailAddress?.address ?? "";
   const to = (msg.toRecipients ?? [])
+    .map((recipient: any) => recipient.emailAddress?.address)
+    .filter(Boolean)
+    .join(", ");
+  const cc = (msg.ccRecipients ?? [])
     .map((recipient: any) => recipient.emailAddress?.address)
     .filter(Boolean)
     .join(", ");
@@ -223,22 +246,77 @@ function formatMicrosoftMailContent(
     msg.receivedDateTime ??
     msg.sentDateTime ??
     new Date().toISOString();
-  const bodyText = msg.body?.content?.slice(0, 3000) ?? msg.bodyPreview ?? "";
+  const rawBody = msg.body?.content ?? msg.bodyPreview ?? "";
+  const bodyText = rawBody.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, MAIL_BODY_PREVIEW);
 
-  return isSent
-    ? `[Sent email: ${date}]\nTo: ${to}\nSubject: ${subject}\nBody: ${bodyText}`
-    : `[Email received: ${date}]\nFrom: ${from}\nSubject: ${subject}\nBody: ${bodyText}`;
+  const hdrs = headerMapFromInternet(msg.internetMessageHeaders);
+  const inReplyTo = hdrs["in-reply-to"] ?? "";
+  const references = hdrs["references"] ?? "";
+  const hasReplyHeaders = Boolean(inReplyTo || references);
+  const importance = msg.importance ?? "";
+  const infer = msg.inferenceClassification ?? "";
+
+  const threadLine =
+    typeof options?.threadMessagesInConversation === "number"
+      ? `Thread messages (this folder batch / conversation): ${options.threadMessagesInConversation}`
+      : "";
+
+  const lines = isSent
+    ? [
+        `[Sent email: ${date}]`,
+        `To: ${to}`,
+        cc ? `Cc: ${cc}` : "",
+        `Subject: ${subject}`,
+        `Body preview: ${bodyText}`,
+        `Has In-Reply-To or References: ${hasReplyHeaders ? "yes" : "no"}`,
+        threadLine,
+        importance ? `Importance: ${importance}` : "",
+        infer ? `Inference: ${infer}` : "",
+      ]
+    : [
+        `[Email received: ${date}]`,
+        `From: ${from}`,
+        `To: ${to}`,
+        cc ? `Cc: ${cc}` : "",
+        `Subject: ${subject}`,
+        `Body preview: ${bodyText}`,
+        `Has In-Reply-To or References: ${hasReplyHeaders ? "yes" : "no"}`,
+        threadLine,
+        importance ? `Importance: ${importance}` : "",
+        infer ? `Inference: ${infer}` : "",
+      ];
+
+  return lines.filter(Boolean).join("\n");
 }
 
-function formatMicrosoftCalendarContent(event: any): string {
+function formatMicrosoftCalendarContent(event: any, selfEmailLower: string): string {
   const summary = event.subject ?? "(no title)";
   const start = event.start?.dateTime ?? "";
   const end = event.end?.dateTime ?? "";
   const organizer = event.organizer?.emailAddress?.address ?? "";
-  const attendees = (event.attendees ?? [])
-    .map((attendee: any) => attendee.emailAddress?.address)
+  const createdBy =
+    event.createdBy?.user?.emailAddress?.address ??
+    event.organizer?.emailAddress?.address ??
+    "";
+  const isOrganizer = event.isOrganizer === true;
+  const recurrence = event.recurrence != null;
+  const attendeeDetail = (event.attendees ?? [])
+    .map((attendee: any) => {
+      const em = attendee.emailAddress?.address ?? "";
+      const st = attendee.status?.response ?? "";
+      return em ? `${em} (${st})` : "";
+    })
     .filter(Boolean)
-    .join(", ");
+    .join("; ");
+
+  let selfResponse = "";
+  if (selfEmailLower) {
+    const me = (event.attendees ?? []).find(
+      (a: any) => (a.emailAddress?.address ?? "").toLowerCase() === selfEmailLower,
+    );
+    selfResponse = me?.status?.response ?? "";
+  }
+
   const isAllDay = event.isAllDay ?? false;
 
   return [
@@ -247,7 +325,11 @@ function formatMicrosoftCalendarContent(event: any): string {
     `End: ${end}`,
     isAllDay ? "All day event" : "",
     organizer ? `Organizer: ${organizer}` : "",
-    attendees ? `Attendees: ${attendees}` : "",
+    createdBy ? `Created by: ${createdBy}` : "",
+    `Created by you / organizer: ${isOrganizer ? "yes" : "no"}`,
+    `Recurring: ${recurrence ? "yes" : "no"}`,
+    attendeeDetail ? `Attendees: ${attendeeDetail}` : "",
+    selfResponse ? `Your response: ${selfResponse}` : "",
     event.bodyPreview ? `Description: ${event.bodyPreview.slice(0, 500)}` : "",
   ]
     .filter(Boolean)
@@ -309,7 +391,7 @@ async function syncMail(
 ): Promise<number> {
   const filter = encodeURIComponent(`receivedDateTime ge ${sinceIso}`);
   const select =
-    "id,subject,from,toRecipients,receivedDateTime,bodyPreview,body";
+    "id,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,body,conversationId,internetMessageId,importance,inferenceClassification,internetMessageHeaders";
 
   // Fetch inbox and sent items in parallel
   const [inboxData, sentData] = await Promise.all([
@@ -322,7 +404,7 @@ async function syncMail(
     graphFetchAll<any>(
       userId,
       accessToken,
-      `${GRAPH_BASE}/me/mailFolders/sentitems/messages?$filter=${filter}&$select=${select}&$top=${MAIL_PAGE_SIZE}&$orderby=receivedDateTime desc`,
+      `${GRAPH_BASE}/me/mailFolders/sentitems/messages?$filter=${filter}&$select=${select}&$top=${MAIL_PAGE_SIZE}&$orderby=sentDateTime desc`,
       { maxItems: MAIL_MAX_ITEMS_PER_FOLDER },
     ),
   ]);
@@ -333,8 +415,16 @@ async function syncMail(
 
   if (allMessages.length === 0) return 0;
 
+  const convoCounts = new Map<string, number>();
+  for (const msg of allMessages) {
+    const cid = msg.conversationId as string | undefined;
+    if (!cid) continue;
+    convoCounts.set(cid, (convoCounts.get(cid) ?? 0) + 1);
+  }
+
   const supabase = createServerClient();
   let inserted = 0;
+  const intelMessages: MailIntelMessage[] = [];
 
   for (const msg of allMessages) {
     if (!msg.id) continue;
@@ -348,7 +438,11 @@ async function syncMail(
         new Date().toISOString();
 
       const signalType = isSent ? "email_sent" : "email_received";
-      const content = formatMicrosoftMailContent(msg, signalType);
+      const cid = msg.conversationId as string | undefined;
+      const threadN = cid ? convoCounts.get(cid) : undefined;
+      const content = formatMicrosoftMailContent(msg, signalType, {
+        threadMessagesInConversation: threadN,
+      });
 
       // Cross-provider email dedup: normalize hash from sender + subject + date
       // so Gmail and Outlook versions of the same email produce the same hash.
@@ -370,9 +464,43 @@ async function syncMail(
       }, { onConflict: "user_id,content_hash", ignoreDuplicates: true });
 
       if (!error) inserted++;
+
+      const hdrs = headerMapFromInternet(msg.internetMessageHeaders);
+      const toStr = (msg.toRecipients ?? [])
+        .map((r: any) => r.emailAddress?.address)
+        .filter(Boolean)
+        .join(", ");
+      const ccStr = (msg.ccRecipients ?? [])
+        .map((r: any) => r.emailAddress?.address)
+        .filter(Boolean)
+        .join(", ");
+      const dateMs = new Date(date).getTime();
+      if (Number.isFinite(dateMs)) {
+        intelMessages.push({
+          id: msg.id,
+          isSent,
+          fromRaw: from,
+          toRaw: toStr,
+          ccRaw: ccStr,
+          subject: msg.subject ?? "(no subject)",
+          dateMs,
+          messageId: (msg.internetMessageId as string | undefined)?.replace(/[<>]/g, ""),
+          inReplyTo: hdrs["in-reply-to"],
+          references: hdrs["references"],
+        });
+      }
     } catch (msgErr: unknown) {
       console.warn(`[microsoft-sync] Failed to persist mail for user ${userId}:`, msgErr instanceof Error ? msgErr.message : String(msgErr));
     }
+  }
+
+  try {
+    const derived = await persistResponsePatternSignals(supabase, userId, "outlook", intelMessages);
+    if (derived > 0) {
+      console.log(`[microsoft-sync] user=${userId} response_pattern signals: ${derived}`);
+    }
+  } catch (e) {
+    console.warn(`[microsoft-sync] response_pattern derivation failed for ${userId}:`, e instanceof Error ? e.message : String(e));
   }
 
   return inserted;
@@ -385,8 +513,9 @@ async function syncCalendar(
   accessToken: string,
   sinceIso: string,
   untilIso: string,
+  selfEmailLower: string,
 ): Promise<number> {
-  const url = `${GRAPH_BASE}/me/calendarView?startDateTime=${sinceIso}&endDateTime=${untilIso}&$select=id,subject,start,end,isAllDay,organizer,attendees,bodyPreview&$top=${CALENDAR_PAGE_SIZE}&$orderby=start/dateTime`;
+  const url = `${GRAPH_BASE}/me/calendarView?startDateTime=${sinceIso}&endDateTime=${untilIso}&$select=id,subject,start,end,isAllDay,organizer,attendees,bodyPreview,recurrence,isOrganizer,createdBy&$top=${CALENDAR_PAGE_SIZE}&$orderby=start/dateTime`;
 
   const events = await graphFetchAll<any>(userId, accessToken, url, {
     maxItems: CALENDAR_MAX_ITEMS,
@@ -395,13 +524,14 @@ async function syncCalendar(
 
   const supabase = createServerClient();
   let inserted = 0;
+  const intelEvents: CalendarIntelEvent[] = [];
 
   for (const event of events) {
     if (!event.id) continue;
 
     const start = event.start?.dateTime ?? "";
     const organizer = event.organizer?.emailAddress?.address ?? "";
-    const content = formatMicrosoftCalendarContent(event);
+    const content = formatMicrosoftCalendarContent(event, selfEmailLower);
 
     const contentHash = hash(`outlook-calendar:${event.id}`);
 
@@ -420,6 +550,39 @@ async function syncCalendar(
     }, { onConflict: "user_id,content_hash", ignoreDuplicates: true });
 
     if (!error) inserted++;
+
+    const attendeesFlat = (event.attendees ?? []).map((a: any) => ({
+      email: a.emailAddress?.address ?? "",
+      responseStatus: a.status?.response ?? undefined,
+    })).filter((a: { email: string }) => a.email);
+
+    const createdBy =
+      event.createdBy?.user?.emailAddress?.address ??
+      event.organizer?.emailAddress?.address ??
+      "";
+    const createdBySelf =
+      selfEmailLower !== "" &&
+      createdBy.toLowerCase() === selfEmailLower;
+
+    intelEvents.push({
+      id: event.id,
+      summary: event.subject ?? "(no title)",
+      startIso: start,
+      organizerEmail: organizer,
+      selfEmailLower,
+      attendees: attendeesFlat,
+      isRecurring: event.recurrence != null,
+      createdBySelf,
+    });
+  }
+
+  try {
+    const rsvp = await persistCalendarRsvpAvoidanceSignals(supabase, userId, "outlook_calendar", intelEvents);
+    if (rsvp > 0) {
+      console.log(`[microsoft-sync] user=${userId} calendar RSVP-avoidance signals: ${rsvp}`);
+    }
+  } catch (e) {
+    console.warn(`[microsoft-sync] calendar RSVP derivation failed for ${userId}:`, e instanceof Error ? e.message : String(e));
   }
 
   return inserted;
@@ -440,7 +603,7 @@ export async function recoverMicrosoftSignalContent(
     const message = await graphFetch(
       userId,
       token.access_token,
-      `${GRAPH_BASE}/me/messages/${sourceId}?$select=id,subject,from,toRecipients,receivedDateTime,sentDateTime,bodyPreview,body`,
+      `${GRAPH_BASE}/me/messages/${sourceId}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,body,conversationId,internetMessageId,importance,inferenceClassification,internetMessageHeaders`,
     );
 
     const normalizedType: MicrosoftMailSignalType =
@@ -451,9 +614,9 @@ export async function recoverMicrosoftSignalContent(
   const event = await graphFetch(
     userId,
     token.access_token,
-    `${GRAPH_BASE}/me/events/${sourceId}?$select=id,subject,start,end,isAllDay,organizer,attendees,bodyPreview`,
+    `${GRAPH_BASE}/me/events/${sourceId}?$select=id,subject,start,end,isAllDay,organizer,attendees,bodyPreview,recurrence,isOrganizer,createdBy`,
   );
-  return formatMicrosoftCalendarContent(event);
+  return formatMicrosoftCalendarContent(event, "");
 }
 
 // ── OneDrive Files Sync ─────────────────────────────────────────────────────
@@ -767,6 +930,19 @@ export async function syncMicrosoft(
 
   const accessToken = validToken.access_token;
 
+  let graphSelfEmail = "";
+  try {
+    const me = await graphFetch(
+      userId,
+      accessToken,
+      `${GRAPH_BASE}/me?$select=mail,userPrincipalName`,
+    );
+    const raw = (me.mail ?? me.userPrincipalName ?? "") as string;
+    graphSelfEmail = typeof raw === "string" ? raw.toLowerCase().trim() : "";
+  } catch {
+    /* optional */
+  }
+
   let mailSignals = 0;
   let calendarSignals = 0;
   let fileSignals = 0;
@@ -786,6 +962,7 @@ export async function syncMicrosoft(
       accessToken,
       sinceIso,
       calendarUntilIso,
+      graphSelfEmail,
     );
   } catch (err: any) {
     console.error("[microsoft-sync] Calendar sync failed:", err.message);

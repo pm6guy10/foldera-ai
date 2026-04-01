@@ -179,8 +179,8 @@ vi.mock('@/lib/conviction/artifact-generator', () => ({
   getArtifactPersistenceIssues: vi.fn().mockReturnValue([]),
 }));
 
-vi.mock('@/lib/extraction/conversation-extractor', () => ({
-  extractFromConversation: vi.fn(),
+vi.mock('@/lib/signals/directive-history-signal', () => ({
+  persistDirectiveHistorySignal: vi.fn(),
 }));
 
 vi.mock('@/lib/signals/signal-processor', () => ({

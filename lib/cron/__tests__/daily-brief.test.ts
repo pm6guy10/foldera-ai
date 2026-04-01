@@ -3,7 +3,7 @@ import type { ConvictionDirective, GenerationRunLog } from '@/lib/briefing/types
 import { getTriggerResponseStatus, runDailyGenerate, runDailySend } from '../daily-brief';
 import { generateDirective, validateDirectiveForPersistence } from '@/lib/briefing/generator';
 import { generateArtifact, getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
-import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
+import { persistDirectiveHistorySignal } from '@/lib/signals/directive-history-signal';
 import { countUnprocessedSignals, processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
@@ -279,8 +279,8 @@ vi.mock('@/lib/conviction/artifact-generator', () => ({
   getArtifactPersistenceIssues: vi.fn(),
 }));
 
-vi.mock('@/lib/extraction/conversation-extractor', () => ({
-  extractFromConversation: vi.fn().mockResolvedValue(undefined),
+vi.mock('@/lib/signals/directive-history-signal', () => ({
+  persistDirectiveHistorySignal: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/signals/signal-processor', () => ({
@@ -444,7 +444,7 @@ describe('runDailyGenerate candidate logging', () => {
     vi.mocked(validateDirectiveForPersistence).mockReset();
     vi.mocked(generateArtifact).mockReset();
     vi.mocked(getArtifactPersistenceIssues).mockReset();
-    vi.mocked(extractFromConversation).mockClear();
+    vi.mocked(persistDirectiveHistorySignal).mockClear();
     vi.mocked(countUnprocessedSignals).mockReset();
     mockResolveSignalBacklogMode.mockClear();
     vi.mocked(processUnextractedSignals).mockClear();

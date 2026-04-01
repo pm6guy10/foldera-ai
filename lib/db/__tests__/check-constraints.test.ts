@@ -14,12 +14,17 @@ const SIGNAL_SOURCES = new Set([
   'uploaded_document', 'manual_entry',
   'claude_conversation', 'chatgpt_conversation',
   'user_feedback', 'artifact', 'resend_webhook',
+  'foldera_directive',
 ]);
 
 const SIGNAL_TYPES = new Set([
-  'email', 'calendar_event', 'chat_message', 'social_post',
-  'file_modified', 'task', 'daily_brief_opened', 'document',
-  'research', 'outcome_feedback', 'approval',
+  'email', 'email_sent', 'email_received',
+  'calendar_event', 'chat_message', 'social_post',
+  'file_modified', 'task',
+  'daily_brief_opened', 'daily_brief_clicked', 'daily_brief_unopened',
+  'document',
+  'research', 'outcome_feedback', 'approval', 'rejection',
+  'response_pattern',
 ]);
 
 const ACTION_STATUSES = new Set([
@@ -47,6 +52,7 @@ describe('CHECK constraint contract', () => {
       'gmail', 'outlook', 'google_calendar', 'outlook_calendar',
       'drive', 'onedrive', 'microsoft_todo',
       'notion', 'user_feedback', 'artifact', 'resend_webhook',
+      'foldera_directive',
     ];
     for (const v of appValues) {
       expect(SIGNAL_SOURCES.has(v), `Missing signal source: ${v}`).toBe(true);
@@ -55,9 +61,12 @@ describe('CHECK constraint contract', () => {
 
   it('signal types cover all app-written values', () => {
     const appValues = [
-      'email', 'calendar_event', 'file_modified', 'task',
-      'daily_brief_opened', 'document', 'research',
-      'outcome_feedback', 'approval',
+      'email', 'email_sent', 'email_received',
+      'calendar_event', 'file_modified', 'task',
+      'daily_brief_opened', 'daily_brief_clicked', 'daily_brief_unopened',
+      'document', 'research',
+      'outcome_feedback', 'approval', 'rejection',
+      'response_pattern',
     ];
     for (const v of appValues) {
       expect(SIGNAL_TYPES.has(v), `Missing signal type: ${v}`).toBe(true);

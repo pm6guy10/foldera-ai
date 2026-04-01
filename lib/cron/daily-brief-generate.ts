@@ -14,7 +14,7 @@ import {
   validateDirectiveForPersistence,
 } from '@/lib/briefing/generator';
 import { generateArtifact, getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
-import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
+import { persistDirectiveHistorySignal } from '@/lib/signals/directive-history-signal';
 import {
   countUnprocessedSignals,
   processUnextractedSignals,
@@ -1981,27 +1981,24 @@ export async function runDailyGenerate(
         continue;
       }
 
-      // Self-feed: ingest the directive as a signal for future context
       try {
-        const date = new Date().toISOString().slice(0, 10);
-        const feedText = [
-          `[Foldera Directive — ${date}]`,
-          `Action: ${directive.action_type}`,
-          `Directive: ${directive.directive}`,
-        ].join('\n');
-        await extractFromConversation(feedText, userId);
+        await persistDirectiveHistorySignal({
+          userId,
+          actionId: saved.id,
+          directiveText: directive.directive ?? '',
+          actionType: directive.action_type,
+          status: 'pending_approval',
+        });
       } catch (feedErr: unknown) {
         const message = feedErr instanceof Error ? feedErr.message : String(feedErr);
-        if (!message.includes('already ingested')) {
-          logStructuredEvent({
-            event: 'daily_generate_self_feed_failed',
-            level: 'warn',
-            userId,
-            artifactType: artifactTypeForAction(directive.action_type),
-            generationStatus: 'self_feed_failed',
-            details: { scope: 'daily-generate', error: message },
-          });
-        }
+        logStructuredEvent({
+          event: 'daily_generate_directive_signal_failed',
+          level: 'warn',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'directive_signal_failed',
+          details: { scope: 'daily-generate', error: message },
+        });
       }
 
       results.push({

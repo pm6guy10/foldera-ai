@@ -9,12 +9,19 @@
  */
 
 import { google } from 'googleapis';
+import type { gmail_v1 } from 'googleapis';
 import { createServerClient } from '@/lib/db/client';
 import { getUserToken, updateSyncTimestamp, saveUserToken } from '@/lib/auth/user-tokens';
 import { encrypt } from '@/lib/encryption';
 import { createHash } from 'crypto';
 import mammoth from 'mammoth';
 import { FIRST_SYNC_LOOKBACK_MS } from '@/lib/config/constants';
+import {
+  persistCalendarRsvpAvoidanceSignals,
+  persistResponsePatternSignals,
+  type CalendarIntelEvent,
+  type MailIntelMessage,
+} from '@/lib/sync/derive-mail-intelligence';
 
 function hash(content: string): string {
   return createHash('sha256').update(content).digest('hex');
@@ -58,6 +65,39 @@ function getOAuth2Client(
 
 const GMAIL_PAGE_SIZE = 500;
 const GMAIL_MAX_MESSAGES = 5000; // ~2-5 years depending on volume
+const GMAIL_BODY_PREVIEW_MAX = 500;
+const GMAIL_THREAD_FETCH_CAP = 300;
+
+function getGmailHeader(
+  headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
+  name: string,
+): string {
+  const h = headers?.find((x) => x.name?.toLowerCase() === name.toLowerCase());
+  return h?.value ?? '';
+}
+
+function extractPlainTextFromGmailPart(
+  part: gmail_v1.Schema$MessagePart | undefined,
+  maxLen: number,
+): string {
+  if (!part || maxLen <= 0) return '';
+  if (part.mimeType === 'text/plain' && part.body?.data) {
+    try {
+      const b64 = part.body.data.replace(/-/g, '+').replace(/_/g, '/');
+      const buf = Buffer.from(b64, 'base64');
+      return buf.toString('utf8').slice(0, maxLen);
+    } catch {
+      return '';
+    }
+  }
+  if (part.parts) {
+    for (const p of part.parts) {
+      const t = extractPlainTextFromGmailPart(p, maxLen);
+      if (t) return t.slice(0, maxLen);
+    }
+  }
+  return '';
+}
 
 async function syncGmail(
   userId: string,
@@ -67,8 +107,7 @@ async function syncGmail(
   const gmail = google.gmail({ version: 'v1', auth: oauth2 });
   const afterSec = Math.floor(sinceMs / 1000);
 
-  // Paginate through all messages in the lookback window
-  const messageIds: Array<{ id?: string | null }> = [];
+  const messageRefs: Array<{ id?: string | null; threadId?: string | null }> = [];
   let pageToken: string | undefined;
   do {
     const list = await gmail.users.messages.list({
@@ -77,46 +116,93 @@ async function syncGmail(
       maxResults: GMAIL_PAGE_SIZE,
       pageToken,
     });
-    messageIds.push(...(list.data.messages ?? []));
+    messageRefs.push(...(list.data.messages ?? []));
     pageToken = list.data.nextPageToken ?? undefined;
-  } while (pageToken && messageIds.length < GMAIL_MAX_MESSAGES);
+  } while (pageToken && messageRefs.length < GMAIL_MAX_MESSAGES);
 
-  if (messageIds.length === 0) return 0;
+  if (messageRefs.length === 0) return 0;
 
   const supabase = createServerClient();
   let inserted = 0;
+  const intelMessages: MailIntelMessage[] = [];
+  const threadSizeCache = new Map<string, number>();
+  let threadFetchBudget = GMAIL_THREAD_FETCH_CAP;
 
-  for (const { id } of messageIds) {
+  const threadMessageCount = async (threadId: string): Promise<number | undefined> => {
+    if (threadSizeCache.has(threadId)) return threadSizeCache.get(threadId);
+    if (threadFetchBudget <= 0) return undefined;
+    threadFetchBudget--;
+    try {
+      const t = await gmail.users.threads.get({ userId: 'me', id: threadId, format: 'metadata' });
+      const n = t.data.messages?.length ?? 0;
+      threadSizeCache.set(threadId, n);
+      return n;
+    } catch {
+      return undefined;
+    }
+  };
+
+  for (const { id, threadId } of messageRefs) {
     if (!id) continue;
     try {
       const msg = await gmail.users.messages.get({
         userId: 'me',
         id,
-        format: 'metadata',
-        metadataHeaders: ['Subject', 'From', 'To', 'Date'],
+        format: 'full',
       });
 
       const headers = msg.data.payload?.headers ?? [];
-      const get = (name: string) =>
-        headers.find(h => h.name?.toLowerCase() === name.toLowerCase())?.value ?? '';
+      const get = (name: string) => getGmailHeader(headers, name);
 
-      const snippet = msg.data.snippet ?? '';
+      const snippet = (msg.data.snippet ?? '').slice(0, GMAIL_BODY_PREVIEW_MAX);
+      const bodyFromPart = extractPlainTextFromGmailPart(msg.data.payload ?? undefined, GMAIL_BODY_PREVIEW_MAX);
+      const bodyPreview = (bodyFromPart || snippet).slice(0, GMAIL_BODY_PREVIEW_MAX).replace(/\s+/g, ' ').trim();
+
       const from = get('From');
       const to = get('To');
+      const cc = get('Cc');
       const subject = get('Subject') || '(no subject)';
       const date = get('Date');
+      const messageId = get('Message-ID');
+      const inReplyTo = get('In-Reply-To');
+      const references = get('References');
+      const importance = get('X-Priority') || get('Importance') || '';
       const labelIds = msg.data.labelIds ?? [];
 
       const isSent = labelIds.includes('SENT');
       const signalType = isSent ? 'email_sent' : 'email_received';
 
-      const content = isSent
-        ? `[Sent email: ${date}]\nTo: ${to}\nSubject: ${subject}\nPreview: ${snippet}`
-        : `[Email received: ${date}]\nFrom: ${from}\nSubject: ${subject}\nPreview: ${snippet}`;
+      const hasReplyHeaders = Boolean(inReplyTo.trim() || references.trim());
+      let threadLen: number | undefined;
+      if (threadId) {
+        threadLen = await threadMessageCount(threadId);
+      }
 
-      // Cross-provider email dedup: normalize hash from sender + subject + date
-      // so Gmail and Outlook versions of the same email produce the same hash.
-      // Supabase's unique constraint on content_hash deduplicates silently.
+      const lines = isSent
+        ? [
+            `[Sent email: ${date}]`,
+            `To: ${to}`,
+            `Subject: ${subject}`,
+            cc ? `Cc: ${cc}` : '',
+            `Body preview: ${bodyPreview}`,
+            `Has In-Reply-To or References: ${hasReplyHeaders ? 'yes' : 'no'}`,
+            typeof threadLen === 'number' ? `Thread messages (conversation): ${threadLen}` : '',
+            importance ? `Priority/importance: ${importance}` : '',
+          ]
+        : [
+            `[Email received: ${date}]`,
+            `From: ${from}`,
+            `To: ${to}`,
+            cc ? `Cc: ${cc}` : '',
+            `Subject: ${subject}`,
+            `Body preview: ${bodyPreview}`,
+            `Has In-Reply-To or References: ${hasReplyHeaders ? 'yes' : 'no'}`,
+            typeof threadLen === 'number' ? `Thread messages (conversation): ${threadLen}` : '',
+            importance ? `Priority/importance: ${importance}` : '',
+          ];
+
+      const content = lines.filter(Boolean).join('\n');
+
       const senderEmail = (isSent ? to : from).toLowerCase().trim().replace(/.*<([^>]+)>.*/, '$1');
       const normalizedSubject = subject.toLowerCase().trim();
       const datePrefix = date ? new Date(date).toISOString().slice(0, 10) : '';
@@ -135,15 +221,38 @@ async function syncGmail(
       }, { onConflict: 'user_id,content_hash', ignoreDuplicates: true });
 
       if (!error) inserted++;
-      // Duplicate hash → silently skip (expected on incremental syncs)
+
+      const dateMs = date ? new Date(date).getTime() : Date.now();
+      if (Number.isFinite(dateMs)) {
+        intelMessages.push({
+          id,
+          isSent,
+          fromRaw: from,
+          toRaw: to,
+          ccRaw: cc,
+          subject,
+          dateMs,
+          messageId: messageId || undefined,
+          inReplyTo: inReplyTo || undefined,
+          references: references || undefined,
+        });
+      }
     } catch (msgErr: unknown) {
-      // Log non-duplicate failures so we have visibility into systematic problems.
       const isDuplicate =
         msgErr instanceof Error && msgErr.message?.includes('duplicate');
       if (!isDuplicate) {
         console.warn(`[google-sync] Failed to persist message for user ${userId}:`, msgErr instanceof Error ? msgErr.message : String(msgErr));
       }
     }
+  }
+
+  try {
+    const derived = await persistResponsePatternSignals(supabase, userId, 'gmail', intelMessages);
+    if (derived > 0) {
+      console.log(`[google-sync] user=${userId} response_pattern signals: ${derived}`);
+    }
+  } catch (e) {
+    console.warn(`[google-sync] response_pattern derivation failed for ${userId}:`, e instanceof Error ? e.message : String(e));
   }
 
   return inserted;
@@ -155,6 +264,7 @@ async function syncCalendar(
   userId: string,
   oauth2: ReturnType<typeof getOAuth2Client>,
   sinceMs: number,
+  selfEmailLower: string,
 ): Promise<number> {
   const calendar = google.calendar({ version: 'v3', auth: oauth2 });
 
@@ -175,6 +285,7 @@ async function syncCalendar(
 
   const supabase = createServerClient();
   let inserted = 0;
+  const intelEvents: CalendarIntelEvent[] = [];
 
   for (const event of events) {
     if (!event.id) continue;
@@ -183,12 +294,33 @@ async function syncCalendar(
     const end = event.end?.dateTime ?? event.end?.date ?? '';
     const summary = event.summary ?? '(no title)';
     const organizer = event.organizer?.email ?? '';
-    const attendees = (event.attendees ?? [])
-      .map(a => a.email)
-      .filter(Boolean)
-      .join(', ');
+    const creatorEmail = event.creator?.email ?? '';
+    const isRecurring = Boolean(event.recurringEventId || (event.recurrence && event.recurrence.length > 0));
+    const createdBySelf =
+      selfEmailLower !== '' &&
+      creatorEmail.toLowerCase() === selfEmailLower;
+
+    const attendeeLines = (event.attendees ?? []).map((a) => {
+      const email = a.email ?? '';
+      const rs = a.responseStatus ?? '';
+      return email ? `${email} (${rs})` : '';
+    }).filter(Boolean);
+    const attendeesFlat = (event.attendees ?? [])
+      .map((a) => ({
+        email: a.email ?? '',
+        responseStatus: a.responseStatus ?? undefined,
+      }))
+      .filter((a) => a.email);
+
+    let selfResponse = '';
+    if (selfEmailLower) {
+      const me = attendeesFlat.find((a) => a.email.toLowerCase() === selfEmailLower);
+      selfResponse = me?.responseStatus ?? '';
+    }
+
     const status = event.status ?? '';
     const isAllDay = !event.start?.dateTime;
+    const desc = event.description ? event.description.slice(0, 500) : '';
 
     const content = [
       `[Calendar event: ${summary}]`,
@@ -196,9 +328,13 @@ async function syncCalendar(
       `End: ${end}`,
       isAllDay ? 'All day event' : '',
       organizer ? `Organizer: ${organizer}` : '',
-      attendees ? `Attendees: ${attendees}` : '',
-      status ? `Status: ${status}` : '',
-      event.description ? `Description: ${event.description.slice(0, 500)}` : '',
+      creatorEmail ? `Created by: ${creatorEmail}` : '',
+      `Created by you: ${createdBySelf ? 'yes' : 'no'}`,
+      `Recurring: ${isRecurring ? 'yes' : 'no'}`,
+      attendeeLines.length ? `Attendees: ${attendeeLines.join('; ')}` : '',
+      selfResponse ? `Your response: ${selfResponse}` : '',
+      status ? `Event status: ${status}` : '',
+      desc ? `Description: ${desc}` : '',
     ].filter(Boolean).join('\n');
 
     const contentHash = hash(`gcal:${event.id}`);
@@ -216,6 +352,26 @@ async function syncCalendar(
     }, { onConflict: 'user_id,content_hash', ignoreDuplicates: true });
 
     if (!error) inserted++;
+
+    intelEvents.push({
+      id: event.id,
+      summary,
+      startIso: start,
+      organizerEmail: organizer,
+      selfEmailLower,
+      attendees: attendeesFlat,
+      isRecurring,
+      createdBySelf,
+    });
+  }
+
+  try {
+    const rsvp = await persistCalendarRsvpAvoidanceSignals(supabase, userId, 'google_calendar', intelEvents);
+    if (rsvp > 0) {
+      console.log(`[google-sync] user=${userId} calendar RSVP-avoidance signals: ${rsvp}`);
+    }
+  } catch (e) {
+    console.warn(`[google-sync] calendar RSVP derivation failed for ${userId}:`, e instanceof Error ? e.message : String(e));
   }
 
   return inserted;
@@ -464,6 +620,17 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
   let driveSignals = 0;
   const errors: string[] = [];
 
+  let googleSelfEmail = '';
+  if (hasCalendarScope) {
+    try {
+      const gmail = google.gmail({ version: 'v1', auth: oauth2 });
+      const prof = await gmail.users.getProfile({ userId: 'me' });
+      googleSelfEmail = (prof.data.emailAddress ?? '').toLowerCase().trim();
+    } catch {
+      /* optional */
+    }
+  }
+
   try {
     gmailSignals = await syncGmail(userId, oauth2, sinceMs);
   } catch (err: any) {
@@ -472,7 +639,7 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
   }
 
   try {
-    calendarSignals = await syncCalendar(userId, oauth2, sinceMs);
+    calendarSignals = await syncCalendar(userId, oauth2, sinceMs, googleSelfEmail);
   } catch (err: any) {
     console.error('[google-sync] Calendar sync failed:', err.message);
     errors.push(`calendar: ${err.message}`);

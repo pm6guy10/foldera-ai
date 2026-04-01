@@ -139,6 +139,10 @@ vi.mock('@/lib/cron/connector-health', () => ({
   checkConnectorHealth,
 }));
 
+vi.mock('@/lib/cron/brief-engagement-signals', () => ({
+  recordUnopenedDailyBriefSignals: vi.fn().mockResolvedValue({ checked: 0, inserted: 0 }),
+}));
+
 vi.mock('@/lib/utils/structured-logger', () => ({
   logStructuredEvent,
 }));
