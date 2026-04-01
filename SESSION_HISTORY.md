@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — FORCE: Temporary scorer boost for decay/relationship reconnect winner + prod brain-receipt receipt
+  MODE: AUDIT (FORCE)
+  Commit hash(es): pending
+  Files changed: `lib/briefing/scorer.ts`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; owner `POST /api/dev/brain-receipt` after production deploy (see chat for full JSON fields and APPROVABLE verdict).
+  Any unresolved issues: Remove `[FORCE-DECAY]` block after decay path proven approvable.
+
 - 2026-04-01 — FLOW: Remove scheduleConflictDocRelaxed bypass + SCHEDULE_CONFLICT_RULE prompt + guards
   MODE: FLOW
   Commit hash(es): `e5bd8d6`
