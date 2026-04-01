@@ -33,6 +33,11 @@ import type {
 import type { DiscrepancyClass } from '@/lib/briefing/discrepancy-detector';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import {
+  directiveLooksLikeScheduleConflict,
+  scheduleConflictArtifactIsOwnerProcedure,
+} from '@/lib/briefing/schedule-conflict-guards';
+import { effectiveDiscrepancyClassForGates } from '@/lib/briefing/effective-discrepancy-class';
 
 // ---------------------------------------------------------------------------
 // Clients (lazy)
@@ -189,6 +194,10 @@ function buildDeterministicDocumentFallback(
   directive: ConvictionDirective,
   rawContext: string,
 ): DocumentArtifact | null {
+  if (directiveLooksLikeScheduleConflict(directive)) {
+    return null;
+  }
+
   const lines = rawContext.split(/\r?\n/);
   const kept: string[] = [];
   const signals: string[] = [];
@@ -234,6 +243,7 @@ function buildDeterministicDocumentFallback(
 export function getArtifactPersistenceIssues(
   actionType: string,
   artifact: ConvictionArtifact | Record<string, unknown> | null,
+  directive?: ConvictionDirective,
 ): string[] {
   const issues: string[] = [];
   if (!artifact || typeof artifact !== 'object') {
@@ -242,12 +252,30 @@ export function getArtifactPersistenceIssues(
 
   const record = artifact as Record<string, unknown>;
   if (record.emergency_fallback === true) {
+    if (
+      directive &&
+      actionType === 'write_document' &&
+      directiveLooksLikeScheduleConflict(directive)
+    ) {
+      const title = isNonEmptyString(record.title) ? record.title.trim() : '';
+      const content = isNonEmptyString(record.content) ? record.content.trim() : '';
+      if (scheduleConflictArtifactIsOwnerProcedure(`${title}\n${content}`)) {
+        return ['schedule_conflict finished-work required (emergency fallback is owner-facing)'];
+      }
+    }
     return [];
   }
   if (actionType === 'write_document') {
     const title = isNonEmptyString(record.title) ? record.title.trim() : '';
     const content = isNonEmptyString(record.content) ? record.content.trim() : '';
     issues.push(...getFinishedDocumentIssues(title, content));
+    if (
+      directive &&
+      directiveLooksLikeScheduleConflict(directive) &&
+      scheduleConflictArtifactIsOwnerProcedure(`${title}\n${content}`)
+    ) {
+      issues.push('schedule_conflict artifact must be finished outbound work, not an owner checklist');
+    }
   }
 
   for (const [key, value] of Object.entries(record)) {
@@ -431,11 +459,12 @@ function isAnalysisDump(text: string): boolean {
   return hasAnalysisScaffolding(text);
 }
 
-type DiscrepancyFlavor = 'person' | 'deadline' | 'goal';
+type DiscrepancyFlavor = 'person' | 'deadline' | 'goal' | 'schedule_conflict';
 
 /**
  * Infer what kind of finished artifact the discrepancy should become.
  * person  → sendable outreach message (decay / risk only)
+ * schedule_conflict → ready-to-send outbound copy only (no owner checklist)
  * deadline → pre-filled execution steps (calendar pressure, exposure, drift, etc.)
  * goal    → concrete action plan (fallback)
  *
@@ -448,6 +477,9 @@ function detectDiscrepancyFlavor(directive: ConvictionDirective): DiscrepancyFla
   if (cls === 'decay' || cls === 'risk') {
     return 'person';
   }
+  if (cls === 'schedule_conflict') {
+    return 'schedule_conflict';
+  }
   if (cls) {
     return 'deadline';
   }
@@ -458,7 +490,7 @@ function detectDiscrepancyFlavor(directive: ConvictionDirective): DiscrepancyFla
       text,
     )
   ) {
-    return 'deadline';
+    return 'schedule_conflict';
   }
   if (/silent|reach out|reconnect|relationship|contact|follow.?up/i.test(text)) return 'person';
   if (/due|deadline|overdue|stalled.*commit|commitment|exposure|at.?risk/i.test(text)) return 'deadline';
@@ -485,6 +517,28 @@ RELATIONSHIPS:
 ${relationships.slice(0, 400)}`;
 
   switch (flavor) {
+    case 'schedule_conflict':
+      return {
+        system: `You write FINISHED OUTBOUND MESSAGES for a calendar double-booking — not a memo, checklist, or instructions to the calendar owner.
+
+The product requires one-tap approval of real work product: only text the user can send as-is (SMS, email, or chat) to someone else involved in the overlap.
+
+Rules (non-negotiable):
+- Return JSON with type "document", a short title, and content that contains ONLY send-ready messages.
+- If multiple people need different messages, label each block on its own line, e.g. "To Mom (text):" then the message, blank line, then "To Alex (text):" etc.
+- Each message must reference the real conflict using event titles and the date from SITUATION/ANALYSIS; propose a specific reschedule, regret, or time trade-off in natural language.
+- Forbidden anywhere in content: numbered lists (1. 2. 3.), bullet step lists, "Open your calendar", "Click", "Decide which", "Update/decline/reschedule the event" as orders to the user, "Block time", "within X minutes/hours", "Step 1", planning notes, or "you should" coaching.
+- No bracket placeholders ([phone], [date], [name]) — use facts from SITUATION or plain wording.
+- No INSIGHT/WHY NOW labels or analysis scaffolding.
+- Under 450 words total.
+
+Return ONLY valid JSON:
+{"type":"document","title":"<3-8 words>","content":"<only labeled outbound messages>"}`,
+        user: `${shared}
+
+Write only send-ready messages for the people involved in the overlap. Return JSON only.`,
+      };
+
     case 'person':
       return {
         system: `You write short, high-leverage outreach messages that create FORWARD MOTION.
@@ -516,17 +570,7 @@ Return ONLY valid JSON:
 Write a message that creates forward motion. Return JSON only.`,
       };
 
-    case 'deadline': {
-      const scheduleConflictBlock =
-        directive.discrepancyClass === 'schedule_conflict'
-          ? `
-
-CALENDAR DOUBLE-BOOKING (schedule_conflict) — extra rules:
-- The USER owns the calendar. Steps are actions THEY take (open calendar app, decline/move a block, send a short text) — never instruct them to "call" or "email" themselves using a name from RELATIONSHIPS as if that person were an external party to coordinate with.
-- Use only people, event titles, and times that appear in SITUATION/ANALYSIS. Do not invent phone numbers or bracket placeholders like [phone], [specific date], [TBD], or "from recent contact". If a message needs a date, use a real day from the situation or plain language ("another evening this week").
-- Typical flow: decide which event wins → update the calendar (decline or reschedule the other) → brief outbound message only to people named in the overlapping events.`
-          : '';
-
+    case 'deadline':
       return {
         system: `You write pre-filled execution artifacts for time-sensitive commitments.
 The output must reduce consequence, not merely acknowledge risk.
@@ -537,7 +581,7 @@ Rules (non-negotiable):
 - Each step must be a concrete action verb (send, call, submit, book, draft), not commentary
 - Include the specific constraint or deadline driving urgency
 - No analysis, no INSIGHT/WHY NOW labels, no scoring language
-- No vague instructions like "consider", "think about", or "review your options"${scheduleConflictBlock}
+- No vague instructions like "consider", "think about", or "review your options"
 
 Return ONLY valid JSON:
 {"type":"document","title":"<3-7 word action title>","content":"<numbered execution steps in markdown>"}`,
@@ -545,7 +589,6 @@ Return ONLY valid JSON:
 
 Write pre-filled execution steps that reduce consequence. Return JSON only.`,
       };
-    }
 
     case 'goal':
     default:
@@ -826,7 +869,7 @@ export async function generateArtifact(
   const d = directive as ConvictionDirective & { embeddedArtifact?: any; embeddedArtifactType?: string };
   if (d.embeddedArtifact) {
     try {
-      return validateArtifact(directive.action_type, d.embeddedArtifact);
+      return validateArtifact(directive.action_type, d.embeddedArtifact, directive);
     } catch {
       // If canonical action is write_document but LLM produced a wait_rationale,
       // convert directly — discrepancy candidates write analysis prose that is
@@ -841,17 +884,24 @@ export async function generateArtifact(
         d.embeddedArtifact.context.length > 20 &&
         !isAnalysisDump(d.embeddedArtifact.context)
       ) {
-        return {
-          type: 'document',
-          title: directive.directive.slice(0, 120).replace(/\.$/, '').trim(),
-          content: d.embeddedArtifact.context.trim(),
-        } as DocumentArtifact;
+        const ctx = d.embeddedArtifact.context.trim();
+        if (
+          !directiveLooksLikeScheduleConflict(directive) ||
+          !scheduleConflictArtifactIsOwnerProcedure(ctx)
+        ) {
+          return {
+            type: 'document',
+            title: directive.directive.slice(0, 120).replace(/\.$/, '').trim(),
+            content: ctx,
+          } as DocumentArtifact;
+        }
       }
 
       if (
         directive.action_type === 'write_document' &&
         typeof d.embeddedArtifact?.context === 'string' &&
-        d.embeddedArtifact.context.trim().length > 20
+        d.embeddedArtifact.context.trim().length > 20 &&
+        !directiveLooksLikeScheduleConflict(directive)
       ) {
         const deterministic = buildDeterministicDocumentFallback(directive, d.embeddedArtifact.context);
         if (deterministic) return deterministic;
@@ -922,7 +972,7 @@ export async function generateArtifact(
           }
         }
         const parsed = JSON.parse(cleaned);
-        return validateArtifact('write_document', parsed);
+        return validateArtifact('write_document', parsed, directive);
       } catch {
         // Transformation failed — deterministic repair before emergency fallback.
         const deterministic = buildDeterministicDocumentFallback(directive, fullCtx);
@@ -939,11 +989,18 @@ export async function generateArtifact(
           ? directive.reason.trim()
           : null;
     if (bodyContent) {
-      return {
-        type: 'document',
-        title: directive.directive.slice(0, 120).replace(/\.$/, '').trim(),
-        content: bodyContent,
-      } as DocumentArtifact;
+      if (
+        effectiveDiscrepancyClassForGates(directive) === 'schedule_conflict' &&
+        scheduleConflictArtifactIsOwnerProcedure(bodyContent)
+      ) {
+        // Do not ship owner checklists as finished work — force transform / fallback paths.
+      } else {
+        return {
+          type: 'document',
+          title: directive.directive.slice(0, 120).replace(/\.$/, '').trim(),
+          content: bodyContent,
+        } as DocumentArtifact;
+      }
     }
   }
 
@@ -1009,7 +1066,7 @@ export async function generateArtifact(
     const parsed = JSON.parse(cleaned) as ConvictionArtifact;
 
     // Validate type matches expected
-    return validateArtifact(directive.action_type, parsed);
+    return validateArtifact(directive.action_type, parsed, directive);
   } catch (err) {
     Sentry.captureException(err instanceof Error ? err : new Error(String(err)), {
       tags: { scope: 'artifact-generator', userId: userId?.substring(0, 8) },
@@ -1043,6 +1100,7 @@ export async function generateArtifact(
 function validateArtifact(
   actionType: string,
   parsed: any,
+  directive?: ConvictionDirective,
 ): ConvictionArtifact {
   switch (actionType) {
     case 'send_message': {
@@ -1083,6 +1141,15 @@ function validateArtifact(
       const documentIssues = getFinishedDocumentIssues(a.title.trim(), a.content.trim());
       if (documentIssues.length > 0) {
         throw new Error(documentIssues.join('; '));
+      }
+      if (
+        directive &&
+        directiveLooksLikeScheduleConflict(directive) &&
+        scheduleConflictArtifactIsOwnerProcedure(a.content)
+      ) {
+        throw new Error(
+          'schedule_conflict document must be finished outbound messages only — not a calendar-owner checklist',
+        );
       }
       return {
         type: 'document',

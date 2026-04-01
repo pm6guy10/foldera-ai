@@ -458,7 +458,7 @@ describe('isSendWorthy', () => {
     expect(result.worthy).toBe(true);
   });
 
-  it('allows schedule_conflict write_document with ISO date and numbered steps (relaxed explicit/time/pressure)', () => {
+  it('blocks schedule_conflict write_document when artifact is a numbered owner checklist', () => {
     const discovery = {
       candidateCount: 5,
       suppressedCandidateCount: 0,
@@ -508,6 +508,63 @@ describe('isSendWorthy', () => {
         type: 'document',
         title: 'Resolve overlap on 2026-04-02',
         content: '1. Open your calendar for 2026-04-02.\n2. Move the lower-priority block to another slot.',
+      } as unknown as ConvictionArtifact,
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('schedule_conflict_not_finished_outbound');
+  });
+
+  it('allows schedule_conflict write_document with outbound copy and ISO date', () => {
+    const discovery = {
+      candidateCount: 5,
+      suppressedCandidateCount: 0,
+      selectionMargin: 0.1,
+      selectionReason: null,
+      failureReason: null,
+      topCandidates: [
+        {
+          id: 'disc-1',
+          rank: 1,
+          candidateType: 'discrepancy',
+          discrepancyClass: 'schedule_conflict' as const,
+          actionType: 'write_document' as const,
+          score: 2.1,
+          scoreBreakdown: {
+            stakes: 2,
+            urgency: 0.5,
+            tractability: 0.7,
+            freshness: 1,
+            actionTypeRate: 0.5,
+            entityPenalty: 0,
+          },
+          targetGoal: null,
+          sourceSignals: [],
+          decision: 'selected' as const,
+          decisionReason: '',
+        },
+      ],
+    };
+    const result = isSendWorthy(
+      makeDirective({
+        action_type: 'write_document',
+        confidence: 80,
+        directive: 'Pick one block on 2026-04-02.',
+        reason: 'Two calendar items collide.',
+        discrepancyClass: 'schedule_conflict',
+        generationLog: {
+          outcome: 'selected',
+          stage: 'persistence',
+          reason: 'ok',
+          candidateFailureReasons: [],
+          candidateDiscovery: discovery,
+        },
+        evidence: [{ type: 'signal', description: 'Calendar overlap detected' }],
+      }),
+      {
+        type: 'document',
+        title: 'Messages — 2026-04-02',
+        content:
+          'MESSAGE TO Pat:\n\nHi Pat — I am double-booked on 2026-04-02 (calendar conflict). Could we shift our sync to Wednesday afternoon?',
       } as unknown as ConvictionArtifact,
     );
     expect(result.worthy).toBe(true);
@@ -560,7 +617,8 @@ describe('isSendWorthy', () => {
       {
         type: 'document',
         title: 'Calendar resolution',
-        content: 'Pick which event stays on 2026-04-02, assign who declines the other, and notify them.',
+        content:
+          'MESSAGE TO Chris:\n\nHi Chris — I am double-booked on 2026-04-02 with two overlapping commitments. Could we move our sync to Thursday morning?',
       } as unknown as ConvictionArtifact,
     );
     expect(result.worthy).toBe(true);

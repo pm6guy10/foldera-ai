@@ -203,7 +203,7 @@ describe('evaluateBottomGate', () => {
     expect(result.blocked_reasons).toContain('NON_EXECUTABLE_ARTIFACT');
   });
 
-  it('passes schedule_conflict write_document with numbered steps and anchored date (no external person)', () => {
+  it('blocks schedule_conflict write_document when content is a numbered owner checklist', () => {
     const directive = makeDirective({
       action_type: 'write_document',
       discrepancyClass: 'schedule_conflict',
@@ -217,8 +217,43 @@ describe('evaluateBottomGate', () => {
         '1. Decide which event keeps the slot on 2026-04-02.\n2. Decline the other in Outlook.\n3. Notify family if plans shift.',
     });
     const result = evaluateBottomGate(directive, artifact);
+    expect(result.pass).toBe(false);
+    expect(result.blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
+  });
+
+  it('passes schedule_conflict write_document with outbound messages and anchored date (no external person in directive)', () => {
+    const directive = makeDirective({
+      action_type: 'write_document',
+      discrepancyClass: 'schedule_conflict',
+      directive: 'Resolve overlapping events on 2026-04-02',
+      reason: 'Two calendar events occupy the same window.',
+    });
+    const artifact = makeDocArtifact({
+      type: 'document',
+      title: 'Outbound — 2026-04-02 overlap',
+      content:
+        'MESSAGE TO Jamie (SMS):\n\nHi Jamie — I am double-booked on 2026-04-02. Could we move our call to Thursday morning?',
+    });
+    const result = evaluateBottomGate(directive, artifact);
     expect(result.pass).toBe(true);
     expect(result.blocked_reasons).toEqual([]);
+  });
+
+  it('blocks schedule_conflict write_document with production leak shape: Objective + Execution Notes + user-directed questions', () => {
+    const directive = makeDirective({
+      action_type: 'write_document',
+      directive: 'Overlapping events on 2026-04-02.',
+      reason: 'Two calendar blocks overlap.',
+    });
+    const artifact = makeDocArtifact({
+      type: 'document',
+      title: 'Overlapping events on 2026-04-02.',
+      content:
+        'Objective: Overlapping events on 2026-04-02.\n\nExecution Notes:\n- Which takes priority, and how will you communicate the trade-off?',
+    });
+    const result = evaluateBottomGate(directive, artifact);
+    expect(result.pass).toBe(false);
+    expect(result.blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
   });
 
   // --- Ensure good winners survive ---

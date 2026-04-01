@@ -1,0 +1,154 @@
+import { describe, expect, it } from 'vitest';
+import { evaluateBottomGate, isSendWorthy } from '@/lib/cron/daily-brief-generate';
+import { validateDirectiveForPersistence, getDecisionEnforcementIssues } from '@/lib/briefing/generator';
+import { getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
+import type { ConvictionArtifact, ConvictionDirective } from '@/lib/briefing/types';
+
+function discoveryWithScheduleConflictClass() {
+  return {
+    candidateCount: 3,
+    suppressedCandidateCount: 0,
+    selectionMargin: 0.1,
+    selectionReason: null,
+    failureReason: null,
+    topCandidates: [
+      {
+        id: 'discrepancy_conflict_a_b',
+        rank: 1,
+        candidateType: 'discrepancy' as const,
+        discrepancyClass: 'schedule_conflict' as const,
+        actionType: 'write_document' as const,
+        score: 2,
+        scoreBreakdown: {
+          stakes: 2,
+          urgency: 0.5,
+          tractability: 0.7,
+          freshness: 1,
+          actionTypeRate: 0.5,
+          entityPenalty: 0,
+        },
+        targetGoal: null,
+        sourceSignals: [],
+        decision: 'selected' as const,
+        decisionReason: '',
+      },
+    ],
+  };
+}
+
+function baseDirective(overrides: Partial<ConvictionDirective> = {}): ConvictionDirective {
+  return {
+    directive: 'Overlapping events on 2026-04-02.',
+    action_type: 'write_document',
+    confidence: 80,
+    reason: 'Two calendar blocks overlap on 2026-04-02.',
+    evidence: [{ type: 'signal', description: 'Calendar overlap' }],
+    discrepancyClass: 'schedule_conflict',
+    generationLog: {
+      outcome: 'selected',
+      stage: 'persistence',
+      reason: 'ok',
+      candidateFailureReasons: [],
+      candidateDiscovery: discoveryWithScheduleConflictClass(),
+    },
+    ...overrides,
+  };
+}
+
+describe('schedule_conflict finished-work gates (aligned)', () => {
+  const checklistArtifact = {
+    type: 'document',
+    title: 'Resolve overlap',
+    content:
+      '1. Open your calendar for 2026-04-02.\n2. Decide which event to move.\n3. Notify attendees.',
+  } as unknown as ConvictionArtifact;
+
+  it('rejects owner checklist consistently across bottom gate, send-worthiness, persistence, and artifact checks', () => {
+    const directive = baseDirective();
+    const artifact = checklistArtifact as ConvictionArtifact;
+
+    const bottom = evaluateBottomGate(directive, artifact);
+    expect(bottom.pass).toBe(false);
+    expect(bottom.blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
+
+    const send = isSendWorthy(directive, artifact);
+    expect(send.worthy).toBe(false);
+    expect(send.reason).toBe('schedule_conflict_not_finished_outbound');
+
+    expect(getArtifactPersistenceIssues('write_document', artifact, directive).length).toBeGreaterThan(0);
+
+    const persist = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+      candidateType: 'discrepancy',
+    });
+    expect(persist.some((m) => m.includes('schedule_conflict'))).toBe(true);
+  });
+
+  it('rejects production leak pattern when discrepancyClass is missing but headline matches overlap', () => {
+    const directive = baseDirective({
+      discrepancyClass: undefined,
+      generationLog: {
+        outcome: 'selected',
+        stage: 'persistence',
+        reason: 'ok',
+        candidateFailureReasons: [],
+        candidateDiscovery: {
+          candidateCount: 1,
+          suppressedCandidateCount: 0,
+          selectionMargin: 0.1,
+          selectionReason: null,
+          failureReason: null,
+          topCandidates: [],
+        },
+      },
+    });
+    const artifact = {
+      type: 'document',
+      title: 'Overlapping events on 2026-04-02.',
+      content:
+        'Objective: Overlapping events on 2026-04-02.\n\nExecution Notes:\n- Which takes priority, and how will you communicate the trade-off?',
+    } as unknown as ConvictionArtifact;
+
+    expect(evaluateBottomGate(directive, artifact).blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
+    expect(isSendWorthy(directive, artifact).worthy).toBe(false);
+    expect(getArtifactPersistenceIssues('write_document', artifact, directive).length).toBeGreaterThan(0);
+  });
+
+  it('allows outbound message artifact consistently', () => {
+    const directive = baseDirective();
+    const artifact = {
+      type: 'document',
+      title: 'Messages for 2026-04-02 conflict',
+      content:
+        'MESSAGE TO Alex (text):\n\nHi Alex — I am double-booked on 2026-04-02 (calendar conflict). Could we shift our sync to the morning of 2026-04-03?',
+    } as unknown as ConvictionArtifact;
+
+    const bottom = evaluateBottomGate(directive, artifact);
+    expect(bottom.pass).toBe(true);
+    expect(bottom.blocked_reasons).not.toContain('FINISHED_WORK_REQUIRED');
+
+    const send = isSendWorthy(directive, artifact);
+    expect(send.worthy).toBe(true);
+
+    expect(getArtifactPersistenceIssues('write_document', artifact, directive)).toEqual([]);
+
+    const persist = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+      candidateType: 'discrepancy',
+    });
+    expect(persist.filter((m) => m.includes('schedule_conflict'))).toEqual([]);
+
+    const de = getDecisionEnforcementIssues({
+      actionType: 'write_document',
+      directiveText: directive.directive,
+      reason: directive.reason ?? '',
+      artifact,
+      discrepancyClass: 'schedule_conflict',
+    });
+    expect(de.length).toBe(0);
+  });
+});

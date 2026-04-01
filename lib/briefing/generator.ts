@@ -37,6 +37,11 @@ import {
   validateTriggerArtifact,
 } from './trigger-action-map';
 import type { DiscrepancyClass } from './discrepancy-detector';
+import { effectiveDiscrepancyClassForGates } from './effective-discrepancy-class';
+import {
+  directiveLooksLikeScheduleConflict,
+  scheduleConflictArtifactIsOwnerProcedure,
+} from './schedule-conflict-guards';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -1071,6 +1076,8 @@ export interface StructuredContext {
   // Populated for send_message candidates with a confirmed external recipient.
   // When present, buildPromptFromStructuredContext strips system metrics entirely.
   recipient_brief: string | null;
+  /** Discrepancy subclass when candidate_class is discrepancy (e.g. schedule_conflict). */
+  discrepancy_class: string | null;
 }
 
 type CausalMechanismClass =
@@ -1504,6 +1511,9 @@ function buildStructuredContext(
     recipient_brief: has_real_recipient
       ? buildRecipientBrief(winner.relationshipContext ?? null, signalEvidence)
       : null,
+    discrepancy_class:
+      winner.discrepancyClass ??
+      (winner.id.startsWith('discrepancy_conflict_') ? 'schedule_conflict' : null),
   };
 }
 
@@ -2040,6 +2050,16 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
     );
   }
 
+  const isScheduleConflictPrompt =
+    ctx.discrepancy_class === 'schedule_conflict' ||
+    (ctx.candidate_class === 'discrepancy' &&
+      /\boverlapping events on \d{4}-\d{2}-\d{2}\b/i.test(ctx.candidate_title));
+  if (isScheduleConflictPrompt) {
+    sections.push(
+      'SCHEDULE_CONFLICT_RULE: The two events overlap. Your only job is to produce a ready-to-send message from the user to the relevant person(s) proposing a resolution. Subject line, body, send-ready. Do NOT produce: Objective: blocks, Execution Notes: blocks, questions directed at the user, contact dumps, numbered owner steps, or planning notes. If no real external recipient exists in the overlapping events, output do_nothing.',
+    );
+  }
+
   sections.push(
     'CRITICAL: Use ONLY real names, emails, dates, and details from the context above. ' +
     'NEVER use bracket placeholders like [Name], [Company], [Date]. ' +
@@ -2567,6 +2587,8 @@ const OBVIOUS_FIRST_LAYER_PATTERNS = [
 
 const EXPLICIT_ASK_PATTERNS = [
   /\bcan you\b/i,
+  /\bcould (?:we|you)\b/i,
+  /\bwould you\b/i,
   /\bplease confirm\b/i,
   /\bplease approve\b/i,
   /\bapprove or reject\b/i,
@@ -2605,6 +2627,7 @@ const PRESSURE_OR_CONSEQUENCE_PATTERNS = [
   /\boverlapp(?:ing|ed)?\b/i,
   /\bdouble[- ]book/i,
   /\b(?:calendar|schedule)\s+conflict\b/i,
+  /\bconflict\b/i,
   /\bconflicting\s+events?\b/i,
   /\bsame\s+time\b/i,
   /\btrade[-‐‑–—]?\s*off\b/u,
@@ -2617,6 +2640,7 @@ const OWNERSHIP_PATTERNS = [
   /\bresponsible\b/i,
   /\bassign\b/i,
   /\byour\s+(?:calendar|schedule)\b/i,
+  /\bI(?:'m| am)\s+.{0,60}(?:double[\s-]?book(?:ed)?|overlap(?:ping)?|conflict(?:ing)?)\b/i,
 ];
 
 const REWRITE_REQUIRED_PATTERNS = [
@@ -2684,7 +2708,6 @@ export function getDecisionEnforcementIssues(input: {
   directiveText: string;
   reason: string;
   artifact: ConvictionArtifact | Record<string, unknown> | null;
-  /** When set, schedule_conflict write_document with a dated step list skips explicit/time/pressure heuristics (conflict IS the pressure). */
   discrepancyClass?: string | null;
 }): string[] {
   const normalizedType = normalizeDecisionActionType(input.actionType);
@@ -2698,29 +2721,14 @@ export function getDecisionEnforcementIssues(input: {
   const combinedText = `${input.directiveText}\n${input.reason}\n${artifactText}`.trim();
   const issues: string[] = [];
 
-  // Calendar conflicts: ISO anchor + either numbered steps in the doc OR explicit overlap/trade-off
-  // language in the full combined text (directive often carries "which takes priority").
-  const scheduleConflictDocRelaxed =
-    input.discrepancyClass === 'schedule_conflict' &&
-    normalizedType === 'write_document' &&
-    /\b\d{4}-\d{2}-\d{2}\b/.test(combinedText) &&
-    (
-      /\d+\.\s/m.test(artifactText) ||
-      /\b(overlap|overlapping|double-book|trade-off|which takes priority|communicate the trade-off)\b/i.test(
-        combinedText,
-      )
-    );
-
-  if (!scheduleConflictDocRelaxed) {
-    if (!textHasAny(combinedText, EXPLICIT_ASK_PATTERNS)) {
-      issues.push('decision_enforcement:missing_explicit_ask');
-    }
-    if (!textHasAny(combinedText, TIME_CONSTRAINT_PATTERNS)) {
-      issues.push('decision_enforcement:missing_time_constraint');
-    }
-    if (!textHasAny(combinedText, PRESSURE_OR_CONSEQUENCE_PATTERNS)) {
-      issues.push('decision_enforcement:missing_pressure_or_consequence');
-    }
+  if (!textHasAny(combinedText, EXPLICIT_ASK_PATTERNS)) {
+    issues.push('decision_enforcement:missing_explicit_ask');
+  }
+  if (!textHasAny(combinedText, TIME_CONSTRAINT_PATTERNS)) {
+    issues.push('decision_enforcement:missing_time_constraint');
+  }
+  if (!textHasAny(combinedText, PRESSURE_OR_CONSEQUENCE_PATTERNS)) {
+    issues.push('decision_enforcement:missing_pressure_or_consequence');
   }
   if (textHasAny(combinedText, PASSIVE_OR_IGNORABLE_PATTERNS)) {
     issues.push('decision_enforcement:passive_or_ignorable_tone');
@@ -2731,11 +2739,7 @@ export function getDecisionEnforcementIssues(input: {
   if (normalizedType === 'write_document' && textHasAny(combinedText, SUMMARY_ONLY_PATTERNS)) {
     issues.push('decision_enforcement:summary_without_decision');
   }
-  if (
-    !scheduleConflictDocRelaxed &&
-    normalizedType === 'write_document' &&
-    !textHasAny(combinedText, OWNERSHIP_PATTERNS)
-  ) {
+  if (normalizedType === 'write_document' && !textHasAny(combinedText, OWNERSHIP_PATTERNS)) {
     issues.push('decision_enforcement:missing_owner_assignment');
   }
   if (textHasAny(combinedText, REWRITE_REQUIRED_PATTERNS)) {
@@ -3685,6 +3689,17 @@ export function validateDirectiveForPersistence(input: {
     typeof input.artifact === 'object' &&
     (input.artifact as Record<string, unknown>).emergency_fallback === true
   ) {
+    const art = input.artifact as Record<string, unknown>;
+    if (
+      directiveLooksLikeScheduleConflict(input.directive) &&
+      input.directive.action_type === 'write_document'
+    ) {
+      const t = typeof art.title === 'string' ? art.title : '';
+      const c = typeof art.content === 'string' ? art.content : '';
+      if (scheduleConflictArtifactIsOwnerProcedure(`${t}\n${c}`)) {
+        return ['schedule_conflict artifact must be finished outbound work, not owner instructions'];
+      }
+    }
     return [];
   }
 
@@ -3696,6 +3711,15 @@ export function validateDirectiveForPersistence(input: {
   }
   if (!input.artifact || typeof input.artifact !== 'object') {
     issues.push('artifact is required before persistence');
+  } else if (input.directive.action_type === 'write_document') {
+    if (directiveLooksLikeScheduleConflict(input.directive)) {
+      const art = input.artifact as Record<string, unknown>;
+      const t = typeof art.title === 'string' ? art.title : '';
+      const c = typeof art.content === 'string' ? art.content : '';
+      if (scheduleConflictArtifactIsOwnerProcedure(`${t}\n${c}`)) {
+        issues.push('schedule_conflict artifact must be finished outbound work, not an owner checklist');
+      }
+    }
   }
 
   const embeddedType = (input.directive as any).embeddedArtifactType;
@@ -3735,6 +3759,7 @@ export function validateDirectiveForPersistence(input: {
         directiveText: input.directive.directive,
         reason: input.directive.reason,
         artifact: input.artifact,
+        discrepancyClass: effectiveDiscrepancyClassForGates(input.directive),
       }),
     );
   }

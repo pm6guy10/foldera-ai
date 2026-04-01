@@ -199,7 +199,7 @@ describe('artifact-generator — analysis dump leak prevention', () => {
 
     expect(mockCreate).toHaveBeenCalled();
     const firstCall = mockCreate.mock.calls[0]?.[0] as { system?: string };
-    expect(firstCall?.system ?? '').toMatch(/time-sensitive|Numbered steps|execution/i);
-    expect(firstCall?.system ?? '').not.toMatch(/outreach messages|150 words/i);
+    expect(firstCall?.system ?? '').toMatch(/FINISHED OUTBOUND|send-ready messages/i);
+    expect(firstCall?.system ?? '').not.toMatch(/Numbered steps, each completable/i);
   });
 });

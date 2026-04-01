@@ -45,6 +45,13 @@ import {
   buildSignalProcessingMessage,
   SAFE_ERROR_MESSAGES,
 } from './daily-brief-status';
+import {
+  directiveLooksLikeScheduleConflict,
+  scheduleConflictArtifactIsOwnerProcedure,
+} from '@/lib/briefing/schedule-conflict-guards';
+import { effectiveDiscrepancyClassForGates } from '@/lib/briefing/effective-discrepancy-class';
+
+export { effectiveDiscrepancyClassForGates };
 
 // Sourced from lib/config/constants.ts — single source of truth.
 const CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
@@ -89,7 +96,8 @@ export type BottomGateBlockReason =
   | 'NO_REAL_PRESSURE'
   | 'SELF_REFERENTIAL_DOCUMENT'
   | 'GENERIC_SOCIAL_MOTION'
-  | 'NON_EXECUTABLE_ARTIFACT';
+  | 'NON_EXECUTABLE_ARTIFACT'
+  | 'FINISHED_WORK_REQUIRED';
 
 export interface BottomGateResult {
   pass: boolean;
@@ -140,6 +148,7 @@ const SOCIAL_MOTION_PATTERN =
 const NON_EXECUTABLE_ARTIFACT_PATTERN =
   /\b(key (questions|considerations|takeaways|themes)|things to (consider|think about|reflect on)|questions (to ask|for) (yourself|consideration)|framework for (thinking|deciding|evaluating)|areas (of|for) (focus|consideration|improvement)|action items (to consider|for review)|potential (approaches|strategies|options to explore)|next steps.{0,20}(to consider|to think|for reflection)|food for thought)\b/i;
 
+
 /**
  * Hard bottom gate: blocks operationally empty winners before pending_approval.
  *
@@ -177,9 +186,12 @@ export function evaluateBottomGate(
     (typeof artifactRecord.title === 'string' ? artifactRecord.title : '');
   const combined = `${directiveText}\n${reason}\n${artifactBody}`;
 
-  const discClass = effectiveDiscrepancyClassForGates(directive);
   const scheduleConflictWriteDoc =
-    directive.action_type === 'write_document' && discClass === 'schedule_conflict';
+    directive.action_type === 'write_document' && directiveLooksLikeScheduleConflict(directive);
+
+  if (scheduleConflictWriteDoc && scheduleConflictArtifactIsOwnerProcedure(artifactBody)) {
+    blocked_reasons.push('FINISHED_WORK_REQUIRED');
+  }
 
   // 1. Self-referential document — check FIRST because this is the primary memo-sludge class
   if (
@@ -215,10 +227,9 @@ export function evaluateBottomGate(
         REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
       const hasExecutableMotion =
         CONCRETE_ASK_PATTERN.test(combined) ||
-        /\b\d+\.\s/m.test(artifactBody) ||
-        /\b(reschedule|decline|cancel|move|protect (?:the |your )?time|choose|prioritize|block|notify)\b/i.test(
-          artifactBody,
-        );
+        /\bMESSAGE TO\b/i.test(artifactBody) ||
+        /\?/.test(artifactBody) ||
+        /\b(Hi\b|Hello\b|Dear\b)/i.test(artifactBody);
       if (!hasAnchoredTime) {
         blocked_reasons.push('NO_REAL_PRESSURE');
       }
@@ -305,21 +316,6 @@ export function evaluateReadiness(
 // ---------------------------------------------------------------------------
 
 /**
- * Resolves discrepancy class for gates when `directive.discrepancyClass` or the
- * discovery log omits it (legacy rows / partial JSON). Calendar conflict ids are
- * stable: `discrepancy_conflict_<signalId>_<signalId>`.
- */
-export function effectiveDiscrepancyClassForGates(directive: ConvictionDirective): string | null {
-  if (directive.discrepancyClass) return directive.discrepancyClass;
-  const top = directive.generationLog?.candidateDiscovery?.topCandidates?.[0];
-  if (top?.discrepancyClass) return top.discrepancyClass;
-  if (top?.candidateType === 'discrepancy' && typeof top.id === 'string' && top.id.startsWith('discrepancy_conflict_')) {
-    return 'schedule_conflict';
-  }
-  return null;
-}
-
-/**
  * Final send-worthiness check after artifact generation.
  *
  * Pure function — no DB access, no side effects.
@@ -377,6 +373,16 @@ export function isSendWorthy(
   // Must not contain template placeholders
   if (PLACEHOLDER_PATTERN.test(artifactJson)) {
     return { worthy: false, reason: 'placeholder_content' };
+  }
+
+  if (directive.action_type === 'write_document' && directiveLooksLikeScheduleConflict(directive)) {
+    const scheduleBody =
+      (typeof artifactRecord.content === 'string' ? artifactRecord.content : '') +
+      (typeof artifactRecord.body === 'string' ? artifactRecord.body : '') +
+      (typeof artifactRecord.title === 'string' ? artifactRecord.title : '');
+    if (scheduleConflictArtifactIsOwnerProcedure(scheduleBody)) {
+      return { worthy: false, reason: 'schedule_conflict_not_finished_outbound' };
+    }
   }
 
   // send_message: require a real email recipient and a substantive body
@@ -1519,7 +1525,7 @@ export async function runDailyGenerate(
           if (goals.length > 0) {
             const { directive, artifact } = buildFirstMorningWelcome(goals);
             const persistenceIssues = [
-              ...getArtifactPersistenceIssues(directive.action_type, artifact),
+              ...getArtifactPersistenceIssues(directive.action_type, artifact, directive),
               ...validateDirectiveForPersistence({ userId, directive, artifact }),
             ];
             if (persistenceIssues.length === 0) {
@@ -1802,7 +1808,7 @@ export async function runDailyGenerate(
 
       const candidateType = directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType;
       const persistenceIssues = [
-        ...getArtifactPersistenceIssues(directive.action_type, artifact),
+        ...getArtifactPersistenceIssues(directive.action_type, artifact, directive),
         ...validateDirectiveForPersistence({ userId, directive, artifact, candidateType }),
       ];
       if (persistenceIssues.length > 0) {

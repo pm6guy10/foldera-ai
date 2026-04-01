@@ -19,6 +19,7 @@ vi.mock('@/lib/cron/daily-brief-generate', () => ({
   runDailyGenerate: mockRunDailyGenerate,
   isSendWorthy: mockIsSendWorthy,
   evaluateBottomGate: () => ({ pass: true, blocked_reasons: [] as string[] }),
+  effectiveDiscrepancyClassForGates: () => null as string | null,
 }));
 
 vi.mock('@/lib/db/client', () => ({

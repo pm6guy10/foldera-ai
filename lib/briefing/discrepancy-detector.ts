@@ -1275,8 +1275,7 @@ function extractScheduleConflicts(structured: StructuredSignalInput[], nowMs: nu
         class: 'schedule_conflict',
         title: `Overlapping events on ${dateLabel}`,
         content:
-          `You have overlapping calendar commitments on ${dateLabel}: "${a.title}" and "${b.title}". ` +
-          `Which takes priority, and how will you communicate the trade-off?`,
+          `You have overlapping calendar commitments on ${dateLabel}: "${a.title}" and "${b.title}".`,
         stakes: 3,
         urgency: 0.75,
         suggestedActionType: 'write_document',

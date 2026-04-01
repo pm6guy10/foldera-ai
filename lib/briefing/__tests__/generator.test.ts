@@ -292,7 +292,7 @@ describe('applyScheduleConflictCanonicalUserFacingCopy', () => {
       type: 'discrepancy',
       title: 'Overlapping events on 2026-04-02',
       content:
-        'You have overlapping calendar commitments on 2026-04-02: "Baby Hannah\'s Bday" and "Parents visit". Which takes priority?',
+        'You have overlapping calendar commitments on 2026-04-02: "Baby Hannah\'s Bday" and "Parents visit".',
       discrepancyClass: 'schedule_conflict',
       trigger: {
         baseline_state: 'Non-overlapping',
@@ -310,7 +310,7 @@ describe('applyScheduleConflictCanonicalUserFacingCopy', () => {
     expect(payload!.why_now).toContain('explicit priority');
   });
 
-  it('getDecisionEnforcementIssues skips ownership for schedule_conflict when overlap + ISO + numbered steps', () => {
+  it('getDecisionEnforcementIssues passes for schedule_conflict outbound document with ask, time anchor, pressure, and first-person ownership', () => {
     const issues = getDecisionEnforcementIssues({
       actionType: 'write_document',
       directiveText: 'Overlapping events on 2026-04-02.',
@@ -318,10 +318,12 @@ describe('applyScheduleConflictCanonicalUserFacingCopy', () => {
       artifact: {
         type: 'document',
         title: 'Resolve overlap',
-        content: '1. Open the calendar app for 2026-04-02.\n2. Reschedule the lower-priority block.',
+        content:
+          'MESSAGE TO Sam (text):\n\nHi Sam — I am double-booked on 2026-04-02. Could we move our check-in to Friday?',
       },
       discrepancyClass: 'schedule_conflict',
     });
     expect(issues.some((i) => i.includes('missing_owner_assignment'))).toBe(false);
+    expect(issues.length).toBe(0);
   });
 });

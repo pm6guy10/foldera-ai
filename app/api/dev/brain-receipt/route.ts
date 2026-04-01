@@ -12,6 +12,10 @@ import {
   effectiveDiscrepancyClassForGates,
 } from '@/lib/cron/daily-brief-generate';
 import { getDecisionEnforcementIssues } from '@/lib/briefing/generator';
+import {
+  directiveLooksLikeScheduleConflict,
+  scheduleConflictArtifactIsOwnerProcedure,
+} from '@/lib/briefing/schedule-conflict-guards';
 import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
 import type { ActionType, ConvictionArtifact, ConvictionDirective, GenerationRunLog } from '@/lib/briefing/types';
 import { apiError } from '@/lib/utils/api-error';
@@ -105,6 +109,15 @@ export async function POST(request: Request) {
 
       const bottomGate = evaluateBottomGate(directiveForGatesWithClass, merged as unknown as ConvictionArtifact);
 
+      const titlePart = typeof merged.title === 'string' ? merged.title : '';
+      const contentPart = typeof merged.content === 'string' ? merged.content : '';
+      const finishedWorkBody = `${titlePart}\n${contentPart}`.trim();
+      const finishedWorkApplies =
+        latestAction.action_type === 'write_document' &&
+        directiveLooksLikeScheduleConflict(directiveForGatesWithClass);
+      const finishedWorkFailed =
+        finishedWorkApplies && scheduleConflictArtifactIsOwnerProcedure(finishedWorkBody);
+
       return NextResponse.json({
         ok: true,
         started_at: startedAt,
@@ -125,6 +138,14 @@ export async function POST(request: Request) {
         },
         send_worthiness: sendWorthiness,
         bottom_gate: bottomGate,
+        finished_work_gate: {
+          applies: finishedWorkApplies,
+          failed: finishedWorkFailed,
+          blocked_reason: finishedWorkFailed ? 'FINISHED_WORK_REQUIRED' : null,
+          aligns_with_bottom_gate:
+            !finishedWorkApplies ||
+            finishedWorkFailed === bottomGate.blocked_reasons.includes('FINISHED_WORK_REQUIRED'),
+        },
         generate_stage_result: ownerResult,
       });
     }
