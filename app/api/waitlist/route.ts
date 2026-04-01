@@ -10,12 +10,26 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/db/client';
+import { rateLimit } from '@/lib/utils/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 5 signups per IP per hour
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    req.headers.get('x-real-ip') ??
+    'unknown';
+  const rl = await rateLimit(`waitlist:${ip}`, { limit: 5, window: 3600 });
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Too many requests — please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000)) } }
+    );
+  }
+
   let body: { email?: unknown };
   try {
     body = await req.json();

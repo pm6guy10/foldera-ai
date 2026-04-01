@@ -4,6 +4,20 @@
 
 ## Session Logs
 
+- 2026-04-01 — Backend security hardening: RLS service_role policies, policy tightening, Sentry audit, API rate limiting, session security
+  MODE: FLOW
+  Commit hash(es): pending (set after push)
+  Files changed: `supabase/migrations/20260401000001_add_service_role_policies.sql` (new), `app/api/waitlist/route.ts` (rate limiting added), `CLAUDE.md` (SENTRY_DSN added to required env vars)
+  What was verified:
+  - RLS service_role ALL policies applied via Supabase MCP to 15 tables: api_usage, signal_summaries, tkg_actions, tkg_briefings, tkg_commitments, tkg_conflicts, tkg_entities, tkg_feedback, tkg_goals, tkg_pattern_metrics, tkg_signals, tkg_user_meta, user_subscriptions, referral_accounts, waitlist
+  - Policy tightening applied via MCP: dropped "service_role_only" (incorrectly granted ALL to public) on referral_accounts and user_subscriptions; replaced "users_own_tokens" ALL-to-public with SELECT-only for authenticated on user_tokens; replaced "Users manage own goals" public ALL with authenticated-scoped policy on tkg_goals; created authenticated-scoped policies for signal_summaries and tkg_pattern_metrics
+  - Sentry: instrumentation.ts and instrumentation-client.ts both use SENTRY_DSN env var; next.config.mjs has withSentryConfig wrapper; real DSN present in .env.local; no sentry.client.config.ts needed (modern instrumentation hook approach)
+  - API security: /api/waitlist was the only unprotected POST without rate limiting — added IP-based rate limit (5/hr); all other POST routes require CRON_SECRET or session auth; ENCRYPTION_KEY never logged (only checked for existence); apiError() returns generic messages, never raw Supabase errors; CSRF handled by NextAuth built-in CSRF token
+  - Session security: middleware redirects to /login on expired JWT (getToken returns null); session callback exposes only id, email, name, hasOnboarded — no tokens, refresh_tokens, or provider data
+  - npm run build passed (exit 0)
+  - npx vitest run: 45 files, 527 tests passed (exit 0)
+  Any unresolved issues: Production E2E (npm run test:prod) not run this session — no user-facing route contract changes; only waitlist rate limiting and DB-level RLS changes. Live RLS verification would require authenticated DB session.
+
 - 2026-03-31 — Conversion flow redesign: single-card pricing, free tier gating, blurred artifact preview
   MODE: FLOW
   Commit hash(es): pending

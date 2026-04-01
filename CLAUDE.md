@@ -54,6 +54,7 @@ Any insert with values outside these sets will fail silently (Supabase returns s
 - `STRIPE_WEBHOOK_SECRET`
 - `RESEND_WEBHOOK_SECRET`
 - `INGEST_USER_ID`
+- `SENTRY_DSN`
 
 Optional recovery variable:
 
