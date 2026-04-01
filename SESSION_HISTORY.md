@@ -6,7 +6,7 @@
 
 - 2026-03-31 — Final cleanup batch: entity classification on ingestion, hallucination guard, idempotency, rate limiting, governance docs
   MODE: FLOW
-  Commit hash(es): pending
+  Commit hash(es): `acd2199`
   Files changed: `lib/signals/signal-processor.ts` (classifyEntityTrustClass + upsertEntity integration), `lib/briefing/generator.ts` (hallucination GROUNDING RULE in both send_message prompt locations), `app/api/resend/webhook/route.ts` (in-memory rate limit 10/min per IP), `lib/cron/daily-brief-send.ts` (resend_id idempotency guard + store resend_id in execution_result), `CURRENT_STATE.md`, `AUTOMATION_BACKLOG.md`, `LESSONS_LEARNED.md`, `SESSION_HISTORY.md`
   What was verified:
   - Fix 1 (entity classification): `classifyEntityTrustClass` added and integrated into `upsertEntity` on both INSERT and UPDATE paths; entity-level classification (domain + interaction count) merged with signal-level trust class
