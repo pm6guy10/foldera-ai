@@ -17,11 +17,11 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-hidden selection:bg-cyan-500/30 selection:text-white">
       {/* Ambient background glow */}
       <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:40px_40px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.06)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.10)_0%,transparent_60%)]" />
       </div>
 
       {/* Nav */}
@@ -43,12 +43,10 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
       {/* Main — slightly above-center for better visual balance */}
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 pb-16">
         <div className="w-full max-w-sm">
-          {/* Logo mark above form */}
+          {/* Heading */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-black tracking-tighter text-white mb-2">Sign in.</h1>
-            <p className="text-zinc-500 text-sm font-medium">
-              Finished work, every morning.
-            </p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-3">Finished work, every morning.</p>
+            <h1 className="text-4xl font-black tracking-tighter text-white">Sign in.</h1>
           </div>
 
           {errorMessage && (
@@ -61,10 +59,10 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
             <button
               onClick={() => handleSignIn('google')}
               disabled={!!loadingProvider}
-              className="w-full flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-3.5 px-6 rounded-2xl transition-all shadow-[0_0_24px_rgba(255,255,255,0.1)] disabled:opacity-60 text-sm active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-3 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-xl transition-all shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 disabled:cursor-wait"
             >
               {loadingProvider === 'google' ? (
-                <span className="w-5 h-5 border-2 border-zinc-400 border-t-zinc-900 rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               ) : (
                 <>
                   <GoogleIcon />
@@ -76,10 +74,10 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
             <button
               onClick={() => handleSignIn('azure-ad')}
               disabled={!!loadingProvider}
-              className="w-full flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0078d4] font-semibold py-3.5 px-6 rounded-2xl transition-all shadow-[0_0_24px_rgba(0,164,239,0.15)] disabled:opacity-60 text-sm active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-3 bg-zinc-900 border border-white/10 text-white hover:bg-zinc-800 hover:border-white/20 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-xl transition-all backdrop-blur-sm disabled:opacity-60 disabled:cursor-wait active:scale-95"
             >
               {loadingProvider === 'azure-ad' ? (
-                <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
                   <MicrosoftIcon />
@@ -97,7 +95,7 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
                 <ArrowRight className="w-3 h-3" />
               </a>
             </p>
-            <p className="text-zinc-700 text-xs">No credit card required</p>
+            <p className="text-zinc-700 text-[10px] font-black uppercase tracking-[0.15em]">No credit card required</p>
           </div>
         </div>
       </main>

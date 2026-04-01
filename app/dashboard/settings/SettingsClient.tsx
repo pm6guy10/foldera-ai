@@ -228,15 +228,15 @@ export default function SettingsClient() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-zinc-950">
+      <div className="min-h-screen bg-[#07070c]">
         <Header />
         <main className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
-          <div className="animate-pulse space-y-3 mt-6">
-            <div className="h-4 w-40 bg-zinc-800 rounded" />
-            <div className="h-20 bg-zinc-900 rounded-xl" />
-            <div className="h-20 bg-zinc-900 rounded-xl" />
-            <div className="h-4 w-32 bg-zinc-800 rounded mt-4" />
-            <div className="h-24 bg-zinc-900 rounded-xl" />
+          <div className="animate-pulse space-y-4 mt-8">
+            <div className="h-3 w-32 bg-zinc-800/60 rounded" />
+            <div className="h-24 bg-zinc-900/40 rounded-2xl" />
+            <div className="h-24 bg-zinc-900/40 rounded-2xl" />
+            <div className="h-3 w-24 bg-zinc-800/60 rounded mt-6" />
+            <div className="h-28 bg-zinc-900/40 rounded-2xl" />
           </div>
         </main>
       </div>
@@ -245,10 +245,10 @@ export default function SettingsClient() {
 
   if (status !== 'authenticated') {
     return (
-      <div className="min-h-screen bg-zinc-950">
+      <div className="min-h-screen bg-[#07070c]">
         <Header />
         <main className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
-          <p className="text-zinc-400 text-sm mt-8">Please sign in to view settings.</p>
+          <p className="text-zinc-500 text-sm mt-8">Please sign in to view settings.</p>
         </main>
       </div>
     );
@@ -264,411 +264,408 @@ export default function SettingsClient() {
   const activeBuckets = goalBuckets.filter(b => ALL_BUCKETS.includes(b));
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white">
+      {/* Ambient grid */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
+      </div>
       <Header />
-      <main className="pt-20 pb-14 px-4 max-w-3xl mx-auto">
+      <main className="relative z-10 pt-20 pb-14 px-4 max-w-3xl mx-auto space-y-5">
 
         {/* Sync status banner */}
         {syncStatus && (
-          <div className="mb-6 px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+          <div className="px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 backdrop-blur-sm">
             <p className="text-sm text-cyan-300">{syncStatus}</p>
           </div>
         )}
 
         {actionError && (
-          <p ref={errorRef} className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">{actionError}</p>
+          <p ref={errorRef} className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">{actionError}</p>
         )}
 
-        <div className="rounded-2xl border border-zinc-800/70 bg-zinc-900/35 overflow-hidden">
-        {/* ── Connected accounts (primary) ── */}
-        <section className="px-5 py-6 md:px-6 md:py-7">
-          <SectionHeading className="mb-3">Connected accounts</SectionHeading>
-          <p className="text-sm text-zinc-500 mb-4">Choose which accounts Foldera reads.</p>
-
-          {/* Google card */}
-          <div className={`bg-zinc-900/60 rounded-xl border border-zinc-800/70 border-l-2 overflow-hidden ${google?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700/80'}`}>
-            <div className="p-4 md:p-5 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <GoogleIcon />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white">Google</p>
-                  <p className={`text-xs mt-0.5 truncate ${google?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                    {google?.is_active ? (google.sync_email || 'Connected') : 'Not connected'}
-                  </p>
-                </div>
-              </div>
-              {google?.is_active ? (
-                <button
-                  onClick={async () => {
-                    setDisconnecting('google');
-                    setActionError(null);
-                    // Optimistic update
-                    setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
-                    try {
-                      const response = await fetch('/api/google/disconnect', { method: 'POST' });
-                      if (!response.ok) {
-                        setActionError('Could not disconnect Google. Try again.');
-                        await refreshIntegrationsStatus().catch(() => {});
-                      }
-                    } catch {
-                      setActionError('Network error disconnecting Google.');
-                      await refreshIntegrationsStatus().catch(() => {});
-                    } finally {
-                      setDisconnecting(null);
-                    }
-                  }}
-                  disabled={disconnecting === 'google'}
-                  className="shrink-0 text-xs border border-zinc-700/80 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
-                >
-                  {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setConnectingProvider('google');
-                    localStorage.setItem('connecting_provider', 'google');
-                    window.location.href = '/api/google/connect';
-                  }}
-                  disabled={connectingProvider === 'google'}
-                  className="shrink-0 text-xs bg-zinc-700/90 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
-                >
-                  {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
-                </button>
-              )}
-            </div>
-            {google?.is_active && (
-              <div className="px-4 md:px-5 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-800/60">
-                <SourceLine label="Gmail" count={sourceCounts['gmail'] ?? 0} providerActive={true} />
-                <SourceLine label="Calendar" count={sourceCounts['google_calendar'] ?? 0} providerActive={true} />
-                <SourceLine label="Drive" count={sourceCounts['drive'] ?? 0} providerActive={true} />
-              </div>
-            )}
+        {/* ── Connected accounts ── */}
+        <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
+          <div className="px-5 py-5 md:px-6 md:py-6 border-b border-white/5">
+            <SectionHeading>Connected accounts</SectionHeading>
+            <p className="text-xs text-zinc-600">Choose which accounts Foldera reads.</p>
           </div>
-
-          {/* Microsoft card */}
-          <div className={`mt-3 bg-zinc-900/60 rounded-xl border border-zinc-800/70 border-l-2 overflow-hidden ${microsoft?.is_active ? 'border-l-emerald-500/60' : 'border-l-zinc-700/80'}`}>
-            <div className="p-4 md:p-5 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <MicrosoftIcon />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white">Microsoft</p>
-                  <p className={`text-xs mt-0.5 truncate ${microsoft?.is_active ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                    {microsoft?.is_active ? (microsoft.sync_email || 'Connected') : 'Not connected'}
-                  </p>
-                </div>
-              </div>
-              {microsoft?.is_active ? (
-                <button
-                  onClick={async () => {
-                    setDisconnecting('microsoft');
-                    setActionError(null);
-                    // Optimistic update
-                    setIntegrations(prev => prev.map(i =>
-                      i.provider === 'azure_ad' ? { ...i, is_active: false, sync_email: undefined } : i
-                    ));
-                    try {
-                      const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
-                      if (!response.ok) {
-                        setActionError('Could not disconnect Microsoft. Try again.');
-                        await refreshIntegrationsStatus().catch(() => {});
-                      }
-                    } catch {
-                      setActionError('Network error disconnecting Microsoft.');
-                      await refreshIntegrationsStatus().catch(() => {});
-                    } finally {
-                      setDisconnecting(null);
-                    }
-                  }}
-                  disabled={disconnecting === 'microsoft'}
-                  className="shrink-0 text-xs border border-zinc-700/80 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
-                >
-                  {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setConnectingProvider('microsoft');
-                    localStorage.setItem('connecting_provider', 'microsoft');
-                    window.location.href = '/api/microsoft/connect';
-                  }}
-                  disabled={connectingProvider === 'microsoft'}
-                  className="shrink-0 text-xs bg-zinc-700/90 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
-                >
-                  {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
-                </button>
-              )}
-            </div>
-            {microsoft?.is_active && (
-              <div className="px-4 md:px-5 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-800/60">
-                <SourceLine label="Mail" count={sourceCounts['outlook'] ?? 0} providerActive={true} />
-                <SourceLine label="Calendar" count={sourceCounts['outlook_calendar'] ?? 0} providerActive={true} />
-                <SourceLine label="OneDrive" count={sourceCounts['onedrive'] ?? 0} providerActive={true} />
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ── Focus areas (secondary) ── */}
-        <section className="border-t border-zinc-800/70 px-5 py-6 md:px-6 md:py-7">
-        <SectionHeading className="mb-4">Focus areas</SectionHeading>
-        <div className="rounded-xl bg-zinc-900/45 border border-zinc-800/60 p-4 md:p-5">
-          {!editingFocus ? (
-            <>
-              {activeBuckets.length === 0 && !goalFreeText ? (
-                <p className="text-sm text-zinc-500">No focus areas set.</p>
-              ) : (
-                <>
-                  {activeBuckets.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {activeBuckets.map((label) => (
-                        <span
-                          key={label}
-                          className="rounded-lg py-1.5 px-3 text-xs font-medium bg-cyan-500/15 border border-cyan-500/40 text-cyan-300"
-                        >
-                          {label}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {goalFreeText && (
-                    <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
-                      <span className="text-zinc-500 text-xs uppercase tracking-wide mr-1.5">Goal:</span>
-                      {goalFreeText}
+          <div className="px-5 py-5 md:px-6 md:py-6 space-y-3">
+            {/* Google card */}
+            <div className={`rounded-2xl border border-white/10 overflow-hidden ${google?.is_active ? 'border-l-4 border-l-cyan-500/70' : ''}`}>
+              <div className="bg-zinc-950/60 p-4 md:p-5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <GoogleIcon />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white">Google</p>
+                    <p className={`text-xs mt-0.5 truncate ${google?.is_active ? 'text-cyan-400' : 'text-zinc-500'}`}>
+                      {google?.is_active ? (google.sync_email || 'Connected') : 'Not connected'}
                     </p>
-                  )}
-                </>
-              )}
-              <button
-                onClick={handleEditFocus}
-                className="mt-4 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
-              >
-                Edit focus areas →
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-2">
-                {ALL_BUCKETS.map((label) => {
-                  const active = editBuckets.has(label);
-                  return (
-                    <button
-                      key={label}
-                      onClick={() => {
-                        setEditBuckets(prev => {
-                          const next = new Set(prev);
-                          if (next.has(label)) next.delete(label);
-                          else next.add(label);
-                          return next;
-                        });
-                      }}
-                      className={`rounded-xl py-2.5 px-3 text-sm font-medium transition-colors border text-left ${
-                        active
-                          ? 'bg-cyan-500/15 border-cyan-500/50 text-cyan-300'
-                          : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
+                  </div>
+                </div>
+                {google?.is_active ? (
+                  <button
+                    onClick={async () => {
+                      setDisconnecting('google');
+                      setActionError(null);
+                      setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
+                      try {
+                        const response = await fetch('/api/google/disconnect', { method: 'POST' });
+                        if (!response.ok) {
+                          setActionError('Could not disconnect Google. Try again.');
+                          await refreshIntegrationsStatus().catch(() => {});
+                        }
+                      } catch {
+                        setActionError('Network error disconnecting Google.');
+                        await refreshIntegrationsStatus().catch(() => {});
+                      } finally {
+                        setDisconnecting(null);
+                      }
+                    }}
+                    disabled={disconnecting === 'google'}
+                    className="shrink-0 text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                  >
+                    {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setConnectingProvider('google');
+                      localStorage.setItem('connecting_provider', 'google');
+                      window.location.href = '/api/google/connect';
+                    }}
+                    disabled={connectingProvider === 'google'}
+                    className="shrink-0 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                  >
+                    {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
+                  </button>
+                )}
               </div>
-              <input
-                type="text"
-                value={editFreeText}
-                onChange={(e) => setEditFreeText(e.target.value)}
-                placeholder="e.g., land the MAS3 role at HCA"
-                className="mt-3 w-full bg-zinc-800 border border-zinc-700 rounded-xl py-2.5 px-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50"
-              />
-              {focusSaveError && (
-                <p className="mt-2 text-xs text-red-400">{focusSaveError}</p>
+              {google?.is_active && (
+                <div className="px-4 md:px-5 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-white/5 bg-black/20">
+                  <SourceLine label="Gmail" count={sourceCounts['gmail'] ?? 0} providerActive={true} />
+                  <SourceLine label="Calendar" count={sourceCounts['google_calendar'] ?? 0} providerActive={true} />
+                  <SourceLine label="Drive" count={sourceCounts['drive'] ?? 0} providerActive={true} />
+                </div>
               )}
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={handleSaveFocus}
-                  disabled={savingFocus}
-                  className="flex-1 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-wait text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
-                >
-                  {savingFocus ? 'Saving…' : 'Save'}
-                </button>
-                <button
-                  onClick={() => setEditingFocus(false)}
-                  disabled={savingFocus}
-                  className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl py-2.5 text-sm font-medium transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-        </section>
-
-        {/* ── Subscription (tertiary) ── */}
-        <section className="border-t border-zinc-800/70 px-5 py-6 md:px-6 md:py-7">
-        <SectionHeading className="mb-4">Subscription</SectionHeading>
-        <div className="rounded-xl bg-zinc-900/40 border border-zinc-800/60 p-4 md:p-5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className={`px-2.5 py-1 rounded-md text-xs font-semibold ${isPro ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-zinc-700 text-zinc-400 border border-zinc-600'}`}>
-              {planLabel}
             </div>
-            <div>
-              {planDetail && (
-                <p className={`text-xs font-medium ${subscription?.status === 'past_due' ? 'text-amber-400' : 'text-zinc-400'}`}>
-                  {planDetail}
-                </p>
+
+            {/* Microsoft card */}
+            <div className={`rounded-2xl border border-white/10 overflow-hidden ${microsoft?.is_active ? 'border-l-4 border-l-cyan-500/70' : ''}`}>
+              <div className="bg-zinc-950/60 p-4 md:p-5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <MicrosoftIcon />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white">Microsoft</p>
+                    <p className={`text-xs mt-0.5 truncate ${microsoft?.is_active ? 'text-cyan-400' : 'text-zinc-500'}`}>
+                      {microsoft?.is_active ? (microsoft.sync_email || 'Connected') : 'Not connected'}
+                    </p>
+                  </div>
+                </div>
+                {microsoft?.is_active ? (
+                  <button
+                    onClick={async () => {
+                      setDisconnecting('microsoft');
+                      setActionError(null);
+                      setIntegrations(prev => prev.map(i =>
+                        i.provider === 'azure_ad' ? { ...i, is_active: false, sync_email: undefined } : i
+                      ));
+                      try {
+                        const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
+                        if (!response.ok) {
+                          setActionError('Could not disconnect Microsoft. Try again.');
+                          await refreshIntegrationsStatus().catch(() => {});
+                        }
+                      } catch {
+                        setActionError('Network error disconnecting Microsoft.');
+                        await refreshIntegrationsStatus().catch(() => {});
+                      } finally {
+                        setDisconnecting(null);
+                      }
+                    }}
+                    disabled={disconnecting === 'microsoft'}
+                    className="shrink-0 text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                  >
+                    {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setConnectingProvider('microsoft');
+                      localStorage.setItem('connecting_provider', 'microsoft');
+                      window.location.href = '/api/microsoft/connect';
+                    }}
+                    disabled={connectingProvider === 'microsoft'}
+                    className="shrink-0 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                  >
+                    {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
+                  </button>
+                )}
+              </div>
+              {microsoft?.is_active && (
+                <div className="px-4 md:px-5 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-white/5 bg-black/20">
+                  <SourceLine label="Mail" count={sourceCounts['outlook'] ?? 0} providerActive={true} />
+                  <SourceLine label="Calendar" count={sourceCounts['outlook_calendar'] ?? 0} providerActive={true} />
+                  <SourceLine label="OneDrive" count={sourceCounts['onedrive'] ?? 0} providerActive={true} />
+                </div>
               )}
-              <p className="text-xs text-zinc-500">
-                {isPro ? 'Finished artifacts, every morning.' : 'Upgrade to unlock finished artifacts.'}
-              </p>
             </div>
           </div>
-          {!isPro && (
+        </section>
+
+        {/* ── Focus areas ── */}
+        <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
+          <div className="px-5 py-5 md:px-6 md:py-6 border-b border-white/5">
+            <SectionHeading>Focus areas</SectionHeading>
+            <p className="text-xs text-zinc-600">What Foldera optimizes for.</p>
+          </div>
+          <div className="px-5 py-5 md:px-6 md:py-6">
+            {!editingFocus ? (
+              <>
+                {activeBuckets.length === 0 && !goalFreeText ? (
+                  <p className="text-sm text-zinc-500">No focus areas set.</p>
+                ) : (
+                  <>
+                    {activeBuckets.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {activeBuckets.map((label) => (
+                          <span
+                            key={label}
+                            className="rounded-lg py-1.5 px-3 text-xs font-black uppercase tracking-[0.1em] bg-cyan-500/10 border border-cyan-500/30 text-cyan-300"
+                          >
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {goalFreeText && (
+                      <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
+                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mr-2">Goal:</span>
+                        {goalFreeText}
+                      </p>
+                    )}
+                  </>
+                )}
+                <button
+                  onClick={handleEditFocus}
+                  className="mt-4 text-[10px] font-black uppercase tracking-[0.15em] text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  Edit focus areas →
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  {ALL_BUCKETS.map((label) => {
+                    const active = editBuckets.has(label);
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => {
+                          setEditBuckets(prev => {
+                            const next = new Set(prev);
+                            if (next.has(label)) next.delete(label);
+                            else next.add(label);
+                            return next;
+                          });
+                        }}
+                        className={`rounded-xl py-2.5 px-3 text-xs font-black uppercase tracking-[0.08em] transition-colors border text-left ${
+                          active
+                            ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-300'
+                            : 'bg-zinc-900/60 border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-400'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <input
+                  type="text"
+                  value={editFreeText}
+                  onChange={(e) => setEditFreeText(e.target.value)}
+                  placeholder="e.g., land the MAS3 role at HCA"
+                  className="mt-3 w-full bg-zinc-900/60 border border-white/10 rounded-xl py-2.5 px-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50"
+                />
+                {focusSaveError && (
+                  <p className="mt-2 text-xs text-red-400">{focusSaveError}</p>
+                )}
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={handleSaveFocus}
+                    disabled={savingFocus}
+                    className="flex-1 bg-white text-black hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-wait rounded-xl py-2.5 text-xs font-black uppercase tracking-[0.12em] transition-colors"
+                  >
+                    {savingFocus ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => setEditingFocus(false)}
+                    disabled={savingFocus}
+                    className="flex-1 bg-zinc-900/60 hover:bg-zinc-800/60 border border-white/10 text-zinc-400 rounded-xl py-2.5 text-xs font-black uppercase tracking-[0.12em] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* ── Generate Now (prominent) ── */}
+        <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
+          <div className="px-5 py-5 md:px-6 md:py-6 border-b border-white/5">
+            <SectionHeading>Generate</SectionHeading>
+            <p className="text-xs text-zinc-600">Sync your data and generate today&apos;s brief. Takes up to 60 seconds.</p>
+          </div>
+          <div className="px-5 py-5 md:px-6 md:py-6">
             <button
+              disabled={generateState === 'loading' || generateState === 'success'}
               onClick={async () => {
-                setUpgrading(true);
+                const now = Date.now();
+                if (now - lastGenerateRef.current < 30_000) {
+                  setGenerateMessage('Please wait 30 seconds before trying again.');
+                  return;
+                }
+                lastGenerateRef.current = now;
+                setGenerateState('loading');
+                setGenerateMessage(null);
                 try {
-                  const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-                  const d = await res.json().catch(() => ({}));
-                  if (d.url) {
-                    window.location.href = d.url;
-                  } else {
-                    setActionError('Could not start checkout. Try again.');
-                    setUpgrading(false);
+                  const res = await fetch('/api/settings/run-brief', { method: 'POST' });
+                  const data = await res.json().catch(() => null);
+                  if (res.ok && data?.ok) {
+                    setGenerateState('success');
+                    window.location.href = '/dashboard?generated=true';
+                    return;
                   }
+                  if (res.ok && data?.stages) {
+                    const stages = data.stages as Record<string, any>;
+                    const genStatus = stages.daily_brief?.generate?.status;
+                    if (genStatus === 'ok') {
+                      setGenerateState('success');
+                      window.location.href = '/dashboard?generated=true';
+                      return;
+                    }
+                    const signalOnly = stages.daily_brief?.signal_processing?.status === 'failed' && genStatus !== 'failed';
+                    if (signalOnly) {
+                      setGenerateState('success');
+                      window.location.href = '/dashboard?generated=true';
+                      return;
+                    }
+                    const parts: string[] = [];
+                    if (genStatus === 'failed') parts.push('Brief generation failed');
+                    if (stages.sync_microsoft?.ok === false) parts.push('Microsoft sync issue');
+                    if (stages.sync_google?.ok === false) parts.push('Google sync issue');
+                    setGenerateState('error');
+                    setGenerateMessage(parts.length > 0 ? parts.join('. ') + '.' : 'Something went wrong.');
+                    return;
+                  }
+                  setGenerateState('error');
+                  setGenerateMessage(data?.error || 'Request failed. Try again in 30 seconds.');
                 } catch {
-                  setActionError('Network error. Try again.');
-                  setUpgrading(false);
+                  setGenerateState('error');
+                  setGenerateMessage('Network error — try again in 30 seconds.');
                 }
               }}
-              disabled={upgrading}
-              className="shrink-0 text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg px-4 py-2 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className={`w-full rounded-xl py-4 text-xs font-black uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${
+                generateState === 'loading'
+                  ? 'bg-zinc-800/60 text-zinc-500 cursor-wait border border-white/5'
+                  : generateState === 'success'
+                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 cursor-default'
+                    : 'bg-white text-black hover:bg-zinc-200 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-[1.01] active:scale-[0.99]'
+              }`}
             >
-              {upgrading ? 'Loading…' : 'Upgrade'}
+              {generateState === 'loading' ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
+                  Running sync + generate…
+                </>
+              ) : generateState === 'success' ? 'Redirecting…' : 'Generate now'}
             </button>
-          )}
-        </div>
+            {generateMessage && (
+              <p className={`mt-3 text-xs leading-relaxed ${generateState === 'error' ? 'text-red-400' : 'text-cyan-400'}`}>
+                {generateMessage}
+              </p>
+            )}
+          </div>
         </section>
 
-        {/* ── Account (quiet) ── */}
-        <section className="border-t border-zinc-800/70 px-5 py-6 md:px-6 md:py-7">
-        <SectionHeading className="mb-4">Account</SectionHeading>
-        <div className="rounded-xl bg-zinc-900/40 border border-zinc-800/60 p-4 mb-3">
-          {session?.user?.email && (
-            <p className="text-xs text-zinc-500 mb-1">Signed in as</p>
-          )}
-          {session?.user?.email && (
-            <p className="text-sm text-zinc-300 font-medium">{session.user.email}</p>
-          )}
-        </div>
-
-        <div className="grid gap-3">
-          <button
-            onClick={handleSignOut}
-            className="w-full bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/80 hover:border-zinc-600 text-zinc-200 rounded-xl py-3 text-sm font-medium transition-colors"
-          >
-            Sign out
-          </button>
-
-          <button
-            onClick={handleDeleteAccount}
-            className="w-full border border-red-900/40 hover:border-red-700/70 bg-red-950/10 hover:bg-red-950/20 text-red-400/90 hover:text-red-300 rounded-xl py-3 text-sm font-medium transition-colors"
-          >
-            {deleteConfirm ? 'Tap again to confirm deletion' : 'Delete account'}
-          </button>
-        </div>
-
-        {deleteError && (
-          <p className="mt-2 text-xs text-red-400">{deleteError}</p>
-        )}
-        </section>
-
-        {/* ── Daily brief (tools) ── */}
-        <section className="border-t border-zinc-800/70 px-5 py-6 md:px-6 md:py-7">
-        <SectionHeading className="mb-4">Tools</SectionHeading>
-        <div className="rounded-xl bg-zinc-900/35 border border-zinc-800/60 p-4 md:p-5">
-          <p className="text-sm text-zinc-400 mb-4">
-            Sync your email and calendar, then generate and send today&apos;s brief. Takes up to 60 seconds.
-          </p>
-          <button
-            disabled={generateState === 'loading' || generateState === 'success'}
-            onClick={async () => {
-              // 30-second cooldown — prevents accidental multi-fire
-              const now = Date.now();
-              if (now - lastGenerateRef.current < 30_000) {
-                setGenerateMessage('Please wait 30 seconds before trying again.');
-                return;
-              }
-              lastGenerateRef.current = now;
-              setGenerateState('loading');
-              setGenerateMessage(null);
-              try {
-                const res = await fetch('/api/settings/run-brief', { method: 'POST' });
-                const data = await res.json().catch(() => null);
-
-                // Generation succeeded at the route level — redirect
-                if (res.ok && data?.ok) {
-                  setGenerateState('success');
-                  window.location.href = '/dashboard?generated=true';
-                  return;
-                }
-
-                // Partial success — check individual stages
-                if (res.ok && data?.stages) {
-                  const stages = data.stages as Record<string, any>;
-                  const genStatus = stages.daily_brief?.generate?.status;
-
-                  // If generation itself succeeded, redirect regardless of sync/send status.
-                  // The directive is in the DB — user can approve from dashboard.
-                  if (genStatus === 'ok') {
-                    setGenerateState('success');
-                    window.location.href = '/dashboard?generated=true';
-                    return;
+        {/* ── Subscription ── */}
+        <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
+          <div className="px-5 py-5 md:px-6 md:py-6 border-b border-white/5">
+            <SectionHeading>Subscription</SectionHeading>
+          </div>
+          <div className="px-5 py-5 md:px-6 md:py-6 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] ${isPro ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'bg-white/5 text-zinc-500 border border-white/10'}`}>
+                {planLabel}
+              </div>
+              <div>
+                {planDetail && (
+                  <p className={`text-xs font-medium ${subscription?.status === 'past_due' ? 'text-amber-400' : 'text-zinc-500'}`}>
+                    {planDetail}
+                  </p>
+                )}
+                <p className="text-xs text-zinc-600">
+                  {isPro ? 'Finished artifacts, every morning.' : 'Upgrade to unlock finished artifacts.'}
+                </p>
+              </div>
+            </div>
+            {!isPro && (
+              <button
+                onClick={async () => {
+                  setUpgrading(true);
+                  try {
+                    const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+                    const d = await res.json().catch(() => ({}));
+                    if (d.url) {
+                      window.location.href = d.url;
+                    } else {
+                      setActionError('Could not start checkout. Try again.');
+                      setUpgrading(false);
+                    }
+                  } catch {
+                    setActionError('Network error. Try again.');
+                    setUpgrading(false);
                   }
-
-                  // Signal backlog with no generation failure — still redirect
-                  const signalOnly = stages.daily_brief?.signal_processing?.status === 'failed' && genStatus !== 'failed';
-                  if (signalOnly) {
-                    setGenerateState('success');
-                    window.location.href = '/dashboard?generated=true';
-                    return;
-                  }
-
-                  // Actual failures — show specific message
-                  const parts: string[] = [];
-                  if (genStatus === 'failed') parts.push('Brief generation failed');
-                  if (stages.sync_microsoft?.ok === false) parts.push('Microsoft sync issue');
-                  if (stages.sync_google?.ok === false) parts.push('Google sync issue');
-                  setGenerateState('error');
-                  setGenerateMessage(parts.length > 0 ? parts.join('. ') + '.' : 'Something went wrong.');
-                  return;
-                }
-
-                // Non-OK response (500, 504, etc.)
-                setGenerateState('error');
-                setGenerateMessage(data?.error || 'Request failed. Try again in 30 seconds.');
-              } catch {
-                setGenerateState('error');
-                setGenerateMessage('Network error — try again in 30 seconds.');
-              }
-            }}
-            className={`w-full rounded-xl py-3 text-sm font-semibold transition-colors ${
-              generateState === 'loading'
-                ? 'bg-zinc-700 text-zinc-400 cursor-wait'
-                : generateState === 'success'
-                  ? 'bg-emerald-700 text-emerald-300 cursor-default'
-                  : 'bg-cyan-600 hover:bg-cyan-500 text-white'
-            }`}
-          >
-            {generateState === 'loading' ? 'Running sync + generate…' : generateState === 'success' ? 'Redirecting…' : 'Generate now'}
-          </button>
-          {generateMessage && (
-            <p className={`mt-3 text-xs leading-relaxed ${generateState === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
-              {generateMessage}
-            </p>
-          )}
-        </div>
+                }}
+                disabled={upgrading}
+                className="shrink-0 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+              >
+                {upgrading ? 'Loading…' : 'Upgrade'}
+              </button>
+            )}
+          </div>
         </section>
-        </div>
+
+        {/* ── Account ── */}
+        <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
+          <div className="px-5 py-5 md:px-6 md:py-6 border-b border-white/5">
+            <SectionHeading>Account</SectionHeading>
+          </div>
+          <div className="px-5 py-5 md:px-6 md:py-6 space-y-3">
+            {session?.user?.email && (
+              <div className="rounded-xl bg-zinc-900/40 border border-white/5 px-4 py-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-1">Signed in as</p>
+                <p className="text-sm text-zinc-300 font-medium">{session.user.email}</p>
+              </div>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="w-full bg-zinc-900/60 hover:bg-zinc-800/60 border border-white/10 hover:border-white/20 text-zinc-300 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
+            >
+              Sign out
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              className="w-full border border-red-900/40 hover:border-red-700/60 bg-transparent hover:bg-red-950/10 text-red-500/70 hover:text-red-400 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
+            >
+              {deleteConfirm ? 'Tap again to confirm deletion' : 'Delete account'}
+            </button>
+            {deleteError && (
+              <p className="text-xs text-red-400">{deleteError}</p>
+            )}
+          </div>
+        </section>
+
       </main>
     </div>
   );
@@ -676,7 +673,7 @@ export default function SettingsClient() {
 
 function SectionHeading({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <h2 className={`text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3 ${className}`}>
+    <h2 className={`text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1 ${className}`}>
       {children}
     </h2>
   );
@@ -684,13 +681,13 @@ function SectionHeading({ children, className = '' }: { children: ReactNode; cla
 
 function Header() {
   return (
-    <header className="fixed top-0 left-0 right-0 z-10 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 h-14">
+    <header className="fixed top-0 left-0 right-0 z-10 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
       <div className="max-w-3xl mx-auto h-full flex items-center justify-between px-4">
-        <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
+        <Link href="/dashboard" className="text-zinc-500 hover:text-white transition-colors flex items-center gap-1">
           <ChevronLeft className="w-5 h-5" />
-          <span className="text-sm">Dashboard</span>
+          <span className="text-xs font-black uppercase tracking-[0.12em]">Dashboard</span>
         </Link>
-        <span className="text-sm font-semibold text-white">Settings</span>
+        <span className="text-xs font-black uppercase tracking-[0.2em] text-white">Settings</span>
         <div className="w-20" />
       </div>
     </header>
@@ -699,16 +696,16 @@ function Header() {
 
 function SourceLine({ label, count, providerActive }: { label: string; count: number; providerActive: boolean }) {
   return (
-    <div className="flex items-center gap-1.5 text-xs">
-      <span className="text-zinc-500">{label}:</span>
-      <span className={count > 0 ? 'text-zinc-300 font-medium' : 'text-zinc-600'}>
+    <div className="flex items-center gap-1.5 py-1.5 text-xs">
+      <span className="text-zinc-600 font-black uppercase tracking-[0.08em]">{label}:</span>
+      <span className={count > 0 ? 'text-zinc-400 font-medium' : 'text-zinc-700'}>
         {count.toLocaleString()} {count === 1 ? 'signal' : 'signals'}
       </span>
       {count === 0 && providerActive && (
-        <span className="text-amber-500/70 text-xs">· awaiting sync</span>
+        <span className="text-zinc-600 text-xs">· awaiting sync</span>
       )}
       {count === 0 && !providerActive && (
-        <span className="text-amber-500 text-xs font-medium">· reconnect</span>
+        <span className="text-amber-500/70 text-xs">· reconnect</span>
       )}
     </div>
   );
@@ -716,7 +713,7 @@ function SourceLine({ label, count, providerActive }: { label: string; count: nu
 
 function GoogleIcon() {
   return (
-    <div className="w-9 h-9 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
+    <div className="w-9 h-9 bg-zinc-900 border border-white/10 rounded-xl flex items-center justify-center shrink-0">
       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
         <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
@@ -729,7 +726,7 @@ function GoogleIcon() {
 
 function MicrosoftIcon() {
   return (
-    <div className="w-9 h-9 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
+    <div className="w-9 h-9 bg-zinc-900 border border-white/10 rounded-xl flex items-center justify-center shrink-0">
       <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true">
         <rect x="1" y="1" width="9" height="9" fill="#f25022" />
         <rect x="11" y="1" width="9" height="9" fill="#7fba00" />

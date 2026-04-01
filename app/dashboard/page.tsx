@@ -210,11 +210,16 @@ export default function DashboardPage() {
   const recipient = artifact?.to || artifact?.recipient || '';
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white">
+      {/* Ambient grid */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
+      </div>
+
       {/* Fixed header */}
-      <header className="fixed top-0 left-0 right-0 z-10 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 h-14">
+      <header className="fixed top-0 left-0 right-0 z-10 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
         <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4">
-          <span className="text-lg font-bold text-white">Foldera</span>
+          <span className="text-base font-black tracking-tighter text-white uppercase">Foldera</span>
           <Link href="/dashboard/settings">
             <Settings className="w-5 h-5 text-zinc-500 hover:text-white transition-colors" />
           </Link>
@@ -222,63 +227,63 @@ export default function DashboardPage() {
       </header>
 
       {/* Content */}
-      <main className="pt-20 pb-14 px-4 max-w-2xl mx-auto">
-        {/* Flash message (from deep-link errors, actions, or settings redirect) */}
+      <main className="relative z-10 pt-20 pb-14 px-4 max-w-2xl mx-auto">
+        {/* Flash message */}
         {flash && !done && (
-          <div className="mb-5 px-4 py-3 rounded-xl bg-zinc-900/60 border border-zinc-800/70">
+          <div className="mb-5 px-4 py-3 rounded-xl bg-zinc-950/80 border border-white/10 backdrop-blur-sm">
             <p className="text-sm text-zinc-300">{flash}</p>
           </div>
         )}
+
         {loading ? (
-          <div className="animate-pulse space-y-4 mt-4 max-w-xl">
-            <div className="h-3 w-20 bg-zinc-800 rounded" />
-            <div className="h-6 bg-zinc-800 rounded w-full" />
-            <div className="h-6 bg-zinc-800 rounded w-4/5" />
-            <div className="h-32 bg-zinc-800 rounded-xl mt-4" />
+          <div className="animate-pulse space-y-4 mt-8 max-w-xl">
+            <div className="h-2 w-24 bg-zinc-800 rounded" />
+            <div className="h-7 bg-zinc-800/60 rounded-lg w-full" />
+            <div className="h-7 bg-zinc-800/60 rounded-lg w-4/5" />
+            <div className="h-40 bg-zinc-800/40 rounded-2xl mt-4" />
             <div className="flex gap-3 mt-4">
-              <div className="h-12 bg-zinc-800 rounded-xl flex-1" />
-              <div className="h-12 bg-zinc-800 rounded-xl flex-1" />
+              <div className="h-14 bg-zinc-800/60 rounded-xl flex-1" />
+              <div className="h-14 bg-zinc-800/40 rounded-xl w-28" />
             </div>
           </div>
         ) : done ? (
-          <div className="mt-14 text-center">
-            <div className="flex items-center justify-center mb-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-                <span className="text-emerald-400 text-lg">✓</span>
+          <div className="mt-20 text-center">
+            <div className="flex items-center justify-center mb-5">
+              <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                <span className="text-cyan-400 text-xl">✓</span>
               </div>
             </div>
-            {flash && <p className="text-white text-base font-medium mb-2">{flash}</p>}
-            <p className="text-zinc-500 text-sm">Your next read arrives at 7am Pacific.</p>
+            {flash && <p className="text-white text-base font-bold mb-3">{flash}</p>}
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Your next read arrives at 7am Pacific.</p>
           </div>
         ) : fetchError ? (
-          <div className="mt-14 text-center">
-            <p className="text-zinc-400">Something went wrong loading your dashboard.</p>
+          <div className="mt-20 text-center">
+            <p className="text-zinc-400 text-sm">Something went wrong loading your dashboard.</p>
             <button
               onClick={load}
-              className="mt-4 text-sm text-emerald-500 hover:text-emerald-400 transition-colors"
+              className="mt-4 text-[10px] font-black uppercase tracking-[0.15em] text-cyan-400 hover:text-cyan-300 transition-colors"
             >
               Try again
             </button>
           </div>
         ) : !action ? (
-          <div className="mt-8 md:mt-10">
-            <div className="mx-auto max-w-xl rounded-2xl border border-zinc-800/60 bg-zinc-900/35 px-6 py-8 md:px-7 md:py-10 text-center">
+          <div className="mt-12">
+            <div className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl px-6 py-10 md:px-8 md:py-12 text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
               {isNewAccount ? (
                 <>
-                  {/* Pulsing indicator */}
-                  <div className="flex items-center justify-center mb-5">
+                  <div className="flex items-center justify-center mb-6">
                     <div className="relative">
-                      <div className="w-3 h-3 rounded-full bg-cyan-500" />
-                      <div className="absolute inset-0 rounded-full bg-cyan-500 animate-ping opacity-40" />
+                      <div className="w-3 h-3 rounded-full bg-cyan-400" />
+                      <div className="absolute inset-0 rounded-full bg-cyan-400 animate-ping opacity-40" />
                     </div>
                   </div>
-                  <p className="text-zinc-100 text-base font-semibold mb-2">Foldera is building your model.</p>
-                  <p className="text-zinc-500 text-sm leading-relaxed">
+                  <p className="text-white text-base font-black tracking-tight mb-2">Foldera is building your model.</p>
+                  <p className="text-zinc-500 text-sm leading-relaxed mb-5">
                     It&apos;s reading your email and calendar now. Your first directive arrives tomorrow at 7am Pacific.
                   </p>
                   <Link
                     href="/dashboard/settings"
-                    className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-cyan-400 hover:text-cyan-300 transition-colors"
                   >
                     Check connection status
                     <Settings className="w-3 h-3" />
@@ -286,19 +291,19 @@ export default function DashboardPage() {
                 </>
               ) : (
                 <>
-                  {/* Empty checkmark circle */}
-                  <div className="flex items-center justify-center mb-5">
-                    <div className="w-10 h-10 rounded-full border border-zinc-700 bg-zinc-900 flex items-center justify-center">
-                      <span className="text-zinc-600 text-lg">·</span>
+                  <div className="flex items-center justify-center mb-6">
+                    <div className="relative">
+                      <div className="w-2.5 h-2.5 rounded-full bg-cyan-400/60" />
+                      <div className="absolute inset-0 rounded-full bg-cyan-400/40 animate-ping opacity-60" />
                     </div>
                   </div>
-                  <p className="text-zinc-200 text-base font-semibold mb-2">You&apos;re clear for now.</p>
-                  <p className="text-zinc-500 text-sm leading-relaxed">
-                    Nothing queued at high confidence. Your next read arrives at 7am Pacific.
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Your next read arrives at 7am Pacific.</p>
+                  <p className="text-zinc-600 text-xs mt-2 leading-relaxed">
+                    Nothing queued at high confidence right now.
                   </p>
                   <Link
                     href="/dashboard/settings"
-                    className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors"
+                    className="mt-5 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 hover:text-zinc-300 transition-colors"
                   >
                     Generate now
                     <Settings className="w-3 h-3" />
@@ -309,41 +314,42 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div
-            className={`rounded-2xl border border-zinc-800/60 bg-zinc-900/65 px-6 py-7 md:px-8 md:py-8 transition-all duration-300 ease-out ${
-              surfaceVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'
+            className={`rounded-2xl bg-[#0a0a0f] border border-cyan-500/40 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.12)] overflow-hidden transition-all duration-300 ease-out ${
+              surfaceVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
             }`}
           >
-            {/* Domain badge */}
-            {action.domain && (
-              <p className="text-xs uppercase tracking-wide text-emerald-500">
-                {action.domain}
-              </p>
-            )}
+            {/* Cyan top accent */}
+            <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
 
-            {/* Directive text */}
-            <p className="text-2xl md:text-3xl font-semibold text-white mt-3 leading-tight">
-              {action.directive}
-            </p>
+            <div className="px-6 py-6 md:px-8 md:py-7 border-b border-white/10">
+              {/* Domain badge */}
+              {action.domain && (
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-3">
+                  {action.domain}
+                </p>
+              )}
+              {/* Directive text */}
+              <p className="text-xl md:text-2xl font-black text-white leading-tight tracking-tight">
+                {action.directive}
+              </p>
+            </div>
 
             {/* Artifact */}
             {artifact && (
-              <div
-                className={`mt-6 border-t border-zinc-800/70 pt-5 transition-all duration-300 ease-out ${
-                  surfaceVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'
-                }`}
-              >
+              <div className="px-6 py-5 md:px-8 md:py-6 bg-black/40">
                 {isEmail && (
-                  <div className="rounded-xl bg-zinc-950/40 p-4 md:p-5">
+                  <div className="rounded-2xl bg-cyan-500/10 border border-cyan-500/30 p-4 md:p-5">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Drafted Reply</p>
                     {recipient && (
-                      <p className="text-sm text-zinc-400 truncate">To: {recipient}</p>
+                      <p className="text-xs text-zinc-500 mb-1 truncate">To: {recipient}</p>
                     )}
                     {artifact.subject && (
-                      <p className="text-sm text-white mt-1 font-medium truncate">
-                        Subject: {artifact.subject}
+                      <p className="text-sm text-zinc-300 font-medium mb-2 truncate">
+                        Re: {artifact.subject}
                       </p>
                     )}
                     {artifact.body && (
-                      <p className="text-sm text-zinc-300 mt-3 whitespace-pre-wrap">
+                      <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap line-clamp-6">
                         {artifact.body}
                       </p>
                     )}
@@ -351,23 +357,27 @@ export default function DashboardPage() {
                 )}
 
                 {isDecision && artifact.options && (
-                  <div className="grid grid-cols-2 gap-3">
-                    {artifact.options.slice(0, 2).map((opt, i) => (
-                      <div key={i} className="bg-zinc-950/30 rounded-xl p-4">
-                        <p className="text-sm font-medium text-white">{opt.option}</p>
-                        <p className="text-xs text-zinc-400 mt-1">{opt.rationale}</p>
-                      </div>
-                    ))}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Decision Frame</p>
+                    <div className="grid grid-cols-1 gap-3">
+                      {artifact.options.slice(0, 2).map((opt, i) => (
+                        <div key={i} className="rounded-xl bg-zinc-950/60 border border-white/10 p-4">
+                          <p className="text-sm font-bold text-white">{opt.option}</p>
+                          <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{opt.rationale}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
                 {isWait && (
-                  <div className="bg-zinc-950/30 rounded-xl p-4">
+                  <div className="rounded-2xl bg-zinc-950/60 border border-white/10 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Context</p>
                     {artifact.context && (
-                      <p className="text-sm text-zinc-300">Why wait: {artifact.context}</p>
+                      <p className="text-sm text-zinc-300 leading-relaxed">{artifact.context}</p>
                     )}
                     {(artifact.tripwires?.[0] || artifact.check_date) && (
-                      <p className="text-sm text-emerald-400 mt-2">
+                      <p className="text-xs text-cyan-400 mt-3 font-black uppercase tracking-[0.1em]">
                         Resume when: {artifact.tripwires?.[0] ?? artifact.check_date}
                       </p>
                     )}
@@ -377,55 +387,49 @@ export default function DashboardPage() {
             )}
 
             {/* Action buttons */}
-            <div className="mt-7 flex gap-2.5">
+            <div className="p-4 flex gap-3 bg-white/[0.02] border-t border-white/10">
               <button
                 onClick={handleApprove}
                 disabled={executing}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-medium transition-colors"
+                className="flex-1 bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {executing ? 'Working…' : 'Approve'}
+                {executing ? (
+                  <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                ) : (
+                  'Approve'
+                )}
               </button>
-              <div className="flex-1 text-center">
-                <button
-                  onClick={handleSkip}
-                  disabled={executing}
-                  className="w-full bg-zinc-900/50 border border-zinc-700/70 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-300 py-3 rounded-xl font-medium transition-colors"
-                >
-                  Skip
-                </button>
-                <p className="text-[10px] text-zinc-500 mt-1">Foldera learns from this</p>
-              </div>
+              <button
+                onClick={handleSkip}
+                disabled={executing}
+                className="px-6 bg-zinc-900 border border-white/20 text-zinc-400 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Skip
+              </button>
             </div>
           </div>
         )}
 
-        {/* Footer — only when directive shown */}
-        {!loading && !done && action && (
-          <p className="text-xs text-zinc-600 text-center mt-6">Your next read arrives at 7am Pacific</p>
-        )}
-
         {/* Your model — shown when signal data exists */}
         {!loading && !done && modelState && modelState.signal_count > 5 && (
-          <div className="mt-6 border border-zinc-800/40 rounded-xl p-4 md:p-5 bg-zinc-900/20">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-3">
+          <div className="mt-6 rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-5 md:p-6">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-semibold tracking-widest text-emerald-500 uppercase">Your model</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Your model</span>
               </div>
-              <span className="text-xs text-zinc-600">
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">
                 {modelState.days_active}d · {modelState.signal_count.toLocaleString()} signals
               </span>
             </div>
 
-            {/* Top people */}
             {modelState.top_entities.length > 0 && (
-              <div className="mb-3">
-                <p className="text-[11px] text-zinc-500 uppercase tracking-wide mb-2">People it&apos;s tracking</p>
-                <div className="space-y-1.5">
+              <div className="mb-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-2">People it&apos;s tracking</p>
+                <div className="space-y-2">
                   {modelState.top_entities.slice(0, 3).map((entity, i) => (
                     <div key={i} className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-300">{entity.name}</span>
+                      <span className="text-sm text-zinc-300 font-medium">{entity.name}</span>
                       <span className="text-xs text-zinc-600">
                         {entity.days_since_contact !== null
                           ? entity.days_since_contact === 0
@@ -439,20 +443,18 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Behavioral insights */}
             {modelState.behavioral_insights.length > 0 && (
-              <div className="mb-3 bg-zinc-900/50 rounded-lg p-3 border border-zinc-800/40">
-                <p className="text-[11px] text-zinc-500 uppercase tracking-wide mb-2">What it inferred</p>
+              <div className="mb-4 rounded-xl bg-zinc-950/60 border border-white/5 p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-2">What it inferred</p>
                 {modelState.behavioral_insights.slice(0, 2).map((insight, i) => (
                   <p key={i} className="text-xs text-zinc-400 leading-relaxed">
-                    ▸ {insight.label}
+                    › {insight.label}
                   </p>
                 ))}
               </div>
             )}
 
-            {/* Learning stats */}
-            <div className="flex items-center gap-4 text-xs text-zinc-600">
+            <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.1em] text-zinc-700">
               {modelState.approval_stats.approval_rate !== null && (
                 <span>Approve rate: {modelState.approval_stats.approval_rate}%</span>
               )}

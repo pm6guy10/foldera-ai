@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-03-31 — Frontend design tighten: login, start, dashboard, settings, pricing, blog visual overhaul
+  MODE: FLOW
+  Commit hash(es): pending
+  Files changed: `app/login/login-inner.tsx`, `app/start/page.tsx`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/pricing/page.tsx`, `app/(marketing)/blog/page.tsx`, `app/(marketing)/blog/[slug]/page.tsx`
+  What was verified: `npm run build` passed (exit 0); `npx playwright test tests/e2e/public-routes.spec.ts tests/e2e/backend-safety-gates.spec.ts tests/e2e/safety-gates.spec.ts tests/e2e/flow-routes.spec.ts` → 39 passed, 4 skipped, 2 failed (both failures are pre-existing — confirmed by stash-and-retest baseline: landing page mobile scrollWidth 402 > 400, safety-gates mobile overflow — unrelated to this session's changes). Authenticated route failures also confirmed pre-existing.
+  Any unresolved issues: Pre-existing failures in authenticated-routes.spec.ts (session mocking not resolving in local test env) and 2 mobile overflow failures on landing page (not changed this session). Logged in AUTOMATION_BACKLOG.md.
+
 - 2026-03-31 — Final cleanup batch: entity classification on ingestion, hallucination guard, idempotency, rate limiting, governance docs
   MODE: FLOW
   Commit hash(es): `acd2199`

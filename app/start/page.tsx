@@ -20,11 +20,11 @@ export default function StartPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-hidden selection:bg-cyan-500/30 selection:text-white">
       {/* Ambient background glow */}
       <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:40px_40px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.06)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.10)_0%,transparent_60%)]" />
       </div>
 
       {/* Nav */}
@@ -47,10 +47,8 @@ export default function StartPage() {
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 pb-16">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-black tracking-tighter text-white mb-2">Connect your email.</h1>
-            <p className="text-zinc-500 text-sm font-medium leading-relaxed">
-              Your first read arrives tomorrow at 7am.
-            </p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-3">Finished work, every morning.</p>
+            <h1 className="text-4xl font-black tracking-tighter text-white">Connect your email.</h1>
           </div>
 
           {error && (
@@ -63,10 +61,10 @@ export default function StartPage() {
             <button
               onClick={() => handleSignIn('google')}
               disabled={!!loading}
-              className="w-full flex items-center justify-center gap-3 bg-white text-zinc-900 hover:bg-zinc-100 font-semibold py-3.5 px-6 rounded-2xl transition-all shadow-[0_0_24px_rgba(255,255,255,0.1)] disabled:opacity-60 text-sm active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-3 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-xl transition-all shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 disabled:cursor-wait"
             >
               {loading === 'google' ? (
-                <span className="w-5 h-5 border-2 border-zinc-400 border-t-zinc-900 rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               ) : (
                 <>
                   <GoogleIcon />
@@ -78,10 +76,10 @@ export default function StartPage() {
             <button
               onClick={() => handleSignIn('azure-ad')}
               disabled={!!loading}
-              className="w-full flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0078d4] font-semibold py-3.5 px-6 rounded-2xl transition-all shadow-[0_0_24px_rgba(0,164,239,0.15)] disabled:opacity-60 text-sm active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-3 bg-zinc-900 border border-white/10 text-white hover:bg-zinc-800 hover:border-white/20 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-xl transition-all backdrop-blur-sm disabled:opacity-60 disabled:cursor-wait active:scale-95"
             >
               {loading === 'azure-ad' ? (
-                <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
                   <MicrosoftIcon />
@@ -92,15 +90,15 @@ export default function StartPage() {
           </div>
 
           {/* What to expect */}
-          <div className="rounded-2xl bg-zinc-900/40 border border-white/5 p-4 mb-5 space-y-2.5">
+          <div className="rounded-2xl bg-zinc-950/80 border border-white/10 backdrop-blur-xl p-4 mb-5 space-y-2.5">
             {[
-              { n: '1', text: 'Connect — Link your email in one click' },
-              { n: '2', text: 'Focus — Tell us what you\u2019re working on' },
-              { n: '3', text: 'Sleep — Your first read arrives tomorrow at 7am' },
-              { n: '4', text: 'Improve — Every approve and skip makes it smarter' },
+              { n: '01', text: 'Connect — Link your email in one click' },
+              { n: '02', text: 'Focus — Tell us what you\u2019re working on' },
+              { n: '03', text: 'Sleep — Your first read arrives tomorrow at 7am' },
+              { n: '04', text: 'Improve — Every approve and skip makes it smarter' },
             ].map(({ n, text }) => (
               <div key={n} className="flex items-start gap-3">
-                <span className="text-xs text-zinc-600 w-4 shrink-0 font-mono mt-0.5">{n}</span>
+                <span className="text-[10px] text-cyan-400 w-5 shrink-0 font-black uppercase mt-0.5">{n}</span>
                 <span className="text-xs text-zinc-400 leading-relaxed">{text}</span>
               </div>
             ))}
@@ -109,7 +107,7 @@ export default function StartPage() {
           {/* Footer */}
           <div className="flex items-center justify-center gap-1.5">
             <Lock className="w-3 h-3 text-zinc-600" />
-            <p className="text-xs text-zinc-600">Your data is encrypted. Delete anytime.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-700">Your data is encrypted. Delete anytime.</p>
           </div>
         </div>
       </main>
