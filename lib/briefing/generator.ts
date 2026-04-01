@@ -826,9 +826,12 @@ function buildDecisionPayload(
   let recommended_action: ValidArtifactTypeCanonical;
 
   // Trigger → Action Lock: discrepancy candidates use the mapping table.
-  // The mapping table is the single source of truth for trigger→action.
   if (winner.type === 'discrepancy' && winner.discrepancyClass) {
-    recommended_action = resolveTriggerAction(winner.discrepancyClass, ctx.has_real_recipient) as ValidArtifactTypeCanonical;
+    if (winner.discrepancyPreferredAction) {
+      recommended_action = actionTypeToArtifactType(winner.discrepancyPreferredAction) as ValidArtifactTypeCanonical;
+    } else {
+      recommended_action = resolveTriggerAction(winner.discrepancyClass, ctx.has_real_recipient) as ValidArtifactTypeCanonical;
+    }
   } else {
     recommended_action = actionTypeToArtifactType(winner.suggestedActionType);
 
@@ -838,6 +841,10 @@ function buildDecisionPayload(
     }
   }
 
+  if (winner.type === 'discrepancy' && recommended_action === 'send_message' && !ctx.has_real_recipient) {
+    recommended_action = 'write_document';
+  }
+
   // Build justification facts from concrete evidence
   const justification_facts: string[] = [];
   if (winner.matchedGoal) {
@@ -845,6 +852,9 @@ function buildDecisionPayload(
   }
   for (const sig of winner.relatedSignals.slice(0, 3)) {
     justification_facts.push(`Signal: ${sig.slice(0, 200)}`);
+  }
+  if (ctx.candidate_context_enrichment) {
+    justification_facts.push(ctx.candidate_context_enrichment.slice(0, 800));
   }
   if (winner.relationshipContext) {
     justification_facts.push(`Relationship context: ${winner.relationshipContext.slice(0, 200)}`);
@@ -993,6 +1003,7 @@ interface StructuredContext {
   candidate_goal: string | null;
   candidate_score: number;
   candidate_due_date: string | null;
+  candidate_context_enrichment: string | null;
   supporting_signals: CompressedSignal[];
   surgical_raw_facts: string[];
   active_goals: string[];
@@ -1143,6 +1154,21 @@ function inferRequiredCausalDiagnosis(input: {
         mechanism: 'Unclear ownership and unresolved decision boundary.',
       };
   }
+}
+
+/** Extra context lines from discrepancy candidate sourceSignals. */
+function enrichCandidateContext(winner: ScoredLoop): string | null {
+  if (winner.type !== 'discrepancy' || !winner.discrepancyClass) return null;
+  const cls = winner.discrepancyClass;
+  const parts: string[] = [];
+
+  for (const s of winner.sourceSignals ?? []) {
+    const src = s.source ? `${s.kind}/${s.source}` : s.kind;
+    parts.push(`• [${src}] ${(s.summary ?? '').slice(0, 220)}`);
+  }
+
+  if (parts.length === 0) return null;
+  return `CONTEXT_ENRICHMENT (${cls}):\n${parts.join('\n')}`;
 }
 
 function buildStructuredContext(
@@ -1342,6 +1368,8 @@ function buildStructuredContext(
     avoidanceObservations: avoidanceObservations ?? [],
   });
 
+  const candidate_context_enrichment = enrichCandidateContext(winner);
+
   return {
     selected_candidate: selectedCandidate,
     candidate_class: winner.type,
@@ -1353,6 +1381,7 @@ function buildStructuredContext(
     candidate_score: winner.score,
     candidate_due_date,
     supporting_signals,
+    candidate_context_enrichment,
     surgical_raw_facts: surgical_raw_facts.slice(0, 5),
     active_goals,
     locked_constraints: pinnedConstraints,
@@ -1737,6 +1766,10 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     `CANDIDATE_CLASS:\n${ctx.candidate_class}`,
     `CANDIDATE_EVIDENCE:\n${ctx.selected_candidate}`,
   );
+
+  if (ctx.candidate_context_enrichment) {
+    sections.push(ctx.candidate_context_enrichment);
+  }
 
   sections.push(
     `MECHANISM_HINT (non-authoritative fallback hypothesis):\n` +

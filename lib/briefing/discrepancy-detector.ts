@@ -3,7 +3,7 @@
  * ====================
  * Extracts structural gap candidates from already-loaded data.
  *
- * Nine classes of discrepancy across two tiers:
+ * Sixteen classes of discrepancy across two tiers:
  *
  * ABSENCE-BASED (existing) — detects when something stopped:
  *  1. decay     — important relationship gone silent (bx_stats.silence_detected)
@@ -17,6 +17,15 @@
  *  7. relationship_dropout  — zero contact in 30d after 3+ interactions in the 30–90d window
  *  8. deadline_staleness    — commitment due ≤3 days, no update in 3+ days
  *  9. goal_velocity_mismatch — goal keyword signal density dropped ≥50% in recent vs historical
+ *
+ * CROSS-SOURCE (calendar / drive / conversation):
+ * 10. preparation_gap — meeting soon with known entity, no recent email thread
+ * 11. meeting_open_thread — meeting soon + open reply thread still pending
+ * 12. schedule_conflict — overlapping calendar events in the next 7 days
+ * 13. stale_document — drive file had an edit burst then 14d+ idle
+ * 14. document_followup_gap — shared doc from a person, no follow-up email
+ * 15. unresolved_intent — assistant chat captured "I should…" with no directive follow-through
+ * 16. convergence — same entity hits 3+ signal buckets within 14 days
  *
  * Delta candidates include: baseline metric, current metric, delta %, timeframe, entity.
  *
@@ -38,7 +47,15 @@ export type DiscrepancyClass =
   // Absence-based
   | 'decay' | 'exposure' | 'drift' | 'avoidance' | 'risk'
   // Delta-based
-  | 'engagement_collapse' | 'relationship_dropout' | 'deadline_staleness' | 'goal_velocity_mismatch';
+  | 'engagement_collapse' | 'relationship_dropout' | 'deadline_staleness' | 'goal_velocity_mismatch'
+  // Cross-source
+  | 'preparation_gap'
+  | 'meeting_open_thread'
+  | 'schedule_conflict'
+  | 'stale_document'
+  | 'document_followup_gap'
+  | 'unresolved_intent'
+  | 'convergence';
 
 export interface Discrepancy {
   id: string;
@@ -59,6 +76,17 @@ export interface Discrepancy {
   entityName?: string;
   /** Structured state-change metadata. Present on all delta-based triggers. */
   trigger?: TriggerMetadata;
+  /** Optional time hints for scorer urgency merging (calendar / commitments / cold-entity meeting). */
+  scoringHints?: {
+    calendarStartMs?: number;
+    commitmentDueMs?: number;
+    coldEntityMeetingBoost?: boolean;
+  };
+  /**
+   * When set, generator/scorer may prefer this over TRIGGER_ACTION_MAP for this row
+   * (e.g. unresolved_intent → schedule vs write_document).
+   */
+  discrepancyPreferredAction?: ActionType;
 }
 
 interface EntityRow {
@@ -68,6 +96,8 @@ interface EntityRow {
   total_interactions: number;
   patterns: Record<string, unknown> | null;
   trust_class?: 'trusted' | 'junk' | 'transactional' | 'personal' | 'unclassified' | null;
+  primary_email?: string | null;
+  emails?: string[] | null;
 }
 
 interface CommitmentRow {
@@ -87,6 +117,22 @@ interface GoalRow {
   goal_text: string;
   priority: number;
   goal_category: string;
+}
+
+/** Pre-decrypted signal row — passed from scorer (no DB inside this module). */
+export interface StructuredSignalInput {
+  id: string;
+  source: string;
+  type: string | null;
+  occurred_at: string;
+  content: string;
+  source_id?: string | null;
+}
+
+/** Recent directives for unresolved-intent cross-check (pre-fetched). */
+export interface RecentDirectiveInput {
+  generated_at: string;
+  directive_text: string;
 }
 
 /** Structured delta metric embedded in evidence string for logging and prompt injection. */
@@ -270,6 +316,9 @@ export function getEntityRejectionReasons(
 // ---------------------------------------------------------------------------
 
 const MAX_PER_CLASS = 2;
+const MAX_CROSS_CLASS = 2;
+const SEVEN_DAYS_MS = 7 * 86400000;
+const FOURTEEN_DAYS_MS = 14 * 86400000;
 
 const STOP_WORDS = new Set([
   'that', 'this', 'with', 'from', 'into', 'through', 'about', 'after',
@@ -309,7 +358,9 @@ function matchGoal(
 
 /** Extract entity ID from entity-scoped discrepancy IDs for deduplication. */
 function getEntityKey(d: Discrepancy): string | null {
-  const m = d.id.match(/^discrepancy_(?:decay|risk|collapse|dropout)_(.+)$/);
+  const m = d.id.match(
+    /^discrepancy_(?:decay|risk|collapse|dropout|prep|meeting|docfu|conv)_(.+)$/,
+  );
   return m ? m[1] : null;
 }
 
@@ -1027,12 +1078,638 @@ function extractGoalVelocityMismatch(
 }
 
 // ---------------------------------------------------------------------------
+// Cross-source extractors (calendar / drive / conversation) — pure, no I/O
+// ---------------------------------------------------------------------------
+
+/** Parse calendar-style signal bodies for scorer and conflict detection. */
+export function parseCalendarEventFromContent(content: string): {
+  title: string;
+  startMs: number;
+  endMs: number;
+  attendeeEmails: string[];
+} | null {
+  if (!content || content.length < 10) return null;
+  const titleM = content.match(/\[Calendar event:\s*([^\]]+)\]/i);
+  const title = (titleM?.[1] ?? 'Calendar event').trim();
+  const startM = content.match(/Start:\s*(20\d{2}-\d{2}-\d{2}T[^\s\n]+)/i);
+  const endM = content.match(/End:\s*(20\d{2}-\d{2}-\d{2}T[^\s\n]+)/i);
+  let startMs: number;
+  let endMs: number;
+  if (startM && endM) {
+    startMs = Date.parse(startM[1]);
+    endMs = Date.parse(endM[1]);
+  } else {
+    const re = /\b(20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:\.\d{3})?Z)\b/g;
+    const hits: number[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(content)) !== null) {
+      const ms = Date.parse(m[1]);
+      if (!Number.isNaN(ms)) hits.push(ms);
+    }
+    if (hits.length < 1) return null;
+    startMs = hits[0];
+    endMs = hits.length >= 2 ? hits[1] : startMs + 3600000;
+  }
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) return null;
+  const attendeeEmails: string[] = [];
+  const attLine = content.match(/Attendees?:\s*([^\n]+)/i);
+  if (attLine) {
+    const reEmail = /([\w.+-]+@[\w.-]+\.[a-z]{2,})/gi;
+    let em: RegExpExecArray | null;
+    while ((em = reEmail.exec(attLine[1])) !== null) attendeeEmails.push(em[1].toLowerCase());
+  }
+  return { title, startMs, endMs, attendeeEmails };
+}
+
+function isEmailLikeSource(source: string): boolean {
+  const s = source.toLowerCase();
+  return s.includes('mail') || s.includes('gmail') || s.includes('inbox') || s === 'email' || s.includes('outlook');
+}
+
+function sourceBucket(
+  source: string,
+  type: string | null,
+  content: string,
+): 'email' | 'calendar' | 'drive' | 'conversation' | null {
+  const s = source.toLowerCase();
+  const t = (type ?? '').toLowerCase();
+  if (s.includes('calendar') || t.includes('calendar')) return 'calendar';
+  if (s.includes('drive') || s.includes('onedrive') || t.includes('file')) return 'drive';
+  if (s.includes('claude') || s.includes('chatgpt') || t.includes('conversation')) return 'conversation';
+  if (isEmailLikeSource(s) || content.includes('From:') || /^\s*re:\s*/im.test(content.slice(0, 120))) return 'email';
+  return null;
+}
+
+function entityStakeFromTrust(tc: EntityRow['trust_class']): number {
+  if (tc === 'trusted') return 4;
+  if (tc === 'personal') return 2;
+  return 1;
+}
+
+function meetingPrepUrgency(daysUntil: number): number {
+  if (daysUntil <= 1) return 0.9;
+  if (daysUntil <= 3) return 0.7;
+  return 0.5;
+}
+
+function entityIdsForCalendarRow(
+  evt: NonNullable<ReturnType<typeof parseCalendarEventFromContent>>,
+  entities: EntityRow[],
+): EntityRow[] {
+  const emailSet = new Set(evt.attendeeEmails.map((e) => e.toLowerCase()));
+  const matched: EntityRow[] = [];
+  for (const e of entities) {
+    const pe = e.primary_email?.toLowerCase();
+    if (pe && emailSet.has(pe)) {
+      matched.push(e);
+      continue;
+    }
+    let hit = false;
+    for (const em of e.emails ?? []) {
+      if (emailSet.has(String(em).toLowerCase())) {
+        matched.push(e);
+        hit = true;
+        break;
+      }
+    }
+    if (hit) continue;
+  }
+  if (matched.length === 0) {
+    const titleLow = evt.title.toLowerCase();
+    for (const e of entities) {
+      const nameLow = e.name.toLowerCase();
+      if (nameLow.length >= 3 && titleLow.includes(nameLow)) matched.push(e);
+    }
+  }
+  return matched;
+}
+
+function hasRecentEmailWithEntity(
+  structured: StructuredSignalInput[],
+  entity: EntityRow,
+  nowMs: number,
+): boolean {
+  const since = nowMs - FOURTEEN_DAYS_MS;
+  const nameLow = entity.name.toLowerCase();
+  const tokens = nameLow.split(/\s+/).filter((t) => t.length >= 3);
+  const emails = new Set(
+    [entity.primary_email, ...(entity.emails ?? [])]
+      .filter(Boolean)
+      .map((x) => String(x).toLowerCase()),
+  );
+  for (const s of structured) {
+    if (!isEmailLikeSource(s.source)) continue;
+    const t = new Date(s.occurred_at).getTime();
+    if (t < since || t > nowMs) continue;
+    const c = s.content.toLowerCase();
+    if ([...emails].some((em) => em && c.includes(em))) return true;
+    if (tokens.length > 0 && tokens.every((tok) => c.includes(tok))) return true;
+  }
+  return false;
+}
+
+function openThreadHeuristic(
+  structured: StructuredSignalInput[],
+  entity: EntityRow,
+  nowMs: number,
+): { subject: string } | null {
+  const since = nowMs - 30 * 86400000;
+  const nameLow = entity.name.toLowerCase();
+  const tokens = nameLow.split(/\s+/).filter((t) => t.length >= 3);
+  let best: StructuredSignalInput | null = null;
+  let bestT = 0;
+  for (const s of structured) {
+    if (!isEmailLikeSource(s.source)) continue;
+    const t = new Date(s.occurred_at).getTime();
+    if (t < since || t > nowMs) continue;
+    const c = s.content;
+    if (!/\bre:\s*|^fwd?:\s*/im.test(c.slice(0, 200))) continue;
+    if (tokens.length > 0 && tokens.every((tok) => c.toLowerCase().includes(tok))) {
+      if (t >= bestT) {
+        bestT = t;
+        best = s;
+      }
+    }
+  }
+  if (!best) return null;
+  const subj = best.content.split('\n')[0]?.slice(0, 120) ?? 'open thread';
+  return { subject: subj };
+}
+
+function extractScheduleConflicts(structured: StructuredSignalInput[], nowMs: number): Discrepancy[] {
+  const results: Discrepancy[] = [];
+  const horizon = nowMs + SEVEN_DAYS_MS;
+  const events: Array<{ id: string; parsed: NonNullable<ReturnType<typeof parseCalendarEventFromContent>> }> = [];
+  for (const s of structured) {
+    const src = s.source.toLowerCase();
+    if (!src.includes('calendar') && !String(s.type ?? '').toLowerCase().includes('calendar')) continue;
+    const parsed = parseCalendarEventFromContent(s.content);
+    if (!parsed) continue;
+    if (parsed.startMs < nowMs || parsed.startMs > horizon) continue;
+    events.push({ id: s.id, parsed });
+  }
+  for (let i = 0; i < events.length && results.length < MAX_CROSS_CLASS; i++) {
+    for (let j = i + 1; j < events.length; j++) {
+      const a = events[i].parsed;
+      const b = events[j].parsed;
+      const overlap = a.startMs < b.endMs && b.startMs < a.endMs;
+      if (!overlap) continue;
+      const dateLabel = new Date(Math.min(a.startMs, b.startMs)).toISOString().slice(0, 10);
+      const delta: DeltaMetric = {
+        baseline: 'non-overlapping calendar commitments',
+        current: `overlap: "${a.title}" vs "${b.title}"`,
+        delta_pct: 100,
+        timeframe: dateLabel,
+      };
+      const trigger: TriggerMetadata = {
+        baseline_state: 'Non-overlapping calendar commitments',
+        current_state: `Overlap: ${a.title} and ${b.title}`,
+        delta: 'double-booked time window',
+        timeframe: dateLabel,
+        outcome_class: 'deadline',
+        why_now:
+          'Overlapping events force an explicit priority call — otherwise you default under pressure in the moment.',
+      };
+      results.push({
+        id: `discrepancy_conflict_${events[i].id}_${events[j].id}`,
+        class: 'schedule_conflict',
+        title: `Overlapping events on ${dateLabel}`,
+        content:
+          `You have overlapping calendar commitments on ${dateLabel}: "${a.title}" and "${b.title}". ` +
+          `Which takes priority, and how will you communicate the trade-off?`,
+        stakes: 3,
+        urgency: 0.75,
+        suggestedActionType: 'write_document',
+        evidence: JSON.stringify(delta),
+        sourceSignals: [
+          { kind: 'signal', id: events[i].id, summary: `[Calendar] ${a.title}` },
+          { kind: 'signal', id: events[j].id, summary: `[Calendar] ${b.title}` },
+        ],
+        matchedGoal: null,
+        trigger,
+        scoringHints: { calendarStartMs: Math.min(a.startMs, b.startMs) },
+      });
+      if (results.length >= MAX_CROSS_CLASS) return results;
+    }
+  }
+  return results;
+}
+
+function extractStaleDocuments(
+  structured: StructuredSignalInput[],
+  goals: GoalRow[],
+  nowMs: number,
+): Discrepancy[] {
+  const results: Discrepancy[] = [];
+  const ninetyAgo = nowMs - 90 * 86400000;
+  const weekMs = 7 * 86400000;
+  const driveRows = structured.filter((s) => {
+    const src = s.source.toLowerCase();
+    const isDrive = src.includes('drive') || src.includes('onedrive');
+    const t = (s.type ?? '').toLowerCase();
+    return isDrive && (t.includes('file') || s.content.includes('[File:'));
+  });
+  const byFile = new Map<string, StructuredSignalInput[]>();
+  for (const s of driveRows) {
+    const fid = (s.source_id ?? s.id).toString();
+    const arr = byFile.get(fid) ?? [];
+    arr.push(s);
+    byFile.set(fid, arr);
+  }
+  for (const [, rows] of byFile) {
+    if (results.length >= MAX_CROSS_CLASS) break;
+    const inWindow = rows.filter((r) => {
+      const t = new Date(r.occurred_at).getTime();
+      return t >= ninetyAgo && t <= nowMs;
+    });
+    if (inWindow.length < 3) continue;
+    const times = inWindow.map((r) => new Date(r.occurred_at).getTime()).sort((a, b) => a - b);
+    let burst = false;
+    for (let i = 0; i < times.length; i++) {
+      const windowEnd = times[i] + weekMs;
+      const cnt = times.filter((t) => t >= times[i]! && t <= windowEnd).length;
+      if (cnt >= 3) {
+        burst = true;
+        break;
+      }
+    }
+    if (!burst) continue;
+    const latest = times[times.length - 1]!;
+    const idleMs = nowMs - latest;
+    if (idleMs < FOURTEEN_DAYS_MS) continue;
+    const titleM = inWindow[0].content.match(/\[File:\s*([^\]]+)\]/i);
+    const fileTitle = (titleM?.[1] ?? 'Document').trim();
+    const matched = matchGoal(`${fileTitle} ${inWindow[0].content}`, goals);
+    const stakes = matched ? 4 : 2;
+    const delta: DeltaMetric = {
+      baseline: 'high edit velocity within one week',
+      current: 'no touches for 14+ days after burst',
+      delta_pct: -100,
+      timeframe: 'last 90 days',
+    };
+    const trigger: TriggerMetadata = {
+      baseline_state: `Active editing burst on ${fileTitle}`,
+      current_state: 'Document idle for 14+ days after burst',
+      delta: 'high edit velocity → sudden stop',
+      timeframe: 'last 90 days',
+      outcome_class: 'job',
+      why_now:
+        'Bursts that go cold often hide an implicit decision — archive, ship, or delegate before context is lost.',
+    };
+    const fid = (inWindow[0].source_id ?? inWindow[0].id).toString().replace(/\W/g, '_');
+    results.push({
+      id: `discrepancy_stale_${fid}`,
+      class: 'stale_document',
+      title: `Stale active document: ${fileTitle.slice(0, 60)}`,
+      content:
+        `"${fileTitle}" showed 3+ modifications within a week, then no activity for ${Math.floor(idleMs / 86400000)} days. ` +
+        `Review, finish, or archive — ambiguity creates residue.`,
+      stakes,
+      urgency: 0.6,
+      suggestedActionType: 'write_document',
+      evidence: JSON.stringify(delta),
+      sourceSignals: inWindow.slice(0, 3).map((r) => ({
+        kind: 'signal',
+        id: r.id,
+        source: r.source,
+        summary: r.content.slice(0, 200),
+      })),
+      matchedGoal: matched,
+      trigger,
+    });
+  }
+  return results;
+}
+
+function extractCalendarEntityGaps(
+  structured: StructuredSignalInput[],
+  entities: EntityRow[],
+  nowMs: number,
+): Discrepancy[] {
+  const results: Discrepancy[] = [];
+  const horizon = nowMs + SEVEN_DAYS_MS;
+  for (const s of structured) {
+    if (results.length >= MAX_CROSS_CLASS * 2) break;
+    const src = s.source.toLowerCase();
+    if (!src.includes('calendar') && !String(s.type ?? '').toLowerCase().includes('calendar')) continue;
+    const evt = parseCalendarEventFromContent(s.content);
+    if (!evt || evt.startMs < nowMs || evt.startMs > horizon) continue;
+    const matchedEntities = entityIdsForCalendarRow(evt, entities);
+    for (const ent of matchedEntities) {
+      if (results.length >= MAX_CROSS_CLASS * 2) break;
+      const daysUntil = Math.max(0, Math.ceil((evt.startMs - nowMs) / 86400000));
+      const openTh = openThreadHeuristic(structured, ent, nowMs);
+      const recentEmail = hasRecentEmailWithEntity(structured, ent, nowMs);
+      const lastIx = ent.last_interaction ? new Date(ent.last_interaction).getTime() : 0;
+      const coldMeeting = lastIx > 0 && nowMs - lastIx >= 30 * 86400000;
+      if (openTh && daysUntil <= 7) {
+        const delta: DeltaMetric = {
+          baseline: `Thread: ${openTh.subject}`,
+          current: `Meeting in ${daysUntil}d with ${ent.name}`,
+          delta_pct: 100,
+          timeframe: `${daysUntil} day(s) to meeting`,
+          entity: ent.name,
+        };
+        const trigger: TriggerMetadata = {
+          baseline_state: 'Last inbound or reply thread still pending closure',
+          current_state: `Meeting in ${daysUntil} day(s) with ${ent.name} while a titled thread remains open`,
+          delta: 'open thread + approaching meeting → reply gap',
+          timeframe: `${daysUntil} day(s) to meeting`,
+          outcome_class: 'relationship',
+          why_now:
+            'The calendar event creates accountability — an unresolved thread before a hard date surfaces stall risk.',
+        };
+        results.push({
+          id: `discrepancy_meeting_${ent.id}`,
+          class: 'meeting_open_thread',
+          title: `Open thread before meeting: ${ent.name}`,
+          content:
+            `Your meeting with ${ent.name} is in ${daysUntil} day(s). The last thread (${openTh.subject.slice(0, 80)}) still looks open — ` +
+            `consider closing the loop before you sit down.`,
+          stakes: entityStakeFromTrust(ent.trust_class),
+          urgency: meetingPrepUrgency(daysUntil),
+          suggestedActionType: 'send_message',
+          evidence: JSON.stringify(delta),
+          sourceSignals: [{ kind: 'signal', id: s.id, summary: `[Calendar] ${evt.title}` }],
+          matchedGoal: null,
+          entityName: ent.name,
+          trigger,
+          scoringHints: {
+            calendarStartMs: evt.startMs,
+            coldEntityMeetingBoost: coldMeeting,
+          },
+        });
+        continue;
+      }
+      if (!recentEmail) {
+        const primary = ent.primary_email ?? (ent.emails?.[0] ?? null);
+        const delta: DeltaMetric = {
+          baseline: 'email contact within 14d before meetings',
+          current: 'zero matching email threads in 14d',
+          delta_pct: -100,
+          timeframe: `${daysUntil} day(s) until event`,
+          entity: ent.name,
+        };
+        const trigger: TriggerMetadata = {
+          baseline_state: 'Ongoing relationship signals expected before meetings',
+          current_state: `Meeting in ${daysUntil} day(s) with ${ent.name} but no recent email thread`,
+          delta: 'meeting scheduled → no preparatory email contact in 14d',
+          timeframe: `${daysUntil} day(s) until event`,
+          outcome_class: 'relationship',
+          why_now:
+            'A meeting is a forcing function — showing up without a recent thread increases misalignment and surprise risk.',
+        };
+        results.push({
+          id: `discrepancy_prep_${ent.id}`,
+          class: 'preparation_gap',
+          title: `Pre-meeting gap: ${ent.name}`,
+          content:
+            `Meeting with ${ent.name} in ${daysUntil} day(s) (${evt.title}). No recent email thread in the last 14 days — ` +
+            `consider a short check-in or shared agenda.`,
+          stakes: entityStakeFromTrust(ent.trust_class),
+          urgency: meetingPrepUrgency(daysUntil),
+          suggestedActionType: primary ? 'send_message' : 'write_document',
+          evidence: JSON.stringify(delta),
+          sourceSignals: [{ kind: 'signal', id: s.id, summary: `[Calendar] ${evt.title}` }],
+          matchedGoal: null,
+          entityName: ent.name,
+          trigger,
+          scoringHints: {
+            calendarStartMs: evt.startMs,
+            coldEntityMeetingBoost: coldMeeting,
+          },
+        });
+      }
+    }
+  }
+  return results;
+}
+
+function parseDriveMeta(content: string): { title: string; sharedBy?: string } {
+  const fileM = content.match(/\[File:\s*([^\]]+)\]/i);
+  const title = (fileM?.[1] ?? 'Document').trim();
+  const shareM = content.match(/Shared by:\s*([^\n]+)/i) ?? content.match(/Owner:\s*([^\n]+)/i);
+  const sharedBy = shareM?.[1]?.trim();
+  return { title, sharedBy };
+}
+
+function extractDocumentFollowupGaps(structured: StructuredSignalInput[], nowMs: number): Discrepancy[] {
+  const results: Discrepancy[] = [];
+  const fourteenAgo = nowMs - FOURTEEN_DAYS_MS;
+  for (const s of structured) {
+    if (results.length >= MAX_CROSS_CLASS) break;
+    const src = s.source.toLowerCase();
+    if (!src.includes('drive') && !src.includes('onedrive')) continue;
+    const { title, sharedBy } = parseDriveMeta(s.content);
+    if (!sharedBy || /^self$/i.test(sharedBy)) continue;
+    const tok = sharedBy.toLowerCase().split(/\s+/).filter((t) => t.length >= 3);
+    let lastEmail = 0;
+    for (const e of structured) {
+      if (!isEmailLikeSource(e.source)) continue;
+      const t = new Date(e.occurred_at).getTime();
+      if (t < fourteenAgo || t > nowMs) continue;
+      const c = e.content.toLowerCase();
+      const titleFrag = title.toLowerCase().slice(0, Math.min(24, title.length));
+      if (titleFrag.length >= 4 && tok.some((x) => c.includes(x)) && c.includes(titleFrag)) {
+        lastEmail = Math.max(lastEmail, t);
+      }
+    }
+    if (lastEmail === 0) continue;
+    const daysSince = Math.floor((nowMs - lastEmail) / 86400000);
+    if (daysSince < 5) continue;
+    const delta: DeltaMetric = {
+      baseline: `Received/stored "${title}" linked to ${sharedBy}`,
+      current: `no follow-up email in ${daysSince}d`,
+      delta_pct: -100,
+      timeframe: `${daysSince} days`,
+      entity: sharedBy,
+    };
+    const trigger: TriggerMetadata = {
+      baseline_state: `File linked to ${sharedBy}`,
+      current_state: `No follow-up email in ${daysSince} days referencing this doc`,
+      delta: 'shared artifact → communication drop-off',
+      timeframe: '14 days',
+      outcome_class: 'relationship',
+      why_now:
+        'Shared documents without follow-through often mean an implicit commitment in-thread was never closed.',
+    };
+    results.push({
+      id: `discrepancy_docfu_${s.id.replace(/\W/g, '_')}`,
+      class: 'document_followup_gap',
+      title: `Document follow-up: ${title.slice(0, 40)}`,
+      content:
+        `You received or stored "${title}" tied to ${sharedBy}. No follow-up inbound or outbound referencing it for ${daysSince} days.`,
+      stakes: 2,
+      urgency: 0.55,
+      suggestedActionType: 'send_message',
+      evidence: JSON.stringify(delta),
+      sourceSignals: [{ kind: 'signal', id: s.id, summary: s.content.slice(0, 160) }],
+      matchedGoal: null,
+      entityName: sharedBy,
+      trigger,
+    });
+  }
+  return results;
+}
+
+const INTENT_PHRASE_RE =
+  /\b(?:i\s+(?:should|need\s+to|must|have\s+to|will)|remind\s+me\s+to)\s+([^\n.]{4,120})/gi;
+
+function extractUnresolvedIntent(
+  structured: StructuredSignalInput[],
+  entities: EntityRow[],
+  recentDirectives: RecentDirectiveInput[],
+  nowMs: number,
+): Discrepancy[] {
+  const results: Discrepancy[] = [];
+  const sevenMs = 7 * 86400000;
+  for (const s of structured) {
+    if (results.length >= MAX_CROSS_CLASS) break;
+    const src = s.source.toLowerCase();
+    if (!src.includes('claude') && !src.includes('chatgpt')) continue;
+    const text = s.content;
+    INTENT_PHRASE_RE.lastIndex = 0;
+    const m = INTENT_PHRASE_RE.exec(text);
+    if (!m) continue;
+    const phrase = m[1].trim();
+    const textLow = text.toLowerCase();
+    let hitEntity: EntityRow | null = null;
+    for (const e of entities) {
+      const n = e.name.toLowerCase();
+      if (n.length >= 3 && textLow.includes(n)) {
+        hitEntity = e;
+        break;
+      }
+    }
+    const tSig = new Date(s.occurred_at).getTime();
+    if (nowMs < tSig + sevenMs) continue;
+    const windowEnd = tSig + sevenMs;
+    const phraseToks = phrase
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length >= 4);
+    const covered = recentDirectives.some((d) => {
+      const td = new Date(d.generated_at).getTime();
+      if (td < tSig || td > windowEnd) return false;
+      const dl = d.directive_text.toLowerCase();
+      return phraseToks.length > 0 && phraseToks.filter((w) => dl.includes(w)).length >= Math.min(2, phraseToks.length);
+    });
+    if (covered) continue;
+    let preferred: ActionType = 'make_decision';
+    if (hitEntity) preferred = 'send_message';
+    else if (
+      /\b(?:by\s+(?:mon|tue|wed|thu|fri|sat|sun)|today|tomorrow|this week|before\s+\w+)\b/i.test(phrase)
+    )
+      preferred = 'schedule';
+    const delta: DeltaMetric = {
+      baseline: 'user-stated intent in assistant chat',
+      current: 'no matching directive within 7d after chat',
+      delta_pct: -100,
+      timeframe: '7 days',
+      entity: hitEntity?.name,
+    };
+    const trigger: TriggerMetadata = {
+      baseline_state: `Conversation captured intent: ${phrase.slice(0, 80)}`,
+      current_state: 'No follow-on directive detected within 7 days after the conversation',
+      delta: 'stated intent → no system action',
+      timeframe: '7 days',
+      outcome_class: 'risk',
+      why_now:
+        'The user externalized a concrete next step to the assistant — without a directive, it stays imaginary.',
+    };
+    results.push({
+      id: `discrepancy_intent_${s.id.replace(/\W/g, '_')}`,
+      class: 'unresolved_intent',
+      title: `Unresolved assistant intent`,
+      content:
+        `You discussed doing something in an assistant chat (${phrase.slice(0, 100)}). ` +
+        `No matching directive was recorded in the seven days immediately after that conversation.`,
+      stakes: 3,
+      urgency: 0.65,
+      suggestedActionType: 'make_decision',
+      evidence: JSON.stringify(delta),
+      sourceSignals: [{ kind: 'signal', id: s.id, source: s.source, summary: text.slice(0, 220) }],
+      matchedGoal: null,
+      entityName: hitEntity?.name,
+      trigger,
+      discrepancyPreferredAction: preferred,
+    });
+  }
+  return results;
+}
+
+function extractConvergence(structured: StructuredSignalInput[], entities: EntityRow[], nowMs: number): Discrepancy[] {
+  const results: Discrepancy[] = [];
+  const since = nowMs - FOURTEEN_DAYS_MS;
+  for (const ent of entities) {
+    if (results.length >= MAX_CROSS_CLASS) break;
+    const n = ent.name.toLowerCase();
+    if (n.length < 3) continue;
+    const tokens = n.split(/\s+/).filter((t) => t.length >= 3);
+    const buckets = new Set<'email' | 'calendar' | 'drive' | 'conversation'>();
+    const samples: StructuredSignalInput[] = [];
+    for (const s of structured) {
+      const t = new Date(s.occurred_at).getTime();
+      if (t < since || t > nowMs) continue;
+      const c = s.content.toLowerCase();
+      if (!tokens.every((tok) => c.includes(tok))) continue;
+      const b = sourceBucket(s.source, s.type, s.content);
+      if (b) {
+        buckets.add(b);
+        if (samples.length < 4) samples.push(s);
+      }
+    }
+    if (buckets.size < 3) continue;
+    const email = ent.primary_email ?? ent.emails?.[0];
+    const delta: DeltaMetric = {
+      baseline: 'low cross-channel density',
+      current: `${buckets.size} distinct sources in 14d`,
+      delta_pct: 100,
+      timeframe: '14 days',
+      entity: ent.name,
+    };
+    const trigger: TriggerMetadata = {
+      baseline_state: 'Low cross-channel density',
+      current_state: `${ent.name} appears across: ${[...buckets].sort().join(', ')}`,
+      delta: 'multi-source convergence in a short window',
+      timeframe: '14 days',
+      outcome_class: 'risk',
+      why_now:
+        'When the same person hits email, calendar, and files in one window, multiple threads are threading without a single owner.',
+    };
+    results.push({
+      id: `discrepancy_conv_${ent.id}`,
+      class: 'convergence',
+      title: `Cross-channel density: ${ent.name}`,
+      content:
+        `${ent.name} appeared in your signals across ${[...buckets].join(', ')} within two weeks. ` +
+        `There may be an unaddressed thread — consider one consolidating message or memo.`,
+      stakes: 4,
+      urgency: 0.8,
+      suggestedActionType: email ? 'send_message' : 'write_document',
+      evidence: JSON.stringify(delta),
+      sourceSignals: samples.slice(0, 3).map((r) => ({
+        kind: 'signal',
+        id: r.id,
+        source: r.source,
+        summary: r.content.slice(0, 140),
+      })),
+      matchedGoal: null,
+      entityName: ent.name,
+      trigger,
+    });
+  }
+  return results;
+}
+
+// ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
 
 /**
  * Detect structural discrepancies from already-loaded scorer data.
- * Pure function — no DB calls. Returns at most 6 discrepancies sorted by
+ * Pure function — no DB calls. Returns at most 14 discrepancies sorted by
  * urgency × stakes descending. Entity-level deduplication ensures no entity
  * appears twice (highest-scoring candidate per entity wins).
  */
@@ -1041,14 +1718,24 @@ export function detectDiscrepancies(args: {
   entities: EntityRow[];
   goals: GoalRow[];
   decryptedSignals: string[];
+  structuredSignals?: StructuredSignalInput[];
+  recentDirectives?: RecentDirectiveInput[];
   now?: Date;
 }): Discrepancy[] {
   const nowMs = (args.now ?? new Date()).getTime();
   const commitments = args.commitments.filter((c) => (c.trust_class ?? 'unclassified') === 'trusted' || (c.trust_class ?? 'unclassified') === 'unclassified');
   const entities = args.entities.filter((e) => (e.trust_class ?? 'unclassified') === 'trusted' || (e.trust_class ?? 'unclassified') === 'unclassified');
   const { goals, decryptedSignals } = args;
+  const structured = args.structuredSignals ?? [];
+  const recentDirectives = args.recentDirectives ?? [];
 
   const all: Discrepancy[] = [
+    ...extractScheduleConflicts(structured, nowMs),
+    ...extractStaleDocuments(structured, goals, nowMs),
+    ...extractCalendarEntityGaps(structured, entities, nowMs),
+    ...extractDocumentFollowupGaps(structured, nowMs),
+    ...extractConvergence(structured, entities, nowMs),
+    ...extractUnresolvedIntent(structured, entities, recentDirectives, nowMs),
     // Delta-based first (higher urgency scores — float to top naturally)
     ...extractDeadlineStaleness(commitments, goals, nowMs),
     ...extractEngagementCollapse(entities),
@@ -1068,8 +1755,12 @@ export function detectDiscrepancies(args: {
     if (!d.trigger) return true; // legacy absence-based without trigger pass through (shouldn't happen now)
     // Must have a real why_now (not just "old" or "exists")
     if (d.trigger.why_now.length < 20) return false;
-    // Must be capable of producing send_message or write_document
-    if (d.suggestedActionType !== 'send_message' && d.suggestedActionType !== 'write_document' && d.suggestedActionType !== 'make_decision') return false;
+    const okAction =
+      d.suggestedActionType === 'send_message' ||
+      d.suggestedActionType === 'write_document' ||
+      d.suggestedActionType === 'make_decision' ||
+      d.suggestedActionType === 'schedule';
+    if (!okAction) return false;
     return true;
   });
 
@@ -1086,7 +1777,7 @@ export function detectDiscrepancies(args: {
       seenEntityIds.add(entityKey);
     }
     deduped.push(d);
-    if (deduped.length >= 6) break;
+    if (deduped.length >= 14) break;
   }
 
   return deduped;

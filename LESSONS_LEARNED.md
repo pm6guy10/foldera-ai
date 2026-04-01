@@ -139,3 +139,7 @@ Expanding data windows (signals, entities, evidence) is necessary but not suffic
 **The rule**: before modifying any function's behavior or adding a new parameter, run `rg 'functionName' --type ts` across the entire codebase and list every call site. Fix ALL of them or the fix is incomplete. A single grep miss means the bug survives the "fix" and wastes a full debug session to rediscover.
 
 This applies to: validation functions, lifecycle gates, auth guards, confidence thresholds, trust class logic — anything that is called from more than one place.
+
+## 13. Entity Skip Penalty Applies Only When Email Is Required
+
+A flat `entityPenalty` (e.g. −30) for every candidate type kills calendar-, drive-, and conversation-shaped loops that never had an inbox match. **Rule**: apply skip/entity penalties only when the locked action is `send_message`. For `write_document`, `make_decision`, and `schedule`, entity match is not a prerequisite to act — keep `entityPenalty: 0` on those paths unless a separate product rule says otherwise.

@@ -26,8 +26,11 @@ import type {
   GenerationCandidateLog,
   GenerationCandidateSource,
 } from './types';
-import { detectDiscrepancies } from './discrepancy-detector';
-import type { DiscrepancyClass, TriggerMetadata } from './discrepancy-detector';
+import {
+  detectDiscrepancies,
+  parseCalendarEventFromContent as parseCalendarEventFromContentDiscrepancy,
+} from './discrepancy-detector';
+import type { DiscrepancyClass, RecentDirectiveInput, TriggerMetadata } from './discrepancy-detector';
 import { applyStakesGate } from './stakes-gate';
 import { applyEntityRealityGate } from './entity-reality-gate';
 
@@ -37,6 +40,37 @@ import { applyEntityRealityGate } from './entity-reality-gate';
 
 function isSelfReferentialSignal(content: string): boolean {
   return content.startsWith('[Foldera Directive') || content.startsWith('[Foldera \u00b7 20');
+}
+
+/** Best-effort future event start for open-loop calendar signals (uses shared parser). */
+function parseCalendarEventFromContent(text: string): { startMs: number } | null {
+  const parsed = parseCalendarEventFromContentDiscrepancy(text);
+  if (!parsed) return null;
+  const now = Date.now();
+  if (parsed.startMs > now) return { startMs: parsed.startMs };
+  return null;
+}
+
+function mergeUrgencyWithTimeHints(args: {
+  baseUrgency: number;
+  nowMs: number;
+  calendarEventStartMs?: number | null;
+  commitmentDueMs?: number | null;
+  coldEntityMeetingBoost?: boolean;
+}): number {
+  let u = args.baseUrgency;
+  if (args.calendarEventStartMs != null) {
+    const msUntil = args.calendarEventStartMs - args.nowMs;
+    const days = msUntil / 86400000;
+    if (msUntil >= -12 * 3600000 && msUntil <= 0) u = Math.max(u, 1.0);
+    else if (days > 0 && days <= 1) u += 0.2;
+  }
+  if (args.commitmentDueMs != null) {
+    const h = (args.commitmentDueMs - args.nowMs) / 3600000;
+    if (h > 0 && h <= 48) u += 0.15;
+  }
+  if (args.coldEntityMeetingBoost) u += 0.25;
+  return Math.min(1, u);
 }
 
 function artifactTypeForAction(actionType: ActionType): string {
@@ -259,6 +293,8 @@ export interface ScoredLoop {
   discrepancyClass?: DiscrepancyClass;
   /** Trigger metadata — present only when type === 'discrepancy' */
   trigger?: TriggerMetadata;
+  /** Optional override for discrepancy action resolution (e.g. unresolved_intent → schedule). */
+  discrepancyPreferredAction?: ActionType;
 }
 
 export type KillReason = 'noise' | 'not_now' | 'trap';
@@ -3186,7 +3222,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     // Load 200 to capture email + calendar + file + task signals
     supabase
       .from('tkg_signals')
-      .select('id, content, source, occurred_at, author, type')
+      .select('id, content, source, occurred_at, author, type, source_id')
       .eq('user_id', userId)
       .gte('occurred_at', oneHundredEightyDaysAgo)
       .eq('processed', true)
@@ -3197,7 +3233,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     // Active relationships provide context; cooling ones surface re-engagement
     supabase
       .from('tkg_entities')
-      .select('id, name, last_interaction, total_interactions, patterns, trust_class')
+      .select('id, name, last_interaction, total_interactions, patterns, trust_class, primary_email, emails')
       .eq('user_id', userId)
       .in('trust_class', ['trusted', 'unclassified'])
       .neq('name', 'self')
@@ -3263,6 +3299,28 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     })
     .filter((signal: any) => signal && !isSelfReferentialSignal(signal.content));
   diag.sourceCounts.signals_after_decrypt = signals.length;
+
+  const { data: recentDirectiveRows } = await supabase
+    .from('tkg_actions')
+    .select('generated_at, directive_text')
+    .eq('user_id', userId)
+    .order('generated_at', { ascending: false })
+    .limit(50);
+
+  const recentDirectives: RecentDirectiveInput[] = (recentDirectiveRows ?? []).map((r: { generated_at: string; directive_text: string }) => ({
+    generated_at: r.generated_at,
+    directive_text: r.directive_text ?? '',
+  }));
+
+  const structuredSignals = signals.map((s: { id: string; source?: string; type?: string; occurred_at?: string; content: string; source_id?: string | null }) => ({
+    id: String(s.id),
+    source: String(s.source ?? ''),
+    type: s.type ?? null,
+    occurred_at: String(s.occurred_at ?? ''),
+    content: s.content,
+    source_id: s.source_id ?? null,
+  }));
+
   const entities = entitiesRes.data ?? [];
   // Entity ID → name map so commitment candidates can resolve promisor/promisee.
   // Seed from loaded entities, then batch-resolve any missing commitment actor IDs.
@@ -3349,6 +3407,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     entityName?: string;
     /** Structured sender from the underlying signal record — passed to entity-reality-gate. */
     author?: string;
+    commitmentDueMs?: number;
+    calendarEventStartMs?: number;
   }> = [];
   let suppressedCandidates = 0;
 
@@ -3516,6 +3576,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       resolveEntity(c.promisee_id as string) ??
       resolveEntity(c.promisor_id as string);
 
+    const dueStr = (c.due_at as string | null) || (c.implied_due_at as string | null);
+    const commitmentDueMs = dueStr ? new Date(dueStr).getTime() : undefined;
+
     candidates.push({
       id: c.id,
       type: 'commitment',
@@ -3534,6 +3597,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         },
       ],
       entityName: commitEntityName,
+      commitmentDueMs,
     });
   }
 
@@ -3545,6 +3609,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     if (isSelfReferentialSignal(text)) continue;
     const mg = matchGoal(text, goals);
     const actionType = inferActionType(text, 'signal');
+    const calParsed = parseCalendarEventFromContent(text);
+    const calStart =
+      calParsed && calParsed.startMs > Date.now() ? calParsed.startMs : undefined;
 
     candidates.push({
       id: s.id,
@@ -3567,6 +3634,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       // Pass structured author so entity-reality-gate can use it before regex.
       // Prevents dropping real threads whose entity name is absent from decrypted body text.
       author: s.author as string | undefined,
+      calendarEventStartMs: calStart,
     });
   }
 
@@ -4046,12 +4114,21 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
     const tractability = await getTractability(userId, c.actionType, c.domain);
     const daysSinceLastSurface = await getDaysSinceLastSurface(userId, c.title);
-    const entityPenalty = await getEntitySkipPenalty(userId, c.content, c.title);
+    const rawEntityPenalty = await getEntitySkipPenalty(userId, c.content, c.title);
+    const entityPenalty = c.actionType === 'send_message' ? rawEntityPenalty : 0;
+
+    const nowMsLoop = Date.now();
+    const loopUrgency = mergeUrgencyWithTimeHints({
+      baseUrgency: c.urgency,
+      nowMs: nowMsLoop,
+      calendarEventStartMs: c.calendarEventStartMs,
+      commitmentDueMs: c.commitmentDueMs,
+    });
 
     // v4: Gemini scoring function — replaces flat multiplicative formula
     const { score, breakdown: geminiBreakdown } = computeCandidateScore({
       stakes: specificityAdjustedStakes,
-      urgency: c.urgency,
+      urgency: loopUrgency,
       tractability,
       actionType: c.actionType,
       entityPenalty,
@@ -4085,7 +4162,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       signals as Array<{ content: string; occurred_at?: string }>,
     );
     const lifecycle = classifyLifecycle({
-      urgency: c.urgency,
+      urgency: loopUrgency,
       stakes: specificityAdjustedStakes,
       tractability,
       entityPenalty,
@@ -4113,7 +4190,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         // Legacy fields override where names collide (used by emergent/divergence/kill-reason paths)
         stakes,
         specificityAdjustedStakes,
-        urgency: c.urgency,
+        urgency: loopUrgency,
         tractability,
         freshness: geminiBreakdown.novelty_multiplier,
         actionTypeRate: geminiBreakdown.behavioral_rate,
@@ -4385,7 +4462,14 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // same scored pool — discrepancies win because their stakes/urgency values
   // reflect structural importance, not signal recency.
   // -----------------------------------------------------------------------
-  const discrepancies = detectDiscrepancies({ commitments, entities, goals, decryptedSignals });
+  const discrepancies = detectDiscrepancies({
+    commitments,
+    entities,
+    goals,
+    decryptedSignals,
+    structuredSignals,
+    recentDirectives,
+  });
   console.log(JSON.stringify({
     event: 'discrepancy_detection_debug',
     entity_count: entities.length,
@@ -4417,11 +4501,19 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       },
     });
   }
+  const nowMsDisc = Date.now();
   for (const d of discrepancies) {
     const daysSinceLastSurface = await getDaysSinceLastSurface(userId, d.title);
+    const mergedDiscUrgency = mergeUrgencyWithTimeHints({
+      baseUrgency: d.urgency,
+      nowMs: nowMsDisc,
+      calendarEventStartMs: d.scoringHints?.calendarStartMs,
+      commitmentDueMs: d.scoringHints?.commitmentDueMs,
+      coldEntityMeetingBoost: d.scoringHints?.coldEntityMeetingBoost,
+    });
     const { score, breakdown: geminiBreakdown } = computeCandidateScore({
       stakes: d.stakes,
-      urgency: d.urgency,
+      urgency: mergedDiscUrgency,
       // goal_velocity_mismatch is purely statistical — no grounded thread, no specific recipient.
       // Lower tractability prevents it from beating real thread-grounded candidates.
       tractability: d.class === 'goal_velocity_mismatch' ? 0.30 : 0.70,
@@ -4447,7 +4539,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       score: finalScore,
       breakdown: {
         stakes: d.stakes,
-        urgency: d.urgency,
+        urgency: mergedDiscUrgency,
         freshness: 1.0,
         actionTypeRate: geminiBreakdown.behavioral_rate,
         entityPenalty: 0,
@@ -4456,11 +4548,12 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       relatedSignals: [],
       sourceSignals: d.sourceSignals,
       entityName: d.entityName,
-      confidence_prior: Math.round(Math.max(45, Math.min(85, d.urgency * 80))),
+      confidence_prior: Math.round(Math.max(45, Math.min(85, mergedDiscUrgency * 80))),
       discrepancyClass: d.class,
       trigger: d.trigger,
+      discrepancyPreferredAction: d.discrepancyPreferredAction,
     });
-    diag.discrepancies.push({ id: d.id, class: d.class, title: d.title.slice(0, 100), entityName: d.entityName, score: finalScore, stakes: d.stakes, urgency: d.urgency });
+    diag.discrepancies.push({ id: d.id, class: d.class, title: d.title.slice(0, 100), entityName: d.entityName, score: finalScore, stakes: d.stakes, urgency: mergedDiscUrgency });
     logStructuredEvent({
       event: 'discrepancy_candidate_scored',
       level: 'info',

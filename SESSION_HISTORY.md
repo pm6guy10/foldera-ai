@@ -4,6 +4,20 @@
 
 ## Session Logs
 
+- 2026-03-31 — FLOW: Brain depth — cross-source discrepancy candidates (calendar, drive, conversation, convergence) + scorer/generator wiring
+  MODE: FLOW (brain / scoring)
+  Commit hash(es): pending
+  Files changed: `lib/briefing/discrepancy-detector.ts` (7 cross-source classes, `parseCalendarEventFromContent`, `StructuredSignalInput` / `RecentDirectiveInput`, cap 14), `lib/briefing/scorer.ts` (`structuredSignals`, `recentDirectives`, `mergeUrgencyWithTimeHints`, entity penalty only for `send_message`, entities `primary_email`/`emails`, signals `source_id`), `lib/briefing/generator.ts` (`discrepancyPreferredAction` in `buildDecisionPayload`), `lib/briefing/trigger-action-map.ts` (full class map + `unresolved_intent` validation flex), `lib/briefing/__tests__/discrepancy-detector.test.ts` (cross-source fixtures), `CURRENT_STATE.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`, `LESSONS_LEARNED.md`, `FOLDERA_PRODUCT_SPEC.md`
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` (pass); `npm run build` (pass).
+  Any unresolved issues: Production `POST /api/dev/brain-receipt` and `npm run test:prod` not run this session; live confirmation of larger candidate pool and calendar/drive-sourced discrepancies still required.
+
+- 2026-03-31 — FLOW: Full UX overhaul (unified public nav, onboarding, dashboard/settings polish, branded Resend emails, a11y baseline, not-found, hero demo)
+  MODE: FLOW
+  Commit hash(es): pending
+  Files changed: `components/nav/NavPublic.tsx`, `components/nav/BlogFooter.tsx`, `app/page.tsx` (nav → NavPublic, `main#main`, interactive hero demo, scenario `tablist`/`tab`, footer Pricing → `/pricing`), `app/layout.js` (skip link), `app/globals.css` (`:focus-visible`, `prefers-reduced-motion`), `app/not-found.tsx`, `app/onboard/page.tsx`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/pricing/page.tsx`, `app/login/login-inner.tsx`, `app/start/page.tsx`, `app/(marketing)/blog/*`, `app/privacy/page.tsx`, `app/terms/page.tsx`, `lib/email/resend.ts` (welcome + daily HTML templates; removed customer email health footer), `lib/cron/daily-brief-send.ts`, `app/api/onboard/set-goals/route.ts` + test, `lib/briefing/trigger-action-map.ts` + `trigger-action-lock.test.ts` (complete `DiscrepancyClass` map — build fix), `tests/e2e/public-routes.spec.ts` (mobile scroll width tolerance)
+  What was verified: `npm run build` (pass); `npx vitest run --exclude ".claude/worktrees/**"` (pass); `npx playwright test tests/e2e/public-routes.spec.ts` (21/21); `npx playwright test tests/e2e/flow-routes.spec.ts` (2/2). Per-page screenshot sweep not automated in-session (see AUTOMATION_BACKLOG). Production `npm run test:prod` not run (auth-state / deploy gate).
+  Any unresolved issues: Manual screenshot pass of `/`, `/login`, `/start`, `/onboard`, `/dashboard`, `/dashboard/settings`, `/pricing`, `/blog`, 404 left to Brandon or a follow-up session if required.
+
 - 2026-04-01 — Backend security hardening: RLS service_role policies, policy tightening, Sentry audit, API rate limiting, session security
   MODE: FLOW
   Commit hash(es): `9f130b6`

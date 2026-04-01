@@ -1,5 +1,17 @@
 # AUTOMATION BACKLOG
 
+### P1 — Cross-source brain depth — production receipt (2026-03-31)
+
+**Status: CODE SHIPPED; LIVE RECEIPT PENDING.**
+
+**Scope:** Calendar / drive / conversation / convergence discrepancies; `structuredSignals` + `recentDirectives` inputs; send_message-only entity skip penalty; `mergeUrgencyWithTimeHints`.
+
+**Next proof:** After deploy, owner `POST /api/dev/brain-receipt` with `ALLOW_DEV_ROUTES=true` — confirm `scorer_diagnostics` shows discrepancy classes beyond email-absence patterns, candidate pool larger than pre-change baseline, at least one trace with calendar or drive/conversation `source`, and open-loop `write_document` rows show `entityPenalty: 0` in breakdown. Optional: `npm run test:prod` on green deploy.
+
+### Ops — Email forwarding (foldera.ai)
+
+Set up email forwarding: `privacy@foldera.ai`, `support@foldera.ai` → `b.kapp1010@gmail.com` (requires DNS MX records on foldera.ai domain).
+
 ### P0 — HARD BOTTOM GATE: BLOCK OPERATIONALLY EMPTY WINNERS (2026-03-31)
 
 **Status: SHIPPED.** Commit `835ab43`, deployed `dpl_ANMqJbrPj52Rm71GZZaKnmS4aXHx`.

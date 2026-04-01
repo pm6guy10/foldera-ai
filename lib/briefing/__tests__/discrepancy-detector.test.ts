@@ -859,6 +859,64 @@ describe('Entity admission gate — integration (decay/risk do not fire for reje
 });
 
 // ---------------------------------------------------------------------------
+// Cross-source (calendar / drive / convergence)
+// ---------------------------------------------------------------------------
+
+describe('Cross-source discrepancy extractors', () => {
+  it('emits schedule_conflict when two calendar events overlap in the next 7 days', () => {
+    const d5 = daysFromNowISO(5).slice(0, 10);
+    const structured = [
+      {
+        id: 'cal1',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content:
+          `[Calendar event: Sprint]\nStart: ${d5}T14:00:00.000Z\nEnd: ${d5}T15:00:00.000Z\nAttendees: a@example.com`,
+      },
+      {
+        id: 'cal2',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content:
+          `[Calendar event: Review]\nStart: ${d5}T14:30:00.000Z\nEnd: ${d5}T16:00:00.000Z\nAttendees: b@example.com`,
+      },
+    ];
+    const result = detectDiscrepancies({
+      entities: [],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [],
+      structuredSignals: structured,
+      now: NOW,
+    });
+    expect(result.some((d) => d.class === 'schedule_conflict')).toBe(true);
+  });
+
+  it('emits stale_document when drive file had 3+ touches in one week then 14d idle', () => {
+    const base = now - 40 * 86400000;
+    const structured = [0, 1, 2].map((i) => ({
+      id: `drv-${i}`,
+      source: 'drive',
+      type: 'file_modified',
+      source_id: 'file-xyz',
+      occurred_at: new Date(base + i * 86400000).toISOString(),
+      content: `[File: Q2 Plan]\nType: application/pdf\nModified: ${new Date(base + i * 86400000).toISOString()}\nOwner: self`,
+    }));
+    const result = detectDiscrepancies({
+      entities: [],
+      commitments: [],
+      goals: [{ goal_text: 'unrelated goal about fitness', priority: 4, goal_category: 'health' }],
+      decryptedSignals: [],
+      structuredSignals: structured,
+      now: NOW,
+    });
+    expect(result.some((d) => d.class === 'stale_document')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // ID stability
 // ---------------------------------------------------------------------------
 

@@ -38,13 +38,7 @@ const COMMON_BANNED = [
 
 /**
  * Deterministic mapping: trigger class → action rule.
- *
- * RESPONSE_VELOCITY_COLLAPSE = engagement_collapse
- * MOMENTUM_BREAK             = relationship_dropout
- * DECISION_WINDOW_MISSED     = deadline_staleness
- * GOAL_BEHAVIOR_DIVERGENCE   = drift, goal_velocity_mismatch
- * RELATIONSHIP_TEMPERATURE_DROP = decay, risk
- * ARTIFACT_STALL             = exposure, avoidance
+ * Keys match `DiscrepancyClass` in discrepancy-detector.ts.
  */
 export const TRIGGER_ACTION_MAP: Record<DiscrepancyClass, TriggerActionRule> = {
   // --- RELATIONSHIP_TEMPERATURE_DROP → send_message ---
@@ -114,6 +108,50 @@ export const TRIGGER_ACTION_MAP: Record<DiscrepancyClass, TriggerActionRule> = {
     artifact_shape: 'document',
     required_elements: ['explicit_ask', 'trigger_delta_reference', 'forcing_function'],
     banned_phrases: [...COMMON_BANNED, 'when you get a chance', 'no rush'],
+  },
+
+  // --- Cross-source (calendar / drive / conversation) ---
+  preparation_gap: {
+    primary_action: 'send_message',
+    artifact_shape: 'email',
+    required_elements: ['explicit_ask', 'time_pressure', 'trigger_delta_reference'],
+    banned_phrases: [...COMMON_BANNED],
+  },
+  meeting_open_thread: {
+    primary_action: 'send_message',
+    artifact_shape: 'email',
+    required_elements: ['explicit_ask', 'time_pressure', 'trigger_delta_reference', 'consequence'],
+    banned_phrases: [...COMMON_BANNED],
+  },
+  schedule_conflict: {
+    primary_action: 'write_document',
+    artifact_shape: 'document',
+    required_elements: ['explicit_ask', 'time_pressure', 'trigger_delta_reference', 'forcing_function', 'consequence'],
+    banned_phrases: [...COMMON_BANNED],
+  },
+  stale_document: {
+    primary_action: 'write_document',
+    artifact_shape: 'document',
+    required_elements: ['explicit_ask', 'trigger_delta_reference', 'forcing_function'],
+    banned_phrases: [...COMMON_BANNED, 'when you get a chance', 'no rush'],
+  },
+  document_followup_gap: {
+    primary_action: 'send_message',
+    artifact_shape: 'email',
+    required_elements: ['explicit_ask', 'trigger_delta_reference', 'time_pressure'],
+    banned_phrases: [...COMMON_BANNED],
+  },
+  unresolved_intent: {
+    primary_action: 'make_decision',
+    artifact_shape: 'document',
+    required_elements: ['explicit_ask', 'trigger_delta_reference', 'forcing_function'],
+    banned_phrases: [...COMMON_BANNED, 'consider', 'you might want to', 'perhaps'],
+  },
+  convergence: {
+    primary_action: 'send_message',
+    artifact_shape: 'email',
+    required_elements: ['explicit_ask', 'trigger_delta_reference', 'time_pressure'],
+    banned_phrases: [...COMMON_BANNED],
   },
 };
 
@@ -227,7 +265,16 @@ export function validateTriggerArtifact(
 
   // 1. Action type must match locked action (or write_document fallback for send_message without recipient)
   const expectedAction = rule.primary_action;
-  if (artifactAction !== expectedAction && !(expectedAction === 'send_message' && artifactAction === 'write_document')) {
+  const normArtifact =
+    artifactAction === 'schedule_block' ? 'schedule' : artifactAction;
+  const actionOk =
+    normArtifact === expectedAction ||
+    (expectedAction === 'send_message' && normArtifact === 'write_document') ||
+    (expectedAction === 'make_decision' && normArtifact === 'write_document') ||
+    (expectedAction === 'schedule' && (normArtifact === 'schedule' || artifactAction === 'schedule_block')) ||
+    (triggerClass === 'unresolved_intent' &&
+      (normArtifact === 'schedule' || artifactAction === 'schedule_block' || normArtifact === 'send_message'));
+  if (!actionOk) {
     violations.push(`action_mismatch: expected ${expectedAction}, got ${artifactAction}`);
   }
 

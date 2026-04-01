@@ -2,7 +2,9 @@
 
 ## A. WHAT IS WORKING
 
-- **Discrepancy detection is live** — `lib/briefing/discrepancy-detector.ts` implements 5 structural discrepancy classes (decay, exposure, drift, avoidance, risk). Candidates are injected into the scorer pool and compete against open-loop candidates.
+- **Discrepancy detection is live** — `lib/briefing/discrepancy-detector.ts` implements absence-based, delta-based, and **cross-source** classes (calendar prep gaps, open-thread-before-meeting, schedule conflicts, stale drive documents, document follow-up gaps, assistant-chat unresolved intent, multi-channel convergence). All are pure functions over pre-fetched rows; `scoreOpenLoops()` passes `structuredSignals` (decrypted `tkg_signals` with `source_id`) and `recentDirectives` (`tkg_actions` excerpts).
+- **Entity skip penalty is send_message-only** — `getEntitySkipPenalty` still runs for every open-loop candidate, but only `send_message` retains the penalty; `write_document`, `make_decision`, and `schedule` use `entityPenalty: 0` so calendar/drive-shaped loops are not nuked for missing email match.
+- **Time-aware urgency** — `mergeUrgencyWithTimeHints()` boosts urgency from upcoming calendar starts (today = cap 1.0, ≤1 day +0.2), commitments due within 48h (+0.15), and cold-entity meeting prep (+0.25 from discrepancy `scoringHints`).
 - **DecisionPayload authority is enforced** — LLM cannot override `action_type`. The canonical action is locked pre-LLM via `buildDecisionPayload()` and restored post-LLM via `canonicalAction` enforcement in `generateDirective()`.
 - **Discrepancy candidates pass scoring and persist** — freshness gate, entity suppression gate, and blocking_reason guards are all bypassed correctly for `winner.type === 'discrepancy'`. Drift, exposure, and risk candidates surface in the scored pool.
 - **Artifact generation executes and produces valid structured output** — `generateArtifact()` routes discrepancy candidates through a flavor-aware LLM transformation (`buildDiscrepancyTransformPrompt`). The transformation layer detects raw analysis dumps via `isAnalysisDump()` and replaces them with finished, zero-thinking-required artifacts.
@@ -16,23 +18,18 @@
 
 ## B. WHAT IS BROKEN (REAL)
 
-- **Candidate quality is still low-signal** — current discrepancy extractors detect *absence* (no contact, no signal, no artifact). They do not detect *change* or *deviation*. A candidate saying "you haven't talked to X in 45 days" is less actionable than "X's response rate dropped 70% in the last 14 days after 6 months of regular contact."
-- **No delta/change-based detection** — the system cannot currently measure: engagement velocity collapse, relationship dropout after active period, deadline staleness with recent-update tracking, or goal-level velocity mismatch (recent vs historical signal density).
-- **Generator output is limited by weak inputs, not generator failure** — the generator pipeline is sound, but if the incoming candidate only carries absence evidence, the artifact ceiling is low. Improving candidate quality is the primary lever.
-- **Confidence scores are variable** — when the top discrepancy candidate has no relationship context or signal thread, confidence drops and the artifact quality drops proportionally.
+- **Production brain-receipt not re-run this session** — cross-source candidates need a live `POST /api/dev/brain-receipt` (owner, `ALLOW_DEV_ROUTES`) to confirm pool size, calendar/drive/conversation source traces, and write_document `entityPenalty: 0` in diagnostics.
+- **Convergence depends on name overlap** — `extractConvergence` requires the entity name to appear in signal bodies; calendar titles without names may under-match.
+- **Confidence scores remain variable** — richer candidates help, but thin relationship context still pulls confidence down.
 
 ## C. CURRENT LAYER OF WORK
 
-- **Improve discrepancy signal quality** — add delta-based extractors that measure change vs baseline, not just absence
-- **Prioritize delta/change-based detection**: engagement velocity collapse, relationship dropout, deadline staleness, goal velocity mismatch
-- **Do NOT rebuild pipeline, scoring, lifecycle, or cron** — these are stable
+- **Verify in production** — brain-receipt + one nightly-ops cycle; confirm scorer diagnostics list non-email discrepancy classes and larger pre-rank pool.
+- **Tune extraction thresholds** — burst/idle windows for stale documents, follow-up day counts, intent phrase regex if false positives appear.
 
 ## D. CONSTRAINTS
 
-- Do not touch: `generator.ts`, `scorer.ts`, `daily-brief*.ts`, `nightly-ops`, Supabase migrations, or any cron logic
-- Discrepancy detector is a **pure function** — no DB calls, no async, takes already-fetched data
-- Changes are limited to `lib/briefing/discrepancy-detector.ts` and its test file
-- Each new extractor must include: baseline metric, current metric, delta %, timeframe, entity (if applicable)
-- Do not emit candidates without measurable deltas
-- Keep existing 5 absence-based classes unchanged
-- Delta-based candidates rank higher via higher urgency values (0.72–0.85 vs 0.55–0.70)
+- Discrepancy detector stays a **pure function** — no DB calls, no async; all calendar/drive/conversation rows are fetched in `scorer.ts` and passed in.
+- Each discrepancy row carries `TriggerMetadata` + JSON `evidence` with baseline/current/delta/timeframe/entity where applicable.
+- Preserve existing absence-based extractors (decay, exposure, drift, avoidance, risk) and delta-based extractors unchanged in behavior except sort order relative to new cross-source block.
+- Trigger → action lock: `TRIGGER_ACTION_MAP` must include every `DiscrepancyClass` key; `unresolved_intent` may set `discrepancyPreferredAction` (generator prefers it over `resolveTriggerAction`).
