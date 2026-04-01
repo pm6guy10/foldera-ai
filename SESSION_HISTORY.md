@@ -6,7 +6,7 @@
 
 - 2026-04-01 — AUDIT: schedule_conflict send-worthiness + artifact grounding
   MODE: AUDIT
-  Commit hash(es): `c73169d`
+  Commit hash(es): `fba1d70`
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/types.ts`, `lib/briefing/scorer.ts`, `lib/cron/daily-brief-generate.ts`, `lib/conviction/artifact-generator.ts`, `lib/cron/__tests__/evaluate-readiness.test.ts`, `app/api/dev/brain-receipt/route.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run lib/cron/__tests__/evaluate-readiness.test.ts lib/conviction/__tests__/artifact-generator.test.ts` (pass).
   Any unresolved issues: Production `POST /api/dev/brain-receipt` after deploy READY — confirm `pending_approval`, non-null artifact, APPROVABLE verdict (owner session required from this workspace).
