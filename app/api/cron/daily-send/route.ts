@@ -4,7 +4,7 @@
  * Phase 2 of the daily brief: read today's SINGLE highest-confidence directive
  * from tkg_actions (status='pending_approval'), send ONE email, and mark the action as emailed.
  *
- * Runs at 7:00 AM UTC. Must complete in <45s (Vercel Hobby 60s limit).
+ * Runs at 11:00 UTC (nightly-ops / send stage). Must complete in <45s (Vercel Hobby 60s limit).
  */
 
 import { NextRequest, NextResponse } from 'next/server';

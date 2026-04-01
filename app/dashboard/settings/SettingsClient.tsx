@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { ChevronLeft, LogOut } from 'lucide-react';
+import { FolderaMark } from '@/components/nav/FolderaMark';
 
 interface Integration {
   provider: string;
@@ -699,12 +700,9 @@ function Header({ onSignOut }: { onSignOut: () => void }) {
           <span className="text-xs font-black uppercase tracking-[0.12em]">Dashboard</span>
         </Link>
         <Link href="/dashboard" className="flex items-center gap-2 group absolute left-1/2 -translate-x-1/2">
-          <img
-            src="/foldera-icon.png"
-            alt="Foldera"
-            className="w-9 h-9 rounded-xl group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.15)]"
-            width={36}
-            height={36}
+          <FolderaMark
+            size="sm"
+            className="shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform group-hover:scale-105"
           />
           <span className="text-sm font-black tracking-tighter text-white uppercase hidden sm:inline">Foldera</span>
         </Link>

@@ -143,7 +143,7 @@ export function renderWelcomeEmailHtml(baseUrl: string): string {
         </td></tr>
         <tr><td style="padding:28px 24px;border-radius:16px;background:${EMAIL_CARD};border:1px solid rgba(255,255,255,0.1);">
           <p style="margin:0 0 8px 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">You&apos;re connected</p>
-          <p style="margin:0 0 16px 0;font-family:system-ui,-apple-system,sans-serif;font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">Your first read arrives tomorrow at 7am Pacific.</p>
+          <p style="margin:0 0 16px 0;font-family:system-ui,-apple-system,sans-serif;font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">Your first read arrives tomorrow morning.</p>
           <p style="margin:0 0 12px 0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">Foldera will scan your last 90 days of email, find what&apos;s slipping, and deliver one directive with finished work attached.</p>
           <p style="margin:0 0 24px 0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">No prompts. No setup. Just approve or skip.</p>
           <a href="${dash}" style="display:inline-block;padding:14px 28px;background:#ffffff;color:#000000;font-family:system-ui,-apple-system,sans-serif;font-size:11px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;text-decoration:none;border-radius:12px;box-shadow:0 0 40px rgba(255,255,255,0.2);">View your dashboard</a>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { NavPublic } from '@/components/nav/NavPublic';
+import { FolderaMark } from '@/components/nav/FolderaMark';
 import {
   ArrowRight, Check, Mail, Calendar, MessageSquare,
   Zap, Brain, Briefcase, Code, Coffee, Database, Shield,
@@ -1031,13 +1032,7 @@ export default function App() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-12">
             <div className="flex flex-col gap-5 text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-3">
-                <img
-                  src="/foldera-icon.png"
-                  alt="Foldera"
-                  className="w-10 h-10 rounded-2xl shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-                  width={40}
-                  height={40}
-                />
+                <FolderaMark className="shadow-[0_0_20px_rgba(255,255,255,0.2)]" />
                 <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
               </div>
               <p className="text-zinc-500 text-[11px] uppercase tracking-[0.2em] font-black max-w-sm leading-relaxed text-left">Finished work, every morning.</p>

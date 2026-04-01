@@ -74,7 +74,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
           <div className="overflow-x-auto">
             <div
-              className="prose prose-invert max-w-none prose-headings:font-black prose-headings:tracking-tight prose-headings:text-white prose-p:text-zinc-300 prose-p:leading-relaxed prose-strong:text-white prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:text-cyan-300 prose-th:text-white prose-td:text-zinc-300 prose-li:text-zinc-300 prose-code:text-cyan-300 prose-code:bg-zinc-900 prose-code:px-1 prose-code:rounded"
+              className="prose prose-invert prose-zinc max-w-2xl mx-auto prose-headings:font-black prose-headings:tracking-tight prose-headings:text-white prose-p:text-zinc-300 prose-p:leading-relaxed prose-strong:text-white prose-a:text-cyan-400 prose-a:no-underline prose-a:hover:text-cyan-300 prose-th:text-white prose-td:text-zinc-300 prose-li:text-zinc-300 prose-code:text-cyan-300 prose-code:bg-zinc-900 prose-code:px-1 prose-code:rounded"
               dangerouslySetInnerHTML={{ __html: post.contentHtml }}
             />
           </div>

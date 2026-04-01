@@ -7,6 +7,9 @@
  * NextAuth uses /api/auth/session to determine auth state.
  * We intercept that request AND /api/auth/csrf to provide a complete
  * mock session. We also mock all downstream API calls.
+ *
+ * Requires NEXTAUTH_SECRET in .env.local (generate with openssl).
+ * Production smoke with a real browser session: npm run test:prod:setup then npm run test:prod.
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -14,6 +17,9 @@ import { config as loadEnv } from 'dotenv';
 import { encode } from 'next-auth/jwt';
 
 loadEnv({ path: '.env.local' });
+
+const HAS_NEXTAUTH_SECRET = Boolean(process.env.NEXTAUTH_SECRET?.trim());
+const describeAuthMocked = HAS_NEXTAUTH_SECRET ? test.describe : test.describe.skip;
 
 const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
 const SESSION_COOKIE_NAMES = [
@@ -89,6 +95,7 @@ async function seedAuthenticatedSession(page: Page) {
       userId: MOCK_USER_ID,
       email: SESSION_RESPONSE.user.email,
       name: SESSION_RESPONSE.user.name,
+      hasOnboarded: true,
     },
   });
 
@@ -120,9 +127,16 @@ async function setupDashboardMocks(page: Page) {
   await page.route('**/api/conviction/latest', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: json(DIRECTIVE_RESPONSE) }),
   );
-  await page.route('**/api/conviction/execute', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({ status: 'ok' }) }),
-  );
+  await page.route('**/api/conviction/execute', async (route) => {
+    let decision: string | undefined;
+    try {
+      decision = route.request().postDataJSON()?.decision as string | undefined;
+    } catch {
+      decision = undefined;
+    }
+    const status = decision === 'skip' ? 'skipped' : 'executed';
+    await route.fulfill({ status: 200, contentType: 'application/json', body: json({ status }) });
+  });
 }
 
 /** Set up mocks for dashboard with no directive (empty state). */
@@ -167,7 +181,7 @@ async function setupSettingsMocks(page: Page) {
 
 // ── Dashboard tests ─────────────────────────────────────────────────────────
 
-test.describe('Dashboard /dashboard — authenticated', () => {
+describeAuthMocked('Dashboard /dashboard — authenticated', () => {
   test('loads and shows directive card — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupDashboardMocks(page);
@@ -182,7 +196,7 @@ test.describe('Dashboard /dashboard — authenticated', () => {
     const approveBtn = page.getByRole('button', { name: /approve/i });
     await expect(approveBtn).toBeVisible();
     await approveBtn.click();
-    await expect(page.getByText(/executed|done/i).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/sent|check your outbox/i).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('skip button is clickable', async ({ page }) => {
@@ -199,7 +213,7 @@ test.describe('Dashboard /dashboard — authenticated', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupEmptyDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByText(/first read|nothing queued|no directive/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Your next read arrives tomorrow morning/i)).toBeVisible({ timeout: 15000 });
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {
@@ -230,7 +244,7 @@ test.describe('Dashboard /dashboard — authenticated', () => {
 
 // ── Settings tests ──────────────────────────────────────────────────────────
 
-test.describe('Settings /dashboard/settings — authenticated', () => {
+describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
   test('loads with provider cards visible — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupSettingsMocks(page);
@@ -247,16 +261,6 @@ test.describe('Settings /dashboard/settings — authenticated', () => {
     await expect(page.getByText(/microsoft/i).first()).toBeVisible();
   });
 
-  test('unauthenticated settings page renders without crash', async ({ page }) => {
-    // Without session mock, page should render something (sign-in prompt, redirect, or loading)
-    // It must NOT crash or show a blank white page
-    await page.goto('/dashboard/settings');
-    await page.waitForTimeout(2000);
-    const bodyText = await page.locator('body').innerText();
-    // Page rendered something (not blank)
-    expect(bodyText.length).toBeGreaterThan(0);
-  });
-
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const errors = collectConsoleErrors(page);
@@ -264,5 +268,14 @@ test.describe('Settings /dashboard/settings — authenticated', () => {
     await page.goto('/dashboard/settings');
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
+  });
+});
+
+test.describe('Settings /dashboard/settings — unauthenticated smoke', () => {
+  test('unauthenticated settings page renders without crash', async ({ page }) => {
+    await page.goto('/dashboard/settings');
+    await page.waitForTimeout(2000);
+    const bodyText = await page.locator('body').innerText();
+    expect(bodyText.length).toBeGreaterThan(0);
   });
 });

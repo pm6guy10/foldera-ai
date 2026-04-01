@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — FLOW: Infrastructure cleanup — legal email only, FolderaMark, nav session fade + mobile sheet, blog prose, /try funnel, .env.example, Playwright prod/skip auth, screenshot sweep, entity dup check
+  MODE: FLOW
+  Commit hash(es): pending (verify with `git log -1 --oneline` on `main` after push — single amended commit includes `.env.example` + `.gitignore` `!.env.example`)
+  Files changed: `.gitignore`, `.env.example`, `components/nav/FolderaMark.tsx`, `components/nav/NavPublic.tsx`, `components/nav/BlogFooter.tsx`, `app/privacy/page.tsx`, `app/terms/page.tsx`, `app/page.tsx`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/not-found.tsx`, `app/try/page.tsx`, `app/start/page.tsx`, `app/onboard/page.tsx`, `app/(marketing)/blog/[slug]/page.tsx`, `app/api/cron/daily-send/route.ts`, `app/api/onboard/set-goals/route.ts`, `lib/email/resend.ts`, `playwright.config.ts`, `playwright.prod.config.ts`, `playwright.screenshots.config.ts`, `package.json`, `tests/production/smoke.spec.ts`, `tests/production/public-screenshots.spec.ts`, `tests/production/audit-report.json`, `tests/production/audit-summary.md`, `tests/production/screenshots/*`, `tests/e2e/public-routes.spec.ts`, `tests/e2e/authenticated-routes.spec.ts`, `tests/e2e/safety-gates.spec.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` (pass); `npx vitest run --exclude ".claude/worktrees/**"` (pass); `npm run test:prod` **51/51** (smoke + audit only; `testMatch` excludes `public-screenshots.spec.ts` to avoid parallel flake with audit); `npm run test:screenshots` **10/10** PNGs → `tests/production/screenshots/`; Supabase SQL duplicate-name check for owner `e40b7cd8…` returned **no duplicate groups** (no `trust_class` updates). Local `npx playwright test` (e2e): **45 passed**, 4 skipped, **7 failed** in `authenticated-routes.spec.ts` (mocked dashboard copy vs live UI drift — pre-existing / out of scope). FLOW: `npx playwright test tests/e2e/public-routes.spec.ts` includes unauthenticated blog nav at 375px.
+  Any unresolved issues: `tests/e2e/authenticated-routes.spec.ts` needs assertion refresh against current dashboard empty-state and directive copy (or stricter route mock order). Ops email forwarding row in AUTOMATION_BACKLOG unchanged (DNS).
+
 - 2026-04-01 — FLOW: Brand assets — PNG logos replace Lucide Layers; favicon + OG; email wordmark
   MODE: FLOW
   Commit hash(es): `098622f` (nav/dashboard/email/OG metadata + core PNGs); `851e67d` (spec row + `public/favicon.png` + `public/foldera-oauth.png`)

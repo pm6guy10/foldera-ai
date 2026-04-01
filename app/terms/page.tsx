@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { FolderaMark } from '@/components/nav/FolderaMark';
 
 export const metadata: Metadata = {
   title: 'Terms of Service — Foldera',
@@ -11,7 +12,7 @@ export default function TermsPage() {
       <nav className="border-b border-white/5 py-6 px-6">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <img src="/foldera-icon.png" alt="Foldera" className="w-10 h-10 rounded-2xl" width={40} height={40} />
+            <FolderaMark />
             <span className="text-lg font-black tracking-tighter uppercase">Foldera</span>
           </a>
           <a href="/" className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
@@ -89,12 +90,6 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <p className="text-zinc-500 text-sm pt-6 border-t border-white/10">
-            For all inquiries, you can also reach us at{' '}
-            <a href="mailto:b.kapp1010@gmail.com" className="text-cyan-400 hover:underline">
-              b.kapp1010@gmail.com
-            </a>
-          </p>
         </div>
       </div>
     </main>

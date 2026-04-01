@@ -13,11 +13,39 @@
  * Setup: npm run test:prod:setup (one-time, saves session for 30 days)
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { test, expect } from '@playwright/test';
+
+function productionAuthStateReady(): boolean {
+  const p = path.join(__dirname, 'auth-state.json');
+  if (!fs.existsSync(p)) return false;
+  try {
+    const data = JSON.parse(fs.readFileSync(p, 'utf8')) as {
+      cookies?: Array<{ name?: string; expires?: number }>;
+    };
+    const now = Date.now() / 1000;
+    const sessionCookies = (data.cookies ?? []).filter(
+      (c) =>
+        typeof c.name === 'string' &&
+        (c.name.includes('session-token') || c.name.includes('authjs')),
+    );
+    if (sessionCookies.length === 0) return false;
+    for (const c of sessionCookies) {
+      if (typeof c.expires === 'number' && c.expires > 0 && c.expires < now) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Skips authenticated suites when auth-state.json is missing or session cookies are expired. */
+const describeAuth = productionAuthStateReady() ? test.describe : test.describe.skip;
 
 // ── AUTHENTICATED ROUTES (use stored session) ──────────────────────────────
 
-test.describe('Authenticated: Dashboard', () => {
+describeAuth('Authenticated: Dashboard', () => {
   test('loads without redirect loop', async ({ page }) => {
     const response = await page.goto('/dashboard');
     // Must be 200, not 307 (middleware redirect) or 302 (redirect to /login)
@@ -57,7 +85,7 @@ test.describe('Authenticated: Dashboard', () => {
   });
 });
 
-test.describe('Authenticated: Settings', () => {
+describeAuth('Authenticated: Settings', () => {
   test('loads with provider cards', async ({ page }) => {
     const response = await page.goto('/dashboard/settings');
     expect(response?.status()).toBe(200);
@@ -77,7 +105,7 @@ test.describe('Authenticated: Settings', () => {
   });
 });
 
-test.describe('Authenticated: API health', () => {
+describeAuth('Authenticated: API health', () => {
   test('/api/auth/session returns valid session', async ({ request }) => {
     const response = await request.get('/api/auth/session');
     expect(response.status()).toBe(200);
@@ -135,7 +163,7 @@ test.describe('Public: Landing page', () => {
   });
 });
 
-test.describe('Public: Login page', () => {
+describeAuth('Public: Login page (authenticated redirect)', () => {
   test('redirects authenticated users to dashboard or onboard', async ({ page }) => {
     const response = await page.goto('/login');
     const redirectResponse = await response?.request().redirectedFrom()?.response();
@@ -143,7 +171,9 @@ test.describe('Public: Login page', () => {
     expect(redirectResponse?.status()).toBeLessThanOrEqual(307);
     expect(page.url()).toMatch(/\/(dashboard|onboard)(\?|$)/);
   });
+});
 
+test.describe('Public: Login page (anonymous)', () => {
   test('shows error param if present', async ({ browser }) => {
     // Use a fresh unauthenticated context — authenticated users get redirected
     // away from /login before the error banner can render.
@@ -156,7 +186,7 @@ test.describe('Public: Login page', () => {
   });
 });
 
-test.describe('Public: Start page', () => {
+describeAuth('Public: Start page (authenticated redirect)', () => {
   test('redirects authenticated users to dashboard or onboard', async ({ page }) => {
     const response = await page.goto('/start');
     const redirectResponse = await response?.request().redirectedFrom()?.response();
@@ -166,7 +196,7 @@ test.describe('Public: Start page', () => {
   });
 });
 
-test.describe('Authenticated: Approve/Skip flow', () => {
+describeAuth('Authenticated: Approve/Skip flow', () => {
   test('can skip a pending action via API', async ({ request }) => {
     const latest = await request.get('/api/conviction/latest');
     const body = await latest.json();
@@ -182,7 +212,7 @@ test.describe('Authenticated: Approve/Skip flow', () => {
   });
 });
 
-test.describe('Authenticated: Settings interactions', () => {
+describeAuth('Authenticated: Settings interactions', () => {
   test('Google connect/disconnect buttons are clickable', async ({ page }) => {
     await page.goto('/dashboard/settings');
     await page.waitForLoadState('networkidle');
@@ -218,7 +248,7 @@ test.describe('Authenticated: Settings interactions', () => {
   });
 });
 
-test.describe('Authenticated: Path B Generation Loop', () => {
+describeAuth('Authenticated: Path B Generation Loop', () => {
   test('Generate Now triggers pipeline and renders action card', async ({ page }) => {
     test.setTimeout(180000);
     await page.goto('/dashboard/settings');

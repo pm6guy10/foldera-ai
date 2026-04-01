@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
           const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://www.foldera.ai').replace(/\/$/, '');
           const bodyText = `Welcome to Foldera.
 
-You're connected. Your first read arrives tomorrow at 7am Pacific.
+You're connected. Your first read arrives tomorrow morning.
 
 Foldera will scan your last 90 days of email, find what's slipping, and deliver one directive with finished work attached.
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { FolderaMark } from '@/components/nav/FolderaMark';
 import { signOut } from 'next-auth/react';
 import { Settings, Lock, LogOut } from 'lucide-react';
 import type { ConvictionAction } from '@/lib/briefing/types';
@@ -138,9 +139,13 @@ export default function DashboardPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Approve failed');
-      setDone(true);
-      setLastDecision('approve');
-      setFlash('Sent. Check your outbox.');
+      if (data.status === 'executed' || data.status === 'skipped') {
+        setDone(true);
+        setLastDecision('approve');
+        setFlash('Sent. Check your outbox.');
+      } else {
+        throw new Error('Unexpected response from Foldera.');
+      }
     } catch (err: unknown) {
       setFlash(err instanceof Error ? err.message : 'Approve failed');
     } finally {
@@ -159,9 +164,13 @@ export default function DashboardPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Skip failed');
-      setDone(true);
-      setLastDecision('skip');
-      setFlash('Skipped. Foldera will adjust.');
+      if (data.status === 'executed' || data.status === 'skipped') {
+        setDone(true);
+        setLastDecision('skip');
+        setFlash('Skipped. Foldera will adjust.');
+      } else {
+        throw new Error('Unexpected response from Foldera.');
+      }
     } catch (err: unknown) {
       setFlash(err instanceof Error ? err.message : 'Skip failed');
     } finally {
@@ -189,12 +198,9 @@ export default function DashboardPage() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
         <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4 gap-2">
           <Link href="/dashboard" className="flex items-center gap-2.5 group min-w-0">
-            <img
-              src="/foldera-icon.png"
-              alt="Foldera"
-              className="w-9 h-9 rounded-xl group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.15)] shrink-0"
-              width={36}
-              height={36}
+            <FolderaMark
+              size="sm"
+              className="shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform group-hover:scale-105 shrink-0"
             />
             <span className="text-sm font-black tracking-tighter text-white uppercase truncate">Foldera</span>
           </Link>
@@ -249,7 +255,7 @@ export default function DashboardPage() {
               )}
             </div>
             {flash && <p className="text-white text-base font-bold mb-3">{flash}</p>}
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Your next read arrives at 7am Pacific.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Your next read arrives tomorrow morning.</p>
           </div>
         ) : fetchError ? (
           <div className="mt-20 text-center">
@@ -265,7 +271,7 @@ export default function DashboardPage() {
           <div className="mt-12">
             <div className="mx-auto max-w-lg rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-10 text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
               <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse mx-auto mb-6" />
-              <p className="text-zinc-200 text-lg font-medium">Your next read arrives at 7am Pacific.</p>
+              <p className="text-zinc-200 text-lg font-medium">Your next read arrives tomorrow morning.</p>
               <p className="text-zinc-500 text-sm mt-2">Foldera is learning from your patterns.</p>
             </div>
           </div>

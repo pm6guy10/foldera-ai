@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { NavPublic } from '@/components/nav/NavPublic';
+import { FolderaMark } from '@/components/nav/FolderaMark';
 
 export default function NotFound() {
   return (
@@ -12,13 +13,7 @@ export default function NotFound() {
 
       <main id="main" className="relative z-10 pt-28 pb-20 px-6 flex flex-col items-center text-center">
         <div className="mb-10 flex items-center justify-center gap-3">
-          <img
-            src="/foldera-icon.png"
-            alt="Foldera"
-            className="w-12 h-12 rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.25)]"
-            width={48}
-            height={48}
-          />
+          <FolderaMark size="lg" className="shadow-[0_0_30px_rgba(255,255,255,0.25)]" />
           <span className="text-2xl font-black tracking-tighter uppercase">Foldera</span>
         </div>
 

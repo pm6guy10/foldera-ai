@@ -66,6 +66,23 @@ test.describe('Landing page /', () => {
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
   });
+
+  test('blog renders public nav at 375px (unauthenticated)', async ({ browser }) => {
+    const context = await browser.newContext({
+      storageState: undefined,
+      viewport: { width: 375, height: 812 },
+    });
+    const page = await context.newPage();
+    try {
+      const res = await page.goto('/blog');
+      expect(res?.status()).toBe(200);
+      await page.waitForLoadState('domcontentloaded');
+      await expect(page.getByRole('navigation')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByRole('link', { name: /foldera/i }).first()).toBeVisible();
+    } finally {
+      await context.close();
+    }
+  });
 });
 
 // ── Start page (/start) ────────────────────────────────────────────────────

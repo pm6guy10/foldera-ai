@@ -110,7 +110,7 @@ function OnboardContent() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
                 </span>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">
-                  Connected. Your first read arrives tomorrow at 7am.
+                  Connected. Your first read arrives tomorrow morning.
                 </p>
               </div>
             </div>

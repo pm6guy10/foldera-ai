@@ -81,7 +81,7 @@ export default function StartPage() {
             {[
               { n: '01', text: 'Connect — Link your email in one click' },
               { n: '02', text: 'Focus — Tell us what you\u2019re working on' },
-              { n: '03', text: 'Sleep — Your first read arrives tomorrow at 7am' },
+              { n: '03', text: 'Sleep — Your first read arrives tomorrow morning' },
               { n: '04', text: 'Improve — Every approve and skip makes it smarter' },
             ].map(({ n, text }) => (
               <div key={n} className="flex items-start gap-3">
