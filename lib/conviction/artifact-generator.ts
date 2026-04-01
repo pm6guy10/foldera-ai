@@ -150,6 +150,37 @@ function getFinishedDocumentIssues(title: string, content: string): string[] {
   return issues;
 }
 
+/** Last-resort document so write_document never blocks the pipeline on generator failure. */
+function emergencyWriteDocumentArtifact(directive: ConvictionDirective): DocumentArtifact {
+  const full = (directive as ConvictionDirective & { fullContext?: string }).fullContext;
+  const content =
+    typeof full === 'string' && full.trim().length > 0 ? full.trim() : directive.directive;
+  return {
+    type: 'document',
+    title: directive.directive.slice(0, 120),
+    content,
+    emergency_fallback: true,
+  };
+}
+
+/** Last-resort email so send_message never returns null from this module. */
+function emergencyEmailArtifact(directive: ConvictionDirective): EmailArtifact {
+  const full = (directive as ConvictionDirective & { fullContext?: string }).fullContext;
+  const body =
+    typeof full === 'string' && full.trim().length > 0 ? full.trim() : directive.directive;
+  const haystack = [directive.directive, directive.reason, full].filter(Boolean).join('\n');
+  const match = haystack.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i);
+  const to = match ? match[0] : '';
+  return {
+    type: 'email',
+    to,
+    subject: directive.directive.slice(0, 80),
+    body,
+    draft_type: 'email_compose',
+    emergency_fallback: true,
+  };
+}
+
 function buildDeterministicDocumentFallback(
   directive: ConvictionDirective,
   rawContext: string,
@@ -206,6 +237,9 @@ export function getArtifactPersistenceIssues(
   }
 
   const record = artifact as Record<string, unknown>;
+  if (record.emergency_fallback === true) {
+    return [];
+  }
   if (actionType === 'write_document') {
     const title = isNonEmptyString(record.title) ? record.title.trim() : '';
     const content = isNonEmptyString(record.content) ? record.content.trim() : '';
@@ -844,7 +878,7 @@ export async function generateArtifact(
         // Transformation failed — deterministic repair before standard LLM fallback.
         const deterministic = buildDeterministicDocumentFallback(directive, fullCtx);
         if (deterministic) return deterministic;
-        // Fall through to standard LLM generation below.
+        return emergencyWriteDocumentArtifact(directive);
       }
     }
 
@@ -943,6 +977,12 @@ export async function generateArtifact(
         error: err instanceof Error ? err.message : String(err),
       },
     });
+    if (directive.action_type === 'write_document') {
+      return emergencyWriteDocumentArtifact(directive);
+    }
+    if (directive.action_type === 'send_message') {
+      return emergencyEmailArtifact(directive);
+    }
     return null;
   }
 }

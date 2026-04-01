@@ -122,14 +122,18 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(content).not.toMatch(/^WHY NOW:/m);
   });
 
-  it('validateArtifact rejects write_document content that is a raw analysis dump (Fix 2 — defense-in-depth)', async () => {
-    // If the LLM itself returns an analysis dump as document content,
-    // validateArtifact must hard-reject it. generateArtifact returns null.
+  it('uses emergency write_document when LLM returns a raw analysis dump (validateArtifact rejects; generator still returns artifact)', async () => {
+    // validateArtifact hard-rejects analysis-shaped document content; generateArtifact
+    // must still return an emergency_fallback document so the brief pipeline does not stop at null.
     mockCreate.mockResolvedValue(anthropicResponse(ANALYSIS_DUMP));
 
     const result = await generateArtifact('user-1', { ...BASE_WRITE_DOCUMENT_DIRECTIVE });
 
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect((result as any).type).toBe('document');
+    expect((result as any).emergency_fallback).toBe(true);
+    // Emergency uses directive.fullContext when set; fixture has none — falls back to directive text.
+    expect((result as any).content).toBe('Address financial runway concern');
   });
 
   it('accepts a clean finished write_document artifact', async () => {
@@ -147,12 +151,14 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     });
   });
 
-  it('rejects hostile meta commentary variants that are not finished documents', async () => {
+  it('falls back to emergency document when LLM returns hostile meta commentary as content', async () => {
     mockCreate.mockResolvedValue(anthropicResponse(HOSTILE_META_DUMP));
 
     const result = await generateArtifact('user-1', { ...BASE_WRITE_DOCUMENT_DIRECTIVE });
 
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect((result as any).emergency_fallback).toBe(true);
+    expect((result as any).content.length).toBeGreaterThan(20);
   });
 
   it('fallback repair path returns finished document text, not analysis scaffolding', async () => {

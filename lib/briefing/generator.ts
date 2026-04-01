@@ -3616,6 +3616,14 @@ export function validateDirectiveForPersistence(input: {
     return [];
   }
 
+  if (
+    input.artifact &&
+    typeof input.artifact === 'object' &&
+    (input.artifact as Record<string, unknown>).emergency_fallback === true
+  ) {
+    return [];
+  }
+
   if (input.directive.directive === GENERATION_FAILED_SENTINEL) {
     issues.push('directive generation failed');
   }

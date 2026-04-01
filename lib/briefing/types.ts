@@ -52,12 +52,15 @@ export interface EmailArtifact {
   subject: string;
   body: string;
   draft_type: 'email_compose' | 'email_reply';
+  /** When true, generator failed; persistence skips strict artifact gates so a brief can still ship. */
+  emergency_fallback?: boolean;
 }
 
 export interface DocumentArtifact {
   type: 'document';
   title: string;
   content: string;
+  emergency_fallback?: boolean;
 }
 
 export interface CalendarEventArtifact {

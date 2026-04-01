@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — OPS: Artifact generator emergency fallbacks (write_document + send_message never null)
+  MODE: OPS
+  Commit hash(es): (this push)
+  Files changed: `lib/conviction/artifact-generator.ts`, `lib/briefing/types.ts`, `lib/briefing/generator.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` (pass); `npx vitest run --exclude ".claude/worktrees/**"` (547 tests pass).
+  Any unresolved issues: `npm run test:prod` not run from this workspace.
+
 - 2026-04-01 — OPS: Mobile visual QA — 375px overflow, touch targets, hamburger backdrop, screenshots
   MODE: OPS
   Commit hash(es): `git log -1 --oneline` on `main` — subject `fix: mobile visual QA — floating text, gutters, overflow, touch targets`
