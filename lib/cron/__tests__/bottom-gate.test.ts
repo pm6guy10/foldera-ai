@@ -33,6 +33,25 @@ function makeDocArtifact(overrides: Record<string, unknown> = {}): ConvictionArt
 }
 
 describe('evaluateBottomGate', () => {
+  it('passes when firstMorningBypass is set (onboarding welcome document)', () => {
+    const result = evaluateBottomGate(
+      makeDirective({
+        action_type: 'write_document',
+        generationLog: {
+          outcome: 'selected',
+          stage: 'persistence',
+          reason: 'first_morning_welcome',
+          candidateFailureReasons: [],
+          candidateDiscovery: null,
+          firstMorningBypass: true,
+        },
+      }),
+      makeDocArtifact({ type: 'document', content: 'Short memo without deadline language.'.repeat(3) }),
+    );
+    expect(result.pass).toBe(true);
+    expect(result.blocked_reasons).toEqual([]);
+  });
+
   it('passes a well-formed send_message with external target, ask, and pressure', () => {
     const result = evaluateBottomGate(makeDirective(), makeEmailArtifact());
     expect(result.pass).toBe(true);

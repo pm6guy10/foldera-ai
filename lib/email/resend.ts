@@ -211,6 +211,42 @@ export function renderWelcomeEmailHtml(baseUrl: string): string {
 </html>`;
 }
 
+/**
+ * Ops alert when the daily send batch leaves users without an email.
+ * Requires RESEND_API_KEY; no-ops when unset (e.g. local tests).
+ */
+export async function sendDailyDeliverySkipAlert(payload: {
+  date: string;
+  totalConnectedUsers: number;
+  batchUserCount: number;
+  emailsSent: number;
+  skips: Array<{ userId: string; code: string; detail?: string }>;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) return;
+
+  const lines = payload.skips.map(
+    (s) =>
+      `- ${s.userId} — ${s.code}${s.detail ? `: ${s.detail}` : ''}`,
+  );
+  const body = [
+    `Daily brief send finished ${payload.date}`,
+    `Connected users (OAuth): ${payload.totalConnectedUsers}`,
+    `Users in this send batch: ${payload.batchUserCount}`,
+    `Successful sends (this run): ${payload.emailsSent}`,
+    `Skipped / no email: ${payload.skips.length}`,
+    '',
+    ...lines,
+  ].join('\n');
+
+  await sendResendEmail({
+    from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
+    to: 'brief@foldera.ai',
+    subject: `[Foldera] Daily send: ${payload.skips.length} user(s) got no email`,
+    text: body,
+    tags: [{ name: 'email_type', value: 'delivery_audit' }],
+  });
+}
+
 export async function sendResendEmail({
   to,
   subject,

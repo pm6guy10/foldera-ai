@@ -4,6 +4,7 @@
  *       directive generation and persistence, runDailyGenerate orchestration.
  */
 
+import * as Sentry from '@sentry/nextjs';
 import { createServerClient } from '@/lib/db/client';
 import {
   buildDirectiveExecutionResult,
@@ -27,6 +28,7 @@ import type {
   GenerationRunLog,
 } from '@/lib/briefing/types';
 import { filterDailyBriefEligibleUserIds } from '@/lib/auth/daily-brief-users';
+import { listConnectedUserIds } from '@/lib/auth/user-tokens';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { runCommitmentCeilingDefense } from '@/lib/cron/self-heal';
 import { CONFIDENCE_PERSIST_THRESHOLD, CONFIDENCE_SEND_THRESHOLD } from '@/lib/config/constants';
@@ -157,6 +159,10 @@ export function evaluateBottomGate(
   directive: ConvictionDirective,
   artifact: ConvictionArtifact,
 ): BottomGateResult {
+  if (directive.generationLog?.firstMorningBypass) {
+    return { pass: true, blocked_reasons: [] };
+  }
+
   const blocked_reasons: BottomGateBlockReason[] = [];
 
   const artifactRecord = artifact as unknown as Record<string, unknown>;
@@ -297,6 +303,10 @@ export function isSendWorthy(
     return { worthy: false, reason: 'do_nothing_directive' };
   }
 
+  if (directive.generationLog?.firstMorningBypass) {
+    return { worthy: true, reason: 'first_morning_welcome' };
+  }
+
   const artifactRecord = artifact as unknown as Record<string, unknown>;
 
   // send_message candidates use a lower send floor (65 vs 70).
@@ -403,6 +413,7 @@ function extractThresholdValues(directive: ConvictionDirective | null): {
 export function artifactTypeForAction(actionType: string | null | undefined): string | null {
   switch (actionType) {
     case 'send_message': return 'drafted_email';
+    case 'write_document': return 'document';
     case 'make_decision': return 'decision_frame';
     case 'do_nothing': return 'wait_rationale';
     default: return null;
@@ -1071,6 +1082,7 @@ export async function resolveDailyBriefUserIds(explicitUserIds?: string[]): Prom
 
 async function getEligibleDailyBriefUserIds(): Promise<string[]> {
   const supabase = createServerClient();
+  const connected = await listConnectedUserIds(supabase);
   const { data: entities, error } = await supabase
     .from('tkg_entities')
     .select('user_id')
@@ -1078,9 +1090,128 @@ async function getEligibleDailyBriefUserIds(): Promise<string[]> {
 
   if (error) throw error;
 
-  const userIds = [...new Set((entities ?? []).map((e: { user_id: string }) => e.user_id))];
+  const fromGraph = (entities ?? []).map((e: { user_id: string }) => e.user_id);
+  const userIds = [...new Set([...connected, ...fromGraph])];
   if (userIds.length === 0) return [];
   return filterDailyBriefEligibleUserIds(userIds, supabase);
+}
+
+const FIRST_MORNING_SIGNAL_CAP = 5;
+const FIRST_MORNING_ACCOUNT_MAX_MS = 48 * 60 * 60 * 1000;
+const ONBOARDING_GOAL_SOURCES = ['onboarding_bucket', 'onboarding_stated'] as const;
+
+async function countTotalSignalsForUser(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('tkg_signals')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+async function userAccountCreatedAtMs(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<number | null> {
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+  if (error || !data?.user?.created_at) return null;
+  const t = new Date(data.user.created_at).getTime();
+  return Number.isFinite(t) ? t : null;
+}
+
+async function hasPriorFirstMorningBrief(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('tkg_actions')
+    .select('execution_result')
+    .eq('user_id', userId)
+    .order('generated_at', { ascending: false })
+    .limit(80);
+  if (error) return false;
+  return (data ?? []).some((row) => {
+    const er = row.execution_result as Record<string, unknown> | null;
+    return er?.brief_origin === 'first_morning';
+  });
+}
+
+async function loadOnboardingGoalsForFirstMorning(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<Array<{ goal_text: string; goal_category: string | null; source: string }>> {
+  const { data, error } = await supabase
+    .from('tkg_goals')
+    .select('goal_text, goal_category, source')
+    .eq('user_id', userId)
+    .in('source', [...ONBOARDING_GOAL_SOURCES]);
+  if (error) throw error;
+  return (data ?? []).filter(
+    (g: { goal_text: string }) =>
+      typeof g.goal_text === 'string' &&
+      g.goal_text.trim().length > 0 &&
+      g.goal_text !== '__ONBOARDING_COMPLETE__',
+  ) as Array<{ goal_text: string; goal_category: string | null; source: string }>;
+}
+
+function buildFirstMorningWelcome(
+  goals: Array<{ goal_text: string; goal_category: string | null }>,
+): { directive: ConvictionDirective; artifact: ConvictionArtifact } {
+  const directiveText =
+    'Foldera is syncing your last 90 days of email and will watch for patterns tied to the priorities you set during onboarding.';
+
+  const lines: string[] = [
+    'Welcome — here is what Foldera will track for you while your history finishes importing.',
+    '',
+    'We pull roughly the last 90 days from your connected inbox and calendar, turn that into signals, and score what deserves a finished move tomorrow.',
+    '',
+    'Your stated priorities:',
+  ];
+  for (const g of goals) {
+    const cat = g.goal_category ? ` (${g.goal_category})` : '';
+    lines.push(`• ${g.goal_text.trim()}${cat}`);
+  }
+  lines.push(
+    '',
+    'What we watch per goal:',
+    '• Missed replies, stalled threads, and calendar drift that conflict with that priority.',
+    '• Commitments and deadlines that show up across mail and events.',
+    '• Relationship silence where you historically had momentum.',
+    '',
+    'You will get one directive with finished work attached — approve or skip. No extra setup.',
+  );
+  const content = lines.join('\n');
+
+  const directive: ConvictionDirective = {
+    directive: directiveText,
+    action_type: 'write_document',
+    confidence: 78,
+    reason:
+      'Based on the onboarding goals you saved — we are calibrating the model to those outcomes while signals ingest.',
+    evidence: goals.slice(0, 6).map((g) => ({
+      type: 'goal' as const,
+      description: g.goal_text.trim(),
+    })),
+    generationLog: {
+      outcome: 'selected',
+      stage: 'persistence',
+      reason: 'first_morning_welcome',
+      candidateFailureReasons: [],
+      candidateDiscovery: null,
+      firstMorningBypass: true,
+    },
+  };
+
+  const artifact: ConvictionArtifact = {
+    type: 'document',
+    title: 'Your first 48 hours — what Foldera is watching',
+    content,
+  };
+
+  return { directive, artifact };
 }
 
 // ---------------------------------------------------------------------------
@@ -1252,8 +1383,11 @@ export async function runDailyGenerate(
 
   const signalResults: DailyBriefUserResult[] = [];
   const results: DailyBriefUserResult[] = [];
+  const totalUsers = eligibleUserIds.length;
 
-  for (const userId of eligibleUserIds) {
+  for (let ui = 0; ui < eligibleUserIds.length; ui++) {
+    const userId = eligibleUserIds[ui];
+    console.log(`[daily-generate] Generating for user ${userId} (${ui + 1} of ${totalUsers})`);
     const userEmails = await fetchUserEmailAddresses(userId);
     const signalResult = await runSignalProcessingForUser(supabase, userId, options);
     signalResults.push(signalResult);
@@ -1325,6 +1459,85 @@ export async function runDailyGenerate(
           });
           continue;
         }
+      }
+
+      // First-morning welcome: goals-only directive for brand-new accounts with few signals.
+      try {
+        const signalTotal = await countTotalSignalsForUser(supabase, userId);
+        const createdMs = await userAccountCreatedAtMs(supabase, userId);
+        const accountYoung =
+          createdMs !== null && Date.now() - createdMs < FIRST_MORNING_ACCOUNT_MAX_MS;
+        if (
+          signalTotal < FIRST_MORNING_SIGNAL_CAP &&
+          accountYoung &&
+          !(await hasPriorFirstMorningBrief(supabase, userId))
+        ) {
+          const goals = await loadOnboardingGoalsForFirstMorning(supabase, userId);
+          if (goals.length > 0) {
+            const { directive, artifact } = buildFirstMorningWelcome(goals);
+            const persistenceIssues = [
+              ...getArtifactPersistenceIssues(directive.action_type, artifact),
+              ...validateDirectiveForPersistence({ userId, directive, artifact }),
+            ];
+            if (persistenceIssues.length === 0) {
+              const bottomGate = evaluateBottomGate(directive, artifact);
+              if (bottomGate.pass) {
+                const outcomeReceipt = buildOutcomeReceipt(directive, artifact, bottomGate);
+                const { data: savedFm, error: saveFmErr } = await supabase
+                  .from('tkg_actions')
+                  .insert({
+                    user_id: userId,
+                    action_type: directive.action_type,
+                    directive_text: directive.directive,
+                    reason: directive.reason,
+                    status: 'pending_approval',
+                    confidence: directive.confidence,
+                    evidence: directive.evidence,
+                    generated_at: new Date().toISOString(),
+                    generation_attempts: 1,
+                    artifact,
+                    execution_result: {
+                      ...buildDirectiveExecutionResult({
+                        directive,
+                        artifact,
+                        briefOrigin: 'first_morning',
+                        extras: {},
+                      }),
+                      approve: null,
+                      outcome_receipt: outcomeReceipt,
+                    },
+                  })
+                  .select('id')
+                  .single();
+
+                if (!saveFmErr && savedFm?.id) {
+                  logStructuredEvent({
+                    event: 'first_morning_brief_persisted',
+                    userId,
+                    artifactType: 'document',
+                    generationStatus: 'generated',
+                    details: { scope: 'daily-generate', action_id: savedFm.id, signal_total: signalTotal },
+                  });
+                  results.push({
+                    code: 'pending_approval_persisted',
+                    meta: {
+                      ...cleanupMeta,
+                      action_id: savedFm.id,
+                      brief_origin: 'first_morning',
+                      first_morning: true,
+                    },
+                    success: true,
+                    userId,
+                  });
+                  continue;
+                }
+              }
+            }
+          }
+        }
+      } catch (fmErr: unknown) {
+        Sentry.captureException(fmErr instanceof Error ? fmErr : new Error(String(fmErr)));
+        console.error('[daily-generate] first_morning path failed:', fmErr);
       }
 
       // Gate: single named decision point before any generation work.
@@ -1826,6 +2039,7 @@ export async function runDailyGenerate(
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      Sentry.captureException(err instanceof Error ? err : new Error(message));
       logStructuredEvent({
         event: 'daily_generate_failed',
         level: 'error',

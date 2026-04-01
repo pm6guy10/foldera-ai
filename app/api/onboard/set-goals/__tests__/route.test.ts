@@ -66,9 +66,18 @@ describe('POST /api/onboard/set-goals', () => {
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === 'user_tokens') {
         return {
-          select: () => ({
-            eq: () => Promise.resolve({ count: 1, error: null }),
-          }),
+          select: (_cols?: unknown, opts?: { count?: string; head?: boolean }) => {
+            if (opts?.count === 'exact' && opts?.head) {
+              return {
+                eq: () => Promise.resolve({ count: 1, error: null }),
+              };
+            }
+            return {
+              eq: () => ({
+                is: () => Promise.resolve({ data: [], error: null }),
+              }),
+            };
+          },
         };
       }
 

@@ -24,7 +24,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('user_tokens')
-      .select('provider, email, last_synced_at, scopes, access_token')
+      .select('provider, email, last_synced_at, scopes, access_token, expires_at')
       .eq('user_id', session.user.id)
       .is('disconnected_at', null);
 
@@ -32,10 +32,17 @@ export async function GET() {
       throw error;
     }
 
+    const nowMs = Date.now();
     const integrations = (data ?? []).map((row: any) => {
       // Map user_tokens provider names to settings UI provider names
       const uiProvider = row.provider === 'microsoft' ? 'azure_ad' : row.provider;
       const hasToken = typeof row.access_token === 'string' && row.access_token.length > 0;
+      const expSec = typeof row.expires_at === 'number' ? row.expires_at : null;
+      const accessExpired =
+        hasToken &&
+        expSec !== null &&
+        expSec > 0 &&
+        expSec * 1000 < nowMs - 120_000;
 
       return {
         provider: uiProvider,
@@ -43,6 +50,8 @@ export async function GET() {
         sync_email: row.email ?? null,
         last_synced_at: row.last_synced_at ?? null,
         scopes: row.scopes ?? null,
+        expires_at: expSec,
+        needs_reconnect: accessExpired,
       };
     });
 

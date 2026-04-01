@@ -15,7 +15,7 @@ import { rateLimit } from '@/lib/utils/rate-limit';
 export const dynamic = 'force-dynamic';
 
 // Rate-limit: max 20 chars/sec check is server-side; we just enforce min length.
-const DEMO_SYSTEM = `You are Foldera's conviction engine. You receive a single paragraph from a stranger describing what they're working on or struggling with.
+const DEMO_SYSTEM = `You are Foldera's conviction engine. You receive pasted email thread text OR a short paragraph from a stranger describing what they're working on or struggling with.
 
 Your job is NOT to give advice. Your job is to SEE THEM. Extract what they didn't say explicitly. Name the pattern they can't see from inside it.
 
@@ -119,14 +119,32 @@ export async function POST(request: NextRequest) {
     });
 
     const raw = response.content[0].type === 'text' ? response.content[0].text : '';
-    const parsed = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim());
+    const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(cleaned) as Record<string, unknown>;
+    } catch {
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start === -1 || end <= start) throw new Error('No JSON object in model output');
+      parsed = JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
+    }
+
+    let artifact = parsed.artifact;
+    if (typeof artifact === 'string') {
+      try {
+        artifact = JSON.parse(artifact) as unknown;
+      } catch {
+        artifact = null;
+      }
+    }
 
     return NextResponse.json({
       directive:     String(parsed.directive     ?? ''),
       action_type:   String(parsed.action_type   ?? 'research'),
       reason:        String(parsed.reason        ?? ''),
       artifact_type: String(parsed.artifact_type ?? ''),
-      artifact:      parsed.artifact ?? null,
+      artifact:      artifact ?? null,
     });
   } catch (err: any) {
     console.error('[try/analyze]', err.message);

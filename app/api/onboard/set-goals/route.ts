@@ -4,6 +4,9 @@ import { getAuthOptions } from '@/lib/auth/auth-options';
 import { createServerClient } from '@/lib/db/client';
 import { apiError, badRequest } from '@/lib/utils/api-error';
 import { renderWelcomeEmailHtml, sendResendEmail } from '@/lib/email/resend';
+import { MS_90D } from '@/lib/config/constants';
+import { syncGoogle } from '@/lib/sync/google-sync';
+import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
 
 const GOAL_BUCKETS: Record<string, { goal_text: string; category: string }> = {
   'Job search': { goal_text: 'Active job search and career transition', category: 'career' },
@@ -83,6 +86,32 @@ export async function POST(req: NextRequest) {
     if (replaceError) {
       return apiError(replaceError, 'onboard/set-goals');
     }
+
+    // Fire-and-forget: start inbox sync immediately so the overnight cron has signals.
+    void (async () => {
+      try {
+        const { data: tokRows, error: tokErr } = await supabase
+          .from('user_tokens')
+          .select('provider')
+          .eq('user_id', userId)
+          .is('disconnected_at', null);
+        if (tokErr) return;
+        for (const t of tokRows ?? []) {
+          try {
+            if (t.provider === 'google') await syncGoogle(userId, { maxLookbackMs: MS_90D });
+            if (t.provider === 'microsoft') await syncMicrosoft(userId, { maxLookbackMs: MS_90D });
+          } catch (syncErr) {
+            console.error(
+              '[onboard/set-goals] immediate sync failed:',
+              t.provider,
+              syncErr instanceof Error ? syncErr.message : String(syncErr),
+            );
+          }
+        }
+      } catch (e) {
+        console.error('[onboard/set-goals] immediate sync bootstrap failed:', e);
+      }
+    })();
 
     try {
       const { count: connectedProviderCount, error: tokenError } = await supabase

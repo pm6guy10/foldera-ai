@@ -151,6 +151,31 @@ describe('isSendWorthy', () => {
     expect(result.reason).toBe('do_nothing_directive');
   });
 
+  it('allows first-morning welcome path via firstMorningBypass', () => {
+    const result = isSendWorthy(
+      makeDirective({
+        action_type: 'write_document',
+        confidence: 78,
+        evidence: [{ type: 'goal', description: 'Test goal' }],
+        generationLog: {
+          outcome: 'selected',
+          stage: 'persistence',
+          reason: 'first_morning_welcome',
+          candidateFailureReasons: [],
+          candidateDiscovery: null,
+          firstMorningBypass: true,
+        },
+      }),
+      {
+        type: 'document',
+        title: 'Welcome',
+        content: 'x'.repeat(400),
+      } as unknown as ConvictionArtifact,
+    );
+    expect(result.worthy).toBe(true);
+    expect(result.reason).toBe('first_morning_welcome');
+  });
+
   it('blocks send_message directives below send threshold (< 65)', () => {
     const result = isSendWorthy(makeDirective({ confidence: 64 }), makeArtifact());
     expect(result.worthy).toBe(false);

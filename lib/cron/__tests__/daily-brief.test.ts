@@ -24,6 +24,16 @@ const mockSupabase = {
   insertedActions: [] as Array<Record<string, unknown>>,
   updatedActions: [] as Array<Record<string, unknown>>,
 
+  auth: {
+    admin: {
+      getUserById: () =>
+        Promise.resolve({
+          data: { user: { created_at: '2020-01-01T00:00:00.000Z' } },
+          error: null,
+        }),
+    },
+  },
+
   from(table: string) {
     const self = this;
 
@@ -59,21 +69,54 @@ const mockSupabase = {
     }
 
     if (table === 'tkg_signals') {
+      const done = () => Promise.resolve({ count: 0, error: null });
+      const chain: any = {
+        eq: () => chain,
+        lt: () => done(),
+        then: (onF: any, onR: any) => done().then(onF, onR),
+      };
       return {
         select() {
-          const query = {
-            eq() {
-              return query;
-            },
-            lt() {
-              return Promise.resolve({
-                count: 0,
-                error: null,
-              });
-            },
-          };
+          return chain;
+        },
+      };
+    }
 
-          return query;
+    if (table === 'user_tokens') {
+      const emptyList = () => Promise.resolve({ data: [], error: null });
+      const countHead = () => Promise.resolve({ count: 0, error: null });
+      return {
+        select(_cols?: unknown, opts?: { count?: string; head?: boolean }) {
+          if (opts?.count === 'exact' && opts?.head) {
+            return {
+              eq: () => countHead(),
+            };
+          }
+          const afterIs: any = {
+            not: () => ({
+              not: () => emptyList(),
+              then: (onF: any, onR: any) => emptyList().then(onF, onR),
+            }),
+            then: (onF: any, onR: any) => emptyList().then(onF, onR),
+          };
+          return {
+            eq: () => ({
+              is: () => emptyList(),
+            }),
+            is: () => afterIs,
+          };
+        },
+      };
+    }
+
+    if (table === 'tkg_goals') {
+      return {
+        select() {
+          return {
+            eq: () => ({
+              in: () => Promise.resolve({ data: [], error: null }),
+            }),
+          };
         },
       };
     }
@@ -268,6 +311,7 @@ vi.mock('@/lib/utils/structured-logger', () => ({
 
 vi.mock('@/lib/email/resend', () => ({
   sendDailyDirective: vi.fn().mockResolvedValue(undefined),
+  sendDailyDeliverySkipAlert: vi.fn().mockResolvedValue(undefined),
 }));
 
 function buildGenerationLog(overrides: Partial<GenerationRunLog> = {}): GenerationRunLog {

@@ -5,7 +5,7 @@
  * for background sync jobs (Gmail + Calendar sync).
  */
 
-import { createServerClient } from '@/lib/db/client';
+import { createServerClient, type SupabaseClient } from '@/lib/db/client';
 import { encryptToken, decryptToken, isEncrypted } from '@/lib/crypto/token-encryption';
 
 interface SaveUserTokenParams {
@@ -144,6 +144,27 @@ export async function updateSyncTimestamp(
  * Return all distinct user IDs that have a token for the given provider.
  * Used by cron sync jobs to loop all connected users, not just INGEST_USER_ID.
  */
+/**
+ * Distinct user IDs with a non-disconnected OAuth row that still has access + refresh secrets.
+ * Used for daily brief eligibility and delivery audits.
+ */
+export async function listConnectedUserIds(supabaseArg?: SupabaseClient): Promise<string[]> {
+  const supabase = supabaseArg ?? createServerClient();
+  const { data, error } = await supabase
+    .from('user_tokens')
+    .select('user_id')
+    .is('disconnected_at', null)
+    .not('access_token', 'is', null)
+    .not('refresh_token', 'is', null);
+
+  if (error) {
+    console.error('[user-tokens] listConnectedUserIds failed:', error.message);
+    return [];
+  }
+
+  return [...new Set((data ?? []).map((row: { user_id: string }) => row.user_id))];
+}
+
 export async function getAllUsersWithProvider(
   provider: 'google' | 'microsoft',
 ): Promise<string[]> {

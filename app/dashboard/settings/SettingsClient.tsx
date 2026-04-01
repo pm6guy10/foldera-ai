@@ -13,6 +13,8 @@ interface Integration {
   sync_email?: string;
   scopes?: string | null;
   last_synced_at?: string | null;
+  expires_at?: number | null;
+  needs_reconnect?: boolean;
 }
 
 interface SubscriptionInfo {
@@ -43,6 +45,10 @@ export default function SettingsClient() {
   const [disconnecting, setDisconnecting] = useState<'google' | 'microsoft' | null>(null);
   const [connectingProvider, setConnectingProvider] = useState<'google' | 'microsoft' | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [providerOAuthError, setProviderOAuthError] = useState<{ google: string | null; microsoft: string | null }>({
+    google: null,
+    microsoft: null,
+  });
   const [upgrading, setUpgrading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -120,9 +126,18 @@ export default function SettingsClient() {
     const googleError = params.get('google_error');
     const microsoftError = params.get('microsoft_error');
 
-    // Show OAuth error messages
-    if (googleError) setActionError('Could not connect Google: ' + googleError.replace(/_/g, ' '));
-    if (microsoftError) setActionError('Could not connect Microsoft: ' + microsoftError.replace(/_/g, ' '));
+    if (googleError) {
+      setProviderOAuthError((p) => ({
+        ...p,
+        google: `Connection failed (${googleError.replace(/_/g, ' ')}).`,
+      }));
+    }
+    if (microsoftError) {
+      setProviderOAuthError((p) => ({
+        ...p,
+        microsoft: `Connection failed (${microsoftError.replace(/_/g, ' ')}).`,
+      }));
+    }
 
     // Clean URL
     window.history.replaceState({}, '', window.location.pathname);
@@ -223,6 +238,20 @@ export default function SettingsClient() {
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
 
+  const startGoogleOAuth = () => {
+    setProviderOAuthError((p) => ({ ...p, google: null }));
+    setConnectingProvider('google');
+    localStorage.setItem('connecting_provider', 'google');
+    window.location.href = '/api/google/connect';
+  };
+
+  const startMicrosoftOAuth = () => {
+    setProviderOAuthError((p) => ({ ...p, microsoft: null }));
+    setConnectingProvider('microsoft');
+    localStorage.setItem('connecting_provider', 'microsoft');
+    window.location.href = '/api/microsoft/connect';
+  };
+
   const handleSignOut = () => {
     signOut({ callbackUrl: '/' });
   };
@@ -321,6 +350,11 @@ export default function SettingsClient() {
                         {google?.is_active && google.sync_email ? ` · ${google.sync_email}` : ''}
                       </p>
                     </div>
+                    {google?.is_active && google.needs_reconnect && (
+                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                        Connection expired — reconnect so background sync keeps working.
+                      </p>
+                    )}
                     {google?.is_active && formatLastSynced(google.last_synced_at) && (
                       <p className="text-[10px] text-zinc-600 mt-1 font-medium">
                         Last synced {formatLastSynced(google.last_synced_at)} Pacific
@@ -328,44 +362,65 @@ export default function SettingsClient() {
                     )}
                   </div>
                 </div>
-                {google?.is_active ? (
-                  <button
-                    onClick={async () => {
-                      setDisconnecting('google');
-                      setActionError(null);
-                      setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
-                      try {
-                        const response = await fetch('/api/google/disconnect', { method: 'POST' });
-                        if (!response.ok) {
-                          setActionError('Could not disconnect Google. Try again.');
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  {google?.is_active && google.needs_reconnect && (
+                    <button
+                      type="button"
+                      onClick={startGoogleOAuth}
+                      disabled={connectingProvider === 'google'}
+                      className="min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-cyan-500 text-black hover:bg-cyan-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                    >
+                      {connectingProvider === 'google' ? 'Opening…' : 'Reconnect'}
+                    </button>
+                  )}
+                  {google?.is_active ? (
+                    <button
+                      onClick={async () => {
+                        setDisconnecting('google');
+                        setActionError(null);
+                        setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
+                        try {
+                          const response = await fetch('/api/google/disconnect', { method: 'POST' });
+                          if (!response.ok) {
+                            setActionError('Could not disconnect Google. Try again.');
+                            await refreshIntegrationsStatus().catch(() => {});
+                          }
+                        } catch {
+                          setActionError('Network error disconnecting Google.');
                           await refreshIntegrationsStatus().catch(() => {});
+                        } finally {
+                          setDisconnecting(null);
                         }
-                      } catch {
-                        setActionError('Network error disconnecting Google.');
-                        await refreshIntegrationsStatus().catch(() => {});
-                      } finally {
-                        setDisconnecting(null);
-                      }
-                    }}
-                    disabled={disconnecting === 'google'}
-                    className="shrink-0 min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-                  >
-                    {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setConnectingProvider('google');
-                      localStorage.setItem('connecting_provider', 'google');
-                      window.location.href = '/api/google/connect';
-                    }}
-                    disabled={connectingProvider === 'google'}
-                    className="shrink-0 min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-                  >
-                    {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
-                  </button>
-                )}
+                      }}
+                      disabled={disconnecting === 'google'}
+                      className="min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                    >
+                      {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={startGoogleOAuth}
+                      disabled={connectingProvider === 'google'}
+                      className="min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                    >
+                      {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
+                    </button>
+                  )}
+                </div>
               </div>
+              {providerOAuthError.google && (
+                <div className="px-4 py-3 border-t border-white/5 bg-red-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <p className="text-xs text-red-200/90">{providerOAuthError.google}</p>
+                  <button
+                    type="button"
+                    onClick={startGoogleOAuth}
+                    disabled={connectingProvider === 'google'}
+                    className="shrink-0 min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg disabled:opacity-40"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Microsoft card */}
@@ -382,6 +437,11 @@ export default function SettingsClient() {
                         {microsoft?.is_active && microsoft.sync_email ? ` · ${microsoft.sync_email}` : ''}
                       </p>
                     </div>
+                    {microsoft?.is_active && microsoft.needs_reconnect && (
+                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                        Connection expired — reconnect so background sync keeps working.
+                      </p>
+                    )}
                     {microsoft?.is_active && formatLastSynced(microsoft.last_synced_at) && (
                       <p className="text-[10px] text-zinc-600 mt-1 font-medium">
                         Last synced {formatLastSynced(microsoft.last_synced_at)} Pacific
@@ -389,46 +449,67 @@ export default function SettingsClient() {
                     )}
                   </div>
                 </div>
-                {microsoft?.is_active ? (
-                  <button
-                    onClick={async () => {
-                      setDisconnecting('microsoft');
-                      setActionError(null);
-                      setIntegrations(prev => prev.map(i =>
-                        i.provider === 'azure_ad' ? { ...i, is_active: false, sync_email: undefined } : i
-                      ));
-                      try {
-                        const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
-                        if (!response.ok) {
-                          setActionError('Could not disconnect Microsoft. Try again.');
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  {microsoft?.is_active && microsoft.needs_reconnect && (
+                    <button
+                      type="button"
+                      onClick={startMicrosoftOAuth}
+                      disabled={connectingProvider === 'microsoft'}
+                      className="min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-cyan-500 text-black hover:bg-cyan-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                    >
+                      {connectingProvider === 'microsoft' ? 'Opening…' : 'Reconnect'}
+                    </button>
+                  )}
+                  {microsoft?.is_active ? (
+                    <button
+                      onClick={async () => {
+                        setDisconnecting('microsoft');
+                        setActionError(null);
+                        setIntegrations(prev => prev.map(i =>
+                          i.provider === 'azure_ad' ? { ...i, is_active: false, sync_email: undefined } : i
+                        ));
+                        try {
+                          const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
+                          if (!response.ok) {
+                            setActionError('Could not disconnect Microsoft. Try again.');
+                            await refreshIntegrationsStatus().catch(() => {});
+                          }
+                        } catch {
+                          setActionError('Network error disconnecting Microsoft.');
                           await refreshIntegrationsStatus().catch(() => {});
+                        } finally {
+                          setDisconnecting(null);
                         }
-                      } catch {
-                        setActionError('Network error disconnecting Microsoft.');
-                        await refreshIntegrationsStatus().catch(() => {});
-                      } finally {
-                        setDisconnecting(null);
-                      }
-                    }}
-                    disabled={disconnecting === 'microsoft'}
-                    className="shrink-0 min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-                  >
-                    {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setConnectingProvider('microsoft');
-                      localStorage.setItem('connecting_provider', 'microsoft');
-                      window.location.href = '/api/microsoft/connect';
-                    }}
-                    disabled={connectingProvider === 'microsoft'}
-                    className="shrink-0 min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-                  >
-                    {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
-                  </button>
-                )}
+                      }}
+                      disabled={disconnecting === 'microsoft'}
+                      className="min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                    >
+                      {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={startMicrosoftOAuth}
+                      disabled={connectingProvider === 'microsoft'}
+                      className="min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                    >
+                      {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
+                    </button>
+                  )}
+                </div>
               </div>
+              {providerOAuthError.microsoft && (
+                <div className="px-4 py-3 border-t border-white/5 bg-red-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <p className="text-xs text-red-200/90">{providerOAuthError.microsoft}</p>
+                  <button
+                    type="button"
+                    onClick={startMicrosoftOAuth}
+                    disabled={connectingProvider === 'microsoft'}
+                    className="shrink-0 min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg disabled:opacity-40"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </section>

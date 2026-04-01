@@ -1,4 +1,5 @@
 import { createServerClient, type SupabaseClient } from '@/lib/db/client';
+import { listConnectedUserIds } from '@/lib/auth/user-tokens';
 
 interface UserSubscriptionRow {
   user_id: string;
@@ -6,8 +7,10 @@ interface UserSubscriptionRow {
   status: string | null;
 }
 
-function isActivePaidSubscription(subscription: UserSubscriptionRow): boolean {
-  return subscription.status === 'active' && (subscription.plan === 'pro' || subscription.plan === 'trial');
+/** Active paid/trial/free — all plans that should receive the daily brief when connected. */
+function isActiveEligiblePlan(plan: string | null): boolean {
+  if (!plan) return false;
+  return plan === 'pro' || plan === 'trial' || plan === 'free';
 }
 
 export async function filterDailyBriefEligibleUserIds(
@@ -31,9 +34,22 @@ export async function filterDailyBriefEligibleUserIds(
     throw error;
   }
 
-  for (const subscription of (data ?? []) as UserSubscriptionRow[]) {
-    if (isActivePaidSubscription(subscription)) {
-      eligibleUserIds.add(subscription.user_id);
+  const subByUser = new Map<string, UserSubscriptionRow>();
+  for (const row of (data ?? []) as UserSubscriptionRow[]) {
+    subByUser.set(row.user_id, row);
+  }
+
+  const connected = new Set(await listConnectedUserIds(supabase));
+
+  for (const userId of uniqueUserIds) {
+    const sub = subByUser.get(userId);
+    if (sub && sub.status === 'active' && isActiveEligiblePlan(sub.plan)) {
+      eligibleUserIds.add(userId);
+      continue;
+    }
+    // OAuth connected but no Stripe/subscription row yet (common right after signup).
+    if (!sub && connected.has(userId)) {
+      eligibleUserIds.add(userId);
     }
   }
 

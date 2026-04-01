@@ -170,6 +170,8 @@ export interface GenerationRunLog {
   reason: string;
   candidateFailureReasons: string[];
   candidateDiscovery: GenerationCandidateDiscoveryLog | null;
+  /** Onboarding welcome path: skip hard bottom gate / quality heuristics that block goal-summary docs. */
+  firstMorningBypass?: boolean;
 }
 
 /**

@@ -3580,6 +3580,10 @@ export function validateDirectiveForPersistence(input: {
 }): string[] {
   const issues: string[] = [];
 
+  if (input.directive.generationLog?.firstMorningBypass) {
+    return [];
+  }
+
   if (input.directive.directive === GENERATION_FAILED_SENTINEL) {
     issues.push('directive generation failed');
   }

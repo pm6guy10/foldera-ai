@@ -5,6 +5,15 @@
 - **Apply migration** `20260331120000_agent_layer.sql` to production Postgres — **DONE** (2026-03-31): applied via Supabase MCP as migration `agent_layer_action_source` on project `neydszeamsflpghtrhue` (`tkg_goals_source_check` includes `system_config`; `tkg_actions.action_source` + index).
 - **GitHub repo secrets** for agent workflows: `AGENT_BASE_URL` (e.g. `https://www.foldera.ai`), `CRON_SECRET`, `ANTHROPIC_API_KEY` (UI critic script). Workflows: `.github/workflows/agent-*.yml`.
 
+### DONE (2026-04-01) — New-user reliability + delivery audit
+
+- **First-morning welcome path** — `lib/cron/daily-brief-generate.ts`: if `tkg_signals` count &lt; 5, account &lt; 48h old, onboarding goals present, and no prior `brief_origin: first_morning` action, persist `write_document` + goal-summary artifact with `firstMorningBypass` (skips scorer/generator and self-feed). Gates: `evaluateBottomGate` / `isSendWorthy` / `validateDirectiveForPersistence` respect bypass.
+- **Daily send audit** — `runDailySend` → `sendDailyDeliverySkipAlert()` (`lib/email/resend.ts`) to `brief@foldera.ai` when any user in the batch did not get `email_sent` / `email_already_sent` (lists user id, code, detail). Skips when `RESEND_API_KEY` unset.
+- **`/api/cron/daily-send` HTTP** — `app/api/cron/daily-send/route.ts`: all-soft-failure batches (`no_verified_email`, `no_generated_directive` only) return **200** so cron health checks do not 500 when no one was emailable.
+- **Eligibility** — `listConnectedUserIds()` in `lib/auth/user-tokens.ts`; `filterDailyBriefEligibleUserIds` includes OAuth-connected users without a `user_subscriptions` row yet; `getEligibleDailyBriefUserIds` unions graph `self` + connected.
+- **Onboard** — `POST /api/onboard/set-goals` fire-and-forget `syncGoogle` / `syncMicrosoft` with `MS_90D` lookback after goals RPC succeeds.
+- **Settings OAuth UX** — `integrations/status` exposes `needs_reconnect` (access token expired &gt;2m per `expires_at`); per-provider inline errors + Try again / Reconnect on `SettingsClient.tsx`.
+
 ### DONE (2026-04-01) — Playwright / tooling
 
 - **`npm run test:prod`** now uses `testMatch: ['**/smoke.spec.ts', '**/audit.spec.ts']` so `public-screenshots.spec.ts` is not run in the same parallel pool (fixes Windows flake / timeout against `/` button crawl). Use **`npm run test:screenshots`** for the public PNG sweep.

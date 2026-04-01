@@ -128,22 +128,23 @@ const mockSupabase = {
     }
 
     if (table === 'user_tokens') {
+      const emptyList = () => Promise.resolve({ data: [], error: null });
+      const afterIs = {
+        not: () => ({
+          not: () => emptyList(),
+        }),
+      };
       return {
         select() {
           return {
-            eq() {
-              return {
-                order() {
-                  return {
-                    limit() {
-                      return {
-                        maybeSingle: () => Promise.resolve({ data: { last_synced_at: null }, error: null }),
-                      };
-                    },
-                  };
-                },
-              };
-            },
+            is: () => afterIs,
+            eq: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: () => Promise.resolve({ data: { last_synced_at: null }, error: null }),
+                }),
+              }),
+            }),
           };
         },
       };
@@ -164,6 +165,7 @@ vi.mock('@/lib/auth/daily-brief-users', () => ({
 
 vi.mock('@/lib/email/resend', () => ({
   sendDailyDirective: vi.fn(),
+  sendDailyDeliverySkipAlert: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/briefing/generator', () => ({

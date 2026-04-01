@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — FLOW: New-user reliability — first-morning fallback, delivery audit, /try, OAuth recovery, multi-user cron, onboard sync
+  MODE: FLOW
+  Commit hash(es): run `git log -1 --oneline` — subject `ship: new-user reliability — first-morning fallback, delivery audit, /try verification, OAuth recovery, multi-user safety, immediate sync on onboard`
+  Files changed: `lib/cron/daily-brief-generate.ts`, `lib/cron/daily-brief-send.ts`, `app/api/cron/daily-send/route.ts`, `lib/briefing/types.ts`, `lib/briefing/generator.ts`, `lib/auth/user-tokens.ts`, `lib/auth/daily-brief-users.ts`, `lib/email/resend.ts`, `app/api/try/analyze/route.ts`, `app/try/page.tsx`, `app/api/integrations/status/route.ts`, `app/dashboard/settings/SettingsClient.tsx`, `app/api/onboard/set-goals/route.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `lib/cron/__tests__/manual-send.test.ts`, `lib/cron/__tests__/evaluate-readiness.test.ts`, `lib/cron/__tests__/bottom-gate.test.ts`, `app/api/onboard/set-goals/__tests__/route.test.ts`, `SESSION_HISTORY.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`
+  What was verified: `npm run build` (pass); `npx vitest run --exclude ".claude/worktrees/**"` (542 tests pass); `npx playwright test tests/e2e/` — **55 passed, 2 skipped**. `/try` artifact UI + analyze JSON extraction hardened (no manual browser paste in-session). `npm run test:prod` not run (requires live deploy + auth state).
+  Any unresolved issues: Delivery audit email to `brief@foldera.ai` only sends when `RESEND_API_KEY` is set and `total_skipped > 0` after a send batch.
+
 - 2026-04-01 — FLOW: Stripe payment infrastructure completion + local prod E2E harness
   MODE: FLOW
   Commit hash(es): run `git log -1 --oneline` — subject `ship: Stripe payment infrastructure — checkout, webhooks, free-tier gating, transactional emails, customer portal`

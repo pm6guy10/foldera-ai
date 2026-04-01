@@ -11,8 +11,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { runDailySend, toSafeDailyBriefStageStatus } from '@/lib/cron/daily-brief';
 import { apiError } from '@/lib/utils/api-error';
+import type { DailyBriefRunResult, DailyBriefUserResult } from '@/lib/cron/daily-brief-types';
 
 export const dynamic = 'force-dynamic';
+
+/** Expected silence — not a cron crash (e.g. user not verified, nothing to send yet). */
+const SEND_SOFT_FAILURE_CODES = new Set<DailyBriefUserResult['code']>([
+  'no_verified_email',
+  'no_generated_directive',
+]);
+
+function resolveDailySendHttpStatus(result: DailyBriefRunResult): number {
+  const sendStatus = toSafeDailyBriefStageStatus(result);
+  if (sendStatus.status === 'failed') {
+    const outcomes = result.results;
+    const onlySoft =
+      outcomes.length > 0 &&
+      outcomes.every((r) => r.success || SEND_SOFT_FAILURE_CODES.has(r.code));
+    if (onlySoft) return 200;
+    return 500;
+  }
+  return sendStatus.status === 'partial' ? 207 : 200;
+}
 
 async function handler(request: NextRequest) {
   const authErr = validateCronAuth(request);
@@ -20,11 +40,8 @@ async function handler(request: NextRequest) {
 
   try {
     const result = await runDailySend();
+    const status = resolveDailySendHttpStatus(result);
     const sendStatus = toSafeDailyBriefStageStatus(result);
-    const status =
-      sendStatus.status === 'failed'
-        ? 500
-        : (sendStatus.status === 'partial' ? 207 : 200);
 
     return NextResponse.json({
       date: result.date,

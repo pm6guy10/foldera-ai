@@ -4,7 +4,7 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import { sendDailyDirective } from '@/lib/email/resend';
+import { sendDailyDirective, sendDailyDeliverySkipAlert } from '@/lib/email/resend';
 import type { DirectiveItem } from '@/lib/email/resend';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -22,6 +22,7 @@ import {
   ptDayStartIso,
   resolveDailyBriefUserIds,
 } from './daily-brief-generate';
+import { listConnectedUserIds } from '@/lib/auth/user-tokens';
 
 export async function runDailySend(
   options: DailyBriefSignalWindowOptions = {},
@@ -252,6 +253,34 @@ export async function runDailySend(
         success: false,
         userId,
       });
+    }
+  }
+
+  const totalConnectedUsers = (await listConnectedUserIds(supabase)).length;
+  const emailsSent = results.filter((r) => r.code === 'email_sent').length;
+  const gotEmailOrAlready = new Set(['email_sent', 'email_already_sent']);
+  const skips = results
+    .filter((r) => r.userId && !gotEmailOrAlready.has(r.code))
+    .map((r) => ({
+      userId: r.userId as string,
+      code: r.code,
+      detail: typeof r.detail === 'string' ? r.detail : undefined,
+    }));
+
+  if (skips.length > 0) {
+    try {
+      await sendDailyDeliverySkipAlert({
+        date,
+        totalConnectedUsers,
+        batchUserCount: eligibleUserIds.length,
+        emailsSent,
+        skips,
+      });
+    } catch (auditErr: unknown) {
+      console.error(
+        '[daily-send] delivery audit email failed:',
+        auditErr instanceof Error ? auditErr.message : String(auditErr),
+      );
     }
   }
 

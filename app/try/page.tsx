@@ -13,6 +13,64 @@ type AnalyzeResponse = {
   error?: string;
 };
 
+function TryArtifactPreview({ artifact }: { artifact: Record<string, unknown> }) {
+  const t = artifact.type;
+  if (t === 'email' || (artifact.to && artifact.body)) {
+    return (
+      <div className="space-y-2 text-sm text-zinc-300">
+        {typeof artifact.to === 'string' && artifact.to ? (
+          <p><span className="text-zinc-500 text-xs uppercase tracking-wider">To</span> {artifact.to}</p>
+        ) : null}
+        {typeof artifact.subject === 'string' && artifact.subject ? (
+          <p><span className="text-zinc-500 text-xs uppercase tracking-wider">Subject</span> {artifact.subject}</p>
+        ) : null}
+        {typeof artifact.body === 'string' && artifact.body ? (
+          <pre className="whitespace-pre-wrap text-zinc-200 text-[13px] leading-relaxed font-sans">{artifact.body}</pre>
+        ) : null}
+      </div>
+    );
+  }
+  if (t === 'document' || (artifact.title && artifact.content)) {
+    return (
+      <div className="space-y-2 text-sm text-zinc-300">
+        {typeof artifact.title === 'string' ? (
+          <p className="text-white font-semibold">{artifact.title}</p>
+        ) : null}
+        {typeof artifact.content === 'string' ? (
+          <pre className="whitespace-pre-wrap text-zinc-200 text-[13px] leading-relaxed font-sans">{artifact.content}</pre>
+        ) : null}
+      </div>
+    );
+  }
+  if (t === 'decision_frame' || Array.isArray(artifact.options)) {
+    const opts = artifact.options as Array<{ option?: string; weight?: number; rationale?: string }> | undefined;
+    return (
+      <div className="space-y-3 text-sm text-zinc-300">
+        {opts?.map((o, i) => (
+          <div key={i} className="border-l-2 border-cyan-500/50 pl-3">
+            {o.option ? <p className="text-white font-medium">{o.option}</p> : null}
+            {typeof o.weight === 'number' ? (
+              <p className="text-xs text-zinc-500">{Math.round(o.weight * 100)}% weight</p>
+            ) : null}
+            {o.rationale ? <p className="text-zinc-400 text-[13px] mt-1">{o.rationale}</p> : null}
+          </div>
+        ))}
+        {typeof artifact.recommendation === 'string' && (
+          <p className="text-emerald-300/90 text-[13px] pt-2 border-t border-white/10">
+            <span className="text-zinc-500 uppercase text-[10px] tracking-wider block mb-1">Recommendation</span>
+            {artifact.recommendation}
+          </p>
+        )}
+      </div>
+    );
+  }
+  return (
+    <pre className="whitespace-pre-wrap text-xs text-zinc-400 font-mono leading-relaxed max-h-[420px] overflow-y-auto">
+      {JSON.stringify(artifact, null, 2)}
+    </pre>
+  );
+}
+
 export default function TryPage() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -101,6 +159,17 @@ export default function TryPage() {
                 Suggested move: {result.action_type.replace(/_/g, ' ')}
               </p>
             ) : null}
+            {result.artifact_type ? (
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500/80">
+                Finished artifact: {result.artifact_type.replace(/_/g, ' ')}
+              </p>
+            ) : null}
+            {result.artifact != null && typeof result.artifact === 'object' && (
+              <div className="mt-4 rounded-xl border border-white/10 bg-black/40 p-4 overflow-x-auto">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 mb-2">The work product</p>
+                <TryArtifactPreview artifact={result.artifact as Record<string, unknown>} />
+              </div>
+            )}
           </div>
         )}
 
