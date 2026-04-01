@@ -73,7 +73,7 @@ import type { DailyBriefOrchestrationResult, DailyBriefSignalWindowOptions } fro
 
 // ---------------------------------------------------------------------------
 // runDailyBrief — core orchestration (generate + send)
-// Used by: brief-service.ts (primary), trigger/route.ts, daily-brief/route.ts
+// Used by: brief-service.ts (primary), trigger/route.ts, app/api/cron/daily-brief/route.ts
 // ---------------------------------------------------------------------------
 
 export async function runDailyBrief(

@@ -1,11 +1,12 @@
 /**
  * GET /api/cron/nightly-ops
  *
- * Nightly orchestrator — runs the full pipeline in sequence:
- *   1a. Sync Microsoft (all users)
- *   1b. Sync Google (all users)
- *   2. Process unprocessed signals (up to 3 rounds of 50)
- *   3. Daily brief (generate + send)
+ * Nightly orchestrator — ingest and maintenance only (stays within Hobby time limits):
+ *   Cleanup, commitment ceiling, token refresh, Microsoft/Google sync, connector health,
+ *   signal processing, behavioral graph, suppressed commitments, passive rejection,
+ *   self-heal, acceptance gate, weekly goal refresh (Sundays).
+ *
+ * Daily brief generate + send runs in a separate cron: /api/cron/daily-brief (11:10 UTC).
  *
  * Auth: CRON_SECRET Bearer token.
  * Schedule: 0 11 * * * (4am PT / 11:00 UTC)
@@ -26,10 +27,7 @@ import {
   processUnextractedSignals,
   resolveSignalBacklogMode,
 } from '@/lib/signals/signal-processor';
-import {
-  autoSkipStaleApprovals,
-} from '@/lib/cron/daily-brief';
-import { runBriefLifecycle } from '@/lib/cron/brief-service';
+import { autoSkipStaleApprovals } from '@/lib/cron/daily-brief';
 import { runCommitmentCeilingDefense, runSelfHeal } from '@/lib/cron/self-heal';
 import { runAcceptanceGate } from '@/lib/cron/acceptance-gate';
 import { checkConnectorHealth } from '@/lib/cron/connector-health';
@@ -273,7 +271,8 @@ async function completeSuppressedCommitments(): Promise<number> {
   return updatedCount;
 }
 
-async function listNightlyBriefUserIds(): Promise<string[]> {
+/** Users with any non-disconnected token row — scope for per-user signal retention deletes. */
+async function listSignalRetentionUserIds(): Promise<string[]> {
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from('user_tokens')
@@ -321,41 +320,11 @@ async function handler(request: NextRequest) {
 
   const startTime = Date.now();
   const stages: Record<string, unknown> = {};
-  const nightlyBriefUserIds = await listNightlyBriefUserIds();
-
-  // Double-fire guard: if ALL users already have today's email sent, skip the entire run.
-  // This handles the common Vercel double-fire case where both invocations start within seconds.
-  if (nightlyBriefUserIds.length > 0) {
-    const supabase = createServerClient();
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
-    const { data: todayActions } = await supabase
-      .from('tkg_actions')
-      .select('user_id, execution_result')
-      .gte('generated_at', todayStart.toISOString())
-      .in('user_id', nightlyBriefUserIds);
-
-    const usersAlreadySent = new Set(
-      (todayActions ?? [])
-        .filter((a) => {
-          const er = a.execution_result as Record<string, unknown> | null;
-          return er?.daily_brief_sent_at;
-        })
-        .map((a) => a.user_id as string),
-    );
-
-    const allSent = nightlyBriefUserIds.every((uid) => usersAlreadySent.has(uid));
-    if (allSent) {
-      return NextResponse.json(
-        { ok: true, skipped: true, reason: 'already_ran_today', duration_ms: Date.now() - startTime },
-        { status: 200 },
-      );
-    }
-  }
+  const retentionUserIds = await listSignalRetentionUserIds();
 
   // Stage 0: Cleanup old extracted signals before any pipeline work
   try {
-    const cleanupResult = await purgeOldExtractedSignals(nightlyBriefUserIds);
+    const cleanupResult = await purgeOldExtractedSignals(retentionUserIds);
     stages.signal_retention_cleanup = cleanupResult;
     console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'signal_retention_cleanup', ...cleanupResult }));
   } catch (err: any) {
@@ -445,7 +414,7 @@ async function handler(request: NextRequest) {
 
   // Stage 2b: Behavioral graph — per-entity interaction stats (no decryption, metadata only)
   try {
-    const bxResult = await runBehavioralGraph(nightlyBriefUserIds);
+    const bxResult = await runBehavioralGraph(retentionUserIds);
     stages.behavioral_graph = bxResult;
     console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'behavioral_graph', ...bxResult }));
   } catch (err: any) {
@@ -480,40 +449,7 @@ async function handler(request: NextRequest) {
     stages.passive_rejection = { ok: false, skipped: 0, error: err.message };
   }
 
-  // Stage 3b: Credit canary before generation — if credits are exhausted,
-  // skip generation but continue to self-heal/acceptance gate so the alert email fires.
-  let skipDailyBrief = false;
-  try {
-    const { checkApiCreditCanary } = await import('@/lib/cron/acceptance-gate');
-    const canary = await checkApiCreditCanary();
-    stages.credit_canary_pre = { ok: canary.pass, ...canary };
-    if (!canary.pass) {
-      skipDailyBrief = true;
-      stages.daily_brief = { ok: false, error: 'Skipped: Anthropic credit canary failed pre-generation' };
-      console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'credit_canary_pre', pass: false }));
-    }
-  } catch (err: any) {
-    Sentry.captureException(err);
-    stages.credit_canary_pre = { ok: false, error: err.message };
-  }
-
-  // Stage 4: Daily brief (generate + send) — skipped if credit canary failed
-  if (!skipDailyBrief) try {
-    const { result } = await runBriefLifecycle({ userIds: nightlyBriefUserIds });
-    stages.daily_brief = result;
-    console.log(JSON.stringify({
-      event: 'nightly_ops_stage',
-      stage: 'daily_brief',
-      date: result.date,
-      ok: result.ok,
-    }));
-  } catch (err: any) {
-    Sentry.captureException(err);
-    stages.daily_brief = { ok: false, error: err.message };
-    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'daily_brief', error: err.message }));
-  }
-
-  // Stage 5: Self-heal (immune system — final phase)
+  // Stage 4: Self-heal (immune system — final phase)
   try {
     const healResult = await runSelfHeal();
     stages.self_heal = {
@@ -534,7 +470,7 @@ async function handler(request: NextRequest) {
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'self_heal', error: err.message }));
   }
 
-  // Stage 6: Acceptance gate (final — checks all production invariants)
+  // Stage 5: Acceptance gate (final — checks all production invariants)
   try {
     const gateResult = await runAcceptanceGate();
     stages.acceptance_gate = {
@@ -557,7 +493,7 @@ async function handler(request: NextRequest) {
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'acceptance_gate', error: err.message }));
   }
 
-  // Stage 7: Weekly goal refresh (Sundays only)
+  // Stage 6: Weekly goal refresh (Sundays only)
   const dayOfWeek = new Date().getUTCDay();
   if (dayOfWeek === 0) {
     try {

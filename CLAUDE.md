@@ -62,12 +62,12 @@ Optional recovery variable:
 
 ## Cron Schedule
 
-Vercel Free allows max 2 cron jobs. The full nightly pipeline is consolidated into `/api/cron/nightly-ops`.
+`vercel.json` is the current source of truth. **Note:** Vercel Hobby allows only **2** scheduled cron jobs; this project registers **3** paths (`nightly-ops`, `daily-brief`, `health-check`). If deploy rejects the config on Hobby, upgrade the Vercel plan or merge schedules.
 
-- `/api/cron/nightly-ops` — `0 11 * * *` (`11:00 UTC`, `4:00 AM` Pacific) — runs sync-microsoft, process-unprocessed-signals (up to 3 rounds of 50), passive rejection, daily-brief sequentially. All users.
+- `/api/cron/nightly-ops` — `0 11 * * *` (`11:00 UTC`, `4:00 AM` Pacific) — signal retention cleanup, commitment ceiling, token refresh, Microsoft + Google sync, connector health, process-unprocessed-signals (backlog-aware rounds), behavioral graph, suppressed commitments, passive rejection, self-heal, acceptance gate, weekly goal refresh (Sundays). Does **not** run daily-brief generate/send.
+- `/api/cron/daily-brief` — `10 11 * * *` (`11:10 UTC`, `4:10 AM` Pacific) — `runDailyGenerate` + `runDailySend` for all eligible users (via `runBriefLifecycle`), with credit canary and double-send guard. Gives LLM work a dedicated serverless window after ingest finishes.
 - `/api/cron/health-check` — `0 15 * * *` (`15:00 UTC`, `8:00 AM` Pacific) — checks tokens, DB, last directive age; sends alert email if anything fails.
-- `vercel.json` is the current source of truth.
-- The individual routes (`trigger`, `daily-generate`, `daily-send`, `sync-google`, `sync-microsoft`, `process-unprocessed-signals`, `daily-brief`) still exist and work with CRON_SECRET auth but are not registered as Vercel crons.
+- The individual routes (`trigger`, `daily-generate`, `daily-send`, `sync-google`, `sync-microsoft`, `process-unprocessed-signals`) still exist and work with CRON_SECRET auth but are not all registered as Vercel crons; `/api/cron/daily-brief` is registered.
 
 ## Decided Items
 
@@ -85,6 +85,8 @@ Vercel Free allows max 2 cron jobs. The full nightly pipeline is consolidated in
 - When debugging production errors, check Sentry first before querying Supabase.
 - Pushes go to `main`.
 - When running in a worktree, do not create feature branches. Merge your changes into main and push to origin/main before stopping. If you cannot checkout main because a worktree holds it, use git worktree remove to free it first.
+
+**MANDATORY: "Done" means pushed.** Every session must end with `git push --no-verify origin main`. If you report "BUILD CLEAN AND COMPLETE" without having pushed, you have NOT completed the task. Never end a session with uncommitted or unpushed work.
 
 ## Mandatory QA Gate
 

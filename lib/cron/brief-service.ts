@@ -2,8 +2,8 @@
  * Brief lifecycle service — single authoritative entrypoint for
  * "run the brief lifecycle for a set of users."
  *
- * Both the manual route (/api/settings/run-brief) and the nightly cron
- * (/api/cron/nightly-ops) call this function. No other file decides
+ * Both the manual route (/api/settings/run-brief) and the daily-brief cron
+ * (/api/cron/daily-brief) call this function. No other file decides
  * when to generate, when to send, whether to retry send, or how to
  * normalize stage results.
  *

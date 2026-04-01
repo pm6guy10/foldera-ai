@@ -11,9 +11,7 @@ const resolveSignalBacklogMode = vi.fn((unprocessedCount: number) => (
     ? { mode: 'high', maxSignals: 100, rounds: 10 }
     : { mode: 'low', maxSignals: 50, rounds: 3 }
 ));
-const runDailyBrief = vi.fn();
 const autoSkipStaleApprovals = vi.fn();
-const toSafeDailyBriefStageStatus = vi.fn((stage: { ok: boolean; results: unknown[] }) => stage);
 const runCommitmentCeilingDefense = vi.fn();
 const runTokenWatchdog = vi.fn();
 const runSelfHeal = vi.fn();
@@ -23,7 +21,7 @@ const logStructuredEvent = vi.fn();
 const mockSupabase = {
   staleSignalIds: [] as string[],
   commitmentIds: [] as string[],
-  nightlyBriefUserIds: ['user-1', '22222222-2222-2222-2222-222222222222'] as string[],
+  retentionUserIds: ['user-1', '22222222-2222-2222-2222-222222222222'] as string[],
   signalResetUpdates: [] as Array<Record<string, unknown>>,
   signalDeleteCountByUser: {} as Record<string, number>,
   from(table: string) {
@@ -84,22 +82,12 @@ const mockSupabase = {
 
     if (table === 'user_tokens') {
       const result = Promise.resolve({
-        data: this.nightlyBriefUserIds.map((user_id) => ({ user_id })),
+        data: this.retentionUserIds.map((user_id) => ({ user_id })),
         error: null,
       });
       return {
         select: () => ({
           is: () => result,
-        }),
-      };
-    }
-
-    if (table === 'tkg_actions') {
-      return {
-        select: () => ({
-          gte: () => ({
-            in: () => Promise.resolve({ data: [], error: null }),
-          }),
         }),
       };
     }
@@ -135,8 +123,6 @@ vi.mock('@/lib/signals/signal-processor', () => ({
 
 vi.mock('@/lib/cron/daily-brief', () => ({
   autoSkipStaleApprovals,
-  runDailyBrief,
-  toSafeDailyBriefStageStatus,
 }));
 
 vi.mock('@/lib/cron/self-heal', () => ({
@@ -145,11 +131,8 @@ vi.mock('@/lib/cron/self-heal', () => ({
   runSelfHeal,
 }));
 
-const checkApiCreditCanary = vi.fn().mockResolvedValue({ check: 'api_credit_canary', pass: true, detail: 'mock canary pass' });
-
 vi.mock('@/lib/cron/acceptance-gate', () => ({
   runAcceptanceGate,
-  checkApiCreditCanary,
 }));
 
 vi.mock('@/lib/cron/connector-health', () => ({
@@ -186,13 +169,6 @@ describe('nightly-ops route', () => {
     autoSkipStaleApprovals.mockResolvedValue({ skipped: 0 });
     runCommitmentCeilingDefense.mockResolvedValue({ ok: true, details: { suppressions: [] } });
     runTokenWatchdog.mockResolvedValue({ refreshed: 0, failed: 0, skipped: 0 });
-    runDailyBrief.mockResolvedValue({
-      date: '2026-03-24',
-      ok: true,
-      signal_processing: { ok: true, results: [] },
-      generate: { ok: true, results: [] },
-      send: { ok: true, results: [] },
-    });
     runSelfHeal.mockResolvedValue({
       ok: true,
       alert_sent: false,
@@ -215,7 +191,7 @@ describe('nightly-ops route', () => {
     logStructuredEvent.mockReset();
     mockSupabase.staleSignalIds = [];
     mockSupabase.commitmentIds = [];
-    mockSupabase.nightlyBriefUserIds = ['user-1', '22222222-2222-2222-2222-222222222222'];
+    mockSupabase.retentionUserIds = ['user-1', '22222222-2222-2222-2222-222222222222'];
     mockSupabase.signalResetUpdates = [];
     mockSupabase.signalDeleteCountByUser = {};
   });
@@ -251,7 +227,8 @@ describe('nightly-ops route', () => {
     }));
     expect(runCommitmentCeilingDefense).toHaveBeenCalledTimes(1);
     expect(checkConnectorHealth).toHaveBeenCalledTimes(1);
-    expect(runDailyBrief).toHaveBeenCalledWith({ userIds: ['user-1'] });
+    expect(payload.stages.self_heal).toMatchObject({ ok: true });
+    expect(payload.stages.acceptance_gate).toMatchObject({ ok: true });
   });
 
   it('switches to backfill mode when the backlog is at least 100 signals', async () => {
@@ -293,7 +270,7 @@ describe('nightly-ops route', () => {
     });
   });
 
-  it('resets stale processed signals and completes suppressed commitments before the brief stage', async () => {
+  it('resets stale processed signals and completes suppressed commitments before later stages', async () => {
     mockSupabase.staleSignalIds = ['sig-1', 'sig-2'];
     mockSupabase.commitmentIds = ['commitment-1'];
     listUsersWithUnprocessedSignals.mockReset();
