@@ -6,7 +6,7 @@
 
 - 2026-04-01 — FLOW: End-to-end mobile hardening across real production flow
   MODE: FLOW
-  Commit hash(es): (this entry — search main for subject `fix: end-to-end mobile hardening across real product flow`)
+  Commit hash(es): `5456ffa`
   Files changed: `components/nav/NavPublic.tsx`, `app/page.tsx`, `app/pricing/page.tsx`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `tests/production/mobile-journey.spec.ts`, `playwright.prod.config.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `mobile-journey.spec.ts` on live site — anonymous: `/`, hamburger, `/login`, `/start`, `/pricing`; signed-in: `/dashboard` (+ blur CTA if shown), `/dashboard/settings`, back, `/onboard`, `/pricing`, upgrade CTA, sign-out, public menu (dialog-scoped **Get started free**, no **Dashboard**). `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run test:prod` (61 tests, 1 flaky `/blog` crawl); `npx playwright test tests/e2e/` (64 passed, 4 skipped). Screenshots under `tests/production/screenshots/mobile-journey/`.
   Any unresolved issues: `/blog` index crawl still occasionally exceeds 30s on first attempt (retry passes).
