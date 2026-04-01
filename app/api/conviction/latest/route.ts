@@ -23,17 +23,31 @@ function startOfTodayIso(): string {
   return start.toISOString();
 }
 
+/**
+ * Merge execution_result.artifact with the persisted `artifact` column (column wins),
+ * matching the brain-receipt / persistence path so ranking and the dashboard see the same payload.
+ */
 function extractArtifact(action: Record<string, unknown>): Record<string, unknown> | undefined {
   const executionResult =
     action.execution_result && typeof action.execution_result === 'object'
       ? (action.execution_result as Record<string, unknown>)
       : null;
 
-  if (executionResult?.artifact && typeof executionResult.artifact === 'object') {
-    return executionResult.artifact as Record<string, unknown>;
-  }
+  const erArtifact =
+    executionResult?.artifact && typeof executionResult.artifact === 'object'
+      ? (executionResult.artifact as Record<string, unknown>)
+      : {};
 
-  return undefined;
+  const colArtifact =
+    action.artifact && typeof action.artifact === 'object'
+      ? (action.artifact as Record<string, unknown>)
+      : {};
+
+  const merged = { ...erArtifact, ...colArtifact };
+  if (Object.keys(merged).length === 0) {
+    return undefined;
+  }
+  return merged;
 }
 
 export async function GET(request: Request) {

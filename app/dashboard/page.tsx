@@ -15,6 +15,9 @@ type ArtifactWithDraftedEmail = {
   recipient?: string;
   subject?: string;
   body?: string;
+  text?: string;
+  content?: string;
+  title?: string;
   options?: Array<{ option: string; weight: number; rationale: string }>;
   recommendation?: string;
   context?: string;
@@ -22,6 +25,21 @@ type ArtifactWithDraftedEmail = {
   tripwires?: string[];
   check_date?: string;
 };
+
+/** Stale email deep-link id, duplicate tab, or action already skipped/approved elsewhere. */
+function shouldReconcileExecuteFailure(res: Response | null, errorMessage: string): boolean {
+  if (res && res.status === 404) return true;
+  const m = errorMessage.toLowerCase();
+  return m.includes('already claimed') || m.includes('not found');
+}
+
+/** Plaintext body for document / unknown artifact shapes (never rely on a single field name). */
+function artifactPrimaryText(a: ArtifactWithDraftedEmail | null | undefined): string | null {
+  if (!a) return null;
+  const raw = a.body ?? a.text ?? a.content;
+  if (typeof raw === 'string' && raw.trim().length > 0) return raw;
+  return null;
+}
 
 type ActionWithDomain = ConvictionAction & { domain?: string; generatedAt?: string };
 
@@ -65,45 +83,6 @@ export default function DashboardPage() {
       setIsSubscribed(true);
       setFlash('Welcome to Pro. Full artifacts unlocked.');
       setTimeout(() => setFlash(null), 6000);
-    }
-  }, []);
-
-  // Handle email deep-link params (approve/skip from morning email)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const deepAction = params.get('action');
-    const id = params.get('id');
-    if (!deepAction || !id) return;
-    window.history.replaceState({}, '', window.location.pathname);
-    if (deepAction === 'approve' || deepAction === 'skip') {
-      fetch('/api/conviction/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_id: id, decision: deepAction }),
-      })
-        .then(async (res) => {
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            const msg = (data as { error?: string }).error ?? 'Could not update that action.';
-            throw new Error(msg);
-          }
-          if (data.status === 'executed' || data.status === 'skipped') {
-            setDone(true);
-            setLastDecision(deepAction === 'approve' ? 'approve' : 'skip');
-            setFlash(
-              deepAction === 'approve'
-                ? 'Sent. Check your outbox.'
-                : 'Skipped. Foldera will adjust.',
-            );
-          } else {
-            throw new Error('Unexpected response from Foldera.');
-          }
-        })
-        .catch((err: unknown) => {
-          setFlash(err instanceof Error ? err.message : 'Could not update that action.');
-          // Don't set done=true on error — the load() effect will populate
-          // the dashboard so the user sees the current state, not a permanent error
-        });
     }
   }, []);
 
@@ -176,6 +155,55 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Handle email deep-link params (approve/skip from morning email) — after `load` exists
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const deepAction = params.get('action');
+    const id = params.get('id');
+    if (!deepAction || !id) return;
+    window.history.replaceState({}, '', window.location.pathname);
+    if (deepAction !== 'approve' && deepAction !== 'skip') return;
+
+    void (async () => {
+      try {
+        const res = await fetch('/api/conviction/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action_id: id, decision: deepAction }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg = (data as { error?: string }).error ?? 'Could not update that action.';
+          if (shouldReconcileExecuteFailure(res, msg)) {
+            await load();
+            setFlash('That directive was already handled or replaced. Showing your current state.');
+            return;
+          }
+          throw new Error(msg);
+        }
+        if (data.status === 'executed' || data.status === 'skipped') {
+          setDone(true);
+          setLastDecision(deepAction === 'approve' ? 'approve' : 'skip');
+          setFlash(
+            deepAction === 'approve'
+              ? 'Sent. Check your outbox.'
+              : 'Skipped. Foldera will adjust.',
+          );
+        } else {
+          throw new Error('Unexpected response from Foldera.');
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Could not update that action.';
+        if (shouldReconcileExecuteFailure(null, msg)) {
+          await load();
+          setFlash('That directive was already handled or replaced. Showing your current state.');
+          return;
+        }
+        setFlash(msg);
+      }
+    })();
+  }, [load]);
+
   useEffect(() => {
     isMountedRef.current = true;
     void load();
@@ -195,7 +223,15 @@ export default function DashboardPage() {
         body: JSON.stringify({ action_id: action.id, decision: 'approve' }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Approve failed');
+      if (!res.ok) {
+        const msg = (data as { error?: string }).error ?? 'Approve failed';
+        if (shouldReconcileExecuteFailure(res, msg)) {
+          await load();
+          setFlash('That directive was already handled or replaced. Showing your current state.');
+          return;
+        }
+        throw new Error(msg);
+      }
       if (data.status === 'executed' || data.status === 'skipped') {
         setDone(true);
         setLastDecision('approve');
@@ -204,7 +240,13 @@ export default function DashboardPage() {
         throw new Error('Unexpected response from Foldera.');
       }
     } catch (err: unknown) {
-      setFlash(err instanceof Error ? err.message : 'Approve failed');
+      const msg = err instanceof Error ? err.message : 'Approve failed';
+      if (shouldReconcileExecuteFailure(null, msg)) {
+        await load();
+        setFlash('That directive was already handled or replaced. Showing your current state.');
+        return;
+      }
+      setFlash(msg);
     } finally {
       setExecuting(false);
     }
@@ -220,7 +262,15 @@ export default function DashboardPage() {
         body: JSON.stringify({ action_id: action.id, decision: 'skip' }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Skip failed');
+      if (!res.ok) {
+        const msg = (data as { error?: string }).error ?? 'Skip failed';
+        if (shouldReconcileExecuteFailure(res, msg)) {
+          await load();
+          setFlash('That directive was already handled or replaced. Showing your current state.');
+          return;
+        }
+        throw new Error(msg);
+      }
       if (data.status === 'executed' || data.status === 'skipped') {
         setDone(true);
         setLastDecision('skip');
@@ -229,7 +279,13 @@ export default function DashboardPage() {
         throw new Error('Unexpected response from Foldera.');
       }
     } catch (err: unknown) {
-      setFlash(err instanceof Error ? err.message : 'Skip failed');
+      const msg = err instanceof Error ? err.message : 'Skip failed';
+      if (shouldReconcileExecuteFailure(null, msg)) {
+        await load();
+        setFlash('That directive was already handled or replaced. Showing your current state.');
+        return;
+      }
+      setFlash(msg);
     } finally {
       setExecuting(false);
     }
@@ -239,6 +295,8 @@ export default function DashboardPage() {
   const isEmail = artifact?.type === 'email' || artifact?.type === 'drafted_email';
   const isDecision = artifact?.type === 'decision_frame';
   const isWait = artifact?.type === 'wait_rationale';
+  const isDocument = artifact?.type === 'document';
+  const artifactBody = artifactPrimaryText(artifact);
   const recipient = artifact?.to || artifact?.recipient || '';
 
   const isProArtifactUnlocked =
@@ -481,6 +539,44 @@ export default function DashboardPage() {
                         )}
                       </div>
                     )}
+
+                    {isDocument && (
+                      <div className="rounded-2xl bg-zinc-950/60 border border-cyan-500/20 border-l-4 border-l-cyan-500 p-4 md:p-5 m-4 md:m-5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">
+                          Finished document
+                        </p>
+                        {artifact.title && (
+                          <p className="text-sm font-semibold text-white mb-2">{artifact.title}</p>
+                        )}
+                        {artifactBody ? (
+                          <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{artifactBody}</p>
+                        ) : (
+                          <p className="text-sm text-zinc-400 leading-relaxed">
+                            Full text is in your morning email. Approve to file it, or skip to adjust.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {artifact &&
+                      !isEmail &&
+                      !isDecision &&
+                      !isWait &&
+                      !isDocument && (
+                        <div className="p-4 md:p-5">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">
+                            Finished work
+                          </p>
+                          {artifactBody ? (
+                            <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{artifactBody}</p>
+                          ) : (
+                            <p className="text-sm text-zinc-400 leading-relaxed">
+                              This directive does not have an in-app preview. Check your morning email for the full
+                              artifact, or use Approve / Skip to continue.
+                            </p>
+                          )}
+                        </div>
+                      )}
                   </div>
 
                   {showArtifactBlur && (

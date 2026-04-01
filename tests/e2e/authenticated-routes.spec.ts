@@ -73,6 +73,28 @@ const DIRECTIVE_RESPONSE = {
   },
 };
 
+/** write_document-style pending row — dashboard must render document body (not an empty artifact panel). */
+const DOCUMENT_DIRECTIVE_RESPONSE = {
+  id: 'action-doc-001',
+  directive: 'Overlapping events on 2026-04-02.',
+  action_type: 'write_document',
+  confidence: 74,
+  reason: 'Calendar conflict needs an explicit priority call.',
+  status: 'pending_approval',
+  is_subscribed: true,
+  evidence: [],
+  artifact: {
+    type: 'document',
+    title: 'Calendar trade-off',
+    body: 'Objective: Overlapping events on 2026-04-02.\n\nPick one priority and communicate the trade-off.',
+  },
+};
+
+const STALE_EMAIL_DIRECTIVE = {
+  ...DIRECTIVE_RESPONSE,
+  id: 'stale-action-for-skip-test',
+};
+
 const INTEGRATIONS_RESPONSE = {
   integrations: [
     { provider: 'google', is_active: true, sync_email: 'test@gmail.com' },
@@ -284,6 +306,93 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
+  });
+
+  test('document directive shows finished document body (not blank artifact panel)', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await seedAuthenticatedSession(page);
+    await attachCheckoutGuards(page);
+    await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+    await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+    await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+    await page.route(
+      matchApiPath('/api/subscription/status'),
+      fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
+    );
+    await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+    await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DOCUMENT_DIRECTIVE_RESPONSE));
+    await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: json({ status: 'skipped' }) });
+    });
+    await page.goto('/dashboard');
+    await expect(
+      page.locator('.text-xl.font-bold').filter({ hasText: /Overlapping events on 2026-04-02/i }),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Objective: Overlapping events/i)).toBeVisible();
+    await expect(page.getByText(/Finished document/i)).toBeVisible();
+  });
+
+  test('stale email deep-link skip reconciles after execute 404 (query params cleared)', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await seedAuthenticatedSession(page);
+    await attachCheckoutGuards(page);
+    await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+    await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+    await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+    await page.route(
+      matchApiPath('/api/subscription/status'),
+      fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
+    );
+    await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+    await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DOCUMENT_DIRECTIVE_RESPONSE));
+    await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: json({ error: 'Action already claimed by another request or not found' }),
+      });
+    });
+    await page.goto(
+      '/dashboard?action=skip&id=00000000-0000-0000-0000-000000000099',
+    );
+    await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.locator('.text-xl.font-bold').filter({ hasText: /Overlapping events on 2026-04-02/i }),
+    ).toBeVisible();
+    await expect(page.getByText(/Objective: Overlapping events/i)).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard$/);
+  });
+
+  test('skip on stale client action id reloads latest directive', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await seedAuthenticatedSession(page);
+    await attachCheckoutGuards(page);
+    await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+    await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+    await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+    await page.route(
+      matchApiPath('/api/subscription/status'),
+      fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
+    );
+    await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+    let latestCalls = 0;
+    await page.route(matchApiPath('/api/conviction/latest'), (route) => {
+      latestCalls += 1;
+      const payload = latestCalls === 1 ? STALE_EMAIL_DIRECTIVE : DOCUMENT_DIRECTIVE_RESPONSE;
+      route.fulfill({ status: 200, contentType: 'application/json', body: json(payload) });
+    });
+    await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: json({ error: 'Action already claimed by another request or not found' }),
+      });
+    });
+    await page.goto('/dashboard');
+    await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: /skip/i }).click();
+    await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Objective: Overlapping events/i)).toBeVisible();
   });
 });
 
