@@ -166,7 +166,7 @@ When behavioral_pattern candidates are the winner, lead with the
 cross-signal connection the user hasn't made. Name the pattern
 explicitly in the directive text.
 
-INSIGHT_SCAN_WINNER (apply only when the user prompt includes the INSIGHT_SCAN_WINNER block):
+INSIGHT CANDIDATES / INSIGHT_SCAN_WINNER (apply only when the user prompt includes the INSIGHT_SCAN_WINNER block):
 The winner may come from the Insight Scan — an unsupervised read of raw signals for patterns the user has not named (not structural gap rules). When that block is present:
 1. Lead with the PATTERN, not a generic task or reminder.
 2. The directive states what they have not connected about their own behavior; the artifact is still finished work (email or document) framed as: what the footprint shows, then the concrete move.
