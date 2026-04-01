@@ -316,7 +316,7 @@ export default function SettingsClient() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
       </div>
       <Header onSignOut={handleSignOut} />
-      <main id="main" className="relative z-10 pt-20 pb-14 px-4 max-w-3xl mx-auto space-y-8 w-full min-w-0">
+      <main id="main" className="relative z-10 pt-20 pb-16 sm:pb-14 px-4 max-w-3xl mx-auto space-y-9 sm:space-y-10 w-full min-w-0">
 
         {/* Sync status banner */}
         {syncStatus && (
@@ -331,11 +331,11 @@ export default function SettingsClient() {
 
         {/* ── Connected accounts ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-5 py-6 md:px-6 border-b border-white/5">
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
             <SectionHeading className="mb-2">Connected accounts</SectionHeading>
-            <p className="text-xs text-zinc-600">Connect Google and Microsoft so Foldera can keep your model current.</p>
+            <p className="text-xs text-zinc-600 leading-relaxed">Connect Google and Microsoft so Foldera can keep your model current.</p>
           </div>
-          <div className="px-5 py-6 md:px-6 space-y-3">
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 space-y-4">
             {/* Google card */}
             <div className={`rounded-2xl border border-white/10 overflow-hidden min-h-[5.75rem] ${google?.is_active ? 'border-l-2 border-l-emerald-500' : ''}`}>
               <div className="bg-zinc-950/60 p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 min-h-[5.75rem]">
@@ -520,11 +520,11 @@ export default function SettingsClient() {
 
         {/* ── Focus areas ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-5 py-6 md:px-6 border-b border-white/5">
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
             <SectionHeading className="mb-2">Focus areas</SectionHeading>
-            <p className="text-xs text-zinc-600">What Foldera optimizes for.</p>
+            <p className="text-xs text-zinc-600 leading-relaxed">What Foldera optimizes for.</p>
           </div>
-          <div className="px-5 py-6 md:px-6">
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6">
             {!editingFocus ? (
               <>
                 {activeBuckets.length === 0 && !goalFreeText ? (
@@ -618,11 +618,11 @@ export default function SettingsClient() {
 
         {/* ── Generate Now (prominent) ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-5 py-6 md:px-6 border-b border-white/5">
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
             <SectionHeading className="mb-2">Generate</SectionHeading>
-            <p className="text-xs text-zinc-600">Sync your data and generate today&apos;s brief. Takes up to 60 seconds.</p>
+            <p className="text-xs text-zinc-600 leading-relaxed">Sync your data and generate today&apos;s brief. Takes up to 60 seconds.</p>
           </div>
-          <div className="px-5 py-6 md:px-6">
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6">
             <button
               disabled={generateState === 'loading' || generateState === 'success'}
               onClick={async () => {
@@ -671,7 +671,7 @@ export default function SettingsClient() {
                   setGenerateMessage('Network error — try again in 30 seconds.');
                 }
               }}
-              className={`w-full rounded-xl py-4 text-xs font-black uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${
+              className={`w-full min-h-[52px] touch-manipulation rounded-xl py-4 text-xs font-black uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${
                 generateState === 'loading'
                   ? 'bg-zinc-800/60 text-zinc-500 cursor-wait border border-white/5'
                   : generateState === 'success'
@@ -696,10 +696,10 @@ export default function SettingsClient() {
 
         {/* ── Subscription ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-5 pt-6 pb-0 md:px-6 border-b border-white/5 pb-6">
-            <SectionHeading>Subscription</SectionHeading>
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
+            <SectionHeading className="!mb-0">Subscription</SectionHeading>
           </div>
-          <div className="px-5 py-6 md:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
             <div className="flex items-center gap-3">
               <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] ${isPro ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'bg-white/5 text-zinc-500 border border-white/10'}`}>
                 {planLabel}
@@ -780,13 +780,13 @@ export default function SettingsClient() {
 
         {isOwnerAccount && agentsEnabled !== null && (
           <section className="rounded-2xl border border-emerald-500/20 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-            <div className="px-5 py-6 md:px-6 border-b border-white/5">
+            <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
               <SectionHeading className="mb-2">Autonomous agents</SectionHeading>
-              <p className="text-xs text-zinc-600">
+              <p className="text-xs text-zinc-600 leading-relaxed">
                 Scheduled jobs stage drafts on your dashboard System tab. Turn off to stop all agent runs immediately.
               </p>
             </div>
-            <div className="px-5 py-6 md:px-6 flex items-center justify-between gap-4">
+            <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 flex items-center justify-between gap-4">
               <p className="text-sm text-zinc-300">Agents enabled</p>
               <button
                 type="button"
@@ -824,10 +824,10 @@ export default function SettingsClient() {
 
         {/* ── Account ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-5 pt-6 pb-0 md:px-6 border-b border-white/5 pb-6">
-            <SectionHeading>Account</SectionHeading>
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
+            <SectionHeading className="!mb-0">Account</SectionHeading>
           </div>
-          <div className="px-5 py-6 md:px-6 space-y-3">
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 space-y-4">
             {session?.user?.email && (
               <div className="rounded-xl bg-zinc-900/40 border border-white/5 px-4 py-3">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-1">Signed in as</p>
@@ -885,26 +885,42 @@ function formatLastSynced(iso: string | null | undefined): string | null {
 function Header({ onSignOut }: { onSignOut: () => void }) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
-      <div className="max-w-3xl mx-auto h-full flex items-center justify-between px-4 gap-2">
-        <Link href="/dashboard" className="text-zinc-500 hover:text-white transition-colors flex items-center gap-1 shrink-0 min-w-[7rem]" aria-label="Back to dashboard">
-          <ChevronLeft className="w-5 h-5 shrink-0" aria-hidden="true" />
-          <span className="text-xs font-black uppercase tracking-[0.12em]">Dashboard</span>
-        </Link>
-        <Link href="/dashboard" className="flex items-center gap-2 group absolute left-1/2 -translate-x-1/2">
-          <FolderaMark
-            size="sm"
-            className="shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform group-hover:scale-105"
-          />
-          <span className="text-sm font-black tracking-tighter text-white uppercase hidden sm:inline">Foldera</span>
-        </Link>
-        <button
-          type="button"
-          onClick={onSignOut}
-          className="max-sm:hidden flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.12em] shrink-0 min-w-[7rem] min-h-[44px] justify-end"
-        >
-          <LogOut className="w-4 h-4" aria-hidden="true" />
-          <span>Sign out</span>
-        </button>
+      <div className="max-w-3xl mx-auto h-full grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:px-4 gap-1 sm:gap-2">
+        <div className="flex justify-start min-w-0">
+          <Link
+            href="/dashboard"
+            className="text-zinc-500 hover:text-white transition-colors flex items-center gap-1 min-h-[44px] min-w-[44px] -ml-1 pl-1 pr-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+            aria-label="Back to dashboard"
+          >
+            <ChevronLeft className="w-5 h-5 shrink-0" aria-hidden="true" />
+            <span className="text-xs font-black uppercase tracking-[0.12em] truncate max-w-[6rem] sm:max-w-none">
+              Dashboard
+            </span>
+          </Link>
+        </div>
+        <div className="flex justify-center">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 group min-h-[44px] min-w-[44px] justify-center rounded-lg px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+            aria-label="Foldera"
+          >
+            <FolderaMark
+              size="sm"
+              className="shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform group-hover:scale-105 shrink-0"
+            />
+            <span className="text-sm font-black tracking-tighter text-white uppercase hidden sm:inline">Foldera</span>
+          </Link>
+        </div>
+        <div className="flex justify-end min-w-0">
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="max-sm:hidden touch-manipulation flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.12em] shrink-0 min-h-[44px] px-2 rounded-lg justify-end focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+          >
+            <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">Sign out</span>
+          </button>
+        </div>
       </div>
     </header>
   );

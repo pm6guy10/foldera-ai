@@ -261,7 +261,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#07070c] text-white overflow-x-hidden selection:bg-cyan-500/30 selection:text-white">
+    <div className="min-h-[100dvh] bg-[#07070c] text-white overflow-x-hidden selection:bg-cyan-500/30 selection:text-white">
       {/* Ambient grid */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
@@ -278,13 +278,13 @@ export default function DashboardPage() {
             <span className="text-sm font-black tracking-tighter text-white uppercase truncate">Foldera</span>
           </Link>
           <div className="flex items-center gap-1 shrink-0">
-            <Link href="/dashboard/settings" className="min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center" aria-label="Settings">
+            <Link href="/dashboard/settings" className="touch-manipulation min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]" aria-label="Settings">
               <Settings className="w-5 h-5" />
             </Link>
             <button
               type="button"
               onClick={() => signOut({ callbackUrl: '/' })}
-              className="min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center"
+              className="touch-manipulation min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
               aria-label="Sign out"
             >
               <LogOut className="w-5 h-5" />
@@ -387,11 +387,13 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : !action ? (
-          <div className="mt-12 px-0">
-            <div className="mx-auto max-w-lg rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-8 sm:p-10 text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
-              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse mx-auto mb-6" />
-              <p className="text-zinc-200 text-lg font-medium">Your next read arrives tomorrow morning.</p>
-              <p className="text-zinc-500 text-sm mt-2">Foldera is learning from your patterns.</p>
+          <div className="mt-10 sm:mt-12 px-0">
+            <div className="mx-auto max-w-lg rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-6 sm:p-10 text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
+              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse mx-auto mb-5" />
+              <p className="text-zinc-100 text-lg font-semibold leading-snug">You&apos;re set until tomorrow morning.</p>
+              <p className="text-zinc-500 text-sm mt-3 leading-relaxed max-w-sm mx-auto">
+                No directive is queued in the app right now. Your next read still lands in email — connect accounts in Settings if you want deeper context.
+              </p>
             </div>
           </div>
         ) : (
@@ -424,7 +426,7 @@ export default function DashboardPage() {
             {/* Artifact — free users see full layout under a blur overlay (conversion) */}
             {artifact && (
               <div className="px-6 py-5 md:px-8 md:py-6 bg-black/40">
-                <div className="relative min-h-[120px] rounded-2xl overflow-hidden border border-white/10">
+                <div className="relative isolate min-h-[120px] rounded-2xl overflow-hidden border border-white/10">
                   <div className={showArtifactBlur ? 'pointer-events-none select-none' : ''}>
                     {isEmail && (
                       <div className="rounded-2xl bg-cyan-500/10 border border-cyan-500/30 border-l-4 border-l-cyan-500 p-4 md:p-5">
@@ -479,15 +481,15 @@ export default function DashboardPage() {
                   </div>
 
                   {showArtifactBlur && (
-                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/45 px-5 py-8 text-center backdrop-blur-md">
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 sm:gap-4 bg-black/50 px-4 py-6 sm:px-5 sm:py-8 text-center backdrop-blur-md">
                       <Lock className="w-5 h-5 text-cyan-400 shrink-0" aria-hidden="true" />
-                      <p className="text-sm font-semibold text-zinc-100 leading-snug max-w-xs">
+                      <p className="text-sm font-semibold text-zinc-100 leading-snug max-w-[18rem] px-1">
                         Upgrade to Pro to unlock finished work. $29/mo.
                       </p>
                       <button
                         type="button"
                         onClick={startStripeCheckout}
-                        className="rounded-xl bg-white px-6 py-3.5 text-xs font-black uppercase tracking-[0.15em] text-black shadow-[0_0_30px_rgba(255,255,255,0.15)] transition-transform hover:bg-zinc-200 hover:scale-[1.02] active:scale-95"
+                        className="touch-manipulation min-h-[48px] rounded-xl bg-white px-6 py-3.5 text-xs font-black uppercase tracking-[0.15em] text-black shadow-[0_0_30px_rgba(255,255,255,0.15)] transition-transform hover:bg-zinc-200 hover:scale-[1.02] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black/80"
                       >
                         Upgrade to Pro
                       </button>
@@ -503,7 +505,7 @@ export default function DashboardPage() {
                 type="button"
                 onClick={handleApprove}
                 disabled={executing}
-                className="flex-1 w-full sm:w-auto min-h-[56px] bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                className="touch-manipulation flex-1 w-full sm:w-auto min-h-[56px] bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
               >
                 {executing ? (
                   <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -515,7 +517,7 @@ export default function DashboardPage() {
                 type="button"
                 onClick={handleSkip}
                 disabled={executing}
-                className="w-full sm:w-auto sm:px-6 min-h-[56px] bg-zinc-900 border border-white/20 text-zinc-400 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:min-w-[5.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                className="touch-manipulation w-full sm:w-auto sm:px-6 min-h-[56px] bg-zinc-900 border border-white/20 text-zinc-400 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:min-w-[5.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
               >
                 {executing ? (
                   <span className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />

@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: April 1, 2026 (FLOW brain quality: as prior, plus **post-generate quality gate** for `schedule_conflict` + `write_document`: `getDecisionEnforcementIssues` accepts optional `discrepancyClass` and relaxes explicit/time/pressure when ISO date + numbered steps present; expanded `PRESSURE_OR_CONSEQUENCE_PATTERNS` (overlapping, double-book, calendar conflict, trade-off); `OWNERSHIP_PATTERNS` includes `your calendar`; `GenerationCandidateLog.discrepancyClass` populated from scorer; `isSendWorthy` passes `directive.discrepancyClass`; brain-receipt reads class from `generation_log` for gates; artifact-generator deadline prompt block + placeholder rejection (`[phone…]`, `from recent contact`); `PLACEHOLDER_PATTERN` in `daily-brief-generate` aligned; `evaluate-readiness.test.ts` covers schedule_conflict path.)
+Last Updated: April 1, 2026 (FLOW brain quality: as prior, plus **post-generate quality gate** for `schedule_conflict` + `write_document`: `getDecisionEnforcementIssues` accepts optional `discrepancyClass` and relaxes explicit/time/pressure when ISO date + numbered steps present; expanded `PRESSURE_OR_CONSEQUENCE_PATTERNS` (overlapping, double-book, calendar conflict, trade-off); `OWNERSHIP_PATTERNS` includes `your calendar`; `GenerationCandidateLog.discrepancyClass` populated from scorer; `isSendWorthy` passes `directive.discrepancyClass`; brain-receipt reads class from `generation_log` for gates; artifact-generator deadline prompt block + placeholder rejection (`[phone…]`, `from recent contact`); `PLACEHOLDER_PATTERN` in `daily-brief-generate` aligned; `evaluate-readiness.test.ts` covers schedule_conflict path. **Product chrome / mobile:** settings header 3-col grid (no tap overlap), dashboard `100dvh` + empty-state + Pro blur tap targets, pricing/onboard/login/start mobile padding + safe-area; `tests/production/mobile-prod-layout.spec.ts` in `npm run test:prod`.)
 Next Review: Monday March 31, 2026
 
 ## HOW TO USE THIS FILE
@@ -112,7 +112,7 @@ March 24 production hotfix evidence:
 | Item | Status | Evidence |
 |---|---|---|
 | Favicon / app icons | BUILT | `app/layout.js` `metadata.icons` → `/foldera-glyph.svg` (no Windows `@vercel/og` prerender flake). |
-| Public pages visual consistency | BUILT | FLOW pass: `globals.css` `#main` fade-in; privacy/terms `prose` + link hovers; blog index grid; `/try` funnel; login alert + OAuth sizing; settings connector cards (emerald active rail, 44px targets). |
+| Public pages visual consistency | BUILT | FLOW pass: `globals.css` `#main` fade-in; privacy/terms `prose` + link hovers; blog index grid; `/try` funnel; login alert + OAuth sizing; settings connector cards (emerald active rail, 44px targets). April 1, 2026: `/pricing` mobile tier padding; `/login` + `/start` vertical rhythm + `safe-area-inset-bottom`; production mobile PNG + overflow gate (`mobile-prod-layout.spec.ts`). |
 | Welcome email copy (outcome-first) | BUILT | `lib/email/resend.ts` — “reviews your recent activity” (not “scan email”). |
 | Production DB: agent layer DDL | BUILT | Supabase MCP `agent_layer_action_source` applied 2026-03-31 (matches repo `20260331120000_agent_layer.sql`). |
 

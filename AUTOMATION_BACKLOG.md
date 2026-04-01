@@ -16,7 +16,8 @@
 
 ### DONE (2026-04-01) — Playwright / tooling
 
-- **`npm run test:prod`** now uses `testMatch: ['**/smoke.spec.ts', '**/audit.spec.ts']` so `public-screenshots.spec.ts` is not run in the same parallel pool (fixes Windows flake / timeout against `/` button crawl). Use **`npm run test:screenshots`** for the public PNG sweep.
+- **Production mobile layout** — `tests/production/mobile-prod-layout.spec.ts` runs in **`npm run test:prod`** (see `playwright.prod.config.ts`): viewports **412×915** and **390×844**, asserts `scrollWidth ≤ clientWidth + 1`, writes PNGs to `tests/production/screenshots/mobile-prod/{412x915,390x844}/` (anonymous `login`/`start` + marketing `home`/`pricing`) and `*-auth/` (`dashboard`, `settings`, `onboard`). Authenticated block skips when `auth-state.json` missing/expired.
+- **`npm run test:prod`** now uses `testMatch: ['**/smoke.spec.ts', '**/audit.spec.ts', '**/mobile-prod-layout.spec.ts']` so `public-screenshots.spec.ts` is not run in the same parallel pool (fixes Windows flake / timeout against `/` button crawl). Use **`npm run test:screenshots`** for the public PNG sweep.
 - **Production smoke** skips authenticated suites when `tests/production/auth-state.json` is missing or session cookies are expired (`describeAuth` in `smoke.spec.ts`); `playwright.prod.config.ts` omits `storageState` when the file is absent.
 - **Local default Playwright** (`playwright.config.ts`) documents `test:prod:setup` and ignores `tests/production/**` + `tests/audit/**`.
 - **`tests/e2e/authenticated-routes.spec.ts`**: `describeAuthMocked` skips mocked dashboard/settings suites when `NEXTAUTH_SECRET` is unset; unauthenticated settings smoke stays in `test.describe`.

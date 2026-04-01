@@ -7,7 +7,7 @@ const useAuthState = fs.existsSync(authPath);
 
 export default defineConfig({
   testDir: './tests/production',
-  testMatch: ['**/smoke.spec.ts', '**/audit.spec.ts'],
+  testMatch: ['**/smoke.spec.ts', '**/audit.spec.ts', '**/mobile-prod-layout.spec.ts'],
   timeout: 30000,
   retries: 1,
   use: {

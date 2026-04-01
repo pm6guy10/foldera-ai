@@ -34,7 +34,7 @@ function StartContent() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-x-hidden selection:bg-cyan-500/30 selection:text-white">
+    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-x-hidden selection:bg-cyan-500/30 selection:text-white pb-[env(safe-area-inset-bottom,0px)]">
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.10)_0%,transparent_60%)]" />
@@ -42,9 +42,9 @@ function StartContent() {
 
       <NavAuthMinimal variant="start" />
 
-      <main id="main" className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 pb-16 w-full min-w-0">
+      <main id="main" className="relative z-10 flex-1 flex flex-col justify-center py-10 sm:py-12 px-4 sm:px-6 pb-20 sm:pb-16 w-full min-w-0">
         <div className="w-full max-w-md mx-auto">
-          <div className="text-center mb-10 px-1">
+          <div className="text-center mb-8 sm:mb-10 px-1">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-3">Finished work, every morning.</p>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tighter text-white leading-tight">Get started with Foldera</h1>
             <p className="mt-4 text-zinc-400 text-base leading-relaxed max-w-sm mx-auto">One secure sign-in. Then Foldera goes to work.</p>

@@ -128,10 +128,10 @@ export default function PricingPage() {
             </p>
           </div>
 
-          <div className="rounded-[2rem] border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl p-4 sm:p-6 md:p-10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] max-w-5xl mx-auto mb-16 md:mb-20 w-full max-w-full min-w-0">
-          <div className="grid gap-8 md:grid-cols-2 md:gap-10">
+          <div className="rounded-[2rem] border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl p-3 sm:p-6 md:p-10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] max-w-5xl mx-auto mb-16 md:mb-20 w-full max-w-full min-w-0">
+          <div className="grid gap-6 sm:gap-8 md:grid-cols-2 md:gap-10">
             {/* Free */}
-            <div className="rounded-[2rem] bg-[#0a0a0f] border border-white/10 p-10 md:p-12 flex flex-col">
+            <div className="rounded-[1.5rem] sm:rounded-[2rem] bg-[#0a0a0f] border border-white/10 p-6 sm:p-8 md:p-12 flex flex-col min-w-0">
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-6 bg-white/5 border border-white/10 px-4 py-2 rounded-lg inline-block">
                 Free
               </p>
@@ -160,7 +160,7 @@ export default function PricingPage() {
             </div>
 
             {/* Pro */}
-            <div className="rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/30 p-10 md:p-12 shadow-[0_0_80px_rgba(6,182,212,0.12)] flex flex-col">
+            <div className="rounded-[1.5rem] sm:rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/30 p-6 sm:p-8 md:p-12 shadow-[0_0_80px_rgba(6,182,212,0.12)] flex flex-col min-w-0">
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-6 bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 rounded-lg inline-block">
                 Professional
               </p>

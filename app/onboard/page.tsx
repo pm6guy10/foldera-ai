@@ -85,7 +85,7 @@ function OnboardContent() {
 
   if (loadingExisting) {
     return (
-      <main id="main" className="min-h-screen bg-[#07070c] flex items-center justify-center relative">
+      <main id="main" className="min-h-[100dvh] bg-[#07070c] flex items-center justify-center relative overflow-x-hidden">
         <div className="absolute inset-0 pointer-events-none z-0">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
         </div>
@@ -95,25 +95,28 @@ function OnboardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white relative">
+    <div className="min-h-[100dvh] overflow-x-hidden bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white relative pb-[env(safe-area-inset-bottom,0px)]">
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
       </div>
 
-      <main id="main" className="relative z-10 flex flex-col items-center px-6 pt-24 pb-16">
-        <div className="w-full max-w-md">
+      <main id="main" className="relative z-10 flex flex-col items-center px-4 sm:px-6 pt-20 sm:pt-24 pb-20 sm:pb-16 w-full min-w-0">
+        <div className="w-full max-w-md min-w-0">
           {!isEdit && (
-            <div className="flex flex-col items-center text-center mb-10">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-40" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
-                </span>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">
-                  Connected. Your first read arrives tomorrow morning.
-                </p>
+            <>
+              <p className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-4">Step 1 — Your focus</p>
+              <div className="flex flex-col items-center text-center mb-8 sm:mb-10">
+                <div className="flex items-center gap-2 mb-1 max-w-full px-1">
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-40" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
+                  </span>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 leading-snug text-left sm:text-center">
+                    Connected. Your first read arrives tomorrow morning.
+                  </p>
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           <h1 className="text-2xl font-black tracking-tighter text-white text-center mb-2">
@@ -195,7 +198,7 @@ export default function OnboardPage() {
   return (
     <Suspense
       fallback={
-        <main id="main" className="min-h-screen bg-[#07070c] flex items-center justify-center">
+        <main id="main" className="min-h-[100dvh] bg-[#07070c] flex items-center justify-center overflow-x-hidden">
           <div className="animate-pulse w-8 h-8 rounded-full bg-cyan-500/30" />
         </main>
       }

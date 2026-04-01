@@ -254,7 +254,9 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupEmptyDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByText(/next read|tomorrow morning|learning from your patterns/i).first()).toBeVisible({
+    await expect(
+      page.getByText(/next read|tomorrow morning|learning from your patterns|set until tomorrow|directive is queued|connect accounts/i).first(),
+    ).toBeVisible({
       timeout: 15000,
     });
   });

@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — FLOW: Frontend state reconciliation + mobile authenticated layout
+  MODE: FLOW
+  Commit hash(es): `39d76b4`
+  Files changed: `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/pricing/page.tsx`, `app/start/page.tsx`, `app/login/login-inner.tsx`, `app/onboard/page.tsx`, `tests/production/smoke.spec.ts`, `tests/production/mobile-prod-layout.spec.ts`, `playwright.prod.config.ts`, `tests/e2e/authenticated-routes.spec.ts`, `tests/production/screenshots/mobile-prod/**`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `AUTOMATION_BACKLOG.md`
+  What was verified: Reconciliation — spec `FOLDERA_PRODUCT_SPEC` §1.4 documents **Free + Pro** pricing paths (`/start` vs `/start?plan=pro`); production/codebase already matched (stacked tiers on mobile, two columns on `md+`), not a literal single-card-only model. **Fixes:** Settings header replaced flex+absolute center with **3-column grid** so back / logo / sign-out no longer overlap on narrow phones; section rhythm (`space-y-9`, tighter mobile padding); Subscription/Account headers dropped conflicting `pb-0`/`pb-6` classes; dashboard `min-h-[100dvh]`, empty state copy aligned to “queued in app vs email”, Pro blur overlay `isolate` + larger tap target; login/start vertical padding + safe-area; onboard step eyebrow + overflow guard; pricing outer/inner mobile padding. `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; `npx playwright test tests/e2e/` (64 passed, 4 skipped); `npm run test:prod` (56 passed, 1 flaky `/blog` crawl retry pass) — mobile PNGs under `tests/production/screenshots/mobile-prod/{412x915,390x844}{,-auth}/`.
+  Any unresolved issues: Production audit crawl `/blog` still occasionally hits 30s timeout first attempt (retry passes). Landing page mega-hero unchanged (source of truth); no broad redesign.
+
 - 2026-04-01 — AUDIT: schedule_conflict send-worthiness + artifact grounding
   MODE: AUDIT
   Commit hash(es): `fba1d70`

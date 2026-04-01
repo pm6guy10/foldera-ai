@@ -59,7 +59,13 @@ describeAuth('Authenticated: Dashboard', () => {
     await page.waitForLoadState('networkidle');
     // Either a directive card or the empty state
     const hasDirective = await page.getByText(/approve|skip/i).first().isVisible().catch(() => false);
-    const hasEmptyState = await page.getByText(/first read|nothing queued|nothing today|waiting|learning your patterns/i).first().isVisible().catch(() => false);
+    const hasEmptyState = await page
+      .getByText(
+        /first read|nothing queued|nothing today|waiting|learning your patterns|set until tomorrow|directive is queued|next read still lands/i,
+      )
+      .first()
+      .isVisible()
+      .catch(() => false);
     expect(hasDirective || hasEmptyState).toBe(true);
   });
 
