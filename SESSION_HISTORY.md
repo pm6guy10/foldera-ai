@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — OPS: Mobile visual QA — 375px overflow, touch targets, hamburger backdrop, screenshots
+  MODE: OPS
+  Commit hash(es): `git log -1 --oneline` on `main` — subject `fix: mobile visual QA — floating text, gutters, overflow, touch targets`
+  Files changed: `app/globals.css`, `app/page.tsx`, `app/pricing/page.tsx`, `components/nav/NavPublic.tsx`, `components/nav/BlogFooter.tsx`, `tests/e2e/mobile-visual-qa.spec.ts`, `tests/screenshots/mobile/*.png`, `tests/screenshots/mobile-after/*.png`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` (pass); `set CI=true&& npx playwright test tests/e2e/` — 64 passed, 4 skipped (includes dual full-page PNG capture for 9 public routes).
+  Any unresolved issues: `/dashboard` and `/dashboard/settings` not in screenshot set (auth); `npm run test:prod` run if deploy/auth state available.
+
 - 2026-04-01 — OPS: Split daily-brief into dedicated Vercel cron (11:10 UTC) after nightly-ops ingest
   MODE: OPS
   Commit hash(es): `79f64ee`

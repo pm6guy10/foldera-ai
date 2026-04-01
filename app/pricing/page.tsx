@@ -97,7 +97,7 @@ function ProCheckoutButton() {
       <p className="text-center text-zinc-600 text-xs">$29/mo — cancel anytime.</p>
       <Link
         href="/dashboard"
-        className="block text-center text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors pt-2"
+        className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors min-h-[44px] py-3 flex items-center justify-center"
       >
         Go to dashboard
       </Link>
@@ -128,7 +128,7 @@ export default function PricingPage() {
             </p>
           </div>
 
-          <div className="rounded-[2rem] border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl p-4 sm:p-6 md:p-10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] max-w-5xl mx-4 sm:mx-auto mb-16 md:mb-20 w-[calc(100%-2rem)] sm:w-auto max-w-full min-w-0">
+          <div className="rounded-[2rem] border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl p-4 sm:p-6 md:p-10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] max-w-5xl mx-auto mb-16 md:mb-20 w-full max-w-full min-w-0">
           <div className="grid gap-8 md:grid-cols-2 md:gap-10">
             {/* Free */}
             <div className="rounded-[2rem] bg-[#0a0a0f] border border-white/10 p-10 md:p-12 flex flex-col">
@@ -193,9 +193,9 @@ export default function PricingPage() {
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-6 mt-12 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
-            <a href="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</a>
-            <a href="/terms" className="hover:text-zinc-400 transition-colors">Terms</a>
+          <div className="flex flex-wrap items-center justify-center gap-4 mt-12 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
+            <a href="/privacy" className="hover:text-zinc-400 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2">Privacy</a>
+            <a href="/terms" className="hover:text-zinc-400 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2">Terms</a>
           </div>
 
         </div>

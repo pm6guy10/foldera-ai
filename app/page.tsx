@@ -598,7 +598,7 @@ function ScenarioDemos() {
           <button
             type="button"
             onClick={showPrev}
-            className="px-3.5 py-2 rounded-full border border-white/20 bg-zinc-950/80 text-zinc-200 text-[10px] font-black uppercase tracking-[0.16em] active:scale-95"
+            className="min-h-[44px] px-4 rounded-full border border-white/20 bg-zinc-950/80 text-zinc-200 text-[10px] font-black uppercase tracking-[0.16em] active:scale-95 inline-flex items-center justify-center"
             aria-label="Show previous scenario"
           >
             Prev
@@ -606,7 +606,7 @@ function ScenarioDemos() {
           <button
             type="button"
             onClick={showNext}
-            className="px-3.5 py-2 rounded-full border border-cyan-400/45 bg-cyan-500/12 text-cyan-100 text-[10px] font-black uppercase tracking-[0.16em] active:scale-95"
+            className="min-h-[44px] px-4 rounded-full border border-cyan-400/45 bg-cyan-500/12 text-cyan-100 text-[10px] font-black uppercase tracking-[0.16em] active:scale-95 inline-flex items-center justify-center"
             aria-label="Show next scenario"
           >
             Next
@@ -628,8 +628,12 @@ function ScenarioDemos() {
                 aria-selected={isActive}
                 aria-label={s.label}
                 onClick={() => { setActiveTab(i); }}
-                className={`h-2.5 rounded-full border transition-all duration-300 ${isActive ? 'bg-cyan-300 border-cyan-200 w-11 shadow-[0_0_20px_rgba(34,211,238,0.9)]' : 'bg-zinc-800 border-zinc-600/80 w-5 hover:bg-zinc-700'}`}
-              />
+                className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent p-0 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400`}
+              >
+                <span
+                  className={`block h-2.5 rounded-full border transition-all duration-300 ${isActive ? 'bg-cyan-300 border-cyan-200 w-11 shadow-[0_0_20px_rgba(34,211,238,0.9)]' : 'bg-zinc-800 border-zinc-600/80 w-5 hover:bg-zinc-700'}`}
+                />
+              </button>
             );
           })}
         </div>
@@ -716,11 +720,11 @@ const MathConsole = memo(() => {
 
       <div className="max-w-4xl mx-auto relative z-10">
         <Reveal>
-          <div className="text-center mb-20">
-            <h2 className="text-5xl md:text-6xl font-black tracking-tighter text-white mb-8">
+          <div className="text-center mb-20 px-2">
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter text-white mb-8 break-words">
               You don&apos;t keep track. It does.
             </h2>
-            <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed">
+            <p className="text-lg sm:text-xl text-zinc-400 max-w-2xl mx-auto font-medium leading-relaxed px-1">
               Deadlines. Replies. Patterns. Risk. Foldera handles the math and gives you the move.
             </p>
           </div>
@@ -919,10 +923,10 @@ export default function App() {
       {/* ── HOW IT WORKS ── */}
       <section className="py-32 md:py-36 relative bg-[#07070c] border-t border-white/5">
         <AmbientGrid />
-        <div className="max-w-6xl mx-auto px-6 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
           <Reveal className="mb-16 md:mb-20 max-w-4xl text-left">
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8">It finds what changed.<br />One decision. Done.</h2>
-            <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl font-medium leading-relaxed">Not another list. Not another reminder. Foldera sees what is drifting, what is exposed, and what needs action now. Approve it or skip it. No planning. No prompts.</p>
+            <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white mb-8 break-words">It finds what changed.<br />One decision. Done.</h2>
+            <p className="text-lg sm:text-xl md:text-2xl text-zinc-400 max-w-2xl font-medium leading-relaxed">Not another list. Not another reminder. Foldera sees what is drifting, what is exposed, and what needs action now. Approve it or skip it. No planning. No prompts.</p>
           </Reveal>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -1042,11 +1046,11 @@ export default function App() {
               </div>
               <p className="text-zinc-500 text-[11px] uppercase tracking-[0.2em] font-black max-w-sm leading-relaxed text-left">Finished work, every morning.</p>
             </div>
-            <nav className="flex flex-wrap justify-center items-center gap-x-12 gap-y-6 text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">
-              <a href="#product" className="hover:text-white transition-colors">Platform</a>
-              <a href="/pricing" className="hover:text-white transition-colors">Pricing</a>
-              <a href="/blog" className="hover:text-white transition-colors">Blog</a>
-              <a href="/login" className="hover:text-white transition-colors">Sign in</a>
+            <nav className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">
+              <a href="#product" className="hover:text-white transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2">Platform</a>
+              <a href="/pricing" className="hover:text-white transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2">Pricing</a>
+              <a href="/blog" className="hover:text-white transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2">Blog</a>
+              <a href="/login" className="hover:text-white transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2">Sign in</a>
             </nav>
           </div>
           <div className="mt-20 pt-10 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-8">
@@ -1055,9 +1059,9 @@ export default function App() {
                 <Lock className="w-3.5 h-3.5" aria-hidden="true" /> AES-256
               </div>
             </div>
-            <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 text-center md:text-right">
-              <a href="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</a>
-              <a href="/terms" className="hover:text-zinc-400 transition-colors">Terms</a>
+            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 text-center md:text-right">
+              <a href="/privacy" className="hover:text-zinc-400 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2">Privacy</a>
+              <a href="/terms" className="hover:text-zinc-400 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2">Terms</a>
               <p suppressHydrationWarning>
                 &copy; {new Date().getFullYear()} Foldera AI &bull; Built for execution
               </p>

@@ -109,7 +109,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
             data-testid="nav-mobile-menu-toggle"
             onClick={() => setMenuOpen((v) => !v)}
             className="sm:hidden flex flex-col items-center justify-center gap-[5px] w-10 h-10 min-w-[44px] min-h-[44px] rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-label={menuOpen ? 'Close menu (toggle)' : 'Open menu'}
             aria-expanded={menuOpen}
           >
             <span className={`w-5 h-0.5 bg-white transition-all duration-200 ${menuOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
@@ -123,31 +123,28 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
         <div className="sm:hidden fixed inset-0 z-[70] flex flex-col" role="dialog" aria-modal="true" aria-label="Site menu">
           <div
             role="presentation"
-            className="absolute inset-0 bg-[#07070c]/95 backdrop-blur-xl"
+            className="absolute inset-0 bg-[#07070c] backdrop-blur-xl"
             onClick={closeMenu}
           />
           <button
             type="button"
+            data-testid="nav-mobile-overlay-close"
             onClick={closeMenu}
             className="absolute top-4 right-4 z-[72] w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
             aria-label="Close menu"
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
-          <div
-            className="relative z-[71] flex flex-1 flex-col items-center justify-center px-6 py-24"
-            onClick={closeMenu}
-          >
+          <div className="relative z-[71] flex flex-1 flex-col items-center justify-center px-6 py-24 pointer-events-none">
             <nav
-              className="flex flex-col items-center space-y-6 w-full max-w-sm"
-              onClick={(e) => e.stopPropagation()}
+              className="flex flex-col items-center space-y-6 w-full max-w-sm pointer-events-auto"
             >
               {navLinks.map((l) => (
                 <a
                   key={l.label}
                   href={l.href}
                   onClick={closeMenu}
-                  className="text-lg font-bold text-white py-2 text-center w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
+                  className="text-lg font-bold text-white min-h-[48px] flex items-center justify-center text-center w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
                 >
                   {l.label}
                 </a>
@@ -156,7 +153,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
                 <a
                   href="/dashboard"
                   onClick={closeMenu}
-                  className="text-lg font-bold text-white py-2 text-center w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
+                  className="text-lg font-bold text-white min-h-[48px] flex items-center justify-center text-center w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
                 >
                   Dashboard
                 </a>
@@ -165,7 +162,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
                   <a
                     href="/login"
                     onClick={closeMenu}
-                    className="text-lg font-bold text-white py-2 text-center w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
+                    className="text-lg font-bold text-white min-h-[48px] flex items-center justify-center text-center w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
                   >
                     Sign in
                   </a>

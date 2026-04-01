@@ -36,9 +36,13 @@
 }
 
 /* === BASE BODY === */
+html {
+  background-color: #07070c;
+}
+
 body {
   color: #e5e7eb;
-  background-color: #000;
+  background-color: #07070c;
   min-height: 100vh;
   min-height: -webkit-fill-available;
   overflow-x: hidden;
