@@ -2565,13 +2565,17 @@ function buildCandidateDiscoveryLog(
       ? selection.reason
       : `Rejected because ${classifyKillReason(candidate, winner.score).killExplanation}`;
 
+    const logDiscrepancyClass =
+      candidate.type === 'discrepancy'
+        ? (candidate.discrepancyClass
+          ?? (candidate.id.startsWith('discrepancy_conflict_') ? 'schedule_conflict' : undefined))
+        : undefined;
+
     return {
       id: candidate.id,
       rank: index + 1,
       candidateType: candidate.type,
-      ...(candidate.type === 'discrepancy' && candidate.discrepancyClass
-        ? { discrepancyClass: candidate.discrepancyClass }
-        : {}),
+      ...(logDiscrepancyClass ? { discrepancyClass: logDiscrepancyClass } : {}),
       actionType: candidate.suggestedActionType,
       score: Number(candidate.score.toFixed(2)),
       scoreBreakdown: candidate.breakdown,

@@ -177,9 +177,9 @@ export function evaluateBottomGate(
     (typeof artifactRecord.title === 'string' ? artifactRecord.title : '');
   const combined = `${directiveText}\n${reason}\n${artifactBody}`;
 
+  const discClass = effectiveDiscrepancyClassForGates(directive);
   const scheduleConflictWriteDoc =
-    directive.action_type === 'write_document' &&
-    directive.discrepancyClass === 'schedule_conflict';
+    directive.action_type === 'write_document' && discClass === 'schedule_conflict';
 
   // 1. Self-referential document — check FIRST because this is the primary memo-sludge class
   if (
@@ -305,6 +305,21 @@ export function evaluateReadiness(
 // ---------------------------------------------------------------------------
 
 /**
+ * Resolves discrepancy class for gates when `directive.discrepancyClass` or the
+ * discovery log omits it (legacy rows / partial JSON). Calendar conflict ids are
+ * stable: `discrepancy_conflict_<signalId>_<signalId>`.
+ */
+export function effectiveDiscrepancyClassForGates(directive: ConvictionDirective): string | null {
+  if (directive.discrepancyClass) return directive.discrepancyClass;
+  const top = directive.generationLog?.candidateDiscovery?.topCandidates?.[0];
+  if (top?.discrepancyClass) return top.discrepancyClass;
+  if (top?.candidateType === 'discrepancy' && typeof top.id === 'string' && top.id.startsWith('discrepancy_conflict_')) {
+    return 'schedule_conflict';
+  }
+  return null;
+}
+
+/**
  * Final send-worthiness check after artifact generation.
  *
  * Pure function — no DB access, no side effects.
@@ -405,7 +420,7 @@ export function isSendWorthy(
       directiveText: directive.directive,
       reason: directive.reason,
       artifact: artifactRecord,
-      discrepancyClass: directive.discrepancyClass ?? null,
+      discrepancyClass: effectiveDiscrepancyClassForGates(directive),
     });
     if (decisionIssues.length > 0) {
       const firstIssue = decisionIssues[0].replace('decision_enforcement:', '');

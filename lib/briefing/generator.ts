@@ -2669,11 +2669,18 @@ export function getDecisionEnforcementIssues(input: {
   const combinedText = `${input.directiveText}\n${input.reason}\n${artifactText}`.trim();
   const issues: string[] = [];
 
+  // Calendar conflicts: ISO anchor + either numbered steps in the doc OR explicit overlap/trade-off
+  // language in the full combined text (directive often carries "which takes priority").
   const scheduleConflictDocRelaxed =
     input.discrepancyClass === 'schedule_conflict' &&
     normalizedType === 'write_document' &&
     /\b\d{4}-\d{2}-\d{2}\b/.test(combinedText) &&
-    /\d+\.\s/m.test(artifactText);
+    (
+      /\d+\.\s/m.test(artifactText) ||
+      /\b(overlap|overlapping|double-book|trade-off|which takes priority|communicate the trade-off)\b/i.test(
+        combinedText,
+      )
+    );
 
   if (!scheduleConflictDocRelaxed) {
     if (!textHasAny(combinedText, EXPLICIT_ASK_PATTERNS)) {
@@ -4812,8 +4819,13 @@ export async function generateDirective(
       fullContext: buildFullContext({ ...scored, winner: hydratedWinner }, payload),
       embeddedArtifact: payload.artifact,
       embeddedArtifactType: canonicalAction,
-      ...(currentCandidate.type === 'discrepancy' && currentCandidate.discrepancyClass
-        ? { discrepancyClass: currentCandidate.discrepancyClass }
+      ...(currentCandidate.type === 'discrepancy'
+        ? (() => {
+            const dc =
+              currentCandidate.discrepancyClass
+              ?? (currentCandidate.id.startsWith('discrepancy_conflict_') ? 'schedule_conflict' as const : undefined);
+            return dc ? { discrepancyClass: dc } : {};
+          })()
         : {}),
       acceptedCausalDiagnosis: payload.causal_diagnosis,
       causalDiagnosisSource: payload.causal_diagnosis_source ?? null,

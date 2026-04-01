@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateReadiness, isSendWorthy } from '../daily-brief-generate';
+import { effectiveDiscrepancyClassForGates, evaluateReadiness, isSendWorthy } from '../daily-brief-generate';
 import type { DailyBriefUserResult } from '../daily-brief-types';
 import type { ConvictionArtifact, ConvictionDirective } from '@/lib/briefing/types';
 
@@ -138,6 +138,48 @@ function makeArtifact(overrides: Partial<ConvictionArtifact> = {}): ConvictionAr
     ...overrides,
   } as unknown as ConvictionArtifact;
 }
+
+describe('effectiveDiscrepancyClassForGates', () => {
+  it('returns schedule_conflict when top candidate id uses discrepancy_conflict_ prefix', () => {
+    const d = makeDirective({
+      generationLog: {
+        outcome: 'selected',
+        stage: 'generation',
+        reason: 'ok',
+        candidateFailureReasons: [],
+        candidateDiscovery: {
+          candidateCount: 2,
+          suppressedCandidateCount: 0,
+          selectionMargin: 0.1,
+          selectionReason: 'x',
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'discrepancy_conflict_a-b-c-d-e_f-g-h-i-j',
+              rank: 1,
+              candidateType: 'discrepancy',
+              actionType: 'write_document',
+              score: 2,
+              scoreBreakdown: {
+                stakes: 2,
+                urgency: 0.5,
+                tractability: 0.7,
+                freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
+              },
+              targetGoal: null,
+              sourceSignals: [],
+              decision: 'selected',
+              decisionReason: '',
+            },
+          ],
+        },
+      },
+    });
+    expect(effectiveDiscrepancyClassForGates(d)).toBe('schedule_conflict');
+  });
+});
 
 describe('isSendWorthy', () => {
   it('returns worthy:true for a valid send_message directive', () => {
@@ -453,6 +495,59 @@ describe('isSendWorthy', () => {
         type: 'document',
         title: 'Resolve overlap on 2026-04-02',
         content: '1. Open your calendar for 2026-04-02.\n2. Move the lower-priority block to another slot.',
+      } as unknown as ConvictionArtifact,
+    );
+    expect(result.worthy).toBe(true);
+  });
+
+  it('allows schedule_conflict write_document when class is inferred from id and overlap language exists without numbered list', () => {
+    const discovery = {
+      candidateCount: 5,
+      suppressedCandidateCount: 0,
+      selectionMargin: 0.1,
+      selectionReason: null,
+      failureReason: null,
+      topCandidates: [
+        {
+          id: 'discrepancy_conflict_55d2755f-7f3a-4d5d-bc41-03d57218adaf_bb5baac8-b4a7-4a84-8c61-c85ab5d15557',
+          rank: 1,
+          candidateType: 'discrepancy',
+          actionType: 'write_document' as const,
+          score: 2.1,
+          scoreBreakdown: {
+            stakes: 2,
+            urgency: 0.5,
+            tractability: 0.7,
+            freshness: 1,
+            actionTypeRate: 0.5,
+            entityPenalty: 0,
+          },
+          targetGoal: null,
+          sourceSignals: [],
+          decision: 'selected' as const,
+          decisionReason: '',
+        },
+      ],
+    };
+    const result = isSendWorthy(
+      makeDirective({
+        action_type: 'write_document',
+        confidence: 80,
+        directive: 'Resolve overlapping commitments on your calendar for 2026-04-02.',
+        reason: 'Two calendar blocks overlap; communicate the trade-off.',
+        generationLog: {
+          outcome: 'selected',
+          stage: 'persistence',
+          reason: 'ok',
+          candidateFailureReasons: [],
+          candidateDiscovery: discovery,
+        },
+        evidence: [{ type: 'signal', description: 'Calendar overlap detected' }],
+      }),
+      {
+        type: 'document',
+        title: 'Calendar resolution',
+        content: 'Pick which event stays on 2026-04-02, assign who declines the other, and notify them.',
       } as unknown as ConvictionArtifact,
     );
     expect(result.worthy).toBe(true);

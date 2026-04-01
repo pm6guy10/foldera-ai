@@ -5,10 +5,15 @@ import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { createServerClient } from '@/lib/db/client';
-import { runDailyGenerate, isSendWorthy, evaluateBottomGate } from '@/lib/cron/daily-brief-generate';
+import {
+  runDailyGenerate,
+  isSendWorthy,
+  evaluateBottomGate,
+  effectiveDiscrepancyClassForGates,
+} from '@/lib/cron/daily-brief-generate';
 import { getDecisionEnforcementIssues } from '@/lib/briefing/generator';
 import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
-import type { ActionType, ConvictionArtifact, GenerationRunLog } from '@/lib/briefing/types';
+import type { ActionType, ConvictionArtifact, ConvictionDirective, GenerationRunLog } from '@/lib/briefing/types';
 import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -70,18 +75,6 @@ export async function POST(request: Request) {
           ? (executionResult.generation_log as GenerationRunLog)
           : undefined;
 
-      const top0 = generationLog?.candidateDiscovery?.topCandidates?.[0];
-      const discrepancyClassFromLog =
-        top0?.candidateType === 'discrepancy' && top0.discrepancyClass ? top0.discrepancyClass : null;
-
-      const decisionIssues = getDecisionEnforcementIssues({
-        actionType: latestAction.action_type ?? '',
-        directiveText: latestAction.directive_text ?? '',
-        reason: latestAction.reason ?? '',
-        artifact: merged,
-        discrepancyClass: discrepancyClassFromLog,
-      });
-
       const directiveForGates = {
         directive: latestAction.directive_text ?? '',
         action_type: (latestAction.action_type ?? 'do_nothing') as ActionType,
@@ -91,12 +84,26 @@ export async function POST(request: Request) {
           ? (latestAction.evidence as Array<{ description: string; type: 'signal' | 'commitment' | 'goal' | 'pattern' }>)
           : [],
         generationLog,
-        ...(discrepancyClassFromLog ? { discrepancyClass: discrepancyClassFromLog } : {}),
+      };
+      const discrepancyClassResolved = effectiveDiscrepancyClassForGates(directiveForGates);
+      const directiveForGatesWithClass: ConvictionDirective = {
+        ...directiveForGates,
+        ...(discrepancyClassResolved
+          ? { discrepancyClass: discrepancyClassResolved as NonNullable<ConvictionDirective['discrepancyClass']> }
+          : {}),
       };
 
-      const sendWorthiness = isSendWorthy(directiveForGates, merged as never);
+      const decisionIssues = getDecisionEnforcementIssues({
+        actionType: latestAction.action_type ?? '',
+        directiveText: latestAction.directive_text ?? '',
+        reason: latestAction.reason ?? '',
+        artifact: merged,
+        discrepancyClass: discrepancyClassResolved,
+      });
 
-      const bottomGate = evaluateBottomGate(directiveForGates, merged as unknown as ConvictionArtifact);
+      const sendWorthiness = isSendWorthy(directiveForGatesWithClass, merged as never);
+
+      const bottomGate = evaluateBottomGate(directiveForGatesWithClass, merged as unknown as ConvictionArtifact);
 
       return NextResponse.json({
         ok: true,

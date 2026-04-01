@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — OPS: Reconcile claimed backend fixes vs production — schedule_conflict quality gate
+  MODE: OPS
+  Commit hash(es): (after push)
+  Files changed: `lib/briefing/generator.ts`, `lib/cron/daily-brief-generate.ts`, `lib/briefing/scorer.ts`, `app/api/dev/brain-receipt/route.ts`, `lib/cron/__tests__/evaluate-readiness.test.ts`, `SESSION_HISTORY.md`
+  What was verified: Supabase SQL on owner — latest `tkg_actions` showed `7bd0d311…` blocked with `decision_enforcement_missing_pressure_or_consequence` while `generation_log.candidateDiscovery.topCandidates[0]` had **no** `discrepancyClass` (calendar conflict id `discrepancy_conflict_…`). Root cause: `schedule_conflict` relaxation in `getDecisionEnforcementIssues` never applied + strict numbered-list-only branch. Fix: `effectiveDiscrepancyClassForGates()`, id-prefix fallback, scorer discovery log fallback, overlap-language relaxation, generator `discrepancyClass` fallback. `npm run build`; `npx vitest run lib/cron/__tests__/evaluate-readiness.test.ts lib/cron/__tests__/bottom-gate.test.ts app/api/dev/brain-receipt/__tests__/route.test.ts`.
+  Any unresolved issues: Fresh owner `POST /api/dev/brain-receipt` + new `pending_approval` row after deploy READY (auth not available here); `npm run test:prod` after deploy.
+
 - 2026-04-01 — FLOW: Frontend state reconciliation + mobile authenticated layout
   MODE: FLOW
   Commit hash(es): `39d76b4`
