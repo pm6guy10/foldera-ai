@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Settings, Layers, Lock } from 'lucide-react';
+import { signOut } from 'next-auth/react';
+import { Settings, Lock, LogOut } from 'lucide-react';
 import type { ConvictionAction } from '@/lib/briefing/types';
 
 type ArtifactWithDraftedEmail = {
@@ -19,57 +20,19 @@ type ArtifactWithDraftedEmail = {
   check_date?: string;
 };
 
-type ActionWithDomain = ConvictionAction & { domain?: string };
-
-interface ModelEntity {
-  name: string;
-  total_interactions: number;
-  days_since_contact: number | null;
-}
-
-interface ModelGoal {
-  text: string;
-  priority: number;
-  category: string;
-}
-
-interface ModelInsight {
-  label: string;
-  category: string;
-  signal_count: number;
-  entity_name?: string;
-}
-
-interface ModelState {
-  days_active: number;
-  signal_count: number;
-  signals_processed: number;
-  top_entities: ModelEntity[];
-  stated_goals: ModelGoal[];
-  behavioral_insights: ModelInsight[];
-  approval_stats: {
-    total: number;
-    approved: number;
-    skipped: number;
-    approval_rate: number | null;
-  };
-  avg_confidence_last_7d: number | null;
-  avg_confidence_last_30d: number | null;
-}
+type ActionWithDomain = ConvictionAction & { domain?: string; generatedAt?: string };
 
 export default function DashboardPage() {
   const [action, setAction] = useState<ActionWithDomain | null>(null);
-  const [modelState, setModelState] = useState<ModelState | null>(null);
-  const [accountCreatedAt, setAccountCreatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState(false);
   const [executing, setExecuting] = useState(false);
-  const [isNewAccount, setIsNewAccount] = useState(false);
   const [surfaceVisible, setSurfaceVisible] = useState(false);
   const [approvedCount, setApprovedCount] = useState(0);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [lastDecision, setLastDecision] = useState<'approve' | 'skip' | null>(null);
 
   // Handle ?generated=true from settings run-brief success
   // Handle ?upgraded=true from Stripe checkout success
@@ -109,9 +72,10 @@ export default function DashboardPage() {
           }
           if (data.status === 'executed' || data.status === 'skipped') {
             setDone(true);
+            setLastDecision(deepAction === 'approve' ? 'approve' : 'skip');
             setFlash(
               deepAction === 'approve'
-                ? 'Done. Foldera executed that.'
+                ? 'Sent. Check your outbox.'
                 : 'Skipped. Foldera will adjust.',
             );
           } else {
@@ -130,29 +94,18 @@ export default function DashboardPage() {
     setLoading(true);
     setFetchError(false);
     try {
-      const [convRes, modelRes] = await Promise.all([
-        fetch('/api/conviction/latest'),
-        fetch('/api/model/state'),
-      ]);
+      const convRes = await fetch('/api/conviction/latest');
       if (!convRes.ok) {
         setFetchError(true);
         setAction(null);
         return;
       }
       const data = await convRes.json().catch(() => ({}));
-      const createdAt = typeof data?.account_created_at === 'string' ? data.account_created_at : null;
-      setAccountCreatedAt(createdAt);
-      setIsNewAccount(createdAt !== null && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000);
       setApprovedCount(typeof data?.approved_count === 'number' ? data.approved_count : 0);
       setIsSubscribed(data?.is_subscribed === true);
       setAction(data?.id ? data : null);
-      if (modelRes.ok) {
-        const ms = await modelRes.json().catch(() => null);
-        setModelState(ms ?? null);
-      }
     } catch {
       setFetchError(true);
-      setAccountCreatedAt(null);
       setAction(null);
     } finally {
       setLoading(false);
@@ -186,7 +139,8 @@ export default function DashboardPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Approve failed');
       setDone(true);
-      setFlash('Done. Foldera executed that.');
+      setLastDecision('approve');
+      setFlash('Sent. Check your outbox.');
     } catch (err: unknown) {
       setFlash(err instanceof Error ? err.message : 'Approve failed');
     } finally {
@@ -206,6 +160,7 @@ export default function DashboardPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Skip failed');
       setDone(true);
+      setLastDecision('skip');
       setFlash('Skipped. Foldera will adjust.');
     } catch (err: unknown) {
       setFlash(err instanceof Error ? err.message : 'Skip failed');
@@ -232,21 +187,35 @@ export default function DashboardPage() {
 
       {/* Fixed header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
-        <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4">
-          <a href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.15)]">
-              <Layers className="w-3.5 h-3.5 fill-black" aria-hidden="true" />
-            </div>
-            <span className="text-sm font-black tracking-tighter text-white uppercase">Foldera</span>
-          </a>
-          <Link href="/dashboard/settings" className="p-2 -mr-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center">
-            <Settings className="w-5 h-5" />
+        <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4 gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2.5 group min-w-0">
+            <img
+              src="/foldera-icon.png"
+              alt="Foldera"
+              className="w-9 h-9 rounded-xl group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.15)] shrink-0"
+              width={36}
+              height={36}
+            />
+            <span className="text-sm font-black tracking-tighter text-white uppercase truncate">Foldera</span>
           </Link>
+          <div className="flex items-center gap-1 shrink-0">
+            <Link href="/dashboard/settings" className="p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center" aria-label="Settings">
+              <Settings className="w-5 h-5" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className="p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Content */}
-      <main className="relative z-10 pt-20 pb-14 px-4 max-w-2xl mx-auto">
+      <main id="main" className="relative z-10 pt-20 pb-14 px-4 max-w-2xl mx-auto">
         {/* Flash message */}
         {flash && !done && (
           <div className="mb-5 px-4 py-3 rounded-xl bg-zinc-950/80 border border-white/10 backdrop-blur-sm">
@@ -268,9 +237,16 @@ export default function DashboardPage() {
         ) : done ? (
           <div className="mt-20 text-center">
             <div className="flex items-center justify-center mb-5">
-              <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
-                <span className="text-cyan-400 text-xl">✓</span>
-              </div>
+              {lastDecision === 'skip' ? (
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-40" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-400" />
+                </span>
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                  <span className="text-cyan-400 text-xl">✓</span>
+                </div>
+              )}
             </div>
             {flash && <p className="text-white text-base font-bold mb-3">{flash}</p>}
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Your next read arrives at 7am Pacific.</p>
@@ -288,28 +264,9 @@ export default function DashboardPage() {
         ) : !action ? (
           <div className="mt-12">
             <div className="mx-auto max-w-lg rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-10 text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
-              {isNewAccount ? (
-                <>
-                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse mx-auto mb-4" />
-                  <p className="text-white text-base font-black tracking-tight mb-2">Foldera is building your model.</p>
-                  <p className="text-zinc-500 text-sm leading-relaxed mb-5">
-                    It&apos;s reading your email and calendar now. Your first directive arrives tomorrow at 7am Pacific.
-                  </p>
-                  <Link
-                    href="/dashboard/settings"
-                    className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-cyan-400 hover:text-cyan-300 transition-colors"
-                  >
-                    Check connection status
-                    <Settings className="w-3 h-3" />
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse mx-auto mb-4" />
-                  <p className="text-zinc-200 text-lg font-medium">Your next read arrives at 7am Pacific.</p>
-                  <p className="text-zinc-500 text-sm mt-2">Foldera is learning from your patterns.</p>
-                </>
-              )}
+              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse mx-auto mb-6" />
+              <p className="text-zinc-200 text-lg font-medium">Your next read arrives at 7am Pacific.</p>
+              <p className="text-zinc-500 text-sm mt-2">Foldera is learning from your patterns.</p>
             </div>
           </div>
         ) : (
@@ -322,14 +279,25 @@ export default function DashboardPage() {
             <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
 
             <div className="px-6 py-6 md:px-8 md:py-7 border-b border-white/10">
-              {/* Always-visible label */}
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-3">
-                {action.domain ?? "Today's Directive"}
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-2">
+                Today&apos;s directive
               </p>
-              {/* Directive text */}
-              <p className="text-xl font-bold text-white leading-tight">
-                {action.directive}
-              </p>
+              {action.generatedAt && (
+                <p className="text-zinc-600 text-xs mb-3">
+                  Generated{' '}
+                  {new Date(action.generatedAt).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    timeZone: 'America/Los_Angeles',
+                  })}{' '}
+                  Pacific
+                </p>
+              )}
+              <div className="border-l-4 border-cyan-500 pl-4">
+                <p className="text-xl font-bold text-white leading-tight">{action.directive}</p>
+              </div>
             </div>
 
             {/* Artifact */}
@@ -407,7 +375,7 @@ export default function DashboardPage() {
                 ) : (
                   <>
                     {isEmail && (
-                      <div className="rounded-2xl bg-cyan-500/10 border border-cyan-500/30 p-4 md:p-5">
+                      <div className="rounded-2xl bg-cyan-500/10 border border-cyan-500/30 border-l-4 border-l-cyan-500 p-4 md:p-5">
                         <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Drafted Reply</p>
                         {recipient && (
                           <p className="text-xs text-zinc-500 mb-1 truncate">To: {recipient}</p>
@@ -473,70 +441,18 @@ export default function DashboardPage() {
               <button
                 onClick={handleSkip}
                 disabled={executing}
-                className="px-6 bg-zinc-900 border border-white/20 text-zinc-400 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 bg-zinc-900 border border-white/20 text-zinc-400 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[5.5rem]"
               >
-                Skip
+                {executing ? (
+                  <span className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+                ) : (
+                  'Skip'
+                )}
               </button>
             </div>
           </div>
         )}
 
-        {/* Your model — shown when signal data exists */}
-        {!loading && !done && modelState && modelState.signal_count > 5 && (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-5 md:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Your model</span>
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">
-                {modelState.days_active}d · {modelState.signal_count.toLocaleString()} signals
-              </span>
-            </div>
-
-            {modelState.top_entities.length > 0 && (
-              <div className="mb-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-2">People it&apos;s tracking</p>
-                <div className="space-y-2">
-                  {modelState.top_entities.slice(0, 3).map((entity, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-300 font-medium">{entity.name}</span>
-                      <span className="text-xs text-zinc-600">
-                        {entity.days_since_contact !== null
-                          ? entity.days_since_contact === 0
-                            ? 'today'
-                            : `${entity.days_since_contact}d ago`
-                          : `${entity.total_interactions} interactions`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {modelState.behavioral_insights.length > 0 && (
-              <div className="mb-4 rounded-xl bg-zinc-950/60 border border-white/5 p-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-2">What it inferred</p>
-                {modelState.behavioral_insights.slice(0, 2).map((insight, i) => (
-                  <p key={i} className="text-xs text-zinc-400 leading-relaxed">
-                    › {insight.label}
-                  </p>
-                ))}
-              </div>
-            )}
-
-            <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.1em] text-zinc-700">
-              {modelState.approval_stats.approval_rate !== null && (
-                <span>Approve rate: {modelState.approval_stats.approval_rate}%</span>
-              )}
-              {modelState.avg_confidence_last_7d !== null && modelState.avg_confidence_last_30d !== null && (
-                <span>
-                  Conviction: {modelState.avg_confidence_last_30d} → {modelState.avg_confidence_last_7d}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );

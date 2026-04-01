@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
-import { useSession } from 'next-auth/react';
+import { NavPublic } from '@/components/nav/NavPublic';
 import {
   ArrowRight, Check, Mail, Calendar, MessageSquare,
   Zap, Brain, Briefcase, Code, Coffee, Database, Shield,
-  Globe, Layers, Terminal, FileText, AlertCircle,
+  Globe, LayoutGrid, Terminal, FileText, AlertCircle,
   Lock, ChevronRight, Eye,
 } from 'lucide-react';
 
@@ -42,12 +42,6 @@ interface RevealProps {
   className?: string;
   alwaysVisible?: boolean;
 }
-
-interface NavigationProps {
-  scrolled: boolean;
-  isLoggedIn?: boolean;
-}
-
 
 // ============================================================================
 // DATA
@@ -112,7 +106,40 @@ const FEATURES: FeatureItem[] = [
   { icon: Zap, title: 'It drafts the email', desc: 'No prompting. No chatting. You wake up to a finished draft \u2014 ready to send with one tap.' },
   { icon: Shield, title: 'It stays private', desc: 'Your data never trains anyone else\u2019s model. AES-256 encryption. Delete everything anytime.' },
   { icon: Terminal, title: 'It gets smarter', desc: 'Every approval and every skip teaches the engine what matters to you. Day 30 is unrecognizable from day 1.' },
-  { icon: Layers, title: 'It replaces the system', desc: 'Not another app to check. The whole point is that you stop managing and start deciding yes or no.' },
+  { icon: LayoutGrid, title: 'It replaces the system', desc: 'Not another app to check. The whole point is that you stop managing and start deciding yes or no.' },
+];
+
+const HERO_DEMO_SLIDES: Array<{
+  badge: string;
+  badgeTone: 'rose' | 'cyan';
+  title: string;
+  subtitle: string;
+  artifact: string;
+}> = [
+  {
+    badge: 'Blocks 3 Team Members',
+    badgeTone: 'rose',
+    title: 'Finalize Q3 Projections',
+    subtitle: 'Reopened 4 times. Waiting on your approval to unblock the team.',
+    artifact:
+      '"Hi team, attached are the finalized numbers before the board meeting. We\'ve adjusted the forecast based on recent churn..."',
+  },
+  {
+    badge: 'Thread going cold',
+    badgeTone: 'cyan',
+    title: 'Reply before you lose the deal',
+    subtitle: 'Last activity 6 days ago. They are waiting on your answer.',
+    artifact:
+      '"Thanks for your patience — here\'s the updated scope and numbers we discussed. Can we lock a 30-min call Thursday?"',
+  },
+  {
+    badge: 'Pattern detected',
+    badgeTone: 'cyan',
+    title: 'The application you keep opening',
+    subtitle: 'Four views this week, no submit. Draft is ready.',
+    artifact:
+      '"I\'m excited about the role and would love to move forward. I\'ve attached my availability for the next step."',
+  },
 ];
 
 const HERO_PROOF_LINES = [
@@ -245,6 +272,107 @@ function LiveProofStrip() {
 
 
 // ============================================================================
+// HERO — interactive approve/skip demo (no navigation)
+// ============================================================================
+function HeroDirectiveDemo() {
+  const [idx, setIdx] = useState(0);
+  const [phase, setPhase] = useState<'idle' | 'out' | 'cta'>('idle');
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const slide = HERO_DEMO_SLIDES[idx];
+  const isLast = idx >= HERO_DEMO_SLIDES.length - 1;
+
+  const advance = useCallback(() => {
+    if (prefersReducedMotion) {
+      if (isLast) setPhase('cta');
+      else setIdx((i) => Math.min(i + 1, HERO_DEMO_SLIDES.length - 1));
+      return;
+    }
+    setPhase('out');
+    window.setTimeout(() => {
+      if (isLast) setPhase('cta');
+      else {
+        setIdx((i) => i + 1);
+        setPhase('idle');
+      }
+    }, 280);
+  }, [isLast, prefersReducedMotion]);
+
+  if (phase === 'cta') {
+    return (
+      <div className="relative z-30 w-full max-w-[420px] mx-auto text-center px-2">
+        <p className="text-white font-black text-xl mb-6 tracking-tight">Like what you see?</p>
+        <a
+          href="/start"
+          className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95"
+        >
+          Get started free <ChevronRight className="w-4 h-4" aria-hidden="true" />
+        </a>
+      </div>
+    );
+  }
+
+  const badgeRose = slide.badgeTone === 'rose';
+
+  return (
+    <div
+      className={`relative z-30 w-full max-w-[420px] hero-output pointer-events-auto transition-all duration-300 ease-out ${
+        phase === 'out' ? 'opacity-0 translate-x-10 scale-[0.96]' : 'opacity-100 translate-x-0 scale-100'
+      }`}
+    >
+      <div className="rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/40 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.15)] flex flex-col text-left overflow-hidden">
+        <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+        <div className="p-5 sm:p-6 border-b border-white/10">
+          <div className="mb-3">
+            <div
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-2 w-fit border ${
+                badgeRose
+                  ? 'bg-rose-500/10 border-rose-500/30'
+                  : 'bg-cyan-500/10 border-cyan-500/30'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${badgeRose ? 'bg-rose-500' : 'bg-cyan-400'}`} />
+              <span
+                className={`text-[10px] font-bold uppercase tracking-widest ${
+                  badgeRose ? 'text-rose-400' : 'text-cyan-400'
+                }`}
+              >
+                {slide.badge}
+              </span>
+            </div>
+          </div>
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-2">{slide.title}</h3>
+          <p className="text-sm text-zinc-400">{slide.subtitle}</p>
+        </div>
+        <div className="p-5 sm:p-6 bg-black/40">
+          <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 border-l-4 border-l-cyan-500 space-y-2">
+            <p className="text-cyan-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+              <Zap className="w-3 h-3" aria-hidden="true" /> Drafted Reply
+            </p>
+            <p className="text-zinc-200 text-sm leading-relaxed">{slide.artifact}</p>
+          </div>
+        </div>
+        <div className="p-4 flex gap-3 bg-white/[0.02] border-t border-white/10">
+          <button
+            type="button"
+            onClick={advance}
+            className="flex-1 bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-colors"
+          >
+            <Check className="w-4 h-4" aria-hidden="true" /> Approve
+          </button>
+          <button
+            type="button"
+            onClick={advance}
+            className="px-6 bg-zinc-900 border border-white/20 text-zinc-500 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+          >
+            Skip
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // SIGNAL ENGINE HERO — mechanism visualization
 // ============================================================================
 function SignalEngineHero() {
@@ -309,40 +437,7 @@ function SignalEngineHero() {
           <div className="w-[1px] h-5 bg-gradient-to-b from-cyan-500/40 to-cyan-500/0" />
         </div>
 
-        {/* Directive Output Card — visual demo only, not interactive */}
-        <div className="relative z-30 w-full max-w-[420px] hero-output pointer-events-none">
-          <div className="rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/40 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.15)] flex flex-col text-left overflow-hidden">
-            <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
-            <div className="p-5 sm:p-6 border-b border-white/10">
-              <div className="mb-3">
-                <div className="px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center gap-2 w-fit">
-                  <div className="w-2 h-2 rounded-full bg-rose-500" />
-                  <span className="text-rose-400 text-[10px] font-bold uppercase tracking-widest">Blocks 3 Team Members</span>
-                </div>
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Finalize Q3 Projections</h3>
-              <p className="text-sm text-zinc-400">Reopened 4 times. Waiting on your approval to unblock the team.</p>
-            </div>
-            <div className="p-5 sm:p-6 bg-black/40">
-              <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 space-y-2">
-                <p className="text-cyan-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                  <Zap className="w-3 h-3" /> Drafted Reply
-                </p>
-                <p className="text-zinc-200 text-sm leading-relaxed">
-                  &quot;Hi team, attached are the finalized numbers before the board meeting. We&apos;ve adjusted the forecast based on recent churn...&quot;
-                </p>
-              </div>
-            </div>
-            <div className="p-4 flex gap-3 bg-white/[0.02] border-t border-white/10">
-              <button type="button" className="flex-1 bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)]">
-                <Check className="w-4 h-4" /> Approve
-              </button>
-              <button type="button" className="px-6 bg-zinc-900 border border-white/20 text-zinc-500 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center">
-                Skip
-              </button>
-            </div>
-          </div>
-        </div>
+        <HeroDirectiveDemo />
       </div>
     </div>
   );
@@ -516,16 +611,23 @@ function ScenarioDemos() {
             Next
           </button>
         </div>
-        <div className="flex items-center justify-center gap-3 md:gap-4">
+        <div
+          className="flex items-center justify-center gap-3 md:gap-4"
+          role="tablist"
+          aria-label="Scenario demos"
+        >
           {SCENARIOS.map((s, i) => {
             const isActive = activeTab === i;
             return (
               <button
                 key={s.id}
+                type="button"
+                role="tab"
+                id={`scenario-tab-${s.id}`}
+                aria-selected={isActive}
+                aria-label={s.label}
                 onClick={() => { setActiveTab(i); }}
                 className={`h-2.5 rounded-full border transition-all duration-300 ${isActive ? 'bg-cyan-300 border-cyan-200 w-11 shadow-[0_0_20px_rgba(34,211,238,0.9)]' : 'bg-zinc-800 border-zinc-600/80 w-5 hover:bg-zinc-700'}`}
-                aria-label={`Scenario ${i + 1}: ${s.label}`}
-                aria-current={isActive ? 'true' : 'false'}
               />
             );
           })}
@@ -710,105 +812,10 @@ function FeatureCarousel() {
 }
 
 // ============================================================================
-// NAVIGATION
-// ============================================================================
-function Navigation({ scrolled, isLoggedIn }: NavigationProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const navLinks = [
-    { label: 'Platform', href: '#product' },
-    { label: 'Pricing', href: '#pricing' },
-    { label: 'Blog', href: '/blog' },
-  ];
-
-  return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${
-      scrolled
-        ? 'bg-black/90 backdrop-blur-2xl border-b border-white/5 py-4 shadow-2xl'
-        : 'bg-transparent py-4 md:py-8'
-    }`}>
-      <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-3 group cursor-pointer focus:outline-none">
-          <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.3)]">
-            <Layers className="w-5 h-5 fill-black" aria-hidden="true" />
-          </div>
-          <span className="hidden sm:inline text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
-        </a>
-
-        {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-12 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
-          {navLinks.map((l) => (
-            <a key={l.label} href={l.href} className="hover:text-white transition-colors">{l.label}</a>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-4">
-          {isLoggedIn ? (
-            <a href="/dashboard" className="px-5 md:px-7 py-2.5 md:py-3 rounded-full bg-white text-black text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-              Dashboard <ChevronRight className="w-4 h-4" />
-            </a>
-          ) : (
-            <>
-              <a href="/login" className="hidden sm:block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
-                Sign in
-              </a>
-              <a href="/start" className="hidden sm:flex px-5 md:px-7 py-2.5 md:py-3 rounded-full bg-white text-black text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                Get started free <ChevronRight className="w-4 h-4" />
-              </a>
-              {/* Hamburger — mobile only */}
-              <button
-                type="button"
-                onClick={() => setMenuOpen((v) => !v)}
-                className="sm:hidden flex flex-col items-center justify-center gap-[5px] w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors focus:outline-none"
-                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-                aria-expanded={menuOpen}
-              >
-                <span className={`w-5 h-0.5 bg-white transition-all duration-200 ${menuOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
-                <span className={`w-5 h-0.5 bg-white transition-all duration-200 ${menuOpen ? 'opacity-0' : ''}`} />
-                <span className={`w-5 h-0.5 bg-white transition-all duration-200 ${menuOpen ? '-rotate-45 -translate-y-[7px]' : ''}`} />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile dropdown */}
-      {menuOpen && (
-        <div className="sm:hidden absolute top-full left-0 w-full bg-black/95 backdrop-blur-2xl border-b border-white/10 px-6 py-5 flex flex-col gap-4 shadow-2xl">
-          {navLinks.map((l) => (
-            <a
-              key={l.label}
-              href={l.href}
-              onClick={() => setMenuOpen(false)}
-              className="text-[13px] font-black uppercase tracking-[0.2em] text-zinc-400 hover:text-white transition-colors py-1"
-            >
-              {l.label}
-            </a>
-          ))}
-          <div className="border-t border-white/10 pt-4 flex flex-col gap-3">
-            <a href="/login" className="text-[13px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors py-1">
-              Sign in
-            </a>
-            <a
-              href="/start"
-              className="w-full py-3.5 rounded-xl bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
-            >
-              Get started free <ChevronRight className="w-4 h-4" />
-            </a>
-          </div>
-        </div>
-      )}
-    </nav>
-  );
-}
-
-// ============================================================================
 // MAIN PAGE
 // ============================================================================
 export default function App() {
   const [scrolled, setScrolled] = useState(false);
-  const { status } = useSession();
-  const isLoggedIn = status === 'authenticated';
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -875,8 +882,9 @@ export default function App() {
         }
       `}} />
 
-      <Navigation scrolled={scrolled} isLoggedIn={isLoggedIn} />
+      <NavPublic scrolled={scrolled} platformHref="#product" />
 
+      <main id="main">
       {/* ── SIGNAL ENGINE HERO — mechanism visualization ── */}
       <section className="relative overflow-hidden border-b border-white/5">
         <AmbientGrid />
@@ -1023,16 +1031,20 @@ export default function App() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-12">
             <div className="flex flex-col gap-5 text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                  <Layers className="w-5 h-5 fill-black" aria-hidden="true" />
-                </div>
+                <img
+                  src="/foldera-icon.png"
+                  alt="Foldera"
+                  className="w-10 h-10 rounded-2xl shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                  width={40}
+                  height={40}
+                />
                 <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
               </div>
               <p className="text-zinc-500 text-[11px] uppercase tracking-[0.2em] font-black max-w-sm leading-relaxed text-left">Finished work, every morning.</p>
             </div>
             <nav className="flex flex-wrap justify-center items-center gap-x-12 gap-y-6 text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">
               <a href="#product" className="hover:text-white transition-colors">Platform</a>
-              <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+              <a href="/pricing" className="hover:text-white transition-colors">Pricing</a>
               <a href="/blog" className="hover:text-white transition-colors">Blog</a>
               <a href="/login" className="hover:text-white transition-colors">Sign in</a>
             </nav>
@@ -1053,6 +1065,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+      </main>
     </div>
   );
 }

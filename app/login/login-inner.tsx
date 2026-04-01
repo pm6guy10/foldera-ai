@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { Layers, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { NavAuthMinimal } from '@/components/nav/NavPublic';
 
 export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | null; callbackUrl?: string }) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
@@ -24,24 +25,10 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.10)_0%,transparent_60%)]" />
       </div>
 
-      {/* Nav */}
-      <nav className="relative z-10 w-full px-6 py-5 flex items-center justify-between max-w-6xl mx-auto border-b border-white/5">
-        <a href="/" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_24px_rgba(255,255,255,0.2)]">
-            <Layers className="w-4 h-4 fill-black" aria-hidden="true" />
-          </div>
-          <span className="text-lg font-black tracking-tighter text-white uppercase">Foldera</span>
-        </a>
-        <a
-          href="/start"
-          className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors"
-        >
-          Get started
-        </a>
-      </nav>
+      <NavAuthMinimal variant="login" />
 
       {/* Main — slightly above-center for better visual balance */}
-      <main className="relative z-10 flex-1 flex items-center justify-center px-6 pb-16">
+      <main id="main" className="relative z-10 flex-1 flex items-center justify-center px-6 pb-16">
         <div className="w-full max-w-sm">
           {/* Heading */}
           <div className="text-center mb-8">

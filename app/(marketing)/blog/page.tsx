@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { getAllBlogPosts } from '@/lib/blog';
+import { NavPublic } from '@/components/nav/NavPublic';
+import { BlogFooter } from '@/components/nav/BlogFooter';
 
 export const metadata: Metadata = {
   title: 'Blog — Foldera',
@@ -22,19 +24,14 @@ export default async function BlogIndexPage() {
 
   return (
     <div className="min-h-screen bg-[#07070c] text-white antialiased selection:bg-cyan-500/30 selection:text-white">
-      {/* Ambient grid */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
       </div>
 
-      <main className="relative z-10 px-6 py-8 sm:px-8 lg:px-12">
+      <NavPublic scrolled platformHref="/#product" />
+
+      <main id="main" className="relative z-10 px-6 pt-24 pb-8 sm:px-8 lg:px-12">
         <div className="mx-auto max-w-4xl">
-          <nav className="mb-12 flex items-center justify-between gap-4 border-b border-white/5 pb-5">
-            <Link href="/" className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-400 hover:text-white transition-colors">
-              Foldera
-            </Link>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">Blog</span>
-          </nav>
 
           <header className="mb-12 max-w-2xl">
             <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">Foldera Journal</p>
@@ -57,6 +54,8 @@ export default async function BlogIndexPage() {
               </article>
             ))}
           </div>
+
+          <BlogFooter />
         </div>
       </main>
     </div>

@@ -1,4 +1,3 @@
-import { Layers } from 'lucide-react';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -8,13 +7,11 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main id="main" className="min-h-screen bg-[#07070c] text-white">
       <nav className="border-b border-white/5 py-6 px-6">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-white text-black flex items-center justify-center">
-              <Layers className="w-4 h-4 fill-black" />
-            </div>
+            <img src="/foldera-icon.png" alt="Foldera" className="w-10 h-10 rounded-2xl" width={40} height={40} />
             <span className="text-lg font-black tracking-tighter uppercase">Foldera</span>
           </a>
           <a href="/" className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
@@ -58,10 +55,10 @@ export default function TermsPage() {
           <section>
             <h2 className="text-white text-lg font-bold mb-3">Billing</h2>
             <p>
-              Foldera Pro is billed monthly at $99/month after a 14-day free trial.
-              You can cancel at any time from Dashboard &rarr; Settings. Cancellation
-              takes effect at the end of the current billing period. No refunds for
-              partial months.
+              Free tier includes daily directives and 3 full artifacts. Pro is $29/mo,
+              billed monthly. You can cancel at any time from Dashboard &rarr; Settings.
+              Cancellation takes effect at the end of the current billing period. No
+              refunds for partial months.
             </p>
           </section>
 
@@ -87,9 +84,17 @@ export default function TermsPage() {
           <section>
             <h2 className="text-white text-lg font-bold mb-3">Contact</h2>
             <p>
-              Questions about these terms? Email <span className="text-cyan-400">legal@foldera.ai</span>.
+              Questions about these terms? Email{' '}
+              <span className="text-cyan-400">support@foldera.ai</span>.
             </p>
           </section>
+
+          <p className="text-zinc-500 text-sm pt-6 border-t border-white/10">
+            For all inquiries, you can also reach us at{' '}
+            <a href="mailto:b.kapp1010@gmail.com" className="text-cyan-400 hover:underline">
+              b.kapp1010@gmail.com
+            </a>
+          </p>
         </div>
       </div>
     </main>

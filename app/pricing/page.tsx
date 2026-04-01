@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { Check, ArrowRight, Layers, Lock } from 'lucide-react';
+import { Check, ArrowRight, Lock } from 'lucide-react';
+import { NavPublic } from '@/components/nav/NavPublic';
 
 // ─── Checkout CTA ─────────────────────────────────────────────────────────────
 // Unauthenticated → plain <a> to /start (free signup).
@@ -19,7 +21,7 @@ function CheckoutButton() {
           href="/start"
           className="w-full py-5 rounded-2xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95"
         >
-          Get started free <ArrowRight className="w-4 h-4" />
+          Get started free <ArrowRight className="w-4 h-4" aria-hidden="true" />
         </a>
         <p className="text-center text-zinc-600 text-xs">
           No credit card required. First 3 artifacts free.
@@ -58,18 +60,22 @@ function CheckoutButton() {
       <button
         onClick={handleCheckout}
         disabled={loading}
-        className="w-full py-5 rounded-2xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
+        className="w-full py-5 rounded-2xl bg-cyan-500 text-black font-black uppercase tracking-widest text-xs hover:bg-cyan-400 transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
       >
         {loading ? (
           <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
         ) : (
-          <>Get started free <ArrowRight className="w-4 h-4" /></>
+          <>Upgrade to Pro <ArrowRight className="w-4 h-4" aria-hidden="true" /></>
         )}
       </button>
       {error && <p className="text-sm text-rose-300">{error}</p>}
-      <p className="text-center text-zinc-600 text-xs">
-        No credit card required. First 3 artifacts free.
-      </p>
+      <p className="text-center text-zinc-600 text-xs">$29/mo — cancel anytime.</p>
+      <Link
+        href="/dashboard"
+        className="block text-center text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors pt-2"
+      >
+        Go to dashboard
+      </Link>
     </div>
   );
 }
@@ -106,31 +112,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased selection:bg-cyan-500/30 selection:text-white">
 
-      {/* Nav */}
-      <nav className="border-b border-white/5 px-6 py-5 flex items-center justify-between bg-black/80 backdrop-blur-xl sticky top-0 z-50">
-        <a href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-            <Layers className="w-5 h-5 fill-black" aria-hidden="true" />
-          </div>
-          <span className="hidden sm:inline text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
-        </a>
-        <div className="hidden md:flex items-center gap-10 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
-          <a href="/#product" className="hover:text-white transition-colors">Platform</a>
-          <a href="/pricing" className="text-white">Pricing</a>
-          <a href="/blog" className="hover:text-white transition-colors">Blog</a>
-        </div>
-        <div className="flex items-center gap-5">
-          <a href="/login" className="hidden sm:block text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
-            Sign in
-          </a>
-          <a
-            href="/start"
-            className="px-5 py-2.5 rounded-full bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-          >
-            Get started free
-          </a>
-        </div>
-      </nav>
+      <NavPublic scrolled platformHref="/#product" />
 
       {/* Ambient grid */}
       <div className="pointer-events-none fixed inset-0 z-0">
@@ -139,7 +121,7 @@ export default function PricingPage() {
       </div>
 
       {/* Main */}
-      <main className="relative z-10 flex-1 px-6 py-16 md:py-24">
+      <main id="main" className="relative z-10 flex-1 px-6 pt-24 pb-16 md:pb-24 md:pt-28">
         <div className="max-w-2xl mx-auto">
 
           {/* Hero */}
@@ -200,6 +182,11 @@ export default function PricingPage() {
           <div className="flex items-center justify-center gap-2 mt-8 text-zinc-600">
             <Lock className="w-3.5 h-3.5" aria-hidden="true" />
             <p className="text-[11px] font-semibold uppercase tracking-[0.15em]">AES-256 encrypted · Cancel anytime · No lock-in</p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-6 mt-12 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
+            <a href="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</a>
+            <a href="/terms" className="hover:text-zinc-400 transition-colors">Terms</a>
           </div>
 
         </div>

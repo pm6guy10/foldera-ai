@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — FLOW: Brand assets — PNG logos replace Lucide Layers; favicon + OG; email wordmark
+  MODE: FLOW
+  Commit hash(es): pending
+  Files changed: `public/foldera-icon.png`, `public/foldera-logo.png`, `public/foldera-oauth.png`, `public/favicon.png` (copies from repo-root brand files); `components/nav/NavPublic.tsx`, `components/nav/BlogFooter.tsx`; `app/layout.js` (icons, OG/Twitter, removed duplicate glyph `<link>`); `app/page.tsx` (footer + `LayoutGrid` feature icon); `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`; `app/terms/page.tsx`, `app/privacy/page.tsx`, `app/not-found.tsx`, `app/try/page.tsx`; `lib/email/resend.ts` (welcome + daily directive + nothing-to-send templates: logo `<img>`); `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` (pass); `npx vitest run --exclude ".claude/worktrees/**"` (pass); Playwright `screenshot` to `brand-verify-shots/` for `/`, `/login`, `/blog`, `/dashboard`, `/dashboard/settings` (dashboard routes may show login when unauthenticated).
+  Any unresolved issues: `favicon.ico` not generated (PNG-only icons per spec); root source PNGs left untracked — deploy uses `public/` copies only.
+
 - 2026-03-31 — FLOW: Brain depth — cross-source discrepancy candidates (calendar, drive, conversation, convergence) + scorer/generator wiring
   MODE: FLOW (brain / scoring)
   Commit hash(es): `12f56a6`
@@ -13,8 +20,8 @@
 
 - 2026-03-31 — FLOW: Full UX overhaul (unified public nav, onboarding, dashboard/settings polish, branded Resend emails, a11y baseline, not-found, hero demo)
   MODE: FLOW
-  Commit hash(es): pending
-  Files changed: `components/nav/NavPublic.tsx`, `components/nav/BlogFooter.tsx`, `app/page.tsx` (nav → NavPublic, `main#main`, interactive hero demo, scenario `tablist`/`tab`, footer Pricing → `/pricing`), `app/layout.js` (skip link), `app/globals.css` (`:focus-visible`, `prefers-reduced-motion`), `app/not-found.tsx`, `app/onboard/page.tsx`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/pricing/page.tsx`, `app/login/login-inner.tsx`, `app/start/page.tsx`, `app/(marketing)/blog/*`, `app/privacy/page.tsx`, `app/terms/page.tsx`, `lib/email/resend.ts` (welcome + daily HTML templates; removed customer email health footer), `lib/cron/daily-brief-send.ts`, `app/api/onboard/set-goals/route.ts` + test, `lib/briefing/trigger-action-map.ts` + `trigger-action-lock.test.ts` (complete `DiscrepancyClass` map — build fix), `tests/e2e/public-routes.spec.ts` (mobile scroll width tolerance)
+  Commit hash(es): `15a3586`
+  Files changed: `components/nav/NavPublic.tsx`, `components/nav/BlogFooter.tsx`, `app/page.tsx` (nav → NavPublic, `main#main`, interactive hero demo, scenario `tablist`/`tab`, footer Pricing → `/pricing`), `app/layout.js` (skip link, icon paths), `app/globals.css` (`:focus-visible`, `prefers-reduced-motion`), `app/not-found.tsx`, `app/onboard/page.tsx`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/pricing/page.tsx`, `app/login/login-inner.tsx`, `app/start/page.tsx`, `app/try/page.tsx`, `app/(marketing)/blog/*`, `app/privacy/page.tsx`, `app/terms/page.tsx`, `public/foldera-icon.png`, `public/foldera-logo.png`, `lib/email/resend.ts` (welcome + daily HTML templates; removed customer email health footer), `lib/cron/daily-brief-send.ts`, `app/api/onboard/set-goals/route.ts` + test, `lib/briefing/generator.ts` (`buildDecisionPayload`: use trigger map only; `enrichCandidateContext` aligned with `DiscrepancyClass`), `lib/briefing/__tests__/trigger-action-lock.test.ts`, `tests/e2e/public-routes.spec.ts` (mobile scroll width tolerance)
   What was verified: `npm run build` (pass); `npx vitest run --exclude ".claude/worktrees/**"` (pass); `npx playwright test tests/e2e/public-routes.spec.ts` (21/21); `npx playwright test tests/e2e/flow-routes.spec.ts` (2/2). Per-page screenshot sweep not automated in-session (see AUTOMATION_BACKLOG). Production `npm run test:prod` not run (auth-state / deploy gate).
   Any unresolved issues: Manual screenshot pass of `/`, `/login`, `/start`, `/onboard`, `/dashboard`, `/dashboard/settings`, `/pricing`, `/blog`, 404 left to Brandon or a follow-up session if required.
 

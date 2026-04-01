@@ -4,6 +4,21 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :where(a, button, input, textarea, select, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-cyan-400;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* === BASE BODY === */
 body {
   color: #e5e7eb;

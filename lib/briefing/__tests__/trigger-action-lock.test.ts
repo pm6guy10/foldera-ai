@@ -97,6 +97,62 @@ const TRIGGERS: Record<DiscrepancyClass, TriggerMetadata> = {
     outcome_class: 'money',
     why_now: 'P1 goal activity dropped 65% — behavior diverged from stated priority',
   },
+  preparation_gap: {
+    baseline_state: 'Ongoing relationship signals expected before meetings',
+    current_state: 'Meeting in 2 days with Alice but no recent email thread',
+    delta: 'meeting scheduled → no preparatory email contact in 14d',
+    timeframe: '2 day(s) until event',
+    outcome_class: 'relationship',
+    why_now: 'A meeting is a forcing function — showing up without a recent thread increases misalignment risk.',
+  },
+  meeting_open_thread: {
+    baseline_state: 'Last inbound thread still pending',
+    current_state: 'Meeting in 3 days with no closing send after last inbound',
+    delta: 'open thread + approaching meeting → reply gap',
+    timeframe: '3 day(s) to meeting',
+    outcome_class: 'relationship',
+    why_now: 'The calendar event creates accountability — an open thread plus a hard date surfaces stall risk.',
+  },
+  schedule_conflict: {
+    baseline_state: 'Non-overlapping calendar commitments',
+    current_state: 'Overlap: Event A and Event B',
+    delta: 'double-booked time window',
+    timeframe: '2026-04-02',
+    outcome_class: 'deadline',
+    why_now: 'Overlapping events force an explicit priority call — otherwise you default under pressure.',
+  },
+  stale_document: {
+    baseline_state: 'Active editing burst on Q2 plan',
+    current_state: 'Document idle for 14+ days after burst',
+    delta: 'high edit velocity → sudden stop',
+    timeframe: 'last 90 days',
+    outcome_class: 'job',
+    why_now: 'Bursts that go cold often hide an implicit decision — archive, ship, or delegate.',
+  },
+  document_followup_gap: {
+    baseline_state: 'File linked to Alice',
+    current_state: 'No follow-up email in 5 days referencing this doc',
+    delta: 'shared artifact → communication drop-off',
+    timeframe: '14 days',
+    outcome_class: 'relationship',
+    why_now: 'Shared documents without follow-through often stall commitments made in thread.',
+  },
+  convergence: {
+    baseline_state: 'Low cross-channel density',
+    current_state: 'Alice appears across: calendar, drive, email',
+    delta: 'multi-source convergence in a short window',
+    timeframe: '14 days',
+    outcome_class: 'risk',
+    why_now: 'When the same person hits email, calendar, and files in one week, something is threading without an owner.',
+  },
+  unresolved_intent: {
+    baseline_state: 'Conversation captured intent: follow up with the bank',
+    current_state: 'No follow-on directive detected within 7 days',
+    delta: 'stated intent → no system action',
+    timeframe: '7 days',
+    outcome_class: 'risk',
+    why_now: 'The user externalized a commitment to the assistant — without a directive, it stays imaginary.',
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -107,9 +163,11 @@ describe('Trigger Action Map — completeness', () => {
   const ALL_CLASSES: DiscrepancyClass[] = [
     'decay', 'exposure', 'drift', 'avoidance', 'risk',
     'engagement_collapse', 'relationship_dropout', 'deadline_staleness', 'goal_velocity_mismatch',
+    'preparation_gap', 'meeting_open_thread', 'schedule_conflict', 'stale_document',
+    'document_followup_gap', 'unresolved_intent', 'convergence',
   ];
 
-  it('covers all 9 discrepancy classes', () => {
+  it('covers all discrepancy classes', () => {
     for (const cls of ALL_CLASSES) {
       expect(TRIGGER_ACTION_MAP[cls]).toBeDefined();
       expect(TRIGGER_ACTION_MAP[cls].primary_action).toBeTruthy();

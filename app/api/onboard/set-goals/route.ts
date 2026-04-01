@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { createServerClient } from '@/lib/db/client';
 import { apiError, badRequest } from '@/lib/utils/api-error';
-import { renderPlaintextEmailHtml, sendResendEmail } from '@/lib/email/resend';
+import { renderWelcomeEmailHtml, sendResendEmail } from '@/lib/email/resend';
 
 const GOAL_BUCKETS: Record<string, { goal_text: string; category: string }> = {
   'Job search': { goal_text: 'Active job search and career transition', category: 'career' },
@@ -108,17 +108,22 @@ export async function POST(req: NextRequest) {
           : session.user.email ?? null;
 
         if (!welcomeEmailSent && email) {
-          const bodyText = `Foldera is now watching your email and calendar. Your first directive arrives tomorrow morning at 7am Pacific. You'll get one finished action to approve or skip.
+          const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://www.foldera.ai').replace(/\/$/, '');
+          const bodyText = `Welcome to Foldera.
 
-If you connected Google or Microsoft, your data is already syncing. The more signals Foldera sees, the sharper your directives become.
+You're connected. Your first read arrives tomorrow at 7am Pacific.
 
-— Foldera`;
+Foldera will scan your last 90 days of email, find what's slipping, and deliver one directive with finished work attached.
+
+No prompts. No setup. Just approve or skip.
+
+View your dashboard: ${baseUrl}/dashboard`;
           const sendResult = await sendResendEmail({
             from: 'Foldera <brief@foldera.ai>',
             to: email,
-            subject: "You're connected — your first read arrives tomorrow",
+            subject: 'Welcome to Foldera',
             text: bodyText,
-            html: renderPlaintextEmailHtml(bodyText),
+            html: renderWelcomeEmailHtml(baseUrl),
             tags: [
               { name: 'email_type', value: 'welcome_connected' },
               { name: 'user_id', value: userId },

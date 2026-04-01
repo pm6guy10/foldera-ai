@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Layers, ChevronDown } from 'lucide-react';
+import { ArrowRight, ChevronDown } from 'lucide-react';
 import {
   getVisitorContext, generateColdRead, FALLBACK_COLD_READ,
   type VisitorContext, type ColdRead,
@@ -198,9 +198,13 @@ export default function TryPage() {
       {/* Nav */}
       <nav className="px-6 py-6 flex items-center justify-between max-w-3xl mx-auto">
         <a href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-            <Layers className="w-5 h-5 fill-black" aria-hidden="true" />
-          </div>
+          <img
+            src="/foldera-icon.png"
+            alt="Foldera"
+            className="w-10 h-10 rounded-2xl group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+            width={40}
+            height={40}
+          />
           <span className="text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
         </a>
         <a

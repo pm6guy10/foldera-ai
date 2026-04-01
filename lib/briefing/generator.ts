@@ -1156,8 +1156,8 @@ function inferRequiredCausalDiagnosis(input: {
   }
 }
 
-/** Extra context lines from discrepancy candidate sourceSignals. */
-function enrichCandidateContext(winner: ScoredLoop): string | null {
+/** Extra lines for calendar/drive/conversation discrepancy winners. */
+function enrichCandidateContext(winner: ScoredLoop, evidenceSortedChrono: SignalSnippet[]): string | null {
   if (winner.type !== 'discrepancy' || !winner.discrepancyClass) return null;
   const cls = winner.discrepancyClass;
   const parts: string[] = [];
@@ -1165,6 +1165,30 @@ function enrichCandidateContext(winner: ScoredLoop): string | null {
   for (const s of winner.sourceSignals ?? []) {
     const src = s.source ? `${s.kind}/${s.source}` : s.kind;
     parts.push(`• [${src}] ${(s.summary ?? '').slice(0, 220)}`);
+  }
+
+  const EMAIL_SOURCES = new Set(['gmail', 'outlook']);
+  const CAL_SOURCES = new Set(['google_calendar', 'outlook_calendar']);
+
+  const extra = evidenceSortedChrono.filter((e) => {
+    if (cls === 'preparation_gap' || cls === 'meeting_open_thread' || cls === 'schedule_conflict') {
+      return CAL_SOURCES.has(e.source) || EMAIL_SOURCES.has(e.source);
+    }
+    if (cls === 'stale_document' || cls === 'document_followup_gap') {
+      return e.source === 'drive' || e.source === 'onedrive';
+    }
+    if (cls === 'unresolved_intent') {
+      return /claude_conversation|chatgpt_conversation|conversation/i.test(e.source);
+    }
+    if (cls === 'convergence') {
+      return CAL_SOURCES.has(e.source) || EMAIL_SOURCES.has(e.source) || e.source === 'drive' || e.source === 'onedrive';
+    }
+    return false;
+  }).slice(0, 8);
+
+  for (const e of extra) {
+    const head = [e.subject, e.snippet].filter(Boolean).join(' — ');
+    parts.push(`• [${e.source} @ ${e.date}] ${head.slice(0, 220)}`);
   }
 
   if (parts.length === 0) return null;
@@ -1368,7 +1392,7 @@ function buildStructuredContext(
     avoidanceObservations: avoidanceObservations ?? [],
   });
 
-  const candidate_context_enrichment = enrichCandidateContext(winner);
+  const candidate_context_enrichment = enrichCandidateContext(winner, sorted);
 
   return {
     selected_candidate: selectedCandidate,

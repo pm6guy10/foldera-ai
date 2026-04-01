@@ -1,41 +1,41 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import Link from 'next/link';
 
-const BUCKETS = [
-  'Job search',
-  'Career growth',
-  'Side project',
-  'Business ops',
-  'Health & family',
-  'Financial',
-  'Relationships',
-  'Learning',
+const FOCUS_PILLS: { label: string; bucket: string }[] = [
+  { label: 'Career', bucket: 'Career growth' },
+  { label: 'Relationships', bucket: 'Relationships' },
+  { label: 'Finances', bucket: 'Financial' },
+  { label: 'Health', bucket: 'Health & family' },
 ];
+
+const DEFAULT_SELECTED = new Set(['Career growth', 'Relationships']);
 
 function OnboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isEdit = searchParams.get('edit') === 'true';
 
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [freeText, setFreeText] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(DEFAULT_SELECTED));
   const [saving, setSaving] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(isEdit);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Pre-populate when editing
   useEffect(() => {
     if (!isEdit) return;
     setLoadError(null);
     fetch('/api/onboard/set-goals')
       .then((r) => r.json())
       .then((data) => {
-        if (data.buckets) setSelected(new Set(data.buckets));
-        if (data.freeText) setFreeText(data.freeText);
+        const buckets: string[] = Array.isArray(data.buckets) ? data.buckets : [];
+        const next = new Set<string>();
+        for (const pill of FOCUS_PILLS) {
+          if (buckets.includes(pill.bucket)) next.add(pill.bucket);
+        }
+        setSelected(next.size > 0 ? next : new Set(DEFAULT_SELECTED));
       })
       .catch(() => {
         setLoadError('Could not load your existing focus areas. Try again.');
@@ -43,11 +43,11 @@ function OnboardContent() {
       .finally(() => setLoadingExisting(false));
   }, [isEdit]);
 
-  const toggle = (label: string) => {
+  const toggle = (bucket: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
+      if (next.has(bucket)) next.delete(bucket);
+      else next.add(bucket);
       return next;
     });
   };
@@ -56,12 +56,13 @@ function OnboardContent() {
     setSaving(true);
     setSubmitError(null);
     try {
+      const buckets = skipped ? [] : Array.from(selected);
       const response = await fetch('/api/onboard/set-goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          buckets: Array.from(selected),
-          freeText: freeText.trim() || null,
+          buckets,
+          freeText: null,
           skipped,
         }),
       });
@@ -70,14 +71,13 @@ function OnboardContent() {
         const errorMessage =
           payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string'
             ? payload.error
-            : 'Could not save focus areas. Try again.';
+            : 'Could not save. Try again.';
         setSubmitError(errorMessage);
         return;
       }
       router.push(isEdit ? '/dashboard/settings' : '/dashboard');
     } catch {
-      setSubmitError('Could not save focus areas. Try again.');
-      return;
+      setSubmitError('Could not save. Try again.');
     } finally {
       setSaving(false);
     }
@@ -85,90 +85,121 @@ function OnboardContent() {
 
   if (loadingExisting) {
     return (
-      <main className="min-h-screen bg-zinc-950 flex items-start justify-center pt-24">
-        <div className="animate-pulse w-8 h-8 rounded-full bg-zinc-800" />
+      <main id="main" className="min-h-screen bg-[#07070c] flex items-center justify-center relative">
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
+        </div>
+        <div className="relative z-10 animate-pulse w-8 h-8 rounded-full bg-cyan-500/30" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 flex items-start justify-center px-6 pt-20 pb-12">
-      <div className="w-full max-w-md">
-        <p className="text-2xl font-bold text-white mb-6">Foldera</p>
+    <div className="min-h-screen bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white relative">
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
+      </div>
 
-        <h1 className="text-2xl font-bold text-white">
-          {isEdit ? 'Edit your focus areas' : "What's on your plate?"}
-        </h1>
-        <p className="text-zinc-500 mt-1 text-sm">
-          {isEdit ? 'Update anytime.' : 'Tap any that apply. You can skip this.'}
-        </p>
+      <main id="main" className="relative z-10 flex flex-col items-center px-6 pt-24 pb-16">
+        <div className="w-full max-w-md">
+          {!isEdit && (
+            <div className="flex flex-col items-center text-center mb-10">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-40" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
+                </span>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">
+                  Connected. Your first read arrives tomorrow at 7am.
+                </p>
+              </div>
+            </div>
+          )}
 
-        {/* Bucket chips */}
-        <div className="mt-6 grid grid-cols-2 gap-2">
-          {BUCKETS.map((label) => {
-            const active = selected.has(label);
-            return (
+          <h1 className="text-2xl font-black tracking-tighter text-white text-center mb-2">
+            {isEdit ? 'Edit your focus' : 'What matters most to you?'}
+          </h1>
+          {!isEdit && (
+            <p className="text-zinc-500 text-sm text-center mb-8">Tap one or more. You can change this anytime in settings.</p>
+          )}
+          {isEdit && <p className="text-zinc-500 text-sm text-center mb-8">Update anytime.</p>}
+
+          <div className="grid grid-cols-2 gap-3 mb-10">
+            {FOCUS_PILLS.map(({ label, bucket }) => {
+              const active = selected.has(bucket);
+              return (
+                <button
+                  key={bucket}
+                  type="button"
+                  onClick={() => toggle(bucket)}
+                  className={`rounded-xl py-4 px-4 text-xs font-black uppercase tracking-[0.12em] transition-colors border ${
+                    active
+                      ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
+                      : 'bg-zinc-950/80 border-white/10 text-zinc-500 hover:border-white/20'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {!isEdit ? (
+            <button
+              type="button"
+              onClick={() => submit(false)}
+              disabled={saving || selected.size === 0}
+              className="w-full bg-white text-black font-black uppercase tracking-[0.15em] text-xs rounded-xl py-4 px-8 hover:bg-zinc-200 active:scale-95 shadow-[0_0_40px_rgba(255,255,255,0.2)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving…' : 'Go to dashboard'}
+            </button>
+          ) : (
+            <div className="flex gap-3">
               <button
-                key={label}
-                onClick={() => toggle(label)}
-                className={`rounded-xl py-3 px-4 text-sm font-medium transition-colors border ${
-                  active
-                    ? 'bg-cyan-500/15 border-cyan-500/50 text-cyan-300'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700'
-                }`}
+                type="button"
+                onClick={() => submit(false)}
+                disabled={saving}
+                className="flex-1 bg-cyan-500 text-black font-black uppercase tracking-widest text-xs rounded-xl py-3.5 shadow-[0_0_20px_rgba(6,182,212,0.22)] disabled:opacity-50"
               >
-                {label}
+                {saving ? 'Saving…' : 'Save'}
               </button>
-            );
-          })}
-        </div>
+              <Link
+                href="/dashboard/settings"
+                className="flex-1 flex items-center justify-center bg-zinc-900 border border-white/20 text-zinc-500 font-black uppercase tracking-widest text-xs rounded-xl py-3.5"
+              >
+                Cancel
+              </Link>
+            </div>
+          )}
 
-        {/* Free text */}
-        <input
-          type="text"
-          value={freeText}
-          onChange={(e) => setFreeText(e.target.value)}
-          placeholder='e.g., land the MAS3 role at HCA'
-          className="mt-4 w-full bg-zinc-900 border border-zinc-800 rounded-xl py-3 px-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50"
-        />
-
-        {/* Buttons */}
-        <div className="mt-6 flex gap-3">
-          <button
-            onClick={() => submit(false)}
-            disabled={saving}
-            className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-3 rounded-xl font-medium text-sm transition-colors disabled:opacity-50"
-          >
-            {saving ? 'Saving...' : 'Continue'}
-          </button>
           {!isEdit && (
             <button
+              type="button"
               onClick={() => submit(true)}
               disabled={saving}
-              className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-3 rounded-xl font-medium text-sm transition-colors disabled:opacity-50"
+              className="w-full mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-zinc-400 transition-colors"
             >
               Skip for now
             </button>
           )}
+
+          {loadError && <p className="mt-4 text-xs text-red-400 text-center">{loadError}</p>}
+          {submitError && <p className="mt-4 text-xs text-red-400 text-center">{submitError}</p>}
         </div>
-        {loadError && (
-          <p className="mt-3 text-xs text-red-400">{loadError}</p>
-        )}
-        {submitError && (
-          <p className="mt-2 text-xs text-red-400">{submitError}</p>
-        )}
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 
 export default function OnboardPage() {
   return (
-    <Suspense fallback={
-      <main className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="animate-pulse w-8 h-8 rounded-full bg-zinc-800" />
-      </main>
-    }>
+    <Suspense
+      fallback={
+        <main id="main" className="min-h-screen bg-[#07070c] flex items-center justify-center">
+          <div className="animate-pulse w-8 h-8 rounded-full bg-cyan-500/30" />
+        </main>
+      }
+    >
       <OnboardContent />
     </Suspense>
   );

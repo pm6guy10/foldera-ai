@@ -545,6 +545,7 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - Migration file: `supabase/migrations/20260328000001_security_and_perf_fixes.sql` (all applied to production).
 
 ### OPEN (Priority order)
+- **FLOW UX overhaul (2026-03-31)**: After deploy, run `npm run test:prod` (refresh `auth-state` if stale) and optional manual Playwright screenshots for `/`, `/login`, `/start`, `/onboard`, `/dashboard` (directive + empty), `/dashboard/settings`, `/pricing`, `/blog`, `/blog/[slug]`, 404.
 - Enable leaked password protection (Supabase Auth dashboard — requires Pro plan, skip for now)
 - Trigger production run and confirm canonical action_type persists in tkg_actions row (not do_nothing)
 - Blog formatting fix (prose typography, Codex queued)

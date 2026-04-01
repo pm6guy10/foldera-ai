@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, LogOut } from 'lucide-react';
 
 interface Integration {
   provider: string;
   is_active: boolean;
   sync_email?: string;
   scopes?: string | null;
+  last_synced_at?: string | null;
 }
 
 interface SubscriptionInfo {
@@ -36,7 +37,6 @@ export default function SettingsClient() {
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [goalBuckets, setGoalBuckets] = useState<string[]>([]);
   const [goalFreeText, setGoalFreeText] = useState<string | null>(null);
-  const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
   const [disconnecting, setDisconnecting] = useState<'google' | 'microsoft' | null>(null);
   const [connectingProvider, setConnectingProvider] = useState<'google' | 'microsoft' | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -56,7 +56,6 @@ export default function SettingsClient() {
 
     const data = await response.json();
     setIntegrations(data.integrations || []);
-    setSourceCounts(data.sourceCounts || {});
   }, []);
 
   // On mount: check for connecting_provider localStorage flag (set before OAuth redirect)
@@ -79,7 +78,6 @@ export default function SettingsClient() {
       if (intRes.ok) {
         const d = await intRes.json();
         setIntegrations(d.integrations || []);
-        setSourceCounts(d.sourceCounts || {});
       }
       if (subRes.ok) {
         setSubscription(await subRes.json());
@@ -229,8 +227,8 @@ export default function SettingsClient() {
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen bg-[#07070c]">
-        <Header />
-        <main className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
+        <Header onSignOut={handleSignOut} />
+        <main id="main" className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
           <div className="animate-pulse space-y-4 mt-8">
             <div className="h-3 w-32 bg-zinc-800/60 rounded" />
             <div className="h-24 bg-zinc-900/40 rounded-2xl" />
@@ -246,8 +244,8 @@ export default function SettingsClient() {
   if (status !== 'authenticated') {
     return (
       <div className="min-h-screen bg-[#07070c]">
-        <Header />
-        <main className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
+        <Header onSignOut={handleSignOut} />
+        <main id="main" className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
           <p className="text-zinc-500 text-sm mt-8">Please sign in to view settings.</p>
         </main>
       </div>
@@ -269,8 +267,8 @@ export default function SettingsClient() {
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
       </div>
-      <Header />
-      <main className="relative z-10 pt-20 pb-14 px-4 max-w-3xl mx-auto space-y-12">
+      <Header onSignOut={handleSignOut} />
+      <main id="main" className="relative z-10 pt-20 pb-14 px-4 max-w-3xl mx-auto space-y-10">
 
         {/* Sync status banner */}
         {syncStatus && (
@@ -297,9 +295,18 @@ export default function SettingsClient() {
                   <GoogleIcon />
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-white">Google</p>
-                    <p className={`text-xs mt-0.5 truncate ${google?.is_active ? 'text-cyan-400' : 'text-zinc-500'}`}>
-                      {google?.is_active ? (google.sync_email || 'Connected') : 'Not connected'}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${google?.is_active ? 'bg-emerald-400' : 'bg-amber-400'}`} aria-hidden="true" />
+                      <p className={`text-xs truncate ${google?.is_active ? 'text-zinc-300' : 'text-amber-200/80'}`}>
+                        {google?.is_active ? 'Connected' : 'Not connected'}
+                        {google?.is_active && google.sync_email ? ` · ${google.sync_email}` : ''}
+                      </p>
+                    </div>
+                    {google?.is_active && formatLastSynced(google.last_synced_at) && (
+                      <p className="text-[10px] text-zinc-600 mt-1 font-medium">
+                        Last synced {formatLastSynced(google.last_synced_at)} Pacific
+                      </p>
+                    )}
                   </div>
                 </div>
                 {google?.is_active ? (
@@ -340,13 +347,6 @@ export default function SettingsClient() {
                   </button>
                 )}
               </div>
-              {google?.is_active && (
-                <div className="px-4 md:px-5 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-white/5 bg-black/20">
-                  <SourceLine label="Gmail" count={sourceCounts['gmail'] ?? 0} providerActive={true} />
-                  <SourceLine label="Calendar" count={sourceCounts['google_calendar'] ?? 0} providerActive={true} />
-                  <SourceLine label="Drive" count={sourceCounts['drive'] ?? 0} providerActive={true} />
-                </div>
-              )}
             </div>
 
             {/* Microsoft card */}
@@ -356,9 +356,18 @@ export default function SettingsClient() {
                   <MicrosoftIcon />
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-white">Microsoft</p>
-                    <p className={`text-xs mt-0.5 truncate ${microsoft?.is_active ? 'text-cyan-400' : 'text-zinc-500'}`}>
-                      {microsoft?.is_active ? (microsoft.sync_email || 'Connected') : 'Not connected'}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${microsoft?.is_active ? 'bg-emerald-400' : 'bg-amber-400'}`} aria-hidden="true" />
+                      <p className={`text-xs truncate ${microsoft?.is_active ? 'text-zinc-300' : 'text-amber-200/80'}`}>
+                        {microsoft?.is_active ? 'Connected' : 'Not connected'}
+                        {microsoft?.is_active && microsoft.sync_email ? ` · ${microsoft.sync_email}` : ''}
+                      </p>
+                    </div>
+                    {microsoft?.is_active && formatLastSynced(microsoft.last_synced_at) && (
+                      <p className="text-[10px] text-zinc-600 mt-1 font-medium">
+                        Last synced {formatLastSynced(microsoft.last_synced_at)} Pacific
+                      </p>
+                    )}
                   </div>
                 </div>
                 {microsoft?.is_active ? (
@@ -401,13 +410,6 @@ export default function SettingsClient() {
                   </button>
                 )}
               </div>
-              {microsoft?.is_active && (
-                <div className="px-4 md:px-5 pb-3 pt-0 flex flex-wrap gap-x-4 gap-y-1 border-t border-white/5 bg-black/20">
-                  <SourceLine label="Mail" count={sourceCounts['outlook'] ?? 0} providerActive={true} />
-                  <SourceLine label="Calendar" count={sourceCounts['outlook_calendar'] ?? 0} providerActive={true} />
-                  <SourceLine label="OneDrive" count={sourceCounts['onedrive'] ?? 0} providerActive={true} />
-                </div>
-              )}
             </div>
           </div>
         </section>
@@ -649,12 +651,6 @@ export default function SettingsClient() {
               </div>
             )}
             <button
-              onClick={handleSignOut}
-              className="w-full bg-zinc-900/60 hover:bg-zinc-800/60 border border-white/10 hover:border-white/20 text-zinc-300 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
-            >
-              Sign out
-            </button>
-            <button
               onClick={handleDeleteAccount}
               className="w-full border border-red-900/40 hover:border-red-700/60 bg-transparent hover:bg-red-950/10 text-red-500/70 hover:text-red-400 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
             >
@@ -679,35 +675,49 @@ function SectionHeading({ children, className = '' }: { children: ReactNode; cla
   );
 }
 
-function Header() {
-  return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
-      <div className="max-w-3xl mx-auto h-full flex items-center justify-between px-4">
-        <Link href="/dashboard" className="text-zinc-500 hover:text-white transition-colors flex items-center gap-1">
-          <ChevronLeft className="w-5 h-5" />
-          <span className="text-xs font-black uppercase tracking-[0.12em]">Dashboard</span>
-        </Link>
-        <span className="text-xs font-black uppercase tracking-[0.2em] text-white">Settings</span>
-        <div className="w-20" />
-      </div>
-    </header>
-  );
+function formatLastSynced(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  try {
+    return new Date(iso).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: 'America/Los_Angeles',
+    });
+  } catch {
+    return null;
+  }
 }
 
-function SourceLine({ label, count, providerActive }: { label: string; count: number; providerActive: boolean }) {
+function Header({ onSignOut }: { onSignOut: () => void }) {
   return (
-    <div className="flex items-center gap-1.5 py-1.5 text-xs">
-      <span className="text-zinc-600 font-black uppercase tracking-[0.08em]">{label}:</span>
-      <span className={count > 0 ? 'text-zinc-400 font-medium' : 'text-zinc-700'}>
-        {count.toLocaleString()} {count === 1 ? 'signal' : 'signals'}
-      </span>
-      {count === 0 && providerActive && (
-        <span className="text-zinc-600 text-xs">· awaiting sync</span>
-      )}
-      {count === 0 && !providerActive && (
-        <span className="text-amber-500/70 text-xs">· reconnect</span>
-      )}
-    </div>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
+      <div className="max-w-3xl mx-auto h-full flex items-center justify-between px-4 gap-2">
+        <Link href="/dashboard" className="text-zinc-500 hover:text-white transition-colors flex items-center gap-1 shrink-0 min-w-[7rem]" aria-label="Back to dashboard">
+          <ChevronLeft className="w-5 h-5 shrink-0" aria-hidden="true" />
+          <span className="text-xs font-black uppercase tracking-[0.12em]">Dashboard</span>
+        </Link>
+        <Link href="/dashboard" className="flex items-center gap-2 group absolute left-1/2 -translate-x-1/2">
+          <img
+            src="/foldera-icon.png"
+            alt="Foldera"
+            className="w-9 h-9 rounded-xl group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+            width={36}
+            height={36}
+          />
+          <span className="text-sm font-black tracking-tighter text-white uppercase hidden sm:inline">Foldera</span>
+        </Link>
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.12em] shrink-0 min-w-[7rem] justify-end"
+        >
+          <LogOut className="w-4 h-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Sign out</span>
+        </button>
+      </div>
+    </header>
   );
 }
 

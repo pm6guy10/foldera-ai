@@ -29,7 +29,7 @@ vi.mock('@/lib/db/client', () => ({
 }));
 
 vi.mock('@/lib/email/resend', () => ({
-  renderPlaintextEmailHtml: vi.fn((body: string) => `<p>${body}</p>`),
+  renderWelcomeEmailHtml: vi.fn(() => '<html>welcome</html>'),
   sendResendEmail,
 }));
 
@@ -113,7 +113,7 @@ describe('POST /api/onboard/set-goals', () => {
     });
     expect(sendResendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
-        subject: "You're connected — your first read arrives tomorrow",
+        subject: 'Welcome to Foldera',
       }),
     );
     expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledWith(
