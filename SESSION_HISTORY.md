@@ -6,7 +6,7 @@
 
 - 2026-04-01 — FIX: Decay discrepancy generator — isolate recipient path, evidence, conviction; SYSTEM decay exception
   MODE: FIX
-  Commit hash(es): `10281ce`
+  Commit hash(es): `613e859`
   Files changed: `lib/briefing/generator.ts`, `lib/__tests__/multi-user-safety.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run lib/__tests__/multi-user-safety.test.ts lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/generator.test.ts lib/briefing/__tests__/pipeline-receipt.test.ts --exclude ".claude/worktrees/**"` (60 passed). Production `POST https://www.foldera.ai/api/dev/brain-receipt` returned **401** without owner session — **no live artifact text this session**; re-run after deploy with signed-in owner for Cheryl/decay receipt.
   Any unresolved issues: Owner brain-receipt + `npm run test:prod` after deploy READY; `[FORCE-DECAY]` scorer override still active until product says remove.
