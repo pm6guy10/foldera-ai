@@ -42,6 +42,33 @@ function isSelfReferentialSignal(content: string): boolean {
   return content.startsWith('[Foldera Directive') || content.startsWith('[Foldera \u00b7 20');
 }
 
+/** Adds the signed-in user's given/first name(s) so suppression parsing never treats them as generic words. */
+async function fetchUserFirstNameStopTokens(userId: string): Promise<string[]> {
+  try {
+    const supabase = createServerClient();
+    const { data } = await supabase.auth.admin.getUserById(userId);
+    const user = data?.user;
+    if (!user) return [];
+    const out = new Set<string>();
+    const addFirst = (raw: unknown): void => {
+      if (typeof raw !== 'string' || !raw.trim()) return;
+      const token = raw.trim().split(/\s+/)[0];
+      if (token.length >= 2) out.add(token.toLowerCase());
+    };
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    addFirst(meta['given_name']);
+    if (typeof meta['name'] === 'string') addFirst(meta['name']);
+    for (const identity of user.identities ?? []) {
+      const idData = (identity.identity_data ?? {}) as Record<string, unknown>;
+      addFirst(idData['given_name']);
+      if (typeof idData['name'] === 'string') addFirst(idData['name'] as string);
+    }
+    return [...out];
+  } catch {
+    return [];
+  }
+}
+
 /** Best-effort future event start for open-loop calendar signals (uses shared parser). */
 function parseCalendarEventFromContent(text: string): { startMs: number } | null {
   const parsed = parseCalendarEventFromContentDiscrepancy(text);
@@ -3350,7 +3377,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     }
   }
   // Filter out onboarding placeholder goals — only extracted, manual, and onboarding_stated goals feed the scorer
-  const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker']);
+  const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker', 'system_config']);
   // Also filter out any constraint-note rows that slipped into the scoring pool with priority >= 3.
   // These should live at priority 1-2 as suppression goals; if miscategorized they corrupt scoring.
   const CONSTRAINT_NOTE_PREFIX = /^(DO NOT|Check |Reference slate|Build Foldera in overflow)/i;
@@ -3427,13 +3454,15 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     .lt('priority', 3);
 
   // Extract entity names and key phrases from suppression goal text
+  const dynamicUserNameStops = await fetchUserFirstNameStopTokens(userId);
   const suppressionCommonWords = new Set([
     'not', 'the', 'this', 'that', 'with', 'from', 'until', 'unless', 'only',
     'suggest', 'apply', 'contacting', 'related', 'position', 'decided',
     'reviewed', 'posting', 'directives', 'suppress', 'locked', 'decision',
     'stable', 'employment', 'current', 'supervisor', 'reference', 'explicitly',
-    'asks', 'path', 'post', 'brandon', 'work', 'platform', 'match',
+    'asks', 'path', 'post', 'work', 'platform', 'match',
     'contracts', 'analyst', 'program', 'functional', // individual words too generic
+    ...dynamicUserNameStops,
   ]);
   // Only goals starting with "DO NOT" (or similar blocking language) contribute suppression entities.
   // Positive goals at priority < 3 (e.g. "Prepare MAS3 onboarding materials") must not suppress.

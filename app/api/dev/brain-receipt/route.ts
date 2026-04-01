@@ -1,3 +1,5 @@
+// DEV ONLY — owner-gated diagnostic endpoint. Not user-facing, not part of the product.
+
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { OWNER_USER_ID } from '@/lib/auth/constants';

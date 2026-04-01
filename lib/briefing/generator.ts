@@ -69,7 +69,7 @@ async function loadDirectiveConfidenceThreshold(userId: string): Promise<number>
 }
 
 /** Goal sources that are onboarding placeholders — excluded from scoring/generation. */
-const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker']);
+const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker', 'system_config']);
 
 // ---------------------------------------------------------------------------
 // Part 1 — Artifact contract: valid user-facing types
@@ -2123,11 +2123,26 @@ async function fetchUserSelfNameTokens(userId: string): Promise<Set<string>> {
     }
     const metaName = [...nameFields.filter(Boolean), ...identityNames].join(' ');
 
-    // Pull tokens from the local part of the email address (e.g. b.kapp1010 → b, kapp).
-    const emailLocal = (user.email ?? '').split('@')[0];
+    // Generic email-local name hint: split on . and -, longest alphabetic token (3+ chars, strip trailing digits).
+    const emailLocal = (user.email ?? '').split('@')[0] ?? '';
+    const segments = emailLocal.split(/[.\-]+/).filter(Boolean);
+    let bestLocal: string | null = null;
+    let bestLocalLen = 0;
+    for (const seg of segments) {
+      const alpha = seg.replace(/\d+$/, '').toLowerCase();
+      if (alpha.length >= 3 && alpha.length >= bestLocalLen) {
+        if (alpha.length > bestLocalLen) {
+          bestLocalLen = alpha.length;
+          bestLocal = alpha;
+        }
+      }
+    }
+    if (bestLocal) {
+      selfTokens.add(bestLocal);
+    }
 
     const combined = `${metaName} ${emailLocal}`;
-    // Split on whitespace, dots, underscores, hyphens, and digits.
+    // Split on whitespace, dots, underscores, hyphens, and digits (metadata + full local part).
     for (const part of combined.split(/[\s._\-0-9]+/)) {
       const lower = part.toLowerCase().trim();
       if (lower.length >= 2) {
@@ -2245,7 +2260,7 @@ function extractEntityNamesFromCandidate(
     // Primary check: every token matches a known self-token (e.g. full name in auth metadata).
     if (tokens.every((t) => selfNameTokens.has(t))) return true;
     // Fallback: "First Last" pattern where the last name token matches self-tokens.
-    // Handles auth metadata missing first name (only email local "b.kapp1010" → "kapp").
+    // Handles auth metadata missing first name (email local part yields a surname-length token).
     if (tokens.length === 2 && selfNameTokens.has(tokens[1])) return true;
     return false;
   };

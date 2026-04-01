@@ -161,11 +161,13 @@ const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
   ],
 };
 
+/** Per-user pinned brief rules. Extend this map or move to DB when more accounts need pinned briefs. */
+const PINNED_BRIEF_FOR_USER: Readonly<Partial<Record<string, PinnedBriefConstraints>>> = {
+  [OWNER_USER_ID]: OWNER_MAS3_CONSTRAINTS,
+};
+
 function getPinnedConstraints(userId: string): PinnedBriefConstraints | null {
-  if (userId === OWNER_USER_ID) {
-    return OWNER_MAS3_CONSTRAINTS;
-  }
-  return null;
+  return PINNED_BRIEF_FOR_USER[userId] ?? null;
 }
 
 function uniqueByCode(violations: ConstraintViolation[]): ConstraintViolation[] {

@@ -4,6 +4,34 @@
 
 ## Session Logs
 
+- 2026-04-01 — OPS: Multi-user hardening — subscription parity, pinned map, ops alerts, scorer/generator self-name
+  MODE: OPS
+  Commit hash(es): `e2f581b`
+  Files changed: `lib/auth/subscription.ts` (removed owner hardcoded pro bypass), `lib/auth/daily-brief-users.ts` (eligibility from `user_subscriptions` only), `lib/briefing/pinned-constraints.ts` (owner-only MAS3 via `PINNED_BRIEF_FOR_USER` map — locked contacts stay per-user in `tkg_constraints`), `lib/cron/acceptance-gate.ts` (alerts → `brief@foldera.ai`), `lib/briefing/generator.ts` (generic email-local self token + digit strip), `lib/briefing/scorer.ts` (removed static `brandon` stopword; `fetchUserFirstNameStopTokens` from auth), `app/api/dev/brain-receipt/route.ts` (DEV ONLY comment), `lib/__tests__/multi-user-safety.test.ts` (subscription none, scorer/generator graceful paths)
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` (pass). Supabase MCP: owner `e40b7cd8…` already has `user_subscriptions` row `(pro, active)` — `ON CONFLICT (user_id)` not applicable (no unique on `user_id` in project DDL). `app/terms`, `app/privacy`: no `b.kapp1010@gmail.com`.
+  Any unresolved issues: Local Windows `npm run build` / Playwright `webServer` may flake (`.next` rename, cache); re-run clean build and `npx playwright test tests/e2e/` on a stable host. Pinned MAS3 remains owner-keyed in code until DB-backed pins exist.
+
+- 2026-03-31 — FLOW: Authenticated Playwright fixes — middleware JWT cookie parity, route mocks, cookie API
+  MODE: FLOW
+  Commit hash(es): pending
+  Files changed: `middleware.ts` (`getToken({ secureCookie })` aligned with `getAuthOptions()`), `tests/e2e/authenticated-routes.spec.ts` (`E2E_ORIGIN` falsy guard; cookie `url`-only; `matchApiPath()` pathname matchers vs query-string URL globs; JSDoc without `*/` terminator trap)
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` (540 tests pass). `npx playwright test tests/e2e/authenticated-routes.spec.ts` requires a successful `npm run build` first (Playwright webServer runs `next start`).
+  Any unresolved issues: Local Windows `next build` may flake on `.next` cache/export rename or `@vercel/og` icon prerender; delete `.next` and retry. Full `npx playwright test tests/e2e/` after green build.
+
+- 2026-04-01 — OPS: Authenticated E2E stability — CI webServer reuse, session cookie jar, dashboard surface visibility
+  MODE: OPS
+  Commit hash(es): pending
+  Files changed: `playwright.ci.config.ts` (`reuseExistingServer: false`), `tests/e2e/authenticated-routes.spec.ts` (`context.addCookies` for NextAuth JWT; `apiGlob` routes retained), `app/dashboard/page.tsx` (derive `directiveSurfaceVisible` in render — drop rAF gate)
+  What was verified: `grep` no `7am` under `app/`; all `setDone(true)` in dashboard gated by `executed`/`skipped`. Local `npm run build` **failed** in this workspace (Windows `.next` export/rename + missing manifest flakes); re-run build + `npm run test:ci:e2e` + `npx playwright test tests/e2e/` on a clean tree before push.
+  Any unresolved issues: If port 3000 is busy, CI config no longer reuses a server — stop the old process before `npm run test:ci:e2e`.
+
+- 2026-03-31 — FLOW: Autonomous agent layer — DraftQueue, six agents, GitHub schedules, UI critic script, owner System tab + settings kill switch
+  MODE: FLOW
+  Commit hash(es): pending (`git log -1 --oneline` after push)
+  Files changed: `supabase/migrations/20260331120000_agent_layer.sql`, `lib/agents/*`, `app/api/cron/agent-runner/route.ts`, `app/api/cron/agent-ui-ingest/route.ts`, `app/api/settings/agents/route.ts`, `app/api/drafts/pending/route.ts`, `lib/utils/api-tracker.ts`, `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `lib/briefing/context-builder.ts`, `lib/cron/goal-refresh.ts`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `components/dashboard/AgentSystemPanel.tsx`, `scripts/agent-ui-critic.ts`, `.github/workflows/agent-*.yml`, `lib/db/__tests__/check-constraints.test.ts`, `lib/agents/__tests__/ingest-ui-critic.test.ts`, `CLAUDE.md`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; `npx playwright test tests/e2e/`
+  Any unresolved issues: Production migration apply + GitHub secrets (`AGENT_BASE_URL`, `CRON_SECRET`, `ANTHROPIC_API_KEY`) required for scheduled agents and UI critic. `npm run test:prod` not run this session.
+
 - 2026-04-01 — FLOW: Infrastructure cleanup — legal email only, FolderaMark, nav session fade + mobile sheet, blog prose, /try funnel, .env.example, Playwright prod/skip auth, screenshot sweep, entity dup check
   MODE: FLOW
   Commit hash(es): pending (verify with `git log -1 --oneline` on `main` after push — single amended commit includes `.env.example` + `.gitignore` `!.env.example`)

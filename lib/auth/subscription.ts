@@ -12,7 +12,6 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import { OWNER_USER_ID } from '@/lib/auth/constants';
 
 export type SubscriptionStatus =
   | 'active_trial'
@@ -28,19 +27,17 @@ export interface SubscriptionInfo {
   daysRemaining: number;
   /** True when the user cannot execute approvals */
   isReadOnly: boolean;
+  current_period_end: string | null;
+  /** Stripe customer on file — billing portal available */
+  canManageBilling: boolean;
 }
 
 export async function getSubscriptionStatus(userId: string): Promise<SubscriptionInfo> {
-  // Owner is always active pro
-  if (userId === OWNER_USER_ID) {
-    return { status: 'active', plan: 'pro', daysRemaining: 999, isReadOnly: false };
-  }
-
   const supabase = createServerClient();
 
   const { data, error } = await supabase
     .from('user_subscriptions')
-    .select('plan, status, current_period_end')
+    .select('plan, status, current_period_end, stripe_customer_id')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -49,8 +46,19 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
   }
 
   if (!data) {
-    return { status: 'none', plan: null, daysRemaining: 0, isReadOnly: true };
+    return {
+      status: 'none',
+      plan: null,
+      daysRemaining: 0,
+      isReadOnly: true,
+      current_period_end: null,
+      canManageBilling: false,
+    };
   }
+
+  const canManageBilling = Boolean(
+    data.stripe_customer_id && typeof data.stripe_customer_id === 'string',
+  );
 
   const now = Date.now();
   const periodEnd = data.current_period_end ? new Date(data.current_period_end).getTime() : null;
@@ -59,27 +67,72 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
     ? Math.max(0, Math.ceil(((periodEnd as number) - now) / (1000 * 60 * 60 * 24)))
     : 0;
 
+  const periodEndIso =
+    typeof data.current_period_end === 'string' ? data.current_period_end : null;
+
   if (data.status === 'cancelled') {
-    return { status: 'cancelled', plan: data.plan, daysRemaining: 0, isReadOnly: true };
+    return {
+      status: 'cancelled',
+      plan: data.plan,
+      daysRemaining: 0,
+      isReadOnly: true,
+      current_period_end: periodEndIso,
+      canManageBilling,
+    };
   }
 
   if (data.status === 'past_due') {
-    return { status: 'past_due', plan: data.plan, daysRemaining, isReadOnly: false };
+    return {
+      status: 'past_due',
+      plan: data.plan,
+      daysRemaining,
+      isReadOnly: false,
+      current_period_end: periodEndIso,
+      canManageBilling,
+    };
   }
 
   if (data.status === 'active') {
     if (hasPeriodEnd && (periodEnd as number) < now) {
-      return { status: 'expired', plan: data.plan, daysRemaining: 0, isReadOnly: true };
+      return {
+        status: 'expired',
+        plan: data.plan,
+        daysRemaining: 0,
+        isReadOnly: true,
+        current_period_end: periodEndIso,
+        canManageBilling,
+      };
     }
 
     if (data.plan === 'trial') {
-      return { status: 'active_trial', plan: data.plan, daysRemaining, isReadOnly: false };
+      return {
+        status: 'active_trial',
+        plan: data.plan,
+        daysRemaining,
+        isReadOnly: false,
+        current_period_end: periodEndIso,
+        canManageBilling,
+      };
     }
 
     if (data.plan === 'pro') {
-      return { status: 'active', plan: data.plan, daysRemaining, isReadOnly: false };
+      return {
+        status: 'active',
+        plan: data.plan,
+        daysRemaining,
+        isReadOnly: false,
+        current_period_end: periodEndIso,
+        canManageBilling,
+      };
     }
   }
 
-  return { status: 'active', plan: data.plan, daysRemaining, isReadOnly: false };
+  return {
+    status: 'active',
+    plan: data.plan,
+    daysRemaining,
+    isReadOnly: false,
+    current_period_end: periodEndIso,
+    canManageBilling,
+  };
 }

@@ -1,5 +1,4 @@
 import { createServerClient, type SupabaseClient } from '@/lib/db/client';
-import { OWNER_USER_ID } from '@/lib/auth/constants';
 
 interface UserSubscriptionRow {
   user_id: string;
@@ -21,29 +20,24 @@ export async function filterDailyBriefEligibleUserIds(
   }
 
   const supabase = supabaseArg ?? createServerClient();
-  const nonOwnerUserIds = uniqueUserIds.filter((userId) => userId !== OWNER_USER_ID);
   const eligibleUserIds = new Set<string>();
 
-  if (nonOwnerUserIds.length > 0) {
-    const { data, error } = await supabase
-      .from('user_subscriptions')
-      .select('user_id, plan, status')
-      .in('user_id', nonOwnerUserIds);
+  const { data, error } = await supabase
+    .from('user_subscriptions')
+    .select('user_id, plan, status')
+    .in('user_id', uniqueUserIds);
 
-    if (error) {
-      throw error;
-    }
+  if (error) {
+    throw error;
+  }
 
-    for (const subscription of (data ?? []) as UserSubscriptionRow[]) {
-      if (isActivePaidSubscription(subscription)) {
-        eligibleUserIds.add(subscription.user_id);
-      }
+  for (const subscription of (data ?? []) as UserSubscriptionRow[]) {
+    if (isActivePaidSubscription(subscription)) {
+      eligibleUserIds.add(subscription.user_id);
     }
   }
 
-  return uniqueUserIds.filter(
-    (userId) => userId === OWNER_USER_ID || eligibleUserIds.has(userId),
-  );
+  return uniqueUserIds.filter((userId) => eligibleUserIds.has(userId));
 }
 
 export async function getVerifiedDailyBriefRecipientEmail(
