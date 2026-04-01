@@ -6,7 +6,7 @@
 
 - 2026-04-01 — FIX BRAIN WIRING: decay prompt sections + compact analysis lines + trigger EVIDENCE_DELTA + response_pattern author query + supporting_signals cap 40
   MODE: AUDIT
-  Commit hash(es): (see `git log -1` after push)
+  Commit hash(es): `5698944`
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/trigger-action-map.ts`, `lib/briefing/__tests__/trigger-action-lock.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run lib/briefing/__tests__/` (full folder). `npm run test:prod` per runbook after Vercel READY if this session touches deploy.
   Any unresolved issues: none noted in-session.
