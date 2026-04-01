@@ -6,7 +6,7 @@
 
 - 2026-04-01 — OPS: Split daily-brief into dedicated Vercel cron (11:10 UTC) after nightly-ops ingest
   MODE: OPS
-  Commit hash(es): (this push)
+  Commit hash(es): `79f64ee`
   Files changed: `vercel.json`, `app/api/cron/nightly-ops/route.ts`, `app/api/cron/daily-brief/route.ts`, `app/api/cron/nightly-ops/__tests__/route.test.ts`, `lib/cron/brief-service.ts`, `CLAUDE.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build` (pass); `npx vitest run --exclude ".claude/worktrees/**"` (547 tests pass).
   Any unresolved issues: Vercel Hobby allows only 2 crons by default — `vercel.json` now lists 3 (`nightly-ops`, `daily-brief`, `health-check`); upgrade or consolidate if deploy rejects. `npm run test:prod` not run from this workspace.
