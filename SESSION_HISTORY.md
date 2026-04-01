@@ -6,7 +6,7 @@
 
 - 2026-04-01 — FIX PROMPT INSTRUCTION: forbid pasting ENTITY_ANALYSIS/CANDIDATE_ANALYSIS/TRIGGER metrics into send_message bodies; SYSTEM_PROMPT + internal block prefixes + SEND_MESSAGE NEVER rules
   MODE: AUDIT
-  Commit hash(es): (see `git log -1` after push)
+  Commit hash(es): `0f4e73e`
   Files changed: `lib/briefing/generator.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run lib/briefing/__tests__/generator.test.ts lib/__tests__/multi-user-safety.test.ts --exclude ".claude/worktrees/**"`
   Any unresolved issues: none.
