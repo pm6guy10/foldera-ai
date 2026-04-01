@@ -12,6 +12,7 @@ import { createServerClient } from '@/lib/db/client';
 import { apiError } from '@/lib/utils/api-error';
 import { buildContextGreeting } from '@/lib/briefing/context-builder';
 import { CONFIDENCE_SEND_THRESHOLD } from '@/lib/config/constants';
+import { getSubscriptionStatus } from '@/lib/auth/subscription';
 
 export const dynamic = 'force-dynamic';
 const MIN_PENDING_CONFIDENCE = CONFIDENCE_SEND_THRESHOLD;
@@ -75,6 +76,28 @@ export async function GET(request: Request) {
       accountCreatedAt = null;
     }
 
+    // Count approved/executed actions for artifact blur gate
+    let approvedCount = 0;
+    try {
+      const { count } = await supabase
+        .from('tkg_actions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .in('status', ['approved', 'executed', 'skipped']);
+      approvedCount = count ?? 0;
+    } catch {
+      approvedCount = 0;
+    }
+
+    // Subscription status for blur gate
+    let isSubscribed = false;
+    try {
+      const sub = await getSubscriptionStatus(userId);
+      isSubscribed = sub.status === 'active' || sub.status === 'active_trial' || sub.status === 'past_due';
+    } catch {
+      isSubscribed = false;
+    }
+
     const candidates = actions ?? [];
     const todaysCandidates = candidates.filter((candidate) => {
       const generatedAt = typeof candidate.generated_at === 'string' ? candidate.generated_at : '';
@@ -90,6 +113,8 @@ export async function GET(request: Request) {
       return NextResponse.json({
         context_greeting: contextGreeting,
         account_created_at: accountCreatedAt,
+        approved_count: approvedCount,
+        is_subscribed: isSubscribed,
       }, { status: 200 });
     }
 
@@ -112,6 +137,8 @@ export async function GET(request: Request) {
       artifact,
       context_greeting: contextGreeting,
       account_created_at: accountCreatedAt,
+      approved_count:  approvedCount,
+      is_subscribed:   isSubscribed,
     });
   } catch (err: unknown) {
     return apiError(err, 'conviction/latest');

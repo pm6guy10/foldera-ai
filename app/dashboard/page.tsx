@@ -72,12 +72,19 @@ export default function DashboardPage() {
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   // Handle ?generated=true from settings run-brief success
+  // Handle ?upgraded=true from Stripe checkout success
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('generated') === 'true') {
       window.history.replaceState({}, '', window.location.pathname);
       setFlash('Brief generated and sent.');
       setTimeout(() => setFlash(null), 4000);
+    }
+    if (params.get('upgraded') === 'true') {
+      window.history.replaceState({}, '', window.location.pathname);
+      setIsSubscribed(true);
+      setFlash('Welcome to Pro. Full artifacts unlocked.');
+      setTimeout(() => setFlash(null), 6000);
     }
   }, []);
 
@@ -213,6 +220,9 @@ export default function DashboardPage() {
   const isWait = artifact?.type === 'wait_rationale';
   const recipient = artifact?.to || artifact?.recipient || '';
 
+  // Blur gate: non-subscribed users who have used 3+ artifacts see a blur
+  const showArtifactBlur = approvedCount >= 3 && !isSubscribed;
+
   return (
     <div className="min-h-screen bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white">
       {/* Ambient grid */}
@@ -325,51 +335,124 @@ export default function DashboardPage() {
             {/* Artifact */}
             {artifact && (
               <div className="px-6 py-5 md:px-8 md:py-6 bg-black/40">
-                {isEmail && (
-                  <div className="rounded-2xl bg-cyan-500/10 border border-cyan-500/30 p-4 md:p-5">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Drafted Reply</p>
-                    {recipient && (
-                      <p className="text-xs text-zinc-500 mb-1 truncate">To: {recipient}</p>
-                    )}
-                    {artifact.subject && (
-                      <p className="text-sm text-zinc-300 font-medium mb-2 truncate">
-                        Re: {artifact.subject}
+                {showArtifactBlur ? (
+                  /* Blurred artifact for non-subscribed users who have used 3+ artifacts */
+                  <div className="relative">
+                    {/* First 2 lines visible */}
+                    <div className="rounded-2xl bg-cyan-500/10 border border-cyan-500/30 p-4 md:p-5 mb-0">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">
+                        {isEmail ? 'Drafted Reply' : isDecision ? 'Decision Frame' : 'Context'}
                       </p>
-                    )}
-                    {artifact.body && (
-                      <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap line-clamp-6">
-                        {artifact.body}
-                      </p>
-                    )}
-                  </div>
-                )}
+                      {isEmail && recipient && (
+                        <p className="text-xs text-zinc-500 mb-1 truncate">To: {recipient}</p>
+                      )}
+                      {isEmail && artifact.subject && (
+                        <p className="text-sm text-zinc-300 font-medium mb-2 truncate">
+                          Re: {artifact.subject}
+                        </p>
+                      )}
+                      {isDecision && artifact.options && artifact.options[0] && (
+                        <p className="text-sm font-bold text-white line-clamp-2">{artifact.options[0].option}</p>
+                      )}
+                      {isWait && artifact.context && (
+                        <p className="text-sm text-zinc-300 line-clamp-2">{artifact.context}</p>
+                      )}
+                      {isEmail && artifact.body && (
+                        <p className="text-sm text-zinc-200 line-clamp-2">{artifact.body}</p>
+                      )}
+                    </div>
 
-                {isDecision && artifact.options && (
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Decision Frame</p>
-                    <div className="grid grid-cols-1 gap-3">
-                      {artifact.options.slice(0, 2).map((opt, i) => (
-                        <div key={i} className="rounded-xl bg-zinc-950/60 border border-white/10 p-4">
-                          <p className="text-sm font-bold text-white">{opt.option}</p>
-                          <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{opt.rationale}</p>
-                        </div>
-                      ))}
+                    {/* Blurred overlay for the rest */}
+                    <div className="relative -mt-8 h-24 overflow-hidden pointer-events-none select-none">
+                      <div className="blur-sm opacity-40 p-4">
+                        <p className="text-sm text-zinc-200 leading-relaxed">
+                          {isEmail ? artifact.body : isDecision && artifact.options?.[1] ? artifact.options[1].option : artifact.context ?? ''}
+                        </p>
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#07070c]/60 to-[#07070c]" />
+                    </div>
+
+                    {/* Upgrade nudge */}
+                    <div className="mt-3 rounded-2xl bg-[#0a0a0f] border border-cyan-500/40 p-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Lock className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+                        <p className="text-[11px] font-black uppercase tracking-[0.15em] text-cyan-400">Unlock finished work</p>
+                      </div>
+                      <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
+                        You&apos;ve used your 3 free artifacts. Upgrade to see the full drafted email, ready to approve and send.
+                      </p>
+                      <a
+                        href="/api/stripe/checkout"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          try {
+                            const res = await fetch('/api/stripe/checkout', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({}),
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (data.url) window.location.href = data.url;
+                            else window.location.href = '/pricing';
+                          } catch {
+                            window.location.href = '/pricing';
+                          }
+                        }}
+                        className="w-full py-4 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:scale-[1.01] active:scale-95"
+                      >
+                        Unlock for $29/mo
+                      </a>
                     </div>
                   </div>
-                )}
+                ) : (
+                  <>
+                    {isEmail && (
+                      <div className="rounded-2xl bg-cyan-500/10 border border-cyan-500/30 p-4 md:p-5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Drafted Reply</p>
+                        {recipient && (
+                          <p className="text-xs text-zinc-500 mb-1 truncate">To: {recipient}</p>
+                        )}
+                        {artifact.subject && (
+                          <p className="text-sm text-zinc-300 font-medium mb-2 truncate">
+                            Re: {artifact.subject}
+                          </p>
+                        )}
+                        {artifact.body && (
+                          <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap line-clamp-6">
+                            {artifact.body}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
-                {isWait && (
-                  <div className="rounded-2xl bg-zinc-950/60 border border-white/10 p-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Context</p>
-                    {artifact.context && (
-                      <p className="text-sm text-zinc-300 leading-relaxed">{artifact.context}</p>
+                    {isDecision && artifact.options && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Decision Frame</p>
+                        <div className="grid grid-cols-1 gap-3">
+                          {artifact.options.slice(0, 2).map((opt, i) => (
+                            <div key={i} className="rounded-xl bg-zinc-950/60 border border-white/10 p-4">
+                              <p className="text-sm font-bold text-white">{opt.option}</p>
+                              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{opt.rationale}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
-                    {(artifact.tripwires?.[0] || artifact.check_date) && (
-                      <p className="text-xs text-cyan-400 mt-3 font-black uppercase tracking-[0.1em]">
-                        Resume when: {artifact.tripwires?.[0] ?? artifact.check_date}
-                      </p>
+
+                    {isWait && (
+                      <div className="rounded-2xl bg-zinc-950/60 border border-white/10 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Context</p>
+                        {artifact.context && (
+                          <p className="text-sm text-zinc-300 leading-relaxed">{artifact.context}</p>
+                        )}
+                        {(artifact.tripwires?.[0] || artifact.check_date) && (
+                          <p className="text-xs text-cyan-400 mt-3 font-black uppercase tracking-[0.1em]">
+                            Resume when: {artifact.tripwires?.[0] ?? artifact.check_date}
+                          </p>
+                        )}
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
             )}

@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-03-31 — Conversion flow redesign: single-card pricing, free tier gating, blurred artifact preview
+  MODE: FLOW
+  Commit hash(es): pending
+  Files changed: `app/pricing/page.tsx`, `app/page.tsx` (#pricing section only), `app/api/conviction/latest/route.ts`, `app/dashboard/page.tsx`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` passed (exit 0); `npx vitest run --exclude ".claude/worktrees/**"` 45 files, 527 tests passed.
+  Changes: (1) `/pricing` page rewritten — single centered card (Professional/$29), FAQ section, removes Free vs Pro two-card layout. (2) Landing page `#pricing` section updated — single card + FAQ, new heading "Start free. Upgrade when it clicks." (3) `conviction/latest` API — adds `approved_count` (count of resolved actions) and `is_subscribed` (live subscription check) to all response paths. (4) Dashboard — blur gate: `approvedCount >= 3 && !isSubscribed` triggers blurred artifact overlay with "Unlock for $29/mo" CTA → Stripe checkout. Directive title/summary always visible. `?upgraded=true` param sets `isSubscribed=true` with flash. (5) Stripe checkout already exists at `/api/stripe/checkout`, uses `STRIPE_PRO_PRICE_ID` env var, success→`/dashboard?upgraded=true`, cancel→`/pricing`.
+  Any unresolved issues: `STRIPE_PRO_PRICE_ID` env var must be set to `price_1TF00IRrgMYs6VrdugNcEC9z` in Vercel for the checkout to use the correct price.
+
 - 2026-03-31 — Frontend design tighten: login, start, dashboard, settings, pricing, blog visual overhaul
   MODE: FLOW
   Commit hash(es): pending
