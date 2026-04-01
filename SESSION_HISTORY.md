@@ -6,7 +6,7 @@
 
 - 2026-04-01 — DOCS: Add REVENUE_PROOF.md (GTM gates, funnel math, quality bar, pretend certainty map); cross-ref + Gate 4 blocker in FOLDERA_PRODUCT_SPEC; CLAUDE reference docs + brain-receipt gate update cadence
   MODE: DOCS
-  Commit hash(es): (set after push)
+  Commit hash(es): `46c3480` (spec cross-ref in `abbeabc`)
   Files changed: `REVENUE_PROOF.md`, `FOLDERA_PRODUCT_SPEC.md`, `CLAUDE.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build` (pass)
   Any unresolved issues: none for this doc-only change.

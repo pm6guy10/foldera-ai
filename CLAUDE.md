@@ -15,6 +15,10 @@ Every session runs this before any work:
 9. If recent changes or repo state conflict with the task, report that before editing.
 10. After completing work, update `FOLDERA_PRODUCT_SPEC.md` with new status and evidence for every item touched. If a fix would break or conflict with another spec item, flag it before implementing. Push updated spec as final commit.
 
+## Reference documents
+
+- `REVENUE_PROOF.md` — GTM proof sequence, gate status, pretend certainty map, execution gaps. **After every production brain-receipt**, update `REVENUE_PROOF.md` **GATE STATUS** with date and evidence.
+
 ## Database CHECK Constraints (tkg_goals)
 
 These are enforced by Postgres. Invalid values cause silent insert failures.
