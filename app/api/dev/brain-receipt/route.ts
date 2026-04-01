@@ -5,9 +5,10 @@ import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { createServerClient } from '@/lib/db/client';
-import { runDailyGenerate, isSendWorthy } from '@/lib/cron/daily-brief-generate';
+import { runDailyGenerate, isSendWorthy, evaluateBottomGate } from '@/lib/cron/daily-brief-generate';
 import { getDecisionEnforcementIssues } from '@/lib/briefing/generator';
 import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
+import type { ActionType, ConvictionArtifact, GenerationRunLog } from '@/lib/briefing/types';
 import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
       userIds: [auth.userId],
       skipStaleGate: true,
       skipSpendCap: true,
+      skipManualCallLimit: true,
       forceFreshRun: true,
     });
 
@@ -69,16 +71,25 @@ export async function POST(request: Request) {
         reason: latestAction.reason ?? '',
         artifact: merged,
       });
-      const sendWorthiness = isSendWorthy(
-        {
-          directive: latestAction.directive_text ?? '',
-          action_type: (latestAction.action_type ?? 'do_nothing') as 'send_message' | 'write_document' | 'do_nothing' | 'schedule' | 'make_decision' | 'research',
-          confidence: typeof latestAction.confidence === 'number' ? latestAction.confidence : 0,
-          reason: latestAction.reason ?? '',
-          evidence: Array.isArray(latestAction.evidence) ? latestAction.evidence as Array<{ description: string; type: 'signal' | 'commitment' | 'goal' | 'pattern' }> : [],
-        },
-        merged as never,
-      );
+      const generationLog: GenerationRunLog | undefined =
+        executionResult.generation_log && typeof executionResult.generation_log === 'object'
+          ? (executionResult.generation_log as GenerationRunLog)
+          : undefined;
+
+      const directiveForGates = {
+        directive: latestAction.directive_text ?? '',
+        action_type: (latestAction.action_type ?? 'do_nothing') as ActionType,
+        confidence: typeof latestAction.confidence === 'number' ? latestAction.confidence : 0,
+        reason: latestAction.reason ?? '',
+        evidence: Array.isArray(latestAction.evidence)
+          ? (latestAction.evidence as Array<{ description: string; type: 'signal' | 'commitment' | 'goal' | 'pattern' }>)
+          : [],
+        generationLog,
+      };
+
+      const sendWorthiness = isSendWorthy(directiveForGates, merged as never);
+
+      const bottomGate = evaluateBottomGate(directiveForGates, merged as unknown as ConvictionArtifact);
 
       return NextResponse.json({
         ok: true,
@@ -99,6 +110,7 @@ export async function POST(request: Request) {
           issues: decisionIssues,
         },
         send_worthiness: sendWorthiness,
+        bottom_gate: bottomGate,
         generate_stage_result: ownerResult,
       });
     }

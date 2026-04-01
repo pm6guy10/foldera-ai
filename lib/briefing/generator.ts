@@ -250,6 +250,12 @@ interface GenerateDirectiveOptions {
   dryRun?: boolean;
   /** Skip daily spend cap check — used for manual Generate Now so testing doesn't cost money */
   skipSpendCap?: boolean;
+  /**
+   * Skip per-day manual directive call count (api_usage directive rows).
+   * ONLY for owner-gated `/api/dev/brain-receipt` — keeps prod proof path unblocked
+   * without widening Generate Now / smoke-test budgets.
+   */
+  skipManualCallLimit?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -4305,7 +4311,12 @@ export async function generateDirective(
 
     // Manual/interactive runs bypass the spend cap (skipSpendCap=true) but are
     // still bounded by a per-day call count so smoke tests can't burn $2.50/day.
-    if (!options.dryRun && options.skipSpendCap && await isOverManualCallLimit(userId)) {
+    if (
+      !options.dryRun &&
+      options.skipSpendCap &&
+      !options.skipManualCallLimit &&
+      (await isOverManualCallLimit(userId))
+    ) {
       logStructuredEvent({
         event: 'generation_skipped', level: 'warn', userId,
         artifactType: null, generationStatus: 'manual_call_limit_reached',

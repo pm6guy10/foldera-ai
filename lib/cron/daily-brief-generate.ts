@@ -1630,6 +1630,7 @@ export async function runDailyGenerate(
       try {
         directive = await generateDirective(userId, {
           skipSpendCap: options.skipSpendCap,
+          skipManualCallLimit: options.skipManualCallLimit,
         });
       } catch (genErr: unknown) {
         const message = genErr instanceof Error ? genErr.message : String(genErr);

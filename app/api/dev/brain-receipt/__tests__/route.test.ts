@@ -18,6 +18,7 @@ vi.mock('@/lib/auth/resolve-user', () => ({
 vi.mock('@/lib/cron/daily-brief-generate', () => ({
   runDailyGenerate: mockRunDailyGenerate,
   isSendWorthy: mockIsSendWorthy,
+  evaluateBottomGate: () => ({ pass: true, blocked_reasons: [] as string[] }),
 }));
 
 vi.mock('@/lib/db/client', () => ({
@@ -52,6 +53,34 @@ describe('POST /api/dev/brain-receipt', () => {
     const response = await POST(new Request('http://localhost:3000/api/dev/brain-receipt', { method: 'POST' }));
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: 'Forbidden' });
+  });
+
+  it('calls runDailyGenerate with skipManualCallLimit for owner brain-receipt', async () => {
+    mockResolveUser.mockResolvedValue({ userId: 'e40b7cd8-4925-42f7-bc99-5022969f1d22' });
+    mockRunDailyGenerate.mockResolvedValue({ results: [] });
+    mockSupabase.from.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          gte: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    });
+    const { POST } = await import('../route');
+    await POST(new Request('http://localhost:3000/api/dev/brain-receipt', { method: 'POST' }));
+    expect(mockRunDailyGenerate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skipManualCallLimit: true,
+        skipSpendCap: true,
+        forceFreshRun: true,
+        skipStaleGate: true,
+      }),
+    );
   });
 
   it('returns diagnostics even when no action is persisted', async () => {

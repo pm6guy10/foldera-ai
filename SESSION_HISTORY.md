@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — OPS: Brain-receipt `skipManualCallLimit` (owner-only) + receipt `bottom_gate`
+  MODE: OPS
+  Commit hash(es): (after push)
+  Files changed: `lib/briefing/generator.ts`, `lib/cron/daily-brief-types.ts`, `lib/cron/daily-brief-generate.ts`, `app/api/dev/brain-receipt/route.ts`, `app/api/dev/brain-receipt/__tests__/route.test.ts`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run app/api/dev/brain-receipt/__tests__/route.test.ts`; post-push production `POST /api/dev/brain-receipt` + DB row (see session chat).
+  Any unresolved issues: Generate Now / run-brief still respect manual cap; only brain-receipt bypasses count.
+
 - 2026-04-01 — FLOW: Autonomous brain quality loop — schedule_conflict artifact path + bottom gate
   MODE: FLOW
   Commit hash(es): `8458725`
