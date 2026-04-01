@@ -138,6 +138,8 @@ EVIDENCE RULES:
 - Real names, dates, and details only
 - If evidence is thin, write a SHORT artifact. Thin = short, not skip.
 
+ENTITY_ANALYSIS and CANDIDATE_ANALYSIS are for YOUR understanding only. Never paste metric values, ratios, baselines, or system terminology into the artifact body. The email must read like a human wrote it, not like a data dump. Use the analysis to understand context, then write naturally. The same applies to numeric or pipeline phrasing from TRIGGER_CONTEXT (e.g. interaction counts, "/14d" baselines, arrows between states) — translate into normal language if at all, never as a statistics recap.
+
 CONFIDENCE SCORING (0-100):
 - 80+ = multiple corroborating signals, clear deadline or consequence
 - 60-79 = strong single-source evidence with clear next step
@@ -1334,7 +1336,7 @@ function buildCandidateAnalysisBlock(winner: ScoredLoop): string {
   if (b.behavioral_rate != null) lines.push(`- behavioral_rate: ${b.behavioral_rate}`);
   if (b.novelty_multiplier != null) lines.push(`- novelty_multiplier: ${b.novelty_multiplier}`);
   if (b.suppression_multiplier != null) lines.push(`- suppression_multiplier: ${b.suppression_multiplier}`);
-  return lines.join('\n');
+  return `(INTERNAL CONTEXT - do not paste into artifact)\n${lines.join('\n')}`;
 }
 
 function buildEntityAnalysisBlock(
@@ -1344,7 +1346,7 @@ function buildEntityAnalysisBlock(
   if (!bx) return null;
   const name = (entityName ?? '').trim() || 'entity';
   const vr = bx.velocity_ratio === null ? 'null' : bx.velocity_ratio.toFixed(2);
-  return `ENTITY_ANALYSIS: ${name} velocity_ratio=${vr}, 14d=${bx.signal_count_14d}, 30d=${bx.signal_count_30d}, 90d=${bx.signal_count_90d}`;
+  return `(INTERNAL CONTEXT - do not paste into artifact)\nENTITY_ANALYSIS: ${name} velocity_ratio=${vr}, 14d=${bx.signal_count_14d}, 30d=${bx.signal_count_30d}, 90d=${bx.signal_count_90d}`;
 }
 
 async function enrichWinnerWithEntityBxStats(userId: string, winner: ScoredLoop): Promise<ScoredLoop> {
@@ -2006,6 +2008,7 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
       `${senderFromLine}\n` +
       `Write it exactly as a competent professional would write it. Short. Warm but not gushing. Clear reason for writing. One ask or one piece of information. No filler.\n\n` +
       `NEVER include:\n` +
+      `- Any line copied from ENTITY_ANALYSIS, CANDIDATE_ANALYSIS, or TRIGGER_CONTEXT baselines/deltas (interaction counts, "/14d", velocity_ratio, arrows like "→", or "X interactions in Y days")\n` +
       `- Metrics, percentages, or system language ("52% drop", "signal density", "goal-aligned activity")\n` +
       `- "Decision required by" or deadline ultimatums that sound like a system alert\n` +
       `- "Can you confirm" as an opener\n` +
@@ -2267,6 +2270,7 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
       `${senderFromLine}\n` +
       `Write it exactly as a competent professional would write it. Short. Warm but not gushing. Clear reason for writing. One ask or one piece of information. No filler.\n\n` +
       `NEVER include:\n` +
+      `- Any line copied from ENTITY_ANALYSIS, CANDIDATE_ANALYSIS, or TRIGGER_CONTEXT baselines/deltas (interaction counts, "/14d", velocity_ratio, arrows like "→", or "X interactions in Y days")\n` +
       `- Metrics, percentages, or system language ("52% drop", "signal density", "goal-aligned activity")\n` +
       `- "Decision required by" or deadline ultimatums that sound like a system alert\n` +
       `- "Can you confirm" as an opener\n` +
