@@ -6,7 +6,7 @@
 
 - 2026-04-01 — FLOW: Widen signal pool — richer mail/calendar ingest, response_pattern derivation, directive history signal, Resend engagement + unopened nightly
   MODE: FLOW
-  Commit hash(es): `aa9864b`
+  Commit hash(es): `7d32186`
   Files changed: `lib/sync/google-sync.ts`, `lib/sync/microsoft-sync.ts`, `lib/sync/derive-mail-intelligence.ts`, `lib/sync/__tests__/derive-mail-intelligence.test.ts`, `lib/signals/directive-history-signal.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/brief-engagement-signals.ts`, `lib/webhooks/resend-webhook.ts`, `app/api/resend/webhook/route.ts`, `app/api/webhooks/resend/route.ts`, `app/api/cron/nightly-ops/route.ts`, `app/api/cron/nightly-ops/__tests__/route.test.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `lib/cron/__tests__/manual-send.test.ts`, `lib/db/__tests__/check-constraints.test.ts`, `supabase/migrations/20260401120000_widen_signal_pool_constraints.sql`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build` (pass); `npx vitest run --exclude ".claude/worktrees/**"` (pass).
   Any unresolved issues: Apply migration to production Postgres when convenient (`npx supabase db push` or manual). `npm run test:prod` not run from this workspace.
