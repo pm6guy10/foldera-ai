@@ -299,14 +299,21 @@ export function isSendWorthy(
 
   const artifactRecord = artifact as unknown as Record<string, unknown>;
 
-  // Discrepancy candidates with a confirmed external email recipient use a lower send floor (65 vs 70).
-  // They have already passed multiple scorer gates; absence-of-signal is itself their evidence.
+  // send_message candidates use a lower send floor (65 vs 70).
+  // The LLM anchors near 69; the artifact quality gate is the real filter for send_message.
+  // All other action types (write_document, make_decision, etc.) keep the 70 floor.
+  const isSendMessage = directive.action_type === 'send_message';
+  const effectiveSendThreshold = isSendMessage ? 65 : CONFIDENCE_SEND_THRESHOLD;
+
+  // Discrepancy candidates (relationship decay, risk, exposure) skip quality-gate checks
+  // (generic opener, weak winner, decision enforcement) — their absence-of-signal IS the evidence.
+  const isDiscrepancyCandidate =
+    directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType === 'discrepancy';
   const isDiscrepancyWithRecipient =
-    directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType === 'discrepancy' &&
+    isDiscrepancyCandidate &&
     directive.action_type === 'send_message' &&
-    typeof artifactRecord.to === 'string' &&
-    (artifactRecord.to as string).includes('@');
-  const effectiveSendThreshold = isDiscrepancyWithRecipient ? 65 : CONFIDENCE_SEND_THRESHOLD;
+    typeof (artifact as unknown as Record<string, unknown>).to === 'string' &&
+    ((artifact as unknown as Record<string, unknown>).to as string).includes('@');
 
   // Must clear the send confidence threshold
   if (directive.confidence < effectiveSendThreshold) {
@@ -987,7 +994,7 @@ function buildWaitRationale(
     const goalText = candidate.targetGoal?.text
       ? ` (goal: ${candidate.targetGoal.text.slice(0, 80)})`
       : '';
-    const blocked = candidate.decision === 'selected' ? ' [BLOCKED by constraint]' : '';
+    const blocked = candidate.decision === 'selected' ? ' [SELECTED — not sent]' : '';
     contextParts.push(`• ${action} scored ${score}${goalText}${blocked}`);
   }
   if (contextParts.length === 0) {
@@ -1012,7 +1019,7 @@ function buildWaitRationale(
       tripwires: topCandidates
         .filter((c) => c.decision === 'selected')
         .slice(0, 3)
-        .map((c) => `Unblocked when: constraint on "${c.targetGoal?.text?.slice(0, 60) ?? 'unknown'}" is lifted`),
+        .map((c) => `Activate when: new signals arrive for "${c.targetGoal?.text?.slice(0, 60) ?? 'unknown'}"`),
     },
   };
 }

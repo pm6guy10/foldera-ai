@@ -151,8 +151,19 @@ describe('isSendWorthy', () => {
     expect(result.reason).toBe('do_nothing_directive');
   });
 
-  it('blocks directives below send threshold (< 70)', () => {
+  it('blocks send_message directives below send threshold (< 65)', () => {
+    const result = isSendWorthy(makeDirective({ confidence: 64 }), makeArtifact());
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('below_send_threshold');
+  });
+
+  it('allows send_message at confidence exactly 65 (lowered threshold)', () => {
     const result = isSendWorthy(makeDirective({ confidence: 65 }), makeArtifact());
+    expect(result.worthy).toBe(true);
+  });
+
+  it('blocks non-send_message directive at confidence 65 (still uses 70 threshold)', () => {
+    const result = isSendWorthy(makeDirective({ confidence: 65, action_type: 'write_document' }), makeArtifact());
     expect(result.worthy).toBe(false);
     expect(result.reason).toBe('below_send_threshold');
   });
@@ -190,7 +201,7 @@ describe('isSendWorthy', () => {
     expect(result.reason).toBe('placeholder_content');
   });
 
-  it('allows confidence exactly at threshold (70)', () => {
+  it('allows send_message at confidence 70 (above threshold)', () => {
     const result = isSendWorthy(makeDirective({ confidence: 70 }), makeArtifact());
     expect(result.worthy).toBe(true);
   });

@@ -309,8 +309,8 @@ function SignalEngineHero() {
           <div className="w-[1px] h-5 bg-gradient-to-b from-cyan-500/40 to-cyan-500/0" />
         </div>
 
-        {/* Directive Output Card — the payoff, always visible */}
-        <div className="relative z-30 w-full max-w-[420px] hero-output">
+        {/* Directive Output Card — visual demo only, not interactive */}
+        <div className="relative z-30 w-full max-w-[420px] hero-output pointer-events-none">
           <div className="rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/40 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.15)] flex flex-col text-left overflow-hidden">
             <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
             <div className="p-5 sm:p-6 border-b border-white/10">
@@ -431,13 +431,13 @@ function ScenarioDemos() {
         </div>
 
         {/* Subtle background glow */}
-        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.08)_0%,transparent_50%)] transition-opacity duration-1000 ${
+        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.08)_0%,transparent_50%)] transition-opacity duration-1000 pointer-events-none ${
           isProcessing ? 'opacity-100' : 'opacity-30'
         }`} />
 
-        {/* Chaos layer */}
-        <div className={`absolute inset-0 pt-11 md:pt-20 px-4 pb-4 md:p-12 flex flex-col items-center justify-start md:justify-center transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          phase === 'chaos' ? 'opacity-100 z-10' : 'opacity-0 blur-xl scale-110 pointer-events-none'
+        {/* Chaos layer — pointer-events-none always; swipe handled by parent container */}
+        <div className={`absolute inset-0 pt-11 md:pt-20 px-4 pb-4 md:p-12 flex flex-col items-center justify-start md:justify-center transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none ${
+          phase === 'chaos' ? 'opacity-100 z-10' : 'opacity-0 blur-xl scale-110'
         }`}>
           <div className="w-full max-w-xl relative perspective-1000">
             {current.chaos.map((item, idx) => {
@@ -468,9 +468,9 @@ function ScenarioDemos() {
         </div>
 
 
-        {/* Clarity layer */}
-          <div className={`absolute inset-0 pt-11 md:pt-12 px-4 pb-4 md:p-12 flex items-start md:items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 ${
-            phase === 'clarity' ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'
+        {/* Clarity layer — pointer-events-none always (visual demo only) */}
+          <div className={`absolute inset-0 pt-11 md:pt-12 px-4 pb-4 md:p-12 flex items-start md:items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 pointer-events-none ${
+            phase === 'clarity' ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90'
           }`}>
           <div className="w-full max-w-lg rounded-[1.5rem] md:rounded-[2rem] bg-zinc-950/90 backdrop-blur-2xl border border-cyan-400/30 overflow-hidden shadow-[0_44px_100px_-20px_rgba(0,0,0,1),_0_0_40px_rgba(6,182,212,0.14)] ring-1 ring-cyan-300/15">
             <div className="h-1 w-full bg-gradient-to-r from-cyan-500 to-cyan-300" />
