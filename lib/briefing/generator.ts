@@ -14,7 +14,7 @@ import type {
 } from './types';
 import { validateDecisionPayload } from './types';
 import type { DeprioritizedLoop, ScoredLoop, ScorerResult } from './scorer';
-import { scoreOpenLoops } from './scorer';
+import { enrichRelationshipContext, scoreOpenLoops } from './scorer';
 import { isOverDailyLimit, isOverManualCallLimit, trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import {
@@ -176,6 +176,11 @@ If the user prompt starts with "Write an email from the user to:",
 you MUST write the email. do_nothing and wait_rationale are
 FORBIDDEN on the email path. Thin context = short email,
 not refusal. A 3-sentence genuine email is always better than do_nothing.
+
+DECAY_RECONNECTION EXCEPTION (overrides MANDATORY EMAIL PATH RULE when applicable):
+When the user prompt contains "DECAY_RECONNECTION_RULE", do_nothing IS allowed if the prompt states
+that no specific past interaction can be grounded in RECENT SIGNALS, TRIGGER_CONTEXT, or relationship
+lines. Do not invent financial or unrelated threads to satisfy the email path — prefer do_nothing over a mis-addressed email.
 
 Forbidden phrases in any artifact:
 - "follow up", "check in", "circle back", "touching base"
@@ -1501,16 +1506,27 @@ function buildStructuredContext(
       : null,
     behavioral_history: behavioralHistory ?? null,
     avoidance_observations: avoidanceObservations ?? [],
-    relationship_timeline: buildRelationshipTimeline(signalEvidence, winner.title),
+    relationship_timeline: buildRelationshipTimeline(
+      signalEvidence,
+      (winner.type === 'discrepancy' && winner.discrepancyClass === 'decay' && winner.entityName)
+        ? winner.entityName
+        : winner.title,
+    ),
     competition_context: competitionContext ?? null,
     confidence_prior: winner.confidence_prior,
     required_causal_diagnosis,
     trigger_context: winner.type === 'discrepancy' && winner.discrepancyClass && winner.trigger
       ? buildTriggerContextBlock(winner.discrepancyClass, winner.trigger)
       : null,
-    recipient_brief: has_real_recipient
-      ? buildRecipientBrief(winner.relationshipContext ?? null, signalEvidence)
-      : null,
+    recipient_brief: (() => {
+      if (!has_real_recipient) return null;
+      const brief = buildRecipientBrief(winner.relationshipContext ?? null, signalEvidence);
+      if (brief) return brief;
+      if (winner.type === 'discrepancy' && winner.discrepancyClass === 'decay') {
+        return buildDecayRecipientBriefFromEntity(winner, signalEvidence);
+      }
+      return null;
+    })(),
     discrepancy_class:
       winner.discrepancyClass ??
       (winner.id.startsWith('discrepancy_conflict_') ? 'schedule_conflict' : null),
@@ -1674,7 +1690,91 @@ function buildRecipientBrief(
   if (lastContactDate) lines.push(`Last contact: ${lastContactDate}`);
   if (pattern) lines.push(`Context: ${pattern}`);
 
+  const intelTail = relationshipContext.split(/\r?\n/).slice(1).join('\n').trim();
+  if (intelTail) {
+    lines.push(`Relationship intel (signals, response patterns, linked goals/commitments):\n${intelTail.slice(0, 3800)}`);
+  }
+
   return lines.join('\n');
+}
+
+/**
+ * Minimal recipient block for decay discrepancy when `buildRecipientBrief` returns null
+ * (e.g. name parse edge cases) but relationshipContext still has a confirmed entity email.
+ * Keeps the short email prompt path so CONVERGENT_ANALYSIS / CONVICTION_MATH are not injected.
+ */
+function buildDecayRecipientBriefFromEntity(
+  winner: ScoredLoop,
+  signalEvidence: SignalSnippet[],
+): string | null {
+  if (winner.type !== 'discrepancy' || winner.discrepancyClass !== 'decay') return null;
+  const rc = winner.relationshipContext?.trim();
+  if (!rc) return null;
+
+  const firstLine = rc.split('\n')[0].replace(/^-\s*/, '');
+  const emailMatch = firstLine.match(/<([^@\s>]+@[^@\s>]+\.[^@\s>]+)>/);
+  const email = emailMatch ? emailMatch[1] : null;
+  if (!email) return null;
+
+  let displayName =
+    (winner.entityName?.trim()) ||
+    ((): string | null => {
+      const idx = winner.title.lastIndexOf(':');
+      if (idx >= 0 && idx < winner.title.length - 1) {
+        return winner.title.slice(idx + 1).trim();
+      }
+      return null;
+    })();
+  if (!displayName || displayName.toLowerCase() === 'unknown') {
+    displayName = email.split('@')[0] ?? 'Contact';
+  }
+
+  const sortedDates = signalEvidence
+    .map((s) => s.date)
+    .filter(Boolean)
+    .sort()
+    .reverse();
+  const lastContactDate = sortedDates.length > 0
+    ? new Date(sortedDates[0]).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : null;
+
+  const lines: string[] = [`${displayName} <${email}>`];
+  if (lastContactDate) lines.push(`Last contact: ${lastContactDate}`);
+  const intelTail = rc.split(/\r?\n/).slice(1).join('\n').trim();
+  if (intelTail) {
+    lines.push(`Relationship intel (signals, response patterns, linked goals/commitments):\n${intelTail.slice(0, 3800)}`);
+  }
+  return lines.join('\n');
+}
+
+function extractDecayEntityAnchors(winner: ScoredLoop): { emails: string[]; tokens: string[] } {
+  const emails: string[] = [];
+  if (winner.relationshipContext) {
+    const re = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(winner.relationshipContext)) !== null) {
+      emails.push(m[0].toLowerCase());
+    }
+  }
+  const nameSource =
+    (winner.entityName ?? '').trim()
+    || (winner.title.includes(':') ? winner.title.split(':').pop()?.trim() ?? '' : '');
+  const tokens: string[] = [];
+  for (const w of nameSource.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)) {
+    if (w.length >= 3) tokens.push(w);
+  }
+  return { emails: [...new Set(emails)], tokens: [...new Set(tokens)] };
+}
+
+function signalSnippetMatchesDecayEntity(
+  s: SignalSnippet,
+  anchors: { emails: string[]; tokens: string[] },
+): boolean {
+  const hay = `${s.author ?? ''} ${s.subject ?? ''} ${s.snippet}`.toLowerCase();
+  if (anchors.emails.some((e) => hay.includes(e))) return true;
+  if (anchors.tokens.length === 0) return false;
+  const hits = anchors.tokens.filter((t) => hay.includes(t));
+  return anchors.tokens.length >= 2 ? hits.length >= 2 : hits.length >= 1;
 }
 
 export function buildPromptFromStructuredContext(ctx: StructuredContext): string {
@@ -1695,10 +1795,17 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
   // density numbers, causal diagnosis mechanisms, or scorer breakdowns.
   if (ctx.has_real_recipient && ctx.recipient_brief) {
     const m: string[] = [];
+    const isDecayReconnect =
+      ctx.candidate_class === 'discrepancy' && ctx.discrepancy_class === 'decay';
 
     m.push(
       `Write an email from the user to:\n${ctx.recipient_brief}\n\nTODAY: ${today()}`,
     );
+
+    // Recipient-short path used to omit TRIGGER_CONTEXT — discrepancy decay then had no delta/why_now.
+    if (ctx.trigger_context) {
+      m.push(ctx.trigger_context);
+    }
 
     if (ctx.supporting_signals.length > 0) {
       const signalLines = ctx.supporting_signals.slice(0, 8).map((s) => {
@@ -1706,6 +1813,22 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
         return `- ${s.occurred_at}${dir ? ` ${dir}` : ''} ${s.summary}`;
       });
       m.push(`RECENT SIGNALS:\n${signalLines.join('\n')}`);
+    }
+
+    if (ctx.relationship_timeline) {
+      m.push(ctx.relationship_timeline);
+    }
+
+    if (isDecayReconnect) {
+      m.push(
+        `DECAY_RECONNECTION_RULE (mandatory for this candidate):\n` +
+        `- Do NOT write "it's been a while", "been a while", "just checking in", "touching base", or generic check-in language.\n` +
+        `- The email MUST reference something specific from your last real interaction with this person (subject, topic, commitment, or thread — from RECENT SIGNALS / relationship context above).\n` +
+        `- You MUST give a concrete reason this reconnection matters NOW (not only that time passed).\n` +
+        `- You MUST include one specific ask or topic that fits what they can actually help with (role, past thread, or goal link above).\n` +
+        `- Do NOT pivot to unrelated financial, benefits, or third-party threads not involving this recipient.\n` +
+        `- If you cannot ground the email in at least one specific fact from the provided context, output decision "HOLD" with artifact_type do_nothing — generic reconnection emails are worse than no email. (System DECAY_RECONNECTION EXCEPTION allows do_nothing here.)`,
+      );
     }
 
     if (ctx.already_sent_14d.length > 0) {
@@ -1736,9 +1859,12 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
       `- The word "goal", "commitment", "discrepancy", "signal", or "artifact"\n` +
       `- Any reference to Foldera or the system generating this email\n` +
       `- Any fabricated professional relationship, shared project, or organizational role that does not appear in the signal data\n\n` +
-      `GROUNDING RULE (mandatory): Every sentence in the email must reference only facts that are explicitly present in the signals and entity history provided above. ` +
-      `Do NOT invent a shared project, shared employer, budget discussion, organizational membership, or working relationship that is not documented in the signals. ` +
-      `If the signal data does not contain enough context for a specific reason to reconnect, write a simple warm check-in with no fabricated premise — do not invent one.\n\n` +
+      (isDecayReconnect
+        ? `GROUNDING RULE (decay): Every sentence must cite facts from RECENT SIGNALS, TRIGGER_CONTEXT, or relationship lines above. ` +
+          `If there is not enough specific context to meet DECAY_RECONNECTION_RULE, output do_nothing — never send a generic reconnect.\n\n`
+        : `GROUNDING RULE (mandatory): Every sentence in the email must reference only facts that are explicitly present in the signals and entity history provided above. ` +
+          `Do NOT invent a shared project, shared employer, budget discussion, organizational membership, or working relationship that is not documented in the signals. ` +
+          `If the signal data does not contain enough context for a specific reason to reconnect, write a simple warm check-in with no fabricated premise — do not invent one.\n\n`) +
       `ALWAYS include:\n` +
       `- A natural greeting using their first name\n` +
       `- A specific reason for reaching out tied to real context (their role, a past interaction, a shared project, a job posting, a recent event)\n` +
@@ -1765,11 +1891,18 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
       'Do NOT use the user\'s own email address. ' +
       'If the recipient line has NO email address in angle brackets, output write_document instead of send_message. ' +
       'NEVER invent a person\'s name or email.\n\n' +
-      'BANNED PHRASES FINAL CHECK — scan your output before returning. If any of these appear, rewrite the email until none remain. Do NOT output do_nothing:\n' +
-      '"just checking in", "touching base", "wanted to reach out", "reaching out to you today", ' +
-      '"following up" without an immediate specific reference, "I hope this email finds you well", ' +
-      '"hope you\'re doing well" as an opener, "as per my last email", "circling back", ' +
-      'any opener that does not anchor to the specific situation in the signals above.',
+      (isDecayReconnect
+        ? 'BANNED PHRASES — if you write an email, rewrite until none of these appear in the opener/body: ' +
+          '"just checking in", "touching base", "wanted to reach out", "reaching out to you today", ' +
+          '"following up" without an immediate specific reference, "I hope this email finds you well", ' +
+          '"hope you\'re doing well" as an opener, "as per my last email", "circling back", ' +
+          'any opener that does not anchor to this person\'s thread in the signals above. ' +
+          'If DECAY_RECONNECTION_RULE cannot be satisfied with grounded facts about this recipient, output do_nothing (do not invent context).\n'
+        : 'BANNED PHRASES FINAL CHECK — scan your output before returning. If any of these appear, rewrite the email until none remain. Do NOT output do_nothing:\n' +
+          '"just checking in", "touching base", "wanted to reach out", "reaching out to you today", ' +
+          '"following up" without an immediate specific reference, "I hope this email finds you well", ' +
+          '"hope you\'re doing well" as an opener, "as per my last email", "circling back", ' +
+          'any opener that does not anchor to the specific situation in the signals above.'),
     );
 
     return m.join('\n\n');
@@ -1962,7 +2095,14 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
 
   // Artifact selection guidance based on booleans
   if (ctx.has_real_recipient) {
+    const decayLongPath =
+      ctx.candidate_class === 'discrepancy' && ctx.discrepancy_class === 'decay';
     sections.push(
+      (decayLongPath
+        ? `DECAY_RECONNECTION_RULE:\n` +
+          `- Do NOT use "it's been a while" / generic check-in. Anchor to last interaction, concrete why-now, specific ask tied to their utility.\n` +
+          `- If context is too thin for that, output do_nothing.\n\n`
+        : '') +
       `ARTIFACT_PREFERENCE: send_message is required — a real recipient email is in the signals above.\n\n` +
       `SEND_MESSAGE_ARTIFACT_RULES (apply these before writing a single word):\n\n` +
       `${senderFromLine}\n` +
@@ -2570,6 +2710,8 @@ function isDecisionMenu(value: string): boolean {
 
 const PASSIVE_OR_IGNORABLE_PATTERNS = [
   /\bjust checking in\b/i,
+  /\bit(?:'|’)?s been a while\b/i,
+  /\bbeen a while\b/i,
   /\bfollow(?:ing)? up\b/i,
   /\btouching base\b/i,
   /\bcircling back\b/i,
@@ -2746,7 +2888,16 @@ export function getDecisionEnforcementIssues(input: {
     issues.push('decision_enforcement:requires_rewriting');
   }
 
-  return [...new Set(issues)];
+  let out = [...new Set(issues)];
+  // Decay reconnect emails are timed to relationship silence — not deadline/consequence memos.
+  if (input.discrepancyClass === 'decay' && normalizedType === 'send_message') {
+    out = out.filter(
+      (i) =>
+        i !== 'decision_enforcement:missing_time_constraint' &&
+        i !== 'decision_enforcement:missing_pressure_or_consequence',
+    );
+  }
+  return out;
 }
 
 export function getCausalDiagnosisIssues(input: {
@@ -2987,7 +3138,22 @@ async function hydrateWinnerRelationshipContext(
         .single();
       if (entity) {
         const line = formatEntityLine(entity as Record<string, unknown>);
-        return { ...winner, relationshipContext: line };
+        const record = entity as Record<string, unknown>;
+        const nameForIntel = isNonEmptyString(record.display_name)
+          ? record.display_name.trim()
+          : isNonEmptyString(record.name)
+            ? record.name.trim()
+            : '';
+        let merged = line;
+        if (nameForIntel) {
+          try {
+            const intel = await enrichRelationshipContext(userId, nameForIntel, undefined);
+            if (intel.trim()) merged = `${line}\n${intel}`;
+          } catch {
+            // non-blocking
+          }
+        }
+        return { ...winner, relationshipContext: merged };
       }
     }
   }
@@ -3115,13 +3281,14 @@ async function fetchWinnerSignalEvidence(
   winner: ScoredLoop,
 ): Promise<SignalSnippet[]> {
   const supabase = createServerClient();
-  const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
+  const isDecayDiscrepancy =
+    winner.type === 'discrepancy' && winner.discrepancyClass === 'decay';
 
   const sourceIds = (winner.sourceSignals ?? [])
     .map((s) => s.id)
     .filter((id): id is string => Boolean(id));
 
-  const snippets: SignalSnippet[] = [];
+  let snippets: SignalSnippet[] = [];
 
   if (sourceIds.length > 0) {
     const { data: sourceRows } = await supabase
@@ -3143,7 +3310,8 @@ async function fetchWinnerSignalEvidence(
     .split(/\s+/)
     .filter((w) => w.length >= 5);
 
-  if (keywords.length > 0 && snippets.length < 12) {
+  // Decay: broad keyword scan pulls unrelated high-volume threads (e.g. benefits/finance).
+  if (!isDecayDiscrepancy && keywords.length > 0 && snippets.length < 12) {
     const ninetyDaysAgoEvidence = new Date(Date.now() - daysMs(90)).toISOString();
     const { data: contextRows } = await supabase
       .from('tkg_signals')
@@ -3209,6 +3377,13 @@ async function fetchWinnerSignalEvidence(
           existingTexts.add(parsed.snippet.slice(0, 60));
         }
       }
+    }
+  }
+
+  if (isDecayDiscrepancy) {
+    const anchors = extractDecayEntityAnchors(winner);
+    if (anchors.emails.length > 0 || anchors.tokens.length > 0) {
+      snippets = snippets.filter((s) => signalSnippetMatchesDecayEntity(s, anchors));
     }
   }
 
@@ -3911,6 +4086,52 @@ function buildDecisionEnforcedFallbackPayload(input: {
       const signOff = input.userPromptNames.user_first_name.trim()
         ? input.userPromptNames.user_first_name
         : '';
+
+      if (input.winner.discrepancyClass === 'decay') {
+        const rc = (input.winner.relationshipContext ?? '').trim();
+        const lines = rc.split(/\n/).map((l) => l.trim()).filter(Boolean);
+        const afterLastIx = lines.findIndex((l) => /Last interactions/i.test(l));
+        const intelLine =
+          (afterLastIx >= 0 ? lines.slice(afterLastIx + 1).find((l) => l.length > 40) : undefined) ??
+          lines.find((l) => /^\[\d{4}-\d{2}-\d{2}\]/.test(l) && l.length > 40);
+        const hasCleanTrigger =
+          trig && !triggerHasSystemMetrics && (trig.why_now?.trim().length ?? 0) >= 12;
+        if (!intelLine && !hasCleanTrigger) return null;
+
+        const threadHook = intelLine
+          ? intelLine.replace(/^\s*-\s*/, '').slice(0, 280)
+          : `${trig!.baseline_state.slice(0, 120)} → ${trig!.current_state.slice(0, 120)}`;
+        const whyNow = hasCleanTrigger
+          ? trig!.why_now!.trim()
+          : 'I need to move this thread forward while the context is still actionable.';
+        const askBit = hasCleanTrigger && trig!.delta?.trim()
+          ? trig!.delta!.trim().slice(0, 160)
+          : 'where you stand on the open item from our last exchange';
+
+        return {
+          insight: whyNow.slice(0, 240),
+          causal_diagnosis: input.causalDiagnosis,
+          decision: 'ACT',
+          directive: `Send ${firstName} a note that cites the last interaction, names why reconnection matters now, and asks one concrete thing by ${simpleDate}.`,
+          artifact_type: 'send_message',
+          artifact: {
+            to: recipient,
+            recipient,
+            subject: `Quick follow-up: ${threadHook.slice(0, 55)}`,
+            body: [
+              `Hi ${firstName},`,
+              ``,
+              `I'm writing about ${threadHook.slice(0, 220)} — ${whyNow.slice(0, 220)}`,
+              ``,
+              `Could you reply by ${simpleDate} with ${askBit}?`,
+              ``,
+              `Thanks,${signOff ? `\n${signOff}` : ''}`,
+            ].join('\n'),
+          },
+          why_now: whyNow.slice(0, 320),
+        };
+      }
+
       return {
         insight: `Relationship with ${input.winner.entityName} has gone silent — reconnection attempt before the window closes.`,
         causal_diagnosis: input.causalDiagnosis,
@@ -3924,9 +4145,9 @@ function buildDecisionEnforcedFallbackPayload(input: {
           body: [
             `Hi ${firstName},`,
             ``,
-            `It's been a while since we last connected. Can you confirm if you're open to a brief catch-up by ${simpleDate}?`,
+            `Can you confirm if you're open to a brief catch-up by ${simpleDate}? I wanted to reconnect while the thread is still actionable on my side.`,
             ``,
-            `If there's no reply, I'll take that as a sign the timing isn't right. But I didn't want that risk of losing touch to pass without asking.`,
+            `If the timing isn't right, no problem — a quick yes/no still helps me plan.`,
             ``,
             `Best,${signOff ? `\n${signOff}` : ''}`,
           ].join('\n'),
@@ -4591,7 +4812,9 @@ export async function generateDirective(
 
       // --- Per-candidate: research ---
       let insight: ResearchInsight | null = null;
-      if (currentCandidate.score >= 2.0) {
+      const isDecayDiscrepancy =
+        hydratedWinner.type === 'discrepancy' && hydratedWinner.discrepancyClass === 'decay';
+      if (!isDecayDiscrepancy && currentCandidate.score >= 2.0) {
         try {
           insight = await researchWinner(userId, hydratedWinner, { dryRun: options.dryRun });
         } catch {
@@ -4610,17 +4833,21 @@ export async function generateDirective(
       } catch { /* non-blocking */ }
 
       // --- Per-candidate: conviction engine (only for first viable candidate) ---
+      // Decay reconnection: skip conviction math — it keys off matchedGoal (often financial runway)
+      // and would instruct the model to prioritize unrelated "bridge" actions over the reconnect.
       let convictionDecision: import('./conviction-engine').ConvictionDecision | null = null;
-      const topGoalText = currentCandidate.matchedGoal?.text ?? currentCandidate.title ?? '';
-      if (topGoalText) {
-        try {
-          const { runConvictionEngine } = await import('./conviction-engine');
-          convictionDecision = await Promise.race([
-            runConvictionEngine(userId, topGoalText),
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
-          ]);
-        } catch (ceErr) {
-          console.warn(`[generator] conviction engine failed (non-fatal): ${ceErr instanceof Error ? ceErr.message : String(ceErr)}`);
+      if (!isDecayDiscrepancy) {
+        const topGoalText = currentCandidate.matchedGoal?.text ?? currentCandidate.title ?? '';
+        if (topGoalText) {
+          try {
+            const { runConvictionEngine } = await import('./conviction-engine');
+            convictionDecision = await Promise.race([
+              runConvictionEngine(userId, topGoalText),
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+            ]);
+          } catch (ceErr) {
+            console.warn(`[generator] conviction engine failed (non-fatal): ${ceErr instanceof Error ? ceErr.message : String(ceErr)}`);
+          }
         }
       }
 

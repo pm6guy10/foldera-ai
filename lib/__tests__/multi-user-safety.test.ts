@@ -166,6 +166,37 @@ describe('multi-user safety', () => {
     expect(prompt).toContain('the user');
   });
 
+  it('buildPromptFromStructuredContext decay discrepancy short path omits goal/conviction blocks', () => {
+    const ctx = {
+      has_real_recipient: true,
+      recipient_brief: 'Cheryl Anderson <cheryl@example.com>',
+      candidate_class: 'discrepancy',
+      discrepancy_class: 'decay',
+      supporting_signals: [
+        {
+          source: 'gmail',
+          occurred_at: '2026-01-15',
+          entity: 'cheryl@example.com',
+          summary: 'Q4 planning thread',
+          direction: 'received',
+        },
+      ],
+      already_sent_14d: [],
+      recent_action_history_7d: [],
+      confidence_prior: 75,
+      user_full_name: 'Test User',
+      user_first_name: 'Test',
+      trigger_context: 'TRIGGER_CONTEXT (decay):\nDelta: prior engagement cooled.',
+    } as unknown as StructuredContext;
+    const prompt = buildPromptFromStructuredContext(ctx);
+    expect(prompt).toContain('Write an email from the user to:');
+    expect(prompt).toContain('DECAY_RECONNECTION_RULE');
+    expect(prompt).not.toContain('CONVERGENT_ANALYSIS');
+    expect(prompt).not.toContain('CONVICTION_MATH');
+    expect(prompt).toContain('do_nothing');
+    expect(prompt).toContain('unrelated financial');
+  });
+
   it('scoreOpenLoops resolves for an arbitrary user id (empty dataset) without throwing', async () => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return;
