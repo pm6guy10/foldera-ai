@@ -6,7 +6,7 @@
 
 - 2026-04-01 — FLOW: Remove scheduleConflictDocRelaxed bypass + SCHEDULE_CONFLICT_RULE prompt + guards
   MODE: FLOW
-  Commit hash(es): (set after push)
+  Commit hash(es): `e5bd8d6`
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/discrepancy-detector.ts`, `lib/briefing/schedule-conflict-guards.ts`, `lib/briefing/effective-discrepancy-class.ts`, `lib/briefing/__tests__/schedule-conflict-guards.test.ts`, `lib/briefing/__tests__/schedule-conflict-finished-work-gates.test.ts`, `lib/briefing/__tests__/generator.test.ts`, `lib/conviction/artifact-generator.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/__tests__/bottom-gate.test.ts`, `lib/cron/__tests__/evaluate-readiness.test.ts`, `app/api/dev/brain-receipt/route.ts`, `app/api/dev/brain-receipt/__tests__/route.test.ts`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/` (364 passed). Owner `POST /api/dev/brain-receipt` after deploy: not run from this workspace (no live call in session).
   Any unresolved issues: Re-run owner brain-receipt on production after deploy for APPROVABLE verdict.
