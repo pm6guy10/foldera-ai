@@ -6,7 +6,7 @@
 
 - 2026-03-31 — FLOW: Premium surface pass (nav chrome, pages, email copy, migrations log, E2E blog fix)
   MODE: FLOW
-  Commit hash(es): pending (`git log -1 --oneline` after push)
+  Commit hash(es): `ddb6a04`
   Files changed: `app/layout.js` (icons → `/foldera-glyph.svg`; removed `app/icon.tsx` + `app/apple-icon.tsx`), `app/globals.css` (`#main` fade-in), `app/login/login-inner.tsx`, `app/start/page.tsx`, `app/try/page.tsx`, `app/privacy/page.tsx`, `app/terms/page.tsx`, `app/(marketing)/blog/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `lib/email/resend.ts`, `public/index.html`, `.env.example`, `tests/e2e/public-routes.spec.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`
   What was verified: `npm run build` (pass after clean `.next`); `npx vitest run --exclude ".claude/worktrees/**"` (pass); `npx playwright test tests/e2e/` (53 passed, 4 skipped). Supabase MCP: migration `agent_layer_action_source` applied; duplicate-entity GROUP BY for owner returned **no rows**; migrations list shows earlier application of `20260326000001`–`20260401000001` equivalents — **skipped** re-apply. `20260330000002_recount_real_interactions.sql` not re-run (data migration; no evidence backlog required re-run).
   Any unresolved issues: User asked Gmail/Outlook email screenshots — not captured in-session. `npm run test:prod` not run (requires live deploy + auth state).
