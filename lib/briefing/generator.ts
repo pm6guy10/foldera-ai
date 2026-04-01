@@ -2731,7 +2731,11 @@ export function getDecisionEnforcementIssues(input: {
   if (normalizedType === 'write_document' && textHasAny(combinedText, SUMMARY_ONLY_PATTERNS)) {
     issues.push('decision_enforcement:summary_without_decision');
   }
-  if (normalizedType === 'write_document' && !textHasAny(combinedText, OWNERSHIP_PATTERNS)) {
+  if (
+    !scheduleConflictDocRelaxed &&
+    normalizedType === 'write_document' &&
+    !textHasAny(combinedText, OWNERSHIP_PATTERNS)
+  ) {
     issues.push('decision_enforcement:missing_owner_assignment');
   }
   if (textHasAny(combinedText, REWRITE_REQUIRED_PATTERNS)) {

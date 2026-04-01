@@ -1029,6 +1029,7 @@ function buildWaitRationale(
   const discovery = directive.generationLog?.candidateDiscovery;
   const candidateCount = discovery?.candidateCount ?? 0;
   const topCandidates = discovery?.topCandidates ?? [];
+  const oneLiner = typeof directive.directive === 'string' ? directive.directive.trim() : '';
   const modelInsight = typeof directive.fullContext === 'string' && directive.fullContext.trim()
     ? directive.fullContext.trim()
     : null;
@@ -1053,11 +1054,15 @@ function buildWaitRationale(
   const context = modelInsight
     ? `${modelInsight}\n\n${contextParts.join('\n')}`
     : contextParts.join('\n');
-  const directiveText = modelInsight
-    ? modelInsight
-    : candidateCount > 0
-    ? `Nothing cleared the bar today — ${candidateCount} candidates evaluated, none ready to send.`
-    : 'Nothing cleared the bar today.';
+  // Prefer the real lead sentence for `directive_text` so no-send rows match the attempted winner.
+  const directiveText =
+    oneLiner.length > 0 && oneLiner.length <= 500 && !/^INSIGHT:/i.test(oneLiner)
+      ? oneLiner
+      : modelInsight
+        ? modelInsight
+        : candidateCount > 0
+        ? `Nothing cleared the bar today — ${candidateCount} candidates evaluated, none ready to send.`
+        : 'Nothing cleared the bar today.';
 
   return {
     directiveText,

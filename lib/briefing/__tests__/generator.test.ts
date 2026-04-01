@@ -8,6 +8,7 @@ import {
 import {
   applyScheduleConflictCanonicalUserFacingCopy,
   extractJsonFromResponse,
+  getDecisionEnforcementIssues,
   parseGeneratedPayload,
   validateDirectiveForPersistence,
 } from '../generator';
@@ -307,5 +308,20 @@ describe('applyScheduleConflictCanonicalUserFacingCopy', () => {
     applyScheduleConflictCanonicalUserFacingCopy(payload!, winner);
     expect(payload!.directive).toBe('Overlapping events on 2026-04-02.');
     expect(payload!.why_now).toContain('explicit priority');
+  });
+
+  it('getDecisionEnforcementIssues skips ownership for schedule_conflict when overlap + ISO + numbered steps', () => {
+    const issues = getDecisionEnforcementIssues({
+      actionType: 'write_document',
+      directiveText: 'Overlapping events on 2026-04-02.',
+      reason: 'Overlapping events force an explicit priority call.',
+      artifact: {
+        type: 'document',
+        title: 'Resolve overlap',
+        content: '1. Open the calendar app for 2026-04-02.\n2. Reschedule the lower-priority block.',
+      },
+      discrepancyClass: 'schedule_conflict',
+    });
+    expect(issues.some((i) => i.includes('missing_owner_assignment'))).toBe(false);
   });
 });
