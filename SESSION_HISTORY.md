@@ -6,7 +6,7 @@
 
 - 2026-03-31 — FLOW: Brain depth — cross-source discrepancy candidates (calendar, drive, conversation, convergence) + scorer/generator wiring
   MODE: FLOW (brain / scoring)
-  Commit hash(es): pending
+  Commit hash(es): `12f56a6`
   Files changed: `lib/briefing/discrepancy-detector.ts` (7 cross-source classes, `parseCalendarEventFromContent`, `StructuredSignalInput` / `RecentDirectiveInput`, cap 14), `lib/briefing/scorer.ts` (`structuredSignals`, `recentDirectives`, `mergeUrgencyWithTimeHints`, entity penalty only for `send_message`, entities `primary_email`/`emails`, signals `source_id`), `lib/briefing/generator.ts` (`discrepancyPreferredAction` in `buildDecisionPayload`), `lib/briefing/trigger-action-map.ts` (full class map + `unresolved_intent` validation flex), `lib/briefing/__tests__/discrepancy-detector.test.ts` (cross-source fixtures), `CURRENT_STATE.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`, `LESSONS_LEARNED.md`, `FOLDERA_PRODUCT_SPEC.md`
   What was verified: `npx vitest run --exclude ".claude/worktrees/**"` (pass); `npm run build` (pass).
   Any unresolved issues: Production `POST /api/dev/brain-receipt` and `npm run test:prod` not run this session; live confirmation of larger candidate pool and calendar/drive-sourced discrepancies still required.
