@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — FLOW: Rewrite `SYSTEM_PROMPT` in `generator.ts` — strategic partner voice (pattern / why-now / finished work), quality examples, `behavioral_pattern` winner lead; schema + validation unchanged
+  MODE: FLOW
+  Commit hash(es): (this entry; verify with `git log -1 --oneline` on `main`)
+  Files changed: `lib/briefing/generator.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run lib/briefing/__tests__/`; `npx vitest run --exclude ".claude/worktrees/**"`; `rg "elite|analyst" lib/briefing/generator.ts` → no matches; `SYSTEM_PROMPT` contains `partner` + `pattern`
+  Any unresolved issues: `npm run test:prod` after Vercel READY per runbook (not run in this session).
+
 - 2026-04-01 — FLOW: Add `behavioral_pattern` discrepancy class — cross-signal pattern extractor (`extractBehavioralPatterns`) + trigger map + unit tests
   MODE: FLOW
   Commit hash(es): (this entry; verify with `git log -1 --oneline` on `main`)
