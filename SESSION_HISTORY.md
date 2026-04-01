@@ -6,7 +6,7 @@
 
 - 2026-04-01 — Decay evidence: deep entity-targeted `tkg_signals` scan (500 / retention window)
   MODE: FIX
-  Commit hash(es): pending
+  Commit hash(es): `8114ef3`
   Files changed: `lib/briefing/generator.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run lib/briefing/__tests__/discrepancy-detector.test.ts lib/briefing/__tests__/generator.test.ts --exclude ".claude/worktrees/**"` (123 passed). Local `POST /api/dev/brain-receipt` → **401** (no owner session) — **no live `decay_signal_evidence_debug` or artifact from this workspace**; owner must run signed-in dev or prod after deploy and grep server logs for `decay_signal_evidence_debug`.
   Any unresolved issues: Remove TEMP `decay_signal_evidence_debug` log after Cheryl/interview proof.

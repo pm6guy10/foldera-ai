@@ -27,6 +27,7 @@ import { decryptWithStatus } from '@/lib/encryption';
 import {
   APPROVAL_LOOKBACK_MS,
   CONFIDENCE_PERSIST_THRESHOLD,
+  SIGNAL_RETENTION_DAYS,
   daysMs,
 } from '@/lib/config/constants';
 import { resolveUserPromptNames, type UserPromptNames } from '@/lib/auth/user-display-name';
@@ -3340,9 +3341,60 @@ async function fetchWinnerSignalEvidence(
     }
   }
 
+  // Decay discrepancy: scorer attaches synthetic sourceSignals (no tkg_signals.id). Without a deep
+  // entity-targeted scan, evidence is empty and the 30-row fallback misses older threads in busy inboxes.
+  if (isDecayDiscrepancy) {
+    const anchors = extractDecayEntityAnchors(winner);
+    const entityEmailsSet = new Set(anchors.emails);
+    if (winner.relationshipContext) {
+      const entityEmailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+      let emailMatch: RegExpExecArray | null;
+      while ((emailMatch = entityEmailPattern.exec(winner.relationshipContext)) !== null) {
+        entityEmailsSet.add(emailMatch[0].toLowerCase());
+      }
+    }
+    const entityEmails = [...entityEmailsSet];
+    if (entityEmails.length > 0 || anchors.tokens.length > 0) {
+      const lookbackIso = new Date(Date.now() - daysMs(SIGNAL_RETENTION_DAYS)).toISOString();
+      const { data: decayRows } = await supabase
+        .from('tkg_signals')
+        .select('content, source, occurred_at, author, type')
+        .eq('user_id', userId)
+        .eq('processed', true)
+        .gte('occurred_at', lookbackIso)
+        .order('occurred_at', { ascending: false })
+        .limit(500);
+
+      const existingTexts = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
+      const DECAY_ENTITY_SNIPPET_CAP = 40;
+
+      for (const row of decayRows ?? []) {
+        if (snippets.length >= DECAY_ENTITY_SNIPPET_CAP) break;
+        const decrypted = decryptWithStatus(row.content as string ?? '');
+        if (decrypted.usedFallback) continue;
+        const plain = decrypted.plaintext;
+        const hay = plain.toLowerCase();
+        let entityHit = entityEmails.some((email) => hay.includes(email));
+        if (!entityHit && anchors.tokens.length > 0) {
+          const hits = anchors.tokens.filter((t) => hay.includes(t));
+          entityHit =
+            anchors.tokens.length >= 2 ? hits.length >= 2 : hits.length >= 1;
+        }
+        if (!entityHit) continue;
+
+        const parsed = parseSignalSnippet(plain, row);
+        if (parsed && !existingTexts.has(parsed.snippet.slice(0, 60))) {
+          snippets.push(parsed);
+          existingTexts.add(parsed.snippet.slice(0, 60));
+        }
+      }
+    }
+  }
+
   // Entity-targeted 90-day fetch: pull signals that mention the winner entity by email address
-  // This gives the model a real relationship history beyond the 14-day window
-  if (snippets.length < 8 && winner.relationshipContext) {
+  // This gives the model a real relationship history beyond the 14-day window.
+  // Decay uses the deep scan above instead of this shallow 30-row pass.
+  if (!isDecayDiscrepancy && snippets.length < 8 && winner.relationshipContext) {
     const entityEmailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
     const entityEmails: string[] = [];
     let emailMatch: RegExpExecArray | null;
@@ -4788,6 +4840,24 @@ export async function generateDirective(
           artifactType: null, generationStatus: 'context_degraded',
           details: { scope: 'generator', stage: 'fetchWinnerSignalEvidence', error: ctxErr instanceof Error ? ctxErr.message : String(ctxErr) },
         });
+      }
+
+      // TEMP: decay evidence proof — remove after brain-receipt verification
+      if (
+        hydratedWinner.type === 'discrepancy' &&
+        hydratedWinner.discrepancyClass === 'decay'
+      ) {
+        console.log(
+          JSON.stringify({
+            event: 'decay_signal_evidence_debug',
+            userId,
+            winner_id: hydratedWinner.id,
+            snippets_count: signalEvidence.length,
+            snippet_previews: signalEvidence.map(
+              (s) => `${(s.subject ?? '').slice(0, 80)} | ${s.snippet.slice(0, 120)}`,
+            ),
+          }),
+        );
       }
 
       // --- Per-candidate: entity suppression ---
