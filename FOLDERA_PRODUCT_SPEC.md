@@ -70,15 +70,19 @@ March 24 production hotfix evidence:
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| Stripe keys configured | CANNOT VERIFY | `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` checked at runtime in checkout/webhook routes. Cannot read Vercel env vars from CI. Brandon must verify in Vercel dashboard. `STRIPE_PRO_PRICE_ID` should be `price_1TF00IRrgMYs6VrdugNcEC9z` (live). | — |
-| API version | NOTE | Routes use `apiVersion: '2025-08-27.basil'` cast as `any`. This is a future-dated API version string. Verify it matches the Stripe dashboard. | — |
-| Checkout session creation | NOT TESTED | Code exists (commit 650eba5). Route: `/api/stripe/checkout` | — |
-| Webhook handler | NOT TESTED | Route: `/api/stripe/webhook`. Handles `checkout.session.completed`, `invoice.payment_succeeded`, `invoice.payment_failed`, `customer.subscription.deleted` | — |
-| Subscription written to DB | NOT TESTED | — | — |
-| Pro tier unlocked after payment | NOT TESTED | — | — |
+| Stripe keys configured | CANNOT VERIFY | `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` checked at runtime in checkout/webhook/portal routes. Cannot read Vercel env vars from CI. Brandon must verify in Vercel dashboard. `STRIPE_PRO_PRICE_ID` should be `price_1TF00IRrgMYs6VrdugNcEC9z` (live). | — |
+| API version | NOTE | Routes use `apiVersion: '2025-08-27.basil'` cast as `any`. Verify it matches the Stripe dashboard. | — |
+| Checkout session creation | BUILT | `POST /api/stripe/checkout` — subscription mode, `client_reference_id` / metadata `userId`, success → `/dashboard?upgraded=true`, cancel → `/pricing`. Session required; body must match signed-in user. | — |
+| Customer portal | BUILT | `POST /api/stripe/portal` — session required; billing portal from `user_subscriptions.stripe_customer_id`. | — |
+| Webhook handler | BUILT (live card not run in CI) | `POST /api/stripe/webhook` — signature verify → 400 on failure; service-role Supabase. Events: `checkout.session.completed` (upsert pro + welcome email), `customer.subscription.updated` / `deleted`, `invoice.paid` / `invoice.payment_succeeded`, `invoice.payment_failed` (portal email). Shared helpers in `lib/stripe/subscription-db.ts` + unit tests. | Real webhook + card test still manual |
+| Subscription status API | BUILT | `GET /api/subscription/status` — session required; reads `user_subscriptions` for `plan`, `status`, `current_period_end`, billing flags. | — |
+| Pricing / start CTAs | BUILT | `/pricing`: Free → `/start`; Pro logged out → `/start?plan=pro`; Pro logged in → checkout POST. | — |
+| Free-tier artifact gating | BUILT | `/dashboard` loads subscription; free users see directive text with blurred artifact + upgrade CTA; pro sees full artifact. | — |
+| Transactional email | BUILT | `sendProWelcomeEmail` / `sendPaymentFailedEmail` in `lib/email/resend.ts` (dark template); invoked from webhook. | — |
+| Pro tier unlocked after payment | NOT PROVEN (live) | Depends on webhook delivery + `user_subscriptions` row; no automated card test in repo. | Revenue proof |
 | End-to-end test payment | NOT STARTED | — | Revenue |
 
-**STATUS:** Stripe is Gate 3, not blocking Phase 1. Stripe keys cannot be verified from CI (Vercel env vars not readable). Checkout and webhook routes exist but are untested. `apiVersion: '2025-08-27.basil'` is cast as `any` — Brandon must verify it matches the Stripe dashboard API version. Brandon must verify `STRIPE_SECRET_KEY`, `STRIPE_PRO_PRICE_ID`, and `STRIPE_WEBHOOK_SECRET` are set in Vercel env vars.
+**STATUS:** Checkout, portal, webhook, subscription API, pricing wiring, dashboard gating, and Resend emails are implemented. Vercel must have `STRIPE_SECRET_KEY`, `STRIPE_PRO_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`. Brandon should run one live test subscription and confirm `user_subscriptions` + email receipts. Local E2E: `npm run build` then `npx playwright test tests/e2e/` (uses `npm run start` + `127.0.0.1` — see `playwright.config.ts`).
 
 ### 1.5 Acceptance Gate
 

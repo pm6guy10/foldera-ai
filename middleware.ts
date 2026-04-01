@@ -57,7 +57,11 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/start/');
 
   if (isProtectedRoute || isAuthEntryRoute) {
-    const token = await getToken({ req: request, secret });
+    // Must match getAuthOptions(): getToken() defaults secureCookie from NEXTAUTH_URL (https → __Secure-
+    // cookie name). Local `next start` uses non-__Secure- names when VERCEL is unset — otherwise
+    // middleware never sees the session and /dashboard always redirects to /login.
+    const useSecureCookies = process.env.NODE_ENV === 'production' && Boolean(process.env.VERCEL);
+    const token = await getToken({ req: request, secret, secureCookie: useSecureCookies });
     const hasOnboarded = Boolean((token as { hasOnboarded?: boolean } | null)?.hasOnboarded);
 
     if (isProtectedRoute && !token) {

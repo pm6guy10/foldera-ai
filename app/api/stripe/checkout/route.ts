@@ -1,14 +1,10 @@
 /**
  * POST /api/stripe/checkout
  *
- * Creates a Stripe Checkout Session for the Pro plan and returns the URL.
- * Accepts an optional price_id parameter; defaults to STRIPE_PRO_PRICE_ID.
- * No trial — free tier is available to all users.
+ * Body (optional): { priceId?, price_id?, userId?, email? }
+ * All identity fields must match the signed-in session when provided.
  *
- * Required env vars:
- *   STRIPE_SECRET_KEY
- *   STRIPE_PRO_PRICE_ID
- *   NEXTAUTH_URL (for success/cancel redirect URLs)
+ * Env: STRIPE_SECRET_KEY, STRIPE_PRO_PRICE_ID, NEXTAUTH_URL
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -31,27 +27,38 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const requestedPriceId = typeof body?.price_id === 'string' ? body.price_id : undefined;
-    const priceId = requestedPriceId || process.env.STRIPE_PRO_PRICE_ID;
-    if (!priceId) {
-      return NextResponse.json(
-        { error: 'STRIPE_PRO_PRICE_ID not configured' },
-        { status: 400 },
-      );
+    const priceIdRaw =
+      (typeof body?.priceId === 'string' && body.priceId) ||
+      (typeof body?.price_id === 'string' && body.price_id) ||
+      process.env.STRIPE_PRO_PRICE_ID;
+    if (!priceIdRaw) {
+      return NextResponse.json({ error: 'STRIPE_PRO_PRICE_ID not configured' }, { status: 400 });
     }
 
-    const email = session.user.email;
+    const bodyUserId = typeof body?.userId === 'string' ? body.userId : undefined;
+    const bodyEmail = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : undefined;
+
+    if (bodyUserId && bodyUserId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const sessionEmail = session.user.email?.trim().toLowerCase() ?? '';
+    if (bodyEmail && sessionEmail && bodyEmail !== sessionEmail) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const userId = session.user.id;
+    const email = session.user.email ?? undefined;
     const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
 
     const stripe = getStripe();
     const checkout = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ price: priceIdRaw, quantity: 1 }],
       success_url: `${baseUrl}/dashboard?upgraded=true`,
-      cancel_url:  `${baseUrl}/pricing`,
+      cancel_url: `${baseUrl}/pricing`,
+      client_reference_id: userId,
       ...(email ? { customer_email: email } : {}),
-      ...(userId ? { client_reference_id: userId } : {}),
+      metadata: { userId },
     });
 
     return NextResponse.json({ url: checkout.url });

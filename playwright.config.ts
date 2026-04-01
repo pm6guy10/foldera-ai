@@ -13,11 +13,14 @@ export default defineConfig({
   testDir: "./tests",
   testIgnore: ["**/tests/production/**", "**/tests/audit/**"],
   timeout: 30000,
+  // Run `npm run build` before e2e (CI does this in a separate step). A second `next build` here races `.next` on Windows and can ENOENT mid-build.
   webServer: {
-    command: "npm run build && npm run start",
-    port: 3000,
-    reuseExistingServer: !process.env.CI,
-    timeout: 180000,
+    command: "npm run start",
+    url: "http://127.0.0.1:3000",
+    // GitHub Actions sets CI=true — always spawn a fresh server after `npm run build`. Locally, reuse avoids double `next start` on :3000.
+    reuseExistingServer: process.env.CI !== "true" && process.env.CI !== "1",
+    timeout: 120000,
   },
-  use: { baseURL: process.env.BASE_URL || "http://localhost:3000", trace: "retain-on-failure" }
+  // Use 127.0.0.1 — Node 22 on Windows often resolves `localhost` to ::1 while the server is IPv4-only → ECONNREFUSED.
+  use: { baseURL: process.env.BASE_URL || "http://127.0.0.1:3000", trace: "retain-on-failure" }
 });

@@ -1,10 +1,7 @@
 /**
  * GET /api/subscription/status
  *
- * Returns the current user's subscription status.
- * Used by the dashboard to show trial expiry upsell.
- *
- * Returns: { plan, status, trialEndsAt, daysRemaining } | { status: 'none' }
+ * Authenticated. Reads user_subscriptions (via getSubscriptionStatus).
  */
 
 import { NextResponse } from 'next/server';
@@ -14,7 +11,6 @@ import { getSubscriptionStatus } from '@/lib/auth/subscription';
 import { apiError } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
-
 
 export async function GET() {
   const session = await getServerSession(getAuthOptions());
@@ -26,9 +22,11 @@ export async function GET() {
     const info = await getSubscriptionStatus(session.user.id);
 
     return NextResponse.json({
-      plan:          info.plan,
-      status:        info.status,
+      plan: info.plan,
+      status: info.status,
+      current_period_end: info.current_period_end,
       daysRemaining: info.daysRemaining,
+      can_manage_billing: info.canManageBilling,
     });
   } catch (err: unknown) {
     return apiError(err, 'subscription/status');

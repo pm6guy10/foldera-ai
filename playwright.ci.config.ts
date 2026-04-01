@@ -12,7 +12,7 @@
  *   tests/audit/*           — writes to disk, clickflow timeouts on /
  *   tests/production/*      — requires auth-state.json + live foldera.ai
  *
- * Requires: NEXTAUTH_SECRET, NEXTAUTH_URL=http://localhost:3000
+ * Requires: NEXTAUTH_SECRET, NEXTAUTH_URL=http://127.0.0.1:3000 (or localhost if IPv6 works)
  * The build step runs before this step in CI, so webServer uses `npm run start`.
  */
 import { defineConfig } from "@playwright/test";
@@ -29,12 +29,13 @@ export default defineConfig({
   reporter: [["list"]],
   webServer: {
     command: "npm run start",
-    port: 3000,
-    reuseExistingServer: true,
+    url: "http://127.0.0.1:3000",
+    // Reusing a stale dev/prod server on :3000 serves HTML that points at old chunk hashes → 400 on /_next/static and blank client pages.
+    reuseExistingServer: false,
     timeout: 60000,
   },
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://127.0.0.1:3000",
     trace: "retain-on-failure",
   },
 });

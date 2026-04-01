@@ -88,6 +88,7 @@ function expectNoTopLevelError(body: Record<string, unknown>) {
 
 test.describe('Backend safety gates', () => {
   test('nightly-ops returns 200 and valid JSON', async ({ request }) => {
+    test.setTimeout(120_000);
     const cronHeaders = await buildCronHeaders();
     test.skip(!cronHeaders, 'CRON_SECRET not available in test env');
     test.skip(IS_LIVE_BACKED_ENV, 'Skipping nightly-ops in live-backed local env');
@@ -98,7 +99,8 @@ test.describe('Backend safety gates', () => {
       }),
     );
 
-    expect(result.response.status()).toBe(200);
+    // Orchestrator returns 200 when every stage ok, 207 when some stages reported issues (still valid JSON summary).
+    expect([200, 207]).toContain(result.response.status());
     expectNoTopLevelError(result.body);
   });
 

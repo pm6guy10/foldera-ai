@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { FolderaMark } from '@/components/nav/FolderaMark';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import { Settings, Lock, LogOut } from 'lucide-react';
 import type { ConvictionAction } from '@/lib/briefing/types';
+import { OWNER_USER_ID } from '@/lib/auth/constants';
+import { AgentSystemPanel } from '@/components/dashboard/AgentSystemPanel';
 
 type ArtifactWithDraftedEmail = {
   type: string;
@@ -24,15 +26,26 @@ type ArtifactWithDraftedEmail = {
 type ActionWithDomain = ConvictionAction & { domain?: string; generatedAt?: string };
 
 export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const { data: session, status } = useSession();
+  const isOwner =
+    mounted &&
+    status === 'authenticated' &&
+    session?.user?.id === OWNER_USER_ID;
+  const [mainTab, setMainTab] = useState<'directive' | 'system'>('directive');
   const [action, setAction] = useState<ActionWithDomain | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState(false);
   const [executing, setExecuting] = useState(false);
-  const [surfaceVisible, setSurfaceVisible] = useState(false);
-  const [approvedCount, setApprovedCount] = useState(0);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subPlan, setSubPlan] = useState<string | null>(null);
+  const [subStatus, setSubStatus] = useState<string | null>(null);
   const [lastDecision, setLastDecision] = useState<'approve' | 'skip' | null>(null);
 
   // Handle ?generated=true from settings run-brief success
@@ -91,23 +104,57 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // After OAuth from /start?plan=pro, send user to Stripe Checkout once.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem('foldera_pending_checkout') !== 'pro') return;
+    sessionStorage.removeItem('foldera_pending_checkout');
+    void (async () => {
+      try {
+        const res = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data.url) window.location.href = data.url as string;
+      } catch {
+        /* user stays on dashboard */
+      }
+    })();
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setFetchError(false);
     try {
-      const convRes = await fetch('/api/conviction/latest');
+      const [convRes, subRes] = await Promise.all([
+        fetch('/api/conviction/latest'),
+        fetch('/api/subscription/status'),
+      ]);
+
+      if (subRes.ok) {
+        const sub = await subRes.json().catch(() => ({}));
+        setSubPlan(typeof sub.plan === 'string' ? sub.plan : null);
+        setSubStatus(typeof sub.status === 'string' ? sub.status : null);
+      } else {
+        setSubPlan(null);
+        setSubStatus(null);
+      }
+
       if (!convRes.ok) {
         setFetchError(true);
         setAction(null);
         return;
       }
       const data = await convRes.json().catch(() => ({}));
-      setApprovedCount(typeof data?.approved_count === 'number' ? data.approved_count : 0);
       setIsSubscribed(data?.is_subscribed === true);
       setAction(data?.id ? data : null);
     } catch {
       setFetchError(true);
       setAction(null);
+      setSubPlan(null);
+      setSubStatus(null);
     } finally {
       setLoading(false);
     }
@@ -116,17 +163,6 @@ export default function DashboardPage() {
   useEffect(() => {
     load();
   }, [load]);
-
-  // Subtle surface reveal whenever a directive is present.
-  useEffect(() => {
-    if (!action || loading || done || fetchError) {
-      setSurfaceVisible(false);
-      return;
-    }
-    setSurfaceVisible(false);
-    const raf = window.requestAnimationFrame(() => setSurfaceVisible(true));
-    return () => window.cancelAnimationFrame(raf);
-  }, [action, loading, done, fetchError]);
 
   const handleApprove = async () => {
     if (!action || executing) return;
@@ -184,8 +220,24 @@ export default function DashboardPage() {
   const isWait = artifact?.type === 'wait_rationale';
   const recipient = artifact?.to || artifact?.recipient || '';
 
-  // Blur gate: non-subscribed users who have used 3+ artifacts see a blur
-  const showArtifactBlur = approvedCount >= 3 && !isSubscribed;
+  const isProArtifactUnlocked =
+    subPlan === 'pro' && (subStatus === 'active' || subStatus === 'past_due');
+  const showArtifactBlur = Boolean(artifact) && !isProArtifactUnlocked;
+
+  async function startStripeCheckout() {
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.url) window.location.href = data.url as string;
+      else window.location.href = '/pricing';
+    } catch {
+      window.location.href = '/pricing';
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white">
@@ -222,10 +274,49 @@ export default function DashboardPage() {
 
       {/* Content */}
       <main id="main" className="relative z-10 pt-20 pb-14 px-4 max-w-2xl mx-auto">
+        {isOwner && (
+          <div className="flex gap-1 p-1 rounded-xl bg-zinc-900/80 border border-white/10 mb-6 max-w-md">
+            <button
+              type="button"
+              onClick={() => setMainTab('directive')}
+              className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${
+                mainTab === 'directive' ? 'bg-cyan-500/20 text-cyan-300' : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              Directive
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('system')}
+              className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${
+                mainTab === 'system' ? 'bg-emerald-500/20 text-emerald-300' : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              System
+            </button>
+          </div>
+        )}
+
+        {isOwner && mainTab === 'system' ? (
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400 mb-1">Autonomous agents</p>
+            <h1 className="text-xl font-bold text-white">Draft queue</h1>
+            <p className="text-sm text-zinc-500 mt-1">
+              Agent outputs stay out of your morning email. Approve to file artifacts, or skip to train the agent.
+            </p>
+            <AgentSystemPanel />
+          </div>
+        ) : null}
+
+        {(!isOwner || mainTab === 'directive') && (
+          <>
         {/* Flash message */}
         {flash && !done && (
-          <div className="mb-5 px-4 py-3 rounded-xl bg-zinc-950/80 border border-white/10 backdrop-blur-sm">
-            <p className="text-sm text-zinc-300">{flash}</p>
+          <div
+            role="status"
+            className="mb-5 px-4 py-3.5 rounded-xl bg-zinc-950/90 border border-cyan-500/25 backdrop-blur-md shadow-[0_12px_40px_-12px_rgba(0,0,0,0.8)]"
+          >
+            <p className="text-sm text-zinc-200 font-medium">{flash}</p>
           </div>
         )}
 
@@ -276,11 +367,7 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div
-            className={`rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/40 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.15)] overflow-hidden transition-all duration-300 ease-out ${
-              surfaceVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-            }`}
-          >
+          <div className="rounded-2xl bg-[#0a0a0f] border border-cyan-500/20 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.15)] overflow-hidden transition-all duration-300 ease-out">
             {/* Cyan top accent */}
             <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
 
@@ -306,80 +393,11 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Artifact */}
+            {/* Artifact — free users see full layout under a blur overlay (conversion) */}
             {artifact && (
               <div className="px-6 py-5 md:px-8 md:py-6 bg-black/40">
-                {showArtifactBlur ? (
-                  /* Blurred artifact for non-subscribed users who have used 3+ artifacts */
-                  <div className="relative">
-                    {/* First 2 lines visible */}
-                    <div className="rounded-2xl bg-cyan-500/10 border border-cyan-500/30 p-4 md:p-5 mb-0">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">
-                        {isEmail ? 'Drafted Reply' : isDecision ? 'Decision Frame' : 'Context'}
-                      </p>
-                      {isEmail && recipient && (
-                        <p className="text-xs text-zinc-500 mb-1 truncate">To: {recipient}</p>
-                      )}
-                      {isEmail && artifact.subject && (
-                        <p className="text-sm text-zinc-300 font-medium mb-2 truncate">
-                          Re: {artifact.subject}
-                        </p>
-                      )}
-                      {isDecision && artifact.options && artifact.options[0] && (
-                        <p className="text-sm font-bold text-white line-clamp-2">{artifact.options[0].option}</p>
-                      )}
-                      {isWait && artifact.context && (
-                        <p className="text-sm text-zinc-300 line-clamp-2">{artifact.context}</p>
-                      )}
-                      {isEmail && artifact.body && (
-                        <p className="text-sm text-zinc-200 line-clamp-2">{artifact.body}</p>
-                      )}
-                    </div>
-
-                    {/* Blurred overlay for the rest */}
-                    <div className="relative -mt-8 h-24 overflow-hidden pointer-events-none select-none">
-                      <div className="blur-sm opacity-40 p-4">
-                        <p className="text-sm text-zinc-200 leading-relaxed">
-                          {isEmail ? artifact.body : isDecision && artifact.options?.[1] ? artifact.options[1].option : artifact.context ?? ''}
-                        </p>
-                      </div>
-                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#07070c]/60 to-[#07070c]" />
-                    </div>
-
-                    {/* Upgrade nudge */}
-                    <div className="mt-3 rounded-2xl bg-[#0a0a0f] border border-cyan-500/40 p-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Lock className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-                        <p className="text-[11px] font-black uppercase tracking-[0.15em] text-cyan-400">Unlock finished work</p>
-                      </div>
-                      <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-                        You&apos;ve used your 3 free artifacts. Upgrade to see the full drafted email, ready to approve and send.
-                      </p>
-                      <a
-                        href="/api/stripe/checkout"
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          try {
-                            const res = await fetch('/api/stripe/checkout', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({}),
-                            });
-                            const data = await res.json().catch(() => ({}));
-                            if (data.url) window.location.href = data.url;
-                            else window.location.href = '/pricing';
-                          } catch {
-                            window.location.href = '/pricing';
-                          }
-                        }}
-                        className="w-full py-4 rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:scale-[1.01] active:scale-95"
-                      >
-                        Unlock for $29/mo
-                      </a>
-                    </div>
-                  </div>
-                ) : (
-                  <>
+                <div className="relative min-h-[120px] rounded-2xl overflow-hidden border border-white/10">
+                  <div className={showArtifactBlur ? 'pointer-events-none select-none' : ''}>
                     {isEmail && (
                       <div className="rounded-2xl bg-cyan-500/10 border border-cyan-500/30 border-l-4 border-l-cyan-500 p-4 md:p-5">
                         <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Drafted Reply</p>
@@ -392,7 +410,11 @@ export default function DashboardPage() {
                           </p>
                         )}
                         {artifact.body && (
-                          <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap line-clamp-6">
+                          <p
+                            className={`text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap ${
+                              showArtifactBlur ? '' : 'line-clamp-6'
+                            }`}
+                          >
                             {artifact.body}
                           </p>
                         )}
@@ -400,7 +422,7 @@ export default function DashboardPage() {
                     )}
 
                     {isDecision && artifact.options && (
-                      <div className="space-y-2">
+                      <div className="space-y-2 p-4 md:p-5">
                         <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Decision Frame</p>
                         <div className="grid grid-cols-1 gap-3">
                           {artifact.options.slice(0, 2).map((opt, i) => (
@@ -414,7 +436,7 @@ export default function DashboardPage() {
                     )}
 
                     {isWait && (
-                      <div className="rounded-2xl bg-zinc-950/60 border border-white/10 p-4">
+                      <div className="rounded-2xl bg-zinc-950/60 border border-white/10 p-4 m-4 md:m-5">
                         <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Context</p>
                         {artifact.context && (
                           <p className="text-sm text-zinc-300 leading-relaxed">{artifact.context}</p>
@@ -426,8 +448,24 @@ export default function DashboardPage() {
                         )}
                       </div>
                     )}
-                  </>
-                )}
+                  </div>
+
+                  {showArtifactBlur && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/45 px-5 py-8 text-center backdrop-blur-md">
+                      <Lock className="w-5 h-5 text-cyan-400 shrink-0" aria-hidden="true" />
+                      <p className="text-sm font-semibold text-zinc-100 leading-snug max-w-xs">
+                        Upgrade to Pro to unlock finished work. $29/mo.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={startStripeCheckout}
+                        className="rounded-xl bg-white px-6 py-3.5 text-xs font-black uppercase tracking-[0.15em] text-black shadow-[0_0_30px_rgba(255,255,255,0.15)] transition-transform hover:bg-zinc-200 hover:scale-[1.02] active:scale-95"
+                      >
+                        Upgrade to Pro
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -436,7 +474,7 @@ export default function DashboardPage() {
               <button
                 onClick={handleApprove}
                 disabled={executing}
-                className="flex-1 bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 min-h-[56px] bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
               >
                 {executing ? (
                   <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -447,7 +485,7 @@ export default function DashboardPage() {
               <button
                 onClick={handleSkip}
                 disabled={executing}
-                className="px-6 bg-zinc-900 border border-white/20 text-zinc-400 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[5.5rem]"
+                className="px-6 min-h-[56px] bg-zinc-900 border border-white/20 text-zinc-400 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[5.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
               >
                 {executing ? (
                   <span className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
@@ -457,6 +495,8 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
+        )}
+          </>
         )}
 
       </main>

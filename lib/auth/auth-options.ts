@@ -166,7 +166,9 @@ function getProductionSessionCookieDomain(): string | undefined {
 }
 
 export function getAuthOptions(): NextAuthOptions {
-  const useSecureCookies = process.env.NODE_ENV === 'production';
+  // Vercel sets VERCEL=1. Local `next start` is production but not Vercel — use non-__Secure- cookie names
+  // so http://localhost + Playwright addCookies work. Production on Vercel keeps secure cookies.
+  const useSecureCookies = process.env.NODE_ENV === 'production' && Boolean(process.env.VERCEL);
   const cookieDomain = getProductionSessionCookieDomain();
   const providers: any[] = [
     GoogleProvider({

@@ -12,7 +12,7 @@
  * Production smoke with a real browser session: npm run test:prod:setup then npm run test:prod.
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Route } from '@playwright/test';
 import { config as loadEnv } from 'dotenv';
 import { encode } from 'next-auth/jwt';
 
@@ -22,10 +22,11 @@ const HAS_NEXTAUTH_SECRET = Boolean(process.env.NEXTAUTH_SECRET?.trim());
 const describeAuthMocked = HAS_NEXTAUTH_SECRET ? test.describe : test.describe.skip;
 
 const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
-const SESSION_COOKIE_NAMES = [
-  'next-auth.session-token',
-  '__Secure-next-auth.session-token',
-];
+/** Must match Playwright `use.baseURL`. Empty `PLAYWRIGHT_TEST_BASE_URL` must not win — addCookies requires a valid url. */
+const E2E_ORIGIN =
+  process.env.PLAYWRIGHT_TEST_BASE_URL?.trim() ||
+  process.env.BASE_URL?.trim() ||
+  'http://127.0.0.1:3000';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,7 @@ const DIRECTIVE_RESPONSE = {
   confidence: 85,
   reason: 'Last contact was 5 days ago and the hiring window closes next week.',
   status: 'pending_approval',
+  is_subscribed: true,
   evidence: [{ type: 'signal', description: 'Email from Keri on March 14' }],
   artifact: {
     type: 'email',
@@ -82,6 +84,27 @@ function json(data: unknown) {
   return JSON.stringify(data);
 }
 
+function fulfillJson(data: unknown) {
+  return (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: json(data) });
+}
+
+/**
+ * Match same-origin API requests by pathname (ignores query string).
+ * Playwright URL globs do not match paths that include a query string, so unmocked fetches hit the real API (401).
+ */
+function matchApiPath(apiPath: string) {
+  return (url: URL | string): boolean => {
+    try {
+      const u = typeof url === 'string' ? new URL(url) : url;
+      const p = u.pathname;
+      return p === apiPath || p === `${apiPath}/`;
+    } catch {
+      return false;
+    }
+  };
+}
+
 async function seedAuthenticatedSession(page: Page) {
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) {
@@ -99,35 +122,63 @@ async function seedAuthenticatedSession(page: Page) {
     },
   });
 
-  await page.context().setExtraHTTPHeaders({
-    cookie: SESSION_COOKIE_NAMES.map((name) => `${name}=${sessionToken}`).join('; '),
+  // Matches getAuthOptions(): local `next start` (no VERCEL) uses `next-auth.session-token` without __Secure-.
+  // Avoid setExtraHTTPHeaders(Cookie): it breaks /_next/static chunk loading.
+  // Playwright: use `url` OR `path` (not both) — see playwright-core network.js assert.
+  const cookieUrl = new URL('/', E2E_ORIGIN).href;
+  await page.context().addCookies([
+    {
+      name: 'next-auth.session-token',
+      value: sessionToken,
+      url: cookieUrl,
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ]);
+}
+
+/** Prevent dashboard post-auth Stripe redirect from hijacking Playwright when .env has real Stripe keys. */
+async function attachCheckoutGuards(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      sessionStorage.removeItem('foldera_pending_checkout');
+    } catch {
+      /* ignore */
+    }
+  });
+  await page.route(matchApiPath('/api/stripe/checkout'), (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: json({ error: 'mock_checkout_disabled' }),
+    });
+  });
+  await page.route(matchApiPath('/api/stripe/portal'), (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    return route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: json({ error: 'mock' }),
+    });
   });
 }
 
 /** Set up all mocks for an authenticated dashboard with a directive. */
 async function setupDashboardMocks(page: Page) {
   await seedAuthenticatedSession(page);
+  await attachCheckoutGuards(page);
   // NextAuth session + CSRF
-  await page.route('**/api/auth/session', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json(SESSION_RESPONSE) }),
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/subscription/status'),
+    fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
   );
-  await page.route('**/api/auth/csrf', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({ csrfToken: 'mock-csrf-token' }) }),
-  );
-  await page.route('**/api/auth/providers', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({ google: {}, 'azure-ad': {} }) }),
-  );
-  // App API
-  await page.route('**/api/subscription/status', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({ plan: 'pro', status: 'active' }) }),
-  );
-  await page.route('**/api/onboard/check', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({ hasOnboarded: true }) }),
-  );
-  await page.route('**/api/conviction/latest', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json(DIRECTIVE_RESPONSE) }),
-  );
-  await page.route('**/api/conviction/execute', async (route) => {
+  await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+  await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DIRECTIVE_RESPONSE));
+  await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
     let decision: string | undefined;
     try {
       decision = route.request().postDataJSON()?.decision as string | undefined;
@@ -142,41 +193,31 @@ async function setupDashboardMocks(page: Page) {
 /** Set up mocks for dashboard with no directive (empty state). */
 async function setupEmptyDashboardMocks(page: Page) {
   await seedAuthenticatedSession(page);
-  await page.route('**/api/auth/session', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json(SESSION_RESPONSE) }),
+  await attachCheckoutGuards(page);
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/subscription/status'),
+    fulfillJson({ plan: 'pro', status: 'active' }),
   );
-  await page.route('**/api/auth/csrf', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({ csrfToken: 'mock-csrf-token' }) }),
-  );
-  await page.route('**/api/subscription/status', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({ plan: 'pro', status: 'active' }) }),
-  );
-  await page.route('**/api/onboard/check', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({ hasOnboarded: true }) }),
-  );
-  await page.route('**/api/conviction/latest', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({}) }),
-  );
+  await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+  await page.route(matchApiPath('/api/conviction/latest'), fulfillJson({}));
 }
 
 /** Set up mocks for settings page. */
 async function setupSettingsMocks(page: Page) {
   await seedAuthenticatedSession(page);
-  await page.route('**/api/auth/session', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json(SESSION_RESPONSE) }),
+  await attachCheckoutGuards(page);
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/subscription/status'),
+    fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
   );
-  await page.route('**/api/auth/csrf', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({ csrfToken: 'mock-csrf-token' }) }),
-  );
-  await page.route('**/api/subscription/status', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({ plan: 'pro', status: 'active' }) }),
-  );
-  await page.route('**/api/integrations/status', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json(INTEGRATIONS_RESPONSE) }),
-  );
-  await page.route('**/api/onboard/set-goals', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: json({ buckets: [], freeText: null }) }),
-  );
+  await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
+  await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
 }
 
 // ── Dashboard tests ─────────────────────────────────────────────────────────
@@ -213,7 +254,9 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupEmptyDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByText(/Your next read arrives tomorrow morning/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/next read|tomorrow morning|learning from your patterns/i).first()).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {

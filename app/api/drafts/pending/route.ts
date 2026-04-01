@@ -25,15 +25,25 @@ export async function GET(request: Request) {
   if (auth instanceof NextResponse) return auth;
   const { userId } = auth;
 
+  const scope = new URL(request.url).searchParams.get('scope');
+
   // ── Query ───────────────────────────────────────────────────────────────────
   const supabase = createServerClient();
-  const { data: rows, error } = await supabase
+  let q = supabase
     .from('tkg_actions')
-    .select('id, directive_text, action_type, reason, execution_result, generated_at')
+    .select('id, directive_text, action_type, reason, execution_result, generated_at, action_source')
     .eq('user_id', userId)
     .eq('status', 'draft')
     .order('generated_at', { ascending: false })
     .limit(20);
+
+  if (scope === 'system') {
+    q = q.not('action_source', 'is', null).like('action_source', 'agent_%');
+  } else if (scope === 'user') {
+    q = q.is('action_source', null);
+  }
+
+  const { data: rows, error } = await q;
 
   if (error) {
     return apiError(error, 'drafts/pending');

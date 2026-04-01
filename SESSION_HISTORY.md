@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — FLOW: Stripe payment infrastructure completion + local prod E2E harness
+  MODE: FLOW
+  Commit hash(es): run `git log -1 --oneline` — subject `ship: Stripe payment infrastructure — checkout, webhooks, free-tier gating, transactional emails, customer portal`
+  Files changed: `app/api/stripe/checkout/route.ts`, `app/api/stripe/webhook/route.ts`, `app/api/stripe/portal/route.ts`, `lib/stripe/subscription-db.ts`, `lib/stripe/__tests__/subscription-db.test.ts`, `app/api/subscription/status/route.ts`, `app/dashboard/page.tsx`, `app/pricing/page.tsx`, `app/api/drafts/pending/route.ts`, `components/dashboard/AgentSystemPanel.tsx`, `lib/auth/auth-options.ts`, `middleware.ts`, `playwright.config.ts`, `playwright.ci.config.ts`, `tests/e2e/authenticated-routes.spec.ts`, `tests/e2e/backend-safety-gates.spec.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` (pass); `npx playwright test tests/e2e/` — **55 passed, 2 skipped** (with existing `.next` from prior successful `npm run build`; webServer is `npm run start` on `http://127.0.0.1:3000`). Nightly-ops gate accepts HTTP **200 or 207**; test timeout **120s** for that call.
+  Any unresolved issues: Windows `next build` can race on `.next` if multiple builds run concurrently — run a single clean build before Playwright. **Unrelated WIP** (nav, landing, agents/cron workflows, api-tracker, etc.) left unstaged in the worktree. Live Stripe card + webhook receipt not exercised from this workspace. `npm run test:prod` not run.
+
 - 2026-03-31 — FLOW: Premium surface pass (nav chrome, pages, email copy, migrations log, E2E blog fix)
   MODE: FLOW
   Commit hash(es): `ddb6a04`
