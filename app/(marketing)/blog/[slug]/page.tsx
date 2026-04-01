@@ -65,7 +65,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
           <header className="mb-10">
             <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">{dateFormatter.format(new Date(post.date))}</p>
-            <h1 className="mt-3 text-3xl font-black tracking-tighter text-white sm:text-4xl leading-tight">{post.title}</h1>
+            <h1 className="mt-3 text-4xl font-black tracking-tighter text-white leading-tight">{post.title}</h1>
             <p className="mt-4 text-base leading-relaxed text-zinc-400">{post.description}</p>
           </header>
 

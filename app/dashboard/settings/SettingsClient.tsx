@@ -270,7 +270,7 @@ export default function SettingsClient() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
       </div>
       <Header />
-      <main className="relative z-10 pt-20 pb-14 px-4 max-w-3xl mx-auto space-y-5">
+      <main className="relative z-10 pt-20 pb-14 px-4 max-w-3xl mx-auto space-y-12">
 
         {/* Sync status banner */}
         {syncStatus && (
@@ -285,13 +285,13 @@ export default function SettingsClient() {
 
         {/* ── Connected accounts ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-5 py-5 md:px-6 md:py-6 border-b border-white/5">
-            <SectionHeading>Connected accounts</SectionHeading>
+          <div className="px-5 py-6 md:px-6 border-b border-white/5">
+            <SectionHeading className="mb-2">Connected accounts</SectionHeading>
             <p className="text-xs text-zinc-600">Choose which accounts Foldera reads.</p>
           </div>
-          <div className="px-5 py-5 md:px-6 md:py-6 space-y-3">
+          <div className="px-5 py-6 md:px-6 space-y-3">
             {/* Google card */}
-            <div className={`rounded-2xl border border-white/10 overflow-hidden ${google?.is_active ? 'border-l-4 border-l-cyan-500/70' : ''}`}>
+            <div className={`rounded-2xl border border-white/10 overflow-hidden ${google?.is_active ? 'border-l-2 border-l-cyan-400' : ''}`}>
               <div className="bg-zinc-950/60 p-4 md:p-5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <GoogleIcon />
@@ -350,7 +350,7 @@ export default function SettingsClient() {
             </div>
 
             {/* Microsoft card */}
-            <div className={`rounded-2xl border border-white/10 overflow-hidden ${microsoft?.is_active ? 'border-l-4 border-l-cyan-500/70' : ''}`}>
+            <div className={`rounded-2xl border border-white/10 overflow-hidden ${microsoft?.is_active ? 'border-l-2 border-l-cyan-400' : ''}`}>
               <div className="bg-zinc-950/60 p-4 md:p-5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <MicrosoftIcon />
@@ -414,11 +414,11 @@ export default function SettingsClient() {
 
         {/* ── Focus areas ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-5 py-5 md:px-6 md:py-6 border-b border-white/5">
-            <SectionHeading>Focus areas</SectionHeading>
+          <div className="px-5 py-6 md:px-6 border-b border-white/5">
+            <SectionHeading className="mb-2">Focus areas</SectionHeading>
             <p className="text-xs text-zinc-600">What Foldera optimizes for.</p>
           </div>
-          <div className="px-5 py-5 md:px-6 md:py-6">
+          <div className="px-5 py-6 md:px-6">
             {!editingFocus ? (
               <>
                 {activeBuckets.length === 0 && !goalFreeText ? (
@@ -512,11 +512,11 @@ export default function SettingsClient() {
 
         {/* ── Generate Now (prominent) ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-5 py-5 md:px-6 md:py-6 border-b border-white/5">
-            <SectionHeading>Generate</SectionHeading>
+          <div className="px-5 py-6 md:px-6 border-b border-white/5">
+            <SectionHeading className="mb-2">Generate</SectionHeading>
             <p className="text-xs text-zinc-600">Sync your data and generate today&apos;s brief. Takes up to 60 seconds.</p>
           </div>
-          <div className="px-5 py-5 md:px-6 md:py-6">
+          <div className="px-5 py-6 md:px-6">
             <button
               disabled={generateState === 'loading' || generateState === 'success'}
               onClick={async () => {
@@ -590,10 +590,10 @@ export default function SettingsClient() {
 
         {/* ── Subscription ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-5 py-5 md:px-6 md:py-6 border-b border-white/5">
+          <div className="px-5 pt-6 pb-0 md:px-6 border-b border-white/5 pb-6">
             <SectionHeading>Subscription</SectionHeading>
           </div>
-          <div className="px-5 py-5 md:px-6 md:py-6 flex items-center justify-between gap-4">
+          <div className="px-5 py-6 md:px-6 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] ${isPro ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'bg-white/5 text-zinc-500 border border-white/10'}`}>
                 {planLabel}
@@ -638,10 +638,10 @@ export default function SettingsClient() {
 
         {/* ── Account ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-5 py-5 md:px-6 md:py-6 border-b border-white/5">
+          <div className="px-5 pt-6 pb-0 md:px-6 border-b border-white/5 pb-6">
             <SectionHeading>Account</SectionHeading>
           </div>
-          <div className="px-5 py-5 md:px-6 md:py-6 space-y-3">
+          <div className="px-5 py-6 md:px-6 space-y-3">
             {session?.user?.email && (
               <div className="rounded-xl bg-zinc-900/40 border border-white/5 px-4 py-3">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-1">Signed in as</p>
@@ -673,7 +673,7 @@ export default function SettingsClient() {
 
 function SectionHeading({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <h2 className={`text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1 ${className}`}>
+    <h2 className={`text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-6 ${className}`}>
       {children}
     </h2>
   );

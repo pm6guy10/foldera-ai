@@ -1,114 +1,12 @@
 {
-  "timestamp": "2026-03-31T23:23:29.738Z",
+  "timestamp": "2026-04-01T03:33:53.393Z",
   "summary": {
-    "total": 39,
+    "total": 23,
     "errors": 0,
     "warnings": 0,
-    "info": 39
+    "info": 23
   },
   "findings": [
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/",
-      "description": "Page title: \"Foldera — Finished work, every morning\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"APPROVE\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"SKIP\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"APPROVE & SEND\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"Prev\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"Next\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/",
-      "description": "Button: \"(no text)\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/login",
-      "description": "Page title: \"Sign in — Foldera — Foldera\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/login",
-      "description": "Button: \"Continue with Google\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/login",
-      "description": "Button: \"Continue with Microsoft\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/start",
-      "description": "Page title: \"Foldera — Finished work, every morning\""
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/start",
-      "description": "Button: \"Continue with Google\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "button",
-      "page": "public/start",
-      "description": "Button: \"Continue with Microsoft\" disabled=false"
-    },
-    {
-      "severity": "INFO",
-      "category": "meta",
-      "page": "public/pricing",
-      "description": "Page title: \"Pricing — Foldera — Foldera\""
-    },
     {
       "severity": "INFO",
       "category": "meta",
@@ -147,9 +45,21 @@
     },
     {
       "severity": "INFO",
+      "category": "button-effect",
+      "page": "interact/",
+      "description": "Button \"APPROVE\" changed page content"
+    },
+    {
+      "severity": "INFO",
       "category": "button-ok",
       "page": "interact/",
       "description": "Button \"APPROVE\" clicked — no errors"
+    },
+    {
+      "severity": "INFO",
+      "category": "button-effect",
+      "page": "interact/",
+      "description": "Button \"SKIP\" changed page content"
     },
     {
       "severity": "INFO",
@@ -168,12 +78,6 @@
       "category": "button-ok",
       "page": "interact/",
       "description": "Button \"APPROVE & SEND\" clicked — no errors"
-    },
-    {
-      "severity": "INFO",
-      "category": "button-effect",
-      "page": "interact/",
-      "description": "Button \"\" changed page content"
     },
     {
       "severity": "INFO",
@@ -209,42 +113,42 @@
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/auth/session",
-      "description": "200 in 760ms — shape OK (expected: { user: { id, email } })",
+      "description": "200 in 747ms — shape OK (expected: { user: { id, email } })",
       "detail": "{\"user\":{\"name\":\"Brandon Kapp\",\"email\":\"b-kapp@outlook.com\",\"image\":\"data:image/jpeg;base64, iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcd"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/integrations/status",
-      "description": "200 in 122ms — shape OK (expected: { integrations: [] })",
-      "detail": "{\"integrations\":[{\"provider\":\"google\",\"is_active\":true,\"sync_email\":\"b.kapp1010@gmail.com\",\"last_synced_at\":null,\"scopes\":\"https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/a"
+      "description": "200 in 44ms — shape OK (expected: { integrations: [] })",
+      "detail": "{\"integrations\":[{\"provider\":\"google\",\"is_active\":true,\"sync_email\":null,\"last_synced_at\":\"2026-04-01T03:32:20.974+00:00\",\"scopes\":null},{\"provider\":\"azure_ad\",\"is_active\":true,\"sync_email\":null,\"last"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/conviction/latest",
-      "description": "200 in 967ms — shape OK (expected: status 200 (any body))",
-      "detail": "{\"context_greeting\":\"Tuesday evening. 105 active commitments. Top priority: Resolve ESD overpayment waiver (Claim 2MFDBB-007, RCW 50.20.190, hardship waiver submitted, follow up 800-318-6022 if no res"
+      "description": "200 in 896ms — shape OK (expected: status 200 (any body))",
+      "detail": "{\"id\":\"729ede47-01a4-4f29-85dd-349b2e105a00\",\"userId\":\"e40b7cd8-4925-42f7-bc99-5022969f1d22\",\"directive\":\"Financial runway expires in 3 months with no documented contingency; Cheryl's administrative r"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/subscription/status",
-      "description": "200 in 741ms — shape OK (expected: { status: string })",
+      "description": "200 in 576ms — shape OK (expected: { status: string })",
       "detail": "{\"plan\":\"pro\",\"status\":\"active\",\"daysRemaining\":999}"
     },
     {
       "severity": "INFO",
       "category": "api-health",
       "page": "/api/onboard/set-goals",
-      "description": "200 in 708ms — shape OK (expected: status 200)",
+      "description": "200 in 683ms — shape OK (expected: status 200)",
       "detail": "{\"buckets\":[\"Business ops\",\"Relationships\",\"Job search\",\"Financial\",\"Health & family\"],\"freeText\":\"Be a stronger spiritual leader\"}"
     },
     {
       "severity": "INFO",
       "category": "generate-now",
       "page": "settings/generate-now",
-      "description": "Success: \"generated and sent\" appeared after 70418ms"
+      "description": "Success: \"generated and sent\" appeared after 8007ms"
     }
   ]
 }

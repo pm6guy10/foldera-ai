@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Settings } from 'lucide-react';
+import { Settings, Layers } from 'lucide-react';
 import type { ConvictionAction } from '@/lib/briefing/types';
 
 type ArtifactWithDraftedEmail = {
@@ -219,7 +219,12 @@ export default function DashboardPage() {
       {/* Fixed header */}
       <header className="fixed top-0 left-0 right-0 z-10 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
         <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4">
-          <span className="text-base font-black tracking-tighter text-white uppercase">Foldera</span>
+          <a href="/" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.15)]">
+              <Layers className="w-3.5 h-3.5 fill-black" aria-hidden="true" />
+            </div>
+            <span className="text-sm font-black tracking-tighter text-white uppercase">Foldera</span>
+          </a>
           <Link href="/dashboard/settings">
             <Settings className="w-5 h-5 text-zinc-500 hover:text-white transition-colors" />
           </Link>
@@ -268,15 +273,10 @@ export default function DashboardPage() {
           </div>
         ) : !action ? (
           <div className="mt-12">
-            <div className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl px-6 py-10 md:px-8 md:py-12 text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
+            <div className="mx-auto max-w-lg rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-10 text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
               {isNewAccount ? (
                 <>
-                  <div className="flex items-center justify-center mb-6">
-                    <div className="relative">
-                      <div className="w-3 h-3 rounded-full bg-cyan-400" />
-                      <div className="absolute inset-0 rounded-full bg-cyan-400 animate-ping opacity-40" />
-                    </div>
-                  </div>
+                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse mx-auto mb-4" />
                   <p className="text-white text-base font-black tracking-tight mb-2">Foldera is building your model.</p>
                   <p className="text-zinc-500 text-sm leading-relaxed mb-5">
                     It&apos;s reading your email and calendar now. Your first directive arrives tomorrow at 7am Pacific.
@@ -291,30 +291,16 @@ export default function DashboardPage() {
                 </>
               ) : (
                 <>
-                  <div className="flex items-center justify-center mb-6">
-                    <div className="relative">
-                      <div className="w-2.5 h-2.5 rounded-full bg-cyan-400/60" />
-                      <div className="absolute inset-0 rounded-full bg-cyan-400/40 animate-ping opacity-60" />
-                    </div>
-                  </div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Your next read arrives at 7am Pacific.</p>
-                  <p className="text-zinc-600 text-xs mt-2 leading-relaxed">
-                    Nothing queued at high confidence right now.
-                  </p>
-                  <Link
-                    href="/dashboard/settings"
-                    className="mt-5 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 hover:text-zinc-300 transition-colors"
-                  >
-                    Generate now
-                    <Settings className="w-3 h-3" />
-                  </Link>
+                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse mx-auto mb-4" />
+                  <p className="text-zinc-200 text-lg font-medium">Your next read arrives at 7am Pacific.</p>
+                  <p className="text-zinc-500 text-sm mt-2">Foldera is learning from your patterns.</p>
                 </>
               )}
             </div>
           </div>
         ) : (
           <div
-            className={`rounded-2xl bg-[#0a0a0f] border border-cyan-500/40 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.12)] overflow-hidden transition-all duration-300 ease-out ${
+            className={`rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/40 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.15)] overflow-hidden transition-all duration-300 ease-out ${
               surfaceVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
             }`}
           >
@@ -322,14 +308,12 @@ export default function DashboardPage() {
             <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
 
             <div className="px-6 py-6 md:px-8 md:py-7 border-b border-white/10">
-              {/* Domain badge */}
-              {action.domain && (
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-3">
-                  {action.domain}
-                </p>
-              )}
+              {/* Always-visible label */}
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-3">
+                {action.domain ?? "Today's Directive"}
+              </p>
               {/* Directive text */}
-              <p className="text-xl md:text-2xl font-black text-white leading-tight tracking-tight">
+              <p className="text-xl font-bold text-white leading-tight">
                 {action.directive}
               </p>
             </div>

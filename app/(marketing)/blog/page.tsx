@@ -46,9 +46,9 @@ export default async function BlogIndexPage() {
 
           <div className="grid gap-4">
             {posts.map((post) => (
-              <article key={post.slug} className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-6 md:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.4)] hover:border-cyan-500/20 transition-colors">
+              <article key={post.slug} className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-6 md:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.4)] hover:border-cyan-500/30 hover:shadow-[0_0_50px_rgba(6,182,212,0.15)] hover:-translate-y-1 transition-all duration-700">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">{dateFormatter.format(new Date(post.date))}</p>
-                <h2 className="mt-3 text-xl font-black tracking-tight text-white">
+                <h2 className="mt-3 text-xl font-bold text-white">
                   <Link href={`/blog/${post.slug}`} className="transition hover:text-cyan-300">
                     {post.title}
                   </Link>

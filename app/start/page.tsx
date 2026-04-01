@@ -61,7 +61,7 @@ export default function StartPage() {
             <button
               onClick={() => handleSignIn('google')}
               disabled={!!loading}
-              className="w-full flex items-center justify-center gap-3 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-xl transition-all shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 disabled:cursor-wait"
+              className="w-full flex items-center justify-center gap-3 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-2xl transition-all shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 disabled:cursor-wait"
             >
               {loading === 'google' ? (
                 <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -76,7 +76,7 @@ export default function StartPage() {
             <button
               onClick={() => handleSignIn('azure-ad')}
               disabled={!!loading}
-              className="w-full flex items-center justify-center gap-3 bg-zinc-900 border border-white/10 text-white hover:bg-zinc-800 hover:border-white/20 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-xl transition-all backdrop-blur-sm disabled:opacity-60 disabled:cursor-wait active:scale-95"
+              className="w-full flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0090d6] font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-2xl transition-all shadow-[0_0_20px_rgba(0,164,239,0.22)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-wait"
             >
               {loading === 'azure-ad' ? (
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
