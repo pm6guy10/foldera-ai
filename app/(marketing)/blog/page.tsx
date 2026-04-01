@@ -41,7 +41,7 @@ export default async function BlogIndexPage() {
             </p>
           </header>
 
-          <div className="grid gap-4">
+          <div className="grid gap-6 sm:grid-cols-2">
             {posts.map((post) => (
               <article key={post.slug} className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-6 md:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.4)] hover:border-cyan-500/30 hover:shadow-[0_0_50px_rgba(6,182,212,0.15)] hover:-translate-y-1 transition-all duration-700">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">{dateFormatter.format(new Date(post.date))}</p>

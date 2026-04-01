@@ -1,11 +1,17 @@
 # AUTOMATION BACKLOG
 
+### P1 — Autonomous agents — production wiring (2026-03-31)
+
+- **Apply migration** `20260331120000_agent_layer.sql` to production Postgres — **DONE** (2026-03-31): applied via Supabase MCP as migration `agent_layer_action_source` on project `neydszeamsflpghtrhue` (`tkg_goals_source_check` includes `system_config`; `tkg_actions.action_source` + index).
+- **GitHub repo secrets** for agent workflows: `AGENT_BASE_URL` (e.g. `https://www.foldera.ai`), `CRON_SECRET`, `ANTHROPIC_API_KEY` (UI critic script). Workflows: `.github/workflows/agent-*.yml`.
+
 ### DONE (2026-04-01) — Playwright / tooling
 
 - **`npm run test:prod`** now uses `testMatch: ['**/smoke.spec.ts', '**/audit.spec.ts']` so `public-screenshots.spec.ts` is not run in the same parallel pool (fixes Windows flake / timeout against `/` button crawl). Use **`npm run test:screenshots`** for the public PNG sweep.
 - **Production smoke** skips authenticated suites when `tests/production/auth-state.json` is missing or session cookies are expired (`describeAuth` in `smoke.spec.ts`); `playwright.prod.config.ts` omits `storageState` when the file is absent.
 - **Local default Playwright** (`playwright.config.ts`) documents `test:prod:setup` and ignores `tests/production/**` + `tests/audit/**`.
 - **`tests/e2e/authenticated-routes.spec.ts`**: `describeAuthMocked` skips mocked dashboard/settings suites when `NEXTAUTH_SECRET` is unset; unauthenticated settings smoke stays in `test.describe`.
+- **2026-03-31**: `middleware.ts` uses the same `secureCookie` rule as `getAuthOptions()` so local `next start` + `NEXTAUTH_URL=https://…` still reads `next-auth.session-token`. E2E mocks use `matchApiPath()` (pathname match) because string globs miss `?…` query suffixes on API URLs.
 
 ### P1 — Cross-source brain depth — production receipt (2026-03-31)
 

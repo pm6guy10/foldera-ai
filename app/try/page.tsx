@@ -62,8 +62,8 @@ export default function TryPage() {
 
       <main id="main" className="max-w-2xl mx-auto px-6 py-16">
         <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-white mb-4">Try Foldera</h1>
-        <p className="text-zinc-400 text-lg mb-10 leading-relaxed">
-          Paste any email thread. Foldera will show you what it finds.
+        <p className="text-zinc-400 text-lg mb-10 leading-relaxed max-w-xl">
+          Paste any email thread. See the kind of move Foldera surfaces.
         </p>
 
         <form onSubmit={handleAnalyze} className="space-y-6">
@@ -72,13 +72,13 @@ export default function TryPage() {
             onChange={(e) => setText(e.target.value)}
             rows={12}
             placeholder="Paste an email thread or describe a situation…"
-            className="w-full rounded-2xl bg-zinc-950/80 border border-white/10 p-4 text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 resize-y min-h-[200px]"
+            className="w-full rounded-2xl bg-zinc-950/80 border border-white/10 p-4 text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-[#07070c] resize-y min-h-[200px]"
             aria-label="Email thread or situation"
           />
           <button
             type="submit"
             disabled={loading || text.trim().length < 20}
-            className="w-full sm:w-auto px-10 py-4 rounded-xl bg-cyan-500 text-black text-xs font-black uppercase tracking-[0.2em] hover:bg-cyan-400 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            className="w-full sm:w-auto min-h-[52px] px-10 py-4 rounded-xl bg-cyan-500 text-black text-xs font-black uppercase tracking-[0.2em] hover:bg-cyan-400 disabled:opacity-40 disabled:pointer-events-none transition-all duration-150 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
           >
             {loading ? 'Analyzing…' : 'Analyze'}
           </button>
@@ -106,7 +106,10 @@ export default function TryPage() {
 
         <p className="mt-16 text-center text-zinc-500 text-sm">
           Want this every morning?{' '}
-          <Link href="/start" className="text-cyan-400 hover:text-cyan-300 font-semibold">
+          <Link
+            href="/start"
+            className="text-cyan-400 hover:text-cyan-300 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c] rounded-sm"
+          >
             Get started free
           </Link>
           .

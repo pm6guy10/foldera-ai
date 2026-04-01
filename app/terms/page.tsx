@@ -25,7 +25,7 @@ export default function TermsPage() {
         <h1 className="text-4xl font-black tracking-tight mb-4">Terms of Service</h1>
         <p className="text-zinc-400 text-sm mb-12">Last updated: March 2026</p>
 
-        <div className="space-y-10 text-zinc-300 text-sm leading-relaxed">
+        <div className="prose prose-invert prose-zinc max-w-none prose-headings:font-black prose-headings:tracking-tight prose-headings:text-white prose-p:text-zinc-300 prose-p:leading-relaxed prose-strong:text-white prose-a:text-cyan-400 prose-a:no-underline prose-a:hover:text-cyan-300 space-y-10 text-sm">
           <section>
             <h2 className="text-white text-lg font-bold mb-3">Service</h2>
             <p>

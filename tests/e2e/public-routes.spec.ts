@@ -181,7 +181,9 @@ test.describe('Blog routes', () => {
   test('blog index loads with the post list', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/blog');
-    await expect(page.getByRole('heading', { name: /ai that reads my email and tells me what to do every morning/i })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /AI that reduces work instead of creating more of it/i }),
+    ).toBeVisible();
   });
 
   test('blog post renders markdown elements as HTML', async ({ page }) => {
@@ -205,7 +207,9 @@ test.describe('Blog routes', () => {
   test('blog post loads on mobile without overflow', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/blog/ai-email-assistant');
-    await expect(page.getByRole('heading', { name: /ai that reads my email and tells me what to do every morning/i })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /AI That Reads My Email and Tells Me What to Do Every Morning/i }),
+    ).toBeVisible();
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(400);
   });

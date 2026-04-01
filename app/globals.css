@@ -19,6 +19,22 @@
   }
 }
 
+/* Page shell: fade in without layout shift (respects reduced motion above) */
+@media (prefers-reduced-motion: no-preference) {
+  main#main {
+    animation: mainFadeIn 0.28s ease-out both;
+  }
+}
+
+@keyframes mainFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* === BASE BODY === */
 body {
   color: #e5e7eb;

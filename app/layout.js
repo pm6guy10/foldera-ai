@@ -14,8 +14,8 @@ export const metadata = {
   },
   description: "Foldera ingests your chaos, computes conviction, and delivers executable actions. You just approve or skip.",
   icons: {
-    icon: [{ url: '/foldera-icon.png', type: 'image/png' }],
-    apple: [{ url: '/foldera-icon.png', type: 'image/png' }],
+    icon: [{ url: '/foldera-glyph.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/foldera-glyph.svg', type: 'image/svg+xml' }],
   },
   openGraph: {
     title: "Foldera — Finished work, every morning",

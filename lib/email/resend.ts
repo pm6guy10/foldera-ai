@@ -129,6 +129,56 @@ const EMAIL_CYAN_BTN = '#06b6d4';
 const EMAIL_LOGO_MARKUP =
   '<img src="https://www.foldera.ai/foldera-logo.png" alt="Foldera" width="140" style="margin-bottom:24px" />';
 
+/** Dark transactional template (Pro welcome, billing alerts) — matches daily directive styling. */
+export function renderDarkTransactionalEmailHtml(opts: {
+  eyebrow: string;
+  title: string;
+  bodyLines: string[];
+  ctaLabel?: string;
+  ctaHref?: string;
+}): string {
+  const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
+  const settings = `${baseUrl}/dashboard/settings`;
+  const { eyebrow, title, bodyLines, ctaLabel, ctaHref } = opts;
+  const bodyHtml = bodyLines
+    .map(
+      (line) =>
+        `<p style="margin:0 0 12px 0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">${escapeHtml(line)}</p>`,
+    )
+    .join('');
+  const ctaBlock =
+    ctaLabel && ctaHref
+      ? `<a href="${escapeHtml(ctaHref)}" style="display:inline-block;margin-top:8px;padding:14px 28px;background:#ffffff;color:#000000;font-family:system-ui,-apple-system,sans-serif;font-size:11px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;text-decoration:none;border-radius:12px;box-shadow:0 0 40px rgba(255,255,255,0.2);">${escapeHtml(ctaLabel)}</a>`
+      : '';
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:${EMAIL_BG};">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:${EMAIL_BG};padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:28px;text-align:center;">
+          ${EMAIL_LOGO_MARKUP}
+        </td></tr>
+        <tr><td style="padding:28px 24px;border-radius:16px;background:${EMAIL_CARD};border:1px solid rgba(255,255,255,0.1);">
+          <p style="margin:0 0 8px 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">${escapeHtml(eyebrow)}</p>
+          <p style="margin:0 0 16px 0;font-family:system-ui,-apple-system,sans-serif;font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">${escapeHtml(title)}</p>
+          ${bodyHtml}
+          ${ctaBlock}
+        </td></tr>
+        <tr><td style="padding-top:28px;text-align:center;">
+          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;color:#52525b;line-height:1.6;">Foldera — Finished work, every morning.</p>
+          <p style="margin:12px 0 0 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;">
+            <a href="${settings}" style="color:#71717a;text-decoration:underline;">Settings</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 export function renderWelcomeEmailHtml(baseUrl: string): string {
   const dash = `${baseUrl.replace(/\/$/, '')}/dashboard`;
   return `<!DOCTYPE html>
@@ -144,7 +194,7 @@ export function renderWelcomeEmailHtml(baseUrl: string): string {
         <tr><td style="padding:28px 24px;border-radius:16px;background:${EMAIL_CARD};border:1px solid rgba(255,255,255,0.1);">
           <p style="margin:0 0 8px 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">You&apos;re connected</p>
           <p style="margin:0 0 16px 0;font-family:system-ui,-apple-system,sans-serif;font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">Your first read arrives tomorrow morning.</p>
-          <p style="margin:0 0 12px 0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">Foldera will scan your last 90 days of email, find what&apos;s slipping, and deliver one directive with finished work attached.</p>
+          <p style="margin:0 0 12px 0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">Foldera reviews your recent activity, finds what&apos;s slipping, and delivers one directive with finished work attached.</p>
           <p style="margin:0 0 24px 0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">No prompts. No setup. Just approve or skip.</p>
           <a href="${dash}" style="display:inline-block;padding:14px 28px;background:#ffffff;color:#000000;font-family:system-ui,-apple-system,sans-serif;font-size:11px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;text-decoration:none;border-radius:12px;box-shadow:0 0 40px rgba(255,255,255,0.2);">View your dashboard</a>
         </td></tr>
@@ -271,6 +321,9 @@ export async function sendDailyDirective({
         <tr><td style="padding-bottom:24px;text-align:center;">
           ${EMAIL_LOGO_MARKUP}
         </td></tr>
+        <tr><td style="padding:0 0 20px 0;">
+          <div style="height:3px;width:100%;border-radius:2px;background:linear-gradient(90deg,transparent,${EMAIL_CYAN_BTN},transparent);"></div>
+        </td></tr>
         <tr><td style="padding-bottom:6px;">
           <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.2em;color:${EMAIL_CYAN};text-transform:uppercase;">Today&apos;s directive</p>
         </td></tr>
@@ -288,11 +341,11 @@ export async function sendDailyDirective({
         </td></tr>
         <tr><td style="padding-bottom:8px;">
           <table cellpadding="0" cellspacing="0" width="100%"><tr>
-            <td style="padding-right:10px;width:50%;">
-              <a href="${approveHref}" style="display:block;text-align:center;padding:14px 16px;background:${EMAIL_CYAN_BTN};color:#000000;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:12px;box-shadow:0 0 20px rgba(6,182,212,0.22);">Approve</a>
+            <td style="padding-right:10px;width:50%;vertical-align:top;">
+              <a href="${approveHref}" style="display:block;text-align:center;min-height:44px;line-height:44px;padding:0 16px;background:${EMAIL_CYAN_BTN};color:#000000;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:12px;box-shadow:0 0 20px rgba(6,182,212,0.22);">Approve</a>
             </td>
-            <td style="width:50%;">
-              <a href="${skipHref}" style="display:block;text-align:center;padding:14px 16px;background:#18181b;color:#71717a;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:12px;border:1px solid rgba(255,255,255,0.2);">Skip</a>
+            <td style="width:50%;vertical-align:top;">
+              <a href="${skipHref}" style="display:block;text-align:center;min-height:44px;line-height:44px;padding:0 16px;background:#18181b;color:#a1a1aa;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:12px;border:1px solid rgba(255,255,255,0.2);">Skip</a>
             </td>
           </tr></table>
         </td></tr>
@@ -314,5 +367,43 @@ export async function sendDailyDirective({
     subject: emailSubject,
     html,
     tags,
+  });
+}
+
+export async function sendProWelcomeEmail(to: string) {
+  const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
+  const html = renderDarkTransactionalEmailHtml({
+    eyebrow: 'Foldera Pro',
+    title: "You're on Foldera Pro.",
+    bodyLines: [
+      'Every morning directive now includes finished work.',
+      "Approve and it's done.",
+    ],
+    ctaLabel: 'Open dashboard',
+    ctaHref: `${baseUrl}/dashboard`,
+  });
+  return sendResendEmail({
+    to,
+    subject: "You're on Foldera Pro.",
+    html,
+    tags: [{ name: 'email_type', value: 'pro_welcome' }],
+  });
+}
+
+export async function sendPaymentFailedEmail(to: string, billingPortalUrl: string) {
+  const html = renderDarkTransactionalEmailHtml({
+    eyebrow: 'Billing',
+    title: "Your Foldera payment didn't go through.",
+    bodyLines: [
+      'Update your payment method to keep receiving finished work with your directives.',
+    ],
+    ctaLabel: 'Open billing portal',
+    ctaHref: billingPortalUrl,
+  });
+  return sendResendEmail({
+    to,
+    subject: "Your Foldera payment didn't go through.",
+    html,
+    tags: [{ name: 'email_type', value: 'payment_failed' }],
   });
 }

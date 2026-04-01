@@ -1,13 +1,26 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, Suspense, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Lock } from 'lucide-react';
 import { NavAuthMinimal } from '@/components/nav/NavPublic';
 
-export default function StartPage() {
+const PENDING_CHECKOUT_KEY = 'foldera_pending_checkout';
+
+function StartContent() {
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (searchParams.get('plan') === 'pro') {
+      sessionStorage.setItem(PENDING_CHECKOUT_KEY, 'pro');
+    } else {
+      sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+    }
+  }, [searchParams]);
 
   async function handleSignIn(provider: 'google' | 'azure-ad') {
     setLoading(provider);
@@ -22,7 +35,6 @@ export default function StartPage() {
 
   return (
     <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-hidden selection:bg-cyan-500/30 selection:text-white">
-      {/* Ambient background glow */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.10)_0%,transparent_60%)]" />
@@ -30,25 +42,29 @@ export default function StartPage() {
 
       <NavAuthMinimal variant="start" />
 
-      {/* Main */}
       <main id="main" className="relative z-10 flex-1 flex items-center justify-center px-6 pb-16">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-8">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-10">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-3">Finished work, every morning.</p>
-            <h1 className="text-4xl font-black tracking-tighter text-white">Connect your email.</h1>
+            <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-white leading-tight">Get started with Foldera</h1>
+            <p className="mt-4 text-zinc-400 text-sm leading-relaxed max-w-sm mx-auto">One secure sign-in. Then Foldera goes to work.</p>
           </div>
 
           {error && (
-            <div className="mb-5 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50">
-              <p className="text-sm text-red-300">{error}</p>
+            <div
+              role="alert"
+              className="mb-5 px-4 py-3.5 rounded-xl bg-red-950/70 border border-red-500/40 border-l-4 border-l-red-400"
+            >
+              <p className="text-sm text-red-200 font-medium">{error}</p>
             </div>
           )}
 
           <div className="space-y-3 mb-6">
             <button
+              type="button"
               onClick={() => handleSignIn('google')}
               disabled={!!loading}
-              className="w-full flex items-center justify-center gap-3 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-2xl transition-all shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 disabled:cursor-wait"
+              className="w-full min-h-[56px] flex items-center justify-center gap-3 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-2xl transition-all duration-150 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
             >
               {loading === 'google' ? (
                 <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -61,9 +77,10 @@ export default function StartPage() {
             </button>
 
             <button
+              type="button"
               onClick={() => handleSignIn('azure-ad')}
               disabled={!!loading}
-              className="w-full flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0090d6] font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-2xl transition-all shadow-[0_0_20px_rgba(0,164,239,0.22)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-wait"
+              className="w-full min-h-[56px] flex items-center justify-center gap-3 bg-[#00a4ef] text-white hover:bg-[#0090d6] font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-2xl transition-all duration-150 shadow-[0_0_20px_rgba(0,164,239,0.22)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
             >
               {loading === 'azure-ad' ? (
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -76,22 +93,20 @@ export default function StartPage() {
             </button>
           </div>
 
-          {/* What to expect */}
-          <div className="rounded-2xl bg-zinc-950/80 border border-white/10 backdrop-blur-xl p-4 mb-5 space-y-2.5">
+          <div className="rounded-2xl bg-zinc-950/80 border border-white/10 backdrop-blur-xl p-5 mb-5 space-y-3">
             {[
-              { n: '01', text: 'Connect — Link your email in one click' },
-              { n: '02', text: 'Focus — Tell us what you\u2019re working on' },
-              { n: '03', text: 'Sleep — Your first read arrives tomorrow morning' },
-              { n: '04', text: 'Improve — Every approve and skip makes it smarter' },
+              { n: '01', text: 'Sign in — one tap with Google or Microsoft' },
+              { n: '02', text: 'Focus — tell us what you\u2019re working on' },
+              { n: '03', text: 'Rest — your first read arrives tomorrow morning' },
+              { n: '04', text: 'Improve — every approve and skip trains the model' },
             ].map(({ n, text }) => (
-              <div key={n} className="flex items-start gap-3">
-                <span className="text-[10px] text-cyan-400 w-5 shrink-0 font-black uppercase mt-0.5">{n}</span>
-                <span className="text-xs text-zinc-400 leading-relaxed">{text}</span>
+              <div key={n} className="flex items-start gap-4">
+                <span className="text-[11px] text-cyan-400 w-6 shrink-0 font-black tabular-nums">{n}</span>
+                <span className="text-xs text-zinc-400 leading-relaxed font-medium">{text}</span>
               </div>
             ))}
           </div>
 
-          {/* Footer */}
           <div className="flex items-center justify-center gap-1.5">
             <Lock className="w-3 h-3 text-zinc-600" />
             <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-700">Your data is encrypted. Delete anytime.</p>
@@ -99,6 +114,20 @@ export default function StartPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function StartPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[100dvh] bg-[#07070c] text-white flex items-center justify-center">
+          <span className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <StartContent />
+    </Suspense>
   );
 }
 

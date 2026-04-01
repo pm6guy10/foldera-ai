@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: March 31, 2026 (cross-source discrepancy classes + structuredSignals wiring; entity penalty send_message-only; time-aware urgency)
+Last Updated: March 31, 2026 (premium marketing surface pass: static favicon via `/foldera-glyph.svg`, blog E2E headings, login/start/try/settings polish, welcome email copy, Supabase agent_layer migration applied)
 Next Review: Monday March 31, 2026
 
 ## HOW TO USE THIS FILE
@@ -102,6 +102,15 @@ March 24 production hotfix evidence:
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
 | ENCRYPTION_KEY workflow fallback removed | BUILT | `.github/workflows/ci.yml` now requires `secrets.ENCRYPTION_KEY` without a hardcoded default. | — |
+
+### 1.8 Marketing & product chrome (secondary surface)
+
+| Item | Status | Evidence |
+|---|---|---|
+| Favicon / app icons | BUILT | `app/layout.js` `metadata.icons` → `/foldera-glyph.svg` (no Windows `@vercel/og` prerender flake). |
+| Public pages visual consistency | BUILT | FLOW pass: `globals.css` `#main` fade-in; privacy/terms `prose` + link hovers; blog index grid; `/try` funnel; login alert + OAuth sizing; settings connector cards (emerald active rail, 44px targets). |
+| Welcome email copy (outcome-first) | BUILT | `lib/email/resend.ts` — “reviews your recent activity” (not “scan email”). |
+| Production DB: agent layer DDL | BUILT | Supabase MCP `agent_layer_action_source` applied 2026-03-31 (matches repo `20260331120000_agent_layer.sql`). |
 
 ## PHASE 2: PRODUCT INTELLIGENCE (post-integrity)
 
@@ -237,6 +246,18 @@ Only start after Phase 2 deployed.
 | 5 strangers using the product | NOT STARTED |
 | First paid subscriber | NOT STARTED |
 | 3 consecutive days all users get email | NOT STARTED |
+
+### 3.4 Autonomous agent layer (owner ops)
+
+| Item | Status | Evidence |
+|---|---|---|
+| DraftQueue for agents (`tkg_actions.status=draft`, `action_source=agent_*`) | BUILT | March 31: `lib/agents/draft-queue.ts`, `insertAgentDraft()`; owner-only **System** tab on `/dashboard`; `/api/drafts/pending?scope=system`. |
+| Six agents + schedules | BUILT | Health Watchdog (GitHub `agent-health-watchdog.yml` 10:30 UTC); GTM Strategist (`agent-gtm-strategist.yml` 14:00 UTC); Distribution Finder (Mon 15:00 UTC); Retention Analyst (Wed 15:00 UTC); Self Optimizer (Fri 15:00 UTC); UI Critic (`agent-ui-critic.yml` on push to `main`). Vercel Hobby 2-cron limit → schedules use **GitHub Actions** + `POST /api/cron/agent-runner?agent=…` with `CRON_SECRET`. |
+| UI Critic pipeline | BUILT | `scripts/agent-ui-critic.ts` — Playwright screenshots → Sonnet → `POST /api/cron/agent-ui-ingest`; PNGs under `tests/production/screenshots/`. |
+| Learning from skips | BUILT | `lib/agents/skip-patterns.ts` — loads recent `skipped` rows per `action_source` into Sonnet preambles. |
+| Per-agent API caps | BUILT | `lib/agents/cost-guard.ts` + `getGlobalEndpointSpendToday()` in `lib/utils/api-tracker.ts`; `api_usage.endpoint` = `agent:*`. |
+| Kill switch | BUILT | `tkg_goals` row: `source=system_config`, `goal_text=agents_enabled`, `status=active|abandoned`; owner toggle `GET/POST /api/settings/agents`. **Note:** priority stays within 1–5 DB CHECK; disabled = `status=abandoned`, not `priority=0`. |
+| DB migration | REQUIRED APPLY | `supabase/migrations/20260331120000_agent_layer.sql` — adds `system_config` to goal `source` CHECK + `tkg_actions.action_source`. Apply to production before agents write rows. |
 
 ## PRIORITY QUEUE (what to do next, in order)
 

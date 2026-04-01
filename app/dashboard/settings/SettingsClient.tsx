@@ -5,6 +5,7 @@ import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { ChevronLeft, LogOut } from 'lucide-react';
 import { FolderaMark } from '@/components/nav/FolderaMark';
+import { OWNER_USER_ID } from '@/lib/auth/constants';
 
 interface Integration {
   provider: string;
@@ -18,6 +19,7 @@ interface SubscriptionInfo {
   status: string;
   plan?: string;
   daysRemaining?: number;
+  can_manage_billing?: boolean;
 }
 
 const ALL_BUCKETS = [
@@ -42,12 +44,17 @@ export default function SettingsClient() {
   const [connectingProvider, setConnectingProvider] = useState<'google' | 'microsoft' | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [upgrading, setUpgrading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const [editingFocus, setEditingFocus] = useState(false);
   const [editBuckets, setEditBuckets] = useState<Set<string>>(new Set());
   const [editFreeText, setEditFreeText] = useState('');
   const [savingFocus, setSavingFocus] = useState(false);
   const [focusSaveError, setFocusSaveError] = useState<string | null>(null);
+  const [agentsEnabled, setAgentsEnabled] = useState<boolean | null>(null);
+  const [agentsSaving, setAgentsSaving] = useState(false);
+
+  const isOwnerAccount = session?.user?.id === OWNER_USER_ID;
 
   const refreshIntegrationsStatus = useCallback(async () => {
     const response = await fetch('/api/integrations/status');
@@ -92,6 +99,17 @@ export default function SettingsClient() {
       console.error('[settings] failed to load initial data:', err instanceof Error ? err.message : err);
     }).finally(() => setLoading(false));
   }, [status]);
+
+  useEffect(() => {
+    if (!isOwnerAccount) return;
+    void fetch('/api/settings/agents')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j && typeof j.enabled === 'boolean') setAgentsEnabled(j.enabled);
+        else setAgentsEnabled(true);
+      })
+      .catch(() => setAgentsEnabled(true));
+  }, [isOwnerAccount]);
 
   // Auto-sync after OAuth connection — makes the product feel alive on day one
   useEffect(() => {
@@ -286,12 +304,12 @@ export default function SettingsClient() {
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
           <div className="px-5 py-6 md:px-6 border-b border-white/5">
             <SectionHeading className="mb-2">Connected accounts</SectionHeading>
-            <p className="text-xs text-zinc-600">Choose which accounts Foldera reads.</p>
+            <p className="text-xs text-zinc-600">Connect Google and Microsoft so Foldera can keep your model current.</p>
           </div>
           <div className="px-5 py-6 md:px-6 space-y-3">
             {/* Google card */}
-            <div className={`rounded-2xl border border-white/10 overflow-hidden ${google?.is_active ? 'border-l-2 border-l-cyan-400' : ''}`}>
-              <div className="bg-zinc-950/60 p-4 md:p-5 flex items-center justify-between gap-3">
+            <div className={`rounded-2xl border border-white/10 overflow-hidden min-h-[5.75rem] ${google?.is_active ? 'border-l-2 border-l-emerald-500' : ''}`}>
+              <div className="bg-zinc-950/60 p-4 md:p-5 flex items-center justify-between gap-3 min-h-[5.75rem]">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <GoogleIcon />
                   <div className="min-w-0">
@@ -330,7 +348,7 @@ export default function SettingsClient() {
                       }
                     }}
                     disabled={disconnecting === 'google'}
-                    className="shrink-0 text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                    className="shrink-0 min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
                   >
                     {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
                   </button>
@@ -342,7 +360,7 @@ export default function SettingsClient() {
                       window.location.href = '/api/google/connect';
                     }}
                     disabled={connectingProvider === 'google'}
-                    className="shrink-0 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                    className="shrink-0 min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
                   >
                     {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
                   </button>
@@ -393,7 +411,7 @@ export default function SettingsClient() {
                       }
                     }}
                     disabled={disconnecting === 'microsoft'}
-                    className="shrink-0 text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait"
+                    className="shrink-0 min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
                   >
                     {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
                   </button>
@@ -405,7 +423,7 @@ export default function SettingsClient() {
                       window.location.href = '/api/microsoft/connect';
                     }}
                     disabled={connectingProvider === 'microsoft'}
-                    className="shrink-0 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                    className="shrink-0 min-h-[44px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
                   >
                     {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
                   </button>
@@ -596,7 +614,7 @@ export default function SettingsClient() {
           <div className="px-5 pt-6 pb-0 md:px-6 border-b border-white/5 pb-6">
             <SectionHeading>Subscription</SectionHeading>
           </div>
-          <div className="px-5 py-6 md:px-6 flex items-center justify-between gap-4">
+          <div className="px-5 py-6 md:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] ${isPro ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'bg-white/5 text-zinc-500 border border-white/10'}`}>
                 {planLabel}
@@ -612,32 +630,112 @@ export default function SettingsClient() {
                 </p>
               </div>
             </div>
-            {!isPro && (
-              <button
-                onClick={async () => {
-                  setUpgrading(true);
-                  try {
-                    const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-                    const d = await res.json().catch(() => ({}));
-                    if (d.url) {
-                      window.location.href = d.url;
-                    } else {
-                      setActionError('Could not start checkout. Try again.');
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {isPro && subscription?.can_manage_billing && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setPortalLoading(true);
+                    setActionError(null);
+                    try {
+                      const res = await fetch('/api/stripe/portal', { method: 'POST' });
+                      const d = await res.json().catch(() => ({}));
+                      if (d.url) {
+                        window.location.href = d.url;
+                      } else {
+                        setActionError(typeof d.error === 'string' ? d.error : 'Could not open billing portal.');
+                        setPortalLoading(false);
+                      }
+                    } catch {
+                      setActionError('Network error. Try again.');
+                      setPortalLoading(false);
+                    }
+                  }}
+                  disabled={portalLoading}
+                  className="text-[10px] font-black uppercase tracking-[0.12em] bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-white/10 rounded-lg px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                >
+                  {portalLoading ? 'Loading…' : 'Manage subscription'}
+                </button>
+              )}
+              {!isPro && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setUpgrading(true);
+                    try {
+                      const res = await fetch('/api/stripe/checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          userId: session?.user?.id,
+                          email: session?.user?.email ?? undefined,
+                        }),
+                      });
+                      const d = await res.json().catch(() => ({}));
+                      if (d.url) {
+                        window.location.href = d.url;
+                      } else {
+                        setActionError('Could not start checkout. Try again.');
+                        setUpgrading(false);
+                      }
+                    } catch {
+                      setActionError('Network error. Try again.');
                       setUpgrading(false);
                     }
-                  } catch {
-                    setActionError('Network error. Try again.');
-                    setUpgrading(false);
-                  }
-                }}
-                disabled={upgrading}
-                className="shrink-0 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait shadow-[0_0_20px_rgba(255,255,255,0.1)]"
-              >
-                {upgrading ? 'Loading…' : 'Upgrade'}
-              </button>
-            )}
+                  }}
+                  disabled={upgrading}
+                  className="text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                >
+                  {upgrading ? 'Loading…' : 'Upgrade'}
+                </button>
+              )}
+            </div>
           </div>
         </section>
+
+        {isOwnerAccount && agentsEnabled !== null && (
+          <section className="rounded-2xl border border-emerald-500/20 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
+            <div className="px-5 py-6 md:px-6 border-b border-white/5">
+              <SectionHeading className="mb-2">Autonomous agents</SectionHeading>
+              <p className="text-xs text-zinc-600">
+                Scheduled jobs stage drafts on your dashboard System tab. Turn off to stop all agent runs immediately.
+              </p>
+            </div>
+            <div className="px-5 py-6 md:px-6 flex items-center justify-between gap-4">
+              <p className="text-sm text-zinc-300">Agents enabled</p>
+              <button
+                type="button"
+                disabled={agentsSaving}
+                onClick={async () => {
+                  setAgentsSaving(true);
+                  try {
+                    const next = !agentsEnabled;
+                    const res = await fetch('/api/settings/agents', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ enabled: next }),
+                    });
+                    if (res.ok) {
+                      setAgentsEnabled(next);
+                    }
+                  } finally {
+                    setAgentsSaving(false);
+                  }
+                }}
+                className={`relative w-14 h-8 rounded-full transition-colors ${
+                  agentsEnabled ? 'bg-emerald-500/80' : 'bg-zinc-700'
+                } ${agentsSaving ? 'opacity-50' : ''}`}
+                aria-pressed={agentsEnabled}
+              >
+                <span
+                  className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                    agentsEnabled ? 'translate-x-6' : ''
+                  }`}
+                />
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* ── Account ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">

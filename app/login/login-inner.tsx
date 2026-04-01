@@ -33,12 +33,18 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
           {/* Heading */}
           <div className="text-center mb-8">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-3">Finished work, every morning.</p>
-            <h1 className="text-4xl font-black tracking-tighter text-white">Sign in.</h1>
+            <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-white leading-tight">Sign in.</h1>
           </div>
 
           {errorMessage && (
-            <div className="mb-5 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50">
-              <p className="text-sm text-red-300">{errorMessage}</p>
+            <div
+              role="alert"
+              className="mb-5 px-4 py-3.5 rounded-xl bg-red-950/70 border border-red-500/40 border-l-4 border-l-red-400 flex gap-3 items-start"
+            >
+              <span className="text-red-400 text-lg leading-none mt-0.5" aria-hidden="true">
+                !
+              </span>
+              <p className="text-sm text-red-200 font-medium">{errorMessage}</p>
             </div>
           )}
 
@@ -46,7 +52,7 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
             <button
               onClick={() => handleSignIn('google')}
               disabled={!!loadingProvider}
-              className="w-full flex items-center justify-center gap-3 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-2xl transition-all shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 disabled:cursor-wait"
+              className="w-full min-h-[56px] flex items-center justify-center gap-3 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.1em] text-xs py-4 px-6 rounded-2xl transition-all duration-150 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
             >
               {loadingProvider === 'google' ? (
                 <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
