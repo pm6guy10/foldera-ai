@@ -116,7 +116,7 @@ export async function buildContextBlock(userId: string): Promise<string> {
       .eq('user_id', userId)
       .eq('status', 'active')
       .gte('priority', 3)
-      .not('source', 'in', '("onboarding_bucket","onboarding_marker")')
+      .not('source', 'in', '("onboarding_bucket","onboarding_marker","system_config")')
       .order('priority', { ascending: false })
       .limit(3),
     supabase
@@ -212,3 +212,5 @@ export async function buildContextGreeting(userId: string): Promise<string> {
 
   return parts.join(' ');
 }
+
+export { resolveUserPromptNames } from '@/lib/auth/user-display-name';

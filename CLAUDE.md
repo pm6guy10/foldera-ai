@@ -22,7 +22,7 @@ These are enforced by Postgres. Invalid values cause silent insert failures.
 - `goal_category`: career, financial, relationship, health, project, other
 - `goal_type`: short_term, long_term, recurring
 - `priority`: 1-5 (integer)
-- `source`: extracted, manual, auto_suppression, onboarding_bucket, onboarding_stated, onboarding_marker
+- `source`: extracted, manual, auto_suppression, onboarding_bucket, onboarding_stated, onboarding_marker, system_config
 - `status`: active, achieved, abandoned
 
 Any insert with values outside these sets will fail silently (Supabase returns success but doesn't persist the row). ALWAYS verify insert values against this list.
@@ -78,7 +78,7 @@ Vercel Free allows max 2 cron jobs. The full nightly pipeline is consolidated in
 - Core surfaces stay one-tap approve or skip. No guilt copy, deprioritized lists, or extra workflow steps.
 - Cyan and emerald are the accent colors. No violet.
 - The dashboard is for users, not developers. No internal health, token, API, or debug metrics on the main product surface.
-- Owner account `e40b7cd8` is always pro. Never show trial or expired banners to the owner.
+- Owner account uses the same `user_subscriptions` row as every other user (no code bypass). Dashboard trial/expired banners follow real subscription state.
 - Self-referential Foldera signals must be filtered before generator or extraction reads.
 - Session-backed routes use `session.user.id` only. `INGEST_USER_ID` is cron and background only.
 - Production logs must not include directive text, conviction scores, behavioral content, or similar user-private data.

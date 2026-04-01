@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — OPS: Multi-user hardening — dynamic user names, no owner pinned map, scorer/generator parity, prod owner subscription row
+  MODE: OPS
+  Commit hash(es): run `git log -1 --oneline` on `main` for the commit with subject starting `ship: multi-user hardening`
+  Files changed: `lib/auth/user-display-name.ts` (new), `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `lib/briefing/pinned-constraints.ts`, `lib/briefing/context-builder.ts`, `lib/briefing/__tests__/generator.test.ts`, `lib/__tests__/multi-user-safety.test.ts`, `lib/signals/signal-processor.ts`, `app/api/dev/brain-receipt/route.ts`, `CLAUDE.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` (pass); `npx vitest run --exclude ".claude/worktrees/**"` (547 tests pass); `npx playwright test tests/e2e/` (53 passed, 4 skipped). Supabase MCP: `INSERT INTO user_subscriptions ... WHERE NOT EXISTS` for owner UUID (pro/active) — applied (partial unique index prevented `ON CONFLICT (user_id)`).
+  Any unresolved issues: `npm run test:prod` not run from this workspace. Dashboard still uses `OWNER_USER_ID` only for the internal agent/system tab, not subscription math.
+
 - 2026-04-01 — OPS: Directive generation — Sonnet + FOLDERA CONVICTION ENGINE system prompt; pipeline-receipt mock alignment
   MODE: OPS
   Commit hash(es): `eac65c6` (`lib/briefing/generator.ts` — Sonnet + SYSTEM_PROMPT); following commit on `main` adds `pipeline-receipt.test.ts` mock branch, `FOLDERA_PRODUCT_SPEC.md`, and this log entry (pre-push hook required the mock update).

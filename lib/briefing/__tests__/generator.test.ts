@@ -22,18 +22,19 @@ function buildDirective(overrides: Partial<ConvictionDirective>): ConvictionDire
 }
 
 describe('daily brief pinned constraints', () => {
-  it('injects the MAS3 pinned goal into owner scoring context', () => {
+  it('does not inject code-local pinned goals for any user (per-user data lives in DB)', () => {
     const goals = applyPinnedGoals(OWNER_USER_ID, []);
-    expect(goals[0]).toMatchObject({
-      priority: 5,
-      goal_category: 'career',
-    });
-    expect(goals[0]?.goal_text).toContain('MAS3 / state-government path');
+    expect(goals).toEqual([]);
+    const merged = applyPinnedGoals(OWNER_USER_ID, [
+      { goal_text: 'Ship the product', priority: 4, goal_category: 'project' },
+    ]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.goal_text).toBe('Ship the product');
   });
 
-  it('no longer suppresses Foldera-primary candidate text after MAS3 constraint cleanup', () => {
+  it('does not flag foldera_primary_conflict on long consulting-style candidate text', () => {
     const violations = getCandidateConstraintViolations(
-      OWNER_USER_ID,
+      'aaaaaaaa-bbbb-4ccc-dddd-eeeeeeeeeeee',
       'Decide whether to abandon the 10 paying users goal and commit fully to the MAS3 health job path, or block out specific daily hours for customer acquisition work starting tomorrow.',
     );
     expect(violations.map((violation) => violation.code)).not.toContain('foldera_primary_conflict');
@@ -41,7 +42,8 @@ describe('daily brief pinned constraints', () => {
 
   it.each([
     {
-      directive: 'Decide whether to abandon the 10 paying users goal and commit fully to the MAS3 health job path, or block out specific daily hours for customer acquisition work starting tomorrow.',
+      directive:
+        'Should you abandon the 10 paying users goal and commit fully to the MAS3 health job path, or block out specific daily hours for customer acquisition work starting tomorrow?',
       reason: 'The goal-behavior misalignment is creating daily decision paralysis and preventing focus on either path.',
       artifact: {
         type: 'decision_frame',
@@ -53,7 +55,8 @@ describe('daily brief pinned constraints', () => {
       },
     },
     {
-      directive: 'Draft a 30-day revenue bridge plan with three specific client acquisition tactics for your consulting services.',
+      directive:
+        'Have you considered drafting a 30-day revenue bridge plan with three specific client acquisition tactics for your consulting services?',
       reason: 'MAS3 outcome uncertainty combined with June delivery deadline requires immediate revenue diversification beyond state employment.',
       artifact: {
         type: 'decision_frame',
@@ -65,7 +68,8 @@ describe('daily brief pinned constraints', () => {
       },
     },
     {
-      directive: 'Draft a 30-day financial bridge plan assuming MAS3 doesn\'t materialize by April 1st.',
+      directive:
+        'Have you considered drafting a 30-day financial bridge plan assuming MAS3 doesn\'t materialize by April 1st?',
       reason: 'March 17th marks 6 weeks since MAS3 interview with no timeline clarity and financial runway critically short.',
       artifact: {
         type: 'decision_frame',

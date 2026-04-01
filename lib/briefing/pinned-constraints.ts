@@ -1,4 +1,3 @@
-import { OWNER_USER_ID } from '@/lib/auth/constants';
 import type { ActionType, ConvictionArtifact, ConvictionDirective } from './types';
 
 export interface BriefGoalRow {
@@ -72,102 +71,9 @@ const GLOBAL_DIRECTIVE_PATTERNS: ConstraintPattern[] = [
   ...CONSULTING_DECISION_PATTERNS,
 ];
 
-// TODO: These constraints are time-bound to the MAS3 hiring window.
-// After MAS3 resolves (hired or rejected), remove this entire block
-// and replace with DB-driven constraints from tkg_goals.
-
-const STALE_CONSULTING_ERA_PATTERNS: ConstraintPattern[] = [
-  {
-    code: 'stale_consulting_era',
-    message: 'consulting-era context is stale for the current daily brief window',
-    pattern: /\b(kapp advisory|bloomreach|justworks|storytelling engine|visual disconnect|category lockout|kayna|paty)\b/i,
-  },
-];
-
-const OWNER_MAS3_CONSTRAINTS: PinnedBriefConstraints = {
-  id: 'owner_mas3_window',
-  promptLines: [
-    'MAS3 / state-government path is the primary lane.',
-    'Foldera is a legitimate build project and can appear in directives.',
-    'Never propose consulting, fractional work, revenue bridges, Mercor outreach, or client-acquisition fallback plans.',
-    'The Functional Program Analyst 3 (HCBM Contracts Analyst) position has been explicitly rejected. Never generate directives about FPA3, HCBM, or that application.',
-    'Do not reopen locked decisions like MAS3 vs Foldera, MAS3 vs backup applications, or other already-closed priority calls.',
-    'Decision directives must lead with the recommendation, not ask whether to choose between options.',
-    'If no directive obeys these constraints, fail validation and send nothing.',
-  ],
-  pinnedGoals: [
-    {
-      goal_text: 'Protect the MAS3 / state-government path as the primary focus until that hiring window resolves.',
-      priority: 5,
-      goal_category: 'career',
-    },
-  ],
-  suppressReflectivePatterns: true,
-  candidatePatterns: [
-    ...STALE_CONSULTING_ERA_PATTERNS,
-    {
-      code: 'fpa3_rejected',
-      message: 'FPA3 / Functional Program Analyst 3 / HCBM Contracts Analyst position was explicitly rejected by the user',
-      pattern: /\b(functional program analyst\s*3|fpa\s*3|hcbm\s*contracts?\s*analyst)\b/i,
-    },
-    {
-      code: 'consulting_bridge',
-      message: 'consulting and revenue-bridge directives are forbidden in the MAS3 window',
-      pattern: /\b(consulting|fractional|mercor|client acquisition|contract opportunit(?:y|ies)|revenue bridge|financial bridge)\b/i,
-    },
-    {
-      code: 'mas3_relitigation',
-      message: 'MAS3-vs-overflow priorities are already locked and must not be re-litigated',
-      pattern: /\b(decide|decision|choose|whether|reconsider|revisit|abandon|pivot|document your decision)\b[\s\S]{0,120}\b(mas3|state[- ]government)\b[\s\S]{0,120}\b(foldera|consulting|client acquisition|paying users|backup application|revenue)\b/i,
-    },
-    {
-      code: 'mas3_contingency_relitigation',
-      message: 'MAS3 contingency-planning directives reopen a locked decision window',
-      pattern: /\b(assuming|assume|if)\s+mas3\s+(does(?:n't| not)|will(?:n't| not))\s+(materialize|happen|land)\b/i,
-    },
-    {
-      code: 'goal_rewrite_relitigation',
-      message: 'goal-rewrite directives relitigate an already locked priority frame',
-      pattern: /\b(update|change|rewrite|align)\s+your\s+(stated\s+)?(top\s+)?goal\b/i,
-    },
-  ],
-  directivePatterns: [
-    ...STALE_CONSULTING_ERA_PATTERNS,
-    {
-      code: 'fpa3_rejected',
-      message: 'directive references FPA3 / Functional Program Analyst 3, a position the user explicitly rejected',
-      pattern: /\b(functional program analyst\s*3|fpa\s*3|hcbm\s*contracts?\s*analyst)\b/i,
-    },
-    {
-      code: 'consulting_bridge',
-      message: 'directive proposes a forbidden consulting or revenue-bridge path',
-      pattern: /\b(consulting|fractional|mercor|client acquisition|contract opportunit(?:y|ies)|revenue bridge|financial bridge)\b/i,
-    },
-    {
-      code: 'mas3_relitigation',
-      message: 'directive reopens a locked MAS3-vs-overflow decision',
-      pattern: /\b(decide whether|whether to|reconsider|revisit|abandon|pivot|document your decision)\b[\s\S]{0,120}\b(mas3|state[- ]government)\b/i,
-    },
-    {
-      code: 'decision_menu',
-      message: 'directive is phrased as an unresolved decision menu instead of one concrete recommendation',
-      pattern: /\b(decide whether|whether to)\b/i,
-    },
-    {
-      code: 'goal_rewrite_relitigation',
-      message: 'directive asks to rewrite goals instead of executing within the locked MAS3 frame',
-      pattern: /\b(update|change|rewrite|align)\s+your\s+(stated\s+)?(top\s+)?goal\b/i,
-    },
-  ],
-};
-
-/** Per-user pinned brief rules. Extend this map or move to DB when more accounts need pinned briefs. */
-const PINNED_BRIEF_FOR_USER: Readonly<Partial<Record<string, PinnedBriefConstraints>>> = {
-  [OWNER_USER_ID]: OWNER_MAS3_CONSTRAINTS,
-};
-
-function getPinnedConstraints(userId: string): PinnedBriefConstraints | null {
-  return PINNED_BRIEF_FOR_USER[userId] ?? null;
+/** Per-user pinned prompts/goals (none in code). User-scoped rows (e.g. tkg_goals, tkg_constraints) apply per account via RLS. */
+function getPinnedConstraints(_userId: string): PinnedBriefConstraints | null {
+  return null;
 }
 
 function uniqueByCode(violations: ConstraintViolation[]): ConstraintViolation[] {
@@ -260,12 +166,6 @@ export function getDirectiveConstraintViolations(input: {
     ...collectViolations(combined, combinedPatterns),
     ...collectViolations(input.directive, directiveOnlyPatterns),
   ];
-  if (input.actionType === 'make_decision' && /\bor\b/i.test(input.directive) && /\bmas3\b/i.test(combined)) {
-    violations.push({
-      code: 'decision_menu',
-      message: 'decision directive presents a choice menu instead of a locked recommendation',
-    });
-  }
 
   return uniqueByCode(violations);
 }

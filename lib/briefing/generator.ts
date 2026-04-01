@@ -29,6 +29,7 @@ import {
   CONFIDENCE_PERSIST_THRESHOLD,
   daysMs,
 } from '@/lib/config/constants';
+import { resolveUserPromptNames, type UserPromptNames } from '@/lib/auth/user-display-name';
 import {
   TRIGGER_ACTION_MAP,
   buildTriggerContextBlock,
@@ -1005,7 +1006,7 @@ interface AvoidanceObservation {
   observation: string;
 }
 
-interface StructuredContext {
+export interface StructuredContext {
   selected_candidate: string;
   candidate_class: string;
   candidate_title: string;
@@ -1033,6 +1034,10 @@ interface StructuredContext {
   researcher_insight: ResearchInsight | null;
   // User identity context (dynamic, from goals)
   user_identity_context: string | null;
+  /** Display name for send_message prompts and fallbacks (never empty; min "the user"). */
+  user_full_name: string;
+  /** First name for natural phrasing; empty → use "you" / "the user" in copy. */
+  user_first_name: string;
   // Goal-gap analysis (all active goals with behavioral gap)
   goal_gap_analysis: GoalGapEntry[];
   // Sent mail in last 14d — what the user has already done. Model must not suggest these.
@@ -1221,7 +1226,12 @@ function buildStructuredContext(
   avoidanceObservations?: AvoidanceObservation[],
   competitionContext?: string | null,
   userEmails?: Set<string>,
+  userPromptNames?: UserPromptNames,
 ): StructuredContext {
+  const names: UserPromptNames = userPromptNames ?? {
+    user_full_name: 'the user',
+    user_first_name: '',
+  };
   // Type-diverse signal sampling: guarantee calendar, task, file, and drive
   // signals get representation instead of being buried under email volume.
   // Bloodhound approach: cast a wide net across signal types, then fill
@@ -1431,6 +1441,8 @@ function buildStructuredContext(
     constraint_violation_codes,
     researcher_insight: insight,
     user_identity_context: buildUserIdentityContext(userGoals ?? []),
+    user_full_name: names.user_full_name,
+    user_first_name: names.user_first_name,
     goal_gap_analysis: goalGapAnalysis ?? [],
     already_sent_14d: alreadySent ?? [],
     behavioral_mirrors: buildBehavioralMirrors(antiPatterns ?? [], divergences ?? []),
@@ -1537,7 +1549,7 @@ function buildRelationshipTimeline(
  * so it can distinguish high-value directives from low-value housekeeping.
  * Never hardcodes user-specific text — derived entirely from tkg_goals.
  */
-function buildUserIdentityContext(
+export function buildUserIdentityContext(
   goals: Array<{ goal_text: string; priority: number; goal_category: string }>,
 ): string | null {
   console.log(`[generator] buildUserIdentityContext: ${goals.length} goals received`);
@@ -1620,8 +1632,18 @@ function buildRecipientBrief(
   return lines.join('\n');
 }
 
-function buildPromptFromStructuredContext(ctx: StructuredContext): string {
+export function buildPromptFromStructuredContext(ctx: StructuredContext): string {
   const sections: string[] = [];
+  const wantPhrase = ctx.user_first_name.trim()
+    ? `One clear sentence about what ${ctx.user_first_name} wants or is sharing`
+    : `One clear sentence about what you want or are sharing`;
+  const senderFromLine = `You are drafting a real email from ${ctx.user_full_name} to a specific person.`;
+  const authenticSendLine = ctx.user_first_name.trim()
+    ? `The email must be something ${ctx.user_first_name} would actually send without editing. If context is thin, keep it short and genuine rather than long and vague.\n\n`
+    : `The email must be something the user would actually send without editing. If context is thin, keep it short and genuine rather than long and vague.\n\n`;
+  const exampleTone =
+    '"Hi [Name], I wanted to follow up on our conversation last week about the project timeline. ' +
+    'Can you confirm the revised deadline works on your end? Thanks, [User]"';
 
   // For send_message with a confirmed external recipient: strip all system metrics and pipeline
   // labels. The LLM should see the person and the signals — not discrepancy classes, signal
@@ -1659,7 +1681,7 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
 
     m.push(
       `SEND_MESSAGE_ARTIFACT_RULES (apply these before writing a single word):\n\n` +
-      `You are drafting a real email from Brandon Kapp to a specific person.\n` +
+      `${senderFromLine}\n` +
       `Write it exactly as a competent professional would write it. Short. Warm but not gushing. Clear reason for writing. One ask or one piece of information. No filler.\n\n` +
       `NEVER include:\n` +
       `- Metrics, percentages, or system language ("52% drop", "signal density", "goal-aligned activity")\n` +
@@ -1675,11 +1697,11 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
       `ALWAYS include:\n` +
       `- A natural greeting using their first name\n` +
       `- A specific reason for reaching out tied to real context (their role, a past interaction, a shared project, a job posting, a recent event)\n` +
-      `- One clear sentence about what Brandon wants or is sharing\n` +
+      `- ${wantPhrase}\n` +
       `- A warm close\n\n` +
-      `Example tone (do not copy verbatim — adapt every detail to the actual context from the signals):\n` +
-      `"Hi Cheryl, I hope things are going well with the WA Cares rollout. I interviewed with the panel back in January and wanted to stay connected as the program grows. If any regional roles come up, I'd love to be considered. Best, Brandon"\n\n` +
-      `The email must be something Brandon would actually send without editing. If context is thin, keep it short and genuine rather than long and vague.\n\n` +
+      `Example tone (do not copy verbatim — adapt every detail to the actual context from the signals; [Name] and [User] are placeholders only):\n` +
+      `${exampleTone}\n\n` +
+      authenticSendLine +
       `SEND_MESSAGE_QUALITY_BAR (mandatory — every requirement must pass):\n` +
       `1. FIRST SENTENCE: Must reference one specific fact from the signals — a date, a named outcome, a prior message, or a concrete request. ` +
       `Do not open with context-setting, pleasantries, or "I wanted to reach out." Start on the situation.\n` +
@@ -1898,7 +1920,7 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
     sections.push(
       `ARTIFACT_PREFERENCE: send_message is required — a real recipient email is in the signals above.\n\n` +
       `SEND_MESSAGE_ARTIFACT_RULES (apply these before writing a single word):\n\n` +
-      `You are drafting a real email from Brandon Kapp to a specific person.\n` +
+      `${senderFromLine}\n` +
       `Write it exactly as a competent professional would write it. Short. Warm but not gushing. Clear reason for writing. One ask or one piece of information. No filler.\n\n` +
       `NEVER include:\n` +
       `- Metrics, percentages, or system language ("52% drop", "signal density", "goal-aligned activity")\n` +
@@ -1914,11 +1936,11 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
       `ALWAYS include:\n` +
       `- A natural greeting using their first name\n` +
       `- A specific reason for reaching out tied to real context (their role, a past interaction, a shared project, a job posting, a recent event)\n` +
-      `- One clear sentence about what Brandon wants or is sharing\n` +
+      `- ${wantPhrase}\n` +
       `- A warm close\n\n` +
-      `Example tone (do not copy verbatim — adapt every detail to the actual context from the signals):\n` +
-      `"Hi Cheryl, I hope things are going well with the WA Cares rollout. I interviewed with the panel back in January and wanted to stay connected as the program grows. If any regional roles come up, I'd love to be considered. Best, Brandon"\n\n` +
-      `The email must be something Brandon would actually send without editing. If context is thin, keep it short and genuine rather than long and vague.\n\n` +
+      `Example tone (do not copy verbatim — adapt every detail to the actual context from the signals; [Name] and [User] are placeholders only):\n` +
+      `${exampleTone}\n\n` +
+      authenticSendLine +
       `SEND_MESSAGE_QUALITY_BAR (mandatory — every requirement must pass):\n` +
       `1. FIRST SENTENCE: Must reference one specific fact from the signals — a date, a named outcome, a prior message, or a concrete request. ` +
       `Do not open with context-setting, pleasantries, or "I wanted to reach out." Start on the situation.\n` +
@@ -2109,8 +2131,8 @@ function extractEntityPhraseCandidates(text: string): string[] {
 }
 
 // Fetch name tokens for the authenticated user so they can be excluded from
-// entity conflict suppression. "Brandon" appearing in an email body (as the
-// sender/recipient greeting) must never block a new directive.
+// entity conflict suppression. The user's own name in a greeting line must never
+// block a new directive as a false "entity" match.
 async function fetchUserSelfNameTokens(userId: string): Promise<Set<string>> {
   const selfTokens = new Set<string>();
   try {
@@ -3742,6 +3764,7 @@ function buildDecisionEnforcedFallbackPayload(input: {
   candidateDueDate: string | null;
   causalDiagnosis: CausalDiagnosis;
   userEmails?: Set<string>;
+  userPromptNames: UserPromptNames;
 }): GeneratedDirectivePayload | null {
   const target = cleanDecisionTarget(input.winner.title);
   const deadline = resolveDecisionDeadline(input.candidateDueDate);
@@ -3788,6 +3811,9 @@ function buildDecisionEnforcedFallbackPayload(input: {
       const rawFirst = (input.winner.entityName ?? 'there').split(/\s+/)[0];
       const firstName = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1).toLowerCase();
       const simpleDate = new Date(Date.now() + daysMs(7)).toISOString().slice(0, 10);
+      const signOff = input.userPromptNames.user_first_name.trim()
+        ? input.userPromptNames.user_first_name
+        : '';
       return {
         insight: `Relationship with ${input.winner.entityName} has gone silent — reconnection attempt before the window closes.`,
         causal_diagnosis: input.causalDiagnosis,
@@ -3797,7 +3823,7 @@ function buildDecisionEnforcedFallbackPayload(input: {
         artifact: {
           to: recipient,
           recipient,
-          subject: `From Brandon Kapp`,
+          subject: `From ${input.userPromptNames.user_full_name}`,
           body: [
             `Hi ${firstName},`,
             ``,
@@ -3805,8 +3831,7 @@ function buildDecisionEnforcedFallbackPayload(input: {
             ``,
             `If there's no reply, I'll take that as a sign the timing isn't right. But I didn't want that risk of losing touch to pass without asking.`,
             ``,
-            `Best,`,
-            `Brandon`,
+            `Best,${signOff ? `\n${signOff}` : ''}`,
           ].join('\n'),
         },
         why_now: `${input.winner.entityName} has been unreachable — delay past ${simpleDate} increases the risk of losing this connection permanently.`,
@@ -4391,7 +4416,7 @@ export async function generateDirective(
     // Hoist self-name tokens fetch — called once for all candidates, not once per candidate.
     // If this returns empty (auth metadata missing name), entity suppression is skipped
     // to avoid false positives (can't distinguish "Brandon" the user from "Brandon" the contact).
-    const [selfNameTokens, userEmails, lockedContacts] = await Promise.all([
+    const [selfNameTokens, userEmails, lockedContacts, userPromptNames] = await Promise.all([
       fetchUserSelfNameTokens(userId),
       fetchUserEmailAddresses(userId),
       // Fetch locked contacts from tkg_constraints once — hard blocks any send_message to these entities.
@@ -4417,6 +4442,7 @@ export async function generateDirective(
         }
         return set;
       })(),
+      resolveUserPromptNames(userId),
     ]);
 
     for (const { candidate: currentCandidate, disqualified, disqualifyReason } of rankedCandidates) {
@@ -4504,6 +4530,7 @@ export async function generateDirective(
         alreadySent, convictionDecision, behavioralHistory,
         avoidanceObservations, competitionContext,
         userEmails,
+        userPromptNames,
       );
 
       // --- DECISION PAYLOAD — the canonical binding contract ---
@@ -4587,6 +4614,10 @@ export async function generateDirective(
           candidateDueDate: ctx.candidate_due_date,
           causalDiagnosis: ctx.required_causal_diagnosis,
           userEmails,
+          userPromptNames: {
+            user_full_name: ctx.user_full_name,
+            user_first_name: ctx.user_first_name,
+          },
         });
 
         if (repairedPayload) {

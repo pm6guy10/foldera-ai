@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: April 1, 2026 (new-user reliability: first-morning goals-only brief, send-batch skip alert to brief@foldera.ai, /try artifact preview + analyze JSON hardening, settings OAuth retry/reconnect, onboard immediate sync, daily brief eligibility includes connected users without subscription row)
+Last Updated: April 1, 2026 (multi-user hardening: no code-local owner subscription/pinned-constraint bypass; `resolveUserPromptNames` + structured `user_full_name` / `user_first_name` in generator; scorer static duplicate stopwords exported + `full_name` in auth stop tokens; acceptance alerts at brief@foldera.ai; owner `user_subscriptions` row ensured in prod DB)
 Next Review: Monday March 31, 2026
 
 ## HOW TO USE THIS FILE
@@ -61,7 +61,7 @@ March 24 production hotfix evidence:
 | Test user gets own directive | PARTIAL | Action rows exist for user `22222222`, but this is a synthetic cron-excluded user with no auth row and no deliverable email. It does not satisfy real non-owner production proof depth. | Not a valid real-user proof path |
 | Real connected non-owner reaches generate/persist/send in production | NOT PROVEN | 2026-03-29 production receipt: connected users were owner + synthetic `22222222` only; `real_non_owner_connected_user_ids=[]`; `non_owner_actions_today=[]`; acceptance gate `NON_OWNER_DEPTH` failed with `"No connected non-owner users (owner-only run)."`. | Need at least one real connected non-owner account with active subscription |
 | Test user gets email | NOT PROVEN | `no_verified_email` — test user has fake email `gate2-test@foldera.ai` | Need real OAuth signup with deliverable address |
-| Stranger onboarding flow (code paths) | VERIFIED | Code audit: empty goals→graceful, empty signals→null/wait_rationale, 90d first-sync, no hardcoded user IDs, trial banner only for past_due. March 23 follow-up: middleware now routes authenticated `/login` and `/start` to `/dashboard` or `/onboard` via the JWT `hasOnboarded` claim instead of a per-request `/api/onboard/check` fetch; dashboard/onboard pages no longer do client-side auth redirects. Local `npm run build` + `npx playwright test tests/e2e/` passed. | — |
+| Stranger onboarding flow (code paths) | VERIFIED | Code audit: empty goals→graceful, empty signals→null/wait_rationale, 90d first-sync, trial banner only for past_due. **April 1:** `getSubscriptionStatus` has no owner bypass; `filterDailyBriefEligibleUserIds` includes connected users without a subscription row and treats `free`/`trial`/`pro` as eligible when `status=active`; code-local MAS3 pinned constraints removed (per-user rules live in DB/RLS). Generator send_message prompts use `resolveUserPromptNames` (auth metadata + email-local fallback). `lib/__tests__/multi-user-safety.test.ts` covers subscription + eligibility + prompt hygiene. | — |
 | Stranger onboarding flow (live) | NOT TESTED | Requires real OAuth sign-up with a real email address. Cannot be automated without browser. | Manual test needed |
 
 **NEXT MOVE:** Brandon or a real test user signs up via /start → Google OAuth → connects email → waits for next nightly-ops cron → verifies email arrives.
@@ -90,7 +90,7 @@ March 24 production hotfix evidence:
 |---|---|---|---|
 | acceptance-gate.ts script | BUILT (strengthened) | `lib/cron/acceptance-gate.ts` now enforces 9 checks: AUTH, TOKENS, API_CREDIT_CANARY, SIGNALS, COMMITMENTS, GENERATION, DELIVERY, SESSION, NON_OWNER_DEPTH. `NON_OWNER_DEPTH` requires a real non-owner (not owner, not synthetic test user) to reach persisted send/no-send evidence the same day. `AUTH`/`TOKENS`/`SESSION` now exclude `TEST_USER_ID` to prevent synthetic-token false failures. | Real non-owner account currently absent in prod |
 | Wired into nightly-ops | BUILT | Stage 6 in `app/api/cron/nightly-ops/route.ts` | First live fire unproven |
-| Alert on failure | BUILT | Sends to b.kapp1010@gmail.com via Resend on any FAIL | — |
+| Alert on failure | BUILT | Sends to brief@foldera.ai via Resend on any FAIL | — |
 | CLAUDE.md/AGENTS.md updated | DONE | Session log appended | — |
 
 **NEXT MOVE:** Provision or connect at least one real non-owner production account, then rerun nightly-ops and confirm `NON_OWNER_DEPTH` flips to PASS with non-owner action/send receipts.

@@ -411,7 +411,8 @@ const NON_COMMITMENT_PATTERNS = [
   /\b(?:vercel|deployment|deploy(?:ed|ing)?)\s+(?:failed|succeeded|ready|error|build|complete|cancel)/i,
   /\b(?:build\s+(?:failed|succeeded|error|complete)|production\s+deployment)\b/i,
   // Job application procedural steps — HR requests to the candidate, not personal commitments
-  // "provide Nicole Vreeland's contact information as a reference" is HR asking, not you committing
+  // "provide [name]'s contact information as a reference" is someone asking, not the user
+  // committing to something
   /\bprovide\s+\w[\w\s''-]{0,40}'?s?\s+(?:contact\s+(?:information|info|details?)|phone|email)\b/i,
   /\b(?:supervisor|professional|personal)\s+reference\s+(?:contact|information|info)\b/i,
   /\bsubmit\s+(?:your\s+)?(?:application|resume|cv|references?)\b/i,

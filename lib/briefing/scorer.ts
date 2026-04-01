@@ -57,10 +57,12 @@ async function fetchUserFirstNameStopTokens(userId: string): Promise<string[]> {
     };
     const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
     addFirst(meta['given_name']);
+    addFirst(meta['full_name']);
     if (typeof meta['name'] === 'string') addFirst(meta['name']);
     for (const identity of user.identities ?? []) {
       const idData = (identity.identity_data ?? {}) as Record<string, unknown>;
       addFirst(idData['given_name']);
+      addFirst(idData['full_name']);
       if (typeof idData['name'] === 'string') addFirst(idData['name'] as string);
     }
     return [...out];
@@ -267,10 +269,13 @@ const OUTCOME_SIGNAL_PATTERNS = [
   /\b(?:partner|client|manager|recruiter|relationship|stakeholder)\b/i,
 ];
 
-const DUPLICATE_STOPWORDS = new Set([
+/** Static duplicate-detection tokens only; per-user given names are added at runtime via fetchUserFirstNameStopTokens. */
+export const SCORER_STATIC_DUPLICATE_STOPWORDS = new Set([
   'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'have', 'will', 'your',
   'about', 'after', 'before', 'just', 'quick', 'update', 'send', 'write', 'follow', 'check',
 ]);
+
+const DUPLICATE_STOPWORDS = SCORER_STATIC_DUPLICATE_STOPWORDS;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -2972,8 +2977,8 @@ async function filterInvalidContext(
 
       // --- Check 1: explicit rejection signal names this entity ---
       // Requires full-name or whole-word first-name match to prevent
-      // "brandon" in a rejection signal from killing every email mentioning
-      // a different Brandon.
+      // The user's own first name in a rejection signal must not kill unrelated
+      // threads that mention someone else with the same first name.
       if (rejectionTexts.some((text) => matchesInText(text))) {
         rejected.set(c.id, {
           reason: 'rejection_signal_detected',
