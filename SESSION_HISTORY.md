@@ -6,7 +6,7 @@
 
 - 2026-04-01 — AUDIT: schedule_conflict relaxed ownership + no-send directive_text one-liner
   MODE: AUDIT
-  Commit hash(es): (after push)
+  Commit hash(es): `30cf9cc`
   Files changed: `lib/briefing/generator.ts`, `lib/cron/daily-brief-generate.ts`, `lib/briefing/__tests__/generator.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; vitest `generator.test` + `evaluate-readiness`; production brain-receipt post-deploy.
   Any unresolved issues: None if receipt returns `pending_approval_persisted` with aligned `directive_text`.
