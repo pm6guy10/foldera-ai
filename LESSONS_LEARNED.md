@@ -131,3 +131,11 @@ Expanding data windows (signals, entities, evidence) is necessary but not suffic
 **The fix class**: calibrate the prompt's confidence scale to the actual signal landscape. A strong single-domain email thread with clear next step = confidence 60-70, not 0. Multi-domain convergence is a bonus, not a requirement. The send threshold is 70 — the prompt must allow 70+ for well-evidenced single-source actions.
 
 **The priority inversion**: P1 goals had priority number 1, but scorer used raw number as weight, giving P5 goals 5x influence. Fixed by inverting to `(6 - priority)`. Always verify that priority=1 means most important throughout the entire pipeline, not just at insert time.
+
+## 12. Always Grep for ALL Call Sites Before Modifying Any Function
+
+`validateDirectiveForPersistence` had 3 call sites across 2 files. The fix in `generator.ts` exempted discrepancy candidates from decision enforcement checks. The fix in `daily-brief-generate.ts` (~line 1539) was missed. Discrepancy candidates were still blocked in production because the second call site ran without `candidateType` and the exemption never fired.
+
+**The rule**: before modifying any function's behavior or adding a new parameter, run `rg 'functionName' --type ts` across the entire codebase and list every call site. Fix ALL of them or the fix is incomplete. A single grep miss means the bug survives the "fix" and wastes a full debug session to rediscover.
+
+This applies to: validation functions, lifecycle gates, auth guards, confidence thresholds, trust class logic — anything that is called from more than one place.

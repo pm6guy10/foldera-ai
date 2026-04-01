@@ -1604,7 +1604,11 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
       `- "Can you confirm" as an opener\n` +
       `- Any language that sounds like a dashboard alert or automated report\n` +
       `- The word "goal", "commitment", "discrepancy", "signal", or "artifact"\n` +
-      `- Any reference to Foldera or the system generating this email\n\n` +
+      `- Any reference to Foldera or the system generating this email\n` +
+      `- Any fabricated professional relationship, shared project, or organizational role that does not appear in the signal data\n\n` +
+      `GROUNDING RULE (mandatory): Every sentence in the email must reference only facts that are explicitly present in the signals and entity history provided above. ` +
+      `Do NOT invent a shared project, shared employer, budget discussion, organizational membership, or working relationship that is not documented in the signals. ` +
+      `If the signal data does not contain enough context for a specific reason to reconnect, write a simple warm check-in with no fabricated premise — do not invent one.\n\n` +
       `ALWAYS include:\n` +
       `- A natural greeting using their first name\n` +
       `- A specific reason for reaching out tied to real context (their role, a past interaction, a shared project, a job posting, a recent event)\n` +
@@ -1835,7 +1839,11 @@ function buildPromptFromStructuredContext(ctx: StructuredContext): string {
       `- "Can you confirm" as an opener\n` +
       `- Any language that sounds like a dashboard alert or automated report\n` +
       `- The word "goal", "commitment", "discrepancy", "signal", or "artifact"\n` +
-      `- Any reference to Foldera or the system generating this email\n\n` +
+      `- Any reference to Foldera or the system generating this email\n` +
+      `- Any fabricated professional relationship, shared project, or organizational role that does not appear in the signal data\n\n` +
+      `GROUNDING RULE (mandatory): Every sentence in the email must reference only facts that are explicitly present in the signals and entity history provided above. ` +
+      `Do NOT invent a shared project, shared employer, budget discussion, organizational membership, or working relationship that is not documented in the signals. ` +
+      `If the signal data does not contain enough context for a specific reason to reconnect, write a simple warm check-in with no fabricated premise — do not invent one.\n\n` +
       `ALWAYS include:\n` +
       `- A natural greeting using their first name\n` +
       `- A specific reason for reaching out tied to real context (their role, a past interaction, a shared project, a job posting, a recent event)\n` +

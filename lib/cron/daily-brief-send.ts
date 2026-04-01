@@ -139,6 +139,19 @@ export async function runDailySend(
         continue;
       }
 
+      // Idempotency guard: if a resend_id is already stored, the email was sent in a previous
+      // run that may have crashed after delivery but before the sent_at update. Skip re-sending.
+      const existingResendId = typeof executionResult.resend_id === 'string' ? executionResult.resend_id : null;
+      if (existingResendId) {
+        results.push({
+          code: 'email_already_sent',
+          meta: { action_id: action.id, resend_id: existingResendId },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
       const directiveItem: DirectiveItem = {
         id: action.id,
         directive: action.directive_text as string,
@@ -195,12 +208,21 @@ export async function runDailySend(
         continue;
       }
 
+      const deliveryId =
+        delivery &&
+        typeof delivery === 'object' &&
+        'data' in (delivery as Record<string, unknown>) &&
+        typeof (delivery as { data?: { id?: unknown } }).data?.id === 'string'
+          ? ((delivery as { data?: { id?: string } }).data?.id ?? null)
+          : null;
+
       const { error: updateError } = await supabase
         .from('tkg_actions')
         .update({
           execution_result: {
             ...executionResult,
             daily_brief_sent_at: new Date().toISOString(),
+            ...(deliveryId ? { resend_id: deliveryId } : {}),
           },
         })
         .eq('id', action.id);
@@ -214,14 +236,6 @@ export async function runDailySend(
         });
         continue;
       }
-
-      const deliveryId =
-        delivery &&
-        typeof delivery === 'object' &&
-        'data' in (delivery as Record<string, unknown>) &&
-        typeof (delivery as { data?: { id?: unknown } }).data?.id === 'string'
-          ? ((delivery as { data?: { id?: string } }).data?.id ?? null)
-          : null;
 
       results.push({
         code: 'email_sent',

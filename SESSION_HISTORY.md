@@ -4,6 +4,24 @@
 
 ## Session Logs
 
+- 2026-03-31 — Final cleanup batch: entity classification on ingestion, hallucination guard, idempotency, rate limiting, governance docs
+  MODE: FLOW
+  Commit hash(es): pending
+  Files changed: `lib/signals/signal-processor.ts` (classifyEntityTrustClass + upsertEntity integration), `lib/briefing/generator.ts` (hallucination GROUNDING RULE in both send_message prompt locations), `app/api/resend/webhook/route.ts` (in-memory rate limit 10/min per IP), `lib/cron/daily-brief-send.ts` (resend_id idempotency guard + store resend_id in execution_result), `CURRENT_STATE.md`, `AUTOMATION_BACKLOG.md`, `LESSONS_LEARNED.md`, `SESSION_HISTORY.md`
+  What was verified:
+  - Fix 1 (entity classification): `classifyEntityTrustClass` added and integrated into `upsertEntity` on both INSERT and UPDATE paths; entity-level classification (domain + interaction count) merged with signal-level trust class
+  - Fix 2 (signal dedup): already implemented via content_hash + ignoreDuplicates in both sync files — confirmed, no code change needed
+  - Fix 3 (/dashboard/signals): renders connected sources, last sync time, active integration count — useful data, kept
+  - Fix 4 (isOverManualCallLimit): already imported and called in generator.ts line 4181 — confirmed, no code change needed
+  - Fix 5 (hallucination guard): GROUNDING RULE added to both send_message prompt locations (one in the minimal-prompt path, one in the full context path) in generator.ts
+  - Fix 6 (schedule_block): DB shows action_types in data = {do_nothing, make_decision, research, schedule, send_message, write_document}; constraint allows same set — match is exact, no migration needed
+  - Fix 7 (rate limiting): /api/try/analyze already has rateLimit (5/hr); /api/resend/webhook now has in-memory 10/min guard
+  - Fix 8 (email idempotency): resend_id guard added before send; resend_id stored in execution_result after send
+  - Fix 9 (docs): CURRENT_STATE.md section A updated with 5 new working items; AUTOMATION_BACKLOG.md marked 3 items DONE; LESSONS_LEARNED.md rule #12 added; SESSION_HISTORY.md this entry
+  - `npm run build`: PASSED
+  - `npx vitest run`: 527/527 tests PASSED (45 files)
+  Any unresolved issues: npm run test:prod requires live auth-state; run after push.
+
 - 2026-03-31 — Frontend polish sweep: blog fix, login/start improvements, dashboard empty state, mobile responsiveness
   MODE: FLOW
   Commit hash(es): pending

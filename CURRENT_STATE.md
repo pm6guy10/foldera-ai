@@ -8,6 +8,11 @@
 - **Artifact generation executes and produces valid structured output** — `generateArtifact()` routes discrepancy candidates through a flavor-aware LLM transformation (`buildDiscrepancyTransformPrompt`). The transformation layer detects raw analysis dumps via `isAnalysisDump()` and replaces them with finished, zero-thinking-required artifacts.
 - **End-to-end pipeline is functional** — `signals → discrepancy extraction → scoring → DecisionPayload → generation → persistence` has been verified in production. At least one production `write_document` artifact at confidence ~79 has been generated and persisted to `tkg_actions`.
 - **Generic filler rejection is live** — `GENERIC_FILLER_PATTERNS` validator rejects social maintenance language from all artifact types.
+- **Entity classification on ingestion** — `classifyEntityTrustClass(email, interactions)` runs on every entity insert/update in `signal-processor.ts`. Rules: `.gov`/`.org` domain = trusted; noreply/no-reply/newsletter/marketing pattern = transactional; email + ≥1 interaction = trusted; 0 interactions = junk. Prevents unclassified entity accumulation without batch cleanup.
+- **Signal dedup across providers** — Both `google-sync.ts` and `microsoft-sync.ts` already use a normalized `content_hash` (`sender+subject+date`) with `onConflict: 'user_id,content_hash', ignoreDuplicates: true`. Confirmed working — same email received via Gmail and Outlook produces one row.
+- **Rate limiting on public routes** — `/api/try/analyze` uses DB-backed `rateLimit()` (5/hour per IP). `/api/resend/webhook` uses a module-level in-memory counter (10/min per IP, best-effort on Vercel cold starts).
+- **Email send idempotency** — `daily-brief-send.ts` checks both `daily_brief_sent_at` (existing guard) and `resend_id` (new guard) before calling Resend. After a successful send, `resend_id` is stored in `execution_result` alongside `daily_brief_sent_at`. Cron double-fire cannot produce duplicate sends.
+- **Hallucination guard in send_message prompt** — Both send_message prompt locations in `generator.ts` now include a `GROUNDING RULE` prohibiting fabricated professional relationships, shared projects, organizational roles, or budget contexts that don't appear in signal data.
 
 ## B. WHAT IS BROKEN (REAL)
 

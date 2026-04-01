@@ -544,8 +544,9 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - Stranger onboarding e2e test
 - Landing page SEO copy rewrite (homepage, not blog)
 - /try page conversion funnel
-- Rate limiting on /api/try/analyze and all public routes
-- Signal dedup across Outlook+Gmail (same email, two signals)
+- Rate limiting on /api/try/analyze and all public routes — DONE 2026-03-31 (webhook: in-memory 10/min; try/analyze: DB-backed 5/hr already existed)
+- Signal dedup across Outlook+Gmail (same email, two signals) — DONE (content_hash + onConflict ignoreDuplicates was already in both sync files)
+- Email send idempotency (prevent double-send on cron double-fire) — DONE 2026-03-31 (resend_id guard added to daily-brief-send.ts)
 - .env.example for contributors
 - UptimeRobot monitor for /api/health
 - DB migrations in code (not manual)
@@ -555,6 +556,5 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - Past directives view (/dashboard/briefings)
 - Auth-state.json refresh (expires ~April 22)
 - Duplicate entity cleanup (beyond Yadira)
-- Email send idempotency (prevent double-send on cron double-fire)
 - Local Playwright auth-state mismatch against `http://localhost:3000` still breaks the authenticated production-smoke subset
 - `tests/e2e/backend-safety-gates.spec.ts:372` — resend webhook returns 401 (auth check) before 400 (body validation); test expects 400 for empty body; pre-existing ordering issue in `/api/resend/webhook/route.ts`, not introduced by any current session

@@ -15,8 +15,31 @@ import { encrypt } from '@/lib/encryption';
 
 export const dynamic = 'force-dynamic';
 
+// Simple in-memory rate limiter for the webhook endpoint.
+// Survives casual abuse; svix signature verification is the primary security gate.
+const webhookRateMap = new Map<string, { count: number; resetAt: number }>();
+
+function isWebhookRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const window = 60_000; // 1 minute
+  const limit = 10;
+  const entry = webhookRateMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    webhookRateMap.set(ip, { count: 1, resetAt: now + window });
+    return false;
+  }
+  entry.count++;
+  return entry.count > limit;
+}
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? request.headers.get('x-real-ip')
+    ?? 'unknown';
+  if (isWebhookRateLimited(ip)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   const secret = process.env.RESEND_WEBHOOK_SECRET;
   if (!secret) {
     console.error('[resend/webhook] RESEND_WEBHOOK_SECRET not set');
