@@ -65,16 +65,22 @@ export async function POST(request: Request) {
       artifactText = (merged.body ?? merged.text ?? merged.content ?? merged.subject ?? null) as string | null;
 
       // Send-worthiness check
+      const generationLog: GenerationRunLog | undefined =
+        executionResult.generation_log && typeof executionResult.generation_log === 'object'
+          ? (executionResult.generation_log as GenerationRunLog)
+          : undefined;
+
+      const top0 = generationLog?.candidateDiscovery?.topCandidates?.[0];
+      const discrepancyClassFromLog =
+        top0?.candidateType === 'discrepancy' && top0.discrepancyClass ? top0.discrepancyClass : null;
+
       const decisionIssues = getDecisionEnforcementIssues({
         actionType: latestAction.action_type ?? '',
         directiveText: latestAction.directive_text ?? '',
         reason: latestAction.reason ?? '',
         artifact: merged,
+        discrepancyClass: discrepancyClassFromLog,
       });
-      const generationLog: GenerationRunLog | undefined =
-        executionResult.generation_log && typeof executionResult.generation_log === 'object'
-          ? (executionResult.generation_log as GenerationRunLog)
-          : undefined;
 
       const directiveForGates = {
         directive: latestAction.directive_text ?? '',
@@ -85,6 +91,7 @@ export async function POST(request: Request) {
           ? (latestAction.evidence as Array<{ description: string; type: 'signal' | 'commitment' | 'goal' | 'pattern' }>)
           : [],
         generationLog,
+        ...(discrepancyClassFromLog ? { discrepancyClass: discrepancyClassFromLog } : {}),
       };
 
       const sendWorthiness = isSendWorthy(directiveForGates, merged as never);

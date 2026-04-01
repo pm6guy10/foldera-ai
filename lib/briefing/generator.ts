@@ -2573,6 +2573,13 @@ const PRESSURE_OR_CONSEQUENCE_PATTERNS = [
   /\bcompeting\b/i,
   /\bdependency\b/i,
   /\bconsequence\b/i,
+  /\boverlapp(?:ing|ed)?\b/i,
+  /\bdouble[- ]book/i,
+  /\b(?:calendar|schedule)\s+conflict\b/i,
+  /\bconflicting\s+events?\b/i,
+  /\bsame\s+time\b/i,
+  /\btrade[-‐‑–—]?\s*off\b/u,
+  /\bwhich\s+(?:takes\s+priority|(?:event|meeting)\s+wins)\b/i,
 ];
 
 const OWNERSHIP_PATTERNS = [
@@ -2580,6 +2587,7 @@ const OWNERSHIP_PATTERNS = [
   /\baccountable\b/i,
   /\bresponsible\b/i,
   /\bassign\b/i,
+  /\byour\s+(?:calendar|schedule)\b/i,
 ];
 
 const REWRITE_REQUIRED_PATTERNS = [
@@ -2647,6 +2655,8 @@ export function getDecisionEnforcementIssues(input: {
   directiveText: string;
   reason: string;
   artifact: ConvictionArtifact | Record<string, unknown> | null;
+  /** When set, schedule_conflict write_document with a dated step list skips explicit/time/pressure heuristics (conflict IS the pressure). */
+  discrepancyClass?: string | null;
 }): string[] {
   const normalizedType = normalizeDecisionActionType(input.actionType);
   if (normalizedType === 'other') return [];
@@ -2659,14 +2669,22 @@ export function getDecisionEnforcementIssues(input: {
   const combinedText = `${input.directiveText}\n${input.reason}\n${artifactText}`.trim();
   const issues: string[] = [];
 
-  if (!textHasAny(combinedText, EXPLICIT_ASK_PATTERNS)) {
-    issues.push('decision_enforcement:missing_explicit_ask');
-  }
-  if (!textHasAny(combinedText, TIME_CONSTRAINT_PATTERNS)) {
-    issues.push('decision_enforcement:missing_time_constraint');
-  }
-  if (!textHasAny(combinedText, PRESSURE_OR_CONSEQUENCE_PATTERNS)) {
-    issues.push('decision_enforcement:missing_pressure_or_consequence');
+  const scheduleConflictDocRelaxed =
+    input.discrepancyClass === 'schedule_conflict' &&
+    normalizedType === 'write_document' &&
+    /\b\d{4}-\d{2}-\d{2}\b/.test(combinedText) &&
+    /\d+\.\s/m.test(artifactText);
+
+  if (!scheduleConflictDocRelaxed) {
+    if (!textHasAny(combinedText, EXPLICIT_ASK_PATTERNS)) {
+      issues.push('decision_enforcement:missing_explicit_ask');
+    }
+    if (!textHasAny(combinedText, TIME_CONSTRAINT_PATTERNS)) {
+      issues.push('decision_enforcement:missing_time_constraint');
+    }
+    if (!textHasAny(combinedText, PRESSURE_OR_CONSEQUENCE_PATTERNS)) {
+      issues.push('decision_enforcement:missing_pressure_or_consequence');
+    }
   }
   if (textHasAny(combinedText, PASSIVE_OR_IGNORABLE_PATTERNS)) {
     issues.push('decision_enforcement:passive_or_ignorable_tone');

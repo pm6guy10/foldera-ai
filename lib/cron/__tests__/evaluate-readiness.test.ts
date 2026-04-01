@@ -402,4 +402,59 @@ describe('isSendWorthy', () => {
     );
     expect(result.worthy).toBe(true);
   });
+
+  it('allows schedule_conflict write_document with ISO date and numbered steps (relaxed explicit/time/pressure)', () => {
+    const discovery = {
+      candidateCount: 5,
+      suppressedCandidateCount: 0,
+      selectionMargin: 0.1,
+      selectionReason: null,
+      failureReason: null,
+      topCandidates: [
+        {
+          id: 'disc-1',
+          rank: 1,
+          candidateType: 'discrepancy',
+          discrepancyClass: 'schedule_conflict' as const,
+          actionType: 'write_document' as const,
+          score: 2.1,
+          scoreBreakdown: {
+            stakes: 2,
+            urgency: 0.5,
+            tractability: 0.7,
+            freshness: 1,
+            actionTypeRate: 0.5,
+            entityPenalty: 0,
+          },
+          targetGoal: null,
+          sourceSignals: [],
+          decision: 'selected' as const,
+          decisionReason: '',
+        },
+      ],
+    };
+    const result = isSendWorthy(
+      makeDirective({
+        action_type: 'write_document',
+        confidence: 80,
+        directive: 'Pick one block on 2026-04-02.',
+        reason: 'Two calendar items collide.',
+        discrepancyClass: 'schedule_conflict',
+        generationLog: {
+          outcome: 'selected',
+          stage: 'persistence',
+          reason: 'ok',
+          candidateFailureReasons: [],
+          candidateDiscovery: discovery,
+        },
+        evidence: [{ type: 'signal', description: 'Calendar overlap detected' }],
+      }),
+      {
+        type: 'document',
+        title: 'Resolve overlap on 2026-04-02',
+        content: '1. Open your calendar for 2026-04-02.\n2. Move the lower-priority block to another slot.',
+      } as unknown as ConvictionArtifact,
+    );
+    expect(result.worthy).toBe(true);
+  });
 });

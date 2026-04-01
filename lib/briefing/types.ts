@@ -148,6 +148,8 @@ export interface GenerationCandidateLog {
   id: string;
   rank: number;
   candidateType: string;
+  /** Present when candidateType === 'discrepancy' — used for class-specific quality gates. */
+  discrepancyClass?: import('./discrepancy-detector').DiscrepancyClass;
   actionType: ActionType;
   score: number;
   scoreBreakdown: CandidateScoreBreakdown;

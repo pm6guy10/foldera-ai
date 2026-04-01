@@ -50,6 +50,8 @@ function isSelfReferentialSignal(content: string): boolean {
 
 const PLACEHOLDER_PATTERNS = [
   /\[(name|company|role|contact|date|amount|title|recipient)\]/i,
+  /\[[^\]]*\bphone\b[^\]]*\]/i,
+  /\bfrom recent contact\b/i,
   /\b(tbd|placeholder|lorem ipsum|example@|recipient@email\.com)\b/i,
   /\b(option a|option b)\b/i,
 ];
@@ -513,7 +515,17 @@ Return ONLY valid JSON:
 Write a message that creates forward motion. Return JSON only.`,
       };
 
-    case 'deadline':
+    case 'deadline': {
+      const scheduleConflictBlock =
+        directive.discrepancyClass === 'schedule_conflict'
+          ? `
+
+CALENDAR DOUBLE-BOOKING (schedule_conflict) — extra rules:
+- The USER owns the calendar. Steps are actions THEY take (open calendar app, decline/move a block, send a short text) — never instruct them to "call" or "email" themselves using a name from RELATIONSHIPS as if that person were an external party to coordinate with.
+- Use only people, event titles, and times that appear in SITUATION/ANALYSIS. Do not invent phone numbers or bracket placeholders like [phone], [TBD], or "from recent contact".
+- Typical flow: decide which event wins → update the calendar (decline or reschedule the other) → brief outbound message only to people named in the overlapping events.`
+          : '';
+
       return {
         system: `You write pre-filled execution artifacts for time-sensitive commitments.
 The output must reduce consequence, not merely acknowledge risk.
@@ -524,7 +536,7 @@ Rules (non-negotiable):
 - Each step must be a concrete action verb (send, call, submit, book, draft), not commentary
 - Include the specific constraint or deadline driving urgency
 - No analysis, no INSIGHT/WHY NOW labels, no scoring language
-- No vague instructions like "consider", "think about", or "review your options"
+- No vague instructions like "consider", "think about", or "review your options"${scheduleConflictBlock}
 
 Return ONLY valid JSON:
 {"type":"document","title":"<3-7 word action title>","content":"<numbered execution steps in markdown>"}`,
@@ -532,6 +544,7 @@ Return ONLY valid JSON:
 
 Write pre-filled execution steps that reduce consequence. Return JSON only.`,
       };
+    }
 
     case 'goal':
     default:

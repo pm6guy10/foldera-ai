@@ -2569,6 +2569,9 @@ function buildCandidateDiscoveryLog(
       id: candidate.id,
       rank: index + 1,
       candidateType: candidate.type,
+      ...(candidate.type === 'discrepancy' && candidate.discrepancyClass
+        ? { discrepancyClass: candidate.discrepancyClass }
+        : {}),
       actionType: candidate.suggestedActionType,
       score: Number(candidate.score.toFixed(2)),
       scoreBreakdown: candidate.breakdown,

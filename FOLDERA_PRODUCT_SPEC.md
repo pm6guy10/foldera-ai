@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — MASTER AUDIT
 
-Last Updated: April 1, 2026 (FLOW brain quality: `discrepancyClass` on `ConvictionDirective` for discrepancy winners; artifact-generator wraps `loadRelationshipContext` in safe fallback; class-first `detectDiscrepancyFlavor` so `schedule_conflict` uses deadline-style transform (not person) when `reason` mentions reconnect; `evaluateBottomGate` schedule_conflict + `write_document` branch for numbered calendar steps + ISO date without external recipient; regression tests in `artifact-generator.test.ts` + `bottom-gate.test.ts`)
+Last Updated: April 1, 2026 (FLOW brain quality: as prior, plus **post-generate quality gate** for `schedule_conflict` + `write_document`: `getDecisionEnforcementIssues` accepts optional `discrepancyClass` and relaxes explicit/time/pressure when ISO date + numbered steps present; expanded `PRESSURE_OR_CONSEQUENCE_PATTERNS` (overlapping, double-book, calendar conflict, trade-off); `OWNERSHIP_PATTERNS` includes `your calendar`; `GenerationCandidateLog.discrepancyClass` populated from scorer; `isSendWorthy` passes `directive.discrepancyClass`; brain-receipt reads class from `generation_log` for gates; artifact-generator deadline prompt block + placeholder rejection (`[phone…]`, `from recent contact`); `PLACEHOLDER_PATTERN` in `daily-brief-generate` aligned; `evaluate-readiness.test.ts` covers schedule_conflict path.)
 Next Review: Monday March 31, 2026
 
 ## HOW TO USE THIS FILE
