@@ -6,7 +6,7 @@
 
 - 2026-04-01 — Backend security hardening: RLS service_role policies, policy tightening, Sentry audit, API rate limiting, session security
   MODE: FLOW
-  Commit hash(es): pending (set after push)
+  Commit hash(es): `9f130b6`
   Files changed: `supabase/migrations/20260401000001_add_service_role_policies.sql` (new), `app/api/waitlist/route.ts` (rate limiting added), `CLAUDE.md` (SENTRY_DSN added to required env vars)
   What was verified:
   - RLS service_role ALL policies applied via Supabase MCP to 15 tables: api_usage, signal_summaries, tkg_actions, tkg_briefings, tkg_commitments, tkg_conflicts, tkg_entities, tkg_feedback, tkg_goals, tkg_pattern_metrics, tkg_signals, tkg_user_meta, user_subscriptions, referral_accounts, waitlist
