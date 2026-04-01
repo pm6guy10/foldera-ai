@@ -160,7 +160,7 @@ describe('multi-user safety', () => {
       user_full_name: 'the user',
       user_first_name: '',
     } as unknown as StructuredContext;
-    const prompt = buildPromptFromStructuredContext(ctx);
+    const prompt = buildPromptFromStructuredContext(ctx, 'send_message');
     expect(prompt).not.toMatch(/Brandon/i);
     expect(prompt).not.toMatch(/Cheryl/i);
     expect(prompt).toContain('the user');
@@ -206,7 +206,8 @@ describe('multi-user safety', () => {
       user_first_name: 'Test',
       trigger_context: 'TRIGGER_CONTEXT (decay):\nDelta: prior engagement cooled.',
     } as unknown as StructuredContext;
-    const prompt = buildPromptFromStructuredContext(ctx);
+    const prompt = buildPromptFromStructuredContext(ctx, 'send_message');
+    expect(prompt).toContain('CANONICAL_ACTION');
     expect(prompt).toContain('Write an email from the user to:');
     expect(prompt).toContain('DECAY_RECONNECTION_RULE');
     expect(prompt).toContain('CANDIDATE_EVIDENCE');

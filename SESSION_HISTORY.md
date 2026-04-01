@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — DecisionPayload render lock: canonical artifact validation, CANONICAL_ACTION prompt preamble, executable-only retries, trigger hard-fail vs soft advisory
+  MODE: AUDIT
+  Commit hash(es): `bd16119`
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/decision-payload-adversarial.test.ts`, `lib/briefing/__tests__/usefulness-gate.test.ts`, `lib/__tests__/multi-user-safety.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/briefing/__tests__ --exclude ".claude/worktrees/**"`; `npm run build`
+  Any unresolved issues: `npm run test:prod` per runbook after deploy if applicable.
+
 - 2026-04-01 — Decay reconnect: stop instructing delta paste + validate against pipeline metric echo in artifact
   MODE: AUDIT
   Commit hash(es): `255f516`

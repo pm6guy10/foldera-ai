@@ -105,6 +105,19 @@ const EXECUTABLE_ARTIFACT_TYPES: ReadonlySet<string> = new Set([
   'schedule_block',
 ]);
 
+/** Prepended to user prompt so the model renders DecisionPayload, not a self-chosen type. */
+function buildCanonicalActionPreamble(committed: ValidArtifactTypeCanonical): string {
+  const executable = EXECUTABLE_ARTIFACT_TYPES.has(committed);
+  return (
+    `CANONICAL_ACTION (system commitment — non-negotiable):\n` +
+    `DecisionPayload has locked artifact type: ${committed}.\n` +
+    `Your JSON MUST set action="${committed}" (Discrepancy Engine format) and artifact_type="${committed}" (legacy format) with a complete artifact for exactly this type.\n` +
+    (executable
+      ? `wait_rationale and do_nothing are invalid here — the system already committed to an executable move.\n`
+      : '')
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Part 2 — System prompt (execution layer, not advisor)
 // ---------------------------------------------------------------------------
@@ -272,6 +285,11 @@ interface GenerateDirectiveOptions {
    */
   skipManualCallLimit?: boolean;
 }
+
+/** Internal: generatePayload only — locks LLM render to DecisionPayload.recommended_action */
+type GeneratePayloadOptions = GenerateDirectiveOptions & {
+  committedArtifactType: ValidArtifactTypeCanonical;
+};
 
 // ---------------------------------------------------------------------------
 // Goal-gap analysis — behavioral divergence between stated and actual
@@ -1748,7 +1766,7 @@ export function buildUserIdentityContext(
 The user's stated priorities:
 ${lines.join('\n')}
 - Use these to detect contradictions: if signal velocity goes elsewhere, that's a finding.
-- Directives about tool configuration, account settings, internal system maintenance, or generic productivity are NOISE — output wait_rationale instead.
+- Directives about tool configuration, account settings, internal system maintenance, or generic productivity are NOISE — the scorer should not have selected them; render only the CANONICAL_ACTION with evidence-grounded content, never a substitute wait_rationale.
 - Look for gaps between these stated priorities and what the user is actually doing in their signals. That gap IS the insight.`;
 }
 
@@ -1899,7 +1917,13 @@ function signalSnippetMatchesDecayEntity(
   return anchors.tokens.length >= 2 ? hits.length >= 2 : hits.length >= 1;
 }
 
-export function buildPromptFromStructuredContext(ctx: StructuredContext): string {
+export function buildPromptFromStructuredContext(
+  ctx: StructuredContext,
+  committedArtifactType?: ValidArtifactTypeCanonical,
+): string {
+  const preamble = committedArtifactType
+    ? `${buildCanonicalActionPreamble(committedArtifactType).trim()}\n\n`
+    : '';
   const sections: string[] = [];
   const wantPhrase = ctx.user_first_name.trim()
     ? `One clear sentence about what ${ctx.user_first_name} wants or is sharing`
@@ -2063,7 +2087,7 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
           'any opener that does not anchor to the specific situation in the signals above.'),
     );
 
-    return m.join('\n\n');
+    return `${preamble}${m.join('\n\n')}`;
   }
 
   // TRIGGER_CONTEXT — injected first so the LLM grounds its artifact in the trigger delta.
@@ -2378,7 +2402,7 @@ export function buildPromptFromStructuredContext(ctx: StructuredContext): string
     'any opener that does not anchor to the specific situation in the signals above.',
   );
 
-  return sections.join('\n\n');
+  return `${preamble}${sections.join('\n\n')}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -3939,6 +3963,7 @@ function withResolvedCausalDiagnosis(
 function validateGeneratedArtifact(
   payload: GeneratedDirectivePayload | null,
   ctx: StructuredContext,
+  canonicalArtifactType: ValidArtifactTypeCanonical,
 ): string[] {
   if (!payload) {
     return ['Response was not valid JSON in the required schema.'];
@@ -3949,6 +3974,12 @@ function validateGeneratedArtifact(
   // Type check
   if (!VALID_ARTIFACT_TYPES.has(payload.artifact_type)) {
     issues.push(`artifact type "${payload.artifact_type}" is not valid — must be send_message, write_document, schedule_block, wait_rationale, or do_nothing`);
+  }
+
+  if (payload.artifact_type !== canonicalArtifactType) {
+    issues.push(
+      `artifact_type must be "${canonicalArtifactType}" (system commitment) but model returned "${payload.artifact_type}"`,
+    );
   }
 
   // Directive text checks
@@ -3963,9 +3994,9 @@ function validateGeneratedArtifact(
     issues.push('directive must make one concrete move instead of reopening the choice');
   }
 
-  // Structural validation per artifact type
+  // Structural validation per artifact type — always the system-committed type
   const a = payload.artifact;
-  switch (payload.artifact_type) {
+  switch (canonicalArtifactType) {
     case 'send_message': {
       const rawRecipient = a.to ?? a.recipient;
       if (isNonEmptyString(rawRecipient)) {
@@ -4005,7 +4036,7 @@ function validateGeneratedArtifact(
       const scheduleText = `${payload.directive ?? ''} ${a.title ?? ''} ${a.reason ?? ''}`.toLowerCase();
       const HOUSEKEEPING_RE = /\b(review\s*(?:security|settings|account|permissions)|check\s*(?:credit|billing|payment)|organize\s*(?:files|folders|documents)|audit\s*(?:your|account)|clean\s*up)\b/i;
       if (HOUSEKEEPING_RE.test(scheduleText)) {
-        issues.push('schedule_block for routine housekeeping rejected — output wait_rationale instead');
+        issues.push('schedule_block for routine housekeeping rejected — rewrite with a substantive outcome-moving purpose');
       }
       break;
     }
@@ -4046,7 +4077,7 @@ function validateGeneratedArtifact(
   if (
     ctx.candidate_class === 'discrepancy' &&
     ctx.discrepancy_class === 'decay' &&
-    payload.artifact_type === 'send_message'
+    canonicalArtifactType === 'send_message'
   ) {
     const a = payload.artifact as Record<string, unknown>;
     const combined = `${String(a.subject ?? '')}\n${String(a.body ?? '')}`;
@@ -4069,7 +4100,7 @@ function validateGeneratedArtifact(
 
   if (!isDiscrepancyCandidate) {
     // write_document forcing function check: must contain a concrete next action
-    if (payload.artifact_type === 'write_document') {
+    if (canonicalArtifactType === 'write_document') {
       const content = String((payload.artifact as Record<string, unknown>).content ?? '');
       const hasDecisionPoint = /\b(by\s+\w+day|\bby\s+\d{4}-\d{2}-\d{2}|\bdeadline\b|\bconfirm\b|\bdecide\b|\bchoose\b|\bapprove\b|\bschedule\b|\bcommit\b|\bnext\s+(?:step|action)\b)/i.test(content);
       if (!hasDecisionPoint) {
@@ -4079,7 +4110,7 @@ function validateGeneratedArtifact(
 
     issues.push(
       ...getDecisionEnforcementIssues({
-        actionType: payload.artifact_type,
+        actionType: canonicalArtifactType,
         directiveText: payload.directive ?? '',
         reason: payload.why_now ?? '',
         artifact: payload.artifact ?? null,
@@ -4088,7 +4119,7 @@ function validateGeneratedArtifact(
 
     issues.push(
       ...getCausalDiagnosisIssues({
-        actionType: payload.artifact_type,
+        actionType: canonicalArtifactType,
         directiveText: payload.directive ?? '',
         reason: payload.why_now ?? '',
         artifact: payload.artifact ?? null,
@@ -4118,7 +4149,7 @@ function validateGeneratedArtifact(
     reason: payload.why_now,
     evidence: [{ description: payload.insight }],
     artifact: payload.artifact,
-    actionType: artifactTypeToActionType(payload.artifact_type),
+    actionType: artifactTypeToActionType(canonicalArtifactType),
   });
   for (const v of constraintViolations) {
     issues.push(v.message);
@@ -4679,9 +4710,10 @@ function buildFullContext(result: ScorerResult, payload: GeneratedDirectivePaylo
 async function generatePayload(
   userId: string,
   ctx: StructuredContext,
-  options: GenerateDirectiveOptions = {},
+  options: GeneratePayloadOptions,
 ): Promise<{ issues: string[]; payload: GeneratedDirectivePayload | null }> {
-  const prompt = buildPromptFromStructuredContext(ctx);
+  const committed = options.committedArtifactType;
+  const prompt = buildPromptFromStructuredContext(ctx, committed);
 
   // Log prompt prefix so identity context is visible in structured logs
   logStructuredEvent({
@@ -4740,7 +4772,7 @@ async function generatePayload(
 
         if (hasModelDiagnosis && llmDiagnosis) {
           const groundingIssues = getCausalDiagnosisIssues({
-            actionType: parsed.artifact_type,
+            actionType: committed,
             directiveText: parsed.directive ?? '',
             reason: parsed.why_now ?? '',
             artifact: parsed.artifact ?? null,
@@ -4787,13 +4819,10 @@ async function generatePayload(
       });
     }
 
-    // REMOVED: Legacy commitment wait_rationale → write_document conversion.
-    // With DecisionPayload, the canonical action comes from the scorer, not the LLM.
-    // If the LLM returns wait_rationale when the scorer said send_message, drift
-    // detection will log it and the canonical action persists unchanged.
-    // The LLM's raw artifact_type must reach drift detection unmodified.
+    // DecisionPayload committed type is validated here — wrong artifact_type fails closed.
+    // Post-parse drift logging still compares llm artifact_type to canonical on success.
 
-    const issues = validateGeneratedArtifact(parsed, ctx);
+    const issues = validateGeneratedArtifact(parsed, ctx, committed);
     lastIssues = issues;
 
     if (issues.length === 0 && parsed) {
@@ -4814,25 +4843,21 @@ async function generatePayload(
       // reinforcing preamble/fence patterns from the first attempt.
       const assistantContent = parsed ? JSON.stringify(parsed) : raw;
       attempts.push({ role: 'assistant', content: assistantContent });
-      // If the first attempt returned do_nothing for a non-commitment candidate, strip do_nothing
-      // from the valid retry types — prevents the LLM from just adding the missing schema fields
-      // to a do_nothing output and "passing" validation with the wrong action type.
-      const prevAttemptWasDoNothing =
-        parsed?.artifact_type === 'do_nothing' ||
-        issues.some((i) => i.startsWith('do_nothing '));
-      const validRetryTypes =
-        ctx.candidate_class === 'commitment' || ctx.candidate_class === 'discrepancy' || prevAttemptWasDoNothing
-          ? 'send_message, write_document, schedule_block'
-          : 'send_message, write_document, schedule_block, wait_rationale, do_nothing';
+      const executableCommit = EXECUTABLE_ARTIFACT_TYPES.has(committed);
+      const validRetryTypes = executableCommit
+        ? 'send_message, write_document, schedule_block'
+        : `${committed} (only)`;
       attempts.push({
         role: 'user',
         content: `Validation failed. Fix these issues and return JSON only.
 
+CANONICAL_ACTION is still: ${committed}. Your action and artifact MUST match exactly.
+
 Discrepancy Engine format (preferred):
-{ "action": "send_message", "confidence": 0-100, "reason": "...", "message": { "to": "real@email.com", "subject": "...", "body": "..." } }
+{ "action": "${committed}", "confidence": 0-100, "reason": "...", ... }
 
 Legacy format (if you must):
-Valid artifact_type values: ${validRetryTypes}. decision MUST be "ACT".
+artifact_type MUST be "${committed}"${executableCommit ? ' — do not use wait_rationale or do_nothing' : ''}. decision MUST be "ACT".
 Do NOT use decision_frame, research_brief, drafted_email, document, or calendar_event.
 
 Do NOT use bracket placeholders like [Name], [Company], [Date].
@@ -5200,7 +5225,10 @@ export async function generateDirective(
 
     let payloadResult: { issues: string[]; payload: GeneratedDirectivePayload | null };
     try {
-      payloadResult = await generatePayload(userId, ctx, options);
+      payloadResult = await generatePayload(userId, ctx, {
+        ...options,
+        committedArtifactType: decisionPayload.recommended_action,
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`[generator] generatePayload failed: ${errorMessage}`);
@@ -5235,7 +5263,11 @@ export async function generateDirective(
         });
 
         if (repairedPayload) {
-          const repairedIssues = validateGeneratedArtifact(repairedPayload, ctx);
+          const repairedIssues = validateGeneratedArtifact(
+            repairedPayload,
+            ctx,
+            decisionPayload.recommended_action,
+          );
           if (repairedIssues.length === 0) {
             payloadResult = { issues: [], payload: repairedPayload };
             logStructuredEvent({
@@ -5456,6 +5488,27 @@ export async function generateDirective(
         canonicalAction,
         currentCandidate.title,
       );
+      const hardTriggerViolations = triggerValidation.violations.filter(
+        (v) =>
+          v.startsWith('action_mismatch:') ||
+          v.startsWith('banned_phrase:') ||
+          v.startsWith('decay_pipeline_metric_echo:') ||
+          v.startsWith('missing_relationship_decay_theme:'),
+      );
+      if (hardTriggerViolations.length > 0) {
+        const trigReasons = hardTriggerViolations.map((v) => `trigger_lock:${v}`);
+        candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: trigReasons });
+        logStructuredEvent({
+          event: 'candidate_blocked', level: 'warn', userId,
+          artifactType: canonicalAction, generationStatus: 'trigger_validation_failed',
+          details: {
+            scope: 'trigger_action_lock',
+            trigger_class: currentCandidate.discrepancyClass,
+            violations: hardTriggerViolations,
+          },
+        });
+        continue;
+      }
       if (!triggerValidation.pass) {
         logStructuredEvent({
           event: 'trigger_validation_violations', level: 'warn', userId,
@@ -5464,7 +5517,7 @@ export async function generateDirective(
             scope: 'trigger_action_lock',
             trigger_class: currentCandidate.discrepancyClass,
             violations: triggerValidation.violations,
-            note: 'Advisory — artifact proceeds but violations logged for quality tracking',
+            note: 'Soft violations only — artifact proceeds (delta/ask wording)',
           },
         });
       }

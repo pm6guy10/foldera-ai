@@ -99,15 +99,20 @@ vi.mock('@/lib/encryption', () => ({
   decryptWithStatus: (_value: unknown) => ({ plaintext: String(_value), usedFallback: false }),
 }));
 
-// Anthropic mock — returns whatever response we configure
-let anthropicResponse: object = {};
+// Anthropic mock — sequential responses per `messages.create` call (attempt 1, attempt 2, …)
+let anthropicResponses: object[] = [{}];
+let anthropicCallIdx = 0;
 vi.mock('@anthropic-ai/sdk', () => ({
   default: class {
     messages = {
-      create: async () => ({
-        content: [{ type: 'text', text: JSON.stringify(anthropicResponse) }],
-        usage: { input_tokens: 100, output_tokens: 200 },
-      }),
+      create: async () => {
+        const idx = anthropicCallIdx++;
+        const body = anthropicResponses[idx] ?? anthropicResponses[anthropicResponses.length - 1] ?? {};
+        return {
+          content: [{ type: 'text', text: JSON.stringify(body) }],
+          usage: { input_tokens: 100, output_tokens: 200 },
+        };
+      },
     };
   },
 }));
@@ -158,6 +163,8 @@ function setupDefaults() {
   mockResearchWinner.mockResolvedValue(null);
   mockGetDirectiveConstraintViolations.mockReturnValue([]);
   mockGetPinnedConstraintPrompt.mockReturnValue('');
+  anthropicCallIdx = 0;
+  anthropicResponses = [{}];
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────
@@ -168,76 +175,90 @@ describe('TEST A — Hostile action drift', () => {
     setupDefaults();
   });
 
-  it('scorer says send_message, LLM returns wait_rationale + do-nothing directive → persisted action remains send_message', async () => {
-    // Scorer recommends send_message to sgoulden@nyc.gov with real recipient
+  it('scorer says send_message, LLM tries wait_rationale first → validation fails; compliant send_message on retry → persisted send_message', async () => {
     mockScoreOpenLoops.mockResolvedValue(buildScorerResult({
       suggestedActionType: 'send_message',
     }));
 
-    // LLM tries to override: returns wait_rationale and "nothing to do" language.
-    // With the legacy commitment conversion REMOVED, the raw LLM artifact_type
-    // reaches drift detection unmodified. This is the adversarial proof:
-    // the LLM's hostile action is observed, logged, and overridden.
-    anthropicResponse = {
-      insight: 'No actionable pattern found — situation is stable.',
-      decision: 'ACT',  // Note: even says ACT, but tries to slip in wait_rationale
-      directive: 'There is nothing requiring urgent action at this particular time.',
-      artifact_type: 'wait_rationale',  // <-- HOSTILE: tries to override send_message
-      artifact: {
-        why_wait: 'No clear next step identified in recent signals',
-        tripwire_date: '2026-04-01',
-        trigger_condition: 'New correspondence from Records Officer',
-        to: 'sgoulden@nyc.gov',
-        subject: 'Decision needed by 4 PM PT today: FOIL appeal acceptance',
-        body: 'Can you confirm by 4 PM PT today whether this FOIL appeal submission is accepted, and who is the accountable owner for next-step review? If we miss this cutoff, the statutory appeal timeline is at risk.',
+    anthropicResponses = [
+      {
+        insight: 'No actionable pattern found — situation is stable.',
+        decision: 'ACT',
+        directive: 'There is nothing requiring urgent action at this particular time.',
+        artifact_type: 'wait_rationale',
+        artifact: {
+          why_wait: 'No clear next step identified in recent signals',
+          tripwire_date: '2026-04-01',
+          trigger_condition: 'New correspondence from Records Officer',
+        },
+        causal_diagnosis: { why_exists_now: 'Stable inbox', mechanism: 'No new inbound' },
+        why_now: 'Situation is stable and no new developments warrant immediate action.',
       },
-      why_now: 'Situation is stable and no new developments warrant immediate action.',
-    };
+      {
+        insight: 'Records officer must confirm appeal acceptance path before the statutory window closes.',
+        decision: 'ACT',
+        directive: 'Email Steven Goulden to confirm FOIL appeal acceptance and accountable owner by end of day.',
+        artifact_type: 'send_message',
+        artifact: {
+          to: 'sgoulden@nyc.gov',
+          subject: 'Decision needed by 4 PM PT today: FOIL appeal acceptance',
+          body: 'Can you confirm by 4 PM PT today whether this FOIL appeal submission is accepted, and who is the accountable owner for next-step review? If we miss this cutoff, the statutory appeal timeline is at risk.',
+        },
+        causal_diagnosis: { why_exists_now: 'Deadline pressure', mechanism: 'Unconfirmed acceptance path' },
+        why_now: 'April 10 appeal deadline requires confirmation today.',
+      },
+    ];
 
     const { generateDirective } = await import('../generator');
     const result = await generateDirective('user-1', { dryRun: true });
 
-    // INVARIANT: action_type comes from DecisionPayload (scorer), not LLM
-    // The scorer said send_message with a real recipient → canonical action is send_message
     expect(result.action_type).toBe('send_message');
-
-    // The LLM's raw wait_rationale is captured as drift and overridden by canonical action
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        event: 'llm_action_drift_overridden',
-        details: expect.objectContaining({
-          canonical_action: 'send_message',
-          llm_attempted_action: 'wait_rationale',
-        }),
+        event: 'generation_retry',
+        generationStatus: 'retrying_validation',
       }),
     );
   });
 
-  it('scorer says write_document, LLM returns send_message → persisted action remains write_document', async () => {
+  it('scorer says write_document, LLM returns send_message first → retry with write_document → persisted write_document', async () => {
     mockScoreOpenLoops.mockResolvedValue(buildScorerResult({
       suggestedActionType: 'write_document',
     }));
 
-    anthropicResponse = {
-      insight: 'Found urgent email to send.',
-      decision: 'ACT',
-      directive: 'Send email to Steven Goulden about FOIL appeal.',
-      artifact_type: 'send_message',  // <-- HOSTILE: tries to override write_document
-      artifact: {
-        to: 'sgoulden@nyc.gov',
-        subject: 'Decision needed by 4 PM PT today: FOIL appeal review owner',
-        body: 'Can you confirm by 4 PM PT today whether the FOIL appeal is accepted for review and who owns the legal response? If this is not confirmed today, the filing window slips.',
-        title: 'FOIL Appeal Decision Brief',
-        content: 'Decision required: confirm acceptance path and owner by 4 PM PT today. Consequence: filing window slips if unresolved.',
+    anthropicResponses = [
+      {
+        insight: 'Found urgent email to send.',
+        decision: 'ACT',
+        directive: 'Send email to Steven Goulden about FOIL appeal.',
+        artifact_type: 'send_message',
+        artifact: {
+          to: 'sgoulden@nyc.gov',
+          subject: 'Decision needed by 4 PM PT today: FOIL appeal review owner',
+          body: 'Can you confirm by 4 PM PT today whether the FOIL appeal is accepted for review and who owns the legal response? If this is not confirmed today, the filing window slips.',
+        },
+        causal_diagnosis: { why_exists_now: 'Deadline', mechanism: 'Unconfirmed owner' },
+        why_now: 'Deadline approaching.',
       },
-      why_now: 'Deadline approaching.',
-    };
+      {
+        insight: 'Prep brief for legal path before filing.',
+        decision: 'ACT',
+        directive: 'Produce a one-page FOIL appeal decision brief naming owner and deadline.',
+        artifact_type: 'write_document',
+        artifact: {
+          document_purpose: 'Align legal on appeal path before April 10',
+          target_reader: 'Internal counsel',
+          title: 'FOIL Appeal Decision Brief',
+          content: 'Decision required: confirm acceptance path and owner by 4 PM PT today. Next step: counsel must approve filing path by April 8 or the window slips.',
+        },
+        causal_diagnosis: { why_exists_now: 'Deadline', mechanism: 'Unclear filing path' },
+        why_now: 'Deadline approaching.',
+      },
+    ];
 
     const { generateDirective } = await import('../generator');
     const result = await generateDirective('user-1', { dryRun: true });
 
-    // INVARIANT: discrepancy gate preserves scorer's recommended_action (write_document).
-    // LLM tried to override to send_message — that's drift, canonical wins.
     expect(result.action_type).toBe('write_document');
   });
 });
@@ -259,15 +280,17 @@ describe('TEST B — Hostile false-positive render (blocked payload)', () => {
       relatedSignals: [],
     }));
 
-    // LLM returns a polished, actionable artifact anyway
-    anthropicResponse = {
-      insight: 'Critical deadline approaching.',
-      decision: 'ACT',
-      directive: 'Send the FOIL appeal immediately.',
-      artifact_type: 'send_message',
-      artifact: { to: 'sgoulden@nyc.gov', subject: 'FOIL Appeal', body: 'Dear Mr. Goulden, I am writing to appeal...' },
-      why_now: 'April 10 deadline.',
-    };
+    // LLM would return a polished artifact — generation never reaches LLM when DecisionPayload blocks
+    anthropicResponses = [
+      {
+        insight: 'Critical deadline approaching.',
+        decision: 'ACT',
+        directive: 'Send the FOIL appeal immediately.',
+        artifact_type: 'send_message',
+        artifact: { to: 'sgoulden@nyc.gov', subject: 'FOIL Appeal', body: 'Dear Mr. Goulden, I am writing to appeal...' },
+        why_now: 'April 10 deadline.',
+      },
+    ];
 
     const { generateDirective } = await import('../generator');
     const result = await generateDirective('user-1', { dryRun: true });
@@ -319,49 +342,57 @@ describe('TEST C — Renderer-only contract', () => {
     setupDefaults();
   });
 
-  it('final directive action_type is derived from canonicalAction, not payload.artifact_type', async () => {
+  it('final directive action_type is derived from canonicalAction; hostile schedule_block fails validation then send_message succeeds', async () => {
     const scorerAction = 'send_message';
     mockScoreOpenLoops.mockResolvedValue(buildScorerResult({
       suggestedActionType: scorerAction,
     }));
 
-    // LLM returns completely different artifact_type (with all required fields so it passes
-    // validateGeneratedArtifact — proving that even a well-formed hostile artifact can't
-    // change the persisted action)
-    const llmAction = 'schedule_block';
-    anthropicResponse = {
-      insight: 'Schedule a prep meeting to prepare the FOIL appeal documents.',
-      decision: 'ACT',
-      directive: 'Schedule a one-hour FOIL appeal preparation session for April 8.',
-      artifact_type: llmAction,
-      artifact: {
-        title: 'FOIL Appeal Prep',
-        start: '2026-04-08T10:00:00Z',
-        duration_minutes: 60,
-        reason: 'Prepare appeal documents before April 10 deadline',
-        to: 'sgoulden@nyc.gov',
-        subject: 'Decision needed by 4 PM PT today: FOIL appeal submission path',
-        body: 'Can you confirm by 4 PM PT today whether we proceed with FOIL submission path A or B and who owns final filing? If we miss this, the deadline window closes.',
+    anthropicResponses = [
+      {
+        insight: 'Schedule a prep meeting to prepare the FOIL appeal documents.',
+        decision: 'ACT',
+        directive: 'Schedule a one-hour FOIL appeal preparation session for April 8.',
+        artifact_type: 'schedule_block',
+        artifact: {
+          title: 'FOIL Appeal Prep',
+          start: '2026-04-08T10:00:00Z',
+          duration_minutes: 60,
+          reason: 'Prepare appeal documents before April 10 deadline',
+        },
+        causal_diagnosis: { why_exists_now: 'Prep gap', mechanism: 'No session booked' },
+        why_now: 'The April 10 FOIL deadline is two days away and prep has not started.',
       },
-      why_now: 'The April 10 FOIL deadline is two days away and prep has not started.',
-    };
+      {
+        insight: 'Records officer must confirm submission path before the deadline.',
+        decision: 'ACT',
+        directive: 'Email Steven Goulden to confirm FOIL submission path and owner today.',
+        artifact_type: 'send_message',
+        artifact: {
+          to: 'sgoulden@nyc.gov',
+          subject: 'Decision needed by 4 PM PT today: FOIL appeal submission path',
+          body: 'Can you confirm by 4 PM PT today whether we proceed with FOIL submission path A or B and who owns final filing? If we miss this, the deadline window closes.',
+        },
+        causal_diagnosis: { why_exists_now: 'Deadline', mechanism: 'Unconfirmed path' },
+        why_now: 'The April 10 FOIL deadline is two days away and prep has not started.',
+      },
+    ];
 
     const { generateDirective } = await import('../generator');
     const result = await generateDirective('user-1', { dryRun: true });
 
-    // INVARIANT: persisted action = scorer's action (send_message), NOT LLM's (schedule_block)
     expect(result.action_type).toBe(scorerAction);
-    expect(result.action_type).not.toBe('schedule');  // schedule_block maps to 'schedule'
+    expect(result.action_type).not.toBe('schedule');
 
-    // Verify drift was logged
     const driftCalls = mockLogStructuredEvent.mock.calls.filter(
       (c: unknown[]) => (c[0] as Record<string, unknown>).event === 'llm_action_drift_overridden',
     );
-    expect(driftCalls.length).toBe(1);
-    expect((driftCalls[0][0] as Record<string, unknown>).details).toEqual(
+    expect(driftCalls.length).toBe(0);
+
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        canonical_action: 'send_message',
-        llm_attempted_action: 'schedule_block',
+        event: 'generation_retry',
+        generationStatus: 'retrying_validation',
       }),
     );
   });
@@ -371,19 +402,22 @@ describe('TEST C — Renderer-only contract', () => {
       suggestedActionType: 'write_document',
     }));
 
-    anthropicResponse = {
-      insight: 'The FOIL denial must be appealed before the statutory deadline expires.',
-      decision: 'ACT',
-      directive: 'Draft the FOIL appeal letter addressing denial FOIL-2025-025-00440 for Steven Goulden.',
-      artifact_type: 'write_document',  // happens to match — no drift this time
-      artifact: {
-        title: 'FOIL Appeal Letter — FOIL-2025-025-00440',
-        document_purpose: 'Formal appeal of FOIL denial to NYC Records Officer',
-        target_reader: 'Steven Goulden, Records Officer',
-        content: 'Decision required: confirm acceptance of FOIL-2025-025-00440 appeal and assign the accountable review owner.\n\nAsk: provide yes/no acceptance and owner assignment by 4 PM PT today.\n\nConsequence: if unresolved, statutory appeal timing risk increases and filing slips.',
+    anthropicResponses = [
+      {
+        insight: 'The FOIL denial must be appealed before the statutory deadline expires.',
+        decision: 'ACT',
+        directive: 'Draft the FOIL appeal letter addressing denial FOIL-2025-025-00440 for Steven Goulden.',
+        artifact_type: 'write_document',
+        artifact: {
+          title: 'FOIL Appeal Letter — FOIL-2025-025-00440',
+          document_purpose: 'Formal appeal of FOIL denial to NYC Records Officer',
+          target_reader: 'Steven Goulden, Records Officer',
+          content: 'Decision required: confirm acceptance of FOIL-2025-025-00440 appeal and assign the accountable review owner.\n\nAsk: provide yes/no acceptance and owner assignment by 4 PM PT today.\n\nConsequence: if unresolved, statutory appeal timing risk increases and filing slips.',
+        },
+        causal_diagnosis: { why_exists_now: 'Denial received', mechanism: 'Statutory window' },
+        why_now: 'The statutory appeal deadline is April 10 — 14 days from the denial date.',
       },
-      why_now: 'The statutory appeal deadline is April 10 — 14 days from the denial date.',
-    };
+    ];
 
     const { generateDirective } = await import('../generator');
     const result = await generateDirective('user-1', { dryRun: true });

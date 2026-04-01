@@ -357,6 +357,17 @@ describe('usefulness gate — execution proof', () => {
 
   // ── VALID CASE 2: write_document ──────────────────────────────────────
   it('VALID2 — write_document: well-formed payload → NOT GENERATION_FAILED_SENTINEL (passes all gates)', async () => {
+    const writeWinner = {
+      ...buildWinner(),
+      type: 'commitment' as const,
+      suggestedActionType: 'write_document' as const,
+    };
+    mockScoreOpenLoops.mockResolvedValue({
+      ...buildScorerResult(),
+      winner: writeWinner,
+      topCandidates: [writeWinner],
+    });
+
     anthropicCreate.mockResolvedValue(anthropicResponse({
       directive: 'Send the Acme integration status report to their stakeholders before Thursday.',
       artifact_type: 'write_document',
@@ -365,9 +376,10 @@ describe('usefulness gate — execution proof', () => {
         target_reader: 'Acme stakeholders',
         title: 'Acme Integration — Status Report March 27',
         content: 'Decision required: confirm by 4 PM PT today whether we proceed with April 10 go-live and assign the accountable security sign-off owner.\n\nAsk: approve path A or B and name the owner before today\'s cutoff.\n\nConsequence: if unresolved, integration launch slips to next week and customer onboarding is blocked.',
-        to: 'acme.stakeholders@example.com',
-        subject: 'Decision needed today: Acme security sign-off owner by 4 PM PT',
-        body: 'Can you confirm by 4 PM PT today who owns Acme security sign-off and whether we approve the April 10 go-live path? If this slips, integration launch moves to next week.',
+      },
+      causal_diagnosis: {
+        why_exists_now: 'Slack thread from March 24 left sign-off owner undefined.',
+        mechanism: 'Unowned security gate blocks go-live date.',
       },
       evidence: 'Slack thread from March 24 shows blocker unresolved; deadline is April 10.',
       why_now: 'Acme security sign-off deadline is March 29 — two days away.',
@@ -381,9 +393,7 @@ describe('usefulness gate — execution proof', () => {
     console.log('VALID2 result.confidence:', result.confidence);
 
     expect(result.directive).not.toBe(SENTINEL);
-    // After DecisionPayload enforcement: action_type comes from scorer's suggestedActionType
-    // (send_message), not from LLM's artifact_type (write_document). The scorer is authoritative.
-    expect(result.action_type).toBe('send_message');
+    expect(result.action_type).toBe('write_document');
     expect(mockLogStructuredEvent).not.toHaveBeenCalledWith(
       expect.objectContaining({ event: 'usefulness_rejected' })
     );
