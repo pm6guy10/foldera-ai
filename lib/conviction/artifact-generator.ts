@@ -51,6 +51,7 @@ function isSelfReferentialSignal(content: string): boolean {
 const PLACEHOLDER_PATTERNS = [
   /\[(name|company|role|contact|date|amount|title|recipient)\]/i,
   /\[[^\]]*\bphone\b[^\]]*\]/i,
+  /\[[^\]]*specific[^\]]*\]/i,
   /\bfrom recent contact\b/i,
   /\b(tbd|placeholder|lorem ipsum|example@|recipient@email\.com)\b/i,
   /\b(option a|option b)\b/i,
@@ -522,7 +523,7 @@ Write a message that creates forward motion. Return JSON only.`,
 
 CALENDAR DOUBLE-BOOKING (schedule_conflict) — extra rules:
 - The USER owns the calendar. Steps are actions THEY take (open calendar app, decline/move a block, send a short text) — never instruct them to "call" or "email" themselves using a name from RELATIONSHIPS as if that person were an external party to coordinate with.
-- Use only people, event titles, and times that appear in SITUATION/ANALYSIS. Do not invent phone numbers or bracket placeholders like [phone], [TBD], or "from recent contact".
+- Use only people, event titles, and times that appear in SITUATION/ANALYSIS. Do not invent phone numbers or bracket placeholders like [phone], [specific date], [TBD], or "from recent contact". If a message needs a date, use a real day from the situation or plain language ("another evening this week").
 - Typical flow: decide which event wins → update the calendar (decline or reschedule the other) → brief outbound message only to people named in the overlapping events.`
           : '';
 

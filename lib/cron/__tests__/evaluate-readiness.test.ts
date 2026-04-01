@@ -268,6 +268,19 @@ describe('isSendWorthy', () => {
     expect(result.reason).toBe('placeholder_content');
   });
 
+  it('blocks write_document artifacts with [specific date] bracket', () => {
+    const result = isSendWorthy(
+      makeDirective({ action_type: 'write_document', confidence: 80 }),
+      {
+        type: 'document',
+        title: 'Calendar',
+        content: '1. Text them: can we meet [specific date]?',
+      } as unknown as import('@/lib/briefing/types').ConvictionArtifact,
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('placeholder_content');
+  });
+
   it('allows send_message at confidence 70 (above threshold)', () => {
     const result = isSendWorthy(makeDirective({ confidence: 70 }), makeArtifact());
     expect(result.worthy).toBe(true);

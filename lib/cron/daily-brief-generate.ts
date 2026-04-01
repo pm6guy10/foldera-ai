@@ -57,7 +57,7 @@ const DO_NOTHING_COOLDOWN_MS = 4 * 60 * 60 * 1000;
  * Matches exact tokens like [NAME] and prefix tokens like [INSERT relevant detail].
  */
 const PLACEHOLDER_PATTERN =
-  /\[(?:NAME|RECIPIENT|EMAIL|PERSON|CONTACT|SUBJECT|DATE|TODO|TBD)\]|\[INSERT[^\]]*\]|\[[^\]]*phone[^\]]*\]|\bfrom recent contact\b/i;
+  /\[(?:NAME|RECIPIENT|EMAIL|PERSON|CONTACT|SUBJECT|DATE|TODO|TBD)\]|\[INSERT[^\]]*\]|\[[^\]]*phone[^\]]*\]|\[[^\]]*specific[^\]]*\]|\bfrom recent contact\b/i;
 
 /**
  * Generic opener phrases that indicate the email body has no specific context.
