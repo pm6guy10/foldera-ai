@@ -6,7 +6,7 @@
 
 - 2026-04-01 — FLOW: Brand assets — PNG logos replace Lucide Layers; favicon + OG; email wordmark
   MODE: FLOW
-  Commit hash(es): pending
+  Commit hash(es): `098622f` (nav/dashboard/email/OG metadata + core PNGs); `4c6d874` (spec row + `public/favicon.png` + `public/foldera-oauth.png`)
   Files changed: `public/foldera-icon.png`, `public/foldera-logo.png`, `public/foldera-oauth.png`, `public/favicon.png` (copies from repo-root brand files); `components/nav/NavPublic.tsx`, `components/nav/BlogFooter.tsx`; `app/layout.js` (icons, OG/Twitter, removed duplicate glyph `<link>`); `app/page.tsx` (footer + `LayoutGrid` feature icon); `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`; `app/terms/page.tsx`, `app/privacy/page.tsx`, `app/not-found.tsx`, `app/try/page.tsx`; `lib/email/resend.ts` (welcome + daily directive + nothing-to-send templates: logo `<img>`); `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build` (pass); `npx vitest run --exclude ".claude/worktrees/**"` (pass); Playwright `screenshot` to `brand-verify-shots/` for `/`, `/login`, `/blog`, `/dashboard`, `/dashboard/settings` (dashboard routes may show login when unauthenticated).
   Any unresolved issues: `favicon.ico` not generated (PNG-only icons per spec); root source PNGs left untracked — deploy uses `public/` copies only.
