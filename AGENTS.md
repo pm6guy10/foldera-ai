@@ -125,6 +125,7 @@ Any change affecting frontend, auth, onboarding, connectors, or routing must pas
 - New route contracts added:
   - `GET /api/health` is a schema/env/credit canary JSON contract used by cron health-check and prod smoke tests (commit `e1555d0`, `app/api/health/route.ts`).
   - `POST /api/dev/stress-test` is a dry-run pipeline stress endpoint for signed-in sessions (commit `9b3e719`, `app/api/dev/stress-test/route.ts`).
+  - `GET /api/dev/ops-health` is owner-only; returns JSON env/DB readiness checks without exposing secret values (`app/api/dev/ops-health/route.ts`). See repo-root `LAUNCH_CHECKLIST.md` for manual launch steps.
   - `GET /api/model/state` is a read-only behavioral model state endpoint (commit `95c2edf`, `app/api/model/state/route.ts`).
 - Environment variable note: `ALLOW_DEV_ROUTES=true` is required to access dev-only API routes such as `/api/dev/stress-test` (commit `9b3e719`, `app/api/dev/stress-test/route.ts`).
 - Directory structure note: `tests/production/` now contains production auth-state scripts and smoke/audit suites referenced by CI workflows (introduced in commit `fbb1072`, extended in `2de4942`).

@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-01 — FIX OPS GAPS: `vercel.json` health-check cron, remove decay full-prompt console log, `GET /api/dev/ops-health` (owner), `LAUNCH_CHECKLIST.md`
+  MODE: OPS
+  Commit hash(es): (see `git log -1` after push)
+  Files changed: `vercel.json`, `lib/briefing/generator.ts`, `app/api/dev/ops-health/route.ts`, `LAUNCH_CHECKLIST.md`, `AGENTS.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`. Note: `decay_signal_evidence_debug` was not present in `generator.ts`; removed `FULL_PROMPT_DECAY` full-prompt `console.log` instead (temp diagnostic / PII).
+  Any unresolved issues: Vercel Hobby still allows only 2 crons by default — if deploy fails, merge schedules or upgrade plan (see `CLAUDE.md`).
+
 - 2026-04-01 — FIX BRAIN WIRING: decay prompt sections + compact analysis lines + trigger EVIDENCE_DELTA + response_pattern author query + supporting_signals cap 40
   MODE: AUDIT
   Commit hash(es): `5698944`

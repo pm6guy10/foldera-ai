@@ -4666,10 +4666,6 @@ async function generatePayload(
 ): Promise<{ issues: string[]; payload: GeneratedDirectivePayload | null }> {
   const prompt = buildPromptFromStructuredContext(ctx);
 
-  if (ctx.candidate_class === 'discrepancy' && ctx.discrepancy_class === 'decay') {
-    console.log(`[generator] FULL_PROMPT_DECAY user=${userId.slice(0, 8)} len=${prompt.length}\n${prompt}`);
-  }
-
   // Log prompt prefix so identity context is visible in structured logs
   logStructuredEvent({
     event: 'generation_prompt_preview',
