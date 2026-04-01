@@ -204,6 +204,22 @@ function formatEvidenceForTriggerContext(evidenceJson: string): string {
   }
 }
 
+/** One-line summary when discrepancy evidence JSON encodes delta metrics (e.g. DeltaMetric). */
+function summarizeEvidenceDelta(evidenceJson: string | null | undefined): string | null {
+  const raw = evidenceJson?.trim();
+  if (!raw) return null;
+  try {
+    const o = JSON.parse(raw) as Record<string, unknown>;
+    if (typeof o.delta_pct !== 'number' || !Number.isFinite(o.delta_pct)) return null;
+    const baseline = typeof o.baseline === 'string' ? o.baseline : 'n/a';
+    const current = typeof o.current === 'string' ? o.current : 'n/a';
+    const tf = typeof o.timeframe === 'string' ? o.timeframe : '';
+    return `EVIDENCE_DELTA: baseline=${baseline}, current=${current}, delta_pct=${o.delta_pct}${tf ? `, timeframe=${tf}` : ''}`;
+  } catch {
+    return null;
+  }
+}
+
 export interface BuildTriggerContextOptions {
   /** Discrepancy detector JSON delta metrics (e.g. DeltaMetric). */
   evidenceJson?: string | null;
@@ -227,6 +243,8 @@ export function buildTriggerContextBlock(
         ...formatEvidenceForTriggerContext(options.evidenceJson).split('\n').map((l) => `    ${l}`),
       ]
     : [];
+  const deltaSummary = summarizeEvidenceDelta(options?.evidenceJson ?? null);
+  const deltaSummaryLines = deltaSummary ? [`  ${deltaSummary}`] : [];
 
   // Decay: silence is the signal — do not demand deadline/consequence language that
   // forces generic "catch up" copy. Specific last-thread + why-now + ask instead.
@@ -238,11 +256,13 @@ export function buildTriggerContextBlock(
       `  current: ${trigger.current_state}`,
       `  delta: ${trigger.delta}`,
       `  timeframe: ${trigger.timeframe}`,
+      `timeframe: ${trigger.timeframe}`,
       `  why_now: ${trigger.why_now}`,
       `  outcome_class: ${trigger.outcome_class}`,
       `  locked_action: ${rule.primary_action}`,
       `  artifact_shape: email`,
       ...evidenceBlock,
+      ...deltaSummaryLines,
       ``,
       `DECAY_RECONNECTION_RULE:`,
       `Do not write "it's been a while", "been a while", "just checking in", or generic check-in language.`,
@@ -279,11 +299,13 @@ export function buildTriggerContextBlock(
     `  current: ${trigger.current_state}`,
     `  delta: ${trigger.delta}`,
     `  timeframe: ${trigger.timeframe}`,
+    `timeframe: ${trigger.timeframe}`,
     `  why_now: ${trigger.why_now}`,
     `  outcome_class: ${trigger.outcome_class}`,
     `  locked_action: ${rule.primary_action}`,
     `  artifact_shape: ${rule.artifact_shape}`,
     ...evidenceBlock,
+    ...deltaSummaryLines,
     ``,
     `TRIGGER RULES:`,
     `1. Your artifact MUST reference the delta explicitly (${trigger.delta}).`,

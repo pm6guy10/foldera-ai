@@ -262,6 +262,18 @@ describe('buildTriggerContextBlock', () => {
     expect(block).toContain('delta_metrics');
     expect(block).toContain('baseline');
     expect(block).toContain('-67');
+    expect(block).toContain('EVIDENCE_DELTA');
+    expect(block).toMatch(/delta_pct=-67/);
+  });
+
+  it('includes EVIDENCE_DELTA on decay when evidenceJson encodes delta_pct', () => {
+    const block = buildTriggerContextBlock('decay', TRIGGERS.decay, {
+      evidenceJson:
+        '{"baseline":"8 exchanges/90d","current":"0 in 14d","delta_pct":-100,"timeframe":"14d"}',
+    });
+    expect(block).toContain('EVIDENCE_DELTA');
+    expect(block).toMatch(/delta_pct=-100/);
+    expect(block).toMatch(/timeframe=14d/);
   });
 
   it('delta-based triggers include delta in the prompt rules', () => {
