@@ -378,7 +378,7 @@ function HeroDirectiveDemo() {
 // ============================================================================
 function SignalEngineHero() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-20 md:pt-28 pb-12 md:pb-20 text-center relative z-10 flex flex-col items-center min-w-0">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(7rem+env(safe-area-inset-top,0px))] pb-12 md:pb-20 text-center relative z-10 flex flex-col items-center min-w-0">
       {/* Headlines & CTA */}
       <Reveal alwaysVisible>
         <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] mb-4 md:mb-6">

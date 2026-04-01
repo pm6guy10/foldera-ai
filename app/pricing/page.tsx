@@ -116,7 +116,10 @@ export default function PricingPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.06)_0%,transparent_50%)] pointer-events-none" />
       </div>
 
-      <main id="main" className="relative z-10 flex-1 px-4 sm:px-6 pt-24 pb-16 md:pb-24 md:pt-28 w-full min-w-0">
+      <main
+        id="main"
+        className="relative z-10 flex-1 px-4 sm:px-6 pt-[calc(6rem+env(safe-area-inset-top,0px))] pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-24 md:pt-[calc(7rem+env(safe-area-inset-top,0px))] w-full min-w-0"
+      >
         <div className="max-w-5xl mx-auto w-full min-w-0">
 
           <div className="text-center mb-14 md:mb-16 px-1">

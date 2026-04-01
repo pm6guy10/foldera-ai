@@ -268,8 +268,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Fixed header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
-        <div className="max-w-2xl mx-auto h-full flex items-center justify-between px-4 gap-2">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 pt-[env(safe-area-inset-top,0px)]">
+        <div className="max-w-2xl mx-auto h-14 flex items-center justify-between px-4 gap-2">
           <Link href="/dashboard" className="flex items-center gap-2.5 group min-w-0">
             <FolderaMark
               size="sm"
@@ -294,7 +294,10 @@ export default function DashboardPage() {
       </header>
 
       {/* Content */}
-      <main id="main" className="relative z-10 pt-20 pb-14 px-4 max-w-2xl mx-auto w-full min-w-0">
+      <main
+        id="main"
+        className="relative z-10 pt-[calc(5rem+env(safe-area-inset-top,0px))] pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] px-4 max-w-2xl mx-auto w-full min-w-0"
+      >
         {isOwner && (
           <div className="flex gap-1 p-1 rounded-xl bg-zinc-900/80 border border-white/10 mb-6 max-w-md">
             <button

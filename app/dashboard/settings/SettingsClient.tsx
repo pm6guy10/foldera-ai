@@ -310,13 +310,16 @@ export default function SettingsClient() {
   const activeBuckets = goalBuckets.filter(b => ALL_BUCKETS.includes(b));
 
   return (
-    <div className="min-h-screen bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white">
+    <div className="min-h-[100dvh] bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white pb-[env(safe-area-inset-bottom,0px)]">
       {/* Ambient grid */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
       </div>
       <Header onSignOut={handleSignOut} />
-      <main id="main" className="relative z-10 pt-20 pb-16 sm:pb-14 px-4 max-w-3xl mx-auto space-y-9 sm:space-y-10 w-full min-w-0">
+      <main
+        id="main"
+        className="relative z-10 pt-[calc(5rem+env(safe-area-inset-top,0px))] pb-16 sm:pb-14 px-4 max-w-3xl mx-auto space-y-9 sm:space-y-10 w-full min-w-0"
+      >
 
         {/* Sync status banner */}
         {syncStatus && (
@@ -836,13 +839,6 @@ export default function SettingsClient() {
             )}
             <button
               type="button"
-              onClick={handleSignOut}
-              className="w-full min-h-[48px] sm:hidden border border-white/10 hover:border-white/20 bg-zinc-900/40 hover:bg-zinc-900/70 text-zinc-300 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
-            >
-              Sign out
-            </button>
-            <button
-              type="button"
               onClick={handleDeleteAccount}
               className="w-full min-h-[48px] border border-red-900/40 hover:border-red-700/60 bg-transparent hover:bg-red-950/10 text-red-500/70 hover:text-red-400 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
             >
@@ -884,8 +880,8 @@ function formatLastSynced(iso: string | null | undefined): string | null {
 
 function Header({ onSignOut }: { onSignOut: () => void }) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 h-14">
-      <div className="max-w-3xl mx-auto h-full grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:px-4 gap-1 sm:gap-2">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 pt-[env(safe-area-inset-top,0px)]">
+      <div className="max-w-3xl mx-auto h-14 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:px-4 gap-1 sm:gap-2">
         <div className="flex justify-start min-w-0">
           <Link
             href="/dashboard"
@@ -915,10 +911,11 @@ function Header({ onSignOut }: { onSignOut: () => void }) {
           <button
             type="button"
             onClick={onSignOut}
-            className="max-sm:hidden touch-manipulation flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.12em] shrink-0 min-h-[44px] px-2 rounded-lg justify-end focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+            className="touch-manipulation flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.12em] shrink-0 min-h-[44px] min-w-[44px] sm:min-w-0 px-2 rounded-lg justify-end focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+            aria-label="Sign out"
           >
             <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span className="truncate">Sign out</span>
+            <span className="hidden sm:inline truncate">Sign out</span>
           </button>
         </div>
       </div>

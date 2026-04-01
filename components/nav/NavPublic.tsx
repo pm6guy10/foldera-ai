@@ -41,7 +41,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
 
   return (
     <nav
-      className={`fixed top-0 w-full z-[60] overflow-visible transition-all duration-500 ${
+      className={`fixed top-0 w-full z-[60] overflow-visible transition-all duration-500 pt-[env(safe-area-inset-top,0px)] ${
         scrolled
           ? 'bg-black/90 backdrop-blur-2xl border-b border-white/5 py-4 shadow-2xl'
           : 'bg-transparent py-4 md:py-8'
@@ -130,12 +130,12 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
             type="button"
             data-testid="nav-mobile-overlay-close"
             onClick={closeMenu}
-            className="absolute top-4 right-4 z-[72] w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+            className="absolute z-[72] w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 top-[calc(1rem+env(safe-area-inset-top,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))]"
             aria-label="Close menu"
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
-          <div className="relative z-[71] flex flex-1 flex-col items-center justify-center px-6 py-24 pointer-events-none">
+          <div className="relative z-[71] flex flex-1 flex-col items-center justify-center px-6 pt-[calc(6rem+env(safe-area-inset-top,0px))] pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pointer-events-none">
             <nav
               className="flex flex-col items-center space-y-6 w-full max-w-sm pointer-events-auto"
             >
@@ -185,7 +185,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
 
 export function NavAuthMinimal({ variant }: { variant: 'login' | 'start' }) {
   return (
-    <nav className="relative z-10 w-full px-4 sm:px-6 py-5 flex items-center justify-between max-w-6xl mx-auto border-b border-white/5 gap-3">
+    <nav className="relative z-10 w-full px-4 sm:px-6 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-5 flex items-center justify-between max-w-6xl mx-auto border-b border-white/5 gap-3">
       <a
         href="/"
         className="flex items-center gap-3 group rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c] min-w-0"
