@@ -6,10 +6,10 @@
 
 - 2026-04-01 — FORCE: Temporary scorer boost for decay/relationship reconnect winner + prod brain-receipt receipt
   MODE: AUDIT (FORCE)
-  Commit hash(es): pending
+  Commit hash(es): `35938ff` (override), `pending` (session log only)
   Files changed: `lib/briefing/scorer.ts`, `SESSION_HISTORY.md`
-  What was verified: `npm run build`; owner `POST /api/dev/brain-receipt` after production deploy (see chat for full JSON fields and APPROVABLE verdict).
-  Any unresolved issues: Remove `[FORCE-DECAY]` block after decay path proven approvable.
+  What was verified: `npm run build`; Vercel Production Ready; owner `POST https://www.foldera.ai/api/dev/brain-receipt` — forced winner `Fading connection: cheryl anderson` (`discrepancyClass` decay, score 999); persisted `action_type` `send_message`; `decision_enforcement.passed` false (`missing_time_constraint`, `missing_pressure_or_consequence`); `bottom_gate.pass` true; artifact body DSHS/financial-runway email (misaligned vs reconnect decay). **NOT APPROVABLE** — keep override until gates/content fixed.
+  Any unresolved issues: `[FORCE-DECAY]` block still in `scorer.ts` by instruction; fix decision_enforcement for decay + generator/scorer alignment so directive matches decay winner.
 
 - 2026-04-01 — FLOW: Remove scheduleConflictDocRelaxed bypass + SCHEDULE_CONFLICT_RULE prompt + guards
   MODE: FLOW
