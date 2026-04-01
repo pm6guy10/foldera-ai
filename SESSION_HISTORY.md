@@ -6,7 +6,7 @@
 
 - 2026-04-01 — FLOW: Dashboard reconcile stale execute + document artifact rendering + latest API artifact merge
   MODE: FLOW
-  Commit hash(es): `ee40b6c`
+  Commit hash(es): `a52d72b`
   Files changed: `app/dashboard/page.tsx`, `app/api/conviction/latest/route.ts`, `tests/e2e/authenticated-routes.spec.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts` (14 passed). Production: after deploy, spot-check `/dashboard` with stale email link and `write_document` row.
   Any unresolved issues: None for code path; live confirm on owner session post-deploy.
