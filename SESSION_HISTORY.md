@@ -6,7 +6,7 @@
 
 - 2026-04-02 — AUDIT: **Close-gap plan** — trust tier 2 (daily brief paste-yourself copy + dashboard **Copy draft**); Gmail/Outlook **reply threading** when artifact has `gmail_thread_id` / `in_reply_to` / `references`; `EmailArtifact` type extended; `generation_retry` logs **`issue_buckets`** (no raw issue strings); `REVENUE_PROOF.md` operator sections (Gate 4 live receipt, non-owner, Stripe live, GTM post–G4, sustain metrics); spec NEXT MOVE updated
   MODE: AUDIT
-  Commit hash(es): `321095b`
+  Commit hash(es): `979a1ca`
   Files changed: `lib/integrations/gmail-client.ts`, `lib/integrations/outlook-client.ts`, `lib/conviction/execute-action.ts`, `lib/conviction/__tests__/execute-action.test.ts`, `lib/briefing/types.ts`, `lib/briefing/generator.ts`, `lib/email/resend.ts`, `app/dashboard/page.tsx`, `REVENUE_PROOF.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run lib/conviction/__tests__/execute-action.test.ts lib/briefing/__tests__/generator-runtime.test.ts`; `npx playwright test tests/e2e/flow-routes.spec.ts --retries 1` (2 passed)
   Any unresolved issues: Operator must still fill Gate 4 live receipt table in `REVENUE_PROOF.md` after a real production approve; non-owner + Stripe rows remain manual
