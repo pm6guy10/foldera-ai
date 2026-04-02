@@ -6,7 +6,7 @@
 
 - 2026-04-02 — AUDIT: **Resend HTML parity** with marketing — Inter (Google Fonts) + `EMAIL_FONT_STACK`; tokens mirror `tailwind.config.js` / landing directive card (cyan border 40%, 32px outer radius, inner artifact cyan/10 + soft border + 4px cyan-500 bar); hairline `cyan-400`; Skip zinc-500/zinc-900; welcome / transactional / write-document / nothing-today aligned
   MODE: AUDIT
-  Commit hash(es): `3a9cf7a`
+  Commit hash(es): `98769b3`
   Files changed: `lib/email/resend.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run lib/conviction/__tests__/execute-action.test.ts`; `npm run test:prod` (60 passed, 1 flaky passed on retry)
   Any unresolved issues: none
