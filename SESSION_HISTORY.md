@@ -6,7 +6,7 @@
 
 - 2026-04-02 — AUDIT: Daily brief HTML — **artifact before directive** (`buildDailyDirectiveEmailHtml`): date → Finished artifact → card → Today’s directive → headline/reason → buttons
   MODE: AUDIT
-  Commit hash(es): verify with `git log -1 --oneline` on `main` after push
+  Commit hash(es): `82953c7`
   Files changed: `lib/email/resend.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run lib/conviction/__tests__/execute-action.test.ts`; `npm run test:prod` (60 passed, 1 flaky passed on retry)
   Any unresolved issues: none
