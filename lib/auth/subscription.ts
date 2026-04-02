@@ -35,15 +35,20 @@ export interface SubscriptionInfo {
 export async function getSubscriptionStatus(userId: string): Promise<SubscriptionInfo> {
   const supabase = createServerClient();
 
-  const { data, error } = await supabase
+  // Use limit(1) instead of maybeSingle(): duplicate user_id rows (constraint drift,
+  // bad upserts, or legacy data) make maybeSingle return an error and break /api/subscription/status.
+  const { data: rows, error } = await supabase
     .from('user_subscriptions')
     .select('plan, status, current_period_end, stripe_customer_id')
     .eq('user_id', userId)
-    .maybeSingle();
+    .limit(1);
 
   if (error) {
     throw error;
   }
+
+  const rowList = Array.isArray(rows) ? rows : [];
+  const data = rowList[0] ?? null;
 
   if (!data) {
     return {

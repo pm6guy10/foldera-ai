@@ -64,7 +64,7 @@ describe('multi-user safety', () => {
       from: () => ({
         select: () => ({
           eq: () => ({
-            maybeSingle: async () => ({ data: null, error: null }),
+            limit: () => Promise.resolve({ data: [], error: null }),
           }),
         }),
       }),
@@ -84,15 +84,18 @@ describe('multi-user safety', () => {
       from: () => ({
         select: () => ({
           eq: () => ({
-            maybeSingle: async () => ({
-              data: {
-                plan: 'pro',
-                status: 'active',
-                current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
-                stripe_customer_id: 'cus_test',
-              },
-              error: null,
-            }),
+            limit: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    plan: 'pro',
+                    status: 'active',
+                    current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+                    stripe_customer_id: 'cus_test',
+                  },
+                ],
+                error: null,
+              }),
           }),
         }),
       }),
@@ -101,6 +104,42 @@ describe('multi-user safety', () => {
       const r = await getSubscriptionStatus(OWNER_USER_ID);
       expect(r.status).toBe('active');
       expect(r.plan).toBe('pro');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('getSubscriptionStatus uses the first row when the client returns multiple (defensive)', async () => {
+    const spy = vi.spyOn(dbClient, 'createServerClient').mockReturnValue({
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            limit: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    plan: 'trial',
+                    status: 'active',
+                    current_period_end: new Date(Date.now() + 7 * 864e5).toISOString(),
+                    stripe_customer_id: null,
+                  },
+                  {
+                    plan: 'pro',
+                    status: 'active',
+                    current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+                    stripe_customer_id: 'cus_other',
+                  },
+                ],
+                error: null,
+              }),
+          }),
+        }),
+      }),
+    } as ReturnType<typeof dbClient.createServerClient>);
+    try {
+      const r = await getSubscriptionStatus(FAKE_USER_ID);
+      expect(r.status).toBe('active_trial');
+      expect(r.plan).toBe('trial');
     } finally {
       spy.mockRestore();
     }

@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: **Subscription status / portal — duplicate `user_subscriptions` rows** — `getSubscriptionStatus` and `POST /api/stripe/portal` now use `.limit(1)` + first row instead of `maybeSingle()`, avoiding PostgREST cardinality errors that surface as 500s when more than one row exists for a `user_id`. `lib/__tests__/multi-user-safety.test.ts` mocks updated; added defensive “first row wins” test.
+  MODE: AUDIT
+  Commit hash(es): `9d0f803`
+  Files changed: `lib/auth/subscription.ts`, `app/api/stripe/portal/route.ts`, `lib/__tests__/multi-user-safety.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/__tests__/multi-user-safety.test.ts` (13 passed); `npm run build`; `npm run test:prod` (60 passed, 1 flaky `/blog` crawl — retry passed; `/api/subscription/status` check green)
+  Any unresolved issues: If 500 persists, capture Sentry stack — root cause may differ (e.g. env, session shape)
+
 - 2026-04-02 — AUDIT: **MASTER_PUNCHLIST** — [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md): operator dashboard links (Vercel/GitHub/Supabase/Sentry/Resend/Stripe/Anthropic), owner `GET /api/dev/ops-health`, **no email after Generate Now** via `POST /api/settings/run-brief` → `stages.daily_brief.send.results` codes, **Gate 4** operator steps (no fabricated REVENUE_PROOF), Playwright refresh pointers; links from `MEGA_PROMPT_PROGRAM.md`, `AGENTS.md`, `FOLDERA_PRODUCT_SPEC.md`, `REVENUE_PROOF.md` Gate 4; `AUTOMATION_BACKLOG.md` DONE row
   MODE: AUDIT
   Commit hash(es): `7ce37a0`

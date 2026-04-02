@@ -25,17 +25,18 @@ export async function POST() {
     }
 
     const supabase = createServerClient();
-    const { data: row, error } = await supabase
+    const { data: rows, error } = await supabase
       .from('user_subscriptions')
       .select('stripe_customer_id')
       .eq('user_id', session.user.id)
-      .maybeSingle();
+      .limit(1);
 
     if (error) {
       throw new Error(error.message);
     }
 
-    const customerId = row?.stripe_customer_id;
+    const rowList = Array.isArray(rows) ? rows : [];
+    const customerId = rowList[0]?.stripe_customer_id;
     if (!customerId || typeof customerId !== 'string') {
       return NextResponse.json({ error: 'No billing account on file' }, { status: 400 });
     }
