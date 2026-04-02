@@ -6,7 +6,7 @@
 
 - 2026-04-02 — AUDIT: Daily brief **Finished artifact** eyebrow — 12px type, `padding:10px 0 18px` before card
   MODE: AUDIT
-  Commit hash(es): verify with `git log -1 --oneline` on `main` after push
+  Commit hash(es): `1f75bd0`
   Files changed: `lib/email/resend.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`
   Any unresolved issues: none
