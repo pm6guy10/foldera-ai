@@ -112,6 +112,8 @@ Smart user CANNOT replicate cross-source prioritized outputs (calendar + mail + 
 
 Gate 4 is **partially** evidenced (historical Resend path). **Full** mailbox-identity proof remains **operator-pending** until the second row is filled.
 
+**2026-04-03 (agent / Supabase re-check):** Still **no** `tkg_actions` rows where `execution_result` contains **`sent_via`**; latest executed `send_message` remains `64815e7b-…` (March 24). When you Approve next, confirm the new row shows `sent_via`: `gmail` \| `outlook` \| `resend`.
+
 ---
 
 ## Non-owner proof (operator)

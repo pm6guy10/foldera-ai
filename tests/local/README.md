@@ -21,6 +21,14 @@ set LOCAL_BASE_URL=http://localhost:3001
 npm run test:local:setup
 ```
 
+## Quick prereq check (no browser)
+
+```bash
+npm run test:local:check
+```
+
+Exits **1** if `auth-state-owner.json` is missing (prints the same setup steps). Exits **0** when the file exists.
+
 ## Agent / CLI brain-receipt
 
 With dev server running and `ALLOW_DEV_ROUTES=true`:

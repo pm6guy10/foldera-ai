@@ -1,5 +1,11 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-03) — Plan continuation (overnight / agent)
+
+- **`npm run test:local:check`** — [`tests/local/check-prereqs.ts`](tests/local/check-prereqs.ts); [`tests/local/README.md`](tests/local/README.md) + [`CLAUDE.md`](CLAUDE.md) Autonomous local hammer; fails fast when `auth-state-owner.json` absent.
+- **Supabase re-check:** Still no `execution_result.sent_via` in prod; **REVENUE_PROOF** Gate 4 second row operator-pending (note dated 2026-04-03).
+- **MEGA_PROMPT_PROGRAM** S2 table row 2026-04-03.
+
 ### DONE (2026-04-02) — Plan execution (GTM + quality)
 
 - **Supabase (agent):** No duplicate `user_subscriptions` rows; latest executed `send_message` `64815e7b-6e2c-4af9-9491-66b93c5b9495` (2026-03-24 UTC) — Resend delivery (`resend_id`); no `sent_via` key on row — **REVENUE_PROOF** Gate 4 first table row + gate status **PARTIAL**; second row operator-pending for post-ship `sent_via`.

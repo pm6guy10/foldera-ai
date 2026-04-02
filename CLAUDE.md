@@ -24,6 +24,7 @@ Every session runs this before any work:
 Brain-receipt and `email-preview?action_id=` require an **owner** session on the **same origin** as the dev server. Production Playwright auth (`tests/production/auth-state.json`, `npm run test:prod:setup`) targets `https://www.foldera.ai` only — it does **not** authenticate localhost.
 
 - **Save localhost owner cookies:** `npm run test:local:setup` writes gitignored `tests/local/auth-state-owner.json` (see `tests/local/README.md`). Set `LOCAL_BASE_URL` if Next dev is not `http://localhost:3000` (e.g. port 3001).
+- **Prereq check:** `npm run test:local:check` — exits 1 if `auth-state-owner.json` is missing (prints setup hints).
 - **Run brain-receipt headlessly:** dev server + `ALLOW_DEV_ROUTES=true`, then `npm run test:local:brain-receipt` (optional `-- --screenshot path.png`).
 - **Production smoke after push:** when `tests/production/auth-state.json` exists and is fresh (session under ~30 days), run `npm run test:prod`. Refresh with `npm run test:prod:setup` if authenticated suites skip or fail.
 

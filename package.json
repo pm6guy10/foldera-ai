@@ -14,6 +14,7 @@
     "audit:all": "npx playwright test --config=playwright.audit.config.ts && npx tsx scripts/ux-audit.ts",
     "test:prod:setup": "npx tsx tests/production/setup-auth.ts",
     "test:local:setup": "npx tsx tests/local/setup-auth-localhost.ts",
+    "test:local:check": "npx tsx tests/local/check-prereqs.ts",
     "test:local:brain-receipt": "npx tsx tests/local/run-brain-receipt.ts",
     "test:prod": "npx playwright test --config playwright.prod.config.ts",
     "test:prod:ci": "npx playwright test --config playwright.prod.config.ts --reporter=list",

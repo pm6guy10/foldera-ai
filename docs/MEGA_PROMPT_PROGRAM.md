@@ -64,6 +64,7 @@ _Quality bar (from REVENUE_PROOF):_ artifact names a real person, references act
 | Date (UTC) | exit code | winner summary | artifact type | Pass/Fail vs bar | Notes |
 |------------|-----------|----------------|---------------|------------------|-------|
 | 2026-04-02 | 1 (skipped) | — | — | — | **Plan execution:** `auth-state-owner.json` absent (interactive `npm run test:local:setup` requires headful owner login). With dev + `ALLOW_DEV_ROUTES=true`, run setup then `npm run test:local:brain-receipt`; append row with exit 0 + JSON when done. S3 only if S2 fails quality bar. |
+| 2026-04-03 | 1 (skipped) | — | — | — | **`npm run test:local:check`** added — fails fast with setup hints when `auth-state-owner.json` missing. Prod DB: still no `sent_via` on actions; Gate 4 row 2 operator-pending. |
 
 ---
 
