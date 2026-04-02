@@ -33,6 +33,18 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/** YYYY-MM-DD (pipeline) or ISO → "April 2, 2026" — UTC noon avoids TZ day shift. */
+function formatEmailDateForDisplay(dateInput: string): string {
+  const trimmed = dateInput.trim();
+  if (!trimmed) return dateInput;
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  const d = ymd
+    ? new Date(Date.UTC(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]), 12, 0, 0))
+    : new Date(trimmed);
+  if (Number.isNaN(d.getTime())) return trimmed;
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
 function clipText(value: string, limit: number): string {
   if (value.length <= limit) return value;
   return `${value.slice(0, Math.max(0, limit - 3)).trimEnd()}...`;
@@ -350,6 +362,7 @@ export function buildDailyDirectiveEmailHtml(opts: {
   const baseUrl = opts.baseUrl.replace(/\/$/, '');
   const { date, directive } = opts;
   const prefs = `${baseUrl}/dashboard/settings`;
+  const dateDisplay = escapeHtml(formatEmailDateForDisplay(date));
 
   if (!directive) {
     return `<!DOCTYPE html>
@@ -362,8 +375,11 @@ export function buildDailyDirectiveEmailHtml(opts: {
         <tr><td style="padding-bottom:24px;text-align:center;">
           ${EMAIL_LOGO_MARKUP}
         </td></tr>
+        <tr><td style="padding:0 0 20px 0;">
+          <div style="height:3px;width:100%;border-radius:2px;background:linear-gradient(90deg,transparent,${EMAIL_CYAN},transparent);"></div>
+        </td></tr>
         <tr><td style="padding-bottom:8px;">
-          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;color:#71717a;text-transform:uppercase;">${escapeHtml(date)}</p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:700;letter-spacing:0.12em;color:#52525b;">${dateDisplay}</p>
         </td></tr>
         <tr><td style="padding-bottom:20px;">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:20px;font-weight:800;color:#ffffff;line-height:1.3;">Nothing cleared the bar today.</p>
@@ -371,7 +387,7 @@ export function buildDailyDirectiveEmailHtml(opts: {
         <tr><td>
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">Foldera did not find a directive with enough conviction to send.</p>
         </td></tr>
-        <tr><td style="padding-top:28px;text-align:center;">
+        <tr><td style="padding:28px 0 36px 0;text-align:center;">
           <a href="${baseUrl}/dashboard" style="display:inline-block;padding:12px 24px;background:${EMAIL_CYAN_BTN};color:#000000;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:${EMAIL_RADIUS_INNER};box-shadow:0 0 20px rgba(6,182,212,0.22);">Open dashboard</a>
         </td></tr>
         <tr><td style="padding-top:28px;text-align:center;border-top:1px solid rgba(255,255,255,0.08);">
@@ -407,7 +423,7 @@ export function buildDailyDirectiveEmailHtml(opts: {
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;color:${EMAIL_CYAN};text-transform:uppercase;">Today&apos;s directive</p>
         </td></tr>
         <tr><td style="padding-bottom:6px;">
-          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:700;letter-spacing:0.12em;color:#52525b;text-transform:uppercase;">${escapeHtml(date)}</p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:700;letter-spacing:0.12em;color:#52525b;">${dateDisplay}</p>
         </td></tr>
         <tr><td style="padding-bottom:16px;border-left:4px solid ${EMAIL_CYAN_BTN};padding-left:16px;">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:20px;font-weight:800;color:#ffffff;line-height:1.35;">${escapeHtml(directive.directive)}</p>

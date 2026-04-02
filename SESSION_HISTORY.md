@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: Daily brief email polish — `formatEmailDateForDisplay`; nothing-today cyan hairline + `padding:28px 0 36px` under Open dashboard before footer border
+  MODE: AUDIT
+  Commit hash(es): verify with `git log -1 --oneline` on `main` after push
+  Files changed: `lib/email/resend.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`
+  Any unresolved issues: none
+
 - 2026-04-02 — AUDIT: **Local email preview** — `GET /api/dev/email-preview` (requires `ALLOW_DEV_ROUTES=true`); `buildDailyDirectiveEmailHtml` + `DEV_EMAIL_PREVIEW_SAMPLE_DIRECTIVE` in `lib/email/resend.ts`
   MODE: AUDIT
   Commit hash(es): `48b3849`
