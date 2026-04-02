@@ -22,11 +22,12 @@ const HAS_NEXTAUTH_SECRET = Boolean(process.env.NEXTAUTH_SECRET?.trim());
 const describeAuthMocked = HAS_NEXTAUTH_SECRET ? test.describe : test.describe.skip;
 
 const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
+const E2E_PORT = process.env.PLAYWRIGHT_WEB_PORT?.trim() || '3000';
 /** Must match Playwright `use.baseURL`. Empty `PLAYWRIGHT_TEST_BASE_URL` must not win — addCookies requires a valid url. */
 const E2E_ORIGIN =
   process.env.PLAYWRIGHT_TEST_BASE_URL?.trim() ||
   process.env.BASE_URL?.trim() ||
-  'http://127.0.0.1:3000';
+  `http://127.0.0.1:${E2E_PORT}`;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

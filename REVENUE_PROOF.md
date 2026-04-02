@@ -87,6 +87,8 @@ Smart user CANNOT replicate cross-source prioritized outputs (calendar + mail + 
 
 ## Gate 4 live receipt (operator)
 
+**Sequenced program:** [docs/MEGA_PROMPT_PROGRAM.md](./docs/MEGA_PROMPT_PROGRAM.md) (sessions S1–S9, S4 = this receipt).
+
 1. Confirm deploy green on Vercel; Gmail or Microsoft connected in Settings.
 2. Wait for morning brief or run **Generate Now** until a **`send_message`** pending action exists that you would actually send (or use the best available for plumbing proof).
 3. Tap **Approve** from email or dashboard.

@@ -2,6 +2,13 @@
 
 ## OPEN — Requires Action
 
+### SHIPPED — 2026-04-02 — MEGA_PROMPT_PROGRAM + local E2E session cookie fix
+
+- **`docs/MEGA_PROMPT_PROGRAM.md`** — mega prompt decomposed into S0–S9 with baseline/S2 tables, Phase 0.5 text, operator checklist, Cursor template.
+- **`lib/auth/auth-options.ts`** — `getProductionSessionCookieDomain()` returns a value only when `VERCEL` is set, fixing local `next start` Playwright when `NEXTAUTH_URL` is the public https URL (host-only cookies on 127.0.0.1).
+- **`playwright.config.ts`** + **`tests/e2e/authenticated-routes.spec.ts`** — optional `PLAYWRIGHT_WEB_PORT` for `next start -p` when :3000 is in use.
+- Verification (this session): `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (596 tests); `npx playwright test tests/e2e/` with `$env:CI='true'; $env:PLAYWRIGHT_WEB_PORT='3011'` after clean `.next` (67 passed, 4 skipped); `npm run test:prod` (60 passed, 1 flaky audit `/blog` crawl). **Gate 4 live receipt** still operator-pending in `REVENUE_PROOF.md`.
+
 ### SHIPPED — 2026-03-31 — Hard bottom gate blocks operationally empty winners before persistence
 
 This session added one gate function + wiring + tests:

@@ -148,6 +148,13 @@ function getProductionSessionCookieDomain(): string | undefined {
     return undefined;
   }
 
+  // Local `next start` (Playwright, QA) often sets NEXTAUTH_URL to the public https URL for OAuth.
+  // Applying `.foldera.ai` here breaks host-only session cookies on 127.0.0.1 — middleware and
+  // /api/auth/* fail to see the JWT. Vercel production keeps the shared domain for foldera.ai hosts.
+  if (!process.env.VERCEL) {
+    return undefined;
+  }
+
   const rawBaseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_BASE_URL;
   if (!rawBaseUrl) {
     return undefined;

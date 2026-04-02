@@ -1,5 +1,10 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-02) — Mega prompt execution program
+
+- **`docs/MEGA_PROMPT_PROGRAM.md`** — single source for decomposed mega-prompt sessions (Phase 0.5 local hammer, S1 baseline table, S4 operator checklist, Cursor paste template). **`AGENTS.md`** links here for multi-session quality work.
+- **Local E2E reliability:** `lib/auth/auth-options.ts` — production session cookie `domain` is set to `.foldera.ai` only when `VERCEL` is set, so local `next start` + Playwright on `127.0.0.1` works when `NEXTAUTH_URL` points at https production. **`playwright.config.ts`** — optional `PLAYWRIGHT_WEB_PORT` + `npx next start -p <port>` when :3000 is busy; **`tests/e2e/authenticated-routes.spec.ts`** `E2E_ORIGIN` follows `PLAYWRIGHT_WEB_PORT`.
+
 ### Operator-only GTM gates (human required)
 
 These close `REVENUE_PROOF.md` / spec proof tables; agents cannot complete them without your account.
