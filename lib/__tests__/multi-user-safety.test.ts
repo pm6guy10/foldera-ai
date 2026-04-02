@@ -167,6 +167,12 @@ describe('multi-user safety', () => {
   });
 
   it('buildPromptFromStructuredContext decay discrepancy short path keeps rich context without full convergent stack', () => {
+    const userIdentity = buildUserIdentityContext([
+      { goal_text: 'Advance two DSHS job applications', priority: 5, goal_category: 'career' },
+    ]);
+    expect(userIdentity).toContain('internal briefing');
+    expect(userIdentity).toContain('evidence-aligned connections');
+
     const ctx = {
       has_real_recipient: true,
       recipient_brief: 'Cheryl Anderson <cheryl@example.com>',
@@ -208,10 +214,30 @@ describe('multi-user safety', () => {
       user_full_name: 'Test User',
       user_first_name: 'Test',
       trigger_context: 'TRIGGER_CONTEXT (decay):\nDelta: prior engagement cooled.',
+      user_identity_context: userIdentity,
+      active_goals: ['[career, p5] Advance two DSHS job applications'],
+      goal_gap_analysis: [
+        {
+          goal_text: 'Advance two DSHS job applications',
+          priority: 5,
+          category: 'career',
+          signal_count_14d: 2,
+          signal_count_30d: 4,
+          signal_count_90d: 9,
+          action_count_14d: 0,
+          commitment_count: 0,
+          gap_level: 'MEDIUM' as const,
+          gap_description: 'Inbound employer-related mail but sparse outbound follow-up.',
+        },
+      ],
     } as unknown as StructuredContext;
     const prompt = buildPromptFromStructuredContext(ctx, 'send_message');
     expect(prompt).toContain('CANONICAL_ACTION');
     expect(prompt).toContain('Write an email from the user to:');
+    expect(prompt).toContain('USER CONTEXT');
+    expect(prompt).toContain('GOAL_GAP_ANALYSIS');
+    expect(prompt).toContain('ACTIVE_GOALS');
+    expect(prompt).toContain('Advance two DSHS job applications');
     expect(prompt).toContain('DECAY_RECONNECTION_RULE');
     expect(prompt).toContain('CANDIDATE_EVIDENCE');
     expect(prompt).toContain('CANDIDATE_ANALYSIS');

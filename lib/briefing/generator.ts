@@ -1576,10 +1576,24 @@ function buildStructuredContext(
   const dateMatch = winner.content.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
   const candidate_due_date = dateMatch ? dateMatch[1] : null;
 
-  // Active goals (priority 3+)
+  // Active goals: all DB goals passed in (tkg_goals), scorer-matched first, deduped — not only matchedGoal
+  const formatActiveGoalLine = (category: string, priority: number, text: string) =>
+    `[${category}, p${priority}] ${text}`;
+  const activeGoalSeen = new Set<string>();
+  const pushActiveGoalUnique = (category: string, priority: number, text: string, out: string[]) => {
+    const line = formatActiveGoalLine(category, priority, text);
+    const key = normalizeText(line);
+    if (activeGoalSeen.has(key)) return;
+    activeGoalSeen.add(key);
+    out.push(line);
+  };
   const active_goals: string[] = [];
   if (winner.matchedGoal) {
-    active_goals.push(`[${winner.matchedGoal.category}, p${winner.matchedGoal.priority}] ${winner.matchedGoal.text}`);
+    pushActiveGoalUnique(winner.matchedGoal.category, winner.matchedGoal.priority, winner.matchedGoal.text, active_goals);
+  }
+  for (const g of userGoals ?? []) {
+    pushActiveGoalUnique(g.goal_category, g.priority, g.goal_text, active_goals);
+    if (active_goals.length >= 5) break;
   }
 
   // Recent action history (compact)
@@ -1865,12 +1879,27 @@ export function buildUserIdentityContext(
     lines.push(`- [${g.goal_category}, priority ${g.priority}] ${g.goal_text}`);
   }
 
-  return `USER CONTEXT (read-only, do not reference directly in output):
+  return `USER CONTEXT (internal briefing — do not paste this block into the user-facing email):
 The user's stated priorities:
 ${lines.join('\n')}
+- Use these to infer legitimate, evidence-aligned connections (employer, role, pipeline, applications) when the thread and recipient support it. Do not fabricate links the signals do not support.
+- Do not paste meta phrasing from this block into the email body. The final email must still follow SEND_MESSAGE_ARTIFACT_RULES (no banned words like "goal" or "signal" in the message text).
 - Use these to detect contradictions: if signal velocity goes elsewhere, that's a finding.
 - Directives about tool configuration, account settings, internal system maintenance, or generic productivity are NOISE — the scorer should not have selected them; render only the CANONICAL_ACTION with evidence-grounded content, never a substitute wait_rationale.
 - Look for gaps between these stated priorities and what the user is actually doing in their signals. That gap IS the insight.`;
+}
+
+/** Shared GOAL_GAP_ANALYSIS block for long and recipient-short prompt paths. */
+function formatGoalGapAnalysisBlock(goalGapAnalysis: GoalGapEntry[] | undefined): string | null {
+  if (!goalGapAnalysis || goalGapAnalysis.length === 0) return null;
+  const gapLines = goalGapAnalysis.map((g) => {
+    const density = `${g.signal_count_14d} signals (14d) / ${g.signal_count_30d} (30d) / ${g.signal_count_90d} (90d)`;
+    const extras = g.commitment_count > 0 ? ` ${g.commitment_count} open commitment${g.commitment_count !== 1 ? 's' : ''}.` : '';
+    return `[p${g.priority}] ${g.goal_text}\n  → Signal density: ${density}. Actions completed 14d: ${g.action_count_14d}.${extras}\n  → Gap: ${g.gap_level} — ${g.gap_description}`;
+  });
+  return (
+    `GOAL_GAP_ANALYSIS:\nBehavioral divergence between stated priorities and actual signal density over 14/30/90 days.\nYour primary question: which goal has the biggest gap? Start there. Find the one finished artifact that closes the most important gap.\n\n${gapLines.join('\n\n')}`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -2058,6 +2087,19 @@ export function buildPromptFromStructuredContext(
     // Recipient-short path used to omit TRIGGER_CONTEXT — discrepancy decay then had no delta/why_now.
     if (ctx.trigger_context) {
       m.push(ctx.trigger_context);
+    }
+
+    // Same goal / gap material as long path so decay and send_message can cross-link (e.g. employer + applications).
+    if (ctx.user_identity_context) {
+      m.push(ctx.user_identity_context);
+    }
+    const recipientShortGoalGap = formatGoalGapAnalysisBlock(ctx.goal_gap_analysis);
+    if (recipientShortGoalGap) {
+      m.push(recipientShortGoalGap);
+    }
+    const shortPathGoals = ctx.active_goals ?? [];
+    if (shortPathGoals.length > 0) {
+      m.push(`ACTIVE_GOALS:\n${shortPathGoals.map((g) => `- ${g}`).join('\n')}`);
     }
 
     if (isDecayReconnect) {
@@ -2260,13 +2302,9 @@ export function buildPromptFromStructuredContext(
   }
 
   // Goal-gap analysis — real behavioral divergence with 14/30/90d density trajectory
-  if (ctx.goal_gap_analysis.length > 0) {
-    const gapLines = ctx.goal_gap_analysis.map((g) => {
-      const density = `${g.signal_count_14d} signals (14d) / ${g.signal_count_30d} (30d) / ${g.signal_count_90d} (90d)`;
-      const extras = g.commitment_count > 0 ? ` ${g.commitment_count} open commitment${g.commitment_count !== 1 ? 's' : ''}.` : '';
-      return `[p${g.priority}] ${g.goal_text}\n  → Signal density: ${density}. Actions completed 14d: ${g.action_count_14d}.${extras}\n  → Gap: ${g.gap_level} — ${g.gap_description}`;
-    });
-    sections.push(`GOAL_GAP_ANALYSIS:\nBehavioral divergence between stated priorities and actual signal density over 14/30/90 days.\nYour primary question: which goal has the biggest gap? Start there. Find the one finished artifact that closes the most important gap.\n\n${gapLines.join('\n\n')}`);
+  const longPathGoalGap = formatGoalGapAnalysisBlock(ctx.goal_gap_analysis);
+  if (longPathGoalGap) {
+    sections.push(longPathGoalGap);
   }
 
   // Conviction math — inferred burn, runway, EV comparison. When present, the model MUST

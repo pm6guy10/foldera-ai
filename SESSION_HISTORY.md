@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: Generator **goals + goal-gap in decay/send_message prompt** — `active_goals` from `tkg_goals` (not only `matchedGoal`); recipient-short path gets `USER CONTEXT`, `GOAL_GAP_ANALYSIS`, `ACTIVE_GOALS`; `buildUserIdentityContext` copy softened; `formatGoalGapAnalysisBlock`
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `lib/briefing/generator.ts`, `lib/__tests__/multi-user-safety.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/__tests__/multi-user-safety.test.ts`; `npx vitest run lib/briefing/__tests__/generator.test.ts`; `npm run build`
+  Any unresolved issues: `npm run test:prod` after Vercel READY per runbook
+
 - 2026-04-02 — AUDIT: Daily brief directive layout — headline cyan rail as 4px table column (matches text height + 10px top/bottom pad); date/reason vertical rhythm
   MODE: AUDIT
   Commit hash(es): `19bd488`
