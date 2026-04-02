@@ -338,31 +338,21 @@ export function renderWriteDocumentReadyEmailHtml(opts: {
 </html>`;
 }
 
-export async function sendDailyDirective({
-  to,
-  directives,
-  date,
-  subject,
-  userId,
-}: {
-  to: string;
-  directives: DirectiveItem[];
+/**
+ * Full HTML for the daily brief email (send path + local preview).
+ * `directive === null` renders the “nothing today” variant.
+ */
+export function buildDailyDirectiveEmailHtml(opts: {
+  baseUrl: string;
   date: string;
-  subject?: string;
-  userId: string;
-}) {
-  const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
-  const directive = directives[0];
-  const tags = [
-    { name: 'email_type', value: 'daily_brief' },
-    { name: 'user_id', value: userId },
-    ...(directive?.id ? [{ name: 'action_id', value: directive.id }] : []),
-  ];
+  directive: DirectiveItem | null;
+}): string {
+  const baseUrl = opts.baseUrl.replace(/\/$/, '');
+  const { date, directive } = opts;
+  const prefs = `${baseUrl}/dashboard/settings`;
 
   if (!directive) {
-    const nothingSubject = subject ?? 'Foldera: Nothing today';
-    const prefs = `${baseUrl}/dashboard/settings`;
-    const html = `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>${EMAIL_HEAD}</head>
 <body style="margin:0;padding:0;background:${EMAIL_BG};">
@@ -393,23 +383,14 @@ export async function sendDailyDirective({
   </table>
 </body>
 </html>`;
-
-    return sendResendEmail({
-      to,
-      subject: nothingSubject,
-      html,
-      tags,
-    });
   }
 
-  const emailSubject = subject ?? `Foldera: ${directive.directive.split(/\s+/).slice(0, 6).join(' ')}`;
   const reasonText = directive.reason?.split('[score=')[0].trim() ?? '';
   const approveHref = directive.id ? `${baseUrl}/dashboard?action=approve&id=${directive.id}` : `${baseUrl}/dashboard`;
   const skipHref = directive.id ? `${baseUrl}/dashboard?action=skip&id=${directive.id}` : `${baseUrl}/dashboard`;
   const artifactHtml = renderArtifactHtml(directive.artifact);
 
-  const prefs = `${baseUrl}/dashboard/settings`;
-  const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>${EMAIL_HEAD}</head>
 <body style="margin:0;padding:0;background:${EMAIL_BG};">
@@ -463,7 +444,61 @@ export async function sendDailyDirective({
   </table>
 </body>
 </html>`;
+}
 
+/** Sample directive for `/api/dev/email-preview` — mirrors a typical send_message brief. */
+export const DEV_EMAIL_PREVIEW_SAMPLE_DIRECTIVE: DirectiveItem = {
+  id: '00000000-0000-4000-8000-000000000001',
+  directive:
+    '79 days of silence with Cheryl Anderson requires reconnection before relationship becomes unrecoverable',
+  action_type: 'send_message',
+  confidence: 78,
+  reason:
+    'High-value contact drifted; a short check-in restores trust without pressure. [score=4.2]',
+  artifact: {
+    type: 'email',
+    draft_type: 'email_compose',
+    to: 'cheryl.anderson1@example.gov',
+    subject: 'Quick question about administrative processes',
+    body:
+      "Hi Cheryl,\n\nI realize it's been a while since we last connected. I'm reaching out because I could use some guidance on navigating a few procedures, and I remember you being incredibly helpful with questions like this.\n\nWould you have a few minutes for a brief call this week?\n\nThanks,\nAlex",
+  },
+};
+
+export async function sendDailyDirective({
+  to,
+  directives,
+  date,
+  subject,
+  userId,
+}: {
+  to: string;
+  directives: DirectiveItem[];
+  date: string;
+  subject?: string;
+  userId: string;
+}) {
+  const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
+  const directive = directives[0];
+  const tags = [
+    { name: 'email_type', value: 'daily_brief' },
+    { name: 'user_id', value: userId },
+    ...(directive?.id ? [{ name: 'action_id', value: directive.id }] : []),
+  ];
+
+  if (!directive) {
+    const nothingSubject = subject ?? 'Foldera: Nothing today';
+    const html = buildDailyDirectiveEmailHtml({ baseUrl, date, directive: null });
+    return sendResendEmail({
+      to,
+      subject: nothingSubject,
+      html,
+      tags,
+    });
+  }
+
+  const emailSubject = subject ?? `Foldera: ${directive.directive.split(/\s+/).slice(0, 6).join(' ')}`;
+  const html = buildDailyDirectiveEmailHtml({ baseUrl, date, directive });
   return sendResendEmail({
     to,
     subject: emailSubject,

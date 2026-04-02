@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: **Local email preview** — `GET /api/dev/email-preview` (requires `ALLOW_DEV_ROUTES=true`); `buildDailyDirectiveEmailHtml` + `DEV_EMAIL_PREVIEW_SAMPLE_DIRECTIVE` in `lib/email/resend.ts`
+  MODE: AUDIT
+  Commit hash(es): verify with `git log -1 --oneline` on `main` after push
+  Files changed: `lib/email/resend.ts`, `app/api/dev/email-preview/route.ts`, `AGENTS.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; manual `GET /api/dev/email-preview` → 200 HTML
+  Any unresolved issues: none
+
 - 2026-04-02 — AUDIT: **Resend HTML parity** with marketing — Inter (Google Fonts) + `EMAIL_FONT_STACK`; tokens mirror `tailwind.config.js` / landing directive card (cyan border 40%, 32px outer radius, inner artifact cyan/10 + soft border + 4px cyan-500 bar); hairline `cyan-400`; Skip zinc-500/zinc-900; welcome / transactional / write-document / nothing-today aligned
   MODE: AUDIT
   Commit hash(es): `98769b3`
