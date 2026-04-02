@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: Daily brief directive layout — headline cyan rail as 4px table column (matches text height + 10px top/bottom pad); date/reason vertical rhythm
+  MODE: AUDIT
+  Commit hash(es): verify with `git log -1 --oneline` on `main` after push
+  Files changed: `lib/email/resend.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`
+  Any unresolved issues: none
+
 - 2026-04-02 — AUDIT: Daily brief email polish — `formatEmailDateForDisplay`; nothing-today cyan hairline + `padding:28px 0 36px` under Open dashboard before footer border
   MODE: AUDIT
   Commit hash(es): `a7822db`
