@@ -6,7 +6,7 @@
 
 - 2026-04-02 — AUDIT: Dev **`GET /api/dev/email-preview?action_id=`** — owner-only live HTML from persisted `tkg_actions` (artifact merge matches brain-receipt); `400` invalid UUID; `URL.searchParams` for testability; route tests
   MODE: AUDIT
-  Commit hash(es): `4a80571`
+  Commit hash(es): `c3a08da`
   Files changed: `app/api/dev/email-preview/route.ts`, `app/api/dev/email-preview/__tests__/route.test.ts`, `AGENTS.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run app/api/dev/email-preview/__tests__/route.test.ts` (6 passed); `npm run build`
   Any unresolved issues: Operator workflow unchanged: `ALLOW_DEV_ROUTES=true`, `POST /api/dev/brain-receipt`, then open `/api/dev/email-preview?action_id=<final_action.action_id>` signed in as owner
