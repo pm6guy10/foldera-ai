@@ -512,7 +512,8 @@ describe('generateDirective runtime failures', () => {
     const { generateDirective } = await import('../generator');
     const directive = await generateDirective('user-1', { dryRun: true });
 
-    expect(anthropicCreate).toHaveBeenCalledTimes(2);
+    // generatePayload allows up to 2 validation retries (3 Sonnet calls); same mocked body fails enforcement each time, then repair path wins.
+    expect(anthropicCreate).toHaveBeenCalledTimes(3);
     expect(directive.directive).not.toBe('__GENERATION_FAILED__');
     expect(directive.action_type).toBe('write_document');
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;

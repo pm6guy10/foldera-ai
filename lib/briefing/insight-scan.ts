@@ -8,9 +8,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 import { getDailySpend, trackApiCall } from '@/lib/utils/api-tracker';
+import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
-const INSIGHT_MODEL = 'claude-sonnet-4-20250514';
-const DAILY_SPEND_SKIP_INSIGHT_USD = 0.75;
+const INSIGHT_MODEL = 'claude-haiku-4-5-20251001';
+const DAILY_SPEND_SKIP_INSIGHT_USD = 0.5;
 
 export interface InsightCandidate {
   id: string;
@@ -134,6 +135,19 @@ export async function runInsightScan(args: {
 
   const spend = await getDailySpend(userId);
   if (spend > DAILY_SPEND_SKIP_INSIGHT_USD) {
+    logStructuredEvent({
+      event: 'insight_scan_skipped',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'insight_scan_skipped_spend_guard',
+      details: {
+        scope: 'insight_scan',
+        reason: 'daily_spend_above_threshold',
+        threshold_usd: DAILY_SPEND_SKIP_INSIGHT_USD,
+        spend_usd: Math.round(spend * 10_000) / 10_000,
+      },
+    });
     return [];
   }
 
@@ -143,6 +157,19 @@ export async function runInsightScan(args: {
     .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
 
   if (recent.length < 10) {
+    logStructuredEvent({
+      event: 'insight_scan_skipped',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'insight_scan_skipped_low_signal_count',
+      details: {
+        scope: 'insight_scan',
+        reason: 'insufficient_signals_last_30d',
+        recent_signal_count: recent.length,
+        min_required: 10,
+      },
+    });
     return [];
   }
 

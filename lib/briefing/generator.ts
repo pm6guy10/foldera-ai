@@ -4801,6 +4801,13 @@ function buildFullContext(result: ScorerResult, payload: GeneratedDirectivePaylo
 // LLM generation with retry and fallback (Parts 2 + 6)
 // ---------------------------------------------------------------------------
 
+/**
+ * Validation retries after the first Sonnet call (hard cap: 2 retries → 3 LLM calls max).
+ * No further round-trips after the last attempt fails — caller gets payload null (empty directive path).
+ */
+const MAX_DIRECTIVE_VALIDATION_RETRIES = 2;
+const MAX_DIRECTIVE_LLM_ATTEMPTS = 1 + MAX_DIRECTIVE_VALIDATION_RETRIES;
+
 async function generatePayload(
   userId: string,
   ctx: StructuredContext,
@@ -4836,7 +4843,7 @@ async function generatePayload(
   ];
   let lastIssues: string[] = [];
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < MAX_DIRECTIVE_LLM_ATTEMPTS; attempt++) {
     const response = await getAnthropic().messages.create({
       model: GENERATION_MODEL,
       max_tokens: 4096,
@@ -4931,14 +4938,19 @@ async function generatePayload(
       return { issues: [], payload: parsed };
     }
 
-    if (attempt === 0) {
+    if (attempt < MAX_DIRECTIVE_LLM_ATTEMPTS - 1) {
       logStructuredEvent({
         event: 'generation_retry',
         level: 'warn',
         userId,
         artifactType: parsed?.artifact_type ?? null,
         generationStatus: 'retrying_validation',
-        details: { scope: 'generator', issues },
+        details: {
+          scope: 'generator',
+          attempt_index: attempt,
+          max_attempts: MAX_DIRECTIVE_LLM_ATTEMPTS,
+          issues,
+        },
       });
 
       // For the retry, feed back only the extracted JSON (if parseable) to avoid
@@ -4978,9 +4990,28 @@ Issues:
       userId,
       artifactType: parsed?.artifact_type ?? null,
       generationStatus: 'generation_incomplete',
-      details: { scope: 'generator', issues },
+      details: {
+        scope: 'generator',
+        attempt_index: attempt,
+        max_attempts: MAX_DIRECTIVE_LLM_ATTEMPTS,
+        issues,
+      },
     });
   }
+
+  logStructuredEvent({
+    event: 'generation_validation_exhausted',
+    level: 'warn',
+    userId,
+    artifactType: null,
+    generationStatus: 'validation_exhausted',
+    details: {
+      scope: 'generator',
+      max_attempts: MAX_DIRECTIVE_LLM_ATTEMPTS,
+      max_validation_retries: MAX_DIRECTIVE_VALIDATION_RETRIES,
+      issue_count: lastIssues.length,
+    },
+  });
 
   return { issues: lastIssues, payload: null };
 }

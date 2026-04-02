@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: `generatePayload` caps directive validation at **2** retries (3 Sonnet attempts max), logs `generation_validation_exhausted` on failure; `runInsightScan` emits `insight_scan_skipped` when spend guard or low signal count blocks the LLM (explains missing `insight_scan` in `api_usage`)
+  MODE: AUDIT
+  Commit hash(es): (verify with `git log -1 --oneline` on `main` after push)
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/insight-scan.ts`, `lib/briefing/__tests__/insight-scan.test.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `app/api/onboard/set-goals/__tests__/route.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run`
+  Any unresolved issues: `npm run test:prod` after Vercel READY per runbook.
+
 - 2026-04-01 — FLOW: Insight Scan — `runInsightScan` (Sonnet) on 30d signals; 0–2 candidates injected as `behavioral_pattern` + `fromInsightScan`; generator `INSIGHT_SCAN_WINNER` prompt banner; spend skip >$0.75; tests + spec/state updates
   MODE: FLOW
   Commit hash(es): `a702bf0`

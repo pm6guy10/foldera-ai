@@ -23,9 +23,15 @@ vi.mock('@/lib/utils/api-tracker', () => ({
   trackApiCall: vi.fn().mockResolvedValue(undefined),
 }));
 
+const mockLogStructuredEvent = vi.fn();
+vi.mock('@/lib/utils/structured-logger', () => ({
+  logStructuredEvent: (...args: unknown[]) => mockLogStructuredEvent(...(args as [])),
+}));
+
 describe('runInsightScan', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLogStructuredEvent.mockClear();
     createMock.mockImplementation(() => ({
       messages: {
         create: vi.fn().mockResolvedValue({
@@ -118,6 +124,18 @@ describe('runInsightScan', () => {
     });
 
     expect(result).toEqual([]);
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'insight_scan_skipped',
+        generationStatus: 'insight_scan_skipped_low_signal_count',
+        details: expect.objectContaining({
+          scope: 'insight_scan',
+          reason: 'insufficient_signals_last_30d',
+          recent_signal_count: 1,
+          min_required: 10,
+        }),
+      }),
+    );
   });
 
   it('skips when daily spend already exceeds insight budget threshold', async () => {
@@ -144,5 +162,16 @@ describe('runInsightScan', () => {
 
     expect(result).toEqual([]);
     expect(createMock).not.toHaveBeenCalled();
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'insight_scan_skipped',
+        generationStatus: 'insight_scan_skipped_spend_guard',
+        details: expect.objectContaining({
+          scope: 'insight_scan',
+          reason: 'daily_spend_above_threshold',
+          threshold_usd: 0.5,
+        }),
+      }),
+    );
   });
 });
