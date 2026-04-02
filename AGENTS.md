@@ -129,7 +129,7 @@ Any change affecting frontend, auth, onboarding, connectors, or routing must pas
   - `GET /api/dev/ops-health` is owner-only; returns JSON env/DB readiness checks without exposing secret values (`app/api/dev/ops-health/route.ts`). See repo-root `LAUNCH_CHECKLIST.md` for manual launch steps.
   - `GET /api/model/state` is a read-only behavioral model state endpoint (commit `95c2edf`, `app/api/model/state/route.ts`).
 - Environment variable note: `ALLOW_DEV_ROUTES=true` is required to access dev-only API routes such as `/api/dev/stress-test` (commit `9b3e719`, `app/api/dev/stress-test/route.ts`).
-- Directory structure note: `tests/production/` now contains production auth-state scripts and smoke/audit suites referenced by CI workflows (introduced in commit `fbb1072`, extended in `2de4942`).
+- Directory structure note: `tests/production/` now contains production auth-state scripts and smoke/audit suites referenced by CI workflows (introduced in commit `fbb1072`, extended in `2de4942`). **`tests/local/`** — gitignored `auth-state-owner.json` + `npm run test:local:setup` / `test:local:brain-receipt` for localhost owner `/api/dev/*` (see `tests/local/README.md`, `CLAUDE.md` Autonomous local hammer).
 
 ## Vercel Deployment
 Vercel deploys are triggered by GitHub Actions, NOT by Vercel's automatic git integration. This is because Vercel Hobby blocks deploys from committers who aren't the repo owner (CC and Codex commits were blocked). The workflow at `.github/workflows/deploy.yml` uses VERCEL_TOKEN to deploy on every push to main. Any committer identity works.

@@ -19,6 +19,16 @@ Every session runs this before any work:
 
 - `REVENUE_PROOF.md` — GTM proof sequence, gate status, pretend certainty map, execution gaps. **After every production brain-receipt**, update `REVENUE_PROOF.md` **GATE STATUS** with date and evidence.
 
+## Autonomous local hammer (`/api/dev/*`)
+
+Brain-receipt and `email-preview?action_id=` require an **owner** session on the **same origin** as the dev server. Production Playwright auth (`tests/production/auth-state.json`, `npm run test:prod:setup`) targets `https://www.foldera.ai` only — it does **not** authenticate localhost.
+
+- **Save localhost owner cookies:** `npm run test:local:setup` writes gitignored `tests/local/auth-state-owner.json` (see `tests/local/README.md`). Set `LOCAL_BASE_URL` if Next dev is not `http://localhost:3000` (e.g. port 3001).
+- **Run brain-receipt headlessly:** dev server + `ALLOW_DEV_ROUTES=true`, then `npm run test:local:brain-receipt` (optional `-- --screenshot path.png`).
+- **Production smoke after push:** when `tests/production/auth-state.json` exists and is fresh (session under ~30 days), run `npm run test:prod`. Refresh with `npm run test:prod:setup` if authenticated suites skip or fail.
+
+**Human-only revenue gates** (cannot be automated): live **Approve** on a real `send_message` with mailbox connected (`sent_via` in `REVENUE_PROOF.md`), Stripe checkout + webhook row, optional non-owner signup — see `AUTOMATION_BACKLOG.md` (Operator-only GTM gates).
+
 ## Database CHECK Constraints (tkg_goals)
 
 These are enforced by Postgres. Invalid values cause silent insert failures.

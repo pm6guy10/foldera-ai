@@ -11,6 +11,9 @@ audit-output/
 output/
 artifacts/
 
+# Local owner session for /api/dev/* (brain-receipt, email-preview)
+tests/local/auth-state-owner.json
+
 # Production test auth state (contains session cookies)
 tests/production/auth-state.json
 tests/production/results.json

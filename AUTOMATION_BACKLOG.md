@@ -1,5 +1,13 @@
 # AUTOMATION BACKLOG
 
+### Operator-only GTM gates (human required)
+
+These close `REVENUE_PROOF.md` / spec proof tables; agents cannot complete them without your account.
+
+1. **Gate 4 live receipt** — Gmail or Microsoft connected; approve one real `send_message` from email or dashboard; record `tkg_actions.id` and `execution_result.sent_via` (`gmail` / `outlook` / `resend`) in `REVENUE_PROOF.md`.
+2. **Stripe** — Run checkout from `/pricing` (test or live per env); confirm webhook updates `user_subscriptions`; note date/mode in `REVENUE_PROOF.md`.
+3. **Non-owner proof (optional)** — Second Google account: signup, connect, confirm brief + `tkg_actions` row for that `user_id`.
+
 ### P1 — Autonomous agents — production wiring (2026-03-31)
 
 - **Apply migration** `20260331120000_agent_layer.sql` to production Postgres — **DONE** (2026-03-31): applied via Supabase MCP as migration `agent_layer_action_source` on project `neydszeamsflpghtrhue` (`tkg_goals_source_check` includes `system_config`; `tkg_actions.action_source` + index).
@@ -31,7 +39,7 @@
 
 **2026-04-01 brain-quality pass:** Fixed `schedule_conflict` → `write_document` stalling at `Artifact generation failed.` when `loadRelationshipContext()` threw before the Haiku transform try/catch, and aligned discrepancy **transform flavor** + **bottom gate** with `discrepancyClass` (class beats “reconnect” in `reason` text).
 
-**Next proof:** After deploy, owner `POST /api/dev/brain-receipt` with `ALLOW_DEV_ROUTES=true` — expect `pending_approval` or at least non-null artifact for calendar-conflict winner; confirm `scorer_diagnostics` and `npm run test:prod` on green deploy.
+**Next proof:** After deploy, owner `POST /api/dev/brain-receipt` with `ALLOW_DEV_ROUTES=true` — or locally `npm run test:local:brain-receipt` after `npm run test:local:setup` — expect `pending_approval` or non-null artifact; confirm `scorer_diagnostics` and `npm run test:prod` on green deploy when `tests/production/auth-state.json` is fresh.
 
 ### Ops — Email forwarding (foldera.ai)
 

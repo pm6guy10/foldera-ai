@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: **Autonomous GTM hammer prep** — `tests/local/setup-auth-localhost.ts` + `run-brain-receipt.ts`; gitignored `auth-state-owner.json`; `npm run test:local:setup` / `test:local:brain-receipt`; `LOCAL_BASE_URL` in `.env.example`; CLAUDE § Autonomous local hammer; AGENTS directory note; AUTOMATION_BACKLOG § Operator-only GTM gates; optional `VERCEL_TOKEN` / `SENTRY_AUTH_TOKEN` comments
+  MODE: AUDIT
+  Commit hash(es): verify with `git log -1 --oneline` on `main`
+  Files changed: `tests/local/setup-auth-localhost.ts`, `tests/local/run-brain-receipt.ts`, `tests/local/README.md`, `.gitignore`, `package.json`, `CLAUDE.md`, `AUTOMATION_BACKLOG.md`, `AGENTS.md`, `.env.example`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npm run test:local:brain-receipt` exits 1 with clear message when `auth-state-owner.json` missing
+  Any unresolved issues: Owner must run `npm run test:local:setup` once per machine/session refresh; human Gate 4 / Stripe / non-owner rows remain operator-only per backlog
+
 - 2026-04-02 — AUDIT: **Brain-receipt quality loop** — extended `POST /api/dev/brain-receipt` with `generation_log`, `winner_selection_trace`, `inspection`, `active_goals`; persisted `brief_context_debug.active_goals` on selected `GenerationRunLog`; removed default scorer **FORCE-DECAY** override (opt-in via `SCORER_FORCE_DECAY_WINNER=true`); `.gitignore` `artifacts/` for local Playwright preview captures; `.env.example` documents opt-in flag
   MODE: AUDIT
   Commit hash(es): verify with `git log -1 --oneline` on `main` — subject `feat(dev): brain-receipt trace JSON + persist active_goals; scorer decay override opt-in`
