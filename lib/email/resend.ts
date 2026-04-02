@@ -422,8 +422,8 @@ export function buildDailyDirectiveEmailHtml(opts: {
         <tr><td style="padding:0 0 14px 0;">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:700;letter-spacing:0.12em;color:#52525b;">${dateDisplay}</p>
         </td></tr>
-        <tr><td style="padding-bottom:6px;">
-          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;color:${EMAIL_CYAN};text-transform:uppercase;">Finished artifact</p>
+        <tr><td style="padding:10px 0 18px 0;">
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:12px;font-weight:900;letter-spacing:0.16em;line-height:1.45;color:${EMAIL_CYAN};text-transform:uppercase;">Finished artifact</p>
         </td></tr>
         <tr><td style="padding:0 0 24px 0;">
           <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${EMAIL_BORDER_CYAN_STRONG};border-radius:${EMAIL_RADIUS_CARD_OUTER};background:${EMAIL_CARD};">

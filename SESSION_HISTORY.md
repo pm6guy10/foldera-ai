@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: Daily brief **Finished artifact** eyebrow — 12px type, `padding:10px 0 18px` before card
+  MODE: AUDIT
+  Commit hash(es): verify with `git log -1 --oneline` on `main` after push
+  Files changed: `lib/email/resend.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`
+  Any unresolved issues: none
+
 - 2026-04-02 — AUDIT: Daily brief HTML — **artifact before directive** (`buildDailyDirectiveEmailHtml`): date → Finished artifact → card → Today’s directive → headline/reason → buttons
   MODE: AUDIT
   Commit hash(es): `82953c7`
