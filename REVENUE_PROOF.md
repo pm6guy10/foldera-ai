@@ -14,14 +14,14 @@ Connect OAuth → nightly pipeline scores → morning email with one directive +
 
 Price: $29/mo. Conversion assumption: 3% free-to-paid.
 
-## GATE STATUS (updated 2026-04-01)
+## GATE STATUS (updated 2026-04-02)
 
 | Gate | Current P | Blocker | Fix |
 |------|-----------|---------|-----|
 | 1. Discovery | 5% | No demo video exists | Record after Gate 4 clears |
 | 2. Comprehension | 30% | Homepage doesn't communicate value in 10s | Rewrite after Gate 4 |
 | 3. Signup | 20% | Trust signals weak | Free tier, no CC |
-| 4. First value | 15% | Zero approved directives. Thinking layer not wired to generator. | Wire scorer analysis to LLM prompt |
+| 4. First value | 15% | Zero approved directives. Artifacts still often obvious vs. user effort. | **2026-04-02:** Generator cross-signal contract deployed (`SYSTEM_PROMPT` artifact quality bar + `low_cross_signal` validation with retry and `wait_rationale` fallback; decision-enforcement repair ordered before cross-signal degradation). Measure approval rate on production. |
 | 5. Conversion | 15% | write_document approve does nothing external | Email artifact to user on approve |
 | 6. Retention | 50% | Feedback loop exists but untested | Automatic via skip/approve signals |
 

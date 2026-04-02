@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: Generator **cross-signal contract** — `SYSTEM_PROMPT` artifact quality section; `low_cross_signal` validation + retry + `wait_rationale` fallback; repair-before-degrade ordering (`pendingLowCrossSignalFallback` + `shouldAttemptDecisionEnforcementRepair` allows mixed enforcement + low-cross issues)
+  MODE: AUDIT
+  Commit hash(es): verify with `git log -1 --oneline` on `main` after push
+  Files changed: `lib/briefing/generator.ts`, `REVENUE_PROOF.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (587 tests)
+  Any unresolved issues: `npm run test:prod` after Vercel READY per runbook.
+
 - 2026-04-02 — AUDIT: Revert directive validation to **2 total Sonnet calls** (`MAX_DIRECTIVE_VALIDATION_RETRIES = 1`); prior 3-call cap increased worst-case spend without fixing first-attempt validation quality
   MODE: AUDIT
   Commit hash(es): `99e806c`

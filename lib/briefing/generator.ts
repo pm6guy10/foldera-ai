@@ -166,6 +166,19 @@ When behavioral_pattern candidates are the winner, lead with the
 cross-signal connection the user hasn't made. Name the pattern
 explicitly in the directive text.
 
+ARTIFACT QUALITY CONTRACT (mandatory for send_message and write_document):
+Every artifact must demonstrate at least one cross-signal connection the user has not explicitly made. Examples of cross-signal connections: linking a decaying contact to an active goal, linking response-time degradation across multiple threads to a relationship risk, linking calendar gaps to email commitments. If the generator cannot produce a cross-signal connection for the winning candidate, it must set recommended_action: 'do_nothing' with a wait_rationale explaining what additional signal would unlock a real directive. Never send filler.
+
+NEGATIVE EXAMPLES (never produce these):
+- "Quick question about DSHS processes" to a DSHS admin during active DSHS job search (generic, no connection made)
+- "Schedule 30 minutes to review your credit score" (chore, user already knows)
+- "Document why X can wait" (busy work)
+
+POSITIVE EXAMPLES (this is the bar):
+- "You've applied to two DSHS roles in 30 days. Cheryl Anderson is a DSHS employee you haven't contacted in 79 days. Here's a reconnection email that references your interest in HCLA and asks for 15 minutes on the division's current priorities." (cross-signal: decay + active applications + specific department)
+- "14 unread emails from Marissa in 7 days, up from 3/week in February. 9 unanswered. Here are responses to all 9 batched into 3 messages." (cross-signal: frequency change + response gap + relationship priority)
+- "You emailed Yadira twice, both on Mondays. State HR response rates peak Wednesday 8-10am. Here's the follow-up, scheduled for Wednesday 8am." (cross-signal: timing pattern + external data + specific contact)
+
 INSIGHT CANDIDATES / INSIGHT_SCAN_WINNER (apply only when the user prompt includes the INSIGHT_SCAN_WINNER block):
 The winner may come from the Insight Scan — an unsupervised read of raw signals for patterns the user has not named (not structural gap rules). When that block is present:
 1. Lead with the PATTERN, not a generic task or reminder.
@@ -333,6 +346,18 @@ interface GenerateDirectiveOptions {
 type GeneratePayloadOptions = GenerateDirectiveOptions & {
   committedArtifactType: ValidArtifactTypeCanonical;
 };
+
+interface GeneratePayloadResult {
+  issues: string[];
+  payload: GeneratedDirectivePayload | null;
+  /** When true, caller should persist wait_rationale (cross-signal gate exhausted after retry). */
+  lowCrossSignalWaitRationale?: boolean;
+  /**
+   * LLM retries exhausted with low_cross_signal; caller should try deterministic repair first,
+   * then build wait_rationale if still no payload.
+   */
+  pendingLowCrossSignalFallback?: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Goal-gap analysis — behavioral divergence between stated and actual
@@ -4054,6 +4079,127 @@ function withResolvedCausalDiagnosis(
   };
 }
 
+const LOW_CROSS_SIGNAL_ISSUE_PREFIX = 'low_cross_signal:';
+
+/** Grounding tokens from context: signal sources, entities, goals, recipient line — used to enforce cross-signal artifacts. */
+function collectCrossSignalAnchors(ctx: StructuredContext): string[] {
+  const set = new Set<string>();
+  for (const s of ctx.supporting_signals) {
+    const src = (s.source || '').trim().toLowerCase();
+    if (src.length >= 3) set.add(src);
+    const ent = (s.entity || '').trim().toLowerCase();
+    if (ent.length >= 2) {
+      set.add(ent);
+      for (const w of ent.split(/\s+/)) {
+        if (w.length >= 3) set.add(w);
+      }
+    }
+  }
+  for (const g of ctx.active_goals) {
+    const gl = g.trim().toLowerCase();
+    if (gl.length >= 4) set.add(gl);
+    for (const w of gl.split(/\s+/)) {
+      if (
+        w.length >= 4 &&
+        !['that', 'this', 'with', 'from', 'your', 'goal', 'career', 'health', 'other', 'land', 'work'].includes(w)
+      ) {
+        set.add(w);
+      }
+    }
+  }
+  if (ctx.recipient_brief) {
+    const brief = ctx.recipient_brief;
+    const firstLine = brief.split('\n')[0] ?? brief;
+    const namePart = firstLine.replace(/^-\s*/, '').split('<')[0]?.trim().toLowerCase();
+    if (namePart && namePart.length >= 3) {
+      set.add(namePart);
+      for (const w of namePart.split(/\s+/)) {
+        if (w.length >= 3) set.add(w);
+      }
+    }
+    const emails = brief.match(/<[^>]+>/g) ?? [];
+    for (const m of emails) {
+      const inner = m.slice(1, -1).split('@')[0]?.toLowerCase();
+      if (inner && inner.length >= 3) set.add(inner);
+    }
+  }
+  const title = (ctx.candidate_title || '').trim().toLowerCase();
+  if (title.length >= 6) set.add(title);
+  for (const w of title.split(/\s+/)) {
+    if (w.length >= 4) set.add(w);
+  }
+  return [...set];
+}
+
+function countDistinctAnchorHits(haystackLower: string, anchors: string[]): number {
+  const matched = new Set<string>();
+  for (const a of anchors) {
+    if (a.length < 2) continue;
+    if (haystackLower.includes(a)) matched.add(a);
+  }
+  return matched.size;
+}
+
+function getLowCrossSignalIssues(
+  payload: GeneratedDirectivePayload,
+  ctx: StructuredContext,
+  canonicalArtifactType: ValidArtifactTypeCanonical,
+): string[] {
+  if (canonicalArtifactType !== 'send_message' && canonicalArtifactType !== 'write_document') {
+    return [];
+  }
+  const anchors = collectCrossSignalAnchors(ctx);
+  if (anchors.length < 2) {
+    return [];
+  }
+  const parts: string[] = [
+    String(payload.directive ?? ''),
+    String(payload.insight ?? ''),
+    String(payload.why_now ?? ''),
+  ];
+  if (canonicalArtifactType === 'send_message') {
+    const a = payload.artifact as Record<string, unknown>;
+    parts.push(String(a.subject ?? ''), String(a.body ?? ''));
+  } else {
+    const a = payload.artifact as Record<string, unknown>;
+    parts.push(String(a.title ?? ''), String(a.content ?? ''));
+  }
+  const haystack = parts.join('\n').toLowerCase();
+  if (countDistinctAnchorHits(haystack, anchors) >= 2) {
+    return [];
+  }
+  return [
+    `${LOW_CROSS_SIGNAL_ISSUE_PREFIX}artifact must reference at least two distinct grounded entities or signal sources from context`,
+  ];
+}
+
+function buildLowCrossSignalWaitRationalePayload(
+  ctx: StructuredContext,
+  _originalCommit: 'send_message' | 'write_document',
+): GeneratedDirectivePayload {
+  const trip = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+  return withResolvedCausalDiagnosis(
+    {
+      insight:
+        'Cross-signal bar not met: the draft did not tie this winner to at least two grounded entities or signal sources already in context.',
+      causal_diagnosis: ctx.required_causal_diagnosis,
+      decision: 'HOLD',
+      directive: 'Wait for clearer cross-signal linkage before sending outreach on this thread.',
+      artifact_type: 'wait_rationale',
+      artifact: {
+        why_wait:
+          'Two distinct anchors from your live context (e.g. contact + goal, or two signal sources) must appear in the finished artifact so the move is non-obvious. Add or sync the missing thread, application, or calendar tie-in, then regenerate.',
+        tripwire_date: trip,
+        trigger_condition:
+          'When new signals explicitly connect this thread to your stated goals or parallel activity (names, employers, roles, or program codes present in context).',
+      },
+      why_now:
+        'Sending a generic message would not add value over what you could draft yourself without Foldera.',
+    },
+    ctx.required_causal_diagnosis,
+  );
+}
+
 function validateGeneratedArtifact(
   payload: GeneratedDirectivePayload | null,
   ctx: StructuredContext,
@@ -4146,6 +4292,8 @@ function validateGeneratedArtifact(
       break;
     }
   }
+
+  issues.push(...getLowCrossSignalIssues(payload, ctx, canonicalArtifactType));
 
   // Global placeholder scan on all artifact string fields
   for (const [key, val] of Object.entries(payload.artifact)) {
@@ -4369,18 +4517,31 @@ function isDoNothingSchemaIssue(issue: string): boolean {
   return issue.startsWith('do_nothing ');
 }
 
+function isLowCrossSignalValidationIssue(issue: string): boolean {
+  return issue.toLowerCase().startsWith(LOW_CROSS_SIGNAL_ISSUE_PREFIX);
+}
+
 function shouldAttemptDecisionEnforcementRepair(
   issues: string[],
   actionType: ValidArtifactTypeCanonical,
 ): boolean {
   if (issues.length === 0) return false;
   if (actionType !== 'send_message' && actionType !== 'write_document') return false;
-  return issues.every(
+  const hasReparable = issues.some(
     (issue) =>
       isDecisionEnforcementIssue(issue) ||
       isCausalDiagnosisIssue(issue) ||
       isDoNothingSchemaIssue(issue),
   );
+  if (!hasReparable) return false;
+  const hardBlockers = issues.filter(
+    (issue) =>
+      !isDecisionEnforcementIssue(issue) &&
+      !isCausalDiagnosisIssue(issue) &&
+      !isDoNothingSchemaIssue(issue) &&
+      !isLowCrossSignalValidationIssue(issue),
+  );
+  return hardBlockers.length === 0;
 }
 
 function resolveDecisionDeadline(candidateDueDate: string | null): string {
@@ -4813,7 +4974,7 @@ async function generatePayload(
   userId: string,
   ctx: StructuredContext,
   options: GeneratePayloadOptions,
-): Promise<{ issues: string[]; payload: GeneratedDirectivePayload | null }> {
+): Promise<GeneratePayloadResult> {
   const committed = options.committedArtifactType;
   const prompt = buildPromptFromStructuredContext(ctx, committed);
 
@@ -4843,6 +5004,7 @@ async function generatePayload(
     { role: 'user', content: prompt },
   ];
   let lastIssues: string[] = [];
+  let issuesAttempt0: string[] | null = null;
 
   for (let attempt = 0; attempt < MAX_DIRECTIVE_LLM_ATTEMPTS; attempt++) {
     const response = await getAnthropic().messages.create({
@@ -4934,6 +5096,9 @@ async function generatePayload(
 
     const issues = validateGeneratedArtifact(parsed, ctx, committed);
     lastIssues = issues;
+    if (attempt === 0) {
+      issuesAttempt0 = [...issues];
+    }
 
     if (issues.length === 0 && parsed) {
       return { issues: [], payload: parsed };
@@ -5013,6 +5178,20 @@ Issues:
       issue_count: lastIssues.length,
     },
   });
+
+  const lowCrossRetryExhausted =
+    issuesAttempt0 !== null &&
+    issuesAttempt0.some((i) => i.toLowerCase().startsWith(LOW_CROSS_SIGNAL_ISSUE_PREFIX)) &&
+    lastIssues.some((i) => i.toLowerCase().startsWith(LOW_CROSS_SIGNAL_ISSUE_PREFIX));
+
+  if (
+    lowCrossRetryExhausted &&
+    (committed === 'send_message' || committed === 'write_document')
+  ) {
+    // Defer wait_rationale to generateDirective so deterministic decision-enforcement
+    // repair can run first (mixed validation failures often pair low_cross with enforcement).
+    return { issues: lastIssues, payload: null, pendingLowCrossSignalFallback: true };
+  }
 
   return { issues: lastIssues, payload: null };
 }
@@ -5357,7 +5536,7 @@ export async function generateDirective(
     // It does NOT choose the action type. That is locked by decisionPayload.
     // =====================================================================
 
-    let payloadResult: { issues: string[]; payload: GeneratedDirectivePayload | null };
+    let payloadResult: GeneratePayloadResult;
     try {
       payloadResult = await generatePayload(userId, ctx, {
         ...options,
@@ -5380,8 +5559,10 @@ export async function generateDirective(
       };
     }
 
-    // If LLM generation fails entirely, try next candidate
+    // If LLM generation fails entirely, try deterministic repair; preserve pending low-cross
+    // fallback so we can emit wait_rationale after repair if still blocked.
     if (!payloadResult.payload) {
+      const pendingLowCross = Boolean(payloadResult.pendingLowCrossSignalFallback);
       if (shouldAttemptDecisionEnforcementRepair(payloadResult.issues, decisionPayload.recommended_action)) {
         const originalIssues = [...payloadResult.issues];
         const repairedPayload = buildDecisionEnforcedFallbackPayload({
@@ -5429,7 +5610,43 @@ export async function generateDirective(
                 repaired_issues: repairedIssues,
               },
             });
+            payloadResult = {
+              issues: repairedIssues,
+              payload: null,
+              pendingLowCrossSignalFallback: pendingLowCross,
+            };
           }
+        } else if (pendingLowCross) {
+          payloadResult = { ...payloadResult, pendingLowCrossSignalFallback: true };
+        }
+      } else if (pendingLowCross) {
+        payloadResult = { ...payloadResult, pendingLowCrossSignalFallback: true };
+      }
+
+      if (
+        !payloadResult.payload &&
+        payloadResult.pendingLowCrossSignalFallback &&
+        (decisionPayload.recommended_action === 'send_message' ||
+          decisionPayload.recommended_action === 'write_document')
+      ) {
+        const fallback = buildLowCrossSignalWaitRationalePayload(
+          ctx,
+          decisionPayload.recommended_action,
+        );
+        const fbIssues = validateGeneratedArtifact(fallback, ctx, 'wait_rationale');
+        if (fbIssues.length === 0) {
+          logStructuredEvent({
+            event: 'low_cross_signal_wait_rationale',
+            level: 'info',
+            userId,
+            artifactType: 'wait_rationale',
+            generationStatus: 'cross_signal_gate_degraded',
+            details: {
+              scope: 'generator',
+              original_commitment: decisionPayload.recommended_action,
+            },
+          });
+          payloadResult = { issues: [], payload: fallback, lowCrossSignalWaitRationale: true };
         }
       }
     }
@@ -5451,9 +5668,13 @@ export async function generateDirective(
     // =====================================================================
     // POST-LLM ENFORCEMENT: the canonical action is from decisionPayload,
     // NOT from the LLM's artifact_type. Log any drift for diagnostics.
+    // Cross-signal gate may degrade send_message/write_document to wait_rationale.
     // =====================================================================
 
-    const canonicalAction = decisionPayload.recommended_action;
+    let canonicalAction: ValidArtifactTypeCanonical = decisionPayload.recommended_action;
+    if (payloadResult.lowCrossSignalWaitRationale) {
+      canonicalAction = 'wait_rationale';
+    }
     const llmAttemptedAction = payload.artifact_type;
 
     if (llmAttemptedAction !== canonicalAction) {
@@ -5610,8 +5831,13 @@ export async function generateDirective(
       continue;
     }
 
-    // Trigger action lock validation — discrepancy candidates only
-    if (currentCandidate.type === 'discrepancy' && currentCandidate.discrepancyClass && currentCandidate.trigger) {
+    // Trigger action lock validation — discrepancy candidates only (skip when cross-signal degraded to wait_rationale)
+    if (
+      !payloadResult.lowCrossSignalWaitRationale &&
+      currentCandidate.type === 'discrepancy' &&
+      currentCandidate.discrepancyClass &&
+      currentCandidate.trigger
+    ) {
       const artifactText = typeof payload.artifact === 'object'
         ? JSON.stringify(payload.artifact)
         : String(payload.artifact ?? '');
