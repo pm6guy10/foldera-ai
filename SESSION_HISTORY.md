@@ -6,7 +6,7 @@
 
 - 2026-04-02 — AUDIT: **MASTER_PUNCHLIST** — [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md): operator dashboard links (Vercel/GitHub/Supabase/Sentry/Resend/Stripe/Anthropic), owner `GET /api/dev/ops-health`, **no email after Generate Now** via `POST /api/settings/run-brief` → `stages.daily_brief.send.results` codes, **Gate 4** operator steps (no fabricated REVENUE_PROOF), Playwright refresh pointers; links from `MEGA_PROMPT_PROGRAM.md`, `AGENTS.md`, `FOLDERA_PRODUCT_SPEC.md`, `REVENUE_PROOF.md` Gate 4; `AUTOMATION_BACKLOG.md` DONE row
   MODE: AUDIT
-  Commit hash(es): `82228fa`
+  Commit hash(es): `7ce37a0`
   Files changed: `docs/MASTER_PUNCHLIST.md`, `docs/MEGA_PROMPT_PROGRAM.md`, `AGENTS.md`, `FOLDERA_PRODUCT_SPEC.md`, `REVENUE_PROOF.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`, `FOLDERA_MASTER_AUDIT.md`
   What was verified: `npm run build` passed
   Any unresolved issues: Gate 4 table in REVENUE_PROOF still operator-pending until real approve + Supabase paste
