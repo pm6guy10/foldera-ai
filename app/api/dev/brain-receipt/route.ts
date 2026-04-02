@@ -118,11 +118,24 @@ export async function POST(request: Request) {
       const finishedWorkFailed =
         finishedWorkApplies && scheduleConflictArtifactIsOwnerProcedure(finishedWorkBody);
 
+      const inspection =
+        executionResult.inspection && typeof executionResult.inspection === 'object'
+          ? (executionResult.inspection as Record<string, unknown>)
+          : null;
+      const winnerSelectionTrace = inspection?.winner_selection_trace ?? null;
+      const activeGoalsFromLog =
+        generationLog?.brief_context_debug?.active_goals ?? null;
+
       return NextResponse.json({
         ok: true,
         started_at: startedAt,
         // ── SCORER DIAGNOSTICS (the full drop receipt) ────────────────────
         scorer_diagnostics: scorerDiagnostics,
+        // ── PERSISTED GENERATION TRACE (same row the email preview uses) ─
+        generation_log: generationLog ?? null,
+        winner_selection_trace: winnerSelectionTrace,
+        inspection,
+        active_goals: activeGoalsFromLog,
         // ── FINAL OUTPUT ──────────────────────────────────────────────────
         final_action: {
           action_id: latestAction.id,

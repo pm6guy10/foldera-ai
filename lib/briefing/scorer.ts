@@ -5013,19 +5013,22 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     (c) => c.score > SCORED_MIN_THRESHOLD && passesTop3RankingInvariants(c),
   );
 
-  // TEMPORARY: Force decay / relationship reconnect candidate to top for testing
-  const decayCandidates = validScoredCandidates.filter(
-    (c) =>
-      c.discrepancyClass === 'decay' ||
-      c.type === 'relationship' ||
-      (c.title?.toLowerCase().includes('reconnect') ?? false) ||
-      (c.title?.toLowerCase().includes('follow up') ?? false),
-  );
-  if (decayCandidates.length > 0) {
-    const forced = decayCandidates[0];
-    forced.score = 999;
-    validScoredCandidates.sort(compareScoredLoops);
-    console.log('[FORCE-DECAY] Forcing candidate:', forced.title);
+  // Opt-in only: skew ranking toward decay/reconnect for local experiments.
+  // Default off so production and brain-receipt reflect true scorer ordering.
+  if (process.env.SCORER_FORCE_DECAY_WINNER === 'true') {
+    const decayCandidates = validScoredCandidates.filter(
+      (c) =>
+        c.discrepancyClass === 'decay' ||
+        c.type === 'relationship' ||
+        (c.title?.toLowerCase().includes('reconnect') ?? false) ||
+        (c.title?.toLowerCase().includes('follow up') ?? false),
+    );
+    if (decayCandidates.length > 0) {
+      const forced = decayCandidates[0];
+      forced.score = 999;
+      validScoredCandidates.sort(compareScoredLoops);
+      console.log('[FORCE-DECAY] Forcing candidate:', forced.title);
+    }
   }
 
   if (validScoredCandidates.length === 0) {

@@ -9,6 +9,7 @@ node_modules
 test-results/
 audit-output/
 output/
+artifacts/
 
 # Production test auth state (contains session cookies)
 tests/production/auth-state.json

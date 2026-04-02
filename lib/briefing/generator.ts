@@ -3398,6 +3398,7 @@ function extractAllEmailAddresses(winner: ScoredLoop, userEmails?: Set<string>):
 
 function buildSelectedGenerationLog(
   candidateDiscovery: GenerationCandidateDiscoveryLog | null,
+  briefContextDebug?: { active_goals?: string[] },
 ): GenerationRunLog {
   return {
     outcome: 'selected',
@@ -3407,6 +3408,9 @@ function buildSelectedGenerationLog(
       .filter((c) => c.decision === 'rejected')
       .map((c) => c.decisionReason),
     candidateDiscovery,
+    ...(briefContextDebug?.active_goals?.length
+      ? { brief_context_debug: { active_goals: briefContextDebug.active_goals } }
+      : {}),
   };
 }
 
@@ -5869,7 +5873,9 @@ export async function generateDirective(
             ? null
             : (scorerTopRatedCandidate?.disqualifyReason ?? scorerTopRatedCandidate?.note ?? 'lower_viability_than_selected_winner'),
       },
-      generationLog: buildSelectedGenerationLog(scored.candidateDiscovery),
+      generationLog: buildSelectedGenerationLog(scored.candidateDiscovery, {
+        active_goals: ctx.active_goals,
+      }),
     } as ConvictionDirective & {
       embeddedArtifact?: Record<string, unknown>;
       embeddedArtifactType?: string;

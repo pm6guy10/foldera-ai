@@ -186,6 +186,8 @@ export interface GenerationRunLog {
   candidateDiscovery: GenerationCandidateDiscoveryLog | null;
   /** Onboarding welcome path: skip hard bottom gate / quality heuristics that block goal-summary docs. */
   firstMorningBypass?: boolean;
+  /** Dev/diagnostic: goals passed into the prompt (owner brain-receipt, debugging). */
+  brief_context_debug?: { active_goals?: string[] };
 }
 
 /**

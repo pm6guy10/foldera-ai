@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: **Brain-receipt quality loop** — extended `POST /api/dev/brain-receipt` with `generation_log`, `winner_selection_trace`, `inspection`, `active_goals`; persisted `brief_context_debug.active_goals` on selected `GenerationRunLog`; removed default scorer **FORCE-DECAY** override (opt-in via `SCORER_FORCE_DECAY_WINNER=true`); `.gitignore` `artifacts/` for local Playwright preview captures; `.env.example` documents opt-in flag
+  MODE: AUDIT
+  Commit hash(es): verify with `git log -1 --oneline` on `main` — subject `feat(dev): brain-receipt trace JSON + persist active_goals; scorer decay override opt-in`
+  Files changed: `app/api/dev/brain-receipt/route.ts`, `app/api/dev/brain-receipt/__tests__/route.test.ts`, `lib/briefing/types.ts`, `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `.env.example`, `.gitignore`, `FOLDERA_PRODUCT_SPEC.md`, `REVENUE_PROOF.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run app/api/dev/brain-receipt/__tests__/route.test.ts`; `npx vitest run lib/briefing/__tests__/generator.test.ts lib/briefing/__tests__/generator-runtime.test.ts`; `npm run build`; local dev on port 3001 (`ALLOW_DEV_ROUTES=true`): `POST /api/dev/brain-receipt` → **401** without session; `npx playwright screenshot http://localhost:3001/api/dev/email-preview` → `artifacts/dev-email-preview-sample.png` (sample template — owner session required for `action_id=` + real brain-receipt JSON)
+  Any unresolved issues: Full bar verification (named person + thread + non-obvious artifact) requires owner-signed `POST /api/dev/brain-receipt` against real DB. `npm run test:prod`: **60 passed**, **1 flaky** (`audit.spec.ts` crawl `/blog` timeout, retry passed).
+
 - 2026-04-02 — AUDIT: Dev **`GET /api/dev/email-preview?action_id=`** — owner-only live HTML from persisted `tkg_actions` (artifact merge matches brain-receipt); `400` invalid UUID; `URL.searchParams` for testability; route tests
   MODE: AUDIT
   Commit hash(es): `c3a08da`

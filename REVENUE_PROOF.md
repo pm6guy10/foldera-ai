@@ -39,6 +39,8 @@ A send-worthy artifact names a real person, references their actual thread, answ
 
 Current output falls short on: cross-source punch (usually one signal type wins), execution identity for **`send_message` without mailbox** (Resend fallback still brief@foldera.ai), populating **thread metadata** on artifacts for in-thread replies, and many runs produce no-send/wait_rationale/do_nothing.
 
+**2026-04-02 (code):** Scorer no longer forces decay/reconnect candidates to rank #1 by default (previous `score = 999` block). True ordering is restored unless `SCORER_FORCE_DECAY_WINNER=true` is set for local experiments — reduces misaligned artifacts when a higher-value discrepancy/signal should win.
+
 ## PRETEND CERTAINTY MAP
 
 Six paths where system sounds confident without evidence:
