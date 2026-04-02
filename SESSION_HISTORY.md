@@ -6,7 +6,7 @@
 
 - 2026-04-02 — AUDIT: Revert directive validation to **2 total Sonnet calls** (`MAX_DIRECTIVE_VALIDATION_RETRIES = 1`); prior 3-call cap increased worst-case spend without fixing first-attempt validation quality
   MODE: AUDIT
-  Commit hash(es): `8adb4e2`
+  Commit hash(es): `99e806c`
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`
   Any unresolved issues: `npm run test:prod` after Vercel READY per runbook.
