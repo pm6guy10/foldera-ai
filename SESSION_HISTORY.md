@@ -6,7 +6,7 @@
 
 - 2026-04-02 — AUDIT: **MEGA_PROMPT_PROGRAM implementation** — added [docs/MEGA_PROMPT_PROGRAM.md](docs/MEGA_PROMPT_PROGRAM.md) (Phase 0.5, session queue S0–S9, baseline + S2 tables, operator checklist, Cursor paste template); `AGENTS.md` link; `lib/auth/auth-options.ts` skip `.foldera.ai` session cookie domain unless `VERCEL` (fixes local `next start` + Playwright JWT when `NEXTAUTH_URL` is production https); `playwright.config.ts` optional `PLAYWRIGHT_WEB_PORT` + `npx next start -p`; `authenticated-routes.spec.ts` `E2E_ORIGIN` uses same port; `FOLDERA_PRODUCT_SPEC.md` HOW TO USE; `AUTOMATION_BACKLOG.md` DONE block; `REVENUE_PROOF.md` Gate 4 → program link; `FOLDERA_MASTER_AUDIT.md` shipped note
   MODE: AUDIT
-  Commit hash(es): `1e6e838`
+  Commit hash(es): `3082b1b`
   Files changed: `docs/MEGA_PROMPT_PROGRAM.md`, `AGENTS.md`, `lib/auth/auth-options.ts`, `playwright.config.ts`, `tests/e2e/authenticated-routes.spec.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `REVENUE_PROOF.md`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (596 passed); clean `.next` + `npx playwright test tests/e2e/` with `$env:CI='true'; $env:PLAYWRIGHT_WEB_PORT='3011'` (67 passed, 4 skipped); `npm run test:prod` (60 passed, 1 flaky); `npm run test:local:brain-receipt` exits 1 with clear message (missing `auth-state-owner.json` — expected until `npm run test:local:setup`)
   Any unresolved issues: **S4 Gate 4** live approve + `REVENUE_PROOF` row remains operator-only; local brain-receipt needs owner `test:local:setup`
