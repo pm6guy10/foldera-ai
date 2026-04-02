@@ -4802,10 +4802,11 @@ function buildFullContext(result: ScorerResult, payload: GeneratedDirectivePaylo
 // ---------------------------------------------------------------------------
 
 /**
- * Validation retries after the first Sonnet call (hard cap: 2 retries → 3 LLM calls max).
- * No further round-trips after the last attempt fails — caller gets payload null (empty directive path).
+ * Validation retries after the first Sonnet call (hard cap: 1 retry → 2 LLM calls max).
+ * At most one `directive_retry` per `generatePayload`; no third round-trip.
+ * After the last attempt fails, caller gets payload null (empty directive path).
  */
-const MAX_DIRECTIVE_VALIDATION_RETRIES = 2;
+const MAX_DIRECTIVE_VALIDATION_RETRIES = 1;
 const MAX_DIRECTIVE_LLM_ATTEMPTS = 1 + MAX_DIRECTIVE_VALIDATION_RETRIES;
 
 async function generatePayload(
