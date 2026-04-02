@@ -419,23 +419,12 @@ export function buildDailyDirectiveEmailHtml(opts: {
         <tr><td style="padding:0 0 20px 0;">
           <div style="height:3px;width:100%;border-radius:2px;background:linear-gradient(90deg,transparent,${EMAIL_CYAN},transparent);"></div>
         </td></tr>
-        <tr><td style="padding-bottom:6px;">
-          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;color:${EMAIL_CYAN};text-transform:uppercase;">Today&apos;s directive</p>
-        </td></tr>
         <tr><td style="padding:0 0 14px 0;">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:700;letter-spacing:0.12em;color:#52525b;">${dateDisplay}</p>
         </td></tr>
-        <tr><td style="padding:0 0 16px 0;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-            <tr>
-              <td style="width:4px;min-width:4px;background-color:${EMAIL_CYAN_BTN};border-radius:2px 0 0 2px;padding:0;font-size:0;line-height:0;">&nbsp;</td>
-              <td style="padding:10px 0 10px 16px;vertical-align:top;">
-                <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:20px;font-weight:800;color:#ffffff;line-height:1.35;">${escapeHtml(directive.directive)}</p>
-              </td>
-            </tr>
-          </table>
+        <tr><td style="padding-bottom:6px;">
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;color:${EMAIL_CYAN};text-transform:uppercase;">Finished artifact</p>
         </td></tr>
-        ${reasonText ? `<tr><td style="padding:18px 0 22px 0;"><p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:13px;color:#a1a1aa;line-height:1.6;">${escapeHtml(reasonText)}</p></td></tr>` : ''}
         <tr><td style="padding:0 0 24px 0;">
           <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${EMAIL_BORDER_CYAN_STRONG};border-radius:${EMAIL_RADIUS_CARD_OUTER};background:${EMAIL_CARD};">
             <tr><td style="padding:20px 18px;">
@@ -445,6 +434,20 @@ export function buildDailyDirectiveEmailHtml(opts: {
             </td></tr>
           </table>
         </td></tr>
+        <tr><td style="padding:0 0 6px 0;">
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;color:${EMAIL_CYAN};text-transform:uppercase;">Today&apos;s directive</p>
+        </td></tr>
+        <tr><td style="padding:0 0 ${reasonText ? '0' : '24px'} 0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            <tr>
+              <td style="width:4px;min-width:4px;background-color:${EMAIL_CYAN_BTN};border-radius:2px 0 0 2px;padding:0;font-size:0;line-height:0;">&nbsp;</td>
+              <td style="padding:10px 0 10px 16px;vertical-align:top;">
+                <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:20px;font-weight:800;color:#ffffff;line-height:1.35;">${escapeHtml(directive.directive)}</p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+        ${reasonText ? `<tr><td style="padding:18px 0 24px 0;"><p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:13px;color:#a1a1aa;line-height:1.6;">${escapeHtml(reasonText)}</p></td></tr>` : ''}
         <tr><td style="padding-bottom:8px;">
           <table cellpadding="0" cellspacing="0" width="100%"><tr>
             <td style="padding-right:10px;width:50%;vertical-align:top;">

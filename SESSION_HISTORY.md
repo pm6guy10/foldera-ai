@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: Daily brief HTML — **artifact before directive** (`buildDailyDirectiveEmailHtml`): date → Finished artifact → card → Today’s directive → headline/reason → buttons
+  MODE: AUDIT
+  Commit hash(es): verify with `git log -1 --oneline` on `main` after push
+  Files changed: `lib/email/resend.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run lib/conviction/__tests__/execute-action.test.ts`; `npm run test:prod` (60 passed, 1 flaky passed on retry)
+  Any unresolved issues: none
+
 - 2026-04-02 — AUDIT: Generator **goals + goal-gap in decay/send_message prompt** — `active_goals` from `tkg_goals` (not only `matchedGoal`); recipient-short path gets `USER CONTEXT`, `GOAL_GAP_ANALYSIS`, `ACTIVE_GOALS`; `buildUserIdentityContext` copy softened; `formatGoalGapAnalysisBlock`
   MODE: AUDIT
   Commit hash(es): `1e2b2fe`
