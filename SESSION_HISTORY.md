@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: **MASTER_PUNCHLIST** — [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md): operator dashboard links (Vercel/GitHub/Supabase/Sentry/Resend/Stripe/Anthropic), owner `GET /api/dev/ops-health`, **no email after Generate Now** via `POST /api/settings/run-brief` → `stages.daily_brief.send.results` codes, **Gate 4** operator steps (no fabricated REVENUE_PROOF), Playwright refresh pointers; links from `MEGA_PROMPT_PROGRAM.md`, `AGENTS.md`, `FOLDERA_PRODUCT_SPEC.md`, `REVENUE_PROOF.md` Gate 4; `AUTOMATION_BACKLOG.md` DONE row
+  MODE: AUDIT
+  Commit hash(es): `82228fa`
+  Files changed: `docs/MASTER_PUNCHLIST.md`, `docs/MEGA_PROMPT_PROGRAM.md`, `AGENTS.md`, `FOLDERA_PRODUCT_SPEC.md`, `REVENUE_PROOF.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`, `FOLDERA_MASTER_AUDIT.md`
+  What was verified: `npm run build` passed
+  Any unresolved issues: Gate 4 table in REVENUE_PROOF still operator-pending until real approve + Supabase paste
+
 - 2026-04-02 — AUDIT: **MEGA_PROMPT_PROGRAM implementation** — added [docs/MEGA_PROMPT_PROGRAM.md](docs/MEGA_PROMPT_PROGRAM.md) (Phase 0.5, session queue S0–S9, baseline + S2 tables, operator checklist, Cursor paste template); `AGENTS.md` link; `lib/auth/auth-options.ts` skip `.foldera.ai` session cookie domain unless `VERCEL` (fixes local `next start` + Playwright JWT when `NEXTAUTH_URL` is production https); `playwright.config.ts` optional `PLAYWRIGHT_WEB_PORT` + `npx next start -p`; `authenticated-routes.spec.ts` `E2E_ORIGIN` uses same port; `FOLDERA_PRODUCT_SPEC.md` HOW TO USE; `AUTOMATION_BACKLOG.md` DONE block; `REVENUE_PROOF.md` Gate 4 → program link; `FOLDERA_MASTER_AUDIT.md` shipped note
   MODE: AUDIT
   Commit hash(es): `3082b1b`

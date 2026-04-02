@@ -9,6 +9,7 @@
 - Read every file you plan to modify, inspect recent history, and trace the relevant data path before making changes.
 - Complete the requested task end-to-end without broadening scope.
 - Multi-session “mega prompt” quality work: follow the sequenced program in `docs/MEGA_PROMPT_PROGRAM.md` (one session per row; baseline + receipts).
+- **Operator quick links** (Vercel, Supabase, GitHub, Resend, “no email” after Generate Now, Gate 4 steps): `docs/MASTER_PUNCHLIST.md`.
 
 ## Execution Modes
 

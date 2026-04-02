@@ -1,5 +1,9 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-02) — MASTER_PUNCHLIST operator index
+
+- **`docs/MASTER_PUNCHLIST.md`** — Vercel / GitHub / Supabase / Sentry / Resend / Stripe / Anthropic links; **no email after Generate Now** (`POST /api/settings/run-brief` → `stages.daily_brief.send.results`); **Gate 4** instructions (no fabricated `REVENUE_PROOF`); Playwright refresh pointers. Linked from **`MEGA_PROMPT_PROGRAM.md`**, **`AGENTS.md`**, **`FOLDERA_PRODUCT_SPEC.md`**, **`REVENUE_PROOF.md`** (Gate 4 section).
+
 ### DONE (2026-04-02) — Mega prompt execution program
 
 - **`docs/MEGA_PROMPT_PROGRAM.md`** — single source for decomposed mega-prompt sessions (Phase 0.5 local hammer, S1 baseline table, S4 operator checklist, Cursor paste template). **`AGENTS.md`** links here for multi-session quality work.

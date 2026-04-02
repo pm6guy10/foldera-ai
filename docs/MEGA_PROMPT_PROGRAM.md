@@ -2,6 +2,8 @@
 
 **North star:** Gate 4 live receipt (real `send_message` Approve with mailbox connected + `execution_result.sent_via` logged) and green `npm run test:prod` after deploys. See [REVENUE_PROOF.md](../REVENUE_PROOF.md) and [FOLDERA_PRODUCT_SPEC.md](../FOLDERA_PRODUCT_SPEC.md) § 1.1.
 
+**Operator index (dashboards, no-email debug, Gate 4):** [MASTER_PUNCHLIST.md](./MASTER_PUNCHLIST.md).
+
 **Rules:** One Cursor session = one row below. Follow [AGENTS.md](../AGENTS.md) (single task, commit only task files, `SESSION_HISTORY.md` + push). Do not `git add -A` unrelated screenshots or audit artifacts.
 
 ---

@@ -2,6 +2,10 @@
 
 ## OPEN — Requires Action
 
+### SHIPPED — 2026-04-02 — MASTER_PUNCHLIST operator index
+
+- **`docs/MASTER_PUNCHLIST.md`** — dashboard deep links, run-brief JSON inspection for missing email, Gate 4 operator instructions (explicit: no fabricated REVENUE_PROOF). Cross-linked from MEGA_PROMPT_PROGRAM, AGENTS, FOLDERA_PRODUCT_SPEC, REVENUE_PROOF Gate 4, AUTOMATION_BACKLOG.
+
 ### SHIPPED — 2026-04-02 — MEGA_PROMPT_PROGRAM + local E2E session cookie fix
 
 - **`docs/MEGA_PROMPT_PROGRAM.md`** — mega prompt decomposed into S0–S9 with baseline/S2 tables, Phase 0.5 text, operator checklist, Cursor template.

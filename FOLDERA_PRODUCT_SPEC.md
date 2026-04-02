@@ -9,6 +9,8 @@ Brandon opens a chat. Drags this file in. Claude reads it, diffs against what CC
 
 **Multi-session “mega prompt” work:** Use [docs/MEGA_PROMPT_PROGRAM.md](./docs/MEGA_PROMPT_PROGRAM.md) — one Cursor session per row (baseline, local brain, UX sweeps, doc sync). Gate 4 operator receipt steps are linked from [REVENUE_PROOF.md](./REVENUE_PROOF.md).
 
+**Operator dashboards + troubleshooting:** [docs/MASTER_PUNCHLIST.md](./docs/MASTER_PUNCHLIST.md) (Supabase, Vercel, run-brief JSON for missing email, Gate 4 paste instructions).
+
 ## Revenue proof (GTM)
 
 Cross-reference: **[REVENUE_PROOF.md](./REVENUE_PROOF.md)** — locked GTM proof sequence, funnel math, gate table, quality bar, pretend certainty map, execution gaps, scaling wall.
