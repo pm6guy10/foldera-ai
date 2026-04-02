@@ -6,7 +6,7 @@
 
 - 2026-04-02 — AUDIT: Outcome 1 execution — **`send_message` approve uses Gmail/Outlook first**, Resend fallback; thread-backed **`low_cross_signal` skip** for unreplied `response_pattern` + `meeting_open_thread` / `document_followup_gap`; spec + revenue proof updated; Gate 4 live receipt noted pending post-deploy
   MODE: AUDIT
-  Commit hash(es): `7af0204`
+  Commit hash(es): `02d18f9`
   Files changed: `lib/conviction/execute-action.ts`, `lib/conviction/__tests__/execute-action.test.ts`, `lib/briefing/generator.ts`, `FOLDERA_PRODUCT_SPEC.md`, `REVENUE_PROOF.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run lib/conviction/__tests__/execute-action.test.ts`; `npx vitest run lib/__tests__/multi-user-safety.test.ts`
   Any unresolved issues: Post-deploy production approve of `send_message` with connected mailbox — record `sent_via` + action id in `REVENUE_PROOF.md` (per NEXT MOVE)
