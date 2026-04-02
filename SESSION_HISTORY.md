@@ -6,8 +6,8 @@
 
 - 2026-04-03 — AUDIT: **Plan continuation (overnight)** — Supabase re-check: no `sent_via` in prod yet; **REVENUE_PROOF** dated note. **`npm run test:local:check`** + [`tests/local/check-prereqs.ts`](tests/local/check-prereqs.ts); README + **CLAUDE** + **MEGA_PROMPT_PROGRAM** S2 row + **AUTOMATION_BACKLOG**.
   MODE: AUDIT
-  Commit hash(es): `cdee50c`, `1f392bf`, `0876cbe`, `ab71b41`
-  Files changed: `tests/local/check-prereqs.ts`, `tests/local/README.md`, `package.json`, `CLAUDE.md`, `REVENUE_PROOF.md`, `docs/MEGA_PROMPT_PROGRAM.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
+  Commit hash(es): `cdee50c` (deliverable). Same-day `git log` may show extra commits that only updated this session log line after push.
+  Files changed (in `cdee50c`): `tests/local/check-prereqs.ts`, `tests/local/README.md`, `package.json`, `CLAUDE.md`, `AGENTS.md`, `FOLDERA_PRODUCT_SPEC.md`, `REVENUE_PROOF.md`, `docs/MEGA_PROMPT_PROGRAM.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md` (initial log line)
   What was verified: `npm run test:local:check` (exit 1 expected without auth file); `npm run build`; `npm run test:prod`
   Any unresolved issues: Same as 2026-04-02 forward session — interactive local setup + Gate 4 approve when you return
 
