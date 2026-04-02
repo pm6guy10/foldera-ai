@@ -6,7 +6,7 @@
 
 - 2026-04-02 — AUDIT: **Subscription status / portal — duplicate `user_subscriptions` rows** — `getSubscriptionStatus` and `POST /api/stripe/portal` now use `.limit(1)` + first row instead of `maybeSingle()`, avoiding PostgREST cardinality errors that surface as 500s when more than one row exists for a `user_id`. `lib/__tests__/multi-user-safety.test.ts` mocks updated; added defensive “first row wins” test.
   MODE: AUDIT
-  Commit hash(es): `9d0f803`
+  Commit hash(es): `bad2eeb`
   Files changed: `lib/auth/subscription.ts`, `app/api/stripe/portal/route.ts`, `lib/__tests__/multi-user-safety.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/__tests__/multi-user-safety.test.ts` (13 passed); `npm run build`; `npm run test:prod` (60 passed, 1 flaky `/blog` crawl — retry passed; `/api/subscription/status` check green)
   Any unresolved issues: If 500 persists, capture Sentry stack — root cause may differ (e.g. env, session shape)
