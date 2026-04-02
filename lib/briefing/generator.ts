@@ -5017,6 +5017,21 @@ function buildFullContext(result: ScorerResult, payload: GeneratedDirectivePaylo
 // LLM generation with retry and fallback (Parts 2 + 6)
 // ---------------------------------------------------------------------------
 
+/** Buckets for structured logs — avoids shipping full validation strings to production logs. */
+function bucketValidationIssuesForLogs(issues: string[]): string[] {
+  const buckets = new Set<string>();
+  for (const i of issues) {
+    const low = i.toLowerCase();
+    if (low.startsWith(LOW_CROSS_SIGNAL_ISSUE_PREFIX)) buckets.add('low_cross_signal');
+    else if (low.includes('json') || low.includes('parse')) buckets.add('parse');
+    else if (low.includes('enforcement') || low.includes('canonical')) buckets.add('decision_enforcement');
+    else if (low.includes('placeholder')) buckets.add('placeholder');
+    else if (low.includes('ground')) buckets.add('grounding');
+    else buckets.add('other');
+  }
+  return [...buckets];
+}
+
 /**
  * Validation retries after the first Sonnet call (hard cap: 1 retry → 2 LLM calls max).
  * At most one `directive_retry` per `generatePayload`; no third round-trip.
@@ -5170,7 +5185,8 @@ async function generatePayload(
           scope: 'generator',
           attempt_index: attempt,
           max_attempts: MAX_DIRECTIVE_LLM_ATTEMPTS,
-          issues,
+          issue_count: issues.length,
+          issue_buckets: bucketValidationIssuesForLogs(issues),
         },
       });
 

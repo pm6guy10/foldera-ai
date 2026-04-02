@@ -57,6 +57,12 @@ export interface EmailArtifact {
   draft_type: 'email_compose' | 'email_reply';
   /** When true, generator failed; persistence skips strict artifact gates so a brief can still ship. */
   emergency_fallback?: boolean;
+  /** Gmail thread id for `users.messages.send` so replies stay in the same thread. */
+  gmail_thread_id?: string;
+  /** Message-ID of the inbound message (reply threading). Angle brackets optional. */
+  in_reply_to?: string;
+  /** RFC References header (space-separated Message-IDs). */
+  references?: string;
 }
 
 export interface DocumentArtifact {

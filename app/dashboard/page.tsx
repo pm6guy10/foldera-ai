@@ -299,6 +299,22 @@ export default function DashboardPage() {
   const artifactBody = artifactPrimaryText(artifact);
   const recipient = artifact?.to || artifact?.recipient || '';
 
+  const handleCopyDraft = useCallback(async () => {
+    if (!action || !artifact || !isEmail) return;
+    const subj = typeof artifact.subject === 'string' ? artifact.subject : '';
+    const bodyText = artifactPrimaryText(artifact) ?? '';
+    const toLine = artifact?.to || artifact?.recipient || '';
+    const block = [`To: ${toLine}`, `Subject: ${subj}`, '', bodyText].join('\n');
+    try {
+      await navigator.clipboard.writeText(block);
+      setFlash('Copied draft — paste into your mail app, or tap Approve to send from your connected mailbox.');
+      setTimeout(() => setFlash(null), 6000);
+    } catch {
+      setFlash('Could not copy automatically — select the text in your morning email or dashboard.');
+      setTimeout(() => setFlash(null), 5000);
+    }
+  }, [action, artifact, isEmail]);
+
   const isProArtifactUnlocked =
     subPlan === 'pro' && (subStatus === 'active' || subStatus === 'past_due');
   const showArtifactBlur = Boolean(artifact) && !isProArtifactUnlocked;
@@ -595,6 +611,21 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {action.action_type === 'send_message' && isEmail && artifactBody && (
+              <div className="px-4 pt-2 pb-1 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => void handleCopyDraft()}
+                  className="touch-manipulation w-full min-h-[48px] rounded-xl border border-cyan-500/40 bg-cyan-500/5 text-cyan-300 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-cyan-500/10 hover:border-cyan-400/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0f]"
+                >
+                  Copy draft
+                </button>
+                <p className="mt-2 text-center text-[11px] text-zinc-500 leading-relaxed px-1">
+                  Prefer to send yourself? Copy, then paste into Gmail or Outlook. Approve sends from your connected mailbox when available.
+                </p>
               </div>
             )}
 

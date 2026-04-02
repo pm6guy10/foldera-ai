@@ -227,6 +227,9 @@ describe('executeAction', () => {
       to: 'a@b.com',
       subject: 'Subj',
       body: 'Body',
+      threadId: null,
+      inReplyTo: null,
+      references: null,
     });
     expect(sendResendEmail).not.toHaveBeenCalled();
     expect(mockSupabase._signalInsertCalls).toBe(1);
@@ -254,6 +257,35 @@ describe('executeAction', () => {
     expect(out.result?.resend_id).toBe('resend-123');
     expect(sendGmailEmail).not.toHaveBeenCalled();
     expect(sendResendEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('approve send_message passes Gmail thread + reply headers when present on artifact', async () => {
+    mockSupabase._actionRow = {
+      ...actionWithArtifact({
+        type: 'send_message',
+        to: 'a@b.com',
+        subject: 'Subj',
+        body: 'Body',
+        gmail_thread_id: 'thread-abc',
+        in_reply_to: 'CA+msg@mail.gmail.com',
+        references: '<prev@example.com> <CA+msg@mail.gmail.com>',
+      }),
+      action_type: 'send_message',
+    };
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+    expect(out.status).toBe('executed');
+    expect(sendGmailEmail).toHaveBeenCalledWith(USER_ID, {
+      to: 'a@b.com',
+      subject: 'Subj',
+      body: 'Body',
+      threadId: 'thread-abc',
+      inReplyTo: 'CA+msg@mail.gmail.com',
+      references: '<prev@example.com> <CA+msg@mail.gmail.com>',
+    });
   });
 
   it('approve send_message uses Outlook when Google missing and Microsoft connected', async () => {

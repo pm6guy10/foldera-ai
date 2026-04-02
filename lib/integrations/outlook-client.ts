@@ -10,23 +10,50 @@
 
 import { getMicrosoftTokens } from '@/lib/auth/token-store';
 
+function normalizeMessageIdHeader(value: string): string {
+  const t = value.trim();
+  if (!t) return t;
+  if (t.startsWith('<') && t.endsWith('>')) return t;
+  return `<${t}>`;
+}
+
+export type SendOutlookEmailOptions = {
+  to: string;
+  subject: string;
+  body: string;
+  inReplyTo?: string | null;
+  references?: string | null;
+};
+
 /**
  * Send an email via Microsoft Graph on behalf of a user.
  * Returns { success, messageId?, error? }.
  */
 export async function sendOutlookEmail(
   userId: string,
-  { to, subject, body }: { to: string; subject: string; body: string },
+  { to, subject, body, inReplyTo, references }: SendOutlookEmailOptions,
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const tokens = await getMicrosoftTokens(userId);
   if (!tokens) return { success: false, error: 'No Microsoft tokens for user' };
 
+  const message: Record<string, unknown> = {
+    subject,
+    body: { contentType: 'Text', content: body },
+    toRecipients: [{ emailAddress: { address: to } }],
+  };
+  const headers: Array<{ name: string; value: string }> = [];
+  if (inReplyTo?.trim()) {
+    headers.push({ name: 'In-Reply-To', value: normalizeMessageIdHeader(inReplyTo) });
+  }
+  if (references?.trim()) {
+    headers.push({ name: 'References', value: references.trim() });
+  }
+  if (headers.length > 0) {
+    message.internetMessageHeaders = headers;
+  }
+
   const payload = {
-    message: {
-      subject,
-      body: { contentType: 'Text', content: body },
-      toRecipients: [{ emailAddress: { address: to } }],
-    },
+    message,
     saveToSentItems: true,
   };
 

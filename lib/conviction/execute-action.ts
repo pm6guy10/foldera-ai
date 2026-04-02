@@ -275,13 +275,30 @@ async function executeArtifact(
           out.exec_error = 'Invalid email address';
           break;
         }
+        const gmailThreadId =
+          typeof artifact.gmail_thread_id === 'string' ? artifact.gmail_thread_id : undefined;
+        const inReplyTo =
+          typeof artifact.in_reply_to === 'string'
+            ? artifact.in_reply_to
+            : typeof artifact.inReplyTo === 'string'
+              ? artifact.inReplyTo
+              : undefined;
+        const references =
+          typeof artifact.references === 'string' ? artifact.references : undefined;
         if (options?.actionType === 'send_message') {
           // Prefer the user's mailbox (Gmail / Outlook) so recipients see the customer, not brief@foldera.ai.
           let sentViaProvider = false;
           let providerError: string | undefined;
 
           if (await hasIntegration(userId, 'google')) {
-            const gmailResult = await sendGmailEmail(userId, { to, subject, body });
+            const gmailResult = await sendGmailEmail(userId, {
+              to,
+              subject,
+              body,
+              threadId: gmailThreadId ?? null,
+              inReplyTo: inReplyTo ?? null,
+              references: references ?? null,
+            });
             if (gmailResult.success) {
               out = { ...out, sent: true, sent_at: now, sent_via: 'gmail' };
               sentViaProvider = true;
@@ -293,7 +310,13 @@ async function executeArtifact(
           }
 
           if (!sentViaProvider && (await hasIntegration(userId, 'azure_ad'))) {
-            const outlookResult = await sendOutlookEmail(userId, { to, subject, body });
+            const outlookResult = await sendOutlookEmail(userId, {
+              to,
+              subject,
+              body,
+              inReplyTo: inReplyTo ?? null,
+              references: references ?? null,
+            });
             if (outlookResult.success) {
               out = { ...out, sent: true, sent_at: now, sent_via: 'outlook' };
               sentViaProvider = true;
@@ -338,8 +361,21 @@ async function executeArtifact(
         } else {
           const useGoogle = await hasIntegration(userId, 'google');
           const result = useGoogle
-            ? await sendGmailEmail(userId, { to, subject, body })
-            : await sendOutlookEmail(userId, { to, subject, body });
+            ? await sendGmailEmail(userId, {
+                to,
+                subject,
+                body,
+                threadId: gmailThreadId ?? null,
+                inReplyTo: inReplyTo ?? null,
+                references: references ?? null,
+              })
+            : await sendOutlookEmail(userId, {
+                to,
+                subject,
+                body,
+                inReplyTo: inReplyTo ?? null,
+                references: references ?? null,
+              });
           if (result.success) {
             out = { ...out, sent: true, sent_at: now };
             console.log(`[execute-action] email sent for action ${actionId}`);

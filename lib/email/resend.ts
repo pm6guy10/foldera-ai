@@ -50,11 +50,14 @@ function clipText(value: string, limit: number): string {
   return `${value.slice(0, Math.max(0, limit - 3)).trimEnd()}...`;
 }
 
-function renderField(label: string, value: string): string {
+function renderField(label: string, value: string, opts?: { monospace?: boolean }): string {
+  const font = opts?.monospace
+    ? 'ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace'
+    : EMAIL_FONT_STACK;
   return `<tr>
     <td style="padding:0 0 10px 0;">
       <div style="font-family:${EMAIL_FONT_STACK};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a;margin-bottom:4px;">${escapeHtml(label)}</div>
-      <div style="font-family:${EMAIL_FONT_STACK};font-size:14px;color:#e4e4e7;line-height:1.6;white-space:pre-wrap;">${escapeHtml(value)}</div>
+      <div style="font-family:${font};font-size:14px;color:#e4e4e7;line-height:1.6;white-space:pre-wrap;">${escapeHtml(value)}</div>
     </td>
   </tr>`;
 }
@@ -69,7 +72,7 @@ function renderArtifactHtml(artifact: ConvictionArtifact | null | undefined): st
       ${renderField('Finished Artifact', 'Draft Email')}
       ${artifact.to ? renderField('To', artifact.to) : ''}
       ${artifact.subject ? renderField('Subject', artifact.subject) : ''}
-      ${artifact.body ? renderField('Body', clipText(artifact.body, 2400)) : ''}
+      ${artifact.body ? renderField('Body', clipText(artifact.body, 2400), { monospace: true }) : ''}
     `;
   }
 
@@ -434,6 +437,17 @@ export function buildDailyDirectiveEmailHtml(opts: {
             </td></tr>
           </table>
         </td></tr>
+        ${
+          directive.action_type === 'send_message'
+            ? `<tr><td style="padding:0 0 20px 0;">
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:13px;color:#a1a1aa;line-height:1.65;">
+            <strong style="color:#e4e4e7;">Paste it yourself:</strong> open your mail app, start a message to the address above, and copy the subject and body from this email.
+            Or open the <a href="${baseUrl}/dashboard" style="color:${EMAIL_CYAN};text-decoration:underline;">dashboard</a> and use <strong style="color:#e4e4e7;">Copy draft</strong>, then send from your inbox.
+            <strong style="color:#e4e4e7;">Approve</strong> sends from your connected Gmail or Outlook when available.
+          </p>
+        </td></tr>`
+            : ''
+        }
         <tr><td style="padding:0 0 6px 0;">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;color:${EMAIL_CYAN};text-transform:uppercase;">Today&apos;s directive</p>
         </td></tr>
