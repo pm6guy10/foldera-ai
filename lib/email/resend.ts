@@ -41,8 +41,8 @@ function clipText(value: string, limit: number): string {
 function renderField(label: string, value: string): string {
   return `<tr>
     <td style="padding:0 0 10px 0;">
-      <div style="font-family:system-ui,-apple-system,sans-serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a;margin-bottom:4px;">${escapeHtml(label)}</div>
-      <div style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#e4e4e7;line-height:1.6;white-space:pre-wrap;">${escapeHtml(value)}</div>
+      <div style="font-family:${EMAIL_FONT_STACK};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a;margin-bottom:4px;">${escapeHtml(label)}</div>
+      <div style="font-family:${EMAIL_FONT_STACK};font-size:14px;color:#e4e4e7;line-height:1.6;white-space:pre-wrap;">${escapeHtml(value)}</div>
     </td>
   </tr>`;
 }
@@ -113,17 +113,36 @@ function renderArtifactHtml(artifact: ConvictionArtifact | null | undefined): st
   const firstTripwire = artifact.tripwires?.[0] ?? 'new signals arrive';
   return `
     <tr><td style="padding:0 0 10px 0;">
-      <div style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.6;">
+      <div style="font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.6;">
         Foldera checked ${escapeHtml(candidateCount)} candidates today. Nothing worth your time. Watching for: ${escapeHtml(firstTripwire)}.
       </div>
     </td></tr>
   `;
 }
 
+/** Mirror tailwind.config.js + app/page.tsx directive demo — keep in sync. */
+const EMAIL_FONT_STACK = 'Inter,system-ui,-apple-system,BlinkMacSystemFont,sans-serif';
+const EMAIL_HEAD = `<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />`;
+
 const EMAIL_BG = '#07070c';
 const EMAIL_CARD = '#0a0a0f';
 const EMAIL_CYAN = '#22d3ee';
 const EMAIL_CYAN_BTN = '#06b6d4';
+/** border-cyan-500/40 */
+const EMAIL_BORDER_CYAN_STRONG = 'rgba(6,182,212,0.4)';
+/** border-cyan-500/30 */
+const EMAIL_BORDER_CYAN_SOFT = 'rgba(6,182,212,0.3)';
+/** bg-cyan-500/10 */
+const EMAIL_BG_CYAN_TINT = 'rgba(6,182,212,0.1)';
+const EMAIL_RADIUS_CARD_OUTER = '32px';
+const EMAIL_RADIUS_INNER = '12px';
+const EMAIL_SKIP_BG = '#18181b';
+const EMAIL_SKIP_TEXT = '#71717a';
+const EMAIL_SKIP_BORDER = 'rgba(255,255,255,0.2)';
 
 /** Wordmark for email clients; absolute URL required. */
 const EMAIL_LOGO_MARKUP =
@@ -143,16 +162,16 @@ export function renderDarkTransactionalEmailHtml(opts: {
   const bodyHtml = bodyLines
     .map(
       (line) =>
-        `<p style="margin:0 0 12px 0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">${escapeHtml(line)}</p>`,
+        `<p style="margin:0 0 12px 0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">${escapeHtml(line)}</p>`,
     )
     .join('');
   const ctaBlock =
     ctaLabel && ctaHref
-      ? `<a href="${escapeHtml(ctaHref)}" style="display:inline-block;margin-top:8px;padding:14px 28px;background:#ffffff;color:#000000;font-family:system-ui,-apple-system,sans-serif;font-size:11px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;text-decoration:none;border-radius:12px;box-shadow:0 0 40px rgba(255,255,255,0.2);">${escapeHtml(ctaLabel)}</a>`
+      ? `<a href="${escapeHtml(ctaHref)}" style="display:inline-block;margin-top:8px;padding:14px 28px;background:#ffffff;color:#000000;font-family:${EMAIL_FONT_STACK};font-size:11px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;text-decoration:none;border-radius:${EMAIL_RADIUS_INNER};box-shadow:0 0 40px rgba(255,255,255,0.2);">${escapeHtml(ctaLabel)}</a>`
       : '';
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<head>${EMAIL_HEAD}</head>
 <body style="margin:0;padding:0;background:${EMAIL_BG};">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:${EMAIL_BG};padding:40px 20px;">
     <tr><td align="center">
@@ -160,15 +179,15 @@ export function renderDarkTransactionalEmailHtml(opts: {
         <tr><td style="padding-bottom:28px;text-align:center;">
           ${EMAIL_LOGO_MARKUP}
         </td></tr>
-        <tr><td style="padding:28px 24px;border-radius:16px;background:${EMAIL_CARD};border:1px solid rgba(255,255,255,0.1);">
-          <p style="margin:0 0 8px 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">${escapeHtml(eyebrow)}</p>
-          <p style="margin:0 0 16px 0;font-family:system-ui,-apple-system,sans-serif;font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">${escapeHtml(title)}</p>
+        <tr><td style="padding:28px 24px;border-radius:${EMAIL_RADIUS_CARD_OUTER};background:${EMAIL_CARD};border:1px solid ${EMAIL_BORDER_CYAN_STRONG};">
+          <p style="margin:0 0 8px 0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">${escapeHtml(eyebrow)}</p>
+          <p style="margin:0 0 16px 0;font-family:${EMAIL_FONT_STACK};font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">${escapeHtml(title)}</p>
           ${bodyHtml}
           ${ctaBlock}
         </td></tr>
         <tr><td style="padding-top:28px;text-align:center;">
-          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;color:#52525b;line-height:1.6;">Foldera — Finished work, every morning.</p>
-          <p style="margin:12px 0 0 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;">
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:11px;color:#52525b;line-height:1.6;">Foldera — Finished work, every morning.</p>
+          <p style="margin:12px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;">
             <a href="${settings}" style="color:#71717a;text-decoration:underline;">Settings</a>
           </p>
         </td></tr>
@@ -183,7 +202,7 @@ export function renderWelcomeEmailHtml(baseUrl: string): string {
   const dash = `${baseUrl.replace(/\/$/, '')}/dashboard`;
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<head>${EMAIL_HEAD}</head>
 <body style="margin:0;padding:0;background:${EMAIL_BG};">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:${EMAIL_BG};padding:40px 20px;">
     <tr><td align="center">
@@ -191,16 +210,16 @@ export function renderWelcomeEmailHtml(baseUrl: string): string {
         <tr><td style="padding-bottom:28px;text-align:center;">
           ${EMAIL_LOGO_MARKUP}
         </td></tr>
-        <tr><td style="padding:28px 24px;border-radius:16px;background:${EMAIL_CARD};border:1px solid rgba(255,255,255,0.1);">
-          <p style="margin:0 0 8px 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">You&apos;re connected</p>
-          <p style="margin:0 0 16px 0;font-family:system-ui,-apple-system,sans-serif;font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">Your first read arrives tomorrow morning.</p>
-          <p style="margin:0 0 12px 0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">Foldera reviews your recent activity, finds what&apos;s slipping, and delivers one directive with finished work attached.</p>
-          <p style="margin:0 0 24px 0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">No prompts. No setup. Just approve or skip.</p>
-          <a href="${dash}" style="display:inline-block;padding:14px 28px;background:#ffffff;color:#000000;font-family:system-ui,-apple-system,sans-serif;font-size:11px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;text-decoration:none;border-radius:12px;box-shadow:0 0 40px rgba(255,255,255,0.2);">View your dashboard</a>
+        <tr><td style="padding:28px 24px;border-radius:${EMAIL_RADIUS_CARD_OUTER};background:${EMAIL_CARD};border:1px solid ${EMAIL_BORDER_CYAN_STRONG};">
+          <p style="margin:0 0 8px 0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">You&apos;re connected</p>
+          <p style="margin:0 0 16px 0;font-family:${EMAIL_FONT_STACK};font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">Your first read arrives tomorrow morning.</p>
+          <p style="margin:0 0 12px 0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">Foldera reviews your recent activity, finds what&apos;s slipping, and delivers one directive with finished work attached.</p>
+          <p style="margin:0 0 24px 0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">No prompts. No setup. Just approve or skip.</p>
+          <a href="${dash}" style="display:inline-block;padding:14px 28px;background:#ffffff;color:#000000;font-family:${EMAIL_FONT_STACK};font-size:11px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;text-decoration:none;border-radius:${EMAIL_RADIUS_INNER};box-shadow:0 0 40px rgba(255,255,255,0.2);">View your dashboard</a>
         </td></tr>
         <tr><td style="padding-top:28px;text-align:center;">
-          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;color:#52525b;line-height:1.6;">Foldera — Finished work, every morning.</p>
-          <p style="margin:12px 0 0 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;">
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:11px;color:#52525b;line-height:1.6;">Foldera — Finished work, every morning.</p>
+          <p style="margin:12px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;">
             <a href="${dash}" style="color:#71717a;text-decoration:underline;">Email preferences</a>
           </p>
         </td></tr>
@@ -273,7 +292,7 @@ export async function sendResendEmail({
 }
 
 export function renderPlaintextEmailHtml(body: string): string {
-  return `<div style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#18181b;">${escapeHtml(body)}</div>`;
+  return `<div style="font-family:${EMAIL_FONT_STACK};font-size:14px;line-height:1.6;white-space:pre-wrap;color:#18181b;">${escapeHtml(body)}</div>`;
 }
 
 /**
@@ -289,7 +308,7 @@ export function renderWriteDocumentReadyEmailHtml(opts: {
   const body = opts.documentContent.slice(0, 50000);
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<head>${EMAIL_HEAD}</head>
 <body style="margin:0;padding:0;background:${EMAIL_BG};">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:${EMAIL_BG};padding:40px 20px;">
     <tr><td align="center">
@@ -297,20 +316,20 @@ export function renderWriteDocumentReadyEmailHtml(opts: {
         <tr><td style="padding-bottom:28px;text-align:center;">
           ${EMAIL_LOGO_MARKUP}
         </td></tr>
-        <tr><td style="padding:28px 24px;border-radius:16px;background:${EMAIL_CARD};border:1px solid rgba(255,255,255,0.1);">
-          <p style="margin:0 0 8px 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">Your document is ready</p>
-          <p style="margin:0 0 16px 0;font-family:system-ui,-apple-system,sans-serif;font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">You approved this in Foldera</p>
-          <p style="margin:0 0 20px 0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">Here is the full text. Forward it, copy it, or save it — whatever gets the work done.</p>
-          <p style="margin:0 0 8px 0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a;">Document title</p>
-          <p style="margin:0 0 20px 0;font-family:system-ui,-apple-system,sans-serif;font-size:15px;font-weight:600;color:#e4e4e7;">${escapeHtml(title)}</p>
-          <div style="margin:0;padding:16px 18px;border-radius:12px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);">
-            <p style="margin:0 0 10px 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:#71717a;">Full document</p>
-            <div style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#e4e4e7;line-height:1.65;white-space:pre-wrap;word-break:break-word;">${escapeHtml(body)}</div>
+        <tr><td style="padding:28px 24px;border-radius:${EMAIL_RADIUS_CARD_OUTER};background:${EMAIL_CARD};border:1px solid ${EMAIL_BORDER_CYAN_STRONG};">
+          <p style="margin:0 0 8px 0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">Your document is ready</p>
+          <p style="margin:0 0 16px 0;font-family:${EMAIL_FONT_STACK};font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">You approved this in Foldera</p>
+          <p style="margin:0 0 20px 0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">Here is the full text. Forward it, copy it, or save it — whatever gets the work done.</p>
+          <p style="margin:0 0 8px 0;font-family:${EMAIL_FONT_STACK};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a;">Document title</p>
+          <p style="margin:0 0 20px 0;font-family:${EMAIL_FONT_STACK};font-size:15px;font-weight:600;color:#e4e4e7;">${escapeHtml(title)}</p>
+          <div style="margin:0;padding:16px 18px;border-radius:${EMAIL_RADIUS_INNER};background:${EMAIL_BG_CYAN_TINT};border:1px solid ${EMAIL_BORDER_CYAN_SOFT};border-left:4px solid ${EMAIL_CYAN_BTN};">
+            <p style="margin:0 0 10px 0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:#71717a;">Full document</p>
+            <div style="font-family:${EMAIL_FONT_STACK};font-size:14px;color:#e4e4e7;line-height:1.65;white-space:pre-wrap;word-break:break-word;">${escapeHtml(body)}</div>
           </div>
         </td></tr>
         <tr><td style="padding-top:28px;text-align:center;">
-          <a href="${escapeHtml(dashboard)}" style="display:inline-block;padding:12px 24px;background:${EMAIL_CYAN_BTN};color:#000000;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:12px;">Open dashboard</a>
-          <p style="margin:20px 0 0 0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;color:#52525b;line-height:1.6;">Foldera — Finished work, every morning.</p>
+          <a href="${escapeHtml(dashboard)}" style="display:inline-block;padding:12px 24px;background:${EMAIL_CYAN_BTN};color:#000000;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:${EMAIL_RADIUS_INNER};box-shadow:0 0 20px rgba(6,182,212,0.22);">Open dashboard</a>
+          <p style="margin:20px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:11px;color:#52525b;line-height:1.6;">Foldera — Finished work, every morning.</p>
         </td></tr>
       </table>
     </td></tr>
@@ -345,7 +364,7 @@ export async function sendDailyDirective({
     const prefs = `${baseUrl}/dashboard/settings`;
     const html = `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<head>${EMAIL_HEAD}</head>
 <body style="margin:0;padding:0;background:${EMAIL_BG};">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:${EMAIL_BG};padding:40px 20px;">
     <tr><td align="center">
@@ -354,20 +373,20 @@ export async function sendDailyDirective({
           ${EMAIL_LOGO_MARKUP}
         </td></tr>
         <tr><td style="padding-bottom:8px;">
-          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.2em;color:#71717a;text-transform:uppercase;">${escapeHtml(date)}</p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;color:#71717a;text-transform:uppercase;">${escapeHtml(date)}</p>
         </td></tr>
         <tr><td style="padding-bottom:20px;">
-          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:20px;font-weight:800;color:#ffffff;line-height:1.3;">Nothing cleared the bar today.</p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:20px;font-weight:800;color:#ffffff;line-height:1.3;">Nothing cleared the bar today.</p>
         </td></tr>
         <tr><td>
-          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#a1a1aa;line-height:1.65;">Foldera did not find a directive with enough conviction to send.</p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">Foldera did not find a directive with enough conviction to send.</p>
         </td></tr>
         <tr><td style="padding-top:28px;text-align:center;">
-          <a href="${baseUrl}/dashboard" style="display:inline-block;padding:12px 24px;background:${EMAIL_CYAN_BTN};color:#000000;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:12px;box-shadow:0 0 20px rgba(6,182,212,0.22);">Open dashboard</a>
+          <a href="${baseUrl}/dashboard" style="display:inline-block;padding:12px 24px;background:${EMAIL_CYAN_BTN};color:#000000;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:${EMAIL_RADIUS_INNER};box-shadow:0 0 20px rgba(6,182,212,0.22);">Open dashboard</a>
         </td></tr>
         <tr><td style="padding-top:28px;text-align:center;border-top:1px solid rgba(255,255,255,0.08);">
-          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;color:#52525b;">Foldera — Finished work, every morning.</p>
-          <p style="margin:10px 0 0 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;"><a href="${prefs}" style="color:#71717a;">Email preferences</a></p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:11px;color:#52525b;">Foldera — Finished work, every morning.</p>
+          <p style="margin:10px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;"><a href="${prefs}" style="color:#71717a;">Email preferences</a></p>
         </td></tr>
       </table>
     </td></tr>
@@ -392,7 +411,7 @@ export async function sendDailyDirective({
   const prefs = `${baseUrl}/dashboard/settings`;
   const html = `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<head>${EMAIL_HEAD}</head>
 <body style="margin:0;padding:0;background:${EMAIL_BG};">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:${EMAIL_BG};padding:40px 20px;">
     <tr><td align="center">
@@ -401,39 +420,43 @@ export async function sendDailyDirective({
           ${EMAIL_LOGO_MARKUP}
         </td></tr>
         <tr><td style="padding:0 0 20px 0;">
-          <div style="height:3px;width:100%;border-radius:2px;background:linear-gradient(90deg,transparent,${EMAIL_CYAN_BTN},transparent);"></div>
+          <div style="height:3px;width:100%;border-radius:2px;background:linear-gradient(90deg,transparent,${EMAIL_CYAN},transparent);"></div>
         </td></tr>
         <tr><td style="padding-bottom:6px;">
-          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.2em;color:${EMAIL_CYAN};text-transform:uppercase;">Today&apos;s directive</p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;color:${EMAIL_CYAN};text-transform:uppercase;">Today&apos;s directive</p>
         </td></tr>
         <tr><td style="padding-bottom:6px;">
-          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;color:#52525b;text-transform:uppercase;">${escapeHtml(date)}</p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:700;letter-spacing:0.12em;color:#52525b;text-transform:uppercase;">${escapeHtml(date)}</p>
         </td></tr>
         <tr><td style="padding-bottom:16px;border-left:4px solid ${EMAIL_CYAN_BTN};padding-left:16px;">
-          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:20px;font-weight:800;color:#ffffff;line-height:1.35;">${escapeHtml(directive.directive)}</p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:20px;font-weight:800;color:#ffffff;line-height:1.35;">${escapeHtml(directive.directive)}</p>
         </td></tr>
-        ${reasonText ? `<tr><td style="padding:0 0 20px 0;"><p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#a1a1aa;line-height:1.6;">${escapeHtml(reasonText)}</p></td></tr>` : ''}
+        ${reasonText ? `<tr><td style="padding:0 0 20px 0;"><p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:13px;color:#a1a1aa;line-height:1.6;">${escapeHtml(reasonText)}</p></td></tr>` : ''}
         <tr><td style="padding:0 0 24px 0;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid rgba(255,255,255,0.1);border-radius:16px;background:${EMAIL_CARD};border-left:4px solid ${EMAIL_CYAN_BTN};padding:20px 18px;">
-            ${artifactHtml || renderField('Finished Artifact', 'No artifact was attached.')}
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${EMAIL_BORDER_CYAN_STRONG};border-radius:${EMAIL_RADIUS_CARD_OUTER};background:${EMAIL_CARD};">
+            <tr><td style="padding:20px 18px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:${EMAIL_BG_CYAN_TINT};border:1px solid ${EMAIL_BORDER_CYAN_SOFT};border-left:4px solid ${EMAIL_CYAN_BTN};border-radius:${EMAIL_RADIUS_INNER};padding:16px 18px;">
+                ${artifactHtml || renderField('Finished Artifact', 'No artifact was attached.')}
+              </table>
+            </td></tr>
           </table>
         </td></tr>
         <tr><td style="padding-bottom:8px;">
           <table cellpadding="0" cellspacing="0" width="100%"><tr>
             <td style="padding-right:10px;width:50%;vertical-align:top;">
-              <a href="${approveHref}" style="display:block;text-align:center;min-height:44px;line-height:44px;padding:0 16px;background:${EMAIL_CYAN_BTN};color:#000000;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:12px;box-shadow:0 0 20px rgba(6,182,212,0.22);">Approve</a>
+              <a href="${approveHref}" style="display:block;text-align:center;min-height:44px;line-height:44px;padding:0 16px;background:${EMAIL_CYAN_BTN};color:#000000;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:${EMAIL_RADIUS_INNER};box-shadow:0 0 20px rgba(6,182,212,0.22);">Approve</a>
             </td>
             <td style="width:50%;vertical-align:top;">
-              <a href="${skipHref}" style="display:block;text-align:center;min-height:44px;line-height:44px;padding:0 16px;background:#18181b;color:#a1a1aa;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:12px;border:1px solid rgba(255,255,255,0.2);">Skip</a>
+              <a href="${skipHref}" style="display:block;text-align:center;min-height:44px;line-height:44px;padding:0 16px;background:${EMAIL_SKIP_BG};color:${EMAIL_SKIP_TEXT};font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:${EMAIL_RADIUS_INNER};border:1px solid ${EMAIL_SKIP_BORDER};">Skip</a>
             </td>
           </tr></table>
         </td></tr>
         <tr><td style="padding-bottom:24px;">
-          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;color:#52525b;text-align:center;">Foldera learns from every skip.</p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:11px;color:#52525b;text-align:center;">Foldera learns from every skip.</p>
         </td></tr>
         <tr><td style="padding-top:20px;text-align:center;border-top:1px solid rgba(255,255,255,0.08);">
-          <p style="margin:0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;color:#52525b;">Foldera — Finished work, every morning.</p>
-          <p style="margin:10px 0 0 0;font-family:system-ui,-apple-system,sans-serif;font-size:10px;"><a href="${prefs}" style="color:#71717a;">Email preferences</a></p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:11px;color:#52525b;">Foldera — Finished work, every morning.</p>
+          <p style="margin:10px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;"><a href="${prefs}" style="color:#71717a;">Email preferences</a></p>
         </td></tr>
       </table>
     </td></tr>
