@@ -388,7 +388,7 @@ function SignalEngineHero() {
           You missed it.<br className="hidden md:block" /> Foldera didn’t.
         </h1>
         <p className="text-base md:text-xl text-zinc-400 max-w-xl mx-auto font-medium leading-relaxed mb-5 md:mb-8 px-4">
-          What keeps stalling isn&apos;t random. Foldera finds what slipped, drafts the response, and hands you one tap to send.
+          One morning email with finished work: approve to send from your mailbox when connected, or skip. Foldera finds what slipped and drafts the move—no extra tabs.
         </p>
         <div className="mb-5 md:mb-8 -mt-2 md:-mt-4">
           <p className="inline-flex items-center gap-2 rounded-full border border-cyan-400/35 bg-cyan-500/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] text-cyan-100 shadow-[0_0_24px_rgba(6,182,212,0.14)]">

@@ -4,6 +4,12 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: **Forward GTM plan execution** — Supabase-backed **REVENUE_PROOF** Gate 4 first row (`64815e7b-…`, Resend `resend_id`); gate 4 **PARTIAL** + second-row template; non-owner + Stripe operator notes; gate 2 **YELLOW** (hero sub money loop in `app/page.tsx`); **Sentry** JAVASCRIPT-NEXTJS-5/4 **ignored**; **audit.spec.ts** `/blog` crawl hardened; **MEGA_PROMPT_PROGRAM** S2/S4 notes; **AUTOMATION_BACKLOG** DONE block.
+  MODE: AUDIT
+  Files changed: `REVENUE_PROOF.md`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `docs/MEGA_PROMPT_PROGRAM.md`, `app/page.tsx`, `tests/production/audit.spec.ts`, `playwright.prod.config.ts`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx playwright test tests/e2e/public-routes.spec.ts --grep "Landing page"` (6 passed); prod audit `crawl /blog` (retries=0) passed; `playwright.prod.config.ts` timeout 60s
+  Any unresolved issues: **S2** needs interactive `npm run test:local:setup`; **Gate 4** second row needs live approve with `sent_via`; **demo video** (gate 1) operator; threading population still incremental engineering
+
 - 2026-04-02 — AUDIT: **Subscription status / portal — duplicate `user_subscriptions` rows** — `getSubscriptionStatus` and `POST /api/stripe/portal` now use `.limit(1)` + first row instead of `maybeSingle()`, avoiding PostgREST cardinality errors that surface as 500s when more than one row exists for a `user_id`. `lib/__tests__/multi-user-safety.test.ts` mocks updated; added defensive “first row wins” test.
   MODE: AUDIT
   Commit hash(es): `bad2eeb`

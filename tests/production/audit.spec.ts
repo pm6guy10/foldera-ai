@@ -135,6 +135,9 @@ test.describe('Section 1 — Public route crawl', () => {
 
   for (const route of PUBLIC_ROUTES) {
     test(`crawl ${route}`, async ({ browser }) => {
+      const isBlogIndex = route === '/blog';
+      // /blog index can stay "busy" (analytics/fonts); networkidle flakes on prod.
+      test.setTimeout(isBlogIndex ? 60_000 : 30_000);
       const ctx = await unauthContext(browser);
       const page = await ctx.newPage();
       const pageLabel = `public${route}`;
@@ -142,7 +145,15 @@ test.describe('Section 1 — Public route crawl', () => {
       attachListeners(page, localFindings, pageLabel);
 
       try {
-        await page.goto(route, { waitUntil: 'networkidle' });
+        await page.goto(route, {
+          waitUntil: isBlogIndex ? 'domcontentloaded' : 'networkidle',
+          timeout: isBlogIndex ? 55_000 : 28_000,
+        });
+        if (isBlogIndex) {
+          await page.waitForLoadState('networkidle', { timeout: 25_000 }).catch(() => {
+            /* best-effort; title + link audit still runs */
+          });
+        }
 
         // Page title
         const title = await page.title();

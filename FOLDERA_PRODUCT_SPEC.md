@@ -15,7 +15,7 @@ Brandon opens a chat. Drags this file in. Claude reads it, diffs against what CC
 
 Cross-reference: **[REVENUE_PROOF.md](./REVENUE_PROOF.md)** — locked GTM proof sequence, funnel math, gate table, quality bar, pretend certainty map, execution gaps, scaling wall.
 
-**Gate 4 (first value) is the single revenue blocker.** See `REVENUE_PROOF.md` for the full proof sequence.
+**Gate 4 (first value):** historical executed `send_message` + Resend receipt logged in `REVENUE_PROOF.md` (2026-04-02); explicit `sent_via` + fresh approve still operator-pending. See `REVENUE_PROOF.md` for the full proof sequence.
 
 ## PHASE 1: SYSTEM INTEGRITY (ship-blocking)
 
@@ -262,7 +262,7 @@ Only start after Phase 2 deployed.
 
 | Item | Status |
 |---|---|
-| Hero with mechanism visualization | BUILT (72a36f3) | March 31: hero directive card demo is interactive — Approve/Skip advance scenarios with slide animation, then "Like what you see?" + Get started free (no navigation on demo buttons). Scenario pills use `role="tablist"` / `role="tab"` / `aria-selected`. Skip link + `main#main` on root layout. March 28 follow-up: `app/page.tsx` text-only clarity pass aligned hero/section messaging to the one-move positioning ("You missed it. Foldera didn’t.", "One move changes the outcome.", "One decision. Done.") without layout or visual changes. March 28 second follow-up: mobile-first carousel clarity pass in `ScenarioDemos` added swipe + tap discoverability and stronger finished-work emphasis without adding sections or changing overall visual language. |
+| Hero with mechanism visualization | BUILT (72a36f3) | March 31: hero directive card demo is interactive — Approve/Skip advance scenarios with slide animation, then "Like what you see?" + Get started free (no navigation on demo buttons). Scenario pills use `role="tablist"` / `role="tab"` / `aria-selected`. Skip link + `main#main` on root layout. March 28 follow-up: `app/page.tsx` text-only clarity pass aligned hero/section messaging to the one-move positioning ("You missed it. Foldera didn’t.", "One move changes the outcome.", "One decision. Done.") without layout or visual changes. March 28 second follow-up: mobile-first carousel clarity pass in `ScenarioDemos` added swipe + tap discoverability and stronger finished-work emphasis without adding sections or changing overall visual language. **April 2, 2026:** Hero **subtitle** in `SignalEngineHero` aligned to money loop (one morning email, approve/skip, mailbox when connected) per `REVENUE_PROOF.md` gate 2; headline unchanged. |
 | $29 pricing | BUILT |
 | "Finished work, every morning" copy | BUILT |
 | Static blog with 5 posts | BUILT | March 24 follow-up: `/blog` index and `/blog/[slug]` post pages now render five markdown-backed posts with frontmatter metadata and responsive layouts. March 24 blog-rendering fix: `lib/blog.ts` now uses `remark-gfm` so markdown tables render as HTML, `app/(marketing)/blog/[slug]/page.tsx` keeps `dangerouslySetInnerHTML` inside a typography-enabled prose container, and focused blog Playwright checks now verify rendered `h2`/`p`/`li` content plus the busy-professionals comparison table at desktop and 390px mobile. April 1: post body uses `@tailwindcss/typography` with `prose-zinc max-w-2xl mx-auto`, cyan links, relaxed body (`prose-p:leading-relaxed`). |

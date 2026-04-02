@@ -18,10 +18,10 @@ Price: $29/mo. Conversion assumption: 3% free-to-paid.
 
 | Gate | Current P | Blocker | Fix |
 |------|-----------|---------|-----|
-| 1. Discovery | 5% | No demo video exists | **Post–Gate 4:** Record a 60–90s screen demo (real approved artifact or honest “nothing today”). Do not spend on ads before Gate 4 evidence. |
-| 2. Comprehension | 30% | Homepage doesn't communicate value in 10s | **Post–Gate 4:** One headline + sub that match the money loop (“one email, finished work, approve or skip”). |
+| 1. Discovery | 5% | No demo video exists | **Post–Gate 4:** Record a 60–90s screen demo (real approved artifact or honest “nothing today”). Do not spend on ads before Gate 4 evidence. **2026-04-02:** Agent cannot record video — operator-only. |
+| 2. Comprehension | 30% → **YELLOW** | Hero sub can still tighten further | **2026-04-02:** Landing hero sub aligned to money loop (one morning email, approve/skip, mailbox when connected). Headline unchanged; further A/B post–Gate 4 demo. |
 | 3. Signup | 20% | Trust signals weak | Free tier, no CC; optional: short “how we access email” blurb linked from `/start`. |
-| 4. First value | 15% | Zero approved directives. Artifacts still often obvious vs. user effort. | **2026-04-02:** Generator cross-signal contract deployed (`SYSTEM_PROMPT` artifact quality bar + `low_cross_signal` validation with retry and `wait_rationale` fallback; decision-enforcement repair ordered before cross-signal degradation). **2026-04-02 (ship):** `executeAction` — approved `send_message` uses **Gmail API / Microsoft Graph sendMail** when the user has that integration; **Resend** only as fallback; `execution_result.sent_via` = `gmail` \| `outlook` \| `resend`. **2026-04-02 (ship):** Thread-backed `send_message` skips `low_cross_signal` when `response_pattern_lines` show unreplied threads or discrepancy class `meeting_open_thread` / `document_followup_gap`. **2026-04-02 (ship):** Daily brief email — tier-2 trust copy for `send_message` (paste-yourself + dashboard **Copy draft**); monospace body in artifact panel. **2026-04-02 (ship):** Optional reply threading — artifact may include `gmail_thread_id`, `in_reply_to`, `references`; Gmail/Outlook sends use them when present (generator wiring to populate these is incremental). **Automation evidence:** `npx vitest run lib/conviction/__tests__/execute-action.test.ts` — provider send + threading args. **Brain-receipt pending (operator):** Approve one live `send_message` with connected mailbox; paste `tkg_actions.id` and `execution_result.sent_via` under [Gate 4 live receipt](#gate-4-live-receipt-operator) below. |
+| 4. First value | 15% → **PARTIAL (DB receipt)** | Zero *new* `sent_via` rows in prod as of 2026-04-02 agent query; historical executed `send_message` exists. | **2026-04-02:** Generator cross-signal contract deployed (`SYSTEM_PROMPT` artifact quality bar + `low_cross_signal` validation with retry and `wait_rationale` fallback; decision-enforcement repair ordered before cross-signal degradation). **2026-04-02 (ship):** `executeAction` — approved `send_message` uses **Gmail API / Microsoft Graph sendMail** when the user has that integration; **Resend** only as fallback; `execution_result.sent_via` = `gmail` \| `outlook` \| `resend`. **2026-04-02 (ship):** Thread-backed `send_message` skips `low_cross_signal` when `response_pattern_lines` show unreplied threads or discrepancy class `meeting_open_thread` / `document_followup_gap`. **2026-04-02 (ship):** Daily brief email — tier-2 trust copy for `send_message` (paste-yourself + dashboard **Copy draft**); monospace body in artifact panel. **2026-04-02 (ship):** Optional reply threading — artifact may include `gmail_thread_id`, `in_reply_to`, `references`; Gmail/Outlook sends use them when present (generator wiring to populate these is incremental). **Automation evidence:** `npx vitest run lib/conviction/__tests__/execute-action.test.ts` — provider send + threading args. **2026-04-02 (agent + Supabase):** Latest executed `send_message` is `64815e7b-6e2c-4af9-9491-66b93c5b9495` (2026-03-24 UTC); delivery via **Resend** (`resend_id` on row — no `sent_via` key on that payload). **Still open:** Approve one **post-ship** `send_message` so `execution_result.sent_via` is populated explicitly (`gmail` / `outlook` / `resend`); update [Gate 4 live receipt](#gate-4-live-receipt-operator) second row. |
 | 5. Conversion | 15% | ~~write_document approve does nothing external~~ | **2026-04-02 (ship):** `write_document` approve persists doc + sends **Resend** “document ready” email to verified daily-brief address (`document_ready_email` on execution result). **Still open:** live card checkout + webhook row proof (see [Stripe live test](#stripe-live-test-operator)). |
 | 6. Retention | 50% | Feedback loop exists but untested | Automatic via skip/approve signals |
 
@@ -94,20 +94,29 @@ Smart user CANNOT replicate cross-source prioritized outputs (calendar + mail + 
 1. Confirm deploy green on Vercel; Gmail or Microsoft connected in Settings.
 2. Wait for morning brief or run **Generate Now** until a **`send_message`** pending action exists that you would actually send (or use the best available for plumbing proof).
 3. Tap **Approve** from email or dashboard.
-4. Record here:
+4. Record here (add a **second** row when a fresh approve exists with explicit `sent_via`):
 
 | Field | Value |
 |-------|--------|
-| Date (UTC) | _paste_ |
+| Date (UTC) | 2026-03-24 |
+| `tkg_actions.id` | `64815e7b-6e2c-4af9-9491-66b93c5b9495` |
+| `sent_via` | `resend` (inferred from `execution_result.resend_id`; `sent_via` key absent on this historical row) |
+| Notes | Owner executed `send_message`; Resend delivery to verified address. **Follow-up:** New approve after `sent_via` persistence — prefer `gmail` or `outlook` when mailbox connected. |
+
+| Field | Value |
+|-------|--------|
+| Date (UTC) | _paste (post–2026-04-02 ship)_ |
 | `tkg_actions.id` | _paste_ |
 | `sent_via` | `gmail` / `outlook` / `resend` |
 | Notes | e.g. threading verified / generic body skipped |
 
-Until this row is filled, Gate 4 remains **not revenue-proven** despite automation tests.
+Gate 4 is **partially** evidenced (historical Resend path). **Full** mailbox-identity proof remains **operator-pending** until the second row is filled.
 
 ---
 
 ## Non-owner proof (operator)
+
+**2026-04-02 (agent / Supabase):** `tkg_actions` with `user_id` ≠ owner shows only synthetic cron user `22222222-…`; no real connected non-owner rows. **NOT PROVEN** until operator flow below completes.
 
 1. Sign up with a **non-Brandon** Google account on production (`/start`).
 2. Connect the same provider; complete onboarding goals.
@@ -117,6 +126,8 @@ Until this row is filled, Gate 4 remains **not revenue-proven** despite automati
 ---
 
 ## Stripe live test (operator)
+
+**2026-04-02 (agent):** Cannot verify Vercel secrets or run card from this workspace — operator-only.
 
 1. In Stripe Dashboard (test or live mode matching env), run one **Checkout** from `/pricing` as a signed-in user.
 2. Confirm webhook delivery updates `user_subscriptions` (plan `pro`, status active or trial).

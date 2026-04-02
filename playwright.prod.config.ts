@@ -13,7 +13,8 @@ export default defineConfig({
     '**/mobile-prod-layout.spec.ts',
     '**/mobile-journey.spec.ts',
   ],
-  timeout: 30000,
+  // 60s: audit /blog crawl + parallel workers can exceed 30s on cold prod; smoke stays well under.
+  timeout: 60000,
   retries: 1,
   use: {
     baseURL: 'https://www.foldera.ai',

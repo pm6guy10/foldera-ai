@@ -63,7 +63,7 @@ _Quality bar (from REVENUE_PROOF):_ artifact names a real person, references act
 
 | Date (UTC) | exit code | winner summary | artifact type | Pass/Fail vs bar | Notes |
 |------------|-----------|----------------|---------------|------------------|-------|
-| 2026-04-02 | 1 (skipped) | — | — | — | `auth-state-owner.json` missing in this workspace; run `npm run test:local:setup` with dev server + `ALLOW_DEV_ROUTES=true`, then re-run `npm run test:local:brain-receipt`. |
+| 2026-04-02 | 1 (skipped) | — | — | — | **Plan execution:** `auth-state-owner.json` absent (interactive `npm run test:local:setup` requires headful owner login). With dev + `ALLOW_DEV_ROUTES=true`, run setup then `npm run test:local:brain-receipt`; append row with exit 0 + JSON when done. S3 only if S2 fails quality bar. |
 
 ---
 
@@ -74,7 +74,7 @@ _Quality bar (from REVENUE_PROOF):_ artifact names a real person, references act
 3. In Supabase or logs: confirm `tkg_actions.status` = `executed` and `execution_result.sent_via` is `gmail` or `outlook` (or `resend` if fallback).
 4. Fill [REVENUE_PROOF.md](../REVENUE_PROOF.md) **Gate 4 live receipt** table: `tkg_actions.id`, date, `sent_via`.
 
-**Program S4 status:** _Operator pending until the table in REVENUE_PROOF is filled._
+**Program S4 status:** _2026-04-02: First Gate 4 table row filled from production DB (historical Resend). Second row + explicit `sent_via` still operator-pending._
 
 ---
 

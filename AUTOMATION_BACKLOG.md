@@ -1,5 +1,14 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-02) — Plan execution (GTM + quality)
+
+- **Supabase (agent):** No duplicate `user_subscriptions` rows; latest executed `send_message` `64815e7b-6e2c-4af9-9491-66b93c5b9495` (2026-03-24 UTC) — Resend delivery (`resend_id`); no `sent_via` key on row — **REVENUE_PROOF** Gate 4 first table row + gate status **PARTIAL**; second row operator-pending for post-ship `sent_via`.
+- **Sentry:** `JAVASCRIPT-NEXTJS-5` (fetch failed / subscription status, Playwright-noise) and `JAVASCRIPT-NEXTJS-4` (local `.next` ENOENT) marked **ignored**.
+- **Playwright prod audit:** [`tests/production/audit.spec.ts`](tests/production/audit.spec.ts) — `/blog` crawl uses longer timeout, `domcontentloaded` + best-effort `networkidle` to reduce flake.
+- **Homepage:** [`app/page.tsx`](app/page.tsx) hero sub — money loop (one morning email, approve/skip, mailbox when connected); **REVENUE_PROOF** gate 2 **YELLOW**.
+- **Non-owner / Stripe:** Agent notes in **REVENUE_PROOF** — still operator-only; synthetic `22222222` only non-owner in `tkg_actions`.
+- **S2 local brain:** **MEGA_PROMPT_PROGRAM** S2 record — `auth-state-owner.json` still requires interactive `test:local:setup`; no S3 until S2 runs.
+
 ### DONE (2026-04-02) — MASTER_PUNCHLIST operator index
 
 - **`docs/MASTER_PUNCHLIST.md`** — Vercel / GitHub / Supabase / Sentry / Resend / Stripe / Anthropic links; **no email after Generate Now** (`POST /api/settings/run-brief` → `stages.daily_brief.send.results`); **Gate 4** instructions (no fabricated `REVENUE_PROOF`); Playwright refresh pointers. Linked from **`MEGA_PROMPT_PROGRAM.md`**, **`AGENTS.md`**, **`FOLDERA_PRODUCT_SPEC.md`**, **`REVENUE_PROOF.md`** (Gate 4 section).
@@ -13,7 +22,7 @@
 
 These close `REVENUE_PROOF.md` / spec proof tables; agents cannot complete them without your account.
 
-1. **Gate 4 live receipt** — Gmail or Microsoft connected; approve one real `send_message` from email or dashboard; record `tkg_actions.id` and `execution_result.sent_via` (`gmail` / `outlook` / `resend`) in `REVENUE_PROOF.md`.
+1. **Gate 4 live receipt** — Historical Resend row filled in `REVENUE_PROOF.md` (2026-04-02). **Still:** Approve one **new** `send_message` after `sent_via` ship; add **second** table row with explicit `gmail` / `outlook` / `resend`.
 2. **Stripe** — Run checkout from `/pricing` (test or live per env); confirm webhook updates `user_subscriptions`; note date/mode in `REVENUE_PROOF.md`.
 3. **Non-owner proof (optional)** — Second Google account: signup, connect, confirm brief + `tkg_actions` row for that `user_id`.
 
