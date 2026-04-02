@@ -6,7 +6,7 @@
 
 - 2026-04-02 — AUDIT: **Local email preview** — `GET /api/dev/email-preview` (requires `ALLOW_DEV_ROUTES=true`); `buildDailyDirectiveEmailHtml` + `DEV_EMAIL_PREVIEW_SAMPLE_DIRECTIVE` in `lib/email/resend.ts`
   MODE: AUDIT
-  Commit hash(es): verify with `git log -1 --oneline` on `main` after push
+  Commit hash(es): `48b3849`
   Files changed: `lib/email/resend.ts`, `app/api/dev/email-preview/route.ts`, `AGENTS.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; manual `GET /api/dev/email-preview` → 200 HTML
   Any unresolved issues: none
