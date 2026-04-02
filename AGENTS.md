@@ -125,7 +125,7 @@ Any change affecting frontend, auth, onboarding, connectors, or routing must pas
 - New route contracts added:
   - `GET /api/health` is a schema/env/credit canary JSON contract used by cron health-check and prod smoke tests (commit `e1555d0`, `app/api/health/route.ts`).
   - `POST /api/dev/stress-test` is a dry-run pipeline stress endpoint for signed-in sessions (commit `9b3e719`, `app/api/dev/stress-test/route.ts`).
-  - `GET /api/dev/email-preview` renders sample daily-brief HTML in the browser (`?variant=nothing` for the no-directive template); `lib/email/resend.ts` exports `buildDailyDirectiveEmailHtml` (same markup as send).
+  - `GET /api/dev/email-preview` renders sample daily-brief HTML in the browser (`?variant=nothing` for the no-directive template); `?action_id=<uuid>` (owner session, after `POST /api/dev/brain-receipt`) loads that `tkg_actions` row and matches production send HTML; `lib/email/resend.ts` exports `buildDailyDirectiveEmailHtml` (same markup as send).
   - `GET /api/dev/ops-health` is owner-only; returns JSON env/DB readiness checks without exposing secret values (`app/api/dev/ops-health/route.ts`). See repo-root `LAUNCH_CHECKLIST.md` for manual launch steps.
   - `GET /api/model/state` is a read-only behavioral model state endpoint (commit `95c2edf`, `app/api/model/state/route.ts`).
 - Environment variable note: `ALLOW_DEV_ROUTES=true` is required to access dev-only API routes such as `/api/dev/stress-test` (commit `9b3e719`, `app/api/dev/stress-test/route.ts`).

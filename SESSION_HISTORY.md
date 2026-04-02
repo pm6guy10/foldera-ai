@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-02 — AUDIT: Dev **`GET /api/dev/email-preview?action_id=`** — owner-only live HTML from persisted `tkg_actions` (artifact merge matches brain-receipt); `400` invalid UUID; `URL.searchParams` for testability; route tests
+  MODE: AUDIT
+  Commit hash(es): `4a80571`
+  Files changed: `app/api/dev/email-preview/route.ts`, `app/api/dev/email-preview/__tests__/route.test.ts`, `AGENTS.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run app/api/dev/email-preview/__tests__/route.test.ts` (6 passed); `npm run build`
+  Any unresolved issues: Operator workflow unchanged: `ALLOW_DEV_ROUTES=true`, `POST /api/dev/brain-receipt`, then open `/api/dev/email-preview?action_id=<final_action.action_id>` signed in as owner
+
 - 2026-04-02 — AUDIT: **Close-gap plan** — trust tier 2 (daily brief paste-yourself copy + dashboard **Copy draft**); Gmail/Outlook **reply threading** when artifact has `gmail_thread_id` / `in_reply_to` / `references`; `EmailArtifact` type extended; `generation_retry` logs **`issue_buckets`** (no raw issue strings); `REVENUE_PROOF.md` operator sections (Gate 4 live receipt, non-owner, Stripe live, GTM post–G4, sustain metrics); spec NEXT MOVE updated
   MODE: AUDIT
   Commit hash(es): `979a1ca`
