@@ -7,6 +7,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { sendGmailEmail } from '@/lib/integrations/gmail-client';
+import { sendOutlookEmail } from '@/lib/integrations/outlook-client';
 import { executeAction } from '../execute-action';
 
 const { sendResendEmail, getVerifiedDailyBriefRecipientEmail } = vi.hoisted(() => ({
@@ -129,8 +131,9 @@ vi.mock('@/lib/db/client', () => ({
   createServerClient: () => mockSupabase,
 }));
 
+const hasIntegration = vi.fn().mockResolvedValue(true);
 vi.mock('@/lib/auth/token-store', () => ({
-  hasIntegration: vi.fn().mockResolvedValue(true),
+  hasIntegration: (...args: unknown[]) => hasIntegration(...args),
 }));
 
 vi.mock('@/lib/integrations/gmail-client', () => ({
@@ -167,8 +170,14 @@ describe('executeAction', () => {
   beforeEach(() => {
     mockSupabase._signalInsertCalls = 0;
     mockSupabase._signalSelectReturn = null;
+    hasIntegration.mockReset();
+    hasIntegration.mockResolvedValue(true);
     sendResendEmail.mockReset();
     sendResendEmail.mockResolvedValue({ data: { id: 'resend-123' }, error: null });
+    vi.mocked(sendGmailEmail).mockReset();
+    vi.mocked(sendGmailEmail).mockResolvedValue({ success: true });
+    vi.mocked(sendOutlookEmail).mockReset();
+    vi.mocked(sendOutlookEmail).mockResolvedValue({ success: false, error: 'No Outlook' });
     getVerifiedDailyBriefRecipientEmail.mockReset();
     getVerifiedDailyBriefRecipientEmail.mockResolvedValue('ready-doc@example.com');
   });
@@ -213,9 +222,60 @@ describe('executeAction', () => {
     });
     expect(out.status).toBe('executed');
     expect(out.result?.sent).toBe(true);
-    expect(out.result?.resend_id).toBe('resend-123');
-    expect(sendResendEmail).toHaveBeenCalledTimes(1);
+    expect(out.result?.sent_via).toBe('gmail');
+    expect(sendGmailEmail).toHaveBeenCalledWith(USER_ID, {
+      to: 'a@b.com',
+      subject: 'Subj',
+      body: 'Body',
+    });
+    expect(sendResendEmail).not.toHaveBeenCalled();
     expect(mockSupabase._signalInsertCalls).toBe(1);
+  });
+
+  it('approve send_message falls back to Resend when no mailbox integration', async () => {
+    hasIntegration.mockResolvedValue(false);
+    mockSupabase._actionRow = {
+      ...actionWithArtifact({
+        type: 'send_message',
+        recipient: 'a@b.com',
+        subject: 'Subj',
+        body: 'Body',
+      }),
+      action_type: 'send_message',
+    };
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+    expect(out.status).toBe('executed');
+    expect(out.result?.sent).toBe(true);
+    expect(out.result?.sent_via).toBe('resend');
+    expect(out.result?.resend_id).toBe('resend-123');
+    expect(sendGmailEmail).not.toHaveBeenCalled();
+    expect(sendResendEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('approve send_message uses Outlook when Google missing and Microsoft connected', async () => {
+    hasIntegration.mockImplementation(async (_uid: string, provider: string) => provider === 'azure_ad');
+    vi.mocked(sendOutlookEmail).mockResolvedValueOnce({ success: true });
+    mockSupabase._actionRow = {
+      ...actionWithArtifact({
+        type: 'send_message',
+        to: 'a@b.com',
+        subject: 'Subj',
+        body: 'Body',
+      }),
+      action_type: 'send_message',
+    };
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+    expect(out.status).toBe('executed');
+    expect(out.result?.sent_via).toBe('outlook');
+    expect(sendResendEmail).not.toHaveBeenCalled();
   });
 
   it('approve with document artifact persists and writes approval signal', async () => {
@@ -340,6 +400,7 @@ describe('executeAction', () => {
   });
 
   it('marks send_message approvals as failed when Resend delivery fails', async () => {
+    hasIntegration.mockResolvedValue(false);
     sendResendEmail.mockResolvedValue({ data: null, error: { message: 'credit balance is too low' } });
     mockSupabase._actionRow = {
       ...actionWithArtifact({

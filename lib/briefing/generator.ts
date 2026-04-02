@@ -4119,6 +4119,20 @@ function withResolvedCausalDiagnosis(
 
 const LOW_CROSS_SIGNAL_ISSUE_PREFIX = 'low_cross_signal:';
 
+/**
+ * Single-thread revenue / reply paths (derived unreplied signals, open-thread discrepancies)
+ * are already grounded in one concrete conversation; requiring two distinct cross-signal anchors
+ * incorrectly forces wait_rationale. See plan: Outcome 1 thread-backed send_message.
+ */
+function shouldSkipLowCrossSignalForThreadBackedOutreach(ctx: StructuredContext): boolean {
+  const lines = ctx.response_pattern_lines ?? [];
+  if (lines.some((line) => /\bunreplied|no reply after\b/i.test(line))) {
+    return true;
+  }
+  const dc = (ctx.discrepancy_class ?? '').toLowerCase();
+  return dc === 'meeting_open_thread' || dc === 'document_followup_gap';
+}
+
 /** Grounding tokens from context: signal sources, entities, goals, recipient line — used to enforce cross-signal artifacts. */
 function collectCrossSignalAnchors(ctx: StructuredContext): string[] {
   const set = new Set<string>();
@@ -4184,6 +4198,9 @@ function getLowCrossSignalIssues(
   canonicalArtifactType: ValidArtifactTypeCanonical,
 ): string[] {
   if (canonicalArtifactType !== 'send_message' && canonicalArtifactType !== 'write_document') {
+    return [];
+  }
+  if (canonicalArtifactType === 'send_message' && shouldSkipLowCrossSignalForThreadBackedOutreach(ctx)) {
     return [];
   }
   const anchors = collectCrossSignalAnchors(ctx);

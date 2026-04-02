@@ -21,7 +21,7 @@ Price: $29/mo. Conversion assumption: 3% free-to-paid.
 | 1. Discovery | 5% | No demo video exists | Record after Gate 4 clears |
 | 2. Comprehension | 30% | Homepage doesn't communicate value in 10s | Rewrite after Gate 4 |
 | 3. Signup | 20% | Trust signals weak | Free tier, no CC |
-| 4. First value | 15% | Zero approved directives. Artifacts still often obvious vs. user effort. | **2026-04-02:** Generator cross-signal contract deployed (`SYSTEM_PROMPT` artifact quality bar + `low_cross_signal` validation with retry and `wait_rationale` fallback; decision-enforcement repair ordered before cross-signal degradation). Measure approval rate on production. |
+| 4. First value | 15% | Zero approved directives. Artifacts still often obvious vs. user effort. | **2026-04-02:** Generator cross-signal contract deployed (`SYSTEM_PROMPT` artifact quality bar + `low_cross_signal` validation with retry and `wait_rationale` fallback; decision-enforcement repair ordered before cross-signal degradation). **2026-04-02 (ship):** `executeAction` — approved `send_message` uses **Gmail API / Microsoft Graph sendMail** when the user has that integration; **Resend** only as fallback; `execution_result.sent_via` = `gmail` \| `outlook` \| `resend`. **2026-04-02 (ship):** Thread-backed `send_message` skips `low_cross_signal` when `response_pattern_lines` show unreplied threads or discrepancy class `meeting_open_thread` / `document_followup_gap`. **Brain-receipt pending:** After deploy, approve one live `send_message` with connected mailbox; record action id + `sent_via` here. |
 | 5. Conversion | 15% | write_document approve does nothing external | Email artifact to user on approve |
 | 6. Retention | 50% | Feedback loop exists but untested | Automatic via skip/approve signals |
 
@@ -37,7 +37,7 @@ Price: $29/mo. Conversion assumption: 3% free-to-paid.
 
 A send-worthy artifact names a real person, references their actual thread, answers their specific questions with real terms, handles a calendar conflict in the same message, and closes with a concrete scheduling proposal. The user taps Approve and the outside world changes.
 
-Current output falls short on: cross-source punch (usually one signal type wins), execution identity (sends from brief@foldera.ai not user's address), write_document approve does nothing external, and many runs produce no-send/wait_rationale/do_nothing.
+Current output falls short on: cross-source punch (usually one signal type wins), execution identity for **`send_message` without mailbox** (Resend fallback still brief@foldera.ai), write_document approve does nothing external, and many runs produce no-send/wait_rationale/do_nothing.
 
 ## PRETEND CERTAINTY MAP
 
@@ -58,7 +58,7 @@ Six paths where system sounds confident without evidence:
 
 ## EXECUTION GAPS
 
-1. send_message sends from brief@foldera.ai not user's identity
+1. send_message — **fixed when Google/Microsoft connected** (`execute-action.ts`); Resend fallback still brief@ for users without mailbox token
 2. write_document approve persists to DB, nothing external happens
 3. Cross-source candidates exist but rarely win over email-only
 4. Convergence extraction requires name overlap in signal body
@@ -66,7 +66,7 @@ Six paths where system sounds confident without evidence:
 ## INDISPENSABILITY CONDITIONS
 
 1. Send-worthy artifact on most workdays — FAIL
-2. Approve changes the outside world — PARTIAL (send_message only)
+2. Approve changes the outside world — PARTIAL (send_message from user mailbox when connected; else Resend)
 3. Skipping measurably hurts — NOT PROVEN
 
 ## REPLACEABILITY
@@ -77,6 +77,6 @@ Smart user CANNOT replicate cross-source prioritized outputs (calendar + mail + 
 
 ## FIRST FIX (single priority)
 
-Wire scorer/discrepancy analysis to generator prompt so artifacts use the thinking layer that already exists.
+**Shipped 2026-04-02:** Execution identity for `send_message` (provider first, Resend fallback) + thread-backed `low_cross_signal` exception in `generator.ts`.
 
-Everything else is blocked on this.
+**Still open:** Prove Gate 4 on production (approve receipt + `sent_via`); continue tightening artifact specificity and approval rate.

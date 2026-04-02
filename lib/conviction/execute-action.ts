@@ -276,34 +276,64 @@ async function executeArtifact(
           break;
         }
         if (options?.actionType === 'send_message') {
-          const delivery = await sendResendEmail({
-            from: 'Foldera <brief@foldera.ai>',
-            to,
-            subject,
-            text: body,
-            html: renderPlaintextEmailHtml(body),
-            tags: [
-              { name: 'email_type', value: 'approved_send_message' },
-              { name: 'user_id', value: userId },
-              { name: 'action_id', value: actionId },
-            ],
-          });
-          const resendError =
-            delivery && typeof delivery === 'object' && 'error' in delivery
-              ? (delivery as { error?: { message?: string } | null }).error
-              : null;
-          const resendId =
-            delivery && typeof delivery === 'object' && 'data' in delivery && typeof (delivery as { data?: { id?: unknown } }).data?.id === 'string'
-              ? ((delivery as { data?: { id?: string } }).data?.id ?? null)
-              : null;
+          // Prefer the user's mailbox (Gmail / Outlook) so recipients see the customer, not brief@foldera.ai.
+          let sentViaProvider = false;
+          let providerError: string | undefined;
 
-          if (resendError || !resendId) {
-            const sendError = resendError?.message ?? 'Resend send failed';
-            out = { ...out, sent: false, resend_id: resendId, send_error: sendError, exec_error: sendError };
-            console.warn(`[execute-action] resend send failed for ${actionId}:`, sendError);
-          } else {
-            out = { ...out, sent: true, sent_at: now, resend_id: resendId };
-            console.log(`[execute-action] resend email sent for action ${actionId}`);
+          if (await hasIntegration(userId, 'google')) {
+            const gmailResult = await sendGmailEmail(userId, { to, subject, body });
+            if (gmailResult.success) {
+              out = { ...out, sent: true, sent_at: now, sent_via: 'gmail' };
+              sentViaProvider = true;
+              console.log(`[execute-action] gmail send for action ${actionId}`);
+            } else {
+              providerError = gmailResult.error;
+              console.warn(`[execute-action] gmail send failed for ${actionId}:`, gmailResult.error);
+            }
+          }
+
+          if (!sentViaProvider && (await hasIntegration(userId, 'azure_ad'))) {
+            const outlookResult = await sendOutlookEmail(userId, { to, subject, body });
+            if (outlookResult.success) {
+              out = { ...out, sent: true, sent_at: now, sent_via: 'outlook' };
+              sentViaProvider = true;
+              console.log(`[execute-action] outlook send for action ${actionId}`);
+            } else {
+              providerError = outlookResult.error ?? providerError;
+              console.warn(`[execute-action] outlook send failed for ${actionId}:`, outlookResult.error);
+            }
+          }
+
+          if (!sentViaProvider) {
+            const delivery = await sendResendEmail({
+              from: 'Foldera <brief@foldera.ai>',
+              to,
+              subject,
+              text: body,
+              html: renderPlaintextEmailHtml(body),
+              tags: [
+                { name: 'email_type', value: 'approved_send_message' },
+                { name: 'user_id', value: userId },
+                { name: 'action_id', value: actionId },
+              ],
+            });
+            const resendError =
+              delivery && typeof delivery === 'object' && 'error' in delivery
+                ? (delivery as { error?: { message?: string } | null }).error
+                : null;
+            const resendId =
+              delivery && typeof delivery === 'object' && 'data' in delivery && typeof (delivery as { data?: { id?: unknown } }).data?.id === 'string'
+                ? ((delivery as { data?: { id?: string } }).data?.id ?? null)
+                : null;
+
+            if (resendError || !resendId) {
+              const sendError = resendError?.message ?? providerError ?? 'Resend send failed';
+              out = { ...out, sent: false, resend_id: resendId, send_error: sendError, exec_error: sendError };
+              console.warn(`[execute-action] resend send failed for ${actionId}:`, sendError);
+            } else {
+              out = { ...out, sent: true, sent_at: now, resend_id: resendId, sent_via: 'resend' };
+              console.log(`[execute-action] resend email sent for action ${actionId}`);
+            }
           }
         } else {
           const useGoogle = await hasIntegration(userId, 'google');
