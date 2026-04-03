@@ -89,6 +89,7 @@ export async function POST(request: Request) {
       ensureSend: true,
       skipStaleGate: true,
       skipSpendCap: true,
+      skipManualCallLimit: true,
     });
 
     const ok = dailyBrief.ok && syncMicrosoftResult.ok && syncGoogleResult.ok;

@@ -4547,6 +4547,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     decryptedSignals,
     structuredSignals,
     recentDirectives,
+    selfEmails,
   });
   console.log(JSON.stringify({
     event: 'discrepancy_detection_debug',

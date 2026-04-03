@@ -1832,6 +1832,7 @@ export function extractBehavioralPatterns(
   recentDirectives: RecentDirectiveInput[],
   decryptedSignals: string[],
   nowMs: number,
+  selfEmails?: Set<string>,
 ): Discrepancy[] {
   const since14 = nowMs - FOURTEEN_DAYS_MS;
   const since7 = nowMs - SEVEN_DAYS_MS;
@@ -2058,10 +2059,23 @@ export function extractBehavioralPatterns(
   patternBuckets[2] = pickTopBehavioral(patternBuckets[2], MAX_BEHAVIORAL_PER_PATTERN);
 
   // --- PATTERN 4: cross-entity theme (30d structured + decrypted substring) ---
+  // Helper: returns true when an entity's email matches the user's own addresses.
+  const isSelfEntity = (ent: EntityRow): boolean => {
+    if (!selfEmails || selfEmails.size === 0) return false;
+    if (ent.primary_email && selfEmails.has(ent.primary_email.toLowerCase())) return true;
+    if (ent.emails) {
+      for (const e of ent.emails) {
+        if (selfEmails.has(e.toLowerCase())) return true;
+      }
+    }
+    return false;
+  };
+
   for (const theme of CROSS_ENTITY_THEMES) {
     const hitEntities: EntityRow[] = [];
     const sampleIds: string[] = [];
     for (const ent of entities) {
+      if (isSelfEntity(ent)) continue; // never include the account owner as a "contact"
       let hit = false;
       for (const s of structured) {
         const t = new Date(s.occurred_at).getTime();
@@ -2229,6 +2243,7 @@ export function detectDiscrepancies(args: {
   structuredSignals?: StructuredSignalInput[];
   recentDirectives?: RecentDirectiveInput[];
   now?: Date;
+  selfEmails?: Set<string>;
 }): Discrepancy[] {
   const nowMs = (args.now ?? new Date()).getTime();
   const commitments = args.commitments.filter((c) => (c.trust_class ?? 'unclassified') === 'trusted' || (c.trust_class ?? 'unclassified') === 'unclassified');
@@ -2252,6 +2267,7 @@ export function detectDiscrepancies(args: {
       recentDirectives,
       decryptedSignals,
       nowMs,
+      args.selfEmails,
     ),
     // Delta-based (higher urgency scores — float to top naturally)
     ...extractDeadlineStaleness(commitments, goals, nowMs),
