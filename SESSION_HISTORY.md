@@ -6,7 +6,7 @@
 
 - 2026-04-04 — AUDIT: **AZ-24 slice 1 — `no_thread_no_outcome` vs scorer `sourceSignals`** — `buildDecisionPayload` treats past-dated **`winner.sourceSignals`** as thread evidence when hydrated **`supporting_signals`** is empty; new `lib/briefing/thread-evidence-for-payload.ts` + `thread-evidence-for-payload.test.ts`; **FOLDERA_PRODUCT_SPEC** §1.1; **AUTOMATION_BACKLOG** AZ-24 progress.
   MODE: AUDIT
-  Commit hash(es): `8f18c6b`
+  Commit hash(es): `e905846`
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/thread-evidence-for-payload.ts`, `lib/briefing/__tests__/thread-evidence-for-payload.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
   What was verified: `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run build`; `npm run test:ci:e2e`; `npm run test:prod` (after Vercel Ready, or blocked note)
   Any unresolved issues: Re-run `scripts/az05-action-type-distribution.sql` in Supabase after deploy and paste fresh counts into backlog when available.
