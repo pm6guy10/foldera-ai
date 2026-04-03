@@ -6,7 +6,7 @@
 
 - 2026-04-03 — AUDIT: **Backlog / punchlist hardening loop** — Resend webhook **400** on empty body + unit tests; **`npm run lint`** via `cross-env` + flat ESLint; CI **Lint** step; **`FolderaMark`** `next/image`; **`playwright.ci.config.ts`** `PLAYWRIGHT_WEB_PORT`; **Dependabot** weekly npm; **AUTOMATION_BACKLOG** OPEN cleanup (removed stale Resend/.env/Dependabot lines).
   MODE: AUDIT
-  Commit hash(es): `b2f2931`
+  Commit hash(es): `b2f2931`, `32d2b48` (SESSION_HISTORY hash line)
   Files changed: `lib/webhooks/resend-webhook.ts`, `lib/webhooks/__tests__/resend-webhook.test.ts`, `tests/e2e/backend-safety-gates.spec.ts`, `components/nav/FolderaMark.tsx`, `package.json`, `package-lock.json`, `playwright.ci.config.ts`, `.github/workflows/ci.yml`, `.github/dependabot.yml`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run build`; `npm run test:ci:e2e` (with `PLAYWRIGHT_WEB_PORT=3011` + matching `NEXTAUTH_URL` after clean build — :3000 busy locally); `npm run test:prod` (61 passed)
   Any unresolved issues: Operator gates unchanged (Gate 4 `sent_via`, Stripe, non-owner); `/dashboard/briefings` still redirects to `/dashboard`; UptimeRobot / correlation IDs / Supabase backups still OPEN in backlog
