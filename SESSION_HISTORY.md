@@ -6,7 +6,7 @@
 
 - 2026-04-04 — AUDIT: **`/api/health` CI E2E** — Guard `GET` so `createServerClient()` runs only when Supabase URL + service role are configured; **200** + `db: false` / `degraded` when omitted (fixes GitHub `test:ci:e2e` 500 on `public-routes` health checks). New Vitest `app/api/health/__tests__/route.test.ts`; CI workflow comment; **FOLDERA_PRODUCT_SPEC** `/api/health` row.
   MODE: AUDIT
-  Commit hash(es): `980d913`
+  Commit hash(es): `cc3e219`
   Files changed: `app/api/health/route.ts`, `app/api/health/__tests__/route.test.ts`, `.github/workflows/ci.yml`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run lint`; `npx vitest run app/api/health/__tests__/route.test.ts`; `npm run build`; `npm run test:ci:e2e` (41 passed)
   Any unresolved issues: After deploy, confirm GitHub **build-and-test** green; run `npm run test:prod` when Vercel Ready.
