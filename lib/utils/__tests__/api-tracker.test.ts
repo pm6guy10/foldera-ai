@@ -61,8 +61,8 @@ describe('trackApiCall', () => {
     const { getSpendSummary } = await import('../api-tracker');
     const summary = await getSpendSummary('user-1');
 
-    expect(summary.dailyCapUSD).toBe(1.0);
-    expect(summary.extractionDailyCapUSD).toBe(2);
+    expect(summary.dailyCapUSD).toBe(0.05);
+    expect(summary.extractionDailyCapUSD).toBe(0.05);
     expect(summary.capPct).toBe(0);
   });
 
