@@ -63,6 +63,13 @@ describe('thread-evidence-for-payload', () => {
       expect(needsNoThreadNoOutcomeBlock('discrepancy', false, false)).toBe(false);
       expect(needsNoThreadNoOutcomeBlock('discrepancy', false, true)).toBe(false);
     });
+
+    it('never blocks relationship candidates (entity history is the implicit thread)', () => {
+      // relationship type is exempt regardless of thread or outcome state
+      expect(needsNoThreadNoOutcomeBlock('relationship', false, false)).toBe(false);
+      expect(needsNoThreadNoOutcomeBlock('relationship', true, false)).toBe(false);
+      expect(needsNoThreadNoOutcomeBlock('relationship', false, true)).toBe(false);
+    });
   });
 
   describe('getNewestEvidenceTimestampMs', () => {

@@ -59,7 +59,7 @@ import {
 const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
 const GENERATION_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
-const STALE_SIGNAL_THRESHOLD_DAYS = 14;
+const STALE_SIGNAL_THRESHOLD_DAYS = 21;
 
 /**
  * Load the per-user dynamic confidence threshold from tkg_goals.

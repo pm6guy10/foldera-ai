@@ -1,5 +1,35 @@
 import { describe, expect, it } from 'vitest';
-import { computeCandidateScore, type ApprovalAction } from '../scorer';
+import { computeCandidateScore, inferActionType, passesTop3RankingInvariants, type ApprovalAction, type ScoredLoop } from '../scorer';
+
+// ---------------------------------------------------------------------------
+// Minimal ScoredLoop factory for invariant tests
+// ---------------------------------------------------------------------------
+
+function makeCandidate(overrides: Partial<ScoredLoop> = {}): ScoredLoop {
+  return {
+    id: 'test-id',
+    type: 'commitment',
+    // Title must not match NOISE_CANDIDATE_PATTERNS or OBVIOUS_FIRST_LAYER_PATTERNS
+    // (no "follow up", "check in", "schedule a block", etc.)
+    title: 'Client contract requires decision before board review',
+    content: 'The client has a contract deadline that requires a decision before the board review.',
+    suggestedActionType: 'send_message',
+    matchedGoal: null,
+    score: 3.0,
+    breakdown: {
+      stakes: 3,
+      urgency: 0.7,
+      tractability: 0.7,
+      freshness: 1.0,
+      actionTypeRate: 0.5,
+      entityPenalty: 0,
+    },
+    relatedSignals: [],
+    sourceSignals: [{ kind: 'signal', id: 's1', summary: 'email thread with client' }],
+    confidence_prior: 55,
+    ...overrides,
+  };
+}
 
 const THRESHOLD = 2.0;
 
@@ -257,5 +287,89 @@ describe('computeCandidateScore — Gemini benchmark', () => {
     // n=3 < 5 → blended = 0.5 (cold start), then prior: (0.5*3 + 0.5*10)/(3+10) = 0.5
     expect(breakdown.behavioral_rate).toBeGreaterThanOrEqual(0.45);
     expect(breakdown.behavioral_rate).toBeLessThanOrEqual(0.55);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// passesTop3RankingInvariants — evidence density gate (< 1) change
+// ---------------------------------------------------------------------------
+
+describe('passesTop3RankingInvariants — evidence density gate', () => {
+  it('candidate with only sourceSignals (density=1) passes the relaxed gate', () => {
+    // density: 0 (no goal) + 0 (no relatedSignals) + 1 (sourceSignals) + 0 (no concrete) = 1
+    // Old threshold (< 2) would reject this; new threshold (< 1) accepts it.
+    const candidate = makeCandidate({
+      sourceSignals: [{ kind: 'signal', id: 's1', summary: 'client deadline email' }],
+      relatedSignals: [],
+      matchedGoal: null,
+    });
+    expect(passesTop3RankingInvariants(candidate)).toBe(true);
+  });
+
+  it('candidate with zero evidence (density=0) still fails the gate', () => {
+    // density: 0 (no goal) + 0 (no relatedSignals) + 0 (no sourceSignals) + 0 (no concrete) = 0
+    const candidate = makeCandidate({
+      sourceSignals: [],
+      relatedSignals: [],
+      matchedGoal: null,
+    });
+    expect(passesTop3RankingInvariants(candidate)).toBe(false);
+  });
+
+  it('relationship candidate with only entity source signal passes (density bonus applies)', () => {
+    // relationship type gets +1 density bonus; sourceSignals +1 = density 2 → passes
+    const candidate = makeCandidate({
+      type: 'relationship',
+      sourceSignals: [{ kind: 'relationship', id: 'e1', summary: 'krista: 23 interactions' }],
+      relatedSignals: [],
+      matchedGoal: null,
+    });
+    expect(passesTop3RankingInvariants(candidate)).toBe(true);
+  });
+
+  it('discrepancy candidate with only sourceSignal-type refs passes (density bonus applies)', () => {
+    // discrepancy type gets +1 density bonus; sourceSignals +1 = density 2 → passes
+    const candidate = makeCandidate({
+      type: 'discrepancy',
+      sourceSignals: [{ kind: 'relationship', summary: 'emmett: 15 interactions' }],
+      relatedSignals: [],
+      matchedGoal: null,
+      discrepancyClass: 'decay',
+    });
+    expect(passesTop3RankingInvariants(candidate)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// inferActionType — research keywords must produce make_decision, not research
+// ---------------------------------------------------------------------------
+
+describe('inferActionType — research keywords → make_decision', () => {
+  it('text containing "research" produces make_decision for commitment', () => {
+    expect(inferActionType('I need to research the market landscape', 'commitment')).toBe('make_decision');
+  });
+
+  it('text containing "investigate" produces make_decision for commitment', () => {
+    expect(inferActionType('investigate the vendor options before the deadline', 'commitment')).toBe('make_decision');
+  });
+
+  it('text containing "look into" produces make_decision for signal', () => {
+    expect(inferActionType('need to look into why the deal stalled', 'signal')).toBe('make_decision');
+  });
+
+  it('text containing "find out" produces make_decision for signal', () => {
+    expect(inferActionType('find out what the client decided', 'signal')).toBe('make_decision');
+  });
+
+  it('research keyword never produces the research action type for commitment', () => {
+    expect(inferActionType('research options for the new role', 'commitment')).not.toBe('research');
+  });
+
+  it('research keyword never produces the research action type for signal', () => {
+    expect(inferActionType('investigate the email thread', 'signal')).not.toBe('research');
+  });
+
+  it('relationship loop still produces send_message regardless of research keyword', () => {
+    expect(inferActionType('research this contact further', 'relationship')).toBe('send_message');
   });
 });

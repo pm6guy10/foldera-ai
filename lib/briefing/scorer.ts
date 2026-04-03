@@ -1254,14 +1254,14 @@ export async function enrichRelationshipContext(
 // Infer action type from commitment/signal content
 // ---------------------------------------------------------------------------
 
-function inferActionType(text: string, loopType: 'commitment' | 'signal' | 'relationship'): ActionType {
+export function inferActionType(text: string, loopType: 'commitment' | 'signal' | 'relationship'): ActionType {
   if (loopType === 'relationship') return 'send_message';
 
   const lower = text.toLowerCase();
   if (/\b(email|reply|respond|send|follow.?up|reach out|contact)\b/.test(lower)) return 'send_message';
   if (/\b(decide|decision|choose|option|weigh)\b/.test(lower)) return 'make_decision';
   if (/\b(schedule|calendar|meeting|call|appointment)\b/.test(lower)) return 'schedule';
-  if (/\b(research|investigate|look into|find out)\b/.test(lower)) return 'research';
+  if (/\b(research|investigate|look into|find out)\b/.test(lower)) return 'make_decision';
   if (/\b(wait|hold|pause|defer|delay)\b/.test(lower)) return 'do_nothing';
   return 'send_message'; // default: most commitments resolve to follow-ups
 }
@@ -1369,7 +1369,7 @@ function getInvariantFailureReasons(candidate: ScoredLoop): string[] {
   if (routineMaintenance) reasons.push('routine_maintenance');
   if (obviousAdvice) reasons.push('obvious_first_layer_advice');
   if (alreadyKnown) reasons.push('already_known_pattern');
-  if (evidenceDensity < 2) reasons.push('weak_evidence_density');
+  if (evidenceDensity < 1) reasons.push('weak_evidence_density');
   return reasons;
 }
 

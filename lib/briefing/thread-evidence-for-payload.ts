@@ -54,13 +54,22 @@ export function getNewestEvidenceTimestampMs(
   return max;
 }
 
-/** True when the no_thread_no_outcome hard block should be applied (caller adds blocking_reason). */
+/**
+ * True when the no_thread_no_outcome hard block should be applied (caller adds blocking_reason).
+ *
+ * Exempt types:
+ * - 'discrepancy': absence of signals IS the structural evidence (decay/risk/drift).
+ * - 'relationship': candidate comes from tkg_entities verified interaction history;
+ *   that history IS the thread context — blocking on "no current email thread" inverts
+ *   the purpose of the reconnect directive.
+ */
 export function needsNoThreadNoOutcomeBlock(
   winnerType: string,
   hasRealThread: boolean,
   tiedToOutcome: boolean,
 ): boolean {
   if (winnerType === 'discrepancy') return false;
+  if (winnerType === 'relationship') return false;
   if (tiedToOutcome) return false;
   return !hasRealThread;
 }
