@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-04 — AUDIT: **Brain done state — send UX, outcome feedback loop, picker today-awareness**
+  MODE: AUDIT
+  Commit hash(es): `a3a9f0e`
+  Files changed: `app/dashboard/page.tsx`, `lib/email/resend.ts`, `lib/briefing/scorer.ts`
+  What was verified: `npm run build` passed; `npx vitest run --exclude ".claude/worktrees/**"` 664 passed (1 pre-existing api-tracker cap failure unrelated to this session); `npm run test:ci:e2e` 41/41 passed; pushed to main; `npm run test:prod` 61/61 passed; Supabase query confirms pending `send_message` action (confidence 75) awaiting live approval.
+  Changes: (1) Gap 2 — Send UX: `dashboard/page.tsx` reads `execution_result.sent_via` from execute response and shows channel-specific flash ("Sent from your Gmail." / "Sent from your Outlook." / "Sent via Foldera. Connect Gmail in Settings…"); "Copy draft" demoted from full-width button to secondary inline text link; helper text now leads with "Approve sends from your connected Gmail or Outlook." `lib/email/resend.ts`: removed "Paste it yourself" instruction block for send_message, replaced with "Approve sends from your connected mailbox." (2) Gap 3 — Outcome feedback: `dashboard/page.tsx` done state shows "It worked" / "Didn't work" buttons after approve; captures `action_id` from execute response; calls `POST /api/conviction/outcome` (pre-existing route); sets `outcome_closed=true` and `feedback_weight=+2.0/-1.5`; hides buttons after click and shows "Foldera will adjust." (3) Gap 1 — Picker today-awareness: `scorer.ts` `scoreOpenLoops()` adds parallel query for today's executed/approved actions since midnight; builds `todayFocusDomains` set using `inferGoalCategory`/`goalKeywordIndex`; applies 15% score reduction to candidates in domains not matching today's focus — picker stays coherent with user's actual decision state.
+  Any unresolved issues: Live Gate 4 receipt (AZ-02/03) still pending operator approve of the live send_message action on dashboard; `sent_via` will be set on next real approval.
+
 - 2026-04-04 — AUDIT: **do_nothing mass (53%) — 3-gate relaxation** — Supabase MCP diagnostic queries confirmed: `do_nothing` 53.4% (505 rows), top causes: manual call limit 184 (intentional), scorer null 58 (Scenario A), artifact failure 55, self-addressed 49, duplicates 44. **Fix 1 (Scenario A):** `computeEvidenceDensity` threshold `< 2` → `< 1` in `scorer.ts` so candidates with only source signals pass invariants. **Fix 2 (Scenario B):** `STALE_SIGNAL_THRESHOLD_DAYS` 14 → 21 days in `generator.ts` widening aging window. **Fix 3 (Scenario C):** `needsNoThreadNoOutcomeBlock` now exempts `relationship` type matching the existing discrepancy bypass. Tests: 4 new invariant cases in scorer-benchmark + 1 relationship bypass case; 651 tests pass; build clean.
   MODE: AUDIT
   Commit hash(es): `c3db2f2`

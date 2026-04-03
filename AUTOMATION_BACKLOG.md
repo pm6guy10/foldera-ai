@@ -652,8 +652,8 @@ Single prioritized table. Full matrix: [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_
 
 | Rank | ID | Title | Owner | Spec § | Evidence / notes | Next action |
 |------|-----|--------|-------|--------|------------------|-------------|
-| 1 | **AZ-02** | Gate 4 live receipt (`sent_via` + new row) | Operator | REVENUE_PROOF §4 | Historical Resend row only | Approve real `send_message`; log id + `sent_via` in REVENUE_PROOF |
-| 2 | **AZ-03** | Approve → mailbox delivery proof | Operator | §1.1 | Overlaps AZ-02 | Same session as AZ-02 |
+| 1 | **AZ-02** | Gate 4 live receipt (`sent_via` + new row) | Operator | REVENUE_PROOF §4 | 2026-04-04: `sent_via` now shown in dashboard flash after approve (gmail/outlook/resend). `d96e9fc3` send_message confidence 75 pending live. | Approve from dashboard; query `execution_result->>'sent_via'`; log in REVENUE_PROOF |
+| 2 | **AZ-03** | Approve → mailbox delivery proof | Operator | §1.1 | 2026-04-04: "Sent from your Gmail/Outlook" flash wired. Outcome buttons ("It worked"/"Didn't work") wired. Same pending action as AZ-02. | Same session as AZ-02 |
 | 3 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` | Second Google user: connect, brief, `tkg_actions` row |
 | 4 | **AZ-24** | Pipeline: actionable share vs `do_nothing` / `research` | Agent | §1.1 / matrix G | **Receipt:** 2026-04-03 follow-up MCP counts + CI **`7f0798f`** success + `test:prod` 61 (see DONE bullet). **Slices 1–3 shipped:** thread gate + freshness union + **signal_velocity → `make_decision`**. **Next:** re-`az05` after slice-3 deploy; research row drain | Vercel **Ready** operator check; Anthropic healthy for non-`research` paths |
 | 5 | **AZ-08** | UptimeRobot on `/api/health` | Operator | §1.2 | External uptime | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
