@@ -19,7 +19,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
 }));
 
 vi.mock('@/lib/utils/api-tracker', () => ({
-  getDailySpend: vi.fn().mockResolvedValue(0.1),
+  getDailySpend: vi.fn().mockResolvedValue(0.01),
   trackApiCall: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -169,7 +169,7 @@ describe('runInsightScan', () => {
         details: expect.objectContaining({
           scope: 'insight_scan',
           reason: 'daily_spend_above_threshold',
-          threshold_usd: 0.5,
+          threshold_usd: 0.04,
         }),
       }),
     );

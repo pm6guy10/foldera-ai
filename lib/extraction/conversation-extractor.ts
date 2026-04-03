@@ -20,6 +20,7 @@ import { createHash } from 'crypto';
 import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 import { encrypt } from '@/lib/encryption';
 import { isNonCommitment } from '@/lib/signals/signal-processor';
+import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
 
 // ---------------------------------------------------------------------------
 // Clients
@@ -191,6 +192,10 @@ export async function extractFromConversation(
   userId: string,
   source_type: SourceType = 'conversation',
 ): Promise<ExtractionResult> {
+  if (await isOverDailyLimit(userId, 'extraction')) {
+    throw new Error('Daily extraction spend limit reached');
+  }
+
   const supabase = createServerClient();
   const anthropic = getAnthropicClient();
 
@@ -239,6 +244,14 @@ export async function extractFromConversation(
     temperature: 0.1 as any,
     system: systemPrompt,
     messages: [{ role: 'user', content: sanitizeForPrompt(text, 40000) }],
+  });
+
+  await trackApiCall({
+    userId,
+    model: 'claude-haiku-4-5-20251001',
+    inputTokens: response.usage?.input_tokens ?? 0,
+    outputTokens: response.usage?.output_tokens ?? 0,
+    callType: 'extraction',
   });
 
   const raw = response.content[0].type === 'text' ? response.content[0].text : '';

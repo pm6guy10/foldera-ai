@@ -218,30 +218,53 @@ describe('runAcceptanceGate', () => {
       error: null,
     }));
 
-    anthropicCreate.mockResolvedValue({ id: 'msg-1' });
     sendResendEmail.mockResolvedValue({ data: { id: 'email-1' }, error: null });
+    // Ensure the env-var canary passes by default in all tests
+    process.env.ANTHROPIC_API_KEY = 'sk-test-canary';
   });
 
-  it('records a failed api_credit_canary and sends the credit alert on 402', async () => {
-    anthropicCreate.mockRejectedValue({ status: 402, message: 'credit balance is too low' });
-
+  it('passes api_credit_canary when ANTHROPIC_API_KEY is set', async () => {
     const { runAcceptanceGate } = await import('../acceptance-gate');
     const result = await runAcceptanceGate();
 
-    expect(result.ok).toBe(false);
     expect(result.checks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           check: 'api_credit_canary',
-          pass: false,
+          pass: true,
+          detail: 'ANTHROPIC_API_KEY is set',
         }),
       ]),
     );
-    expect(sendResendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        subject: 'Foldera: API credits may be exhausted',
-      }),
-    );
+  });
+
+  it('fails api_credit_canary and sends alert when ANTHROPIC_API_KEY is missing', async () => {
+    const savedKey = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      const { runAcceptanceGate } = await import('../acceptance-gate');
+      const result = await runAcceptanceGate();
+
+      expect(result.ok).toBe(false);
+      expect(result.checks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            check: 'api_credit_canary',
+            pass: false,
+            detail: 'ANTHROPIC_API_KEY is missing or empty',
+          }),
+        ]),
+      );
+      expect(sendResendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subject: 'Foldera: API credits may be exhausted',
+        }),
+      );
+    } finally {
+      if (savedKey !== undefined) {
+        process.env.ANTHROPIC_API_KEY = savedKey;
+      }
+    }
   });
 
   it('fails NON_OWNER_DEPTH when only owner and synthetic test token users are connected', async () => {

@@ -1,7 +1,7 @@
 import { createServerClient } from '@/lib/db/client';
 import Anthropic from '@anthropic-ai/sdk';
 import { decryptWithStatus } from '@/lib/encryption';
-import { isOverDailyLimit } from '@/lib/utils/api-tracker';
+import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
 
 /** CE-5: at least two goal keywords appear in the same decrypted signal snippet (exported for tests). */
 export function signalReinforcesGoalKeywords(keywords: string[], plaintextsLower: string[]): boolean {
@@ -82,6 +82,14 @@ ${signalText}
 
 Rewrite the goal text to include specific entity names (people, organizations, job titles, claim numbers, dates) found in the signals. Keep the core intent identical. Add parenthetical context with the entities. Do not add information not present in the signals. Return ONLY the rewritten goal text, nothing else.`
         }]
+      });
+
+      await trackApiCall({
+        userId,
+        model: 'claude-haiku-4-5-20251001',
+        inputTokens: response.usage?.input_tokens ?? 0,
+        outputTokens: response.usage?.output_tokens ?? 0,
+        callType: 'goal_refresh',
       });
 
       const enriched = response.content[0]?.type === 'text' ? response.content[0].text.trim() : null;

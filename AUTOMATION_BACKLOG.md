@@ -644,6 +644,13 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - **Leaked password protection**: Requires Supabase dashboard toggle — noted for manual action.
 - Migration file: `supabase/migrations/20260328000001_security_and_perf_fixes.sql` (all applied to production).
 
+### DONE (2026-04-03) — Four Tier 1 credit drain bugs fixed
+
+- **Bug 1 — `checkApiCreditCanary` live Haiku call** — `lib/cron/acceptance-gate.ts`: replaced `anthropic.messages.create(...)` with a `process.env.ANTHROPIC_API_KEY` presence check. Removed unused `@anthropic-ai/sdk` import. Alert still fires (via `sendApiCreditAlert`) when key is absent. Test updated to use env-var stubbing. **288 invisible Anthropic calls/day via UptimeRobot → 0**.
+- **Bug 2 — `extractFromConversation` zero spend tracking** — `lib/extraction/conversation-extractor.ts`: added `isOverDailyLimit(userId, 'extraction')` guard at function entry (before any DB writes) and `trackApiCall(...)` after `messages.create` response. Import added.
+- **Bug 3 — `DAILY_SPEND_SKIP_INSIGHT_USD = 0.5` stale threshold** — `lib/briefing/insight-scan.ts`: changed to `0.04` so insight scan self-skips when daily spend approaches the `$0.05` cap. Default mock in `insight-scan.test.ts` updated to `0.01`; `threshold_usd` assertion updated to `0.04`.
+- **Bug 4 — `goal-refresh.ts` reads cap but never tracks** — `lib/cron/goal-refresh.ts`: added `trackApiCall` import and call inside `refreshGoalContext()` per-goal loop immediately after `anthropic.messages.create`.
+
 ### OPEN (normalized 2026-04-04 — unresolved only)
 
 **Closed agent rows** (see DONE bullets above): **AZ-01** (2026-04-04), **AZ-05** (2026-04-04 evidence + AZ-24 follow-up), **AZ-06, AZ-07, AZ-10, AZ-12, AZ-13, AZ-15, AZ-20, AZ-22** (CE-1/3/4/5/6 shipped; **CE-2** burn module 2026-04-04).

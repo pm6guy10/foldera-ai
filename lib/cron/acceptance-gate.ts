@@ -16,7 +16,6 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import Anthropic from '@anthropic-ai/sdk';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { renderPlaintextEmailHtml, sendResendEmail } from '@/lib/email/resend';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
@@ -155,36 +154,19 @@ async function sendApiCreditAlert(detail: string): Promise<void> {
 }
 
 export async function checkApiCreditCanary(): Promise<CheckResult> {
-  try {
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1,
-      messages: [{ role: 'user', content: '1' }],
-    });
-
-    return { check: 'api_credit_canary', pass: true, detail: 'Minimal Anthropic canary succeeded' };
-  } catch (err: any) {
-    const status = err?.status ?? err?.statusCode ?? null;
-    const detail = typeof err?.message === 'string' ? err.message : 'Unknown Anthropic canary failure';
-
-    if (status === 400 || status === 402) {
-      try {
-        await sendApiCreditAlert(detail);
-      } catch (alertErr: any) {
-        console.error(JSON.stringify({
-          event: 'api_credit_canary_alert_failed',
-          error: alertErr.message,
-        }));
-      }
-    }
-
-    return {
-      check: 'api_credit_canary',
-      pass: false,
-      detail: status ? `Anthropic canary failed (${status}): ${detail}` : detail,
-    };
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (key && key.trim().length > 0) {
+    return { check: 'api_credit_canary', pass: true, detail: 'ANTHROPIC_API_KEY is set' };
   }
+  try {
+    await sendApiCreditAlert('ANTHROPIC_API_KEY is not configured');
+  } catch (alertErr: any) {
+    console.error(JSON.stringify({
+      event: 'api_credit_canary_alert_failed',
+      error: alertErr.message,
+    }));
+  }
+  return { check: 'api_credit_canary', pass: false, detail: 'ANTHROPIC_API_KEY is missing or empty' };
 }
 
 // ---------------------------------------------------------------------------

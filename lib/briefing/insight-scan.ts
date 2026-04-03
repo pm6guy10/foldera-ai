@@ -11,7 +11,7 @@ import { getDailySpend, trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 const INSIGHT_MODEL = 'claude-haiku-4-5-20251001';
-const DAILY_SPEND_SKIP_INSIGHT_USD = 0.5;
+const DAILY_SPEND_SKIP_INSIGHT_USD = 0.04;
 
 export interface InsightCandidate {
   id: string;
