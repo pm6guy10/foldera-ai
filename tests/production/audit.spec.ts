@@ -315,6 +315,23 @@ test.describe('Section 3 — Authenticated dashboard audit', () => {
 
 // ── SECTION 4: API health check ───────────────────────────────────────────
 
+async function getWithRetry(
+  get: (path: string) => Promise<{ status: () => number; json: () => Promise<unknown> }>,
+  path: string,
+  attempts = 3,
+) {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await get(path);
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 test.describe('Section 4 — API health check', () => {
   interface ApiCheck {
     method: 'GET';
@@ -364,7 +381,7 @@ test.describe('Section 4 — API health check', () => {
 
       try {
         const start = Date.now();
-        const res = await ctx.request.get(check.path);
+        const res = await getWithRetry((p) => ctx.request.get(p), check.path);
         const elapsed = Date.now() - start;
         const status = res.status();
 

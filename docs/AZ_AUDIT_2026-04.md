@@ -1,7 +1,7 @@
 # Foldera A–Z audit — April 2026
 
 **Audit date:** 2026-04-03  
-**Verification refresh:** 2026-04-03 (A+ remediation session)  
+**Verification refresh:** 2026-04-04 (code excellence baseline session)  
 **Definition of A+:** Aligned with [FOLDERA_PRODUCT_SPEC.md](../FOLDERA_PRODUCT_SPEC.md), green lint/build/unit/CI/prod tests, production logs free of user-private payload dumps ([CLAUDE.md](../CLAUDE.md)), operator vs agent ownership explicit for GTM gates ([REVENUE_PROOF.md](../REVENUE_PROOF.md)).
 
 **Related:** [AUTOMATION_BACKLOG.md](../AUTOMATION_BACKLOG.md) (OPEN = unresolved only), [FOLDERA_MASTER_AUDIT.md](../FOLDERA_MASTER_AUDIT.md), [docs/TECHNICAL_AUDIT_AUTONOMOUS_LOOP.md](./TECHNICAL_AUDIT_AUTONOMOUS_LOOP.md).
@@ -13,12 +13,12 @@
 | Check | Result |
 |-------|--------|
 | `npm run lint` | Pass (flat ESLint, `.claude/**` ignored) |
-| `npx vitest run --exclude ".claude/worktrees/**"` | Pass — **618** tests (incl. CE-3–CE-6 + goal-decay keyword tests) |
+| `npx vitest run --exclude ".claude/worktrees/**"` | Pass — **623** tests (CE-2 burn module + `required-env`; CE-3–CE-6 + goal-decay) |
 | `npm run build` | Pass |
 | `npm run test:ci:e2e` | Pass — **41** tests (`PLAYWRIGHT_WEB_PORT=3011`, `NEXTAUTH_URL=http://127.0.0.1:3011`; `/api/health` `x-request-id`) |
 | `npm run test:prod` | Pass — **61** tests (`playwright.prod.config.ts`) |
 
-**Not run in-session:** Sentry issue triage (needs `SENTRY_AUTH_TOKEN`), Supabase advisor, `npm audit` fix PRs, weekly `npm run test:audit` (optional parity with `.github/workflows/weekly-audit.yml`).
+**Not run in-session:** Sentry issue triage (needs `SENTRY_AUTH_TOKEN`), Supabase advisor. **`npm audit`:** `npm audit fix` applied (transitive bumps); **Next.js 14.x** remains flagged high until a planned major upgrade (`npm audit --omit=dev` — do not `audit fix --force` in routine sessions). Weekly `npm run test:audit` optional parity with `.github/workflows/weekly-audit.yml`.
 
 ---
 
@@ -44,7 +44,7 @@
 | D | Data / DB / migrations | **Yellow** | Migrations in repo; `docs/SUPABASE_MIGRATIONS.md`; production applies operator-timed | `supabase/migrations/` | Agent |
 | E | Email / deliverability | **Green** | Resend + Gmail/Outlook send path; `sent_via` on execute | `lib/email/resend.ts`, `execute-action.ts` | Agent |
 | F | Frontend / UX / FLOW | **Yellow** | Prod smoke + `/dashboard/briefings`; FLOW screenshot sweep open | `app/dashboard/briefings` | Operator + Agent |
-| G | Generator / pipeline | **Yellow** | Large modules; conviction **CE-3–CE-6** shipped; **CE-2** burn partial | `conviction-engine.ts`, `goal-refresh.ts` | Agent |
+| G | Generator / pipeline | **Yellow** | Large modules; conviction **CE-2–CE-6** shipped; **CE-2** burn in `monthly-burn-inference.ts` | `conviction-engine.ts`, `monthly-burn-inference.ts`, `goal-refresh.ts` | Agent |
 | H | Health / uptime | **Yellow** | `/api/health` + post–daily-brief alert; **external** UptimeRobot still open | `cron-health-alert.ts`, backlog AZ-08 | Operator |
 | I | Integrations OAuth | **Green** | `user_tokens` SSoT; reconnect UX | `lib/auth/user-tokens.ts` | Agent |
 | J | Jobs / background | **Green** | nightly-ops, signal-drain workflow | `.github/workflows/signal-drain.yml` | Agent |

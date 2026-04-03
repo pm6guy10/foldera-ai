@@ -125,15 +125,15 @@ async function sendReconnectAlert(userId: string, provider: string): Promise<voi
 // ---------------------------------------------------------------------------
 // DEFENSE 2 — COMMITMENT CEILING
 // If any user exceeds 150 active commitments, suppress oldest beyond 150.
+// Prefer DB RPC `apply_commitment_ceiling` (single atomic UPDATE) when migration is applied;
+// fall back to chunked client updates if the function is missing (pre-migration deploys).
 // ---------------------------------------------------------------------------
 
-async function defense2CommitmentCeiling(): Promise<DefenseResult> {
+async function defense2CommitmentCeilingChunked(): Promise<DefenseResult> {
   const supabase = createServerClient();
   const CEILING = 150;
   const UPDATE_BATCH_SIZE = 200;
 
-  // Get user IDs directly from tkg_commitments, not user_tokens.
-  // Users with no token row were previously skipped, letting commitments accumulate to 871+.
   const { data: commitmentUserRows, error: commitmentUserError } = await supabase
     .from('tkg_commitments')
     .select('user_id')
@@ -142,7 +142,6 @@ async function defense2CommitmentCeiling(): Promise<DefenseResult> {
     throw commitmentUserError;
   }
 
-  // Count per user in-memory from the fetched rows
   const perUser = new Map<string, number>();
   for (const row of commitmentUserRows ?? []) {
     const uid = row.user_id as string;
@@ -156,7 +155,6 @@ async function defense2CommitmentCeiling(): Promise<DefenseResult> {
     if (count <= CEILING) continue;
 
     const excess = count - CEILING;
-    // Get IDs of oldest active commitments beyond ceiling
     const { data: oldestRows } = await supabase
       .from('tkg_commitments')
       .select('id')
@@ -188,8 +186,54 @@ async function defense2CommitmentCeiling(): Promise<DefenseResult> {
   return {
     defense: 'commitment_ceiling',
     ok: true,
-    details: { users_checked: perUser.size, suppressions },
+    details: { users_checked: perUser.size, suppressions, mode: 'chunked_client' },
   };
+}
+
+async function defense2CommitmentCeiling(): Promise<DefenseResult> {
+  const supabase = createServerClient();
+  const CEILING = 150;
+
+  const { data, error } = await supabase.rpc('apply_commitment_ceiling', { p_ceiling: CEILING });
+
+  const rpcMissing =
+    error &&
+    (error.code === 'PGRST202'
+      || error.code === '42883'
+      || String(error.message ?? '').toLowerCase().includes('could not find'));
+
+  if (!error && data != null && typeof data === 'object' && 'suppressed_count' in data) {
+    const suppressedCount = Number((data as { suppressed_count?: unknown }).suppressed_count ?? 0);
+    console.log(
+      JSON.stringify({
+        event: 'self_heal_defense',
+        defense: 'commitment_ceiling',
+        suppressed_count: suppressedCount,
+        mode: 'atomic_rpc',
+      }),
+    );
+    return {
+      defense: 'commitment_ceiling',
+      ok: true,
+      details: { suppressed_count: suppressedCount, suppressions: [], mode: 'atomic_rpc' },
+    };
+  }
+
+  if (rpcMissing) {
+    console.log(
+      JSON.stringify({
+        event: 'self_heal_defense',
+        defense: 'commitment_ceiling',
+        note: 'apply_commitment_ceiling RPC unavailable; using chunked client path',
+        rpc_error: error?.message,
+      }),
+    );
+    return defense2CommitmentCeilingChunked();
+  }
+
+  if (error) throw error;
+
+  return defense2CommitmentCeilingChunked();
 }
 
 export async function runCommitmentCeilingDefense(): Promise<DefenseResult> {

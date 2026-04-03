@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { estimateMonthlyBurnFromSignalAmounts } from '../conviction-engine';
+import { estimateMonthlyBurnFromSignalAmounts } from '../monthly-burn-inference';
 
 describe('estimateMonthlyBurnFromSignalAmounts (CE-2 recurring proxy)', () => {
   it('returns null when fewer than two qualifying amounts and no recurring days', () => {
@@ -31,5 +31,23 @@ describe('estimateMonthlyBurnFromSignalAmounts (CE-2 recurring proxy)', () => {
         { amounts: [20], dateKey: '2026-01-02' },
       ]),
     ).toBeNull();
+  });
+
+  it('uses 3+ occurrences of same rounded amount on one day as weak recurring (CE-2)', () => {
+    const burn = estimateMonthlyBurnFromSignalAmounts([
+      { amounts: [450], dateKey: '2026-01-10' },
+      { amounts: [450], dateKey: '2026-01-10' },
+      { amounts: [450], dateKey: '2026-01-10' },
+    ]);
+    expect(burn).toBe(450);
+  });
+
+  it('prefers strong recurring (2+ days) over weak same-day repetition', () => {
+    const burn = estimateMonthlyBurnFromSignalAmounts([
+      { amounts: [300], dateKey: '2026-01-01' },
+      { amounts: [300], dateKey: '2026-01-02' },
+      { amounts: [900, 900, 900], dateKey: '2026-01-03' },
+    ]);
+    expect(burn).toBe(300);
   });
 });

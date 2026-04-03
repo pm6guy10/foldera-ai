@@ -23,6 +23,7 @@
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus } from '@/lib/encryption';
 import { daysMs } from '@/lib/config/constants';
+import { estimateMonthlyBurnFromSignalAmounts } from '@/lib/briefing/monthly-burn-inference';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -82,43 +83,8 @@ export interface ConvictionDecision {
 const BURN_DOLLAR_PATTERN = /\$\s?([\d,]+(?:\.\d{2})?)/g;
 const BURN_KEYWORDS = /rent|mortgage|utilities|insurance|groceries|monthly|bill|payment|subscription/i;
 
-/**
- * CE-2: Prefer dollar amounts that appear on 2+ distinct days (proxy for recurring bills)
- * before falling back to the legacy “top five amounts” heuristic.
- * Exported for unit tests.
- */
-export function estimateMonthlyBurnFromSignalAmounts(
-  entries: Array<{ amounts: number[]; dateKey: string }>,
-): number | null {
-  const amountToDays = new Map<number, Set<string>>();
-  const pool: number[] = [];
-
-  for (const e of entries) {
-    for (const amount of e.amounts) {
-      if (amount < 50 || amount > 5000) continue;
-      const key = Math.round(amount);
-      pool.push(amount);
-      if (e.dateKey) {
-        if (!amountToDays.has(key)) amountToDays.set(key, new Set());
-        amountToDays.get(key)!.add(e.dateKey);
-      }
-    }
-  }
-
-  const recurringKeys = [...amountToDays.entries()]
-    .filter(([, days]) => days.size >= 2)
-    .map(([amt]) => amt)
-    .sort((a, b) => b - a);
-
-  if (recurringKeys.length > 0) {
-    const top = recurringKeys.slice(0, 5);
-    return Math.round(top.reduce((s, n) => s + n, 0));
-  }
-
-  if (pool.length < 2) return null;
-  const sorted = [...pool].sort((a, b) => b - a);
-  return Math.round(sorted.slice(0, 5).reduce((s, n) => s + n, 0));
-}
+/** Re-export for tests and callers that imported from conviction-engine. */
+export { estimateMonthlyBurnFromSignalAmounts } from '@/lib/briefing/monthly-burn-inference';
 
 /**
  * Infer monthly burn from financial signals.

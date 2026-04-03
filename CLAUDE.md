@@ -76,6 +76,8 @@ Optional recovery variable:
 
 - `ENCRYPTION_KEY_LEGACY` only when old ciphertext or OAuth tokens still depend on a pre-rotation key.
 
+**Production startup guard:** `instrumentation.ts` calls `assertProductionCoreEnvOrThrow()` when `VERCEL_ENV=production`. It fails fast if any of these are missing: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `NEXTAUTH_SECRET` (`lib/config/required-env.ts`). Other Vercel vars (OAuth, Stripe, Resend, cron, etc.) are still validated at the routes that need them.
+
 ## Cron Schedule
 
 `vercel.json` is the current source of truth. **Vercel Hobby allows 2 scheduled cron jobs** — this project registers exactly **2** paths (`nightly-ops`, `daily-brief`). Platform health + Resend alert runs from **`daily-brief`** via `runPlatformHealthAlert()` in `lib/cron/cron-health-alert.ts` (fire-and-forget in a `finally` block after each authenticated cron invocation). **`GET /api/cron/health-check`** remains for manual or external triggers (same `CRON_SECRET` auth) but is **not** a Vercel scheduled cron.

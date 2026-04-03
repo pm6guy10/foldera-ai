@@ -1,5 +1,8 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { assertProductionCoreEnvOrThrow } = await import('@/lib/config/required-env');
+    assertProductionCoreEnvOrThrow();
+
     const { init } = await import('@sentry/nextjs');
     init({
       dsn: process.env.SENTRY_DSN,

@@ -1,5 +1,14 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-04) — Code excellence baseline (agent slice)
+
+- **AZ-01 CLOSED** — Harness documented: [`docs/LOCAL_E2E_AND_PROD_TESTS.md`](docs/LOCAL_E2E_AND_PROD_TESTS.md), root [`playwright.config.ts`](playwright.config.ts) `testIgnore`, `npm run test:local:e2e`, merge gate `npm run test:ci:e2e`, prod `npm run test:prod`.
+- **AZ-05 deferred (operator evidence)** — Agent cannot run prod SQL from workspace; canonical query: [`scripts/az05-action-type-distribution.sql`](scripts/az05-action-type-distribution.sql). **Close AZ-05** when operator pastes 14d `action_type` distribution into backlog or `SESSION_HISTORY.md`.
+- **CE-2** — [`lib/briefing/monthly-burn-inference.ts`](lib/briefing/monthly-burn-inference.ts) (extracted slice) + weak recurring (3+ occurrences); tests in [`conviction-engine-burn.test.ts`](lib/briefing/__tests__/conviction-engine-burn.test.ts).
+- **Tier 2 hygiene** — `npm audit fix` applied (transitive); **Next 14.x** high advisories remain until planned major upgrade (documented in [`docs/AZ_AUDIT_2026-04.md`](docs/AZ_AUDIT_2026-04.md)); Section 4 [`audit.spec.ts`](tests/production/audit.spec.ts) GET retry.
+- **Tier 3 runbook P0s** — `assertProductionCoreEnvOrThrow` in [`instrumentation.ts`](instrumentation.ts); atomic commitment ceiling [`supabase/migrations/20260404000001_apply_commitment_ceiling.sql`](supabase/migrations/20260404000001_apply_commitment_ceiling.sql) + [`lib/cron/self-heal.ts`](lib/cron/self-heal.ts) RPC-first with chunked fallback; legacy decrypt log in [`lib/encryption.ts`](lib/encryption.ts).
+- **Tier 4** — First vertical slice: **monthly burn** extracted from `conviction-engine.ts` (scorer/generator deeper splits deferred).
+
 ### DONE (2026-04-03) — A+ remediation plan (full agent slice)
 
 - **Vercel Hobby 2 crons** — [`vercel.json`](vercel.json): removed scheduled **`/api/cron/health-check`**; [`lib/cron/cron-health-alert.ts`](../lib/cron/cron-health-alert.ts) **`runPlatformHealthAlert()`**; wired from [`app/api/cron/daily-brief/route.ts`](../app/api/cron/daily-brief/route.ts) `finally` + refactored [`app/api/cron/health-check/route.ts`](../app/api/cron/health-check/route.ts).
@@ -619,29 +628,27 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - **Leaked password protection**: Requires Supabase dashboard toggle — noted for manual action.
 - Migration file: `supabase/migrations/20260328000001_security_and_perf_fixes.sql` (all applied to production).
 
-### OPEN (normalized 2026-04-03 — unresolved only)
+### OPEN (normalized 2026-04-04 — unresolved only)
 
-**Closed agent rows** (see DONE **A+ remediation plan** above): **AZ-06, AZ-07, AZ-10, AZ-12, AZ-13, AZ-15, AZ-20, AZ-22** (CE-1/3/4/5/6 shipped; CE-2 recurring burn **partial**).
+**Closed agent rows** (see DONE bullets above): **AZ-01** (2026-04-04), **AZ-06, AZ-07, AZ-10, AZ-12, AZ-13, AZ-15, AZ-20, AZ-22** (CE-1/3/4/5/6 shipped; **CE-2** burn module 2026-04-04).
 
 Single prioritized table. Full matrix: [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md). Local vs prod: [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md). **Operator checklist** (Gate 4, Stripe, non-owner, UptimeRobot, etc.): [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).
 
 | Rank | ID | Title | Owner | Spec § | Evidence / notes | Next action |
 |------|-----|--------|-------|--------|------------------|-------------|
-| 1 | **AZ-01** | Playwright harness clarity | Agent | §1.1 QA | Root [`playwright.config.ts`](playwright.config.ts) **`testIgnore`** excludes `tests/production/**` + `tests/audit/**`; prod cookies ≠ localhost | Doc + **`npm run test:local:e2e`**; merge gate **`npm run test:ci:e2e`**; prod auth **`npm run test:prod`** |
-| 2 | **AZ-02** | Gate 4 live receipt (`sent_via` + new row) | Operator | REVENUE_PROOF §4 | Historical Resend row only | Approve real `send_message`; log id + `sent_via` in REVENUE_PROOF |
-| 3 | **AZ-03** | Approve → mailbox delivery proof | Operator | §1.1 | Overlaps AZ-02 | Same session as AZ-02 |
-| 4 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` | Second Google user: connect, brief, `tkg_actions` row |
-| 5 | **AZ-05** | Organic `action_type` distribution | Agent | §1.1 | SQL template in DONE header | Run in Supabase when connected; if `do_nothing` skews, open generator/scorer session |
-| 6 | **AZ-08** | UptimeRobot on `/api/health` | Operator | §1.2 | External uptime | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
-| 7 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual | Key routes + 404 |
-| 8 | **AZ-11** | Stranger onboarding (live OAuth) | Operator | §1.3 | Manual | Recorded flow optional |
-| 9 | **AZ-14** | `tests/production/auth-state.json` refresh | Operator | test:prod | ~30-day JWT | `npm run test:prod:setup` |
-| 10 | **AZ-16** | Stripe checkout + webhook | Operator | §1.4 | — | Verify `user_subscriptions` |
-| 11 | **AZ-17** | Supabase leaked-password protection | Operator | Security | Pro-gated | Dashboard toggle |
-| 12 | **AZ-18** | 3 consecutive useful cron directives | Operator | §1.1 | Quality bar | Monitor nightly email |
-| 13 | **AZ-19** | Owner account: scopes + focus | Operator | Product | — | Reconnect OAuth; UI focus |
-| 14 | **AZ-21** | Supabase backups / PITR | Operator | DR | — | Dashboard per plan |
-| — | **CE-2** | Recurring financial burn (beyond 2-day proxy) | Agent | CE section | Partial | Richer bank/financial recurrence patterns when data allows |
+| 1 | **AZ-02** | Gate 4 live receipt (`sent_via` + new row) | Operator | REVENUE_PROOF §4 | Historical Resend row only | Approve real `send_message`; log id + `sent_via` in REVENUE_PROOF |
+| 2 | **AZ-03** | Approve → mailbox delivery proof | Operator | §1.1 | Overlaps AZ-02 | Same session as AZ-02 |
+| 3 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` | Second Google user: connect, brief, `tkg_actions` row |
+| 4 | **AZ-05** | Organic `action_type` distribution | Operator + Agent | §1.1 | **Deferred 2026-04-04:** agent no DB creds | Operator runs [`scripts/az05-action-type-distribution.sql`](scripts/az05-action-type-distribution.sql); paste results; if `do_nothing` skews, open generator/scorer session |
+| 5 | **AZ-08** | UptimeRobot on `/api/health` | Operator | §1.2 | External uptime | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
+| 6 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual | Key routes + 404 |
+| 7 | **AZ-11** | Stranger onboarding (live OAuth) | Operator | §1.3 | Manual | Recorded flow optional |
+| 8 | **AZ-14** | `tests/production/auth-state.json` refresh | Operator | test:prod | ~30-day JWT | `npm run test:prod:setup` |
+| 9 | **AZ-16** | Stripe checkout + webhook | Operator | §1.4 | — | Verify `user_subscriptions` |
+| 10 | **AZ-17** | Supabase leaked-password protection | Operator | Security | Pro-gated | Dashboard toggle |
+| 11 | **AZ-18** | 3 consecutive useful cron directives | Operator | §1.1 | Quality bar | Monitor nightly email |
+| 12 | **AZ-19** | Owner account: scopes + focus | Operator | Product | — | Reconnect OAuth; UI focus |
+| 13 | **AZ-21** | Supabase backups / PITR | Operator | DR | — | Dashboard per plan |
 | — | — | Rate limiting try/webhook | — | — | **DONE** 2026-03-31 | — |
 | — | — | Signal dedup Gmail+Outlook | — | — | **DONE** | — |
 | — | — | Email double-send idempotency | — | — | **DONE** 2026-03-31 | — |

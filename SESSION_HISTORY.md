@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-04 — AUDIT: **Code excellence baseline** — Tier 0 snapshot in `docs/AZ_AUDIT_2026-04.md` (**623** vitest, **41** `test:ci:e2e`, **61** `test:prod`); **AZ-01** closed; **AZ-05** operator-deferred + `scripts/az05-action-type-distribution.sql`; **CE-2** `lib/briefing/monthly-burn-inference.ts` + weak recurring + tests; `npm audit fix` (Next 14 high advisories documented, no `--force`); production core env `assertProductionCoreEnvOrThrow` in `instrumentation.ts`; `apply_commitment_ceiling` RPC migration + self-heal RPC-first/fallback; legacy decrypt structured log; audit Section 4 GET retry; docs: `AUTOMATION_BACKLOG`, `FOLDERA_PRODUCT_SPEC`, `CLAUDE.md`.
+  MODE: AUDIT
+  Commit hash(es): (this session)
+  Files changed: `lib/briefing/monthly-burn-inference.ts`, `lib/briefing/conviction-engine.ts`, `lib/briefing/__tests__/conviction-engine-burn.test.ts`, `lib/config/required-env.ts`, `lib/config/__tests__/required-env.test.ts`, `lib/encryption.ts`, `lib/cron/self-heal.ts`, `instrumentation.ts`, `supabase/migrations/20260404000001_apply_commitment_ceiling.sql`, `scripts/az05-action-type-distribution.sql`, `tests/production/audit.spec.ts`, `docs/AZ_AUDIT_2026-04.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `CLAUDE.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"` (623); `npm run build`; `npm run test:ci:e2e` (41); `npm run test:prod` (61)
+  Any unresolved issues: **AZ-05** needs operator SQL paste; **apply_commitment_ceiling** migration must be applied to prod Postgres (`supabase db push` or manual); **Next.js** high `npm audit` rows until planned major upgrade.
+
 - 2026-04-03 — AUDIT: **A+ remediation plan (full implement)** — **618** vitest; **41** `test:ci:e2e`; **61** `test:prod`; `docs/AZ_AUDIT_2026-04.md` refresh; **AUTOMATION_BACKLOG** OPEN = unresolved only + **MASTER_PUNCHLIST** operator pointer; **`vercel.json` 2 crons** + `lib/cron/cron-health-alert.ts` + `daily-brief` `finally`; conviction **CE-3–CE-6** + goal decay; **`npm run test:local:e2e`**; clickflow `domcontentloaded`; **FOLDERA_MASTER_AUDIT** / **FOLDERA_PRODUCT_SPEC** / **LOCAL_E2E** updates.
   MODE: AUDIT
   Commit hash(es): `9fad688`

@@ -20,6 +20,8 @@ const HEX_KEY_REGEX = /^[0-9a-f]{64}$/i;
 export interface DecryptResult {
   plaintext: string;
   usedFallback: boolean;
+  /** True when decryption succeeded using ENCRYPTION_KEY_LEGACY (never logged with key material). */
+  decryptedWithLegacyKey?: boolean;
 }
 
 function decodeKeyCandidates(raw: string, label: string): Buffer[] {
@@ -53,22 +55,29 @@ function getPrimaryEncryptionKey(): Buffer {
   return decodeKeyCandidates(raw, 'ENCRYPTION_KEY')[0];
 }
 
-function getDecryptionKeys(): Buffer[] {
-  const current = process.env.ENCRYPTION_KEY;
-  if (!current) throw new Error('ENCRYPTION_KEY env var is not set');
-
-  const keys: Buffer[] = [...decodeKeyCandidates(current, 'ENCRYPTION_KEY')];
-  const legacyRaw = process.env.ENCRYPTION_KEY_LEGACY;
-
-  if (legacyRaw) {
-    for (const entry of legacyRaw.split(/[,\r\n]+/).map((value) => value.trim()).filter(Boolean)) {
-      keys.push(...decodeKeyCandidates(entry, 'ENCRYPTION_KEY_LEGACY'));
-    }
+function tryDecryptBuffer(buf: Buffer, key: Buffer): string | null {
+  try {
+    const iv = buf.subarray(0, IV_BYTES);
+    const tag = buf.subarray(IV_BYTES, IV_BYTES + TAG_BYTES);
+    const encrypted = buf.subarray(IV_BYTES + TAG_BYTES);
+    const decipher = createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+  } catch {
+    return null;
   }
+}
 
-  return keys.filter(
-    (candidate, index) =>
-      keys.findIndex((other) => other.equals(candidate)) === index,
+let legacyDecryptLogEmitted = false;
+
+function emitLegacyDecryptLogOnce(): void {
+  if (legacyDecryptLogEmitted) return;
+  legacyDecryptLogEmitted = true;
+  console.log(
+    JSON.stringify({
+      event: 'encryption_decrypt_legacy_key_used',
+      note: 'ciphertext decrypted with ENCRYPTION_KEY_LEGACY; no secrets in this log',
+    }),
   );
 }
 
@@ -105,27 +114,28 @@ export function decryptWithStatus(ciphertext: string): DecryptResult {
       return { plaintext: ciphertext, usedFallback: true };
     }
 
-    for (const key of getDecryptionKeys()) {
-      try {
-        const iv        = buf.subarray(0, IV_BYTES);
-        const tag       = buf.subarray(IV_BYTES, IV_BYTES + TAG_BYTES);
-        const encrypted = buf.subarray(IV_BYTES + TAG_BYTES);
+    const current = process.env.ENCRYPTION_KEY;
+    if (!current) throw new Error('ENCRYPTION_KEY env var is not set');
+    for (const key of decodeKeyCandidates(current, 'ENCRYPTION_KEY')) {
+      const pt = tryDecryptBuffer(buf, key);
+      if (pt !== null) return { plaintext: pt, usedFallback: false };
+    }
 
-        const decipher = createDecipheriv(ALGORITHM, key, iv);
-        decipher.setAuthTag(tag);
-
-        return {
-          plaintext: Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8'),
-          usedFallback: false,
-        };
-      } catch {
-        continue;
+    const legacyRaw = process.env.ENCRYPTION_KEY_LEGACY;
+    if (legacyRaw) {
+      for (const entry of legacyRaw.split(/[,\r\n]+/).map((value) => value.trim()).filter(Boolean)) {
+        for (const key of decodeKeyCandidates(entry, 'ENCRYPTION_KEY_LEGACY')) {
+          const pt = tryDecryptBuffer(buf, key);
+          if (pt !== null) {
+            emitLegacyDecryptLogOnce();
+            return { plaintext: pt, usedFallback: false, decryptedWithLegacyKey: true };
+          }
+        }
       }
     }
 
     return { plaintext: ciphertext, usedFallback: true };
   } catch {
-    // Decryption failed — return raw value (pre-encryption legacy row)
     return { plaintext: ciphertext, usedFallback: true };
   }
 }
