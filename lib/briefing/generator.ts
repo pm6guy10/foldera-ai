@@ -325,7 +325,7 @@ interface RecentEntityActionRow {
   status: string | null;
 }
 
-interface SignalSnippet {
+export interface SignalSnippet {
   source: string;
   date: string;
   subject: string | null;
@@ -1183,6 +1183,8 @@ export interface StructuredContext {
   candidate_analysis: string;
   /** Per-entity bx_stats when available (discrepancy UUID entity, etc.). */
   entity_analysis: string | null;
+  /** Per-entity conversation state — last sent, last reply, SENT_AWAITING_REPLY flag. Null when no prior sent email found. */
+  entity_conversation_state: string | null;
 }
 
 type CausalMechanismClass =
@@ -1500,6 +1502,7 @@ function buildStructuredContext(
   competitionContext?: string | null,
   userEmails?: Set<string>,
   userPromptNames?: UserPromptNames,
+  entityConversationState?: string | null,
 ): StructuredContext {
   const names: UserPromptNames = userPromptNames ?? {
     user_full_name: 'the user',
@@ -1783,6 +1786,7 @@ function buildStructuredContext(
     insight_scan_winner: Boolean(winner.fromInsightScan),
     candidate_analysis: buildCandidateAnalysisBlock(winner),
     entity_analysis: buildEntityAnalysisBlock(winner.entityName, winner.entityBxStats),
+    entity_conversation_state: entityConversationState ?? null,
   };
 }
 
@@ -1855,6 +1859,116 @@ function buildRelationshipTimeline(
   }
 
   return `RELATIONSHIP_TIMELINE:\n${lines.join('\n')}`;
+}
+
+/**
+ * Build a per-entity conversation state block for the LLM prompt.
+ *
+ * Scans already-fetched signalEvidence (sent/received) for threads involving
+ * `entityName`, then supplements with recently approved send_message tkg_actions
+ * to cover Foldera-approved emails that haven't synced back into tkg_signals yet.
+ *
+ * Returns null when no outbound email to this entity is found in the last 30 days
+ * (nothing to report, no SENT_AWAITING_REPLY risk).
+ */
+export async function buildEntityConversationState(
+  userId: string,
+  entityName: string,
+  signalEvidence: SignalSnippet[],
+): Promise<string | null> {
+  const nameLower = entityName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+  const nameTokens = nameLower.split(/\s+/).filter((t) => t.length >= 3);
+  if (nameTokens.length === 0) return null;
+
+  const thirtyDaysAgo = Date.now() - daysMs(30);
+
+  // --- Step 1: scan signal evidence for sent/received emails involving this entity ---
+  type ThreadEvent = { date: string; dateMs: number; direction: 'sent' | 'received'; subject: string | null };
+  const events: ThreadEvent[] = [];
+
+  for (const s of signalEvidence) {
+    if (s.direction !== 'sent' && s.direction !== 'received') continue;
+    const dateMs = new Date(s.date).getTime();
+    if (isNaN(dateMs) || dateMs < thirtyDaysAgo) continue;
+    const authorLower = (s.author ?? '').toLowerCase();
+    const subjectLower = (s.subject ?? '').toLowerCase();
+    const snippetLower = s.snippet.toLowerCase();
+    const matches = nameTokens.some(
+      (t) => authorLower.includes(t) || subjectLower.includes(t) || snippetLower.includes(t),
+    );
+    if (!matches) continue;
+    events.push({ date: s.date, dateMs, direction: s.direction, subject: s.subject ?? null });
+  }
+
+  // --- Step 2: supplement with approved send_message tkg_actions (sync-lag coverage) ---
+  try {
+    const supabase = createServerClient();
+    const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
+    const { data: actionRows } = await supabase
+      .from('tkg_actions')
+      .select('directive_text, generated_at')
+      .eq('user_id', userId)
+      .eq('action_type', 'send_message')
+      .in('status', ['approved', 'executed'])
+      .gte('generated_at', fourteenDaysAgo)
+      .order('generated_at', { ascending: false })
+      .limit(10);
+
+    for (const row of actionRows ?? []) {
+      const text = (row.directive_text as string ?? '').toLowerCase();
+      const matches = nameTokens.some((t) => text.includes(t));
+      if (!matches) continue;
+      const dateMs = new Date(row.generated_at as string).getTime();
+      if (isNaN(dateMs)) continue;
+      const date = new Date(row.generated_at as string).toISOString().slice(0, 10);
+      // Extract a rough subject from the directive_text first non-empty line
+      const firstLine = (row.directive_text as string ?? '')
+        .split('\n')
+        .map((l) => l.trim())
+        .find((l) => l.length > 0)
+        ?.slice(0, 80) ?? null;
+      // Only add if not already covered by signal evidence on the same date
+      const alreadyCovered = events.some(
+        (e) => e.direction === 'sent' && e.date.slice(0, 10) === date,
+      );
+      if (!alreadyCovered) {
+        events.push({ date, dateMs, direction: 'sent', subject: firstLine });
+      }
+    }
+  } catch {
+    // Non-blocking — continue with signal-evidence-only data
+  }
+
+  if (events.length === 0) return null;
+
+  // Sort chronologically
+  events.sort((a, b) => a.dateMs - b.dateMs);
+
+  // Find the most recent sent email
+  const sentEvents = events.filter((e) => e.direction === 'sent');
+  if (sentEvents.length === 0) return null;
+  const lastSent = sentEvents[sentEvents.length - 1];
+
+  // Find the first received email after lastSent
+  const lastReply = events.find(
+    (e) => e.direction === 'received' && e.dateMs > lastSent.dateMs,
+  ) ?? null;
+
+  const daysSinceLastSent = Math.round((Date.now() - lastSent.dateMs) / (1000 * 60 * 60 * 24));
+  const awaitingReply = !lastReply;
+
+  const subjectLine = lastSent.subject ? ` — "${lastSent.subject}"` : '';
+  const replyLine = lastReply
+    ? `Last reply received: ${lastReply.date.slice(0, 10)}${lastReply.subject ? ` — "${lastReply.subject}"` : ''}`
+    : `Last reply received: No reply in signals`;
+
+  return (
+    `CONVERSATION_STATE with ${entityName}:\n` +
+    `- Last email sent: ${lastSent.date.slice(0, 10)}${subjectLine}\n` +
+    `- ${replyLine}\n` +
+    `- Days since last sent: ${daysSinceLastSent}\n` +
+    `- SENT_AWAITING_REPLY: ${awaitingReply}`
+  );
 }
 
 /**
@@ -2172,6 +2286,16 @@ export function buildPromptFromStructuredContext(
       );
     }
 
+    if (ctx.entity_conversation_state) {
+      m.push(ctx.entity_conversation_state);
+      m.push(
+        `CONVERSATION_STATE_RULE: If SENT_AWAITING_REPLY is true, you MUST identify a genuinely ` +
+        `new angle (new information, escalated urgency, or a different specific ask) not covered ` +
+        `in the prior email shown above. If you cannot identify one from the provided signals, ` +
+        `output do_nothing with artifact_type=do_nothing and reason='waiting_for_reply'.`,
+      );
+    }
+
     if (ctx.recent_action_history_7d.length > 0) {
       m.push(`RECENT_ACTIONS_7D:\n${ctx.recent_action_history_7d.map((a) => `- ${a}`).join('\n')}`);
     }
@@ -2410,6 +2534,16 @@ export function buildPromptFromStructuredContext(
     sections.push(
       `ALREADY_SENT_14D (emails the user has already sent — do not suggest these):\n` +
       ctx.already_sent_14d.map((s) => `- ${s}`).join('\n'),
+    );
+  }
+
+  if (ctx.entity_conversation_state) {
+    sections.push(ctx.entity_conversation_state);
+    sections.push(
+      `CONVERSATION_STATE_RULE: If SENT_AWAITING_REPLY is true, you MUST identify a genuinely ` +
+      `new angle (new information, escalated urgency, or a different specific ask) not covered ` +
+      `in the prior email shown above. If you cannot identify one from the provided signals, ` +
+      `output do_nothing with artifact_type=do_nothing and reason='waiting_for_reply'.`,
     );
   }
 
@@ -5350,7 +5484,7 @@ export async function generateDirective(
 
     const supabase = createServerClient();
 
-    const [userGoalsResult, goalGapResult, alreadySentResult, behavioralHistoryResult] = await Promise.allSettled([
+    const [userGoalsResult, goalGapResult, alreadySentResult, behavioralHistoryResult, approvedActionsResult] = await Promise.allSettled([
       // Goals
       supabase
         .from('tkg_goals')
@@ -5361,7 +5495,7 @@ export async function generateDirective(
         .limit(10),
       // Goal-gap analysis
       buildGoalGapAnalysis(userId),
-      // Sent mail 14d
+      // Sent mail 14d (from tkg_signals email_sent)
       (async (): Promise<string[]> => {
         const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
         const { data: sentRows } = await supabase
@@ -5406,6 +5540,31 @@ export async function generateDirective(
           })
           .join('\n\n');
       })(),
+      // Approved send_message tkg_actions 14d — supplements alreadySent to close sync-lag gap
+      // (Foldera-approved emails may not have synced back into tkg_signals yet)
+      (async (): Promise<string[]> => {
+        const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
+        const { data: actionRows } = await supabase
+          .from('tkg_actions')
+          .select('directive_text, generated_at')
+          .eq('user_id', userId)
+          .eq('action_type', 'send_message')
+          .in('status', ['approved', 'executed'])
+          .gte('generated_at', fourteenDaysAgo)
+          .order('generated_at', { ascending: false })
+          .limit(10);
+        const lines: string[] = [];
+        for (const row of actionRows ?? []) {
+          const date = new Date(row.generated_at as string).toISOString().slice(0, 10);
+          const firstLine = (row.directive_text as string ?? '')
+            .split('\n')
+            .map((l: string) => l.trim())
+            .find((l: string) => l.length > 0)
+            ?.slice(0, 80) ?? null;
+          if (firstLine) lines.push(`[${date}] (Foldera-sent) — ${firstLine}`);
+        }
+        return lines;
+      })(),
     ]);
 
     const goalsForContext = ((
@@ -5414,7 +5573,11 @@ export async function generateDirective(
       .filter((g) => !PLACEHOLDER_GOAL_SOURCES.has(g.source ?? ''))
       .slice(0, 5);
     const goalGapAnalysis: GoalGapEntry[] = goalGapResult.status === 'fulfilled' ? goalGapResult.value : [];
-    const alreadySent = alreadySentResult.status === 'fulfilled' ? alreadySentResult.value : [];
+    const approvedActionLines: string[] = approvedActionsResult.status === 'fulfilled' ? approvedActionsResult.value : [];
+    // Merge approved tkg_actions lines into alreadySent (dedup by first 40 chars)
+    const alreadySentRaw = alreadySentResult.status === 'fulfilled' ? alreadySentResult.value : [];
+    const alreadySentKeys = new Set(alreadySentRaw.map((l) => l.slice(0, 40)));
+    const alreadySent = [...alreadySentRaw, ...approvedActionLines.filter((l) => !alreadySentKeys.has(l.slice(0, 40)))];
     const behavioralHistory = behavioralHistoryResult.status === 'fulfilled' ? behavioralHistoryResult.value : null;
     console.log(`[generator] goalsForContext: ${goalsForContext.length}, goalGapAnalysis: ${goalGapAnalysis.length}`);
 
@@ -5482,6 +5645,17 @@ export async function generateDirective(
           artifactType: null, generationStatus: 'context_degraded',
           details: { scope: 'generator', stage: 'fetchWinnerSignalEvidence', error: ctxErr instanceof Error ? ctxErr.message : String(ctxErr) },
         });
+      }
+
+      // --- Per-candidate: conversation state (sent/received thread for this entity) ---
+      // Built from signal evidence + approved tkg_actions; non-blocking.
+      let entityConversationState: string | null = null;
+      if (hydratedWinner.entityName) {
+        try {
+          entityConversationState = await buildEntityConversationState(
+            userId, hydratedWinner.entityName, signalEvidence,
+          );
+        } catch { /* non-blocking — omit if unavailable */ }
       }
 
       // --- Per-candidate: entity suppression ---
@@ -5554,6 +5728,7 @@ export async function generateDirective(
         avoidanceObservations, competitionContext,
         userEmails,
         userPromptNames,
+        entityConversationState,
       );
 
       // --- DECISION PAYLOAD — the canonical binding contract ---

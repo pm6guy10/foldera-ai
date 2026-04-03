@@ -316,6 +316,8 @@ describe('generateDirective runtime failures', () => {
     // loadRecentActionGuardrails() queries
     queueTkgActionsResult([]);
     queueTkgActionsResult([]);
+    // approved send_message actions (5th parallel fetch in generateDirective — sync-lag supplement)
+    queueTkgActionsResult([]);
     // recent entity conflict query
     queueTkgActionsResult([
       {
@@ -355,6 +357,8 @@ describe('generateDirective runtime failures', () => {
 
     queueTkgActionsResult([]);
     queueTkgActionsResult([]);
+    // approved send_message actions (5th parallel fetch — sync-lag supplement)
+    queueTkgActionsResult([]);
     queueTkgActionsResult([
       {
         id: 'action-yadira-2',
@@ -390,6 +394,8 @@ describe('generateDirective runtime failures', () => {
     mockScoreOpenLoops.mockResolvedValue(scored);
 
     queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    // approved send_message actions (5th parallel fetch — sync-lag supplement)
     queueTkgActionsResult([]);
     // Recent action whose directive_text contains "Brandon" (e.g. from a prior signed-off email).
     // Without the fix, "Brandon" extracted from the new candidate narrative above would match this

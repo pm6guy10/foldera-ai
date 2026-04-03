@@ -11,7 +11,7 @@
 - Multi-session “mega prompt” quality work: follow the sequenced program in `docs/MEGA_PROMPT_PROGRAM.md` (one session per row; baseline + receipts).
 - **Operator quick links** (Vercel, Supabase, GitHub, Resend, “no email” after Generate Now, Gate 4 steps): `docs/MASTER_PUNCHLIST.md`.
 - **Quarterly A–Z audit artifact + prioritized backlog table:** `docs/AZ_AUDIT_2026-04.md`, `AUTOMATION_BACKLOG.md` OPEN; local vs prod Playwright: `docs/LOCAL_E2E_AND_PROD_TESTS.md`.
-- **Vercel:** After push, verify the latest deploy is **Ready** before `test:prod` or closing the session (`CLAUDE.md` — Vercel deploy gate). Do not merge dependency PRs that break `npm install` on Vercel (e.g. ESLint 10 vs `eslint-config-next@14`).
+- **Vercel + CI:** Before push, run **`npm run test:ci:e2e`** (matches `.github/workflows/ci.yml`). After push, Vercel **Ready** + GitHub **build-and-test** green on `main` before closing the session (`CLAUDE.md`). Do not merge dependency PRs that break `npm install` on Vercel (e.g. ESLint 10 vs `eslint-config-next@14`).
 
 ## Execution Modes
 

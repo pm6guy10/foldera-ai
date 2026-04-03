@@ -131,6 +131,10 @@ Every session that touches the pipeline must re-trigger production after deployi
 
 **Vercel deploy gate — do not advance the session without it:** After every push to `main`, confirm the **latest production deployment** in the Vercel dashboard is **Ready** (build succeeded). If it shows **Error**, **Canceled**, or **Building**, stop: fix the failure (or revert), push again, and only then run `npm run test:prod` or claim the task done. Treat a green local `npm run build` as necessary but **not** sufficient when Vercel’s install step can differ (e.g. `ERESOLVE` from incompatible peer deps).
 
+**GitHub Actions / pre-push gate:** Before pushing, run the same checks CI runs: `npm run lint`, `npm run build`, `npx vitest run --exclude ".claude/worktrees/**"`, and **`npm run test:ci:e2e`**. Do not push if **`build-and-test` on `main` would fail** (e.g. missing-env 500s). `/api/health` must return **200** even when Supabase env is absent (degraded body) so CI E2E stays DB-free.
+
+**Connectors:** After deploy, treat **green** as: Vercel **Ready**, GitHub **CI green** on the latest `main` commit, and (when the session changed runtime behavior) **`npm run test:prod`** with fresh `auth-state.json`. OAuth/Stripe/Resend “connector” proof stays operator-backed where the spec says so — do not skip CI green.
+
 **ESLint + Next 14:** `eslint-config-next@14.2.x` requires `eslint` **^7.23 || ^8**. Do not upgrade to ESLint 9/10 until Next.js + `eslint-config-next` are upgraded together (see `package.json` pin and `.github/dependabot.yml` ignore).
 
 Every CC session that pushes to main MUST:

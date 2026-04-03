@@ -341,6 +341,43 @@ describe('passesTop3RankingInvariants — evidence density gate', () => {
 });
 
 // ---------------------------------------------------------------------------
+// getEntitySkipPenalty — approved action check (unit-level, logic only)
+// ---------------------------------------------------------------------------
+// These tests verify the LOGIC of the approved-action suppression rule using
+// computeCandidateScore directly (the async DB layer is tested at integration level).
+
+describe('computeCandidateScore — entityPenalty suppression via -30', () => {
+  it('entity penalty of -30 drives score below threshold for send_message', () => {
+    const { score } = computeCandidateScore({
+      stakes: 3,
+      urgency: 0.8,
+      tractability: 0.7,
+      actionType: 'send_message',
+      entityPenalty: -30,
+      daysSinceLastSurface: 0,
+      approvalHistory: [],
+      highStakes: false,
+    });
+    // Score must be below the minimum actionable threshold (2.0)
+    expect(score).toBeLessThan(2.0);
+  });
+
+  it('entity penalty of 0 keeps a strong candidate above threshold', () => {
+    const { score } = computeCandidateScore({
+      stakes: 4,
+      urgency: 0.85,
+      tractability: 0.8,
+      actionType: 'send_message',
+      entityPenalty: 0,
+      daysSinceLastSurface: 0,
+      approvalHistory: [],
+      highStakes: true,
+    });
+    expect(score).toBeGreaterThan(2.0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // inferActionType — research keywords must produce make_decision, not research
 // ---------------------------------------------------------------------------
 

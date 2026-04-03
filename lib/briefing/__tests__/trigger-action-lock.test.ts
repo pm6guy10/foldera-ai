@@ -239,8 +239,9 @@ describe('resolveTriggerAction — deterministic mapping', () => {
     expect(resolveTriggerAction('avoidance', true)).toBe('write_document');
     expect(resolveTriggerAction('avoidance', false)).toBe('write_document');
   });
-  it('behavioral_pattern → send_message with recipient, write_document without', () => {
-    expect(resolveTriggerAction('behavioral_pattern', true)).toBe('send_message');
+  it('behavioral_pattern → write_document always (pattern awareness is not a send trigger)', () => {
+    // Cross-contact themes surface a pattern for the user — never an email to one contact.
+    expect(resolveTriggerAction('behavioral_pattern', true)).toBe('write_document');
     expect(resolveTriggerAction('behavioral_pattern', false)).toBe('write_document');
   });
 });

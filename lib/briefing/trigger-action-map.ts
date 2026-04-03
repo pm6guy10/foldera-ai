@@ -153,9 +153,19 @@ export const TRIGGER_ACTION_MAP: Record<DiscrepancyClass, TriggerActionRule> = {
     required_elements: ['explicit_ask', 'trigger_delta_reference', 'time_pressure'],
     banned_phrases: [...COMMON_BANNED],
   },
+  // Cross-contact pattern awareness → always write_document.
+  // The system surfaced a pattern ABOUT the user's situation, not a signal
+  // that a specific external person needs to be contacted. An email to one of
+  // the listed contacts would be context-free and potentially inappropriate.
+  // The artifact should be a synthesized insight + action plan for the user.
+  // Cross-contact pattern awareness → always write_document.
+  // The system surfaced a pattern ABOUT the user's situation, not a signal
+  // that a specific external person needs to be contacted. An email to one of
+  // the listed contacts would be context-free and potentially inappropriate.
+  // The artifact should be a synthesized insight + action plan for the user.
   behavioral_pattern: {
-    primary_action: 'send_message',
-    artifact_shape: 'email',
+    primary_action: 'write_document',
+    artifact_shape: 'document',
     required_elements: [
       'explicit_ask',
       'trigger_delta_reference',
