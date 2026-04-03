@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-03 — AUDIT: **AZ-24 plan — post-slice-2 `az05` receipt + slice 3 (`signal_velocity` → `make_decision`)** — Supabase MCP **`az05` 14d/7d** counts pasted in **AUTOMATION_BACKLOG** (n=1077 / n=939); GitHub **CI** `ci.yml` on **`7f0798f`**: **success** (run 23953118878); **`npm run test:prod`** 61 passed (pre-push). **Slice 3:** `detectEmergentPatterns` signal spike **`suggestedActionType: make_decision`** in [`lib/briefing/scorer.ts`](lib/briefing/scorer.ts); [`lib/briefing/__tests__/scorer-emergent-signal-velocity.test.ts`](lib/briefing/__tests__/scorer-emergent-signal-velocity.test.ts). **FOLDERA_PRODUCT_SPEC** §1.1; **AUTOMATION_BACKLOG** AZ-24 matrix row.
+  MODE: AUDIT
+  Commit hash(es): TBD (pushed this session)
+  Files changed: `lib/briefing/scorer.ts`, `lib/briefing/__tests__/scorer-emergent-signal-velocity.test.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run build`; `npm run test:ci:e2e`; `npm run test:prod` (post-deploy when available)
+  Any unresolved issues: **Operator:** confirm **Vercel Ready** on production for commit after this push. Re-run **`az05`** after slice-3 deploy to measure mix shift.
+
 - 2026-04-04 — AUDIT: **AZ-24 receipt + slice 2 — evidence freshness union** — Supabase MCP **14d/7d** `action_type` counts + **7d `research`** status breakdown pasted in **AUTOMATION_BACKLOG**; GitHub **CI** (`ci.yml`) on `8739494` **success**; **`npm run test:prod`** 61 passed. **Slice 2:** `getNewestEvidenceTimestampMs` in `thread-evidence-for-payload.ts`; `buildStructuredContext` + `buildDecisionPayload` use union of **`supporting_signals`** and **`winner.sourceSignals`** for `has_recent_evidence` / `freshness_state`; tests extended; [`scripts/az24-research-breakdown.sql`](scripts/az24-research-breakdown.sql); **FOLDERA_PRODUCT_SPEC** §1.1; **AUTOMATION_BACKLOG** AZ-24.
   MODE: AUDIT
   Commit hash(es): `093a0b3` (AZ-24 slice 2 code); `f0857d5` (session log on `main`)

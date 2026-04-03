@@ -2218,7 +2218,8 @@ export async function detectEmergentPatterns(userId: string): Promise<EmergentPa
             surpriseValue,
             dataConfidence,
             score: surpriseValue * dataConfidence,
-            suggestedActionType: 'research',
+            // AZ-24 slice 3: spike = unusual volume → frame a decision, not open-ended research (research rows skew draft).
+            suggestedActionType: 'make_decision',
             mirrorQuestion: 'Is this true?',
           });
         }
