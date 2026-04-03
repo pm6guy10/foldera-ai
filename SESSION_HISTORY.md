@@ -6,8 +6,8 @@
 
 - 2026-04-04 — AUDIT: **AB-25 locked_contact normalization fix**
   MODE: AUDIT
-  Commit hash(es): pending push
-  Files changed: `lib/briefing/generator.ts` (L5748 — add `.replace(/\s+/g, '')` when building `lockedContacts` Set), `lib/briefing/__tests__/generator-runtime.test.ts` (add `lockedConstraintsQueue` + thenable `tkg_constraints` mock + 2 new tests)
+  Commit hash(es): `eb41c35`
+  Files changed: `lib/briefing/generator.ts` (L5748 — add `.replace(/\s+/g, '')` when building `lockedContacts` Set), `lib/briefing/__tests__/generator-runtime.test.ts` (add `lockedConstraintsQueue` + thenable `tkg_constraints` mock + 2 new tests), `lib/conviction/__tests__/execute-action.test.ts` (add `vi.stubEnv('ALLOW_EMAIL_SEND','true')` in beforeEach to fix 5 pre-existing failures caused by email-send gate)
   What was verified: `tkg_constraints` schema confirmed via Supabase MCP (`normalized_entity text NOT NULL`); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts` — 13/13 passed (including 2 new locked_contact tests); `npx vitest run --exclude ".claude/worktrees/**"` — 664/669 passed (5 pre-existing `execute-action.test.ts` failures unchanged); `npm run build` clean
   Any unresolved issues: 5 pre-existing `execute-action.test.ts` failures unrelated to this fix (tracked in backlog as AZ-24 follow-up)
 
