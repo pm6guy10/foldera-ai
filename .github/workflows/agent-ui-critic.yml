@@ -1,8 +1,6 @@
 # After each push to main — Playwright screenshots + Sonnet critique → DraftQueue.
 name: Agent — UI Critic
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
