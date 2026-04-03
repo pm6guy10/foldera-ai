@@ -2,10 +2,17 @@
 
 ## OPEN — Requires Action
 
+### SHIPPED — 2026-04-03 — A+ remediation (conviction CE-3–6, 2 Vercel crons, OPEN table cleanup)
+
+- **`vercel.json`** — **2** scheduled crons (Hobby-safe); **`runPlatformHealthAlert`** after **`/api/cron/daily-brief`** (`lib/cron/cron-health-alert.ts`); **`GET /api/cron/health-check`** manual-only.
+- **Conviction / goals** — CE-3–CE-6 in `lib/briefing/conviction-engine.ts` + signal-based goal decay in `lib/cron/goal-refresh.ts`; tests `conviction-engine-ce.test.ts`, `goal-decay-signal.test.ts`.
+- **Harness** — `npm run test:local:e2e`; `tests/audit/clickflow.spec.ts` `domcontentloaded` (optional `audit:smoke`).
+- **[AUTOMATION_BACKLOG.md](AUTOMATION_BACKLOG.md)** — OPEN table = **unresolved only**; operator checklist points to **MASTER_PUNCHLIST**.
+
 ### SHIPPED — 2026-04-03 — A–Z audit + local Playwright NEEDS_REVIEW dedupe
 
-- **[docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md)** — Single **Consolidated NEEDS_REVIEW** paragraph: local omnibus `npx playwright test` + `tests/production/smoke.spec.ts` against localhost is the same failure class as the many dated NEEDS_REVIEW blocks below (do not treat as unrelated regressions).
-- **[docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md)** — Canonical commands (`test:ci:e2e` vs `test:prod`).
+- **[docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md)** — Single **Consolidated NEEDS_REVIEW** paragraph: root `playwright.config.ts` **testIgnore** excludes prod/audit; prod smoke = `test:prod` only.
+- **[docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md)** — Canonical commands (`test:local:e2e`, `test:ci:e2e`, `test:prod`).
 - Historical NEEDS_REVIEW rows below are **not deleted** (audit trail); prefer the consolidated doc for triage.
 
 ### SHIPPED — 2026-04-02 — MASTER_PUNCHLIST operator index

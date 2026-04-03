@@ -43,7 +43,7 @@ Confirm [GitHub remote](https://github.com/pm6guy10/foldera-ai) matches your for
 3. Interval: 5 minutes is sufficient; avoid hammering the route.
 4. Optional second monitor: `GET https://www.foldera.ai/` (marketing availability only).
 
-Cron health-check already emails ops on failure; UptimeRobot adds an independent path when email/cron is down.
+After each **`/api/cron/daily-brief`** run (Vercel cron), the handler’s **`finally`** block calls **`runPlatformHealthAlert()`** ([`lib/cron/cron-health-alert.ts`](../lib/cron/cron-health-alert.ts)) — fetches `/api/health` and emails **`DAILY_BRIEF_TO_EMAIL`** on failure. **`GET /api/cron/health-check`** is still available for manual `CRON_SECRET` triggers. UptimeRobot adds an independent path when email/cron is down.
 
 ---
 

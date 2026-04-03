@@ -1,6 +1,9 @@
 /**
  * Part 2 — Clickflow Audit
  *
+ * Optional harness: run with `npm run audit:smoke` (playwright.audit.config.ts), not CI or `test:local:e2e`.
+ * Uses domcontentloaded (not networkidle) on first paint to avoid landing-page timeouts on busy dev servers.
+ *
  * Scripted click explorer that:
  * - identifies primary interactive elements on each page
  * - clicks through safe user-facing actions
@@ -98,7 +101,7 @@ for (const route of UNAUTHENTICATED_ROUTES) {
       await page.setViewportSize({ width: 1280, height: 800 });
       const pageErrors = collectPageErrors(page);
 
-      await page.goto(route, { waitUntil: 'networkidle', timeout: 30000 });
+      await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
       // Gather interactive elements
       const elements: ClickableElement[] = await page.evaluate(() => {
@@ -143,7 +146,7 @@ for (const route of UNAUTHENTICATED_ROUTES) {
       for (const el of safeElements.slice(0, 10)) { // cap at 10 to avoid long runs
         try {
           // Navigate back to the route first
-          await page.goto(route, { waitUntil: 'networkidle', timeout: 15000 });
+          await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 45000 });
 
           const beforeUrl = page.url();
           const beforeContent = await page.evaluate(() => document.body.innerText.slice(0, 200));
@@ -219,7 +222,7 @@ for (const route of AUTHENTICATED_ROUTES) {
       const pageErrors = collectPageErrors(page);
 
       await setupAuthenticatedMocks(page);
-      await page.goto(route, { waitUntil: 'networkidle', timeout: 30000 });
+      await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await page.waitForTimeout(2000);
 
       const elements: ClickableElement[] = await page.evaluate(() => {
@@ -262,7 +265,7 @@ for (const route of AUTHENTICATED_ROUTES) {
       for (const el of safeElements.slice(0, 8)) {
         try {
           await setupAuthenticatedMocks(page);
-          await page.goto(route, { waitUntil: 'networkidle', timeout: 15000 });
+          await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 45000 });
           await page.waitForTimeout(1500);
 
           const beforeUrl = page.url();

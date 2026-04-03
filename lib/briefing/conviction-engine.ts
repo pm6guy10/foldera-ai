@@ -44,6 +44,8 @@ export interface SituationModel {
   modelConfidence: number;
   /** What data is missing that would improve confidence */
   missingInputs: string[];
+  /** CE-6: Non-action blindspots (e.g. WA reference policy) — surfaced in conviction math, not as tasks */
+  referenceRiskNotes: string[];
 }
 
 export interface DecisionPath {
@@ -168,8 +170,37 @@ export async function inferMonthlyBurn(userId: string): Promise<number | null> {
 }
 
 /**
+ * CE-4: Hiring funnel tiers (target ~90% ceiling when reference complete + start discussed).
+ * Ordered most-advanced first; first pattern match wins per signal.
+ */
+export function hiringFunnelTierFromPlaintext(plain: string): { probability: number; label: string } | null {
+  const HIRING_FUNNEL_TIERS: { pattern: RegExp; probability: number; label: string }[] = [
+    { pattern: /offer\s*(letter|extended|received|accepted)/i, probability: 0.9, label: 'Offer received/accepted' },
+    { pattern: /start\s*date\s*(discussed|confirmed|set)|\bonboard(?:ing)?\b/i, probability: 0.9, label: 'Start date discussed' },
+    { pattern: /reference\s*check\s*(complete|done|finished|cleared)/i, probability: 0.75, label: 'Reference check complete' },
+    {
+      pattern: /reference\s*(?:check|verification).{0,55}(?:initiated|started|sent|requested|in\s+progress)/i,
+      probability: 0.55,
+      label: 'Reference check initiated',
+    },
+    { pattern: /final\s*(round|interview|stage)/i, probability: 0.55, label: 'Final interview' },
+    { pattern: /second\s*(round|interview)|phone\s*(screen|interview)|first\s*(round|interview)/i, probability: 0.35, label: 'Interviewed' },
+    {
+      pattern: /\b(?:applied|application\s*(?:sent|submitted|received)|application.{0,45}(?:received|under\s+review))\b/i,
+      probability: 0.2,
+      label: 'Applied',
+    },
+  ];
+  for (const tier of HIRING_FUNNEL_TIERS) {
+    tier.pattern.lastIndex = 0;
+    if (tier.pattern.test(plain)) return { probability: tier.probability, label: tier.label };
+  }
+  return null;
+}
+
+/**
  * Infer the probability that the user's top career goal closes within its window.
- * Uses: email thread recency, stage signals (reference check, start date mentioned),
+ * Uses: email thread recency, CE-4 hiring funnel stages (reference check, start date mentioned),
  * time since last contact from the other side.
  */
 export async function inferPrimaryOutcomeProbability(
@@ -180,19 +211,8 @@ export async function inferPrimaryOutcomeProbability(
   const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
 
   const positiveSignals: string[] = [];
-  // Funnel-stage mapping: mutually exclusive stages, highest stage matched wins.
-  // Replaces additive keyword bumps which stacked uncontrolled across signals.
-  const FUNNEL_STAGES = [
-    { pattern: /offer\s*(letter|extended|received|accepted)/i,          probability: 0.88, label: 'Offer received/accepted' },
-    { pattern: /reference\s*check\s*(complete|done|finished|cleared)/i, probability: 0.80, label: 'Reference check complete' },
-    { pattern: /start\s*date\s*(discussed|confirmed|set)|onboard/i,     probability: 0.75, label: 'Start date discussed' },
-    { pattern: /final\s*(round|interview|stage)/i,                      probability: 0.55, label: 'Final round' },
-    { pattern: /second\s*(round|interview)/i,                           probability: 0.40, label: 'Second round interview' },
-    { pattern: /phone\s*(screen|interview)|first\s*(round|interview)/i, probability: 0.35, label: 'First round interview' },
-    { pattern: /applied|application\s*(sent|submitted|received)/i,      probability: 0.20, label: 'Applied' },
-  ] as const;
 
-  let rawProbability = 0.10; // base rate — no signal yet
+  let rawProbability = 0.1; // base rate — no signal yet
   let confidence = 0.15;
 
   try {
@@ -215,17 +235,12 @@ export async function inferPrimaryOutcomeProbability(
       const isRelevant = goalKeywords.some((kw) => text.includes(kw));
       if (!isRelevant) continue;
 
-      // Find the highest funnel stage matched in this signal
-      for (const stage of FUNNEL_STAGES) {
-        if (stage.pattern.test(dec.plaintext)) {
-          if (stage.probability > rawProbability) {
-            rawProbability = stage.probability;
-            confidence = 0.60; // stage match is more reliable than keyword bump
-            if (!positiveSignals.includes(stage.label)) {
-              positiveSignals.push(stage.label);
-            }
-          }
-          break; // each signal contributes at most one stage (highest match wins)
+      const tier = hiringFunnelTierFromPlaintext(dec.plaintext);
+      if (tier && tier.probability > rawProbability) {
+        rawProbability = tier.probability;
+        confidence = 0.62;
+        if (!positiveSignals.includes(tier.label)) {
+          positiveSignals.push(tier.label);
         }
       }
     }
@@ -240,29 +255,109 @@ export async function inferPrimaryOutcomeProbability(
   };
 }
 
+/** CE-3: Calendar / task-style deadline language (complements baby/lease patterns). */
+const CALENDAR_DEADLINE_PATTERNS: { pattern: RegExp; label: string }[] = [
+  { pattern: /\b(?:due|deadline)\s*(?:date|on)?\s*[:\s].{0,80}(?:deliverable|delivery|filing|review|close|project)\b/i, label: 'Task due date' },
+  { pattern: /\blast\s*day\s+(?:to|for)\b/i, label: 'Last day' },
+  { pattern: /\bdelivery\s*(?:due|date|by|no\s*later\s*than)\b/i, label: 'Delivery deadline' },
+  { pattern: /\b(?:must\s+)?(?:submit|file|complete)\s+by\b/i, label: 'Submit-by deadline' },
+];
+
+/**
+ * CE-6: WA public-sector applications often need a current supervisor reference;
+ * prior DVA employment is a recurring reference-risk blindspot (non-task note).
+ */
+export function detectReferenceRiskBlindspot(goalText: string, signalTexts: string[]): string | null {
+  const combined = [goalText, ...signalTexts].join('\n');
+  const waJob =
+    /\b(?:washington|wa)\s+state\b/i.test(combined) &&
+    /\b(?:job|jobs|application|position|role|opening|career|state\s+employment|public\s+sector)\b/i.test(combined);
+  const dva =
+    /\bDVA\b/i.test(combined) ||
+    /\bdepartment\s+of\s+veterans\s+affairs\b/i.test(combined) ||
+    /\bd\.v\.a\.\b/i.test(combined);
+  if (!waJob || !dva) return null;
+  return 'REFERENCE_RISK: WA state roles often require a current-supervisor reference. Prior DVA employment may complicate HR reference checks — resolve before late stages.';
+}
+
+async function fetchRecentSignalPlaintexts(userId: string, days: number, limit: number): Promise<string[]> {
+  const supabase = createServerClient();
+  const since = new Date(Date.now() - daysMs(days)).toISOString();
+  const { data: rows } = await supabase
+    .from('tkg_signals')
+    .select('content')
+    .eq('user_id', userId)
+    .eq('processed', true)
+    .gte('occurred_at', since)
+    .limit(limit);
+
+  const out: string[] = [];
+  for (const row of rows ?? []) {
+    const dec = decryptWithStatus((row.content as string) ?? '');
+    if (!dec.usedFallback && dec.plaintext.length > 15) out.push(dec.plaintext);
+  }
+  return out;
+}
+
+function goalPhraseTokens(goalTexts: string[]): string[] {
+  const STOP = new Set([
+    'that',
+    'this',
+    'with',
+    'from',
+    'have',
+    'will',
+    'been',
+    'your',
+    'their',
+    'they',
+    'into',
+    'path',
+    'primary',
+    'focus',
+    'until',
+    'window',
+    'resolves',
+    'goal',
+    'career',
+    'secure',
+    'land',
+  ]);
+  const tokens = new Set<string>();
+  for (const g of goalTexts) {
+    for (const w of g.toLowerCase().split(/\s+/)) {
+      if (w.length >= 4 && !STOP.has(w)) tokens.add(w);
+    }
+  }
+  return [...tokens].slice(0, 24);
+}
+
 /**
  * Infer the hard deadline that cannot move — the one that makes runway
- * calculations concrete. Looks for: due dates, baby/birth mentions,
- * lease end dates, contractual deadlines in calendar and email signals.
+ * calculations concrete. CE-3: baby/lease + calendar/delivery language + goal-named dates in signals.
  */
 export async function inferHardDeadline(
   userId: string,
 ): Promise<{ date: Date | null; source: string | null; confidence: number }> {
   const supabase = createServerClient();
-  const ninetyDaysAhead = new Date(Date.now() + daysMs(90)).toISOString();
+  const ninetyDaysAheadMs = Date.now() + daysMs(90);
   const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
 
   try {
-    const { data: signals } = await supabase
-      .from('tkg_signals')
-      .select('content, occurred_at')
-      .eq('user_id', userId)
-      .eq('processed', true)
-      .gte('occurred_at', thirtyDaysAgo)
-      .limit(100);
+    const [{ data: signals }, { data: goalRows }] = await Promise.all([
+      supabase
+        .from('tkg_signals')
+        .select('content, occurred_at')
+        .eq('user_id', userId)
+        .eq('processed', true)
+        .gte('occurred_at', thirtyDaysAgo)
+        .limit(100),
+      supabase.from('tkg_goals').select('goal_text').eq('user_id', userId).eq('status', 'active').limit(12),
+    ]);
 
-    if (!signals) {
-      // Fallback: use tripwire_date from the most recent wait_rationale action
+    const goalTokens = goalPhraseTokens((goalRows ?? []).map((r: { goal_text: string }) => r.goal_text));
+
+    if (!signals || signals.length === 0) {
       const { data: lastWait } = await supabase
         .from('tkg_actions')
         .select('execution_result')
@@ -270,7 +365,7 @@ export async function inferHardDeadline(
         .eq('action_type', 'do_nothing')
         .order('generated_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       const tripwire = (lastWait?.execution_result as Record<string, unknown> | null)?.tripwire_date;
       if (typeof tripwire === 'string') {
         const d = new Date(tripwire);
@@ -279,31 +374,57 @@ export async function inferHardDeadline(
       return { date: null, source: null, confidence: 0 };
     }
 
-    // Personal deadline keywords — the things that create hard deadlines
     const hardDeadlinePatterns = [
       { pattern: /due\s*(date|end\s*of\s*(month|may|june|july)).*(?:baby|birth|pregnant|deliver)/i, label: 'Baby due date' },
       { pattern: /baby.*due|due.*baby|pregnant.*due|deliver.*(?:april|may|june)/i, label: 'Baby due date' },
       { pattern: /lease.*end|move.*out.*(?:april|may|june|july)/i, label: 'Lease end' },
     ];
 
-    const datePattern = /\b((?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{4})?|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/gi;
+    const datePattern =
+      /\b((?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{4})?|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2})\b/gi;
 
     for (const row of signals) {
       const dec = decryptWithStatus(row.content as string ?? '');
       if (dec.usedFallback) continue;
+      const plain = dec.plaintext;
+      const lower = plain.toLowerCase();
 
       for (const { pattern, label } of hardDeadlinePatterns) {
-        if (pattern.test(dec.plaintext)) {
-          // Try to extract a date from the surrounding context
-          const dates = dec.plaintext.match(datePattern);
+        pattern.lastIndex = 0;
+        if (pattern.test(plain)) {
+          const dates = plain.match(datePattern);
           if (dates && dates.length > 0) {
             const parsed = new Date(dates[0]);
-            if (!isNaN(parsed.getTime()) && parsed.toISOString() < ninetyDaysAhead) {
+            if (!isNaN(parsed.getTime()) && parsed.getTime() < ninetyDaysAheadMs) {
               return { date: parsed, source: label, confidence: 0.7 };
             }
           }
-          // Found the pattern but no parseable date — return label with low confidence
           return { date: null, source: label, confidence: 0.3 };
+        }
+      }
+
+      for (const { pattern, label } of CALENDAR_DEADLINE_PATTERNS) {
+        pattern.lastIndex = 0;
+        if (!pattern.test(plain)) continue;
+        const dates = plain.match(datePattern);
+        if (dates && dates.length > 0) {
+          const parsed = new Date(dates[0]);
+          if (!isNaN(parsed.getTime()) && parsed.getTime() < ninetyDaysAheadMs) {
+            return { date: parsed, source: label, confidence: 0.65 };
+          }
+        }
+      }
+
+      if (goalTokens.length >= 2) {
+        const tokenHits = goalTokens.filter((t) => lower.includes(t)).length;
+        if (tokenHits >= 2) {
+          const dates = plain.match(datePattern);
+          if (dates && dates.length > 0) {
+            const parsed = new Date(dates[0]);
+            if (!isNaN(parsed.getTime()) && parsed.getTime() < ninetyDaysAheadMs) {
+              return { date: parsed, source: 'Goal-aligned date in signal', confidence: 0.6 };
+            }
+          }
         }
       }
     }
@@ -328,10 +449,11 @@ export async function runConvictionEngine(
     runwayMonths: number;
   }>,
 ): Promise<ConvictionDecision | null> {
-  const [burnResult, probResult, deadlineResult] = await Promise.all([
+  const [burnResult, probResult, deadlineResult, signalTexts] = await Promise.all([
     inferMonthlyBurn(userId),
     inferPrimaryOutcomeProbability(userId, topGoalText),
     inferHardDeadline(userId),
+    fetchRecentSignalPlaintexts(userId, 90, 100),
   ]);
 
   const burn = manualOverrides?.monthlyBurnUSD ?? burnResult;
@@ -345,6 +467,9 @@ export async function runConvictionEngine(
 
   if (!burn) return null; // Cannot run math without burn
 
+  const refBlind = detectReferenceRiskBlindspot(topGoalText, signalTexts);
+  const referenceRiskNotes = refBlind ? [refBlind] : [];
+
   // Build situation model
   const runwayMonths = manualOverrides?.runwayMonths ?? null;
   const situation: SituationModel = {
@@ -356,6 +481,7 @@ export async function runConvictionEngine(
     hardDeadlineSource: deadlineResult.source,
     modelConfidence: missingInputs.length === 0 ? 0.8 : 0.4,
     missingInputs,
+    referenceRiskNotes,
   };
 
   // Decision paths — labels derived from top goal text, not hardcoded
@@ -392,11 +518,17 @@ export async function runConvictionEngine(
 
   const catastrophicProb = Math.round((1 - prob) * 0.5 * 100); // prob outcome fails AND no bridge
 
+  const refBlock =
+    referenceRiskNotes.length > 0
+      ? [`Blindspots (not tasks):`, ...referenceRiskNotes.map((n) => `• ${n}`), ``]
+      : [];
+
   const math = [
     `Monthly burn: $${burn.toLocaleString()}`,
     `Runway: ~${runway} months`,
     `Primary outcome probability: ${Math.round(prob * 100)}%`,
     `Goal: ${goalLabel}`,
+    ...refBlock,
     ``,
     `Wait path EV: ${waitEV.toFixed(1)} months of safety`,
     `Bridge path EV: ${bridgeEV.toFixed(1)} months of safety`,

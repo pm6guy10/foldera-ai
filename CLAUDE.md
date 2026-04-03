@@ -27,7 +27,7 @@ Brain-receipt and `email-preview?action_id=` require an **owner** session on the
 - **Prereq check:** `npm run test:local:check` — exits 1 if `auth-state-owner.json` is missing (prints setup hints).
 - **Run brain-receipt headlessly:** dev server + `ALLOW_DEV_ROUTES=true`, then `npm run test:local:brain-receipt` (optional `-- --screenshot path.png`).
 - **Production smoke after push:** when `tests/production/auth-state.json` exists and is fresh (session under ~30 days), run `npm run test:prod`. Refresh with `npm run test:prod:setup` if authenticated suites skip or fail.
-- **Local omnibus Playwright:** `tests/production/*` targets **www.foldera.ai** cookies — not localhost. Canonical policy: [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md). Local merge gate: `npm run test:ci:e2e`.
+- **Local omnibus Playwright:** `tests/production/*` targets **www.foldera.ai** cookies — not localhost. Canonical policy: [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md). Local merge gate: `npm run test:ci:e2e`. Default local app E2E (excludes `tests/production/**` and `tests/audit/**`): `npm run test:local:e2e` (alias of `playwright test` / `test:e2e`).
 
 **Human-only revenue gates** (cannot be automated): live **Approve** on a real `send_message` with mailbox connected (`sent_via` in `REVENUE_PROOF.md`), Stripe checkout + webhook row, optional non-owner signup — see `AUTOMATION_BACKLOG.md` (Operator-only GTM gates).
 
@@ -78,11 +78,10 @@ Optional recovery variable:
 
 ## Cron Schedule
 
-`vercel.json` is the current source of truth. **Note:** Vercel Hobby allows only **2** scheduled cron jobs; this project registers **3** paths (`nightly-ops`, `daily-brief`, `health-check`). If deploy rejects the config on Hobby, upgrade the Vercel plan or merge schedules.
+`vercel.json` is the current source of truth. **Vercel Hobby allows 2 scheduled cron jobs** — this project registers exactly **2** paths (`nightly-ops`, `daily-brief`). Platform health + Resend alert runs from **`daily-brief`** via `runPlatformHealthAlert()` in `lib/cron/cron-health-alert.ts` (fire-and-forget in a `finally` block after each authenticated cron invocation). **`GET /api/cron/health-check`** remains for manual or external triggers (same `CRON_SECRET` auth) but is **not** a Vercel scheduled cron.
 
 - `/api/cron/nightly-ops` — `0 11 * * *` (`11:00 UTC`, `4:00 AM` Pacific) — signal retention cleanup, commitment ceiling, token refresh, Microsoft + Google sync, connector health, process-unprocessed-signals (backlog-aware rounds), behavioral graph, suppressed commitments, passive rejection, self-heal, acceptance gate, weekly goal refresh (Sundays). Does **not** run daily-brief generate/send.
-- `/api/cron/daily-brief` — `10 11 * * *` (`11:10 UTC`, `4:10 AM` Pacific) — `runDailyGenerate` + `runDailySend` for all eligible users (via `runBriefLifecycle`), with credit canary and double-send guard. Gives LLM work a dedicated serverless window after ingest finishes.
-- `/api/cron/health-check` — `0 15 * * *` (`15:00 UTC`, `8:00 AM` Pacific) — checks tokens, DB, last directive age; sends alert email if anything fails.
+- `/api/cron/daily-brief` — `10 11 * * *` (`11:10 UTC`, `4:10 AM` Pacific) — `runDailyGenerate` + `runDailySend` for all eligible users (via `runBriefLifecycle`), with credit canary and double-send guard; then **`runPlatformHealthAlert`** (fetch `/api/health`, email on failure). Gives LLM work a dedicated serverless window after ingest finishes.
 - The individual routes (`trigger`, `daily-generate`, `daily-send`, `sync-google`, `sync-microsoft`, `process-unprocessed-signals`) still exist and work with CRON_SECRET auth but are not all registered as Vercel crons; `/api/cron/daily-brief` is registered.
 
 ## Decided Items

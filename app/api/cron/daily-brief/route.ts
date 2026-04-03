@@ -15,6 +15,7 @@ import { checkApiCreditCanary } from '@/lib/cron/acceptance-gate';
 import { runBriefLifecycle } from '@/lib/cron/brief-service';
 import { resolveDailyBriefUserIds } from '@/lib/cron/daily-brief-generate';
 import { getTriggerResponseStatus } from '@/lib/cron/daily-brief';
+import { runPlatformHealthAlert } from '@/lib/cron/cron-health-alert';
 import { createServerClient } from '@/lib/db/client';
 import { TEST_USER_ID } from '@/lib/config/constants';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
@@ -145,6 +146,23 @@ async function handler(request: NextRequest) {
     );
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'cron/daily-brief');
+  } finally {
+    void runPlatformHealthAlert()
+      .then((h) =>
+        console.log(
+          JSON.stringify({
+            event: 'post_daily_brief_platform_health',
+            health_ok: h.ok,
+            alert_sent: h.alert_sent ?? false,
+          }),
+        ),
+      )
+      .catch((err: unknown) =>
+        console.error(
+          '[daily-brief] post-run platform health failed:',
+          err instanceof Error ? err.message : err,
+        ),
+      );
   }
 }
 

@@ -4,7 +4,7 @@
 
 `tests/production/smoke.spec.ts` (and related specs) use **`storageState`** aimed at **`https://www.foldera.ai`** (see `playwright.prod.config.ts`). They assert authenticated dashboard, `/api/conviction/latest`, Generate Now, etc. **against production**.
 
-Running **`npx playwright test`** with the **default** `playwright.config.ts` still **discovers** some specs or developers expect localhost cookies to satisfy production-smoke assertions — they do not. Sessions on `localhost:3000` are unrelated to production JWT cookies.
+Root **`playwright.config.ts`** sets **`testIgnore`** for **`tests/production/**`** and **`tests/audit/**`**. Prefer **`npm run test:local:e2e`** (alias of `playwright test`) so the harness is explicit. Do not expect localhost cookies to satisfy production-smoke assertions; sessions on `localhost:3000` are unrelated to production JWT cookies.
 
 This mismatch produced many duplicate **NEEDS_REVIEW** lines in [FOLDERA_MASTER_AUDIT.md](../FOLDERA_MASTER_AUDIT.md) (same root cause).
 
@@ -13,7 +13,7 @@ This mismatch produced many duplicate **NEEDS_REVIEW** lines in [FOLDERA_MASTER_
 | Goal | Command | Notes |
 |------|---------|--------|
 | **Merge-blocking local gate (no prod, mocked APIs)** | `npm run test:ci:e2e` | `playwright.ci.config.ts` — `public-routes`, `authenticated-routes`, `flow-routes` only |
-| **Full local app E2E (real server, broader)** | `npm run build` then `npx playwright test tests/e2e/` | Uses root `playwright.config.ts`; ignores `tests/production/**`. If `:3000` busy: `PLAYWRIGHT_WEB_PORT=3011` and match `NEXTAUTH_URL` to `http://127.0.0.1:3011` |
+| **Full local app E2E (real server, broader)** | `npm run build` then **`npm run test:local:e2e`** or `npx playwright test tests/e2e/` | Root `playwright.config.ts` ignores `tests/production/**` and `tests/audit/**`. If `:3000` busy: `PLAYWRIGHT_WEB_PORT=3011` and match `NEXTAUTH_URL` to `http://127.0.0.1:3011` |
 | **Production / real auth** | `npm run test:prod` | Requires fresh `tests/production/auth-state.json` — `npm run test:prod:setup` |
 | **Weekly audit artifact** | `npm run test:audit` | Production crawl + report; CI: `.github/workflows/weekly-audit.yml` |
 

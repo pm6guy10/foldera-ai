@@ -1,5 +1,12 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-03) — A+ remediation plan (full agent slice)
+
+- **Vercel Hobby 2 crons** — [`vercel.json`](vercel.json): removed scheduled **`/api/cron/health-check`**; [`lib/cron/cron-health-alert.ts`](../lib/cron/cron-health-alert.ts) **`runPlatformHealthAlert()`**; wired from [`app/api/cron/daily-brief/route.ts`](../app/api/cron/daily-brief/route.ts) `finally` + refactored [`app/api/cron/health-check/route.ts`](../app/api/cron/health-check/route.ts).
+- **AZ-22 CE-3–CE-6** — [`lib/briefing/conviction-engine.ts`](../lib/briefing/conviction-engine.ts): CE-3 calendar/goal-aligned hard deadlines; CE-4 `hiringFunnelTierFromPlaintext` (funnel ceiling ~90%); CE-6 `detectReferenceRiskBlindspot` + `referenceRiskNotes` on `SituationModel` / math; [`lib/cron/goal-refresh.ts`](../lib/cron/goal-refresh.ts) CE-5 signal-based 21d decay + `signalReinforcesGoalKeywords`; tests [`conviction-engine-ce.test.ts`](../lib/briefing/__tests__/conviction-engine-ce.test.ts), [`goal-decay-signal.test.ts`](../lib/cron/__tests__/goal-decay-signal.test.ts).
+- **AZ-01 harness** — [`package.json`](../package.json) **`npm run test:local:e2e`**; [`CLAUDE.md`](../CLAUDE.md); [`tests/audit/clickflow.spec.ts`](../tests/audit/clickflow.spec.ts) `domcontentloaded` + longer timeouts (optional **`npm run audit:smoke`** only).
+- **Closed AZ rows (moved from OPEN table):** **AZ-06, AZ-07, AZ-10, AZ-12, AZ-13, AZ-15, AZ-20** (see prior DONE bullets below).
+
 ### DONE (2026-04-03) — Backlog → A+ (agent slice)
 
 - **AZ-06** — `x-request-id`: [`middleware.ts`](middleware.ts) + [`lib/utils/request-id-core.ts`](lib/utils/request-id-core.ts) / [`request-id.ts`](lib/utils/request-id.ts); [`apiError`](lib/utils/api-error.ts) Sentry tag + response header/body; [`apiErrorForRoute`](lib/utils/api-error.ts) wired across `app/api/**` catch blocks; Vitest [`request-id-core.test.ts`](lib/utils/__tests__/request-id-core.test.ts); E2E [`tests/e2e/public-routes.spec.ts`](tests/e2e/public-routes.spec.ts) `/api/health` header checks.
@@ -504,37 +511,17 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - Target: confidence >= 0.7 for users with 60d of financial signals
 - **PARTIAL (2026-04-03):** same rounded dollar amount on **2+ distinct calendar days** in the 60d window preferred over legacy top-five sum; `estimateMonthlyBurnFromSignalAmounts` + tests in `lib/briefing/__tests__/conviction-engine-burn.test.ts`
 
-**CE-3: Improve `inferHardDeadline`**
-- Current: keyword pattern matching for baby/lease/due date in signals
-- Needed: calendar event extraction (look for "due", "delivery", "last day")
-  + cross-reference goal text for named deadlines
-- The baby due date is the most important deadline in the system right now and
-  it's not being read from signals at all
+**CE-3: Improve `inferHardDeadline` — DONE (2026-04-03)**
+- Shipped: calendar/task patterns (`CALENDAR_DEADLINE_PATTERNS`), ISO date tokens, active `tkg_goals` cross-ref for goal-aligned dates in signals; tests via `inferHardDeadline` integration path + CE harness in `conviction-engine-ce.test.ts` (indirect).
 
-**CE-4: Improve `inferPrimaryOutcomeProbability`**
-- Current: signal keyword scan for positive stage signals
-- Needed: model the hiring funnel stage explicitly:
-  - Applied (base 20%)
-  - Interviewed (+15%)
-  - Reference check initiated (+20%)
-  - Reference check complete (+20%)
-  - Start date discussed (+15%)
-  = ceiling 90%
-- The Yadira/MAS3 thread should score ~85% given reference complete + April/May start confirmed
+**CE-4: Improve `inferPrimaryOutcomeProbability` — DONE (2026-04-03)**
+- Shipped: `hiringFunnelTierFromPlaintext()` — ordered funnel tiers to **~90%** ceiling (offer/start 0.9, reference complete 0.75, etc.); wired into `inferPrimaryOutcomeProbability`; tests in `lib/briefing/__tests__/conviction-engine-ce.test.ts`.
 
-**CE-5: Goal decay — auto-demote dead goals**
-- MA4/DSHS is still P5 despite Ricky Luna being dead and rejection received
-- Add weekly check: if goal has zero new signals for 21d AND no active thread,
-  auto-demote priority by 1 and log reason
-- If goal has a rejection signal in thread (e.g., "position will be filled with another"),
-  auto-set to abandoned
+**CE-5: Goal decay — auto-demote dead goals — DONE (2026-04-03)**
+- Shipped: 21d decay uses **decrypted signals** + `signalReinforcesGoalKeywords` (≥2 goal keywords in-window); `abandonRejectedGoals()` unchanged for rejection → abandoned; export + `lib/cron/__tests__/goal-decay-signal.test.ts`.
 
-**CE-6: DVA reference risk pattern**
-- The Keri Nopens thread revealed: WA state HR policy requires current supervisor reference.
-  DVA (April 2024-April 2025) ended badly. This is a recurring blocker for WA state applications.
-- The system should flag any new WA state job application candidate with:
-  "REFERENCE_RISK: DVA supervisor reference may be required. Resolve before HR stage."
-- Surfaced as a blindspot note, not a task
+**CE-6: DVA reference risk pattern — DONE (2026-04-03)**
+- Shipped: `detectReferenceRiskBlindspot(goalText, signalTexts)`; `SituationModel.referenceRiskNotes`; appended to conviction **math** as “Blindspots (not tasks)”; tests in `conviction-engine-ce.test.ts`.
 
 ### DONE (March 26) — Email spam fix + smoke test + security hardening
 - **Duplicate do_nothing email spam fixed**: `runDailySend` now scans ALL today's actions (any status) for `daily_brief_sent_at` before sending. Root cause: `reconcilePendingApprovalQueue` was suppressing sent do_nothing rows to `skipped`, erasing the sent-at proof, causing every pipeline re-run to find "no email sent today" and fire again.
@@ -632,34 +619,29 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - **Leaked password protection**: Requires Supabase dashboard toggle — noted for manual action.
 - Migration file: `supabase/migrations/20260328000001_security_and_perf_fixes.sql` (all applied to production).
 
-### OPEN (normalized 2026-04-03 — A–Z audit)
+### OPEN (normalized 2026-04-03 — unresolved only)
 
-Single prioritized table (deduped from prior OPEN bullets + [FOLDERA_MASTER_AUDIT.md](FOLDERA_MASTER_AUDIT.md) NEEDS_REVIEW cluster). Full matrix: [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md). Local vs prod test policy: [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md).
+**Closed agent rows** (see DONE **A+ remediation plan** above): **AZ-06, AZ-07, AZ-10, AZ-12, AZ-13, AZ-15, AZ-20, AZ-22** (CE-1/3/4/5/6 shipped; CE-2 recurring burn **partial**).
+
+Single prioritized table. Full matrix: [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md). Local vs prod: [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md). **Operator checklist** (Gate 4, Stripe, non-owner, UptimeRobot, etc.): [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).
 
 | Rank | ID | Title | Owner | Spec § | Evidence / notes | Next action |
 |------|-----|--------|-------|--------|------------------|-------------|
-| 1 | **AZ-01** | Local Playwright vs production smoke harness | Agent | §1.1 QA | Omnibus `npx playwright test` mixes `tests/production/*` (www.foldera.ai cookies) with localhost; [FOLDERA_MASTER_AUDIT.md](FOLDERA_MASTER_AUDIT.md) NEEDS_REVIEW ×10 → **one root cause** | Follow [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md); use `npm run test:ci:e2e` locally; `npm run test:prod` for auth |
-| 2 | **AZ-02** | Gate 4 live receipt (`sent_via` + new row) | Operator | REVENUE_PROOF §4 | Historical Resend row only; no post-ship `gmail`/`outlook` row yet | Approve real `send_message`; log id + `sent_via` in REVENUE_PROOF |
-| 3 | **AZ-03** | Approve → Resend/mailbox delivery proof | Operator | §1.1 | Overlaps AZ-02; proves end-to-end value | Same session as AZ-02 or separate approve |
-| 4 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` fails until second connected account exists | Second Google user: connect, brief, `tkg_actions` row |
-| 5 | **AZ-05** | Confirm organic `action_type` not stuck `do_nothing` | Agent | §1.1 | **Query template** in DONE (2026-04-03) — run in Supabase when connected | If distribution skews `do_nothing`, open generator/scorer session |
-| 6 | **AZ-06** | Correlation IDs in logs + Sentry scope | Agent | §1.2 / observability | **DONE 2026-04-03:** middleware + `apiError` / `apiErrorForRoute` + E2E `/api/health` | — |
-| 7 | **AZ-07** | Past directives UI (`/dashboard/briefings`) | Agent | Product surface | **DONE 2026-04-03:** `GET /api/conviction/history`, [app/dashboard/briefings/page.tsx](app/dashboard/briefings/page.tsx), History icon on dashboard header | — |
-| 8 | **AZ-08** | UptimeRobot (or equivalent) on `/api/health` | Operator | §1.2 | External uptime | Create monitor; URL in [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
-| 9 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual coverage | Screenshots for `/`, `/login`, `/start`, `/onboard`, `/dashboard`, `/settings`, `/pricing`, `/blog`, 404 |
-| 10 | **AZ-10** | Blog prose / typography polish | Agent | Marketing | **DONE 2026-04-03:** extra `prose-*` tokens on `[slug]` | Optional: edit `content/blog/*.md` copy |
-| 11 | **AZ-11** | Stranger onboarding E2E (live OAuth) | Operator | §1.3 | Cannot fully automate without real OAuth | Manual or recorded flow |
-| 12 | **AZ-12** | Landing SEO copy (homepage) | Agent | GTM | **DONE 2026-04-03:** root `app/layout.js` metadata (keywords, OG, description) | Further: client `page.tsx` only if needed |
-| 13 | **AZ-13** | `/try` conversion funnel | Agent | GTM | **DONE 2026-04-03:** CTAs + `data-foldera-cta` on `/try` | Wire analytics consumer when ready |
-| 14 | **AZ-14** | `tests/production/auth-state.json` refresh | Operator | test:prod | ~30-day JWT | `npm run test:prod:setup` before expiry |
-| 15 | **AZ-15** | Duplicate entity cleanup (beyond Yadira) | Agent | Data hygiene | **DONE 2026-04-03:** doc + read-only SQL audit | Operator merge/cleanup; optional fuzzy matcher later |
-| 16 | **AZ-16** | Stripe live checkout + webhook row | Operator | §1.4 | CI cannot hold secrets | One test subscription; verify `user_subscriptions` |
-| 17 | **AZ-17** | Supabase leaked password protection | Operator | Security | Pro-gated | Dashboard toggle if on Pro |
-| 18 | **AZ-18** | 3 consecutive days useful cron directives | Operator | §1.1 | Quality bar | Monitor email after nightly |
-| 19 | **AZ-19** | Brandon: Google all scopes + settings focus | Operator | Product | Account-specific | Reconnect OAuth; set focus in UI |
-| 20 | **AZ-20** | DB migrations process (no manual drift) | Agent | § integrity | **DONE 2026-04-03:** [docs/SUPABASE_MIGRATIONS.md](docs/SUPABASE_MIGRATIONS.md) | CI `db push` still manual (no linked secret in Actions) |
-| 21 | **AZ-21** | Supabase backups | Operator | DR | Dashboard | Enable PITR / backups per plan |
-| 22 | **AZ-22** | Conviction engine CE-1–CE-6 | Agent | AUTOMATION_BACKLOG CE | **CE-2 partial 2026-04-03** (recurring burn proxy); CE-1 already in generator | CE-3–CE-6 next slices |
+| 1 | **AZ-01** | Playwright harness clarity | Agent | §1.1 QA | Root [`playwright.config.ts`](playwright.config.ts) **`testIgnore`** excludes `tests/production/**` + `tests/audit/**`; prod cookies ≠ localhost | Doc + **`npm run test:local:e2e`**; merge gate **`npm run test:ci:e2e`**; prod auth **`npm run test:prod`** |
+| 2 | **AZ-02** | Gate 4 live receipt (`sent_via` + new row) | Operator | REVENUE_PROOF §4 | Historical Resend row only | Approve real `send_message`; log id + `sent_via` in REVENUE_PROOF |
+| 3 | **AZ-03** | Approve → mailbox delivery proof | Operator | §1.1 | Overlaps AZ-02 | Same session as AZ-02 |
+| 4 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` | Second Google user: connect, brief, `tkg_actions` row |
+| 5 | **AZ-05** | Organic `action_type` distribution | Agent | §1.1 | SQL template in DONE header | Run in Supabase when connected; if `do_nothing` skews, open generator/scorer session |
+| 6 | **AZ-08** | UptimeRobot on `/api/health` | Operator | §1.2 | External uptime | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
+| 7 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual | Key routes + 404 |
+| 8 | **AZ-11** | Stranger onboarding (live OAuth) | Operator | §1.3 | Manual | Recorded flow optional |
+| 9 | **AZ-14** | `tests/production/auth-state.json` refresh | Operator | test:prod | ~30-day JWT | `npm run test:prod:setup` |
+| 10 | **AZ-16** | Stripe checkout + webhook | Operator | §1.4 | — | Verify `user_subscriptions` |
+| 11 | **AZ-17** | Supabase leaked-password protection | Operator | Security | Pro-gated | Dashboard toggle |
+| 12 | **AZ-18** | 3 consecutive useful cron directives | Operator | §1.1 | Quality bar | Monitor nightly email |
+| 13 | **AZ-19** | Owner account: scopes + focus | Operator | Product | — | Reconnect OAuth; UI focus |
+| 14 | **AZ-21** | Supabase backups / PITR | Operator | DR | — | Dashboard per plan |
+| — | **CE-2** | Recurring financial burn (beyond 2-day proxy) | Agent | CE section | Partial | Richer bank/financial recurrence patterns when data allows |
 | — | — | Rate limiting try/webhook | — | — | **DONE** 2026-03-31 | — |
 | — | — | Signal dedup Gmail+Outlook | — | — | **DONE** | — |
 | — | — | Email double-send idempotency | — | — | **DONE** 2026-03-31 | — |

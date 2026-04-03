@@ -9,6 +9,7 @@
     "lint": "cross-env ESLINT_USE_FLAT_CONFIG=true eslint . --max-warnings 0",
     "test": "vitest",
     "test:e2e": "playwright test",
+    "test:local:e2e": "playwright test",
     "audit:smoke": "npx playwright test --config=playwright.audit.config.ts",
     "audit:ux": "npx tsx scripts/ux-audit.ts",
     "audit:all": "npx playwright test --config=playwright.audit.config.ts && npx tsx scripts/ux-audit.ts",

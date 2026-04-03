@@ -3,6 +3,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { decryptWithStatus } from '@/lib/encryption';
 import { isOverDailyLimit } from '@/lib/utils/api-tracker';
 
+/** CE-5: at least two goal keywords appear in the same decrypted signal snippet (exported for tests). */
+export function signalReinforcesGoalKeywords(keywords: string[], plaintextsLower: string[]): boolean {
+  return plaintextsLower.some((text) => keywords.filter((k) => text.includes(k)).length >= 2);
+}
+
 export async function refreshGoalContext(): Promise<{ ok: boolean; updated: number; skipped: number; decayed: number }> {
   const supabase = createServerClient();
 
@@ -91,24 +96,69 @@ Rewrite the goal text to include specific entity names (people, organizations, j
     }
   }
 
-  // --- Goal decay: demote goals with no signal reinforcement in 21+ days ---
-  const thirtyDaysAgo = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString();
+  // --- CE-5: Goal decay — demote when no goal-relevant signal in the last 21 days ---
+  const twentyOneDaysAgoIso = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString();
   let decayed = 0;
 
+  const DECAY_STOP_WORDS = new Set([
+    'that',
+    'this',
+    'with',
+    'from',
+    'have',
+    'will',
+    'been',
+    'your',
+    'their',
+    'they',
+    'into',
+    'path',
+    'primary',
+    'focus',
+    'until',
+    'window',
+    'resolves',
+  ]);
+
   for (const userId of userIds) {
-    const { data: staleGoals } = await supabase
+    const { data: goalsToCheck } = await supabase
       .from('tkg_goals')
-      .select('id, goal_text, priority, updated_at, source')
+      .select('id, goal_text, priority, source')
       .eq('user_id', userId)
       .eq('status', 'active')
-      .gte('priority', 3)
-      .lt('updated_at', thirtyDaysAgo);
+      .gte('priority', 3);
 
-    for (const goal of (staleGoals ?? [])) {
-      // Never decay user-stated goals below priority 3
+    if (!goalsToCheck?.length) continue;
+
+    const { data: recentSignals } = await supabase
+      .from('tkg_signals')
+      .select('content')
+      .eq('user_id', userId)
+      .eq('processed', true)
+      .gte('occurred_at', twentyOneDaysAgoIso)
+      .limit(200);
+
+    const decryptedRecent: string[] = [];
+    for (const s of recentSignals ?? []) {
+      const dec = decryptWithStatus((s.content as string) ?? '');
+      if (!dec.usedFallback && dec.plaintext.length > 10) {
+        decryptedRecent.push(dec.plaintext.toLowerCase());
+      }
+    }
+
+    for (const goal of goalsToCheck) {
       if (goal.source === 'onboarding_stated' && goal.priority <= 3) continue;
-      // Never decay onboarding bucket goals below priority 2
       if (goal.source === 'onboarding_bucket' && goal.priority <= 2) continue;
+
+      const keywords = (goal.goal_text as string)
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w: string) => w.length >= 4 && !DECAY_STOP_WORDS.has(w))
+        .slice(0, 8);
+
+      if (keywords.length < 2) continue;
+
+      if (signalReinforcesGoalKeywords(keywords, decryptedRecent)) continue;
 
       const newPriority = Math.max(2, goal.priority - 1);
       if (newPriority < goal.priority) {
