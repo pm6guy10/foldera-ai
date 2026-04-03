@@ -38,24 +38,35 @@ const REQUIRED_COLUMNS: [string, string][] = [
 
 
 export async function GET() {
-  const supabase = createServerClient();
   const schemaErrors: string[] = [];
 
-  // ── DB connectivity ────────────────────────────────────────────────────────
+  // CI and local runs often omit Supabase — never throw; surface `db: false` + `degraded`
+  // so Playwright `/api/health` checks stay 200 (contract: always JSON, never 500 for missing config).
+  const hasSupabaseCfg = !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  );
+
   let dbOk = false;
-  try {
-    const { error } = await supabase.from('tkg_goals').select('id').limit(1);
-    dbOk = !error;
-  } catch {
-    dbOk = false;
+  let supabase: ReturnType<typeof createServerClient> | null = null;
+
+  if (hasSupabaseCfg) {
+    try {
+      supabase = createServerClient();
+      const { error } = await supabase.from('tkg_goals').select('id').limit(1);
+      dbOk = !error;
+    } catch {
+      dbOk = false;
+      supabase = null;
+    }
   }
 
   // ── Schema checks (only if DB is reachable) ────────────────────────────────
-  if (dbOk) {
+  if (dbOk && supabase) {
     // Column existence: a missing column returns error code 42703
     for (const [table, col] of REQUIRED_COLUMNS) {
       try {
-        const { error } = await (supabase as ReturnType<typeof createServerClient>)
+        const { error } = await supabase
           .from(table as 'tkg_goals')
           .select(col)
           .limit(0);
