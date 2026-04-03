@@ -441,9 +441,8 @@ export function buildDailyDirectiveEmailHtml(opts: {
           directive.action_type === 'send_message'
             ? `<tr><td style="padding:0 0 20px 0;">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:13px;color:#a1a1aa;line-height:1.65;">
-            <strong style="color:#e4e4e7;">Paste it yourself:</strong> open your mail app, start a message to the address above, and copy the subject and body from this email.
-            Or open the <a href="${baseUrl}/dashboard" style="color:${EMAIL_CYAN};text-decoration:underline;">dashboard</a> and use <strong style="color:#e4e4e7;">Copy draft</strong>, then send from your inbox.
-            <strong style="color:#e4e4e7;">Approve</strong> sends from your connected Gmail or Outlook when available.
+            <strong style="color:#e4e4e7;">Approve</strong> sends from your connected Gmail or Outlook.
+            The finished draft is below — open the <a href="${baseUrl}/dashboard" style="color:${EMAIL_CYAN};text-decoration:underline;">dashboard</a> if you want to edit before sending.
           </p>
         </td></tr>`
             : ''

@@ -65,6 +65,8 @@ export default function DashboardPage() {
   const [subPlan, setSubPlan] = useState<string | null>(null);
   const [subStatus, setSubStatus] = useState<string | null>(null);
   const [lastDecision, setLastDecision] = useState<'approve' | 'skip' | null>(null);
+  const [executedActionId, setExecutedActionId] = useState<string | null>(null);
+  const [outcomeRecorded, setOutcomeRecorded] = useState(false);
 
   const loadAbortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(false);
@@ -184,11 +186,18 @@ export default function DashboardPage() {
         if (data.status === 'executed' || data.status === 'skipped') {
           setDone(true);
           setLastDecision(deepAction === 'approve' ? 'approve' : 'skip');
-          setFlash(
-            deepAction === 'approve'
-              ? 'Sent. Check your outbox.'
-              : 'Skipped. Foldera will adjust.',
-          );
+          if (deepAction === 'approve') {
+            const sentVia = (data.result as { sent_via?: string } | undefined)?.sent_via;
+            setExecutedActionId((data.action_id as string | undefined) ?? null);
+            const sentFlash =
+              sentVia === 'gmail' ? 'Sent from your Gmail.' :
+              sentVia === 'outlook' ? 'Sent from your Outlook.' :
+              sentVia === 'resend' ? 'Sent via Foldera. Connect Gmail in Settings to send from your own inbox.' :
+              'Sent. Check your outbox.';
+            setFlash(sentFlash);
+          } else {
+            setFlash('Skipped. Foldera will adjust.');
+          }
         } else {
           throw new Error('Unexpected response from Foldera.');
         }
@@ -235,7 +244,14 @@ export default function DashboardPage() {
       if (data.status === 'executed' || data.status === 'skipped') {
         setDone(true);
         setLastDecision('approve');
-        setFlash('Sent. Check your outbox.');
+        const sentVia = (data.result as { sent_via?: string } | undefined)?.sent_via;
+        setExecutedActionId((data.action_id as string | undefined) ?? null);
+        const sentFlash =
+          sentVia === 'gmail' ? 'Sent from your Gmail.' :
+          sentVia === 'outlook' ? 'Sent from your Outlook.' :
+          sentVia === 'resend' ? 'Sent via Foldera. Connect Gmail in Settings to send from your own inbox.' :
+          'Sent. Check your outbox.';
+        setFlash(sentFlash);
       } else {
         throw new Error('Unexpected response from Foldera.');
       }
@@ -298,6 +314,21 @@ export default function DashboardPage() {
   const isDocument = artifact?.type === 'document';
   const artifactBody = artifactPrimaryText(artifact);
   const recipient = artifact?.to || artifact?.recipient || '';
+
+  const recordOutcome = useCallback(async (outcome: 'worked' | 'didnt_work') => {
+    if (!executedActionId || outcomeRecorded) return;
+    setOutcomeRecorded(true);
+    try {
+      await fetch('/api/conviction/outcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_id: executedActionId, outcome }),
+      });
+    } catch {
+      // Non-fatal — outcome is best-effort
+    }
+    setFlash('Foldera will adjust.');
+  }, [executedActionId, outcomeRecorded]);
 
   const handleCopyDraft = useCallback(async () => {
     if (!action || !artifact || !isEmail) return;
@@ -457,7 +488,25 @@ export default function DashboardPage() {
               )}
             </div>
             {flash && <p className="text-white text-base font-bold mb-3">{flash}</p>}
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Your next read arrives tomorrow morning.</p>
+            {lastDecision === 'approve' && executedActionId && !outcomeRecorded && (
+              <div className="mt-4 flex gap-3 justify-center">
+                <button
+                  type="button"
+                  onClick={() => void recordOutcome('worked')}
+                  className="touch-manipulation min-h-[40px] px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-emerald-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                >
+                  It worked
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void recordOutcome('didnt_work')}
+                  className="touch-manipulation min-h-[40px] px-4 rounded-xl bg-zinc-900 border border-white/10 text-zinc-400 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                >
+                  Didn&apos;t work
+                </button>
+              </div>
+            )}
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mt-5">Your next read arrives tomorrow morning.</p>
           </div>
         ) : fetchError ? (
           <div className="mt-20 text-center">
@@ -622,16 +671,16 @@ export default function DashboardPage() {
             )}
 
             {action.action_type === 'send_message' && isEmail && artifactBody && (
-              <div className="px-4 pt-2 pb-1 border-t border-white/5">
-                <button
-                  type="button"
-                  onClick={() => void handleCopyDraft()}
-                  className="touch-manipulation w-full min-h-[48px] rounded-xl border border-cyan-500/40 bg-cyan-500/5 text-cyan-300 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-cyan-500/10 hover:border-cyan-400/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0f]"
-                >
-                  Copy draft
-                </button>
-                <p className="mt-2 text-center text-[11px] text-zinc-500 leading-relaxed px-1">
-                  Prefer to send yourself? Copy, then paste into Gmail or Outlook. Approve sends from your connected mailbox when available.
+              <div className="px-4 pt-2 pb-1 border-t border-white/5 text-center">
+                <p className="text-[11px] text-zinc-500 leading-relaxed px-1 mb-1">
+                  Approve sends from your connected Gmail or Outlook.{' '}
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyDraft()}
+                    className="underline text-zinc-400 hover:text-zinc-300 transition-colors focus-visible:outline-none"
+                  >
+                    Copy as text
+                  </button>
                 </p>
               </div>
             )}

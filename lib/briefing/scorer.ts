@@ -3261,8 +3261,12 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     // Non-blocking — if lookup fails the self-addressed check in isSendWorthy still catches it
   }
 
+  // Today midnight — used for today-focus domain query
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+
   // Parallel data fetch
-  const [commitmentsRes, signalsRes, entitiesRes, goalsRes] = await Promise.all([
+  const [commitmentsRes, signalsRes, entitiesRes, goalsRes, todayActionsRes] = await Promise.all([
     // Open commitments (last 14 days or no deadline), excluding user-suppressed ones
     supabase
       .from('tkg_commitments')
@@ -3303,6 +3307,16 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       .eq('user_id', userId)
       .order('priority', { ascending: true })
       .limit(20),
+
+    // Today's executed/approved actions — used to build todayFocusDomains
+    // If the user already approved something today, deprioritize unrelated domains.
+    supabase
+      .from('tkg_actions')
+      .select('directive_text, action_type')
+      .eq('user_id', userId)
+      .in('status', ['executed', 'approved'])
+      .gte('executed_at', todayMidnight.toISOString())
+      .limit(5),
   ]);
 
   const commitments = commitmentsRes.data ?? [];
@@ -3310,6 +3324,11 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   diag.sourceCounts.signals_raw = (signalsRes.data ?? []).length;
   diag.sourceCounts.entities_raw = (entitiesRes.data ?? []).length;
   diag.sourceCounts.goals_raw = (goalsRes.data ?? []).length;
+
+  // Build today-focus domain set — deferred until after goalKeywordIndex is built (below).
+  // Placeholder populated after goals are filtered and indexed.
+  const todayFocusDomains = new Set<string>();
+  const _todayActionsRaw = todayActionsRes.data ?? [];
 
   // Near-duplicate dedup: commitments are sometimes extracted multiple times
   // from follow-up emails about the same underlying task. Group by the first
@@ -3415,6 +3434,21 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     .filter((g) => !CONSTRAINT_NOTE_PREFIX.test(g.goal_text)) as GoalRow[];
   diag.sourceCounts.goals_after_filter = goals.length;
   const goalKeywordIndex = buildGoalKeywordIndex(goals);
+
+  // Now that goalKeywordIndex is ready, build today-focus domain set from today's
+  // executed/approved actions. If the user already acted on something in a domain
+  // today, apply a 15% score reduction to candidates in unrelated domains — the
+  // picker stays coherent with the user's actual decision state, not just signal recency.
+  for (const a of _todayActionsRaw) {
+    const text = (a.directive_text as string | null) ?? '';
+    if (text.length < 10) continue;
+    const domain = inferGoalCategory(text, goalKeywordIndex);
+    if (domain && domain !== 'other') todayFocusDomains.add(domain);
+  }
+  if (todayFocusDomains.size > 0) {
+    console.log(JSON.stringify({ event: 'scorer_today_focus', userId, domains: [...todayFocusDomains] }));
+  }
+
   logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
 
   // Goal signal velocity — count signals in the last 7 days per goal category.
@@ -4245,7 +4279,17 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     const goalCat = c.matchedGoal?.category;
     const goalVelocity = goalCat ? (goalVelocityMap.get(goalCat) ?? 0) : 0;
     const velocityMultiplier = goalVelocity >= 5 ? 1.30 : goalVelocity >= 3 ? 1.15 : goalVelocity >= 1 ? 1.05 : 1.0;
-    const score = rawScore * velocityMultiplier;
+    let score = rawScore * velocityMultiplier;
+
+    // Today-focus penalty: if the user already approved something in a domain today,
+    // deprioritize candidates in unrelated domains by 15%. Keeps the picker coherent
+    // with the user's actual decision state (not just signal recency).
+    if (todayFocusDomains.size > 0) {
+      const candidateDomain = c.matchedGoal?.category ?? inferGoalCategory(c.content, goalKeywordIndex);
+      if (candidateDomain && candidateDomain !== 'other' && !todayFocusDomains.has(candidateDomain)) {
+        score *= 0.85;
+      }
+    }
 
     // Find related signals: keyword overlap with this loop's content
     const loopWords = new Set(
