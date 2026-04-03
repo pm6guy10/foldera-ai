@@ -6,7 +6,7 @@
 
 - 2026-04-04 — AUDIT: **Vercel / Dependabot ESLint** — Pin `eslint@8.57.1` (peer match for `eslint-config-next@14.2.3`); Dependabot ignore semver-major on `eslint`; **CLAUDE.md** Vercel **Ready** gate before `test:prod` / session done; **AGENTS.md** note.
   MODE: AUDIT
-  Commit hash(es): (this session)
+  Commit hash(es): `013157e`
   Files changed: `package.json`, `package-lock.json`, `.github/dependabot.yml`, `CLAUDE.md`, `AGENTS.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
   What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`
   Any unresolved issues: **Close or update** Dependabot PR `eslint-10.x` without merging; after push, confirm Vercel **Ready** then `npm run test:prod`.
