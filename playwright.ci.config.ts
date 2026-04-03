@@ -12,10 +12,15 @@
  *   tests/audit/*           — writes to disk, clickflow timeouts on /
  *   tests/production/*      — requires auth-state.json + live foldera.ai
  *
- * Requires: NEXTAUTH_SECRET, NEXTAUTH_URL=http://127.0.0.1:3000 (or localhost if IPv6 works)
- * The build step runs before this step in CI, so webServer uses `npm run start`.
+ * Requires: NEXTAUTH_SECRET, NEXTAUTH_URL must match the server origin (see WEB_ORIGIN below).
+ * The build step runs before this step in CI, so webServer uses `next start` on WEB_PORT.
+ *
+ * Optional PLAYWRIGHT_WEB_PORT (e.g. 3011) when :3000 is in use locally — same as playwright.config.ts.
  */
 import { defineConfig } from "@playwright/test";
+
+const WEB_PORT = process.env.PLAYWRIGHT_WEB_PORT || "3000";
+const WEB_ORIGIN = `http://127.0.0.1:${WEB_PORT}`;
 
 export default defineConfig({
   testMatch: [
@@ -28,14 +33,14 @@ export default defineConfig({
   retries: 0,
   reporter: [["list"]],
   webServer: {
-    command: "npm run start",
-    url: "http://127.0.0.1:3000",
+    command: `npx next start -p ${WEB_PORT}`,
+    url: WEB_ORIGIN,
     // Reusing a stale dev/prod server on :3000 serves HTML that points at old chunk hashes → 400 on /_next/static and blank client pages.
     reuseExistingServer: false,
     timeout: 60000,
   },
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: WEB_ORIGIN,
     trace: "retain-on-failure",
   },
 });

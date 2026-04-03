@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 type FolderaMarkProps = {
   /** Outer box: sm = 36px (dashboard headers), md = 40px (marketing), lg = 48px (404 hero) */
   size?: 'sm' | 'md' | 'lg';
@@ -18,12 +20,13 @@ export function FolderaMark({ size = 'md', className = '' }: FolderaMarkProps) {
     <span
       className={`inline-flex shrink-0 items-center justify-center ${boxClass[size]} ${className}`}
     >
-      <img
+      <Image
         src="/foldera-glyph.svg"
         alt="Foldera"
         className="h-full w-full object-contain"
         width={28}
         height={28}
+        unoptimized
       />
     </span>
   );

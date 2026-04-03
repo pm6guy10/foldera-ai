@@ -383,9 +383,8 @@ test.describe('Backend safety gates', () => {
       }),
     );
 
-    // svix signature verification runs before body validation;
-    // an empty body fails the signature check → 401, not 400.
-    expect(result.response.status()).toBe(401);
+    // Empty body is rejected before Svix verify (400). Unsigned JSON still → 401.
+    expect(result.response.status()).toBe(400);
     expect(result.response.status()).not.toBe(500);
   });
 });

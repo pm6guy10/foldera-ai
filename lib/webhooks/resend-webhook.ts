@@ -54,6 +54,10 @@ export async function handleResendWebhookPost(request: NextRequest): Promise<Nex
 
   const body = await request.text();
 
+  if (!body.trim()) {
+    return NextResponse.json({ error: 'Empty body' }, { status: 400 });
+  }
+
   const wh = new Webhook(secret);
   let event: { type: string; data: Record<string, unknown> };
 

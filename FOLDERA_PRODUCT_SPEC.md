@@ -7,7 +7,7 @@ Next Review: Monday March 31, 2026
 
 Brandon opens a chat. Drags this file in. Claude reads it, diffs against what CC shipped since last update, writes the next prompt. Brandon pastes to CC. Claude updates this file. That's the loop.
 
-**Multi-session “mega prompt” work:** Use [docs/MEGA_PROMPT_PROGRAM.md](./docs/MEGA_PROMPT_PROGRAM.md) — one Cursor session per row (baseline, local brain, UX sweeps, doc sync). Gate 4 operator receipt steps are linked from [REVENUE_PROOF.md](./REVENUE_PROOF.md). **April 3, 2026:** `npm run test:local:check` fails fast when localhost owner storage state is missing (see `tests/local/README.md`).
+**Multi-session “mega prompt” work:** Use [docs/MEGA_PROMPT_PROGRAM.md](./docs/MEGA_PROMPT_PROGRAM.md) — one Cursor session per row (baseline, local brain, UX sweeps, doc sync). Gate 4 operator receipt steps are linked from [REVENUE_PROOF.md](./REVENUE_PROOF.md). **April 3, 2026:** `npm run test:local:check` fails fast when localhost owner storage state is missing (see `tests/local/README.md`). **Same day (hardening loop):** `npm run lint` (flat ESLint via `cross-env`, ignores `.claude/**`); GitHub Actions runs **Lint** before **Build**; Resend shared handler returns **400** on empty webhook body before Svix verify (`lib/webhooks/resend-webhook.ts` + `lib/webhooks/__tests__/resend-webhook.test.ts`); `playwright.ci.config.ts` honors `PLAYWRIGHT_WEB_PORT`; Dependabot weekly npm (`.github/dependabot.yml`); `FolderaMark` uses `next/image` for the glyph.
 
 **Operator dashboards + troubleshooting:** [docs/MASTER_PUNCHLIST.md](./docs/MASTER_PUNCHLIST.md) (Supabase, Vercel, run-brief JSON for missing email, Gate 4 paste instructions).
 

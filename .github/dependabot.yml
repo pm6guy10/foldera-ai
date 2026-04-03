@@ -1,0 +1,10 @@
+# Weekly dependency update PRs (npm). Does not auto-merge.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies

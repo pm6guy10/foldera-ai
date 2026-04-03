@@ -1,5 +1,15 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-03) — Quality hardening loop (Resend + lint + CI + tooling)
+
+- **Resend webhook** — `lib/webhooks/resend-webhook.ts`: reject **empty body** with **400** before Svix `verify` (clearer than signature failure). **E2E** `tests/e2e/backend-safety-gates.spec.ts` expects `400`. **Unit:** `lib/webhooks/__tests__/resend-webhook.test.ts` (empty body + unsigned JSON → 401).
+- **`npm run lint`** — `cross-env ESLINT_USE_FLAT_CONFIG=true eslint . --max-warnings 0` (flat `eslint.config.mjs`, ignores `.claude/**`). Replaces interactive `next lint` when no legacy `.eslintrc`.
+- **CI** — `.github/workflows/ci.yml` runs **Lint** after `npm ci`, before **Build**.
+- **`FolderaMark`** — `next/image` + `unoptimized` for `/foldera-glyph.svg` (satisfies `@next/next/no-img-element`).
+- **`playwright.ci.config.ts`** — `PLAYWRIGHT_WEB_PORT` + `npx next start -p <port>` + matching `baseURL` (same escape hatch as root `playwright.config.ts` when :3000 is taken).
+- **Dependabot** — `.github/dependabot.yml`: weekly `npm`, `open-pull-requests-limit: 5`.
+- **devDependency:** `cross-env` for portable lint script on Windows/macOS/Linux.
+
 ### DONE (2026-04-03) — Plan continuation (overnight / agent)
 
 - **`npm run test:local:check`** — [`tests/local/check-prereqs.ts`](tests/local/check-prereqs.ts); [`tests/local/README.md`](tests/local/README.md) + [`CLAUDE.md`](CLAUDE.md) Autonomous local hammer; fails fast when `auth-state-owner.json` absent.
@@ -617,14 +627,11 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - Rate limiting on /api/try/analyze and all public routes — DONE 2026-03-31 (webhook: in-memory 10/min; try/analyze: DB-backed 5/hr already existed)
 - Signal dedup across Outlook+Gmail (same email, two signals) — DONE (content_hash + onConflict ignoreDuplicates was already in both sync files)
 - Email send idempotency (prevent double-send on cron double-fire) — DONE 2026-03-31 (resend_id guard added to daily-brief-send.ts)
-- .env.example for contributors
 - UptimeRobot monitor for /api/health
 - DB migrations in code (not manual)
 - Correlation IDs in logs
 - Supabase backups
-- Dependabot
 - Past directives view (/dashboard/briefings)
 - Auth-state.json refresh (expires ~April 22)
 - Duplicate entity cleanup (beyond Yadira)
 - Local Playwright auth-state mismatch against `http://localhost:3000` still breaks the authenticated production-smoke subset
-- `tests/e2e/backend-safety-gates.spec.ts:372` — resend webhook returns 401 (auth check) before 400 (body validation); test expects 400 for empty body; pre-existing ordering issue in `/api/resend/webhook/route.ts`, not introduced by any current session
