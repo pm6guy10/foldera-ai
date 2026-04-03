@@ -6,7 +6,7 @@
 
 - 2026-04-04 — AUDIT: **AZ-24 receipt + slice 2 — evidence freshness union** — Supabase MCP **14d/7d** `action_type` counts + **7d `research`** status breakdown pasted in **AUTOMATION_BACKLOG**; GitHub **CI** (`ci.yml`) on `8739494` **success**; **`npm run test:prod`** 61 passed. **Slice 2:** `getNewestEvidenceTimestampMs` in `thread-evidence-for-payload.ts`; `buildStructuredContext` + `buildDecisionPayload` use union of **`supporting_signals`** and **`winner.sourceSignals`** for `has_recent_evidence` / `freshness_state`; tests extended; [`scripts/az24-research-breakdown.sql`](scripts/az24-research-breakdown.sql); **FOLDERA_PRODUCT_SPEC** §1.1; **AUTOMATION_BACKLOG** AZ-24.
   MODE: AUDIT
-  Commit hash(es): (this session)
+  Commit hash(es): `093a0b3`
   Files changed: `lib/briefing/thread-evidence-for-payload.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/thread-evidence-for-payload.test.ts`, `lib/briefing/__tests__/decision-payload-adversarial.test.ts`, `scripts/az05-action-type-distribution.sql`, `scripts/az24-research-breakdown.sql`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run build`; `npm run test:ci:e2e`; `npm run test:prod` (61); post-push Vercel **Ready** + `test:prod` (operator confirm if deploy lags)
   Any unresolved issues: Confirm **Vercel Ready** on pushed commit in dashboard. Re-run `scripts/az05-action-type-distribution.sql` after deploy to measure slice-2 needle.
