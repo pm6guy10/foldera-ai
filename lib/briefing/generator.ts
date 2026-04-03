@@ -1604,8 +1604,10 @@ function buildStructuredContext(
   const recent_action_history_7d = [
     ...guardrails.approvedRecently.map((r) =>
       `[${r.generated_at.slice(0, 10)}] ${r.action_type ?? 'unknown'} APPROVED: ${(r.directive_text ?? '').slice(0, 80)}`),
-    ...guardrails.skippedRecently.map((r) =>
-      `[${r.generated_at.slice(0, 10)}] ${r.action_type ?? 'unknown'} SKIPPED: ${(r.directive_text ?? '').slice(0, 80)}`),
+    ...guardrails.skippedRecently.map((r) => {
+      const reason = r.skip_reason ? ` (reason: ${r.skip_reason})` : '';
+      return `[${r.generated_at.slice(0, 10)}] ${r.action_type ?? 'unknown'} SKIPPED${reason}: ${(r.directive_text ?? '').slice(0, 80)}`;
+    }),
   ].slice(0, 10);
 
   // Precomputed booleans
