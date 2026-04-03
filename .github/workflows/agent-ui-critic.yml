@@ -1,4 +1,4 @@
-# After each push to main — Playwright screenshots + Sonnet critique → DraftQueue.
+# Manual dispatch only — Playwright screenshots + Sonnet critique → DraftQueue.
 name: Agent — UI Critic
 on:
   workflow_dispatch:

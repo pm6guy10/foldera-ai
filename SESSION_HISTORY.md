@@ -4,7 +4,14 @@
 
 ## Session Logs
 
-- 2026-04-04 — AUDIT: **AB-25 locked_contact normalization fix**
+- 2026-04-03 — AUDIT: **UI Critic auto-trigger killed**
+  MODE: AUDIT
+  Commit hash(es): `19c5b41` (push trigger removed — prior session), stale-comment fix committed this session
+  Files changed: `.github/workflows/agent-ui-critic.yml` (line 1 comment updated from "After each push to main" → "Manual dispatch only"), `AUTOMATION_BACKLOG.md` (closure entry added)
+  What was verified: Full trace of every `action_type='research'` creation path completed. Confirmed `insertAgentDraft` (`lib/agents/draft-queue.ts` L53) is the sole writer. Confirmed only `ingestUiCriticItems` produces `directive_text='UI/UX below threshold — …'` rows. Confirmed `agent-ui-critic.yml` `push: branches: [main]` trigger was the sole automatic source — ~83 runs × 5 rows/run = 417 rows over 7 days. Confirmed commit 19c5b41 removed the push trigger. Verified no remaining automatic paths: `agent-runner` route explicitly skips `ui_critic`; `vercel.json` crons are only `nightly-ops` and `daily-brief`; no other GitHub Actions workflows reference `agent-ui-ingest`. `npm run build` clean.
+  Any unresolved issues: None. Push trigger is dead. Workflow is manual-dispatch only. `UI_CRITIC_ENABLED` env var gate in route provides additional server-side protection.
+
+
   MODE: AUDIT
   Commit hash(es): `eb41c35`
   Files changed: `lib/briefing/generator.ts` (L5748 — add `.replace(/\s+/g, '')` when building `lockedContacts` Set), `lib/briefing/__tests__/generator-runtime.test.ts` (add `lockedConstraintsQueue` + thenable `tkg_constraints` mock + 2 new tests), `lib/conviction/__tests__/execute-action.test.ts` (add `vi.stubEnv('ALLOW_EMAIL_SEND','true')` in beforeEach to fix 5 pre-existing failures caused by email-send gate)

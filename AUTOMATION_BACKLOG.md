@@ -1,6 +1,12 @@
 # AUTOMATION BACKLOG
 
-### DONE (2026-04-04) — Vercel / Dependabot ESLint peer fix
+### DONE (2026-04-03) — UI Critic auto-trigger killed (agent)
+
+- **Root cause confirmed:** `push: branches: [main]` trigger in `.github/workflows/agent-ui-critic.yml` fired the full Playwright + Sonnet + ingest cycle on every push to main, producing ~5 `action_type='research'` rows per push (one per page if `below_seven=true`). 417 rows in 7 days ≈ 83 workflow runs driven by frequent AI-session commits. Every code path traced: only `insertAgentDraft` (`lib/agents/draft-queue.ts` L53) writes `action_type='research'` rows; only `ingestUiCriticItems` (`lib/agents/ingest-ui-critic.ts`) generates `directive_text='UI/UX below threshold — …'` rows. All other paths (agent-runner, vercel.json crons, nightly-ops, daily-brief, signal-drain) confirmed clean.
+- **Commit 19c5b41 (2026-04-03)** removed the two push-trigger lines. Workflow is now `workflow_dispatch` only. No remaining automatic trigger exists.
+- **This session:** Updated stale comment on line 1 of `agent-ui-critic.yml` from "After each push to main" → "Manual dispatch only".
+
+
 
 - **ERESOLVE on Vercel** — Dependabot branch `eslint@10` + **`eslint-config-next@14.2.3`** (peer `eslint@^7.23 || ^8`) broke `npm install`. **Fix:** pin **`eslint@8.57.1`** in `package.json`; **Dependabot** `ignore` semver-major on `eslint` until Next + `eslint-config-next` upgrade.
 - **Runbook:** **`CLAUDE.md`** — *Vercel deploy gate*: do not close a session or run `test:prod` as “verified” until the latest production deploy shows **Ready**; **`AGENTS.md`** pointer.
