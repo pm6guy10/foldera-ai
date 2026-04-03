@@ -286,6 +286,13 @@ async function executeArtifact(
         const references =
           typeof artifact.references === 'string' ? artifact.references : undefined;
         if (options?.actionType === 'send_message') {
+          // Safety gate: actual email sending requires ALLOW_EMAIL_SEND=true in env.
+          // Without it, Approve marks the action executed but no email is dispatched.
+          if (process.env.ALLOW_EMAIL_SEND !== 'true') {
+            out = { ...out, sent: false, sent_via: null, reason: 'email_send_disabled' };
+            console.log(`[execute-action] email send skipped for ${actionId} — ALLOW_EMAIL_SEND not set`);
+          } else {
+
           // Prefer the user's mailbox (Gmail / Outlook) so recipients see the customer, not brief@foldera.ai.
           let sentViaProvider = false;
           let providerError: string | undefined;
@@ -358,6 +365,7 @@ async function executeArtifact(
               console.log(`[execute-action] resend email sent for action ${actionId}`);
             }
           }
+          } // end ALLOW_EMAIL_SEND else
         } else {
           const useGoogle = await hasIntegration(userId, 'google');
           const result = useGoogle
