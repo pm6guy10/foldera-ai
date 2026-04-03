@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { FolderaMark } from '@/components/nav/FolderaMark';
 import { signOut, useSession } from 'next-auth/react';
-import { Settings, Lock, LogOut } from 'lucide-react';
+import { Settings, Lock, LogOut, History } from 'lucide-react';
 import type { ConvictionAction } from '@/lib/briefing/types';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { AgentSystemPanel } from '@/components/dashboard/AgentSystemPanel';
@@ -352,6 +352,13 @@ export default function DashboardPage() {
             <span className="text-sm font-black tracking-tighter text-white uppercase truncate">Foldera</span>
           </Link>
           <div className="flex items-center gap-1 shrink-0">
+            <Link
+              href="/dashboard/briefings"
+              className="touch-manipulation min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+              aria-label="Past directives"
+            >
+              <History className="w-5 h-5" />
+            </Link>
             <Link href="/dashboard/settings" className="touch-manipulation min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]" aria-label="Settings">
               <Settings className="w-5 h-5" />
             </Link>

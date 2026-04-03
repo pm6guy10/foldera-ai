@@ -27,6 +27,7 @@ Brain-receipt and `email-preview?action_id=` require an **owner** session on the
 - **Prereq check:** `npm run test:local:check` — exits 1 if `auth-state-owner.json` is missing (prints setup hints).
 - **Run brain-receipt headlessly:** dev server + `ALLOW_DEV_ROUTES=true`, then `npm run test:local:brain-receipt` (optional `-- --screenshot path.png`).
 - **Production smoke after push:** when `tests/production/auth-state.json` exists and is fresh (session under ~30 days), run `npm run test:prod`. Refresh with `npm run test:prod:setup` if authenticated suites skip or fail.
+- **Local omnibus Playwright:** `tests/production/*` targets **www.foldera.ai** cookies — not localhost. Canonical policy: [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md). Local merge gate: `npm run test:ci:e2e`.
 
 **Human-only revenue gates** (cannot be automated): live **Approve** on a real `send_message` with mailbox connected (`sent_via` in `REVENUE_PROOF.md`), Stripe checkout + webhook row, optional non-owner signup — see `AUTOMATION_BACKLOG.md` (Operator-only GTM gates).
 

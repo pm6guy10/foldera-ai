@@ -2,6 +2,12 @@
 
 ## OPEN — Requires Action
 
+### SHIPPED — 2026-04-03 — A–Z audit + local Playwright NEEDS_REVIEW dedupe
+
+- **[docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md)** — Single **Consolidated NEEDS_REVIEW** paragraph: local omnibus `npx playwright test` + `tests/production/smoke.spec.ts` against localhost is the same failure class as the many dated NEEDS_REVIEW blocks below (do not treat as unrelated regressions).
+- **[docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md)** — Canonical commands (`test:ci:e2e` vs `test:prod`).
+- Historical NEEDS_REVIEW rows below are **not deleted** (audit trail); prefer the consolidated doc for triage.
+
 ### SHIPPED — 2026-04-02 — MASTER_PUNCHLIST operator index
 
 - **`docs/MASTER_PUNCHLIST.md`** — dashboard deep links, run-brief JSON inspection for missing email, Gate 4 operator instructions (explicit: no fabricated REVENUE_PROOF). Cross-linked from MEGA_PROMPT_PROGRAM, AGENTS, FOLDERA_PRODUCT_SPEC, REVENUE_PROOF Gate 4, AUTOMATION_BACKLOG.

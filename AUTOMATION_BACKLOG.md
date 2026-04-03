@@ -1,5 +1,14 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-03) — A–Z audit + backlog normalization + briefings + runbooks
+
+- **[docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md)** — Full A–Z dimension matrix (Green/Yellow/Red), automation snapshot (lint, **601** vitest, build, **39** CI e2e, 61 test:prod), consolidated **NEEDS_REVIEW** dedupe note.
+- **[docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md)** — Canonical commands: `test:ci:e2e` vs `test:prod` vs omnibus; **AZ-01** doc quarantine.
+- **OPEN table** — Replaced flat list with ranked **P0–P2** table (`AZ-01` … `AZ-22`); merged prior OPEN + punchlist themes.
+- **Past directives:** `GET /api/conviction/history`, [`app/dashboard/briefings/page.tsx`](app/dashboard/briefings/page.tsx), History icon on [`app/dashboard/page.tsx`](app/dashboard/page.tsx); unit test [`app/api/conviction/history/__tests__/route.test.ts`](app/api/conviction/history/__tests__/route.test.ts); E2E in [`tests/e2e/authenticated-routes.spec.ts`](tests/e2e/authenticated-routes.spec.ts).
+- **[docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md)** — UptimeRobot section (**AZ-08**); Playwright section links LOCAL doc.
+- **[CLAUDE.md](CLAUDE.md)** — Local omnibus policy link.
+
 ### DONE (2026-04-03) — Quality hardening loop (Resend + lint + CI + tooling)
 
 - **Resend webhook** — `lib/webhooks/resend-webhook.ts`: reject **empty body** with **400** before Svix `verify` (clearer than signature failure). **E2E** `tests/e2e/backend-safety-gates.spec.ts` expects `400`. **Unit:** `lib/webhooks/__tests__/resend-webhook.test.ts` (empty body + unsigned JSON → 401).
@@ -611,27 +620,34 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - **Leaked password protection**: Requires Supabase dashboard toggle — noted for manual action.
 - Migration file: `supabase/migrations/20260328000001_security_and_perf_fixes.sql` (all applied to production).
 
-### OPEN (Priority order)
-- **FLOW UX overhaul (2026-03-31)**: After deploy, run `npm run test:prod` (refresh `auth-state` if stale) and optional manual Playwright screenshots for `/`, `/login`, `/start`, `/onboard`, `/dashboard` (directive + empty), `/dashboard/settings`, `/pricing`, `/blog`, `/blog/[slug]`, 404.
-- Enable leaked password protection (Supabase Auth dashboard — requires Pro plan, skip for now)
-- Trigger production run and confirm canonical action_type persists in tkg_actions row (not do_nothing)
-- Blog formatting fix (prose typography, Codex queued)
-- Brandon reconnects Google with all scopes
-- Brandon sets focus areas on settings page
-- 3 consecutive days of useful cron directives
-- Prove approve flow end-to-end (approve, email sends via Resend)
-- Non-Brandon user connects and gets useful directive
-- Stranger onboarding e2e test
-- Landing page SEO copy rewrite (homepage, not blog)
-- /try page conversion funnel
-- Rate limiting on /api/try/analyze and all public routes — DONE 2026-03-31 (webhook: in-memory 10/min; try/analyze: DB-backed 5/hr already existed)
-- Signal dedup across Outlook+Gmail (same email, two signals) — DONE (content_hash + onConflict ignoreDuplicates was already in both sync files)
-- Email send idempotency (prevent double-send on cron double-fire) — DONE 2026-03-31 (resend_id guard added to daily-brief-send.ts)
-- UptimeRobot monitor for /api/health
-- DB migrations in code (not manual)
-- Correlation IDs in logs
-- Supabase backups
-- Past directives view (/dashboard/briefings)
-- Auth-state.json refresh (expires ~April 22)
-- Duplicate entity cleanup (beyond Yadira)
-- Local Playwright auth-state mismatch against `http://localhost:3000` still breaks the authenticated production-smoke subset
+### OPEN (normalized 2026-04-03 — A–Z audit)
+
+Single prioritized table (deduped from prior OPEN bullets + [FOLDERA_MASTER_AUDIT.md](FOLDERA_MASTER_AUDIT.md) NEEDS_REVIEW cluster). Full matrix: [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md). Local vs prod test policy: [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md).
+
+| Rank | ID | Title | Owner | Spec § | Evidence / notes | Next action |
+|------|-----|--------|-------|--------|------------------|-------------|
+| 1 | **AZ-01** | Local Playwright vs production smoke harness | Agent | §1.1 QA | Omnibus `npx playwright test` mixes `tests/production/*` (www.foldera.ai cookies) with localhost; [FOLDERA_MASTER_AUDIT.md](FOLDERA_MASTER_AUDIT.md) NEEDS_REVIEW ×10 → **one root cause** | Follow [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md); use `npm run test:ci:e2e` locally; `npm run test:prod` for auth |
+| 2 | **AZ-02** | Gate 4 live receipt (`sent_via` + new row) | Operator | REVENUE_PROOF §4 | Historical Resend row only; no post-ship `gmail`/`outlook` row yet | Approve real `send_message`; log id + `sent_via` in REVENUE_PROOF |
+| 3 | **AZ-03** | Approve → Resend/mailbox delivery proof | Operator | §1.1 | Overlaps AZ-02; proves end-to-end value | Same session as AZ-02 or separate approve |
+| 4 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` fails until second connected account exists | Second Google user: connect, brief, `tkg_actions` row |
+| 5 | **AZ-05** | Confirm organic `action_type` not stuck `do_nothing` | Agent | §1.1 | Query `tkg_actions` after nightly or run-brief | `SELECT` recent rows; if stuck, generator/scorer session |
+| 6 | **AZ-06** | Correlation IDs in logs + Sentry scope | Agent | §1.2 / observability | Backlog item | Add `x-request-id` middleware + pass to `apiError` / Sentry |
+| 7 | **AZ-07** | Past directives UI (`/dashboard/briefings`) | Agent | Product surface | **DONE 2026-04-03:** `GET /api/conviction/history`, [app/dashboard/briefings/page.tsx](app/dashboard/briefings/page.tsx), History icon on dashboard header | — |
+| 8 | **AZ-08** | UptimeRobot (or equivalent) on `/api/health` | Operator | §1.2 | External uptime | Create monitor; URL in [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
+| 9 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual coverage | Screenshots for `/`, `/login`, `/start`, `/onboard`, `/dashboard`, `/settings`, `/pricing`, `/blog`, 404 |
+| 10 | **AZ-10** | Blog prose / typography polish | Agent | Marketing | Open quality | Tailwind prose pass on `[slug]` page |
+| 11 | **AZ-11** | Stranger onboarding E2E (live OAuth) | Operator | §1.3 | Cannot fully automate without real OAuth | Manual or recorded flow |
+| 12 | **AZ-12** | Landing SEO copy (homepage) | Agent | GTM | Not blog | Copy pass `app/page.tsx` |
+| 13 | **AZ-13** | `/try` conversion funnel | Agent | GTM | Thin page | CTA + analytics optional |
+| 14 | **AZ-14** | `tests/production/auth-state.json` refresh | Operator | test:prod | ~30-day JWT | `npm run test:prod:setup` before expiry |
+| 15 | **AZ-15** | Duplicate entity cleanup (beyond Yadira) | Agent | Data hygiene | DB/script | One-off Supabase cleanup + scorer guard |
+| 16 | **AZ-16** | Stripe live checkout + webhook row | Operator | §1.4 | CI cannot hold secrets | One test subscription; verify `user_subscriptions` |
+| 17 | **AZ-17** | Supabase leaked password protection | Operator | Security | Pro-gated | Dashboard toggle if on Pro |
+| 18 | **AZ-18** | 3 consecutive days useful cron directives | Operator | §1.1 | Quality bar | Monitor email after nightly |
+| 19 | **AZ-19** | Brandon: Google all scopes + settings focus | Operator | Product | Account-specific | Reconnect OAuth; set focus in UI |
+| 20 | **AZ-20** | DB migrations process (no manual drift) | Agent | § integrity | Backlog | Document `supabase db push` + CI check |
+| 21 | **AZ-21** | Supabase backups | Operator | DR | Dashboard | Enable PITR / backups per plan |
+| 22 | **AZ-22** | Conviction engine CE-1–CE-6 | Agent | AUTOMATION_BACKLOG CE | Incremental | Wire `conviction-engine` per CE items |
+| — | — | Rate limiting try/webhook | — | — | **DONE** 2026-03-31 | — |
+| — | — | Signal dedup Gmail+Outlook | — | — | **DONE** | — |
+| — | — | Email double-send idempotency | — | — | **DONE** 2026-03-31 | — |

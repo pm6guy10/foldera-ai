@@ -33,6 +33,19 @@ Confirm [GitHub remote](https://github.com/pm6guy10/foldera-ai) matches your for
 
 ---
 
+## External uptime (UptimeRobot — operator)
+
+**Backlog:** [AUTOMATION_BACKLOG.md](../AUTOMATION_BACKLOG.md) **AZ-08**.
+
+1. Create a monitor (HTTP GET) pointing at **`https://www.foldera.ai/api/health`** (or your production origin + `/api/health`).
+2. Expect HTTP **200** and JSON with `"status":"ok"` or `"degraded"` per [app/api/health/route.ts](../app/api/health/route.ts) — alert on non-200 or timeout.
+3. Interval: 5 minutes is sufficient; avoid hammering the route.
+4. Optional second monitor: `GET https://www.foldera.ai/` (marketing availability only).
+
+Cron health-check already emails ops on failure; UptimeRobot adds an independent path when email/cron is down.
+
+---
+
 ## “Generated” but no email — inspect run-brief JSON
 
 Manual path: [app/api/settings/run-brief/route.ts](../app/api/settings/run-brief/route.ts) → `runBriefLifecycle({ ensureSend: true, ... })`. Send can still return **`email_already_sent`**, **`no_verified_email`**, or other codes.
@@ -67,6 +80,8 @@ Full checklist: [REVENUE_PROOF.md § Gate 4 live receipt](../REVENUE_PROOF.md#ga
 
 ## Playwright / auth refresh (when needed only)
 
+- **Local vs production harness:** [docs/LOCAL_E2E_AND_PROD_TESTS.md](./LOCAL_E2E_AND_PROD_TESTS.md) — do not expect `tests/production/*` to pass against `localhost` without production cookies.
 - Production smoke: `npm run test:prod:setup` when [tests/production/auth-state.json](../tests/production/auth-state.json) is missing or suites skip.
+- Local merge gate: `npm run test:ci:e2e` (CI-parity, mocked APIs).
 - Local brain: `npm run test:local:setup` then `npm run test:local:brain-receipt` — [tests/local/README.md](../tests/local/README.md).
 - Busy port **3000**: see **Alternate port** in [MEGA_PROMPT_PROGRAM.md](./MEGA_PROMPT_PROGRAM.md) baseline notes (`PLAYWRIGHT_WEB_PORT`).

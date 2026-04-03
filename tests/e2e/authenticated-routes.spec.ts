@@ -1,6 +1,6 @@
 /**
  * Authenticated route smoke tests — mocked NextAuth session.
- * Covers: /dashboard, /dashboard/settings
+ * Covers: /dashboard, /dashboard/settings, /dashboard/briefings
  * Tests: directive card, approve/skip buttons, provider cards, console errors
  * Viewports: 390px (mobile) and 1280px (desktop)
  *
@@ -243,6 +243,30 @@ async function setupSettingsMocks(page: Page) {
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
 }
 
+/** Past directives list — mocks `GET /api/conviction/history`. */
+async function setupBriefingsMocks(page: Page) {
+  await seedAuthenticatedSession(page);
+  await attachCheckoutGuards(page);
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/conviction/history'),
+    fulfillJson({
+      items: [
+        {
+          id: 'h1',
+          status: 'executed',
+          action_type: 'send_message',
+          confidence: 80,
+          generated_at: '2026-04-01T10:00:00.000Z',
+          directive_preview: 'First directive preview text for e2e.',
+        },
+      ],
+    }),
+  );
+}
+
 // ── Dashboard tests ─────────────────────────────────────────────────────────
 
 describeAuthMocked('Dashboard /dashboard — authenticated', () => {
@@ -423,6 +447,16 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     await page.goto('/dashboard/settings');
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
+  });
+});
+
+describeAuthMocked('Briefings /dashboard/briefings — authenticated', () => {
+  test('loads history list — desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await setupBriefingsMocks(page);
+    await page.goto('/dashboard/briefings');
+    await expect(page.getByRole('heading', { name: /past directives/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/First directive preview text/i)).toBeVisible();
   });
 });
 
