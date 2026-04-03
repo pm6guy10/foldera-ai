@@ -1005,6 +1005,7 @@ export type ApprovalAction = {
   status: 'approved' | 'skipped' | 'rejected';
   created_at: string;
   commitment_id: string | null;
+  outcome_closed?: boolean;
 };
 
 export function computeCandidateScore(args: {
@@ -1030,8 +1031,11 @@ export function computeCandidateScore(args: {
     for (const action of relevant) {
       const daysOld = Math.max(0, (nowMs - new Date(action.created_at).getTime()) / 86400000);
       const weight = Math.pow(0.5, daysOld / 21.0);
+      // Outcome-closed actions (confirmed reply/result) get 1.5x weight —
+      // actions that produced real-world outcomes are stronger positive signals.
+      const outcomeBonus = (action.status === 'approved' && action.outcome_closed) ? 1.5 : 1.0;
       wTotal += weight;
-      if (action.status === 'approved') wSuccess += weight;
+      if (action.status === 'approved') wSuccess += weight * outcomeBonus;
     }
     const computed = wTotal > 0 ? (wSuccess / wTotal) : 0.5;
     const blended = n < 5 ? 0.5 : n < 15 ? (((n - 5) / 10) * computed) + ((15 - n) / 10 * 0.5) : computed;
@@ -1092,15 +1096,13 @@ async function getApprovalHistory(userId: string): Promise<ApprovalAction[]> {
   try {
     const { data } = await supabase
       .from('tkg_actions')
-      .select('action_type, status, generated_at, feedback_weight')
+      .select('action_type, status, generated_at, feedback_weight, outcome_closed')
       .eq('user_id', userId)
       .gte('generated_at', thirtyDaysAgo)
       .in('status', ['approved', 'executed', 'skipped', 'draft_rejected', 'rejected'])
       .order('generated_at', { ascending: false })
       .limit(200);
 
-    // Exclude pre-rewrite noise: actions with feedback_weight = 0 were from
-    // the old generator era and should not poison the behavioral rate.
     return (data ?? [])
       .filter(a => (a.feedback_weight as number ?? 1) !== 0)
       .map(a => ({
@@ -1109,7 +1111,8 @@ async function getApprovalHistory(userId: string): Promise<ApprovalAction[]> {
           : (a.status as string) === 'draft_rejected' ? 'rejected'
           : a.status) as 'approved' | 'skipped' | 'rejected',
         created_at: a.generated_at as string,
-        commitment_id: null, // tkg_actions has no commitment_id column
+        commitment_id: null,
+        outcome_closed: (a.outcome_closed as boolean) ?? false,
       }));
   } catch {
     return [];
