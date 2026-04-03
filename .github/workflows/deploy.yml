@@ -1,0 +1,57 @@
+name: Deploy to Vercel
+
+# Fires after the CI workflow completes on main.
+# Using workflow_run (not push) means:
+#   1. Deploy only happens when build + tests pass.
+#   2. No double-deploy if Vercel GitHub integration is also configured —
+#      this runs after CI, the integration runs on raw push, they race but
+#      both result in the same commit being live (idempotent).
+#   3. Works regardless of committer identity (VERCEL_TOKEN auth, not
+#      Vercel Hobby's committer allowlist).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    # Only deploy when CI actually passed — skip on failure or cancel.
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Check out the commit that CI ran on, not whatever HEAD is now.
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel project environment
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build project artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy prebuilt artifacts to production
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
