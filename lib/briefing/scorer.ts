@@ -3409,6 +3409,23 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const goalKeywordIndex = buildGoalKeywordIndex(goals);
   logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
 
+  // Goal signal velocity — count signals in the last 7 days per goal category.
+  // Used to boost candidates whose matched goal has high recent activity.
+  const sevenDaysAgoMs = Date.now() - daysMs(7);
+  const goalVelocityMap = new Map<string, number>();
+  for (const g of goals) {
+    const keywords = g.goal_text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length >= 4);
+    if (keywords.length === 0) continue;
+    let count = 0;
+    for (const sig of signals) {
+      if (new Date(sig.occurred_at as string).getTime() < sevenDaysAgoMs) continue;
+      const lower = (sig.content as string).toLowerCase();
+      if (keywords.some((kw: string) => lower.includes(kw))) count++;
+    }
+    const existing = goalVelocityMap.get(g.goal_category) ?? 0;
+    goalVelocityMap.set(g.goal_category, existing + count);
+  }
+
   // Context enrichment signals — 90-day window with 150 limit so the scorer
   // can find keyword overlap across email, calendar, files, and tasks.
   const ninetyDaysAgoContext = new Date(Date.now() - daysMs(90)).toISOString();
@@ -4204,7 +4221,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     });
 
     // v4: Gemini scoring function — replaces flat multiplicative formula
-    const { score, breakdown: geminiBreakdown } = computeCandidateScore({
+    const { score: rawScore, breakdown: geminiBreakdown } = computeCandidateScore({
       stakes: specificityAdjustedStakes,
       urgency: loopUrgency,
       tractability,
@@ -4214,6 +4231,13 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       approvalHistory,
       highStakes: specificityAdjustedStakes >= 4,
     });
+
+    // Goal velocity boost: candidates whose matched goal has high recent signal
+    // activity get a 1.0-1.3x multiplier (capped at 1.3 for >=5 signals in 7d).
+    const goalCat = c.matchedGoal?.category;
+    const goalVelocity = goalCat ? (goalVelocityMap.get(goalCat) ?? 0) : 0;
+    const velocityMultiplier = goalVelocity >= 5 ? 1.30 : goalVelocity >= 3 ? 1.15 : goalVelocity >= 1 ? 1.05 : 1.0;
+    const score = rawScore * velocityMultiplier;
 
     // Find related signals: keyword overlap with this loop's content
     const loopWords = new Set(
