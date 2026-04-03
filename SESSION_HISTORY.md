@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-04 — AUDIT: **Backlog execution (MCP)** — **AZ-05** closed with production **14d `action_type` counts** (MCP `execute_sql`): `do_nothing` 594, `research` 350, `send_message` 38, `write_document` 20, `schedule` 4; **AZ-24** OPEN (pipeline calibration). **`apply_commitment_ceiling`** applied to production (migration `20260403144654`); `docs/SUPABASE_MIGRATIONS.md` log; **FOLDERA_PRODUCT_SPEC** ceiling row; **generator-runtime** test timeout 20s.
+  MODE: AUDIT
+  Commit hash(es): (this session)
+  Files changed: `lib/briefing/__tests__/generator-runtime.test.ts`, `AUTOMATION_BACKLOG.md`, `docs/SUPABASE_MIGRATIONS.md`, `docs/AZ_AUDIT_2026-04.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run build`; `npm run test:ci:e2e`; `npm run test:prod`
+  Any unresolved issues: **Operator-only** OPEN rows unchanged (AZ-02–04, AZ-08–11, AZ-14, AZ-16–19, AZ-21). **AZ-24** needs dedicated generator/scorer session.
+
 - 2026-04-04 — AUDIT: **Code excellence baseline** — Tier 0 snapshot in `docs/AZ_AUDIT_2026-04.md` (**623** vitest, **41** `test:ci:e2e`, **61** `test:prod`); **AZ-01** closed; **AZ-05** operator-deferred + `scripts/az05-action-type-distribution.sql`; **CE-2** `lib/briefing/monthly-burn-inference.ts` + weak recurring + tests; `npm audit fix` (Next 14 high advisories documented, no `--force`); production core env `assertProductionCoreEnvOrThrow` in `instrumentation.ts`; `apply_commitment_ceiling` RPC migration + self-heal RPC-first/fallback; legacy decrypt structured log; audit Section 4 GET retry; docs: `AUTOMATION_BACKLOG`, `FOLDERA_PRODUCT_SPEC`, `CLAUDE.md`.
   MODE: AUDIT
   Commit hash(es): `6dc4662`

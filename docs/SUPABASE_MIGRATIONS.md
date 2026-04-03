@@ -24,6 +24,10 @@
 
 There is no automated `supabase db push` in GitHub Actions today (secrets / linked project). The gate is human: migrations committed + applied at deploy or maintenance window.
 
+## Production apply log (operator / MCP)
+
+- **2026-04-04:** `apply_commitment_ceiling` applied to production (`apply_commitment_ceiling` / version `20260403144654` in hosted migration history). SQL matches [`supabase/migrations/20260404000001_apply_commitment_ceiling.sql`](../supabase/migrations/20260404000001_apply_commitment_ceiling.sql).
+
 ## References
 
 - [Supabase CLI migrations](https://supabase.com/docs/guides/cli/local-development#database-migrations)

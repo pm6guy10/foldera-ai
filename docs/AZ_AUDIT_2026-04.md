@@ -44,7 +44,7 @@
 | D | Data / DB / migrations | **Yellow** | Migrations in repo; `docs/SUPABASE_MIGRATIONS.md`; production applies operator-timed | `supabase/migrations/` | Agent |
 | E | Email / deliverability | **Green** | Resend + Gmail/Outlook send path; `sent_via` on execute | `lib/email/resend.ts`, `execute-action.ts` | Agent |
 | F | Frontend / UX / FLOW | **Yellow** | Prod smoke + `/dashboard/briefings`; FLOW screenshot sweep open | `app/dashboard/briefings` | Operator + Agent |
-| G | Generator / pipeline | **Yellow** | Large modules; conviction **CE-2–CE-6** shipped; **CE-2** burn in `monthly-burn-inference.ts` | `conviction-engine.ts`, `monthly-burn-inference.ts`, `goal-refresh.ts` | Agent |
+| G | Generator / pipeline | **Yellow** | Large modules; conviction **CE-2–CE-6** shipped; **AZ-24** — prod 14d `action_type`: `do_nothing`+`research` ~93% of rows (see AUTOMATION_BACKLOG DONE 2026-04-04) | `conviction-engine.ts`, `monthly-burn-inference.ts`, `goal-refresh.ts` | Agent |
 | H | Health / uptime | **Yellow** | `/api/health` + post–daily-brief alert; **external** UptimeRobot still open | `cron-health-alert.ts`, backlog AZ-08 | Operator |
 | I | Integrations OAuth | **Green** | `user_tokens` SSoT; reconnect UX | `lib/auth/user-tokens.ts` | Agent |
 | J | Jobs / background | **Green** | nightly-ops, signal-drain workflow | `.github/workflows/signal-drain.yml` | Agent |

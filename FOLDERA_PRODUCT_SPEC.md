@@ -46,7 +46,7 @@ March 24 production hotfix evidence:
 | Defense | Status | Evidence | What It Prevents |
 |---|---|---|---|
 | Token watchdog | BUILT | self-heal.ts, commit 8b3e0fc | Silent sync failure from expired tokens |
-| Commitment ceiling (150) | BUILT | self-heal.ts, commit 8b3e0fc | Commitment explosion poisoning scorer |
+| Commitment ceiling (150) | BUILT | self-heal.ts + **`apply_commitment_ceiling` RPC** on production (2026-04-04); RPC-first in `runCommitmentCeilingDefense`, chunked fallback if RPC missing | Commitment explosion poisoning scorer |
 | Commitment ceiling now runs at pipeline start | BUILT | March 24 cleanup pass: `/api/cron/nightly-ops` now runs `runCommitmentCeilingDefense()` before sync/signal processing so daytime commitment growth cannot poison scoring until the end-of-run self-heal phase. |
 | Commitment ceiling batching/count fix | BUILT | March 24 cleanup pass: `defense2CommitmentCeiling()` now uses exact per-user counts and chunked updates (`UPDATE_BATCH_SIZE = 200`) so large suppressions do not fail with PostgREST `Bad Request` on oversized `in(...)` payloads. |
 | 180-day extracted signal retention cleanup | BUILT | March 24 cleanup pass: `/api/cron/nightly-ops` now deletes `tkg_signals` rows older than 180 days with non-null `extracted_entities` at pipeline start, per user, before signal processing. |

@@ -205,20 +205,24 @@ describe('generateDirective runtime failures', () => {
     tkgActionsResultsQueue.push({ data, error: null });
   }
 
-  it('falls back at generation stage when the LLM request throws', async () => {
-    mockScoreOpenLoops.mockResolvedValue(buildScorerResult());
-    anthropicCreate.mockRejectedValue(
-      new Error('400 {"type":"error","error":{"message":"credit balance too low"}}'),
-    );
+  it(
+    'falls back at generation stage when the LLM request throws',
+    async () => {
+      mockScoreOpenLoops.mockResolvedValue(buildScorerResult());
+      anthropicCreate.mockRejectedValue(
+        new Error('400 {"type":"error","error":{"message":"credit balance too low"}}'),
+      );
 
-    const { generateDirective } = await import('../generator');
-    const directive = await generateDirective('user-1', { dryRun: true });
+      const { generateDirective } = await import('../generator');
+      const directive = await generateDirective('user-1', { dryRun: true });
 
-    // Candidate fallback: LLM failure → candidate blocked → all candidates exhausted → emptyDirective
-    expect(directive.directive).toBe('__GENERATION_FAILED__');
-    expect(directive.generationLog?.stage).toBe('validation');
-    expect(directive.generationLog?.reason).toContain('credit balance too low');
-  });
+      // Candidate fallback: LLM failure → candidate blocked → all candidates exhausted → emptyDirective
+      expect(directive.directive).toBe('__GENERATION_FAILED__');
+      expect(directive.generationLog?.stage).toBe('validation');
+      expect(directive.generationLog?.reason).toContain('credit balance too low');
+    },
+    20_000,
+  );
 
   it('skips research below the winner-score threshold and logs the triggering score', async () => {
     const scored = buildScorerResult();

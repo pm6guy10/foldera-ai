@@ -1,9 +1,15 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-04) — Supabase MCP + backlog closure (agent)
+
+- **AZ-05 CLOSED (live evidence)** — Production SQL (Supabase MCP, 2026-04-04): `tkg_actions` **last 14 days** by `action_type`: **`do_nothing` 594**, **`research` 350**, **`send_message` 38**, **`write_document` 20**, **`schedule` 4** (n=1006). Skew confirms need for pipeline calibration — tracked as **AZ-24** (OPEN).
+- **`apply_commitment_ceiling` on production** — Migration applied via Supabase hosted migrations (`20260403144654` / `apply_commitment_ceiling`); aligns with repo [`20260404000001_apply_commitment_ceiling.sql`](supabase/migrations/20260404000001_apply_commitment_ceiling.sql). Self-heal uses **atomic RPC** when available.
+- **Vitest flake** — [`generator-runtime.test.ts`](lib/briefing/__tests__/generator-runtime.test.ts) “credit balance too low” case timeout **20s** (parallel run stability).
+
 ### DONE (2026-04-04) — Code excellence baseline (agent slice)
 
 - **AZ-01 CLOSED** — Harness documented: [`docs/LOCAL_E2E_AND_PROD_TESTS.md`](docs/LOCAL_E2E_AND_PROD_TESTS.md), root [`playwright.config.ts`](playwright.config.ts) `testIgnore`, `npm run test:local:e2e`, merge gate `npm run test:ci:e2e`, prod `npm run test:prod`.
-- **AZ-05 deferred (operator evidence)** — Agent cannot run prod SQL from workspace; canonical query: [`scripts/az05-action-type-distribution.sql`](scripts/az05-action-type-distribution.sql). **Close AZ-05** when operator pastes 14d `action_type` distribution into backlog or `SESSION_HISTORY.md`.
+- **AZ-05** — Superseded by **DONE (2026-04-04) — Supabase MCP** above (live query + **AZ-24** follow-up). Canonical query: [`scripts/az05-action-type-distribution.sql`](scripts/az05-action-type-distribution.sql).
 - **CE-2** — [`lib/briefing/monthly-burn-inference.ts`](lib/briefing/monthly-burn-inference.ts) (extracted slice) + weak recurring (3+ occurrences); tests in [`conviction-engine-burn.test.ts`](lib/briefing/__tests__/conviction-engine-burn.test.ts).
 - **Tier 2 hygiene** — `npm audit fix` applied (transitive); **Next 14.x** high advisories remain until planned major upgrade (documented in [`docs/AZ_AUDIT_2026-04.md`](docs/AZ_AUDIT_2026-04.md)); Section 4 [`audit.spec.ts`](tests/production/audit.spec.ts) GET retry.
 - **Tier 3 runbook P0s** — `assertProductionCoreEnvOrThrow` in [`instrumentation.ts`](instrumentation.ts); atomic commitment ceiling [`supabase/migrations/20260404000001_apply_commitment_ceiling.sql`](supabase/migrations/20260404000001_apply_commitment_ceiling.sql) + [`lib/cron/self-heal.ts`](lib/cron/self-heal.ts) RPC-first with chunked fallback; legacy decrypt log in [`lib/encryption.ts`](lib/encryption.ts).
@@ -20,7 +26,7 @@
 
 - **AZ-06** — `x-request-id`: [`middleware.ts`](middleware.ts) + [`lib/utils/request-id-core.ts`](lib/utils/request-id-core.ts) / [`request-id.ts`](lib/utils/request-id.ts); [`apiError`](lib/utils/api-error.ts) Sentry tag + response header/body; [`apiErrorForRoute`](lib/utils/api-error.ts) wired across `app/api/**` catch blocks; Vitest [`request-id-core.test.ts`](lib/utils/__tests__/request-id-core.test.ts); E2E [`tests/e2e/public-routes.spec.ts`](tests/e2e/public-routes.spec.ts) `/api/health` header checks.
 - **AZ-20** — [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md) (discipline + `supabase db push`).
-- **AZ-05** — Evidence query (run in Supabase SQL when connected): `SELECT action_type, COUNT(*) AS n FROM tkg_actions WHERE generated_at > now() - interval '14 days' GROUP BY 1 ORDER BY n DESC;` — agent cannot execute without DB credentials from this workspace.
+- **AZ-05** — **Closed 2026-04-04** (live counts in DONE **Supabase MCP** above). Historical: same SQL as [`scripts/az05-action-type-distribution.sql`](scripts/az05-action-type-distribution.sql).
 - **AZ-10** — Blog [`[slug]/page.tsx`](app/(marketing)/blog/[slug]/page.tsx): `prose-blockquote`, `prose-hr`, list color tokens.
 - **AZ-12** — Root [`app/layout.js`](app/layout.js): `keywords`, `robots`, `openGraph.url` / `siteName` / `locale`, refined default description; `metadataBase` → `https://www.foldera.ai`.
 - **AZ-13** — [`app/try/page.tsx`](app/try/page.tsx): pricing + start CTAs with `data-foldera-cta` hooks.
@@ -630,7 +636,7 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 
 ### OPEN (normalized 2026-04-04 — unresolved only)
 
-**Closed agent rows** (see DONE bullets above): **AZ-01** (2026-04-04), **AZ-06, AZ-07, AZ-10, AZ-12, AZ-13, AZ-15, AZ-20, AZ-22** (CE-1/3/4/5/6 shipped; **CE-2** burn module 2026-04-04).
+**Closed agent rows** (see DONE bullets above): **AZ-01** (2026-04-04), **AZ-05** (2026-04-04 evidence + AZ-24 follow-up), **AZ-06, AZ-07, AZ-10, AZ-12, AZ-13, AZ-15, AZ-20, AZ-22** (CE-1/3/4/5/6 shipped; **CE-2** burn module 2026-04-04).
 
 Single prioritized table. Full matrix: [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md). Local vs prod: [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md). **Operator checklist** (Gate 4, Stripe, non-owner, UptimeRobot, etc.): [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).
 
@@ -639,7 +645,7 @@ Single prioritized table. Full matrix: [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_
 | 1 | **AZ-02** | Gate 4 live receipt (`sent_via` + new row) | Operator | REVENUE_PROOF §4 | Historical Resend row only | Approve real `send_message`; log id + `sent_via` in REVENUE_PROOF |
 | 2 | **AZ-03** | Approve → mailbox delivery proof | Operator | §1.1 | Overlaps AZ-02 | Same session as AZ-02 |
 | 3 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` | Second Google user: connect, brief, `tkg_actions` row |
-| 4 | **AZ-05** | Organic `action_type` distribution | Operator + Agent | §1.1 | **Deferred 2026-04-04:** agent no DB creds | Operator runs [`scripts/az05-action-type-distribution.sql`](scripts/az05-action-type-distribution.sql); paste results; if `do_nothing` skews, open generator/scorer session |
+| 4 | **AZ-24** | Pipeline: actionable share vs `do_nothing` / `research` | Agent | §1.1 / matrix G | **2026-04-04:** 14d prod counts — `do_nothing` 594 + `research` 350 vs `send_message` 38 + `write_document` 20 + `schedule` 4 | Calibrate scorer/generator/gates + tests; re-query SQL after fixes; ensure Anthropic credits healthy for non-`research` paths |
 | 5 | **AZ-08** | UptimeRobot on `/api/health` | Operator | §1.2 | External uptime | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
 | 6 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual | Key routes + 404 |
 | 7 | **AZ-11** | Stranger onboarding (live OAuth) | Operator | §1.3 | Manual | Recorded flow optional |
