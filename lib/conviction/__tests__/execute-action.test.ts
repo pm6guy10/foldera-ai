@@ -168,6 +168,8 @@ vi.mock('@/lib/auth/daily-brief-users', () => ({
 
 describe('executeAction', () => {
   beforeEach(() => {
+    // Open the email-send safety gate so tests can exercise the full Gmail/Outlook/Resend paths.
+    vi.stubEnv('ALLOW_EMAIL_SEND', 'true');
     mockSupabase._signalInsertCalls = 0;
     mockSupabase._signalSelectReturn = null;
     hasIntegration.mockReset();

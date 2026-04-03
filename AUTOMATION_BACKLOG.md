@@ -5,6 +5,10 @@
 - **ERESOLVE on Vercel** — Dependabot branch `eslint@10` + **`eslint-config-next@14.2.3`** (peer `eslint@^7.23 || ^8`) broke `npm install`. **Fix:** pin **`eslint@8.57.1`** in `package.json`; **Dependabot** `ignore` semver-major on `eslint` until Next + `eslint-config-next` upgrade.
 - **Runbook:** **`CLAUDE.md`** — *Vercel deploy gate*: do not close a session or run `test:prod` as “verified” until the latest production deploy shows **Ready**; **`AGENTS.md`** pointer.
 
+### DONE (2026-04-04) — AB-25 locked_contact normalization fix (agent)
+
+- **AB-25 CLOSED** — `generator.ts` L5748: `set.add((row.normalized_entity as string).replace(/\s+/g, '').toLowerCase())`. Before the fix, the `lockedContacts` Set was built with spaces preserved ("nicole vreeland") while both candidate-check sites (`L5773`, `L1032` in `buildDecisionPayload`) stripped whitespace ("nicolevreeland") — so the guard was permanently inert. One-line fix aligns all three sites. Schema confirmed via Supabase MCP (`normalized_entity text NOT NULL`). **Tests:** 2 new cases added to `generator-runtime.test.ts` — (1) hard-drop when entityName matches locked row with spaces, (2) non-locked candidate proceeds. 13/13 passed. `npm run build` clean. 664/669 vitest pass (5 pre-existing `execute-action.test.ts` failures, unchanged).
+
 ### DONE (2026-04-04) — Supabase MCP + backlog closure (agent)
 
 - **AZ-05 CLOSED (live evidence)** — Production SQL (Supabase MCP, 2026-04-04): `tkg_actions` **last 14 days** by `action_type`: **`do_nothing` 594**, **`research` 350**, **`send_message` 38**, **`write_document` 20**, **`schedule` 4** (n=1006). Skew confirms need for pipeline calibration — tracked as **AZ-24** (OPEN).
@@ -660,24 +664,24 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 
 ### OPEN (normalized 2026-04-04 — unresolved only)
 
-**Closed agent rows** (see DONE bullets above): **AZ-01** (2026-04-04), **AZ-05** (2026-04-04 evidence + AZ-24 follow-up), **AZ-06, AZ-07, AZ-10, AZ-12, AZ-13, AZ-15, AZ-20, AZ-22** (CE-1/3/4/5/6 shipped; **CE-2** burn module 2026-04-04).
+**Closed agent rows** (see DONE bullets above): **AZ-01** (2026-04-04), **AZ-05** (2026-04-04 evidence + AZ-24 follow-up), **AZ-06, AZ-07, AZ-10, AZ-12, AZ-13, AZ-15, AZ-20, AZ-22** (CE-1/3/4/5/6 shipped; **CE-2** burn module 2026-04-04), **AB-25** (2026-04-04 normalization fix).
 
 Single prioritized table. Full matrix: [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md). Local vs prod: [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md). **Operator checklist** (Gate 4, Stripe, non-owner, UptimeRobot, etc.): [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).
 
 | Rank | ID | Title | Owner | Spec § | Evidence / notes | Next action |
 |------|-----|--------|-------|--------|------------------|-------------|
-| 1 | **AB-25** | `tkg_constraints` normalization mismatch — locked_contact never blocks | Agent | Security | Hard-drop guard in `generator.ts` L5772 is inert: set built with spaces ("nicole vreeland"), candidate check strips spaces ("nicolevreeland") — never matches. Fix: strip whitespace when building the set at L5748. | Next agent session |
-| 2 | **AZ-24** | Pipeline: actionable share vs `do_nothing` / `research` | Agent | §1.1 / matrix G | **Receipt:** 2026-04-03 follow-up MCP counts + CI **`7f0798f`** success + `test:prod` 61 (see DONE bullet). **Slices 1–3 shipped:** thread gate + freshness union + **signal_velocity → `make_decision`**. **Next:** re-`az05` after slice-3 deploy; research row drain | Vercel **Ready** operator check; Anthropic healthy for non-`research` paths |
-| 3 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` | Second Google user: connect, brief, `tkg_actions` row |
-| 4 | **AZ-08** | UptimeRobot on `/api/health` | Operator | §1.2 | External uptime — now safe (canary is env-var only, no API call per Bug 1 fix) | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
-| 5 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual | Key routes + 404 |
-| 6 | **AZ-11** | Stranger onboarding (live OAuth) | Operator | §1.3 | Manual | Recorded flow optional |
-| 7 | **AZ-14** | `tests/production/auth-state.json` refresh | Operator | test:prod | ~30-day JWT | `npm run test:prod:setup` |
-| 8 | **AZ-16** | Stripe checkout + webhook | Operator | §1.4 | — | Verify `user_subscriptions` |
-| 9 | **AZ-17** | Supabase leaked-password protection | Operator | Security | Pro-gated | Dashboard toggle |
-| 10 | **AZ-18** | 3 consecutive useful cron directives | Operator | §1.1 | Quality bar | Monitor nightly email |
-| 11 | **AZ-19** | Owner account: scopes + focus | Operator | Product | — | Reconnect OAuth; UI focus |
-| 12 | **AZ-21** | Supabase backups / PITR | Operator | DR | — | Dashboard per plan |
+| — | **AB-25** | `tkg_constraints` normalization mismatch — CLOSED | — | Security | **CLOSED 2026-04-04** — one-line fix at `generator.ts` L5748; 2 new tests; build clean. | Done |
+| 1 | **AZ-24** | Pipeline: actionable share vs `do_nothing` / `research` | Agent | §1.1 / matrix G | **Receipt:** 2026-04-03 follow-up MCP counts + CI **`7f0798f`** success + `test:prod` 61 (see DONE bullet). **Slices 1–3 shipped:** thread gate + freshness union + **signal_velocity → `make_decision`**. **Next:** re-`az05` after slice-3 deploy; research row drain | Vercel **Ready** operator check; Anthropic healthy for non-`research` paths |
+| 2 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` | Second Google user: connect, brief, `tkg_actions` row |
+| 3 | **AZ-08** | UptimeRobot on `/api/health` | Operator | §1.2 | External uptime — now safe (canary is env-var only, no API call per Bug 1 fix) | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
+| 4 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual | Key routes + 404 |
+| 5 | **AZ-11** | Stranger onboarding (live OAuth) | Operator | §1.3 | Manual | Recorded flow optional |
+| 6 | **AZ-14** | `tests/production/auth-state.json` refresh | Operator | test:prod | ~30-day JWT | `npm run test:prod:setup` |
+| 7 | **AZ-16** | Stripe checkout + webhook | Operator | §1.4 | — | Verify `user_subscriptions` |
+| 8 | **AZ-17** | Supabase leaked-password protection | Operator | Security | Pro-gated | Dashboard toggle |
+| 9 | **AZ-18** | 3 consecutive useful cron directives | Operator | §1.1 | Quality bar | Monitor nightly email |
+| 10 | **AZ-19** | Owner account: scopes + focus | Operator | Product | — | Reconnect OAuth; UI focus |
+| 11 | **AZ-21** | Supabase backups / PITR | Operator | DR | — | Dashboard per plan |
 | — | **AZ-02** | Gate 4 live receipt | — | — | **CLOSED 2026-04-03** — Nicole email sent via Gmail. `sent_via: gmail`. Pipeline proven end-to-end. | Done |
 | — | **AZ-03** | Approve → mailbox delivery proof | — | — | **CLOSED 2026-04-03** — same evidence as AZ-02. | Done |
 | — | — | Rate limiting try/webhook | — | — | **DONE** 2026-03-31 | — |

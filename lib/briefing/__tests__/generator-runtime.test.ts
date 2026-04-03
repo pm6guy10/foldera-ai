@@ -11,6 +11,7 @@ const mockLogStructuredEvent = vi.fn();
 
 const queryResult = { data: [], error: null };
 const tkgActionsResultsQueue: Array<{ data: unknown[]; error: null }> = [];
+const lockedConstraintsQueue: Array<{ data: unknown[]; error: null }> = [];
 
 // Qualifying signal: received email 72h ago — satisfies all 4 discrepancy gate filters.
 // Subject header required for parseSignalSnippet + buildAvoidanceObservations no-reply detection.
@@ -73,6 +74,17 @@ vi.mock('@/lib/db/client', () => ({
 
       if (table === 'tkg_signals') {
         return makeSignalsQuery();
+      }
+
+      if (table === 'tkg_constraints') {
+        const result = lockedConstraintsQueue.shift() ?? { data: [], error: null };
+        // Make the chain thenable so `await supabase.from('tkg_constraints').select().eq().eq().eq()`
+        // resolves to { data, error } regardless of how many .eq() calls are chained.
+        const builder: Record<string, unknown> & { then: (resolve: (r: unknown) => void) => void } = {
+          eq() { return builder; },
+          then(resolve: (r: unknown) => void) { resolve(result); },
+        };
+        return { select() { return builder; } };
       }
 
       throw new Error(`Unexpected table ${table}`);
@@ -194,6 +206,7 @@ describe('generateDirective runtime failures', () => {
     mockLogStructuredEvent.mockReset();
     anthropicCreate.mockReset();
     tkgActionsResultsQueue.length = 0;
+    lockedConstraintsQueue.length = 0;
 
     mockIsOverDailyLimit.mockResolvedValue(false);
     mockResearchWinner.mockResolvedValue(null);
@@ -203,6 +216,10 @@ describe('generateDirective runtime failures', () => {
 
   function queueTkgActionsResult(data: unknown[]): void {
     tkgActionsResultsQueue.push({ data, error: null });
+  }
+
+  function queueLockedConstraints(rows: { normalized_entity: string }[]): void {
+    lockedConstraintsQueue.push({ data: rows, error: null });
   }
 
   it(
@@ -663,6 +680,82 @@ describe('generateDirective runtime failures', () => {
 
     expect(depArtifact?.content).not.toEqual(relArtifact?.content);
     expect(String(relArtifact?.content)).toContain('Relationship cooling');
+  });
+
+  it('hard-drops a send_message candidate whose entity name matches a locked_contact row (with spaces)', async () => {
+    // AB-25: normalized_entity stored with spaces ("nicole vreeland") must still match
+    // entityName "Nicole Vreeland" after both sides strip whitespace.
+    const scored = buildScorerResult();
+    scored.winner.entityName = 'Nicole Vreeland';
+    scored.winner.suggestedActionType = 'send_message';
+    scored.winner.title = 'Follow up with Nicole about the reference letter';
+    scored.winner.content = 'Nicole has not responded to the reference letter request.';
+    scored.winner.relationshipContext = '- Nicole Vreeland <nicole.vreeland@example.com> (Contact)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    // Return a locked_contact row with spaces in normalized_entity (the real DB format).
+    queueLockedConstraints([{ normalized_entity: 'nicole vreeland' }]);
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    // The candidate must be hard-dropped before any LLM call.
+    expect(anthropicCreate).not.toHaveBeenCalled();
+    // All candidates exhausted → sentinel fallback.
+    expect(directive.directive).toBe('__GENERATION_FAILED__');
+    // Constraint-blocked event must have been logged.
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_blocked',
+      generationStatus: 'constraint_blocked',
+      details: expect.objectContaining({ reason: 'locked_contact' }),
+    }));
+  });
+
+  it('does not block a send_message candidate whose entity name is not in the locked_contact list', async () => {
+    const scored = buildScorerResult();
+    scored.winner.entityName = 'Jane Smith';
+    scored.winner.title = 'Follow up with Jane about the proposal';
+    scored.winner.content = 'Jane has not responded to the proposal.';
+    scored.winner.relationshipContext = '- Jane Smith <jane@example.com> (Contact)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    // Lock a different contact — Jane must not be blocked.
+    queueLockedConstraints([{ normalized_entity: 'nicole vreeland' }]);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 80 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Request Jane\'s yes/no on the proposal by end of day Friday.',
+          artifact_type: 'send_message',
+          artifact: {
+            to: 'jane@example.com',
+            subject: 'Proposal decision needed by Friday EOD',
+            body: 'Hi Jane,\n\nCan you confirm by end of day Friday whether you\'d like to proceed with the proposal? If we miss this window, the pricing expires and we\'ll need to restart the evaluation.\n\nThanks,\nBrandon',
+          },
+          evidence: 'Jane has not replied and the proposal pricing expires Friday.',
+          why_now: 'Pricing expires end of day Friday — no response means restart from scratch.',
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    // Jane is NOT locked — the LLM should have been called and produced a real directive.
+    expect(anthropicCreate).toHaveBeenCalled();
+    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    expect(mockLogStructuredEvent).not.toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_blocked',
+      details: expect.objectContaining({ reason: 'locked_contact', entity_name: 'Jane Smith' }),
+    }));
   });
 
 });

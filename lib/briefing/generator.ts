@@ -5745,7 +5745,7 @@ export async function generateDirective(
             .eq('constraint_type', 'locked_contact')
             .eq('is_active', true);
           for (const row of data ?? []) {
-            if (row.normalized_entity) set.add((row.normalized_entity as string).toLowerCase());
+            if (row.normalized_entity) set.add((row.normalized_entity as string).replace(/\s+/g, '').toLowerCase());
           }
         } catch {
           // Non-blocking — if the fetch fails, proceed without suppression
