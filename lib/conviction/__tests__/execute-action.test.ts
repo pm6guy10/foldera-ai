@@ -431,6 +431,22 @@ describe('executeAction', () => {
     expect(mockSupabase._signalInsertCalls).toBe(0);
   });
 
+  it('approve includes approved_at and approved_by in execution_result', async () => {
+    mockSupabase._actionRow = actionWithArtifact({
+      type: 'document',
+      title: 'Audit doc',
+      content: 'Content',
+    });
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+    expect(out.status).toBe('executed');
+    expect(typeof out.result?.approved_at).toBe('string');
+    expect(out.result?.approved_by).toBe('user');
+  });
+
   it('marks send_message approvals as failed when Resend delivery fails', async () => {
     hasIntegration.mockResolvedValue(false);
     sendResendEmail.mockResolvedValue({ data: null, error: { message: 'credit balance is too low' } });

@@ -5767,6 +5767,21 @@ export async function generateDirective(
         continue;
       }
 
+      // Hard drop before any expensive work: if the candidate's primary entity matches a locked_contact
+      // constraint in tkg_constraints, skip it immediately — no hydration, no research, no LLM call.
+      if (lockedContacts.size > 0 && currentCandidate.entityName) {
+        const normalizedCandidateName = currentCandidate.entityName.replace(/\s+/g, '').toLowerCase();
+        if (lockedContacts.has(normalizedCandidateName)) {
+          candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: ['constraint_blocked:locked_contact'] });
+          logStructuredEvent({
+            event: 'candidate_blocked', level: 'info', userId,
+            artifactType: null, generationStatus: 'constraint_blocked',
+            details: { scope: 'generator', reason: 'locked_contact', entity_name: currentCandidate.entityName },
+          });
+          continue;
+        }
+      }
+
       // --- Per-candidate: hydrate + entity bx_stats for discrepancy UUID winners ---
       let hydratedWinner = await hydrateWinnerRelationshipContext(userId, currentCandidate);
       hydratedWinner = await enrichWinnerWithEntityBxStats(userId, hydratedWinner);

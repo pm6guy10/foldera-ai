@@ -667,6 +667,9 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
     console.warn(`[execute-action] no artifact for action ${actionId}`);
   }
 
+  // Audit trail: record when the user approved and who issued the decision.
+  executionResult = { ...executionResult, approved_at: now, approved_by: 'user' };
+
   if (!artifact || !executionSucceeded(artifact, executionResult)) {
     const { error: updateError } = await supabase
       .from('tkg_actions')
