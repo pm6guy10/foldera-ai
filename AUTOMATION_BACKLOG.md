@@ -8,6 +8,7 @@
 ### DONE (2026-04-04) — Supabase MCP + backlog closure (agent)
 
 - **AZ-05 CLOSED (live evidence)** — Production SQL (Supabase MCP, 2026-04-04): `tkg_actions` **last 14 days** by `action_type`: **`do_nothing` 594**, **`research` 350**, **`send_message` 38**, **`write_document` 20**, **`schedule` 4** (n=1006). Skew confirms need for pipeline calibration — tracked as **AZ-24** (OPEN).
+- **AZ-24 (2026-04-04, slice 1 — shipped)** — **`no_thread_no_outcome`** no longer fires when **`supporting_signals`** is empty but the scorer attached **past `sourceSignals`** (`lib/briefing/thread-evidence-for-payload.ts`, wired in `buildDecisionPayload`). **Hypothesis:** fewer false `do_nothing` / all-candidates-blocked paths when evidence hydration lags scorer refs. **Tests:** `thread-evidence-for-payload.test.ts`. **Left:** re-run `scripts/az05-action-type-distribution.sql` post-deploy for new counts; next levers — `!has_recent_evidence` overlap, legacy **`research`** row provenance, emergent **`suggestedActionType: research`** in `scorer.ts` (~signal_velocity).
 - **`apply_commitment_ceiling` on production** — Migration applied via Supabase hosted migrations (`20260403144654` / `apply_commitment_ceiling`); aligns with repo [`20260404000001_apply_commitment_ceiling.sql`](supabase/migrations/20260404000001_apply_commitment_ceiling.sql). Self-heal uses **atomic RPC** when available.
 - **Vitest flake** — [`generator-runtime.test.ts`](lib/briefing/__tests__/generator-runtime.test.ts) “credit balance too low” case timeout **20s** (parallel run stability).
 
@@ -650,7 +651,7 @@ Single prioritized table. Full matrix: [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_
 | 1 | **AZ-02** | Gate 4 live receipt (`sent_via` + new row) | Operator | REVENUE_PROOF §4 | Historical Resend row only | Approve real `send_message`; log id + `sent_via` in REVENUE_PROOF |
 | 2 | **AZ-03** | Approve → mailbox delivery proof | Operator | §1.1 | Overlaps AZ-02 | Same session as AZ-02 |
 | 3 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` | Second Google user: connect, brief, `tkg_actions` row |
-| 4 | **AZ-24** | Pipeline: actionable share vs `do_nothing` / `research` | Agent | §1.1 / matrix G | **2026-04-04:** 14d prod counts — `do_nothing` 594 + `research` 350 vs `send_message` 38 + `write_document` 20 + `schedule` 4 | Calibrate scorer/generator/gates + tests; re-query SQL after fixes; ensure Anthropic credits healthy for non-`research` paths |
+| 4 | **AZ-24** | Pipeline: actionable share vs `do_nothing` / `research` | Agent | §1.1 / matrix G | **2026-04-04 baseline:** 14d prod counts (above). **Slice 1 shipped:** thread gate + `sourceSignals` alignment + `thread-evidence-for-payload.test.ts`. **Next:** operator SQL after deploy; then `has_recent_evidence` / research provenance / scorer research escape hatch | Calibrate scorer/generator/gates + tests; re-query SQL after fixes; ensure Anthropic credits healthy for non-`research` paths |
 | 5 | **AZ-08** | UptimeRobot on `/api/health` | Operator | §1.2 | External uptime | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
 | 6 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual | Key routes + 404 |
 | 7 | **AZ-11** | Stranger onboarding (live OAuth) | Operator | §1.3 | Manual | Recorded flow optional |

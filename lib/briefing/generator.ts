@@ -45,6 +45,11 @@ import {
   directiveLooksLikeScheduleConflict,
   scheduleConflictArtifactIsOwnerProcedure,
 } from './schedule-conflict-guards';
+import {
+  filterPastSupportingSignals,
+  hasPastWinnerSourceSignals,
+  needsNoThreadNoOutcomeBlock,
+} from './thread-evidence-for-payload';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -1022,11 +1027,11 @@ function buildDecisionPayload(
   // Other conditions are soft signals that lower confidence, not hard blocks.
   // -----------------------------------------------------------------------
 
-  // 1. Real thread exists (past signals only — future-dated calendar events are excluded)
-  const pastSignals = (ctx.supporting_signals ?? []).filter(
-    (s) => new Date(s.occurred_at).getTime() <= Date.now(),
-  );
-  const hasRealThread = pastSignals.length > 0;
+  // 1. Real thread exists (past signals only — future-dated calendar events are excluded).
+  // Hydrated supporting_signals may be empty while winner.sourceSignals still lists past scorer refs.
+  const pastSignals = filterPastSupportingSignals(ctx.supporting_signals);
+  const hasRealThread =
+    pastSignals.length > 0 || hasPastWinnerSourceSignals(winner.sourceSignals);
 
   // 2. No reply sent (avoidance observation detected during context build)
   const hasNoReply = ctx.avoidance_observations?.some(
@@ -1047,7 +1052,7 @@ function buildDecisionPayload(
   // Hard block: no thread AND no goal = no basis to act at all.
   // Discrepancy candidates are exempt: absence of signals / drift / decay IS the
   // structural evidence for this class. Blocking them here inverts the logic.
-  if (!hasRealThread && !tiedToOutcome && winner.type !== 'discrepancy') {
+  if (needsNoThreadNoOutcomeBlock(winner.type, hasRealThread, tiedToOutcome)) {
     blocking_reasons.push('no_thread_no_outcome');
   }
 
