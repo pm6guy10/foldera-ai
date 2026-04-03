@@ -93,14 +93,17 @@ const mockSupabase = {
     }
 
     if (table === 'tkg_actions') {
-      const chainable = {
+      const emptyResult = { data: [], error: null };
+      const chainable: Record<string, any> = {
         select: () => chainable,
         eq: () => chainable,
         in: () => chainable,
         gte: () => chainable,
+        not: () => chainable,
         order: () => chainable,
-        limit: () => Promise.resolve({ data: [], error: null }),
+        limit: () => Promise.resolve(emptyResult),
         update: () => chainable,
+        then: (resolve: any, reject?: any) => Promise.resolve(emptyResult).then(resolve, reject),
       };
       return chainable;
     }

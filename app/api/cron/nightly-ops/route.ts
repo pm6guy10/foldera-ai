@@ -359,8 +359,9 @@ async function trackReplyOutcomes(): Promise<{ ok: boolean; checked: number; clo
       closed++;
       logStructuredEvent({
         event: 'reply_outcome_closed',
-        user_id_hash: (action.user_id as string).slice(0, 12),
-        action_id: action.id as string,
+        userId: action.user_id as string,
+        generationStatus: 'outcome_closed',
+        details: { action_id: action.id as string },
       });
     }
   }
@@ -378,6 +379,82 @@ function extractFirstNameFromDirective(text: string): string | null {
     if (m?.[1] && m[1].length >= 3) return m[1];
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Confidence calibration — approval rate by confidence band (30d)
+// ---------------------------------------------------------------------------
+interface ConfidenceBand {
+  band: string;
+  total: number;
+  approved: number;
+  skipped: number;
+  approval_rate: number;
+}
+
+async function runConfidenceCalibration(): Promise<{
+  ok: boolean;
+  bands: ConfidenceBand[];
+  anomalies: string[];
+}> {
+  const supabase = createServerClient();
+  const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
+
+  const { data: actions, error } = await supabase
+    .from('tkg_actions')
+    .select('confidence, status')
+    .in('status', ['executed', 'approved', 'skipped'])
+    .not('confidence', 'is', null)
+    .gte('generated_at', thirtyDaysAgo);
+
+  if (error) throw error;
+  if (!actions || actions.length === 0) {
+    return { ok: true, bands: [], anomalies: ['no_actions_in_window'] };
+  }
+
+  const bandDefs: [string, number, number][] = [
+    ['45-55', 45, 55],
+    ['55-65', 55, 65],
+    ['65-75', 65, 75],
+    ['75-85', 75, 85],
+    ['85+', 85, 101],
+  ];
+
+  const bands: ConfidenceBand[] = bandDefs.map(([band, lo, hi]) => {
+    const inBand = actions.filter((a: any) => {
+      const c = Number(a.confidence);
+      return c >= lo && c < hi;
+    });
+    const approved = inBand.filter((a: any) =>
+      a.status === 'executed' || a.status === 'approved',
+    ).length;
+    const skipped = inBand.filter((a: any) => a.status === 'skipped').length;
+    const total = inBand.length;
+    return {
+      band,
+      total,
+      approved,
+      skipped,
+      approval_rate: total > 0 ? Math.round((approved / total) * 100) : 0,
+    };
+  });
+
+  const anomalies: string[] = [];
+  for (const b of bands) {
+    if (b.total < 5) continue;
+    if (b.band === '45-55' || b.band === '55-65') {
+      if (b.approval_rate > 50) {
+        anomalies.push(`${b.band}: ${b.approval_rate}% approval — threshold may be too high`);
+      }
+    }
+    if (b.band === '75-85' || b.band === '85+') {
+      if (b.approval_rate < 30) {
+        anomalies.push(`${b.band}: ${b.approval_rate}% approval — sending low-quality directives`);
+      }
+    }
+  }
+
+  return { ok: true, bands, anomalies };
 }
 
 // ---------------------------------------------------------------------------
@@ -529,6 +606,17 @@ async function handler(request: NextRequest) {
     Sentry.captureException(err);
     stages.reply_outcome_tracking = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'reply_outcome_tracking', error: err.message }));
+  }
+
+  // Stage 2e: Confidence calibration diagnostic — approval rate by confidence band
+  try {
+    const calibrationResult = await runConfidenceCalibration();
+    stages.confidence_calibration = calibrationResult;
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'confidence_calibration', ...calibrationResult }));
+  } catch (err: any) {
+    Sentry.captureException(err);
+    stages.confidence_calibration = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'confidence_calibration', error: err.message }));
   }
 
   // Stage 3: Passive rejection (auto-skip stale pending_approval > 24h)

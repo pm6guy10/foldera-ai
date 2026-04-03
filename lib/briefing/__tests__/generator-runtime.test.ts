@@ -318,6 +318,8 @@ describe('generateDirective runtime failures', () => {
     queueTkgActionsResult([]);
     // approved send_message actions (5th parallel fetch in generateDirective — sync-lag supplement)
     queueTkgActionsResult([]);
+    // voice patterns (6th parallel fetch)
+    queueTkgActionsResult([]);
     // recent entity conflict query
     queueTkgActionsResult([
       {
@@ -333,11 +335,8 @@ describe('generateDirective runtime failures', () => {
     const directive = await generateDirective('user-1', { dryRun: true });
 
     expect(directive.action_type).toBe('do_nothing');
-    // When entity suppression blocks all candidates, reason is the "All N candidates blocked"
-    // summary containing "entity_suppressed:<EntityName>".
     expect(directive.reason).toContain('entity_suppressed');
     expect(anthropicCreate).not.toHaveBeenCalled();
-    // The per-candidate suppression event fires with the entity details.
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_skipped_entity_suppression',
       generationStatus: 'recent_entity_action_suppressed',
@@ -359,6 +358,8 @@ describe('generateDirective runtime failures', () => {
     queueTkgActionsResult([]);
     // approved send_message actions (5th parallel fetch — sync-lag supplement)
     queueTkgActionsResult([]);
+    // voice patterns (6th parallel fetch)
+    queueTkgActionsResult([]);
     queueTkgActionsResult([
       {
         id: 'action-yadira-2',
@@ -373,7 +374,6 @@ describe('generateDirective runtime failures', () => {
     const directive = await generateDirective('user-2', { dryRun: true });
 
     expect(directive.action_type).toBe('do_nothing');
-    // Entity suppression blocks all candidates — reason contains "entity_suppressed:<EntityName>".
     expect(directive.reason).toContain('entity_suppressed');
     expect(anthropicCreate).not.toHaveBeenCalled();
   });
@@ -396,6 +396,8 @@ describe('generateDirective runtime failures', () => {
     queueTkgActionsResult([]);
     queueTkgActionsResult([]);
     // approved send_message actions (5th parallel fetch — sync-lag supplement)
+    queueTkgActionsResult([]);
+    // voice patterns (6th parallel fetch)
     queueTkgActionsResult([]);
     // Recent action whose directive_text contains "Brandon" (e.g. from a prior signed-off email).
     // Without the fix, "Brandon" extracted from the new candidate narrative above would match this

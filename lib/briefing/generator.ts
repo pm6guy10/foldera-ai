@@ -1209,6 +1209,8 @@ export interface StructuredContext {
   entity_analysis: string | null;
   /** Per-entity conversation state — last sent, last reply, SENT_AWAITING_REPLY flag. Null when no prior sent email found. */
   entity_conversation_state: string | null;
+  /** Voice grounding — style extracted from approved emails. Null when insufficient data. */
+  user_voice_patterns: string | null;
 }
 
 type CausalMechanismClass =
@@ -1527,6 +1529,7 @@ function buildStructuredContext(
   userEmails?: Set<string>,
   userPromptNames?: UserPromptNames,
   entityConversationState?: string | null,
+  userVoicePatterns?: string | null,
 ): StructuredContext {
   const names: UserPromptNames = userPromptNames ?? {
     user_full_name: 'the user',
@@ -1819,6 +1822,7 @@ function buildStructuredContext(
     candidate_analysis: buildCandidateAnalysisBlock(winner),
     entity_analysis: buildEntityAnalysisBlock(winner.entityName, winner.entityBxStats),
     entity_conversation_state: entityConversationState ?? null,
+    user_voice_patterns: userVoicePatterns ?? null,
   };
 }
 
@@ -1891,6 +1895,88 @@ function buildRelationshipTimeline(
   }
 
   return `RELATIONSHIP_TIMELINE:\n${lines.join('\n')}`;
+}
+
+/**
+ * Extract voice patterns from the user's recently approved+executed send_message artifacts.
+ * Returns a short style block like:
+ *   USER_VOICE: Short sentences, signs off with "Best, Brandon", warm but direct
+ * Returns null if insufficient data (< 3 approved emails).
+ */
+async function extractUserVoicePatterns(userId: string): Promise<string | null> {
+  const supabase = createServerClient();
+  const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
+
+  const { data: rows } = await supabase
+    .from('tkg_actions')
+    .select('execution_result')
+    .eq('user_id', userId)
+    .eq('action_type', 'send_message')
+    .in('status', ['approved', 'executed'])
+    .gte('generated_at', thirtyDaysAgo)
+    .order('generated_at', { ascending: false })
+    .limit(10);
+
+  if (!rows || rows.length < 3) return null;
+
+  const bodies: string[] = [];
+  for (const row of rows) {
+    const result = row.execution_result as Record<string, unknown> | null;
+    const artifact = result?.artifact as Record<string, unknown> | undefined;
+    const body = artifact?.body as string | undefined;
+    if (body && body.length > 20) bodies.push(body);
+  }
+  if (bodies.length < 3) return null;
+
+  const sentenceLengths: number[] = [];
+  const greetings: string[] = [];
+  const signoffs: string[] = [];
+
+  for (const body of bodies) {
+    const sentences = body.split(/[.!?]+/).filter((s) => s.trim().length > 5);
+    for (const s of sentences) {
+      sentenceLengths.push(s.trim().split(/\s+/).length);
+    }
+    const firstLine = body.split('\n').map((l) => l.trim()).find((l) => l.length > 0) ?? '';
+    if (/^(Hi|Hey|Hello|Dear|Good\s)/i.test(firstLine)) {
+      greetings.push(firstLine.split(/[,!]/)[0]);
+    }
+    const lines = body.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+    const lastTwo = lines.slice(-2).join(' ');
+    const signoffMatch = lastTwo.match(/(?:Best|Thanks|Cheers|Regards|Warmly|Sincerely|Talk soon|Looking forward).*$/i);
+    if (signoffMatch) signoffs.push(signoffMatch[0].slice(0, 40));
+  }
+
+  const avgLen = sentenceLengths.length > 0
+    ? Math.round(sentenceLengths.reduce((a, b) => a + b, 0) / sentenceLengths.length)
+    : 12;
+  const lenLabel = avgLen <= 8 ? 'Very short sentences' : avgLen <= 14 ? 'Short sentences' : 'Medium-length sentences';
+
+  const traits: string[] = [lenLabel];
+  if (greetings.length >= 2) {
+    const topGreeting = mode(greetings);
+    traits.push(`opens with "${topGreeting}"`);
+  }
+  if (signoffs.length >= 2) {
+    const topSignoff = mode(signoffs);
+    traits.push(`signs off with "${topSignoff}"`);
+  }
+
+  return `USER_VOICE (match this style — do not deviate): ${traits.join(', ')}`;
+}
+
+function mode(arr: string[]): string {
+  const counts = new Map<string, number>();
+  for (const s of arr) {
+    const lower = s.toLowerCase();
+    counts.set(lower, (counts.get(lower) ?? 0) + 1);
+  }
+  let best = arr[0];
+  let bestCount = 0;
+  for (const [k, v] of counts) {
+    if (v > bestCount) { bestCount = v; best = arr.find((s) => s.toLowerCase() === k) ?? arr[0]; }
+  }
+  return best;
 }
 
 /**
@@ -2337,6 +2423,10 @@ export function buildPromptFromStructuredContext(
       `Your output confidence must stay within ±15 of this prior. Do not exceed 95.`,
     );
 
+    if (ctx.user_voice_patterns) {
+      m.push(ctx.user_voice_patterns);
+    }
+
     m.push(
       `SEND_MESSAGE_ARTIFACT_RULES (apply these before writing a single word):\n\n` +
       `${senderFromLine}\n` +
@@ -2609,6 +2699,7 @@ export function buildPromptFromStructuredContext(
           `- If context is too thin for that, output do_nothing.\n\n`
         : '') +
       `ARTIFACT_PREFERENCE: send_message is required — a real recipient email is in the signals above.\n\n` +
+      (ctx.user_voice_patterns ? `${ctx.user_voice_patterns}\n\n` : '') +
       `SEND_MESSAGE_ARTIFACT_RULES (apply these before writing a single word):\n\n` +
       `${senderFromLine}\n` +
       `Write it exactly as a competent professional would write it. Short. Warm but not gushing. Clear reason for writing. One ask or one piece of information. No filler.\n\n` +
@@ -5516,7 +5607,7 @@ export async function generateDirective(
 
     const supabase = createServerClient();
 
-    const [userGoalsResult, goalGapResult, alreadySentResult, behavioralHistoryResult, approvedActionsResult] = await Promise.allSettled([
+    const [userGoalsResult, goalGapResult, alreadySentResult, behavioralHistoryResult, approvedActionsResult, voicePatternsResult] = await Promise.allSettled([
       // Goals
       supabase
         .from('tkg_goals')
@@ -5607,6 +5698,8 @@ export async function generateDirective(
         }
         return lines;
       })(),
+      // Voice patterns from approved emails
+      extractUserVoicePatterns(userId),
     ]);
 
     const goalsForContext = ((
@@ -5621,6 +5714,7 @@ export async function generateDirective(
     const alreadySentKeys = new Set(alreadySentRaw.map((l) => l.slice(0, 40)));
     const alreadySent = [...alreadySentRaw, ...approvedActionLines.filter((l) => !alreadySentKeys.has(l.slice(0, 40)))];
     const behavioralHistory = behavioralHistoryResult.status === 'fulfilled' ? behavioralHistoryResult.value : null;
+    const userVoicePatterns = voicePatternsResult.status === 'fulfilled' ? voicePatternsResult.value : null;
     console.log(`[generator] goalsForContext: ${goalsForContext.length}, goalGapAnalysis: ${goalGapAnalysis.length}`);
 
     const dynamicThreshold = await loadDirectiveConfidenceThreshold(userId);
@@ -5771,6 +5865,7 @@ export async function generateDirective(
         userEmails,
         userPromptNames,
         entityConversationState,
+        userVoicePatterns,
       );
 
       // --- DECISION PAYLOAD — the canonical binding contract ---
