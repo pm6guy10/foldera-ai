@@ -1063,7 +1063,12 @@ export function computeCandidateScore(args: {
   const urgencyFloor = ((args.stakes - 1) / 4) * 0.2;
   const uEff = Math.min(1, args.urgency * 0.9 + urgencyFloor);
   const t = Math.max(0.01, args.tractability);
-  const exec = (2 * uEff * t) / (uEff + t);
+  const execRaw = (2 * uEff * t) / (uEff + t);
+  // Executable action bonus: candidates with high tractability and an action type
+  // that can produce finished work get a small boost to prefer them over do_nothing.
+  const EXECUTABLE_TYPES = new Set(['send_message', 'write_document']);
+  const execBonus = (t >= 0.70 && EXECUTABLE_TYPES.has(args.actionType)) ? 0.10 : 0;
+  const exec = Math.min(1, execRaw + execBonus);
 
   const stakesTransformed = Math.pow(args.stakes, 0.6);
   const finalScore = stakesTransformed * exec * rate * nov * sup * 3.0;

@@ -342,11 +342,12 @@ export function isSendWorthy(
 
   const artifactRecord = artifact as unknown as Record<string, unknown>;
 
-  // send_message candidates use a lower send floor (65 vs 70).
+  // send_message and write_document use lower send floors (65 and 67 vs 70).
   // The LLM anchors near 69; the artifact quality gate is the real filter for send_message.
-  // All other action types (write_document, make_decision, etc.) keep the 70 floor.
-  const isSendMessage = directive.action_type === 'send_message';
-  const effectiveSendThreshold = isSendMessage ? 65 : CONFIDENCE_SEND_THRESHOLD;
+  // make_decision and other action types keep the 70 floor.
+  const effectiveSendThreshold = directive.action_type === 'send_message' ? 65
+    : directive.action_type === 'write_document' ? 67
+    : CONFIDENCE_SEND_THRESHOLD;
 
   // Discrepancy candidates (relationship decay, risk, exposure) skip quality-gate checks
   // (generic opener, weak winner, decision enforcement) — their absence-of-signal IS the evidence.
