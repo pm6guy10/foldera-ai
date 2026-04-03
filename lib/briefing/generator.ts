@@ -731,6 +731,30 @@ export function selectRankedCandidates(
       };
     }
 
+    // 1b. Hard suppression: 3+ consecutive not_relevant skips for this entity.
+    if (candidate.entityName && guardrails.skippedRecently && guardrails.skippedRecently.length > 0) {
+      const entityFirstName = candidate.entityName.split(/\s+/)[0]?.toLowerCase();
+      if (entityFirstName && entityFirstName.length >= 3) {
+        const entitySkips = guardrails.skippedRecently.filter((r) =>
+          (r.directive_text ?? '').toLowerCase().includes(entityFirstName),
+        );
+        let consecutiveNotRelevant = 0;
+        for (const s of entitySkips) {
+          if (s.skip_reason === 'not_relevant') consecutiveNotRelevant++;
+          else break;
+        }
+        if (consecutiveNotRelevant >= 3) {
+          return {
+            candidate,
+            viabilityScore: 0,
+            note: '',
+            disqualified: true,
+            disqualifyReason: `repeated_not_relevant_skip: ${consecutiveNotRelevant} consecutive not_relevant skips for ${candidate.entityName}`,
+          };
+        }
+      }
+    }
+
     // 2. Viability multipliers applied to raw scorer score.
     let mult = 1.0;
     const notes: string[] = [];
