@@ -1438,6 +1438,37 @@ export async function runDailyGenerate(
   for (let ui = 0; ui < eligibleUserIds.length; ui++) {
     const userId = eligibleUserIds[ui];
     console.log(`[daily-generate] Generating for user ${userId} (${ui + 1} of ${totalUsers})`);
+
+    // Early guard: skip signal processing entirely if a valid pending_approval already exists today.
+    // reconcilePendingApprovalQueue handles the same case later, but running it before
+    // runSignalProcessingForUser avoids unnecessary extraction work.
+    // Skipped for forceFreshRun (must regenerate) and rows that were already sent (need fresh).
+    if (!options?.forceFreshRun) {
+      const { data: pendingRows } = await supabase
+        .from('tkg_actions')
+        .select('id, generated_at, execution_result')
+        .eq('user_id', userId)
+        .eq('status', 'pending_approval')
+        .neq('action_type', 'do_nothing')
+        .gte('generated_at', todayStart)
+        .limit(5);
+
+      const existingPending = (pendingRows ?? []).find((row) => {
+        const er = (row as { execution_result?: Record<string, unknown> | null }).execution_result;
+        return !er?.['daily_brief_sent_at'];
+      }) ?? null;
+
+      if (existingPending) {
+        results.push({
+          code: 'pending_approval_guard',
+          meta: { action_id: (existingPending as { id: string }).id },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+    }
+
     const userEmails = await fetchUserEmailAddresses(userId);
     const signalResult = await runSignalProcessingForUser(supabase, userId, options);
     signalResults.push(signalResult);

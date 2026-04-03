@@ -20,6 +20,7 @@ export type DailyBriefSuccessCode =
   | 'no_unprocessed_signals'
   | 'pending_approval_persisted'
   | 'pending_approval_reused'
+  | 'pending_approval_guard'
   | 'no_send_persisted'
   | 'no_send_reused'
   | 'email_sent'

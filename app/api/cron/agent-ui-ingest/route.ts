@@ -17,6 +17,10 @@ export async function POST(request: Request) {
   const authErr = validateCronAuth(request);
   if (authErr) return authErr;
 
+  if (process.env.UI_CRITIC_ENABLED !== 'true') {
+    return NextResponse.json({ ok: true, skipped: true, reason: 'ui_critic_disabled' });
+  }
+
   const supabase = createServerClient();
   const enabled = await areAgentsEnabled(supabase);
   if (!enabled) {
