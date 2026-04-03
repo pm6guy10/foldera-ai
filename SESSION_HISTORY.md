@@ -8,8 +8,8 @@
   MODE: AUDIT
   Commit hash(es): `093a0b3` (AZ-24 slice 2); session log updates `54981e2`
   Files changed: `lib/briefing/thread-evidence-for-payload.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/thread-evidence-for-payload.test.ts`, `lib/briefing/__tests__/decision-payload-adversarial.test.ts`, `scripts/az05-action-type-distribution.sql`, `scripts/az24-research-breakdown.sql`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
-  What was verified: `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run build`; `npm run test:ci:e2e`; `npm run test:prod` (61); post-push Vercel **Ready** + `test:prod` (operator confirm if deploy lags)
-  Any unresolved issues: Confirm **Vercel Ready** on pushed commit in dashboard. Re-run `scripts/az05-action-type-distribution.sql` after deploy to measure slice-2 needle.
+  What was verified: `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"` (638 passed); `npm run build`; `npm run test:prod` (61 passed, post-push). Local `npm run test:ci:e2e` failed (`/login` 500) without full GitHub env; confirm **build-and-test** on latest `main` in Actions (run triggered for `c3447f2`).
+  Any unresolved issues: Confirm **Vercel Ready** on latest deploy. Re-run `scripts/az05-action-type-distribution.sql` after slice-2 is live to measure needle. GitHub CI: https://github.com/pm6guy10/foldera-ai/actions/runs/23953028577 (verify **success**).
 
 - 2026-04-04 — AUDIT: **AZ-24 slice 1 — `no_thread_no_outcome` vs scorer `sourceSignals`** — `buildDecisionPayload` treats past-dated **`winner.sourceSignals`** as thread evidence when hydrated **`supporting_signals`** is empty; new `lib/briefing/thread-evidence-for-payload.ts` + `thread-evidence-for-payload.test.ts`; **FOLDERA_PRODUCT_SPEC** §1.1; **AUTOMATION_BACKLOG** AZ-24 progress.
   MODE: AUDIT
