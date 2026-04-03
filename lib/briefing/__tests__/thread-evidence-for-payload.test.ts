@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   filterPastSupportingSignals,
+  getNewestEvidenceTimestampMs,
   hasPastWinnerSourceSignals,
   needsNoThreadNoOutcomeBlock,
 } from '../thread-evidence-for-payload';
@@ -61,6 +62,40 @@ describe('thread-evidence-for-payload', () => {
     it('never blocks discrepancy candidates (structural evidence)', () => {
       expect(needsNoThreadNoOutcomeBlock('discrepancy', false, false)).toBe(false);
       expect(needsNoThreadNoOutcomeBlock('discrepancy', false, true)).toBe(false);
+    });
+  });
+
+  describe('getNewestEvidenceTimestampMs', () => {
+    const oldIso = '2026-03-01T10:00:00.000Z';
+    const midIso = '2026-04-02T10:00:00.000Z';
+
+    it('returns 0 when both sides lack past timestamps', () => {
+      expect(getNewestEvidenceTimestampMs(undefined, undefined, fixedNow)).toBe(0);
+      expect(getNewestEvidenceTimestampMs([], [], fixedNow)).toBe(0);
+    });
+
+    it('prefers newer of supporting vs sourceSignals', () => {
+      const ms = getNewestEvidenceTimestampMs(
+        [{ occurred_at: midIso }],
+        [{ occurredAt: oldIso }],
+        fixedNow,
+      );
+      expect(ms).toBe(new Date(midIso).getTime());
+    });
+
+    it('uses supporting when sourceSignals are stale or empty', () => {
+      const ms = getNewestEvidenceTimestampMs(
+        [{ occurred_at: pastIso }],
+        [{ occurredAt: oldIso }],
+        fixedNow,
+      );
+      expect(ms).toBe(new Date(pastIso).getTime());
+    });
+
+    it('ignores future-dated rows on both sides', () => {
+      expect(
+        getNewestEvidenceTimestampMs([{ occurred_at: futureIso }], [{ occurredAt: futureIso }], fixedNow),
+      ).toBe(0);
     });
   });
 

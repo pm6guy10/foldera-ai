@@ -37,12 +37,15 @@ const qualifyingSignal = {
 const signalQueryResult = { data: [qualifyingSignal], error: null };
 const emptyResult = { data: [], error: null };
 
+/** Default `tkg_signals` rows for mocks; tests may assign `emptyResult` or stale rows to isolate scorer-only freshness. */
+let tkgSignalsMockRows: typeof signalQueryResult = signalQueryResult;
+
 function makeLimitQuery(table: string) {
   // Return a qualifying received signal for tkg_signals so the discrepancy gate passes:
   // - hasRealThread: supporting_signals.length > 0 (OR tiedToOutcome)
   // - tiedToOutcome: set by winner.matchedGoal in buildWinner()
   // Only hard-block condition: no_thread AND no_outcome (both missing)
-  const result = table === 'tkg_signals' ? signalQueryResult : emptyResult;
+  const result = table === 'tkg_signals' ? tkgSignalsMockRows : emptyResult;
   return {
     eq() { return this; },
     neq() { return this; },
@@ -165,6 +168,7 @@ function setupDefaults() {
   mockGetPinnedConstraintPrompt.mockReturnValue('');
   anthropicCallIdx = 0;
   anthropicResponses = [{}];
+  tkgSignalsMockRows = signalQueryResult;
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────
@@ -270,6 +274,9 @@ describe('TEST B — Hostile false-positive render (blocked payload)', () => {
   });
 
   it('stale evidence + polished LLM artifact → generation fails closed', async () => {
+    // No hydrated rows newer than scorer refs — freshness must come from winner.sourceSignals only (AZ-24 slice 2 union).
+    tkgSignalsMockRows = emptyResult;
+
     // Scorer returns a winner but with stale signals (>14 days old)
     mockScoreOpenLoops.mockResolvedValue(buildScorerResult({
       sourceSignals: [{

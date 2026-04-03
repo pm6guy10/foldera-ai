@@ -6,3 +6,10 @@ FROM tkg_actions
 WHERE generated_at > now() - interval '14 days'
 GROUP BY 1
 ORDER BY n DESC;
+
+-- Same query, 7-day window (AZ-24 receipt):
+-- SELECT action_type, COUNT(*) AS n
+-- FROM tkg_actions
+-- WHERE generated_at > now() - interval '7 days'
+-- GROUP BY 1
+-- ORDER BY n DESC;

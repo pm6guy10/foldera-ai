@@ -47,6 +47,7 @@ import {
 } from './schedule-conflict-guards';
 import {
   filterPastSupportingSignals,
+  getNewestEvidenceTimestampMs,
   hasPastWinnerSourceSignals,
   needsNoThreadNoOutcomeBlock,
 } from './thread-evidence-for-payload';
@@ -929,13 +930,8 @@ function buildDecisionPayload(
   confidence: number,
   lockedContactNames?: Set<string>,
 ): DecisionPayload {
-  // Determine freshness
-  const signalDates = (winner.sourceSignals ?? [])
-    .map((s) => s.occurredAt)
-    .filter((d): d is string => Boolean(d))
-    .map((d) => new Date(d).getTime())
-    .filter((t) => !Number.isNaN(t));
-  const newestMs = signalDates.length > 0 ? Math.max(...signalDates) : 0;
+  // Determine freshness — union of hydrated supporting_signals and scorer refs (AZ-24 slice 2)
+  const newestMs = getNewestEvidenceTimestampMs(ctx.supporting_signals, winner.sourceSignals);
   const ageDays = newestMs > 0
     ? (Date.now() - newestMs) / (1000 * 60 * 60 * 24)
     : STALE_SIGNAL_THRESHOLD_DAYS + 1;
@@ -1653,13 +1649,8 @@ function buildStructuredContext(
     // Non-discrepancy (commitment, signal, relationship): entity-db email OR signal senders
     : (hasRecipientEmailInContext || externalEmails.length > 0);
 
-  // Check signal freshness
-  const signalDates = (winner.sourceSignals ?? [])
-    .map((s) => s.occurredAt)
-    .filter((d): d is string => Boolean(d))
-    .map((d) => new Date(d).getTime())
-    .filter((t) => !Number.isNaN(t));
-  const newestSignalMs = signalDates.length > 0 ? Math.max(...signalDates) : 0;
+  // Check signal freshness — union of hydrated supporting_signals and scorer refs (AZ-24 slice 2)
+  const newestSignalMs = getNewestEvidenceTimestampMs(supporting_signals, winner.sourceSignals);
   const newestSignalAgeDays = newestSignalMs > 0
     ? (Date.now() - newestSignalMs) / (1000 * 60 * 60 * 24)
     : STALE_SIGNAL_THRESHOLD_DAYS + 1;
