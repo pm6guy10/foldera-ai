@@ -312,6 +312,75 @@ async function purgeOldExtractedSignals(userIds: string[]): Promise<{ ok: boolea
 }
 
 // ---------------------------------------------------------------------------
+// Reply outcome tracking — check if executed send_message actions got a reply
+// ---------------------------------------------------------------------------
+async function trackReplyOutcomes(): Promise<{ ok: boolean; checked: number; closed: number }> {
+  const supabase = createServerClient();
+  const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
+
+  const { data: executedActions } = await supabase
+    .from('tkg_actions')
+    .select('id, user_id, directive_text, executed_at')
+    .eq('action_type', 'send_message')
+    .in('status', ['executed', 'approved'])
+    .eq('outcome_closed', false)
+    .gte('executed_at', fourteenDaysAgo)
+    .order('executed_at', { ascending: false })
+    .limit(50);
+
+  if (!executedActions || executedActions.length === 0) {
+    return { ok: true, checked: 0, closed: 0 };
+  }
+
+  let closed = 0;
+  for (const action of executedActions) {
+    const entityName = extractFirstNameFromDirective(action.directive_text as string ?? '');
+    if (!entityName) continue;
+
+    const { data: replies } = await supabase
+      .from('tkg_signals')
+      .select('id')
+      .eq('user_id', action.user_id as string)
+      .eq('type', 'email_received')
+      .gt('occurred_at', action.executed_at as string)
+      .limit(20);
+
+    if (!replies || replies.length === 0) continue;
+
+    // Check if any reply is from the entity (by content match — entity name in the encrypted payload)
+    // Since we can't decrypt here cheaply, we just mark based on timing: a reply from *anyone*
+    // after execution indicates outcome closure. This is an approximation.
+    const { error } = await supabase
+      .from('tkg_actions')
+      .update({ outcome_closed: true })
+      .eq('id', action.id as string);
+
+    if (!error) {
+      closed++;
+      logStructuredEvent({
+        event: 'reply_outcome_closed',
+        user_id_hash: (action.user_id as string).slice(0, 12),
+        action_id: action.id as string,
+      });
+    }
+  }
+
+  return { ok: true, checked: executedActions.length, closed };
+}
+
+function extractFirstNameFromDirective(text: string): string | null {
+  const patterns = [
+    /(?:email|message|reach out to|follow up with|contact|write to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+    /(?:to|with)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:about|regarding|re:)/i,
+  ];
+  for (const pat of patterns) {
+    const m = text.match(pat);
+    if (m?.[1] && m[1].length >= 3) return m[1];
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 async function handler(request: NextRequest) {
@@ -449,6 +518,17 @@ async function handler(request: NextRequest) {
     Sentry.captureException(err);
     stages.suppressed_commitments = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'suppressed_commitments', error: err.message }));
+  }
+
+  // Stage 2d: Reply outcome tracking — check if executed send_message actions received a reply
+  try {
+    const replyResult = await trackReplyOutcomes();
+    stages.reply_outcome_tracking = replyResult;
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'reply_outcome_tracking', ...replyResult }));
+  } catch (err: any) {
+    Sentry.captureException(err);
+    stages.reply_outcome_tracking = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'reply_outcome_tracking', error: err.message }));
   }
 
   // Stage 3: Passive rejection (auto-skip stale pending_approval > 24h)

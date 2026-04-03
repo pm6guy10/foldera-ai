@@ -92,6 +92,19 @@ const mockSupabase = {
       };
     }
 
+    if (table === 'tkg_actions') {
+      const chainable = {
+        select: () => chainable,
+        eq: () => chainable,
+        in: () => chainable,
+        gte: () => chainable,
+        order: () => chainable,
+        limit: () => Promise.resolve({ data: [], error: null }),
+        update: () => chainable,
+      };
+      return chainable;
+    }
+
     return {
       select: () => Promise.resolve({ data: [], error: null }),
     };
