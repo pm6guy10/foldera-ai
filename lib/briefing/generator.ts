@@ -39,6 +39,7 @@ import {
   validateTriggerArtifact,
 } from './trigger-action-map';
 import type { EntityBehavioralStats } from '@/lib/signals/behavioral-graph';
+import { isBlockedSender } from '@/lib/signals/sender-blocklist';
 import type { DiscrepancyClass } from './discrepancy-detector';
 import { effectiveDiscrepancyClassForGates } from './effective-discrepancy-class';
 import {
@@ -3892,6 +3893,7 @@ async function fetchWinnerSignalEvidence(
     .filter((id): id is string => Boolean(id));
 
   let snippets: SignalSnippet[] = [];
+  let senderBlockedCount = 0;
 
   if (sourceIds.length > 0) {
     const { data: sourceRows } = await supabase
@@ -3900,6 +3902,7 @@ async function fetchWinnerSignalEvidence(
       .in('id', sourceIds);
 
     for (const row of sourceRows ?? []) {
+      if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
       const decrypted = decryptWithStatus(row.content as string ?? '');
       if (decrypted.usedFallback) continue;
       const parsed = parseSignalSnippet(decrypted.plaintext, row);
@@ -3929,6 +3932,7 @@ async function fetchWinnerSignalEvidence(
 
     for (const row of contextRows ?? []) {
       if (snippets.length >= 12) break;
+      if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
       const decrypted = decryptWithStatus(row.content as string ?? '');
       if (decrypted.usedFallback) continue;
       const text = decrypted.plaintext.toLowerCase();
@@ -3972,6 +3976,7 @@ async function fetchWinnerSignalEvidence(
 
       for (const row of decayRows ?? []) {
         if (snippets.length >= DECAY_ENTITY_SNIPPET_CAP) break;
+        if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
         const decrypted = decryptWithStatus(row.content as string ?? '');
         if (decrypted.usedFallback) continue;
         const plain = decrypted.plaintext;
@@ -4035,6 +4040,7 @@ async function fetchWinnerSignalEvidence(
 
       for (const row of rpRows ?? []) {
         if (rpAdded >= RESPONSE_PATTERN_DECAY_CAP) break;
+        if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
         const decrypted = decryptWithStatus(row.content as string ?? '');
         if (decrypted.usedFallback) continue;
         const parsed = parseSignalSnippet(decrypted.plaintext, row);
@@ -4074,6 +4080,7 @@ async function fetchWinnerSignalEvidence(
 
       for (const row of entityRows ?? []) {
         if (snippets.length >= 12) break;
+        if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
         const decrypted = decryptWithStatus(row.content as string ?? '');
         if (decrypted.usedFallback) continue;
         const textLower = decrypted.plaintext.toLowerCase();
@@ -4094,6 +4101,17 @@ async function fetchWinnerSignalEvidence(
     if (anchors.emails.length > 0 || anchors.tokens.length > 0) {
       snippets = snippets.filter((s) => signalSnippetMatchesDecayEntity(s, anchors));
     }
+  }
+
+  if (senderBlockedCount > 0) {
+    logStructuredEvent({
+      event: 'sender_blocked',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'context_filtered',
+      details: { scope: 'fetchWinnerSignalEvidence', sender_blocked_count: senderBlockedCount },
+    });
   }
 
   return snippets;
