@@ -1742,7 +1742,13 @@ function buildStructuredContext(
     user_full_name: names.user_full_name,
     user_first_name: names.user_first_name,
     goal_gap_analysis: goalGapAnalysis ?? [],
-    already_sent_14d: alreadySent ?? [],
+    already_sent_14d: entityConversationState && winner.entityName
+      ? (alreadySent ?? []).filter((line) => {
+          const lower = line.toLowerCase();
+          const entityTokens = winner.entityName!.toLowerCase().split(/\s+/).filter((t) => t.length >= 3);
+          return !entityTokens.some((t) => lower.includes(t));
+        })
+      : (alreadySent ?? []),
     behavioral_mirrors: buildBehavioralMirrors(antiPatterns ?? [], divergences ?? []),
     conviction_math: convictionDecision
       ? [
@@ -5548,7 +5554,7 @@ export async function generateDirective(
         const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
         const { data: actionRows } = await supabase
           .from('tkg_actions')
-          .select('directive_text, generated_at')
+          .select('directive_text, generated_at, execution_result')
           .eq('user_id', userId)
           .eq('action_type', 'send_message')
           .in('status', ['approved', 'executed'])
@@ -5558,12 +5564,22 @@ export async function generateDirective(
         const lines: string[] = [];
         for (const row of actionRows ?? []) {
           const date = new Date(row.generated_at as string).toISOString().slice(0, 10);
-          const firstLine = (row.directive_text as string ?? '')
-            .split('\n')
-            .map((l: string) => l.trim())
-            .find((l: string) => l.length > 0)
-            ?.slice(0, 80) ?? null;
-          if (firstLine) lines.push(`[${date}] (Foldera-sent) — ${firstLine}`);
+          const execResult = row.execution_result as Record<string, unknown> | null;
+          const artifact = execResult?.artifact as Record<string, unknown> | undefined;
+          const to = (artifact?.to as string | undefined)?.slice(0, 60);
+          const subj = (artifact?.subject as string | undefined)?.slice(0, 80);
+          const toPart = to ? ` To: ${to}` : '';
+          const subjPart = subj ? ` — ${subj}` : '';
+          if (toPart || subjPart) {
+            lines.push(`[${date}]${toPart}${subjPart}`);
+          } else {
+            const firstLine = (row.directive_text as string ?? '')
+              .split('\n')
+              .map((l: string) => l.trim())
+              .find((l: string) => l.length > 0)
+              ?.slice(0, 80) ?? null;
+            if (firstLine) lines.push(`[${date}] — ${firstLine}`);
+          }
         }
         return lines;
       })(),
