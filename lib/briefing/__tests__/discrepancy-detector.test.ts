@@ -1783,3 +1783,101 @@ describe('extractBehavioralPatterns (class: behavioral_pattern)', () => {
     expect(out.filter((d) => d.class === 'behavioral_pattern')).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Self-entity filtering in cross-entity theme detection
+// ---------------------------------------------------------------------------
+describe('extractBehavioralPatterns — selfEmails filter in cross-entity theme', () => {
+  function makeThemeEntity(name: string, email: string, totalInteractions = 10) {
+    return {
+      id: `ent-${name.replace(/\s+/g, '-')}`,
+      name,
+      last_interaction: daysAgoISO(5),
+      total_interactions: totalInteractions,
+      patterns: {},
+      primary_email: email,
+      emails: [email],
+    };
+  }
+
+  function makeThemeSignal(id: string, theme: string, entityName: string, daysAgo: number) {
+    return {
+      id,
+      source: 'email',
+      type: 'email',
+      occurred_at: daysAgoISO(daysAgo),
+      content: `From: ${entityName} <${entityName.toLowerCase().replace(/\s+/g, '.')}@example.com>\n${theme} deadline approaching`,
+    };
+  }
+
+  it('includes owner entity in theme candidate when selfEmails is not provided', () => {
+    const owner = makeThemeEntity('Brandon Kapp', 'b-kapp@outlook.com');
+    const contact1 = makeThemeEntity('Alice Smith', 'alice@example.com');
+    const contact2 = makeThemeEntity('Bob Jones', 'bob@example.com');
+    const contact3 = makeThemeEntity('Carol White', 'carol@example.com');
+
+    const signals = [
+      makeThemeSignal('s1', 'deadline', 'Brandon Kapp', 10),
+      makeThemeSignal('s2', 'deadline', 'Alice Smith', 12),
+      makeThemeSignal('s3', 'deadline', 'Bob Jones', 14),
+      makeThemeSignal('s4', 'deadline', 'Carol White', 16),
+    ];
+
+    const out = extractBehavioralPatterns(
+      [owner, contact1, contact2, contact3], [], [], signals, [], [], now,
+      // no selfEmails → owner is not filtered
+    );
+    const themeCandidates = out.filter((d) => d.id?.startsWith('discrepancy_bp_theme_'));
+    // With 4 entities hitting the theme and no selfEmails filter, candidate should form
+    expect(themeCandidates.length).toBeGreaterThan(0);
+    const firstTitle = themeCandidates[0]?.title ?? '';
+    expect(firstTitle).toContain('Brandon Kapp');
+  });
+
+  it('excludes owner entity from theme candidate title when selfEmails is provided', () => {
+    const owner = makeThemeEntity('Brandon Kapp', 'b-kapp@outlook.com');
+    const contact1 = makeThemeEntity('Alice Smith', 'alice@example.com');
+    const contact2 = makeThemeEntity('Bob Jones', 'bob@example.com');
+    const contact3 = makeThemeEntity('Carol White', 'carol@example.com');
+
+    const signals = [
+      makeThemeSignal('s1', 'deadline', 'Brandon Kapp', 10),
+      makeThemeSignal('s2', 'deadline', 'Alice Smith', 12),
+      makeThemeSignal('s3', 'deadline', 'Bob Jones', 14),
+      makeThemeSignal('s4', 'deadline', 'Carol White', 16),
+    ];
+
+    const selfEmails = new Set(['b-kapp@outlook.com']);
+    const out = extractBehavioralPatterns(
+      [owner, contact1, contact2, contact3], [], [], signals, [], [], now, selfEmails,
+    );
+    const themeCandidates = out.filter((d) => d.id?.startsWith('discrepancy_bp_theme_'));
+    // Owner filtered out → remaining 3 contacts still form the threshold
+    expect(themeCandidates.length).toBeGreaterThan(0);
+    const firstTitle = themeCandidates[0]?.title ?? '';
+    // Owner must NOT appear in the title
+    expect(firstTitle).not.toContain('Brandon Kapp');
+    // Real contacts still appear
+    expect(firstTitle).toContain('deadline');
+  });
+
+  it('drops theme candidate entirely when filtering owner leaves fewer than 3 contacts', () => {
+    const owner = makeThemeEntity('Brandon Kapp', 'b-kapp@outlook.com');
+    const contact1 = makeThemeEntity('Alice Smith', 'alice@example.com');
+    const contact2 = makeThemeEntity('Bob Jones', 'bob@example.com');
+    // Only 2 non-owner entities → below threshold of 3
+
+    const signals = [
+      makeThemeSignal('s1', 'deadline', 'Brandon Kapp', 10),
+      makeThemeSignal('s2', 'deadline', 'Alice Smith', 12),
+      makeThemeSignal('s3', 'deadline', 'Bob Jones', 14),
+    ];
+
+    const selfEmails = new Set(['b-kapp@outlook.com']);
+    const out = extractBehavioralPatterns(
+      [owner, contact1, contact2], [], [], signals, [], [], now, selfEmails,
+    );
+    const themeCandidates = out.filter((d) => d.id?.startsWith('discrepancy_bp_theme_'));
+    expect(themeCandidates).toHaveLength(0);
+  });
+});
