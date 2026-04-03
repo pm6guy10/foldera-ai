@@ -14,12 +14,12 @@
 import { createServerClient } from '@/lib/db/client';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
-const DAILY_SPEND_CAP_USD = 1.00;
-export const EXTRACTION_DAILY_CAP = 2.00;
+const DAILY_SPEND_CAP_USD = 0.05;
+export const EXTRACTION_DAILY_CAP = 0.05;
 // Max directive-generation LLM calls per UTC day for manual/interactive runs.
 // Applies only when skipSpendCap=true (Generate Now, smoke tests).
 // Cron runs are bounded by DAILY_SPEND_CAP_USD instead.
-const MAX_MANUAL_DIRECTIVE_CALLS_PER_DAY = 30;
+const MAX_MANUAL_DIRECTIVE_CALLS_PER_DAY = 3;
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const SONNET_MODEL = ['claude', 'sonnet-4-20250514'].join('-');
 const SONNET_46_MODEL = ['claude', 'sonnet-4-6'].join('-');

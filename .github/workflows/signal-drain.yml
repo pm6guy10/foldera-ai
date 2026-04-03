@@ -2,7 +2,7 @@ name: Signal Backlog Drain
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '0 9 * * *'
   workflow_dispatch:
 
 jobs:
@@ -14,8 +14,8 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          URL="https://www.foldera.ai/api/cron/process-unprocessed-signals?maxSignals=10"
-          MAX_ITERATIONS=30
+          URL="https://www.foldera.ai/api/cron/process-unprocessed-signals?maxSignals=5"
+          MAX_ITERATIONS=3
           SLEEP_BETWEEN=3
           total_processed=0
 

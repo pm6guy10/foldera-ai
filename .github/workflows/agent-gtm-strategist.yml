@@ -1,8 +1,6 @@
 # 14:00 UTC — Reddit listening + draft replies.
 name: Agent — GTM Strategist
 on:
-  schedule:
-    - cron: '0 14 * * *'
   workflow_dispatch:
 
 jobs:
