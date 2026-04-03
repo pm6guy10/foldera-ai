@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-04 — AUDIT: **do_nothing mass (53%) — 3-gate relaxation** — Supabase MCP diagnostic queries confirmed: `do_nothing` 53.4% (505 rows), top causes: manual call limit 184 (intentional), scorer null 58 (Scenario A), artifact failure 55, self-addressed 49, duplicates 44. **Fix 1 (Scenario A):** `computeEvidenceDensity` threshold `< 2` → `< 1` in `scorer.ts` so candidates with only source signals pass invariants. **Fix 2 (Scenario B):** `STALE_SIGNAL_THRESHOLD_DAYS` 14 → 21 days in `generator.ts` widening aging window. **Fix 3 (Scenario C):** `needsNoThreadNoOutcomeBlock` now exempts `relationship` type matching the existing discrepancy bypass. Tests: 4 new invariant cases in scorer-benchmark + 1 relationship bypass case; 651 tests pass; build clean.
+  MODE: AUDIT
+  Commit hash(es): `c3db2f2`
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `lib/briefing/thread-evidence-for-payload.ts`, `lib/briefing/__tests__/scorer-benchmark.test.ts`, `lib/briefing/__tests__/thread-evidence-for-payload.test.ts`
+  What was verified: `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"` (651 passed, 63 files); `npm run build` (clean); pushed `c3db2f2` to `main`.
+  Any unresolved issues: Confirm Vercel Ready on latest deploy. Re-run diagnostic SQL after next cron cycle to measure `do_nothing` drop. Research still at 41.6% but may be pre-fix data in 7-day window; monitor after another cycle.
+
 - 2026-04-03 — AUDIT: **AZ-24 plan — post-slice-2 `az05` receipt + slice 3 (`signal_velocity` → `make_decision`)** — Supabase MCP **`az05` 14d/7d** counts pasted in **AUTOMATION_BACKLOG** (n=1077 / n=939); GitHub **CI** `ci.yml` on **`7f0798f`**: **success** (run 23953118878); **`npm run test:prod`** 61 passed (pre-push). **Slice 3:** `detectEmergentPatterns` signal spike **`suggestedActionType: make_decision`** in [`lib/briefing/scorer.ts`](lib/briefing/scorer.ts); [`lib/briefing/__tests__/scorer-emergent-signal-velocity.test.ts`](lib/briefing/__tests__/scorer-emergent-signal-velocity.test.ts). **FOLDERA_PRODUCT_SPEC** §1.1; **AUTOMATION_BACKLOG** AZ-24 matrix row.
   MODE: AUDIT
   Commit hash(es): `b199136`
