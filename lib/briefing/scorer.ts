@@ -4193,7 +4193,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     const tractability = await getTractability(userId, c.actionType, c.domain);
     const daysSinceLastSurface = await getDaysSinceLastSurface(userId, c.title);
     const rawEntityPenalty = await getEntitySkipPenalty(userId, c.content, c.title);
-    const entityPenalty = c.actionType === 'send_message' ? rawEntityPenalty : 0;
+    const entityPenalty = CONTACT_ACTION_TYPES.has(c.actionType as ActionType) ? rawEntityPenalty : 0;
 
     const nowMsLoop = Date.now();
     const loopUrgency = mergeUrgencyWithTimeHints({
