@@ -143,6 +143,28 @@ export default function TryPage() {
           <p className="text-xs text-zinc-600">At least 20 characters required.</p>
         </form>
 
+        <aside className="mt-10 rounded-2xl border border-white/10 bg-zinc-950/60 p-6 text-center space-y-3">
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            Ready for real mailboxes and morning briefings—not a one-off demo?
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-stretch sm:items-center">
+            <Link
+              href="/pricing"
+              data-foldera-cta="try-pricing"
+              className="min-h-[44px] inline-flex items-center justify-center px-6 py-3 rounded-xl border border-white/20 text-white text-xs font-black uppercase tracking-[0.15em] hover:bg-white/5 transition-colors"
+            >
+              See pricing
+            </Link>
+            <Link
+              href="/start"
+              data-foldera-cta="try-start"
+              className="min-h-[44px] inline-flex items-center justify-center px-6 py-3 rounded-xl bg-emerald-500/90 text-black text-xs font-black uppercase tracking-[0.15em] hover:bg-emerald-400 transition-colors"
+            >
+              Start free
+            </Link>
+          </div>
+        </aside>
+
         {error && (
           <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}

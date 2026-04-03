@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { buildContextGreeting } from '@/lib/briefing/context-builder';
 import { CONFIDENCE_SEND_THRESHOLD } from '@/lib/config/constants';
 import { getSubscriptionStatus } from '@/lib/auth/subscription';
@@ -155,6 +155,6 @@ export async function GET(request: Request) {
       is_subscribed:   isSubscribed,
     });
   } catch (err: unknown) {
-    return apiError(err, 'conviction/latest');
+    return apiErrorForRoute(err, 'conviction/latest');
   }
 }

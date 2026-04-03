@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-03 — AUDIT: **Backlog → A+ (agent execution plan)** — **AZ-06** `x-request-id` on middleware (pages + `/api/*`), `apiError`/`apiErrorForRoute` + Sentry tag; **AZ-20** `docs/SUPABASE_MIGRATIONS.md`; **AZ-05** SQL template in AUTOMATION_BACKLOG (no live query from workspace); **AZ-10** blog `[slug]` prose tokens; **AZ-12** root `layout.js` SEO; **AZ-13** `/try` CTAs + `data-foldera-cta`; **AZ-15** `docs/ENTITY_DEDUPE.md` + `scripts/entity-dedupe-audit.sql`; **AZ-22** CE-2 partial (`estimateMonthlyBurnFromSignalAmounts`). Docs: `docs/AZ_AUDIT_2026-04.md` L/G/D/U rows; `docs/MASTER_PUNCHLIST.md` migrations row; `FOLDERA_PRODUCT_SPEC.md` §1.6/1.7/1.8/2.3.
+  MODE: AUDIT
+  Commit hash(es): `58a2df5`
+  Files changed: `middleware.ts`, `lib/utils/request-id-core.ts`, `lib/utils/request-id.ts`, `lib/utils/api-error.ts`, `lib/utils/__tests__/request-id-core.test.ts`, `app/api/**/route.ts` (apiErrorForRoute), `app/api/**/__tests__/*` (mocks), `app/api/dev/brain-receipt/route.ts`, `lib/briefing/conviction-engine.ts`, `lib/briefing/__tests__/conviction-engine-burn.test.ts`, `app/layout.js`, `app/try/page.tsx`, `app/(marketing)/blog/[slug]/page.tsx`, `tests/e2e/public-routes.spec.ts`, `docs/SUPABASE_MIGRATIONS.md`, `docs/ENTITY_DEDUPE.md`, `scripts/entity-dedupe-audit.sql`, `docs/AZ_AUDIT_2026-04.md`, `docs/MASTER_PUNCHLIST.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (**610** tests); `npm run test:ci:e2e` (**41**, `PLAYWRIGHT_WEB_PORT=3011`, `NEXTAUTH_URL=http://127.0.0.1:3011`); `npm run test:prod` (**61**); prod audit screenshot artifacts **restored** (not committed)
+  Any unresolved issues: Operator rows AZ-02–AZ-04, AZ-08–AZ-09, AZ-11, AZ-14, AZ-16–AZ-19, AZ-21 unchanged; AZ-22 CE-3–CE-6 remain.
+
 - 2026-04-03 — AUDIT: **A–Z Foldera audit → backlog normalization → fixes** — [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md) (matrix + automation snapshot + deduped NEEDS_REVIEW); [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md); **AUTOMATION_BACKLOG** OPEN → ranked table **AZ-01–AZ-22**; **AZ-07** `GET /api/conviction/history` + `/dashboard/briefings` + dashboard History icon; **MASTER_PUNCHLIST** UptimeRobot (**AZ-08**); **CLAUDE** local omnibus link; E2E briefings test; vitest route tests.
   MODE: AUDIT
   Commit hash(es): `0d44c9d` (deliverable). Follow-up commits may only fix this log line.

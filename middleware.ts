@@ -5,6 +5,10 @@
 
 import { getToken } from 'next-auth/jwt';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  REQUEST_ID_HEADER,
+  resolveRequestIdForRequest,
+} from '@/lib/utils/request-id-core';
 
 function applyTrackingCookies(request: NextRequest, response: NextResponse) {
   const ref = request.nextUrl.searchParams.get('ref');
@@ -42,7 +46,20 @@ function applyTrackingCookies(request: NextRequest, response: NextResponse) {
   return response;
 }
 
+function forwardHeadersWithRequestId(request: NextRequest, requestId: string): Headers {
+  const h = new Headers(request.headers);
+  h.set(REQUEST_ID_HEADER, requestId);
+  return h;
+}
+
 export async function middleware(request: NextRequest) {
+  const requestId = resolveRequestIdForRequest(request.headers.get(REQUEST_ID_HEADER));
+  const forwarded = forwardHeadersWithRequestId(request, requestId);
+  const stamp = (res: NextResponse) => {
+    res.headers.set(REQUEST_ID_HEADER, requestId);
+    return res;
+  };
+
   const { pathname, origin } = request.nextUrl;
   const secret = process.env.NEXTAUTH_SECRET;
   const isProtectedRoute =
@@ -75,15 +92,18 @@ export async function middleware(request: NextRequest) {
       const destination = hasOnboarded ? '/dashboard' : '/onboard';
       return applyTrackingCookies(
         request,
-        NextResponse.redirect(new URL(destination, origin)),
+        stamp(NextResponse.redirect(new URL(destination, origin))),
       );
     }
   }
 
-  return applyTrackingCookies(request, NextResponse.next());
+  return applyTrackingCookies(
+    request,
+    stamp(NextResponse.next({ request: { headers: forwarded } })),
+  );
 }
 
-// Run on public pages + dashboard routes (not API routes or static assets)
+// Public pages, dashboard, and API (request id for correlation; no auth redirect on /api/*)
 export const config = {
   matcher: [
     '/',
@@ -98,5 +118,6 @@ export const config = {
     '/onboard/:path*',
     '/dashboard',
     '/dashboard/:path*',
+    '/api/:path*',
   ],
 };

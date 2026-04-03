@@ -5,7 +5,7 @@ import {
   listUsersWithUnprocessedSignals,
   processUnextractedSignals,
 } from '@/lib/signals/signal-processor';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,7 +91,7 @@ async function handler(request: NextRequest) {
       maxSignals,
     });
   } catch (error: unknown) {
-    return apiError(error, 'cron/process-unprocessed-signals');
+    return apiErrorForRoute(error, 'cron/process-unprocessed-signals');
   }
 }
 

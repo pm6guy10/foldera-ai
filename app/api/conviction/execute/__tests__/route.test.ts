@@ -9,6 +9,7 @@ vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser }));
 vi.mock('@/lib/conviction/execute-action', () => ({ executeAction: mockExecuteAction }));
 vi.mock('@/lib/utils/api-error', () => ({
   apiError: mockApiError,
+  apiErrorForRoute: mockApiError,
   validationError: (msg: string) => NextResponse.json({ error: msg }, { status: 400 }),
 }));
 

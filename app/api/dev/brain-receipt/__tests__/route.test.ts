@@ -26,6 +26,11 @@ vi.mock('@/lib/db/client', () => ({
   createServerClient: () => mockSupabase,
 }));
 
+vi.mock('@/lib/utils/request-id', () => ({
+  getRequestId: vi.fn(() => undefined),
+  REQUEST_ID_HEADER: 'x-request-id',
+}));
+
 vi.mock('@/lib/utils/api-error', () => ({
   apiError: mockApiError,
 }));

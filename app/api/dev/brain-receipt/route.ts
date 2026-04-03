@@ -19,6 +19,7 @@ import {
 import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
 import type { ActionType, ConvictionArtifact, ConvictionDirective, GenerationRunLog } from '@/lib/briefing/types';
 import { apiError } from '@/lib/utils/api-error';
+import { getRequestId, REQUEST_ID_HEADER } from '@/lib/utils/request-id';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -172,14 +173,16 @@ export async function POST(request: Request) {
       generate_stage_result: ownerResult,
     });
   } catch (error: unknown) {
-    // Even on error, try to return whatever diagnostics were captured
     const scorerDiagnostics = getLastScorerDiagnostics();
-    const baseError = apiError(error, 'dev/brain-receipt');
+    const requestId = getRequestId();
+    void apiError(error, 'dev/brain-receipt', requestId);
     const errorBody = error instanceof Error ? error.message : String(error);
+    const hdrs = requestId ? { [REQUEST_ID_HEADER]: requestId } : undefined;
     return NextResponse.json({
       ok: false,
       error: errorBody,
       scorer_diagnostics: scorerDiagnostics,
-    }, { status: 500 });
+      ...(requestId ? { requestId } : {}),
+    }, { status: 500, headers: hdrs });
   }
 }

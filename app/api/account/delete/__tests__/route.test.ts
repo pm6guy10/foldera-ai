@@ -31,6 +31,7 @@ vi.mock('@/lib/db/client', () => ({
 
 vi.mock('@/lib/utils/api-error', () => ({
   apiError,
+  apiErrorForRoute: apiError,
 }));
 
 describe('POST /api/account/delete', () => {

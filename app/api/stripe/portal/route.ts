@@ -7,7 +7,7 @@ import { getServerSession } from 'next-auth';
 import Stripe from 'stripe';
 import { authOptions } from '@/lib/auth/auth-options';
 import { createServerClient } from '@/lib/db/client';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +50,6 @@ export async function POST() {
 
     return NextResponse.json({ url: portal.url });
   } catch (err: unknown) {
-    return apiError(err, 'stripe/portal');
+    return apiErrorForRoute(err, 'stripe/portal');
   }
 }

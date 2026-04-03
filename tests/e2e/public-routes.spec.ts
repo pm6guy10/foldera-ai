@@ -27,6 +27,27 @@ function collectConsoleErrors(page: Page): string[] {
   return errors;
 }
 
+// ── Public API (middleware request id) ───────────────────────────────────────
+
+test.describe('Public API', () => {
+  test('/api/health returns 200 and echoes x-request-id', async ({ request }) => {
+    const id = '6ba7b812-9dad-11d1-80b4-00c04fd430c8';
+    const res = await request.get('/api/health', {
+      headers: { 'x-request-id': id },
+    });
+    expect(res.status()).toBe(200);
+    expect(res.headers()['x-request-id']).toBe(id);
+  });
+
+  test('/api/health sets x-request-id when absent', async ({ request }) => {
+    const res = await request.get('/api/health');
+    expect(res.status()).toBe(200);
+    const rid = res.headers()['x-request-id'];
+    expect(rid).toBeTruthy();
+    expect(rid).toMatch(/^[0-9a-f-]{36}$/i);
+  });
+});
+
 // ── Landing page (/) ────────────────────────────────────────────────────────
 
 test.describe('Landing page /', () => {

@@ -3,7 +3,7 @@ import { resolveUser } from '@/lib/auth/resolve-user';
 import { runBriefLifecycle } from '@/lib/cron/brief-service';
 import { syncGoogle } from '@/lib/sync/google-sync';
 import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -105,6 +105,6 @@ export async function POST(request: Request) {
       },
     }, { status: ok ? 200 : 207 });
   } catch (error: unknown) {
-    return apiError(error, 'settings/run-brief');
+    return apiErrorForRoute(error, 'settings/run-brief');
   }
 }

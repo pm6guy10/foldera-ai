@@ -11,6 +11,7 @@ vi.mock('@/lib/db/client', () => ({
 }));
 vi.mock('@/lib/utils/api-error', () => ({
   apiError: mockApiError,
+  apiErrorForRoute: mockApiError,
 }));
 
 describe('GET /api/conviction/history', () => {

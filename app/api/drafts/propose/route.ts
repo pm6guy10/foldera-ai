@@ -19,7 +19,7 @@
 import { createServerClient } from '@/lib/db/client';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { NextResponse }     from 'next/server';
-import { apiError }        from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 import type { ActionType }  from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return apiError(error, 'drafts/propose');
+    return apiErrorForRoute(error, 'drafts/propose');
   }
 
   return NextResponse.json({

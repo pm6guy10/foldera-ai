@@ -30,6 +30,7 @@ vi.mock('@/lib/sync/microsoft-sync', () => ({
 
 vi.mock('@/lib/utils/api-error', () => ({
   apiError: mockApiError,
+  apiErrorForRoute: mockApiError,
 }));
 
 function makeBriefResult(userId: string, sendFallbackAttempted = false) {

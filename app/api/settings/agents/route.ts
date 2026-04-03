@@ -7,7 +7,7 @@ import { resolveUser } from '@/lib/auth/resolve-user';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { createServerClient } from '@/lib/db/client';
 import { areAgentsEnabled, setAgentsEnabled, AGENTS_ENABLED_GOAL_TEXT } from '@/lib/agents/agents-enabled';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const enabled = await areAgentsEnabled(supabase);
     return NextResponse.json({ enabled, goal_text: AGENTS_ENABLED_GOAL_TEXT });
   } catch (e: unknown) {
-    return apiError(e, 'settings/agents GET');
+    return apiErrorForRoute(e, 'settings/agents GET');
   }
 }
 
@@ -45,6 +45,6 @@ export async function POST(request: Request) {
     await setAgentsEnabled(supabase, enabled);
     return NextResponse.json({ ok: true, enabled });
   } catch (e: unknown) {
-    return apiError(e, 'settings/agents POST');
+    return apiErrorForRoute(e, 'settings/agents POST');
   }
 }

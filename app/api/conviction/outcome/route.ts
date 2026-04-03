@@ -17,7 +17,7 @@ import { createHash }        from 'crypto';
 import { createServerClient } from '@/lib/db/client';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { NextResponse }      from 'next/server';
-import { apiError }         from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { encrypt }          from '@/lib/encryption';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     .eq('id', action_id);
 
   if (updateErr) {
-    return apiError(updateErr, 'conviction/outcome');
+    return apiErrorForRoute(updateErr, 'conviction/outcome');
   }
 
   // ── Write outcome signal to tkg_signals ─────────────────────────────────────

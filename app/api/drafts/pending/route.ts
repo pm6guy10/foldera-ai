@@ -13,7 +13,7 @@
 import { createServerClient } from '@/lib/db/client';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { NextResponse }     from 'next/server';
-import { apiError }        from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 import type { DraftAction, ActionType } from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
   const { data: rows, error } = await q;
 
   if (error) {
-    return apiError(error, 'drafts/pending');
+    return apiErrorForRoute(error, 'drafts/pending');
   }
 
   // ── Map rows → DraftAction ──────────────────────────────────────────────────

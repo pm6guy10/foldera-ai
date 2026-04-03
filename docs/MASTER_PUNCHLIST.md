@@ -24,6 +24,7 @@ Confirm [GitHub remote](https://github.com/pm6guy10/foldera-ai) matches your for
 | **GitHub repo** | [github.com/pm6guy10/foldera-ai](https://github.com/pm6guy10/foldera-ai) | Code, Actions |
 | **GitHub Actions** | [github.com/pm6guy10/foldera-ai/actions](https://github.com/pm6guy10/foldera-ai/actions) | Workflow runs, artifacts |
 | **Supabase** | [supabase.com/dashboard/project/neydszeamsflpghtrhue](https://supabase.com/dashboard/project/neydszeamsflpghtrhue) | Table `tkg_actions`, column `execution_result`, send/debug |
+| **Migrations** | [docs/SUPABASE_MIGRATIONS.md](./SUPABASE_MIGRATIONS.md) | Versioned DDL in repo; `npx supabase db push` to apply |
 | **Sentry** | [sentry.io](https://sentry.io) → org with Foldera DSN | Production errors |
 | **Resend** | [resend.com/emails](https://resend.com/emails) | Outbound brief / delivery logs |
 | **Stripe** | [dashboard.stripe.com](https://dashboard.stripe.com) | Webhooks, live price per LAUNCH_CHECKLIST |

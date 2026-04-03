@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { createServerClient } from '@/lib/db/client';
-import { apiError, badRequest } from '@/lib/utils/api-error';
+import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 import { renderWelcomeEmailHtml, sendResendEmail } from '@/lib/email/resend';
 import { MS_90D } from '@/lib/config/constants';
 import { syncGoogle } from '@/lib/sync/google-sync';
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
       p_rows: rows,
     });
     if (replaceError) {
-      return apiError(replaceError, 'onboard/set-goals');
+      return apiErrorForRoute(replaceError, 'onboard/set-goals');
     }
 
     // Fire-and-forget: start inbox sync immediately so the overnight cron has signals.
@@ -185,7 +185,7 @@ View your dashboard: ${baseUrl}/dashboard`;
 
     return NextResponse.json({ ok: true, count: rows.length - 1 }); // exclude marker from count
   } catch (err) {
-    return apiError(err, 'onboard/set-goals');
+    return apiErrorForRoute(err, 'onboard/set-goals');
   }
 }
 
@@ -224,6 +224,6 @@ export async function GET() {
 
     return NextResponse.json({ buckets, freeText });
   } catch (err) {
-    return apiError(err, 'onboard/set-goals GET');
+    return apiErrorForRoute(err, 'onboard/set-goals GET');
   }
 }

@@ -7,19 +7,33 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://foldera.ai'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://www.foldera.ai'),
   title: {
     default: "Foldera — Finished work, every morning",
     template: "%s — Foldera",
   },
-  description: "Foldera ingests your chaos, computes conviction, and delivers executable actions. You just approve or skip.",
+  description:
+    "AI email assistant that turns your inbox into one clear daily directive with a finished draft—approve or skip. Connect Gmail or Outlook.",
+  keywords: [
+    "AI email assistant",
+    "email productivity",
+    "daily briefing",
+    "Gmail AI",
+    "Outlook AI",
+    "decision support",
+  ],
+  robots: { index: true, follow: true },
   icons: {
     icon: [{ url: '/foldera-glyph.svg', type: 'image/svg+xml' }],
     apple: [{ url: '/foldera-glyph.svg', type: 'image/svg+xml' }],
   },
   openGraph: {
     title: "Foldera — Finished work, every morning",
-    description: "Foldera ingests your chaos, computes conviction, and delivers executable actions. You just approve or skip.",
+    description:
+      "AI email assistant that turns your inbox into one clear daily directive with a finished draft—approve or skip.",
+    url: "https://www.foldera.ai",
+    siteName: "Foldera",
+    locale: "en_US",
     images: [
       {
         url: 'https://www.foldera.ai/foldera-logo.png',
@@ -33,7 +47,8 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image',
     title: "Foldera — Finished work, every morning",
-    description: "Foldera ingests your chaos, computes conviction, and delivers executable actions. You just approve or skip.",
+    description:
+      "AI email assistant that turns your inbox into one clear daily directive with a finished draft—approve or skip.",
     images: ['https://www.foldera.ai/foldera-logo.png'],
   },
 };

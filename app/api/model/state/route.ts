@@ -11,7 +11,7 @@
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { daysMs } from '@/lib/config/constants';
 
 export const dynamic = 'force-dynamic';
@@ -205,6 +205,6 @@ export async function GET(request: Request) {
       avg_confidence_last_30d,
     });
   } catch (err: unknown) {
-    return apiError(err, 'model/state');
+    return apiErrorForRoute(err, 'model/state');
   }
 }

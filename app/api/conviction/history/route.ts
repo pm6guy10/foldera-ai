@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +57,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ items });
   } catch (err: unknown) {
-    return apiError(err, 'conviction/history');
+    return apiErrorForRoute(err, 'conviction/history');
   }
 }

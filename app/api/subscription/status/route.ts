@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { getSubscriptionStatus } from '@/lib/auth/subscription';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +29,6 @@ export async function GET() {
       can_manage_billing: info.canManageBilling,
     });
   } catch (err: unknown) {
-    return apiError(err, 'subscription/status');
+    return apiErrorForRoute(err, 'subscription/status');
   }
 }

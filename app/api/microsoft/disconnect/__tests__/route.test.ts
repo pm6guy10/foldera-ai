@@ -22,6 +22,7 @@ vi.mock('@/lib/auth/user-tokens', () => ({
 
 vi.mock('@/lib/utils/api-error', () => ({
   apiError: mockApiError,
+  apiErrorForRoute: mockApiError,
 }));
 
 describe('POST /api/microsoft/disconnect', () => {

@@ -11,7 +11,7 @@
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 import {
   buildDirectiveExecutionResult,
   generateDirective,
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      return apiError(error, 'conviction/generate');
+      return apiErrorForRoute(error, 'conviction/generate');
     }
 
     return NextResponse.json({
@@ -166,6 +166,6 @@ export async function POST(request: Request) {
       artifact,
     });
   } catch (err: unknown) {
-    return apiError(err, 'conviction/generate');
+    return apiErrorForRoute(err, 'conviction/generate');
   }
 }

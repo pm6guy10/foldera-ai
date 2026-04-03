@@ -17,7 +17,7 @@ import { resolveDailyBriefUserIds } from '@/lib/cron/daily-brief-generate';
 import { getTriggerResponseStatus } from '@/lib/cron/daily-brief';
 import { createServerClient } from '@/lib/db/client';
 import { TEST_USER_ID } from '@/lib/config/constants';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 /** Hobby ceiling; this route only runs generate+send (not full nightly pipeline). */
@@ -144,7 +144,7 @@ async function handler(request: NextRequest) {
       },
     );
   } catch (error: unknown) {
-    return apiError(error, 'cron/daily-brief');
+    return apiErrorForRoute(error, 'cron/daily-brief');
   }
 }
 

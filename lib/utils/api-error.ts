@@ -7,6 +7,7 @@
 
 import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
+import { getRequestId, REQUEST_ID_HEADER } from './request-id';
 
 const GENERIC_MESSAGE = 'Internal server error';
 const NOT_FOUND_MESSAGE = 'Not found';
@@ -45,7 +46,10 @@ export function apiError(
     ? `[${context}] ${message}`
     : message;
   Sentry.captureException(toError(err, message), {
-    tags: { context: context ?? 'unknown' },
+    tags: {
+      context: context ?? 'unknown',
+      ...(requestId ? { request_id: requestId } : {}),
+    },
     extra: { requestId },
   });
   if (requestId) {
@@ -53,10 +57,18 @@ export function apiError(
   } else {
     console.error(logLine);
   }
-  return NextResponse.json(
-    { error: GENERIC_MESSAGE },
-    { status: 500 },
-  );
+  const resHeaders = requestId ? { [REQUEST_ID_HEADER]: requestId } : undefined;
+  const body = requestId
+    ? { error: GENERIC_MESSAGE, requestId }
+    : { error: GENERIC_MESSAGE };
+  return NextResponse.json(body, { status: 500, headers: resHeaders });
+}
+
+/**
+ * Same as apiError but reads x-request-id from the current request (set in middleware).
+ */
+export function apiErrorForRoute(err: unknown, context?: string): NextResponse {
+  return apiError(err, context, getRequestId());
 }
 
 /**

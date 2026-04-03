@@ -77,6 +77,47 @@ export interface ConvictionDecision {
 // Inference Layer — these replace the questions the user shouldn't have to answer
 // ---------------------------------------------------------------------------
 
+const BURN_DOLLAR_PATTERN = /\$\s?([\d,]+(?:\.\d{2})?)/g;
+const BURN_KEYWORDS = /rent|mortgage|utilities|insurance|groceries|monthly|bill|payment|subscription/i;
+
+/**
+ * CE-2: Prefer dollar amounts that appear on 2+ distinct days (proxy for recurring bills)
+ * before falling back to the legacy “top five amounts” heuristic.
+ * Exported for unit tests.
+ */
+export function estimateMonthlyBurnFromSignalAmounts(
+  entries: Array<{ amounts: number[]; dateKey: string }>,
+): number | null {
+  const amountToDays = new Map<number, Set<string>>();
+  const pool: number[] = [];
+
+  for (const e of entries) {
+    for (const amount of e.amounts) {
+      if (amount < 50 || amount > 5000) continue;
+      const key = Math.round(amount);
+      pool.push(amount);
+      if (e.dateKey) {
+        if (!amountToDays.has(key)) amountToDays.set(key, new Set());
+        amountToDays.get(key)!.add(e.dateKey);
+      }
+    }
+  }
+
+  const recurringKeys = [...amountToDays.entries()]
+    .filter(([, days]) => days.size >= 2)
+    .map(([amt]) => amt)
+    .sort((a, b) => b - a);
+
+  if (recurringKeys.length > 0) {
+    const top = recurringKeys.slice(0, 5);
+    return Math.round(top.reduce((s, n) => s + n, 0));
+  }
+
+  if (pool.length < 2) return null;
+  const sorted = [...pool].sort((a, b) => b - a);
+  return Math.round(sorted.slice(0, 5).reduce((s, n) => s + n, 0));
+}
+
 /**
  * Infer monthly burn from financial signals.
  * Looks for: bill amounts, rent/mortgage mentions, recurring payment signals.
@@ -89,7 +130,7 @@ export async function inferMonthlyBurn(userId: string): Promise<number | null> {
   try {
     const { data: signals } = await supabase
       .from('tkg_signals')
-      .select('content')
+      .select('content, occurred_at')
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', sixtyDaysAgo)
@@ -97,27 +138,30 @@ export async function inferMonthlyBurn(userId: string): Promise<number | null> {
 
     if (!signals) return null;
 
-    const amounts: number[] = [];
-    const dollarPattern = /\$\s?([\d,]+(?:\.\d{2})?)/g;
-    const burnKeywords = /rent|mortgage|utilities|insurance|groceries|monthly|bill|payment|subscription/i;
+    const entries: Array<{ amounts: number[]; dateKey: string }> = [];
 
     for (const row of signals) {
       const dec = decryptWithStatus(row.content as string ?? '');
       if (dec.usedFallback) continue;
-      if (!burnKeywords.test(dec.plaintext)) continue;
+      if (!BURN_KEYWORDS.test(dec.plaintext)) continue;
 
+      const amounts: number[] = [];
       let match;
-      while ((match = dollarPattern.exec(dec.plaintext)) !== null) {
+      BURN_DOLLAR_PATTERN.lastIndex = 0;
+      while ((match = BURN_DOLLAR_PATTERN.exec(dec.plaintext)) !== null) {
         const amount = parseFloat(match[1].replace(',', ''));
         if (amount >= 50 && amount <= 5000) amounts.push(amount);
       }
+      if (amounts.length === 0) continue;
+
+      const dateKey =
+        typeof row.occurred_at === 'string' && row.occurred_at.length >= 10
+          ? row.occurred_at.slice(0, 10)
+          : '';
+      entries.push({ amounts, dateKey });
     }
 
-    if (amounts.length < 2) return null;
-
-    // Rough burn estimate: sum of distinct recurring amounts
-    const sorted = amounts.sort((a, b) => b - a);
-    return Math.round(sorted.slice(0, 5).reduce((s, n) => s + n, 0));
+    return estimateMonthlyBurnFromSignalAmounts(entries);
   } catch {
     return null;
   }

@@ -1,5 +1,16 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-03) — Backlog → A+ (agent slice)
+
+- **AZ-06** — `x-request-id`: [`middleware.ts`](middleware.ts) + [`lib/utils/request-id-core.ts`](lib/utils/request-id-core.ts) / [`request-id.ts`](lib/utils/request-id.ts); [`apiError`](lib/utils/api-error.ts) Sentry tag + response header/body; [`apiErrorForRoute`](lib/utils/api-error.ts) wired across `app/api/**` catch blocks; Vitest [`request-id-core.test.ts`](lib/utils/__tests__/request-id-core.test.ts); E2E [`tests/e2e/public-routes.spec.ts`](tests/e2e/public-routes.spec.ts) `/api/health` header checks.
+- **AZ-20** — [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md) (discipline + `supabase db push`).
+- **AZ-05** — Evidence query (run in Supabase SQL when connected): `SELECT action_type, COUNT(*) AS n FROM tkg_actions WHERE generated_at > now() - interval '14 days' GROUP BY 1 ORDER BY n DESC;` — agent cannot execute without DB credentials from this workspace.
+- **AZ-10** — Blog [`[slug]/page.tsx`](app/(marketing)/blog/[slug]/page.tsx): `prose-blockquote`, `prose-hr`, list color tokens.
+- **AZ-12** — Root [`app/layout.js`](app/layout.js): `keywords`, `robots`, `openGraph.url` / `siteName` / `locale`, refined default description; `metadataBase` → `https://www.foldera.ai`.
+- **AZ-13** — [`app/try/page.tsx`](app/try/page.tsx): pricing + start CTAs with `data-foldera-cta` hooks.
+- **AZ-15** — [`docs/ENTITY_DEDUPE.md`](docs/ENTITY_DEDUPE.md), [`scripts/entity-dedupe-audit.sql`](scripts/entity-dedupe-audit.sql) (read-only audit).
+- **AZ-22 (CE-2 partial)** — [`estimateMonthlyBurnFromSignalAmounts`](lib/briefing/conviction-engine.ts) + [`conviction-engine-burn.test.ts`](lib/briefing/__tests__/conviction-engine-burn.test.ts); `inferMonthlyBurn` uses `occurred_at` + recurring-day proxy. **CE-1** already wired in [`generator.ts`](lib/briefing/generator.ts) (`runConvictionEngine`).
+
 ### DONE (2026-04-03) — A–Z audit + backlog normalization + briefings + runbooks
 
 - **[docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md)** — Full A–Z dimension matrix (Green/Yellow/Red), automation snapshot (lint, **601** vitest, build, **39** CI e2e, 61 test:prod), consolidated **NEEDS_REVIEW** dedupe note.
@@ -491,6 +502,7 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - Needed: extract recurring payment patterns from bank/financial email signals
   (look for "payment of $X" same amount 2+ months in a row)
 - Target: confidence >= 0.7 for users with 60d of financial signals
+- **PARTIAL (2026-04-03):** same rounded dollar amount on **2+ distinct calendar days** in the 60d window preferred over legacy top-five sum; `estimateMonthlyBurnFromSignalAmounts` + tests in `lib/briefing/__tests__/conviction-engine-burn.test.ts`
 
 **CE-3: Improve `inferHardDeadline`**
 - Current: keyword pattern matching for baby/lease/due date in signals
@@ -630,24 +642,24 @@ Single prioritized table (deduped from prior OPEN bullets + [FOLDERA_MASTER_AUDI
 | 2 | **AZ-02** | Gate 4 live receipt (`sent_via` + new row) | Operator | REVENUE_PROOF §4 | Historical Resend row only; no post-ship `gmail`/`outlook` row yet | Approve real `send_message`; log id + `sent_via` in REVENUE_PROOF |
 | 3 | **AZ-03** | Approve → Resend/mailbox delivery proof | Operator | §1.1 | Overlaps AZ-02; proves end-to-end value | Same session as AZ-02 or separate approve |
 | 4 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` fails until second connected account exists | Second Google user: connect, brief, `tkg_actions` row |
-| 5 | **AZ-05** | Confirm organic `action_type` not stuck `do_nothing` | Agent | §1.1 | Query `tkg_actions` after nightly or run-brief | `SELECT` recent rows; if stuck, generator/scorer session |
-| 6 | **AZ-06** | Correlation IDs in logs + Sentry scope | Agent | §1.2 / observability | Backlog item | Add `x-request-id` middleware + pass to `apiError` / Sentry |
+| 5 | **AZ-05** | Confirm organic `action_type` not stuck `do_nothing` | Agent | §1.1 | **Query template** in DONE (2026-04-03) — run in Supabase when connected | If distribution skews `do_nothing`, open generator/scorer session |
+| 6 | **AZ-06** | Correlation IDs in logs + Sentry scope | Agent | §1.2 / observability | **DONE 2026-04-03:** middleware + `apiError` / `apiErrorForRoute` + E2E `/api/health` | — |
 | 7 | **AZ-07** | Past directives UI (`/dashboard/briefings`) | Agent | Product surface | **DONE 2026-04-03:** `GET /api/conviction/history`, [app/dashboard/briefings/page.tsx](app/dashboard/briefings/page.tsx), History icon on dashboard header | — |
 | 8 | **AZ-08** | UptimeRobot (or equivalent) on `/api/health` | Operator | §1.2 | External uptime | Create monitor; URL in [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
 | 9 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual coverage | Screenshots for `/`, `/login`, `/start`, `/onboard`, `/dashboard`, `/settings`, `/pricing`, `/blog`, 404 |
-| 10 | **AZ-10** | Blog prose / typography polish | Agent | Marketing | Open quality | Tailwind prose pass on `[slug]` page |
+| 10 | **AZ-10** | Blog prose / typography polish | Agent | Marketing | **DONE 2026-04-03:** extra `prose-*` tokens on `[slug]` | Optional: edit `content/blog/*.md` copy |
 | 11 | **AZ-11** | Stranger onboarding E2E (live OAuth) | Operator | §1.3 | Cannot fully automate without real OAuth | Manual or recorded flow |
-| 12 | **AZ-12** | Landing SEO copy (homepage) | Agent | GTM | Not blog | Copy pass `app/page.tsx` |
-| 13 | **AZ-13** | `/try` conversion funnel | Agent | GTM | Thin page | CTA + analytics optional |
+| 12 | **AZ-12** | Landing SEO copy (homepage) | Agent | GTM | **DONE 2026-04-03:** root `app/layout.js` metadata (keywords, OG, description) | Further: client `page.tsx` only if needed |
+| 13 | **AZ-13** | `/try` conversion funnel | Agent | GTM | **DONE 2026-04-03:** CTAs + `data-foldera-cta` on `/try` | Wire analytics consumer when ready |
 | 14 | **AZ-14** | `tests/production/auth-state.json` refresh | Operator | test:prod | ~30-day JWT | `npm run test:prod:setup` before expiry |
-| 15 | **AZ-15** | Duplicate entity cleanup (beyond Yadira) | Agent | Data hygiene | DB/script | One-off Supabase cleanup + scorer guard |
+| 15 | **AZ-15** | Duplicate entity cleanup (beyond Yadira) | Agent | Data hygiene | **DONE 2026-04-03:** doc + read-only SQL audit | Operator merge/cleanup; optional fuzzy matcher later |
 | 16 | **AZ-16** | Stripe live checkout + webhook row | Operator | §1.4 | CI cannot hold secrets | One test subscription; verify `user_subscriptions` |
 | 17 | **AZ-17** | Supabase leaked password protection | Operator | Security | Pro-gated | Dashboard toggle if on Pro |
 | 18 | **AZ-18** | 3 consecutive days useful cron directives | Operator | §1.1 | Quality bar | Monitor email after nightly |
 | 19 | **AZ-19** | Brandon: Google all scopes + settings focus | Operator | Product | Account-specific | Reconnect OAuth; set focus in UI |
-| 20 | **AZ-20** | DB migrations process (no manual drift) | Agent | § integrity | Backlog | Document `supabase db push` + CI check |
+| 20 | **AZ-20** | DB migrations process (no manual drift) | Agent | § integrity | **DONE 2026-04-03:** [docs/SUPABASE_MIGRATIONS.md](docs/SUPABASE_MIGRATIONS.md) | CI `db push` still manual (no linked secret in Actions) |
 | 21 | **AZ-21** | Supabase backups | Operator | DR | Dashboard | Enable PITR / backups per plan |
-| 22 | **AZ-22** | Conviction engine CE-1–CE-6 | Agent | AUTOMATION_BACKLOG CE | Incremental | Wire `conviction-engine` per CE items |
+| 22 | **AZ-22** | Conviction engine CE-1–CE-6 | Agent | AUTOMATION_BACKLOG CE | **CE-2 partial 2026-04-03** (recurring burn proxy); CE-1 already in generator | CE-3–CE-6 next slices |
 | — | — | Rate limiting try/webhook | — | — | **DONE** 2026-03-31 | — |
 | — | — | Signal dedup Gmail+Outlook | — | — | **DONE** | — |
 | — | — | Email double-send idempotency | — | — | **DONE** 2026-03-31 | — |

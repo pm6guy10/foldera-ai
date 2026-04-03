@@ -35,6 +35,7 @@ vi.mock('@/lib/email/resend', () => ({
 
 vi.mock('@/lib/utils/api-error', () => ({
   apiError,
+  apiErrorForRoute: apiError,
   badRequest,
 }));
 

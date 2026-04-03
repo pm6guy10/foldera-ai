@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { runDailySend, toSafeDailyBriefStageStatus } from '@/lib/cron/daily-brief';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 import type { DailyBriefRunResult, DailyBriefUserResult } from '@/lib/cron/daily-brief-types';
 
 export const dynamic = 'force-dynamic';
@@ -51,7 +51,7 @@ async function handler(request: NextRequest) {
       },
     }, { status });
   } catch (error: unknown) {
-    return apiError(error, 'cron/daily-send');
+    return apiErrorForRoute(error, 'cron/daily-send');
   }
 }
 

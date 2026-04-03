@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { softDisconnectUserToken } from '@/lib/auth/user-tokens';
-import { apiError } from '@/lib/utils/api-error';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +27,6 @@ export async function POST() {
     await softDisconnectUserToken(userId, 'google');
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
-    return apiError(err, 'google/disconnect');
+    return apiErrorForRoute(err, 'google/disconnect');
   }
 }
