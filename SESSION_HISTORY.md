@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-04 — AUDIT: **Vercel / Dependabot ESLint** — Pin `eslint@8.57.1` (peer match for `eslint-config-next@14.2.3`); Dependabot ignore semver-major on `eslint`; **CLAUDE.md** Vercel **Ready** gate before `test:prod` / session done; **AGENTS.md** note.
+  MODE: AUDIT
+  Commit hash(es): (this session)
+  Files changed: `package.json`, `package-lock.json`, `.github/dependabot.yml`, `CLAUDE.md`, `AGENTS.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`
+  Any unresolved issues: **Close or update** Dependabot PR `eslint-10.x` without merging; after push, confirm Vercel **Ready** then `npm run test:prod`.
+
 - 2026-04-04 — AUDIT: **Backlog execution (MCP)** — **AZ-05** closed with production **14d `action_type` counts** (MCP `execute_sql`): `do_nothing` 594, `research` 350, `send_message` 38, `write_document` 20, `schedule` 4; **AZ-24** OPEN (pipeline calibration). **`apply_commitment_ceiling`** applied to production (migration `20260403144654`); `docs/SUPABASE_MIGRATIONS.md` log; **FOLDERA_PRODUCT_SPEC** ceiling row; **generator-runtime** test timeout 20s.
   MODE: AUDIT
   Commit hash(es): `a6b636b`

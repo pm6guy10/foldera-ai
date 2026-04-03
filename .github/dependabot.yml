@@ -8,3 +8,7 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - dependencies
+    # eslint-config-next@14.2.x peers eslint ^7.23 || ^8 only — ESLint 9/10 breaks Vercel npm install (ERESOLVE).
+    ignore:
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]

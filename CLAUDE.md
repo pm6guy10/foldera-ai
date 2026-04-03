@@ -129,6 +129,10 @@ Every session that touches the pipeline must re-trigger production after deployi
 
 ## Production E2E Tests (MANDATORY)
 
+**Vercel deploy gate — do not advance the session without it:** After every push to `main`, confirm the **latest production deployment** in the Vercel dashboard is **Ready** (build succeeded). If it shows **Error**, **Canceled**, or **Building**, stop: fix the failure (or revert), push again, and only then run `npm run test:prod` or claim the task done. Treat a green local `npm run build` as necessary but **not** sufficient when Vercel’s install step can differ (e.g. `ERESOLVE` from incompatible peer deps).
+
+**ESLint + Next 14:** `eslint-config-next@14.2.x` requires `eslint` **^7.23 || ^8**. Do not upgrade to ESLint 9/10 until Next.js + `eslint-config-next` are upgraded together (see `package.json` pin and `.github/dependabot.yml` ignore).
+
 Every CC session that pushes to main MUST:
 1. Wait for Vercel deployment to show READY
 2. Run `npm run test:prod`

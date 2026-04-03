@@ -1,5 +1,10 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-04) — Vercel / Dependabot ESLint peer fix
+
+- **ERESOLVE on Vercel** — Dependabot branch `eslint@10` + **`eslint-config-next@14.2.3`** (peer `eslint@^7.23 || ^8`) broke `npm install`. **Fix:** pin **`eslint@8.57.1`** in `package.json`; **Dependabot** `ignore` semver-major on `eslint` until Next + `eslint-config-next` upgrade.
+- **Runbook:** **`CLAUDE.md`** — *Vercel deploy gate*: do not close a session or run `test:prod` as “verified” until the latest production deploy shows **Ready**; **`AGENTS.md`** pointer.
+
 ### DONE (2026-04-04) — Supabase MCP + backlog closure (agent)
 
 - **AZ-05 CLOSED (live evidence)** — Production SQL (Supabase MCP, 2026-04-04): `tkg_actions` **last 14 days** by `action_type`: **`do_nothing` 594**, **`research` 350**, **`send_message` 38**, **`write_document` 20**, **`schedule` 4** (n=1006). Skew confirms need for pipeline calibration — tracked as **AZ-24** (OPEN).
