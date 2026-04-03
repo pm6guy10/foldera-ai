@@ -6,8 +6,8 @@
 
 - 2026-04-03 — AUDIT: **A–Z Foldera audit → backlog normalization → fixes** — [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md) (matrix + automation snapshot + deduped NEEDS_REVIEW); [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md); **AUTOMATION_BACKLOG** OPEN → ranked table **AZ-01–AZ-22**; **AZ-07** `GET /api/conviction/history` + `/dashboard/briefings` + dashboard History icon; **MASTER_PUNCHLIST** UptimeRobot (**AZ-08**); **CLAUDE** local omnibus link; E2E briefings test; vitest route tests.
   MODE: AUDIT
-  Commit hash(es): _(after push)_
-  Files changed: `docs/AZ_AUDIT_2026-04.md`, `docs/LOCAL_E2E_AND_PROD_TESTS.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `CLAUDE.md`, `docs/MASTER_PUNCHLIST.md`, `app/api/conviction/history/route.ts`, `app/api/conviction/history/__tests__/route.test.ts`, `app/dashboard/briefings/page.tsx`, `app/dashboard/page.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`
+  Commit hash(es): `0d44c9d` (deliverable). Follow-up commits may only fix this log line.
+  Files changed: `docs/AZ_AUDIT_2026-04.md`, `docs/LOCAL_E2E_AND_PROD_TESTS.md`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `FOLDERA_MASTER_AUDIT.md`, `CLAUDE.md`, `AGENTS.md`, `docs/MASTER_PUNCHLIST.md`, `app/api/conviction/history/route.ts`, `app/api/conviction/history/__tests__/route.test.ts`, `app/dashboard/briefings/page.tsx`, `app/dashboard/page.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (601 tests); `npm run test:ci:e2e` (39, port 3011); `npm run test:prod` (61)
   Any unresolved issues: **AZ-01** doc-only (formal quarantine done); operator items AZ-02–AZ-04, AZ-08 monitor creation, etc.
 
