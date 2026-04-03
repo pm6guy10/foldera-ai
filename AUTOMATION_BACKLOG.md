@@ -644,6 +644,13 @@ Architecture is in `lib/briefing/conviction-engine.ts`. What needs to be built:
 - **Leaked password protection**: Requires Supabase dashboard toggle — noted for manual action.
 - Migration file: `supabase/migrations/20260328000001_security_and_perf_fixes.sql` (all applied to production).
 
+### DONE (2026-04-03) — Gate 4 live receipt + ALLOW_EMAIL_SEND safety gate
+
+- **Gate 4 PROVEN — accidental but real.** Operator approved a `send_message` directive from the dashboard; email sent via `gmail` (b.kapp1010 → nicole.vreeland). Full pipeline: nightly-ops scored → generator produced finished artifact → dashboard Approve clicked → Gmail API fired → email delivered. `sent_via: 'gmail'` confirmed in execution_result. Commit `fd3ee0f`.
+- **AZ-02/AZ-03 CLOSED** — Gate 4 end-to-end send via user's own Gmail mailbox is proven. Evidence: Nicole Vreeland reference request email, 2026-04-03. `sent_via` = gmail. Action in `tkg_actions` with `status = executed`.
+- **ALLOW_EMAIL_SEND gate added** (`fd3ee0f`) — `execute-action.ts`: `send_message` approval now requires `ALLOW_EMAIL_SEND=true` in env to actually dispatch an email. Without it, Approve marks the action executed in DB but no email goes out. **Safe to tap Approve freely for testing.** To re-enable live send when ready: Vercel → Settings → Environment Variables → add `ALLOW_EMAIL_SEND = true` → redeploy.
+- **tkg_constraints lockout wired but normalization bug exists (OPEN AB-25)** — `generator.ts` L5734–5783 fetches `locked_contact` rows and hard-drops matching candidates. However: the set is built from `row.normalized_entity.toLowerCase()` (preserves spaces, e.g. "nicole vreeland") but candidate names are checked as `entityName.replace(/\s+/g, '').toLowerCase()` (strips spaces, e.g. "nicolevreeland"). These never match. Fix: also strip whitespace when building the locked set, OR stop stripping in the candidate check. Until fixed, `locked_contact` constraints in `tkg_constraints` provide no protection.
+
 ### DONE (2026-04-03) — Four Tier 1 credit drain bugs fixed
 
 - **Bug 1 — `checkApiCreditCanary` live Haiku call** — `lib/cron/acceptance-gate.ts`: replaced `anthropic.messages.create(...)` with a `process.env.ANTHROPIC_API_KEY` presence check. Removed unused `@anthropic-ai/sdk` import. Alert still fires (via `sendApiCreditAlert`) when key is absent. Test updated to use env-var stubbing. **288 invisible Anthropic calls/day via UptimeRobot → 0**.
@@ -659,19 +666,20 @@ Single prioritized table. Full matrix: [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_
 
 | Rank | ID | Title | Owner | Spec § | Evidence / notes | Next action |
 |------|-----|--------|-------|--------|------------------|-------------|
-| 1 | **AZ-02** | Gate 4 live receipt (`sent_via` + new row) | Operator | REVENUE_PROOF §4 | 2026-04-04: `sent_via` now shown in dashboard flash after approve (gmail/outlook/resend). `d96e9fc3` send_message confidence 75 pending live. | Approve from dashboard; query `execution_result->>'sent_via'`; log in REVENUE_PROOF |
-| 2 | **AZ-03** | Approve → mailbox delivery proof | Operator | §1.1 | 2026-04-04: "Sent from your Gmail/Outlook" flash wired. Outcome buttons ("It worked"/"Didn't work") wired. Same pending action as AZ-02. | Same session as AZ-02 |
+| 1 | **AB-25** | `tkg_constraints` normalization mismatch — locked_contact never blocks | Agent | Security | Hard-drop guard in `generator.ts` L5772 is inert: set built with spaces ("nicole vreeland"), candidate check strips spaces ("nicolevreeland") — never matches. Fix: strip whitespace when building the set at L5748. | Next agent session |
+| 2 | **AZ-24** | Pipeline: actionable share vs `do_nothing` / `research` | Agent | §1.1 / matrix G | **Receipt:** 2026-04-03 follow-up MCP counts + CI **`7f0798f`** success + `test:prod` 61 (see DONE bullet). **Slices 1–3 shipped:** thread gate + freshness union + **signal_velocity → `make_decision`**. **Next:** re-`az05` after slice-3 deploy; research row drain | Vercel **Ready** operator check; Anthropic healthy for non-`research` paths |
 | 3 | **AZ-04** | Real non-owner production depth | Operator | §1.3 | `NON_OWNER_DEPTH` | Second Google user: connect, brief, `tkg_actions` row |
-| 4 | **AZ-24** | Pipeline: actionable share vs `do_nothing` / `research` | Agent | §1.1 / matrix G | **Receipt:** 2026-04-03 follow-up MCP counts + CI **`7f0798f`** success + `test:prod` 61 (see DONE bullet). **Slices 1–3 shipped:** thread gate + freshness union + **signal_velocity → `make_decision`**. **Next:** re-`az05` after slice-3 deploy; research row drain | Vercel **Ready** operator check; Anthropic healthy for non-`research` paths |
-| 5 | **AZ-08** | UptimeRobot on `/api/health` | Operator | §1.2 | External uptime | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
-| 6 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual | Key routes + 404 |
-| 7 | **AZ-11** | Stranger onboarding (live OAuth) | Operator | §1.3 | Manual | Recorded flow optional |
-| 8 | **AZ-14** | `tests/production/auth-state.json` refresh | Operator | test:prod | ~30-day JWT | `npm run test:prod:setup` |
-| 9 | **AZ-16** | Stripe checkout + webhook | Operator | §1.4 | — | Verify `user_subscriptions` |
-| 10 | **AZ-17** | Supabase leaked-password protection | Operator | Security | Pro-gated | Dashboard toggle |
-| 11 | **AZ-18** | 3 consecutive useful cron directives | Operator | §1.1 | Quality bar | Monitor nightly email |
-| 12 | **AZ-19** | Owner account: scopes + focus | Operator | Product | — | Reconnect OAuth; UI focus |
-| 13 | **AZ-21** | Supabase backups / PITR | Operator | DR | — | Dashboard per plan |
+| 4 | **AZ-08** | UptimeRobot on `/api/health` | Operator | §1.2 | External uptime — now safe (canary is env-var only, no API call per Bug 1 fix) | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
+| 5 | **AZ-09** | FLOW UX screenshot sweep | Operator | CLAUDE QA | Manual | Key routes + 404 |
+| 6 | **AZ-11** | Stranger onboarding (live OAuth) | Operator | §1.3 | Manual | Recorded flow optional |
+| 7 | **AZ-14** | `tests/production/auth-state.json` refresh | Operator | test:prod | ~30-day JWT | `npm run test:prod:setup` |
+| 8 | **AZ-16** | Stripe checkout + webhook | Operator | §1.4 | — | Verify `user_subscriptions` |
+| 9 | **AZ-17** | Supabase leaked-password protection | Operator | Security | Pro-gated | Dashboard toggle |
+| 10 | **AZ-18** | 3 consecutive useful cron directives | Operator | §1.1 | Quality bar | Monitor nightly email |
+| 11 | **AZ-19** | Owner account: scopes + focus | Operator | Product | — | Reconnect OAuth; UI focus |
+| 12 | **AZ-21** | Supabase backups / PITR | Operator | DR | — | Dashboard per plan |
+| — | **AZ-02** | Gate 4 live receipt | — | — | **CLOSED 2026-04-03** — Nicole email sent via Gmail. `sent_via: gmail`. Pipeline proven end-to-end. | Done |
+| — | **AZ-03** | Approve → mailbox delivery proof | — | — | **CLOSED 2026-04-03** — same evidence as AZ-02. | Done |
 | — | — | Rate limiting try/webhook | — | — | **DONE** 2026-03-31 | — |
 | — | — | Signal dedup Gmail+Outlook | — | — | **DONE** | — |
 | — | — | Email double-send idempotency | — | — | **DONE** 2026-03-31 | — |

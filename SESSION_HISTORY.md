@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-03 — AUDIT: **Four Tier 1 credit drain bugs fixed**
+  MODE: AUDIT
+  Commit hash(es): `701b934`
+  Files changed: `lib/cron/acceptance-gate.ts`, `lib/cron/__tests__/acceptance-gate.test.ts`, `lib/extraction/conversation-extractor.ts`, `lib/briefing/insight-scan.ts`, `lib/briefing/__tests__/insight-scan.test.ts`, `lib/cron/goal-refresh.ts`, `AUTOMATION_BACKLOG.md`
+  What was verified: `npm run build` clean (after `.next` cache clear); `npx vitest run --exclude ".claude/worktrees/**"` — 661 passed, 5 pre-existing failures in `execute-action.test.ts` (untouched file, pre-existing); pushed `701b934` to `main`.
+  Changes: (1) `checkApiCreditCanary` in `acceptance-gate.ts` — replaced live Haiku call with `process.env.ANTHROPIC_API_KEY` presence check; removed unused `@anthropic-ai/sdk` import; alert fires on missing key; 288 invisible calls/day via UptimeRobot eliminated. (2) `conversation-extractor.ts` — added `isOverDailyLimit(userId, 'extraction')` guard before any DB writes + `trackApiCall` after `messages.create`. (3) `insight-scan.ts` — `DAILY_SPEND_SKIP_INSIGHT_USD` 0.5→0.04; default mock in test corrected 0.1→0.01; `threshold_usd` assertion updated. (4) `goal-refresh.ts` — added `trackApiCall` import + call per Haiku response in `refreshGoalContext()` per-goal loop.
+  Any unresolved issues: Pre-existing 5 `execute-action.test.ts` failures (Resend delivery error handling — unrelated to this session). `tkg_constraints` normalization mismatch bug (locked_contact query uses `normalized_entity` with spaces but candidate check strips whitespace — may cause constraint bypass). See AUTOMATION_BACKLOG.
+
 - 2026-04-04 — AUDIT: **Brain done state — send UX, outcome feedback loop, picker today-awareness**
   MODE: AUDIT
   Commit hash(es): `a3a9f0e`
