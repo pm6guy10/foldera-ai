@@ -6,9 +6,9 @@
 
 - 2026-04-04 — AUDIT: **Holy Crap artifacts — write_document anti-padding + LOCKED_CONTACTS in LLM prompt**
   MODE: AUDIT
-  Commit hash(es): `900b4b5`
+  Commit hash(es): `c0ffdc4` (generator ship); `ddce4aa` (WHATS_NEXT pointer)
   Files changed: `lib/briefing/generator.ts`, `lib/__tests__/multi-user-safety.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
-  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` — all passed; `npm run build` passed.
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` — all passed; `npm run build` passed; `npm run lint`; `npm run test:ci:e2e` — 41 passed.
   Changes: `SYSTEM_PROMPT` — drop thin multi-entry rows, banned padding phrases, LOCKED CONTACTS hard rule; synthetic names in write_document quality example; `locked_contacts_prompt` from `tkg_constraints` into user prompt (long + recipient-short paths).
   Any unresolved issues: Multi-entity winners can still pass pre-LLM `entityName`-only lock check; prompt reduces leakage — deterministic post-parse lock scan remains a follow-up.
 
