@@ -5,15 +5,17 @@
 Every session runs this before any work:
 
 1. Do not rebase. Commit only task files. Leave unrelated worktree changes untouched.
-2. Read `CLAUDE.md` fully.
-3. Read `LESSONS_LEARNED.md` before every session. Every rule is enforced.
-4. Read `FOLDERA_PRODUCT_SPEC.md`. Confirm the current task maps to a specific item in the spec (cite the section number). Fixes outside the spec require explicit approval.
-5. Read `AUTOMATION_BACKLOG.md` for current open items.
-6. Read every file you plan to modify.
-7. Run `git log --oneline -10`.
-8. Trace the relevant data path before coding: source -> transform -> persistence -> reader.
-9. If recent changes or repo state conflict with the task, report that before editing.
-10. After completing work, update `FOLDERA_PRODUCT_SPEC.md` with new status and evidence for every item touched. If a fix would break or conflict with another spec item, flag it before implementing. Push updated spec as final commit.
+2. Read `WHATS_NEXT.md` first, before all other reference files.
+3. Read `CLAUDE.md` fully.
+4. Read `LESSONS_LEARNED.md` before every session. Every rule is enforced.
+5. Read `FOLDERA_PRODUCT_SPEC.md`. Confirm the current task maps to a specific item in the spec (cite the section number). Fixes outside the spec require explicit approval.
+6. Read `AUTOMATION_BACKLOG.md` for current open items.
+7. Read every file you plan to modify.
+8. Run `git log --oneline -10`.
+9. Trace the relevant data path before coding: source -> transform -> persistence -> reader.
+10. If recent changes or repo state conflict with the task, report that before editing.
+11. After completing work, update `FOLDERA_PRODUCT_SPEC.md` with new status and evidence for every item touched. If a fix would break or conflict with another spec item, flag it before implementing. Push updated spec as final commit.
+12. After every session, update `WHATS_NEXT.md` with current status before closing.
 
 ## Reference documents
 

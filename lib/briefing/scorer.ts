@@ -828,8 +828,8 @@ async function getFreshness(
       .in('status', ['pending_approval', 'executed', 'skipped', 'draft_rejected'])
       .limit(30);
 
-    const filteredActions = (recentActions ?? []).filter((action) => !isInternalNoSend(action.execution_result));
-    if (filteredActions.length === 0) return 1.0;
+    const allActions = recentActions ?? [];
+    if (allActions.length === 0) return 1.0;
 
     // Count how many recent directives are similar (keyword overlap)
     const titleWords = new Set(
@@ -839,9 +839,17 @@ async function getFreshness(
 
     let similarCount = 0;
     let anySkipped = false;
-    for (const a of filteredActions) {
+    for (const a of allActions) {
       const dirText = (a.directive_text as string ?? '').toLowerCase();
-      const overlap = [...titleWords].filter(w => dirText.includes(w)).length;
+      // Also check original_candidate.candidate_description so quality-gate-blocked
+      // rows contribute to freshness penalty (fix: commit 4a75257 added this metadata).
+      const execResult = a.execution_result as Record<string, unknown> | null;
+      const origCandidate = execResult?.original_candidate as Record<string, unknown> | undefined;
+      const origDesc = typeof origCandidate?.candidate_description === 'string'
+        ? origCandidate.candidate_description.toLowerCase()
+        : '';
+      const searchText = dirText + ' ' + origDesc;
+      const overlap = [...titleWords].filter(w => searchText.includes(w)).length;
       if (overlap >= 2 || (overlap >= 1 && titleWords.size <= 2)) {
         similarCount++;
         if (a.status === 'skipped' || a.status === 'draft_rejected') {
@@ -1185,21 +1193,26 @@ async function getDaysSinceLastSurface(
       .order('generated_at', { ascending: false })
       .limit(30);
 
-    const filteredActions = (recentActions ?? []).filter(
-      (action) => !isInternalNoSend(action.execution_result),
-    );
-    if (filteredActions.length === 0) return 0;
+    const allActions2 = recentActions ?? [];
+    if (allActions2.length === 0) return 0;
 
-    const titleWords = new Set(
+    const titleWords2 = new Set(
       candidateTitle.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 4),
     );
-    if (titleWords.size === 0) return 0;
+    if (titleWords2.size === 0) return 0;
 
-    // Find the most recent matching action
-    for (const a of filteredActions) {
+    // Find the most recent matching action — include original_candidate so
+    // quality-gate-blocked no_send rows count as "surfaced" for freshness.
+    for (const a of allActions2) {
       const dirText = (a.directive_text as string ?? '').toLowerCase();
-      const overlap = [...titleWords].filter(w => dirText.includes(w)).length;
-      if (overlap >= 2 || (overlap >= 1 && titleWords.size <= 2)) {
+      const execResult = a.execution_result as Record<string, unknown> | null;
+      const origCandidate = execResult?.original_candidate as Record<string, unknown> | undefined;
+      const origDesc = typeof origCandidate?.candidate_description === 'string'
+        ? origCandidate.candidate_description.toLowerCase()
+        : '';
+      const searchText = dirText + ' ' + origDesc;
+      const overlap = [...titleWords2].filter(w => searchText.includes(w)).length;
+      if (overlap >= 2 || (overlap >= 1 && titleWords2.size <= 2)) {
         const daysAgo = Math.max(0, Math.floor(
           (Date.now() - new Date(a.generated_at as string).getTime()) / 86400000,
         ));
