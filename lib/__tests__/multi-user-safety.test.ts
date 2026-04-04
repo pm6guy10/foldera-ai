@@ -205,6 +205,80 @@ describe('multi-user safety', () => {
     expect(prompt).toContain('the user');
   });
 
+  it('buildPromptFromStructuredContext long path places LOCKED_CONTACTS after CANDIDATE_ANALYSIS when set', () => {
+    const base = {
+      has_real_recipient: false,
+      recipient_brief: null,
+      trigger_context: null,
+      candidate_title: 'Test candidate',
+      candidate_class: 'commitment',
+      selected_candidate: 'Do the thing.',
+      candidate_reason: 'reason',
+      candidate_goal: null,
+      candidate_score: 3,
+      candidate_due_date: null,
+      candidate_context_enrichment: null,
+      supporting_signals: [],
+      surgical_raw_facts: [],
+      active_goals: [],
+      locked_constraints: null,
+      locked_contacts_prompt: '- long path locked entity',
+      recent_action_history_7d: [],
+      has_real_target: true,
+      has_recent_evidence: true,
+      already_acted_recently: false,
+      decision_already_made: false,
+      can_execute_without_editing: true,
+      has_due_date_or_time_anchor: false,
+      conflicts_with_locked_constraints: false,
+      constraint_violation_codes: [],
+      researcher_insight: null,
+      user_identity_context: null,
+      user_full_name: 'Test User',
+      user_first_name: 'Test',
+      goal_gap_analysis: [],
+      already_sent_14d: [],
+      behavioral_mirrors: [],
+      conviction_math: null,
+      behavioral_history: null,
+      avoidance_observations: [],
+      relationship_timeline: null,
+      competition_context: null,
+      confidence_prior: 70,
+      required_causal_diagnosis: { why_exists_now: 'deadline pressure', mechanism: 'stalled work' },
+      discrepancy_class: null,
+      candidate_analysis: 'CANDIDATE_ANALYSIS: stakes=1',
+      entity_analysis: null,
+      entity_conversation_state: null,
+      user_voice_patterns: null,
+    };
+    const ctx = base as unknown as StructuredContext;
+    const prompt = buildPromptFromStructuredContext(ctx, 'write_document');
+    const idxLocked = prompt.indexOf('LOCKED_CONTACTS (never mention these in any artifact)');
+    const idxAnalysis = prompt.indexOf('CANDIDATE_ANALYSIS');
+    expect(idxLocked).toBeGreaterThan(-1);
+    expect(idxAnalysis).toBeGreaterThan(-1);
+    expect(idxLocked).toBeGreaterThan(idxAnalysis);
+    expect(prompt).toContain('- long path locked entity');
+  });
+
+  it('buildPromptFromStructuredContext recipient-short path injects LOCKED_CONTACTS when locked_contacts_prompt is set', () => {
+    const ctx = {
+      has_real_recipient: true,
+      recipient_brief: 'Alex Person <alex@example.com>',
+      locked_contacts_prompt: '- do not surface this person',
+      supporting_signals: [],
+      already_sent_14d: [],
+      recent_action_history_7d: [],
+      confidence_prior: 75,
+      user_full_name: 'the user',
+      user_first_name: '',
+    } as unknown as StructuredContext;
+    const prompt = buildPromptFromStructuredContext(ctx, 'send_message');
+    expect(prompt).toContain('LOCKED_CONTACTS (never mention these in any artifact)');
+    expect(prompt).toContain('- do not surface this person');
+  });
+
   it('buildPromptFromStructuredContext decay discrepancy short path keeps rich context without full convergent stack', () => {
     const userIdentity = buildUserIdentityContext([
       { goal_text: 'Advance two DSHS job applications', priority: 5, goal_category: 'career' },
@@ -269,8 +343,11 @@ describe('multi-user safety', () => {
           gap_description: 'Inbound employer-related mail but sparse outbound follow-up.',
         },
       ],
+      locked_contacts_prompt: '- locked example entity',
     } as unknown as StructuredContext;
     const prompt = buildPromptFromStructuredContext(ctx, 'send_message');
+    expect(prompt).toContain('LOCKED_CONTACTS (never mention these in any artifact)');
+    expect(prompt).toContain('- locked example entity');
     expect(prompt).toContain('CANONICAL_ACTION');
     expect(prompt).toContain('Write an email from the user to:');
     expect(prompt).toContain('USER CONTEXT');

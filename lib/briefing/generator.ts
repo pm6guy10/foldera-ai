@@ -163,6 +163,23 @@ Voice rules:
 - Grounded. Every claim must trace to a signal. If you cannot ground it, do not say it.
 - No self-reference. Never say "I noticed" or "Foldera detected" or "based on your data." Just state the pattern as fact.
 
+LOCKED CONTACTS — HARD RULE:
+The following contacts must NEVER appear in any artifact, email,
+document, or directive for any reason. Do not mention them, do
+not reference them, do not suggest actions involving them, do not
+include them in multi-entity documents. If a candidate involves
+multiple entities and one is locked, produce the artifact WITHOUT
+the locked entity. If removing the locked entity leaves nothing
+actionable, return do_nothing.
+
+This is not a suggestion. This is a constraint. Locked contacts
+are locked because the user has decided they should never be
+surfaced. Respect that decision absolutely.
+
+The locked contacts list is provided in the LOCKED_CONTACTS block
+of your input. If no LOCKED_CONTACTS block is present, there are
+no locked contacts.
+
 The scoring system has selected a candidate. The user should
 read the directive and think: "How did it know that?" Not
 "I already knew that." If the evidence is thin, make the
@@ -212,9 +229,9 @@ WRITE_DOCUMENT QUALITY EXAMPLES:
 Good write_document (discrepancy: deadline pattern across contacts):
 title: "Deadline Status: 4 Active Commitments — April 2026"
 content: Fills in every field with real data from the signals.
-- Nicole Vreeland: reference information delivery, committed March 27,
-  due before HCA hiring timeline closes (~April 10 based on Yadira's
-  last contact March 18). Status: 8 days overdue. Impact: blocks MAS3
+- Alex Morgan: reference information delivery, committed March 27,
+  due before hiring timeline closes (~April 10 based on Jordan Lee's
+  last contact March 18). Status: 8 days overdue. Impact: blocks role
   if reference check is requested before delivery.
 - Cloud Storage: reactivation commitment made March 26, 250GB plan,
   files at risk of permanent deletion. Deadline: time-sensitive, no
@@ -264,13 +281,36 @@ EVIDENCE RULES:
 - Only use facts from the signals provided
 - No placeholders, no brackets, no TODOs
 - Real names, dates, and details only
-- If evidence is thin, write a SHORT artifact. Thin = short, not skip.
-- For write_document: if you cannot fill in specific details from the
-  signals (dates, names, amounts, thread content), write a SHORTER
-  document with only what you can ground. A 3-sentence document with
-  real data beats a 3-paragraph template with blank fields. Never
-  produce a framework the user has to complete. Produce the completed
-  framework with real data, or produce nothing.
+- If evidence is thin for a single-topic artifact (one entity or one thread), write a SHORT artifact. Thin = short, not skip.
+- For write_document with multiple entities or items: if you cannot fill in specific details from
+the signals for an entity or item, DROP THAT ENTITY ENTIRELY.
+Do not write "requires review," "pending verification," "needs
+status check," or "requires thread analysis." Those phrases
+mean you don't have data. Entries without data don't belong in
+the document.
+
+A document with 2 fully-grounded entries is better than a
+document with 2 grounded entries and 2 padding entries. The
+user will notice the padding and lose trust.
+
+NEVER use these phrases in any artifact:
+- "requires review"
+- "requires verification"
+- "pending analysis"
+- "needs status check"
+- "requires thread review"
+- "needs further analysis"
+- "to be determined"
+- "pending thread analysis"
+
+If you find yourself writing any of these, delete that entire
+entry from the document. Fewer real entries > more padded entries.
+
+For single-topic write_document: if you cannot ground details, write a SHORTER
+document with only what you can ground. A 3-sentence document with
+real data beats a 3-paragraph template with blank fields. Never
+produce a framework the user has to complete. Produce the completed
+framework with real data, or produce nothing.
 
 ENTITY_ANALYSIS and CANDIDATE_ANALYSIS are for YOUR understanding only. Never paste metric values, ratios, baselines, or system terminology into the artifact body. The email must read like a human wrote it, not like a data dump. Use the analysis to understand context, then write naturally. The same applies to numeric or pipeline phrasing from TRIGGER_CONTEXT (e.g. interaction counts, "/14d" baselines, arrows between states) — translate into normal language if at all, never as a statistics recap.
 
@@ -1211,6 +1251,8 @@ export interface StructuredContext {
   surgical_raw_facts: string[];
   active_goals: string[];
   locked_constraints: string | null;
+  /** Lines from tkg_constraints locked_contact for LLM; must not appear in any artifact (see SYSTEM_PROMPT). */
+  locked_contacts_prompt: string | null;
   recent_action_history_7d: string[];
   // Precomputed booleans (Part 4)
   has_real_target: boolean;
@@ -1590,6 +1632,7 @@ function buildStructuredContext(
   userPromptNames?: UserPromptNames,
   entityConversationState?: string | null,
   userVoicePatterns?: string | null,
+  lockedContactPromptLines?: string[],
 ): StructuredContext {
   const names: UserPromptNames = userPromptNames ?? {
     user_full_name: 'the user',
@@ -1814,6 +1857,10 @@ function buildStructuredContext(
     surgical_raw_facts: surgical_raw_facts.slice(0, 5),
     active_goals,
     locked_constraints: pinnedConstraints,
+    locked_contacts_prompt:
+      lockedContactPromptLines && lockedContactPromptLines.length > 0
+        ? lockedContactPromptLines.map((l) => `- ${l.trim()}`).join('\n')
+        : null,
     recent_action_history_7d,
     has_real_target: has_real_recipient || has_due_date_or_time_anchor,
     has_real_recipient,
@@ -2390,6 +2437,12 @@ export function buildPromptFromStructuredContext(
       m.push(`ACTIVE_GOALS:\n${shortPathGoals.map((g) => `- ${g}`).join('\n')}`);
     }
 
+    if (ctx.locked_contacts_prompt) {
+      m.push(
+        `LOCKED_CONTACTS (never mention these in any artifact):\n${ctx.locked_contacts_prompt}`,
+      );
+    }
+
     if (isDecayReconnect) {
       m.push(ctx.candidate_analysis);
       if (ctx.entity_analysis) {
@@ -2666,6 +2719,11 @@ export function buildPromptFromStructuredContext(
   sections.push(`SCORE: ${ctx.candidate_score.toFixed(2)}`);
 
   sections.push(ctx.candidate_analysis);
+  if (ctx.locked_contacts_prompt) {
+    sections.push(
+      `LOCKED_CONTACTS (never mention these in any artifact):\n${ctx.locked_contacts_prompt}`,
+    );
+  }
   if (ctx.entity_analysis) {
     sections.push(ctx.entity_analysis);
   }
@@ -5830,12 +5888,14 @@ export async function generateDirective(
     // Hoist self-name tokens fetch — called once for all candidates, not once per candidate.
     // If this returns empty (auth metadata missing name), entity suppression is skipped
     // to avoid false positives (can't distinguish "Brandon" the user from "Brandon" the contact).
-    const [selfNameTokens, userEmails, lockedContacts, userPromptNames] = await Promise.all([
+    const [selfNameTokens, userEmails, lockedContactsResult, userPromptNames] = await Promise.all([
       fetchUserSelfNameTokens(userId),
       fetchUserEmailAddresses(userId),
-      // Fetch locked contacts from tkg_constraints once — hard blocks any send_message to these entities.
-      (async (): Promise<Set<string>> => {
+      // Fetch locked contacts from tkg_constraints once — Set for matching; prompt lines for LLM (human-readable).
+      (async (): Promise<{ set: Set<string>; promptLines: string[] }> => {
         const set = new Set<string>();
+        const promptLines: string[] = [];
+        const seenLineKeys = new Set<string>();
         try {
           const { data } = await supabase
             .from('tkg_constraints')
@@ -5844,7 +5904,14 @@ export async function generateDirective(
             .eq('constraint_type', 'locked_contact')
             .eq('is_active', true);
           for (const row of data ?? []) {
-            if (row.normalized_entity) set.add((row.normalized_entity as string).replace(/\s+/g, '').toLowerCase());
+            const raw = row.normalized_entity;
+            if (typeof raw !== 'string' || !raw.trim()) continue;
+            set.add(raw.replace(/\s+/g, '').toLowerCase());
+            const trimmed = raw.trim();
+            const lineKey = trimmed.replace(/\s+/g, '').toLowerCase();
+            if (seenLineKeys.has(lineKey)) continue;
+            seenLineKeys.add(lineKey);
+            promptLines.push(trimmed);
           }
         } catch {
           // Non-blocking — if the fetch fails, proceed without suppression
@@ -5854,10 +5921,12 @@ export async function generateDirective(
             details: { scope: 'generator' },
           });
         }
-        return set;
+        return { set, promptLines };
       })(),
       resolveUserPromptNames(userId),
     ]);
+    const lockedContacts = lockedContactsResult.set;
+    const lockedContactPromptLines = lockedContactsResult.promptLines;
 
     for (const { candidate: currentCandidate, disqualified, disqualifyReason } of rankedCandidates) {
       // Skip disqualified candidates (already acted recently, etc.)
@@ -5980,6 +6049,7 @@ export async function generateDirective(
         userPromptNames,
         entityConversationState,
         userVoicePatterns,
+        lockedContactPromptLines,
       );
 
       // --- DECISION PAYLOAD — the canonical binding contract ---

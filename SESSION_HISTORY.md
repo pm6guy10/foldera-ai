@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-04 — AUDIT: **Holy Crap artifacts — write_document anti-padding + LOCKED_CONTACTS in LLM prompt**
+  MODE: AUDIT
+  Commit hash(es): `900b4b5`
+  Files changed: `lib/briefing/generator.ts`, `lib/__tests__/multi-user-safety.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` — all passed; `npm run build` passed.
+  Changes: `SYSTEM_PROMPT` — drop thin multi-entry rows, banned padding phrases, LOCKED CONTACTS hard rule; synthetic names in write_document quality example; `locked_contacts_prompt` from `tkg_constraints` into user prompt (long + recipient-short paths).
+  Any unresolved issues: Multi-entity winners can still pass pre-LLM `entityName`-only lock check; prompt reduces leakage — deterministic post-parse lock scan remains a follow-up.
+
 - 2026-04-04 — AUDIT: **Stale pending_approval no longer blocks daily generate**
   MODE: AUDIT
   Commit hash(es): `1550910`
