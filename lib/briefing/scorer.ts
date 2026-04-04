@@ -959,7 +959,7 @@ async function getEntitySkipPenalty(
     // --- Check 2: 2+ consecutive skips = user already considered this ---
     const { data: recentActions } = await supabase
       .from('tkg_actions')
-      .select('directive_text, status')
+      .select('directive_text, status, execution_result')
       .eq('user_id', userId)
       .gte('generated_at', thirtyDaysAgo)
       .in('status', ['approved', 'executed', 'skipped', 'draft_rejected', 'rejected'])
@@ -972,9 +972,15 @@ async function getEntitySkipPenalty(
       const firstName = name.split(' ')[0].toLowerCase();
       if (firstName.length < 3) continue;
 
-      const entityActions = recentActions.filter((a) =>
-        (a.directive_text as string ?? '').toLowerCase().includes(firstName),
-      );
+      const entityActions = recentActions.filter((a) => {
+        const directiveText = ((a.directive_text as string) ?? '').toLowerCase();
+        const execResult = a.execution_result as Record<string, unknown> | null;
+        const origCandidate = execResult?.original_candidate as Record<string, unknown> | undefined;
+        const originalText = typeof origCandidate?.candidate_description === 'string'
+          ? origCandidate.candidate_description.toLowerCase()
+          : '';
+        return directiveText.includes(firstName) || originalText.includes(firstName);
+      });
 
       if (entityActions.length < 2) continue;
 
@@ -988,6 +994,23 @@ async function getEntitySkipPenalty(
       }
 
       if (consecutiveSkips >= 2) return -30;
+    }
+
+    // Consecutive-candidate penalty: if the last 3 actions all have 80%+ word overlap
+    // with the current candidate's entity names, the same candidate has been winning
+    // repeatedly without producing a send. Penalize to force rotation.
+    if (names.length > 0 && recentActions.length >= 3) {
+      const currentDesc = names.join(' ').toLowerCase();
+      const words = currentDesc.split(/\s+/).filter((w: string) => w.length >= 4);
+      if (words.length > 0) {
+        const last3 = recentActions.slice(0, 3);
+        const allMatch = last3.every((a) => {
+          const text = ((a.directive_text as string) ?? '').toLowerCase();
+          const matched = words.filter((w: string) => text.includes(w)).length;
+          return matched / words.length >= 0.8;
+        });
+        if (allMatch) return -50;
+      }
     }
 
     return 0;

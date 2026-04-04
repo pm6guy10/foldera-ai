@@ -3339,6 +3339,16 @@ const EXPLICIT_ASK_PATTERNS = [
   /\bneeds your decision\b/i,
   /\bname the owner\b/i,
   /\bassign (?:an )?owner\b/i,
+  /\blet me know\b/i,
+  /\bplease let me know\b/i,
+  /\bplease advise\b/i,
+  /\bwould\s+\w+\s+work\b/i,
+  /\bare you available\b/i,
+  /\bdo you have\b/i,
+  /\bhappy to\b/i,
+  /\?$/m,
+  /\bNEXT_ACTION\s*:/i,
+  /\bOwner\s*:\s*you\b/i,
 ];
 
 const TIME_CONSTRAINT_PATTERNS = [
@@ -3494,6 +3504,18 @@ export function getDecisionEnforcementIssues(input: {
         i !== 'decision_enforcement:missing_time_constraint' &&
         i !== 'decision_enforcement:missing_pressure_or_consequence',
     );
+  }
+  // Discrepancy-sourced send_message (relationship decay, avoidance, risk, drift,
+  // exposure) produces outreach emails whose purpose IS the reconnection action.
+  // The existence of a real recipient + substantive body is sufficient — strip
+  // missing_explicit_ask so the gate doesn't block warm reconnect emails.
+  if (normalizedType === 'send_message' && input.discrepancyClass) {
+    const artRec = input.artifact as Record<string, unknown>;
+    const to = typeof artRec.to === 'string' ? artRec.to : '';
+    const body = typeof artRec.body === 'string' ? artRec.body : '';
+    if (to.includes('@') && body.length > 50) {
+      out = out.filter(i => i !== 'decision_enforcement:missing_explicit_ask');
+    }
   }
   return out;
 }

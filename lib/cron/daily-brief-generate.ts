@@ -189,6 +189,9 @@ export function evaluateBottomGate(
   const scheduleConflictWriteDoc =
     directive.action_type === 'write_document' && directiveLooksLikeScheduleConflict(directive);
 
+  const topCandidateTypeForGate = directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType;
+  const isDiscrepancyCandidate = topCandidateTypeForGate === 'discrepancy' || topCandidateTypeForGate === 'insight';
+
   if (scheduleConflictWriteDoc && scheduleConflictArtifactIsOwnerProcedure(artifactBody)) {
     blocked_reasons.push('FINISHED_WORK_REQUIRED');
   }
@@ -236,7 +239,7 @@ export function evaluateBottomGate(
       if (!hasExecutableMotion) {
         blocked_reasons.push('NO_CONCRETE_ASK');
       }
-    } else {
+    } else if (!isDiscrepancyCandidate) {
       // 3. Concrete ask — must ask someone to DO something
       if (!CONCRETE_ASK_PATTERN.test(combined)) {
         blocked_reasons.push('NO_CONCRETE_ASK');
@@ -406,11 +409,13 @@ export function isSendWorthy(
     }
   }
 
-  // Discrepancy candidates (relationship decay, risk, engagement collapse) produce
-  // warm reconnect emails that intentionally have no decision-enforcement language,
-  // no generic opener ban, and no weak-winner test — quality is enforced by the
-  // recipient/body/subject checks above and the scorer gates that chose this candidate.
-  if (!isDiscrepancyWithRecipient) {
+  // Discrepancy candidates (relationship decay, risk, engagement collapse, avoidance,
+  // drift, exposure) skip quality-gate checks (generic opener, weak winner, decision
+  // enforcement) regardless of whether they produce send_message or write_document.
+  // For send_message the recipient/body/subject checks above are the quality filter.
+  // For write_document the insight document itself is the artifact — it doesn't need
+  // "can you confirm" language; the user approves or skips it directly.
+  if (!isDiscrepancyCandidate) {
     // Must not contain generic opener language that signals no specific context
     if (GENERIC_LANGUAGE_PATTERN.test(artifactJson)) {
       return { worthy: false, reason: 'generic_language' };
@@ -1111,6 +1116,11 @@ async function persistNoSendOutcome(
       execution_result: {
         ...executionResult,
         artifact: waitRationale.artifact,
+        original_candidate: {
+          action_type: directive.action_type,
+          candidate_description: typeof directive.directive === 'string' ? directive.directive.trim().slice(0, 500) : null,
+          blocked_by: reason,
+        },
       },
     })
     .select('id')
