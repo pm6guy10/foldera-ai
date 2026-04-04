@@ -199,7 +199,7 @@ NEGATIVE EXAMPLES (never produce these):
 - "Document why X can wait" (busy work)
 
 POSITIVE EXAMPLES (this is the bar):
-- "You've applied to two DSHS roles in 30 days. Cheryl Anderson is a DSHS employee you haven't contacted in 79 days. Here's a reconnection email that references your interest in HCLA and asks for 15 minutes on the division's current priorities." (cross-signal: decay + active applications + specific department)
+- "You've applied to two DSHS roles in 30 days. Jordan Miles is a DSHS employee you haven't contacted in 79 days. Here's a reconnection email that references your interest in Human Services and asks for 15 minutes on the division's current priorities." (cross-signal: decay + active applications + specific department)
 - "14 unread emails from Marissa in 7 days, up from 3/week in February. 9 unanswered. Here are responses to all 9 batched into 3 messages." (cross-signal: frequency change + response gap + relationship priority)
 - "You emailed Yadira twice, both on Mondays. State HR response rates peak Wednesday 8-10am. Here's the follow-up, scheduled for Wednesday 8am." (cross-signal: timing pattern + external data + specific contact)
 
