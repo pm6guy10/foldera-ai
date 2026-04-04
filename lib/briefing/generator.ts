@@ -5899,7 +5899,7 @@ export async function generateDirective(
         try {
           const { data } = await supabase
             .from('tkg_constraints')
-            .select('normalized_entity')
+            .select('normalized_entity, entity_text')
             .eq('user_id', userId)
             .eq('constraint_type', 'locked_contact')
             .eq('is_active', true);
@@ -5907,14 +5907,15 @@ export async function generateDirective(
             const raw = row.normalized_entity;
             if (typeof raw !== 'string' || !raw.trim()) continue;
             set.add(raw.replace(/\s+/g, '').toLowerCase());
-            const trimmed = raw.trim();
-            const lineKey = trimmed.replace(/\s+/g, '').toLowerCase();
+            const displayName = typeof row.entity_text === 'string' && row.entity_text.trim()
+              ? row.entity_text.trim()
+              : raw.trim();
+            const lineKey = displayName.replace(/\s+/g, '').toLowerCase();
             if (seenLineKeys.has(lineKey)) continue;
             seenLineKeys.add(lineKey);
-            promptLines.push(trimmed);
+            promptLines.push(displayName);
           }
         } catch {
-          // Non-blocking — if the fetch fails, proceed without suppression
           logStructuredEvent({
             event: 'locked_contacts_fetch_failed', level: 'warn', userId,
             artifactType: null, generationStatus: 'locked_contacts_degraded',
@@ -6398,6 +6399,39 @@ export async function generateDirective(
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), issues: persistenceIssues },
       });
       continue;
+    }
+
+    // Hard post-LLM locked contact check: if the artifact or directive text
+    // mentions any locked contact (case-insensitive, space-normalized), block
+    // and try the next candidate. The LLM prompt asks the model to omit them,
+    // but this enforcement is deterministic and cannot be overridden.
+    if (lockedContactPromptLines.length > 0) {
+      const artifactText = typeof payload.artifact === 'object'
+        ? JSON.stringify(payload.artifact).toLowerCase()
+        : String(payload.artifact ?? '').toLowerCase();
+      const directiveText = directive.directive.toLowerCase();
+      const combinedText = `${directiveText} ${artifactText}`;
+      const violatingContacts: string[] = [];
+      for (const contactName of lockedContactPromptLines) {
+        const tokens = contactName.toLowerCase().split(/\s+/).filter((t) => t.length >= 3);
+        if (tokens.length === 0) {
+          if (combinedText.includes(contactName.toLowerCase())) {
+            violatingContacts.push(contactName);
+          }
+        } else if (tokens.every((token) => combinedText.includes(token))) {
+          violatingContacts.push(contactName);
+        }
+      }
+      if (violatingContacts.length > 0) {
+        const reason = `locked_contact_in_artifact:${violatingContacts.join(',')}`;
+        candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [reason] });
+        logStructuredEvent({
+          event: 'candidate_blocked', level: 'warn', userId,
+          artifactType: canonicalAction, generationStatus: 'locked_contact_in_artifact',
+          details: { scope: 'post_llm_validation', violating_contacts: violatingContacts },
+        });
+        continue;
+      }
     }
 
     // Trigger action lock validation — discrepancy candidates only (skip when cross-signal degraded to wait_rationale)
