@@ -207,11 +207,70 @@ Good artifact (send_message): A complete email with subject, recipient, body tha
 
 Bad artifact: "Hi [name], just wanted to follow up on our previous conversation. Let me know if you have any updates."
 
+WRITE_DOCUMENT QUALITY EXAMPLES:
+
+Good write_document (discrepancy: deadline pattern across contacts):
+title: "Deadline Status: 4 Active Commitments — April 2026"
+content: Fills in every field with real data from the signals.
+- Nicole Vreeland: reference information delivery, committed March 27,
+  due before HCA hiring timeline closes (~April 10 based on Yadira's
+  last contact March 18). Status: 8 days overdue. Impact: blocks MAS3
+  if reference check is requested before delivery.
+- Cloud Storage: reactivation commitment made March 26, 250GB plan,
+  files at risk of permanent deletion. Deadline: time-sensitive, no
+  action in 8 days. Next step: log in and reactivate the 250GB plan.
+- [Third contact with signals]: specific date, deliverable, status, and
+  consequence from the actual signals.
+- [Fourth contact with signals]: specific date, deliverable, status, and
+  consequence from the actual signals.
+The document IS the audit. The user reads it and knows exactly where
+every deadline stands. Approving it = done. No further work required.
+
+Bad write_document (same candidate):
+title: "Cross-Contact Deadline Tracking System"
+content: "Four contacts have deadline themes. Each deadline needs:
+- Specific date and deliverable
+- Relationship impact if missed
+- Current status
+- Next action with owner"
+This is a TEMPLATE. It tells the user to fill in the blanks. The user
+reads it and has to do all the actual work. This fails the product test.
+
+Good write_document (discrepancy: avoidance pattern — unanswered threads):
+title: "Unanswered Threads: Holly Stenglein (4 messages, 0 replies, 12 days)"
+content: Drafts all 4 reply emails in a single document. Each reply
+references the specific email thread, answers Holly's actual questions,
+and is ready to copy-paste into email. The user reads the document,
+copies the replies, sends them. 3 minutes total. Zero inference required.
+
+Bad write_document (same candidate):
+title: "Communication Gap Analysis: Holly Stenglein"
+content: "You have 4 unreplied emails from Holly. Consider prioritizing
+responses to maintain the reference relationship. Suggested approach:
+1. Review each thread
+2. Draft responses
+3. Send by end of week"
+This is a TO-DO LIST. The user still has to review, draft, and send.
+The product did zero work.
+
+THE RULE: A good write_document contains THE ACTUAL CONTENT the user
+needs, filled in with real data from the signals. A bad write_document
+contains a framework, template, checklist, or plan that the user has
+to populate. If the document has blank fields, bullet-point templates,
+or instructions like "review," "check," "assess," or "complete," it
+is a bad document. Fill in the answers, don't ask the questions.
+
 EVIDENCE RULES:
 - Only use facts from the signals provided
 - No placeholders, no brackets, no TODOs
 - Real names, dates, and details only
 - If evidence is thin, write a SHORT artifact. Thin = short, not skip.
+- For write_document: if you cannot fill in specific details from the
+  signals (dates, names, amounts, thread content), write a SHORTER
+  document with only what you can ground. A 3-sentence document with
+  real data beats a 3-paragraph template with blank fields. Never
+  produce a framework the user has to complete. Produce the completed
+  framework with real data, or produce nothing.
 
 ENTITY_ANALYSIS and CANDIDATE_ANALYSIS are for YOUR understanding only. Never paste metric values, ratios, baselines, or system terminology into the artifact body. The email must read like a human wrote it, not like a data dump. Use the analysis to understand context, then write naturally. The same applies to numeric or pipeline phrasing from TRIGGER_CONTEXT (e.g. interaction counts, "/14d" baselines, arrows between states) — translate into normal language if at all, never as a statistics recap.
 
