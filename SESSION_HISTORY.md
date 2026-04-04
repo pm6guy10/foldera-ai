@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-04 — AUDIT: **Stale pending_approval no longer blocks daily generate**
+  MODE: AUDIT
+  Commit hash(es): e4e3caf84541b7f8419d21fdfcb68a213fea72bd
+  Files changed: `lib/cron/daily-brief-generate.ts`, `LESSONS_LEARNED.md`
+  What was verified: `npx vitest run lib/cron/__tests__/evaluate-readiness.test.ts` — 45 passed; `npx vitest run --exclude ".claude/worktrees/**"` — 688 passed; `npm run build` passed.
+  Changes: Run `reconcilePendingApprovalQueue` before the `pending_approval` early guard; guard filters with `generated_at >= now - 18h` instead of UTC midnight; merge skipped IDs and `recentDoNothingGeneratedAt` across pre/post-signal reconciles for `evaluateReadiness`. LESSONS_LEARNED §18.
+  Any unresolved issues: None for this slice.
+
 - 2026-04-03 — AUDIT: **UI Critic auto-trigger killed**
   MODE: AUDIT
   Commit hash(es): `19c5b41` (push trigger removed — prior session), stale-comment fix committed this session

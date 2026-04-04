@@ -149,3 +149,32 @@ This applies to: validation functions, lifecycle gates, auth guards, confidence 
 ## 13. Entity Skip Penalty Applies Only When Email Is Required
 
 A flat `entityPenalty` (e.g. −30) for every candidate type kills calendar-, drive-, and conversation-shaped loops that never had an inbox match. **Rule**: apply skip/entity penalties only when the locked action is `send_message`. For `write_document`, `make_decision`, and `schedule`, entity match is not a prerequisite to act — keep `entityPenalty: 0` on those paths unless a separate product rule says otherwise.
+
+## 15. Gate Exemptions Must Align Across All Three Layers
+
+Three independent gates control whether an artifact reaches `pending_approval`:
+- `validateGeneratedArtifact` (generator.ts) — LLM output validation
+- `isSendWorthy` (daily-brief-generate.ts) — content quality gate
+- `evaluateBottomGate` (daily-brief-generate.ts) — structural readiness gate
+
+If ONE gate exempts a candidate class (e.g. discrepancy), ALL THREE must exempt it identically. A misalignment means the generator says "this is fine," isSendWorthy says "blocked," and the artifact dies silently. This happened with discrepancy + write_document: generator exempted it, isSendWorthy only exempted discrepancy + send_message + valid @, evaluateBottomGate had no discrepancy exemption at all.
+
+**Rule:** When adding or modifying ANY gate exemption, grep for all three gate functions and verify alignment. A single-gate fix is always incomplete.
+
+## 16. Quality-Gate Failures Must Be Visible to the Scorer
+
+`persistNoSendOutcome()` saves blocked artifacts as `action_type: 'do_nothing'` with `status: 'skipped'`. The scorer's skip detector searches `directive_text` for entity names to penalize repeat losers. But `do_nothing` rows from quality-gate blocks lose the original candidate identity. The same candidate wins forever because its failures are invisible to the scorer.
+
+**Rule:** Every `persistNoSendOutcome` call must include `original_candidate` metadata in `execution_result` (original action_type, candidate description, blocked_by reason). The scorer must check this metadata when computing skip penalties. A quality-gate block IS a skip for scoring purposes.
+
+## 17. Pattern Candidates Are Not Entity Candidates
+
+Multi-entity pattern candidates ("deadline across 4 contacts") have no single entity to suppress. Entity-name-based skip detection (`getEntitySkipPenalty`) misses them entirely because it searches for first-name substrings, and the candidate description may not contain any single entity's first name prominently.
+
+**Rule:** Add a fuzzy description-overlap check alongside entity-name matching. If the last 3 actions have 80%+ word overlap with the current candidate description (regardless of entity names), penalize by -50. This catches pattern candidates that repeat without being entity-specific.
+
+## 18. Reconciliation Must Run Before Guards That Depend On It
+
+The `pending_approval` early guard blocks generation when a pending row exists. Reconciliation cleans stale pending rows. If the guard runs first, stale rows block generation forever because reconciliation never gets a chance to clean them.
+
+**Rule:** Any cleanup/reconciliation step must execute **before** any guard that checks the data it cleans. Combine with a rolling staleness cutoff (e.g. only treat pending within the last N hours as blocking) so same-calendar-day UTC rows cannot silence generation for 24+ hours after the user never sees an email.

@@ -59,6 +59,9 @@ const DAILY_SIGNAL_BATCH_SIZE = 5;
 const DAILY_SIGNAL_PROCESSING_BUDGET_MS = 20_000;
 const DO_NOTHING_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
+/** Pending rows older than this do not block the early guard (belt-and-suspenders with pre-reconcile). */
+const STALE_PENDING_HOURS = 18;
+
 /**
  * Placeholder patterns that indicate a draft was not grounded in real context.
  * Matches exact tokens like [NAME] and prefix tokens like [INSERT relevant detail].
@@ -775,6 +778,13 @@ export function todayStartIso(): string {
   return start.toISOString();
 }
 
+/** Latest of two ISO timestamps (for merging do_nothing cooldown hints across reconcile passes). */
+function maxIsoTimestamps(a: string | null, b: string | null): string | null {
+  if (!a) return b ?? null;
+  if (!b) return a;
+  return a >= b ? a : b;
+}
+
 /**
  * Returns the start of the Pacific-time "day" expressed in UTC.
  * We anchor at 08:00 UTC which is midnight PST (UTC-8).
@@ -1449,9 +1459,38 @@ export async function runDailyGenerate(
     const userId = eligibleUserIds[ui];
     console.log(`[daily-generate] Generating for user ${userId} (${ui + 1} of ${totalUsers})`);
 
-    // Early guard: skip signal processing entirely if a valid pending_approval already exists today.
-    // reconcilePendingApprovalQueue handles the same case later, but running it before
-    // runSignalProcessingForUser avoids unnecessary extraction work.
+    const staleCutoffIso = new Date(Date.now() - STALE_PENDING_HOURS * 3_600_000).toISOString();
+
+    // Reconcile stale/duplicate pending BEFORE guards that read pending_approval — otherwise the
+    // early guard short-circuits and reconciliation never runs (dead air for the rest of the UTC day).
+    const pendingQueuePre = await reconcilePendingApprovalQueue(supabase, userId, todayStart, options);
+    if (pendingQueuePre.error) {
+      results.push({
+        code: 'directive_persist_failed',
+        detail: pendingQueuePre.error.message,
+        success: false,
+        userId,
+      });
+      continue;
+    }
+
+    if (pendingQueuePre.preservedAction) {
+      results.push({
+        code: 'pending_approval_reused',
+        meta: {
+          skipped_pending_action_ids: pendingQueuePre.skippedActionIds,
+          signal_processing: {},
+          action_id: pendingQueuePre.preservedAction.id,
+          artifact_present: extractArtifact(pendingQueuePre.preservedAction.execution_result) !== null,
+          daily_brief_sent_at: extractSentAt(pendingQueuePre.preservedAction.execution_result),
+        },
+        success: true,
+        userId,
+      });
+      continue;
+    }
+
+    // Early guard: skip signal processing if a valid pending_approval exists within STALE_PENDING_HOURS.
     // Skipped for forceFreshRun (must regenerate) and rows that were already sent (need fresh).
     if (!options?.forceFreshRun) {
       const { data: pendingRows } = await supabase
@@ -1460,7 +1499,7 @@ export async function runDailyGenerate(
         .eq('user_id', userId)
         .eq('status', 'pending_approval')
         .neq('action_type', 'do_nothing')
-        .gte('generated_at', todayStart)
+        .gte('generated_at', staleCutoffIso)
         .limit(5);
 
       const existingPending = (pendingRows ?? []).find((row) => {
@@ -1495,9 +1534,19 @@ export async function runDailyGenerate(
         continue;
       }
 
+      const mergedSkippedIds = [
+        ...new Set([...pendingQueuePre.skippedActionIds, ...pendingQueue.skippedActionIds]),
+      ];
       const cleanupMeta = {
-        skipped_pending_action_ids: pendingQueue.skippedActionIds,
+        skipped_pending_action_ids: mergedSkippedIds,
         signal_processing: signalResult.meta ?? {},
+      };
+
+      const pendingQueueForReadiness = {
+        recentDoNothingGeneratedAt: maxIsoTimestamps(
+          pendingQueuePre.recentDoNothingGeneratedAt,
+          pendingQueue.recentDoNothingGeneratedAt,
+        ),
       };
 
       if (pendingQueue.preservedAction) {
@@ -1632,7 +1681,7 @@ export async function runDailyGenerate(
       }
 
       // Gate: single named decision point before any generation work.
-      const readiness = evaluateReadiness(signalResult, pendingQueue);
+      const readiness = evaluateReadiness(signalResult, pendingQueueForReadiness);
       logStructuredEvent({
         event: 'brief_gate_decision',
         userId,
