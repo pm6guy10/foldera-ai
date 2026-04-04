@@ -2,7 +2,9 @@
 
 ## STATUS: GREEN — Gate 4 unblocked, health system live, write_document quality bar shipped
 
-**Latest ship:** `fab7c5e` — SYSTEM_PROMPT now includes good/bad `write_document` examples + thin-evidence rule (filled-in data beats templates).
+**Latest ship:** `c0ffdc4` — `write_document` anti-padding + `LOCKED_CONTACTS` in system + user prompt from `tkg_constraints` (multi-entity trust).
+
+**Prior:** `fab7c5e` — SYSTEM_PROMPT good/bad `write_document` examples + thin-evidence rule (filled-in data beats templates).
 
 ## OUTCOME (what you have now)
 
