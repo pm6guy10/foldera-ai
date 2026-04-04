@@ -23,6 +23,7 @@ import {
   resolveDailyBriefUserIds,
 } from './daily-brief-generate';
 import { listConnectedUserIds } from '@/lib/auth/user-tokens';
+import { buildHealthLineForUser } from '@/lib/cron/health-verdict';
 
 export async function runDailySend(
   options: DailyBriefSignalWindowOptions = {},
@@ -167,7 +168,11 @@ export async function runDailySend(
 
       let delivery: unknown;
       try {
-        delivery = await sendDailyDirective({ to, directives: [directiveItem], date, subject, userId });
+        // Fetch health line for the owner user (INGEST_USER_ID) — shown in email footer only.
+        // For all other users, healthLine is undefined (not rendered).
+        const isOwner = userId === process.env.INGEST_USER_ID;
+        const healthLine = isOwner ? (await buildHealthLineForUser(userId)) ?? undefined : undefined;
+        delivery = await sendDailyDirective({ to, directives: [directiveItem], date, subject, userId, healthLine });
       } catch (sendErr: unknown) {
         logStructuredEvent({
           event: 'daily_send_failed',

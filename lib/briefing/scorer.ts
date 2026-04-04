@@ -999,14 +999,24 @@ async function getEntitySkipPenalty(
     // Consecutive-candidate penalty: if the last 3 actions all have 80%+ word overlap
     // with the current candidate's entity names, the same candidate has been winning
     // repeatedly without producing a send. Penalize to force rotation.
+    //
+    // Checks BOTH directive_text AND execution_result.original_candidate.candidate_description
+    // so the penalty fires even when directive_text is a wait_rationale fallback (do_nothing rows).
     if (names.length > 0 && recentActions.length >= 3) {
       const currentDesc = names.join(' ').toLowerCase();
       const words = currentDesc.split(/\s+/).filter((w: string) => w.length >= 4);
       if (words.length > 0) {
         const last3 = recentActions.slice(0, 3);
         const allMatch = last3.every((a) => {
-          const text = ((a.directive_text as string) ?? '').toLowerCase();
-          const matched = words.filter((w: string) => text.includes(w)).length;
+          const directiveText = ((a.directive_text as string) ?? '').toLowerCase();
+          const execResult = a.execution_result as Record<string, unknown> | null;
+          const origCandidate = execResult?.original_candidate as Record<string, unknown> | undefined;
+          const origDesc =
+            typeof origCandidate?.candidate_description === 'string'
+              ? origCandidate.candidate_description.toLowerCase()
+              : '';
+          const combined = `${directiveText} ${origDesc}`;
+          const matched = words.filter((w: string) => combined.includes(w)).length;
           return matched / words.length >= 0.8;
         });
         if (allMatch) return -50;

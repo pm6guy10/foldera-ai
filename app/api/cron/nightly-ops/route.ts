@@ -34,6 +34,7 @@ import { checkConnectorHealth } from '@/lib/cron/connector-health';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { TEST_USER_ID, SIGNAL_RETENTION_DAYS, daysMs } from '@/lib/config/constants';
 import { runBehavioralGraph } from '@/lib/signals/behavioral-graph';
+import { computeAndPersistHealthVerdict } from '@/lib/cron/health-verdict';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min
@@ -710,6 +711,20 @@ async function handler(request: NextRequest) {
 
   const summary = { ok: allOk, duration_ms: durationMs, stages };
   console.log(JSON.stringify({ event: 'nightly_ops_complete', ok: allOk, duration_ms: durationMs }));
+
+  // Health verdict — runs after all stages, fire-and-forget.
+  // Computes diagnosis, persists to system_health, and auto-drains infinite loops.
+  // Uses INGEST_USER_ID as the primary pipeline user; skip for anonymous TEST_USER_ID.
+  try {
+    const ingestUserId = process.env.INGEST_USER_ID;
+    if (ingestUserId && ingestUserId !== TEST_USER_ID) {
+      await computeAndPersistHealthVerdict(ingestUserId, stages);
+    }
+  } catch (verdictErr: any) {
+    console.error(
+      JSON.stringify({ event: 'nightly_ops_health_verdict_error', error: verdictErr?.message ?? String(verdictErr) }),
+    );
+  }
 
   return NextResponse.json(summary, { status: allOk ? 200 : 207 });
 }

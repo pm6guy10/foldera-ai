@@ -355,15 +355,17 @@ export function renderWriteDocumentReadyEmailHtml(opts: {
 
 /**
  * Full HTML for the daily brief email (send path + local preview).
- * `directive === null` renders the “nothing today” variant.
+ * `directive === null` renders the "nothing today" variant.
+ * `healthLine` is an optional one-line system health summary for the owner footer.
  */
 export function buildDailyDirectiveEmailHtml(opts: {
   baseUrl: string;
   date: string;
   directive: DirectiveItem | null;
+  healthLine?: string;
 }): string {
   const baseUrl = opts.baseUrl.replace(/\/$/, '');
-  const { date, directive } = opts;
+  const { date, directive, healthLine } = opts;
   const prefs = `${baseUrl}/dashboard/settings`;
   const dateDisplay = escapeHtml(formatEmailDateForDisplay(date));
 
@@ -395,6 +397,7 @@ export function buildDailyDirectiveEmailHtml(opts: {
         </td></tr>
         <tr><td style="padding-top:28px;text-align:center;border-top:1px solid rgba(255,255,255,0.08);">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:11px;color:#52525b;">Foldera — Finished work, every morning.</p>
+          ${healthLine ? `<p style="margin:8px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;color:#3f3f46;font-variant-numeric:tabular-nums;">${escapeHtml(healthLine)}</p>` : ''}
           <p style="margin:10px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;"><a href="${prefs}" style="color:#71717a;">Email preferences</a></p>
         </td></tr>
       </table>
@@ -476,6 +479,7 @@ export function buildDailyDirectiveEmailHtml(opts: {
         </td></tr>
         <tr><td style="padding-top:20px;text-align:center;border-top:1px solid rgba(255,255,255,0.08);">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:11px;color:#52525b;">Foldera — Finished work, every morning.</p>
+          ${healthLine ? `<p style="margin:8px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;color:#3f3f46;font-variant-numeric:tabular-nums;">${escapeHtml(healthLine)}</p>` : ''}
           <p style="margin:10px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;"><a href="${prefs}" style="color:#71717a;">Email preferences</a></p>
         </td></tr>
       </table>
@@ -510,12 +514,15 @@ export async function sendDailyDirective({
   date,
   subject,
   userId,
+  healthLine,
 }: {
   to: string;
   directives: DirectiveItem[];
   date: string;
   subject?: string;
   userId: string;
+  /** Optional one-line system health summary injected into the email footer for the owner. */
+  healthLine?: string;
 }) {
   const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
   const directive = directives[0];
@@ -527,7 +534,7 @@ export async function sendDailyDirective({
 
   if (!directive) {
     const nothingSubject = subject ?? 'Foldera: Nothing today';
-    const html = buildDailyDirectiveEmailHtml({ baseUrl, date, directive: null });
+    const html = buildDailyDirectiveEmailHtml({ baseUrl, date, directive: null, healthLine });
     return sendResendEmail({
       to,
       subject: nothingSubject,
@@ -537,7 +544,7 @@ export async function sendDailyDirective({
   }
 
   const emailSubject = subject ?? `Foldera: ${directive.directive.split(/\s+/).slice(0, 6).join(' ')}`;
-  const html = buildDailyDirectiveEmailHtml({ baseUrl, date, directive });
+  const html = buildDailyDirectiveEmailHtml({ baseUrl, date, directive, healthLine });
   return sendResendEmail({
     to,
     subject: emailSubject,
