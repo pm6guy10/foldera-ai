@@ -37,6 +37,33 @@ const mockSupabase = {
   from(table: string) {
     const self = this;
 
+    if (table === 'tkg_directive_ml_global_priors') {
+      return {
+        select() {
+          return Promise.resolve({ data: [], error: null });
+        },
+        insert() {
+          return Promise.resolve({ error: null });
+        },
+      };
+    }
+
+    if (table === 'tkg_directive_ml_snapshots') {
+      return {
+        select() {
+          return Promise.resolve({ data: [], error: null });
+        },
+        insert() {
+          return Promise.resolve({ error: null });
+        },
+        update() {
+          return {
+            eq: () => Promise.resolve({ error: null }),
+          };
+        },
+      };
+    }
+
     if (table === 'user_subscriptions') {
       return {
         update() {
@@ -252,27 +279,6 @@ const mockSupabase = {
               self.updatedActions.push({ payload, [field]: value });
               return Promise.resolve({ error: null });
             },
-          };
-        },
-      };
-    }
-
-    if (table === 'tkg_directive_ml_global_priors') {
-      return {
-        select() {
-          return Promise.resolve({ data: [], error: null });
-        },
-      };
-    }
-
-    if (table === 'tkg_directive_ml_snapshots') {
-      return {
-        insert() {
-          return Promise.resolve({ error: null });
-        },
-        update() {
-          return {
-            eq: () => Promise.resolve({ error: null }),
           };
         },
       };
