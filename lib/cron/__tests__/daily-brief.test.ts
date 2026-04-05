@@ -257,6 +257,27 @@ const mockSupabase = {
       };
     }
 
+    if (table === 'tkg_directive_ml_global_priors') {
+      return {
+        select() {
+          return Promise.resolve({ data: [], error: null });
+        },
+      };
+    }
+
+    if (table === 'tkg_directive_ml_snapshots') {
+      return {
+        insert() {
+          return Promise.resolve({ error: null });
+        },
+        update() {
+          return {
+            eq: () => Promise.resolve({ error: null }),
+          };
+        },
+      };
+    }
+
     throw new Error(`Unexpected table ${table}`);
   },
 };

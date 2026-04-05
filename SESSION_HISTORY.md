@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-05 — AUDIT: **Diagnostician generator hardening (living graph alignment)**
+  MODE: AUDIT
+  Commit hash(es): verify `git log -1 --oneline` on `main` — subject `feat: diagnostician generator hardening + ML table test mocks`
+  Files changed: `lib/briefing/diagnostic-lenses.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/diagnostic-lenses.test.ts`, `lib/briefing/__tests__/system-prompt-hygiene.test.ts`, `lib/briefing/__tests__/pipeline-receipt.test.ts` (Supabase mock: ML tables), `lib/cron/__tests__/daily-brief.test.ts` (mock: ML tables — fixes unhandled rejection from `fetchGlobalMlPriorMap`), `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` (737 passed); `npm run lint`; `npm run build`; `npm run test:ci:e2e` (41 passed).
+  Changes: Rewrote `SYSTEM_PROMPT` with observation vs diagnosis, domain lens table, named failure modes, synthetic few-shots; exported `SYSTEM_PROMPT`; `matched_goal_category` + `DIAGNOSTIC_LENS` injection on both prompt paths; `getVagueMechanismIssues` wired into `validateGeneratedArtifact` for non-discrepancy runs.
+  Any unresolved issues: None in-session.
+
 - 2026-04-04 — AUDIT: **Living graph — attention salience + scorer integration**
   MODE: AUDIT
   Commit hash(es): `7c2bec7`

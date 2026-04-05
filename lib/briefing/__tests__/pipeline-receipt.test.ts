@@ -12,6 +12,8 @@ type RuntimeState = {
   actions: Row[];
   userSubscriptions: Row[];
   userTokens: Row[];
+  mlSnapshots: Row[];
+  mlGlobalPriors: Row[];
   authUsers: Record<string, { email: string; email_confirmed_at: string | null }>;
   ids: Record<string, number>;
 };
@@ -34,6 +36,8 @@ function createRuntime(): RuntimeState {
     actions: [],
     userSubscriptions: [],
     userTokens: [],
+    mlSnapshots: [],
+    mlGlobalPriors: [],
     authUsers: {},
     ids: {
       entity: 0,
@@ -42,6 +46,8 @@ function createRuntime(): RuntimeState {
       goal: 0,
       action: 0,
       api_usage: 0,
+      ml_snapshot: 0,
+      ml_global_prior: 0,
     },
   };
 }
@@ -300,9 +306,14 @@ class InsertQuery {
     for (const item of asArray(payload)) {
       const row = { ...item };
       if (!row.id) {
-        const prefix = this.table === 'apiUsage'
-          ? 'api_usage'
-          : this.table.slice(0, -1);
+        const prefix =
+          this.table === 'apiUsage'
+            ? 'api_usage'
+            : this.table === 'mlSnapshots'
+              ? 'ml_snapshot'
+              : this.table === 'mlGlobalPriors'
+                ? 'ml_global_prior'
+                : this.table.slice(0, -1);
         row.id = nextId(prefix as keyof RuntimeState['ids']);
       }
       if (this.table === 'apiUsage' && !row.created_at) {
@@ -426,6 +437,20 @@ function createSupabaseMock() {
           return {
             select: (columns?: string, options?: { count?: string; head?: boolean }) =>
               new SelectQuery([], columns, options),
+          };
+        case 'tkg_directive_ml_snapshots':
+          return {
+            select: (columns?: string, options?: { count?: string; head?: boolean }) =>
+              new SelectQuery(runtime.mlSnapshots, columns, options),
+            insert: (payload: Row | Row[]) => new InsertQuery('mlSnapshots', runtime.mlSnapshots, payload),
+            update: (payload: Row) => new UpdateQuery(runtime.mlSnapshots, payload),
+          };
+        case 'tkg_directive_ml_global_priors':
+          return {
+            select: (columns?: string, options?: { count?: string; head?: boolean }) =>
+              new SelectQuery(runtime.mlGlobalPriors, columns, options),
+            insert: (payload: Row | Row[]) => new InsertQuery('mlGlobalPriors', runtime.mlGlobalPriors, payload),
+            update: (payload: Row) => new UpdateQuery(runtime.mlGlobalPriors, payload),
           };
         default:
           throw new Error(`Unexpected table ${table}`);
