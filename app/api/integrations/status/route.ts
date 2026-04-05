@@ -10,6 +10,7 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { createServerClient } from '@/lib/db/client';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
+import { INTEGRATIONS_SYNC_STALE_MS } from '@/lib/config/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('user_tokens')
-      .select('provider, email, last_synced_at, scopes, access_token, expires_at')
+      .select('provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token')
       .eq('user_id', session.user.id)
       .is('disconnected_at', null);
 
@@ -38,11 +39,20 @@ export async function GET() {
       const uiProvider = row.provider === 'microsoft' ? 'azure_ad' : row.provider;
       const hasToken = typeof row.access_token === 'string' && row.access_token.length > 0;
       const expSec = typeof row.expires_at === 'number' ? row.expires_at : null;
-      const accessExpired =
+      // Encrypted blob or plaintext — presence means background refresh may work
+      const hasRefreshInDb =
+        typeof row.refresh_token === 'string' && row.refresh_token.length > 0;
+
+      // Do NOT treat short-lived access_token expiry as "reconnect": cron/sync refreshes via
+      // refresh_token; DB expires_at can lag behind a successful last_synced_at (Google).
+      const needsReconnect = hasToken && !hasRefreshInDb;
+
+      const lastSyncMs = row.last_synced_at ? new Date(row.last_synced_at as string).getTime() : 0;
+      const syncStale =
         hasToken &&
-        expSec !== null &&
-        expSec > 0 &&
-        expSec * 1000 < nowMs - 120_000;
+        hasRefreshInDb &&
+        lastSyncMs > 0 &&
+        nowMs - lastSyncMs > INTEGRATIONS_SYNC_STALE_MS;
 
       return {
         provider: uiProvider,
@@ -51,7 +61,8 @@ export async function GET() {
         last_synced_at: row.last_synced_at ?? null,
         scopes: row.scopes ?? null,
         expires_at: expSec,
-        needs_reconnect: accessExpired,
+        needs_reconnect: needsReconnect,
+        sync_stale: syncStale,
       };
     });
 

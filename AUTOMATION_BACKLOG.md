@@ -116,7 +116,7 @@ These close `REVENUE_PROOF.md` / spec proof tables; agents cannot complete them 
 - **`/api/cron/daily-send` HTTP** — `app/api/cron/daily-send/route.ts`: all-soft-failure batches (`no_verified_email`, `no_generated_directive` only) return **200** so cron health checks do not 500 when no one was emailable.
 - **Eligibility** — `listConnectedUserIds()` in `lib/auth/user-tokens.ts`; `filterDailyBriefEligibleUserIds` includes OAuth-connected users without a `user_subscriptions` row yet; `getEligibleDailyBriefUserIds` unions graph `self` + connected.
 - **Onboard** — `POST /api/onboard/set-goals` fire-and-forget `syncGoogle` / `syncMicrosoft` with `MS_90D` lookback after goals RPC succeeds.
-- **Settings OAuth UX** — `integrations/status` exposes `needs_reconnect` (access token expired &gt;2m per `expires_at`); per-provider inline errors + Try again / Reconnect on `SettingsClient.tsx`.
+- **Settings OAuth UX** — `integrations/status`: `needs_reconnect` when no `refresh_token` in `user_tokens`; `sync_stale` when `last_synced_at` &gt;3d (`INTEGRATIONS_SYNC_STALE_MS`); `SettingsClient` Reconnect for either; copy distinguishes “reconnect required” vs “sync looks stalled.”
 
 ### DONE (2026-04-01) — Playwright / tooling
 

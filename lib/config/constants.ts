@@ -32,6 +32,8 @@ export const SIGNAL_RETENTION_DAYS = 180;
 export const daysMs = (n: number): number => n * 24 * 60 * 60 * 1000;
 
 export const MS_7D  = daysMs(7);
+/** Settings / integrations: warn when mail sync timestamp has not advanced (stuck connector). */
+export const INTEGRATIONS_SYNC_STALE_MS = daysMs(3);
 export const MS_14D = daysMs(14);
 export const MS_30D = daysMs(30);
 export const MS_90D = daysMs(90);

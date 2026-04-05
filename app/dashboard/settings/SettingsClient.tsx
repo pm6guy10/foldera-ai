@@ -15,6 +15,8 @@ interface Integration {
   last_synced_at?: string | null;
   expires_at?: number | null;
   needs_reconnect?: boolean;
+  /** Mail sync timestamp has not advanced for several days (connector may be stuck). */
+  sync_stale?: boolean;
 }
 
 interface SubscriptionInfo {
@@ -355,7 +357,12 @@ export default function SettingsClient() {
                     </div>
                     {google?.is_active && google.needs_reconnect && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
-                        Connection expired — reconnect so background sync keeps working.
+                        Reconnect required — Foldera can&apos;t refresh this connection in the background without a new sign-in.
+                      </p>
+                    )}
+                    {google?.is_active && google.sync_stale && !google.needs_reconnect && (
+                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                        Sync looks stalled — last mail sync was a while ago. Disconnect and reconnect if new mail isn&apos;t showing up.
                       </p>
                     )}
                     {google?.is_active && formatLastSynced(google.last_synced_at) && (
@@ -366,7 +373,7 @@ export default function SettingsClient() {
                   </div>
                 </div>
                 <div className="flex flex-col w-full md:w-auto md:items-end gap-2 shrink-0">
-                  {google?.is_active && google.needs_reconnect && (
+                  {google?.is_active && (google.needs_reconnect || google.sync_stale) && (
                     <button
                       type="button"
                       onClick={startGoogleOAuth}
@@ -444,7 +451,12 @@ export default function SettingsClient() {
                     </div>
                     {microsoft?.is_active && microsoft.needs_reconnect && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
-                        Connection expired — reconnect so background sync keeps working.
+                        Reconnect required — Foldera can&apos;t refresh this connection in the background without a new sign-in.
+                      </p>
+                    )}
+                    {microsoft?.is_active && microsoft.sync_stale && !microsoft.needs_reconnect && (
+                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                        Sync looks stalled — last mail sync was a while ago. Disconnect and reconnect Microsoft to pull recent mail.
                       </p>
                     )}
                     {microsoft?.is_active && formatLastSynced(microsoft.last_synced_at) && (
@@ -455,7 +467,7 @@ export default function SettingsClient() {
                   </div>
                 </div>
                 <div className="flex flex-col w-full md:w-auto md:items-end gap-2 shrink-0">
-                  {microsoft?.is_active && microsoft.needs_reconnect && (
+                  {microsoft?.is_active && (microsoft.needs_reconnect || microsoft.sync_stale) && (
                     <button
                       type="button"
                       onClick={startMicrosoftOAuth}

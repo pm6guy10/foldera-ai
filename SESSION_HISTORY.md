@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-05 — AUDIT: **Settings integrations status — reconnect vs sync-stale**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `lib/config/constants.ts` (`INTEGRATIONS_SYNC_STALE_MS`), `app/api/integrations/status/route.ts`, `app/dashboard/settings/SettingsClient.tsx`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (737 passed).
+  Changes: Removed misleading access-token-only `needs_reconnect`; added `sync_stale` after 3d without mail timestamp advance so stuck Microsoft (mail fails, token looks fine) shows Reconnect; Google no longer shows false “expired” when morning cron synced but `expires_at` lagged.
+  Any unresolved issues: Revoked-but-present refresh still needs ~3d to flag via `sync_stale`; first connect with no `last_synced_at` yet does not set `sync_stale`.
+
 - 2026-04-05 — AUDIT: **daily-brief test mock — ML tables first + full verbs**
   MODE: AUDIT
   Commit hash(es): `b6434d0`
