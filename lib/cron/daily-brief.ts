@@ -128,6 +128,11 @@ export async function autoSkipStaleApprovals(): Promise<{ skipped: number }> {
       return { skipped: 0 };
     }
 
+    const { updateMlSnapshotOutcome } = await import('@/lib/ml/directive-ml-snapshot');
+    for (const id of ids) {
+      void updateMlSnapshotOutcome(supabase, { actionId: id, outcomeLabel: 'skipped' });
+    }
+
     logStructuredEvent({
       event: 'passive_timeout_skip',
       level: 'info',

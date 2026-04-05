@@ -17,6 +17,13 @@
 
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus } from '@/lib/encryption';
+import {
+  buildDirectiveMlBucketKey,
+  mlBucketInputsFromBaseCandidate,
+  mlBucketInputsFromDiscrepancy,
+  mlBucketInputsFromInsight,
+} from '@/lib/ml/outcome-features';
+import { fetchGlobalMlPriorMap } from '@/lib/ml/priors';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { daysMs } from '@/lib/config/constants';
 import type {
@@ -1061,6 +1068,8 @@ export function computeCandidateScore(args: {
   now?: Date;
   /** High-stakes candidates (stakes ≥ 4) get reduced freshness penalty so they aren't buried for 3 days */
   highStakes?: boolean;
+  /** Pooled cross-user prior for this coarse bucket (0–1). Blended with personal history. */
+  globalPriorRate?: number | null;
 }): { score: number; breakdown: { stakes_raw: number; stakes_transformed: number; urgency_raw: number; urgency_effective: number; tractability: number; exec_potential: number; behavioral_rate: number; novelty_multiplier: number; suppression_multiplier: number; final_score: number } } {
   const nowMs = (args.now || new Date()).getTime();
   const relevant = args.approvalHistory.filter(a => a.action_type === args.actionType);
@@ -1084,6 +1093,12 @@ export function computeCandidateScore(args: {
     // Cold-start prior: blend with 0.50 prior weighted by 10 virtual observations.
     // When n < 10, the prior dominates; as n grows, actual data takes over.
     rate = (blended * n + 0.50 * 10) / (n + 10);
+  }
+
+  const g = args.globalPriorRate;
+  if (typeof g === 'number' && g >= 0 && g <= 1 && !Number.isNaN(g)) {
+    const k = 5;
+    rate = (rate * n + g * k) / (n + k);
   }
 
   // Rate floor: even with 100% skip history, rate never drops below 0.25.
@@ -4157,6 +4172,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
   let scored: ScoredLoop[] = [];
   const approvalHistory = await getApprovalHistory(userId);
+  const globalMlPriors = await fetchGlobalMlPriorMap();
 
   let insightCandidates: Awaited<ReturnType<typeof runInsightScan>> = [];
   try {
@@ -4309,6 +4325,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     });
 
     // v4: Gemini scoring function — replaces flat multiplicative formula
+    const mlBucket = buildDirectiveMlBucketKey(mlBucketInputsFromBaseCandidate(c));
     const { score: rawScore, breakdown: geminiBreakdown } = computeCandidateScore({
       stakes: specificityAdjustedStakes,
       urgency: loopUrgency,
@@ -4318,6 +4335,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       daysSinceLastSurface,
       approvalHistory,
       highStakes: specificityAdjustedStakes >= 4,
+      globalPriorRate: globalMlPriors.get(mlBucket) ?? null,
     });
 
     // Goal velocity boost: candidates whose matched goal has high recent signal
@@ -4712,6 +4730,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       commitmentDueMs: d.scoringHints?.commitmentDueMs,
       coldEntityMeetingBoost: d.scoringHints?.coldEntityMeetingBoost,
     });
+    const discMlBucket = buildDirectiveMlBucketKey(mlBucketInputsFromDiscrepancy(d));
     const { score, breakdown: geminiBreakdown } = computeCandidateScore({
       stakes: d.stakes,
       urgency: mergedDiscUrgency,
@@ -4723,6 +4742,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       daysSinceLastSurface,
       approvalHistory,
       highStakes: d.stakes >= 4,
+      globalPriorRate: globalMlPriors.get(discMlBucket) ?? null,
     });
     // Penalize recipientless self-referential discrepancies so entity-linked
     // decay/risk candidates (with real people and real emails) always rank above
@@ -4749,7 +4769,9 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       relatedSignals: [],
       sourceSignals: d.sourceSignals,
       entityName: d.entityName,
-      confidence_prior: Math.round(Math.max(45, Math.min(85, mergedDiscUrgency * 80))),
+      confidence_prior: Math.round(
+        Math.max(45, Math.min(85, geminiBreakdown.behavioral_rate * 100)),
+      ),
       discrepancyClass: d.class,
       trigger: d.trigger,
       discrepancyEvidence: d.evidence,
@@ -4816,6 +4838,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     };
 
     const daysSinceInsightSurface = await getDaysSinceLastSurface(userId, insight.title);
+    const insightMlBucket = buildDirectiveMlBucketKey(mlBucketInputsFromInsight(insight));
     const { score: insightScore, breakdown: insightGeminiBreakdown } = computeCandidateScore({
       stakes: 4,
       urgency: 0.85,
@@ -4825,6 +4848,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       daysSinceLastSurface: daysSinceInsightSurface,
       approvalHistory,
       highStakes: true,
+      globalPriorRate: globalMlPriors.get(insightMlBucket) ?? null,
     });
 
     const relatedFromInsight = insight.evidence_signals.map((id) => {

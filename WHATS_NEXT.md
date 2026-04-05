@@ -1,8 +1,10 @@
-# WHAT'S NEXT — Updated 2026-04-04
+# WHAT'S NEXT — Updated 2026-04-05
 
-## STATUS: GREEN — Avoidance transactional filter + discrepancy finished-work gates shipped
+## STATUS: GREEN — ML moat (snapshots + global priors + scorer blend) shipped
 
-**Latest ship:** verify `git log -1 --oneline` — avoidance inbound counts skip automated From/domain heuristics; discrepancy prompts + triage gate + brain-receipt `finished_work_gate` for discrepancy/insight.
+**Latest ship:** verify `git log -1 --oneline` — migration `20260405000001_directive_ml_moat.sql`; nightly-ops stage `ml_global_priors`; apply DDL in Supabase before expecting non-empty priors.
+
+**Prior:** Avoidance transactional filter + discrepancy finished-work gates — avoidance inbound counts skip automated From/domain heuristics; discrepancy prompts + triage gate + brain-receipt `finished_work_gate` for discrepancy/insight.
 
 **Prior:** `fix: connector sync freshness, Gmail junk exclusion, junk skip extraction` (OAuth Google `prompt: 'consent'`, Gmail spam/promo exclusion, mail-primary `last_synced_at`, nightly `sync_staleness`, token refresh JSON logs, junk skips LLM).
 

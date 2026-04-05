@@ -51,6 +51,8 @@ import {
   scheduleConflictArtifactIsOwnerProcedure,
 } from '@/lib/briefing/schedule-conflict-guards';
 import { effectiveDiscrepancyClassForGates } from '@/lib/briefing/effective-discrepancy-class';
+import { insertDirectiveMlSnapshot } from '@/lib/ml/directive-ml-snapshot';
+import { logMlSendworthShadow } from '@/lib/ml/sendworth-shadow';
 
 export { effectiveDiscrepancyClassForGates };
 
@@ -1956,6 +1958,12 @@ export async function runDailyGenerate(
 
       // Post-generation quality gate — block outputs that are not worth sending.
       const sendWorthiness = isSendWorthy(directive, artifact, userEmails);
+      void logMlSendworthShadow({
+        userId,
+        directive,
+        worthy: sendWorthiness.worthy,
+        reason: sendWorthiness.reason || 'ok',
+      });
       if (!sendWorthiness.worthy) {
         // Build a receipt even for quality-gate blocks so the reason is visible
         const qualityGateReceipt = buildBlockedOutcomeReceipt(
@@ -2148,6 +2156,24 @@ export async function runDailyGenerate(
           userId,
           artifactType: artifactTypeForAction(directive.action_type),
           generationStatus: 'directive_signal_failed',
+          details: { scope: 'daily-generate', error: message },
+        });
+      }
+
+      try {
+        await insertDirectiveMlSnapshot(supabase, {
+          userId,
+          actionId: saved.id,
+          directive,
+        });
+      } catch (mlErr: unknown) {
+        const message = mlErr instanceof Error ? mlErr.message : String(mlErr);
+        logStructuredEvent({
+          event: 'daily_generate_ml_snapshot_failed',
+          level: 'warn',
+          userId,
+          artifactType: null,
+          generationStatus: 'ml_snapshot_failed',
           details: { scope: 'daily-generate', error: message },
         });
       }

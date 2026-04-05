@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { createServerClient } from '@/lib/db/client';
 import { encrypt } from '@/lib/encryption';
+import { markMlSnapshotEmailEngagement } from '@/lib/ml/directive-ml-snapshot';
 
 const webhookRateMap = new Map<string, { count: number; resetAt: number }>();
 
@@ -105,6 +106,7 @@ export async function handleResendWebhookPost(request: NextRequest): Promise<Nex
 
       const dailyBriefUserId = tags?.find((tag) => tag.name === 'user_id')?.value ?? '';
       const emailType = tags?.find((tag) => tag.name === 'email_type')?.value ?? '';
+      const briefActionId = tags?.find((tag) => tag.name === 'action_id')?.value ?? '';
 
       if (emailType === 'daily_brief' && dailyBriefUserId) {
         const openedAt = new Date().toISOString();
@@ -127,6 +129,9 @@ export async function handleResendWebhookPost(request: NextRequest): Promise<Nex
         if (!sigErr) {
           console.log('[resend/webhook] daily_brief_opened signal recorded for', todayStr);
         }
+        if (briefActionId) {
+          void markMlSnapshotEmailEngagement(supabase, { actionId: briefActionId, opened: true });
+        }
       }
     }
   }
@@ -135,6 +140,7 @@ export async function handleResendWebhookPost(request: NextRequest): Promise<Nex
     const tags = event.data?.tags as Array<{ name: string; value: string }> | undefined;
     const dailyBriefUserId = tags?.find((tag) => tag.name === 'user_id')?.value ?? '';
     const emailType = tags?.find((tag) => tag.name === 'email_type')?.value ?? '';
+    const briefActionIdClick = tags?.find((tag) => tag.name === 'action_id')?.value ?? '';
     const click = event.data?.click as { link?: string } | undefined;
     const link = typeof click?.link === 'string' ? click.link : '';
 
@@ -159,6 +165,9 @@ export async function handleResendWebhookPost(request: NextRequest): Promise<Nex
 
       if (!sigErr) {
         console.log('[resend/webhook] daily_brief_clicked recorded');
+      }
+      if (briefActionIdClick) {
+        void markMlSnapshotEmailEngagement(supabase, { actionId: briefActionIdClick, clicked: true });
       }
     }
   }

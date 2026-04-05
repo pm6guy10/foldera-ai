@@ -17,6 +17,7 @@ import {
   sendResendEmail,
 } from '@/lib/email/resend';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
+import { updateMlSnapshotOutcome } from '@/lib/ml/directive-ml-snapshot';
 
 export type ExecuteDecision = 'approve' | 'skip' | 'reject';
 
@@ -648,6 +649,11 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
     await insertFeedbackSignalIdempotent(supabase, userId, actionId, 'skip', skipContent);
     await suppressCommitmentsForSkippedAction(supabase, action);
 
+    void updateMlSnapshotOutcome(supabase, {
+      actionId,
+      outcomeLabel: decision === 'reject' ? 'rejected' : 'skipped',
+    });
+
     return { status: claimedStatus === 'draft' ? 'draft_rejected' : 'skipped', action_id: actionId };
   }
 
@@ -689,6 +695,8 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
       throw new Error(updateError.message);
     }
 
+    void updateMlSnapshotOutcome(supabase, { actionId, outcomeLabel: 'failed' });
+
     throw new Error(
       typeof executionResult.exec_error === 'string'
         ? executionResult.exec_error
@@ -712,6 +720,8 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
 
   const approvalContent = `Approved: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`;
   await insertFeedbackSignalIdempotent(supabase, userId, actionId, 'approve', approvalContent);
+
+  void updateMlSnapshotOutcome(supabase, { actionId, outcomeLabel: 'executed' });
 
   return {
     status: 'executed',

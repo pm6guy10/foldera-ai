@@ -721,6 +721,25 @@ async function handler(request: NextRequest) {
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'acceptance_gate', error: err.message }));
   }
 
+  // Stage 5b: ML global priors — pooled approve rates by coarse bucket (privacy-preserving)
+  try {
+    const { runAggregateMlGlobalPriors } = await import('@/lib/cron/aggregate-ml-global-priors');
+    const mlAgg = await runAggregateMlGlobalPriors();
+    // ok: always true — optional tables pre-migration; check last_error in logs.
+    const mlStage = {
+      ok: true,
+      buckets_written: mlAgg.bucketsWritten,
+      snapshots_labeled: mlAgg.snapshotsLabeled,
+      last_error: mlAgg.error,
+    };
+    stages.ml_global_priors = mlStage;
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'ml_global_priors', ...mlStage }));
+  } catch (err: any) {
+    Sentry.captureException(err);
+    stages.ml_global_priors = { ok: true, buckets_written: 0, snapshots_labeled: 0, last_error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'ml_global_priors', error: err.message }));
+  }
+
   // Stage 6: Weekly goal refresh (Sundays only)
   const dayOfWeek = new Date().getUTCDay();
   if (dayOfWeek === 0) {
