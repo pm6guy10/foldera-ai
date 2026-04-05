@@ -1,8 +1,10 @@
 # WHAT'S NEXT — Updated 2026-04-04
 
-## STATUS: GREEN — Gate 4 unblocked, health system live, connector sync + junk-ingest hardening shipped
+## STATUS: GREEN — Avoidance transactional filter + discrepancy finished-work gates shipped
 
-**Latest ship:** verify `git log -1 --oneline` — `fix: connector sync freshness, Gmail junk exclusion, junk skip extraction` (OAuth Google `prompt: 'consent'`, Gmail spam/promo exclusion, mail-primary `last_synced_at`, nightly `sync_staleness`, token refresh JSON logs, junk skips LLM).
+**Latest ship:** verify `git log -1 --oneline` — avoidance inbound counts skip automated From/domain heuristics; discrepancy prompts + triage gate + brain-receipt `finished_work_gate` for discrepancy/insight.
+
+**Prior:** `fix: connector sync freshness, Gmail junk exclusion, junk skip extraction` (OAuth Google `prompt: 'consent'`, Gmail spam/promo exclusion, mail-primary `last_synced_at`, nightly `sync_staleness`, token refresh JSON logs, junk skips LLM).
 
 **Prior:** `c0ffdc4` — `write_document` anti-padding + `LOCKED_CONTACTS` in system + user prompt from `tkg_constraints` (multi-entity trust).
 

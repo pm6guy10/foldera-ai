@@ -1694,6 +1694,58 @@ describe('extractBehavioralPatterns (class: behavioral_pattern)', () => {
     expect(hit.find((d) => d.title.includes('Pat Lee'))?.suggestedActionType).toBe('send_message');
   });
 
+  it('PATTERN 2: does not treat noreply / transactional-domain mail as inbound needing reply', () => {
+    const ent = {
+      id: 'ent-owner',
+      name: 'Brandon Kapp',
+      last_interaction: daysAgoISO(1),
+      total_interactions: 10,
+      patterns: {},
+      primary_email: 'b@example.com',
+    };
+    const structured = [1, 2, 3].map((i) => ({
+      id: `auto-${i}`,
+      source: 'gmail',
+      type: 'email_received',
+      occurred_at: daysAgoISO(i),
+      content: `[Email received: ${daysAgoISO(i)}]
+From: Chase <alerts@secure.chase.com>
+To: Brandon Kapp <b@example.com>
+Subject: Payment reminder
+Body preview: Hello Brandon Kapp — your statement is ready ${i}`,
+    }));
+    const out = extractBehavioralPatterns([ent], [], [], structured, [], [], now);
+    const avoid = out.filter(
+      (d) => d.class === 'behavioral_pattern' && d.title.includes('0 replies in 14 days'),
+    );
+    expect(avoid.some((d) => d.entityName === 'Brandon Kapp')).toBe(false);
+  });
+
+  it('PATTERN 1: goal contradiction ignores inbound that is only automated senders', () => {
+    const goal = { goal_text: 'Close Acme enterprise deal', priority: 3, goal_category: 'project' as const };
+    const entityAcme = {
+      id: 'ent-acme2',
+      name: 'Acme Industries',
+      last_interaction: daysAgoISO(5),
+      total_interactions: 20,
+      patterns: {},
+      primary_email: 'sales@acme.test',
+    };
+    const structured = [1, 2, 3].map((i) => ({
+      id: `auto-acme-${i}`,
+      source: 'email_received',
+      type: 'email_received',
+      occurred_at: daysAgoISO(i),
+      content: `[Email received: ${daysAgoISO(i)}]
+From: American Express <no-reply@welcome.americanexpress.com>
+Subject: Acme Industries enterprise deal newsletter
+Body preview: Acme Industries enterprise deal ${i}`,
+    }));
+    const out = extractBehavioralPatterns([entityAcme], [goal], [], structured, [], [], now);
+    const p1 = out.filter((d) => d.class === 'behavioral_pattern').find((d) => d.title.includes('zero outbound'));
+    expect(p1).toBeUndefined();
+  });
+
   it('PATTERN 3: momentum then silence (dense mid-window, ≤1 in last 14d)', () => {
     const ent = {
       id: 'ent-sam',

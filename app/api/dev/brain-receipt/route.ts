@@ -113,11 +113,28 @@ export async function POST(request: Request) {
       const titlePart = typeof merged.title === 'string' ? merged.title : '';
       const contentPart = typeof merged.content === 'string' ? merged.content : '';
       const finishedWorkBody = `${titlePart}\n${contentPart}`.trim();
-      const finishedWorkApplies =
+      const topCandidateType =
+        generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType;
+      const isDiscrepancyWinner = topCandidateType === 'discrepancy' || topCandidateType === 'insight';
+
+      const scheduleConflictFinishedWorkApplies =
         latestAction.action_type === 'write_document' &&
         directiveLooksLikeScheduleConflict(directiveForGatesWithClass);
+      const discrepancyFinishedWorkApplies =
+        isDiscrepancyWinner &&
+        (latestAction.action_type === 'write_document' || latestAction.action_type === 'send_message');
+
+      const finishedWorkApplies =
+        scheduleConflictFinishedWorkApplies || discrepancyFinishedWorkApplies;
+
+      const scheduleConflictFinishedWorkFailed =
+        scheduleConflictFinishedWorkApplies && scheduleConflictArtifactIsOwnerProcedure(finishedWorkBody);
+      const discrepancyFinishedWorkFailed =
+        discrepancyFinishedWorkApplies &&
+        bottomGate.blocked_reasons.includes('FINISHED_WORK_REQUIRED');
+
       const finishedWorkFailed =
-        finishedWorkApplies && scheduleConflictArtifactIsOwnerProcedure(finishedWorkBody);
+        scheduleConflictFinishedWorkFailed || discrepancyFinishedWorkFailed;
 
       const inspection =
         executionResult.inspection && typeof executionResult.inspection === 'object'

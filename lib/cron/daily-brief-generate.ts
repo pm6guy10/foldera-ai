@@ -45,6 +45,7 @@ import {
   buildSignalProcessingMessage,
   SAFE_ERROR_MESSAGES,
 } from './daily-brief-status';
+import { looksLikeDiscrepancyTriageOrChoreList } from '@/lib/briefing/discrepancy-finished-work';
 import {
   directiveLooksLikeScheduleConflict,
   scheduleConflictArtifactIsOwnerProcedure,
@@ -263,6 +264,15 @@ export function evaluateBottomGate(
   // 6. Non-executable artifact — framework/reflection/questions, not a finished product
   if (NON_EXECUTABLE_ARTIFACT_PATTERN.test(combined)) {
     blocked_reasons.push('NON_EXECUTABLE_ARTIFACT');
+  }
+
+  // 7. Discrepancy write_document must not be a triage / chore list (finished-work bar)
+  if (
+    isDiscrepancyCandidate &&
+    directive.action_type === 'write_document' &&
+    looksLikeDiscrepancyTriageOrChoreList(combined)
+  ) {
+    blocked_reasons.push('FINISHED_WORK_REQUIRED');
   }
 
   return {

@@ -42,6 +42,7 @@ import type { EntityBehavioralStats } from '@/lib/signals/behavioral-graph';
 import { isBlockedSender } from '@/lib/signals/sender-blocklist';
 import type { DiscrepancyClass } from './discrepancy-detector';
 import { effectiveDiscrepancyClassForGates } from './effective-discrepancy-class';
+import { looksLikeDiscrepancyTriageOrChoreList } from './discrepancy-finished-work';
 import {
   directiveLooksLikeScheduleConflict,
   scheduleConflictArtifactIsOwnerProcedure,
@@ -209,6 +210,9 @@ The winner may come from the Insight Scan — an unsupervised read of raw signal
 2. The directive states what they have not connected about their own behavior; the artifact is still finished work (email or document) framed as: what the footprint shows, then the concrete move.
 3. Never say "Foldera noticed", "the system detected", or "I detected" — state the pattern as observable fact.
 4. Do not replace the pattern with a shallow follow-up line; the user should feel the blind spot was named.
+
+DISCREPANCY_WINNERS (CANDIDATE_CLASS is discrepancy):
+Discrepancy winners still require finished work — never a triage list or numbered chores ("Complete survey", "Schedule payment"). For avoidance-style patterns, output copy-paste-ready reply drafts or a complete send_message. If the evidence cannot support finished work, use wait_rationale or do_nothing per schema — do not ship instructions for the user to do the work.
 
 QUALITY EXAMPLES:
 
@@ -380,6 +384,13 @@ Legacy format (also accepted):
   "artifact": {},
   "why_now": "..."
 }`;
+
+const DISCREPANCY_FINISHED_WORK_USER_BLOCK =
+  `DISCREPANCY_WINNER_FINISHED_WORK (mandatory):
+The scorer selected a discrepancy. Your artifact must be finished work the user approves once — not a triage list, chore checklist, or numbered "Complete / Schedule / Review" instructions.
+- Avoidance / unanswered-thread patterns: copy-paste-ready draft reply(ies) in write_document, or a complete send_message (subject + body) to the real recipient.
+- Other discrepancy classes: one coherent document that names the pattern and contains the concrete resolved content (drafts, scripts, audit with filled facts) — not templates or "suggested approach" steps.
+If the evidence cannot support real finished output, return wait_rationale or do_nothing per JSON schema — never substitute a chores list.`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -2419,6 +2430,10 @@ export function buildPromptFromStructuredContext(
       `Write an email from the user to:\n${ctx.recipient_brief}\n\nTODAY: ${today()}`,
     );
 
+    if (ctx.candidate_class === 'discrepancy') {
+      m.push(DISCREPANCY_FINISHED_WORK_USER_BLOCK);
+    }
+
     // Recipient-short path used to omit TRIGGER_CONTEXT — discrepancy decay then had no delta/why_now.
     if (ctx.trigger_context) {
       m.push(ctx.trigger_context);
@@ -2690,6 +2705,10 @@ export function buildPromptFromStructuredContext(
     `CANDIDATE_CLASS:\n${ctx.candidate_class}`,
     `CANDIDATE_EVIDENCE:\n${ctx.selected_candidate}`,
   );
+
+  if (ctx.candidate_class === 'discrepancy') {
+    sections.push(DISCREPANCY_FINISHED_WORK_USER_BLOCK);
+  }
 
   if (ctx.candidate_context_enrichment) {
     sections.push(ctx.candidate_context_enrichment);
@@ -4763,6 +4782,16 @@ function validateGeneratedArtifact(
   }
 
   issues.push(...getLowCrossSignalIssues(payload, ctx, canonicalArtifactType));
+
+  if (ctx.candidate_class === 'discrepancy' && canonicalArtifactType === 'write_document') {
+    const content = String((payload.artifact as Record<string, unknown>).content ?? '');
+    const combined = `${payload.directive ?? ''}\n${payload.why_now ?? ''}\n${content}`;
+    if (looksLikeDiscrepancyTriageOrChoreList(combined)) {
+      issues.push(
+        'discrepancy_finished_work:triage_or_chore_list — produce copy-paste-ready replies or one finished document; no chore checklists',
+      );
+    }
+  }
 
   // Global placeholder scan on all artifact string fields
   for (const [key, val] of Object.entries(payload.artifact)) {

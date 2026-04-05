@@ -271,4 +271,73 @@ describe('evaluateBottomGate', () => {
     expect(result.pass).toBe(true);
     expect(result.blocked_reasons).toEqual([]);
   });
+
+  const discrepancyDiscovery = {
+    candidateCount: 1,
+    suppressedCandidateCount: 0,
+    selectionMargin: null as number | null,
+    selectionReason: null as string | null,
+    failureReason: null as string | null,
+    topCandidates: [
+      {
+        id: 'cand-disc',
+        rank: 1,
+        candidateType: 'discrepancy',
+        actionType: 'write_document' as const,
+        score: 4,
+        scoreBreakdown: { actionTypeRate: 0.7, entityPenalty: 0, final_score: 4 },
+        targetGoal: null,
+        sourceSignals: [],
+        decision: 'selected' as const,
+        decisionReason: 'test',
+      },
+    ],
+  };
+
+  it('blocks discrepancy write_document that is a chore / triage list (FINISHED_WORK_REQUIRED)', () => {
+    const directive = makeDirective({
+      action_type: 'write_document',
+      directive: 'Name the avoidance pattern across vendors.',
+      reason: 'Multiple inbound threads show no replies in 14 days.',
+      generationLog: {
+        outcome: 'selected',
+        stage: 'persistence',
+        reason: 'test',
+        candidateFailureReasons: [],
+        candidateDiscovery: discrepancyDiscovery,
+      },
+    });
+    const artifact = makeDocArtifact({
+      type: 'document',
+      title: 'Inbox triage',
+      content:
+        'Suggested approach:\n1. Complete Teladoc survey before Friday.\n2. Schedule Chase payment in the app.\nSarah Chen needs sign-off by Wednesday.',
+    });
+    const result = evaluateBottomGate(directive, artifact);
+    expect(result.pass).toBe(false);
+    expect(result.blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
+  });
+
+  it('passes discrepancy write_document with substantive drafted content (no chore list)', () => {
+    const directive = makeDirective({
+      action_type: 'write_document',
+      directive: 'Draft replies to Pat for three unanswered threads.',
+      reason: 'Pat Lee sent four messages in 12 days with no outbound reply.',
+      generationLog: {
+        outcome: 'selected',
+        stage: 'persistence',
+        reason: 'test',
+        candidateFailureReasons: [],
+        candidateDiscovery: discrepancyDiscovery,
+      },
+    });
+    const artifact = makeDocArtifact({
+      type: 'document',
+      title: 'Replies — Pat Lee',
+      content:
+        '--- Thread: Roadmap ---\nHi Pat,\n\nThanks for the questions on the roadmap. Here is the timeline we discussed: Phase 1 ships by March 15.\n\nBest,\n',
+    });
+    const result = evaluateBottomGate(directive, artifact);
+    expect(result.blocked_reasons).not.toContain('FINISHED_WORK_REQUIRED');
+  });
 });

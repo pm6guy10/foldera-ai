@@ -41,6 +41,7 @@
  *  - Discrepancies are PRIMARY candidates; open-loop candidates are fallback.
  */
 
+import { isLikelyAutomatedTransactionalInbound } from './automated-inbound-signal';
 import type { ActionType, GenerationCandidateSource } from './types';
 
 // ---------------------------------------------------------------------------
@@ -1758,6 +1759,7 @@ function countReceivedForEntity(
   let sampleId: string | null = null;
   for (const s of structured) {
     if (!isReceivedStructured(s)) continue;
+    if (isLikelyAutomatedTransactionalInbound(s.content)) continue;
     const t = new Date(s.occurred_at).getTime();
     if (t < sinceMs || t > nowMs) continue;
     if (!contentHitsEntity(s.content, ent)) continue;
@@ -1855,6 +1857,7 @@ export function extractBehavioralPatterns(
       if (sent > 0) continue;
       const goalKwOnInbound = structured.some((s) => {
         if (!isReceivedStructured(s)) return false;
+        if (isLikelyAutomatedTransactionalInbound(s.content)) return false;
         const t = new Date(s.occurred_at).getTime();
         if (t < since14 || t > nowMs) return false;
         if (!contentHitsEntity(s.content, ent)) return false;
