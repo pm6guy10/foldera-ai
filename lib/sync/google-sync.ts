@@ -112,7 +112,7 @@ async function syncGmail(
   do {
     const list = await gmail.users.messages.list({
       userId: 'me',
-      q: `after:${afterSec}`,
+      q: `after:${afterSec} -in:spam -in:trash -category:promotions`,
       maxResults: GMAIL_PAGE_SIZE,
       pageToken,
     });
@@ -618,6 +618,7 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
   let gmailSignals = 0;
   let calendarSignals = 0;
   let driveSignals = 0;
+  let gmailOk = false;
   const errors: string[] = [];
 
   let googleSelfEmail = '';
@@ -633,6 +634,7 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
 
   try {
     gmailSignals = await syncGmail(userId, oauth2, sinceMs);
+    gmailOk = true;
   } catch (err: any) {
     console.error('[google-sync] Gmail sync failed:', err.message);
     errors.push(`gmail: ${err.message}`);
@@ -652,16 +654,20 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
     errors.push(`drive: ${err.message}`);
   }
 
-  // Only advance sync timestamp when ALL sub-syncs succeeded.
-  // If any sub-sync failed, keep the old timestamp so the next run retries
-  // the same window. Dedup via content_hash prevents duplicate signals.
-  // This prevents the Class C data loss pattern (partial success advancing
-  // the timestamp past failed sub-syncs' data windows).
-  if (errors.length === 0) {
+  // Advance timestamp if primary sync (Gmail) succeeded.
+  // Secondary sub-sync failures (Calendar, Drive) are logged but don't
+  // block timestamp advancement — prevents a persistent Drive 403 from
+  // stalling all sync indefinitely. Dedup via content_hash prevents duplicates.
+  if (gmailOk) {
     await updateSyncTimestamp(userId, 'google');
+    if (errors.length > 0) {
+      console.warn(
+        `[google-sync] user=${userId} timestamp advanced (gmail OK) despite secondary errors: ${errors.join('; ')}`,
+      );
+    }
   } else {
     console.warn(
-      `[google-sync] user=${userId} timestamp NOT advanced due to ${errors.length} sub-sync error(s): ${errors.join('; ')}`,
+      `[google-sync] user=${userId} timestamp NOT advanced — primary sync (gmail) failed: ${errors.join('; ')}`,
     );
   }
 

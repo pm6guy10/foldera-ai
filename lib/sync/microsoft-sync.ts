@@ -947,10 +947,12 @@ export async function syncMicrosoft(
   let calendarSignals = 0;
   let fileSignals = 0;
   let taskSignals = 0;
+  let mailOk = false;
   const errors: string[] = [];
 
   try {
     mailSignals = await syncMail(userId, accessToken, sinceIso);
+    mailOk = true;
   } catch (err: any) {
     console.error("[microsoft-sync] Mail sync failed:", err.message);
     errors.push(`mail: ${err.message}`);
@@ -983,16 +985,20 @@ export async function syncMicrosoft(
     errors.push(`tasks: ${err.message}`);
   }
 
-  // Only advance sync timestamp when ALL sub-syncs succeeded.
-  // If any sub-sync failed, keep the old timestamp so the next run retries
-  // the same window. Dedup via content_hash prevents duplicate signals.
-  // This prevents the Class C data loss pattern (partial success advancing
-  // the timestamp past failed sub-syncs' data windows).
-  if (errors.length === 0) {
+  // Advance timestamp if primary sync (Mail) succeeded.
+  // Secondary sub-sync failures (Calendar, Files, Tasks) are logged but don't
+  // block timestamp advancement — prevents a persistent scope issue from
+  // stalling all sync indefinitely. Dedup via content_hash prevents duplicates.
+  if (mailOk) {
     await updateSyncTimestamp(userId, "microsoft");
+    if (errors.length > 0) {
+      console.warn(
+        `[microsoft-sync] user=${userId} timestamp advanced (mail OK) despite secondary errors: ${errors.join('; ')}`,
+      );
+    }
   } else {
     console.warn(
-      `[microsoft-sync] user=${userId} timestamp NOT advanced due to ${errors.length} sub-sync error(s): ${errors.join('; ')}`,
+      `[microsoft-sync] user=${userId} timestamp NOT advanced — primary sync (mail) failed: ${errors.join('; ')}`,
     );
   }
 

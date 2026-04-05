@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-04 — AUDIT: **Permanent data flow + junk mail filter (OAuth, sync timestamps, staleness, extraction skip)**
+  MODE: AUDIT
+  Commit hash(es): verify with `git log -1 --oneline` on `main` — subject `fix: connector sync freshness, Gmail junk exclusion, junk skip extraction`
+  Files changed: `lib/auth/auth-options.ts`, `lib/auth/token-store.ts`, `lib/sync/google-sync.ts`, `lib/sync/microsoft-sync.ts`, `lib/signals/signal-processor.ts`, `app/api/cron/nightly-ops/route.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` — 690 passed; `npm run build` passed; `npm run test:ci:e2e` — 41 passed.
+  Changes: Google NextAuth `prompt: 'consent'`; Gmail query excludes spam/trash/promotions; primary-mail success advances `last_synced_at` despite secondary sub-sync errors; nightly `sync_staleness` stage (&gt;48h); structured token refresh failure logs; junk signals skip LLM and mark processed; expanded junk patterns.
+  Any unresolved issues: Full `tests/e2e/` has one pre-existing failure (`resend webhook rejects empty body` 400 vs 401) unrelated to this slice.
+
 - 2026-04-04 — AUDIT: **Holy Crap artifacts — write_document anti-padding + LOCKED_CONTACTS in LLM prompt**
   MODE: AUDIT
   Commit hash(es): `c0ffdc4` (generator ship); `ddce4aa` (WHATS_NEXT pointer)

@@ -80,8 +80,16 @@ async function refreshGoogleTokens(userId: string, tokens: GoogleTokens, email?:
     });
 
     return newTokens;
-  } catch (error) {
-    console.error('[token-store] Failed to refresh Google tokens:', error);
+  } catch (error: any) {
+    const errorCode = error?.response?.data?.error ?? error?.code ?? 'unknown';
+    const errorDesc = error?.response?.data?.error_description ?? error?.message ?? '';
+    console.error(JSON.stringify({
+      event: 'token_refresh_failed',
+      provider: 'google',
+      userId,
+      error_code: errorCode,
+      error_description: errorDesc.slice(0, 200),
+    }));
     return null;
   }
 }
@@ -115,7 +123,13 @@ export async function getMicrosoftTokens(userId: string): Promise<MicrosoftToken
  */
 async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens, email?: string): Promise<MicrosoftTokens | null> {
   if (!tokens.refresh_token) {
-    console.error('[token-store] No refresh token available for Microsoft — user must re-authenticate');
+    console.error(JSON.stringify({
+      event: 'token_refresh_failed',
+      provider: 'microsoft',
+      userId,
+      error_code: 'no_refresh_token',
+      error_description: 'User must re-authenticate to obtain refresh token',
+    }));
     return null;
   }
 
@@ -134,7 +148,21 @@ async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens, e
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => '');
-      console.error(`[token-store] Microsoft token refresh failed (${response.status}): ${errorBody}`);
+      let errorCode = 'unknown';
+      let errorDesc = '';
+      try {
+        const parsed = JSON.parse(errorBody);
+        errorCode = parsed.error ?? 'unknown';
+        errorDesc = parsed.error_description ?? '';
+      } catch { /* non-JSON body */ }
+      console.error(JSON.stringify({
+        event: 'token_refresh_failed',
+        provider: 'microsoft',
+        userId,
+        http_status: response.status,
+        error_code: errorCode,
+        error_description: errorDesc.slice(0, 200),
+      }));
       return null;
     }
 
@@ -157,8 +185,14 @@ async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens, e
 
     console.log(`[token-store] Microsoft tokens refreshed for user ${userId}`);
     return newTokens;
-  } catch (error) {
-    console.error('[token-store] Failed to refresh Microsoft tokens:', error);
+  } catch (error: any) {
+    console.error(JSON.stringify({
+      event: 'token_refresh_failed',
+      provider: 'microsoft',
+      userId,
+      error_code: error?.code ?? 'exception',
+      error_description: (error?.message ?? '').slice(0, 200),
+    }));
     return null;
   }
 }

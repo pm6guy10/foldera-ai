@@ -32,6 +32,7 @@ const MAX_WARNING_LOGS = 5;
 export const EXTRACTABLE_SOURCES = [
   'outlook', 'gmail', 'outlook_calendar', 'google_calendar',
   'onedrive', 'microsoft_todo', 'notion', 'drive', 'dropbox', 'slack',
+  'claude_conversation',
 ];
 
 interface RawSignal {
@@ -512,12 +513,26 @@ const JUNK_EMAIL_SUBJECT_PATTERNS = [
   /\b(?:reward(?:s)?\s+(?:points?|update|summary|earned)|points?\s+(?:earned|available|expire)|loyalty\s+program|member\s+exclusive)\b/i,
   // Billing noise (account snapshots, not real overdue notices)
   /\b(?:your\s+(?:bill|invoice|receipt|payment)\s+is\s+(?:ready|available|processed)|payment\s+(?:received|processed|confirmed))\b/i,
+  // SaaS renewal / subscription noise
+  /\b(?:subscription\s+(?:renewed|confirmed|active|expires?)|renewal\s+(?:notice|confirmation|reminder)|plan\s+(?:renewed|updated|downgraded|upgraded))\b/i,
+  // Food delivery / rideshare receipts
+  /\b(?:your\s+(?:order|delivery|ride)\s+(?:is\s+)?(?:on\s+(?:the\s+)?way|confirmed|delivered|complete)|delivery\s+confirmation|ride\s+(?:receipt|summary))\b/i,
+  // Social media notifications
+  /\b(?:new\s+(?:follower|like|comment|mention|connection|endorsement)|someone\s+(?:liked|commented|mentioned|followed|endorsed)|tagged\s+you|shared\s+(?:a\s+)?post)\b/i,
+  // App store / purchase receipts
+  /\b(?:purchase\s+(?:receipt|confirmation)|app\s+(?:receipt|purchase)|in.?app\s+purchase|download\s+(?:receipt|confirmation))\b/i,
+  // Automated survey / feedback requests
+  /\b(?:how\s+(?:was|did)\s+(?:your|the)|rate\s+(?:your|our)|take\s+(?:a\s+)?(?:quick\s+)?survey|feedback\s+(?:request|survey)|tell\s+us\s+(?:how|what))\b/i,
 ];
 
 const JUNK_EMAIL_SENDER_PATTERNS = [
   /\b(?:noreply|no-reply|donotreply|do-not-reply|notifications?|alerts?|mailer|newsletter|campaigns?|marketing|promotions?|deals?|offers?)\b/i,
   // Known bulk/transactional sender domains
   /\b(?:mailchimp|sendgrid|constantcontact|klaviyo|marketo|hubspot|salesforce\s*email|brevo|campaign\s*monitor)\b/i,
+  // Social media notification senders
+  /\b(?:facebookmail|linkedin|twitter|x\.com|instagram|tiktok|pinterest|reddit|quora|medium)\b/i,
+  // Food delivery / rideshare / e-commerce
+  /\b(?:doordash|ubereats|grubhub|postmates|instacart|uber|lyft|amazon|ebay|etsy|shopify)\b/i,
 ];
 
 const JUNK_EMAIL_BODY_PATTERNS = [
@@ -529,6 +544,10 @@ const JUNK_EMAIL_BODY_PATTERNS = [
   /\b(?:this\s+is\s+an?\s+automated\s+(?:email|message|notification)|you['']?re\s+receiving\s+this\s+(?:email|message)\s+because)\b/i,
   // Security-only alerts (no user action required on our side)
   /\b(?:sign.?in\s+from\s+(?:a\s+)?new\s+device|new\s+sign.?in\s+(?:detected|from)|someone\s+signed\s+in|login\s+attempt|access\s+attempt)\b/i,
+  // Bulk email footer markers
+  /\b(?:view\s+(?:in|this\s+email\s+in)\s+(?:your\s+)?browser|add\s+us\s+to\s+your\s+(?:address\s+book|contacts)|(?:to\s+)?stop\s+receiving\s+these\s+emails)\b/i,
+  // Tracking pixel / marketing infrastructure
+  /\b(?:click\s+here\s+to\s+(?:view|open)|having\s+trouble\s+(?:viewing|reading)\s+this\s+email|if\s+(?:this\s+email|images?)\s+(?:doesn['']?t|don['']?t|do\s+not)\s+(?:display|show|load))\b/i,
 ];
 
 /**
@@ -885,12 +904,25 @@ async function processBatch(
       continue;
     }
 
-    // Signal-level junk check during decrypt pass (we have decrypted content here).
-    // Junk signals still go to LLM for entity/topic extraction but are flagged
-    // so the commitment gate blocks them in the extraction pass below.
+    // Signal-level junk check during decrypt pass — skip LLM extraction entirely
+    // for junk signals. Saves API credits and prevents noise entities/topics/commitments.
     if (isJunkEmailSignal(s.source, contentSansAttachments)) {
       junkSignalIds.add(s.id);
+      if (!dryRun) {
+        await supabase
+          .from('tkg_signals')
+          .update({
+            processed: true,
+            extracted_entities: [],
+            extracted_commitments: [],
+            extracted_dates: null,
+          })
+          .eq('id', s.id);
+      }
+      result.signals_processed += 1;
+      continue;
     }
+
     trustClassBySignalId.set(
       s.id,
       classifySignalTrustClass(s.source, s.type, s.author, contentSansAttachments),
@@ -982,7 +1014,6 @@ async function processBatch(
     const signalTrustClass = trustClassBySignalId.get(signal.id) ?? 'unclassified';
 
     if (extraction && !isFolderaEmail) {
-      // Upsert persons → tkg_entities (always, even for junk signals)
       for (const person of extraction.persons ?? []) {
         if (!person.name?.trim()) continue;
         const entityId = dryRun
@@ -994,8 +1025,9 @@ async function processBatch(
         }
       }
 
-      // Insert commitments → tkg_commitments (with quality filter)
-      // Junk signals (promo/newsletter/spam) produce ZERO commitments.
+      // Insert commitments → tkg_commitments (with quality filter).
+      // Junk signals are already filtered out before the LLM call,
+      // but signalIsJunk is kept as a safety net.
       if (!signalIsJunk) {
         for (const commitment of extraction.commitments ?? []) {
           if (!commitment.description?.trim()) continue;

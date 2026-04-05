@@ -548,7 +548,54 @@ async function handler(request: NextRequest) {
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'connector_health', error: err.message }));
   }
 
-  // Stage 1d: Daily brief not-opened engagement signals (24h+ after send)
+  // Stage 1d: Sync staleness detection — alert when any provider hasn't synced in 48h+
+  try {
+    const supabaseStaleness = createServerClient();
+    const { data: tokenRows } = await supabaseStaleness
+      .from('user_tokens')
+      .select('user_id, provider, last_synced_at, email, access_token, disconnected_at')
+      .is('disconnected_at', null);
+
+    const STALENESS_THRESHOLD_MS = 48 * 60 * 60 * 1000;
+    const now = Date.now();
+    const staleProviders: Array<{ user_id: string; provider: string; stale_hours: number; email: string | null }> = [];
+
+    for (const row of tokenRows ?? []) {
+      if (!row.access_token || !row.last_synced_at) continue;
+      const lastSyncMs = new Date(row.last_synced_at).getTime();
+      const staleMs = now - lastSyncMs;
+      if (staleMs > STALENESS_THRESHOLD_MS) {
+        staleProviders.push({
+          user_id: row.user_id,
+          provider: row.provider,
+          stale_hours: Math.round(staleMs / (60 * 60 * 1000)),
+          email: row.email,
+        });
+      }
+    }
+
+    if (staleProviders.length > 0) {
+      for (const sp of staleProviders) {
+        Sentry.captureMessage(`Sync stale: ${sp.provider} for user ${sp.user_id} (${sp.stale_hours}h)`, 'warning');
+      }
+      console.warn(JSON.stringify({
+        event: 'nightly_ops_sync_stale',
+        stale_providers: staleProviders.map(sp => ({
+          provider: sp.provider,
+          stale_hours: sp.stale_hours,
+        })),
+      }));
+    }
+
+    stages.sync_staleness = { ok: staleProviders.length === 0, stale_count: staleProviders.length, stale_providers: staleProviders };
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'sync_staleness', stale_count: staleProviders.length }));
+  } catch (err: any) {
+    Sentry.captureException(err);
+    stages.sync_staleness = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'sync_staleness', error: err.message }));
+  }
+
+  // Stage 1e: Daily brief not-opened engagement signals (24h+ after send)
   try {
     const { recordUnopenedDailyBriefSignals } = await import('@/lib/cron/brief-engagement-signals');
     const engagement = await recordUnopenedDailyBriefSignals();
