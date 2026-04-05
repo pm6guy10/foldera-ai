@@ -6,7 +6,7 @@
 
 - 2026-04-05 — AUDIT: **Integrations status not updating after reconnect — CDN cache + fetch race**
   MODE: AUDIT
-  Commit hash(es): verify `git log -1 --oneline` on `main`
+  Commit hash(es): `4497e9f`
   Files changed: `next.config.mjs`, `app/dashboard/settings/SettingsClient.tsx`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`. Local `npm run test:ci:e2e` not re-run (port 3000 busy; alternate port hit middleware sandbox error — CI on GitHub is canonical).
   Changes: Replaced `/api/integrations/*` `Cache-Control` `s-maxage`/SWR with `private, no-store`; client integrations GET uses `cache: 'no-store'` and a monotonic generation ref so the latest refresh wins; disconnect handlers always `refreshIntegrationsStatus()` in `finally`.
