@@ -232,3 +232,24 @@ export async function softDisconnectUserToken(
 
   console.log(`[user-tokens] soft-disconnected ${provider} token for user ${userId}`);
 }
+
+/**
+ * After a non-recoverable refresh (invalid_grant, revoked refresh, etc.), clear secrets
+ * so settings shows Connect, cron skips the user, and the next OAuth run restores the row.
+ */
+export async function softDisconnectAfterFatalOAuthRefresh(
+  userId: string,
+  provider: 'google' | 'microsoft',
+  meta: { source: string; error_code?: string; error_description?: string },
+): Promise<void> {
+  console.error(
+    JSON.stringify({
+      event: 'oauth_refresh_fatal_soft_disconnect',
+      provider,
+      source: meta.source,
+      error_code: meta.error_code ?? null,
+      error_description: (meta.error_description ?? '').slice(0, 200),
+    }),
+  );
+  await softDisconnectUserToken(userId, provider);
+}

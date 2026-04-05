@@ -117,6 +117,7 @@ These close `REVENUE_PROOF.md` / spec proof tables; agents cannot complete them 
 - **Eligibility** — `listConnectedUserIds()` in `lib/auth/user-tokens.ts`; `filterDailyBriefEligibleUserIds` includes OAuth-connected users without a `user_subscriptions` row yet; `getEligibleDailyBriefUserIds` unions graph `self` + connected.
 - **Onboard** — `POST /api/onboard/set-goals` fire-and-forget `syncGoogle` / `syncMicrosoft` with `MS_90D` lookback after goals RPC succeeds.
 - **Settings OAuth UX** — `integrations/status`: `needs_reconnect` when no `refresh_token` in `user_tokens`; `sync_stale` when `last_synced_at` &gt;3d (`INTEGRATIONS_SYNC_STALE_MS`); `SettingsClient` Reconnect for either; copy distinguishes “reconnect required” vs “sync looks stalled.”
+- **Fatal OAuth refresh** — `invalid_grant` / selected AADSTS (Microsoft) and `invalid_grant` (Google) on refresh → `softDisconnectAfterFatalOAuthRefresh` (same as manual disconnect) so cron stops and user re-signs via Connect; `oauth_refresh_fatal_soft_disconnect` log.
 
 ### DONE (2026-04-01) — Playwright / tooling
 

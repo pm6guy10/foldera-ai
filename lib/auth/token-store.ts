@@ -7,7 +7,15 @@
  */
 
 import { google } from 'googleapis';
-import { getUserToken, saveUserToken } from '@/lib/auth/user-tokens';
+import {
+  getUserToken,
+  saveUserToken,
+  softDisconnectAfterFatalOAuthRefresh,
+} from '@/lib/auth/user-tokens';
+import {
+  isGoogleRefreshFatalError,
+  isMicrosoftRefreshFatalError,
+} from '@/lib/auth/oauth-refresh-fatals';
 
 
 interface GoogleTokens {
@@ -90,6 +98,13 @@ async function refreshGoogleTokens(userId: string, tokens: GoogleTokens, email?:
       error_code: errorCode,
       error_description: errorDesc.slice(0, 200),
     }));
+    if (isGoogleRefreshFatalError(String(errorCode), String(errorDesc))) {
+      await softDisconnectAfterFatalOAuthRefresh(userId, 'google', {
+        source: 'token-store.refreshGoogleTokens',
+        error_code: String(errorCode),
+        error_description: errorDesc,
+      });
+    }
     return null;
   }
 }
@@ -163,6 +178,13 @@ async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens, e
         error_code: errorCode,
         error_description: errorDesc.slice(0, 200),
       }));
+      if (isMicrosoftRefreshFatalError(errorCode, errorDesc)) {
+        await softDisconnectAfterFatalOAuthRefresh(userId, 'microsoft', {
+          source: 'token-store.refreshMicrosoftTokens',
+          error_code: errorCode,
+          error_description: errorDesc,
+        });
+      }
       return null;
     }
 

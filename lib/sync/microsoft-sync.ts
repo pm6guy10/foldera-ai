@@ -15,7 +15,9 @@ import {
   getUserToken,
   updateSyncTimestamp,
   saveUserToken,
+  softDisconnectAfterFatalOAuthRefresh,
 } from "@/lib/auth/user-tokens";
+import { isMicrosoftRefreshFatalError } from "@/lib/auth/oauth-refresh-fatals";
 import { encrypt } from "@/lib/encryption";
 import { createHash } from "crypto";
 import mammoth from 'mammoth';
@@ -76,9 +78,25 @@ async function refreshMicrosoftAccessToken(
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => "");
+    let errorCode = "unknown";
+    let errorDesc = "";
+    try {
+      const parsed = JSON.parse(errorBody);
+      errorCode = parsed.error ?? "unknown";
+      errorDesc = parsed.error_description ?? "";
+    } catch {
+      /* non-JSON */
+    }
     console.error(
       `[microsoft-sync] Token refresh failed (${response.status}): ${errorBody.slice(0, 200)}`,
     );
+    if (isMicrosoftRefreshFatalError(errorCode, errorDesc)) {
+      await softDisconnectAfterFatalOAuthRefresh(userId, "microsoft", {
+        source: "microsoft-sync.refreshMicrosoftAccessToken",
+        error_code: errorCode,
+        error_description: errorDesc,
+      });
+    }
     return null;
   }
 

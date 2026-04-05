@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-05 — AUDIT: **OAuth fatal refresh → auto soft-disconnect (Microsoft + Google)**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `lib/auth/oauth-refresh-fatals.ts`, `lib/auth/__tests__/oauth-refresh-fatals.test.ts`, `lib/auth/user-tokens.ts` (`softDisconnectAfterFatalOAuthRefresh`), `lib/auth/token-store.ts`, `lib/auth/auth-options.ts`, `lib/sync/microsoft-sync.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (742 passed).
+  Changes: On non-recoverable refresh responses, clear `user_tokens` like manual disconnect so cron skips the user and dashboard shows Connect; structured `oauth_refresh_fatal_soft_disconnect` log.
+  Any unresolved issues: Transient 5xx from token endpoints do not soft-disconnect; user must sign in again after disconnect (no in-app modal — same as today).
+
 - 2026-04-05 — AUDIT: **Settings integrations status — reconnect vs sync-stale**
   MODE: AUDIT
   Commit hash(es): `cee25c3`
