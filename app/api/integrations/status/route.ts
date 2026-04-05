@@ -80,7 +80,14 @@ export async function GET() {
       sourceCounts[src] = (sourceCounts[src] ?? 0) + 1;
     }
 
-    return NextResponse.json({ integrations, sourceCounts });
+    return NextResponse.json(
+      { integrations, sourceCounts },
+      {
+        headers: {
+          'Cache-Control': 'private, no-store, must-revalidate',
+        },
+      },
+    );
   } catch (err: unknown) {
     return apiErrorForRoute(err, 'integrations/status');
   }

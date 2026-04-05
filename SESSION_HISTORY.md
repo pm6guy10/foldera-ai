@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-05 — AUDIT: **Integrations status not updating after reconnect — CDN cache + fetch race**
+  MODE: AUDIT
+  Commit hash(es): verify `git log -1 --oneline` on `main`
+  Files changed: `next.config.mjs`, `app/dashboard/settings/SettingsClient.tsx`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`. Local `npm run test:ci:e2e` not re-run (port 3000 busy; alternate port hit middleware sandbox error — CI on GitHub is canonical).
+  Changes: Replaced `/api/integrations/*` `Cache-Control` `s-maxage`/SWR with `private, no-store`; client integrations GET uses `cache: 'no-store'` and a monotonic generation ref so the latest refresh wins; disconnect handlers always `refreshIntegrationsStatus()` in `finally`.
+  Any unresolved issues: Production CDN may need a deploy to drop old cached entries; users should hard-refresh once after deploy if they still see stale cards.
+
 - 2026-04-05 — OPS: **Remove SettingsClient Cursor debug ingest (`127.0.0.1:7695`)**
   MODE: OPS
   Commit hash(es): verify `git log -1 --oneline` on `main`

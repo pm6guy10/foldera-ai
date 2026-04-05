@@ -64,13 +64,18 @@ export default function SettingsClient() {
 
   const isOwnerAccount = session?.user?.id === OWNER_USER_ID;
 
+  /** Bumps on each integrations fetch so a slower in-flight GET cannot overwrite a newer refresh (OAuth return vs initial load). */
+  const integrationsFetchGenRef = useRef(0);
+
   const refreshIntegrationsStatus = useCallback(async () => {
-    const response = await fetch('/api/integrations/status');
+    const gen = ++integrationsFetchGenRef.current;
+    const response = await fetch('/api/integrations/status', { cache: 'no-store' });
     if (!response.ok) {
       throw new Error('Could not refresh integrations status.');
     }
 
     const data = await response.json();
+    if (gen !== integrationsFetchGenRef.current) return;
     setIntegrations(data.integrations || []);
   }, []);
 
@@ -86,14 +91,17 @@ export default function SettingsClient() {
   useEffect(() => {
     if (status === 'loading') return; // keep loading=true while session resolves
     if (status !== 'authenticated') { setLoading(false); return; }
+    const intGen = ++integrationsFetchGenRef.current;
     Promise.all([
-      fetch('/api/integrations/status'),
+      fetch('/api/integrations/status', { cache: 'no-store' }),
       fetch('/api/subscription/status'),
       fetch('/api/onboard/set-goals'),
     ]).then(async ([intRes, subRes, goalsRes]) => {
       if (intRes.ok) {
         const d = await intRes.json();
-        setIntegrations(d.integrations || []);
+        if (intGen === integrationsFetchGenRef.current) {
+          setIntegrations(d.integrations || []);
+        }
       }
       if (subRes.ok) {
         setSubscription(await subRes.json());
@@ -393,12 +401,11 @@ export default function SettingsClient() {
                           const response = await fetch('/api/google/disconnect', { method: 'POST' });
                           if (!response.ok) {
                             setActionError('Could not disconnect Google. Try again.');
-                            await refreshIntegrationsStatus().catch(() => {});
                           }
                         } catch {
                           setActionError('Network error disconnecting Google.');
-                          await refreshIntegrationsStatus().catch(() => {});
                         } finally {
+                          await refreshIntegrationsStatus().catch(() => {});
                           setDisconnecting(null);
                         }
                       }}
@@ -489,12 +496,11 @@ export default function SettingsClient() {
                           const response = await fetch('/api/microsoft/disconnect', { method: 'POST' });
                           if (!response.ok) {
                             setActionError('Could not disconnect Microsoft. Try again.');
-                            await refreshIntegrationsStatus().catch(() => {});
                           }
                         } catch {
                           setActionError('Network error disconnecting Microsoft.');
-                          await refreshIntegrationsStatus().catch(() => {});
                         } finally {
+                          await refreshIntegrationsStatus().catch(() => {});
                           setDisconnecting(null);
                         }
                       }}

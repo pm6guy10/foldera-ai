@@ -12,12 +12,14 @@ const nextConfig = {
   },
   async headers() {
     return [
+      // Session-scoped JSON (e.g. GET /api/integrations/status) — never cache on shared caches;
+      // s-maxage caused stale connector state after OAuth reconnect on production.
       {
         source: '/api/integrations/:path*',
         headers: [
           {
             key: 'Cache-Control',
-            value: 's-maxage=60, stale-while-revalidate=300',
+            value: 'private, no-store, must-revalidate',
           },
         ],
       },
