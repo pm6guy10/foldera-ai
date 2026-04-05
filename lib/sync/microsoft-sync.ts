@@ -407,25 +407,58 @@ async function syncMail(
   accessToken: string,
   sinceIso: string,
 ): Promise<number> {
-  const filter = encodeURIComponent(`receivedDateTime ge ${sinceIso}`);
+  // Inbox: filter on receivedDateTime. Sent Items: must use sentDateTime — using
+  // receivedDateTime on /sentitems often makes Graph return 400 or empty, and
+  // Promise.all aborted the whole mail sync so last_synced_at never advanced.
+  const inboxFilter = encodeURIComponent(`receivedDateTime ge ${sinceIso}`);
+  const sentFilter = encodeURIComponent(`sentDateTime ge ${sinceIso}`);
   const select =
     "id,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,body,conversationId,internetMessageId,importance,inferenceClassification,internetMessageHeaders";
 
-  // Fetch inbox and sent items in parallel
-  const [inboxData, sentData] = await Promise.all([
-    graphFetchAll<any>(
-      userId,
-      accessToken,
-      `${GRAPH_BASE}/me/messages?$filter=${filter}&$select=${select}&$top=${MAIL_PAGE_SIZE}&$orderby=receivedDateTime desc`,
-      { maxItems: MAIL_MAX_ITEMS_PER_FOLDER },
-    ),
-    graphFetchAll<any>(
-      userId,
-      accessToken,
-      `${GRAPH_BASE}/me/mailFolders/sentitems/messages?$filter=${filter}&$select=${select}&$top=${MAIL_PAGE_SIZE}&$orderby=sentDateTime desc`,
-      { maxItems: MAIL_MAX_ITEMS_PER_FOLDER },
-    ),
+  const inboxUrl = `${GRAPH_BASE}/me/messages?$filter=${inboxFilter}&$select=${select}&$top=${MAIL_PAGE_SIZE}&$orderby=receivedDateTime desc`;
+  const sentUrl = `${GRAPH_BASE}/me/mailFolders/sentitems/messages?$filter=${sentFilter}&$select=${select}&$top=${MAIL_PAGE_SIZE}&$orderby=sentDateTime desc`;
+
+  const [inboxSettled, sentSettled] = await Promise.allSettled([
+    graphFetchAll<any>(userId, accessToken, inboxUrl, {
+      maxItems: MAIL_MAX_ITEMS_PER_FOLDER,
+    }),
+    graphFetchAll<any>(userId, accessToken, sentUrl, {
+      maxItems: MAIL_MAX_ITEMS_PER_FOLDER,
+    }),
   ]);
+
+  const inboxData =
+    inboxSettled.status === "fulfilled" ? inboxSettled.value : [];
+  const sentData = sentSettled.status === "fulfilled" ? sentSettled.value : [];
+
+  if (inboxSettled.status === "rejected") {
+    console.error(
+      `[microsoft-sync] Inbox mail fetch failed user=${userId}:`,
+      inboxSettled.reason instanceof Error
+        ? inboxSettled.reason.message
+        : String(inboxSettled.reason),
+    );
+  }
+  if (sentSettled.status === "rejected") {
+    console.error(
+      `[microsoft-sync] Sent-items mail fetch failed user=${userId}:`,
+      sentSettled.reason instanceof Error
+        ? sentSettled.reason.message
+        : String(sentSettled.reason),
+    );
+  }
+
+  if (inboxSettled.status === "rejected" && sentSettled.status === "rejected") {
+    const a =
+      inboxSettled.reason instanceof Error
+        ? inboxSettled.reason.message
+        : String(inboxSettled.reason);
+    const b =
+      sentSettled.reason instanceof Error
+        ? sentSettled.reason.message
+        : String(sentSettled.reason);
+    throw new Error(`mail inbox+sent failed: ${a}; ${b}`);
+  }
 
   const inboxMessages = inboxData.map((m: any) => ({ ...m, _folder: "inbox" }));
   const sentMessages = sentData.map((m: any) => ({ ...m, _folder: "sent" }));

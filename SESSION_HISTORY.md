@@ -4,6 +4,15 @@
 
 ## Session Logs
 
+- 2026-04-05 — AUDIT: **Microsoft mail sync never advanced `last_synced_at` (sent folder filter + Promise.all)**
+  MODE: AUDIT
+  Commit hash(es): `385c590`
+  Files changed: `lib/sync/microsoft-sync.ts`, `lib/auth/user-tokens.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run lib/sync/__tests__/microsoft-sync.test.ts lib/auth/__tests__/user-tokens.test.ts`.
+  Evidence: User `GET /api/integrations/status` showed `azure_ad.last_synced_at` still `2026-04-01` after reconnect + “Synced 0 signals” — API truth matched UI (`sync_stale: true`), not a client cache issue.
+  Changes: Sent Items Graph query uses `sentDateTime ge` (not `receivedDateTime`); inbox + sent fetches use `allSettled` and only throw if both fail; `updateSyncTimestamp` surfaces DB update failures.
+  Any unresolved issues: If both Graph calls fail, user still sees stalled mail — check Vercel logs for `[microsoft-sync] Inbox mail fetch failed` / `Sent-items mail fetch failed`.
+
 - 2026-04-05 — AUDIT: **Integrations status not updating after reconnect — CDN cache + fetch race**
   MODE: AUDIT
   Commit hash(es): `4497e9f`

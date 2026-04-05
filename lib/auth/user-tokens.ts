@@ -133,11 +133,15 @@ export async function updateSyncTimestamp(
   provider: 'google' | 'microsoft',
 ): Promise<void> {
   const supabase = createServerClient();
-  await supabase
+  const { error } = await supabase
     .from('user_tokens')
     .update({ last_synced_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('user_id', userId)
     .eq('provider', provider);
+  if (error) {
+    console.error(`[user-tokens] updateSyncTimestamp(${provider}) failed for ${userId}:`, error.message);
+    throw error;
+  }
 }
 
 /**
