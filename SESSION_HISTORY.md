@@ -6,7 +6,7 @@
 
 - 2026-04-05 — AUDIT: **Microsoft mail sync never advanced `last_synced_at` (sent folder filter + Promise.all)**
   MODE: AUDIT
-  Commit hash(es): `385c590`
+  Commit hash(es): `2d3cec6`
   Files changed: `lib/sync/microsoft-sync.ts`, `lib/auth/user-tokens.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run lib/sync/__tests__/microsoft-sync.test.ts lib/auth/__tests__/user-tokens.test.ts`.
   Evidence: User `GET /api/integrations/status` showed `azure_ad.last_synced_at` still `2026-04-01` after reconnect + “Synced 0 signals” — API truth matched UI (`sync_stale: true`), not a client cache issue.
