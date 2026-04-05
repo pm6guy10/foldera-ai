@@ -6,7 +6,7 @@
 
 - 2026-04-05 — AUDIT: **daily-brief test mock — ML tables first + full verbs**
   MODE: AUDIT
-  Commit hash(es): (set after push)
+  Commit hash(es): `b6434d0`
   Files changed: `lib/cron/__tests__/daily-brief.test.ts`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (full suite green).
   Changes: Moved `tkg_directive_ml_global_priors` / `tkg_directive_ml_snapshots` handling to the top of `mockSupabase.from()`; `global_priors` mock adds `insert` success; `snapshots` mock adds `select` empty rows (same pattern as CI expectation for `fetchGlobalMlPriorMap` / `insertDirectiveMlSnapshot`). Branches that merged before the prior mock block no longer hit `Unexpected table` unhandled rejections.
