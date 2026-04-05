@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-05 — AUDIT: **Settings OAuth return — always refresh integrations (sync_stale after reconnect)**
+  MODE: AUDIT
+  Commit hash(es): verify `git log -1 --oneline` on `main` — `fix(settings): refresh integrations on OAuth return even if sync-now fails`
+  Files changed: `app/dashboard/settings/SettingsClient.tsx` (dev-only debug ingest for session `7a929c`), `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep Settings` (4 passed).
+  Changes: On `google_connected` / `microsoft_connected`, await `refreshIntegrationsStatus()` before `POST sync-now` and again in `finally`; dropped optimistic integration row that omitted `sync_stale`. Temporary NDJSON logs to local ingest in development only.
+  Any unresolved issues: Remove folded `// #region agent log` blocks after one successful local repro confirms `ms_sync_stale: true` in `debug-7a929c.log`.
+
 - 2026-04-05 — AUDIT: **OAuth fatal refresh → auto soft-disconnect (Microsoft + Google)**
   MODE: AUDIT
   Commit hash(es): `f49150e`
