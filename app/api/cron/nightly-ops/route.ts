@@ -34,6 +34,7 @@ import { checkConnectorHealth } from '@/lib/cron/connector-health';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { TEST_USER_ID, SIGNAL_RETENTION_DAYS, daysMs } from '@/lib/config/constants';
 import { runBehavioralGraph } from '@/lib/signals/behavioral-graph';
+import { runAttentionDecay } from '@/lib/signals/entity-attention-runtime';
 import { computeAndPersistHealthVerdict } from '@/lib/cron/health-verdict';
 
 export const dynamic = 'force-dynamic';
@@ -627,6 +628,17 @@ async function handler(request: NextRequest) {
     Sentry.captureException(err);
     stages.behavioral_graph = { ok: false, error: err.message };
     console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'behavioral_graph', error: err.message }));
+  }
+
+  // Stage 2b2: Attention salience decay (patterns.attention)
+  try {
+    const attResult = await runAttentionDecay(retentionUserIds);
+    stages.attention_decay = attResult;
+    console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'attention_decay', ...attResult }));
+  } catch (err: any) {
+    Sentry.captureException(err);
+    stages.attention_decay = { ok: false, error: err.message };
+    console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'attention_decay', error: err.message }));
   }
 
   // Stage 2c: Complete suppressed commitments

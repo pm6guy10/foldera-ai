@@ -6,6 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
 import { encrypt } from '@/lib/encryption';
+import { bumpAttentionSalienceForEmails } from '@/lib/signals/entity-attention-runtime';
 
 export function normalizeMailSubject(subject: string): string {
   let s = subject.replace(/\s+/g, ' ').trim();
@@ -105,9 +106,10 @@ export async function persistResponsePatternSignals(
 
     const ageMs = now - r.dateMs;
     let line: string;
+    let replyHours: number | null = null;
     if (replyMs !== null) {
-      const hours = Math.max(0, Math.round(((replyMs - r.dateMs) / 3600000) * 10) / 10);
-      line = `${displayFrom} emailed "${subjShort}" on ${new Date(r.dateMs).toISOString().slice(0, 10)}. Response time: ${hours}h.`;
+      replyHours = Math.max(0, Math.round(((replyMs - r.dateMs) / 3600000) * 10) / 10);
+      line = `${displayFrom} emailed "${subjShort}" on ${new Date(r.dateMs).toISOString().slice(0, 10)}. Response time: ${replyHours}h.`;
     } else if (ageMs >= UNREPLIED_MIN_MS) {
       const days = Math.floor(ageMs / MS_PER_DAY);
       line = `${displayFrom} emailed "${subjShort}" on ${new Date(r.dateMs).toISOString().slice(0, 10)}. No reply after ${days}d (unreplied thread).`;
@@ -133,7 +135,12 @@ export async function persistResponsePatternSignals(
       { onConflict: 'user_id,content_hash', ignoreDuplicates: true },
     );
 
-    if (!error) inserted++;
+    if (!error) {
+      inserted++;
+      if (replyHours !== null && replyHours <= 48) {
+        void bumpAttentionSalienceForEmails(supabase, userId, [fromEmail], 0.04, 0.72);
+      }
+    }
   }
 
   return inserted;

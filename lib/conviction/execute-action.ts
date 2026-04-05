@@ -18,6 +18,7 @@ import {
 } from '@/lib/email/resend';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
 import { updateMlSnapshotOutcome } from '@/lib/ml/directive-ml-snapshot';
+import { reinforceAttentionForAction } from '@/lib/signals/entity-attention-runtime';
 
 export type ExecuteDecision = 'approve' | 'skip' | 'reject';
 
@@ -654,6 +655,8 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
       outcomeLabel: decision === 'reject' ? 'rejected' : 'skipped',
     });
 
+    await reinforceAttentionForAction(supabase, userId, actionId, action, 'skipped');
+
     return { status: claimedStatus === 'draft' ? 'draft_rejected' : 'skipped', action_id: actionId };
   }
 
@@ -697,6 +700,14 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
 
     void updateMlSnapshotOutcome(supabase, { actionId, outcomeLabel: 'failed' });
 
+    await reinforceAttentionForAction(
+      supabase,
+      userId,
+      actionId,
+      { ...action, execution_result: executionResult },
+      'failed',
+    );
+
     throw new Error(
       typeof executionResult.exec_error === 'string'
         ? executionResult.exec_error
@@ -722,6 +733,14 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
   await insertFeedbackSignalIdempotent(supabase, userId, actionId, 'approve', approvalContent);
 
   void updateMlSnapshotOutcome(supabase, { actionId, outcomeLabel: 'executed' });
+
+  await reinforceAttentionForAction(
+    supabase,
+    userId,
+    actionId,
+    { ...action, execution_result: executionResult },
+    'executed',
+  );
 
   return {
     status: 'executed',

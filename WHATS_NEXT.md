@@ -45,6 +45,7 @@
 
 **Cursor / agents (next best slices):**
 
+- **Living graph v1 shipped:** Monitor structured log `living_graph_applied` and `patterns.attention` growth; no DB migration required (JSONB subkey). Tune `REINFORCE_*` / decay if ordering swings too hard.
 - **AZ-24 continuation:** Drive down `do_nothing` + legacy `research` share — more scorer/generator paths that still emit `research` or thin outcomes.
 - **Post-`fab7c5e` regression guard:** One vitest or pipeline test that rejects template-shaped `write_document` bodies (optional; only if flakes stay low).
 - **Dashboard:** Surface `GET /api/health/verdict` in settings or a small widget (spec-tied).

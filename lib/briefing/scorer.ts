@@ -41,6 +41,10 @@ import type { DiscrepancyClass, RecentDirectiveInput, TriggerMetadata } from './
 import { applyStakesGate } from './stakes-gate';
 import { applyEntityRealityGate } from './entity-reality-gate';
 import { runInsightScan } from './insight-scan';
+import {
+  type EntitySalienceRow,
+  computeLivingGraphMultiplier,
+} from '@/lib/signals/entity-attention';
 
 // ---------------------------------------------------------------------------
 // Self-referential signal filter — excludes Foldera's own directive outputs
@@ -3327,7 +3331,8 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   todayMidnight.setHours(0, 0, 0, 0);
 
   // Parallel data fetch
-  const [commitmentsRes, signalsRes, entitiesRes, goalsRes, todayActionsRes] = await Promise.all([
+  const [commitmentsRes, signalsRes, entitiesRes, goalsRes, todayActionsRes, entitySalienceRes] =
+    await Promise.all([
     // Open commitments (last 14 days or no deadline), excluding user-suppressed ones
     supabase
       .from('tkg_commitments')
@@ -3378,6 +3383,14 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       .in('status', ['executed', 'approved'])
       .gte('executed_at', todayMidnight.toISOString())
       .limit(5),
+
+    supabase
+      .from('tkg_entities')
+      .select('id, name, patterns, trust_class, primary_email, emails')
+      .eq('user_id', userId)
+      .neq('name', 'self')
+      .eq('type', 'person')
+      .limit(200),
   ]);
 
   const commitments = commitmentsRes.data ?? [];
@@ -3508,6 +3521,53 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   }
   if (todayFocusDomains.size > 0) {
     console.log(JSON.stringify({ event: 'scorer_today_focus', userId, domains: [...todayFocusDomains] }));
+  }
+
+  const entitySalienceRows: EntitySalienceRow[] = (entitySalienceRes.data ?? []).map(
+    (e: {
+      id: string;
+      name: string;
+      patterns: unknown;
+      trust_class: string | null;
+      primary_email?: string | null;
+      emails?: unknown;
+    }) => ({
+      id: e.id,
+      name: e.name ?? '',
+      patterns: e.patterns,
+      trust_class: e.trust_class,
+      primary_email: e.primary_email,
+      emails: e.emails,
+    }),
+  );
+
+  function applyLivingGraphScoreMultiplier(
+    score: number,
+    ref: { id: string; type: string; entityName?: string; discrepancyClass?: DiscrepancyClass },
+    titleShort: string,
+  ): number {
+    const lg = computeLivingGraphMultiplier(entitySalienceRows, ref);
+    if (lg.multiplier !== 1 || lg.exempt_reason === 'discrepancy_silence_evidence') {
+      logStructuredEvent({
+        event: 'living_graph_applied',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'scoring',
+        details: {
+          scope: 'scorer',
+          candidate_id: ref.id.length > 80 ? ref.id.slice(0, 80) : ref.id,
+          candidate_type: ref.type,
+          title: titleShort,
+          entity_id: lg.entity_id,
+          raw_salience: lg.raw_salience,
+          effective_salience: lg.effective_salience,
+          multiplier: lg.multiplier,
+          exempt_reason: lg.exempt_reason,
+        },
+      });
+    }
+    return score * lg.multiplier;
   }
 
   logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
@@ -4355,6 +4415,12 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       }
     }
 
+    score = applyLivingGraphScoreMultiplier(
+      score,
+      { id: c.id, type: c.type, entityName: c.entityName },
+      c.title.slice(0, 80),
+    );
+
     // Find related signals: keyword overlap with this loop's content
     const loopWords = new Set(
       c.content.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 5),
@@ -4549,6 +4615,11 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     // Take the strongest connection and merge into a compound loop
     const bestConnection = connections[0];
     const compound = mergeLoops(bestConnection);
+    const compoundScoreLg = applyLivingGraphScoreMultiplier(
+      compound.score,
+      { id: compound.id, type: 'compound', entityName: bestConnection.sharedPerson },
+      compound.title.slice(0, 80),
+    );
     logStructuredEvent({
       event: 'scorer_connection',
       userId,
@@ -4559,7 +4630,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
         connection_type: compound.connectionType,
       },
     });
-    scored.push(compound);
+    scored.push({ ...compound, score: compoundScoreLg });
   }
 
   // -----------------------------------------------------------------------
@@ -4749,7 +4820,12 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     // goal_velocity_mismatch or drift alerts that have no external target.
     const isRecipientlessStatistical =
       (d.class === 'goal_velocity_mismatch' || d.class === 'drift') && !d.entityName;
-    const finalScore = isRecipientlessStatistical ? score * 0.4 : score;
+    let finalScore = isRecipientlessStatistical ? score * 0.4 : score;
+    finalScore = applyLivingGraphScoreMultiplier(
+      finalScore,
+      { id: d.id, type: 'discrepancy', entityName: d.entityName, discrepancyClass: d.class },
+      d.title.slice(0, 80),
+    );
     scored.push({
       id: d.id,
       type: 'discrepancy',
@@ -4839,7 +4915,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
     const daysSinceInsightSurface = await getDaysSinceLastSurface(userId, insight.title);
     const insightMlBucket = buildDirectiveMlBucketKey(mlBucketInputsFromInsight(insight));
-    const { score: insightScore, breakdown: insightGeminiBreakdown } = computeCandidateScore({
+    const { score: insightScoreRaw, breakdown: insightGeminiBreakdown } = computeCandidateScore({
       stakes: 4,
       urgency: 0.85,
       tractability: 0.8,
@@ -4850,6 +4926,16 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
       highStakes: true,
       globalPriorRate: globalMlPriors.get(insightMlBucket) ?? null,
     });
+    const insightScore = applyLivingGraphScoreMultiplier(
+      insightScoreRaw,
+      {
+        id: insight.id,
+        type: 'discrepancy',
+        entityName: insight.suggested_entity ?? undefined,
+        discrepancyClass: 'behavioral_pattern',
+      },
+      insight.title.slice(0, 80),
+    );
 
     const relatedFromInsight = insight.evidence_signals.map((id) => {
       const row = signals.find((s: { id: string }) => String(s.id) === id);

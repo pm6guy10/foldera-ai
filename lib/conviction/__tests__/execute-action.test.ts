@@ -166,6 +166,10 @@ vi.mock('@/lib/auth/daily-brief-users', () => ({
   getVerifiedDailyBriefRecipientEmail,
 }));
 
+vi.mock('@/lib/signals/entity-attention-runtime', () => ({
+  reinforceAttentionForAction: vi.fn().mockResolvedValue(undefined),
+}));
+
 describe('executeAction', () => {
   beforeEach(() => {
     // Open the email-send safety gate so tests can exercise the full Gmail/Outlook/Resend paths.

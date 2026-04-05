@@ -8,6 +8,10 @@ import { Webhook } from 'svix';
 import { createServerClient } from '@/lib/db/client';
 import { encrypt } from '@/lib/encryption';
 import { markMlSnapshotEmailEngagement } from '@/lib/ml/directive-ml-snapshot';
+import {
+  bumpAttentionSalienceForEntityIds,
+  resolveEntityIdsForAttention,
+} from '@/lib/signals/entity-attention-runtime';
 
 const webhookRateMap = new Map<string, { count: number; resetAt: number }>();
 
@@ -131,6 +135,23 @@ export async function handleResendWebhookPost(request: NextRequest): Promise<Nex
         }
         if (briefActionId) {
           void markMlSnapshotEmailEngagement(supabase, { actionId: briefActionId, opened: true });
+          void (async () => {
+            const { data: actionRow } = await supabase
+              .from('tkg_actions')
+              .select('*')
+              .eq('id', briefActionId)
+              .maybeSingle();
+            if (!actionRow) return;
+            const uid = (actionRow.user_id as string) || dailyBriefUserId;
+            const ids = await resolveEntityIdsForAttention(
+              supabase,
+              uid,
+              actionRow as Record<string, unknown>,
+            );
+            await bumpAttentionSalienceForEntityIds(supabase, uid, ids, 0.018, 0.72);
+          })().catch((err) =>
+            console.warn('[resend/webhook] attention bump failed:', err instanceof Error ? err.message : err),
+          );
         }
       }
     }
