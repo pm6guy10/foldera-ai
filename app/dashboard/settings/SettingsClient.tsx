@@ -71,29 +71,7 @@ export default function SettingsClient() {
     }
 
     const data = await response.json();
-    const list = (data.integrations || []) as Integration[];
-    // #region agent log
-    if (process.env.NODE_ENV === 'development') {
-      const ms = list.find((i) => i.provider === 'azure_ad');
-      fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '7a929c' },
-        body: JSON.stringify({
-          sessionId: '7a929c',
-          location: 'SettingsClient.tsx:refreshIntegrationsStatus',
-          message: 'integrations snapshot after GET /api/integrations/status',
-          data: {
-            ms_active: ms?.is_active,
-            ms_sync_stale: ms?.sync_stale,
-            ms_needs_reconnect: ms?.needs_reconnect,
-          },
-          timestamp: Date.now(),
-          hypothesisId: 'H2',
-        }),
-      }).catch(() => {});
-    }
-    // #endregion
-    setIntegrations(list);
+    setIntegrations(data.integrations || []);
   }, []);
 
   // On mount: check for connecting_provider localStorage flag (set before OAuth redirect)
@@ -169,27 +147,9 @@ export default function SettingsClient() {
     if (!googleConnected && !microsoftConnected) return;
 
     const provider = googleConnected ? 'google' : 'microsoft';
-    const providerKey = googleConnected ? 'google' : 'azure_ad';
     const syncUrl = googleConnected ? '/api/google/sync-now' : '/api/microsoft/sync-now';
 
     void (async () => {
-      // #region agent log
-      if (process.env.NODE_ENV === 'development') {
-        fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '7a929c' },
-          body: JSON.stringify({
-            sessionId: '7a929c',
-            location: 'SettingsClient.tsx:oauthReturn',
-            message: 'OAuth return: starting refresh then sync-now',
-            data: { providerKey },
-            timestamp: Date.now(),
-            hypothesisId: 'H1',
-          }),
-        }).catch(() => {});
-      }
-      // #endregion
-
       await refreshIntegrationsStatus().catch((err: unknown) => {
         console.error(
           '[settings] failed to refresh integration status after OAuth callback:',
@@ -216,22 +176,6 @@ export default function SettingsClient() {
       } catch {
         setSyncStatus(`Could not sync ${provider === 'google' ? 'Google' : 'Microsoft'} right now.`);
       } finally {
-        // #region agent log
-        if (process.env.NODE_ENV === 'development') {
-          fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '7a929c' },
-            body: JSON.stringify({
-              sessionId: '7a929c',
-              location: 'SettingsClient.tsx:oauthReturn',
-              message: 'OAuth return: finally block — refreshing integrations',
-              data: { providerKey },
-              timestamp: Date.now(),
-              hypothesisId: 'H1',
-            }),
-          }).catch(() => {});
-        }
-        // #endregion
         await refreshIntegrationsStatus().catch((err: unknown) => {
           console.error(
             '[settings] failed to refresh integration status after OAuth sync:',

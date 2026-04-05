@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-05 — OPS: **Remove SettingsClient Cursor debug ingest (`127.0.0.1:7695`)**
+  MODE: OPS
+  Commit hash(es): verify `git log -1 --oneline` on `main`
+  Files changed: `app/dashboard/settings/SettingsClient.tsx`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`.
+  Changes: Deleted all `// #region agent log` blocks; dropped unused `providerKey` after log removal.
+  Any unresolved issues: None.
+
 - 2026-04-05 — AUDIT: **Settings OAuth return — always refresh integrations (sync_stale after reconnect)**
   MODE: AUDIT
   Commit hash(es): verify `git log -1 --oneline` on `main` — `fix(settings): refresh integrations on OAuth return even if sync-now fails`
