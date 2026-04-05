@@ -6,7 +6,7 @@
 
 - 2026-04-05 — AUDIT: **ML moat — directive snapshots, pooled global priors, scorer blend**
   MODE: AUDIT
-  Commit hash(es): (set after push)
+  Commit hash(es): `15d3fd7`
   Files changed: `supabase/migrations/20260405000001_directive_ml_moat.sql`, `lib/ml/*`, `lib/briefing/scorer.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/daily-brief.ts`, `lib/cron/aggregate-ml-global-priors.ts`, `lib/conviction/execute-action.ts`, `lib/webhooks/resend-webhook.ts`, `app/api/cron/nightly-ops/route.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   What was verified: `npx vitest run lib/ml/__tests__/` — 8 passed; `npm run build` passed.
   Changes: Tables for per-user coarse feature snapshots + cross-user bucket priors (RLS deny public); `computeCandidateScore` blends personal history with global `smoothed_approve_rate`; snapshot insert on daily-brief persist; outcome + engagement updates; nightly aggregate stage 5b (soft `ok`, `last_error` if migration missing).
