@@ -6,7 +6,7 @@
 
 - 2026-04-04 — AUDIT: **Avoidance filter + discrepancy finished-work gates**
   MODE: AUDIT
-  Commit hash(es): verify `git log -1 --oneline` on `main` — subject `fix: filter transactional inbound for avoidance counts + discrepancy finished-work gates`
+  Commit hash(es): `e752284`
   Files changed: `lib/briefing/automated-inbound-signal.ts`, `lib/briefing/__tests__/automated-inbound-signal.test.ts`, `lib/briefing/discrepancy-finished-work.ts`, `lib/briefing/__tests__/discrepancy-finished-work.test.ts`, `lib/briefing/discrepancy-detector.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `lib/briefing/generator.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/__tests__/bottom-gate.test.ts`, `app/api/dev/brain-receipt/route.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   What was verified: `npx vitest run --exclude ".claude/worktrees/**"` — 705 passed; `npm run build` passed.
   Changes: Exclude automated/transactional inbound From lines from behavioral avoidance and goal–behavior contradiction counts; prompt + validation + bottom gate block discrepancy `write_document` triage lists; brain-receipt `finished_work_gate` applies to discrepancy/insight send/write paths.
