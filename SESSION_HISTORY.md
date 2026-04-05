@@ -6,7 +6,7 @@
 
 - 2026-04-04 — AUDIT: **Living graph — attention salience + scorer integration**
   MODE: AUDIT
-  Commit hash(es): verify `git log -1 --oneline` on `main`
+  Commit hash(es): `7c2bec7`
   Files changed: `lib/signals/entity-attention.ts`, `lib/signals/entity-attention-runtime.ts`, `lib/signals/__tests__/entity-attention.test.ts`, `lib/signals/__tests__/entity-attention-runtime.test.ts`, `lib/briefing/scorer.ts`, `lib/conviction/execute-action.ts`, `lib/conviction/__tests__/execute-action.test.ts`, `app/api/cron/nightly-ops/route.ts`, `lib/sync/derive-mail-intelligence.ts`, `lib/webhooks/resend-webhook.ts`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/signals/__tests__/entity-attention.test.ts lib/signals/__tests__/entity-attention-runtime.test.ts lib/conviction/__tests__/execute-action.test.ts`; `npm run build` passed; `npm run test:ci:e2e` (pre-push).
   Changes: `patterns.attention` salience with decay + execute-action reinforcement; scorer bounded multiplier + discrepancy silence exemptions + trust_class cap; optional response_pattern and Resend open bumps; nightly `attention_decay` stage.
