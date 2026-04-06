@@ -40,6 +40,7 @@ March 24 production hotfix evidence:
 - `tkg_actions.id = 504c171f-50dc-473f-afdc-cdfc53f15894` from a live `POST https://www.foldera.ai/api/cron/nightly-ops` run now preserves `execution_result.generation_log.stage = "generation"` and the real Anthropic billing error in `generation_log.reason` instead of collapsing to `stage = "system"`.
 - `api_usage` helper/schema alignment verified live with rows `be76ef5c-40af-4543-9cb3-37db0cf27d16` and `80aaeaaa-c6bb-4458-bf9e-78fe72d5fdd6`, both written with the `endpoint` column on March 24.
 - Manual `POST https://www.foldera.ai/api/settings/run-brief` for the signed-in owner now stays on the session user path, created `tkg_actions.id = 6e555f8f-d28c-4400-b3bd-c77c9d3c9715` with `status = pending_approval`, and returned `send.results[0].code = "email_already_sent"` because the owner had already been sent today’s brief on `tkg_actions.id = a2481a04-9097-4546-b782-6437c2688c8d` at `2026-03-24T02:26:26.519Z`.
+- **2026-04-06:** `POST /api/settings/run-brief?force=true` passes `forceFreshRun` into `runBriefLifecycle` / `runDailyGenerate` so operators auto-suppress valid `pending_approval` rows and get a **fresh** generation pass (default POST still reuses pending when eligible).
 
 ### 1.2 Self-Healing (immune system)
 

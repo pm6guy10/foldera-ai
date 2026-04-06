@@ -91,13 +91,45 @@ describe('POST /api/settings/run-brief', () => {
     const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
 
     // Route must pass ensureSend + skipStaleGate + skipSpendCap + skipManualCallLimit so manual runs bypass all throttles
-    expect(mockRunBriefLifecycle).toHaveBeenCalledWith({ userIds: [userId], ensureSend: true, skipStaleGate: true, skipSpendCap: true, skipManualCallLimit: true });
+    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: [userId],
+        ensureSend: true,
+        skipStaleGate: true,
+        skipSpendCap: true,
+        skipManualCallLimit: true,
+      }),
+    );
+    expect(mockRunBriefLifecycle.mock.calls[0][0].forceFreshRun).toBeUndefined();
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.ok).toBe(true);
     expect(payload.stages.daily_brief.send.results).toEqual([
       expect.objectContaining({ code: 'email_sent', userId }),
     ]);
+  });
+
+  it('passes forceFreshRun when the URL has ?force=true', async () => {
+    const userId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
+    const { POST } = await import('../route');
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/settings/run-brief?force=true', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: [userId],
+        forceFreshRun: true,
+        ensureSend: true,
+        skipStaleGate: true,
+        skipSpendCap: true,
+        skipManualCallLimit: true,
+      }),
+    );
   });
 
   it('surfaces manual_send_fallback_attempted = true from the service when the send fallback ran', async () => {

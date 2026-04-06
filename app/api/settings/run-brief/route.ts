@@ -71,6 +71,7 @@ export async function POST(request: Request) {
 
   try {
     const userId = auth.userId;
+    const forceFreshRun = new URL(request.url).searchParams.get('force') === 'true';
     const [syncMicrosoftResult, syncGoogleResult] = await Promise.all([
       withSyncTimeout(
         runManualSync('microsoft', userId),
@@ -90,6 +91,7 @@ export async function POST(request: Request) {
       skipStaleGate: true,
       skipSpendCap: true,
       skipManualCallLimit: true,
+      ...(forceFreshRun ? { forceFreshRun: true } : {}),
     });
 
     const ok = dailyBrief.ok && syncMicrosoftResult.ok && syncGoogleResult.ok;
