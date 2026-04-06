@@ -6,7 +6,7 @@
 
 - 2026-04-05 — AUDIT: **Vercel CLI deploy: avoid Hobby api-upload-free rate limit**
   MODE: AUDIT
-  Commit hash(es): (set after push)
+  Commit hash(es): `ba6bd93`
   Files changed: `.github/workflows/deploy.yml`, `SESSION_HISTORY.md`
   What was verified: GitHub Actions log showed `api-upload-free` / `more than 5000` during `vercel deploy --prebuilt`; Vercel docs recommend `vercel deploy --prebuilt --archive=tgz` to compress upload and avoid per-file upload limits.
   Changes: Added `--archive=tgz` to the production prebuilt deploy step.
