@@ -655,7 +655,7 @@ export default function SettingsClient() {
                 setGenerateState('loading');
                 setGenerateMessage(null);
                 try {
-                  const res = await fetch('/api/settings/run-brief', { method: 'POST' });
+                  const res = await fetch('/api/settings/run-brief?force=true', { method: 'POST' });
                   const data = await res.json().catch(() => null);
                   if (res.ok && data?.ok) {
                     setGenerateState('success');

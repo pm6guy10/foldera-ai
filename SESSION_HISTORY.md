@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — FLOW: **Settings Generate now → `run-brief?force=true`**
+  MODE: FLOW
+  Commit hash(es): `3a265b4`
+  Files changed: `app/dashboard/settings/SettingsClient.tsx`, `docs/MASTER_PUNCHLIST.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build` passed. Local `playwright test tests/e2e/authenticated-routes.spec.ts --grep Settings` had 2 failures (Google/Microsoft text not visible — likely env/webServer; unrelated to fetch URL one-liner); 2 tests passed.
+  Changes: Generate Now `fetch` uses `/api/settings/run-brief?force=true` so UI matches operator API and always forces fresh generation on explicit click. Docs updated.
+  Any unresolved issues: Re-run full `tests/e2e/` with dev server up if CI concerns; production `npm run test:prod` after deploy optional.
+
 - 2026-04-06 — AUDIT: **Manual run-brief `?force=true` → `forceFreshRun` (iterate without pending reuse)**
   MODE: AUDIT
   Commit hash(es): `a0108e1`
