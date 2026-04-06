@@ -650,7 +650,7 @@ describe('briefing pipeline receipt', () => {
     runtime = createRuntime();
     process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
     process.env.RESEND_API_KEY = 'test-resend-key';
-    process.env.RESEND_FROM_EMAIL = 'Foldera <brief@foldera.ai>';
+    process.env.RESEND_FROM_EMAIL = 'Foldera <noreply@foldera.ai>';
     process.env.NEXTAUTH_URL = 'https://www.foldera.ai';
     process.env.ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
 

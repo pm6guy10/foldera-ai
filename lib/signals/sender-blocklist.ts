@@ -19,6 +19,7 @@
 /** Exact email address blocks (case-insensitive, matched after extraction). */
 const BLOCKED_EXACT: Set<string> = new Set([
   'brief@foldera.ai',
+  'noreply@foldera.ai',
   'onboarding@resend.dev',
   'noreply@governmentjobs.com',
   'jobs-noreply@linkedin.com',

@@ -354,7 +354,7 @@ export async function processUnextractedSignals(
 }
 
 /**
- * Returns true if the signal was sent by Foldera itself (brief@foldera.ai or
+ * Returns true if the signal was sent by Foldera itself (noreply@ / brief@ or
  * any @foldera.ai address). These signals should not produce commitments or
  * entities to prevent the self-referential loop where directives become
  * commitments that generate future directives about themselves.

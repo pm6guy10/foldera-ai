@@ -14,6 +14,7 @@ import {
   processUnextractedSignals,
 } from '@/lib/signals/signal-processor';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { DEFAULT_RESEND_FROM } from '@/lib/email/resend';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -106,7 +107,7 @@ async function sendReconnectAlert(userId: string, provider: string): Promise<voi
     const { Resend } = await import('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
     await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
+      from: process.env.RESEND_FROM_EMAIL ?? DEFAULT_RESEND_FROM,
       to: email,
       subject: 'Foldera: reconnect needed',
       html: `<p>Your ${provider === 'microsoft' ? 'Microsoft' : 'Google'} connection expired and auto-refresh failed.</p>
@@ -447,7 +448,7 @@ async function defense6HealthAlert(
       .join('\n');
 
     await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
+      from: process.env.RESEND_FROM_EMAIL ?? DEFAULT_RESEND_FROM,
       to: 'brief@foldera.ai',
       subject: 'Foldera system alert',
       html: `<h3>Self-heal detected ${failures.length} issue${failures.length > 1 ? 's' : ''}</h3>

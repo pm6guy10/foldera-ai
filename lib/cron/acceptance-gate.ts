@@ -144,7 +144,6 @@ async function checkTokens(): Promise<CheckResult> {
 async function sendApiCreditAlert(detail: string): Promise<void> {
   const body = `Anthropic credit canary failed: ${detail}`;
   await sendResendEmail({
-    from: 'Foldera <brief@foldera.ai>',
     to: 'brief@foldera.ai',
     subject: 'Foldera: API credits may be exhausted',
     text: body,
@@ -499,7 +498,6 @@ async function sendAcceptanceAlert(failures: CheckResult[]): Promise<boolean> {
       .join('\n');
 
     await sendResendEmail({
-      from: 'Foldera <brief@foldera.ai>',
       to: 'brief@foldera.ai',
       subject: `Foldera acceptance gate: ${failures.length} check(s) FAILED`,
       html: `<h3>Acceptance Gate Failures — ${new Date().toISOString()}</h3>

@@ -295,7 +295,7 @@ async function executeArtifact(
             console.log(`[execute-action] email send skipped for ${actionId} — ALLOW_EMAIL_SEND not set`);
           } else {
 
-          // Prefer the user's mailbox (Gmail / Outlook) so recipients see the customer, not brief@foldera.ai.
+          // Prefer the user's mailbox (Gmail / Outlook) so recipients see the customer, not noreply@foldera.ai.
           let sentViaProvider = false;
           let providerError: string | undefined;
 
@@ -338,7 +338,6 @@ async function executeArtifact(
 
           if (!sentViaProvider) {
             const delivery = await sendResendEmail({
-              from: 'Foldera <brief@foldera.ai>',
               to,
               subject,
               text: body,
@@ -447,7 +446,6 @@ async function executeArtifact(
             console.warn(`[execute-action] write_document delivery email skipped (no verified email) for ${actionId}`);
           } else {
             const delivery = await sendResendEmail({
-              from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
               to: userEmail,
               subject,
               text: textBody,

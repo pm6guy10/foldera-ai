@@ -4,6 +4,7 @@
  */
 
 import { Resend } from 'resend';
+import { DEFAULT_RESEND_FROM } from '@/lib/email/resend';
 
 export type PlatformHealthAlertResult = {
   ok: boolean;
@@ -42,7 +43,7 @@ export async function runPlatformHealthAlert(): Promise<PlatformHealthAlertResul
 
   const toEmail = process.env.DAILY_BRIEF_TO_EMAIL;
   const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'Foldera <brief@foldera.ai>';
+  const fromEmail = process.env.RESEND_FROM_EMAIL || DEFAULT_RESEND_FROM;
 
   if (!toEmail || !apiKey) {
     console.error('[platform-health] Cannot send alert — missing DAILY_BRIEF_TO_EMAIL or RESEND_API_KEY');

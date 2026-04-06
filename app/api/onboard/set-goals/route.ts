@@ -148,7 +148,6 @@ No prompts. No setup. Just approve or skip.
 
 View your dashboard: ${baseUrl}/dashboard`;
           const sendResult = await sendResendEmail({
-            from: 'Foldera <brief@foldera.ai>',
             to: email,
             subject: 'Welcome to Foldera',
             text: bodyText,

@@ -3,12 +3,15 @@
  *
  * Required env vars:
  *   RESEND_API_KEY        — from resend.com dashboard
- *   RESEND_FROM_EMAIL     — verified sender, e.g. "Foldera <brief@foldera.ai>"
+ *   RESEND_FROM_EMAIL     — verified sender, e.g. "Foldera <noreply@foldera.ai>"
  *   NEXTAUTH_URL          — base URL for approve/skip deep-links
  */
 
 import { Resend } from 'resend';
 import type { ConvictionArtifact } from '@/lib/briefing/types';
+
+/** Default From when `RESEND_FROM_EMAIL` is unset — must match a verified domain address in Resend. */
+export const DEFAULT_RESEND_FROM = 'Foldera <noreply@foldera.ai>';
 
 let _resend: Resend | null = null;
 function getResend(): Resend {
@@ -273,7 +276,7 @@ export async function sendDailyDeliverySkipAlert(payload: {
   ].join('\n');
 
   await sendResendEmail({
-    from: process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
+    from: process.env.RESEND_FROM_EMAIL ?? DEFAULT_RESEND_FROM,
     to: 'brief@foldera.ai',
     subject: `[Foldera] Daily send: ${payload.skips.length} user(s) got no email`,
     text: body,
@@ -297,7 +300,7 @@ export async function sendResendEmail({
   tags?: Array<{ name: string; value: string }>;
 }) {
   return getResend().emails.send({
-    from: from ?? process.env.RESEND_FROM_EMAIL ?? 'Foldera <brief@foldera.ai>',
+    from: from ?? process.env.RESEND_FROM_EMAIL ?? DEFAULT_RESEND_FROM,
     to,
     subject,
     ...(text ? { text } : {}),

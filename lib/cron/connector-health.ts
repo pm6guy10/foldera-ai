@@ -158,7 +158,6 @@ export async function checkConnectorHealth(): Promise<ConnectorHealthResult> {
       const providerName = flag.provider === 'google' ? 'Google' : 'Microsoft';
       const body = `${flag.sourceLabel} has been connected but hasn't synced data in 7 days. To enable ${flag.sourceLabel} sync, disconnect and reconnect ${providerName} from Settings to grant the required permissions.`;
       const result = await sendResendEmail({
-        from: 'Foldera <brief@foldera.ai>',
         to: row.email,
         subject: `Foldera: ${flag.sourceLabel} isn't syncing`,
         text: body,

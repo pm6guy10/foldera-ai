@@ -61,7 +61,7 @@ Any insert with values outside these sets will fail silently (Supabase returns s
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL`
+- `RESEND_FROM_EMAIL` (verified domain From, e.g. `Foldera <noreply@foldera.ai>` — must match Resend; code default is `DEFAULT_RESEND_FROM` in `lib/email/resend.ts`)
 - `DAILY_BRIEF_TO_EMAIL`
 - `AZURE_AD_CLIENT_ID`
 - `AZURE_AD_CLIENT_SECRET`
@@ -105,7 +105,7 @@ Optional recovery variable:
 - Pushes go to `main`.
 - When running in a worktree, do not create feature branches. Merge your changes into main and push to origin/main before stopping. If you cannot checkout main because a worktree holds it, use git worktree remove to free it first.
 
-**MANDATORY: "Done" means pushed.** Every session must end with `git push --no-verify origin main`. If you report "BUILD CLEAN AND COMPLETE" without having pushed, you have NOT completed the task. Never end a session with uncommitted or unpushed work.
+**MANDATORY: "Done" means pushed.** Every session must end with `git push --no-verify origin main`. If you report "BUILD CLEAN AND COMPLETE" without having pushed, you have NOT completed the task. Never end a session with uncommitted or unpushed work. **Do not wait for the user** to approve or say “push” when work is verified—commit and push as part of finishing every task (unless blocked or verification failed).
 
 ## Mandatory QA Gate
 

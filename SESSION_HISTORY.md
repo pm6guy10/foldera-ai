@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — AUDIT: **Resend From: default `noreply@foldera.ai`**
+  MODE: AUDIT
+  Commit hash(es): verify `git log -1 --oneline` on `main` — subject `fix(email): default Resend From to noreply@foldera.ai`
+  Files changed: `lib/email/resend.ts` (`DEFAULT_RESEND_FROM`), `sendResendEmail` / delivery audit; `lib/cron/{acceptance-gate,connector-health,cron-health-alert,self-heal}.ts`; `app/api/onboard/set-goals/route.ts`; `lib/conviction/execute-action.ts`; `lib/signals/{sender-blocklist,signal-processor}.ts`; tests; `.env.example`; `CLAUDE.md`; `FOLDERA_PRODUCT_SPEC.md`; `SESSION_HISTORY.md`
+  What was verified: `npm run lint`; `npm run build`; `npx vitest run` on acceptance-gate, connector-health, execute-action, pipeline-receipt, sender-blocklist, entity-attention-runtime.
+  Changes: Canonical outbound Resend **From** is `Foldera <noreply@foldera.ai>` when `RESEND_FROM_EMAIL` unset. Ops alerts still **to** `brief@foldera.ai`. `noreply@foldera.ai` added to sender blocklist beside `brief@`.
+  Any unresolved issues: Set Vercel `RESEND_FROM_EMAIL` to `Foldera <noreply@foldera.ai>` to match production explicitly (optional — code default now matches).
+
 - 2026-04-05 — AUDIT: **CI E2E: pass Supabase env into Playwright `next start`**
   MODE: AUDIT
   Commit hash(es): `97c07f6`

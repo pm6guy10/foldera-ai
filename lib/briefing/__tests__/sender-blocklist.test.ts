@@ -34,6 +34,7 @@ describe('isBlockedSender', () => {
 
   it('blocks Foldera self-referential senders', () => {
     expect(isBlockedSender('brief@foldera.ai')).toBe(true);
+    expect(isBlockedSender('noreply@foldera.ai')).toBe(true);
     expect(isBlockedSender('onboarding@resend.dev')).toBe(true);
   });
 
