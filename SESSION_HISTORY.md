@@ -6,7 +6,7 @@
 
 - 2026-04-06 — OPS: **Remove scorer `pre_final_gate_debug` console instrumentation**
   MODE: OPS
-  Commit hash(es): (set after push)
+  Commit hash(es): `63f88b8`
   Files changed: `lib/briefing/scorer.ts`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/briefing/__tests__/discrepancy-detector.test.ts lib/briefing/__tests__/hunt-anomalies.test.ts`; `npm run build`. Grep: no `127.0.0.1:7695` ingest or `#region agent log` in TS/TSX sources.
   Changes: Removed ad-hoc `console.log(JSON.stringify({ event: 'pre_final_gate_debug', ... }))` before the scorer final gate (avoid noisy serverless logs / accidental PII in titles).
