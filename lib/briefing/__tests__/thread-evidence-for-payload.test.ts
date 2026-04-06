@@ -41,7 +41,7 @@ describe('thread-evidence-for-payload', () => {
       expect(hasPastWinnerSourceSignals(undefined, fixedNow)).toBe(false);
       expect(hasPastWinnerSourceSignals([], fixedNow)).toBe(false);
       expect(hasPastWinnerSourceSignals([{ occurredAt: futureIso }], fixedNow)).toBe(false);
-      expect(hasPastWinnerSourceSignals([{ summary: 'x' }], fixedNow)).toBe(false);
+      expect(hasPastWinnerSourceSignals([{}], fixedNow)).toBe(false);
     });
   });
 
@@ -62,6 +62,10 @@ describe('thread-evidence-for-payload', () => {
     it('never blocks discrepancy candidates (structural evidence)', () => {
       expect(needsNoThreadNoOutcomeBlock('discrepancy', false, false)).toBe(false);
       expect(needsNoThreadNoOutcomeBlock('discrepancy', false, true)).toBe(false);
+    });
+
+    it('never blocks hunt candidates (absence patterns)', () => {
+      expect(needsNoThreadNoOutcomeBlock('hunt', false, false)).toBe(false);
     });
 
     it('never blocks relationship candidates (entity history is the implicit thread)', () => {
@@ -111,10 +115,7 @@ describe('thread-evidence-for-payload', () => {
       const pastSignals = filterPastSupportingSignals([], fixedNow);
       const hasRealThread =
         pastSignals.length > 0 ||
-        hasPastWinnerSourceSignals(
-          [{ kind: 'signal', id: 's1', occurredAt: pastIso }],
-          fixedNow,
-        );
+        hasPastWinnerSourceSignals([{ occurredAt: pastIso }], fixedNow);
       expect(hasRealThread).toBe(true);
       expect(needsNoThreadNoOutcomeBlock('relationship', hasRealThread, false)).toBe(false);
     });

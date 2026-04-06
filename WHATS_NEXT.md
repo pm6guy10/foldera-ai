@@ -1,8 +1,10 @@
-# WHAT'S NEXT — Updated 2026-04-06
+# WHAT'S NEXT — Updated 2026-04-05
 
-## STATUS: GREEN — Gate 4 data path widened (generator snippets + RAW_FACTS)
+## STATUS: SHIPPED — Hunt layer + two-pass gen + currency/thin gates (verify deploy)
 
-**Latest ship:** verify `git log -1 --oneline` — `fix(generator): 1500c signal snippets, 15 surgical_raw_facts; AGENTS debug-first line` (`a64766a` area). After Vercel **Ready**, spot-check a commitment-backed directive for real amounts/dates in context.
+**Latest ship:** verify `git log -1 --oneline` on `main` — **hunt anomalies** (`lib/briefing/hunt-anomalies.ts`) + scorer **999** injection + generator **anomaly_identification** / **ungrounded_currency** / **thin_entry_phrase** post-LLM. After Vercel **Ready**, operator: `POST /api/settings/run-brief` × N — confirm `execution_result.anomaly_identification` (non–dry-run) and scorer log `hunt_query_counts` / injection, or document all-zero hunt counts.
+
+**Prior — Gate 4 depth:** `fix(generator): 1500c signal snippets, 15 surgical_raw_facts; AGENTS debug-first line` (`a64766a` area). Spot-check commitment-backed directives for verbatim amounts/dates in context.
 
 **Prior — ML moat:** migration `20260405000001_directive_ml_moat.sql`; nightly-ops stage `ml_global_priors`; apply DDL in Supabase before expecting non-empty priors.
 

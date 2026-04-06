@@ -452,6 +452,11 @@ function createSupabaseMock() {
             insert: (payload: Row | Row[]) => new InsertQuery('mlGlobalPriors', runtime.mlGlobalPriors, payload),
             update: (payload: Row) => new UpdateQuery(runtime.mlGlobalPriors, payload),
           };
+        case 'tkg_constraints':
+          return {
+            select: (columns?: string, options?: { count?: string; head?: boolean }) =>
+              new SelectQuery([], columns, options),
+          };
         default:
           throw new Error(`Unexpected table ${table}`);
       }

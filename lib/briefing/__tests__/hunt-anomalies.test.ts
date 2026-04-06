@@ -1,0 +1,67 @@
+import { describe, it, expect } from 'vitest';
+import { runHuntAnomalies, huntFindingToScoredLoopContent } from '../hunt-anomalies';
+
+function mailReceived(id: string, iso: string, from: string, subject: string, bodyExtra = '') {
+  return {
+    id,
+    content: `[Email received: ${iso}]\nFrom: ${from}\nTo: me@test.com\nSubject: ${subject}\nBody preview: hello ${bodyExtra}`,
+    source: 'gmail' as const,
+    type: 'email_received' as const,
+    occurred_at: new Date(iso).toISOString(),
+    author: from.match(/<([^>]+)>/)?.[1] ?? from,
+  };
+}
+
+function mailSent(id: string, iso: string, to: string, subject: string) {
+  return {
+    id,
+    content: `[Sent email: ${iso}]\nTo: ${to}\nSubject: ${subject}\nBody preview: reply`,
+    source: 'gmail' as const,
+    type: 'email_sent' as const,
+    occurred_at: new Date(iso).toISOString(),
+    author: 'self',
+  };
+}
+
+describe('runHuntAnomalies', () => {
+  it('detects repeated ignored sender (3+ in 30d, zero replies)', () => {
+    const base = Date.now() - 5 * 24 * 60 * 60 * 1000;
+    const iso = (d: number) => new Date(base - d * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived('r1', iso(0), 'Busy Sender <busy@corp.com>', 'Thread A'),
+      mailReceived('r2', iso(10), 'Busy Sender <busy@corp.com>', 'Thread B'),
+      mailReceived('r3', iso(20), 'Busy Sender <busy@corp.com>', 'Thread C'),
+    ];
+    const { findings, countsByKind } = runHuntAnomalies({ signals, commitments: [] });
+    expect(countsByKind.repeated_ignored_sender).toBeGreaterThanOrEqual(1);
+    expect(findings.some((f) => f.kind === 'repeated_ignored_sender')).toBe(true);
+  });
+
+  it('does not flag unreplied when a sent reply exists to same address', () => {
+    const recvIso = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+    const sentIso = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived('in1', recvIso, 'Alice <alice@ex.com>', 'Hello there'),
+      mailSent('out1', sentIso, 'alice@ex.com', 'Re: Hello there'),
+    ];
+    const { findings } = runHuntAnomalies({ signals, commitments: [] });
+    expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
+  });
+
+  it('huntFindingToScoredLoopContent includes kind and title', () => {
+    const f = {
+      kind: 'repeated_ignored_sender' as const,
+      id: 'hunt_x',
+      title: 'Test title',
+      summary: 'Test summary',
+      suggestedActionType: 'send_message' as const,
+      supportingSignalIds: ['a'],
+      evidenceLines: ['line1'],
+      severity: 90,
+    };
+    const c = huntFindingToScoredLoopContent(f);
+    expect(c).toContain('HUNT_ANOMALY_FINDING');
+    expect(c).toContain('repeated_ignored_sender');
+    expect(c).toContain('Test title');
+  });
+});

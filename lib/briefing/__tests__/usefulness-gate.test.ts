@@ -335,7 +335,7 @@ describe('usefulness gate — execution proof', () => {
       artifact: {
         to: 'marcus@company.com',
         subject: 'Q1 infrastructure budget — confirmation before April 3 board meeting',
-        body: 'Hi Marcus,\n\nFollowing your Q1 update, can you confirm by 3 PM PT today whether the $240k infrastructure figure is final and who owns board packet sign-off? If we miss this cutoff, the April 3 board packet goes forward with an unresolved budget line.\n\nThanks,\nBrandon',
+        body: 'Hi Marcus,\n\nFollowing your Q1 update, can you confirm by 3 PM PT today whether the infrastructure figure you quoted is final and who owns board packet sign-off? If we miss this cutoff, the April 3 board packet goes forward with an unresolved budget line.\n\nThanks,\nBrandon',
       },
       evidence: 'Marcus sent Q1 budget update on March 20; April 3 board meeting has no confirmed budget line.',
       why_now: 'The board meeting is 7 days away and the budget line is unconfirmed.',

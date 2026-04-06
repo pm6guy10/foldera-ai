@@ -64,6 +64,39 @@ const GENERATION_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
 const STALE_SIGNAL_THRESHOLD_DAYS = 21;
 
+function isAbsenceDrivenWinnerType(t: string): boolean {
+  return t === 'discrepancy' || t === 'hunt';
+}
+
+/** Post-LLM thin-entry / weasel phrases — deterministic gate (Check 3). */
+const THIN_ENTRY_PHRASES = [
+  'requires review',
+  'pending verification',
+  'needs status check',
+  'to be determined',
+  'requires thread analysis',
+  'needs further analysis',
+];
+
+function findThinEntryPhrase(combinedLower: string): string | null {
+  for (const p of THIN_ENTRY_PHRASES) {
+    if (combinedLower.includes(p)) return p;
+  }
+  return null;
+}
+
+/** Dollar amounts in artifact JSON must appear verbatim in grounding blob (Check 4). */
+function ungroundedDollarAmounts(artifactJson: string, groundingBlob: string): string[] {
+  const dollars = artifactJson.match(/\$\s*[\d,]+(?:\.\d{2})?/g) ?? [];
+  const blob = groundingBlob.replace(/\s+/g, ' ').toLowerCase();
+  const bad: string[] = [];
+  for (const d of dollars) {
+    const norm = d.replace(/\s/g, '').toLowerCase();
+    if (!blob.includes(norm)) bad.push(d.trim());
+  }
+  return bad;
+}
+
 /**
  * Load the per-user dynamic confidence threshold from tkg_goals.
  * Falls back to DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD (45) if no row exists.
@@ -264,6 +297,12 @@ GOOD (this is the bar):
 Your signals show the American Express statement: $9,540.53 due April 11, minimum $198, last payment March 3. The document states those facts plainly and includes a pre-drafted payment-confirmation note (or self-email) with due date, amount, and account reference filled from the thread — copy-ready. The user's job is read and approve, not hunt values.
 
 You are not a task manager. You are an analyst who does the work. The document you produce is the finished deliverable, not instructions for producing a deliverable. Fill in the answers. Do not ask the questions.
+
+VERBATIM_GROUNDING_RULE (mandatory):
+Every dollar amount (e.g. $1,234.56) and every calendar date (month-day-year or YYYY-MM-DD) in the directive, insight, and artifact MUST appear verbatim in the signal excerpts, HUNT_ANOMALY_FINDING block, RAW_FACTS, or SUPPORTING_SIGNALS you were given. If a value is not present in that evidence, do not invent it — omit it or use prose that does not assert the missing value.
+
+HUNT_WINNERS (CANDIDATE_CLASS is hunt):
+The winner is a deterministic hunt anomaly (absence or cross-mail pattern). Lead with the specific counted facts in the hunt summary. The artifact is still finished work — never a triage list. Ground every number and date in the hunt evidence and supporting signals.
 
 WRITE_DOCUMENT QUALITY EXAMPLES:
 
@@ -499,6 +538,8 @@ type GeneratePayloadOptions = GenerateDirectiveOptions & {
 interface GeneratePayloadResult {
   issues: string[];
   payload: GeneratedDirectivePayload | null;
+  /** Pass-1 LLM one-sentence anomaly (persisted on directive / execution_result). */
+  anomalyIdentification?: string;
   /** When true, caller should persist wait_rationale (cross-signal gate exhausted after retry). */
   lowCrossSignalWaitRationale?: boolean;
   /**
@@ -1104,7 +1145,7 @@ function buildDecisionPayload(
     : STALE_SIGNAL_THRESHOLD_DAYS + 1;
   // Discrepancy candidates: absence of signals IS the structural evidence.
   // Set freshness to 'fresh' to bypass both blocking_reasons and validateDecisionPayload checks.
-  const freshness_state: DecisionPayload['freshness_state'] = winner.type === 'discrepancy'
+  const freshness_state: DecisionPayload['freshness_state'] = isAbsenceDrivenWinnerType(winner.type)
     ? 'fresh'
     : ageDays <= 7 ? 'fresh' : ageDays <= STALE_SIGNAL_THRESHOLD_DAYS ? 'aging' : 'stale';
 
@@ -1127,7 +1168,7 @@ function buildDecisionPayload(
     }
   }
 
-  if (winner.type === 'discrepancy' && recommended_action === 'send_message' && !ctx.has_real_recipient) {
+  if (isAbsenceDrivenWinnerType(winner.type) && recommended_action === 'send_message' && !ctx.has_real_recipient) {
     recommended_action = 'write_document';
   }
 
@@ -1152,7 +1193,7 @@ function buildDecisionPayload(
   // Build blocking reasons
   const blocking_reasons: string[] = [];
   // Discrepancy candidates: absence of signals IS the evidence — skip freshness gates
-  if (!ctx.has_recent_evidence && winner.type !== 'discrepancy') blocking_reasons.push('No recent evidence (all signals older than 14 days)');
+  if (!ctx.has_recent_evidence && !isAbsenceDrivenWinnerType(winner.type)) blocking_reasons.push('No recent evidence (all signals older than 14 days)');
   // Constraint violations are ADVISORY pre-LLM, not hard blocks.
   // The constraint info is in the prompt via ctx.locked_constraints.
   // Post-LLM validation (validateDirectiveForPersistence) enforces constraints on the final artifact.
@@ -1167,7 +1208,7 @@ function buildDecisionPayload(
     });
   }
   if (ctx.already_acted_recently) blocking_reasons.push('Already acted on this topic in the last 7 days');
-  if (freshness_state === 'stale' && winner.type !== 'discrepancy') blocking_reasons.push('Evidence is stale');
+  if (freshness_state === 'stale' && !isAbsenceDrivenWinnerType(winner.type)) blocking_reasons.push('Evidence is stale');
 
   // Hard block: entity is in tkg_constraints locked_contact — never contact regardless of signal state.
   // Checked before generation so the LLM never even sees the candidate.
@@ -1466,6 +1507,23 @@ function inferRequiredCausalDiagnosis(input: {
 
 /** Extra lines for calendar/drive/conversation discrepancy winners. */
 function enrichCandidateContext(winner: ScoredLoop, evidenceSortedChrono: SignalSnippet[]): string | null {
+  if (winner.type === 'hunt') {
+    const parts: string[] = [];
+    for (const s of winner.sourceSignals ?? []) {
+      const src = s.source ? `${s.kind}/${s.source}` : s.kind;
+      parts.push(`• [${src}] ${(s.summary ?? '').slice(0, 220)}`);
+    }
+    const EMAIL_SOURCES = new Set(['gmail', 'outlook']);
+    const extras = evidenceSortedChrono
+      .filter((e) => EMAIL_SOURCES.has(e.source))
+      .slice(0, 6);
+    for (const e of extras) {
+      const head = [e.subject, e.snippet].filter(Boolean).join(' — ');
+      parts.push(`• [${e.source} @ ${e.date}] ${head.slice(0, 220)}`);
+    }
+    if (parts.length === 0) return null;
+    return `HUNT_CONTEXT:\n${parts.join('\n')}`;
+  }
   if (winner.type !== 'discrepancy' || !winner.discrepancyClass) return null;
   const cls = winner.discrepancyClass;
   const parts: string[] = [];
@@ -1702,8 +1760,17 @@ function buildStructuredContext(
     });
 
   const maxSignals =
-    winner.type === 'discrepancy' && winner.discrepancyClass === 'decay' ? 40 : 15;
-  const nonEmailCap = winner.type === 'discrepancy' && winner.discrepancyClass === 'decay' ? 12 : 6;
+    winner.type === 'discrepancy' && winner.discrepancyClass === 'decay'
+      ? 40
+      : winner.type === 'hunt'
+        ? 22
+        : 15;
+  const nonEmailCap =
+    winner.type === 'discrepancy' && winner.discrepancyClass === 'decay'
+      ? 12
+      : winner.type === 'hunt'
+        ? 8
+        : 6;
   const nonEmailSignals = sorted.filter((s) => !EMAIL_SOURCES.has(s.source));
 
   // Take non-email signals first (calendar, tasks, files, drive); decay gets a larger cap so the LLM sees full thread context.
@@ -1823,11 +1890,14 @@ function buildStructuredContext(
   // For entity-linked discrepancies, ONLY the entity's DB email counts as a confirmed
   // recipient. Signal senders in the evidence window are unrelated parties, not the
   // target person — using them causes the LLM to address emails to random senders.
-  const has_real_recipient = (isGoalLinkedDiscrepancy || isEntityLinkedDiscrepancy)
-    // Discrepancy (goal-linked or entity-linked): only entity-db email counts
-    ? hasRecipientEmailInContext
-    // Non-discrepancy (commitment, signal, relationship): entity-db email OR signal senders
-    : (hasRecipientEmailInContext || externalEmails.length > 0);
+  const has_real_recipient =
+    winner.type === 'hunt'
+      ? (hasRecipientEmailInContext || externalEmails.length > 0)
+      : (isGoalLinkedDiscrepancy || isEntityLinkedDiscrepancy)
+        // Discrepancy (goal-linked or entity-linked): only entity-db email counts
+        ? hasRecipientEmailInContext
+        // Non-discrepancy (commitment, signal, relationship): entity-db email OR signal senders
+        : (hasRecipientEmailInContext || externalEmails.length > 0);
 
   // Check signal freshness — union of hydrated supporting_signals and scorer refs (AZ-24 slice 2)
   const newestSignalMs = getNewestEvidenceTimestampMs(supporting_signals, winner.sourceSignals);
@@ -1868,7 +1938,8 @@ function buildStructuredContext(
 
   // For commitment candidates, prepend entity name(s) from relationshipContext so the model
   // never has to produce a generic "follow up with [uuid]" directive.
-  let selectedCandidate = winner.content.slice(0, 500);
+  let selectedCandidate =
+    winner.type === 'hunt' ? winner.content.slice(0, 8000) : winner.content.slice(0, 500);
   if (winner.type === 'commitment' && winner.relationshipContext) {
     // Extract first name from the relationship context line (format: "Name <email> | role | ...")
     const firstNameMatch = winner.relationshipContext.match(/^([^\n<|]+)/);
@@ -1943,11 +2014,13 @@ function buildStructuredContext(
       : null,
     behavioral_history: behavioralHistory ?? null,
     avoidance_observations: avoidanceObservations ?? [],
-    relationship_timeline: buildRelationshipTimeline(
+    relationship_timeline:     buildRelationshipTimeline(
       signalEvidence,
       (winner.type === 'discrepancy' && winner.discrepancyClass === 'decay' && winner.entityName)
         ? winner.entityName
-        : winner.title,
+        : winner.type === 'hunt' && winner.entityName
+          ? winner.entityName
+          : winner.title,
     ),
     response_pattern_lines,
     competition_context: competitionContext ?? null,
@@ -2750,6 +2823,12 @@ export function buildPromptFromStructuredContext(
     `CANDIDATE_CLASS:\n${ctx.candidate_class}`,
     `CANDIDATE_EVIDENCE:\n${ctx.selected_candidate}`,
   );
+
+  if (ctx.candidate_class === 'hunt') {
+    sections.push(
+      'HUNT_WINNER_RULE: The evidence block contains HUNT_ANOMALY_FINDING — counts, domains, and dates there are authoritative. Expand into one finished artifact; never replace with generic advice.',
+    );
+  }
 
   if (ctx.candidate_class === 'discrepancy') {
     sections.push(DISCREPANCY_FINISHED_WORK_USER_BLOCK);
@@ -5583,8 +5662,53 @@ async function generatePayload(
     },
   });
 
+  let anomalyIdentification: string | undefined;
+  if (!options.dryRun) {
+    const anomalyUserMsg =
+      `${prompt.slice(0, 14000)}\n\nTASK: Reply with ONE sentence only (max 45 words). ` +
+      `State the single most surprising behavioral finding using ONLY names, dollar amounts, or dates that appear verbatim in the text above. ` +
+      `No preamble, no JSON, no bullet points.`;
+    try {
+      const anomalyRes = await getAnthropic().messages.create({
+        model: GENERATION_MODEL,
+        max_tokens: 150,
+        temperature: 0.1,
+        system: 'You output one factual sentence only. No meta-commentary.',
+        messages: [{ role: 'user', content: anomalyUserMsg }],
+      });
+      await trackApiCall({
+        userId,
+        model: GENERATION_MODEL,
+        inputTokens: anomalyRes.usage.input_tokens,
+        outputTokens: anomalyRes.usage.output_tokens,
+        callType: 'anomaly_identification',
+        persist: true,
+      });
+      const rawAn = anomalyRes.content
+        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+        .map((block) => block.text)
+        .join('')
+        .trim();
+      anomalyIdentification = rawAn.replace(/^["']|["']$/g, '').slice(0, 500);
+    } catch (e) {
+      logStructuredEvent({
+        event: 'anomaly_identification_failed',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'anomaly_pass_skipped',
+        details: { scope: 'generator', error: e instanceof Error ? e.message : String(e) },
+      });
+    }
+  }
+
+  const augmentedPrompt =
+    anomalyIdentification && anomalyIdentification.length > 0
+      ? `ANOMALY_IDENTIFICATION (pass-1 thesis — ground the finished artifact in it; do not contradict named facts):\n${anomalyIdentification}\n\n---\n\n${prompt}`
+      : prompt;
+
   const attempts: Array<{ role: 'user' | 'assistant'; content: string }> = [
-    { role: 'user', content: prompt },
+    { role: 'user', content: augmentedPrompt },
   ];
   let lastIssues: string[] = [];
   let issuesAttempt0: string[] | null = null;
@@ -5684,7 +5808,7 @@ async function generatePayload(
     }
 
     if (issues.length === 0 && parsed) {
-      return { issues: [], payload: parsed };
+      return { issues: [], payload: parsed, anomalyIdentification };
     }
 
     if (attempt < MAX_DIRECTIVE_LLM_ATTEMPTS - 1) {
@@ -5774,10 +5898,10 @@ Issues:
   ) {
     // Defer wait_rationale to generateDirective so deterministic decision-enforcement
     // repair can run first (mixed validation failures often pair low_cross with enforcement).
-    return { issues: lastIssues, payload: null, pendingLowCrossSignalFallback: true };
+    return { issues: lastIssues, payload: null, anomalyIdentification, pendingLowCrossSignalFallback: true };
   }
 
-  return { issues: lastIssues, payload: null };
+  return { issues: lastIssues, payload: null, anomalyIdentification };
 }
 
 // ---------------------------------------------------------------------------
@@ -5794,6 +5918,10 @@ export function buildDirectiveExecutionResult(input: {
     ...(input.artifact ? { artifact: input.artifact } : {}),
     brief_origin: input.briefOrigin,
     ...(input.directive.generationLog ? { generation_log: input.directive.generationLog } : {}),
+    ...(typeof input.directive.anomaly_identification === 'string' &&
+    input.directive.anomaly_identification.trim().length > 0
+      ? { anomaly_identification: input.directive.anomaly_identification.trim() }
+      : {}),
     ...(input.extras ?? {}),
   };
 }
@@ -6083,7 +6211,11 @@ export async function generateDirective(
       // leak the user's own name as a false suppression target.
       // Discrepancy candidates are structural patterns, not confirmed relationship contacts.
       // Skip entity suppression — hydrated context may contain the user's own name as a co-participant.
-      if (CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType) && currentCandidate.type !== 'discrepancy') {
+      if (
+        CONTACT_ACTION_TYPES.has(hydratedWinner.suggestedActionType) &&
+        currentCandidate.type !== 'discrepancy' &&
+        currentCandidate.type !== 'hunt'
+      ) {
         const candidateEntities = extractRelationshipContextEntities(hydratedWinner, selfNameTokens);
         const recentEntityConflict = await findRecentEntityActionConflict(userId, candidateEntities);
         if (recentEntityConflict.matched) {
@@ -6101,7 +6233,7 @@ export async function generateDirective(
       let insight: ResearchInsight | null = null;
       const isDecayDiscrepancy =
         hydratedWinner.type === 'discrepancy' && hydratedWinner.discrepancyClass === 'decay';
-      if (!isDecayDiscrepancy && currentCandidate.score >= 2.0) {
+      if (!isDecayDiscrepancy && currentCandidate.type !== 'hunt' && currentCandidate.score >= 2.0) {
         try {
           insight = await researchWinner(userId, hydratedWinner, { dryRun: options.dryRun });
         } catch {
@@ -6123,7 +6255,7 @@ export async function generateDirective(
       // Decay reconnection: skip conviction math — it keys off matchedGoal (often financial runway)
       // and would instruct the model to prioritize unrelated "bridge" actions over the reconnect.
       let convictionDecision: import('./conviction-engine').ConvictionDecision | null = null;
-      if (!isDecayDiscrepancy) {
+      if (!isDecayDiscrepancy && currentCandidate.type !== 'hunt') {
         const topGoalText = currentCandidate.matchedGoal?.text ?? currentCandidate.title ?? '';
         if (topGoalText) {
           try {
@@ -6468,6 +6600,9 @@ export async function generateDirective(
       generationLog: buildSelectedGenerationLog(scored.candidateDiscovery, {
         active_goals: ctx.active_goals,
       }),
+      ...(payloadResult.anomalyIdentification
+        ? { anomaly_identification: payloadResult.anomalyIdentification }
+        : {}),
     } as ConvictionDirective & {
       embeddedArtifact?: Record<string, unknown>;
       embeddedArtifactType?: string;
@@ -6531,6 +6666,43 @@ export async function generateDirective(
         });
         continue;
       }
+    }
+
+    const combinedForThin = `${directive.directive} ${JSON.stringify(payload.artifact)}`.toLowerCase();
+    const thinHit = findThinEntryPhrase(combinedForThin);
+    if (thinHit) {
+      candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [`thin_entry_phrase:${thinHit}`] });
+      logStructuredEvent({
+        event: 'candidate_blocked', level: 'warn', userId,
+        artifactType: canonicalAction, generationStatus: 'thin_entry_phrase_blocked',
+        details: { scope: 'post_llm_validation', phrase: thinHit },
+      });
+      continue;
+    }
+
+    const artStr = JSON.stringify(payload.artifact);
+    const groundingBlob = [
+      ctx.selected_candidate,
+      ctx.candidate_title,
+      ...ctx.surgical_raw_facts,
+      ...ctx.supporting_signals.map((s) => `${s.summary} ${s.occurred_at}`),
+      ctx.candidate_context_enrichment ?? '',
+      payload.directive,
+      payload.why_now ?? '',
+      typeof payload.insight === 'string' ? payload.insight : '',
+    ].join('\n');
+    const badDollars = ungroundedDollarAmounts(artStr, groundingBlob);
+    if (badDollars.length > 0) {
+      candidateBlockLog.push({
+        title: currentCandidate.title.slice(0, 80),
+        reasons: [`ungrounded_currency:${badDollars.slice(0, 4).join(',')}`],
+      });
+      logStructuredEvent({
+        event: 'candidate_blocked', level: 'warn', userId,
+        artifactType: canonicalAction, generationStatus: 'ungrounded_currency_blocked',
+        details: { scope: 'post_llm_validation', amounts: badDollars.slice(0, 4) },
+      });
+      continue;
     }
 
     // Trigger action lock validation — discrepancy candidates only (skip when cross-signal degraded to wait_rationale)

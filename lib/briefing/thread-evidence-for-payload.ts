@@ -59,6 +59,7 @@ export function getNewestEvidenceTimestampMs(
  *
  * Exempt types:
  * - 'discrepancy': absence of signals IS the structural evidence (decay/risk/drift).
+ * - 'hunt': deterministic absence / cross-signal patterns from the hunt layer.
  * - 'relationship': candidate comes from tkg_entities verified interaction history;
  *   that history IS the thread context — blocking on "no current email thread" inverts
  *   the purpose of the reconnect directive.
@@ -69,6 +70,7 @@ export function needsNoThreadNoOutcomeBlock(
   tiedToOutcome: boolean,
 ): boolean {
   if (winnerType === 'discrepancy') return false;
+  if (winnerType === 'hunt') return false;
   if (winnerType === 'relationship') return false;
   if (tiedToOutcome) return false;
   return !hasRealThread;

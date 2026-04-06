@@ -41,6 +41,9 @@ export interface ConvictionDirective {
 
   /** When the scorer winner is a discrepancy row — used for class-specific artifact transforms. */
   discrepancyClass?: import('./discrepancy-detector').DiscrepancyClass;
+
+  /** Pass-1 LLM: single-sentence anomaly, persisted in execution_result for quality checks. */
+  anomaly_identification?: string;
 }
 
 // ---------------------------------------------------------------------------

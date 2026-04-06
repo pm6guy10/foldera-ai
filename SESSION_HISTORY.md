@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-05 — AUDIT: **Hunting layer + two-pass generation + artifact quality gates**
+  MODE: AUDIT
+  Commit hash(es): verify `git log -1 --oneline` on `main` — subject `feat(briefing): hunt anomaly layer, two-pass anomaly id, post-LLM gates`
+  Files changed: `lib/briefing/hunt-anomalies.ts` (new), `lib/briefing/scorer.ts`, `lib/briefing/generator.ts`, `lib/briefing/thread-evidence-for-payload.ts`, `lib/briefing/types.ts`, `lib/briefing/__tests__/hunt-anomalies.test.ts`, `lib/briefing/__tests__/thread-evidence-for-payload.test.ts`, `lib/briefing/__tests__/pipeline-receipt.test.ts`, `lib/briefing/__tests__/usefulness-gate.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (746 passed). Local `npm run test:ci:e2e` hit **HTTP 500** on `/login` when `next start` bound to `127.0.0.1:3011` (empty Next error page — likely local env/origin mismatch); port `3000` was already in use in this workspace — **re-run E2E on CI or free port with `NEXTAUTH_URL` aligned to `WEB_ORIGIN`.**
+  Changes: (1) Five deterministic **hunt** detectors over decrypted mail/calendar-shaped signals (`runHuntAnomalies`), scorer injects `type: 'hunt'` at score **999** with locked-contact skip + diagnostics (`hunt_query_counts` / `hunt_anomalies_injected`). (2) Generator: absence-driven handling for hunt (DecisionPayload, evidence, suppression skips), **pass-1** anomaly sentence when not `dryRun`, **`execution_result.anomaly_identification`**, post-LLM **thin phrase** + **ungrounded `$`** blocks, prompt **VERBATIM_GROUNDING** / **HUNT** rules. (3) Tests: hunt unit tests, pipeline mock `tkg_constraints`, usefulness VALID1 body without ungrounded currency.
+  Any unresolved issues: **Prod loop (plan §7):** operator should run `POST /api/settings/run-brief` after deploy and confirm three artifacts pass checks 1–5 or log zero hunt findings via scorer diagnostics. **Local CI E2E** not green in this session due to `/login` 500 + port contention.
+
 - 2026-04-06 — AUDIT: **Resend From: default `noreply@foldera.ai`**
   MODE: AUDIT
   Commit hash(es): `62ab442` (deliverable); `2f4da70` (session log hash on `main`)

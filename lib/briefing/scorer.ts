@@ -42,6 +42,12 @@ import { applyStakesGate } from './stakes-gate';
 import { applyEntityRealityGate } from './entity-reality-gate';
 import { runInsightScan } from './insight-scan';
 import {
+  runHuntAnomalies,
+  huntFindingToScoredLoopContent,
+  type HuntFinding,
+  type HuntFindingKind,
+} from './hunt-anomalies';
+import {
   type EntitySalienceRow,
   computeLivingGraphMultiplier,
 } from '@/lib/signals/entity-attention';
@@ -309,7 +315,7 @@ export interface MatchedGoal {
 
 export interface ScoredLoop {
   id: string;
-  type: 'commitment' | 'signal' | 'relationship' | 'emergent' | 'compound' | 'growth' | 'discrepancy';
+  type: 'commitment' | 'signal' | 'relationship' | 'emergent' | 'compound' | 'growth' | 'discrepancy' | 'hunt';
   title: string;
   content: string;
   suggestedActionType: ActionType;
@@ -345,6 +351,8 @@ export interface ScoredLoop {
   discrepancyPreferredAction?: ActionType;
   /** Pre-scorer LLM read of raw signals — discovery log uses candidateType "insight". */
   fromInsightScan?: boolean;
+  /** Set when type === 'hunt' — which detector produced this candidate. */
+  huntKind?: HuntFindingKind;
 }
 
 export type KillReason = 'noise' | 'not_now' | 'trap';
@@ -473,6 +481,13 @@ export interface ScorerDiagnostics {
     stakes: number;
     urgency: number;
   }>;
+  /** Hunt layer: raw detector hit counts (pre-rank cap) + injection summary */
+  huntAnomalies?: {
+    countsByKind: Record<string, number>;
+    injected: number;
+    skippedLocked: number;
+    candidateTitles: string[];
+  };
   convergenceBoosts: Array<{
     candidateId: string;
     title: string;
@@ -1359,6 +1374,7 @@ export function isSendOrWriteCapableAction(actionType: ActionType): boolean {
     || actionType === 'write_document'
     || actionType === 'make_decision'
     || actionType === 'research'
+    || actionType === 'schedule'
   );
 }
 
@@ -1391,7 +1407,7 @@ function computeEvidenceDensity(candidate: ScoredLoop): number {
   if ((candidate.relatedSignals?.length ?? 0) > 0) density += 1;
   if ((candidate.sourceSignals?.length ?? 0) > 0) density += 1;
   if (hasConcrete) density += 1;
-  if (candidate.type === 'discrepancy') density += 1;
+  if (candidate.type === 'discrepancy' || candidate.type === 'hunt') density += 1;
   // Relationship candidates: the entity's presence in tkg_entities (verified interaction history)
   // is itself concrete evidence — equivalent to a confirmed source signal.
   if (candidate.type === 'relationship') density += 1;
@@ -1404,7 +1420,7 @@ function isObviousFirstLayerAdvice(candidate: ScoredLoop): boolean {
 }
 
 function isOutcomeLinkedCandidate(candidate: ScoredLoop): boolean {
-  if (candidate.type === 'discrepancy') return true;
+  if (candidate.type === 'discrepancy' || candidate.type === 'hunt') return true;
   // Verified relationship candidates from tkg_entities ARE inherently outcome-linked —
   // maintaining a high-value relationship is a board-level outcome (career, revenue, referral).
   if (candidate.type === 'relationship') return true;
@@ -1415,7 +1431,7 @@ function isOutcomeLinkedCandidate(candidate: ScoredLoop): boolean {
 
 function isDecisionMovingCandidate(candidate: ScoredLoop): boolean {
   if (!isOutcomeLinkedCandidate(candidate)) return false;
-  if (candidate.type === 'discrepancy') return true;
+  if (candidate.type === 'discrepancy' || candidate.type === 'hunt') return true;
   return (candidate.breakdown.stakes ?? 0) >= 2 || (candidate.breakdown.urgency ?? 0) >= 0.6;
 }
 
@@ -1527,6 +1543,9 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
     for (const candidate of ranked) {
       if (candidate.score <= 0) continue;
       const diag = ensureDiagnostic(candidate);
+      if (candidate.type === 'hunt') {
+        continue;
+      }
       if (candidate.type === 'discrepancy') {
         candidate.score *= 1.2;
         diag.penaltyReasons.push('discrepancy_priority_boost');
@@ -3285,6 +3304,52 @@ function classifyLifecycle(args: {
     horizon,
     actionability,
     reason: `Urgency ${urgency.toFixed(2)}, stakes ${stakes}, tractability ${tractability.toFixed(2)} — candidate is active and eligible based on lifecycle criteria.`,
+  };
+}
+
+function huntFindingBlockedByLock(f: HuntFinding, locked: Set<string>): boolean {
+  const compact = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+  if (f.entityName && locked.has(compact(f.entityName))) return true;
+  const blob = compact(`${f.title} ${f.summary}`);
+  for (const l of locked) {
+    if (l.length >= 4 && blob.includes(l)) return true;
+  }
+  return false;
+}
+
+function huntFindingToScoredLoop(f: HuntFinding): ScoredLoop {
+  return {
+    id: f.id,
+    type: 'hunt',
+    title: f.title,
+    content: huntFindingToScoredLoopContent(f),
+    suggestedActionType: f.suggestedActionType,
+    matchedGoal: null,
+    score: 999,
+    breakdown: {
+      stakes: 4.5,
+      urgency: 0.92,
+      tractability: 0.85,
+      freshness: 1.0,
+      actionTypeRate: 0.5,
+      entityPenalty: 0,
+      final_score: 999,
+    },
+    relatedSignals: f.evidenceLines.slice(0, 8),
+    sourceSignals: f.supportingSignalIds.map((id) => ({
+      kind: 'signal' as const,
+      id,
+      summary: f.title.slice(0, 160),
+    })),
+    entityName: f.entityName,
+    confidence_prior: 82,
+    lifecycle: {
+      state: 'active_now',
+      horizon: 'now',
+      actionability: 'actionable',
+      reason: 'Hunt anomaly — deterministic absence pattern in synced mail/calendar signals.',
+    },
+    huntKind: f.kind,
   };
 }
 
@@ -5113,7 +5178,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const goalGateDrops: ScorerDropEntry[] = [];
   const goalGateKept: typeof scored = [];
   for (const s of scored) {
-    if (s.matchedGoal !== null || s.type === 'emergent' || s.type === 'discrepancy') {
+    if (s.matchedGoal !== null || s.type === 'emergent' || s.type === 'discrepancy' || s.type === 'hunt') {
       goalGateKept.push(s);
     } else {
       goalGateDrops.push({ candidateId: s.id, type: s.type, title: s.title.slice(0, 100), stage: 'goal_primacy_gate', reason: 'no_goal_match', score: s.score });
@@ -5162,6 +5227,66 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     return true;
   });
   diag.filterStages.push({ stage: 'emergent_no_goal_filter', before: beforeEmergentFilter, after: scored.length, dropped: emergentDrops });
+
+  // -----------------------------------------------------------------------
+  // Hunt anomalies — absence / cross-signal patterns (decrypted signals in-process only).
+  // Score 999; try up to 3 findings skipping locked contacts. Before ranking invariants.
+  // -----------------------------------------------------------------------
+  {
+    const { data: lockRows } = await supabase
+      .from('tkg_constraints')
+      .select('normalized_entity')
+      .eq('user_id', userId)
+      .eq('constraint_type', 'locked_contact')
+      .eq('is_active', true);
+    const lockedKeys = new Set<string>();
+    for (const row of lockRows ?? []) {
+      const raw = row.normalized_entity;
+      if (typeof raw === 'string' && raw.trim()) {
+        lockedKeys.add(raw.replace(/\s+/g, '').toLowerCase());
+      }
+    }
+
+    const huntResult = runHuntAnomalies({
+      signals,
+      commitments,
+    });
+
+    let skippedLocked = 0;
+    const loopsToAdd: ScoredLoop[] = [];
+    for (const f of huntResult.findings) {
+      if (huntFindingBlockedByLock(f, lockedKeys)) {
+        skippedLocked++;
+        continue;
+      }
+      loopsToAdd.push(huntFindingToScoredLoop(f));
+      if (loopsToAdd.length >= 3) break;
+    }
+    for (const hLoop of loopsToAdd) {
+      scored.push(hLoop);
+    }
+    diag.huntAnomalies = {
+      countsByKind: { ...huntResult.countsByKind },
+      injected: loopsToAdd.length,
+      skippedLocked,
+      candidateTitles: loopsToAdd.map((l) => l.title.slice(0, 100)),
+    };
+    if (loopsToAdd.length > 0 || skippedLocked > 0) {
+      logStructuredEvent({
+        event: 'hunt_anomalies_injected',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'scoring',
+        details: {
+          scope: 'scorer',
+          injected: loopsToAdd.length,
+          skipped_locked: skippedLocked,
+          counts: huntResult.countsByKind,
+        },
+      });
+    }
+  }
 
   // Ranking invariant enforcement
   // Hard-block weak/obvious/repeated/non-decision-moving candidates and
