@@ -1,8 +1,10 @@
-# WHAT'S NEXT — Updated 2026-04-05
+# WHAT'S NEXT — Updated 2026-04-06
 
-## STATUS: GREEN — ML moat (snapshots + global priors + scorer blend) shipped
+## STATUS: GREEN — Gate 4 data path widened (generator snippets + RAW_FACTS)
 
-**Latest ship:** verify `git log -1 --oneline` — migration `20260405000001_directive_ml_moat.sql`; nightly-ops stage `ml_global_priors`; apply DDL in Supabase before expecting non-empty priors.
+**Latest ship:** verify `git log -1 --oneline` — `fix(generator): 1500c signal snippets, 15 surgical_raw_facts; AGENTS debug-first line` (`a64766a` area). After Vercel **Ready**, spot-check a commitment-backed directive for real amounts/dates in context.
+
+**Prior — ML moat:** migration `20260405000001_directive_ml_moat.sql`; nightly-ops stage `ml_global_priors`; apply DDL in Supabase before expecting non-empty priors.
 
 **Generator diagnostician (April 5, 2026):** `SYSTEM_PROMPT` hardening + per-run `DIAGNOSTIC_LENS` from `matched_goal_category` + vague-`mechanism` validation retries. Monitor: generator retry rate and `causal_diagnosis:vague_mechanism_*` validation failures in logs after deploy.
 
