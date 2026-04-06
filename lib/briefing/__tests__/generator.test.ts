@@ -329,6 +329,21 @@ describe('applyScheduleConflictCanonicalUserFacingCopy', () => {
 });
 
 describe('getDecisionEnforcementIssues — payment finished work', () => {
+  it('treats persisted artifact action label `document` like write_document for task-manager gates', () => {
+    const issues = getDecisionEnforcementIssues({
+      actionType: 'document',
+      directiveText: 'American Express minimum payment is due April 11, 2026.',
+      reason: 'Waiting increases late fee risk on the open balance shown in the statement email.',
+      artifact: {
+        type: 'document',
+        title: 'AmEx payment',
+        content: 'NEXT_ACTION: Pay $198 minimum before April 9. Owner: you.',
+      },
+    });
+    expect(issues.some((i) => i.includes('forbidden_task_manager_next_action_label'))).toBe(true);
+    expect(issues.some((i) => i.includes('forbidden_owner_you_task_line'))).toBe(true);
+  });
+
   it('rejects write_document with NEXT_ACTION / Owner: you task-manager lines', () => {
     const issues = getDecisionEnforcementIssues({
       actionType: 'write_document',

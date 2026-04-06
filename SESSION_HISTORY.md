@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — AUDIT: **Task-manager gates — `document` action label + discrepancy write_document path**
+  MODE: AUDIT
+  Commit hash(es): (pending push)
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/briefing/__tests__/generator.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/briefing/__tests__/schedule-conflict-finished-work-gates.test.ts`; `npm run build` passed.
+  Changes: `normalizeDecisionActionType` treats `document` like `write_document`; `getWriteDocumentTaskManagerLabelIssues` shared helper; `validateGeneratedArtifact` runs label checks for **discrepancy** + `write_document` (previously skipped entire decision-enforcement block); `validateDirectiveForPersistence` runs same for **insight/discrepancy** when skipping full enforcement; schedule-conflict persistence branches use `normalizeDecisionActionType(String(action_type))`; debug snapshot log includes `discrepancyClass`.
+  Any unresolved issues: Re-run Generate Now on deploy; expect validation retry or candidate block until LLM drops `NEXT_ACTION:` / `Owner: you`.
+
 - 2026-04-06 — AUDIT: **Generator — single-focus financial directives, forbid NEXT_ACTION task lines**
   MODE: AUDIT
   Commit hash(es): `c73d89b`

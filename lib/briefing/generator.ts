@@ -3720,7 +3720,12 @@ const CAUSAL_MECHANISM_ANCHORS: Record<CausalMechanismClass, RegExp[]> = {
 
 function normalizeDecisionActionType(actionType: string): 'send_message' | 'write_document' | 'other' {
   if (actionType === 'send_message') return 'send_message';
-  if (actionType === 'write_document' || actionType === 'make_decision' || actionType === 'research') {
+  if (
+    actionType === 'write_document' ||
+    actionType === 'make_decision' ||
+    actionType === 'research' ||
+    actionType === 'document'
+  ) {
     return 'write_document';
   }
   return 'other';
@@ -3743,6 +3748,22 @@ function getArtifactTextForDecisionEnforcement(
   const title = isNonEmptyString(artifact.title) ? artifact.title.trim() : '';
   const content = isNonEmptyString(artifact.content) ? artifact.content.trim() : '';
   return `${title}\n${content}`.trim();
+}
+
+/** Finished documents must not use task-manager scaffolding (applies even when full decision-enforcement is skipped for discrepancy/insight). */
+function getWriteDocumentTaskManagerLabelIssues(artifact: Record<string, unknown> | null): string[] {
+  if (!artifact || typeof artifact !== 'object') return [];
+  const title = isNonEmptyString(artifact.title) ? artifact.title.trim() : '';
+  const content = isNonEmptyString(artifact.content) ? artifact.content.trim() : '';
+  const text = `${title}\n${content}`.trim();
+  const out: string[] = [];
+  if (/\bNEXT_ACTION\s*:/i.test(text)) {
+    out.push('decision_enforcement:forbidden_task_manager_next_action_label');
+  }
+  if (/\bOwner\s*:\s*you\b/i.test(text)) {
+    out.push('decision_enforcement:forbidden_owner_you_task_line');
+  }
+  return out;
 }
 
 /** Payment deadline write_document with $ + pay path — ownership lines like "Owner: you" are not required. */
@@ -3800,12 +3821,7 @@ export function getDecisionEnforcementIssues(input: {
     issues.push('decision_enforcement:requires_rewriting');
   }
   if (normalizedType === 'write_document') {
-    if (/\bNEXT_ACTION\s*:/i.test(artifactText)) {
-      issues.push('decision_enforcement:forbidden_task_manager_next_action_label');
-    }
-    if (/\bOwner\s*:\s*you\b/i.test(artifactText)) {
-      issues.push('decision_enforcement:forbidden_owner_you_task_line');
-    }
+    issues.push(...getWriteDocumentTaskManagerLabelIssues(artifactRecord));
   }
 
   let out = [...new Set(issues)];
@@ -5097,6 +5113,11 @@ function validateGeneratedArtifact(
     }
   }
 
+  // Discrepancy/insight paths skip full decision-enforcement above — still ban task-manager lines on documents.
+  if (isDiscrepancyCandidate && canonicalArtifactType === 'write_document') {
+    issues.push(...getWriteDocumentTaskManagerLabelIssues(payload.artifact as Record<string, unknown>));
+  }
+
   // Dedup check against recent actions
   const recentApproved = ctx.recent_action_history_7d
     .filter((a) => a.includes('APPROVED'))
@@ -5149,7 +5170,7 @@ export function validateDirectiveForPersistence(input: {
     const art = input.artifact as Record<string, unknown>;
     if (
       directiveLooksLikeScheduleConflict(input.directive) &&
-      input.directive.action_type === 'write_document'
+      normalizeDecisionActionType(String(input.directive.action_type)) === 'write_document'
     ) {
       const t = typeof art.title === 'string' ? art.title : '';
       const c = typeof art.content === 'string' ? art.content : '';
@@ -5168,7 +5189,7 @@ export function validateDirectiveForPersistence(input: {
   }
   if (!input.artifact || typeof input.artifact !== 'object') {
     issues.push('artifact is required before persistence');
-  } else if (input.directive.action_type === 'write_document') {
+  } else if (normalizeDecisionActionType(String(input.directive.action_type)) === 'write_document') {
     if (directiveLooksLikeScheduleConflict(input.directive)) {
       const art = input.artifact as Record<string, unknown>;
       const t = typeof art.title === 'string' ? art.title : '';
@@ -5220,6 +5241,8 @@ export function validateDirectiveForPersistence(input: {
         matchedGoalCategory: input.matchedGoalCategory ?? null,
       }),
     );
+  } else if (normalizeDecisionActionType(input.directive.action_type) === 'write_document') {
+    issues.push(...getWriteDocumentTaskManagerLabelIssues(input.artifact as Record<string, unknown>));
   }
 
   return [...new Set(issues)];
@@ -5732,6 +5755,7 @@ async function generatePayload(
         supportingSignalCount: ctx.supporting_signals.length,
         crossSignalAnchorCount: collectCrossSignalAnchors(ctx).length,
         candidateClass: ctx.candidate_class,
+        discrepancyClass: ctx.discrepancy_class ?? null,
         matchedGoalCategory: ctx.matched_goal_category,
         committedArtifactType: committed ?? null,
       },
