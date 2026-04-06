@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — OPS: **SESSION_HISTORY: close stale SettingsClient debug-ingest follow-up**
+  MODE: OPS
+  Commit hash(es): (set after push)
+  Files changed: `SESSION_HISTORY.md`
+  What was verified: `rg` on `*.ts`/`*.tsx` — no `127.0.0.1:7695`, `#region agent log`, or `pre_final_gate_debug` in app/lib.
+  Changes: Replaced outdated **Any unresolved issues** on 2026-04-05 Settings OAuth return log (still asked to remove agent-log blocks after repro) with **Closed** pointer to the OPS session that removed `SettingsClient` ingest.
+  Any unresolved issues: None.
+
 - 2026-04-06 — OPS: **Remove scorer `pre_final_gate_debug` console instrumentation**
   MODE: OPS
   Commit hash(es): `63f88b8`
@@ -131,7 +139,7 @@
   Files changed: `app/dashboard/settings/SettingsClient.tsx` (dev-only debug ingest for session `7a929c`), `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep Settings` (4 passed).
   Changes: On `google_connected` / `microsoft_connected`, await `refreshIntegrationsStatus()` before `POST sync-now` and again in `finally`; dropped optimistic integration row that omitted `sync_stale`. Temporary NDJSON logs to local ingest in development only.
-  Any unresolved issues: Remove folded `// #region agent log` blocks after one successful local repro confirms `ms_sync_stale: true` in `debug-7a929c.log`.
+  Any unresolved issues: **Closed** — follow-up OPS session removed `// #region agent log` / `127.0.0.1:7695` instrumentation from `SettingsClient.tsx` (see session log **Remove SettingsClient Cursor debug ingest**).
 
 - 2026-04-05 — AUDIT: **OAuth fatal refresh → auto soft-disconnect (Microsoft + Google)**
   MODE: AUDIT
