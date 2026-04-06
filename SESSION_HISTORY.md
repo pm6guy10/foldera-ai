@@ -6,7 +6,7 @@
 
 - 2026-04-06 — AUDIT: **Generator — payment structural single-focus, moralizing validation, remove prod debug fetch**
   MODE: AUDIT
-  Commit hash(es): (set after push)
+  Commit hash(es): `53819a7`
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   What was verified: `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/generator.test.ts` (41 passed); `npm run build` passed.
   Changes: Payment-shaped winners collapse context via `pickHighestStakesPaymentSignal`; payment-deadline prompts add hard **SINGLE_FINDING_OUTPUT**, omit **INPUT_STATE** / entity-analysis / avoidance / mirrors / conviction math / behavioral history where applicable; **`getFinancialPaymentToneValidationIssues`** + persistence tone gate; **SYSTEM_PROMPT** JSON field rules for billing; removed **`127.0.0.1:7695`** ingest **`fetch`** from **`generatePayload`**.
@@ -26,7 +26,7 @@
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/briefing/__tests__/generator.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/briefing/__tests__/causal-diagnosis.test.ts lib/briefing/__tests__/holy-crap-multi-run-proof.test.ts`; `npm run build` passed.
   Changes: Prompt hardening for payment-deadline winners (one obligation, no moralizing “avoidance” framing for routine billing); decision-enforcement no longer rewards `NEXT_ACTION:` / `Owner: you`; financial exceptions for low-cross-signal and owner-assignment when artifact has pay path + $; pass-1 anomaly wording “actionable”; NDJSON debug ingest in `generatePayload` (session `124e2f`) for repro validation.
-  Any unresolved issues: Operator should run Generate Now once and confirm `debug-124e2f.log` + artifact shape; remove debug `fetch` after confirmed green per debug workflow.
+  Any unresolved issues: **Closed** — debug `fetch` removed in `53819a7`. Operator: Generate Now + Supabase spot-check for artifact shape.
 
 - 2026-04-06 — FLOW: **Settings Generate now → `run-brief?force=true`**
   MODE: FLOW
