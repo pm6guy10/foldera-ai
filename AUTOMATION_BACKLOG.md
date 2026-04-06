@@ -1,5 +1,9 @@
 # AUTOMATION BACKLOG
 
+### OPEN (2026-04-05) — Local `test:ci:e2e` `/login` HTTP 500
+
+- **Symptom:** `npx next start` + Playwright CI config against `127.0.0.1:3011` (or `3012`) returned generic **500** on `/login` in this workspace; `test:ci:e2e` therefore failed locally. **GitHub Actions** should still run the same gate with repo secrets (`NEXTAUTH_*`, etc.). **Next:** reproduce with server logs (`next start` stderr) and confirm `NEXTAUTH_URL` matches `WEB_ORIGIN` from `playwright.ci.config.ts`.
+
 ### DONE (2026-04-03) — UI Critic auto-trigger killed (agent)
 
 - **Root cause confirmed:** `push: branches: [main]` trigger in `.github/workflows/agent-ui-critic.yml` fired the full Playwright + Sonnet + ingest cycle on every push to main, producing ~5 `action_type='research'` rows per push (one per page if `below_seven=true`). 417 rows in 7 days ≈ 83 workflow runs driven by frequent AI-session commits. Every code path traced: only `insertAgentDraft` (`lib/agents/draft-queue.ts` L53) writes `action_type='research'` rows; only `ingestUiCriticItems` (`lib/agents/ingest-ui-critic.ts`) generates `directive_text='UI/UX below threshold — …'` rows. All other paths (agent-runner, vercel.json crons, nightly-ops, daily-brief, signal-drain) confirmed clean.
