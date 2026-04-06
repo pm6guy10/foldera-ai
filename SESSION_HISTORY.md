@@ -6,7 +6,7 @@
 
 - 2026-04-06 — OPS: **GitHub Actions: checkout v5 + setup-node v5 (Node 24 action runtime)**
   MODE: OPS
-  Commit hash(es): `b426f7d`
+  Commit hash(es): `e89c8f0`
   Files changed: `.github/workflows/deploy.yml`, `.github/workflows/ci.yml`, `.github/workflows/agent-ui-critic.yml`, `.github/workflows/weekly-audit.yml`, `.github/workflows/production-e2e.yml`, `.github/workflows/semgrep.yml`, `SESSION_HISTORY.md`
   What was verified: Addresses GitHub deprecation notice for `actions/checkout@v4` and `actions/setup-node@v4` running on Node.js 20; v5 actions use the Node 24 runtime per upstream releases (requires hosted runner 2.327.1+).
   Changes: Bumped `actions/checkout@v4` → `@v5` and `actions/setup-node@v4` → `@v5` everywhere those steps are used. App/toolchain Node version for `npm ci` / build remains **22** via `setup-node` `node-version`.
