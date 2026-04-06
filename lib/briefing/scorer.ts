@@ -5335,18 +5335,6 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // -----------------------------------------------------------------------
 
   const SCORED_MIN_THRESHOLD = 0.001;
-  console.log(JSON.stringify({
-    event: 'pre_final_gate_debug',
-    scored_count: scored.length,
-    scored_sample: scored.slice(0, 5).map(s => ({
-      id: s.id?.slice(0, 40),
-      type: s.type,
-      title: s.title?.slice(0, 60),
-      score: s.score,
-      invariant_pass: passesTop3RankingInvariants(s),
-      invariant_reasons: getInvariantFailureReasons(s),
-    })),
-  }));
 
   // Build survivors and final-gate drops for diagnostics
   const finalGateDrops: ScorerDropEntry[] = [];
