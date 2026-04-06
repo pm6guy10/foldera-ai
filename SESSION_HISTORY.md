@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — AUDIT: **CI E2E: flow-routes NextAuth cookie via addCookies (fix networkidle timeout)**
+  MODE: AUDIT
+  Commit hash(es): `b329c52`
+  Files changed: `tests/e2e/flow-routes.spec.ts`, `SESSION_HISTORY.md`
+  What was verified: GitHub CI log showed `flow-routes.spec.ts` “no page performs client-side redirect after load” hitting **30s** timeout; `authenticated-routes.spec.ts` already documents `setExtraHTTPHeaders(Cookie)` breaking `/_next/static`. Local `npm run test:ci:e2e` with `PLAYWRIGHT_WEB_PORT=3011`: **41 passed**, flow test ~16.6s.
+  Changes: Replaced `setExtraHTTPHeaders` session spoof with `context.addCookies([{ name: 'next-auth.session-token', ... }])` aligned to `E2E_ORIGIN` / `PLAYWRIGHT_WEB_PORT` (same pattern as authenticated tests).
+  Any unresolved issues: None for this failure mode.
+
 - 2026-04-06 — OPS: **GitHub Actions: checkout v5 + setup-node v5 (Node 24 action runtime)**
   MODE: OPS
   Commit hash(es): `e89c8f0`

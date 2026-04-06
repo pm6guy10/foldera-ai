@@ -5,10 +5,12 @@ import { encode } from 'next-auth/jwt';
 loadEnv({ path: '.env.local' });
 
 const MOCK_USER_ID = '00000000-0000-0000-0000-000000000002';
-const SESSION_COOKIE_NAMES = [
-  'next-auth.session-token',
-  '__Secure-next-auth.session-token',
-];
+const E2E_PORT = process.env.PLAYWRIGHT_WEB_PORT?.trim() || '3000';
+/** Must match Playwright `use.baseURL` / `playwright.ci.config` WEB_ORIGIN. */
+const E2E_ORIGIN =
+  process.env.PLAYWRIGHT_TEST_BASE_URL?.trim() ||
+  process.env.BASE_URL?.trim() ||
+  `http://127.0.0.1:${E2E_PORT}`;
 
 async function seedAuthenticatedSession(page: Page) {
   const secret = process.env.NEXTAUTH_SECRET;
@@ -27,9 +29,18 @@ async function seedAuthenticatedSession(page: Page) {
     },
   });
 
-  await page.context().setExtraHTTPHeaders({
-    cookie: SESSION_COOKIE_NAMES.map((name) => `${name}=${sessionToken}`).join('; '),
-  });
+  // Matches middleware + getAuthOptions(): local `next start` (no VERCEL) uses `next-auth.session-token`.
+  // Avoid setExtraHTTPHeaders(Cookie): it breaks /_next/static chunk loading → networkidle never settles (CI timeout).
+  const cookieUrl = new URL('/', E2E_ORIGIN).href;
+  await page.context().addCookies([
+    {
+      name: 'next-auth.session-token',
+      value: sessionToken,
+      url: cookieUrl,
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ]);
 }
 
 test.describe('Flow routes', () => {
