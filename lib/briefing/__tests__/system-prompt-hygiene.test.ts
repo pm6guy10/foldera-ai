@@ -23,6 +23,10 @@ describe('SYSTEM_PROMPT hygiene', () => {
     expect(SYSTEM_PROMPT).toContain('DOMAIN DIAGNOSTIC LENSES');
     expect(SYSTEM_PROMPT).toContain('NAMED FAILURE MODES');
     expect(SYSTEM_PROMPT).toContain('DIAGNOSTIC_LENS');
+    expect(SYSTEM_PROMPT).toContain('MISSING DETAILS — NEVER BRACKET FILL-INS');
+    expect(SYSTEM_PROMPT).toContain('[INSERT DATE]');
+    expect(SYSTEM_PROMPT).toContain('WRITE_DOCUMENT — SIGNAL-GROUNDED VALUES');
+    expect(SYSTEM_PROMPT).toContain('You are not a task manager');
   });
 
   it('does not contain legacy real-style few-shot names or entities', () => {

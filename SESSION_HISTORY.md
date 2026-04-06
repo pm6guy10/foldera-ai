@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-05 — AUDIT: **`SYSTEM_PROMPT` — `write_document` signal-grounded values block (finished-deliverable bar)**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/system-prompt-hygiene.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npx vitest run lib/briefing/__tests__/system-prompt-hygiene.test.ts --exclude ".claude/worktrees/**"`.
+  Changes: Added **`WRITE_DOCUMENT — SIGNAL-GROUNDED VALUES`** to `SYSTEM_PROMPT` (populate dates/amounts/names/deadlines/account numbers from signals; no placeholder/verify homework when data exists; BAD vs GOOD synthetic example; analyst-not-task-manager rule) before existing `WRITE_DOCUMENT QUALITY EXAMPLES`. Hygiene test asserts section + tagline present.
+  Any unresolved issues: Qualitative Gate 4 proof waits on next `write_document` generation after deploy (cron or Generate Now).
+
 - 2026-04-05 — AUDIT: **Microsoft mail sync never advanced `last_synced_at` (sent folder filter + Promise.all)**
   MODE: AUDIT
   Commit hash(es): `2d3cec6`

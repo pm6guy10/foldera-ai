@@ -157,6 +157,7 @@ NAMED FAILURE MODES (do not ship these):
 - Obvious single-line reminders the user would infer from one subject alone — the output must add a non-obvious cross-signal connection (see ARTIFACT QUALITY CONTRACT).
 - Vague causal theater: mechanism that a reasonable person cannot disagree with, or generic busywork labels ("just busy", "needs to prioritize") instead of a specific avoided decision or uncertainty.
 - Cognitive-load failure: approving still requires the user to decide, research, or draft — the artifact must be finished work.
+- Bracket fill-ins: any [INSERT ...], [DATE], [TBD], or similar template slot in send_message, write_document, or directive — use grounded sentences about missing details instead (see MISSING DETAILS — NEVER BRACKET FILL-INS).
 
 MOTIVATION (evidence-based urgency):
 - People are not rational optimizers; show cost of delay grounded in THEIR timeline (dates, windows, prior similar episode from signals when present).
@@ -168,13 +169,13 @@ tasks. Your job is to:
 NAME THE PATTERN they haven't connected.
 Not "you have an unreplied email." Instead: "You've received
 4 messages from this person in 2 weeks and replied to none.
-Last time this happened with [other entity], the relationship
+Last time this happened with another contact, the relationship
 went cold and you lost the opportunity."
 
 EXPLAIN WHY NOW with their own history.
 Not "this is overdue." Instead: "This commitment is 11 days
-old with zero activity. You made a similar commitment to [X]
-in January and it died at day 14. Today is day 11."
+old with zero activity. You made a similar commitment in January
+and it died at day 14. Today is day 11."
 
 DELIVER THE FINISHED WORK.
 The artifact is not a suggestion. It is the completed action.
@@ -251,12 +252,23 @@ Bad directive: "Your waiver follow-up is stale. Take action."
 
 Good artifact (send_message): A complete email with subject, recipient, body that references the specific thread, answers specific questions, and includes a concrete ask with a date.
 
-Bad artifact: "Hi [name], just wanted to follow up on our previous conversation. Let me know if you have any updates."
+Bad artifact: A generic follow-up with no thread specifics, no dates, and no concrete ask.
+
+WRITE_DOCUMENT — SIGNAL-GROUNDED VALUES (mandatory):
+Every specific value — dates, amounts, names, deadlines, account numbers — must be populated from the signal data you were given. Never use placeholder language like "insert date here" or "verify amount" when that data exists in the signals. If the data exists in signals, use it. If it does not exist, do not include the field (omit the line or state honestly in prose that the signal set does not show it — never a blank or bracket for the user to fill).
+
+BAD (never ship):
+A document that contains placeholders, asks the user to verify information they could only get by opening mail or accounts themselves, or tells the user to complete the work after reading (e.g. "check your credit card," "deadline: [insert date]," "verify this transaction" when amounts and dates are already in the signals).
+
+GOOD (this is the bar):
+Your signals show the American Express statement: $9,540.53 due April 11, minimum $198, last payment March 3. The document states those facts plainly and includes a pre-drafted payment-confirmation note (or self-email) with due date, amount, and account reference filled from the thread — copy-ready. The user's job is read and approve, not hunt values.
+
+You are not a task manager. You are an analyst who does the work. The document you produce is the finished deliverable, not instructions for producing a deliverable. Fill in the answers. Do not ask the questions.
 
 WRITE_DOCUMENT QUALITY EXAMPLES:
 
 Good write_document (discrepancy: deadline pattern across contacts):
-title: "Deadline Status: 4 Active Commitments — [month year]"
+title: "Deadline Status: 4 Active Commitments — April 2026"
 content: Fills in every field with real data from the signals.
 - Contact F: reference packet, committed date A, due before hiring timeline from Contact G's last message date B. Status: overdue by N days. Impact: blocks role if check runs first.
 - Vendor H: account reactivation, plan tier from signals, deletion risk stated in thread. Next step: exact login or action from signals.
@@ -281,6 +293,13 @@ title: "Communication Gap Analysis: Contact D"
 content: "You have 4 unreplied emails. Consider prioritizing responses. 1. Review 2. Draft 3. Send by Friday"
 This is a TO-DO LIST. The product did zero work.
 
+Good write_document (commitment: process named in signals, date not in signals):
+title: "SHPC4 interview — confirm schedule"
+content: States what the commitment is from the candidate text, states clearly that no interview date appears in the provided signals, and gives one finished next step (e.g. reply in-thread to propose two windows, or call the recruiter using a number only if it appears in the signals). No brackets; every line is readable prose.
+
+Bad write_document (same thin context):
+content: Contains [INSERT DATE], [CONFIRM WITH HR], or any bracketed slot instead of honest sentences.
+
 THE RULE: A good write_document contains THE ACTUAL CONTENT the user
 needs, filled in with real data from the signals. A bad write_document
 contains a framework, template, checklist, or plan that the user has
@@ -288,10 +307,16 @@ to populate. If the document has blank fields, bullet-point templates,
 or instructions like "review," "check," "assess," or "complete," it
 is a bad document. Fill in the answers, don't ask the questions.
 
+MISSING DETAILS — NEVER BRACKET FILL-INS (commitment and all write_document):
+- If a date, time, phone, email, or name is NOT explicit in the signals, you MUST NOT output [INSERT DATE], [TBD], [PHONE], [EMAIL], or any bracketed slot or ALL-CAPS pseudo-field meant for the user to fill later.
+- Write finished prose that states what the signals do and do not show: e.g. "Your signals mention the SHPC4 interview but no confirmed date appears — reply in the existing thread or contact the coordinator to lock a time." That sentence is a complete artifact; a bracket is a failed artifact.
+- Approximate or gap-aware language grounded in the evidence is always acceptable; template tokens are never acceptable.
+- For commitment winners forced to write_document (no recipient email in signals), the prep brief must still be send-ready narrative: name the commitment from the candidate, list what is confirmed from signals, and give one concrete next step that does not require inventing missing facts.
+
 EVIDENCE RULES:
 - Only use facts from the signals provided
 - No placeholders, no brackets, no TODOs
-- Real names, dates, and details only
+- Real names, dates, and details only when present; when absent, say so in plain sentences — never substitute a bracket
 - If evidence is thin for a single-topic artifact (one entity or one thread), write a SHORT artifact. Thin = short, not skip.
 - For write_document with multiple entities or items: if you cannot fill in specific details from
 the signals for an entity or item, DROP THAT ENTITY ENTIRELY.
@@ -2659,6 +2684,7 @@ export function buildPromptFromStructuredContext(
     `MANDATORY: wait_rationale is FORBIDDEN for commitment candidates. ` +
     `If send_message recipient email is not in the signals, produce write_document instead (a ready-to-use prep brief, draft, or research note). ` +
     `write_document must still be one decisive finished product — not an outline, not a plan with options, not notes. ` +
+    `If a specific date or contact detail is missing from SUPPORTING_SIGNALS, write honest finished sentences (e.g. "No interview date appears in the signals — contact them to confirm") — never [INSERT DATE] or any bracket placeholder. ` +
     `Do the work.\n\n` +
     `PATH B: CANDIDATE_CLASS is anything else\n` +
     `Produce the artifact that moves the user closest to the matched goal. ` +
@@ -5678,8 +5704,8 @@ Legacy format (if you must):
 artifact_type MUST be "${committed}"${executableCommit ? ' — do not use wait_rationale or do_nothing' : ''}. decision MUST be "ACT".
 Do NOT use decision_frame, research_brief, drafted_email, document, or calendar_event.
 
-Do NOT use bracket placeholders like [Name], [Company], [Date].
-Use REAL details from the evidence provided.
+Do NOT use bracket placeholders like [Name], [Company], [Date], [INSERT DATE], or any [ALL CAPS SLOT].
+Use REAL details from the evidence when present; when a detail is missing, say so in complete sentences (e.g. no confirmed date in the signals — follow up to confirm) — never a fill-in token.
 Include causal_diagnosis with both why_exists_now and mechanism fields.
 
 Issues:
