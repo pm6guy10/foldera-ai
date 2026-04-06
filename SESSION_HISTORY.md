@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — AUDIT: **Generator — payment structural single-focus, moralizing validation, remove prod debug fetch**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/generator.test.ts` (41 passed); `npm run build` passed.
+  Changes: Payment-shaped winners collapse context via `pickHighestStakesPaymentSignal`; payment-deadline prompts add hard **SINGLE_FINDING_OUTPUT**, omit **INPUT_STATE** / entity-analysis / avoidance / mirrors / conviction math / behavioral history where applicable; **`getFinancialPaymentToneValidationIssues`** + persistence tone gate; **SYSTEM_PROMPT** JSON field rules for billing; removed **`127.0.0.1:7695`** ingest **`fetch`** from **`generatePayload`**.
+  Any unresolved issues: Operator **Generate Now** + Supabase spot-check on deploy; **`npm run test:prod`** when `auth-state.json` is fresh.
+
 - 2026-04-06 — AUDIT: **Task-manager gates — `document` action label + discrepancy write_document path**
   MODE: AUDIT
   Commit hash(es): `46f65d7`

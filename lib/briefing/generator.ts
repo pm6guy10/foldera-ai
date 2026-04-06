@@ -262,6 +262,10 @@ When signals include a statement or bill for one issuer with a specific balance 
 TONE — BILLING AND ROUTINE ADMIN (when the winner is not a relationship discrepancy about unanswered threads):
 State amounts, due dates, and pay paths plainly. Do not use judgment labels about the user's character or habits ("pattern of avoidance," "complete avoidance," "deflected decisions," "compounds daily") for routine statements or admin mail — that reads as moralizing, not help. Reserve behavioral framing for genuine relationship/commitment discrepancy candidates where the scorer explicitly selected an avoidance or risk pattern.
 
+JSON OUTPUT — PAYMENT / STATEMENT WINNERS (when the user prompt includes a bill with dollar amounts and a due/statement window):
+- The directive, insight, why_now, and causal_diagnosis fields must stay in plain operational language (issuer, amounts, dates). Forbidden vocabulary in those fields for this situation: "avoidance," "systematic," "compounds" (daily or otherwise), "inbound → outbound," "pattern of deflection," "deflected," or any inbox-velocity / character sketch.
+- One obligation only — never a multi-vendor digest in the artifact body.
+
 NEGATIVE EXAMPLES (never produce these):
 - Generic ping to Agency A during an active job search with no link to the user's applications, goals, or dormant contacts (no cross-signal).
 - "Schedule 30 minutes to review your credit score" (chore, user already knows).
@@ -1317,12 +1321,71 @@ function buildDecisionPayload(
 // Part 3 — Structured context (preprocessing)
 // ---------------------------------------------------------------------------
 
-interface CompressedSignal {
+export interface CompressedSignal {
   source: string;
   occurred_at: string;
   entity: string | null;
   summary: string;
   direction: 'sent' | 'received' | 'unknown';
+}
+
+/** True when the winner is payment/statement shaped — narrows SUPPORTING_SIGNALS and softens avoidant prompt blocks. */
+export function shouldApplyFinancialSingleFocus(winner: ScoredLoop): boolean {
+  if (winner.matchedGoal?.category === 'financial') return true;
+  const blob = `${winner.title}\n${winner.content}`.toLowerCase();
+  return (
+    /\$\s*[\d,]+(?:\.\d{2})?/.test(blob) &&
+    /\b(minimum|due|statement|balance|payment\s+due)\b/.test(blob)
+  );
+}
+
+/** Keep the single highest-stakes payment row; exported for unit tests. */
+export function pickHighestStakesPaymentSignal(signals: CompressedSignal[]): CompressedSignal[] {
+  if (signals.length <= 1) return signals;
+  const score = (s: CompressedSignal): number => {
+    const t = `${s.summary} ${s.entity ?? ''}`.toLowerCase();
+    let n = 0;
+    if (/\$\s*[\d,]+(?:\.\d{2})?/.test(t)) n += 6;
+    if (/\bminimum\b/.test(t)) n += 4;
+    if (/\b(due|deadline|pay\s+by|payment\s+due)\b/.test(t)) n += 4;
+    if (/\bstatement\b/.test(t)) n += 2;
+    if (/\b(balance|amount\s+owed)\b/.test(t)) n += 2;
+    if (/\b(payment\s+received|thank\s+you\s+for\s+your\s+payment|credit\s+applied|confirmation\s+of\s+payment)\b/.test(t)) n -= 5;
+    if (/\bvenmo\b/.test(t) && !/\b(due|minimum|statement)\b/.test(t)) n -= 2;
+    return n;
+  };
+  let best = signals[0]!;
+  let bestScore = score(best);
+  for (const s of signals.slice(1)) {
+    const sc = score(s);
+    if (sc > bestScore) {
+      best = s;
+      bestScore = sc;
+    }
+  }
+  if (bestScore < 2) return [signals[0]!];
+  return [best];
+}
+
+function isPaymentDeadlinePromptContextSlice(
+  matched_goal_category: string | null,
+  candidate_title: string,
+  selected_candidate: string,
+): boolean {
+  if (matched_goal_category === 'financial') return true;
+  const b = `${candidate_title}\n${selected_candidate}`.toLowerCase();
+  return (
+    /\$\s*[\d,]+(?:\.\d{2})?/.test(b) &&
+    /\b(minimum|due|statement|balance|payment\s+due)\b/.test(b)
+  );
+}
+
+function isPaymentDeadlinePromptContext(ctx: StructuredContext): boolean {
+  return isPaymentDeadlinePromptContextSlice(
+    ctx.matched_goal_category,
+    ctx.candidate_title,
+    ctx.selected_candidate,
+  );
 }
 
 interface AvoidanceObservation {
@@ -1759,7 +1822,7 @@ function buildStructuredContext(
     .slice()
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
-  const response_pattern_lines = sorted
+  let response_pattern_lines = sorted
     .filter((s) => s.row_type === 'response_pattern')
     .slice(0, 24)
     .map((s) => {
@@ -1767,6 +1830,9 @@ function buildStructuredContext(
       const auth = s.author?.trim() ? `${s.author.trim()}: ` : '';
       return `- [${s.date}] [response_pattern] ${auth}${head.slice(0, 280)}`;
     });
+  if (shouldApplyFinancialSingleFocus(winner)) {
+    response_pattern_lines = [];
+  }
 
   const maxSignals =
     winner.type === 'discrepancy' && winner.discrepancyClass === 'decay'
@@ -1796,17 +1862,27 @@ function buildStructuredContext(
     }
   }
 
-  const supporting_signals: CompressedSignal[] = diverse.map((s) => ({
+  let supporting_signals: CompressedSignal[] = diverse.map((s) => ({
     source: s.source,
     occurred_at: s.date,
     entity: s.author,
     summary: [s.subject, s.snippet].filter(Boolean).join(' — '),
     direction: s.direction,
   }));
+  if (shouldApplyFinancialSingleFocus(winner)) {
+    supporting_signals = pickHighestStakesPaymentSignal(supporting_signals);
+  }
 
   // Extract surgical raw facts: emails, dates, names, subjects
   const surgical_raw_facts: string[] = [];
   const emailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+
+  const evidenceForSurgicalFacts =
+    shouldApplyFinancialSingleFocus(winner) && supporting_signals.length > 0
+      ? signalEvidence.filter((e) =>
+          supporting_signals.some((cs) => cs.occurred_at === e.date),
+        )
+      : signalEvidence.slice(0, 7);
 
   // Extract emails from relationship context
   if (winner.relationshipContext) {
@@ -1819,7 +1895,7 @@ function buildStructuredContext(
   }
 
   // Extract emails from signals
-  for (const s of signalEvidence.slice(0, 7)) {
+  for (const s of evidenceForSurgicalFacts.slice(0, 7)) {
     if (s.subject) surgical_raw_facts.push(`email_subject: ${s.subject.slice(0, 100)}`);
     if (s.author) {
       const authorEmail = s.author.match(emailPattern);
@@ -1966,6 +2042,13 @@ function buildStructuredContext(
 
   const candidate_context_enrichment = enrichCandidateContext(winner, sorted);
 
+  const evidenceForTimeline =
+    shouldApplyFinancialSingleFocus(winner) && supporting_signals.length > 0
+      ? signalEvidence.filter((e) =>
+          supporting_signals.some((cs) => cs.occurred_at === e.date),
+        )
+      : signalEvidence;
+
   return {
     selected_candidate: selectedCandidate,
     candidate_class: winner.type,
@@ -2009,22 +2092,28 @@ function buildStructuredContext(
           return !entityTokens.some((t) => lower.includes(t));
         })
       : (alreadySent ?? []),
-    behavioral_mirrors: buildBehavioralMirrors(antiPatterns ?? [], divergences ?? []),
-    conviction_math: convictionDecision
-      ? [
-          `CONVICTION MATH (inferred from signals — not user-provided):`,
-          convictionDecision.math,
-          ``,
-          `OPTIMAL ACTION: ${convictionDecision.optimalAction}`,
-          convictionDecision.stopSecondGuessing ? `STOP SECOND-GUESSING: The math is definitive. Do not hedge.` : ``,
-          `CATASTROPHIC SCENARIO (${convictionDecision.catastrophicProbability}% probability): ${convictionDecision.catastrophicScenario}`,
-          `KEY HEDGE: ${convictionDecision.keyHedge}`,
-        ].filter(Boolean).join('\n')
-      : null,
-    behavioral_history: behavioralHistory ?? null,
-    avoidance_observations: avoidanceObservations ?? [],
-    relationship_timeline:     buildRelationshipTimeline(
-      signalEvidence,
+    behavioral_mirrors: shouldApplyFinancialSingleFocus(winner)
+      ? []
+      : buildBehavioralMirrors(antiPatterns ?? [], divergences ?? []),
+    conviction_math: (() => {
+      if (shouldApplyFinancialSingleFocus(winner)) return null;
+      if (!convictionDecision) return null;
+      return [
+        `CONVICTION MATH (inferred from signals — not user-provided):`,
+        convictionDecision.math,
+        ``,
+        `OPTIMAL ACTION: ${convictionDecision.optimalAction}`,
+        convictionDecision.stopSecondGuessing ? `STOP SECOND-GUESSING: The math is definitive. Do not hedge.` : ``,
+        `CATASTROPHIC SCENARIO (${convictionDecision.catastrophicProbability}% probability): ${convictionDecision.catastrophicScenario}`,
+        `KEY HEDGE: ${convictionDecision.keyHedge}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    })(),
+    behavioral_history: shouldApplyFinancialSingleFocus(winner) ? null : behavioralHistory ?? null,
+    avoidance_observations: shouldApplyFinancialSingleFocus(winner) ? [] : avoidanceObservations ?? [],
+    relationship_timeline: buildRelationshipTimeline(
+      evidenceForTimeline,
       (winner.type === 'discrepancy' && winner.discrepancyClass === 'decay' && winner.entityName)
         ? winner.entityName
         : winner.type === 'hunt' && winner.entityName
@@ -2524,7 +2613,9 @@ export function buildPromptFromStructuredContext(
     : '';
   const diagnosticLensBlock = buildDiagnosticLensBlock(ctx.matched_goal_category);
   const diagnosticLensSection = diagnosticLensBlock ? `DIAGNOSTIC_LENS:\n${diagnosticLensBlock}` : '';
-  const responsePatternSection = buildResponsePatternPromptBlock(ctx.response_pattern_lines ?? []);
+  const responsePatternSection = buildResponsePatternPromptBlock(
+    isPaymentDeadlinePromptContext(ctx) ? [] : ctx.response_pattern_lines ?? [],
+  );
   const sections: string[] = [];
   const wantPhrase = ctx.user_first_name.trim()
     ? `One clear sentence about what ${ctx.user_first_name} wants or is sharing`
@@ -2592,13 +2683,13 @@ export function buildPromptFromStructuredContext(
       if (ctx.candidate_context_enrichment) {
         m.push(ctx.candidate_context_enrichment);
       }
-      if (ctx.behavioral_mirrors.length > 0) {
+      if (!isPaymentDeadlinePromptContext(ctx) && ctx.behavioral_mirrors.length > 0) {
         m.push(
           `BEHAVIORAL_MIRROR:\nThese patterns were detected in the user's behavior. You may reference them in your artifact if they are directly relevant to the candidate. Do not invent additional patterns.\n\n` +
             ctx.behavioral_mirrors.map((mir, i) => `${i + 1}. ${mir}`).join('\n\n'),
         );
       }
-      if (ctx.avoidance_observations.length > 0) {
+      if (!isPaymentDeadlinePromptContext(ctx) && ctx.avoidance_observations.length > 0) {
         const obsLines = ctx.avoidance_observations.map((o, i) => {
           const badge = o.severity === 'high' ? '[HIGH]' : '[MEDIUM]';
           return `${i + 1}. ${badge} ${o.observation}`;
@@ -2779,7 +2870,7 @@ export function buildPromptFromStructuredContext(
   // Avoidance observations — pre-computed facts, not inferences.
   // These give the model the specific signals it needs to detect avoidance without
   // having to infer them from 3 signal snippets alone.
-  if (ctx.avoidance_observations.length > 0) {
+  if (!isPaymentDeadlinePromptContext(ctx) && ctx.avoidance_observations.length > 0) {
     const obsLines = ctx.avoidance_observations.map((o, i) => {
       const badge = o.severity === 'high' ? '[HIGH]' : '[MEDIUM]';
       return `${i + 1}. ${badge} ${o.observation}`;
@@ -2792,7 +2883,7 @@ export function buildPromptFromStructuredContext(
 
   // Behavioral mirrors — what the model must hold while reading everything else.
   // Anti-patterns and revealed preferences give the model permission to name what the user can't see.
-  if (ctx.behavioral_mirrors.length > 0) {
+  if (!isPaymentDeadlinePromptContext(ctx) && ctx.behavioral_mirrors.length > 0) {
     sections.push(
       `BEHAVIORAL_MIRROR:\nThese patterns were detected in the user's behavior. You may reference them in your artifact if they are directly relevant to the candidate. Do not invent additional patterns.\n\n` +
       ctx.behavioral_mirrors.map((m, i) => `${i + 1}. ${m}`).join('\n\n'),
@@ -2807,7 +2898,7 @@ export function buildPromptFromStructuredContext(
 
   // Conviction math — inferred burn, runway, EV comparison. When present, the model MUST
   // anchor its recommendation to this math rather than producing generic suggestions.
-  if (ctx.conviction_math) {
+  if (ctx.conviction_math && !isPaymentDeadlinePromptContext(ctx)) {
     sections.push(
       `CONVICTION_MATH:\nThis is inferred from financial and career signals in the data — the user did NOT provide this.\n` +
       `Your artifact must be consistent with the optimal action below. If the math says wait, do not suggest pursuing distractions. ` +
@@ -2818,7 +2909,7 @@ export function buildPromptFromStructuredContext(
 
   // Behavioral history — weekly summaries from the last 8 weeks.
   // Gives the model long-term trajectory, not just the 7-day snapshot.
-  if (ctx.behavioral_history) {
+  if (ctx.behavioral_history && !isPaymentDeadlinePromptContext(ctx)) {
     sections.push(`BEHAVIORAL_HISTORY (last 8 weeks — oldest first):\n${ctx.behavioral_history}`);
   }
 
@@ -2894,7 +2985,7 @@ export function buildPromptFromStructuredContext(
       `LOCKED_CONTACTS (never mention these in any artifact):\n${ctx.locked_contacts_prompt}`,
     );
   }
-  if (ctx.entity_analysis) {
+  if (ctx.entity_analysis && !isPaymentDeadlinePromptContext(ctx)) {
     sections.push(ctx.entity_analysis);
   }
   if (responsePatternSection) {
@@ -2909,6 +3000,17 @@ export function buildPromptFromStructuredContext(
 
   if (ctx.candidate_due_date) {
     sections.push(`DUE_DATE: ${ctx.candidate_due_date}`);
+  }
+
+  if (isPaymentDeadlinePromptContext(ctx)) {
+    sections.push(
+      'SINGLE_FINDING_OUTPUT (mandatory — hard rule):\n' +
+        '- Output exactly ONE payment or statement obligation across the entire JSON. `directive`, `insight`, and `why_now` must each be one neutral operational sentence (issuer + amount or minimum + due date/window from SUPPORTING_SIGNALS or RAW_FACTS only).\n' +
+        '- Forbidden in those fields and in `causal_diagnosis`: inbox velocity, "inbound → outbound", "avoidance," "systematic," "compounds daily," "pattern of," habit or character judgment, or naming any second vendor, bill, or brand.\n' +
+        '- `artifact.title` + `artifact.content` must address that single obligation only — no "FINANCIAL NOTIFICATIONS" digests, no multi-brand bullet lists, no seven-item rundowns. If SUPPORTING_SIGNALS shows one row, that is the only bill you may discuss.\n' +
+        '- Treat every other signal in the day as non-user-visible context you must not surface in any JSON field.\n' +
+        '- Violations are invalid output — rewrite until compliant.',
+    );
   }
 
   if (ctx.supporting_signals.length > 0) {
@@ -3031,7 +3133,8 @@ export function buildPromptFromStructuredContext(
 
   // INPUT STATE block — provides Discrepancy Engine with structured thread state.
   // Must be injected after all signal/goal sections so the model has full context before parsing.
-  {
+  // Omit for payment-deadline runs — "replied: false" / thread framing steers listicles and moralizing.
+  if (!isPaymentDeadlinePromptContext(ctx)) {
     const lastSignal = ctx.supporting_signals.length > 0
       ? ctx.supporting_signals[ctx.supporting_signals.length - 1]
       : null;
@@ -4922,6 +5025,85 @@ function buildLowCrossSignalWaitRationalePayload(
   );
 }
 
+const FINANCIAL_PAYMENT_MORALIZING_PATTERNS: RegExp[] = [
+  /\bavoidance\b/i,
+  /\bcompounds?\s+daily\b/i,
+  /\bsystematic\s+avoidance\b/i,
+  /\binbound\s*[^\n]{0,40}0\s+outbound/i,
+  /\binbound\s*→\s*0\s+outbound/i,
+  /\bpattern\s+of\s+avoidance\b/i,
+  /\bdeflected\s+decisions?\b/i,
+];
+
+const FINANCIAL_MULTI_VENDOR_HEADER_RE = /\bFINANCIAL\s+NOTIFICATIONS\b/i;
+
+function financialPaymentToneIssuesFromText(combinedText: string, artifactContent: string): string[] {
+  const issues: string[] = [];
+  if (FINANCIAL_PAYMENT_MORALIZING_PATTERNS.some((p) => p.test(combinedText))) {
+    issues.push(
+      'financial_payment_tone:forbidden_behavioral_framing — use neutral issuer/amount/due language only',
+    );
+  }
+  if (FINANCIAL_MULTI_VENDOR_HEADER_RE.test(combinedText)) {
+    issues.push('financial_payment_tone:multi_vendor_digest_header');
+  }
+  const bulletLines = artifactContent.split('\n').filter((l) => /^\s*[-•*]\s+\S/.test(l));
+  if (bulletLines.length >= 4) {
+    issues.push('financial_payment_tone:artifact_lists_multiple_items — one obligation only');
+  }
+  return issues;
+}
+
+/** Payment-deadline contexts: ban moralizing / multi-item digests in JSON outputs. Exported for unit tests. */
+export function getFinancialPaymentToneValidationIssues(
+  ctx: Pick<StructuredContext, 'matched_goal_category' | 'candidate_title' | 'selected_candidate'>,
+  payload: {
+    directive?: string | null;
+    insight?: string | null;
+    why_now?: string | null;
+    causal_diagnosis?: CausalDiagnosis | null;
+    artifact: Record<string, unknown>;
+  },
+): string[] {
+  if (
+    !isPaymentDeadlinePromptContextSlice(
+      ctx.matched_goal_category,
+      ctx.candidate_title,
+      ctx.selected_candidate,
+    )
+  ) {
+    return [];
+  }
+  const cd = payload.causal_diagnosis;
+  const cdText = cd ? `${cd.why_exists_now}\n${cd.mechanism}` : '';
+  const art = payload.artifact ?? {};
+  const combined = [
+    payload.directive ?? '',
+    payload.insight ?? '',
+    payload.why_now ?? '',
+    cdText,
+    String(art.content ?? ''),
+    String(art.title ?? ''),
+  ].join('\n');
+  return financialPaymentToneIssuesFromText(combined, String(art.content ?? ''));
+}
+
+function persistedDirectiveLooksLikePaymentDeadline(input: {
+  directive: ConvictionDirective;
+  matchedGoalCategory?: string | null;
+  artifact: unknown;
+}): boolean {
+  if (input.matchedGoalCategory === 'financial') return true;
+  const art = input.artifact as Record<string, unknown>;
+  const ac = typeof art.content === 'string' ? art.content : '';
+  const b =
+    `${input.directive.directive}\n${input.directive.reason}\n${input.directive.evidence.map((e) => e.description ?? '').join('\n')}\n${ac}`.toLowerCase();
+  return (
+    /\$\s*[\d,]+(?:\.\d{2})?/.test(b) &&
+    /\b(minimum|due|statement|balance|payment\s+due)\b/.test(b)
+  );
+}
+
 function validateGeneratedArtifact(
   payload: GeneratedDirectivePayload | null,
   ctx: StructuredContext,
@@ -4948,6 +5130,16 @@ function validateGeneratedArtifact(
   const directive = validateStringField(payload.directive, 'directive', issues);
   validateStringField(payload.insight, 'insight', issues);
   validateStringField(payload.why_now, 'why_now', issues);
+
+  issues.push(
+    ...getFinancialPaymentToneValidationIssues(ctx, {
+      directive: payload.directive,
+      insight: payload.insight,
+      why_now: payload.why_now,
+      causal_diagnosis: payload.causal_diagnosis,
+      artifact: payload.artifact,
+    }),
+  );
 
   if (directive && countSentences(directive) !== 1) {
     issues.push('directive must be exactly one sentence');
@@ -5243,6 +5435,28 @@ export function validateDirectiveForPersistence(input: {
     );
   } else if (normalizeDecisionActionType(input.directive.action_type) === 'write_document') {
     issues.push(...getWriteDocumentTaskManagerLabelIssues(input.artifact as Record<string, unknown>));
+  }
+
+  if (
+    input.artifact &&
+    typeof input.artifact === 'object' &&
+    persistedDirectiveLooksLikePaymentDeadline({
+      directive: input.directive,
+      matchedGoalCategory: input.matchedGoalCategory,
+      artifact: input.artifact,
+    })
+  ) {
+    const art = input.artifact as Record<string, unknown>;
+    const combined = [
+      input.directive.directive,
+      input.directive.reason,
+      ...input.directive.evidence.map((e) => e.description ?? ''),
+      String(art.content ?? ''),
+      String(art.title ?? ''),
+    ].join('\n');
+    issues.push(
+      ...financialPaymentToneIssuesFromText(combined, String(art.content ?? '')),
+    );
   }
 
   return [...new Set(issues)];
@@ -5741,29 +5955,6 @@ async function generatePayload(
 ): Promise<GeneratePayloadResult> {
   const committed = options.committedArtifactType;
   const prompt = buildPromptFromStructuredContext(ctx, committed);
-
-  // #region agent log
-  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '124e2f' },
-    body: JSON.stringify({
-      sessionId: '124e2f',
-      location: 'generator.ts:generatePayload',
-      message: 'prompt_context_snapshot',
-      data: {
-        hypothesisId: 'H1_multi_anchor_pressure',
-        supportingSignalCount: ctx.supporting_signals.length,
-        crossSignalAnchorCount: collectCrossSignalAnchors(ctx).length,
-        candidateClass: ctx.candidate_class,
-        discrepancyClass: ctx.discrepancy_class ?? null,
-        matchedGoalCategory: ctx.matched_goal_category,
-        committedArtifactType: committed ?? null,
-      },
-      timestamp: Date.now(),
-      runId: 'instrumented',
-    }),
-  }).catch(() => {});
-  // #endregion
 
   if (
     process.env.NODE_ENV !== 'production' &&

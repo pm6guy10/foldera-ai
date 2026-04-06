@@ -9,9 +9,12 @@ import {
   applyScheduleConflictCanonicalUserFacingCopy,
   extractJsonFromResponse,
   getDecisionEnforcementIssues,
+  getFinancialPaymentToneValidationIssues,
   parseGeneratedPayload,
+  pickHighestStakesPaymentSignal,
   validateDirectiveForPersistence,
 } from '../generator';
+import type { CompressedSignal } from '../generator';
 import type { ScoredLoop } from '../scorer';
 import type { ConvictionDirective } from '../types';
 
@@ -374,5 +377,98 @@ describe('getDecisionEnforcementIssues — payment finished work', () => {
     });
     const de = issues.filter((i) => i.startsWith('decision_enforcement:'));
     expect(de).toHaveLength(0);
+  });
+});
+
+describe('pickHighestStakesPaymentSignal', () => {
+  it('selects statement minimum-due signal over confirmations and P2P noise', () => {
+    const signals: CompressedSignal[] = [
+      {
+        source: 'gmail',
+        occurred_at: '2026-04-01',
+        entity: null,
+        summary: 'Venmo — You paid Alex $12',
+        direction: 'received',
+      },
+      {
+        source: 'gmail',
+        occurred_at: '2026-04-01',
+        entity: null,
+        summary: 'Chase — payment received, thank you',
+        direction: 'received',
+      },
+      {
+        source: 'gmail',
+        occurred_at: '2026-04-01',
+        entity: null,
+        summary: 'Spectrum bill reminder',
+        direction: 'received',
+      },
+      {
+        source: 'gmail',
+        occurred_at: '2026-04-01',
+        entity: null,
+        summary: 'American Express — minimum payment due $198.00 by April 11, 2026',
+        direction: 'received',
+      },
+      {
+        source: 'gmail',
+        occurred_at: '2026-04-01',
+        entity: null,
+        summary: 'Teladoc appointment confirmed',
+        direction: 'received',
+      },
+    ];
+    const out = pickHighestStakesPaymentSignal(signals);
+    expect(out).toHaveLength(1);
+    expect(out[0]!.summary).toMatch(/American Express/i);
+  });
+});
+
+describe('getFinancialPaymentToneValidationIssues', () => {
+  it('flags moralizing inbound/outbound phrasing for financial payment context', () => {
+    const issues = getFinancialPaymentToneValidationIssues(
+      {
+        matched_goal_category: 'financial',
+        candidate_title: 'Test',
+        selected_candidate: '$100 due',
+      },
+      {
+        directive: '3 inbound → 0 outbound/reply pattern across 14 days compounds daily.',
+        insight: 'x',
+        why_now: 'y',
+        causal_diagnosis: {
+          why_exists_now: 'Deadline is near because statement date.',
+          mechanism: 'Logistical fee risk before April 9.',
+        },
+        artifact: { title: 'Pay', content: 'Pay $198 by April 9.' },
+      },
+    );
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.some((i) => i.includes('financial_payment_tone'))).toBe(true);
+  });
+
+  it('allows neutral payment directive without moralizing vocabulary', () => {
+    const issues = getFinancialPaymentToneValidationIssues(
+      {
+        matched_goal_category: 'financial',
+        candidate_title: 'AmEx',
+        selected_candidate: 'Minimum $198 due April 11',
+      },
+      {
+        directive: 'American Express minimum payment $198.00 is due April 11, 2026.',
+        insight: 'Statement shows the minimum before late fees apply.',
+        why_now: 'The due date is within one week per the issuer email.',
+        causal_diagnosis: {
+          why_exists_now: 'Calendar proximity to posted due date.',
+          mechanism: 'Late fee applies after the statement due date.',
+        },
+        artifact: {
+          title: 'AmEx minimum',
+          content: 'Pay $198.00 before April 11, 2026 via your AmEx account.',
+        },
+      },
+    );
+    expect(issues).toHaveLength(0);
   });
 });

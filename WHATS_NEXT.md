@@ -1,6 +1,10 @@
-# WHAT'S NEXT — Updated 2026-04-05
+# WHAT'S NEXT — Updated 2026-04-06
 
-## STATUS: SHIPPED — Hunt layer + two-pass gen + currency/thin gates (verify deploy)
+## STATUS: SHIPPED — Generator payment single-focus + moralizing gate (verify Generate Now on deploy)
+
+**Latest ship:** `lib/briefing/generator.ts` — structural narrowing for payment winners, `financial_payment_tone` validation, debug ingest fetch removed. After Vercel **Ready**, operator: Generate Now → query latest `pending_approval` for single-obligation neutral copy (no `NEXT_ACTION:` / `Owner: you` / avoidance framing).
+
+## PRIOR — Hunt layer + two-pass gen + currency/thin gates (verify deploy)
 
 **Latest ship:** verify `git log -1 --oneline` on `main` — **hunt anomalies** (`lib/briefing/hunt-anomalies.ts`) + scorer **999** injection + generator **anomaly_identification** / **ungrounded_currency** / **thin_entry_phrase** post-LLM. After Vercel **Ready**, operator: `POST /api/settings/run-brief` × N — confirm `execution_result.anomaly_identification` (non–dry-run) and scorer log `hunt_query_counts` / injection, or document all-zero hunt counts.
 
