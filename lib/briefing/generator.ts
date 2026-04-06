@@ -1900,7 +1900,7 @@ function buildStructuredContext(
     candidate_due_date,
     supporting_signals,
     candidate_context_enrichment,
-    surgical_raw_facts: surgical_raw_facts.slice(0, 5),
+    surgical_raw_facts: surgical_raw_facts.slice(0, 15),
     active_goals,
     locked_constraints: pinnedConstraints,
     locked_contacts_prompt:
@@ -4353,7 +4353,7 @@ function parseSignalSnippet(
 
   const lines = plaintext.split('\n').filter((l) => l.trim().length > 0);
   const contentLines = lines.filter((l) => !l.match(/^(From|To|Date|Subject|Cc|Bcc|Re|Fwd):/i));
-  const snippet = contentLines.join(' ').slice(0, 600).trim();
+  const snippet = contentLines.join(' ').slice(0, 1500).trim();
 
   const direction: 'sent' | 'received' | 'unknown' =
     rowType === 'email_sent' ? 'sent' :
@@ -4364,7 +4364,7 @@ function parseSignalSnippet(
     source: (row.source as string) ?? 'unknown',
     date: row.occurred_at ? new Date(row.occurred_at as string).toISOString().slice(0, 10) : 'unknown',
     subject,
-    snippet: snippet || plaintext.slice(0, 600),
+    snippet: snippet || plaintext.slice(0, 1500),
     author: (row.author as string) ?? null,
     direction,
     row_type: rowType || null,

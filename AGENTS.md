@@ -1,3 +1,5 @@
+Always start in Debug mode. Read and audit before writing any code.
+
 # AGENTS.md — Behavioral Contract
 
 ## Role Definition
@@ -65,6 +67,7 @@ This is not optional. No push happens without a session log entry.
 
 - Do not rebase. Commit only task files. Leave unrelated worktree changes untouched.
 - Push to `main`.
+- **No waiting:** When the task is done and verified (build + tests per `CLAUDE.md` / task scope), **commit and push in the same session** without asking Brandon to approve, confirm, or “say when to push.” Only stop short of push if the task is blocked or verification failed.
 
 ## ABSOLUTE RULE — NO BRANCHES, NO PRs, NO EXCEPTIONS
 
