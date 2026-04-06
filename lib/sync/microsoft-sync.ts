@@ -567,7 +567,8 @@ async function syncCalendar(
   untilIso: string,
   selfEmailLower: string,
 ): Promise<number> {
-  const url = `${GRAPH_BASE}/me/calendarView?startDateTime=${sinceIso}&endDateTime=${untilIso}&$select=id,subject,start,end,isAllDay,organizer,attendees,bodyPreview,recurrence,isOrganizer,createdBy&$top=${CALENDAR_PAGE_SIZE}&$orderby=start/dateTime`;
+  // Note: `createdBy` is not a valid $select field on Graph v1.0 calendar events — including it returns 400 and aborts calendar sync.
+  const url = `${GRAPH_BASE}/me/calendarView?startDateTime=${sinceIso}&endDateTime=${untilIso}&$select=id,subject,start,end,isAllDay,organizer,attendees,bodyPreview,recurrence,isOrganizer&$top=${CALENDAR_PAGE_SIZE}&$orderby=start/dateTime`;
 
   const events = await graphFetchAll<any>(userId, accessToken, url, {
     maxItems: CALENDAR_MAX_ITEMS,
@@ -608,13 +609,11 @@ async function syncCalendar(
       responseStatus: a.status?.response ?? undefined,
     })).filter((a: { email: string }) => a.email);
 
-    const createdBy =
-      event.createdBy?.user?.emailAddress?.address ??
-      event.organizer?.emailAddress?.address ??
-      "";
+    const organizerLower = organizer.toLowerCase();
+    // Graph calendar events do not expose `createdBy` in v1.0; approximate "you own this event" for RSVP derivation.
     const createdBySelf =
       selfEmailLower !== "" &&
-      createdBy.toLowerCase() === selfEmailLower;
+      (event.isOrganizer === true || organizerLower === selfEmailLower);
 
     intelEvents.push({
       id: event.id,
@@ -666,7 +665,7 @@ export async function recoverMicrosoftSignalContent(
   const event = await graphFetch(
     userId,
     token.access_token,
-    `${GRAPH_BASE}/me/events/${sourceId}?$select=id,subject,start,end,isAllDay,organizer,attendees,bodyPreview,recurrence,isOrganizer,createdBy`,
+    `${GRAPH_BASE}/me/events/${sourceId}?$select=id,subject,start,end,isAllDay,organizer,attendees,bodyPreview,recurrence,isOrganizer`,
   );
   return formatMicrosoftCalendarContent(event, "");
 }

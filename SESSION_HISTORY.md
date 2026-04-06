@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — AUDIT: **Graph calendar `createdBy` 400 fix + Google zero-insert log + clear stale pending_approval**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `lib/sync/microsoft-sync.ts`, `lib/sync/google-sync.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/sync/__tests__/microsoft-sync.test.ts lib/sync/__tests__/google-sync.test.ts`; `npm run build`. Production SQL: `UPDATE tkg_actions SET status='executed', executed_at=now() WHERE id='8f88ce9e-f290-42f8-ba9f-dca4db6725ac'`.
+  Changes: (1) Removed invalid `createdBy` from Microsoft Graph calendar `$select` (v1.0); RSVP `createdBySelf` from `isOrganizer` + organizer. (2) `syncGoogle` warns on all-zero incremental inserts when no errors. (3) Cleared blocking `pending_approval` row so next generate is not a reuse. (4) **Google `total: 0` read:** owner `last_synced_at` was recent — incremental Gmail query `after:unix` often yields **0** with no new mail; `user_tokens.scopes` null in DB does not block Gmail list.
+  Any unresolved issues: After deploy, confirm nightly Outlook calendar rows and Vercel logs; consider persisting OAuth scopes on Google connect if calendar/drive diagnostics should reflect granted scopes.
+
 - 2026-04-05 — AUDIT: **Vercel CLI deploy: avoid Hobby api-upload-free rate limit**
   MODE: AUDIT
   Commit hash(es): `ba6bd93`

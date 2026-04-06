@@ -677,6 +677,18 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
     (errors.length > 0 ? ` errors=[${errors.join('; ')}]` : ''),
   );
 
+  if (
+    gmailSignals === 0 &&
+    calendarSignals === 0 &&
+    driveSignals === 0 &&
+    !isFirstSync &&
+    errors.length === 0
+  ) {
+    console.warn(
+      `[google-sync] user=${userId} zero new signals incremental window since=${new Date(sinceMs).toISOString()} — often normal if no new mail/events/drive edits since last_synced_at; not an auth failure unless Gmail errored above.`,
+    );
+  }
+
   return {
     gmail_signals: gmailSignals,
     calendar_signals: calendarSignals,
