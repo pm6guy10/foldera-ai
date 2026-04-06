@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-05 — AUDIT: **CI E2E: pass Supabase env into Playwright `next start`**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `.github/workflows/ci.yml`, `SESSION_HISTORY.md`
+  What was verified: Workflow YAML only; E2E step `env` now maps `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from repo secrets so the Next.js process started by Playwright receives them when secrets are configured.
+  Changes: Extended **E2E flow gate** `env` with `${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}` and `${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}`; adjusted comment to note production-like env when secrets exist while `/api/health` degraded behavior remains documented in code.
+  Any unresolved issues: If those secrets are not set in GitHub Actions, values are empty (same as before for those vars).
+
 - 2026-04-06 — AUDIT: **Gate 4 context depth + AGENTS debug-first line**
   MODE: AUDIT
   Commit hash(es): verify `git log -1 --oneline` on `main` — subject `fix(generator): 1500c signal snippets, 15 surgical_raw_facts; AGENTS debug-first line`

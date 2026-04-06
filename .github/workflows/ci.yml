@@ -37,10 +37,12 @@ jobs:
       - name: Generate CI test secret
         run: echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
 
-      # DB-free gate: Playwright starts `next start` without Supabase secrets.
-      # GET /api/health must return 200 + degraded JSON (not 500) when URL/key unset — see app/api/health/route.ts
+      # Playwright starts `next start`; pass Supabase so server matches production-like env when secrets are configured.
+      # GET /api/health still returns 200 + degraded JSON when URL/key unset — see app/api/health/route.ts
       - name: E2E flow gate
         env:
           NEXTAUTH_URL: http://localhost:3000
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run test:ci:e2e
