@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — AUDIT: **Mail body preview 2000c + commitment `source_id` evidence fetch**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `lib/sync/google-sync.ts`, `lib/sync/microsoft-sync.ts`, `lib/briefing/generator.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/sync/__tests__/microsoft-sync.test.ts lib/sync/__tests__/google-sync.test.ts lib/briefing/__tests__/thread-evidence-for-payload.test.ts --exclude ".claude/worktrees/**"`; `npm run build`.
+  Changes: (1) `GMAIL_BODY_PREVIEW_MAX` and `MAIL_BODY_PREVIEW` **500 → 2000** so more amounts/dates survive ingest into `tkg_signals.content`. (2) `fetchWinnerSignalEvidence` loads `tkg_commitments.source_id` for commitment winners and fetches that `tkg_signals` row first (removes commitment UUID from id list).
+  Any unresolved issues: Historical mail rows keep prior preview length until re-sync or new mail; commitments without `source_id` still rely on keyword fallback.
+
 - 2026-04-05 — AUDIT: **`SYSTEM_PROMPT` — `write_document` signal-grounded values block (finished-deliverable bar)**
   MODE: AUDIT
   Commit hash(es): `6d4cc74`

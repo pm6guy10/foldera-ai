@@ -4091,9 +4091,29 @@ async function fetchWinnerSignalEvidence(
   const isDecayDiscrepancy =
     winner.type === 'discrepancy' && winner.discrepancyClass === 'decay';
 
-  const sourceIds = (winner.sourceSignals ?? [])
+  const rawIds = (winner.sourceSignals ?? [])
     .map((s) => s.id)
     .filter((id): id is string => Boolean(id));
+  let sourceIds = [...new Set(rawIds)];
+
+  // Commitment winners: scorer puts commitment UUID in sourceSignals[].id, not tkg_signals.id.
+  // Originating mail row is tkg_commitments.source_id — load it first so evidence is not keyword-only.
+  if (winner.type === 'commitment' && winner.id) {
+    sourceIds = sourceIds.filter((id) => id !== winner.id);
+    const { data: commitRow } = await supabase
+      .from('tkg_commitments')
+      .select('source_id')
+      .eq('user_id', userId)
+      .eq('id', winner.id)
+      .maybeSingle();
+    const origSignalId =
+      typeof commitRow?.source_id === 'string' && commitRow.source_id.length > 0
+        ? commitRow.source_id
+        : null;
+    if (origSignalId) {
+      sourceIds = [origSignalId, ...sourceIds.filter((id) => id !== origSignalId)];
+    }
+  }
 
   let snippets: SignalSnippet[] = [];
   let senderBlockedCount = 0;

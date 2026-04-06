@@ -231,7 +231,8 @@ interface MicrosoftSignalCoverage {
 
 type MicrosoftMailSignalType = "email_sent" | "email_received";
 
-const MAIL_BODY_PREVIEW = 500;
+/** Mail signal `content` body preview — aligned with Gmail cap for cross-provider parity. */
+const MAIL_BODY_PREVIEW = 2000;
 
 function headerMapFromInternet(
   headers: Array<{ name?: string; value?: string }> | undefined,

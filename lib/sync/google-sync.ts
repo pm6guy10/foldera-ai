@@ -65,7 +65,8 @@ function getOAuth2Client(
 
 const GMAIL_PAGE_SIZE = 500;
 const GMAIL_MAX_MESSAGES = 5000; // ~2-5 years depending on volume
-const GMAIL_BODY_PREVIEW_MAX = 500;
+/** Mail signal `content` body preview — must fit generator/snippet path; 2k captures amounts/dates often below fold at 500. */
+const GMAIL_BODY_PREVIEW_MAX = 2000;
 const GMAIL_THREAD_FETCH_CAP = 300;
 
 function getGmailHeader(
