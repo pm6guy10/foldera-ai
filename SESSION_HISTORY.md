@@ -6,7 +6,7 @@
 
 - 2026-04-06 — OPS: **SESSION_HISTORY: close stale SettingsClient debug-ingest follow-up**
   MODE: OPS
-  Commit hash(es): (set after push)
+  Commit hash(es): `bd73f1a`
   Files changed: `SESSION_HISTORY.md`
   What was verified: `rg` on `*.ts`/`*.tsx` — no `127.0.0.1:7695`, `#region agent log`, or `pre_final_gate_debug` in app/lib.
   Changes: Replaced outdated **Any unresolved issues** on 2026-04-05 Settings OAuth return log (still asked to remove agent-log blocks after repro) with **Closed** pointer to the OPS session that removed `SettingsClient` ingest.
