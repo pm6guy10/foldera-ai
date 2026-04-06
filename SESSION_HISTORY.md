@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-05 — AUDIT: **Vercel CLI deploy: avoid Hobby api-upload-free rate limit**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `.github/workflows/deploy.yml`, `SESSION_HISTORY.md`
+  What was verified: GitHub Actions log showed `api-upload-free` / `more than 5000` during `vercel deploy --prebuilt`; Vercel docs recommend `vercel deploy --prebuilt --archive=tgz` to compress upload and avoid per-file upload limits.
+  Changes: Added `--archive=tgz` to the production prebuilt deploy step.
+  Any unresolved issues: If the account is still inside the 24-hour cooldown, the next run may need to wait until the window resets; upgrading off strict Hobby upload limits is the other lever.
+
 - 2026-04-05 — AUDIT: **Hunting layer + two-pass generation + artifact quality gates**
   MODE: AUDIT
   Commit hash(es): verify `git log -1 --oneline` on `main` — subject `feat(briefing): hunt anomaly layer, two-pass anomaly id, post-LLM gates`
