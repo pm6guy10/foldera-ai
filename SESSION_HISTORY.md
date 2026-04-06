@@ -10,7 +10,15 @@
   Files changed: `lib/briefing/generator.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AGENTS.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"` (full suite); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/generator.test.ts` (48 passed); `PLAYWRIGHT_WEB_PORT=3011 npm run test:ci:e2e` (41 passed).
   Changes: (1) `parseSignalSnippet` **600 → 1500** chars; `surgical_raw_facts` cap **5 → 15** in structured context. (2) `AGENTS.md` first line: always start Debug mode; read and audit before writing code. (3) Spec row for generator snippet + RAW_FACTS depth. Mail **2000** ingest + commitment `source_id` evidence path were already on `main` (`c142242`).
-  Any unresolved issues: Local `npm run test:ci:e2e` may fail if port 3000 is busy or `.next` stale — CI on `main` is canonical.
+  Any unresolved issues: Local `npm run test:ci:e2e` may fail if port 3000 is busy or `.next` stale — use `PLAYWRIGHT_WEB_PORT=3011` after `npm run build`.
+
+- 2026-04-06 — OPS: **WHATS_NEXT pointer after Gate 4 context ship**
+  MODE: OPS
+  Commit hash(es): `9635adf`
+  Files changed: `WHATS_NEXT.md`
+  What was verified: pushed after `a64766a` deliverable on `main`.
+  Changes: Status header + latest-ship line for generator snippet/RAW_FACTS + Vercel spot-check note; prior ML moat text demoted to **Prior**.
+  Any unresolved issues: None.
 
 - 2026-04-06 — AUDIT: **Mail body preview 2000c + commitment `source_id` evidence fetch**
   MODE: AUDIT
