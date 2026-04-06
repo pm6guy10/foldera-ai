@@ -6,7 +6,7 @@
 
 - 2026-04-05 — AUDIT: **CI E2E: pass Supabase env into Playwright `next start`**
   MODE: AUDIT
-  Commit hash(es): (set after push)
+  Commit hash(es): `97c07f6`
   Files changed: `.github/workflows/ci.yml`, `SESSION_HISTORY.md`
   What was verified: Workflow YAML only; E2E step `env` now maps `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from repo secrets so the Next.js process started by Playwright receives them when secrets are configured.
   Changes: Extended **E2E flow gate** `env` with `${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}` and `${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}`; adjusted comment to note production-like env when secrets exist while `/api/health` degraded behavior remains documented in code.
