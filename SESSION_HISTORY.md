@@ -6,7 +6,7 @@
 
 - 2026-04-06 — AUDIT: **Manual run-brief `?force=true` → `forceFreshRun` (iterate without pending reuse)**
   MODE: AUDIT
-  Commit hash(es): `c8db09c`
+  Commit hash(es): `a0108e1`
   Files changed: `app/api/settings/run-brief/route.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `docs/MASTER_PUNCHLIST.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts` (5 passed); `npm run build` passed.
   Changes: `POST /api/settings/run-brief?force=true` passes `forceFreshRun: true` into `runBriefLifecycle` so `reconcilePendingApprovalQueue` auto-suppresses valid pending rows with “before forced fresh generation” and `runDailyGenerate` persists a new action instead of `pending_approval_reused`. Default POST unchanged. Documented in MASTER_PUNCHLIST + spec March 24 evidence block.
