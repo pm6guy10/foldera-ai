@@ -6,7 +6,7 @@
 
 - 2026-04-06 — AUDIT: **Generator — single-focus financial directives, forbid NEXT_ACTION task lines**
   MODE: AUDIT
-  Commit hash(es): (pending push)
+  Commit hash(es): `c73d89b`
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/briefing/__tests__/generator.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/briefing/__tests__/causal-diagnosis.test.ts lib/briefing/__tests__/holy-crap-multi-run-proof.test.ts`; `npm run build` passed.
   Changes: Prompt hardening for payment-deadline winners (one obligation, no moralizing “avoidance” framing for routine billing); decision-enforcement no longer rewards `NEXT_ACTION:` / `Owner: you`; financial exceptions for low-cross-signal and owner-assignment when artifact has pay path + $; pass-1 anomaly wording “actionable”; NDJSON debug ingest in `generatePayload` (session `124e2f`) for repro validation.
