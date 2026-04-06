@@ -327,3 +327,37 @@ describe('applyScheduleConflictCanonicalUserFacingCopy', () => {
     expect(issues.length).toBe(0);
   });
 });
+
+describe('getDecisionEnforcementIssues — payment finished work', () => {
+  it('rejects write_document with NEXT_ACTION / Owner: you task-manager lines', () => {
+    const issues = getDecisionEnforcementIssues({
+      actionType: 'write_document',
+      directiveText: 'American Express minimum payment is due April 11, 2026.',
+      reason: 'Waiting increases late fee risk on the open balance shown in the statement email.',
+      artifact: {
+        type: 'document',
+        title: 'AmEx payment',
+        content: 'NEXT_ACTION: Pay $198 minimum before April 9. Owner: you.',
+      },
+    });
+    expect(issues.some((i) => i.includes('forbidden_task_manager_next_action_label'))).toBe(true);
+    expect(issues.some((i) => i.includes('forbidden_owner_you_task_line'))).toBe(true);
+  });
+
+  it('financial payment doc passes decision enforcement without Owner: you when URL and pay language present', () => {
+    const issues = getDecisionEnforcementIssues({
+      actionType: 'write_document',
+      directiveText: 'American Express minimum payment is due April 11, 2026.',
+      reason: 'The statement shows $9,540.53 with $198 minimum due by April 11 — paying before then avoids late fees.',
+      artifact: {
+        type: 'document',
+        title: 'AmEx — schedule minimum',
+        content:
+          'Pay the $198.00 minimum on or before April 11, 2026. Online: https://www.americanexpress.com/en-us/account/login (use the exact pay link from your statement if it differs). Missing the due date risks late fees on the open balance.',
+      },
+      matchedGoalCategory: 'financial',
+    });
+    const de = issues.filter((i) => i.startsWith('decision_enforcement:'));
+    expect(de).toHaveLength(0);
+  });
+});

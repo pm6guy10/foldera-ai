@@ -248,10 +248,19 @@ confidence. A short grounded artifact beats a long speculative one.
 
 When behavioral_pattern candidates are the winner, lead with the
 cross-signal connection the user hasn't made. Name the pattern
-explicitly in the directive text.
+explicitly in the directive text — except for financial winners where
+the scorer surfaced a concrete payment or statement deadline: then the
+directive is one factual sentence (issuer, amount or minimum, due date),
+not a character sketch.
 
 ARTIFACT QUALITY CONTRACT (mandatory for send_message and write_document):
 Every artifact must demonstrate at least one cross-signal connection the user has not explicitly made. Examples of cross-signal connections: linking a decaying contact to an active goal, linking response-time degradation across multiple threads to a relationship risk, linking calendar gaps to email commitments. If the generator cannot produce a cross-signal connection for the winning candidate, it must set recommended_action: 'do_nothing' with a wait_rationale explaining what additional signal would unlock a real directive. Never send filler.
+
+SINGLE-FOCUS EXCEPTION (payment / statement deadlines — mandatory):
+When signals include a statement or bill for one issuer with a specific balance or minimum due and a calendar due date, that single obligation IS the directive and the entire artifact. Do not bundle unrelated same-day informational emails (credits posted, payment confirmations, peer-to-peer receipts, marketing, surveys, job portal mail) into one "backlog" or "notification digest" — they dilute the one decision that matters. Cross-signal is satisfied by issuer + amounts + due date that appear in the evidence; you do not need a second vendor to "prove" insight.
+
+TONE — BILLING AND ROUTINE ADMIN (when the winner is not a relationship discrepancy about unanswered threads):
+State amounts, due dates, and pay paths plainly. Do not use judgment labels about the user's character or habits ("pattern of avoidance," "complete avoidance," "deflected decisions," "compounds daily") for routine statements or admin mail — that reads as moralizing, not help. Reserve behavioral framing for genuine relationship/commitment discrepancy candidates where the scorer explicitly selected an avoidance or risk pattern.
 
 NEGATIVE EXAMPLES (never produce these):
 - Generic ping to Agency A during an active job search with no link to the user's applications, goals, or dormant contacts (no cross-signal).
@@ -2763,6 +2772,7 @@ export function buildPromptFromStructuredContext(
     `Produce the artifact that moves the user closest to the matched goal. ` +
     `A single strong email thread IS enough evidence. You do not need cross-domain convergence. ` +
     `If the signals show a clear next step, produce it. If the signals show a gap the user hasn't addressed, name it and close it.\n\n` +
+    `MULTI-SIGNAL SAME CALENDAR DAY: If SUPPORTING_SIGNALS list several brands or threads on one date but only one line has a dated payment obligation with dollar amounts for that issuer, the write_document covers that obligation only — omit informational noise (credits applied, "payment received," small P2P, marketing). One finished payment artifact, not a digest.\n\n` +
     `OUTPUT RULE: You MUST output decision "ACT". HOLD is not available. The candidate has already been validated.`,
   );
 
@@ -2838,6 +2848,28 @@ export function buildPromptFromStructuredContext(
     sections.push(ctx.candidate_context_enrichment);
   }
 
+  const mechanismGroundingRules =
+    ctx.matched_goal_category === 'financial'
+      ? `Grounding rules (financial lens — payment/statement winners):\n` +
+        `- One concrete financial signal (issuer + amount or minimum + due date from SUPPORTING_SIGNALS or RAW_FACTS) can anchor the diagnosis; do not invent a second vendor just to satisfy a multi-signal checklist.\n` +
+        `- Mechanism should be logistical (deadline proximity, fee risk, cash timing) — not a lecture on the user's habits.\n` +
+        `- Include at least one explicit date/time marker.\n` +
+        `- Do NOT restate CANDIDATE_TITLE.\n` +
+        `- Treat MECHANISM_HINT as fallback only if your grounded diagnosis is weak.\n`
+      : `Grounding rules:\n` +
+        `- Connect at least TWO concrete supporting signals from this context.\n` +
+        `- Include at least one explicit date/time marker.\n` +
+        `- Explain why this discrepancy exists NOW.\n` +
+        `- Do NOT restate CANDIDATE_TITLE.\n` +
+        `- Treat MECHANISM_HINT as fallback only if your grounded diagnosis is weak.\n`;
+
+  if (ctx.matched_goal_category === 'financial') {
+    sections.push(
+      'FINANCIAL_SINGLE_FOCUS:\n' +
+        'When a card/loan/utility statement in context has a minimum or balance and a due date, the artifact is only that payment path: copy-ready text (self-email or calendar note) with amounts and dates verbatim from signals. Include a pay URL only if the same URL appears verbatim in the evidence — never invent links.',
+    );
+  }
+
   sections.push(
     `MECHANISM_HINT (non-authoritative fallback hypothesis):\n` +
     `why_exists_now: ${ctx.required_causal_diagnosis.why_exists_now}\n` +
@@ -2847,12 +2879,7 @@ export function buildPromptFromStructuredContext(
     `  "why_exists_now": "...",\n` +
     `  "mechanism": "..."\n` +
     `}\n\n` +
-    `Grounding rules:\n` +
-    `- Connect at least TWO concrete supporting signals from this context.\n` +
-    `- Include at least one explicit date/time marker.\n` +
-    `- Explain why this discrepancy exists NOW.\n` +
-    `- Do NOT restate CANDIDATE_TITLE.\n` +
-    `- Treat MECHANISM_HINT as fallback only if your grounded diagnosis is weak.`,
+    mechanismGroundingRules,
   );
 
   if (ctx.candidate_goal) {
@@ -3607,8 +3634,11 @@ const EXPLICIT_ASK_PATTERNS = [
   /\bdo you have\b/i,
   /\bhappy to\b/i,
   /\?$/m,
-  /\bNEXT_ACTION\s*:/i,
-  /\bOwner\s*:\s*you\b/i,
+  // Finished-work anchors (payment / submission) — do NOT use task-manager lines like NEXT_ACTION:
+  /https?:\/\/[^\s)\]]+/i,
+  /\bpay\s+(?:the\s+)?(?:minimum|balance)\b/i,
+  /\bpay\s+(?:the\s+)?\$\s*[\d,]+(?:\.\d{2})?\b/i,
+  /\bsubmit\s+(?:the\s+)?payment\b/i,
 ];
 
 const TIME_CONSTRAINT_PATTERNS = [
@@ -3642,6 +3672,8 @@ const PRESSURE_OR_CONSEQUENCE_PATTERNS = [
   /\bsame\s+time\b/i,
   /\btrade[-‐‑–—]?\s*off\b/u,
   /\bwhich\s+(?:takes\s+priority|(?:event|meeting)\s+wins)\b/i,
+  /\b(?:late fee|late fees)\b/i,
+  /\bavoid\s+(?:a\s+)?late\b/i,
 ];
 
 const OWNERSHIP_PATTERNS = [
@@ -3713,12 +3745,24 @@ function getArtifactTextForDecisionEnforcement(
   return `${title}\n${content}`.trim();
 }
 
+/** Payment deadline write_document with $ + pay path — ownership lines like "Owner: you" are not required. */
+function financialPaymentWriteDocumentLooksFinished(combinedText: string): boolean {
+  const hasDollar = /\$\s*[\d,]+(?:\.\d{2})?/.test(combinedText);
+  const hasPayPath =
+    /https?:\/\/[^\s)\]]+/i.test(combinedText) ||
+    /\bpay\s+(?:the\s+)?(?:minimum|balance)\b/i.test(combinedText) ||
+    /\bpay\s+(?:the\s+)?\$\s*[\d,]+(?:\.\d{2})?/i.test(combinedText);
+  return hasDollar && hasPayPath;
+}
+
 export function getDecisionEnforcementIssues(input: {
   actionType: string;
   directiveText: string;
   reason: string;
   artifact: ConvictionArtifact | Record<string, unknown> | null;
   discrepancyClass?: string | null;
+  /** When `financial` and the artifact is a payment-deadline doc, drop the generic owner-assignment requirement. */
+  matchedGoalCategory?: string | null;
 }): string[] {
   const normalizedType = normalizeDecisionActionType(input.actionType);
   if (normalizedType === 'other') return [];
@@ -3755,6 +3799,14 @@ export function getDecisionEnforcementIssues(input: {
   if (textHasAny(combinedText, REWRITE_REQUIRED_PATTERNS)) {
     issues.push('decision_enforcement:requires_rewriting');
   }
+  if (normalizedType === 'write_document') {
+    if (/\bNEXT_ACTION\s*:/i.test(artifactText)) {
+      issues.push('decision_enforcement:forbidden_task_manager_next_action_label');
+    }
+    if (/\bOwner\s*:\s*you\b/i.test(artifactText)) {
+      issues.push('decision_enforcement:forbidden_owner_you_task_line');
+    }
+  }
 
   let out = [...new Set(issues)];
   // Decay reconnect emails are timed to relationship silence — not deadline/consequence memos.
@@ -3777,6 +3829,13 @@ export function getDecisionEnforcementIssues(input: {
       out = out.filter(i => i !== 'decision_enforcement:missing_explicit_ask');
     }
   }
+  if (
+    input.matchedGoalCategory === 'financial' &&
+    normalizedType === 'write_document' &&
+    financialPaymentWriteDocumentLooksFinished(combinedText)
+  ) {
+    out = out.filter((i) => i !== 'decision_enforcement:missing_owner_assignment');
+  }
   return out;
 }
 
@@ -3790,6 +3849,7 @@ export function getCausalDiagnosisIssues(input: {
   supportingSignals?: CompressedSignal[];
   mode?: 'full' | 'grounding_only';
   enforceGrounding?: boolean;
+  matchedGoalCategory?: string | null;
 }): string[] {
   const mode = input.mode ?? 'full';
   const enforceGrounding = input.enforceGrounding ?? true;
@@ -3852,7 +3912,13 @@ export function getCausalDiagnosisIssues(input: {
         if (hitCount >= 2) break;
       }
       if (hitCount < 2) {
-        issues.push('causal_diagnosis:insufficient_signal_grounding');
+        const financialSingleSignalOk =
+          input.matchedGoalCategory === 'financial' &&
+          /\$\s*[\d,]+/.test(diagnosisText) &&
+          DIAGNOSIS_DATE_TIME_RE.test(diagnosisText);
+        if (!financialSingleSignalOk) {
+          issues.push('causal_diagnosis:insufficient_signal_grounding');
+        }
       }
     }
   }
@@ -4797,6 +4863,14 @@ function getLowCrossSignalIssues(
     parts.push(String(a.title ?? ''), String(a.content ?? ''));
   }
   const haystack = parts.join('\n').toLowerCase();
+  if (
+    canonicalArtifactType === 'write_document' &&
+    ctx.matched_goal_category === 'financial' &&
+    /\$\s*[\d,]+(?:\.\d{2})?/.test(haystack) &&
+    /\b(?:due|deadline|minimum\s+payment|payment\s+due|pay\s+before|statement)\b/.test(haystack)
+  ) {
+    return [];
+  }
   if (countDistinctAnchorHits(haystack, anchors) >= 2) {
     return [];
   }
@@ -4998,6 +5072,8 @@ function validateGeneratedArtifact(
         directiveText: payload.directive ?? '',
         reason: payload.why_now ?? '',
         artifact: payload.artifact ?? null,
+        discrepancyClass: ctx.candidate_class === 'discrepancy' ? ctx.discrepancy_class : undefined,
+        matchedGoalCategory: ctx.matched_goal_category,
       }),
     );
 
@@ -5011,6 +5087,7 @@ function validateGeneratedArtifact(
         candidateTitle: ctx.candidate_title,
         supportingSignals: ctx.supporting_signals,
         enforceGrounding: payload.causal_diagnosis_source === 'llm_grounded',
+        matchedGoalCategory: ctx.matched_goal_category,
       }),
     );
 
@@ -5056,6 +5133,7 @@ export function validateDirectiveForPersistence(input: {
   directive: ConvictionDirective;
   artifact: ConvictionArtifact | Record<string, unknown> | null;
   candidateType?: string;
+  matchedGoalCategory?: string | null;
 }): string[] {
   const issues: string[] = [];
 
@@ -5139,6 +5217,7 @@ export function validateDirectiveForPersistence(input: {
         reason: input.directive.reason,
         artifact: input.artifact,
         discrepancyClass: effectiveDiscrepancyClassForGates(input.directive),
+        matchedGoalCategory: input.matchedGoalCategory ?? null,
       }),
     );
   }
@@ -5640,6 +5719,28 @@ async function generatePayload(
   const committed = options.committedArtifactType;
   const prompt = buildPromptFromStructuredContext(ctx, committed);
 
+  // #region agent log
+  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '124e2f' },
+    body: JSON.stringify({
+      sessionId: '124e2f',
+      location: 'generator.ts:generatePayload',
+      message: 'prompt_context_snapshot',
+      data: {
+        hypothesisId: 'H1_multi_anchor_pressure',
+        supportingSignalCount: ctx.supporting_signals.length,
+        crossSignalAnchorCount: collectCrossSignalAnchors(ctx).length,
+        candidateClass: ctx.candidate_class,
+        matchedGoalCategory: ctx.matched_goal_category,
+        committedArtifactType: committed ?? null,
+      },
+      timestamp: Date.now(),
+      runId: 'instrumented',
+    }),
+  }).catch(() => {});
+  // #endregion
+
   if (
     process.env.NODE_ENV !== 'production' &&
     ctx.candidate_class === 'discrepancy' &&
@@ -5666,7 +5767,7 @@ async function generatePayload(
   if (!options.dryRun) {
     const anomalyUserMsg =
       `${prompt.slice(0, 14000)}\n\nTASK: Reply with ONE sentence only (max 45 words). ` +
-      `State the single most surprising behavioral finding using ONLY names, dollar amounts, or dates that appear verbatim in the text above. ` +
+      `State the single most surprising actionable finding using ONLY names, dollar amounts, or dates that appear verbatim in the text above. ` +
       `No preamble, no JSON, no bullet points.`;
     try {
       const anomalyRes = await getAnthropic().messages.create({
@@ -5759,6 +5860,7 @@ async function generatePayload(
             candidateTitle: ctx.candidate_title,
             supportingSignals: ctx.supporting_signals,
             mode: 'grounding_only',
+            matchedGoalCategory: ctx.matched_goal_category,
           });
           if (groundingIssues.length === 0) {
             acceptedDiagnosis = llmDiagnosis;
@@ -6624,6 +6726,7 @@ export async function generateDirective(
       directive,
       artifact: payload.artifact,
       candidateType: currentCandidate.fromInsightScan ? 'insight' : currentCandidate.type,
+      matchedGoalCategory: ctx.matched_goal_category,
     });
     if (persistenceIssues.length > 0) {
       candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: persistenceIssues.map(i => `persistence:${i}`) });
