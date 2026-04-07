@@ -51,6 +51,7 @@ async function handler(request: NextRequest) {
     const signalCreatedAtGte = resolveSignalCreatedAtGte(request);
     const briefOptions = {
       signalCreatedAtGte: signalCreatedAtGte ?? undefined,
+      briefInvocationSource: 'cron_daily_brief' as const,
     };
 
     const eligibleUserIds = (await resolveDailyBriefUserIds()).filter((id) => id !== TEST_USER_ID);

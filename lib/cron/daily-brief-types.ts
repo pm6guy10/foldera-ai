@@ -21,6 +21,7 @@ export type DailyBriefSuccessCode =
   | 'pending_approval_persisted'
   | 'pending_approval_reused'
   | 'pending_approval_guard'
+  | 'generation_cycle_cooldown'
   | 'pipeline_dry_run'
   | 'send_skipped_pipeline_dry_run'
   | 'no_send_persisted'
@@ -69,6 +70,8 @@ export interface DailyBriefSignalWindowOptions {
   skipManualCallLimit?: boolean;
   /** When true, never reuse existing pending actions; always force fresh generation. */
   forceFreshRun?: boolean;
+  /** Caller label for structured logs (cron vs settings vs dev). Not a security boundary. */
+  briefInvocationSource?: string;
   /**
    * When true (e.g. `POST .../run-brief?dry_run=true`): score + assemble prompt + synthetic artifact only;
    * no Anthropic calls, no DB persist of a new action, no email. Inspect `generate.results[].meta.pipeline_dry_run`.

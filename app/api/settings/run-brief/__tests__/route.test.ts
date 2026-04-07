@@ -95,6 +95,7 @@ describe('POST /api/settings/run-brief', () => {
       expect.objectContaining({
         userIds: [userId],
         ensureSend: true,
+        briefInvocationSource: 'settings_run_brief',
         skipStaleGate: true,
         skipSpendCap: true,
         skipManualCallLimit: true,
@@ -124,6 +125,7 @@ describe('POST /api/settings/run-brief', () => {
       expect.objectContaining({
         userIds: [userId],
         ensureSend: false,
+        briefInvocationSource: 'settings_run_brief',
         pipelineDryRun: true,
         skipStaleGate: true,
         skipSpendCap: true,
@@ -149,6 +151,7 @@ describe('POST /api/settings/run-brief', () => {
       expect.objectContaining({
         userIds: [userId],
         forceFreshRun: true,
+        briefInvocationSource: 'settings_run_brief',
         ensureSend: false,
         pipelineDryRun: true,
       }),
@@ -170,6 +173,7 @@ describe('POST /api/settings/run-brief', () => {
       expect.objectContaining({
         userIds: [userId],
         forceFreshRun: true,
+        briefInvocationSource: 'settings_run_brief',
         ensureSend: true,
         skipStaleGate: true,
         skipSpendCap: true,

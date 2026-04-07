@@ -23,6 +23,7 @@ const mockSupabase = {
   actionRows: [] as Array<Record<string, unknown>>,
   insertedActions: [] as Array<Record<string, unknown>>,
   updatedActions: [] as Array<Record<string, unknown>>,
+  briefCycleGateRows: [] as Array<{ user_id: string; last_cycle_at: string }>,
 
   auth: {
     admin: {
@@ -78,6 +79,33 @@ const mockSupabase = {
               };
             },
           };
+        },
+      };
+    }
+
+    if (table === 'user_brief_cycle_gates') {
+      return {
+        select() {
+          return {
+            in(_col: string, ids: string[]) {
+              const rows = self.briefCycleGateRows.filter((r) => ids.includes(r.user_id));
+              return Promise.resolve({ data: rows, error: null });
+            },
+          };
+        },
+        upsert(payload: Record<string, unknown> | Record<string, unknown>[]) {
+          const rows = Array.isArray(payload) ? payload : [payload];
+          for (const p of rows) {
+            const uid = p.user_id as string;
+            const at = p.last_cycle_at as string;
+            const idx = self.briefCycleGateRows.findIndex((r) => r.user_id === uid);
+            if (idx >= 0) {
+              self.briefCycleGateRows[idx] = { user_id: uid, last_cycle_at: at };
+            } else {
+              self.briefCycleGateRows.push({ user_id: uid, last_cycle_at: at });
+            }
+          }
+          return Promise.resolve({ error: null });
         },
       };
     }
@@ -467,6 +495,7 @@ describe('runDailyGenerate candidate logging', () => {
     mockSupabase.actionRows = [];
     mockSupabase.insertedActions = [];
     mockSupabase.updatedActions = [];
+    mockSupabase.briefCycleGateRows = [];
     vi.mocked(generateDirective).mockReset();
     vi.mocked(validateDirectiveForPersistence).mockReset();
     vi.mocked(generateArtifact).mockReset();
@@ -481,6 +510,18 @@ describe('runDailyGenerate candidate logging', () => {
     vi.mocked(validateDirectiveForPersistence).mockReturnValue([]);
     vi.mocked(getArtifactPersistenceIssues).mockReturnValue([]);
     vi.mocked(countUnprocessedSignals).mockResolvedValue(0);
+  });
+
+  it('returns generation_cycle_cooldown when last full cycle was within 20h', async () => {
+    const recent = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    mockSupabase.briefCycleGateRows = [{ user_id: USER_ID, last_cycle_at: recent }];
+
+    const result = await runDailyGenerate({ userIds: [USER_ID] });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({ code: 'generation_cycle_cooldown', success: true, userId: USER_ID }),
+    ]);
+    expect(vi.mocked(generateDirective)).not.toHaveBeenCalled();
   });
 
   it('persists top candidate discovery on successful directive generation', async () => {

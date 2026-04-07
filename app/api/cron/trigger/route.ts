@@ -89,7 +89,7 @@ async function handler(request: NextRequest) {
 
   // Stage 4: Daily brief (generate + send)
   try {
-    const result = await runDailyBrief();
+    const result = await runDailyBrief({ briefInvocationSource: 'cron_trigger' });
     const signalProcessing = toSafeDailyBriefStageStatus(result.signal_processing);
     const generate = toSafeDailyBriefStageStatus(result.generate);
     const send = toSafeDailyBriefStageStatus(result.send);

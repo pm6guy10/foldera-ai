@@ -86,6 +86,7 @@ describe('POST /api/dev/brain-receipt', () => {
         skipSpendCap: true,
         forceFreshRun: true,
         skipStaleGate: true,
+        briefInvocationSource: 'dev_brain_receipt',
       }),
     );
   });

@@ -39,6 +39,7 @@ export async function POST(request: Request) {
       skipSpendCap: true,
       skipManualCallLimit: true,
       forceFreshRun: true,
+      briefInvocationSource: 'dev_brain_receipt',
     });
 
     // Retrieve the full scorer diagnostics populated during scoreOpenLoops()

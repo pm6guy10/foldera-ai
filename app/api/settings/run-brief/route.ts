@@ -90,6 +90,7 @@ export async function POST(request: Request) {
     const { result: dailyBrief, sendFallbackAttempted } = await runBriefLifecycle({
       userIds: [userId],
       ensureSend: !pipelineDryRun,
+      briefInvocationSource: 'settings_run_brief',
       skipStaleGate: true,
       skipSpendCap: true,
       skipManualCallLimit: true,

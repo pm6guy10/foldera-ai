@@ -11,6 +11,13 @@
  * confirm delivery) is opt-in via `ensureSend: true`.  Manual runs set
  * this flag; nightly cron does not need it.
  *
+ * ## 20-hour full-cycle gate (inside runDailyGenerate, per user)
+ *
+ * After pending-queue short-circuits, each user may enter signal processing at most
+ * once per 20 hours (`user_brief_cycle_gates.last_cycle_at`), for every caller
+ * (cron, /api/settings/run-brief, /api/cron/trigger, /api/cron/daily-generate, dev).
+ * `pipelineDryRun` and `TEST_USER_ID` do not advance or enforce the gate.
+ *
  * ## Two-gate enforcement (inside runDailyGenerate, per user)
  *
  * Pre-generation gate — evaluateReadiness():

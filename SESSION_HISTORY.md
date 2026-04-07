@@ -4,6 +4,22 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **20h per-user full brief-cycle gate + invocation source tags**
+  MODE: AUDIT
+  Commit hash(es): `3f8447c`
+  Files changed: `supabase/migrations/20260407000001_user_brief_cycle_gates.sql`, `lib/cron/brief-cycle-gate.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/daily-brief-types.ts`, `lib/cron/brief-service.ts`, `app/api/settings/run-brief/route.ts`, `app/api/cron/daily-brief/route.ts`, `app/api/cron/trigger/route.ts`, `app/api/cron/daily-generate/route.ts`, `app/api/dev/brain-receipt/route.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `app/api/dev/brain-receipt/__tests__/route.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/cron/__tests__/daily-brief.test.ts app/api/settings/run-brief/__tests__/route.test.ts app/api/dev/brain-receipt/__tests__/route.test.ts`; Next `npm run build` reached compile + typecheck then failed on Windows `.next` rename ENOENT (environment flake — retry locally).
+  Changes: DB-backed `last_cycle_at` per user; hard stop before `runSignalProcessingForUser` when under 20h since last checkpoint; checkpoint after signal stage returns; `forceFreshRun` does not bypass; temporary debug-mode `fetch` logs to session ingest (remove after operator confirms cooldown in prod).
+  Any unresolved issues: **Apply** `20260407000001_user_brief_cycle_gates.sql` to production Postgres before relying on gate. **Product note:** If an operator runs Generate Now after 4pm PT, the next morning’s cron may hit `generation_cycle_cooldown` until 20h elapses — widen window or add cron-only bypass in a follow-up if undesired.
+
+- 2026-04-07 — AUDIT: **Generator eval baseline — owner `tkg_actions` sample + rubric**
+  MODE: AUDIT
+  Commit hash(es): *(set after push)*
+  Files changed: `docs/eval/baseline-sample.md`, `docs/eval/rubric.md`, `docs/eval/README.md`, `docs/eval/PROMPT_REBUILD_BACKLOG.md`, `lib/briefing/__tests__/eval-artifact-path.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  What was verified: `npx vitest run lib/briefing/__tests__/eval-artifact-path.test.ts`; `npm run build`.
+  Changes: Exported 10-row owner snapshot from production DB (Supabase) into `docs/eval/baseline-sample.md` with replay SQL and narrative “quick read”; added lightweight scoring rubric and backlog pointer for deferred prompt phases; Vitest documents `artifact.body` \| `artifact.content` parity with eval docs.
+  Any unresolved issues: Rubric not yet filled for the 10 rows (operator next step); prompt Phases 1–4 remain backlog per `docs/eval/PROMPT_REBUILD_BACKLOG.md`.
+
 - 2026-04-06 — AUDIT: **Vitest never calls Anthropic (global SDK stub + env)**
   MODE: AUDIT
   Commit hash(es): `31085d0`
@@ -150,7 +166,7 @@
 
 - 2026-04-06 — AUDIT: **Graph calendar `createdBy` 400 fix + Google zero-insert log + clear stale pending_approval**
   MODE: AUDIT
-  Commit hash(es): (set after push)
+  Commit hash(es): $h
   Files changed: `lib/sync/microsoft-sync.ts`, `lib/sync/google-sync.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/sync/__tests__/microsoft-sync.test.ts lib/sync/__tests__/google-sync.test.ts`; `npm run build`. Production SQL: `UPDATE tkg_actions SET status='executed', executed_at=now() WHERE id='8f88ce9e-f290-42f8-ba9f-dca4db6725ac'`.
   Changes: (1) Removed invalid `createdBy` from Microsoft Graph calendar `$select` (v1.0); RSVP `createdBySelf` from `isOrganizer` + organizer. (2) `syncGoogle` warns on all-zero incremental inserts when no errors. (3) Cleared blocking `pending_approval` row so next generate is not a reuse. (4) **Google `total: 0` read:** owner `last_synced_at` was recent — incremental Gmail query `after:unix` often yields **0** with no new mail; `user_tokens.scopes` null in DB does not block Gmail list.
@@ -1098,14 +1114,14 @@
 
 - 2026-03-25 — Commitment ceiling now runs immediately before scoring inside daily-brief generation
   MODE: BUILD
-  Commit hash(es): (set after push)
+  Commit hash(es): $h
   Files changed: `lib/cron/daily-brief.ts`, `app/api/settings/run-brief/route.ts`, `SESSION_HISTORY.md`
   What was verified: traced execution path — runDailyBrief() calls runDailyGenerate() which calls processUnextractedSignals() (extracts new commitments) then calls generateDirective() (scorer runs here); ceiling was running before runDailyBrief but after extraction fills commitments back above 150; fix: added runCommitmentCeilingDefense() call immediately before generateDirective() in daily-brief.ts (line ~1051) so scorer always sees <=150 commitments; also added second ceiling call in run-brief/route.ts after runDailyBrief() returns; imported self-heal into daily-brief.ts; `npm run build` passed
   Any unresolved issues: none
 
 - 2026-03-25 — Frontend jank sweep: start page consistency, font loading, terminal done state, dead code flags
   MODE: BUILD
-  Commit hash(es): (set after push)
+  Commit hash(es): $h
   Files changed: `app/start/page.tsx`, `app/page.tsx`, `components/dashboard/dashboard-content.tsx`, `components/dashboard/conviction-card.tsx`, `SESSION_HISTORY.md`
   What was verified: confirmed `DashboardContent` and `ConvictionCard` have zero imports in the codebase (only appear in their own files and SESSION_HISTORY.md); confirmed Inter is already loaded via `app/layout.js` with `next/font/google` applied to body — no additional font config needed; removed `@import url('https://fonts.googleapis.com/...')` from `app/page.tsx` style block, all other styles preserved; redesigned `app/start/page.tsx` to match `login-inner.tsx` visual style (same nav, same card layout, same button colors, same spinner pattern); confirmed dashboard done state is already terminal — no regenerate button present; `npm run build` passed (23/23 static pages, 0 errors)
   Any unresolved issues: none

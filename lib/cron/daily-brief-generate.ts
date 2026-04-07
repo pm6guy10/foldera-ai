@@ -33,7 +33,16 @@ import { filterDailyBriefEligibleUserIds } from '@/lib/auth/daily-brief-users';
 import { listConnectedUserIds } from '@/lib/auth/user-tokens';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { runCommitmentCeilingDefense } from '@/lib/cron/self-heal';
-import { CONFIDENCE_PERSIST_THRESHOLD, CONFIDENCE_SEND_THRESHOLD } from '@/lib/config/constants';
+import {
+  CONFIDENCE_PERSIST_THRESHOLD,
+  CONFIDENCE_SEND_THRESHOLD,
+  TEST_USER_ID,
+} from '@/lib/config/constants';
+import {
+  BRIEF_FULL_CYCLE_COOLDOWN_MS,
+  fetchBriefCycleLastAtMap,
+  recordBriefCycleCheckpoint,
+} from '@/lib/cron/brief-cycle-gate';
 import type {
   DailyBriefFailureCode,
   DailyBriefGenerateRunResult,
@@ -1481,6 +1490,25 @@ export async function runDailyGenerate(
   const signalResults: DailyBriefUserResult[] = [];
   const results: DailyBriefUserResult[] = [];
   const totalUsers = eligibleUserIds.length;
+  const cycleLastAt = await fetchBriefCycleLastAtMap(supabase, eligibleUserIds);
+
+  // #region agent log
+  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f3bae1' },
+    body: JSON.stringify({
+      sessionId: 'f3bae1',
+      location: 'lib/cron/daily-brief-generate.ts:runDailyGenerate',
+      message: 'runDailyGenerate batch start',
+      data: {
+        eligibleCount: eligibleUserIds.length,
+        briefInvocationSource: options.briefInvocationSource ?? null,
+        hypothesisId: 'H1-H4',
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   for (let ui = 0; ui < eligibleUserIds.length; ui++) {
     const userId = eligibleUserIds[ui];
@@ -1545,9 +1573,76 @@ export async function runDailyGenerate(
       }
     }
 
+    // Hard gate: one full generation cycle (signal processing onward) per user per 20h for all callers.
+    if (!options.pipelineDryRun && userId !== TEST_USER_ID) {
+      const lastIso = cycleLastAt.get(userId);
+      if (lastIso) {
+        const lastMs = new Date(lastIso).getTime();
+        if (Number.isFinite(lastMs)) {
+          const elapsed = Date.now() - lastMs;
+          if (elapsed >= 0 && elapsed < BRIEF_FULL_CYCLE_COOLDOWN_MS) {
+            const nextAt = new Date(lastMs + BRIEF_FULL_CYCLE_COOLDOWN_MS).toISOString();
+            logStructuredEvent({
+              event: 'brief_generation_cycle_cooldown',
+              userId,
+              artifactType: null,
+              generationStatus: 'gate_blocked',
+              details: {
+                scope: 'pre_signal_processing',
+                last_cycle_at: lastIso,
+                next_eligible_at: nextAt,
+                brief_invocation_source: options.briefInvocationSource ?? null,
+              },
+            });
+            // #region agent log
+            fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f3bae1' },
+              body: JSON.stringify({
+                sessionId: 'f3bae1',
+                location: 'lib/cron/daily-brief-generate.ts:cycle_gate',
+                message: 'generation_cycle_cooldown',
+                data: {
+                  userId,
+                  last_cycle_at: lastIso,
+                  elapsed_ms: elapsed,
+                  briefInvocationSource: options.briefInvocationSource ?? null,
+                  hypothesisId: 'H5',
+                },
+                timestamp: Date.now(),
+              }),
+            }).catch(() => {});
+            // #endregion
+            results.push({
+              code: 'generation_cycle_cooldown',
+              detail: `Full brief cycle cooldown; next eligible at ${nextAt}`,
+              meta: {
+                last_cycle_at: lastIso,
+                next_eligible_at: nextAt,
+                cooldown_ms_remaining: BRIEF_FULL_CYCLE_COOLDOWN_MS - elapsed,
+              },
+              success: true,
+              userId,
+            });
+            continue;
+          }
+        }
+      }
+    }
+
     const userEmails = await fetchUserEmailAddresses(userId);
     const signalResult = await runSignalProcessingForUser(supabase, userId, options);
     signalResults.push(signalResult);
+
+    if (!options.pipelineDryRun && userId !== TEST_USER_ID) {
+      try {
+        await recordBriefCycleCheckpoint(supabase, userId);
+        cycleLastAt.set(userId, new Date().toISOString());
+      } catch (gateErr: unknown) {
+        console.warn('[daily-generate] recordBriefCycleCheckpoint failed:', gateErr);
+        Sentry.captureException(gateErr instanceof Error ? gateErr : new Error(String(gateErr)));
+      }
+    }
 
     try {
       const pendingQueue = await reconcilePendingApprovalQueue(supabase, userId, todayStart, options);

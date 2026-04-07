@@ -19,7 +19,7 @@ async function handler(request: NextRequest) {
   if (authErr) return authErr;
 
   try {
-    const result = await runDailyGenerate();
+    const result = await runDailyGenerate({ briefInvocationSource: 'cron_daily_generate' });
     const generateStatus = toSafeDailyBriefStageStatus(result);
     const signalStatus = toSafeDailyBriefStageStatus(result.signalProcessing);
     const status =
