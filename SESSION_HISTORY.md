@@ -6,15 +6,15 @@
 
 - 2026-04-06 — AUDIT: **Haiku for bulk generation — Sonnet only for pass-1 anomaly; researcher + agent runner Haiku**
   MODE: AUDIT
-  Commit hash(es): (pending)
-  Files changed: `lib/briefing/generator.ts` (`GENERATION_MODEL_FAST` / `GENERATION_MODEL_REASON`), `lib/briefing/researcher.ts`, `lib/agents/anthropic-runner.ts`, `lib/cron/api-budget.ts` (remove debug ingest; typed RPC/view casts), `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  Commit hash(es): `857bccd`
+  Files changed: `lib/briefing/generator.ts` (`GENERATION_MODEL_FAST` / `GENERATION_MODEL_REASON`), `lib/briefing/researcher.ts`, `lib/agents/anthropic-runner.ts`, `lib/cron/api-budget.ts`, `lib/cron/__tests__/api-budget.test.ts`, `lib/cron/daily-brief-generate.ts`, `app/api/cron/nightly-ops/route.ts`, `app/api/cron/daily-brief/route.ts`, `.env.example`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `grep sonnet` on `generator.ts` — single line (`GENERATION_MODEL_REASON`); `npm run lint`; `npm run build`; `npx vitest run lib/cron/__tests__/api-budget.test.ts`.
   Changes: Main directive `messages.create` + `trackApiCall` use `claude-haiku-4-5-20251001`; anomaly one-sentence pass stays `claude-sonnet-4-20250514`. `RESEARCHER_MODEL` and `SONNET_MODEL` (agent runner) set to Haiku. Removed localhost debug `fetch` from budget path.
   Any unresolved issues: **Artifact / discrepancy transform** paths in `artifact-generator.ts` were already Haiku (`ARTIFACT_MODEL`). Post-deploy: confirm Anthropic usage logs show mostly Haiku + one Sonnet per cycle. `MAX_DIRECTIVE_LLM_ATTEMPTS` remains **2** (one retry).
 
 - 2026-04-06 — AUDIT: **Postgres `api_budget_check_and_reserve` gate + cron `api_budget_status` telemetry**
   MODE: AUDIT
-  Commit hash(es): (pending)
+  Commit hash(es): `857bccd` (same push as Haiku cost pass)
   Files changed: `lib/cron/api-budget.ts`, `lib/cron/__tests__/api-budget.test.ts`, `lib/briefing/generator.ts`, `lib/cron/daily-brief-generate.ts`, `app/api/cron/nightly-ops/route.ts`, `app/api/cron/daily-brief/route.ts`, `.env.example`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/cron/__tests__/api-budget.test.ts`; `npm run build` passed; `npm run lint` passed.
   Changes: One `reserveAnthropicBudgetSlot` call per `generateDirective` (after shared context fetch, before candidate loop) — blocks `researchWinner` + `generatePayload` Anthropic usage when RPC disallows or errors (fail closed). Returns `buildBudgetCapDirectiveFromScored` with `BUDGET_CAP_DIRECTIVE_SENTINEL` and embedded `wait_rationale`. `validateDirectiveForPersistence` + `evaluateBottomGate` bypass for sentinel. Cron: `logApiBudgetStatusToSystemHealth` after auth on nightly-ops and daily-brief. `.env.example` documents `ANTHROPIC_MONTHLY_BUDGET_CENTS`.
