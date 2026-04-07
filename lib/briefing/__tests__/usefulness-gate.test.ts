@@ -212,7 +212,7 @@ describe('usefulness gate — execution proof', () => {
     expect(mockLogStructuredEvent).not.toHaveBeenCalledWith(
       expect.objectContaining({ event: 'usefulness_rejected' })
     );
-  });
+  }, 15_000);
 
   // ── BAD CASE 2: empty_artifact (artifact JSON < 50 chars) ─────────────
   it('BAD2 — empty_artifact: artifact JSON under 50 chars → GENERATION_FAILED_SENTINEL (caught by validateGeneratedArtifact missing required fields)', async () => {

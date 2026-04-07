@@ -223,6 +223,10 @@ export async function researchWinner(
   const startTime = Date.now();
 
   try {
+    if (process.env.FOLDERA_DRY_RUN === 'true') {
+      return null;
+    }
+
     // Load all recent signals for cross-referencing
     const signals = await loadRecentSignals(userId);
 

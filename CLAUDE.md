@@ -57,6 +57,7 @@ Any insert with values outside these sets will fail silently (Supabase returns s
 - `ENCRYPTION_KEY`
 - `CRON_SECRET`
 - `ALLOW_DEV_ROUTES` (`true` only in local/dev environments when testing `/api/dev/*`; leave unset in production)
+- `FOLDERA_DRY_RUN` — **local only:** set `FOLDERA_DRY_RUN=true` in `.env.local` so directive generation skips Anthropic (synthetic fixture). **Never test generation locally without it** unless you intend to spend API credits. This is **not** the same as unit-test `generateDirective(..., { dryRun: true })`, which only skips anomaly pass + `api_usage` persistence; Vitest clears `FOLDERA_DRY_RUN` via `vitest.config.ts` so mocked Anthropic calls still run.
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`

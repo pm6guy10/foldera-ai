@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-06
 
+## STATUS: SHIPPED — `FOLDERA_DRY_RUN` + scorer top-2 candidate cap (local cost / burn reduction)
+
+**Latest ship:** Set `FOLDERA_DRY_RUN=true` in `.env.local` to skip Anthropic on directive generation (synthetic fixture after scoring). Vitest clears the env so mocks still run. Scorer passes at most **2** candidates into generator fallback (was 5/3).
+
 ## STATUS: SHIPPED — Generator hotfix `2483b2a` / `a390927` (evidence guard, email `content` mirror)
 
 **Latest ship:** Persistence validation no longer throws when `directive.evidence` is missing; email artifacts get `content` = `body` on persist; no-send rows use `reason` instead of literal `__GENERATION_FAILED__` in `directive_text`. After Vercel **Ready**, spot-check `pending_approval` email rows: `execution_result->'artifact'->>'content'` non-null.

@@ -2657,7 +2657,7 @@ function buildCandidateDiscoveryLog(
   suppressedCandidateCount: number,
   failureReason: string | null,
 ): GenerationCandidateDiscoveryLog {
-  const topCandidates = scored.slice(0, 5);
+  const topCandidates = scored.slice(0, 2);
   const selection = buildSelectionReason(winner, topCandidates[1]);
 
   const rankedCandidates: GenerationCandidateLog[] = topCandidates.map((candidate, index) => {
@@ -5429,7 +5429,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
 
   return {
     winner,
-    topCandidates: validScoredCandidates.slice(0, 3),
+    topCandidates: validScoredCandidates.slice(0, 2),
     deprioritized,
     candidateDiscovery: buildCandidateDiscoveryLog(winner, scored, suppressedCandidates, null),
     antiPatterns,

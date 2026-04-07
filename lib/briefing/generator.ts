@@ -6035,6 +6035,140 @@ function bucketValidationIssuesForLogs(issues: string[]): string[] {
 const MAX_DIRECTIVE_VALIDATION_RETRIES = 1;
 const MAX_DIRECTIVE_LLM_ATTEMPTS = 1 + MAX_DIRECTIVE_VALIDATION_RETRIES;
 
+function extractFirstGroundedDollar(groundingBlob: string): string | null {
+  const m = groundingBlob.match(/\$\s*[\d,]+(?:\.\d{2})?/);
+  return m ? m[0] : null;
+}
+
+/** Synthetic payload when dryRun — skips Sonnet loop; must pass validateGeneratedArtifact(…, committed). */
+function buildDryRunGeneratedPayload(
+  committed: ValidArtifactTypeCanonical,
+  ctx: StructuredContext,
+): GeneratedDirectivePayload {
+  const cd = ctx.required_causal_diagnosis;
+  const insight =
+    'Dry-run fixture: FOLDERA_DRY_RUN prevented model calls; copy is synthetic for local UI and persistence checks.';
+  const anchors = collectCrossSignalAnchors(ctx);
+  const anchorLine =
+    anchors.length >= 2
+      ? `Grounded ties: ${anchors[0]} and ${anchors[1]}.`
+      : anchors.length === 1
+        ? `Grounded tie: ${anchors[0]}.`
+        : '';
+  const groundingForMoney = [
+    ctx.candidate_title,
+    ctx.selected_candidate,
+    ...ctx.surgical_raw_facts,
+    ...ctx.supporting_signals.map((s) => `${s.summary ?? ''} ${s.occurred_at ?? ''}`),
+  ].join('\n');
+  const groundedDollarRaw = extractFirstGroundedDollar(groundingForMoney);
+  const whyNow =
+    'Because today still leaves a dated obligation in your synced activity before the April 11 cutoff, confirming now avoids compounding fee risk.';
+
+  if (committed === 'send_message') {
+    const directive = groundedDollarRaw
+      ? `[DRY RUN] Confirm the ${groundedDollarRaw.trim()} item before April 11.`
+      : '[DRY RUN] Confirm the open item before April 11.';
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'ACT',
+      directive,
+      artifact_type: 'send_message',
+      artifact: {
+        to: 'dry-run@foldera.ai',
+        subject: '[DRY RUN] Deadline check',
+        body: `Can you confirm before 2026-04-11? If we miss the deadline, late fee risk applies. ${anchorLine} Assign yourself to send payment.`,
+        draft_type: 'email_compose',
+      },
+      why_now: whyNow,
+    };
+  }
+
+  if (committed === 'write_document') {
+    const dollarSentence = groundedDollarRaw
+      ? `Pay ${groundedDollarRaw.trim()} before 2026-04-11 using the linked pay path.`
+      : 'Pay the amount shown in your statement before 2026-04-11 using your issuer portal.';
+    const directive = groundedDollarRaw
+      ? `[DRY RUN] AmEx ${groundedDollarRaw.trim()} due April 11.`
+      : '[DRY RUN] Confirm your card payment before April 11.';
+    const content = [
+      'DRY RUN — synthetic finished document for local testing; no LLM was invoked.',
+      `${dollarSentence} Avoid a late fee.`,
+      'Confirm payment today at https://example.com/pay (placeholder URL for dry run only).',
+      'You are accountable to submit before the deadline; assign the payment task to yourself today.',
+      'If we miss April 11, the account risks fees and blocks the next cash-flow decision.',
+      anchorLine,
+    ].join('\n\n');
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'ACT',
+      directive,
+      artifact_type: 'write_document',
+      artifact: {
+        document_purpose: 'Payment deadline confirmation (dry run)',
+        target_reader: 'Account owner',
+        title: '[DRY RUN] Payment by April 11',
+        content,
+      },
+      why_now: whyNow,
+    };
+  }
+
+  if (committed === 'schedule_block') {
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'ACT',
+      directive: 'Block focused time tomorrow to close the April 11 payment decision.',
+      artifact_type: 'schedule_block',
+      artifact: {
+        title: '[DRY RUN] Payment closeout block',
+        reason: 'Dry-run placeholder to reserve time before the April 11 fee window.',
+        start: new Date(Date.now() + 86400000).toISOString(),
+        duration_minutes: 30,
+      },
+      why_now: whyNow,
+    };
+  }
+
+  if (committed === 'wait_rationale') {
+    const trip = new Date(Date.now() + daysMs(7)).toISOString().slice(0, 10);
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'HOLD',
+      directive: 'Wait until live generation is enabled — dry run only.',
+      artifact_type: 'wait_rationale',
+      artifact: {
+        why_wait: 'FOLDERA_DRY_RUN=true: model calls disabled for local testing.',
+        tripwire_date: trip,
+        trigger_condition: 'Unset FOLDERA_DRY_RUN and regenerate to use real generation.',
+      },
+      why_now: whyNow,
+    };
+  }
+
+  return {
+    insight,
+    causal_diagnosis: cd,
+    causal_diagnosis_source: 'template_fallback',
+    decision: 'HOLD',
+    directive: 'No live generation in dry-run mode.',
+    artifact_type: 'do_nothing',
+    artifact: {
+      exact_reason: 'FOLDERA_DRY_RUN=true',
+      blocked_by: 'local_testing_fixture',
+    },
+    why_now: whyNow,
+  };
+}
+
 async function generatePayload(
   userId: string,
   ctx: StructuredContext,
@@ -6064,6 +6198,14 @@ async function generatePayload(
       has_identity_context: ctx.user_identity_context !== null,
     },
   });
+
+  if (process.env.FOLDERA_DRY_RUN === 'true') {
+    return {
+      issues: [],
+      payload: buildDryRunGeneratedPayload(options.committedArtifactType, ctx),
+      anomalyIdentification: undefined,
+    };
+  }
 
   let anomalyIdentification: string | undefined;
   if (!options.dryRun) {
@@ -6363,8 +6505,10 @@ export async function generateDirective(
   userId: string,
   options: GenerateDirectiveOptions = {},
 ): Promise<ConvictionDirective> {
+  /** Env-only: synthetic payload, zero Anthropic (distinct from test `dryRun` = skip api_usage persist). */
+  const envFixture = process.env.FOLDERA_DRY_RUN === 'true';
   try {
-    if (!options.dryRun && !options.skipSpendCap && await isOverDailyLimit(userId)) {
+    if (!options.dryRun && !envFixture && !options.skipSpendCap && await isOverDailyLimit(userId)) {
       logStructuredEvent({
         event: 'generation_skipped', level: 'warn', userId,
         artifactType: null, generationStatus: 'daily_cap_reached',
@@ -6380,6 +6524,7 @@ export async function generateDirective(
     // still bounded by a per-day call count so smoke tests can't burn $2.50/day.
     if (
       !options.dryRun &&
+      !envFixture &&
       options.skipSpendCap &&
       !options.skipManualCallLimit &&
       (await isOverManualCallLimit(userId))
@@ -6585,7 +6730,7 @@ export async function generateDirective(
     const lockedContacts = lockedContactsResult.set;
     const lockedContactPromptLines = lockedContactsResult.promptLines;
 
-    if (!options.dryRun) {
+    if (!(options.dryRun || envFixture)) {
       const budget = await reserveAnthropicBudgetSlot(ANTHROPIC_BUDGET_RESERVE_ESTIMATE_CENTS);
       if (!budget.allowed) {
         logStructuredEvent({
@@ -6703,7 +6848,7 @@ export async function generateDirective(
       // Decay reconnection: skip conviction math — it keys off matchedGoal (often financial runway)
       // and would instruct the model to prioritize unrelated "bridge" actions over the reconnect.
       let convictionDecision: import('./conviction-engine').ConvictionDecision | null = null;
-      if (!isDecayDiscrepancy && currentCandidate.type !== 'hunt') {
+      if (!envFixture && !isDecayDiscrepancy && currentCandidate.type !== 'hunt') {
         const topGoalText = currentCandidate.matchedGoal?.text ?? currentCandidate.title ?? '';
         if (topGoalText) {
           try {
@@ -7268,7 +7413,9 @@ export async function generateDirective(
 
 export async function generateBriefing(userId: string): Promise<ChiefOfStaffBriefing> {
   const supabase = createServerClient();
-  const directive = await generateDirective(userId);
+  const directive = await generateDirective(userId, {
+    dryRun: process.env.FOLDERA_DRY_RUN === 'true',
+  });
 
   if (directive.directive === GENERATION_FAILED_SENTINEL) {
     throw new Error('Briefing generation failed');

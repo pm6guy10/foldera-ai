@@ -1773,6 +1773,7 @@ export async function runDailyGenerate(
         directive = await generateDirective(userId, {
           skipSpendCap: options.skipSpendCap,
           skipManualCallLimit: options.skipManualCallLimit,
+          dryRun: process.env.FOLDERA_DRY_RUN === 'true',
         });
       } catch (genErr: unknown) {
         const message = genErr instanceof Error ? genErr.message : String(genErr);

@@ -81,7 +81,9 @@ export async function POST(request: Request) {
     }
 
     // Generate the directive
-    const directive = await generateDirective(userId);
+    const directive = await generateDirective(userId, {
+      dryRun: process.env.FOLDERA_DRY_RUN === 'true',
+    });
 
     // Check for generation failure sentinel
     if (directive.directive === '__GENERATION_FAILED__') {
