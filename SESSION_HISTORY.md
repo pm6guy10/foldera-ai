@@ -6,7 +6,7 @@
 
 - 2026-04-07 — AUDIT: **Scorer failure memory + stale directive dates + generation loop guard**
   MODE: AUDIT
-  Commit hash(es): `c29c927`
+  Commit hash(es): `883c357`
   Files changed: `lib/briefing/scorer-failure-suppression.ts`, `lib/briefing/__tests__/scorer-failure-suppression.test.ts`, `lib/briefing/scorer.ts`, `lib/briefing/generator.ts`, `lib/cron/daily-brief-generate.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   What was verified: `npx vitest run lib/briefing/__tests__/scorer-failure-suppression.test.ts`; `npx vitest run lib/cron/__tests__/daily-brief.test.ts`; `npm run lint`; clean `.next` + `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; `PLAYWRIGHT_WEB_PORT=3011 npm run test:ci:e2e` (local :3000 busy).
   Changes: Scorer excludes signal/entity/commitment keys from recent no-send failure rows before scoring; generator rejects past deadline strings in directive text; daily-brief persists loop-guard row with 24h key TTL when last three normalized directives match; `persistNoSendOutcome` optional `executionResultExtras`.
