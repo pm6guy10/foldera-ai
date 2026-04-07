@@ -2,7 +2,9 @@
 
 ## STATUS: SHIPPED — Self-inbound behavioral_pattern fix + OAuth expiry in `connector_health` stage
 
-**Latest ship:** Scorer `selfEmails` = auth + `user_tokens` (Google/Microsoft); discrepancy PATTERN 1/2 exclude self entities and self-authored inbound (`author` / `From:`). `checkConnectorHealth` logs `connector_health_oauth_token_expiry` and returns `oauth_token_diagnostics` on nightly-ops (no secrets). After deploy: confirm Vercel cron JSON shows the new event when any row has expired `expires_at` or missing `access_token` without soft-disconnect.
+**Latest ship:** Inbound avoidance counts use **`entityMatchesInboundSender`** (From/author only when present) so the user's name on **To:** does not fake "received from" that contact; legacy snippets without From still use `contentHitsEntity`.
+
+**Prior ship:** Scorer `selfEmails` = auth + `user_tokens` (Google/Microsoft); discrepancy PATTERN 1/2 exclude self entities and self-authored inbound (`author` / `From:`). `checkConnectorHealth` logs `connector_health_oauth_token_expiry` and returns `oauth_token_diagnostics` on nightly-ops (no secrets). After deploy: confirm Vercel cron JSON shows the new event when any row has expired `expires_at` or missing `access_token` without soft-disconnect.
 
 ## STATUS: SHIPPED — `FOLDERA_DRY_RUN` + scorer top-2 candidate cap (local cost / burn reduction)
 

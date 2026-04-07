@@ -1694,6 +1694,34 @@ describe('extractBehavioralPatterns (class: behavioral_pattern)', () => {
     expect(hit.find((d) => d.title.includes('Pat Lee'))?.suggestedActionType).toBe('send_message');
   });
 
+  it('PATTERN 2: does not count inbound where entity name only appears on To (sender is someone else)', () => {
+    const ent = {
+      id: 'ent-jordan',
+      name: 'Jordan Blake',
+      last_interaction: daysAgoISO(1),
+      total_interactions: 10,
+      patterns: {},
+      primary_email: 'jordan@example.com',
+    };
+    const structured = [1, 2, 3].map((i) => ({
+      id: `to-jordan-${i}`,
+      source: 'gmail',
+      type: 'email_received',
+      occurred_at: daysAgoISO(i),
+      author: 'Alice Other <alice@other.com>',
+      content: `[Email received: ${daysAgoISO(i)}]
+From: Alice Other <alice@other.com>
+To: Jordan Blake <jordan@example.com>
+Subject: FYI ${i}
+Body preview: Hey Jordan Blake — quick update ${i}`,
+    }));
+    const out = extractBehavioralPatterns([ent], [], [], structured, [], [], now);
+    const avoid = out.filter(
+      (d) => d.class === 'behavioral_pattern' && d.title.includes('0 replies in 14 days'),
+    );
+    expect(avoid.some((d) => d.entityName === 'Jordan Blake')).toBe(false);
+  });
+
   it('PATTERN 2: does not count inbound From self mailbox as received-from-contact (selfEmails + From line)', () => {
     const ent = {
       id: 'ent-self-name',

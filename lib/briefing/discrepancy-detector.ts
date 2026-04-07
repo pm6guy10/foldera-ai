@@ -1760,6 +1760,34 @@ function parseEmailsFromText(line: string | undefined): string[] {
   return out;
 }
 
+/** Parsed sender hints for an email-like structured signal (author + From line only). */
+function fromLineAndEmails(s: StructuredSignalInput): { fromBlob: string; emails: string[]; hasExplicitFrom: boolean } {
+  const fromLine = s.content.match(/(?:^|\n)From:\s*(.+?)(?:\n|$)/im)?.[1]?.trim() ?? '';
+  const author = (s.author ?? '').trim();
+  const hasExplicitFrom = Boolean(fromLine) || Boolean(author && author.toLowerCase() !== 'self');
+  const fromBlob = `${author}\n${fromLine}`.toLowerCase();
+  const emails = [...new Set([...parseEmailsFromText(author), ...parseEmailsFromText(fromLine)])];
+  return { fromBlob, emails, hasExplicitFrom };
+}
+
+/**
+ * True when this inbound signal's sender (From / author) is the given entity — not merely a mention
+ * in To/Cc/body (fixes "received from yourself" when the user's name only appears as recipient).
+ */
+function entityMatchesInboundSender(ent: EntityRow, s: StructuredSignalInput): boolean {
+  const { fromBlob, emails, hasExplicitFrom } = fromLineAndEmails(s);
+  const entEmails = [ent.primary_email, ...(ent.emails ?? [])]
+    .filter((x): x is string => Boolean(x))
+    .map((e) => e.toLowerCase());
+  if (entEmails.length > 0 && emails.some((e) => entEmails.includes(e))) return true;
+  const toks = entityTokens(ent);
+  if (toks.length > 0 && toks.every((t) => fromBlob.includes(t))) return true;
+  if (!hasExplicitFrom) {
+    return contentHitsEntity(s.content, ent);
+  }
+  return false;
+}
+
 /**
  * Inbound signal whose From/author is the account owner (same mailbox) — must not count as
  * "received from" a contact (avoids self-reply / sent-to-self false avoidance).
@@ -1801,7 +1829,7 @@ function countReceivedForEntity(
     if (isLikelyAutomatedTransactionalInbound(s.content)) continue;
     const t = new Date(s.occurred_at).getTime();
     if (t < sinceMs || t > nowMs) continue;
-    if (!contentHitsEntity(s.content, ent)) continue;
+    if (!entityMatchesInboundSender(ent, s)) continue;
     count++;
     if (!sampleId) sampleId = s.id;
   }
@@ -1901,7 +1929,7 @@ export function extractBehavioralPatterns(
         if (isLikelyAutomatedTransactionalInbound(s.content)) return false;
         const t = new Date(s.occurred_at).getTime();
         if (t < since14 || t > nowMs) return false;
-        if (!contentHitsEntity(s.content, ent)) return false;
+        if (!entityMatchesInboundSender(ent, s)) return false;
         const low = s.content.toLowerCase();
         return gkws.some((kw) => low.includes(kw));
       });
