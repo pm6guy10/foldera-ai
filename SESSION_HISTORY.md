@@ -14,7 +14,7 @@
 
 - 2026-04-07 — AUDIT: **Generator eval baseline — owner `tkg_actions` sample + rubric**
   MODE: AUDIT
-  Commit hash(es): `f9b85a2`
+  Commit hash(es): `f9b85a2` (eval baseline + pipeline mock), `c1aec75` (session log hash correction)
   Files changed: `docs/eval/baseline-sample.md`, `docs/eval/rubric.md`, `docs/eval/README.md`, `docs/eval/PROMPT_REBUILD_BACKLOG.md`, `lib/briefing/__tests__/eval-artifact-path.test.ts`, `lib/briefing/__tests__/pipeline-receipt.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   What was verified: `npx vitest run lib/briefing/__tests__/eval-artifact-path.test.ts`; `npx vitest run --exclude ".claude/worktrees/**"` (767 passed); `npm run build`; `PLAYWRIGHT_WEB_PORT=3022 npm run test:ci:e2e` (41 passed).
   Changes: Exported 10-row owner snapshot from production DB (Supabase) into `docs/eval/baseline-sample.md` with replay SQL and narrative “quick read”; added lightweight scoring rubric and backlog pointer for deferred prompt phases; Vitest documents `artifact.body` \| `artifact.content` parity with eval docs. **Pipeline receipt mock:** `user_brief_cycle_gates` select + upsert in `pipeline-receipt.test.ts` so `fetchBriefCycleLastAtMap` / `recordBriefCycleCheckpoint` do not throw during full suite.
