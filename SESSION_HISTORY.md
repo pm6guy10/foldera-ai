@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Production mail sync repair — Gmail list + Graph mail filter**
+  MODE: AUDIT
+  Commit hash(es): `9bdafa2`
+  Files changed: `lib/sync/google-sync.ts`, `lib/sync/microsoft-sync.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/sync/__tests__/`; `npm run build`; operator `npx tsx scripts/ops-production-repair-sync.ts` with `.env.local` after push (rewind + sync + proof queries).
+  Changes: (1) Gmail `messages.list` — drop `-category:promotions` (empty incremental lists when most mail is tabbed Promotions); warn on first empty page with `resultSizeEstimate`. (2) Outlook `syncMail` — `toGraphFilterDateTime()` strips `.000` before `$filter` (empty mail on some tenants). (3) Spec row updated with evidence.
+  Any unresolved issues: If proof still fails after deploy, capture Gmail `resultSizeEstimate` + Graph response sizes in logs; task list Graph 400 (`RequestBroker--ParseUri`) remains non-fatal.
+
 - 2026-04-07 — AUDIT: **Sentry JAVASCRIPT-NEXTJS-7 — degrade when `user_brief_cycle_gates` missing**
   MODE: AUDIT
   Commit hash(es): `76cc716`

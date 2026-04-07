@@ -403,6 +403,11 @@ async function getMicrosoftSignalCoverage(
 
 // ── Mail Sync ───────────────────────────────────────────────────────────────
 
+/** Graph `$filter` datetime — millisecond suffix can yield empty results on some tenants. */
+function toGraphFilterDateTime(iso: string): string {
+  return new Date(iso).toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
 async function syncMail(
   userId: string,
   accessToken: string,
@@ -411,8 +416,9 @@ async function syncMail(
   // Inbox: filter on receivedDateTime. Sent Items: must use sentDateTime — using
   // receivedDateTime on /sentitems often makes Graph return 400 or empty, and
   // Promise.all aborted the whole mail sync so last_synced_at never advanced.
-  const inboxFilter = encodeURIComponent(`receivedDateTime ge ${sinceIso}`);
-  const sentFilter = encodeURIComponent(`sentDateTime ge ${sinceIso}`);
+  const filterDt = toGraphFilterDateTime(sinceIso);
+  const inboxFilter = encodeURIComponent(`receivedDateTime ge ${filterDt}`);
+  const sentFilter = encodeURIComponent(`sentDateTime ge ${filterDt}`);
   const select =
     "id,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,body,conversationId,internetMessageId,importance,inferenceClassification,internetMessageHeaders";
 

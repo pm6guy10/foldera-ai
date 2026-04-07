@@ -117,10 +117,22 @@ async function syncGmail(
   do {
     const list = await gmail.users.messages.list({
       userId: 'me',
-      q: `after:${afterDate} -in:spam -in:trash -category:promotions`,
+      // Exclude spam/trash only. `-category:promotions` made incremental `messages.list`
+      // return empty for accounts where Gmail routes most mail to Promotions — stale graph
+      // while `last_synced_at` still advanced. Junk/newsletter handling stays in extraction.
+      q: `after:${afterDate} -in:spam -in:trash`,
       maxResults: GMAIL_PAGE_SIZE,
       pageToken,
     });
+    if (
+      pageToken === undefined &&
+      (list.data.messages ?? []).length === 0 &&
+      typeof list.data.resultSizeEstimate === 'number'
+    ) {
+      console.warn(
+        `[google-sync] Gmail list first page empty q=after:${afterDate}… resultSizeEstimate=${list.data.resultSizeEstimate}`,
+      );
+    }
     messageRefs.push(...(list.data.messages ?? []));
     pageToken = list.data.nextPageToken ?? undefined;
   } while (pageToken && messageRefs.length < GMAIL_MAX_MESSAGES);
