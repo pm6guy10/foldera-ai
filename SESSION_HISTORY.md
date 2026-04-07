@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Signal processor: safe `due_at` for malformed LLM date strings**
+  MODE: AUDIT
+  Commit: `fix(signal-processor): guard commitment due_at from malformed LLM dates` on `main` (see `git log --oneline -5`)
+  Files changed: `lib/signals/signal-processor.ts`, `lib/signals/__tests__/signal-processor.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  What was verified: `npx vitest run lib/signals/__tests__/signal-processor.test.ts`; `npm run lint`; `npm run build`; `npm run test:ci:e2e` (pre-push).
+  Changes: `due_at` uses `normalizeInteractionTimestamp(commitment.due)`; commitment insert mock captures payload; tests for unparseable `EOD` → `null` `due_at` and valid ISO preserved.
+  Any unresolved issues: `npm run health` may still show unrelated rows (e.g. last generation / repeated directive).
+
 - 2026-04-07 — OPS: **Health: “Repeated directive” is warning-only (does not fail exit code)**
   MODE: OPS
   Commit hash(es): `98db89d`

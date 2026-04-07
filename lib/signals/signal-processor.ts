@@ -1429,7 +1429,7 @@ async function insertCommitment(
       canonical_form: canonical,
       category: commitment.category || 'other',
       made_at: new Date().toISOString(),
-      due_at: commitment.due ? new Date(commitment.due).toISOString() : null,
+      due_at: normalizeInteractionTimestamp(commitment.due),
       source: 'signal_extraction',
       source_id: signalId,
       trust_class: signalTrustClass,

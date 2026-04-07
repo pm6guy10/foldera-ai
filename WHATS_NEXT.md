@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
+## STATUS: SHIPPED — Signal processor: malformed commitment `due` no longer crashes batch
+
+**This session:** `lib/signals/signal-processor.ts` — `insertCommitment` uses `normalizeInteractionTimestamp` for `due_at` so values like `EOD` do not call `toISOString()` on Invalid Date (avoids `signal_processor_batch_failed: Invalid time value` and blocked `INSUFFICIENT_SIGNAL`). **After deploy:** Generate Now / nightly signal processing — logs should not show that batch error; regression tests in `signal-processor.test.ts`.
+
 ## STATUS: SHIPPED — `npm run health`: repeated directive warning-only (no CI fail)
 
 **This session:** `scripts/health.ts` — 24h duplicate-shape count prints `⚠` and does not increment `RESULT` / exit code; Supabase query errors for that block still `✗` and fail. **Commit:** `98db89d`.

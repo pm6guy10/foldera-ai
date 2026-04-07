@@ -67,9 +67,11 @@ type SignalRow = {
 function createSupabaseMock({
   entities,
   signals,
+  captureCommitmentInsert,
 }: {
   entities: EntityRow[];
   signals: SignalRow[];
+  captureCommitmentInsert?: (row: Record<string, unknown>) => void;
 }) {
   return {
     entities,
@@ -287,7 +289,8 @@ function createSupabaseMock({
               },
             };
           },
-          insert() {
+          insert(payload: Record<string, unknown>) {
+            captureCommitmentInsert?.(payload);
             return {
               select() {
                 return {
@@ -569,6 +572,157 @@ describe('processUnextractedSignals entity freshness', () => {
     expect(entities[2].last_interaction).toBe(occurredAt);
     expect(entities[2].total_interactions).toBe(31);
     expect(signals[0].extracted_entities).toEqual(['entity-canonical']);
+  });
+});
+
+describe('processUnextractedSignals commitment due_at', () => {
+  const USER_ID = '22222222-2222-2222-2222-222222222222';
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    mockIsOverDailyLimit.mockResolvedValue(false);
+    mockTrackApiCall.mockResolvedValue(undefined);
+    mockRecoverMicrosoftSignalContent.mockResolvedValue(null);
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+  });
+
+  it('does not crash the batch when commitment.due is unparseable; inserts null due_at', async () => {
+    let inserted: Record<string, unknown> | undefined;
+    const entities: EntityRow[] = [
+      {
+        id: 'self-1',
+        user_id: USER_ID,
+        name: 'self',
+        display_name: 'You',
+        patterns: {},
+      },
+    ];
+    const signals: SignalRow[] = [
+      {
+        id: 'signal-due-eod',
+        user_id: USER_ID,
+        source: 'gmail',
+        source_id: 'gmail-due-eod',
+        type: 'email_sent',
+        content: '[Sent email: Tue, 18 Mar 2026 09:30:00 -0700]\nTo: Alex Rivera <alex@example.com>\nSubject: Report\nBody: Will send the quarterly report soon.',
+        author: 'self',
+        occurred_at: '2026-03-18T16:30:00.000Z',
+        processed: false,
+      },
+    ];
+    const supabase = createSupabaseMock({
+      entities,
+      signals,
+      captureCommitmentInsert: (row) => {
+        inserted = row;
+      },
+    });
+
+    vi.doMock('@/lib/db/client', () => ({
+      createServerClient: () => supabase,
+    }));
+
+    mockMessagesCreate.mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify([
+            {
+              signal_id: 'signal-due-eod',
+              persons: [],
+              commitments: [
+                {
+                  description: 'Send the quarterly report to the finance team by deadline',
+                  who: 'Alex Rivera',
+                  category: 'project',
+                  due: 'EOD',
+                },
+              ],
+              topics: [],
+            },
+          ]),
+        },
+      ],
+      usage: { input_tokens: 10, output_tokens: 20 },
+    });
+
+    const { processUnextractedSignals } = await import('@/lib/signals/signal-processor');
+    const result = await processUnextractedSignals(USER_ID, { maxSignals: 1 });
+
+    expect(result.signals_processed).toBe(1);
+    expect(result.commitments_created).toBe(1);
+    expect(result.errors).toEqual([]);
+    expect(inserted).toBeDefined();
+    expect(inserted!.due_at).toBeNull();
+  });
+
+  it('persists ISO due_at when commitment.due parses cleanly', async () => {
+    let inserted: Record<string, unknown> | undefined;
+    const entities: EntityRow[] = [
+      {
+        id: 'self-1',
+        user_id: USER_ID,
+        name: 'self',
+        display_name: 'You',
+        patterns: {},
+      },
+    ];
+    const signals: SignalRow[] = [
+      {
+        id: 'signal-due-iso',
+        user_id: USER_ID,
+        source: 'gmail',
+        source_id: 'gmail-due-iso',
+        type: 'email_sent',
+        content: '[Sent email: Wed, 19 Mar 2026 08:00:00 -0700]\nTo: Alex Rivera <alex@example.com>\nSubject: Plan\nBody: Sharing the timeline.',
+        author: 'self',
+        occurred_at: '2026-03-19T15:00:00.000Z',
+        processed: false,
+      },
+    ];
+    const supabase = createSupabaseMock({
+      entities,
+      signals,
+      captureCommitmentInsert: (row) => {
+        inserted = row;
+      },
+    });
+
+    vi.doMock('@/lib/db/client', () => ({
+      createServerClient: () => supabase,
+    }));
+
+    const isoDue = '2026-04-15T00:00:00.000Z';
+    mockMessagesCreate.mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify([
+            {
+              signal_id: 'signal-due-iso',
+              persons: [],
+              commitments: [
+                {
+                  description: 'Send the revised proposal to the client before the review',
+                  who: 'Alex Rivera',
+                  category: 'project',
+                  due: isoDue,
+                },
+              ],
+              topics: [],
+            },
+          ]),
+        },
+      ],
+      usage: { input_tokens: 10, output_tokens: 20 },
+    });
+
+    const { processUnextractedSignals } = await import('@/lib/signals/signal-processor');
+    const result = await processUnextractedSignals(USER_ID, { maxSignals: 1 });
+
+    expect(result.commitments_created).toBe(1);
+    expect(inserted!.due_at).toBe(isoDue);
   });
 });
 
