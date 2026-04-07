@@ -6,7 +6,7 @@
 
 - 2026-04-06 — AUDIT: **CI fix — pipeline-receipt mock `supabase.rpc` for budget + commitment ceiling**
   MODE: AUDIT
-  Commit hash(es): `eb64459`
+  Commit hash(es): `66fec47`
   Files changed: `lib/briefing/__tests__/pipeline-receipt.test.ts`, `lib/cron/api-budget.ts`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/briefing/__tests__/pipeline-receipt.test.ts` (1 passed).
   Changes: `createSupabaseMock` adds `rpc` for `api_budget_check_and_reserve` → `{ allowed: true }` and `apply_commitment_ceiling` → `{ suppressed_count: 0 }` so non-dryRun `generateDirective` and pre-generate ceiling defense see the same surface as the real Supabase client; cosmetic `});` in `lib/cron/api-budget.ts`.
