@@ -3377,7 +3377,7 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   // Self-learn: auto-create/lift suppression goals from skip patterns
   await checkAndCreateAutoSuppressions(userId);
 
-  // Fetch user's own email addresses for self-addressed routing check at the entity gate.
+  // Fetch user's own email addresses for self-addressed routing + inbound-vs-self scoring (multi-user: DB only, never hardcoded).
   const selfEmails = new Set<string>();
   try {
     const { data: authUserData } = await supabase.auth.admin.getUserById(userId);
@@ -3386,6 +3386,15 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     for (const identity of (authUser?.identities ?? [])) {
       const email = (identity.identity_data as Record<string, unknown>)?.['email'];
       if (typeof email === 'string' && email) selfEmails.add(email.toLowerCase());
+    }
+    const { data: connectorEmailRows } = await supabase
+      .from('user_tokens')
+      .select('email')
+      .eq('user_id', userId)
+      .in('provider', ['google', 'microsoft']);
+    for (const row of connectorEmailRows ?? []) {
+      const em = row.email as string | null | undefined;
+      if (typeof em === 'string' && em.trim()) selfEmails.add(em.trim().toLowerCase());
     }
   } catch {
     // Non-blocking — if lookup fails the self-addressed check in isSendWorthy still catches it
@@ -3526,14 +3535,25 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
     directive_text: r.directive_text ?? '',
   }));
 
-  const structuredSignals = signals.map((s: { id: string; source?: string; type?: string; occurred_at?: string; content: string; source_id?: string | null }) => ({
-    id: String(s.id),
-    source: String(s.source ?? ''),
-    type: s.type ?? null,
-    occurred_at: String(s.occurred_at ?? ''),
-    content: s.content,
-    source_id: s.source_id ?? null,
-  }));
+  const structuredSignals = signals.map(
+    (s: {
+      id: string;
+      source?: string;
+      type?: string;
+      occurred_at?: string;
+      content: string;
+      source_id?: string | null;
+      author?: string | null;
+    }) => ({
+      id: String(s.id),
+      source: String(s.source ?? ''),
+      type: s.type ?? null,
+      occurred_at: String(s.occurred_at ?? ''),
+      content: s.content,
+      source_id: s.source_id ?? null,
+      author: s.author ?? null,
+    }),
+  );
 
   const entities = entitiesRes.data ?? [];
   // Entity ID → name map so commitment candidates can resolve promisor/promisee.

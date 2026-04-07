@@ -136,6 +136,8 @@ export interface StructuredSignalInput {
   occurred_at: string;
   content: string;
   source_id?: string | null;
+  /** From tkg_signals.author when present — used to exclude self-authored inbound mail. */
+  author?: string | null;
 }
 
 /** Recent directives for unresolved-intent cross-check (pre-fetched). */
@@ -1749,16 +1751,53 @@ function contentHitsEntity(content: string, ent: EntityRow): boolean {
   return toks.every((t) => c.includes(t));
 }
 
+function parseEmailsFromText(line: string | undefined): string[] {
+  if (!line) return [];
+  const out: string[] = [];
+  const re = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(line)) !== null) out.push(m[0].toLowerCase());
+  return out;
+}
+
+/**
+ * Inbound signal whose From/author is the account owner (same mailbox) — must not count as
+ * "received from" a contact (avoids self-reply / sent-to-self false avoidance).
+ */
+function isInboundAuthoredBySelf(s: StructuredSignalInput, selfEmails: Set<string> | undefined): boolean {
+  if (!selfEmails || selfEmails.size === 0) return false;
+  const auth = (s.author ?? '').trim().toLowerCase();
+  if (auth === 'self') return true;
+  for (const e of parseEmailsFromText(auth)) {
+    if (selfEmails.has(e)) return true;
+  }
+  const fromLine = s.content.match(/(?:^|\n)From:\s*(.+?)(?:\n|$)/im)?.[1];
+  return parseEmailsFromText(fromLine).some((e) => selfEmails.has(e));
+}
+
+function isSelfEntity(ent: EntityRow, selfEmails?: Set<string>): boolean {
+  if (!selfEmails || selfEmails.size === 0) return false;
+  if (ent.primary_email && selfEmails.has(ent.primary_email.toLowerCase())) return true;
+  if (ent.emails) {
+    for (const e of ent.emails) {
+      if (selfEmails.has(e.toLowerCase())) return true;
+    }
+  }
+  return false;
+}
+
 function countReceivedForEntity(
   structured: StructuredSignalInput[],
   ent: EntityRow,
   nowMs: number,
   sinceMs: number,
+  selfEmails?: Set<string>,
 ): { count: number; sampleId: string | null } {
   let count = 0;
   let sampleId: string | null = null;
   for (const s of structured) {
     if (!isReceivedStructured(s)) continue;
+    if (isInboundAuthoredBySelf(s, selfEmails)) continue;
     if (isLikelyAutomatedTransactionalInbound(s.content)) continue;
     const t = new Date(s.occurred_at).getTime();
     if (t < sinceMs || t > nowMs) continue;
@@ -1851,12 +1890,14 @@ export function extractBehavioralPatterns(
     const linked = goalLinkedEntities(g, entities);
     if (linked.length === 0) continue;
     for (const ent of linked) {
-      const { count: recv, sampleId } = countReceivedForEntity(structured, ent, nowMs, since14);
+      if (isSelfEntity(ent, selfEmails)) continue;
+      const { count: recv, sampleId } = countReceivedForEntity(structured, ent, nowMs, since14, selfEmails);
       if (recv < 3) continue;
       const sent = countSentForEntity(structured, ent, nowMs, since14);
       if (sent > 0) continue;
       const goalKwOnInbound = structured.some((s) => {
         if (!isReceivedStructured(s)) return false;
+        if (isInboundAuthoredBySelf(s, selfEmails)) return false;
         if (isLikelyAutomatedTransactionalInbound(s.content)) return false;
         const t = new Date(s.occurred_at).getTime();
         if (t < since14 || t > nowMs) return false;
@@ -1907,7 +1948,8 @@ export function extractBehavioralPatterns(
 
   // --- PATTERN 2: repeated avoidance ---
   for (const ent of entities) {
-    const { count: recv, sampleId } = countReceivedForEntity(structured, ent, nowMs, since14);
+    if (isSelfEntity(ent, selfEmails)) continue;
+    const { count: recv, sampleId } = countReceivedForEntity(structured, ent, nowMs, since14, selfEmails);
     if (recv < 3) continue;
     if (countSentForEntity(structured, ent, nowMs, since14) > 0) continue;
     if (hasReplySignalForEntity(structured, ent, nowMs, since14)) continue;
@@ -2062,23 +2104,11 @@ export function extractBehavioralPatterns(
   patternBuckets[2] = pickTopBehavioral(patternBuckets[2], MAX_BEHAVIORAL_PER_PATTERN);
 
   // --- PATTERN 4: cross-entity theme (30d structured + decrypted substring) ---
-  // Helper: returns true when an entity's email matches the user's own addresses.
-  const isSelfEntity = (ent: EntityRow): boolean => {
-    if (!selfEmails || selfEmails.size === 0) return false;
-    if (ent.primary_email && selfEmails.has(ent.primary_email.toLowerCase())) return true;
-    if (ent.emails) {
-      for (const e of ent.emails) {
-        if (selfEmails.has(e.toLowerCase())) return true;
-      }
-    }
-    return false;
-  };
-
   for (const theme of CROSS_ENTITY_THEMES) {
     const hitEntities: EntityRow[] = [];
     const sampleIds: string[] = [];
     for (const ent of entities) {
-      if (isSelfEntity(ent)) continue; // never include the account owner as a "contact"
+      if (isSelfEntity(ent, selfEmails)) continue; // never include the account owner as a "contact"
       let hit = false;
       for (const s of structured) {
         const t = new Date(s.occurred_at).getTime();

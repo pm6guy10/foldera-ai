@@ -71,6 +71,8 @@ describe('checkConnectorHealth', () => {
     const result = await checkConnectorHealth();
 
     expect(result.ok).toBe(true);
+    expect(result.oauth_token_diagnostics?.rows.length).toBe(1);
+    expect(result.oauth_token_diagnostics?.missing_access_not_disconnected).toBe(1);
     expect(result.flagged_sources).toBe(2);
     expect(result.alerts_sent).toBe(2);
     expect(sendResendEmail).toHaveBeenCalledTimes(2);

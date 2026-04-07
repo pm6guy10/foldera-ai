@@ -1694,6 +1694,35 @@ describe('extractBehavioralPatterns (class: behavioral_pattern)', () => {
     expect(hit.find((d) => d.title.includes('Pat Lee'))?.suggestedActionType).toBe('send_message');
   });
 
+  it('PATTERN 2: does not count inbound From self mailbox as received-from-contact (selfEmails + From line)', () => {
+    const ent = {
+      id: 'ent-self-name',
+      name: 'Brandon Kapp',
+      last_interaction: daysAgoISO(1),
+      total_interactions: 10,
+      patterns: {},
+      primary_email: 'b-kapp@outlook.com',
+    };
+    const selfEmails = new Set(['b.kapp1010@gmail.com', 'b-kapp@outlook.com']);
+    const structured = [1, 2, 3].map((i) => ({
+      id: `self-inbound-${i}`,
+      source: 'outlook',
+      type: 'email_received',
+      occurred_at: daysAgoISO(i),
+      author: 'Brandon Kapp <b-kapp@outlook.com>',
+      content: `[Email received: ${daysAgoISO(i)}]
+From: Brandon Kapp <b-kapp@outlook.com>
+To: Someone <other@example.com>
+Subject: Note to self ${i}
+Body preview: Brandon Kapp — reminder ${i}`,
+    }));
+    const out = extractBehavioralPatterns([ent], [], [], structured, [], [], now, selfEmails);
+    const avoid = out.filter(
+      (d) => d.class === 'behavioral_pattern' && d.title.includes('0 replies in 14 days'),
+    );
+    expect(avoid.some((d) => d.entityName === 'Brandon Kapp')).toBe(false);
+  });
+
   it('PATTERN 2: does not treat noreply / transactional-domain mail as inbound needing reply', () => {
     const ent = {
       id: 'ent-owner',

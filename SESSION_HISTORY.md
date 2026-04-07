@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — AUDIT: **Behavioral self-inbound exclusion + connector health OAuth expiry diagnostics**
+  MODE: AUDIT
+  Commit hash(es): `8b2372a`
+  Files changed: `lib/briefing/discrepancy-detector.ts`, `lib/briefing/scorer.ts`, `lib/cron/connector-health.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `lib/cron/__tests__/connector-health.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/briefing/__tests__/discrepancy-detector.test.ts lib/cron/__tests__/connector-health.test.ts`; `npm run build`.
+  Changes: (1) `isInboundAuthoredBySelf` + `isSelfEntity` on PATTERN 1/2/4; `countReceivedForEntity` skips self-authored inbound; scorer enriches `selfEmails` from `user_tokens` connector emails + passes `author` into structured signals (multi-user). (2) `checkConnectorHealth` selects token expiry/access/disconnect fields, logs structured `connector_health_oauth_token_expiry`, returns `oauth_token_diagnostics` for nightly-ops visibility.
+  Any unresolved issues: Expired-at-rest JWT does not prove refresh failure — log documents that; production `npm run test:prod` not re-run this session.
+
 - 2026-04-06 — AUDIT: **CI fix — pipeline-receipt mock `supabase.rpc` for budget + commitment ceiling**
   MODE: AUDIT
   Commit hash(es): `66fec47`
