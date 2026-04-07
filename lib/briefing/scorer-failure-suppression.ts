@@ -12,6 +12,9 @@ const MS_DAY = 24 * 60 * 60 * 1000;
 /** Default lookback for gate/duplicate failures (matches product spec). */
 export const FAILURE_SUPPRESSION_WINDOW_DAYS = 7;
 
+/** After a user skips a real directive (`generation_log.outcome === 'selected'`), suppress the same scorer keys briefly so the same signal does not win every run. Shorter than failure memory so topics can resurface. */
+export const USER_SKIP_SUPPRESSION_WINDOW_MS = 48 * 60 * 60 * 1000;
+
 const FAILURE_REASON_PATTERN =
   /duplicate_|usefulness:|llm_failed:|trigger_lock:|ungrounded_currency|all_candidates_blocked|Selected candidate blocked|stale_date_in_directive|GENERATION_LOOP_DETECTED/i;
 
@@ -67,6 +70,12 @@ export function extractSuppressionKeysFromExecutionResult(
   return [...keys];
 }
 
+function generationLogOutcomeSelected(executionResult: Record<string, unknown> | null): boolean {
+  if (!executionResult) return false;
+  const genLog = executionResult.generation_log as Record<string, unknown> | undefined;
+  return genLog?.outcome === 'selected';
+}
+
 function generationLogIndicatesFailure(executionResult: Record<string, unknown>): boolean {
   const genLog = executionResult.generation_log as Record<string, unknown> | undefined;
   if (!genLog) return false;
@@ -82,6 +91,18 @@ function generationLogIndicatesFailure(executionResult: Record<string, unknown>)
   if (typeof oc?.blocked_by === 'string' && FAILURE_REASON_PATTERN.test(oc.blocked_by)) return true;
 
   return false;
+}
+
+/**
+ * User tapped Skip on a generated directive (not a no-send / gate failure row).
+ * Only used when {@link rowContributesFailureSuppression} is false for the same row.
+ */
+export function rowContributesUserSkipSuppression(
+  status: string,
+  executionResult: Record<string, unknown> | null,
+): boolean {
+  if (status !== 'skipped' || !executionResult) return false;
+  return generationLogOutcomeSelected(executionResult);
 }
 
 function rowContributesFailureSuppression(
@@ -250,18 +271,25 @@ export async function collectActiveFailureSuppressionKeys(
     const generatedAtMs = new Date(String(row.generated_at ?? 0)).getTime();
     if (!Number.isFinite(generatedAtMs)) continue;
 
-    if (!rowContributesFailureSuppression(status, actionType, er)) continue;
+    const contributesFailure = rowContributesFailureSuppression(status, actionType, er);
+    const contributesUserSkip =
+      !contributesFailure && rowContributesUserSkipSuppression(status, er);
+    if (!contributesFailure && !contributesUserSkip) continue;
 
     const keys = extractSuppressionKeysFromExecutionResult(er);
     if (keys.length === 0) continue;
 
     let expiresAtMs: number;
-    const untilRaw = er?.loop_suppression_until;
-    if (typeof untilRaw === 'string' && Array.isArray(er?.loop_suppression_keys)) {
-      const u = new Date(untilRaw).getTime();
-      expiresAtMs = Number.isFinite(u) ? u : generatedAtMs + ttlMsForRow(er, generatedAtMs);
+    if (contributesUserSkip) {
+      expiresAtMs = generatedAtMs + USER_SKIP_SUPPRESSION_WINDOW_MS;
     } else {
-      expiresAtMs = generatedAtMs + ttlMsForRow(er ?? {}, generatedAtMs);
+      const untilRaw = er?.loop_suppression_until;
+      if (typeof untilRaw === 'string' && Array.isArray(er?.loop_suppression_keys)) {
+        const u = new Date(untilRaw).getTime();
+        expiresAtMs = Number.isFinite(u) ? u : generatedAtMs + ttlMsForRow(er!, generatedAtMs);
+      } else {
+        expiresAtMs = generatedAtMs + ttlMsForRow(er ?? {}, generatedAtMs);
+      }
     }
 
     for (const key of keys) {

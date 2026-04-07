@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
+  collectActiveFailureSuppressionKeys,
   directiveHasStalePastDates,
   extractSuppressionKeysFromExecutionResult,
   normalizeDirectiveForLoopDetection,
   rawScorerCandidateMatchesFailureSuppression,
+  rowContributesUserSkipSuppression,
+  USER_SKIP_SUPPRESSION_WINDOW_MS,
 } from '../scorer-failure-suppression';
 
 describe('normalizeDirectiveForLoopDetection', () => {
@@ -67,6 +70,96 @@ describe('extractSuppressionKeysFromExecutionResult', () => {
       loop_suppression_keys: ['signal:a', 'commitment:b'],
     });
     expect(keys).toEqual(expect.arrayContaining(['signal:a', 'commitment:b']));
+  });
+});
+
+describe('rowContributesUserSkipSuppression', () => {
+  it('is true for skipped + generation_log.outcome selected', () => {
+    expect(
+      rowContributesUserSkipSuppression('skipped', {
+        generation_log: { outcome: 'selected' },
+      } as Record<string, unknown>),
+    ).toBe(true);
+  });
+
+  it('is false for no_send rows', () => {
+    expect(
+      rowContributesUserSkipSuppression('skipped', {
+        generation_log: { outcome: 'no_send', candidateFailureReasons: ['duplicate_100pct_similar'] },
+      } as Record<string, unknown>),
+    ).toBe(false);
+  });
+
+  it('is false when status is not skipped', () => {
+    expect(
+      rowContributesUserSkipSuppression('pending_approval', {
+        generation_log: { outcome: 'selected' },
+      } as Record<string, unknown>),
+    ).toBe(false);
+  });
+});
+
+function createSupabaseMock(rows: unknown[], eqSpy?: (col: string, val: string) => void) {
+  const builder: Record<string, unknown> = {
+    eq(col: string, val: string) {
+      eqSpy?.(col, val);
+      return builder;
+    },
+    gte: () => builder,
+    order: () => builder,
+    limit: () => Promise.resolve({ data: rows, error: null }),
+  };
+  return {
+    from: () => ({
+      select: () => builder,
+    }),
+  };
+}
+
+describe('collectActiveFailureSuppressionKeys', () => {
+  it('suppresses keys from user-skipped selected directives for 48h', async () => {
+    vi.useFakeTimers();
+    const now = new Date('2026-04-07T12:00:00.000Z').getTime();
+    vi.setSystemTime(now);
+
+    const generatedAt = new Date(now).toISOString();
+    const rows = [
+      {
+        generated_at: generatedAt,
+        status: 'skipped',
+        action_type: 'send_message',
+        execution_result: {
+          generation_log: {
+            outcome: 'selected',
+            candidateDiscovery: {
+              topCandidates: [
+                {
+                  decision: 'selected',
+                  sourceSignals: [{ kind: 'signal', id: 'sig-user-skip' }],
+                },
+              ],
+            },
+          },
+        },
+      },
+    ];
+
+    const eqSpy = vi.fn();
+    const supabase = createSupabaseMock(rows, eqSpy) as never;
+
+    const keys = await collectActiveFailureSuppressionKeys(supabase, 'user-aaa-111');
+    expect(eqSpy).toHaveBeenCalledWith('user_id', 'user-aaa-111');
+    expect(keys.has('signal:sig-user-skip')).toBe(true);
+
+    vi.setSystemTime(now + USER_SKIP_SUPPRESSION_WINDOW_MS - 60_000);
+    const keysStill = await collectActiveFailureSuppressionKeys(supabase, 'user-aaa-111');
+    expect(keysStill.has('signal:sig-user-skip')).toBe(true);
+
+    vi.setSystemTime(now + USER_SKIP_SUPPRESSION_WINDOW_MS + 60_000);
+    const keysExpired = await collectActiveFailureSuppressionKeys(supabase, 'user-aaa-111');
+    expect(keysExpired.has('signal:sig-user-skip')).toBe(false);
+
+    vi.useRealTimers();
   });
 });
 
