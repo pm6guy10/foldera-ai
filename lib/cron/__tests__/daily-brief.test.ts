@@ -524,6 +524,55 @@ describe('runDailyGenerate candidate logging', () => {
     expect(vi.mocked(generateDirective)).not.toHaveBeenCalled();
   });
 
+  it('bypasses generation_cycle_cooldown when skipManualCallLimit (e.g. brain-receipt)', async () => {
+    const recent = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    mockSupabase.briefCycleGateRows = [{ user_id: USER_ID, last_cycle_at: recent }];
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+
+    const result = await runDailyGenerate({
+      userIds: [USER_ID],
+      skipManualCallLimit: true,
+      briefInvocationSource: 'dev_brain_receipt',
+    });
+
+    expect(result.results.some((r) => r.code === 'generation_cycle_cooldown')).toBe(false);
+    expect(result.results).toEqual([
+      expect.objectContaining({ code: 'pending_approval_persisted', success: true, userId: USER_ID }),
+    ]);
+    expect(vi.mocked(generateDirective)).toHaveBeenCalled();
+  });
+
+  it('bypasses generation_cycle_cooldown when briefInvocationSource is settings_run_brief', async () => {
+    const recent = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    mockSupabase.briefCycleGateRows = [{ user_id: USER_ID, last_cycle_at: recent }];
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+
+    const result = await runDailyGenerate({
+      userIds: [USER_ID],
+      briefInvocationSource: 'settings_run_brief',
+    });
+
+    expect(result.results.some((r) => r.code === 'generation_cycle_cooldown')).toBe(false);
+    expect(result.results).toEqual([
+      expect.objectContaining({ code: 'pending_approval_persisted', success: true, userId: USER_ID }),
+    ]);
+    expect(vi.mocked(generateDirective)).toHaveBeenCalled();
+  });
+
   it('persists top candidate discovery on successful directive generation', async () => {
     vi.mocked(generateDirective).mockResolvedValue(buildDirective());
     vi.mocked(generateArtifact).mockResolvedValue({

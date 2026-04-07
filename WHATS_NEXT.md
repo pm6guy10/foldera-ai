@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
+## STATUS: SHIPPED — Generate Now bypasses 20h `brief_generation_cycle_cooldown`
+
+**This session:** `lib/cron/daily-brief-generate.ts` — manual `/api/settings/run-brief` (`skipManualCallLimit` + `settings_run_brief` source) and dev brain-receipt no longer hit the 20h pre-signal gate; cron/trigger/daily-generate still throttled. **After deploy:** `POST /api/settings/run-brief` same day as `daily-brief` cron — logs should not show `brief_generation_cycle_cooldown` unless another guard applies.
+
 ## STATUS: SHIPPED — Scorer failure memory + stale-date gate + triple-directive loop guard
 
 **This session:** `lib/briefing/scorer-failure-suppression.ts` — scorer drops candidates whose signal/entity/commitment keys appear on recent `do_nothing` / no-send rows (duplicate, usefulness, LLM fail, **stale_date_in_directive**, **GENERATION_LOOP_DETECTED**). Generator blocks **past** ISO / month-day deadlines in `directive_text` (&gt;3d). `runDailyGenerate` — last 3 directives identical after normalization → skip LLM, persist loop row with `loop_suppression_keys` (24h). **Verify after deploy:** `POST /api/settings/run-brief`; confirm new winner is not a stale deadline repeat; operator may still run one-off SQL to skip stuck `pending_approval` rows if needed.

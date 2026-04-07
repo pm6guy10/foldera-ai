@@ -1525,6 +1525,10 @@ export async function runDailyGenerate(
   const results: DailyBriefUserResult[] = [];
   const totalUsers = eligibleUserIds.length;
   const cycleLastAt = await fetchBriefCycleLastAtMap(supabase, eligibleUserIds);
+  /** Cron/trigger paths stay throttled; authenticated Generate Now + dev brain-receipt bypass. */
+  const bypassBriefGenerationCycleCooldown =
+    options.skipManualCallLimit === true ||
+    options.briefInvocationSource === 'settings_run_brief';
 
   for (let ui = 0; ui < eligibleUserIds.length; ui++) {
     const userId = eligibleUserIds[ui];
@@ -1587,8 +1591,13 @@ export async function runDailyGenerate(
       continue;
     }
 
-    // Hard gate: one full generation cycle (signal processing onward) per user per 20h for all callers.
-    if (!options.pipelineDryRun && userId !== TEST_USER_ID) {
+    // Hard gate: one full generation cycle (signal processing onward) per user per 20h for batch/cron callers.
+    // Manual POST /api/settings/run-brief and owner brain-receipt set skipManualCallLimit and/or settings_run_brief.
+    if (
+      !options.pipelineDryRun &&
+      userId !== TEST_USER_ID &&
+      !bypassBriefGenerationCycleCooldown
+    ) {
       const lastIso = cycleLastAt.get(userId);
       if (lastIso) {
         const lastMs = new Date(lastIso).getTime();

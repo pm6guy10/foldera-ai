@@ -67,7 +67,7 @@ export interface DailyBriefSignalWindowOptions {
   skipStaleGate?: boolean;
   /** When true, skip the daily API spend cap so manual runs are free to test. */
   skipSpendCap?: boolean;
-  /** When true, skip manual directive call-count cap (owner brain-receipt only). */
+  /** When true, skip manual directive call-count cap and the 20h full-cycle cooldown (Generate Now, brain-receipt). */
   skipManualCallLimit?: boolean;
   /**
    * When true, manual/debug run (e.g. `?force=true`). Does **not** bypass pending reuse:

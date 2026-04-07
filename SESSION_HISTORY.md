@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Generate Now bypasses 20h `brief_generation_cycle_cooldown`**
+  MODE: AUDIT
+  Commit hash(es): `a9ac712`
+  Files changed: `lib/cron/daily-brief-generate.ts`, `lib/cron/brief-service.ts`, `lib/cron/daily-brief-types.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  What was verified: `npx vitest run lib/cron/__tests__/daily-brief.test.ts`; `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (797 passed); `$env:PLAYWRIGHT_WEB_PORT='3011'; npm run test:ci:e2e` (41 passed; local :3000 busy).
+  Changes: `skipManualCallLimit` and/or `briefInvocationSource === 'settings_run_brief'` skip the pre-signal 20h full-cycle gate so `/api/settings/run-brief` matches route intent; cron/trigger/daily-generate paths unchanged. `skipManualCallLimit` JSDoc notes cooldown bypass; spec table row updated.
+  Any unresolved issues: Post-deploy operator: `POST /api/settings/run-brief` same day as cron — confirm Vercel logs omit `brief_generation_cycle_cooldown` when no other guard fires.
+
 - 2026-04-07 — AUDIT: **Scorer failure memory + stale directive dates + generation loop guard**
   MODE: AUDIT
   Commit hash(es): `883c357`
