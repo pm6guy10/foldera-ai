@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Outlook inbox Graph path + Gmail empty incremental probe**
+  MODE: AUDIT
+  Commit hash(es): `007d3cf`
+  Files changed: `lib/sync/google-sync.ts`, `lib/sync/microsoft-sync.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/sync/__tests__/`; `npm run build`; `npm run lint`; `npm run test:ci:e2e`; operator `npx tsx scripts/ops-production-repair-sync.ts` after push.
+  Changes: `syncMail` inbox URL → `mailFolders/inbox/messages`; `syncGmail` removes localhost agent `fetch`, adds `in:inbox` probe `console.warn` when incremental list yields zero ids.
+  Any unresolved issues: If proof still fails, probe line distinguishes “API dead” vs “after: window/query yields no matches”.
+
 - 2026-04-07 — AUDIT: **Production mail sync repair — Gmail list + Graph mail filter**
   MODE: AUDIT
   Commit hash(es): `a037ee9`

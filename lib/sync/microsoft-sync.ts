@@ -422,7 +422,9 @@ async function syncMail(
   const select =
     "id,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,body,conversationId,internetMessageId,importance,inferenceClassification,internetMessageHeaders";
 
-  const inboxUrl = `${GRAPH_BASE}/me/messages?$filter=${inboxFilter}&$select=${select}&$top=${MAIL_PAGE_SIZE}&$orderby=receivedDateTime desc`;
+  // Inbox mail: use well-known folder. `/me/messages` + $filter returned no rows for some
+  // tenants after rewind while Sent Items still worked.
+  const inboxUrl = `${GRAPH_BASE}/me/mailFolders/inbox/messages?$filter=${inboxFilter}&$select=${select}&$top=${MAIL_PAGE_SIZE}&$orderby=receivedDateTime desc`;
   const sentUrl = `${GRAPH_BASE}/me/mailFolders/sentitems/messages?$filter=${sentFilter}&$select=${select}&$top=${MAIL_PAGE_SIZE}&$orderby=sentDateTime desc`;
 
   const [inboxSettled, sentSettled] = await Promise.allSettled([
@@ -470,6 +472,30 @@ async function syncMail(
   const inboxMessages = inboxData.map((m: any) => ({ ...m, _folder: "inbox" }));
   const sentMessages = sentData.map((m: any) => ({ ...m, _folder: "sent" }));
   const allMessages = [...inboxMessages, ...sentMessages];
+
+  // #region agent log
+  fetch("http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "bca2fa" },
+    body: JSON.stringify({
+      sessionId: "bca2fa",
+      hypothesisId: "H3-graph-filter",
+      location: "lib/sync/microsoft-sync.ts:syncMail:postFetch",
+      message: "Graph mail fetch counts",
+      data: {
+        sinceIso,
+        filterDt,
+        inboxFilterDecoded: `receivedDateTime ge ${filterDt}`,
+        sentFilterDecoded: `sentDateTime ge ${filterDt}`,
+        inboxCount: inboxMessages.length,
+        sentCount: sentMessages.length,
+        inboxRejected: inboxSettled.status === "rejected",
+        sentRejected: sentSettled.status === "rejected",
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   if (allMessages.length === 0) return 0;
 
@@ -551,6 +577,24 @@ async function syncMail(
       console.warn(`[microsoft-sync] Failed to persist mail for user ${userId}:`, msgErr instanceof Error ? msgErr.message : String(msgErr));
     }
   }
+
+  // #region agent log
+  fetch("http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "bca2fa" },
+    body: JSON.stringify({
+      sessionId: "bca2fa",
+      hypothesisId: "H5-persist",
+      location: "lib/sync/microsoft-sync.ts:syncMail:exit",
+      message: "Outlook mail inserted",
+      data: {
+        allMessagesCount: allMessages.length,
+        inserted,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   try {
     const derived = await persistResponsePatternSignals(supabase, userId, "outlook", intelMessages);

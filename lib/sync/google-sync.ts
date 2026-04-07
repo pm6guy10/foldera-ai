@@ -137,7 +137,24 @@ async function syncGmail(
     pageToken = list.data.nextPageToken ?? undefined;
   } while (pageToken && messageRefs.length < GMAIL_MAX_MESSAGES);
 
-  if (messageRefs.length === 0) return 0;
+  if (messageRefs.length === 0) {
+    try {
+      const probe = await gmail.users.messages.list({
+        userId: 'me',
+        q: 'in:inbox',
+        maxResults: 3,
+      });
+      console.warn(
+        `[google-sync] Gmail incremental returned 0 message ids (q=after:${afterDate} -in:spam -in:trash); probe in:inbox idCount=${(probe.data.messages ?? []).length} resultSizeEstimate=${probe.data.resultSizeEstimate ?? 'n/a'}`,
+      );
+    } catch (probeErr: unknown) {
+      console.warn(
+        `[google-sync] Gmail inbox probe failed:`,
+        probeErr instanceof Error ? probeErr.message : String(probeErr),
+      );
+    }
+    return 0;
+  }
 
   const supabase = createServerClient();
   let inserted = 0;
@@ -271,6 +288,24 @@ async function syncGmail(
   } catch (e) {
     console.warn(`[google-sync] response_pattern derivation failed for ${userId}:`, e instanceof Error ? e.message : String(e));
   }
+
+  // #region agent log
+  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bca2fa' },
+    body: JSON.stringify({
+      sessionId: 'bca2fa',
+      hypothesisId: 'H5-persist',
+      location: 'lib/sync/google-sync.ts:syncGmail:exit',
+      message: 'Gmail sync totals',
+      data: {
+        messageRefTotal: messageRefs.length,
+        inserted,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   return inserted;
 }
@@ -716,30 +751,28 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
   }
 
   // #region agent log
-  if (process.env.DEBUG_SYNC_AGENT_LOG === '1') {
-    fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f3bae1' },
-      body: JSON.stringify({
-        sessionId: 'f3bae1',
-        runId: 'sync-google',
-        hypothesisId: 'H1-cursor-and-counts',
-        location: 'lib/sync/google-sync.ts:syncGoogle',
-        message: 'syncGoogle finished',
-        data: {
-          isFirstSync,
-          gmailSignals,
-          calendarSignals,
-          driveSignals,
-          sinceMs,
-          afterClause: gmailSearchAfterDateClause(sinceMs),
-          gmailOk,
-          errorsLen: errors.length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }
+  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bca2fa' },
+    body: JSON.stringify({
+      sessionId: 'bca2fa',
+      hypothesisId: 'H4-cursor',
+      location: 'lib/sync/google-sync.ts:syncGoogle:exit',
+      message: 'syncGoogle window',
+      data: {
+        isFirstSync,
+        gmailSignals,
+        calendarSignals,
+        driveSignals,
+        sinceMsFinite: Number.isFinite(sinceMs),
+        sinceIso: Number.isFinite(sinceMs) ? new Date(sinceMs).toISOString() : 'invalid',
+        afterClause: Number.isFinite(sinceMs) ? gmailSearchAfterDateClause(sinceMs) : 'invalid',
+        gmailOk,
+        errorsLen: errors.length,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
   // #endregion
 
   return {
@@ -749,4 +782,58 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
     is_first_sync: isFirstSync,
     error: errors.length > 0 ? errors.join('; ') : undefined,
   };
+}
+
+const DAY_MS = 86400000;
+
+/**
+ * Ops/repair: first-page Gmail list for `after:` from rewindMs vs previous UTC day.
+ * If lenPrev > 0 and lenCurrent === 0, the mailbox has qualifying mail but the current incremental clause returns none (prove date/q boundary).
+ */
+export async function repairCompareGmailAfterClauses(
+  userId: string,
+  rewindMs: number,
+): Promise<{
+  qCurrent: string;
+  lenCurrent: number;
+  estCurrent: number | null | undefined;
+  qPrev: string;
+  lenPrev: number;
+  estPrev: number | null | undefined;
+}> {
+  const token = await getUserToken(userId, 'google');
+  if (!token?.access_token) {
+    throw new Error('repairCompareGmailAfterClauses: no google token');
+  }
+  const oauth2 = getOAuth2Client(userId, token);
+  const gmail = google.gmail({ version: 'v1', auth: oauth2 });
+  const qCurrent = `after:${gmailSearchAfterDateClause(rewindMs)} -in:spam -in:trash`;
+  const qPrev = `after:${gmailSearchAfterDateClause(rewindMs - DAY_MS)} -in:spam -in:trash`;
+  const [a, b] = await Promise.all([
+    gmail.users.messages.list({ userId: 'me', q: qCurrent, maxResults: 10 }),
+    gmail.users.messages.list({ userId: 'me', q: qPrev, maxResults: 10 }),
+  ]);
+  const result = {
+    qCurrent,
+    lenCurrent: a.data.messages?.length ?? 0,
+    estCurrent: a.data.resultSizeEstimate,
+    qPrev,
+    lenPrev: b.data.messages?.length ?? 0,
+    estPrev: b.data.resultSizeEstimate,
+  };
+  // #region agent log
+  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bca2fa' },
+    body: JSON.stringify({
+      sessionId: 'bca2fa',
+      hypothesisId: 'repair-AB-gmail',
+      location: 'lib/sync/google-sync.ts:repairCompareGmailAfterClauses',
+      message: 'Gmail after: current vs prev-day first page',
+      data: result,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+  return result;
 }
