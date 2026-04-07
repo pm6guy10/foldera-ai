@@ -14,7 +14,7 @@
 
 - 2026-04-07 — AUDIT: **Gmail list query module + dry promotions A/B tests (no API)**
   MODE: AUDIT
-  Commit hash(es): `3214647`
+  Commit hash(es): `5686d40`
   Files changed: `lib/sync/gmail-query.ts`, `lib/sync/google-sync.ts`, `lib/sync/__tests__/gmail-query.test.ts`, `lib/sync/__tests__/gmail-ingest-promotions-dry.test.ts`, `SESSION_HISTORY.md` (spec row already on `main`)
   What was verified: `npx vitest run lib/sync/__tests__/gmail-query.test.ts lib/sync/__tests__/gmail-ingest-promotions-dry.test.ts lib/sync/__tests__/google-sync.test.ts` (9 passed); `npm run build` after removing stale `.next` (prerender `TypeError` reproduced when `.next` was corrupted — clean rebuild succeeded).
   Changes: `buildGmailMessagesListQuery` / `gmailIngestQueryPairDry`; sync uses query builder; **`GMAIL_SYNC_EXCLUDE_PROMOTIONS=true`** for legacy strict filter; Vitest fixture proves strict-vs-inclusive **list id counts** and dry **`tkg_signals`-style insert delta** without Gmail HTTP.
