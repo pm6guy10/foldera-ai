@@ -1492,24 +1492,6 @@ export async function runDailyGenerate(
   const totalUsers = eligibleUserIds.length;
   const cycleLastAt = await fetchBriefCycleLastAtMap(supabase, eligibleUserIds);
 
-  // #region agent log
-  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f3bae1' },
-    body: JSON.stringify({
-      sessionId: 'f3bae1',
-      location: 'lib/cron/daily-brief-generate.ts:runDailyGenerate',
-      message: 'runDailyGenerate batch start',
-      data: {
-        eligibleCount: eligibleUserIds.length,
-        briefInvocationSource: options.briefInvocationSource ?? null,
-        hypothesisId: 'H1-H4',
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
   for (let ui = 0; ui < eligibleUserIds.length; ui++) {
     const userId = eligibleUserIds[ui];
     console.log(`[daily-generate] Generating for user ${userId} (${ui + 1} of ${totalUsers})`);
@@ -1594,25 +1576,6 @@ export async function runDailyGenerate(
                 brief_invocation_source: options.briefInvocationSource ?? null,
               },
             });
-            // #region agent log
-            fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f3bae1' },
-              body: JSON.stringify({
-                sessionId: 'f3bae1',
-                location: 'lib/cron/daily-brief-generate.ts:cycle_gate',
-                message: 'generation_cycle_cooldown',
-                data: {
-                  userId,
-                  last_cycle_at: lastIso,
-                  elapsed_ms: elapsed,
-                  briefInvocationSource: options.briefInvocationSource ?? null,
-                  hypothesisId: 'H5',
-                },
-                timestamp: Date.now(),
-              }),
-            }).catch(() => {});
-            // #endregion
             results.push({
               code: 'generation_cycle_cooldown',
               detail: `Full brief cycle cooldown; next eligible at ${nextAt}`,
