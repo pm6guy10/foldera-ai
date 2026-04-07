@@ -1,5 +1,10 @@
 # AUTOMATION BACKLOG
 
+### OPEN (2026-04-07) — Production `user_brief_cycle_gates` migration
+
+- **Symptom:** Sentry **JAVASCRIPT-NEXTJS-7** — `Could not find the table 'public.user_brief_cycle_gates' in the schema cache` on `POST /api/settings/run-brief` (PostgREST **404** / **PGRST205**). Code shipped before DDL applied.
+- **Fix shipped:** `lib/cron/brief-cycle-gate.ts` degrades when the table is missing (no throttle, no throw). **Operator still must** run [`supabase/migrations/20260407000001_user_brief_cycle_gates.sql`](supabase/migrations/20260407000001_user_brief_cycle_gates.sql) on production Postgres (`npx supabase db push` or SQL editor) so the **20h full-cycle gate** actually enforces.
+
 ### OPEN (2026-04-05) — Local `test:ci:e2e` `/login` HTTP 500
 
 - **Symptom:** `npx next start` + Playwright CI config against `127.0.0.1:3011` (or `3012`) returned generic **500** on `/login` in this workspace; `test:ci:e2e` therefore failed locally. **GitHub Actions** should still run the same gate with repo secrets (`NEXTAUTH_*`, etc.). **Next:** reproduce with server logs (`next start` stderr) and confirm `NEXTAUTH_URL` matches `WEB_ORIGIN` from `playwright.ci.config.ts`.

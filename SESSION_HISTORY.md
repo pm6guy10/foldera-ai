@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Sentry JAVASCRIPT-NEXTJS-7 — degrade when `user_brief_cycle_gates` missing**
+  MODE: AUDIT
+  Commit hash(es): `5b15bcc`
+  Files changed: `lib/cron/brief-cycle-gate.ts`, `lib/cron/__tests__/brief-cycle-gate.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/cron/__tests__/brief-cycle-gate.test.ts lib/cron/__tests__/daily-brief.test.ts`; `npm run build`.
+  Changes: Production had **no** `user_brief_cycle_gates` table → PostgREST **PGRST205** / “schema cache” on gate **select**. **`isUserBriefCycleGatesTableMissingError`**: `fetchBriefCycleLastAtMap` returns all-null map; `recordBriefCycleCheckpoint` no-op + structured warn `user_brief_cycle_gates_unavailable`. **Ops:** apply `20260407000001_user_brief_cycle_gates.sql` so 20h throttle enforces.
+  Any unresolved issues: Run migration on production; mark Sentry issue resolved after deploy.
+
 - 2026-04-07 — AUDIT: **Production Supabase audit — sync cursors vs mail graph (owner)**
   MODE: AUDIT
   Commit hash(es): `1917b08`, `c4ffc24`

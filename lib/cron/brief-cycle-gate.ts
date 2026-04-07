@@ -3,6 +3,24 @@ import type { SupabaseClient } from '@/lib/db/client';
 /** Minimum time between full per-user generation cycles (signal processing + downstream). */
 export const BRIEF_FULL_CYCLE_COOLDOWN_MS = 20 * 60 * 60 * 1000;
 
+/**
+ * PostgREST returns 404 / PGRST205 when the relation is not in the schema cache
+ * (migration not applied to remote Postgres). Degrade gracefully until ops runs
+ * `20260407000001_user_brief_cycle_gates.sql`.
+ */
+export function isUserBriefCycleGatesTableMissingError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: string; message?: string };
+  const msg = String(e.message ?? '');
+  if (e.code === 'PGRST205') return true;
+  if (msg.includes('user_brief_cycle_gates') && msg.includes('schema cache')) return true;
+  const lower = msg.toLowerCase();
+  if (lower.includes('could not find the table') && msg.includes('user_brief_cycle_gates')) {
+    return true;
+  }
+  return false;
+}
+
 export async function fetchBriefCycleLastAtMap(
   supabase: SupabaseClient,
   userIds: string[],
@@ -21,6 +39,17 @@ export async function fetchBriefCycleLastAtMap(
     .in('user_id', userIds);
 
   if (error) {
+    if (isUserBriefCycleGatesTableMissingError(error)) {
+      console.warn(
+        JSON.stringify({
+          event: 'user_brief_cycle_gates_unavailable',
+          reason: 'table_missing_or_not_in_schema_cache',
+          hint: 'Apply supabase/migrations/20260407000001_user_brief_cycle_gates.sql to production',
+          user_id_count: userIds.length,
+        }),
+      );
+      return map;
+    }
     throw error;
   }
 
@@ -44,6 +73,17 @@ export async function recordBriefCycleCheckpoint(
     { onConflict: 'user_id' },
   );
   if (error) {
+    if (isUserBriefCycleGatesTableMissingError(error)) {
+      console.warn(
+        JSON.stringify({
+          event: 'user_brief_cycle_gates_unavailable',
+          reason: 'table_missing_or_not_in_schema_cache',
+          hint: 'Apply supabase/migrations/20260407000001_user_brief_cycle_gates.sql to production',
+          user_id: userId,
+        }),
+      );
+      return;
+    }
     throw error;
   }
 }
