@@ -271,21 +271,25 @@ async function main() {
       });
     } else {
       const dir = latest.directive_text ?? '';
-      const failed =
-        dir.includes('__GENERATION_FAILED__') || latest.action_type === 'do_nothing';
-      const ok = !failed;
-      const hint =
-        latest.action_type === 'do_nothing'
-          ? 'do_nothing'
-          : dir.includes('__GENERATION_FAILED__')
-            ? 'GENERATION_FAILED'
-            : String(latest.action_type ?? 'unknown');
-      checks.push({
-        ok,
-        line: ok
-          ? `✓ Last generation     ${latest.action_type ?? 'unknown'}`
-          : `✗ Last generation     ${hint}`,
-      });
+      const genFailed = dir.includes('__GENERATION_FAILED__');
+      const isDoNothing = latest.action_type === 'do_nothing';
+
+      if (genFailed) {
+        checks.push({
+          ok: false,
+          line: '✗ Last generation     GENERATION_FAILED',
+        });
+      } else if (isDoNothing) {
+        checks.push({
+          ok: true,
+          line: '⚠ Last generation     do_nothing',
+        });
+      } else {
+        checks.push({
+          ok: true,
+          line: `✓ Last generation     ${latest.action_type ?? 'unknown'}`,
+        });
+      }
     }
   } catch (e) {
     checks.push({

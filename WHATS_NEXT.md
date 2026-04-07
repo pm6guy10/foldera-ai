@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
+## STATUS: SHIPPED — `npm run health`: `do_nothing` last row warning-only
+
+**This session:** `scripts/health.ts` — latest action `do_nothing` → `⚠`, does not fail CI; `__GENERATION_FAILED__` in `directive_text` stays hard fail. **Commit:** `git log -1 --oneline` on `main`.
+
 ## STATUS: SHIPPED — Signal processor: malformed commitment `due` no longer crashes batch
 
 **This session:** `lib/signals/signal-processor.ts` — `insertCommitment` uses `normalizeInteractionTimestamp` for `due_at` so values like `EOD` do not call `toISOString()` on Invalid Date (avoids `signal_processor_batch_failed: Invalid time value` and blocked `INSUFFICIENT_SIGNAL`). **After deploy:** Generate Now / nightly signal processing — logs should not show that batch error; regression tests in `signal-processor.test.ts`.

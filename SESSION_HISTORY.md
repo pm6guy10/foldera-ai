@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — OPS: **Health: `do_nothing` last generation warning-only; `__GENERATION_FAILED__` hard fail**
+  MODE: OPS
+  Commit: `fix(health): do_nothing last row warning; GENERATION_FAILED hard fail` on `main` (see `git log -1`)
+  Files changed: `scripts/health.ts`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  What was verified: `read_lints` on `scripts/health.ts`; `npm run lint`.
+  Changes: Latest `tkg_actions`: `do_nothing` → `⚠` + `ok: true`; `__GENERATION_FAILED__` in `directive_text` → `✗` + `ok: false`.
+  Any unresolved issues: User-referenced `d175c8f` was not on `origin/main`; change shipped from this workspace.
+
 - 2026-04-07 — AUDIT: **Signal processor: safe `due_at` for malformed LLM date strings**
   MODE: AUDIT
   Commit: `fix(signal-processor): guard commitment due_at from malformed LLM dates` on `main` (see `git log --oneline -5`)
