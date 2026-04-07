@@ -48,7 +48,7 @@ export async function reserveAnthropicBudgetSlot(
       }
     ).rpc('api_budget_check_and_reserve', {
       estimated_cents: estimatedCents,
-    }    );
+    });
     if (error) {
       return { allowed: false, raw: null, errorMessage: error.message };
     }

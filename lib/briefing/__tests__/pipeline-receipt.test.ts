@@ -360,6 +360,18 @@ class InsertQuery {
 
 function createSupabaseMock() {
   return {
+    rpc: async (
+      fnName: string,
+      _params?: Record<string, unknown>,
+    ): Promise<{ data: unknown; error: { message: string; code?: string } | null }> => {
+      if (fnName === 'api_budget_check_and_reserve') {
+        return { data: { allowed: true }, error: null };
+      }
+      if (fnName === 'apply_commitment_ceiling') {
+        return { data: { suppressed_count: 0 }, error: null };
+      }
+      return { data: null, error: { message: `unexpected rpc ${fnName}` } };
+    },
     auth: {
       admin: {
         getUserById: async (userId: string) => {
