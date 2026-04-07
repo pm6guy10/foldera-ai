@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **`npm run health` gate + GitHub Actions health-gate workflow**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `scripts/health.ts`, `package.json`, `package-lock.json`, `.github/workflows/health-gate.yml`, `.cursor/rules/agent.mdc`, `AGENTS.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (exits 1 without `AUDIT_USER_ID`/`OWNER_USER_ID`; loads `.env.local`); `npm run build` passed.
+  Changes: Read-only Supabase health script (25h mail + cursors, zero `pending_approval`, no 3× duplicate directive shape in 24h, last action not `do_nothing` / `__GENERATION_FAILED__`); `health-gate.yml` on push to `main` with repo secrets; agent rule + AGENTS.md pipeline preamble.
+  Any unresolved issues: Configure GitHub repo secrets `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OWNER_USER_ID` (optional `AUDIT_USER_ID`). First pushes may show red until production meets all checks or secrets exist.
+
 - 2026-04-07 — AUDIT: **Raise `EXTRACTION_DAILY_CAP` to $0.25 + backlog `outcome_label` migration note**
   MODE: AUDIT
   Commit hash(es): `017f324`

@@ -3,6 +3,7 @@ alwaysApply: true
 description: "Agent Execution Protocol"
 
 rules:
+  - "Pipeline sessions: first action is always `npm run health`. Paste the full output before writing any code. If any row shows FAIL, fix that row before touching anything else. Do not skip this step."
   - "Pipeline/prod sessions: read docs/SESSION_SCOREBOARD.md and CLAUDE.md Session scoreboard ritual — run production scoreboard + test baseline BEFORE edits and AGAIN before declaring done; victory requires target scoreboard row(s) to pass AND no test regressions vs start."
   - "Make only the minimum required changes to complete the task."
   - "Search the repo before editing to understand all dependencies."

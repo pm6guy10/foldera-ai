@@ -4,6 +4,7 @@ Always start in Debug mode. Read and audit before writing any code.
 
 ## Role Definition
 
+- Every pipeline session starts with `npm run health`. Paste output. Fix FAIL rows first. No exceptions.
 - Codex is the autonomous executor for this repo.
 - Read `CLAUDE.md` fully at the start of every session and follow it as the operational source of truth.
 - **Scoreboard + tests = truth:** For any session that touches the pipeline, connectors, or production behavior, follow `docs/SESSION_SCOREBOARD.md` and `CLAUDE.md` **Session scoreboard + test ritual**: **start** with production scoreboard + automated test baseline, **end** with the same scoreboard + same tests. Victory = target scoreboard row(s) green (or agreed threshold) **and** no test regressions—not “build passed” or “I’m done.”
