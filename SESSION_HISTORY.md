@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — AUDIT: **Vitest never calls Anthropic (global SDK stub + env)**
+  MODE: AUDIT
+  Commit hash(es): `b86c03f`
+  Files changed: `vitest.config.ts`, `test/stubs/anthropic-sdk-vitest.ts`, `CLAUDE.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"` (77 files, 763 tests passed).
+  Changes: Resolve alias `@anthropic-ai/sdk` → offline stub implementing `messages.create` with shape-based responses (extraction, summarizer, anomaly, FOLDERA directive JSON, researcher, insight scan, artifact, agents). `test.env.ANTHROPIC_API_KEY` set to a dummy value so modules that require a key still load. Per-test `vi.mock('@anthropic-ai/sdk')` remains the override path.
+  Any unresolved issues: Vitest stub responses are generic — if a new code path needs a different LLM shape, extend the stub or add a local mock.
+
 - 2026-04-06 — AUDIT: **HTTP `dry_run=true` pipeline — zero Anthropic, readable receipt**
   MODE: AUDIT
   Commit hash(es): `d411264`

@@ -57,7 +57,7 @@ Any insert with values outside these sets will fail silently (Supabase returns s
 - `ENCRYPTION_KEY`
 - `CRON_SECRET`
 - `ALLOW_DEV_ROUTES` (`true` only in local/dev environments when testing `/api/dev/*`; leave unset in production)
-- `FOLDERA_DRY_RUN` — **local only:** set `FOLDERA_DRY_RUN=true` in `.env.local` so directive generation skips Anthropic (synthetic fixture). **Never test generation locally without it** unless you intend to spend API credits. This is **not** the same as unit-test `generateDirective(..., { dryRun: true })`, which only skips anomaly pass + `api_usage` persistence; Vitest clears `FOLDERA_DRY_RUN` via `vitest.config.ts` so mocked Anthropic calls still run.
+- `FOLDERA_DRY_RUN` — **local only:** set `FOLDERA_DRY_RUN=true` in `.env.local` so directive generation skips Anthropic (synthetic fixture). **Never test generation locally without it** unless you intend to spend API credits. This is **not** the same as unit-test `generateDirective(..., { dryRun: true })`, which only skips anomaly pass + `api_usage` persistence; Vitest clears `FOLDERA_DRY_RUN` via `vitest.config.ts`. **`npx vitest run` never calls api.anthropic.com:** `vitest.config.ts` aliases `@anthropic-ai/sdk` to `test/stubs/anthropic-sdk-vitest.ts` and sets a dummy `ANTHROPIC_API_KEY`; per-file `vi.mock('@anthropic-ai/sdk', …)` still overrides when tests need specific fixtures.
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
