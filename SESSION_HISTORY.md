@@ -6,7 +6,7 @@
 
 - 2026-04-07 — OPS: **Health script: `tkg_actions` uses `generated_at`, not `created_at`**
   MODE: OPS
-  Commit hash(es): (see `git log -1` on `main`)
+  Commit hash(es): `dd35390`
   Files changed: `scripts/health.ts`, `SESSION_HISTORY.md`
   What was verified: `npm run health` — `✓ Last generation`; `RESULT: 1 FAILING` (only `Repeated directive`); no `created_at` column error.
   Changes: Removed `created_at` from `tkg_actions` selects; fallback query orders by `generated_at`.
