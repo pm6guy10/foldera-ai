@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Production mail repair — full unique index on `tkg_signals (user_id,content_hash)`**
+  MODE: AUDIT
+  Commit hash(es): `32481a9`
+  Files changed: `supabase/migrations/20260407160000_tkg_signals_user_content_hash_unique_full.sql`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: Supabase MCP `apply_migration` (Foldera); `npx tsx scripts/ops-production-repair-sync.ts` with `REPAIR_REWIND_ISO=2026-03-20T00:00:00.000Z` — **gmail_signals=221**, **mail_signals=1**, **PROOF gmail** `occurred_at` **2026-04-07T14:57:19+00:00**, **PROOF outlook** **2026-04-07T16:05:49+00:00**, mail-shaped **`created_at` ≥ 24h: 241**; `npm run lint`, `npm run build`, `npm run test:ci:e2e`, full `npx vitest run --exclude ".claude/worktrees/**"`.
+  Changes: Dropped partial unique index that caused **42P10** on upsert; added **`idx_tkg_signals_user_content_hash`**. `syncGmail` — log collected ref count; log **first** upsert error only.
+  Any unresolved issues: Microsoft To Do persist **Graph 400** `RequestBroker--ParseUri` (non-fatal).
+
 - 2026-04-07 — AUDIT: **Mail sync SQL / data-path audit + upsert error logs**
   MODE: AUDIT
   Commit hash(es): `f3b2acb`, `b8bcde0`
