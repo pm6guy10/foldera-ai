@@ -100,7 +100,11 @@ export async function runBriefLifecycle(
         generatedDirectiveForUser(userId, brief.generate.results) &&
         !emailSentForUser(userId, brief.send.results)
       ) {
-        sendOverride = await runDailySend({ ...options, userIds: options.userIds });
+        sendOverride = await runDailySend({
+          ...options,
+          userIds: options.userIds,
+          ensureSend: true,
+        });
         sendFallbackAttempted = true;
         break;
       }
