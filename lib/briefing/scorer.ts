@@ -40,6 +40,7 @@ import {
 import type { DiscrepancyClass, RecentDirectiveInput, TriggerMetadata } from './discrepancy-detector';
 import { applyStakesGate } from './stakes-gate';
 import { applyEntityRealityGate } from './entity-reality-gate';
+import { filterPersonNamesForValidityContext } from './validity-context-entity';
 import { runInsightScan } from './insight-scan';
 import {
   runHuntAnomalies,
@@ -2504,6 +2505,11 @@ function extractPersonNames(text: string): string[] {
     'May', 'June', 'July', 'August', 'September', 'October', 'November',
     'December', 'Calendar', 'The', 'This', 'That', 'Your', 'Our', 'Their',
     'Option', 'Decision', 'Document', 'Meeting', 'Project', 'None',
+    // Sentence-leading tokens often mis-read as person names (validity filter + cross-loop)
+    'Reference', 'Complete', 'Available', 'Skipped', 'From', 'Start', 'Last', 'Health',
+    'Clinical', 'Respond', 'Share', 'Thank', 'Awaiting', 'Submitted', 'Applied',
+    'Maintain', 'Seek', 'Working', 'Pursue', 'Fix', 'Submit', 'Apply', 'Confirm',
+    'Prepare', 'Register', 'File', 'Discuss', 'User',
   ]);
   const matches = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g) ?? [];
   return [...new Set(
@@ -3166,7 +3172,9 @@ async function filterInvalidContext(
     // entity-level validity filtering.
     if (c.type === 'signal') continue;
 
-    const names = extractPersonNames(`${c.title} ${c.content}`);
+    const names = filterPersonNamesForValidityContext(
+      extractPersonNames(`${c.title} ${c.content}`),
+    );
     if (names.length === 0) continue;
 
     for (const name of names) {

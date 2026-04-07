@@ -1,5 +1,10 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-07) — Scorer `rejection_signal_detected` false positives + Microsoft To Do Graph 400 (agent)
+
+- **Scorer:** `lib/briefing/validity-context-entity.ts` — `filterPersonNamesForValidityContext()` strips UI/verb tokens misclassified as people (`extractPersonNames`); wired in `filterInvalidContext` in `lib/briefing/scorer.ts`; tests `lib/briefing/__tests__/validity-context-entity.test.ts`.
+- **Microsoft To Do:** `lib/sync/microsoft-sync.ts` — Graph does not support OData `$filter` on todo `lastModifiedDateTime` (400 `RequestBroker--ParseUri`); use `$orderby=lastModifiedDateTime desc`, URL-encode list id, filter `sinceIso` client-side.
+
 ### DONE (2026-04-07) — Mail sync SQL + data-path audit (agent)
 
 - **Artifact:** [`docs/ops/sync-mail-sql-audit.sql`](docs/ops/sync-mail-sql-audit.sql) — CHECK constraints on `tkg_signals`, unique index on `(user_id, content_hash)`, `user_tokens` cursors, mail-shaped aggregates, optional dedupe slice, migration list.

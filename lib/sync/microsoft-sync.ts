@@ -895,13 +895,20 @@ async function syncTasks(
     if (!list.id) continue;
 
     try {
-      const filter = encodeURIComponent(`lastModifiedDateTime ge ${sinceIso}`);
-      const tasks = await graphFetchAll<any>(
-        userId,
-        accessToken,
-        `${GRAPH_BASE}/me/todo/lists/${list.id}/tasks?$filter=${filter}&$select=id,title,status,importance,dueDateTime,lastModifiedDateTime,body&$top=${TASK_PAGE_SIZE}`,
-        { maxItems: TASK_MAX_ITEMS_PER_LIST },
-      );
+      // Graph returns 400 RequestBroker--ParseUri if $filter uses lastModifiedDateTime on
+      // todo tasks — that property is not filterable on this resource. Fetch pages and filter client-side.
+      const listSegment = encodeURIComponent(String(list.id));
+      const tasksUrl = `${GRAPH_BASE}/me/todo/lists/${listSegment}/tasks?$orderby=lastModifiedDateTime%20desc&$select=id,title,status,importance,dueDateTime,lastModifiedDateTime,body&$top=${TASK_PAGE_SIZE}`;
+      const tasksRaw = await graphFetchAll<any>(userId, accessToken, tasksUrl, {
+        maxItems: TASK_MAX_ITEMS_PER_LIST,
+      });
+      const sinceMs = new Date(sinceIso).getTime();
+      const tasks = tasksRaw.filter((task: { lastModifiedDateTime?: string }) => {
+        const lm = task.lastModifiedDateTime
+          ? new Date(task.lastModifiedDateTime).getTime()
+          : NaN;
+        return Number.isFinite(lm) && lm >= sinceMs;
+      });
 
       for (const task of tasks) {
         if (!task.id) continue;

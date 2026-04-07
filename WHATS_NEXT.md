@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
+## STATUS: SHIPPED — Scorer rejection validity stopwords + Microsoft To Do sync (no `$filter`)
+
+**This session:** **`lib/briefing/validity-context-entity.ts`** + `filterInvalidContext` wiring — stops bogus `extractPersonNames` tokens (Reference, Complete, From, …) from firing **`rejection_signal_detected`** and killing real candidates. **`lib/sync/microsoft-sync.ts`** — remove unsupported Graph **`$filter` on todo `lastModifiedDateTime`** (400 ParseUri); **`$orderby=lastModifiedDateTime desc`** + client-side since cut; URL-encode list id. **Tests:** `validity-context-entity.test.ts`. **After deploy / tonight’s cron:** compare **`stakes_gate_filter`** `passed` vs prior (~8) — if still thin, tune stakes (`no_time_pressure` / `no_real_external_entity`) next, not in this change.
+
 ## STATUS: SHIPPED — `npm run health`: `do_nothing` last row warning-only
 
 **This session:** `scripts/health.ts` — latest action `do_nothing` → `⚠`, does not fail CI; `__GENERATION_FAILED__` in `directive_text` stays hard fail. **Commit:** `git log -1 --oneline` on `main`.
