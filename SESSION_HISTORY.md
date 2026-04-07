@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Raise `EXTRACTION_DAILY_CAP` to $0.25 + backlog `outcome_label` migration note**
+  MODE: AUDIT
+  Commit hash(es): `EXTRACTION_CAP_COMMIT`
+  Files changed: `lib/utils/api-tracker.ts`, `lib/utils/__tests__/api-tracker.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/utils/__tests__/api-tracker.test.ts`; `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (797 passed); `$env:PLAYWRIGHT_WEB_PORT='3011'; npm run test:ci:e2e` (41 passed).
+  Changes: `EXTRACTION_DAILY_CAP` **0.25** USD/day UTC (constant, all users); FOLDERA_PRODUCT_SPEC §2.5; `AUTOMATION_BACKLOG` OPEN for **`tkg_directive_ml_snapshots.outcome_label`** — apply `supabase/migrations/20260405000001_directive_ml_moat.sql` in production when ready.
+  Any unresolved issues: Post-deploy: `POST /api/settings/run-brief` — confirm no `extraction_daily_spend_cap_reached` until extraction spend exceeds **$0.25** in the UTC day.
+
 - 2026-04-07 — AUDIT: **Generate Now bypasses 20h `brief_generation_cycle_cooldown`**
   MODE: AUDIT
   Commit hash(es): `6c6bfe1`

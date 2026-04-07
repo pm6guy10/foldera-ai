@@ -2,8 +2,8 @@
  * API Usage Tracker
  *
  * Logs every Claude API call to api_usage table.
- * Enforces daily spend cap of $1.00, except extraction traffic which uses
- * its own higher daily cap to allow backlog backfills.
+ * Enforces a daily spend cap on non-extraction traffic; extraction (`extraction`,
+ * `signal_extraction` endpoints) uses a separate daily cap (`EXTRACTION_DAILY_CAP`).
  *
  * Pricing (per 1M tokens, USD):
  *   Haiku 4.5                   input: $0.80   output: $4.00
@@ -15,7 +15,7 @@ import { createServerClient } from '@/lib/db/client';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 const DAILY_SPEND_CAP_USD = 0.05;
-export const EXTRACTION_DAILY_CAP = 0.05;
+export const EXTRACTION_DAILY_CAP = 0.25;
 // Max directive-generation LLM calls per UTC day for manual/interactive runs.
 // Applies only when skipSpendCap=true (Generate Now, smoke tests).
 // Cron runs are bounded by DAILY_SPEND_CAP_USD instead.

@@ -6,6 +6,40 @@
 - **Production (Supabase MCP, Foldera project):** `tkg_signals_type_check` **includes** `email_sent`, `email_received` (not the post–Mar-26 “silent mail” blocker). `tkg_signals_user_content_hash_idx` **unique** on `(user_id, content_hash)` WHERE `content_hash IS NOT NULL`. Aggregate `max(created_at)` mail-shaped: **gmail** `email_received` **2026-03-26**, **outlook** `email_received` **2026-03-27**; rows with `created_at >= 2026-03-27` exist for outlook only (39) in sampled query — classifies stall as **ingest window / provider / cursor**, not missing CHECK for mail types.
 - **Code:** `lib/sync/google-sync.ts` + `lib/sync/microsoft-sync.ts` log `tkg_signals` upsert failures (`console.warn`, message only — no row content).
 
+### OPEN (2026-04-07) — `tkg_directive_ml_snapshots.outcome_label` missing in production
+
+- **Symptom:** Logs / inserts reference `outcome_label` on `tkg_directive_ml_snapshots` but Postgres column absent until migration is applied.
+- **Not blocking:** ML snapshot / global priors paths degrade or skip; directive pipeline still runs.
+- **Fix:** Apply [`supabase/migrations/20260405000001_directive_ml_moat.sql`](supabase/migrations/20260405000001_directive_ml_moat.sql) on production (`npx supabase db push` or SQL editor) so `outcome_label` + related indexes exist.
+
+### OPEN (auto-logged 2026-04-07) — `scorer_loop`: same semantic directive regenerated after skip/suppress
+
+- **Evidence:** Production `tkg_actions` (owner): **14** rows in 50 with identical normalized `directive_text` hash; many `skip_reason` values `Auto-suppressed pending action before forced fresh generation` while identical `send_message` text kept reappearing (Apr 6–7).
+- **Impact:** Wastes scorer/generator cycles and trains user distrust; duplicates burn `directive` + `directive_retry` API rows.
+- **Fix required:** `getSuppressedCandidateKeys` + `scorerCandidateSuppressionKey` in `lib/briefing/scorer.ts` drop matching base candidates for 7d after duplicate-suppression skips (keys from `execution_result.generation_log.candidateDiscovery.topCandidates`).
+- **Proof of fix:** After deploy, same user: last-24h `GROUP BY md5(lower(trim(directive_text)))` has **no count ≥ 3** for hashes tied to prior duplicate-suppression rows; logs show `scorer_suppressed_candidate_cooldown`.
+
+### OPEN (auto-logged 2026-04-07) — `stale_date_in_directive`: LLM echoes old ISO deadlines in artifacts
+
+- **Evidence:** Repeated `directive_text` / artifacts referencing **2026-03-27** while generation runs in April 2026; production rows show template “accountable owner by 5:00 PM PT on 2026-03-27”.
+- **Impact:** Unactionable / embarrassing copy; false urgency; user ignores brief.
+- **Fix required:** `directiveHasStalePastDates` on `payload.directive` in `lib/briefing/generator.ts`; `resolveDecisionDeadline` clamps overdue ISO dates so repair templates do not embed stale cutoffs.
+- **Proof of fix:** New `send_message` / `write_document` rows lack ISO dates **>3 days** behind UTC today in `directive_text` + serialized artifact; structured log `stale_date_in_directive` when blocked.
+
+### OPEN (auto-logged 2026-04-07) — `noise_winner`: Foldera / Resend test recipients win scorer→generator
+
+- **Evidence:** `execution_result.inspection.winner_selection_trace.finalWinnerId` = `hunt_ignored_brief_foldera_ai`; **14**/7d actions with `finalWinnerId` ILIKE `%foldera%`; artifact `to: onboarding@resend.dev`.
+- **Impact:** Non-user “directives” dominate the queue; blocks real mailbox-grounded work.
+- **Fix required:** Exclude candidate ids containing `foldera` before hydration; reject artifacts with `to` ending `@resend.dev` after LLM (`lib/briefing/generator.ts`); console `[generator] noise_winner_excluded`.
+- **Proof of fix:** New rows: `finalWinnerId` not ILIKE `%foldera%`; artifact `to` not `@resend.dev`; logs `noise_winner_excluded`.
+
+### OPEN (auto-logged 2026-04-07) — `generation_retry_storm`: directive + directive_retry volume
+
+- **Evidence:** Production `api_usage` (owner, 7d): **`directive` 230** (~$6.14) + **`directive_retry` 121** (~$2.86); Apr 7 UTC **`directive_retry` 45** vs **`directive` 48**.
+- **Impact:** Runaway cost on blocked/looping paths before a sendable row exists.
+- **Fix required:** `generation_loop_detected` gate in `lib/cron/daily-brief-generate.ts` (last **5** `tkg_actions`, **≥3** share same `md5(lower(trim(directive_text)))` → skip `generateDirective`); plus scorer/generator fixes above.
+- **Proof of fix:** Logs `[generate] GENERATION_LOOP_DETECTED streak=…`; 24h rolling `api_usage` `directive_retry` / `directive` ratio drops after loops cleared; no 3× same hash in 24h query.
+
 ### OPEN (2026-04-07) — Production `user_brief_cycle_gates` migration
 
 - **Symptom:** Sentry **JAVASCRIPT-NEXTJS-7** — `Could not find the table 'public.user_brief_cycle_gates' in the schema cache` on `POST /api/settings/run-brief` (PostgREST **404** / **PGRST205**). Code shipped before DDL applied.

@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
+## STATUS: SHIPPED — `EXTRACTION_DAILY_CAP` raised to $0.25/day
+
+**This session:** `lib/utils/api-tracker.ts` — extraction (`extraction` / `signal_extraction`) daily spend cap **0.05 → 0.25** USD so manual `run-brief` is not blocked at ~$0.06 extraction before generation. **Ops:** apply `20260405000001_directive_ml_moat.sql` when ready — `outcome_label` on `tkg_directive_ml_snapshots` (see `AUTOMATION_BACKLOG`).
+
 ## STATUS: SHIPPED — Generate Now bypasses 20h `brief_generation_cycle_cooldown`
 
 **This session:** `lib/cron/daily-brief-generate.ts` — manual `/api/settings/run-brief` (`skipManualCallLimit` + `settings_run_brief` source) and dev brain-receipt no longer hit the 20h pre-signal gate; cron/trigger/daily-generate still throttled. **After deploy:** `POST /api/settings/run-brief` same day as `daily-brief` cron — logs should not show `brief_generation_cycle_cooldown` unless another guard applies.
