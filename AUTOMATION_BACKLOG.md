@@ -9,7 +9,7 @@
 ### DONE (2026-04-07) — Scorer `rejection_signal_detected` false positives + Microsoft To Do Graph 400 (agent)
 
 - **Scorer:** `lib/briefing/validity-context-entity.ts` — `filterPersonNamesForValidityContext()` strips UI/verb tokens misclassified as people (`extractPersonNames`); wired in `filterInvalidContext` in `lib/briefing/scorer.ts`; tests `lib/briefing/__tests__/validity-context-entity.test.ts`.
-- **Microsoft To Do:** `lib/sync/microsoft-sync.ts` — Graph rejects OData **`$filter`** and **`$orderby`** on todo **`lastModifiedDateTime`** (400 `RequestBroker--ParseUri`); use **`$select` + `$top`** only, URL-encode list id, filter **`sinceIso`** client-side (cap per list).
+- **Microsoft To Do:** `lib/sync/microsoft-sync.ts` — Graph rejects OData **`$filter`** / **`$orderby`** on todo **`lastModifiedDateTime`** (400 `RequestBroker--ParseUri`); task list GET uses **`$top`** only (no `$select`), URL-encode list id, filter **`sinceIso`** client-side (cap per list).
 
 ### DONE (2026-04-07) — Mail sync SQL + data-path audit (agent)
 

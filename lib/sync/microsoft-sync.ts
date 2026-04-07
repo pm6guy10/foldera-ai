@@ -895,11 +895,11 @@ async function syncTasks(
     if (!list.id) continue;
 
     try {
-      // Graph returns 400 RequestBroker--ParseUri for OData on todo tasks that the broker
-      // rejects — including $filter on lastModifiedDateTime and $orderby on lastModifiedDateTime.
+      // Graph returns 400 RequestBroker--ParseUri for several OData clauses on this collection
+      // ($filter/$orderby on lastModifiedDateTime; some tenants also choke on $select). Use $top only.
       // Fetch pages (default order) and filter client-side by sinceIso. Cap TASK_MAX_ITEMS_PER_LIST.
       const listSegment = encodeURIComponent(String(list.id));
-      const tasksUrl = `${GRAPH_BASE}/me/todo/lists/${listSegment}/tasks?$select=id,title,status,importance,dueDateTime,lastModifiedDateTime,body&$top=${TASK_PAGE_SIZE}`;
+      const tasksUrl = `${GRAPH_BASE}/me/todo/lists/${listSegment}/tasks?$top=${TASK_PAGE_SIZE}`;
       const tasksRaw = await graphFetchAll<any>(userId, accessToken, tasksUrl, {
         maxItems: TASK_MAX_ITEMS_PER_LIST,
       });
