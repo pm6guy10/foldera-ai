@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Health script: `tsx` instead of `ts-node` (GitHub Actions `ERR_UNKNOWN_FILE_EXTENSION`)**
+  MODE: AUDIT
+  Commit hash(es): (amended single commit on `main` — see `git log -1`)
+  Files changed: `package.json`, `package-lock.json`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` runs via `npx tsx scripts/health.ts` (no ts-node ESM warning); `npm run build` passed.
+  Changes: Replaced `npx ts-node -r tsconfig-paths/register scripts/health.ts` with `npx tsx scripts/health.ts`; added `tsx` devDependency so `npm ci` installs a runner that loads `.ts` under Node 20. `.github/workflows/health-gate.yml` unchanged (`npm run health` only).
+  Any unresolved issues: Local/production health checks may still exit 1 on data rules (e.g. `pending_approval`, duplicate directives, `tkg_actions.created_at` query) — separate from the CI runner failure.
+
 - 2026-04-07 — AUDIT: **`npm run health` gate + GitHub Actions health-gate workflow**
   MODE: AUDIT
   Commit hash(es): `02a6acd`
