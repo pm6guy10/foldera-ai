@@ -6,7 +6,7 @@
 
 - 2026-04-07 — AUDIT: **Hunt self-inbound filter + Gmail `after:` date clause + mail graph stale UI**
   MODE: AUDIT
-  Commit hash(es): *(set after push)*
+  Commit hash(es): `251eff2`
   Files changed: `lib/briefing/hunt-anomalies.ts`, `lib/briefing/scorer.ts`, `lib/briefing/generator.ts`, `lib/sync/google-sync.ts`, `lib/sync/gmail-query.ts`, `lib/sync/__tests__/gmail-query.test.ts`, `lib/briefing/__tests__/hunt-anomalies.test.ts`, `lib/config/constants.ts`, `app/api/integrations/status/route.ts`, `app/dashboard/settings/SettingsClient.tsx`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/briefing/__tests__/hunt-anomalies.test.ts lib/sync/__tests__/google-sync.test.ts lib/sync/__tests__/gmail-query.test.ts --exclude ".claude/worktrees/**"` (8 passed). Full `npm run build` hit pre-existing Windows prerender `webpack-runtime` errors on this machine (unrelated to touched files).
   Changes: (1) **Hunt** — pass `selfEmails` from `scoreOpenLoops`; skip unreplied/ignored/latency/financial patterns for inbound From user mailboxes + internal product domains. (2) **Gmail sync** — `after:yyyy/mm/dd` UTC via `gmailSearchAfterDateClause`. (3) **Generator** — `fetchUserEmailAddresses` includes connector emails; avoidance observations skip self/product authors. (4) **Settings** — API exposes newest processed mail signal + 7d stale flag; banner copy.
