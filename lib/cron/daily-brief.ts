@@ -40,6 +40,7 @@
  * directly from the sub-modules above.
  */
 
+import { randomUUID } from 'crypto';
 import { createServerClient } from '@/lib/db/client';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { buildRunResult, toSafeDailyBriefStageStatus } from './daily-brief-status';
@@ -79,20 +80,23 @@ import type { DailyBriefOrchestrationResult, DailyBriefSignalWindowOptions } fro
 export async function runDailyBrief(
   options: DailyBriefSignalWindowOptions = {},
 ): Promise<DailyBriefOrchestrationResult> {
-  const generate = await runDailyGenerate(options);
+  const cronInvocationId = options.cronInvocationId ?? randomUUID();
+  const merged: DailyBriefSignalWindowOptions = { ...options, cronInvocationId };
+
+  const generate = await runDailyGenerate(merged);
   const date = generate.date;
-  const send = options.pipelineDryRun
+  const send = merged.pipelineDryRun
     ? buildRunResult(
         date,
         'Send skipped (pipeline dry run — no email, no new action row).',
-        (options.userIds ?? []).map((userId) => ({
+        (merged.userIds ?? []).map((userId) => ({
           code: 'send_skipped_pipeline_dry_run' as const,
           success: true,
           userId,
           detail: 'pipelineDryRun: send stage not executed',
         })),
       )
-    : await runDailySend(options);
+    : await runDailySend(merged);
   const signalProcessing = generate.signalProcessing;
   const ok =
     (toSafeDailyBriefStageStatus(signalProcessing).status === 'ok' ||

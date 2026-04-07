@@ -13,6 +13,7 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { getAllUsersWithProvider } from '@/lib/auth/user-tokens';
@@ -37,6 +38,7 @@ import { runBehavioralGraph } from '@/lib/signals/behavioral-graph';
 import { runAttentionDecay } from '@/lib/signals/entity-attention-runtime';
 import { logApiBudgetStatusToSystemHealth } from '@/lib/cron/api-budget';
 import { computeAndPersistHealthVerdict } from '@/lib/cron/health-verdict';
+import { insertPipelineCronPhase } from '@/lib/observability/pipeline-run';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min
@@ -467,10 +469,22 @@ async function handler(request: NextRequest) {
   const authErr = validateCronAuth(request);
   if (authErr) return authErr;
 
-  void logApiBudgetStatusToSystemHealth('nightly_ops');
+  const cronInvocationId = randomUUID();
+  const cronT0 = Date.now();
+  void insertPipelineCronPhase({
+    phase: 'cron_start',
+    invocationSource: 'nightly_ops',
+    cronInvocationId,
+  });
 
-  const startTime = Date.now();
-  const stages: Record<string, unknown> = {};
+  let nightlyCronOutcome = 'success';
+  let nightlyCronError: string | undefined;
+
+  try {
+    void logApiBudgetStatusToSystemHealth('nightly_ops');
+
+    const startTime = Date.now();
+    const stages: Record<string, unknown> = {};
   const retentionUserIds = await listSignalRetentionUserIds();
 
   // Stage 0: Cleanup old extracted signals before any pipeline work
@@ -807,7 +821,25 @@ async function handler(request: NextRequest) {
     );
   }
 
-  return NextResponse.json(summary, { status: allOk ? 200 : 207 });
+    nightlyCronOutcome = allOk ? 'success' : 'degraded';
+    return NextResponse.json(
+      { ...summary, cron_invocation_id: cronInvocationId },
+      { status: allOk ? 200 : 207 },
+    );
+  } catch (err: unknown) {
+    nightlyCronOutcome = 'error';
+    nightlyCronError = err instanceof Error ? err.message : String(err);
+    throw err;
+  } finally {
+    void insertPipelineCronPhase({
+      phase: 'cron_complete',
+      invocationSource: 'nightly_ops',
+      cronInvocationId,
+      outcome: nightlyCronOutcome,
+      errorClass: nightlyCronError ?? null,
+      durationMs: Date.now() - cronT0,
+    });
+  }
 }
 
 export const GET = handler;

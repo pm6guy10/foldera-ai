@@ -1,8 +1,12 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
+## STATUS: SHIPPED — Microsoft To Do: drop `$orderby` (Graph still ParseUri)
+
+**This session:** **`lib/sync/microsoft-sync.ts`** — production logs still showed **`RequestBroker--ParseUri`** on task list fetch; **`$orderby=lastModifiedDateTime desc`** is rejected on **`/me/todo/lists/{id}/tasks`** same as **`$filter`**. Fetch uses **`$select` + `$top`** only; **client-side** `sinceIso` filter unchanged (within **`TASK_MAX_ITEMS_PER_LIST`** per list).
+
 ## STATUS: SHIPPED — Scorer rejection validity stopwords + Microsoft To Do sync (no `$filter`)
 
-**This session:** **`lib/briefing/validity-context-entity.ts`** + `filterInvalidContext` wiring — stops bogus `extractPersonNames` tokens (Reference, Complete, From, …) from firing **`rejection_signal_detected`** and killing real candidates. **`lib/sync/microsoft-sync.ts`** — remove unsupported Graph **`$filter` on todo `lastModifiedDateTime`** (400 ParseUri); **`$orderby=lastModifiedDateTime desc`** + client-side since cut; URL-encode list id. **Tests:** `validity-context-entity.test.ts`. **After deploy / tonight’s cron:** compare **`stakes_gate_filter`** `passed` vs prior (~8) — if still thin, tune stakes (`no_time_pressure` / `no_real_external_entity`) next, not in this change.
+**This session:** **`lib/briefing/validity-context-entity.ts`** + `filterInvalidContext` wiring — stops bogus `extractPersonNames` tokens (Reference, Complete, From, …) from firing **`rejection_signal_detected`** and killing real candidates. **`lib/sync/microsoft-sync.ts`** — first pass removed **`$filter`**; follow-up removed **`$orderby`** (both ParseUri). **`$select` + `$top`**, client-side since cut. **Tests:** `validity-context-entity.test.ts`. **After deploy / tonight’s cron:** compare **`stakes_gate_filter`** `passed` vs prior (~8) — if still thin, tune stakes (`no_time_pressure` / `no_real_external_entity`) next, not in this change.
 
 ## STATUS: SHIPPED — `npm run health`: `do_nothing` last row warning-only
 

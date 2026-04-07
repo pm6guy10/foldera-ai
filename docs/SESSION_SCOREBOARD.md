@@ -6,6 +6,20 @@
 
 ---
 
+## Piece 0 — Pipeline truth (`pipeline_runs`)
+
+**Start every session** with a single read of recent pipeline activity (cron heartbeats, per-user scorer funnel, API spend snapshot, Resend delivery):
+
+```bash
+npm run scoreboard
+```
+
+Requires `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Applies migration `supabase/migrations/20260407120000_pipeline_runs.sql` in production before expecting rows.
+
+**CI:** `.github/workflows/pipeline-cron-heartbeat.yml` runs `npm run check:pipeline-heartbeat` after the daily-brief window to detect missing `daily_brief` `cron_complete` rows.
+
+---
+
 ## Piece 1 — Live scoreboard (fill from production)
 
 Run **before** coding and **again** before declaring victory. Use the owner account or set `AUDIT_USER_ID` for another user. Timestamps are UTC unless noted.

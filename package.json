@@ -15,6 +15,8 @@
     "audit:all": "npx playwright test --config=playwright.audit.config.ts && npx tsx scripts/ux-audit.ts",
     "audit:supabase:sync-fix": "node scripts/audit-supabase-sync-fix.mjs",
     "health": "npx tsx scripts/health.ts",
+    "scoreboard": "npx tsx scripts/scoreboard.ts",
+    "check:pipeline-heartbeat": "npx tsx scripts/pipeline-cron-heartbeat-check.ts",
     "test:prod:setup": "npx tsx tests/production/setup-auth.ts",
     "test:local:setup": "npx tsx tests/local/setup-auth-localhost.ts",
     "test:local:check": "npx tsx tests/local/check-prereqs.ts",

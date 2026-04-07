@@ -78,6 +78,11 @@ export interface DailyBriefSignalWindowOptions {
   /** Caller label for structured logs (cron vs settings vs dev). Not a security boundary. */
   briefInvocationSource?: string;
   /**
+   * Correlates pipeline_runs + api_usage for one cron/settings batch.
+   * Set by /api/cron/daily-brief; otherwise runDailyBrief() assigns a fresh UUID.
+   */
+  cronInvocationId?: string;
+  /**
    * When true (e.g. `POST .../run-brief?dry_run=true`): score + assemble prompt + synthetic artifact only;
    * no Anthropic calls, no DB persist of a new action, no email. Inspect `generate.results[].meta.pipeline_dry_run`.
    */

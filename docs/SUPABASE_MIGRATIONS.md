@@ -28,6 +28,8 @@ There is no automated `supabase db push` in GitHub Actions today (secrets / link
 
 - **2026-04-04:** `apply_commitment_ceiling` applied to production (`apply_commitment_ceiling` / version `20260403144654` in hosted migration history). SQL matches [`supabase/migrations/20260404000001_apply_commitment_ceiling.sql`](../supabase/migrations/20260404000001_apply_commitment_ceiling.sql).
 
+- **Pending:** [`supabase/migrations/20260407120000_pipeline_runs.sql`](../supabase/migrations/20260407120000_pipeline_runs.sql) — `pipeline_runs` + `api_usage.pipeline_run_id` for `npm run scoreboard` and cron heartbeats. Apply with `npx supabase db push` before relying on observability rows in prod.
+
 ## References
 
 - [Supabase CLI migrations](https://supabase.com/docs/guides/cli/local-development#database-migrations)

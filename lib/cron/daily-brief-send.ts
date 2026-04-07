@@ -24,6 +24,7 @@ import {
 } from './daily-brief-generate';
 import { listConnectedUserIds } from '@/lib/auth/user-tokens';
 import { buildHealthLineForUser } from '@/lib/cron/health-verdict';
+import { mergePipelineRunDelivery } from '@/lib/observability/pipeline-run';
 
 export async function runDailySend(
   options: DailyBriefSignalWindowOptions = {},
@@ -233,6 +234,20 @@ export async function runDailySend(
         success: true,
         userId,
       });
+      if (options.cronInvocationId) {
+        void mergePipelineRunDelivery({
+          userId,
+          cronInvocationId: options.cronInvocationId,
+          delivery: {
+            action_id: action.id,
+            directive_generated_at:
+              typeof action.generated_at === 'string' ? action.generated_at : null,
+            email_dispatch_at: new Date().toISOString(),
+            resend_id: deliveryId,
+            send_result: deliveryId ? 'resend_accepted' : 'resend_no_id_in_response',
+          },
+        });
+      }
       logStructuredEvent({
         event: 'daily_send_complete',
         userId,

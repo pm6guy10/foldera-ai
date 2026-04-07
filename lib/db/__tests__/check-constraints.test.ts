@@ -44,6 +44,9 @@ const GOAL_SOURCES = new Set([
   'system_config',
 ]);
 
+/** pipeline_runs.phase CHECK — see supabase/migrations/20260407120000_pipeline_runs.sql */
+const PIPELINE_PHASES = new Set(['cron_start', 'cron_complete', 'user_run']);
+
 // --- Tests ---
 
 describe('CHECK constraint contract', () => {
@@ -101,6 +104,13 @@ describe('CHECK constraint contract', () => {
     ];
     for (const v of appValues) {
       expect(GOAL_SOURCES.has(v), `Missing goal source: ${v}`).toBe(true);
+    }
+  });
+
+  it('pipeline_runs phase values match migration CHECK', () => {
+    const appValues = ['cron_start', 'cron_complete', 'user_run'];
+    for (const v of appValues) {
+      expect(PIPELINE_PHASES.has(v), `Missing pipeline phase: ${v}`).toBe(true);
     }
   });
 });

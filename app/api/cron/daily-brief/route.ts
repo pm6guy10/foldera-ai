@@ -9,6 +9,7 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { checkApiCreditCanary } from '@/lib/cron/acceptance-gate';
@@ -20,6 +21,7 @@ import { logApiBudgetStatusToSystemHealth } from '@/lib/cron/api-budget';
 import { createServerClient } from '@/lib/db/client';
 import { TEST_USER_ID } from '@/lib/config/constants';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
+import { insertPipelineCronPhase } from '@/lib/observability/pipeline-run';
 
 export const dynamic = 'force-dynamic';
 /** Hobby ceiling; this route only runs generate+send (not full nightly pipeline). */
@@ -43,6 +45,17 @@ async function handler(request: NextRequest) {
   const authErr = validateCronAuth(request);
   if (authErr) return authErr;
 
+  const cronInvocationId = randomUUID();
+  const cronT0 = Date.now();
+  void insertPipelineCronPhase({
+    phase: 'cron_start',
+    invocationSource: 'daily_brief',
+    cronInvocationId,
+  });
+
+  let cronOutcome = 'success';
+  let cronError: string | undefined;
+
   void logApiBudgetStatusToSystemHealth('daily_brief');
 
   const startTime = Date.now();
@@ -52,17 +65,20 @@ async function handler(request: NextRequest) {
     const briefOptions = {
       signalCreatedAtGte: signalCreatedAtGte ?? undefined,
       briefInvocationSource: 'cron_daily_brief' as const,
+      cronInvocationId,
     };
 
     const eligibleUserIds = (await resolveDailyBriefUserIds()).filter((id) => id !== TEST_USER_ID);
 
     if (eligibleUserIds.length === 0) {
+      cronOutcome = 'skipped_no_eligible_users';
       return NextResponse.json(
         {
           ok: true,
           skipped: true,
           reason: 'no_eligible_users',
           duration_ms: Date.now() - startTime,
+          cron_invocation_id: cronInvocationId,
         },
         { status: 200 },
       );
@@ -88,12 +104,14 @@ async function handler(request: NextRequest) {
     );
 
     if (eligibleUserIds.every((uid) => usersAlreadySent.has(uid))) {
+      cronOutcome = 'skipped_already_ran_today';
       return NextResponse.json(
         {
           ok: true,
           skipped: true,
           reason: 'already_ran_today',
           duration_ms: Date.now() - startTime,
+          cron_invocation_id: cronInvocationId,
         },
         { status: 200 },
       );
@@ -103,6 +121,7 @@ async function handler(request: NextRequest) {
       const canary = await checkApiCreditCanary();
       if (!canary.pass) {
         console.log(JSON.stringify({ event: 'daily_brief_cron', stage: 'credit_canary', pass: false }));
+        cronOutcome = 'blocked_credit_canary';
         return NextResponse.json(
           {
             ok: false,
@@ -110,6 +129,7 @@ async function handler(request: NextRequest) {
             reason: 'credit_canary_failed',
             credit_canary: { ok: false, ...canary },
             duration_ms: Date.now() - startTime,
+            cron_invocation_id: cronInvocationId,
           },
           { status: 200 },
         );
@@ -117,6 +137,7 @@ async function handler(request: NextRequest) {
     } catch (err: unknown) {
       Sentry.captureException(err);
       const message = err instanceof Error ? err.message : String(err);
+      cronOutcome = 'credit_canary_threw';
       return NextResponse.json(
         {
           ok: false,
@@ -124,6 +145,7 @@ async function handler(request: NextRequest) {
           reason: 'credit_canary_error',
           error: message,
           duration_ms: Date.now() - startTime,
+          cron_invocation_id: cronInvocationId,
         },
         { status: 200 },
       );
@@ -134,11 +156,13 @@ async function handler(request: NextRequest) {
       userIds: eligibleUserIds,
     });
     const duration_ms = Date.now() - startTime;
+    cronOutcome = result.ok ? 'success' : 'partial_or_failed';
 
     return NextResponse.json(
       {
         ...result,
         duration_ms,
+        cron_invocation_id: cronInvocationId,
       },
       {
         status: getTriggerResponseStatus(
@@ -149,8 +173,18 @@ async function handler(request: NextRequest) {
       },
     );
   } catch (error: unknown) {
+    cronOutcome = 'error';
+    cronError = error instanceof Error ? error.message : String(error);
     return apiErrorForRoute(error, 'cron/daily-brief');
   } finally {
+    void insertPipelineCronPhase({
+      phase: 'cron_complete',
+      invocationSource: 'daily_brief',
+      cronInvocationId,
+      outcome: cronOutcome,
+      errorClass: cronError ?? null,
+      durationMs: Date.now() - cronT0,
+    });
     void runPlatformHealthAlert()
       .then((h) =>
         console.log(

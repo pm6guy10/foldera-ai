@@ -12,6 +12,7 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
+import { getPipelineRunContext } from '@/lib/observability/pipeline-run-context';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 const DAILY_SPEND_CAP_USD = 0.05;
@@ -58,6 +59,7 @@ export async function trackApiCall(params: TrackCallParams): Promise<void> {
     }
     const cost = estimateCost(params.model, params.inputTokens, params.outputTokens);
     const supabase = createServerClient();
+    const prCtx = getPipelineRunContext();
     const { error } = await supabase.from('api_usage').insert({
       user_id:       params.userId ?? null,
       model:         params.model,
@@ -65,6 +67,7 @@ export async function trackApiCall(params: TrackCallParams): Promise<void> {
       output_tokens: params.outputTokens,
       estimated_cost: cost,
       endpoint:      params.callType,
+      ...(prCtx?.pipelineRunId ? { pipeline_run_id: prCtx.pipelineRunId } : {}),
     });
     if (error) {
       throw error;

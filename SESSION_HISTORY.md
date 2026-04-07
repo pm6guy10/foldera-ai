@@ -4,12 +4,20 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Pipeline observability — `pipeline_runs`, cron heartbeats, scoreboard, API spend link**
+  MODE: AUDIT
+  Commit hash(es): verify `git log -1 --oneline` on `main` — subject `feat(obs): pipeline_runs, cron heartbeats, scoreboard, api_usage.pipeline_run_id`
+  Files changed: `supabase/migrations/20260407120000_pipeline_runs.sql`, `lib/observability/pipeline-run.ts`, `lib/observability/pipeline-run-context.ts`, `lib/observability/__tests__/pipeline-run.test.ts`, `lib/utils/api-tracker.ts`, `lib/cron/daily-brief-types.ts`, `lib/cron/daily-brief.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/daily-brief-send.ts`, `lib/cron/brief-service.ts`, `app/api/cron/daily-brief/route.ts`, `app/api/cron/nightly-ops/route.ts`, `scripts/scoreboard.ts`, `scripts/pipeline-cron-heartbeat-check.ts`, `.github/workflows/pipeline-cron-heartbeat.yml`, `package.json`, `docs/SESSION_SCOREBOARD.md`, `docs/SUPABASE_MIGRATIONS.md`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `AGENTS.md`, `.cursor/rules/agent.mdc`, `lib/db/__tests__/check-constraints.test.ts`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 FAILING); `npm run lint`; clean `.next` + `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (811 tests); `npm run test:ci:e2e` (41 passed)
+  Changes: Append-only `pipeline_runs` + `api_usage.pipeline_run_id`; nightly/daily cron start+complete rows; per-user funnel from scorer diagnostics after `generateDirective`; Resend metadata merged on send; `npm run scoreboard` / `check:pipeline-heartbeat` + GitHub workflow.
+  Any unresolved issues: Apply migration `20260407120000` to production Supabase before scoreboard/heartbeat queries succeed against live DB.
+
 - 2026-04-07 — AUDIT: **Scorer rejection false positives (validity stopwords) + Microsoft To Do Graph 400 fix**
   MODE: AUDIT
   Commit hash(es): `8603b91`
   Files changed: `lib/briefing/validity-context-entity.ts`, `lib/briefing/__tests__/validity-context-entity.test.ts`, `lib/briefing/scorer.ts`, `lib/sync/microsoft-sync.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run --exclude ".claude/worktrees/**"`; `npm run build` (after `Remove-Item -Recurse -Force .next`); `npm run lint`; `PLAYWRIGHT_WEB_PORT=3011` + `NEXTAUTH_URL=http://127.0.0.1:3011` → `npm run test:ci:e2e` (41 passed)
-  Changes: (1) `filterPersonNamesForValidityContext` before `filterInvalidContext` rejection/resolution/skip-streak matching; expanded `extractPersonNames` nonNames. (2) To Do sync: no OData `$filter` on `lastModifiedDateTime`; order newest first; filter client-side; encode list id in path.
+  Changes: (1) `filterPersonNamesForValidityContext` before `filterInvalidContext` rejection/resolution/skip-streak matching; expanded `extractPersonNames` nonNames. (2) To Do sync: no OData `$filter` on `lastModifiedDateTime` (later session removed `$orderby` too — both ParseUri); filter client-side; encode list id in path.
   Any unresolved issues: Watch `stakes_gate_filter` after cron; tune stakes only if pool still ~8 after rejection fix.
 
 - 2026-04-07 — OPS: **Health: `do_nothing` last generation warning-only; `__GENERATION_FAILED__` hard fail**

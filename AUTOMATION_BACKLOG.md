@@ -1,9 +1,15 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-07) — Pipeline observability (`pipeline_runs`, scoreboard, cron heartbeat)
+
+- **DDL:** [`supabase/migrations/20260407120000_pipeline_runs.sql`](supabase/migrations/20260407120000_pipeline_runs.sql) — apply in prod before relying on rows (`docs/SUPABASE_MIGRATIONS.md`).
+- **Code:** `lib/observability/pipeline-run.ts`, `pipeline-run-context.ts`; cron markers on `app/api/cron/nightly-ops/route.ts`, `app/api/cron/daily-brief/route.ts`; `runDailyBrief` propagates `cronInvocationId`; `daily-brief-generate.ts` user_run + funnel; `api-tracker.ts` `pipeline_run_id`; `daily-brief-send.ts` delivery merge; `brief-service.ts` send fallback passes options.
+- **Ops:** `npm run scoreboard`, `npm run check:pipeline-heartbeat`, `.github/workflows/pipeline-cron-heartbeat.yml`, `docs/SESSION_SCOREBOARD.md` Piece 0.
+
 ### DONE (2026-04-07) — Scorer `rejection_signal_detected` false positives + Microsoft To Do Graph 400 (agent)
 
 - **Scorer:** `lib/briefing/validity-context-entity.ts` — `filterPersonNamesForValidityContext()` strips UI/verb tokens misclassified as people (`extractPersonNames`); wired in `filterInvalidContext` in `lib/briefing/scorer.ts`; tests `lib/briefing/__tests__/validity-context-entity.test.ts`.
-- **Microsoft To Do:** `lib/sync/microsoft-sync.ts` — Graph does not support OData `$filter` on todo `lastModifiedDateTime` (400 `RequestBroker--ParseUri`); use `$orderby=lastModifiedDateTime desc`, URL-encode list id, filter `sinceIso` client-side.
+- **Microsoft To Do:** `lib/sync/microsoft-sync.ts` — Graph rejects OData **`$filter`** and **`$orderby`** on todo **`lastModifiedDateTime`** (400 `RequestBroker--ParseUri`); use **`$select` + `$top`** only, URL-encode list id, filter **`sinceIso`** client-side (cap per list).
 
 ### DONE (2026-04-07) — Mail sync SQL + data-path audit (agent)
 

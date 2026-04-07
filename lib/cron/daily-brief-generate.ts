@@ -5,6 +5,7 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
+import { randomUUID } from 'crypto';
 import { createServerClient } from '@/lib/db/client';
 import {
   BUDGET_CAP_DIRECTIVE_SENTINEL,
@@ -69,6 +70,13 @@ import {
 import { effectiveDiscrepancyClassForGates } from '@/lib/briefing/effective-discrepancy-class';
 import { insertDirectiveMlSnapshot } from '@/lib/ml/directive-ml-snapshot';
 import { logMlSendworthShadow } from '@/lib/ml/sendworth-shadow';
+import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
+import {
+  buildGateFunnelFromScorerDiagnostics,
+  finalizeUserPipelineRun,
+  insertUserPipelineRunStart,
+} from '@/lib/observability/pipeline-run';
+import { runWithPipelineRunContext } from '@/lib/observability/pipeline-run-context';
 
 export { effectiveDiscrepancyClassForGates };
 
@@ -2017,15 +2025,45 @@ export async function runDailyGenerate(
       }
 
       let directive;
+      const pipelineRunId = randomUUID();
+      const cronInv = options.cronInvocationId;
+      const trackPipelineRun = Boolean(cronInv);
+
+      if (trackPipelineRun) {
+        await insertUserPipelineRunStart({
+          id: pipelineRunId,
+          userId,
+          cronInvocationId: cronInv!,
+          invocationSource: options.briefInvocationSource ?? 'daily_brief',
+        });
+      }
+
       try {
-        directive = await generateDirective(userId, {
+        const genOpts = {
           skipSpendCap: options.skipSpendCap,
           skipManualCallLimit: options.skipManualCallLimit,
           dryRun: process.env.FOLDERA_DRY_RUN === 'true',
           pipelineDryRun: options.pipelineDryRun === true,
-        });
+        };
+        if (trackPipelineRun) {
+          directive = await runWithPipelineRunContext(
+            { pipelineRunId, userId },
+            async () => generateDirective(userId, genOpts),
+          );
+        } else {
+          directive = await generateDirective(userId, genOpts);
+        }
       } catch (genErr: unknown) {
         const message = genErr instanceof Error ? genErr.message : String(genErr);
+        if (trackPipelineRun) {
+          void finalizeUserPipelineRun({
+            id: pipelineRunId,
+            userId,
+            outcome: 'generation_threw',
+            gateFunnel: { error: message.slice(0, 500) },
+            rawExtras: { scope: 'daily-generate' },
+          });
+        }
         logStructuredEvent({
           event: 'daily_generate_failed',
           level: 'error',
@@ -2042,6 +2080,36 @@ export async function runDailyGenerate(
           userId,
         });
         continue;
+      }
+
+      if (trackPipelineRun) {
+        const diag = getLastScorerDiagnostics();
+        const genFailed = directive.directive === '__GENERATION_FAILED__';
+        // Artifact + post-artifact gates are not on ConvictionDirective yet; scorer/generator stage only.
+        const blockedGate = genFailed
+          ? (directive.reason ?? 'GENERATION_FAILED').slice(0, 240)
+          : null;
+        void finalizeUserPipelineRun({
+          id: pipelineRunId,
+          userId,
+          outcome: genFailed
+            ? 'generation_failed_sentinel'
+            : options.pipelineDryRun
+              ? 'pipeline_dry_run_returned'
+              : 'generation_returned',
+          gateFunnel: buildGateFunnelFromScorerDiagnostics(diag, {
+            candidate_discovery_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? null,
+            gen_stage: directive.generationLog?.stage ?? null,
+          }),
+          winnerActionType: directive.action_type ?? null,
+          winnerConfidence: typeof directive.confidence === 'number' ? directive.confidence : null,
+          blockedGate,
+          candidatesEvaluated: diag?.filterStages?.[0]?.before ?? null,
+          rawExtras: {
+            pipeline_dry_run: Boolean(options.pipelineDryRun),
+            budget_cap_sentinel: directive.directive === BUDGET_CAP_DIRECTIVE_SENTINEL,
+          },
+        });
       }
 
       const pipelineDryReceipt = directive.generationLog?.pipeline_dry_run;
