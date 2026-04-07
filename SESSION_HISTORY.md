@@ -6,9 +6,9 @@
 
 - 2026-04-07 — AUDIT: **Self-healing mail cursor rewind (`CURSOR_REWOUND`)**
   MODE: AUDIT
-  Commit hash(es): main tip (message: `feat(sync): self-heal mail cursor when incremental mail inserts zero`)
+  Commit hash(es): `49978e2`
   Files changed: `lib/config/constants.ts` (`MAIL_CURSOR_HEAL_GAP_MS`), `lib/sync/mail-cursor-heal.ts`, `lib/sync/__tests__/mail-cursor-heal.test.ts`, `lib/sync/google-sync.ts`, `lib/sync/microsoft-sync.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
-  What was verified: `npx vitest run lib/sync/__tests__/mail-cursor-heal.test.ts` (6 passed); `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run test:ci:e2e`; `npm run test:prod` when `tests/production/auth-state.json` present.
+  What was verified: `npx vitest run lib/sync/__tests__/mail-cursor-heal.test.ts` (6 passed, no Gmail/Graph API); `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (787 passed); `PLAYWRIGHT_WEB_PORT=3011 npm run test:ci:e2e` (41 passed — :3000 busy locally); post-push `npm run test:prod` (**61 passed** on www.foldera.ai).
   Changes: After successful incremental mail sync with **zero** new mail signals, if `last_synced_at` is **>24h** ahead of `max(occurred_at)` for `gmail`/`outlook`, rewind cursor and log **`CURSOR_REWOUND`**. Skips first sync and any run with mail inserts &gt; 0.
   Any unresolved issues: Tune `MAIL_CURSOR_HEAL_GAP_MS` if Vercel logs show false rewinds on low-traffic inboxes.
 
