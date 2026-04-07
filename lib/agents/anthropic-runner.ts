@@ -3,7 +3,7 @@ import { trackApiCall } from '@/lib/utils/api-tracker';
 import type { AgentJobId } from '@/lib/agents/constants';
 import { AGENT_USAGE_ENDPOINT } from '@/lib/agents/constants';
 
-const SONNET_MODEL = 'claude-sonnet-4-20250514';
+const SONNET_MODEL = 'claude-haiku-4-5-20251001';
 
 let client: Anthropic | null = null;
 

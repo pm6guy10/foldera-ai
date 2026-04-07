@@ -35,6 +35,7 @@ import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { TEST_USER_ID, SIGNAL_RETENTION_DAYS, daysMs } from '@/lib/config/constants';
 import { runBehavioralGraph } from '@/lib/signals/behavioral-graph';
 import { runAttentionDecay } from '@/lib/signals/entity-attention-runtime';
+import { logApiBudgetStatusToSystemHealth } from '@/lib/cron/api-budget';
 import { computeAndPersistHealthVerdict } from '@/lib/cron/health-verdict';
 
 export const dynamic = 'force-dynamic';
@@ -465,6 +466,8 @@ async function runConfidenceCalibration(): Promise<{
 async function handler(request: NextRequest) {
   const authErr = validateCronAuth(request);
   if (authErr) return authErr;
+
+  void logApiBudgetStatusToSystemHealth('nightly_ops');
 
   const startTime = Date.now();
   const stages: Record<string, unknown> = {};

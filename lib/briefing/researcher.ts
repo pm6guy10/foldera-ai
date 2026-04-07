@@ -58,7 +58,7 @@ interface SignalRow {
 // Constants
 // ---------------------------------------------------------------------------
 
-const RESEARCHER_MODEL = 'claude-sonnet-4-20250514';
+const RESEARCHER_MODEL = 'claude-haiku-4-5-20251001';
 const SIGNAL_LOOKBACK_DAYS = 30;
 const MAX_SIGNALS_FOR_PROMPT = 40;
 const RESEARCHER_TIMEOUT_MS = 15_000;

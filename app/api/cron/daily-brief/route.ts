@@ -16,6 +16,7 @@ import { runBriefLifecycle } from '@/lib/cron/brief-service';
 import { resolveDailyBriefUserIds } from '@/lib/cron/daily-brief-generate';
 import { getTriggerResponseStatus } from '@/lib/cron/daily-brief';
 import { runPlatformHealthAlert } from '@/lib/cron/cron-health-alert';
+import { logApiBudgetStatusToSystemHealth } from '@/lib/cron/api-budget';
 import { createServerClient } from '@/lib/db/client';
 import { TEST_USER_ID } from '@/lib/config/constants';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
@@ -41,6 +42,8 @@ function resolveSignalCreatedAtGte(request: NextRequest): string | null {
 async function handler(request: NextRequest) {
   const authErr = validateCronAuth(request);
   if (authErr) return authErr;
+
+  void logApiBudgetStatusToSystemHealth('daily_brief');
 
   const startTime = Date.now();
 

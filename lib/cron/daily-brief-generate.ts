@@ -7,6 +7,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { createServerClient } from '@/lib/db/client';
 import {
+  BUDGET_CAP_DIRECTIVE_SENTINEL,
   buildDirectiveExecutionResult,
   fetchUserEmailAddresses,
   generateDirective,
@@ -176,6 +177,10 @@ export function evaluateBottomGate(
   artifact: ConvictionArtifact,
 ): BottomGateResult {
   if (directive.generationLog?.firstMorningBypass) {
+    return { pass: true, blocked_reasons: [] };
+  }
+
+  if (directive.directive === BUDGET_CAP_DIRECTIVE_SENTINEL) {
     return { pass: true, blocked_reasons: [] };
   }
 

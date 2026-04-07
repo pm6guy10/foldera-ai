@@ -15,6 +15,10 @@ import type {
 import { validateDecisionPayload } from './types';
 import type { DeprioritizedLoop, ScoredLoop, ScorerResult } from './scorer';
 import { enrichRelationshipContext, scoreOpenLoops } from './scorer';
+import {
+  ANTHROPIC_BUDGET_RESERVE_ESTIMATE_CENTS,
+  reserveAnthropicBudgetSlot,
+} from '@/lib/cron/api-budget';
 import { isOverDailyLimit, isOverManualCallLimit, trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import {
@@ -60,7 +64,12 @@ import { buildDiagnosticLensBlock, getVagueMechanismIssues } from './diagnostic-
 // ---------------------------------------------------------------------------
 
 const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
-const GENERATION_MODEL = 'claude-sonnet-4-20250514';
+/** Persisted to `tkg_actions.directive_text` when Postgres budget gate blocks generation. */
+export const BUDGET_CAP_DIRECTIVE_SENTINEL = '__BUDGET_CAP_REACHED__';
+/** Main directive JSON + retries — Haiku for cost (structured output from fixed prompt). */
+const GENERATION_MODEL_FAST = 'claude-haiku-4-5-20251001';
+/** Pass-1 anomaly sentence only — needs stronger reasoning over evidence. */
+const GENERATION_MODEL_REASON = 'claude-sonnet-4-20250514';
 const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
 const STALE_SIGNAL_THRESHOLD_DAYS = 21;
 
@@ -4175,6 +4184,41 @@ function emptyDirective(reason: string, generationLog?: GenerationRunLog): Convi
   };
 }
 
+function buildBudgetCapDirectiveFromScored(
+  scored: ScorerResult,
+  budgetRaw: unknown,
+  rpcErrorMessage?: string,
+): ConvictionDirective {
+  const reason = rpcErrorMessage
+    ? `Monthly Anthropic API budget gate closed (${rpcErrorMessage.slice(0, 160)}).`
+    : 'Monthly Anthropic API budget cap reached; generation skipped before LLM calls.';
+  return {
+    directive: BUDGET_CAP_DIRECTIVE_SENTINEL,
+    action_type: 'do_nothing',
+    confidence: 0,
+    reason,
+    evidence: [
+      {
+        type: 'pattern',
+        description: 'api_budget_check_and_reserve returned allowed=false or failed closed',
+      },
+    ],
+    generationLog: buildNoSendGenerationLog(
+      'Monthly API budget cap reached.',
+      'system',
+      scored.candidateDiscovery,
+    ),
+    embeddedArtifact: {
+      type: 'wait_rationale',
+      why_wait:
+        'Foldera reached the configured monthly Anthropic API budget. No LLM calls were made for this directive.',
+      tripwire_date: 'After credits are added or the cap is raised',
+      trigger_condition: 'Anthropic billing replenished or Postgres api_budget configuration updated.',
+    },
+    embeddedArtifactType: 'wait_rationale',
+  } as ConvictionDirective;
+}
+
 function formatValidationFailureReason(prefix: string, issues: string[]): string {
   const normalized = [...new Set(issues.map((i) => i.trim()).filter(Boolean))];
   if (normalized.length === 0) return prefix;
@@ -5388,6 +5432,10 @@ export function validateDirectiveForPersistence(input: {
     return [];
   }
 
+  if (input.directive.directive === BUDGET_CAP_DIRECTIVE_SENTINEL) {
+    return [];
+  }
+
   if (
     input.artifact &&
     typeof input.artifact === 'object' &&
@@ -6025,7 +6073,7 @@ async function generatePayload(
       `No preamble, no JSON, no bullet points.`;
     try {
       const anomalyRes = await getAnthropic().messages.create({
-        model: GENERATION_MODEL,
+        model: GENERATION_MODEL_REASON,
         max_tokens: 150,
         temperature: 0.1,
         system: 'You output one factual sentence only. No meta-commentary.',
@@ -6033,7 +6081,7 @@ async function generatePayload(
       });
       await trackApiCall({
         userId,
-        model: GENERATION_MODEL,
+        model: GENERATION_MODEL_REASON,
         inputTokens: anomalyRes.usage.input_tokens,
         outputTokens: anomalyRes.usage.output_tokens,
         callType: 'anomaly_identification',
@@ -6070,7 +6118,7 @@ async function generatePayload(
 
   for (let attempt = 0; attempt < MAX_DIRECTIVE_LLM_ATTEMPTS; attempt++) {
     const response = await getAnthropic().messages.create({
-      model: GENERATION_MODEL,
+      model: GENERATION_MODEL_FAST,
       max_tokens: 4096,
       temperature: 0.15,
       system: SYSTEM_PROMPT,
@@ -6079,7 +6127,7 @@ async function generatePayload(
 
     await trackApiCall({
       userId,
-      model: GENERATION_MODEL,
+      model: GENERATION_MODEL_FAST,
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
       callType: attempt === 0 ? 'directive' : 'directive_retry',
@@ -6536,6 +6584,25 @@ export async function generateDirective(
     ]);
     const lockedContacts = lockedContactsResult.set;
     const lockedContactPromptLines = lockedContactsResult.promptLines;
+
+    if (!options.dryRun) {
+      const budget = await reserveAnthropicBudgetSlot(ANTHROPIC_BUDGET_RESERVE_ESTIMATE_CENTS);
+      if (!budget.allowed) {
+        logStructuredEvent({
+          event: 'generation_skipped',
+          level: 'warn',
+          userId,
+          artifactType: null,
+          generationStatus: 'api_monthly_budget_cap',
+          details: {
+            scope: 'generator',
+            budget: budget.raw,
+            rpc_error: budget.errorMessage ?? null,
+          },
+        });
+        return buildBudgetCapDirectiveFromScored(scored, budget.raw, budget.errorMessage);
+      }
+    }
 
     for (const { candidate: currentCandidate, disqualified, disqualifyReason } of rankedCandidates) {
       // Skip disqualified candidates (already acted recently, etc.)
