@@ -6,8 +6,8 @@
 
 - 2026-04-06 — AUDIT: **Behavioral inbound counts use sender match (not To/body mention)**
   MODE: AUDIT
-  Commit hash(es): (pending)
-  Files changed: `lib/briefing/discrepancy-detector.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  Commit hash(es): `0a9a856`
+  Files changed: `lib/briefing/discrepancy-detector.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   What was verified: `npx vitest run lib/briefing/__tests__/discrepancy-detector.test.ts` (100 passed); `npm run build`.
   Changes: `entityMatchesInboundSender` + `fromLineAndEmails` — `countReceivedForEntity` and PATTERN 1 goal-keyword inbound require entity on **From/author** (or email intersection) when explicit From exists; else `contentHitsEntity` fallback for legacy snippets. New test: entity name only on **To** does not create repeated-avoidance.
   Any unresolved issues: None noted.
