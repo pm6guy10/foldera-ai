@@ -14,6 +14,7 @@ type RuntimeState = {
   userTokens: Row[];
   mlSnapshots: Row[];
   mlGlobalPriors: Row[];
+  briefCycleGates: Row[];
   authUsers: Record<string, { email: string; email_confirmed_at: string | null }>;
   ids: Record<string, number>;
 };
@@ -38,6 +39,7 @@ function createRuntime(): RuntimeState {
     userTokens: [],
     mlSnapshots: [],
     mlGlobalPriors: [],
+    briefCycleGates: [],
     authUsers: {},
     ids: {
       entity: 0,
@@ -358,6 +360,28 @@ class InsertQuery {
   }
 }
 
+/** Minimal upsert for `user_brief_cycle_gates` (onConflict: user_id). */
+class BriefCycleGateUpsertQuery {
+  constructor(
+    private readonly rows: Row[],
+    private readonly payload: Row,
+  ) {}
+
+  then<TResult1 = unknown, TResult2 = never>(
+    onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ) {
+    const uid = this.payload.user_id;
+    const idx = this.rows.findIndex((r) => r.user_id === uid);
+    if (idx >= 0) {
+      Object.assign(this.rows[idx], this.payload);
+    } else {
+      this.rows.push({ ...this.payload });
+    }
+    return Promise.resolve({ data: null, error: null }).then(onfulfilled, onrejected);
+  }
+}
+
 function createSupabaseMock() {
   return {
     rpc: async (
@@ -468,6 +492,13 @@ function createSupabaseMock() {
           return {
             select: (columns?: string, options?: { count?: string; head?: boolean }) =>
               new SelectQuery([], columns, options),
+          };
+        case 'user_brief_cycle_gates':
+          return {
+            select: (columns?: string, options?: { count?: string; head?: boolean }) =>
+              new SelectQuery(runtime.briefCycleGates, columns, options),
+            upsert: (payload: Row | Row[]) =>
+              new BriefCycleGateUpsertQuery(runtime.briefCycleGates, asArray(payload)[0]),
           };
         default:
           throw new Error(`Unexpected table ${table}`);

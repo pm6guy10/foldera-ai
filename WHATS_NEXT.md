@@ -1,4 +1,4 @@
-# WHAT'S NEXT — Updated 2026-04-06
+# WHAT'S NEXT — Updated 2026-04-07
 
 ## STATUS: SHIPPED — Self-inbound behavioral_pattern fix + OAuth expiry in `connector_health` stage
 
@@ -40,6 +40,10 @@
 | **Health** | `13add85` `system_health` + verdict API + owner email footer + auto-drain | Failures become machine-readable; you stop guessing |
 | **Generator** | Diagnostician prompt + `DIAGNOSTIC_LENS` + vague-mechanism gate | Cross-signal bar + domain lens + fewer generic “busy/prioritize” mechanisms |
 | **Ops** | Ingest route, UI critic push-trigger killed, locked_contact normalization | Less noise, fewer false blocks |
+
+## Generator eval baseline (April 7, 2026)
+
+- **Before picture:** [docs/eval/baseline-sample.md](docs/eval/baseline-sample.md) + rubric [docs/eval/rubric.md](docs/eval/rubric.md). Score the 10 rows before changing prompts; deferred rebuild phases: [docs/eval/PROMPT_REBUILD_BACKLOG.md](docs/eval/PROMPT_REBUILD_BACKLOG.md).
 
 ## RIGHT NOW (pick one; ~15 min total)
 
