@@ -6,7 +6,7 @@
 
 - 2026-04-07 — AUDIT: **Microsoft To Do Graph ParseUri — `$top` only on list tasks**
   MODE: AUDIT
-  Commit hash(es): (after push)
+  Commit hash(es): `eae5c47`
   Files changed: `lib/sync/microsoft-sync.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
   What was verified: `npm run health`; `npm run lint`; clean `.next` + `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; `PLAYWRIGHT_WEB_PORT=3011` + `NEXTAUTH_URL=http://127.0.0.1:3011` → `npm run test:ci:e2e`
   Changes: User logs at **22:32 UTC** still showed **`ParseUri`** on **`Failed to persist task list`** — **`8603b91`** had replaced **`$filter`** with invalid **`$orderby`**; **`2ba6584`** removed **`$orderby`**. Further hardening: drop **`$select`** — task URL is **`?$top=`** only; client **`sinceIso`** filter unchanged.
