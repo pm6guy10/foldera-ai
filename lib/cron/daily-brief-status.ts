@@ -84,7 +84,10 @@ export function buildSignalProcessingMessage(results: DailyBriefUserResult[], to
 
 export function buildGenerateMessage(results: DailyBriefUserResult[], total: number): string {
   const generatedCount = results.filter(
-    (r) => r.code === 'pending_approval_persisted' || r.code === 'pending_approval_reused',
+    (r) =>
+      r.code === 'pending_approval_persisted' ||
+      r.code === 'pending_approval_reused' ||
+      r.code === 'pipeline_dry_run',
   ).length;
   const noSendCount = results.filter(
     (r) => r.code === 'no_send_persisted' || r.code === 'no_send_reused',
@@ -113,7 +116,12 @@ export function buildGenerateMessage(results: DailyBriefUserResult[], total: num
 }
 
 export function buildSendMessage(results: DailyBriefUserResult[], total: number): string {
-  const sentCount = results.filter((r) => r.code === 'email_sent' || r.code === 'email_already_sent').length;
+  const sentCount = results.filter(
+    (r) =>
+      r.code === 'email_sent' ||
+      r.code === 'email_already_sent' ||
+      r.code === 'send_skipped_pipeline_dry_run',
+  ).length;
   const blockedNoSendCount = results.filter((r) => r.code === 'no_send_blocker_persisted').length;
   const missingDirectiveCount = results.filter((r) => r.code === 'no_generated_directive').length;
 

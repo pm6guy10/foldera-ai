@@ -1356,6 +1356,7 @@ async function runSignalProcessingForUser(
         maxSignals: DAILY_SIGNAL_BATCH_SIZE,
         prioritizeOlderThanIso: staleCutoffIso,
         quarantineDeferredOlderThanIso: staleCutoffIso,
+        skipLlmExtraction: options.pipelineDryRun === true,
       });
       signalsProcessed += extraction.signals_processed;
       for (const signalId of extraction.deferred_signal_ids ?? []) deferredSignalIds.add(signalId);
@@ -1369,7 +1370,9 @@ async function runSignalProcessingForUser(
     }
 
     try {
-      summariesCreated = await summarizeSignals(userId);
+      summariesCreated = await summarizeSignals(userId, {
+        skipAnthropic: options.pipelineDryRun === true,
+      });
       if (summariesCreated > 0) {
         logStructuredEvent({
           event: 'daily_generate_summary',
@@ -1632,6 +1635,7 @@ export async function runDailyGenerate(
         const accountYoung =
           createdMs !== null && Date.now() - createdMs < FIRST_MORNING_ACCOUNT_MAX_MS;
         if (
+          !options.pipelineDryRun &&
           signalTotal < FIRST_MORNING_SIGNAL_CAP &&
           accountYoung &&
           !(await hasPriorFirstMorningBrief(supabase, userId))
@@ -1774,6 +1778,7 @@ export async function runDailyGenerate(
           skipSpendCap: options.skipSpendCap,
           skipManualCallLimit: options.skipManualCallLimit,
           dryRun: process.env.FOLDERA_DRY_RUN === 'true',
+          pipelineDryRun: options.pipelineDryRun === true,
         });
       } catch (genErr: unknown) {
         const message = genErr instanceof Error ? genErr.message : String(genErr);
@@ -1790,6 +1795,24 @@ export async function runDailyGenerate(
           detail: message,
           meta: cleanupMeta,
           success: false,
+          userId,
+        });
+        continue;
+      }
+
+      const pipelineDryReceipt = directive.generationLog?.pipeline_dry_run;
+      if (options.pipelineDryRun && pipelineDryReceipt) {
+        results.push({
+          code: 'pipeline_dry_run',
+          meta: {
+            ...cleanupMeta,
+            pipeline_dry_run: pipelineDryReceipt,
+            generation_log: directive.generationLog,
+            action_type: directive.action_type,
+            confidence: directive.confidence,
+            directive_preview: directive.directive?.slice(0, 500) ?? '',
+          },
+          success: true,
           userId,
         });
         continue;

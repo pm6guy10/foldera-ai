@@ -33,7 +33,14 @@ interface WeekBucket {
  * Only summarizes complete weeks (week_end < today).
  * Returns the number of new summaries created.
  */
-export async function summarizeSignals(userId: string): Promise<number> {
+export async function summarizeSignals(
+  userId: string,
+  opts?: { skipAnthropic?: boolean },
+): Promise<number> {
+  if (opts?.skipAnthropic) {
+    return 0;
+  }
+
   const supabase = createServerClient();
 
   // Find the oldest unsummarized signal week.

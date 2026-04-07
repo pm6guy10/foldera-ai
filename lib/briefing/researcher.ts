@@ -44,6 +44,8 @@ export interface ResearchInsight {
 
 interface ResearchWinnerOptions {
   dryRun?: boolean;
+  /** Skip all researcher Anthropic calls (same as FOLDERA_DRY_RUN for this module). */
+  pipelineDryRun?: boolean;
 }
 
 interface SignalRow {
@@ -223,7 +225,7 @@ export async function researchWinner(
   const startTime = Date.now();
 
   try {
-    if (process.env.FOLDERA_DRY_RUN === 'true') {
+    if (process.env.FOLDERA_DRY_RUN === 'true' || options.pipelineDryRun) {
       return null;
     }
 

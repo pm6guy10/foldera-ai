@@ -181,6 +181,15 @@ export interface GenerationCandidateDiscoveryLog {
   topCandidates: GenerationCandidateLog[];
 }
 
+/** Receipt when HTTP `dry_run=true` / `pipelineDryRun` skips all model calls (no Anthropic usage). */
+export interface PipelineDryRunReceipt {
+  assembled_prompt: string;
+  mock_artifact_body: string;
+  candidate_title: string;
+  candidate_id: string;
+  candidate_type: string;
+}
+
 export interface GenerationRunLog {
   outcome: 'selected' | 'no_send';
   stage: 'scoring' | 'generation' | 'artifact' | 'validation' | 'persistence' | 'system';
@@ -191,6 +200,8 @@ export interface GenerationRunLog {
   firstMorningBypass?: boolean;
   /** Dev/diagnostic: goals passed into the prompt (owner brain-receipt, debugging). */
   brief_context_debug?: { active_goals?: string[] };
+  /** Operator dry run: full assembled user prompt + winner snapshot; zero Anthropic. */
+  pipeline_dry_run?: PipelineDryRunReceipt;
 }
 
 /**

@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — AUDIT: **HTTP `dry_run=true` pipeline — zero Anthropic, readable receipt**
+  MODE: AUDIT
+  Commit hash(es): `8784c9e`
+  Files changed: `app/api/settings/run-brief/route.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `lib/briefing/researcher.ts`, `lib/briefing/types.ts`, `lib/conviction/artifact-generator.ts`, `lib/cron/daily-brief.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/daily-brief-status.ts`, `lib/cron/daily-brief-types.ts`, `lib/signals/signal-processor.ts`, `lib/signals/summarizer.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run build`; `npm run lint`; `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts lib/briefing/__tests__/generator-runtime.test.ts`.
+  Changes: `POST /api/settings/run-brief?dry_run=true` sets `pipelineDryRun` + `ensureSend: false`. Generator `pipelineDryRun` skips anomaly/main LLM, researcher, insight scan, conviction, budget reserve; returns `generation_log.pipeline_dry_run` with `assembled_prompt`, winner snapshot, and mock body `[DRY RUN - no API call made]`. Signal extraction + weekly summarizer skip Haiku when `pipelineDryRun`. Generate stage returns `code: pipeline_dry_run` without persisting `pending_approval` or running `generateArtifact`; send stage returns `send_skipped_pipeline_dry_run`.
+  Any unresolved issues: Operator should confirm **no new Anthropic usage rows** when calling `?force=true&dry_run=true` on production; `npm run test:prod` not re-run this session.
+
 - 2026-04-06 — AUDIT: **Behavioral inbound counts use sender match (not To/body mention)**
   MODE: AUDIT
   Commit hash(es): `0a9a856`

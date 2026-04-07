@@ -42,7 +42,7 @@
 
 import { createServerClient } from '@/lib/db/client';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
-import { toSafeDailyBriefStageStatus } from './daily-brief-status';
+import { buildRunResult, toSafeDailyBriefStageStatus } from './daily-brief-status';
 import { runDailyGenerate } from './daily-brief-generate';
 import { runDailySend } from './daily-brief-send';
 
@@ -80,7 +80,19 @@ export async function runDailyBrief(
   options: DailyBriefSignalWindowOptions = {},
 ): Promise<DailyBriefOrchestrationResult> {
   const generate = await runDailyGenerate(options);
-  const send = await runDailySend(options);
+  const date = generate.date;
+  const send = options.pipelineDryRun
+    ? buildRunResult(
+        date,
+        'Send skipped (pipeline dry run — no email, no new action row).',
+        (options.userIds ?? []).map((userId) => ({
+          code: 'send_skipped_pipeline_dry_run' as const,
+          success: true,
+          userId,
+          detail: 'pipelineDryRun: send stage not executed',
+        })),
+      )
+    : await runDailySend(options);
   const signalProcessing = generate.signalProcessing;
   const ok =
     (toSafeDailyBriefStageStatus(signalProcessing).status === 'ok' ||

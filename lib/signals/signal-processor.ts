@@ -96,6 +96,8 @@ export interface ProcessSignalsOptions {
   prioritizeOlderThanIso?: string;
   quarantineDeferredOlderThanIso?: string;
   dryRun?: boolean;
+  /** Skip Haiku extraction LLM (e.g. operator `pipelineDryRun`). */
+  skipLlmExtraction?: boolean;
 }
 
 export interface SignalQueryOptions {
@@ -184,6 +186,10 @@ export async function processUnextractedSignals(
   const pauseMsBetweenBatches = Math.max(0, Math.floor(options.pauseMsBetweenBatches ?? 0));
 
   if (maxSignals === 0) {
+    return result;
+  }
+
+  if (options.skipLlmExtraction === true) {
     return result;
   }
 

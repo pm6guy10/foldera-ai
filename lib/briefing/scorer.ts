@@ -3353,7 +3353,10 @@ function huntFindingToScoredLoop(f: HuntFinding): ScoredLoop {
   };
 }
 
-export async function scoreOpenLoops(userId: string): Promise<ScorerResult | null> {
+export async function scoreOpenLoops(
+  userId: string,
+  options?: { pipelineDryRun?: boolean },
+): Promise<ScorerResult | null> {
   const diag = initDiagnostics();
   _lastDiagnostics = diag;
 
@@ -4320,31 +4323,33 @@ export async function scoreOpenLoops(userId: string): Promise<ScorerResult | nul
   const globalMlPriors = await fetchGlobalMlPriorMap();
 
   let insightCandidates: Awaited<ReturnType<typeof runInsightScan>> = [];
-  try {
-    insightCandidates = await runInsightScan({
-      userId,
-      decryptedSignals: signals.map((s: { id: string; content: string; source?: string; type?: string | null; occurred_at?: string; author?: string | null }) => ({
-        id: String(s.id),
-        content: s.content,
-        source: String(s.source ?? ''),
-        type: s.type ?? null,
-        occurred_at: String(s.occurred_at ?? ''),
-        author: s.author ?? null,
-      })),
-      goals: goals.map((g) => ({
-        goal_text: g.goal_text,
-        priority: g.priority,
-        goal_category: g.goal_category,
-      })),
-      entities: entities.map((e) => ({
-        name: e.name as string,
-        total_interactions: typeof e.total_interactions === 'number' ? e.total_interactions : 0,
-        primary_email: e.primary_email as string | null | undefined,
-        last_interaction: e.last_interaction as string | null | undefined,
-      })),
-    });
-  } catch (err) {
-    console.error('[scorer] Insight scan failed, continuing without:', err);
+  if (!options?.pipelineDryRun) {
+    try {
+      insightCandidates = await runInsightScan({
+        userId,
+        decryptedSignals: signals.map((s: { id: string; content: string; source?: string; type?: string | null; occurred_at?: string; author?: string | null }) => ({
+          id: String(s.id),
+          content: s.content,
+          source: String(s.source ?? ''),
+          type: s.type ?? null,
+          occurred_at: String(s.occurred_at ?? ''),
+          author: s.author ?? null,
+        })),
+        goals: goals.map((g) => ({
+          goal_text: g.goal_text,
+          priority: g.priority,
+          goal_category: g.goal_category,
+        })),
+        entities: entities.map((e) => ({
+          name: e.name as string,
+          total_interactions: typeof e.total_interactions === 'number' ? e.total_interactions : 0,
+          primary_email: e.primary_email as string | null | undefined,
+          last_interaction: e.last_interaction as string | null | undefined,
+        })),
+      });
+    } catch (err) {
+      console.error('[scorer] Insight scan failed, continuing without:', err);
+    }
   }
 
   // Contact action types — suppression goals that reference a person/entity only

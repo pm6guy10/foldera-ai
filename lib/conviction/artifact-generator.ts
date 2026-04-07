@@ -865,8 +865,17 @@ export async function generateArtifact(
   userId: string,
   directive: ConvictionDirective,
 ): Promise<ConvictionArtifact | null> {
-  // If the directive already contains an embedded artifact (from new brain), use it directly
   const d = directive as ConvictionDirective & { embeddedArtifact?: any; embeddedArtifactType?: string };
+
+  if (directive.generationLog?.pipeline_dry_run && d.embeddedArtifact) {
+    try {
+      return validateArtifact(directive.action_type, d.embeddedArtifact, directive);
+    } catch {
+      return null;
+    }
+  }
+
+  // If the directive already contains an embedded artifact (from new brain), use it directly
   if (d.embeddedArtifact) {
     try {
       return validateArtifact(directive.action_type, d.embeddedArtifact, directive);

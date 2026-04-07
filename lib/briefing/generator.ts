@@ -10,6 +10,7 @@ import type {
   EvidenceItem,
   GenerationCandidateDiscoveryLog,
   GenerationRunLog,
+  PipelineDryRunReceipt,
   ValidArtifactTypeCanonical,
 } from './types';
 import { validateDecisionPayload } from './types';
@@ -72,6 +73,9 @@ const GENERATION_MODEL_FAST = 'claude-haiku-4-5-20251001';
 const GENERATION_MODEL_REASON = 'claude-sonnet-4-20250514';
 const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
 const STALE_SIGNAL_THRESHOLD_DAYS = 21;
+
+/** Exact operator-visible mock body for HTTP `dry_run=true` / `pipelineDryRun` (no Anthropic). */
+export const PIPELINE_DRY_RUN_MOCK_ARTIFACT = '[DRY RUN - no API call made]';
 
 function isAbsenceDrivenWinnerType(t: string): boolean {
   return t === 'discrepancy' || t === 'hunt';
@@ -542,6 +546,11 @@ export interface SignalSnippet {
 
 interface GenerateDirectiveOptions {
   dryRun?: boolean;
+  /**
+   * Skip every Anthropic call in this path (generator + researcher); assemble prompt only.
+   * Distinct from `dryRun` (Vitest / api_usage persistence semantics).
+   */
+  pipelineDryRun?: boolean;
   /** Skip daily spend cap check — used for manual Generate Now so testing doesn't cost money */
   skipSpendCap?: boolean;
   /**
@@ -560,6 +569,8 @@ type GeneratePayloadOptions = GenerateDirectiveOptions & {
 interface GeneratePayloadResult {
   issues: string[];
   payload: GeneratedDirectivePayload | null;
+  /** Full assembled user prompt (operator dry run only). */
+  assembledPrompt?: string;
   /** Pass-1 LLM one-sentence anomaly (persisted on directive / execution_result). */
   anomalyIdentification?: string;
   /** When true, caller should persist wait_rationale (cross-signal gate exhausted after retry). */
@@ -4132,7 +4143,7 @@ function extractAllEmailAddresses(winner: ScoredLoop, userEmails?: Set<string>):
 
 function buildSelectedGenerationLog(
   candidateDiscovery: GenerationCandidateDiscoveryLog | null,
-  briefContextDebug?: { active_goals?: string[] },
+  extras?: { active_goals?: string[]; pipeline_dry_run?: PipelineDryRunReceipt },
 ): GenerationRunLog {
   return {
     outcome: 'selected',
@@ -4142,9 +4153,10 @@ function buildSelectedGenerationLog(
       .filter((c) => c.decision === 'rejected')
       .map((c) => c.decisionReason),
     candidateDiscovery,
-    ...(briefContextDebug?.active_goals?.length
-      ? { brief_context_debug: { active_goals: briefContextDebug.active_goals } }
+    ...(extras?.active_goals?.length
+      ? { brief_context_debug: { active_goals: extras.active_goals } }
       : {}),
+    ...(extras?.pipeline_dry_run ? { pipeline_dry_run: extras.pipeline_dry_run } : {}),
   };
 }
 
@@ -5182,12 +5194,14 @@ function validateGeneratedArtifact(
   payload: GeneratedDirectivePayload | null,
   ctx: StructuredContext,
   canonicalArtifactType: ValidArtifactTypeCanonical,
+  relax?: { pipelineDryRun?: boolean },
 ): string[] {
   if (!payload) {
     return ['Response was not valid JSON in the required schema.'];
   }
 
   const issues: string[] = [];
+  const pipelineDry = relax?.pipelineDryRun === true;
 
   // Type check
   if (!VALID_ARTIFACT_TYPES.has(payload.artifact_type)) {
@@ -5205,18 +5219,20 @@ function validateGeneratedArtifact(
   validateStringField(payload.insight, 'insight', issues);
   validateStringField(payload.why_now, 'why_now', issues);
 
-  try {
-    issues.push(
-      ...getFinancialPaymentToneValidationIssues(ctx, {
-        directive: payload.directive,
-        insight: payload.insight,
-        why_now: payload.why_now,
-        causal_diagnosis: payload.causal_diagnosis,
-        artifact: payload.artifact,
-      }),
-    );
-  } catch (err) {
-    console.warn('[generator] validateGeneratedArtifact tone gate failed (ignored):', err);
+  if (!pipelineDry) {
+    try {
+      issues.push(
+        ...getFinancialPaymentToneValidationIssues(ctx, {
+          directive: payload.directive,
+          insight: payload.insight,
+          why_now: payload.why_now,
+          causal_diagnosis: payload.causal_diagnosis,
+          artifact: payload.artifact,
+        }),
+      );
+    } catch (err) {
+      console.warn('[generator] validateGeneratedArtifact tone gate failed (ignored):', err);
+    }
   }
 
   if (directive && countSentences(directive) !== 1) {
@@ -5250,7 +5266,11 @@ function validateGeneratedArtifact(
       validateStringField(a.title, 'write_document title', issues, { allowShort: true });
       const content = validateStringField(a.content, 'write_document content', issues);
       // Must be specific to the candidate, not generic filler
-      if (content && content.length < 50) {
+      if (
+        content &&
+        content.length < 50 &&
+        !(pipelineDry && content === PIPELINE_DRY_RUN_MOCK_ARTIFACT)
+      ) {
         issues.push('write_document content is too short to be a finished artifact');
       }
       break;
@@ -5285,9 +5305,15 @@ function validateGeneratedArtifact(
     }
   }
 
-  issues.push(...getLowCrossSignalIssues(payload, ctx, canonicalArtifactType));
+  if (!pipelineDry) {
+    issues.push(...getLowCrossSignalIssues(payload, ctx, canonicalArtifactType));
+  }
 
-  if (ctx.candidate_class === 'discrepancy' && canonicalArtifactType === 'write_document') {
+  if (
+    !pipelineDry &&
+    ctx.candidate_class === 'discrepancy' &&
+    canonicalArtifactType === 'write_document'
+  ) {
     const content = String((payload.artifact as Record<string, unknown>).content ?? '');
     const combined = `${payload.directive ?? ''}\n${payload.why_now ?? ''}\n${content}`;
     if (looksLikeDiscrepancyTriageOrChoreList(combined)) {
@@ -6169,6 +6195,103 @@ function buildDryRunGeneratedPayload(
   };
 }
 
+/** Synthetic payload for HTTP `pipelineDryRun` — zero Anthropic; exact mock artifact string. */
+function buildPipelineDryRunGeneratedPayload(
+  committed: ValidArtifactTypeCanonical,
+  ctx: StructuredContext,
+): GeneratedDirectivePayload {
+  const cd = ctx.required_causal_diagnosis;
+  const insight = 'Pipeline dry run: no Anthropic API calls were made.';
+  const whyNow = 'Inspect assembled_prompt in generation_log.pipeline_dry_run; re-run without dry_run to invoke the model.';
+  const mock = PIPELINE_DRY_RUN_MOCK_ARTIFACT;
+
+  if (committed === 'send_message') {
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'ACT',
+      directive: mock,
+      artifact_type: 'send_message',
+      artifact: {
+        to: 'dry-run@foldera.ai',
+        subject: '[DRY RUN]',
+        body: mock,
+        draft_type: 'email_compose',
+      },
+      why_now: whyNow,
+    };
+  }
+
+  if (committed === 'write_document') {
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'ACT',
+      directive: mock,
+      artifact_type: 'write_document',
+      artifact: {
+        document_purpose: 'Pipeline dry run (no model)',
+        target_reader: 'Operator',
+        title: '[DRY RUN]',
+        content: mock,
+      },
+      why_now: whyNow,
+    };
+  }
+
+  if (committed === 'schedule_block') {
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'ACT',
+      directive: mock,
+      artifact_type: 'schedule_block',
+      artifact: {
+        title: '[DRY RUN]',
+        reason: mock,
+        start: new Date(Date.now() + 86400000).toISOString(),
+        duration_minutes: 30,
+      },
+      why_now: whyNow,
+    };
+  }
+
+  if (committed === 'wait_rationale') {
+    const trip = new Date(Date.now() + daysMs(7)).toISOString().slice(0, 10);
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'HOLD',
+      directive: mock,
+      artifact_type: 'wait_rationale',
+      artifact: {
+        why_wait: mock,
+        tripwire_date: trip,
+        trigger_condition: 'Unset pipelineDryRun and regenerate.',
+      },
+      why_now: whyNow,
+    };
+  }
+
+  return {
+    insight,
+    causal_diagnosis: cd,
+    causal_diagnosis_source: 'template_fallback',
+    decision: 'HOLD',
+    directive: mock,
+    artifact_type: 'do_nothing',
+    artifact: {
+      exact_reason: mock,
+      blocked_by: 'pipeline_dry_run',
+    },
+    why_now: whyNow,
+  };
+}
+
 async function generatePayload(
   userId: string,
   ctx: StructuredContext,
@@ -6203,6 +6326,27 @@ async function generatePayload(
     return {
       issues: [],
       payload: buildDryRunGeneratedPayload(options.committedArtifactType, ctx),
+      anomalyIdentification: undefined,
+    };
+  }
+
+  if (options.pipelineDryRun) {
+    const dryPayload = buildPipelineDryRunGeneratedPayload(options.committedArtifactType, ctx);
+    const dryIssues = validateGeneratedArtifact(dryPayload, ctx, options.committedArtifactType, {
+      pipelineDryRun: true,
+    });
+    if (dryIssues.length > 0) {
+      return {
+        issues: dryIssues,
+        payload: null,
+        assembledPrompt: prompt,
+        anomalyIdentification: undefined,
+      };
+    }
+    return {
+      issues: [],
+      payload: dryPayload,
+      assembledPrompt: prompt,
       anomalyIdentification: undefined,
     };
   }
@@ -6508,7 +6652,13 @@ export async function generateDirective(
   /** Env-only: synthetic payload, zero Anthropic (distinct from test `dryRun` = skip api_usage persist). */
   const envFixture = process.env.FOLDERA_DRY_RUN === 'true';
   try {
-    if (!options.dryRun && !envFixture && !options.skipSpendCap && await isOverDailyLimit(userId)) {
+    if (
+      !options.dryRun &&
+      !envFixture &&
+      !options.pipelineDryRun &&
+      !options.skipSpendCap &&
+      (await isOverDailyLimit(userId))
+    ) {
       logStructuredEvent({
         event: 'generation_skipped', level: 'warn', userId,
         artifactType: null, generationStatus: 'daily_cap_reached',
@@ -6525,6 +6675,7 @@ export async function generateDirective(
     if (
       !options.dryRun &&
       !envFixture &&
+      !options.pipelineDryRun &&
       options.skipSpendCap &&
       !options.skipManualCallLimit &&
       (await isOverManualCallLimit(userId))
@@ -6541,7 +6692,7 @@ export async function generateDirective(
     }
 
     const [scored, guardrails] = await Promise.all([
-      scoreOpenLoops(userId),
+      scoreOpenLoops(userId, { pipelineDryRun: options.pipelineDryRun }),
       loadRecentActionGuardrails(userId),
     ]);
 
@@ -6730,7 +6881,7 @@ export async function generateDirective(
     const lockedContacts = lockedContactsResult.set;
     const lockedContactPromptLines = lockedContactsResult.promptLines;
 
-    if (!(options.dryRun || envFixture)) {
+    if (!(options.dryRun || envFixture || options.pipelineDryRun)) {
       const budget = await reserveAnthropicBudgetSlot(ANTHROPIC_BUDGET_RESERVE_ESTIMATE_CENTS);
       if (!budget.allowed) {
         logStructuredEvent({
@@ -6828,7 +6979,10 @@ export async function generateDirective(
         hydratedWinner.type === 'discrepancy' && hydratedWinner.discrepancyClass === 'decay';
       if (!isDecayDiscrepancy && currentCandidate.type !== 'hunt' && currentCandidate.score >= 2.0) {
         try {
-          insight = await researchWinner(userId, hydratedWinner, { dryRun: options.dryRun });
+          insight = await researchWinner(userId, hydratedWinner, {
+            dryRun: options.dryRun,
+            pipelineDryRun: options.pipelineDryRun,
+          });
         } catch {
           logStructuredEvent({
             event: 'researcher_fallthrough', level: 'warn', userId,
@@ -6848,7 +7002,7 @@ export async function generateDirective(
       // Decay reconnection: skip conviction math — it keys off matchedGoal (often financial runway)
       // and would instruct the model to prioritize unrelated "bridge" actions over the reconnect.
       let convictionDecision: import('./conviction-engine').ConvictionDecision | null = null;
-      if (!envFixture && !isDecayDiscrepancy && currentCandidate.type !== 'hunt') {
+      if (!envFixture && !options.pipelineDryRun && !isDecayDiscrepancy && currentCandidate.type !== 'hunt') {
         const topGoalText = currentCandidate.matchedGoal?.text ?? currentCandidate.title ?? '';
         if (topGoalText) {
           try {
@@ -7098,7 +7252,9 @@ export async function generateDirective(
     }
 
     // Consecutive duplicate suppression — candidate-specific, try next
-    const duplicateCheck = await checkConsecutiveDuplicate(userId, payload.directive);
+    const duplicateCheck = options.pipelineDryRun
+      ? { isDuplicate: false as const }
+      : await checkConsecutiveDuplicate(userId, payload.directive);
     if (duplicateCheck.isDuplicate) {
       const dupReason = `duplicate_${Math.round((duplicateCheck.similarity ?? 0) * 100)}pct_similar`;
       candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [dupReason] });
@@ -7111,11 +7267,13 @@ export async function generateDirective(
     }
 
     // Usefulness gate — candidate-specific, try next
-    const usefulnessCheck = isUseful({
-      artifact: JSON.stringify(payload.artifact),
-      evidence: payload.insight,
-      action: payload.directive,
-    });
+    const usefulnessCheck = options.pipelineDryRun
+      ? { ok: true as const }
+      : isUseful({
+        artifact: JSON.stringify(payload.artifact),
+        evidence: payload.insight,
+        action: payload.directive,
+      });
     if (!usefulnessCheck.ok) {
       candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [`usefulness:${usefulnessCheck.reason}`] });
       logStructuredEvent({
@@ -7192,6 +7350,17 @@ export async function generateDirective(
       },
       generationLog: buildSelectedGenerationLog(scored.candidateDiscovery, {
         active_goals: ctx.active_goals,
+        ...(options.pipelineDryRun && payloadResult.assembledPrompt
+          ? {
+              pipeline_dry_run: {
+                assembled_prompt: payloadResult.assembledPrompt,
+                mock_artifact_body: PIPELINE_DRY_RUN_MOCK_ARTIFACT,
+                candidate_title: currentCandidate.title,
+                candidate_id: currentCandidate.id,
+                candidate_type: currentCandidate.type,
+              },
+            }
+          : {}),
       }),
       ...(payloadResult.anomalyIdentification
         ? { anomaly_identification: payloadResult.anomalyIdentification }

@@ -109,6 +109,52 @@ describe('POST /api/settings/run-brief', () => {
     ]);
   });
 
+  it('passes pipelineDryRun and disables ensureSend when the URL has ?dry_run=true', async () => {
+    const userId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
+    const { POST } = await import('../route');
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/settings/run-brief?dry_run=true', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: [userId],
+        ensureSend: false,
+        pipelineDryRun: true,
+        skipStaleGate: true,
+        skipSpendCap: true,
+        skipManualCallLimit: true,
+      }),
+    );
+  });
+
+  it('passes forceFreshRun and pipelineDryRun together for ?force=true&dry_run=true', async () => {
+    const userId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
+    const { POST } = await import('../route');
+
+    await POST(
+      new Request(
+        'http://localhost:3000/api/settings/run-brief?force=true&dry_run=true',
+        { method: 'POST' },
+      ),
+    );
+
+    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: [userId],
+        forceFreshRun: true,
+        ensureSend: false,
+        pipelineDryRun: true,
+      }),
+    );
+  });
+
   it('passes forceFreshRun when the URL has ?force=true', async () => {
     const userId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
     mockResolveUser.mockResolvedValue({ userId });

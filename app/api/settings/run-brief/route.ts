@@ -71,7 +71,9 @@ export async function POST(request: Request) {
 
   try {
     const userId = auth.userId;
-    const forceFreshRun = new URL(request.url).searchParams.get('force') === 'true';
+    const url = new URL(request.url);
+    const forceFreshRun = url.searchParams.get('force') === 'true';
+    const pipelineDryRun = url.searchParams.get('dry_run') === 'true';
     const [syncMicrosoftResult, syncGoogleResult] = await Promise.all([
       withSyncTimeout(
         runManualSync('microsoft', userId),
@@ -87,11 +89,12 @@ export async function POST(request: Request) {
     // was adding 15-30s overhead and causing 504s. Nightly-ops handles it at 4am.
     const { result: dailyBrief, sendFallbackAttempted } = await runBriefLifecycle({
       userIds: [userId],
-      ensureSend: true,
+      ensureSend: !pipelineDryRun,
       skipStaleGate: true,
       skipSpendCap: true,
       skipManualCallLimit: true,
       ...(forceFreshRun ? { forceFreshRun: true } : {}),
+      ...(pipelineDryRun ? { pipelineDryRun: true } : {}),
     });
 
     const ok = dailyBrief.ok && syncMicrosoftResult.ok && syncGoogleResult.ok;
