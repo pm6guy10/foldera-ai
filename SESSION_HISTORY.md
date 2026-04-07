@@ -14,7 +14,7 @@
 
 - 2026-04-06 — AUDIT: **FOLDERA_DRY_RUN local fixture (zero Anthropic) + scorer candidate cap 2**
   MODE: AUDIT
-  Commit hash(es): (pending)
+  Commit hash(es): `2a91e53`
   Files changed: `lib/briefing/generator.ts` (`buildDryRunGeneratedPayload`, `FOLDERA_DRY_RUN === 'true'` early exit in `generatePayload`; `envFixture` for caps/budget/research/conviction), `lib/briefing/researcher.ts` (skip all researcher LLM when env set), `lib/briefing/scorer.ts` (`topCandidates` slice 5→2, discovery log 3→2), `lib/cron/daily-brief-generate.ts`, `app/api/conviction/generate/route.ts`, `generateBriefing` options, `.env.example`, `CLAUDE.md`, `vitest.config.ts` (`test.env.FOLDERA_DRY_RUN` clears `.env.local` for unit tests), `FOLDERA_PRODUCT_SPEC.md`
   What was verified: `npm run build`; `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/usefulness-gate.test.ts`; `grep slice(0,` on scorer lines 2660 + 5432 show `(0, 2)`.
   Changes: **Env `FOLDERA_DRY_RUN=true`** returns validated synthetic payload before anomaly + main Sonnet/Haiku loop; distinct from test **`options.dryRun`** (api_usage persist / anomaly skip only). Vitest forces empty `FOLDERA_DRY_RUN` so mocks still run. **Scorer** passes at most **2** ranked candidates into generator fallback to cut worst-case LLM retries.
