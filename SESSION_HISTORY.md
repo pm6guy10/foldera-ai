@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — OPS: **Session scoreboard + test ritual in runbooks (`docs/SESSION_SCOREBOARD.md`)**
+  MODE: OPS
+  Commit hash(es): (set after push)
+  Files changed: `docs/SESSION_SCOREBOARD.md`, `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/agent.mdc`, `SESSION_HISTORY.md`
+  What was verified: Doc-only; no build required for correctness of instructions.
+  Changes: Canonical **production scoreboard** table + SQL + `audit:supabase:sync-fix`; **start/end ritual** paired with Before/After test gate; victory = scoreboard target row(s) + no test regressions. Cursor `agent.mdc` alwaysApply rule.
+  Any unresolved issues: Scoreboard SQL uses heuristic `md5(left(directive_text))`—tune with operator if needed.
+
 - 2026-04-07 — AUDIT: **Self-healing mail cursor rewind (`CURSOR_REWOUND`)**
   MODE: AUDIT
   Commit hash(es): `49978e2`

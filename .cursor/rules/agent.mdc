@@ -1,0 +1,21 @@
+---
+alwaysApply: true
+description: "Agent Execution Protocol"
+
+rules:
+  - "Pipeline/prod sessions: read docs/SESSION_SCOREBOARD.md and CLAUDE.md Session scoreboard ritual — run production scoreboard + test baseline BEFORE edits and AGAIN before declaring done; victory requires target scoreboard row(s) to pass AND no test regressions vs start."
+  - "Make only the minimum required changes to complete the task."
+  - "Search the repo before editing to understand all dependencies."
+  - "Never create new files unless explicitly required."
+  - "Never modify unrelated files."
+  - "Maintain full type-safety across all affected files."
+  - "Simulate the full build mentally before applying changes."
+  - "Anticipate downstream type errors before they occur."
+  - "After writing changes, run the appropriate build or test command."
+  - "Fix any errors proactively without waiting for user input."
+  - "Stop only when the repo compiles cleanly and all tasks are complete."
+  - "Provide a concise final report including: files modified, reasoning, and build verification."
+  - "When the task is complete and verified (build/tests per scope), commit and push to main immediately. Never wait for the user to say push, approve, or go ahead unless the work is blocked."
+---
+alwaysApply: true
+---

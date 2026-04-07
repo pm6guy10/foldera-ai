@@ -17,6 +17,17 @@ Every session runs this before any work:
 11. After completing work, update `FOLDERA_PRODUCT_SPEC.md` with new status and evidence for every item touched. If a fix would break or conflict with another spec item, flag it before implementing. Push updated spec as final commit.
 12. After every session, update `WHATS_NEXT.md` with current status before closing.
 
+## Session scoreboard + test ritual (mandatory for pipeline / prod work)
+
+**Purpose:** Code and prompts are not the scoreboard. Production metrics + tests are. Every session otherwise starts from zero with no persistent proof.
+
+1. **Read** `docs/SESSION_SCOREBOARD.md` (template table, SQL, `npm run audit:supabase:sync-fix`).
+2. **Start (before edits):** Fill the scoreboard from **current** production data; run the **same** automated test command(s) you will run at the end (`lint` / `build` / `vitest` / `test:ci:e2e` / `test:prod` per scope—see Before/After Test Gate). Save outputs.
+3. **Work:** Pick **one** red scoreboard row (highest impact) unless the task names a specific row.
+4. **End (before “done”):** Re-run the **scoreboard** and the **same** tests. **Victory** = targeted row(s) meet pass conditions **and** zero new test failures vs the start baseline. Not: commit landed, build passed, or narrative “complete.”
+
+For **non-pipeline**-only doc or typo edits, skip production SQL; still run the test baseline appropriate to the change.
+
 ## Reference documents
 
 - `REVENUE_PROOF.md` — GTM proof sequence, gate status, pretend certainty map, execution gaps. **After every production brain-receipt**, update `REVENUE_PROOF.md` **GATE STATUS** with date and evidence.
@@ -200,6 +211,8 @@ The tests are written BEFORE the edit, not after the breakage. This is not react
 6. If you broke something that no test catches: add the test FIRST, confirm it passes against current production, THEN make your change, THEN verify the new test still passes. The test suite gets stronger with every fix.
 
 This replaces manual impact analysis. The tests ARE the impact trace. If the tests are good enough, regressions are caught automatically. If they're not good enough, the gap becomes visible and we add coverage.
+
+**Together with** `docs/SESSION_SCOREBOARD.md`: for ingest, scoring, generation, or directive-loop work, the **production scoreboard** is the other half of “before/after.” Start and end with **both** the scoreboard **and** the same test suite; declaring victory requires both to move in the right direction.
 
 ## Change Impact Trace (MANDATORY)
 

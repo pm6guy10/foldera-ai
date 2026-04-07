@@ -6,6 +6,7 @@ Always start in Debug mode. Read and audit before writing any code.
 
 - Codex is the autonomous executor for this repo.
 - Read `CLAUDE.md` fully at the start of every session and follow it as the operational source of truth.
+- **Scoreboard + tests = truth:** For any session that touches the pipeline, connectors, or production behavior, follow `docs/SESSION_SCOREBOARD.md` and `CLAUDE.md` **Session scoreboard + test ritual**: **start** with production scoreboard + automated test baseline, **end** with the same scoreboard + same tests. Victory = target scoreboard row(s) green (or agreed threshold) **and** no test regressions—not “build passed” or “I’m done.”
 - Read `LESSONS_LEARNED.md`. Every rule is enforced. No exceptions.
 - Read `FOLDERA_PRODUCT_SPEC.md`. Every fix must map to a spec item. Fixes outside the spec require explicit approval. Update the spec before closing.
 - Read every file you plan to modify, inspect recent history, and trace the relevant data path before making changes.
