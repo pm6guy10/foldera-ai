@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **`runBriefLifecycle` send retry passes `ensureSend: true`**
+  MODE: AUDIT
+  Commit hash(es): verify `git log -1 --oneline` on `main` — subject `fix(brief-service): pass ensureSend on lifecycle send retry`
+  Files changed: `lib/cron/brief-service.ts`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/cron/__tests__/brief-service.test.ts` (4 passed); clean `.next` + `npm run build`
+  Changes: Retry `runDailySend` call now includes explicit `ensureSend: true` so the fallback send matches test contract and downstream send behavior.
+  Any unresolved issues: None.
+
 - 2026-04-07 — AUDIT: **Microsoft To Do Graph ParseUri — `$top` only on list tasks**
   MODE: AUDIT
   Commit hash(es): `eae5c47`
