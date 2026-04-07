@@ -37,6 +37,15 @@ export const INTEGRATIONS_SYNC_STALE_MS = daysMs(3);
 
 /** When newest mail signal in the graph is older than this while a mail connector is connected, surface a settings warning (sync may be ingesting nothing). */
 export const INTEGRATIONS_MAIL_GRAPH_STALE_MS = daysMs(7);
+
+/**
+ * After a successful incremental mail sync that inserted **zero** new mail signals, if
+ * `user_tokens.last_synced_at` is farther ahead than this gap from `max(occurred_at)` for
+ * that provider's mail source (`gmail` / `outlook`), rewind the cursor to the newest signal.
+ * Prevents silent gaps when the incremental window advanced but nothing was persisted.
+ * Tune in prod via `CURSOR_REWOUND` logs (tighten/loosen if false positives or misses).
+ */
+export const MAIL_CURSOR_HEAL_GAP_MS = daysMs(1);
 export const MS_14D = daysMs(14);
 export const MS_30D = daysMs(30);
 export const MS_90D = daysMs(90);

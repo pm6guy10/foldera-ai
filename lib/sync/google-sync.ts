@@ -23,6 +23,7 @@ import {
   type MailIntelMessage,
 } from '@/lib/sync/derive-mail-intelligence';
 import { gmailSearchAfterDateClause } from '@/lib/sync/gmail-query';
+import { healMailCursorAfterIncrementalEmpty } from '@/lib/sync/mail-cursor-heal';
 
 function hash(content: string): string {
   return createHash('sha256').update(content).digest('hex');
@@ -734,6 +735,13 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
   // stalling all sync indefinitely. Dedup via content_hash prevents duplicates.
   if (gmailOk) {
     await updateSyncTimestamp(userId, 'google');
+    await healMailCursorAfterIncrementalEmpty(supabase, userId, {
+      provider: 'google',
+      mailSource: 'gmail',
+      logTag: '[google-sync]',
+      mailSignalsInserted: gmailSignals,
+      isFirstSync,
+    });
     if (errors.length > 0) {
       console.warn(
         `[google-sync] user=${userId} timestamp advanced (gmail OK) despite secondary errors: ${errors.join('; ')}`,

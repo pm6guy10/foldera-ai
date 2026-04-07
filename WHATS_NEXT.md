@@ -1,8 +1,12 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
-## STATUS: SHIP — Gmail incremental `after:` yyyy/mm/dd + hunt `selfEmails` + settings mail-graph stale banner
+## STATUS: SHIPPED — Mail cursor self-heal (`CURSOR_REWOUND`)
 
-**This session:** `lib/sync/gmail-query.ts` fixes empty Gmail incremental `messages.list` (epoch `after:` → UTC date). `runHuntAnomalies` + `buildAvoidanceObservations` skip “you didn’t reply” when From/author is the user’s mailbox (auth + `user_tokens`) or product noise domains. `/api/integrations/status` + Settings amber banner when newest processed mail signal is &gt;7d (`INTEGRATIONS_MAIL_GRAPH_STALE_MS`). **After deploy:** Sync now → process signals → Generate Now; confirm top candidate is a real external thread.
+**This session:** `lib/sync/mail-cursor-heal.ts` rewinds `user_tokens.last_synced_at` to `max(occurred_at)` for `gmail`/`outlook` when incremental mail sync inserted **0** rows but the cursor is **>24h** ahead of the graph (`MAIL_CURSOR_HEAL_GAP_MS`). Wired from `syncGoogle` / `syncMicrosoft`. **Dry proof:** `npx vitest run lib/sync/__tests__/mail-cursor-heal.test.ts`. **After deploy:** watch Vercel nightly-ops / sync logs for `CURSOR_REWOUND`; raise gap constant if healthy low-mail users rewind too often.
+
+## STATUS: SHIPPED — Gmail incremental `after:` yyyy/mm/dd + hunt `selfEmails` + settings mail-graph stale banner
+
+**Prior session:** `lib/sync/gmail-query.ts` fixes empty Gmail incremental `messages.list` (epoch `after:` → UTC date). `runHuntAnomalies` + `buildAvoidanceObservations` skip “you didn’t reply” when From/author is the user’s mailbox (auth + `user_tokens`) or product noise domains. `/api/integrations/status` + Settings amber banner when newest processed mail signal is &gt;7d (`INTEGRATIONS_MAIL_GRAPH_STALE_MS`). **After deploy:** Sync now → process signals → Generate Now; confirm top candidate is a real external thread.
 
 ## STATUS: SHIPPED — Self-inbound behavioral_pattern fix + OAuth expiry in `connector_health` stage
 

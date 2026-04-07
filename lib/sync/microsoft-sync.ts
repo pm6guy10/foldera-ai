@@ -28,6 +28,7 @@ import {
   type CalendarIntelEvent,
   type MailIntelMessage,
 } from '@/lib/sync/derive-mail-intelligence';
+import { healMailCursorAfterIncrementalEmpty } from "@/lib/sync/mail-cursor-heal";
 
 function hash(content: string): string {
   return createHash("sha256").update(content).digest("hex");
@@ -1073,6 +1074,14 @@ export async function syncMicrosoft(
   // stalling all sync indefinitely. Dedup via content_hash prevents duplicates.
   if (mailOk) {
     await updateSyncTimestamp(userId, "microsoft");
+    const supabaseHeal = createServerClient();
+    await healMailCursorAfterIncrementalEmpty(supabaseHeal, userId, {
+      provider: "microsoft",
+      mailSource: "outlook",
+      logTag: "[microsoft-sync]",
+      mailSignalsInserted: mailSignals,
+      isFirstSync,
+    });
     if (errors.length > 0) {
       console.warn(
         `[microsoft-sync] user=${userId} timestamp advanced (mail OK) despite secondary errors: ${errors.join('; ')}`,
