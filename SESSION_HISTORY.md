@@ -6,7 +6,7 @@
 
 - 2026-04-07 — OPS: **Health: “Repeated directive” is warning-only (does not fail exit code)**
   MODE: OPS
-  Commit hash(es): (this commit on `main` — see `git log -1`)
+  Commit hash(es): `98db89d`
   Files changed: `scripts/health.ts`, `SESSION_HISTORY.md`
   What was verified: `npm run health` — `⚠ Repeated directive` when 3+ same-shape copies in 24h; row no longer counted in `RESULT` failures; `✗ Directive repeats` (query errors) still hard-fail; `npm run lint`; `npm run build`.
   Changes: Repeated-directive success path always pushes `ok: true`; informational duplicate case prints `⚠` instead of `✗`.

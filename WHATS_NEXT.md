@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
+## STATUS: SHIPPED — `npm run health`: repeated directive warning-only (no CI fail)
+
+**This session:** `scripts/health.ts` — 24h duplicate-shape count prints `⚠` and does not increment `RESULT` / exit code; Supabase query errors for that block still `✗` and fail. **Commit:** `98db89d`.
+
 ## STATUS: SHIPPED — `EXTRACTION_DAILY_CAP` raised to $0.25/day
 
 **This session:** `lib/utils/api-tracker.ts` — extraction (`extraction` / `signal_extraction`) daily spend cap **0.05 → 0.25** USD so manual `run-brief` is not blocked at ~$0.06 extraction before generation. **Ops:** apply `20260405000001_directive_ml_moat.sql` when ready — `outcome_label` on `tkg_directive_ml_snapshots` (see `AUTOMATION_BACKLOG`).
