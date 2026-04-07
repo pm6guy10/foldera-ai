@@ -137,6 +137,11 @@ async function syncGmail(
     pageToken = list.data.nextPageToken ?? undefined;
   } while (pageToken && messageRefs.length < GMAIL_MAX_MESSAGES);
 
+  const listQ = `after:${afterDate} -in:spam -in:trash`;
+  console.log(
+    `[google-sync] syncGmail collected ${messageRefs.length} message refs (q=${listQ})`,
+  );
+
   if (messageRefs.length === 0) {
     try {
       const probe = await gmail.users.messages.list({
@@ -266,7 +271,16 @@ async function syncGmail(
         processed: false,
       }, { onConflict: 'user_id,content_hash', ignoreDuplicates: true });
 
-      if (!error) inserted++;
+      if (error) {
+        console.warn(
+          `[google-sync] tkg_signals upsert failed user=${userId} source=gmail type=${signalType}:`,
+          error.message,
+          error.code ?? '',
+          error.details ?? '',
+        );
+      } else {
+        inserted++;
+      }
 
       const dateMs = effectiveDate ? effectiveDate.getTime() : Date.now();
       if (Number.isFinite(dateMs)) {
@@ -300,24 +314,6 @@ async function syncGmail(
   } catch (e) {
     console.warn(`[google-sync] response_pattern derivation failed for ${userId}:`, e instanceof Error ? e.message : String(e));
   }
-
-  // #region agent log
-  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bca2fa' },
-    body: JSON.stringify({
-      sessionId: 'bca2fa',
-      hypothesisId: 'H5-persist',
-      location: 'lib/sync/google-sync.ts:syncGmail:exit',
-      message: 'Gmail sync totals',
-      data: {
-        messageRefTotal: messageRefs.length,
-        inserted,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
   return inserted;
 }
@@ -762,31 +758,6 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
     );
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bca2fa' },
-    body: JSON.stringify({
-      sessionId: 'bca2fa',
-      hypothesisId: 'H4-cursor',
-      location: 'lib/sync/google-sync.ts:syncGoogle:exit',
-      message: 'syncGoogle window',
-      data: {
-        isFirstSync,
-        gmailSignals,
-        calendarSignals,
-        driveSignals,
-        sinceMsFinite: Number.isFinite(sinceMs),
-        sinceIso: Number.isFinite(sinceMs) ? new Date(sinceMs).toISOString() : 'invalid',
-        afterClause: Number.isFinite(sinceMs) ? gmailSearchAfterDateClause(sinceMs) : 'invalid',
-        gmailOk,
-        errorsLen: errors.length,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
   return {
     gmail_signals: gmailSignals,
     calendar_signals: calendarSignals,
@@ -825,7 +796,7 @@ export async function repairCompareGmailAfterClauses(
     gmail.users.messages.list({ userId: 'me', q: qCurrent, maxResults: 10 }),
     gmail.users.messages.list({ userId: 'me', q: qPrev, maxResults: 10 }),
   ]);
-  const result = {
+  return {
     qCurrent,
     lenCurrent: a.data.messages?.length ?? 0,
     estCurrent: a.data.resultSizeEstimate,
@@ -833,19 +804,4 @@ export async function repairCompareGmailAfterClauses(
     lenPrev: b.data.messages?.length ?? 0,
     estPrev: b.data.resultSizeEstimate,
   };
-  // #region agent log
-  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bca2fa' },
-    body: JSON.stringify({
-      sessionId: 'bca2fa',
-      hypothesisId: 'repair-AB-gmail',
-      location: 'lib/sync/google-sync.ts:repairCompareGmailAfterClauses',
-      message: 'Gmail after: current vs prev-day first page',
-      data: result,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-  return result;
 }
