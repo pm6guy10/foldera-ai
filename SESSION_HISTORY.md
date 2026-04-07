@@ -4,6 +4,22 @@
 
 ## Session Logs
 
+- 2026-04-07 — OPS: **Health script: `tkg_actions` uses `generated_at`, not `created_at`**
+  MODE: OPS
+  Commit hash(es): (see `git log -1` on `main`)
+  Files changed: `scripts/health.ts`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` — `✓ Last generation`; `RESULT: 1 FAILING` (only `Repeated directive`); no `created_at` column error.
+  Changes: Removed `created_at` from `tkg_actions` selects; fallback query orders by `generated_at`.
+  Any unresolved issues: `Repeated directive` remains a data/product check, not a schema bug.
+
+- 2026-04-07 — AUDIT: **Auto-drain stale `pending_approval` / `draft` at daily-generate start (20h)**
+  MODE: AUDIT
+  Commit hash(es): (see `git log -1` on `main`)
+  Files changed: `lib/cron/daily-brief-generate.ts`, `lib/config/constants.ts`, `scripts/health.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**"`; `npm run lint`; `npm run build`; `PLAYWRIGHT_WEB_PORT=3011 npm run test:ci:e2e`.
+  Changes: `drainStalePendingActionsForUser(supabase, userId)` before reconcile/cooldown; `STALE_PENDING_APPROVAL_MAX_AGE_HOURS`; structured log `auto_drained_stale_actions`; health gate uses `.lt('generated_at', …)` for stale pendings only.
+  Any unresolved issues: `Repeated directive` / `created_at` health rows unchanged this session.
+
 - 2026-04-07 — AUDIT: **Scorer failure suppression: user-skipped selected directives (48h keys)**
   MODE: AUDIT
   Commit hash(es): `c2ab04e`

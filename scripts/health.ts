@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { config } from 'dotenv';
 import { createHash } from 'crypto';
 import { resolve } from 'path';
+import { STALE_PENDING_APPROVAL_MAX_AGE_HOURS } from '../lib/config/constants';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 
@@ -148,22 +149,26 @@ async function main() {
     });
   }
 
-  // Zero pending_approval
+  // No pending_approval older than STALE_PENDING_APPROVAL_MAX_AGE_HOURS (cron auto-drains on daily-generate)
   try {
-    const { count, error } = await supabase
+    const staleCutoff = new Date(
+      now - STALE_PENDING_APPROVAL_MAX_AGE_HOURS * 60 * 60 * 1000,
+    ).toISOString();
+    const { count: staleCount, error } = await supabase
       .from('tkg_actions')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .eq('status', 'pending_approval');
+      .eq('status', 'pending_approval')
+      .lt('generated_at', staleCutoff);
 
     if (error) throw new Error(error.message);
-    const n = count ?? 0;
+    const n = staleCount ?? 0;
     const ok = n === 0;
     checks.push({
       ok,
       line: ok
-        ? '✓ No pending_approval'
-        : `✗ Stale pending_approval  ${n} row${n === 1 ? '' : 's'} — run drain SQL / reconcile`,
+        ? `✓ No stale pending_approval (>${STALE_PENDING_APPROVAL_MAX_AGE_HOURS}h)`
+        : `✗ Stale pending_approval  ${n} row${n === 1 ? '' : 's'} older than ${STALE_PENDING_APPROVAL_MAX_AGE_HOURS}h — check daily-generate / cron`,
     });
   } catch (e) {
     checks.push({
@@ -238,7 +243,7 @@ async function main() {
   try {
     const { data: byGen, error: e1 } = await supabase
       .from('tkg_actions')
-      .select('action_type, directive_text, generated_at, created_at')
+      .select('action_type, directive_text, generated_at')
       .eq('user_id', userId)
       .not('generated_at', 'is', null)
       .order('generated_at', { ascending: false, nullsFirst: false })
@@ -248,14 +253,14 @@ async function main() {
 
     let latest = byGen?.[0] ?? null;
     if (!latest) {
-      const { data: byCreated, error: e2 } = await supabase
+      const { data: byGenerated, error: e2 } = await supabase
         .from('tkg_actions')
-        .select('action_type, directive_text, generated_at, created_at')
+        .select('action_type, directive_text, generated_at')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false })
+        .order('generated_at', { ascending: false })
         .limit(1);
       if (e2) throw new Error(e2.message);
-      latest = byCreated?.[0] ?? null;
+      latest = byGenerated?.[0] ?? null;
     }
 
     if (!latest) {
