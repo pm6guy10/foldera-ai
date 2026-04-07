@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
+## STATUS: SHIP — Gmail incremental `after:` yyyy/mm/dd + hunt `selfEmails` + settings mail-graph stale banner
+
+**This session:** `lib/sync/gmail-query.ts` fixes empty Gmail incremental `messages.list` (epoch `after:` → UTC date). `runHuntAnomalies` + `buildAvoidanceObservations` skip “you didn’t reply” when From/author is the user’s mailbox (auth + `user_tokens`) or product noise domains. `/api/integrations/status` + Settings amber banner when newest processed mail signal is &gt;7d (`INTEGRATIONS_MAIL_GRAPH_STALE_MS`). **After deploy:** Sync now → process signals → Generate Now; confirm top candidate is a real external thread.
+
 ## STATUS: SHIPPED — Self-inbound behavioral_pattern fix + OAuth expiry in `connector_health` stage
 
 **Latest ship:** Inbound avoidance counts use **`entityMatchesInboundSender`** (From/author only when present) so the user's name on **To:** does not fake "received from" that contact; legacy snippets without From still use `contentHitsEntity`.

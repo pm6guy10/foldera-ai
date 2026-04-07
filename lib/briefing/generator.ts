@@ -766,10 +766,24 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
  * These are passed as facts to the prompt so the model doesn't have to infer
  * avoidance from 3 signal snippets alone.
  */
+function authorEmailLooksLikeSelfOrProductNoise(author: string, userMailboxEmails: Set<string>): boolean {
+  const lower = author.toLowerCase();
+  const found = lower.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/g) ?? [];
+  for (const e of found) {
+    if (userMailboxEmails.has(e)) return true;
+    const domain = e.split('@')[1] ?? '';
+    if (domain === 'foldera.ai' || domain.endsWith('.foldera.ai')) return true;
+    if (domain === 'resend.dev' || domain.endsWith('.resend.dev')) return true;
+    if (domain === 'resend.com') return true;
+  }
+  return false;
+}
+
 async function buildAvoidanceObservations(
   userId: string,
   winner: ScoredLoop,
   signalEvidence: SignalSnippet[],
+  userMailboxEmails: Set<string>,
 ): Promise<AvoidanceObservation[]> {
   const supabase = createServerClient();
   const observations: AvoidanceObservation[] = [];
@@ -803,6 +817,9 @@ async function buildAvoidanceObservations(
   // Check signal evidence authors against replied-to set
   for (const sig of signalEvidence) {
     if (!sig.author || sig.source === 'email_sent' || !sig.subject) continue;
+    if (userMailboxEmails.size > 0 && authorEmailLooksLikeSelfOrProductNoise(sig.author, userMailboxEmails)) {
+      continue;
+    }
     const authorLower = sig.author.toLowerCase();
     const replied = [...repliedToTokens].some(
       (r) => authorLower.includes(r) || r.includes(authorLower.split('@')[0] ?? ''),
@@ -3445,6 +3462,17 @@ export async function fetchUserEmailAddresses(userId: string): Promise<Set<strin
       if (typeof idData['email'] === 'string' && idData['email']) {
         emails.add((idData['email'] as string).toLowerCase());
       }
+    }
+
+    const { data: connectorEmailRows } = await supabase
+      .from('user_tokens')
+      .select('email')
+      .eq('user_id', userId)
+      .in('provider', ['google', 'microsoft'])
+      .is('disconnected_at', null);
+    for (const row of connectorEmailRows ?? []) {
+      const em = row.email as string | null | undefined;
+      if (typeof em === 'string' && em.trim()) emails.add(em.trim().toLowerCase());
     }
   } catch {
     // Non-blocking; if lookup fails we apply no self-filter.
@@ -6995,7 +7023,7 @@ export async function generateDirective(
       // --- Per-candidate: avoidance observations ---
       let avoidanceObservations: Awaited<ReturnType<typeof buildAvoidanceObservations>> = [];
       try {
-        avoidanceObservations = await buildAvoidanceObservations(userId, hydratedWinner, signalEvidence);
+        avoidanceObservations = await buildAvoidanceObservations(userId, hydratedWinner, signalEvidence, userEmails);
       } catch { /* non-blocking */ }
 
       // --- Per-candidate: conviction engine (only for first viable candidate) ---

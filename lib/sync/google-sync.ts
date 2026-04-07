@@ -22,6 +22,7 @@ import {
   type CalendarIntelEvent,
   type MailIntelMessage,
 } from '@/lib/sync/derive-mail-intelligence';
+import { gmailSearchAfterDateClause } from '@/lib/sync/gmail-query';
 
 function hash(content: string): string {
   return createHash('sha256').update(content).digest('hex');
@@ -106,14 +107,17 @@ async function syncGmail(
   sinceMs: number,
 ): Promise<number> {
   const gmail = google.gmail({ version: 'v1', auth: oauth2 });
-  const afterSec = Math.floor(sinceMs / 1000);
+  const afterDate = gmailSearchAfterDateClause(sinceMs);
+  console.log(
+    `[google-sync] Gmail incremental window after:${afterDate} (UTC) sinceMs=${sinceMs} iso=${new Date(sinceMs).toISOString()}`,
+  );
 
   const messageRefs: Array<{ id?: string | null; threadId?: string | null }> = [];
   let pageToken: string | undefined;
   do {
     const list = await gmail.users.messages.list({
       userId: 'me',
-      q: `after:${afterSec} -in:spam -in:trash -category:promotions`,
+      q: `after:${afterDate} -in:spam -in:trash -category:promotions`,
       maxResults: GMAIL_PAGE_SIZE,
       pageToken,
     });

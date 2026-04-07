@@ -48,6 +48,31 @@ describe('runHuntAnomalies', () => {
     expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
   });
 
+  it('does not treat inbound From user mailbox as unanswered external mail', () => {
+    const recvIso = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived('self1', recvIso, 'Me <owner@mydomain.com>', 'Outbound to vendor'),
+    ];
+    const selfEmails = new Set(['owner@mydomain.com']);
+    const { findings, countsByKind } = runHuntAnomalies({ signals, commitments: [], selfEmails });
+    expect(countsByKind.unreplied_inbound).toBe(0);
+    expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
+  });
+
+  it('does not flag repeated ignored sender when From is user mailbox', () => {
+    const base = Date.now() - 5 * 24 * 60 * 60 * 1000;
+    const iso = (d: number) => new Date(base - d * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived('r1', iso(0), 'Owner <owner@mydomain.com>', 'Thread A'),
+      mailReceived('r2', iso(10), 'Owner <owner@mydomain.com>', 'Thread B'),
+      mailReceived('r3', iso(20), 'Owner <owner@mydomain.com>', 'Thread C'),
+    ];
+    const selfEmails = new Set(['owner@mydomain.com']);
+    const { countsByKind, findings } = runHuntAnomalies({ signals, commitments: [], selfEmails });
+    expect(countsByKind.repeated_ignored_sender).toBe(0);
+    expect(findings.some((f) => f.kind === 'repeated_ignored_sender')).toBe(false);
+  });
+
   it('huntFindingToScoredLoopContent includes kind and title', () => {
     const f = {
       kind: 'repeated_ignored_sender' as const,

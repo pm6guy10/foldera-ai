@@ -5275,6 +5275,7 @@ export async function scoreOpenLoops(
     const huntResult = runHuntAnomalies({
       signals,
       commitments,
+      selfEmails,
     });
 
     let skippedLocked = 0;

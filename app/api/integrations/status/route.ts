@@ -10,7 +10,7 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { createServerClient } from '@/lib/db/client';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
-import { INTEGRATIONS_SYNC_STALE_MS } from '@/lib/config/constants';
+import { INTEGRATIONS_MAIL_GRAPH_STALE_MS, INTEGRATIONS_SYNC_STALE_MS } from '@/lib/config/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,8 +80,38 @@ export async function GET() {
       sourceCounts[src] = (sourceCounts[src] ?? 0) + 1;
     }
 
+    const { data: newestMailRow } = await supabase
+      .from('tkg_signals')
+      .select('occurred_at')
+      .eq('user_id', session.user.id)
+      .eq('processed', true)
+      .in('source', ['gmail', 'outlook'])
+      .in('type', ['email_received', 'email_sent'])
+      .order('occurred_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const hasMailConnector = (data ?? []).some(
+      (row: { provider?: string; access_token?: unknown; refresh_token?: unknown }) =>
+        (row.provider === 'google' || row.provider === 'microsoft') &&
+        typeof row.access_token === 'string' &&
+        row.access_token.length > 0 &&
+        typeof row.refresh_token === 'string' &&
+        row.refresh_token.length > 0,
+    );
+    const newestMailIso = (newestMailRow?.occurred_at as string | undefined) ?? null;
+    const newestMailMs = newestMailIso ? new Date(newestMailIso).getTime() : 0;
+    const mailIngestLooksStale =
+      hasMailConnector &&
+      (newestMailMs === 0 || nowMs - newestMailMs > INTEGRATIONS_MAIL_GRAPH_STALE_MS);
+
     return NextResponse.json(
-      { integrations, sourceCounts },
+      {
+        integrations,
+        sourceCounts,
+        newest_mail_signal_at: newestMailIso,
+        mail_ingest_looks_stale: mailIngestLooksStale,
+      },
       {
         headers: {
           'Cache-Control': 'private, no-store, must-revalidate',

@@ -80,6 +80,30 @@ function parseEmailsFromHeaderLine(line: string | undefined): string[] {
   return out;
 }
 
+/** Product / test inboxes — never treat as a human peer for unreplied / ignored / latency hunt patterns. */
+function isProductNoisePeerEmail(email: string): boolean {
+  const domain = (email.split('@')[1] ?? '').toLowerCase();
+  if (!domain) return false;
+  if (domain === 'foldera.ai' || domain.endsWith('.foldera.ai')) return true;
+  if (domain === 'resend.dev' || domain.endsWith('.resend.dev')) return true;
+  if (domain === 'resend.com') return true;
+  return false;
+}
+
+function peerIsSelfOrProductNoise(peer: string | undefined, selfEmails: Set<string> | undefined): boolean {
+  if (!peer) return true;
+  if (selfEmails && selfEmails.size > 0 && selfEmails.has(peer)) return true;
+  if (isProductNoisePeerEmail(peer)) return true;
+  return false;
+}
+
+/** Inbound row whose From resolves to the user's mailbox — not "someone waiting on your reply". */
+function inboundFromSelf(fromEmails: string[], selfEmails: Set<string> | undefined): boolean {
+  if (!fromEmails.length) return false;
+  if (selfEmails && selfEmails.size > 0 && fromEmails.some((e) => selfEmails.has(e))) return true;
+  return false;
+}
+
 function displayNameFromFromLine(fromLine: string | undefined): string | undefined {
   if (!fromLine) return undefined;
   const trimmed = fromLine.replace(/^from:\s*/i, '').trim();
@@ -218,7 +242,10 @@ function emptyCounts(): Record<HuntFindingKind, number> {
 export function runHuntAnomalies(args: {
   signals: HuntSignalInput[];
   commitments: HuntCommitmentInput[];
+  /** Auth + connected Google/Microsoft mailbox addresses — inbound From these must not count as unreplied/ignored/latency. */
+  selfEmails?: Set<string>;
 }): { findings: HuntFinding[]; countsByKind: Record<HuntFindingKind, number> } {
+  const selfEmails = args.selfEmails;
   const counts = emptyCounts();
   const rawFindings: HuntFinding[] = [];
 
@@ -245,7 +272,7 @@ export function runHuntAnomalies(args: {
   for (const r of received) {
     if (now - r.occurredMs < ms72h) continue;
     const peer = r.fromEmails[0];
-    if (!peer || peer.endsWith('@foldera.ai')) continue;
+    if (peerIsSelfOrProductNoise(peer, selfEmails) || inboundFromSelf(r.fromEmails, selfEmails)) continue;
 
     let replied = false;
     for (const se of sent) {
@@ -291,6 +318,7 @@ export function runHuntAnomalies(args: {
   // --- 2. Unresolved financial (30d) ---
   const finDomainBuckets = new Map<string, { ids: string[]; lines: string[]; subjects: string[] }>();
   for (const r of received) {
+    if (inboundFromSelf(r.fromEmails, selfEmails)) continue;
     if (now - r.occurredMs > window30) continue;
     const text = r.preview.toLowerCase();
     const finHit = FIN_INBOUND.some((re) => re.test(text)) || DOLLAR_RE.test(r.preview);
@@ -397,7 +425,7 @@ export function runHuntAnomalies(args: {
       m.direction === 'received'
         ? m.fromEmails[0]
         : m.toEmails[0];
-    if (!key) continue;
+    if (!key || peerIsSelfOrProductNoise(key, selfEmails)) continue;
     if (!byPeer.has(key)) byPeer.set(key, []);
     byPeer.get(key)!.push(m);
   }
@@ -455,7 +483,7 @@ export function runHuntAnomalies(args: {
   const inboundBySender = new Map<string, ParsedMail[]>();
   for (const r of received) {
     const k = r.fromEmails[0];
-    if (!k) continue;
+    if (!k || peerIsSelfOrProductNoise(k, selfEmails) || inboundFromSelf(r.fromEmails, selfEmails)) continue;
     if (!inboundBySender.has(k)) inboundBySender.set(k, []);
     inboundBySender.get(k)!.push(r);
   }

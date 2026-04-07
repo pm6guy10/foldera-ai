@@ -61,6 +61,9 @@ export default function SettingsClient() {
   const [focusSaveError, setFocusSaveError] = useState<string | null>(null);
   const [agentsEnabled, setAgentsEnabled] = useState<boolean | null>(null);
   const [agentsSaving, setAgentsSaving] = useState(false);
+  /** True when connected mail graph has no recent processed mail signals (ingest may be empty despite cron). */
+  const [mailIngestLooksStale, setMailIngestLooksStale] = useState(false);
+  const [newestMailSignalAt, setNewestMailSignalAt] = useState<string | null>(null);
 
   const isOwnerAccount = session?.user?.id === OWNER_USER_ID;
 
@@ -77,6 +80,12 @@ export default function SettingsClient() {
     const data = await response.json();
     if (gen !== integrationsFetchGenRef.current) return;
     setIntegrations(data.integrations || []);
+    if (typeof data.mail_ingest_looks_stale === 'boolean') {
+      setMailIngestLooksStale(data.mail_ingest_looks_stale);
+    }
+    setNewestMailSignalAt(
+      typeof data.newest_mail_signal_at === 'string' ? data.newest_mail_signal_at : null,
+    );
   }, []);
 
   // On mount: check for connecting_provider localStorage flag (set before OAuth redirect)
@@ -101,6 +110,12 @@ export default function SettingsClient() {
         const d = await intRes.json();
         if (intGen === integrationsFetchGenRef.current) {
           setIntegrations(d.integrations || []);
+          if (typeof d.mail_ingest_looks_stale === 'boolean') {
+            setMailIngestLooksStale(d.mail_ingest_looks_stale);
+          }
+          setNewestMailSignalAt(
+            typeof d.newest_mail_signal_at === 'string' ? d.newest_mail_signal_at : null,
+          );
         }
       }
       if (subRes.ok) {
@@ -339,6 +354,18 @@ export default function SettingsClient() {
 
         {actionError && (
           <p ref={errorRef} className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">{actionError}</p>
+        )}
+
+        {mailIngestLooksStale && (
+          <div className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 backdrop-blur-sm">
+            <p className="text-sm text-amber-200/90 leading-relaxed">
+              Latest mail in your graph is from{' '}
+              {newestMailSignalAt
+                ? new Date(newestMailSignalAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
+                : 'no ingested messages yet'}
+              . If you have exchanged mail since then, use Sync now below or reconnect — new messages may not be reaching Foldera.
+            </p>
+          </div>
         )}
 
         {/* ── Connected accounts ── */}

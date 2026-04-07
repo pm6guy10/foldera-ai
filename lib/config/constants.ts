@@ -34,6 +34,9 @@ export const daysMs = (n: number): number => n * 24 * 60 * 60 * 1000;
 export const MS_7D  = daysMs(7);
 /** Settings / integrations: warn when mail sync timestamp has not advanced (stuck connector). */
 export const INTEGRATIONS_SYNC_STALE_MS = daysMs(3);
+
+/** When newest mail signal in the graph is older than this while a mail connector is connected, surface a settings warning (sync may be ingesting nothing). */
+export const INTEGRATIONS_MAIL_GRAPH_STALE_MS = daysMs(7);
 export const MS_14D = daysMs(14);
 export const MS_30D = daysMs(30);
 export const MS_90D = daysMs(90);
