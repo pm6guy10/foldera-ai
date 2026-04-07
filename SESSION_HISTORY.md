@@ -6,7 +6,7 @@
 
 - 2026-04-07 — AUDIT: **Scorer failure suppression: user-skipped selected directives (48h keys)**
   MODE: AUDIT
-  Commit hash(es): (see `git log -1` on `main`)
+  Commit hash(es): `c2ab04e`
   Files changed: `lib/briefing/scorer-failure-suppression.ts`, `lib/briefing/__tests__/scorer-failure-suppression.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/briefing/__tests__/scorer-failure-suppression.test.ts`; `npm run lint`; `npm run build`.
   Changes: `collectActiveFailureSuppressionKeys` includes `skipped` rows with `generation_log.outcome === 'selected'` when not already covered by failure/loop-guard logic; TTL **`USER_SKIP_SUPPRESSION_WINDOW_MS` (48h)** from `generated_at`. Query still `.eq('user_id', userId)`.
