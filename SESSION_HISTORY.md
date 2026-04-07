@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-06 — AUDIT: **Generator hotfix — persistence crash on missing evidence, email content mirror, no-send directive copy**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `lib/briefing/generator.ts`, `lib/cron/daily-brief-generate.ts`, `lib/briefing/__tests__/generator.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/generator.test.ts`; `npm run build` passed.
+  Changes: `persistedDirectiveLooksLikePaymentDeadline` + persistence financial-tone block use `Array.isArray(evidence)` and `artifactPrimaryBodyOrContent` (no throw on undefined `evidence`); try/catch on tone gates + `pickHighestStakesPaymentSignal`; `normalizeEmailArtifactContentField` + `buildDirectiveExecutionResult` / daily-brief `pending_approval` insert mirror `body` → `content`; `buildWaitRationale` maps `__GENERATION_FAILED__` to human `reason` for `directive_text`.
+  Any unresolved issues: Re-check prod after deploy; listicle structure still separate from this hotfix.
+
 - 2026-04-06 — AUDIT: **Generator — payment structural single-focus, moralizing validation, remove prod debug fetch**
   MODE: AUDIT
   Commit hash(es): `53819a7`

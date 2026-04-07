@@ -1870,7 +1870,11 @@ function buildStructuredContext(
     direction: s.direction,
   }));
   if (shouldApplyFinancialSingleFocus(winner)) {
-    supporting_signals = pickHighestStakesPaymentSignal(supporting_signals);
+    try {
+      supporting_signals = pickHighestStakesPaymentSignal(supporting_signals);
+    } catch (e) {
+      console.warn('[generator] pickHighestStakesPaymentSignal failed (keeping unfiltered signals):', e);
+    }
   }
 
   // Extract surgical raw facts: emails, dates, names, subjects
@@ -5074,18 +5078,38 @@ export function getFinancialPaymentToneValidationIssues(
   ) {
     return [];
   }
-  const cd = payload.causal_diagnosis;
-  const cdText = cd ? `${cd.why_exists_now}\n${cd.mechanism}` : '';
-  const art = payload.artifact ?? {};
-  const combined = [
-    payload.directive ?? '',
-    payload.insight ?? '',
-    payload.why_now ?? '',
-    cdText,
-    String(art.content ?? ''),
-    String(art.title ?? ''),
-  ].join('\n');
-  return financialPaymentToneIssuesFromText(combined, String(art.content ?? ''));
+  try {
+    const cd = payload.causal_diagnosis;
+    const cdText = cd && typeof cd === 'object'
+      ? `${String((cd as CausalDiagnosis).why_exists_now ?? '')}\n${String((cd as CausalDiagnosis).mechanism ?? '')}`
+      : '';
+    const art = payload.artifact ?? {};
+    const primaryDoc =
+      typeof art.content === 'string' && art.content.trim()
+        ? art.content
+        : typeof art.body === 'string'
+          ? art.body
+          : '';
+    const combined = [
+      payload.directive ?? '',
+      payload.insight ?? '',
+      payload.why_now ?? '',
+      cdText,
+      primaryDoc,
+      String(art.title ?? ''),
+      String(art.subject ?? ''),
+    ].join('\n');
+    return financialPaymentToneIssuesFromText(combined, primaryDoc);
+  } catch (err) {
+    console.warn('[generator] getFinancialPaymentToneValidationIssues failed (ignored):', err);
+    return [];
+  }
+}
+
+function artifactPrimaryBodyOrContent(art: Record<string, unknown>): string {
+  if (typeof art.content === 'string' && art.content.trim()) return art.content;
+  if (typeof art.body === 'string' && art.body.trim()) return art.body;
+  return '';
 }
 
 function persistedDirectiveLooksLikePaymentDeadline(input: {
@@ -5093,15 +5117,21 @@ function persistedDirectiveLooksLikePaymentDeadline(input: {
   matchedGoalCategory?: string | null;
   artifact: unknown;
 }): boolean {
-  if (input.matchedGoalCategory === 'financial') return true;
-  const art = input.artifact as Record<string, unknown>;
-  const ac = typeof art.content === 'string' ? art.content : '';
-  const b =
-    `${input.directive.directive}\n${input.directive.reason}\n${input.directive.evidence.map((e) => e.description ?? '').join('\n')}\n${ac}`.toLowerCase();
-  return (
-    /\$\s*[\d,]+(?:\.\d{2})?/.test(b) &&
-    /\b(minimum|due|statement|balance|payment\s+due)\b/.test(b)
-  );
+  try {
+    if (input.matchedGoalCategory === 'financial') return true;
+    const art = input.artifact as Record<string, unknown>;
+    const ac = artifactPrimaryBodyOrContent(art);
+    const ev = Array.isArray(input.directive.evidence) ? input.directive.evidence : [];
+    const b =
+      `${String(input.directive.directive ?? '')}\n${String(input.directive.reason ?? '')}\n${ev.map((e) => e.description ?? '').join('\n')}\n${ac}`.toLowerCase();
+    return (
+      /\$\s*[\d,]+(?:\.\d{2})?/.test(b) &&
+      /\b(minimum|due|statement|balance|payment\s+due)\b/.test(b)
+    );
+  } catch (err) {
+    console.warn('[generator] persistedDirectiveLooksLikePaymentDeadline failed (ignored):', err);
+    return false;
+  }
 }
 
 function validateGeneratedArtifact(
@@ -5131,15 +5161,19 @@ function validateGeneratedArtifact(
   validateStringField(payload.insight, 'insight', issues);
   validateStringField(payload.why_now, 'why_now', issues);
 
-  issues.push(
-    ...getFinancialPaymentToneValidationIssues(ctx, {
-      directive: payload.directive,
-      insight: payload.insight,
-      why_now: payload.why_now,
-      causal_diagnosis: payload.causal_diagnosis,
-      artifact: payload.artifact,
-    }),
-  );
+  try {
+    issues.push(
+      ...getFinancialPaymentToneValidationIssues(ctx, {
+        directive: payload.directive,
+        insight: payload.insight,
+        why_now: payload.why_now,
+        causal_diagnosis: payload.causal_diagnosis,
+        artifact: payload.artifact,
+      }),
+    );
+  } catch (err) {
+    console.warn('[generator] validateGeneratedArtifact tone gate failed (ignored):', err);
+  }
 
   if (directive && countSentences(directive) !== 1) {
     issues.push('directive must be exactly one sentence');
@@ -5446,17 +5480,22 @@ export function validateDirectiveForPersistence(input: {
       artifact: input.artifact,
     })
   ) {
-    const art = input.artifact as Record<string, unknown>;
-    const combined = [
-      input.directive.directive,
-      input.directive.reason,
-      ...input.directive.evidence.map((e) => e.description ?? ''),
-      String(art.content ?? ''),
-      String(art.title ?? ''),
-    ].join('\n');
-    issues.push(
-      ...financialPaymentToneIssuesFromText(combined, String(art.content ?? '')),
-    );
+    try {
+      const art = input.artifact as Record<string, unknown>;
+      const primary = artifactPrimaryBodyOrContent(art);
+      const ev = Array.isArray(input.directive.evidence) ? input.directive.evidence : [];
+      const combined = [
+        input.directive.directive,
+        input.directive.reason,
+        ...ev.map((e) => e.description ?? ''),
+        primary,
+        String(art.title ?? ''),
+        String(art.subject ?? ''),
+      ].join('\n');
+      issues.push(...financialPaymentToneIssuesFromText(combined, primary));
+    } catch (err) {
+      console.warn('[generator] validateDirectiveForPersistence financial tone gate failed (ignored):', err);
+    }
   }
 
   return [...new Set(issues)];
@@ -6225,14 +6264,39 @@ Issues:
 // Exported: buildDirectiveExecutionResult
 // ---------------------------------------------------------------------------
 
+/**
+ * Email artifacts use `body`; documents use `content`. Mirror `body` → `content` when absent
+ * so analytics/SQL like execution_result->'artifact'->>'content' works for send_message rows.
+ */
+export function normalizeEmailArtifactContentField(
+  artifact: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | undefined {
+  if (!artifact || typeof artifact !== 'object') return undefined;
+  const out = { ...artifact } as Record<string, unknown>;
+  const body = out.body;
+  const content = out.content;
+  if (
+    typeof body === 'string' &&
+    body.trim().length > 0 &&
+    (content === undefined || content === null || String(content).trim() === '')
+  ) {
+    out.content = body;
+  }
+  return out;
+}
+
 export function buildDirectiveExecutionResult(input: {
   directive: ConvictionDirective;
   briefOrigin: string;
   artifact?: ConvictionArtifact | Record<string, unknown> | null;
   extras?: Record<string, unknown>;
 }): Record<string, unknown> {
+  const normalizedArtifact = input.artifact
+    ? normalizeEmailArtifactContentField(input.artifact as Record<string, unknown>) ??
+      (input.artifact as Record<string, unknown>)
+    : undefined;
   return {
-    ...(input.artifact ? { artifact: input.artifact } : {}),
+    ...(normalizedArtifact ? { artifact: normalizedArtifact } : {}),
     brief_origin: input.briefOrigin,
     ...(input.directive.generationLog ? { generation_log: input.directive.generationLog } : {}),
     ...(typeof input.directive.anomaly_identification === 'string' &&

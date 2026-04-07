@@ -10,6 +10,7 @@ import {
   extractJsonFromResponse,
   getDecisionEnforcementIssues,
   getFinancialPaymentToneValidationIssues,
+  normalizeEmailArtifactContentField,
   parseGeneratedPayload,
   pickHighestStakesPaymentSignal,
   validateDirectiveForPersistence,
@@ -422,6 +423,37 @@ describe('pickHighestStakesPaymentSignal', () => {
     const out = pickHighestStakesPaymentSignal(signals);
     expect(out).toHaveLength(1);
     expect(out[0]!.summary).toMatch(/American Express/i);
+  });
+});
+
+describe('normalizeEmailArtifactContentField', () => {
+  it('mirrors body to content when content is empty', () => {
+    const out = normalizeEmailArtifactContentField({
+      type: 'email',
+      to: 'a@b.com',
+      subject: 'Hi',
+      body: 'Email body text',
+    });
+    expect(out?.content).toBe('Email body text');
+    expect(out?.body).toBe('Email body text');
+  });
+});
+
+describe('validateDirectiveForPersistence — evidence array safety', () => {
+  it('does not throw when evidence is undefined (payment-heuristic path)', () => {
+    const directive = buildDirective({
+      directive: 'Utility bill minimum $40 is due Friday.',
+      reason: 'Avoid late fee.',
+      evidence: undefined as unknown as ConvictionDirective['evidence'],
+    });
+    expect(() =>
+      validateDirectiveForPersistence({
+        userId: OWNER_USER_ID,
+        directive,
+        artifact: { type: 'document', title: 'Pay', content: '$40 minimum due 2026-04-10' },
+        matchedGoalCategory: null,
+      }),
+    ).not.toThrow();
   });
 });
 

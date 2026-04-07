@@ -11,6 +11,7 @@ import {
   fetchUserEmailAddresses,
   generateDirective,
   getDecisionEnforcementIssues,
+  normalizeEmailArtifactContentField,
   validateDirectiveForPersistence,
 } from '@/lib/briefing/generator';
 import { generateArtifact, getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
@@ -1090,13 +1091,19 @@ function buildWaitRationale(
     : contextParts.join('\n');
   // Prefer the real lead sentence for `directive_text` so no-send rows match the attempted winner.
   const directiveText =
-    oneLiner.length > 0 && oneLiner.length <= 500 && !/^INSIGHT:/i.test(oneLiner)
-      ? oneLiner
-      : modelInsight
-        ? modelInsight
-        : candidateCount > 0
-        ? `Nothing cleared the bar today — ${candidateCount} candidates evaluated, none ready to send.`
-        : 'Nothing cleared the bar today.';
+    oneLiner === '__GENERATION_FAILED__'
+      ? (reason.trim().slice(0, 500) ||
+          (modelInsight ? modelInsight.slice(0, 500) : '') ||
+          (candidateCount > 0
+            ? `Nothing cleared the bar today — ${candidateCount} candidates evaluated, none ready to send.`
+            : 'Nothing cleared the bar today.'))
+      : oneLiner.length > 0 && oneLiner.length <= 500 && !/^INSIGHT:/i.test(oneLiner)
+        ? oneLiner
+        : modelInsight
+          ? modelInsight
+          : candidateCount > 0
+            ? `Nothing cleared the bar today — ${candidateCount} candidates evaluated, none ready to send.`
+            : 'Nothing cleared the bar today.';
 
   return {
     directiveText,
@@ -2094,6 +2101,11 @@ export async function runDailyGenerate(
       // this winner exist and why was it allowed to persist?"
       const outcomeReceipt = buildOutcomeReceipt(directive, artifact, bottomGate);
 
+      const artifactForRow = artifact
+        ? normalizeEmailArtifactContentField(artifact as unknown as Record<string, unknown>) ??
+          (artifact as unknown as Record<string, unknown>)
+        : null;
+
       const { data: saved, error: saveErr } = await supabase
         .from('tkg_actions')
         .insert({
@@ -2106,11 +2118,11 @@ export async function runDailyGenerate(
           evidence: directive.evidence,
           generated_at: new Date().toISOString(),
           generation_attempts: 1,
-          artifact: artifact ?? null,
+          artifact: artifactForRow,
           execution_result: {
             ...buildDirectiveExecutionResult({
               directive,
-              artifact,
+              artifact: artifactForRow ?? artifact,
               briefOrigin: 'daily_cron',
               extras: { inspection: inspectionMeta },
             }),
