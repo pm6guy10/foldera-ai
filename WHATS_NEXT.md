@@ -1,8 +1,8 @@
 # WHAT'S NEXT — Updated 2026-04-06
 
-## STATUS: SHIPPED — Generator payment single-focus + moralizing gate (verify Generate Now on deploy)
+## STATUS: SHIPPED — Generator hotfix `2483b2a` / `a390927` (evidence guard, email `content` mirror)
 
-**Latest ship:** `lib/briefing/generator.ts` — structural narrowing for payment winners, `financial_payment_tone` validation, debug ingest fetch removed. After Vercel **Ready**, operator: Generate Now → query latest `pending_approval` for single-obligation neutral copy (no `NEXT_ACTION:` / `Owner: you` / avoidance framing).
+**Latest ship:** Persistence validation no longer throws when `directive.evidence` is missing; email artifacts get `content` = `body` on persist; no-send rows use `reason` instead of literal `__GENERATION_FAILED__` in `directive_text`. After Vercel **Ready**, spot-check `pending_approval` email rows: `execution_result->'artifact'->>'content'` non-null.
 
 ## PRIOR — Hunt layer + two-pass gen + currency/thin gates (verify deploy)
 
