@@ -30,6 +30,18 @@ async function main() {
   const stamp = new Date().toISOString();
   console.log('[repair] start', stamp, 'user', OWNER, 'rewind', REWIND_ISO);
 
+  const rewindMs = new Date(REWIND_ISO).getTime();
+  if (Number.isFinite(rewindMs)) {
+    console.log('[repair] STEP 0 — Gmail A/B: same q as sync vs previous UTC day (console + debug ingest)');
+    const { repairCompareGmailAfterClauses } = await import('../lib/sync/google-sync');
+    try {
+      const ab = await repairCompareGmailAfterClauses(OWNER, rewindMs);
+      console.log('[repair] STEP 0 result', JSON.stringify(ab));
+    } catch (e) {
+      console.warn('[repair] STEP 0 skipped:', e instanceof Error ? e.message : e);
+    }
+  }
+
   console.log('[repair] STEP 1 — UPDATE user_tokens last_synced_at');
   const { data: rewound, error: e1 } = await supabase
     .from('user_tokens')

@@ -197,6 +197,19 @@ async function syncGmail(
       const cc = get('Cc');
       const subject = get('Subject') || '(no subject)';
       const date = get('Date');
+      const internalMsRaw = msg.data.internalDate;
+      const internalMs =
+        internalMsRaw != null && internalMsRaw !== '' ? Number(internalMsRaw) : NaN;
+      const fromHeader = date ? new Date(date) : null;
+      const fromInternal = Number.isFinite(internalMs) ? new Date(internalMs) : null;
+      const effectiveDate =
+        fromHeader && Number.isFinite(fromHeader.getTime()) ? fromHeader : fromInternal;
+      const datePrefix = effectiveDate ? effectiveDate.toISOString().slice(0, 10) : '';
+      const occurredAtIso = effectiveDate
+        ? effectiveDate.toISOString()
+        : new Date().toISOString();
+      const dateDisplay =
+        effectiveDate != null ? effectiveDate.toISOString() : (date || '').trim() || '(unknown date)';
       const messageId = get('Message-ID');
       const inReplyTo = get('In-Reply-To');
       const references = get('References');
@@ -214,7 +227,7 @@ async function syncGmail(
 
       const lines = isSent
         ? [
-            `[Sent email: ${date}]`,
+            `[Sent email: ${dateDisplay}]`,
             `To: ${to}`,
             `Subject: ${subject}`,
             cc ? `Cc: ${cc}` : '',
@@ -224,7 +237,7 @@ async function syncGmail(
             importance ? `Priority/importance: ${importance}` : '',
           ]
         : [
-            `[Email received: ${date}]`,
+            `[Email received: ${dateDisplay}]`,
             `From: ${from}`,
             `To: ${to}`,
             cc ? `Cc: ${cc}` : '',
@@ -239,7 +252,6 @@ async function syncGmail(
 
       const senderEmail = (isSent ? to : from).toLowerCase().trim().replace(/.*<([^>]+)>.*/, '$1');
       const normalizedSubject = subject.toLowerCase().trim();
-      const datePrefix = date ? new Date(date).toISOString().slice(0, 10) : '';
       const contentHash = hash(`email:${senderEmail}|${normalizedSubject}|${datePrefix}`);
 
       const { error } = await supabase.from('tkg_signals').upsert({
@@ -250,13 +262,13 @@ async function syncGmail(
         content: encrypt(content),
         content_hash: contentHash,
         author: isSent ? 'self' : from,
-        occurred_at: date ? new Date(date).toISOString() : new Date().toISOString(),
+        occurred_at: occurredAtIso,
         processed: false,
       }, { onConflict: 'user_id,content_hash', ignoreDuplicates: true });
 
       if (!error) inserted++;
 
-      const dateMs = date ? new Date(date).getTime() : Date.now();
+      const dateMs = effectiveDate ? effectiveDate.getTime() : Date.now();
       if (Number.isFinite(dateMs)) {
         intelMessages.push({
           id,

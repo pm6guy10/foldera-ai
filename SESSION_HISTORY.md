@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Gmail sync: internalDate fallback when Date header throws**
+  MODE: AUDIT
+  Commit hash(es): `2ff03c1`
+  Files changed: `lib/sync/google-sync.ts`, `scripts/ops-production-repair-sync.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/sync/__tests__/`; `npm run lint`; `npm run build`; `npm run test:ci:e2e`; `npx tsx scripts/ops-production-repair-sync.ts` (production rewind + proof).
+  Changes: `syncGmail` — `occurred_at` / `datePrefix` / intel `dateMs` from **`internalDate`** when `Date` header is missing or invalid (fixes silent per-message try/catch + zero inserts). Committed **`scripts/ops-production-repair-sync.ts`** STEP 0 Gmail A/B + `repairCompareGmailAfterClauses` call.
+  Any unresolved issues: Outlook `mail_signals` may still be 0 (Graph/task 400s) — track separately if proof needs outlook.
+
 - 2026-04-07 — AUDIT: **Outlook inbox Graph path + Gmail empty incremental probe**
   MODE: AUDIT
   Commit hash(es): `3eed73a`
