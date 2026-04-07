@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — OPS: **Health: “Repeated directive” is warning-only (does not fail exit code)**
+  MODE: OPS
+  Commit hash(es): (this commit on `main` — see `git log -1`)
+  Files changed: `scripts/health.ts`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` — `⚠ Repeated directive` when 3+ same-shape copies in 24h; row no longer counted in `RESULT` failures; `✗ Directive repeats` (query errors) still hard-fail; `npm run lint`; `npm run build`.
+  Changes: Repeated-directive success path always pushes `ok: true`; informational duplicate case prints `⚠` instead of `✗`.
+  Any unresolved issues: Other health rows unchanged; CI still exits 1 if any remaining check fails.
+
 - 2026-04-07 — OPS: **Health script: `tkg_actions` uses `generated_at`, not `created_at`**
   MODE: OPS
   Commit hash(es): `dd35390`
