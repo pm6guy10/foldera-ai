@@ -6,7 +6,7 @@
 
 - 2026-04-07 — OPS: **Session scoreboard + test ritual in runbooks (`docs/SESSION_SCOREBOARD.md`)**
   MODE: OPS
-  Commit hash(es): (set after push)
+  Commit hash(es): `ca12786`
   Files changed: `docs/SESSION_SCOREBOARD.md`, `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/agent.mdc`, `SESSION_HISTORY.md`
   What was verified: Doc-only; no build required for correctness of instructions.
   Changes: Canonical **production scoreboard** table + SQL + `audit:supabase:sync-fix`; **start/end ritual** paired with Before/After test gate; victory = scoreboard target row(s) + no test regressions. Cursor `agent.mdc` alwaysApply rule.
