@@ -18,6 +18,9 @@
  * (cron, /api/settings/run-brief, /api/cron/trigger, /api/cron/daily-generate, dev).
  * `pipelineDryRun` and `TEST_USER_ID` do not advance or enforce the gate.
  *
+ * `forceFreshRun` (`?force=true`, brain-receipt) does **not** clear valid
+ * `pending_approval` within `STALE_PENDING_HOURS` — reconcile + guard reuse it until approve/skip.
+ *
  * ## Two-gate enforcement (inside runDailyGenerate, per user)
  *
  * Pre-generation gate — evaluateReadiness():

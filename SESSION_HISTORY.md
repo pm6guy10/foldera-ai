@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **forceFreshRun respects 18h pending reuse (rolling window)**
+  MODE: AUDIT
+  Commit hash(es): *(set after push)*
+  Files changed: `lib/cron/daily-brief-generate.ts`, `lib/cron/daily-brief-types.ts`, `lib/cron/brief-service.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `docs/MASTER_PUNCHLIST.md`, `AUTOMATION_BACKLOG.md`, `SYSTEM_RUNBOOK.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/cron/__tests__/daily-brief.test.ts`
+  Changes: Removed `forceFreshRun` bypass of `pending_approval_guard`; reconcile no longer suppresses valid pendings on force — keep window aligned to `STALE_PENDING_HOURS` (18h rolling) instead of UTC day only; recoverable skipped→pending path runs under force. Docs/spec/backlog/runbook updated.
+  Any unresolved issues: None.
+
 - 2026-04-07 — AUDIT: **20h per-user full brief-cycle gate + invocation source tags**
   MODE: AUDIT
   Commit hash(es): `5fd795e`

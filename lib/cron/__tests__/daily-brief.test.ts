@@ -819,7 +819,7 @@ describe('runDailyGenerate candidate logging', () => {
     );
   });
 
-  it('forceFreshRun suppresses valid pending actions and persists a fresh action instead of reusing', async () => {
+  it('forceFreshRun still reuses a valid pending action within the stale window (no new generation)', async () => {
     const reusablePendingId = 'reusable-pending-1';
     mockSupabase.actionRows = [
       {
@@ -855,22 +855,13 @@ describe('runDailyGenerate candidate logging', () => {
 
     expect(result.results).toEqual([
       expect.objectContaining({
-        code: 'pending_approval_persisted',
+        code: 'pending_approval_reused',
         success: true,
+        meta: expect.objectContaining({ action_id: reusablePendingId }),
       }),
     ]);
-    expect(generateDirective).toHaveBeenCalledTimes(1);
-    expect(mockSupabase.updatedActions).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: reusablePendingId,
-          payload: expect.objectContaining({
-            status: 'skipped',
-            skip_reason: 'Auto-suppressed pending action before forced fresh generation.',
-          }),
-        }),
-      ]),
-    );
+    expect(generateDirective).not.toHaveBeenCalled();
+    expect(mockSupabase.updatedActions).toEqual([]);
   });
 
   it('surfaces a persisted no-send blocker during send when no pending action exists', async () => {

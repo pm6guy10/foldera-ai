@@ -215,9 +215,8 @@ Set up email forwarding: `privacy@foldera.ai`, `support@foldera.ai` → `b.kapp1
 
 **Status: PARTIALLY RESOLVED (core blocker fixed, receipt path shipped).**
 
-**Blocker fixed (exact):**
-- stale pending-action reuse during manual owner runs is now structurally bypassable with `forceFreshRun=true`.
-- `reconcilePendingApprovalQueue(...)` now auto-suppresses all existing pending rows when `forceFreshRun` is set and does not allow `pending_approval_reused` or skipped-to-pending recovery in that mode.
+**Blocker fixed (exact) — superseded 2026-04-07:**
+- `forceFreshRun` **no longer** auto-suppresses valid `pending_approval` within **18h**; approve/skip must clear pending before a new cycle (same as cron). `reconcilePendingApprovalQueue` uses an **18h rolling** cutoff for keep vs suppress (not UTC-day-only). Skipped-to-pending recovery runs under force as well.
 
 **Receipt path added (exact):**
 - `POST /api/dev/brain-receipt` (`app/api/dev/brain-receipt/route.ts`)

@@ -68,7 +68,11 @@ export interface DailyBriefSignalWindowOptions {
   skipSpendCap?: boolean;
   /** When true, skip manual directive call-count cap (owner brain-receipt only). */
   skipManualCallLimit?: boolean;
-  /** When true, never reuse existing pending actions; always force fresh generation. */
+  /**
+   * When true, manual/debug run (e.g. `?force=true`). Does **not** bypass pending reuse:
+   * a valid `pending_approval` within STALE_PENDING_HOURS is still returned. Use after
+   * approve/skip clears the queue to get a new generation pass.
+   */
   forceFreshRun?: boolean;
   /** Caller label for structured logs (cron vs settings vs dev). Not a security boundary. */
   briefInvocationSource?: string;

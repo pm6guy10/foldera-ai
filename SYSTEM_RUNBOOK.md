@@ -124,10 +124,10 @@ Before ending:
 
 ### Owner Real-Data Brain Receipt (forced fresh run)
 - Status: BUILT (owner-only debug path)
-- Last verified: 2026-03-29
+- Last verified: 2026-03-29 (pending semantics updated 2026-04-07)
 - Evidence:
   - New endpoint: `POST /api/dev/brain-receipt` (owner-only via `OWNER_USER_ID` check).
-  - Fresh-run guarantee: `runDailyGenerate(... forceFreshRun=true)` suppresses any existing pending rows and bypasses `pending_approval_reused` recovery.
+  - `runDailyGenerate(... forceFreshRun=true)` still **reuses** valid `pending_approval` within **18h** (same as `?force=true` run-brief); clear the card first for a guaranteed new generation pass.
   - Session receipt run created fresh action `3f8369a6-e557-4086-86c2-eab554d40766` at `2026-03-29T20:34:17.957+00:00`.
   - Stale reuse proof: `stale_action_not_reused=true` for `2e3a92ac-f93e-42b4-a978-bedd3dcee4d6`.
   - Receipt includes top 5 candidates, full artifact, decision-enforcement result, and send-worthiness result.

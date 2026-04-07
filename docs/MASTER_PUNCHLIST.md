@@ -51,7 +51,7 @@ After each **`/api/cron/daily-brief`** run (Vercel cron), the handler’s **`fin
 
 Manual path: [app/api/settings/run-brief/route.ts](../app/api/settings/run-brief/route.ts) → `runBriefLifecycle({ ensureSend: true, ... })`. Send can still return **`email_already_sent`**, **`no_verified_email`**, or other codes.
 
-**Force a new directive (skip `pending_approval` reuse):** `POST /api/settings/run-brief?force=true` (same session cookies as Generate Now). Settings **Generate now** uses this query automatically. Sets `forceFreshRun` → existing valid pending rows are auto-suppressed, then generation runs fresh. A raw `POST` without `?force=true` still reuses a valid same-day pending action (no other UI uses that path today).
+**Generate now (`?force=true`):** `POST /api/settings/run-brief?force=true` (same session cookies as Generate Now). Sets `forceFreshRun` for manual gates (`skipStaleGate`, etc.) but **does not** skip valid `pending_approval` within **18h** — you get `pending_approval_reused` / guard until you **approve or skip** the current card. A raw `POST` without `?force=true` behaves the same for pending reuse (only differs on other manual flags).
 
 **Steps (operator):**
 

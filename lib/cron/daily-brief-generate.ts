@@ -880,7 +880,7 @@ interface PendingActionRow {
 async function reconcilePendingApprovalQueue(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
-  todayStart: string,
+  _todayStart: string,
   options: DailyBriefSignalWindowOptions = {},
 ): Promise<{
   error: Error | null;
@@ -901,7 +901,7 @@ async function reconcilePendingApprovalQueue(
   }
 
   const rows = (data ?? []) as PendingActionRow[];
-  const forceFreshRun = options.forceFreshRun === true;
+  const staleCutoffIso = new Date(Date.now() - STALE_PENDING_HOURS * 3_600_000).toISOString();
   let preservedAction: PendingActionRow | null = null;
   const skippedActionIds: string[] = [];
   let recentDoNothingGeneratedAt: string | null = null;
@@ -910,7 +910,7 @@ async function reconcilePendingApprovalQueue(
     const artifact = extractArtifact(row.execution_result);
     const sentAt = extractSentAt(row.execution_result);
     const alreadySent = typeof sentAt === 'string' && sentAt.trim().length > 0;
-    const isToday = row.generated_at >= todayStart;
+    const isRecentEnough = row.generated_at >= staleCutoffIso;
     const isDoNothing = row.action_type === 'do_nothing';
     const isValid =
       !alreadySent &&
@@ -919,22 +919,22 @@ async function reconcilePendingApprovalQueue(
       typeof row.confidence === 'number' &&
       row.confidence >= CONFIDENCE_THRESHOLD;
 
-    if (forceFreshRun || !isToday || !isValid) {
+    // Valid + within STALE_PENDING_HOURS: always preserve (even under forceFreshRun / ?force=true).
+    // Fresh generation only after approve/skip clears pending or age passes the window.
+    if (!isValid || !isRecentEnough) {
       const executionResult =
         row.execution_result && typeof row.execution_result === 'object'
           ? (row.execution_result as Record<string, unknown>)
           : {};
-      const suppressionReason = forceFreshRun
-        ? 'Auto-suppressed pending action before forced fresh generation.'
-        : alreadySent
+      const suppressionReason = alreadySent
         ? 'Auto-suppressed already-sent pending action before daily brief generation.'
         : isDoNothing
         ? 'Auto-suppressed do_nothing pending action — never send to user.'
-        : !isToday
+        : !isRecentEnough
         ? 'Auto-suppressed stale pending action before daily brief generation.'
         : 'Auto-suppressed invalid pending action before daily brief generation.';
 
-      if (isDoNothing && isToday && row.generated_at > (recentDoNothingGeneratedAt ?? '')) {
+      if (isDoNothing && isRecentEnough && row.generated_at > (recentDoNothingGeneratedAt ?? '')) {
         recentDoNothingGeneratedAt = row.generated_at;
       }
 
@@ -1528,31 +1528,29 @@ export async function runDailyGenerate(
     }
 
     // Early guard: skip signal processing if a valid pending_approval exists within STALE_PENDING_HOURS.
-    // Skipped for forceFreshRun (must regenerate) and rows that were already sent (need fresh).
-    if (!options?.forceFreshRun) {
-      const { data: pendingRows } = await supabase
-        .from('tkg_actions')
-        .select('id, generated_at, execution_result')
-        .eq('user_id', userId)
-        .eq('status', 'pending_approval')
-        .neq('action_type', 'do_nothing')
-        .gte('generated_at', staleCutoffIso)
-        .limit(5);
+    // Applies even when forceFreshRun (?force=true) — approve/skip must clear pending before a new cycle.
+    const { data: pendingRows } = await supabase
+      .from('tkg_actions')
+      .select('id, generated_at, execution_result')
+      .eq('user_id', userId)
+      .eq('status', 'pending_approval')
+      .neq('action_type', 'do_nothing')
+      .gte('generated_at', staleCutoffIso)
+      .limit(5);
 
-      const existingPending = (pendingRows ?? []).find((row) => {
-        const er = (row as { execution_result?: Record<string, unknown> | null }).execution_result;
-        return !er?.['daily_brief_sent_at'];
-      }) ?? null;
+    const existingPending = (pendingRows ?? []).find((row) => {
+      const er = (row as { execution_result?: Record<string, unknown> | null }).execution_result;
+      return !er?.['daily_brief_sent_at'];
+    }) ?? null;
 
-      if (existingPending) {
-        results.push({
-          code: 'pending_approval_guard',
-          meta: { action_id: (existingPending as { id: string }).id },
-          success: true,
-          userId,
-        });
-        continue;
-      }
+    if (existingPending) {
+      results.push({
+        code: 'pending_approval_guard',
+        meta: { action_id: (existingPending as { id: string }).id },
+        success: true,
+        userId,
+      });
+      continue;
     }
 
     // Hard gate: one full generation cycle (signal processing onward) per user per 20h for all callers.
@@ -1665,7 +1663,7 @@ export async function runDailyGenerate(
           .limit(1)
           .maybeSingle();
 
-        if (recoverable && !options.forceFreshRun) {
+        if (recoverable) {
           await supabase
             .from('tkg_actions')
             .update({ status: 'pending_approval', skip_reason: null })
