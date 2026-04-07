@@ -40,6 +40,7 @@ import { runCommitmentCeilingDefense } from '@/lib/cron/self-heal';
 import {
   CONFIDENCE_PERSIST_THRESHOLD,
   CONFIDENCE_SEND_THRESHOLD,
+  STALE_PENDING_APPROVAL_MAX_AGE_HOURS,
   TEST_USER_ID,
 } from '@/lib/config/constants';
 import {
@@ -79,6 +80,7 @@ const DO_NOTHING_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
 /** Pending rows older than this do not block the early guard (belt-and-suspenders with pre-reconcile). */
 const STALE_PENDING_HOURS = 18;
+
 
 /**
  * Placeholder patterns that indicate a draft was not grounded in real context.
@@ -881,6 +883,61 @@ interface PendingActionRow {
   reason: string | null;
 }
 
+/**
+ * Skip stale actionable rows before reconcile/cooldown so nightly cron does not leave
+ * old pending_approval / draft blocking fresh generation (no manual drain SQL).
+ */
+async function drainStalePendingActionsForUser(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<number> {
+  const cutoffIso = isoHoursAgo(STALE_PENDING_APPROVAL_MAX_AGE_HOURS);
+  const skipReason = `Auto-drained stale pending/draft (>${STALE_PENDING_APPROVAL_MAX_AGE_HOURS}h) before daily brief generation.`;
+
+  const { data: rows, error } = await supabase
+    .from('tkg_actions')
+    .select('id, execution_result')
+    .eq('user_id', userId)
+    .in('status', ['pending_approval', 'draft'])
+    .lt('generated_at', cutoffIso)
+    .limit(100);
+
+  if (error) {
+    console.warn('[daily-generate] stale pending drain select failed:', error.message);
+    return 0;
+  }
+
+  let drained = 0;
+  for (const row of rows ?? []) {
+    const id = (row as { id: string }).id;
+    const rawEr = (row as { execution_result?: unknown }).execution_result;
+    const executionResult =
+      rawEr && typeof rawEr === 'object' ? { ...(rawEr as Record<string, unknown>) } : {};
+
+    const { error: updateError } = await supabase
+      .from('tkg_actions')
+      .update({
+        status: 'skipped',
+        skip_reason: skipReason,
+        feedback_weight: -0.5,
+        execution_result: {
+          ...executionResult,
+          auto_suppressed_at: new Date().toISOString(),
+          auto_suppression_reason: skipReason,
+        },
+      })
+      .eq('id', id);
+
+    if (updateError) {
+      console.warn('[daily-generate] stale pending drain update failed:', updateError.message);
+      continue;
+    }
+    drained += 1;
+  }
+
+  return drained;
+}
+
 async function reconcilePendingApprovalQueue(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
@@ -1533,6 +1590,20 @@ export async function runDailyGenerate(
   for (let ui = 0; ui < eligibleUserIds.length; ui++) {
     const userId = eligibleUserIds[ui];
     console.log(`[daily-generate] Generating for user ${userId} (${ui + 1} of ${totalUsers})`);
+
+    const drainedStale = await drainStalePendingActionsForUser(supabase, userId);
+    if (drainedStale > 0) {
+      logStructuredEvent({
+        event: 'auto_drained_stale_actions',
+        userId,
+        artifactType: null,
+        generationStatus: 'reconciled',
+        details: {
+          count: drainedStale,
+          older_than_hours: STALE_PENDING_APPROVAL_MAX_AGE_HOURS,
+        },
+      });
+    }
 
     const staleCutoffIso = new Date(Date.now() - STALE_PENDING_HOURS * 3_600_000).toISOString();
 

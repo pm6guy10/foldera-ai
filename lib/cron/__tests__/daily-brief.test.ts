@@ -195,6 +195,8 @@ const mockSupabase = {
           const state = {
             filters: {} as Record<string, unknown>,
             gteFilters: [] as Array<{ field: string; value: string | number }>,
+            ltFilters: [] as Array<{ field: string; value: string }>,
+            inFilters: [] as Array<{ field: string; values: unknown[] }>,
             isNullFilters: [] as Array<{ field: string; isNull: boolean }>,
             neqFilters: [] as Array<{ field: string; value: unknown }>,
             notField: null as string | null,
@@ -210,6 +212,14 @@ const mockSupabase = {
             },
             gte(field: string, value: string | number) {
               state.gteFilters.push({ field, value });
+              return query;
+            },
+            lt(field: string, value: string) {
+              state.ltFilters.push({ field, value });
+              return query;
+            },
+            in(field: string, values: unknown[]) {
+              state.inFilters.push({ field, values });
               return query;
             },
             is(field: string, value: null | boolean) {
@@ -263,6 +273,17 @@ const mockSupabase = {
                 });
               }
 
+              for (const { field: lf, value: lv } of state.ltFilters) {
+                rows = rows.filter((row) => {
+                  const fv = row[lf];
+                  return typeof fv === 'string' && fv < lv;
+                });
+              }
+
+              for (const { field: inf, values } of state.inFilters) {
+                rows = rows.filter((row) => values.includes(row[inf]));
+              }
+
               for (const { field: isf, isNull } of state.isNullFilters) {
                 rows = rows.filter((row) => isNull ? row[isf] == null : row[isf] != null);
               }
@@ -304,6 +325,10 @@ const mockSupabase = {
         update(payload: Record<string, unknown>) {
           return {
             eq(field: string, value: unknown) {
+              if (field === 'id') {
+                const row = self.actionRows.find((r) => r.id === value);
+                if (row) Object.assign(row, payload);
+              }
               self.updatedActions.push({ payload, [field]: value });
               return Promise.resolve({ error: null });
             },
@@ -507,9 +532,58 @@ describe('runDailyGenerate candidate logging', () => {
     vi.mocked(summarizeSignals).mockClear();
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockReset();
     vi.mocked(sendDailyDirective).mockClear();
+    vi.mocked(logStructuredEvent).mockClear();
     vi.mocked(validateDirectiveForPersistence).mockReturnValue([]);
     vi.mocked(getArtifactPersistenceIssues).mockReturnValue([]);
     vi.mocked(countUnprocessedSignals).mockResolvedValue(0);
+  });
+
+  it('auto-drains pending_approval and draft rows older than 20h before reconcile (logs auto_drained_stale_actions)', async () => {
+    const staleIso = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    mockSupabase.actionRows = [
+      {
+        id: 'stale-pending-1',
+        user_id: USER_ID,
+        status: 'pending_approval',
+        action_type: 'send_message',
+        confidence: 80,
+        generated_at: staleIso,
+        directive_text: 'd',
+        execution_result: {},
+        reason: null,
+      },
+      {
+        id: 'stale-draft-1',
+        user_id: USER_ID,
+        status: 'draft',
+        action_type: 'send_message',
+        confidence: 80,
+        generated_at: staleIso,
+        directive_text: 'd2',
+        execution_result: {},
+        reason: null,
+      },
+    ];
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+
+    await runDailyGenerate({ userIds: [USER_ID], skipManualCallLimit: true });
+
+    const drainedLog = vi.mocked(logStructuredEvent).mock.calls.find(
+      (call) => call[0].event === 'auto_drained_stale_actions',
+    );
+    expect(drainedLog?.[0].details).toMatchObject({
+      count: 2,
+      older_than_hours: 20,
+    });
+    expect(mockSupabase.actionRows.find((r) => r.id === 'stale-pending-1')?.status).toBe('skipped');
+    expect(mockSupabase.actionRows.find((r) => r.id === 'stale-draft-1')?.status).toBe('skipped');
   });
 
   it('returns generation_cycle_cooldown when last full cycle was within 20h', async () => {

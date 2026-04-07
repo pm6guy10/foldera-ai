@@ -21,6 +21,12 @@ export const CONFIDENCE_PERSIST_THRESHOLD = 45;
  */
 export const CONFIDENCE_SEND_THRESHOLD = 70;
 
+/**
+ * `pending_approval` / `draft` rows older than this are auto-skipped at daily-generate start
+ * (`drainStalePendingActionsForUser`). Health gate flags only rows older than this threshold.
+ */
+export const STALE_PENDING_APPROVAL_MAX_AGE_HOURS = 20;
+
 // ── Signal retention ─────────────────────────────────────────────────────────
 
 /** Signals older than this are pruned by nightly-ops. */
