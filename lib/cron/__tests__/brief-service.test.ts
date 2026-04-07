@@ -73,7 +73,9 @@ describe('runBriefLifecycle', () => {
       ensureSend: true,
     });
 
-    expect(runDailySend).toHaveBeenCalledWith({ userIds: [USER_ID] });
+    expect(runDailySend).toHaveBeenCalledWith(
+      expect.objectContaining({ userIds: [USER_ID], ensureSend: true }),
+    );
     expect(sendFallbackAttempted).toBe(true);
     expect(result.send.results[0].code).toBe('email_sent');
   });

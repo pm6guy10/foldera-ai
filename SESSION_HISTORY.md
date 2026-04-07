@@ -6,7 +6,7 @@
 
 - 2026-04-07 — AUDIT: **Scorer rejection false positives (validity stopwords) + Microsoft To Do Graph 400 fix**
   MODE: AUDIT
-  Commit hash(es): `1a267e6`
+  Commit hash(es): `8603b91`
   Files changed: `lib/briefing/validity-context-entity.ts`, `lib/briefing/__tests__/validity-context-entity.test.ts`, `lib/briefing/scorer.ts`, `lib/sync/microsoft-sync.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run --exclude ".claude/worktrees/**"`; `npm run build` (after `Remove-Item -Recurse -Force .next`); `npm run lint`; `PLAYWRIGHT_WEB_PORT=3011` + `NEXTAUTH_URL=http://127.0.0.1:3011` → `npm run test:ci:e2e` (41 passed)
   Changes: (1) `filterPersonNamesForValidityContext` before `filterInvalidContext` rejection/resolution/skip-streak matching; expanded `extractPersonNames` nonNames. (2) To Do sync: no OData `$filter` on `lastModifiedDateTime`; order newest first; filter client-side; encode list id in path.
