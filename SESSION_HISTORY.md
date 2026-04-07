@@ -6,7 +6,7 @@
 
 - 2026-04-07 — AUDIT: **Production Supabase audit — sync cursors vs mail graph (owner)**
   MODE: AUDIT
-  Commit hash(es): $h
+  Commit hash(es): `1917b08`, `c4ffc24`
   Files changed: `scripts/audit-supabase-sync-fix.mjs`, `package.json`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run audit:supabase:sync-fix` (service role via `.env.local`). Owner `e40b7cd8-4925-42f7-bc99-5022969f1d22`: `last_synced_at` **~2026-04-07T14:36Z** google+microsoft; **0** mail-shaped gmail/outlook rows with `created_at` in prior 24h; newest `occurred_at` **Outlook 2026-03-27** / **Gmail 2026-03-26**. Code fix landed; **data gap persists** until operator rewinds `last_synced_at` + Sync Now (see `docs/ops/rewind-user-token-last-synced.sql`).
   Any unresolved issues: `user_tokens.email` still **null** for both providers in snapshot (separate backfill commit `1e265fe` may need deploy + sync to populate).
@@ -197,7 +197,7 @@
 
 - 2026-04-06 — AUDIT: **Graph calendar `createdBy` 400 fix + Google zero-insert log + clear stale pending_approval**
   MODE: AUDIT
-  Commit hash(es): $h
+  Commit hash(es): `1da5361`
   Files changed: `lib/sync/microsoft-sync.ts`, `lib/sync/google-sync.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/sync/__tests__/microsoft-sync.test.ts lib/sync/__tests__/google-sync.test.ts`; `npm run build`. Production SQL: `UPDATE tkg_actions SET status='executed', executed_at=now() WHERE id='8f88ce9e-f290-42f8-ba9f-dca4db6725ac'`.
   Changes: (1) Removed invalid `createdBy` from Microsoft Graph calendar `$select` (v1.0); RSVP `createdBySelf` from `isOrganizer` + organizer. (2) `syncGoogle` warns on all-zero incremental inserts when no errors. (3) Cleared blocking `pending_approval` row so next generate is not a reuse. (4) **Google `total: 0` read:** owner `last_synced_at` was recent — incremental Gmail query `after:unix` often yields **0** with no new mail; `user_tokens.scopes` null in DB does not block Gmail list.
@@ -1145,14 +1145,14 @@
 
 - 2026-03-25 — Commitment ceiling now runs immediately before scoring inside daily-brief generation
   MODE: BUILD
-  Commit hash(es): $h
+  Commit hash(es): `f1cff76`
   Files changed: `lib/cron/daily-brief.ts`, `app/api/settings/run-brief/route.ts`, `SESSION_HISTORY.md`
   What was verified: traced execution path — runDailyBrief() calls runDailyGenerate() which calls processUnextractedSignals() (extracts new commitments) then calls generateDirective() (scorer runs here); ceiling was running before runDailyBrief but after extraction fills commitments back above 150; fix: added runCommitmentCeilingDefense() call immediately before generateDirective() in daily-brief.ts (line ~1051) so scorer always sees <=150 commitments; also added second ceiling call in run-brief/route.ts after runDailyBrief() returns; imported self-heal into daily-brief.ts; `npm run build` passed
   Any unresolved issues: none
 
 - 2026-03-25 — Frontend jank sweep: start page consistency, font loading, terminal done state, dead code flags
   MODE: BUILD
-  Commit hash(es): $h
+  Commit hash(es): `aaddf68`
   Files changed: `app/start/page.tsx`, `app/page.tsx`, `components/dashboard/dashboard-content.tsx`, `components/dashboard/conviction-card.tsx`, `SESSION_HISTORY.md`
   What was verified: confirmed `DashboardContent` and `ConvictionCard` have zero imports in the codebase (only appear in their own files and SESSION_HISTORY.md); confirmed Inter is already loaded via `app/layout.js` with `next/font/google` applied to body — no additional font config needed; removed `@import url('https://fonts.googleapis.com/...')` from `app/page.tsx` style block, all other styles preserved; redesigned `app/start/page.tsx` to match `login-inner.tsx` visual style (same nav, same card layout, same button colors, same spinner pattern); confirmed dashboard done state is already terminal — no regenerate button present; `npm run build` passed (23/23 static pages, 0 errors)
   Any unresolved issues: none
