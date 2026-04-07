@@ -6,7 +6,7 @@
 
 - 2026-04-07 — AUDIT: **user_tokens email/scopes preserved on refresh; connector email backfill; sync cursor rewind SQL**
   MODE: AUDIT
-  Commit hash(es): `1e265fe`, `3deeba3` (session log hash)
+  Commit hash(es): `1e265fe` (core fix; see subsequent docs-only commits on `main` for session log)
   Files changed: `lib/auth/user-tokens.ts`, `lib/auth/auth-options.ts`, `lib/sync/google-sync.ts`, `lib/sync/microsoft-sync.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `docs/ops/rewind-user-token-last-synced.sql`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/auth/__tests__/user-tokens.test.ts lib/sync/__tests__/google-sync.test.ts`; `npm run build`.
   Changes: (1) **saveUserToken** — single read of existing `email`+`scopes` when either param omitted; explicit `null` still clears. (2) **JWT refresh** — pass through session email when persisting. (3) **Google sync** — profile fetch for mailbox address even without calendar scope; backfill `user_tokens.email` when NULL. (4) **Microsoft sync** — same backfill from Graph `/me`. (5) **Ops** — parameterized SQL to rewind `last_synced_at` for backfill after historic bad `after:` window. (6) **Debug** — gated `DEBUG_SYNC_AGENT_LOG` NDJSON line for `syncGoogle` exit.
