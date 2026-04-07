@@ -6,7 +6,7 @@
 
 - 2026-04-07 — AUDIT: **Mail sync SQL / data-path audit + upsert error logs**
   MODE: AUDIT
-  Commit hash(es): (pending)
+  Commit hash(es): `f3b2acb`, `b8bcde0`
   Files changed: `docs/ops/sync-mail-sql-audit.sql`, `lib/sync/google-sync.ts`, `lib/sync/microsoft-sync.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: Supabase MCP `execute_sql` on production — `tkg_signals` CHECKs allow `email_sent`/`email_received`; unique `(user_id, content_hash)`; mail aggregate recency; `npx vitest run` on `google-sync` / `microsoft-sync` / `check-constraints` (8/8 pass). `npm run build` hit pre-existing prerender `TypeError` on multiple routes in this workspace (not introduced by this slice).
   Changes: Added operator SQL audit script; removed localhost debug ingest `fetch` from sync helpers; `console.warn` on `tkg_signals` upsert `error` for gmail/outlook mail loops; backlog + spec evidence row.
