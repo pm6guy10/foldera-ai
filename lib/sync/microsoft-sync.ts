@@ -473,30 +473,6 @@ async function syncMail(
   const sentMessages = sentData.map((m: any) => ({ ...m, _folder: "sent" }));
   const allMessages = [...inboxMessages, ...sentMessages];
 
-  // #region agent log
-  fetch("http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "bca2fa" },
-    body: JSON.stringify({
-      sessionId: "bca2fa",
-      hypothesisId: "H3-graph-filter",
-      location: "lib/sync/microsoft-sync.ts:syncMail:postFetch",
-      message: "Graph mail fetch counts",
-      data: {
-        sinceIso,
-        filterDt,
-        inboxFilterDecoded: `receivedDateTime ge ${filterDt}`,
-        sentFilterDecoded: `sentDateTime ge ${filterDt}`,
-        inboxCount: inboxMessages.length,
-        sentCount: sentMessages.length,
-        inboxRejected: inboxSettled.status === "rejected",
-        sentRejected: sentSettled.status === "rejected",
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
   if (allMessages.length === 0) return 0;
 
   const convoCounts = new Map<string, number>();
@@ -547,7 +523,14 @@ async function syncMail(
         processed: false,
       }, { onConflict: "user_id,content_hash", ignoreDuplicates: true });
 
-      if (!error) inserted++;
+      if (error) {
+        console.warn(
+          `[microsoft-sync] tkg_signals upsert failed user=${userId} source=outlook type=${signalType}:`,
+          error.message,
+        );
+      } else {
+        inserted++;
+      }
 
       const hdrs = headerMapFromInternet(msg.internetMessageHeaders);
       const toStr = (msg.toRecipients ?? [])
@@ -577,24 +560,6 @@ async function syncMail(
       console.warn(`[microsoft-sync] Failed to persist mail for user ${userId}:`, msgErr instanceof Error ? msgErr.message : String(msgErr));
     }
   }
-
-  // #region agent log
-  fetch("http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "bca2fa" },
-    body: JSON.stringify({
-      sessionId: "bca2fa",
-      hypothesisId: "H5-persist",
-      location: "lib/sync/microsoft-sync.ts:syncMail:exit",
-      message: "Outlook mail inserted",
-      data: {
-        allMessagesCount: allMessages.length,
-        inserted,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
   try {
     const derived = await persistResponsePatternSignals(supabase, userId, "outlook", intelMessages);

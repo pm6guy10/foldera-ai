@@ -4,6 +4,22 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Mail sync SQL / data-path audit + upsert error logs**
+  MODE: AUDIT
+  Commit hash(es): (pending)
+  Files changed: `docs/ops/sync-mail-sql-audit.sql`, `lib/sync/google-sync.ts`, `lib/sync/microsoft-sync.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: Supabase MCP `execute_sql` on production — `tkg_signals` CHECKs allow `email_sent`/`email_received`; unique `(user_id, content_hash)`; mail aggregate recency; `npx vitest run` on `google-sync` / `microsoft-sync` / `check-constraints` (8/8 pass). `npm run build` hit pre-existing prerender `TypeError` on multiple routes in this workspace (not introduced by this slice).
+  Changes: Added operator SQL audit script; removed localhost debug ingest `fetch` from sync helpers; `console.warn` on `tkg_signals` upsert `error` for gmail/outlook mail loops; backlog + spec evidence row.
+  Any unresolved issues: None for SQL classification — stall not due to missing mail type CHECK on sampled prod.
+
+- 2026-04-07 — AUDIT: **Gmail list query module + dry promotions A/B tests (no API)**
+  MODE: AUDIT
+  Commit hash(es): (pending)
+  Files changed: `lib/sync/gmail-query.ts`, `lib/sync/google-sync.ts`, `lib/sync/__tests__/gmail-query.test.ts`, `lib/sync/__tests__/gmail-ingest-promotions-dry.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/sync/__tests__/gmail-query.test.ts lib/sync/__tests__/gmail-ingest-promotions-dry.test.ts lib/sync/__tests__/google-sync.test.ts`
+  Changes: `buildGmailMessagesListQuery` / `gmailIngestQueryPairDry`; sync uses query builder; **`GMAIL_SYNC_EXCLUDE_PROMOTIONS=true`** for legacy strict filter; Vitest fixture proves strict-vs-inclusive **list id counts** and dry **`tkg_signals`-style insert delta** without Gmail HTTP.
+  Any unresolved issues: None for this slice.
+
 - 2026-04-07 — AUDIT: **Gmail sync: internalDate fallback when Date header throws**
   MODE: AUDIT
   Commit hash(es): `f78d829`

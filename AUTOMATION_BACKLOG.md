@@ -1,5 +1,11 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-07) — Mail sync SQL + data-path audit (agent)
+
+- **Artifact:** [`docs/ops/sync-mail-sql-audit.sql`](docs/ops/sync-mail-sql-audit.sql) — CHECK constraints on `tkg_signals`, unique index on `(user_id, content_hash)`, `user_tokens` cursors, mail-shaped aggregates, optional dedupe slice, migration list.
+- **Production (Supabase MCP, Foldera project):** `tkg_signals_type_check` **includes** `email_sent`, `email_received` (not the post–Mar-26 “silent mail” blocker). `tkg_signals_user_content_hash_idx` **unique** on `(user_id, content_hash)` WHERE `content_hash IS NOT NULL`. Aggregate `max(created_at)` mail-shaped: **gmail** `email_received` **2026-03-26**, **outlook** `email_received` **2026-03-27**; rows with `created_at >= 2026-03-27` exist for outlook only (39) in sampled query — classifies stall as **ingest window / provider / cursor**, not missing CHECK for mail types.
+- **Code:** `lib/sync/google-sync.ts` + `lib/sync/microsoft-sync.ts` log `tkg_signals` upsert failures (`console.warn`, message only — no row content).
+
 ### OPEN (2026-04-07) — Production `user_brief_cycle_gates` migration
 
 - **Symptom:** Sentry **JAVASCRIPT-NEXTJS-7** — `Could not find the table 'public.user_brief_cycle_gates' in the schema cache` on `POST /api/settings/run-brief` (PostgREST **404** / **PGRST205**). Code shipped before DDL applied.
