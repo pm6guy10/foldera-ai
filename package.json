@@ -13,6 +13,7 @@
     "audit:smoke": "npx playwright test --config=playwright.audit.config.ts",
     "audit:ux": "npx tsx scripts/ux-audit.ts",
     "audit:all": "npx playwright test --config=playwright.audit.config.ts && npx tsx scripts/ux-audit.ts",
+    "audit:supabase:sync-fix": "node scripts/audit-supabase-sync-fix.mjs",
     "test:prod:setup": "npx tsx tests/production/setup-auth.ts",
     "test:local:setup": "npx tsx tests/local/setup-auth-localhost.ts",
     "test:local:check": "npx tsx tests/local/check-prereqs.ts",

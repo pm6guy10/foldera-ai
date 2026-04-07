@@ -4,6 +4,13 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Production Supabase audit — sync cursors vs mail graph (owner)**
+  MODE: AUDIT
+  Commit hash(es): *(set after push)*
+  Files changed: `scripts/audit-supabase-sync-fix.mjs`, `package.json`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run audit:supabase:sync-fix` (service role via `.env.local`). Owner `e40b7cd8-4925-42f7-bc99-5022969f1d22`: `last_synced_at` **~2026-04-07T14:36Z** google+microsoft; **0** mail-shaped gmail/outlook rows with `created_at` in prior 24h; newest `occurred_at` **Outlook 2026-03-27** / **Gmail 2026-03-26**. Code fix landed; **data gap persists** until operator rewinds `last_synced_at` + Sync Now (see `docs/ops/rewind-user-token-last-synced.sql`).
+  Any unresolved issues: `user_tokens.email` still **null** for both providers in snapshot (separate backfill commit `1e265fe` may need deploy + sync to populate).
+
 - 2026-04-07 — AUDIT: **user_tokens email/scopes preserved on refresh; connector email backfill; sync cursor rewind SQL**
   MODE: AUDIT
   Commit hash(es): `1e265fe` (core fix; see subsequent docs-only commits on `main` for session log)
