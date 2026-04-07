@@ -22,6 +22,7 @@ export type DailyBriefSuccessCode =
   | 'pending_approval_reused'
   | 'pending_approval_guard'
   | 'generation_cycle_cooldown'
+  | 'generation_loop_detected'
   | 'pipeline_dry_run'
   | 'send_skipped_pipeline_dry_run'
   | 'no_send_persisted'

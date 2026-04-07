@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
+## STATUS: SHIPPED — Scorer failure memory + stale-date gate + triple-directive loop guard
+
+**This session:** `lib/briefing/scorer-failure-suppression.ts` — scorer drops candidates whose signal/entity/commitment keys appear on recent `do_nothing` / no-send rows (duplicate, usefulness, LLM fail, **stale_date_in_directive**, **GENERATION_LOOP_DETECTED**). Generator blocks **past** ISO / month-day deadlines in `directive_text` (&gt;3d). `runDailyGenerate` — last 3 directives identical after normalization → skip LLM, persist loop row with `loop_suppression_keys` (24h). **Verify after deploy:** `POST /api/settings/run-brief`; confirm new winner is not a stale deadline repeat; operator may still run one-off SQL to skip stuck `pending_approval` rows if needed.
+
 ## STATUS: SHIPPED — Mail cursor self-heal (`CURSOR_REWOUND`)
 
 **This session:** `lib/sync/mail-cursor-heal.ts` rewinds `user_tokens.last_synced_at` to `max(occurred_at)` for `gmail`/`outlook` when incremental mail sync inserted **0** rows but the cursor is **>24h** ahead of the graph (`MAIL_CURSOR_HEAL_GAP_MS`). Wired from `syncGoogle` / `syncMicrosoft`. **Dry proof:** `npx vitest run lib/sync/__tests__/mail-cursor-heal.test.ts`. **After deploy:** watch Vercel nightly-ops / sync logs for `CURSOR_REWOUND`; raise gap constant if healthy low-mail users rewind too often.

@@ -15,6 +15,10 @@ import {
   normalizeEmailArtifactContentField,
   validateDirectiveForPersistence,
 } from '@/lib/briefing/generator';
+import {
+  extractSuppressionKeysFromExecutionResult,
+  normalizeDirectiveForLoopDetection,
+} from '@/lib/briefing/scorer-failure-suppression';
 import { generateArtifact, getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
 import { persistDirectiveHistorySignal } from '@/lib/signals/directive-history-signal';
 import {
@@ -1133,12 +1137,41 @@ function buildWaitRationale(
   };
 }
 
+const LOOP_DIRECTIVE_MIN_NORMALIZED_LEN = 16;
+
+async function detectPersistedDirectiveContentLoop(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<{ isLoop: false } | { isLoop: true; keys: string[] }> {
+  const { data, error } = await supabase
+    .from('tkg_actions')
+    .select('directive_text, execution_result')
+    .eq('user_id', userId)
+    .order('generated_at', { ascending: false })
+    .limit(3);
+
+  if (error || !data || data.length < 3) return { isLoop: false };
+
+  const norms = data.map((r) => normalizeDirectiveForLoopDetection(String(r.directive_text ?? '')));
+  if (!norms[0] || norms[0].length < LOOP_DIRECTIVE_MIN_NORMALIZED_LEN) return { isLoop: false };
+  if (norms[0] !== norms[1] || norms[1] !== norms[2]) return { isLoop: false };
+
+  const keys = new Set<string>();
+  for (const r of data) {
+    for (const k of extractSuppressionKeysFromExecutionResult(r.execution_result)) {
+      keys.add(k);
+    }
+  }
+  return { isLoop: true, keys: [...keys] };
+}
+
 async function persistNoSendOutcome(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
   directive: ConvictionDirective,
   reason: string,
   stage: GenerationRunLog['stage'],
+  executionResultExtras?: Record<string, unknown>,
 ): Promise<{ id: string } | null> {
   const executionResult = buildNoSendExecutionResult(directive, reason, stage);
   const waitRationale = buildWaitRationale(directive, reason);
@@ -1164,6 +1197,7 @@ async function persistNoSendOutcome(
           candidate_description: typeof directive.directive === 'string' ? directive.directive.trim().slice(0, 500) : null,
           blocked_by: reason,
         },
+        ...(executionResultExtras ?? {}),
       },
     })
     .select('id')
@@ -1826,6 +1860,80 @@ export async function runDailyGenerate(
         await runCommitmentCeilingDefense();
       } catch (err) {
         console.warn('[daily-brief] pre-generate commitment ceiling defense failed:', err);
+      }
+
+      if (!options.pipelineDryRun && userId !== TEST_USER_ID) {
+        const loopCheck = await detectPersistedDirectiveContentLoop(supabase, userId);
+        if (loopCheck.isLoop) {
+          console.log(
+            `[generate] GENERATION_LOOP_DETECTED last_3_normalized_match keys=${loopCheck.keys.length}`,
+          );
+          logStructuredEvent({
+            event: 'generation_loop_detected',
+            level: 'warn',
+            userId,
+            artifactType: null,
+            generationStatus: 'loop_skipped',
+            details: {
+              scope: 'daily-generate',
+              suppressed_key_count: loopCheck.keys.length,
+              persisted: true,
+            },
+          });
+          const loopUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+          const loopDirective: ConvictionDirective = {
+            directive: '__GENERATION_FAILED__',
+            action_type: 'do_nothing',
+            confidence: 0,
+            reason: 'GENERATION_LOOP_DETECTED',
+            evidence: [],
+            generationLog: buildNoSendGenerationLog(
+              {
+                directive: '__GENERATION_FAILED__',
+                action_type: 'do_nothing',
+                confidence: 0,
+                reason: 'GENERATION_LOOP_DETECTED',
+                evidence: [],
+              },
+              'GENERATION_LOOP_DETECTED',
+              'system',
+            ),
+          };
+          const savedLoop = await persistNoSendOutcome(
+            supabase,
+            userId,
+            loopDirective,
+            'GENERATION_LOOP_DETECTED',
+            'system',
+            {
+              loop_suppression_keys: loopCheck.keys,
+              loop_suppression_until: loopUntil,
+            },
+          );
+          if (savedLoop) {
+            results.push({
+              code: 'generation_loop_detected',
+              detail:
+                'Last 3 directives identical after normalization; skipped LLM and recorded suppression keys.',
+              meta: {
+                ...cleanupMeta,
+                action_id: savedLoop.id,
+                loop_suppression_keys: loopCheck.keys,
+              },
+              success: true,
+              userId,
+            });
+          } else {
+            results.push({
+              code: 'directive_persist_failed',
+              detail: 'GENERATION_LOOP_DETECTED persist failed.',
+              meta: cleanupMeta,
+              success: false,
+              userId,
+            });
+          }
+          continue;
+        }
       }
 
       let directive;

@@ -48,6 +48,11 @@ import {
   type HuntFindingKind,
 } from './hunt-anomalies';
 import {
+  collectActiveFailureSuppressionKeys,
+  rawScorerCandidateMatchesFailureSuppression,
+  scoredLoopMatchesFailureSuppression,
+} from './scorer-failure-suppression';
+import {
   type EntitySalienceRow,
   computeLivingGraphMultiplier,
 } from '@/lib/signals/entity-attention';
@@ -826,6 +831,106 @@ async function getTractability(
   } catch {
     return 0.5;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Suppressed candidate cooldown — skip scorer loops recently blocked as near-duplicates
+// ---------------------------------------------------------------------------
+
+type ScorerBaseCandidate = {
+  id: string;
+  type: 'commitment' | 'signal' | 'relationship';
+  title: string;
+  content: string;
+  actionType: ActionType;
+  urgency: number;
+  matchedGoal: MatchedGoal | null;
+  domain: string;
+  sourceSignals: GenerationCandidateSource[];
+  entityPatterns?: unknown;
+  entityName?: string;
+  author?: string;
+  commitmentDueMs?: number;
+  calendarEventStartMs?: number;
+};
+
+/** Stable key aligned with `getSuppressedCandidateKeys` extraction from skipped rows. */
+export function scorerCandidateSuppressionKey(candidate: Pick<ScorerBaseCandidate, 'id' | 'sourceSignals'>): string {
+  const ss = candidate.sourceSignals ?? [];
+  const rel = ss.find((s) => s.kind === 'relationship' && s.id);
+  const sig = ss.find((s) => s.kind === 'signal' && s.id);
+  const com = ss.find((s) => s.kind === 'commitment' && s.id);
+  if (rel?.id) {
+    const sid = sig?.id ?? com?.id ?? rel.id;
+    return `${String(sid)}:${String(rel.id)}`;
+  }
+  const sid = sig?.id ?? com?.id ?? candidate.id;
+  return `${String(sid)}:*`;
+}
+
+function suppressionKeyFromLoggedCandidate(tc: GenerationCandidateLog): string | null {
+  const ss = tc.sourceSignals ?? [];
+  const rel = ss.find((s) => s.kind === 'relationship' && s.id);
+  const sig = ss.find((s) => s.kind === 'signal' && s.id);
+  const com = ss.find((s) => s.kind === 'commitment' && s.id);
+  if (rel?.id) {
+    const sid = sig?.id ?? com?.id ?? rel.id;
+    return `${String(sid)}:${String(rel.id)}`;
+  }
+  const sid = sig?.id ?? com?.id ?? tc.id;
+  return `${String(sid)}:*`;
+}
+
+/**
+ * Reads recent skipped `tkg_actions` where near-duplicate suppression fired (directive text or
+ * `original_candidate.blocked_by`), then derives `${signalId}:${entityId}` keys from persisted
+ * `execution_result.generation_log.candidateDiscovery.topCandidates` when present.
+ *
+ * Note: `gate_that_blocked` / `failure_class` live on `system_health`, not `tkg_actions`; this
+ * uses the fields that actually exist on skipped rows (duplicate_* in `directive_text` / blocked_by).
+ */
+export async function getSuppressedCandidateKeys(
+  userId: string,
+  supabase: ReturnType<typeof createServerClient>,
+  windowDays = 7,
+): Promise<Set<string>> {
+  const since = new Date(Date.now() - daysMs(windowDays)).toISOString();
+  const { data: rows, error } = await supabase
+    .from('tkg_actions')
+    .select('directive_text, execution_result')
+    .eq('user_id', userId)
+    .eq('status', 'skipped')
+    .gte('generated_at', since);
+
+  if (error || !rows?.length) return new Set();
+
+  const keys = new Set<string>();
+
+  for (const row of rows) {
+    const dt = String((row as { directive_text?: string }).directive_text ?? '');
+    const er = (row as { execution_result?: Record<string, unknown> | null }).execution_result ?? null;
+
+    const dupInDirective = /duplicate_\d+pct_similar/i.test(dt) || /duplicate_100pct_similar/i.test(dt);
+    const orig = er?.original_candidate as Record<string, unknown> | undefined;
+    const blockedBy = typeof orig?.blocked_by === 'string' ? orig.blocked_by : '';
+    const dupInBlockedBy = /duplicate_\d+pct_similar/i.test(blockedBy) || /duplicate_100pct_similar/i.test(blockedBy);
+    const fc = er?.failure_class;
+    const dupFailureClass = fc === 'duplicate_100pct_similar';
+
+    if (!dupInDirective && !dupInBlockedBy && !dupFailureClass) continue;
+
+    const genLog = er?.generation_log as Record<string, unknown> | undefined;
+    const discovery = genLog?.candidateDiscovery as { topCandidates?: GenerationCandidateLog[] } | undefined;
+    const top = discovery?.topCandidates ?? [];
+    if (top.length === 0) continue;
+
+    for (const tc of top) {
+      const k = suppressionKeyFromLoggedCandidate(tc);
+      if (k) keys.add(k);
+    }
+  }
+
+  return keys;
 }
 
 // ---------------------------------------------------------------------------
@@ -3355,7 +3460,7 @@ function huntFindingToScoredLoop(f: HuntFinding): ScoredLoop {
 
 export async function scoreOpenLoops(
   userId: string,
-  options?: { pipelineDryRun?: boolean },
+  options?: { pipelineDryRun?: boolean; extraSuppressedCandidateKeys?: Set<string> },
 ): Promise<ScorerResult | null> {
   const diag = initDiagnostics();
   _lastDiagnostics = diag;
@@ -3704,6 +3809,8 @@ export async function scoreOpenLoops(
       return !isSelfReferentialSignal(content);
     });
   logDecryptSkip(userId, 'scorer:recent_signal_context', contextDecryptSkips);
+
+  const suppressedCandidateKeys = await getSuppressedCandidateKeys(userId, supabase, 7);
 
   // -----------------------------------------------------------------------
   // Build candidate loops
@@ -4115,6 +4222,38 @@ export async function scoreOpenLoops(
     }));
   }
 
+  if (suppressedCandidateKeys.size > 0) {
+    const preCooldown = candidates.length;
+    const cooldownDrops: ScorerDropEntry[] = [];
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      const c = candidates[i];
+      if (suppressedCandidateKeys.has(scorerCandidateSuppressionKey(c))) {
+        cooldownDrops.push({
+          candidateId: c.id,
+          type: c.type,
+          title: c.title.slice(0, 100),
+          stage: 'suppressed_candidate_cooldown',
+          reason: 'recent_duplicate_suppression',
+        });
+        candidates.splice(i, 1);
+      }
+    }
+    if (preCooldown !== candidates.length) {
+      console.log(JSON.stringify({
+        event: 'scorer_suppressed_candidate_cooldown',
+        userId,
+        before: preCooldown,
+        after: candidates.length,
+      }));
+      diag.filterStages.push({
+        stage: 'suppressed_candidate_cooldown',
+        before: preCooldown,
+        after: candidates.length,
+        dropped: cooldownDrops,
+      });
+    }
+  }
+
   // -----------------------------------------------------------------------
   // PRE-SCORING: Candidate quality filter
   // Reject housekeeping, tool management, notifications, and spam before
@@ -4299,6 +4438,56 @@ export async function scoreOpenLoops(
     // a valid no-send. A correct NO_ACTION is better than a weak directive.
     diag.earlyExitStage = 'stakes_gate';
     return null;
+  }
+
+  // -----------------------------------------------------------------------
+  // Failure memory: exclude signal/entity/commitment keys that recently lost
+  // to duplicate / usefulness / validation gates (persisted on do_nothing rows).
+  // -----------------------------------------------------------------------
+  const failureSuppressionKeys = await collectActiveFailureSuppressionKeys(supabase, userId, {
+    mergeKeys: options?.extraSuppressedCandidateKeys,
+  });
+  if (failureSuppressionKeys.size > 0) {
+    const preFailSup = candidates.length;
+    const failSupDrops: ScorerDropEntry[] = [];
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      const c = candidates[i];
+      if (rawScorerCandidateMatchesFailureSuppression(c, failureSuppressionKeys)) {
+        failSupDrops.push({
+          candidateId: c.id,
+          type: c.type,
+          title: c.title.slice(0, 100),
+          stage: 'failure_suppression',
+          reason: 'recent_duplicate_or_gate_failure',
+        });
+        candidates.splice(i, 1);
+      }
+    }
+    diag.filterStages.push({
+      stage: 'failure_suppression',
+      before: preFailSup,
+      after: candidates.length,
+      dropped: failSupDrops,
+    });
+    if (preFailSup !== candidates.length) {
+      logStructuredEvent({
+        event: 'scorer_failure_suppression_filtered',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'scoring',
+        details: {
+          scope: 'scorer',
+          before: preFailSup,
+          after: candidates.length,
+          suppressed_key_count: failureSuppressionKeys.size,
+        },
+      });
+    }
+    if (candidates.length === 0) {
+      diag.earlyExitStage = 'failure_suppression';
+      return null;
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -4883,6 +5072,15 @@ export async function scoreOpenLoops(
   }
   const nowMsDisc = Date.now();
   for (const d of discrepancies) {
+    if (
+      failureSuppressionKeys.size > 0 &&
+      scoredLoopMatchesFailureSuppression(
+        { id: d.id, type: 'discrepancy', sourceSignals: d.sourceSignals },
+        failureSuppressionKeys,
+      )
+    ) {
+      continue;
+    }
     const daysSinceLastSurface = await getDaysSinceLastSurface(userId, d.title);
     const mergedDiscUrgency = mergeUrgencyWithTimeHints({
       baseUrgency: d.urgency,
@@ -4964,6 +5162,20 @@ export async function scoreOpenLoops(
   }
 
   for (const insight of insightCandidates) {
+    const insightPreSourceSignals: GenerationCandidateSource[] = insight.evidence_signals.map((id) => ({
+      kind: 'signal',
+      id,
+    }));
+    if (
+      failureSuppressionKeys.size > 0 &&
+      scoredLoopMatchesFailureSuppression(
+        { id: insight.id, type: 'signal', sourceSignals: insightPreSourceSignals },
+        failureSuppressionKeys,
+      )
+    ) {
+      continue;
+    }
+
     const entityMatch = entities.find(
       (e) =>
         insight.suggested_entity &&
@@ -5285,7 +5497,14 @@ export async function scoreOpenLoops(
         skippedLocked++;
         continue;
       }
-      loopsToAdd.push(huntFindingToScoredLoop(f));
+      const huntLoop = huntFindingToScoredLoop(f);
+      if (
+        failureSuppressionKeys.size > 0 &&
+        scoredLoopMatchesFailureSuppression(huntLoop, failureSuppressionKeys)
+      ) {
+        continue;
+      }
+      loopsToAdd.push(huntLoop);
       if (loopsToAdd.length >= 3) break;
     }
     for (const hLoop of loopsToAdd) {

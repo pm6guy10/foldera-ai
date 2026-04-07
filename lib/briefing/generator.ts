@@ -59,6 +59,7 @@ import {
   needsNoThreadNoOutcomeBlock,
 } from './thread-evidence-for-payload';
 import { buildDiagnosticLensBlock, getVagueMechanismIssues } from './diagnostic-lenses';
+import { directiveHasStalePastDates } from './scorer-failure-suppression';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -551,6 +552,8 @@ interface GenerateDirectiveOptions {
    * Distinct from `dryRun` (Vitest / api_usage persistence semantics).
    */
   pipelineDryRun?: boolean;
+  /** Merged into scorer failure-suppression keys for this run (e.g. loop guard). */
+  extraSuppressedCandidateKeys?: Set<string>;
   /** Skip daily spend cap check — used for manual Generate Now so testing doesn't cost money */
   skipSpendCap?: boolean;
   /**
@@ -5649,8 +5652,19 @@ function shouldAttemptDecisionEnforcementRepair(
 }
 
 function resolveDecisionDeadline(candidateDueDate: string | null): string {
-  const dueMatch = candidateDueDate?.match(/\b20\d{2}-\d{2}-\d{2}\b/);
-  const date = dueMatch?.[0] ?? new Date(Date.now() + daysMs(1)).toISOString().slice(0, 10);
+  const dueMatch = candidateDueDate?.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+  const now = new Date();
+  const startTodayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  let date = dueMatch?.[1] ?? new Date(Date.now() + daysMs(1)).toISOString().slice(0, 10);
+  if (dueMatch?.[1]) {
+    const [y, mo, d] = dueMatch[1].split('-').map(Number);
+    const dueStart = Date.UTC(y, mo - 1, d);
+    // Overdue commitment dates must not be echoed into user-facing directive/repair copy —
+    // they trip stale-date rejection and read as dead copy in production.
+    if (dueStart < startTodayUtc) {
+      date = new Date(startTodayUtc).toISOString().slice(0, 10);
+    }
+  }
   return `5:00 PM PT on ${date}`;
 }
 
@@ -6720,7 +6734,10 @@ export async function generateDirective(
     }
 
     const [scored, guardrails] = await Promise.all([
-      scoreOpenLoops(userId, { pipelineDryRun: options.pipelineDryRun }),
+      scoreOpenLoops(userId, {
+        pipelineDryRun: options.pipelineDryRun,
+        extraSuppressedCandidateKeys: options.extraSuppressedCandidateKeys,
+      }),
       loadRecentActionGuardrails(userId),
     ]);
 
@@ -6932,6 +6949,20 @@ export async function generateDirective(
       // Skip disqualified candidates (already acted recently, etc.)
       if (disqualified) {
         candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [disqualifyReason ?? 'disqualified'] });
+        continue;
+      }
+
+      if (currentCandidate.id.toLowerCase().includes('foldera')) {
+        console.log(`[generator] noise_winner_excluded id=${currentCandidate.id}`);
+        candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: ['noise_winner:foldera_id'] });
+        logStructuredEvent({
+          event: 'candidate_blocked',
+          level: 'info',
+          userId,
+          artifactType: null,
+          generationStatus: 'noise_winner_excluded',
+          details: { scope: 'generator', candidate_id: currentCandidate.id },
+        });
         continue;
       }
 
@@ -7239,6 +7270,30 @@ export async function generateDirective(
     const payload = payloadResult.payload;
     applyScheduleConflictCanonicalUserFacingCopy(payload, currentCandidate);
 
+    const staleDateCheck = directiveHasStalePastDates(
+      typeof payload.directive === 'string' ? payload.directive : '',
+    );
+    if (staleDateCheck.stale) {
+      const staleReason = `stale_date_in_directive:${staleDateCheck.matches.slice(0, 4).join(',')}`;
+      candidateBlockLog.push({
+        title: currentCandidate.title.slice(0, 80),
+        reasons: [staleReason],
+      });
+      logStructuredEvent({
+        event: 'candidate_blocked',
+        level: 'warn',
+        userId,
+        artifactType: decisionPayload.recommended_action,
+        generationStatus: 'stale_date_in_directive',
+        details: {
+          scope: 'generator',
+          candidate_title: currentCandidate.title.slice(0, 80),
+          matches: staleDateCheck.matches.slice(0, 6),
+        },
+      });
+      continue;
+    }
+
     // =====================================================================
     // POST-LLM ENFORCEMENT: the canonical action is from decisionPayload,
     // NOT from the LLM's artifact_type. Log any drift for diagnostics.
@@ -7290,6 +7345,27 @@ export async function generateDirective(
         event: 'candidate_blocked', level: 'warn', userId,
         artifactType: canonicalAction, generationStatus: 'duplicate_suppressed',
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), matching_action_id: duplicateCheck.matchingActionId, similarity: duplicateCheck.similarity },
+      });
+      continue;
+    }
+
+    // Stale ISO / month dates in user-facing headline only (`directiveHasStalePastDates` above).
+    // Do not scan full artifact bodies: repair paths and write_document content may cite historical
+    // cutoff dates from scorer context by design.
+
+    const artTo = typeof payload.artifact === 'object' && payload.artifact && 'to' in payload.artifact
+      ? String((payload.artifact as Record<string, unknown>).to ?? '').toLowerCase()
+      : '';
+    if (artTo.includes('@resend.dev')) {
+      console.log(`[generator] noise_winner_excluded id=${currentCandidate.id}`);
+      candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: ['noise_winner:resend_recipient'] });
+      logStructuredEvent({
+        event: 'candidate_blocked',
+        level: 'info',
+        userId,
+        artifactType: canonicalAction,
+        generationStatus: 'noise_winner_excluded',
+        details: { scope: 'generator', candidate_id: currentCandidate.id, artifact_to: artTo.slice(0, 80) },
       });
       continue;
     }
