@@ -4,9 +4,17 @@
 
 ## Session Logs
 
-- 2026-04-07 — AUDIT: **forceFreshRun respects 18h pending reuse (rolling window)**
+- 2026-04-07 — AUDIT: **Hunt self-inbound filter + Gmail `after:` date clause + mail graph stale UI**
   MODE: AUDIT
   Commit hash(es): *(set after push)*
+  Files changed: `lib/briefing/hunt-anomalies.ts`, `lib/briefing/scorer.ts`, `lib/briefing/generator.ts`, `lib/sync/google-sync.ts`, `lib/sync/gmail-query.ts`, `lib/sync/__tests__/gmail-query.test.ts`, `lib/briefing/__tests__/hunt-anomalies.test.ts`, `lib/config/constants.ts`, `app/api/integrations/status/route.ts`, `app/dashboard/settings/SettingsClient.tsx`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run lib/briefing/__tests__/hunt-anomalies.test.ts lib/sync/__tests__/google-sync.test.ts lib/sync/__tests__/gmail-query.test.ts --exclude ".claude/worktrees/**"` (8 passed). Full `npm run build` hit pre-existing Windows prerender `webpack-runtime` errors on this machine (unrelated to touched files).
+  Changes: (1) **Hunt** — pass `selfEmails` from `scoreOpenLoops`; skip unreplied/ignored/latency/financial patterns for inbound From user mailboxes + internal product domains. (2) **Gmail sync** — `after:yyyy/mm/dd` UTC via `gmailSearchAfterDateClause`. (3) **Generator** — `fetchUserEmailAddresses` includes connector emails; avoidance observations skip self/product authors. (4) **Settings** — API exposes newest processed mail signal + 7d stale flag; banner copy.
+  Any unresolved issues: **Operator:** after deploy, run **Sync now** on Google (and Microsoft if used), wait for signal processing, then **Generate Now** — scorer survivor / directive title confirms real contacts once fresh mail is in `tkg_signals`. This workspace cannot run owner `scoreOpenLoops` without live Supabase session.
+
+- 2026-04-07 — AUDIT: **forceFreshRun respects 18h pending reuse (rolling window)**
+  MODE: AUDIT
+  Commit hash(es): `bd859fe`
   Files changed: `lib/cron/daily-brief-generate.ts`, `lib/cron/daily-brief-types.ts`, `lib/cron/brief-service.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `docs/MASTER_PUNCHLIST.md`, `AUTOMATION_BACKLOG.md`, `SYSTEM_RUNBOOK.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run lib/cron/__tests__/daily-brief.test.ts`
   Changes: Removed `forceFreshRun` bypass of `pending_approval_guard`; reconcile no longer suppresses valid pendings on force — keep window aligned to `STALE_PENDING_HOURS` (18h rolling) instead of UTC day only; recoverable skipped→pending path runs under force. Docs/spec/backlog/runbook updated.
