@@ -103,7 +103,6 @@ export async function runBriefLifecycle(
         sendOverride = await runDailySend({
           ...options,
           userIds: options.userIds,
-          ensureSend: true,
         });
         sendFallbackAttempted = true;
         break;
