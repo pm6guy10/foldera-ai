@@ -627,13 +627,23 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
   const errors: string[] = [];
 
   let googleSelfEmail = '';
-  if (hasCalendarScope) {
-    try {
-      const gmail = google.gmail({ version: 'v1', auth: oauth2 });
-      const prof = await gmail.users.getProfile({ userId: 'me' });
-      googleSelfEmail = (prof.data.emailAddress ?? '').toLowerCase().trim();
-    } catch {
-      /* optional */
+  try {
+    const gmailForProfile = google.gmail({ version: 'v1', auth: oauth2 });
+    const prof = await gmailForProfile.users.getProfile({ userId: 'me' });
+    googleSelfEmail = (prof.data.emailAddress ?? '').toLowerCase().trim();
+  } catch {
+    /* optional — calendar self-attendee + connector email backfill degrade gracefully */
+  }
+
+  if (googleSelfEmail && !token.email) {
+    const { error: emailPatchErr } = await supabase
+      .from('user_tokens')
+      .update({ email: googleSelfEmail, updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('provider', 'google')
+      .is('email', null);
+    if (emailPatchErr) {
+      console.warn(`[google-sync] user_tokens email backfill skipped:`, emailPatchErr.message);
     }
   }
 
@@ -692,6 +702,33 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
       `[google-sync] user=${userId} zero new signals incremental window since=${new Date(sinceMs).toISOString()} — often normal if no new mail/events/drive edits since last_synced_at; not an auth failure unless Gmail errored above.`,
     );
   }
+
+  // #region agent log
+  if (process.env.DEBUG_SYNC_AGENT_LOG === '1') {
+    fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f3bae1' },
+      body: JSON.stringify({
+        sessionId: 'f3bae1',
+        runId: 'sync-google',
+        hypothesisId: 'H1-cursor-and-counts',
+        location: 'lib/sync/google-sync.ts:syncGoogle',
+        message: 'syncGoogle finished',
+        data: {
+          isFirstSync,
+          gmailSignals,
+          calendarSignals,
+          driveSignals,
+          sinceMs,
+          afterClause: gmailSearchAfterDateClause(sinceMs),
+          gmailOk,
+          errorsLen: errors.length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
 
   return {
     gmail_signals: gmailSignals,

@@ -994,6 +994,22 @@ export async function syncMicrosoft(
     /* optional */
   }
 
+  if (graphSelfEmail && !tokenMeta?.email) {
+    const supabaseMs = createServerClient();
+    const { error: msEmailPatchErr } = await supabaseMs
+      .from("user_tokens")
+      .update({ email: graphSelfEmail, updated_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .eq("provider", "microsoft")
+      .is("email", null);
+    if (msEmailPatchErr) {
+      console.warn(
+        `[microsoft-sync] user_tokens email backfill skipped:`,
+        msEmailPatchErr.message,
+      );
+    }
+  }
+
   let mailSignals = 0;
   let calendarSignals = 0;
   let fileSignals = 0;

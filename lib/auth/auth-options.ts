@@ -79,6 +79,7 @@ async function refreshGoogleToken(token: JWT): Promise<JWT> {
           access_token: newAccessToken,
           refresh_token: newRefreshToken as string,
           expires_at: newExpiresAt,
+          email: typeof token.email === 'string' ? token.email : undefined,
         });
         console.log('[auth] Google token refreshed + persisted to user_tokens');
       } catch (persistErr) {
@@ -151,6 +152,7 @@ async function refreshMicrosoftToken(token: JWT): Promise<JWT> {
           access_token: newAccessToken,
           refresh_token: newRefreshToken as string,
           expires_at: newExpiresAt,
+          email: typeof token.email === 'string' ? token.email : undefined,
         });
         console.log('[auth] Microsoft token refreshed + persisted to user_tokens');
       } catch (persistErr) {

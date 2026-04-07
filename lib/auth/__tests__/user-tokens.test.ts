@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const upsertSpy = vi.fn();
 const updateEqSpy = vi.fn();
 const updateSpy = vi.fn();
+const maybeSingleSpy = vi.fn();
 
 vi.mock('@/lib/db/client', () => ({
   createServerClient: () => ({
@@ -14,6 +15,13 @@ vi.mock('@/lib/db/client', () => ({
       return {
         upsert: upsertSpy,
         update: updateSpy,
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              maybeSingle: maybeSingleSpy,
+            }),
+          }),
+        }),
       };
     },
   }),
@@ -31,9 +39,11 @@ describe('saveUserToken', () => {
     upsertSpy.mockReset();
     updateEqSpy.mockReset();
     updateSpy.mockReset();
+    maybeSingleSpy.mockReset();
 
     upsertSpy.mockResolvedValue({ error: null });
     updateEqSpy.mockResolvedValue({ error: null });
+    maybeSingleSpy.mockResolvedValue({ data: null, error: null });
     updateSpy.mockReturnValue({
       eq() {
         return {
@@ -101,6 +111,46 @@ describe('saveUserToken', () => {
         refresh_token: 'enc:valid_refresh_token',
         disconnected_at: null,
       }),
+      { onConflict: 'user_id,provider', ignoreDuplicates: false },
+    );
+  });
+
+  it('preserves email and scopes when omitted (token refresh paths must not null them)', async () => {
+    maybeSingleSpy.mockResolvedValueOnce({
+      data: { email: 'keep@example.com', scopes: 'scope1 scope2' },
+      error: null,
+    });
+
+    const { saveUserToken } = await import('../user-tokens');
+
+    await saveUserToken('user-1', 'google', {
+      access_token: 'new_access',
+      refresh_token: 'new_refresh',
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    expect(maybeSingleSpy).toHaveBeenCalled();
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'keep@example.com',
+        scopes: 'scope1 scope2',
+      }),
+      { onConflict: 'user_id,provider', ignoreDuplicates: false },
+    );
+  });
+
+  it('allows explicit null email to clear stored email', async () => {
+    const { saveUserToken } = await import('../user-tokens');
+
+    await saveUserToken('user-1', 'google', {
+      access_token: 'a',
+      refresh_token: 'r',
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      email: null,
+    });
+
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ email: null }),
       { onConflict: 'user_id,provider', ignoreDuplicates: false },
     );
   });

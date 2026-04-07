@@ -12,12 +12,37 @@ interface SaveUserTokenParams {
   access_token: string;
   refresh_token: string;
   expires_at: number;
-  email?: string;
-  scopes?: string;
+  /** Omit to keep existing `user_tokens.email`; pass `null` to clear. */
+  email?: string | null;
+  /** Omit to keep existing `user_tokens.scopes`; pass `null` to clear. */
+  scopes?: string | null;
 }
 
 function hasTestTokenPrefix(value: string): boolean {
   return value.startsWith('test_');
+}
+
+async function fetchExistingTokenPreservedFields(
+  userId: string,
+  provider: 'google' | 'microsoft',
+): Promise<{ email: string | null; scopes: string | null } | null> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from('user_tokens')
+    .select('email, scopes')
+    .eq('user_id', userId)
+    .eq('provider', provider)
+    .maybeSingle();
+
+  if (error) {
+    console.warn(`[user-tokens] fetchExistingTokenPreservedFields(${provider}) failed:`, error.message);
+    return null;
+  }
+  if (!data) return null;
+  return {
+    email: (data as { email?: string | null }).email ?? null,
+    scopes: (data as { scopes?: string | null }).scopes ?? null,
+  };
 }
 
 /**
@@ -52,6 +77,14 @@ export async function saveUserToken(
     expiresAtSec = Math.floor(expiresAtSec / 1000);
   }
 
+  let preserved: { email: string | null; scopes: string | null } | null = null;
+  if (params.email === undefined || params.scopes === undefined) {
+    preserved = await fetchExistingTokenPreservedFields(userId, provider);
+  }
+
+  const email = params.email !== undefined ? params.email : preserved?.email ?? null;
+  const scopes = params.scopes !== undefined ? params.scopes : preserved?.scopes ?? null;
+
   const row = {
     user_id: userId,
     provider,
@@ -59,8 +92,8 @@ export async function saveUserToken(
     access_token: encryptToken(params.access_token),
     disconnected_at: null,
     expires_at: expiresAtSec,
-    email: params.email ?? null,
-    scopes: params.scopes ?? null,
+    email,
+    scopes,
     updated_at: now,
   };
 
