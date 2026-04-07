@@ -150,7 +150,7 @@ async function syncGmail(
         maxResults: 3,
       });
       console.warn(
-        `[google-sync] Gmail incremental returned 0 message ids (q=after:${afterDate} -in:spam -in:trash); probe in:inbox idCount=${(probe.data.messages ?? []).length} resultSizeEstimate=${probe.data.resultSizeEstimate ?? 'n/a'}`,
+        `[google-sync] Gmail incremental returned 0 message ids (q=${listQ}); probe in:inbox idCount=${(probe.data.messages ?? []).length} resultSizeEstimate=${probe.data.resultSizeEstimate ?? 'n/a'}`,
       );
     } catch (probeErr: unknown) {
       console.warn(
@@ -163,6 +163,7 @@ async function syncGmail(
 
   const supabase = createServerClient();
   let inserted = 0;
+  let loggedGmailUpsertError = false;
   const intelMessages: MailIntelMessage[] = [];
   const threadSizeCache = new Map<string, number>();
   let threadFetchBudget = GMAIL_THREAD_FETCH_CAP;
@@ -272,12 +273,15 @@ async function syncGmail(
       }, { onConflict: 'user_id,content_hash', ignoreDuplicates: true });
 
       if (error) {
-        console.warn(
-          `[google-sync] tkg_signals upsert failed user=${userId} source=gmail type=${signalType}:`,
-          error.message,
-          error.code ?? '',
-          error.details ?? '',
-        );
+        if (!loggedGmailUpsertError) {
+          loggedGmailUpsertError = true;
+          console.warn(
+            `[google-sync] tkg_signals upsert failed user=${userId} source=gmail (first error):`,
+            error.message,
+            error.code ?? '',
+            error.details ?? '',
+          );
+        }
       } else {
         inserted++;
       }
