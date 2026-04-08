@@ -190,6 +190,17 @@ export interface PipelineDryRunReceipt {
   candidate_type: string;
 }
 
+/** Distinct `tkg_signals.source` values in the bundle passed to the LLM (supporting + life snapshot). */
+export interface EvidenceBundleReceipt {
+  supporting_signal_sources: string[];
+  supporting_signal_source_count: number;
+  life_context_sources: string[];
+  combined_distinct_sources: string[];
+  combined_distinct_source_count: number;
+  /** True when combined_distinct_source_count >= 3 (product bar for cross-source life context). */
+  meets_three_source_bar: boolean;
+}
+
 export interface GenerationRunLog {
   outcome: 'selected' | 'no_send';
   stage: 'scoring' | 'generation' | 'artifact' | 'validation' | 'persistence' | 'system';
@@ -202,6 +213,8 @@ export interface GenerationRunLog {
   brief_context_debug?: { active_goals?: string[] };
   /** Operator dry run: full assembled user prompt + winner snapshot; zero Anthropic. */
   pipeline_dry_run?: PipelineDryRunReceipt;
+  /** Cross-source evidence audit: distinct signal sources in the generator bundle. */
+  evidence_bundle?: EvidenceBundleReceipt;
 }
 
 /**

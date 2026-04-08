@@ -5386,7 +5386,9 @@ export async function scoreOpenLoops(
       type: 'discrepancy',
       title: insight.title,
       content: insight.content,
-      suggestedActionType: insight.suggested_action,
+      // AZ-24: insight scan must not emit open-ended research rows — frame a decision.
+      suggestedActionType:
+        String(insight.suggested_action) === 'research' ? 'make_decision' : insight.suggested_action,
       matchedGoal: null,
       score: insightScore,
       breakdown: {

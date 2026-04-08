@@ -68,6 +68,11 @@
 - **Mitigation shipped (2026-04-07):** `directiveHasStalePastDates` scans **directive + why_now + evidence + insight**; slash ISO `20xx/mm/dd` added; generator still does **not** scan full artifact JSON (historical cutoffs in document body allowed by design). `resolveDecisionDeadline` clamps overdue ISO dates for repair templates (existing).
 - **Proof of closure:** New `send_message` / `write_document` rows lack stale ISO in scanned fields; logs `stale_date_in_directive` when blocked. Re-open if stale dates appear **inside finished artifact** fields users see in email (`renderArtifactHtml` paths).
 
+### DONE (2026-04-08) — Cross-source evidence bundle + AZ-24 insight scan (agent)
+
+- **Code:** `lib/briefing/generator.ts` — always merge non-mail life context (financial uses tighter per-source cap); `ensureMinimumEvidenceSourceDiversity` (bucket queries when &lt;3 distinct `source`); `life_context_signals` + **LIFE_CONTEXT** prompt block; financial **non-mail preserved** + payment mail collapsed; recipient-short **RECENT_SIGNALS** includes `[source]`; `buildEvidenceBundleReceipt`; logs `evidence_bundle_commit`, `winner_signal_evidence_sources`; `generation_log.evidence_bundle` on success. `lib/briefing/types.ts` — `EvidenceBundleReceipt`. `lib/briefing/scorer.ts` — insight scan **`research` → `make_decision`**. Tests: `lib/briefing/__tests__/evidence-bundle.test.ts`.
+- **Proof:** `npx vitest run --exclude ".claude/worktrees/**"` 866 passed; `npm run test:ci:e2e` 46; `npm run test:prod` 61. **Post-deploy:** confirm `evidence_bundle.meets_three_source_bar` on a real `pending_approval` row when DB has calendar/drive/mail.
+
 ### DONE (2026-04-08) — `noise_winner` scorer pre-filter
 
 - **Prior:** Generator already skipped candidate ids containing `foldera` and artifacts with `to` `@resend.dev` (`noise_winner_excluded`).

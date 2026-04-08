@@ -7,6 +7,7 @@ import type {
   ConvictionArtifact,
   ConvictionDirective,
   DecisionPayload,
+  EvidenceBundleReceipt,
   EvidenceItem,
   GenerationCandidateDiscoveryLog,
   GenerationRunLog,
@@ -1457,6 +1458,11 @@ export interface StructuredContext {
   candidate_due_date: string | null;
   candidate_context_enrichment: string | null;
   supporting_signals: CompressedSignal[];
+  /**
+   * Non-mail cross-source snapshot for LIFE_CONTEXT in the user prompt — not stripped by
+   * financial single-focus mail collapse.
+   */
+  life_context_signals: CompressedSignal[];
   surgical_raw_facts: string[];
   active_goals: string[];
   locked_constraints: string | null;
@@ -1522,6 +1528,22 @@ export interface StructuredContext {
   entity_conversation_state: string | null;
   /** Voice grounding — style extracted from approved emails. Null when insufficient data. */
   user_voice_patterns: string | null;
+}
+
+/** Distinct `tkg_signals.source` in supporting + life snapshot (generator bundle audit). */
+export function buildEvidenceBundleReceipt(ctx: StructuredContext): EvidenceBundleReceipt {
+  const sup = new Set(ctx.supporting_signals.map((s) => s.source).filter(Boolean));
+  const life = new Set((ctx.life_context_signals ?? []).map((s) => s.source).filter(Boolean));
+  const combined = new Set([...sup, ...life]);
+  const combinedArr = [...combined].sort();
+  return {
+    supporting_signal_sources: [...sup].sort(),
+    supporting_signal_source_count: sup.size,
+    life_context_sources: [...life].sort(),
+    combined_distinct_sources: combinedArr,
+    combined_distinct_source_count: combined.size,
+    meets_three_source_bar: combined.size >= 3,
+  };
 }
 
 type CausalMechanismClass =
@@ -1913,19 +1935,55 @@ function buildStructuredContext(
     }
   }
 
-  let supporting_signals: CompressedSignal[] = diverse.map((s) => ({
+  const snippetToCompressed = (s: SignalSnippet): CompressedSignal => ({
     source: s.source,
     occurred_at: s.date,
     entity: s.author,
     summary: [s.subject, s.snippet].filter(Boolean).join(' — '),
     direction: s.direction,
-  }));
+  });
+
+  const LIFE_CONTEXT_SNIPPET_CAP = 10;
+  const lifeContextSnippets = sorted
+    .filter((s) => !EMAIL_SOURCES.has(s.source))
+    .slice(0, LIFE_CONTEXT_SNIPPET_CAP);
+  const lifeSeen = new Set<string>();
+  const life_context_signals: CompressedSignal[] = [];
+  for (const s of lifeContextSnippets) {
+    const c = snippetToCompressed(s);
+    const k = `${c.source}|${c.occurred_at}|${(c.summary ?? '').slice(0, 72)}`;
+    if (lifeSeen.has(k)) continue;
+    lifeSeen.add(k);
+    life_context_signals.push(c);
+  }
+
+  let supporting_signals: CompressedSignal[] = diverse.map(snippetToCompressed);
+
   if (shouldApplyFinancialSingleFocus(winner)) {
+    const nonMail = supporting_signals.filter((s) => !EMAIL_SOURCES.has(s.source));
+    const mailOnly = supporting_signals.filter((s) => EMAIL_SOURCES.has(s.source));
+    let pickedMail: CompressedSignal[] = mailOnly;
     try {
-      supporting_signals = pickHighestStakesPaymentSignal(supporting_signals);
+      if (mailOnly.length > 0) {
+        pickedMail = pickHighestStakesPaymentSignal(mailOnly);
+      } else if (supporting_signals.length > 0) {
+        pickedMail = pickHighestStakesPaymentSignal(supporting_signals);
+      }
     } catch (e) {
       console.warn('[generator] pickHighestStakesPaymentSignal failed (keeping unfiltered signals):', e);
     }
+    const mergeSeen = new Set(
+      nonMail.map((s) => `${s.source}|${s.occurred_at}|${(s.summary ?? '').slice(0, 40)}`),
+    );
+    const merged: CompressedSignal[] = [...nonMail];
+    for (const m of pickedMail) {
+      const mk = `${m.source}|${m.occurred_at}|${(m.summary ?? '').slice(0, 40)}`;
+      if (mergeSeen.has(mk)) continue;
+      mergeSeen.add(mk);
+      merged.push(m);
+      if (merged.length >= maxSignals) break;
+    }
+    supporting_signals = merged.slice(0, maxSignals);
   }
 
   // Extract surgical raw facts: emails, dates, names, subjects
@@ -2117,6 +2175,7 @@ function buildStructuredContext(
     candidate_score: winner.score,
     candidate_due_date,
     supporting_signals,
+    life_context_signals,
     candidate_context_enrichment,
     surgical_raw_facts: surgical_raw_facts.slice(0, 15),
     active_goals,
@@ -2656,6 +2715,20 @@ function signalSnippetMatchesDecayEntity(
   return anchors.tokens.length >= 2 ? hits.length >= 2 : hits.length >= 1;
 }
 
+function formatLifeContextPromptBlock(signals: CompressedSignal[]): string | null {
+  if (!signals.length) return null;
+  const lines = signals.map((s) => {
+    const dirLabel = s.direction === 'sent' ? '[SENT]' : s.direction === 'received' ? '[RECEIVED]' : '';
+    const entityPart = s.entity ? ` ${s.direction === 'sent' ? 'To' : 'From'}: ${s.entity}` : '';
+    return `- [${s.occurred_at}] [${s.source}]${dirLabel ? ` ${dirLabel}` : ''}${entityPart} ${s.summary}`;
+  });
+  return (
+    'LIFE_CONTEXT (cross-source snapshot — your life beyond this thread; reference when relevant; ' +
+    'do not invent facts not listed):\n' +
+    lines.join('\n')
+  );
+}
+
 export function buildPromptFromStructuredContext(
   ctx: StructuredContext,
   committedArtifactType?: ValidArtifactTypeCanonical,
@@ -2721,6 +2794,11 @@ export function buildPromptFromStructuredContext(
       m.push(`ACTIVE_GOALS:\n${shortPathGoals.map((g) => `- ${g}`).join('\n')}`);
     }
 
+    const lifeCtxRecipient = formatLifeContextPromptBlock(ctx.life_context_signals ?? []);
+    if (lifeCtxRecipient) {
+      m.push(lifeCtxRecipient);
+    }
+
     if (ctx.locked_contacts_prompt) {
       m.push(
         `LOCKED_CONTACTS (never mention these in any artifact):\n${ctx.locked_contacts_prompt}`,
@@ -2765,9 +2843,9 @@ export function buildPromptFromStructuredContext(
     } else if (ctx.supporting_signals.length > 0) {
       const signalLines = ctx.supporting_signals.slice(0, 8).map((s) => {
         const dir = s.direction === 'sent' ? '[You →]' : s.direction === 'received' ? '[← Them]' : '';
-        return `- ${s.occurred_at}${dir ? ` ${dir}` : ''} ${s.summary}`;
+        return `- [${s.occurred_at}] [${s.source}]${dir ? ` ${dir}` : ''} ${s.summary}`;
       });
-      m.push(`RECENT SIGNALS:\n${signalLines.join('\n')}`);
+      m.push(`RECENT_SIGNALS:\n${signalLines.join('\n')}`);
     }
 
     if (ctx.relationship_timeline) {
@@ -3066,6 +3144,11 @@ export function buildPromptFromStructuredContext(
         '- Treat every other signal in the day as non-user-visible context you must not surface in any JSON field.\n' +
         '- Violations are invalid output — rewrite until compliant.',
     );
+  }
+
+  const lifeCtxLong = formatLifeContextPromptBlock(ctx.life_context_signals ?? []);
+  if (lifeCtxLong) {
+    sections.push(lifeCtxLong);
   }
 
   if (ctx.supporting_signals.length > 0) {
@@ -4185,7 +4268,11 @@ function extractAllEmailAddresses(winner: ScoredLoop, userEmails?: Set<string>):
 
 function buildSelectedGenerationLog(
   candidateDiscovery: GenerationCandidateDiscoveryLog | null,
-  extras?: { active_goals?: string[]; pipeline_dry_run?: PipelineDryRunReceipt },
+  extras?: {
+    active_goals?: string[];
+    pipeline_dry_run?: PipelineDryRunReceipt;
+    evidence_bundle?: EvidenceBundleReceipt;
+  },
 ): GenerationRunLog {
   return {
     outcome: 'selected',
@@ -4199,6 +4286,7 @@ function buildSelectedGenerationLog(
       ? { brief_context_debug: { active_goals: extras.active_goals } }
       : {}),
     ...(extras?.pipeline_dry_run ? { pipeline_dry_run: extras.pipeline_dry_run } : {}),
+    ...(extras?.evidence_bundle ? { evidence_bundle: extras.evidence_bundle } : {}),
   };
 }
 
@@ -4452,12 +4540,83 @@ function formatEntityLine(record: Record<string, unknown>): string {
 /** Inbox-only sources; calendar/drive/tasks/conversations use other `source` values. */
 const EVIDENCE_BUNDLE_EMAIL_SOURCES = new Set(['gmail', 'outlook']);
 
-/** Hard ceiling on snippet count returned from cross-source merge (prompt / token guard). */
-const CROSS_SOURCE_BUNDLE_MAX_SNIPPETS = 28;
+/** Default hard ceiling on snippet count returned from cross-source merge (prompt / token guard). */
+const CROSS_SOURCE_BUNDLE_MAX_SNIPPETS_DEFAULT = 28;
 
-function capCrossSourceSnippetBundle(snippets: SignalSnippet[]): SignalSnippet[] {
-  if (snippets.length <= CROSS_SOURCE_BUNDLE_MAX_SNIPPETS) return snippets;
-  return snippets.slice(0, CROSS_SOURCE_BUNDLE_MAX_SNIPPETS);
+export type CrossSourceLifeMergeOpts = {
+  maxBundleCap?: number;
+  maxPerSource?: number;
+  scanLimit?: number;
+};
+
+function capCrossSourceSnippetBundle(
+  snippets: SignalSnippet[],
+  maxBundle: number,
+): SignalSnippet[] {
+  if (snippets.length <= maxBundle) return snippets;
+  return snippets.slice(0, maxBundle);
+}
+
+/** Minimum distinct `source` values we try to surface when DB rows exist (life-aware bundle). */
+const EVIDENCE_DISTINCT_SOURCE_FLOOR = 3;
+
+const LIFE_SNAPSHOT_SOURCE_BUCKETS: string[][] = [
+  ['google_calendar', 'outlook_calendar'],
+  ['drive', 'onedrive'],
+  ['microsoft_todo'],
+  ['claude_conversation', 'chatgpt_conversation', 'conversation_ingest'],
+];
+
+async function ensureMinimumEvidenceSourceDiversity(
+  userId: string,
+  snippets: SignalSnippet[],
+): Promise<SignalSnippet[]> {
+  const distinct = new Set(snippets.map((s) => s.source).filter(Boolean));
+  if (distinct.size >= EVIDENCE_DISTINCT_SOURCE_FLOOR) return snippets;
+
+  const supabase = createServerClient();
+  const lookbackIso = new Date(Date.now() - daysMs(90)).toISOString();
+  const used = new Set(snippets.map(signalSnippetDedupeKey));
+  const out = [...snippets];
+
+  for (const bucket of LIFE_SNAPSHOT_SOURCE_BUCKETS) {
+    if (new Set(out.map((s) => s.source).filter(Boolean)).size >= EVIDENCE_DISTINCT_SOURCE_FLOOR) {
+      break;
+    }
+    if (bucket.some((src) => distinct.has(src))) continue;
+
+    let rows: Array<Record<string, unknown>> | null = null;
+    try {
+      const res = await supabase
+        .from('tkg_signals')
+        .select('content, source, occurred_at, author, type')
+        .eq('user_id', userId)
+        .eq('processed', true)
+        .gte('occurred_at', lookbackIso)
+        .in('source', bucket)
+        .order('occurred_at', { ascending: false })
+        .limit(6);
+      rows = (res?.data ?? null) as Array<Record<string, unknown>> | null;
+    } catch {
+      continue;
+    }
+
+    for (const row of rows ?? []) {
+      if (isBlockedSender(row.author as string)) continue;
+      const decrypted = decryptWithStatus(String((row as { content?: string }).content ?? ''));
+      if (decrypted.usedFallback) continue;
+      const parsed = parseSignalSnippet(decrypted.plaintext, row as Record<string, unknown>);
+      if (!parsed) continue;
+      const key = signalSnippetDedupeKey(parsed);
+      if (used.has(key)) continue;
+      used.add(key);
+      out.push(parsed);
+      distinct.add(parsed.source);
+      break;
+    }
+  }
+
+  return out;
 }
 
 function signalSnippetDedupeKey(s: SignalSnippet): string {
@@ -4469,12 +4628,17 @@ function signalSnippetDedupeKey(s: SignalSnippet): string {
  * sees a cross-source slice of the user's life (calendar, drive, tasks, chats), not only
  * the winning mail thread IDs from the scorer.
  *
- * Never returns more than {@link CROSS_SOURCE_BUNDLE_MAX_SNIPPETS} snippets (existing + new).
+ * Never returns more than `opts.maxBundleCap` (default {@link CROSS_SOURCE_BUNDLE_MAX_SNIPPETS_DEFAULT}) snippets (existing + new).
  */
 async function appendCrossSourceLifeContextSnippets(
   userId: string,
   existing: SignalSnippet[],
+  opts?: CrossSourceLifeMergeOpts,
 ): Promise<SignalSnippet[]> {
+  const maxBundleCap = opts?.maxBundleCap ?? CROSS_SOURCE_BUNDLE_MAX_SNIPPETS_DEFAULT;
+  const MAX_PER_SOURCE = opts?.maxPerSource ?? 5;
+  const scanLimit = opts?.scanLimit ?? 400;
+
   const supabase = createServerClient();
   const lookbackIso = new Date(Date.now() - daysMs(90)).toISOString();
   const { data: rows, error } = await supabase
@@ -4484,10 +4648,10 @@ async function appendCrossSourceLifeContextSnippets(
     .eq('processed', true)
     .gte('occurred_at', lookbackIso)
     .order('occurred_at', { ascending: false })
-    .limit(400);
+    .limit(scanLimit);
 
   if (error || !rows?.length) {
-    const out = capCrossSourceSnippetBundle(existing);
+    const out = capCrossSourceSnippetBundle(existing, maxBundleCap);
     logStructuredEvent({
       event: 'cross_source_life_context_merge',
       level: 'info',
@@ -4502,6 +4666,7 @@ async function appendCrossSourceLifeContextSnippets(
         merged_before_cap: existing.length,
         db_row_scan_count: 0,
         db_error: Boolean(error),
+        max_bundle_cap: maxBundleCap,
       },
     });
     return out;
@@ -4509,9 +4674,8 @@ async function appendCrossSourceLifeContextSnippets(
 
   const used = new Set(existing.map(signalSnippetDedupeKey));
   const perSource = new Map<string, number>();
-  const MAX_PER_SOURCE = 5;
   /** Room for new snippets after winner-scoped rows — total bundle must stay ≤ cap. */
-  const maxNew = Math.max(0, CROSS_SOURCE_BUNDLE_MAX_SNIPPETS - existing.length);
+  const maxNew = Math.max(0, maxBundleCap - existing.length);
   const extra: SignalSnippet[] = [];
 
   for (const row of rows) {
@@ -4533,7 +4697,7 @@ async function appendCrossSourceLifeContextSnippets(
   }
 
   const merged = extra.length === 0 ? existing : [...existing, ...extra];
-  const out = capCrossSourceSnippetBundle(merged);
+  const out = capCrossSourceSnippetBundle(merged, maxBundleCap);
   logStructuredEvent({
     event: 'cross_source_life_context_merge',
     level: 'info',
@@ -4547,6 +4711,7 @@ async function appendCrossSourceLifeContextSnippets(
       cross_source_new_added: extra.length,
       merged_before_cap: merged.length,
       db_row_scan_count: rows.length,
+      max_bundle_cap: maxBundleCap,
     },
   });
   return out;
@@ -4796,17 +4961,45 @@ async function fetchWinnerSignalEvidence(
   }
 
   const preMergeSources = [...new Set(snippets.map((s) => s.source))];
-  if (!shouldApplyFinancialSingleFocus(winner)) {
+  const mergeOpts: CrossSourceLifeMergeOpts = shouldApplyFinancialSingleFocus(winner)
+    ? { maxBundleCap: 34, maxPerSource: 2, scanLimit: 600 }
+    : { maxBundleCap: 30, maxPerSource: 5, scanLimit: 700 };
+  try {
+    snippets = await appendCrossSourceLifeContextSnippets(userId, snippets, mergeOpts);
+  } catch (e) {
+    console.warn(
+      '[generator] appendCrossSourceLifeContextSnippets failed (non-fatal):',
+      e instanceof Error ? e.message : String(e),
+    );
+  }
+
+  if (!isDecayDiscrepancy) {
     try {
-      snippets = await appendCrossSourceLifeContextSnippets(userId, snippets);
+      snippets = await ensureMinimumEvidenceSourceDiversity(userId, snippets);
     } catch (e) {
       console.warn(
-        '[generator] appendCrossSourceLifeContextSnippets failed (non-fatal):',
+        '[generator] ensureMinimumEvidenceSourceDiversity failed (non-fatal):',
         e instanceof Error ? e.message : String(e),
       );
     }
   }
+
   const postMergeSources = [...new Set(snippets.map((s) => s.source))];
+
+  logStructuredEvent({
+    event: 'winner_signal_evidence_sources',
+    level: 'info',
+    userId,
+    artifactType: null,
+    generationStatus: 'fetch_winner_evidence_complete',
+    details: {
+      scope: 'fetchWinnerSignalEvidence',
+      pre_merge_distinct_sources: [...preMergeSources].sort(),
+      post_merge_distinct_sources: [...postMergeSources].sort(),
+      snippet_count: snippets.length,
+      financial_single_focus: shouldApplyFinancialSingleFocus(winner),
+    },
+  });
 
   if (senderBlockedCount > 0) {
     logStructuredEvent({
@@ -5116,17 +5309,21 @@ function shouldSkipLowCrossSignalForThreadBackedOutreach(ctx: StructuredContext)
 /** Grounding tokens from context: signal sources, entities, goals, recipient line — used to enforce cross-signal artifacts. */
 function collectCrossSignalAnchors(ctx: StructuredContext): string[] {
   const set = new Set<string>();
-  for (const s of ctx.supporting_signals) {
-    const src = (s.source || '').trim().toLowerCase();
-    if (src.length >= 3) set.add(src);
-    const ent = (s.entity || '').trim().toLowerCase();
-    if (ent.length >= 2) {
-      set.add(ent);
-      for (const w of ent.split(/\s+/)) {
-        if (w.length >= 3) set.add(w);
+  const ingest = (signals: CompressedSignal[]) => {
+    for (const s of signals) {
+      const src = (s.source || '').trim().toLowerCase();
+      if (src.length >= 3) set.add(src);
+      const ent = (s.entity || '').trim().toLowerCase();
+      if (ent.length >= 2) {
+        set.add(ent);
+        for (const w of ent.split(/\s+/)) {
+          if (w.length >= 3) set.add(w);
+        }
       }
     }
-  }
+  };
+  ingest(ctx.supporting_signals);
+  ingest(ctx.life_context_signals ?? []);
   for (const g of ctx.active_goals) {
     const gl = g.trim().toLowerCase();
     if (gl.length >= 4) set.add(gl);
@@ -7206,6 +7403,21 @@ export async function generateDirective(
         lockedContactPromptLines,
       );
 
+      const evidenceBundleReceipt = buildEvidenceBundleReceipt(ctx);
+      logStructuredEvent({
+        event: 'evidence_bundle_commit',
+        level: evidenceBundleReceipt.meets_three_source_bar ? 'info' : 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: evidenceBundleReceipt.meets_three_source_bar
+          ? 'evidence_bundle_ok'
+          : 'evidence_bundle_under_3_sources',
+        details: {
+          scope: 'generator',
+          ...evidenceBundleReceipt,
+        },
+      });
+
       // --- DECISION PAYLOAD — the canonical binding contract ---
       const decisionPayload = buildDecisionPayload(hydratedWinner, ctx, confidence, lockedContacts);
       const payloadErrors = validateDecisionPayload(decisionPayload);
@@ -7568,6 +7780,7 @@ export async function generateDirective(
       },
       generationLog: buildSelectedGenerationLog(scored.candidateDiscovery, {
         active_goals: ctx.active_goals,
+        evidence_bundle: evidenceBundleReceipt,
         ...(options.pipelineDryRun && payloadResult.assembledPrompt
           ? {
               pipeline_dry_run: {

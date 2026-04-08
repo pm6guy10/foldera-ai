@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Cross-source evidence bundle (`generation_log.evidence_bundle`, LIFE_CONTEXT prompt)
+
+**This session:** Generator merges non-mail life context for every winner (financial: narrower caps + non-mail preserved with payment mail collapse); bucket queries when &lt;3 distinct sources; logs `evidence_bundle_commit` / `winner_signal_evidence_sources`; insight scan no longer emits `research`. **After deploy:** spot-check `tkg_actions.execution_result.generation_log.evidence_bundle` on a fresh row. **Gate 4** still operator-pending.
+
 ## Standing rule — production revision (locked in runbooks)
 
 **Canonical “what’s on www”:** **`GET https://www.foldera.ai/api/health`** → **`revision.git_sha`** (full) / **`revision.git_sha_short`** — not git history alone. **Docs-only** pushes (e.g. `759ca8a`, `8964ad8` after `a12db1d`) still produce a deploy; www may show a **newer** SHA than the feature commit — **expected**; always re-read health. Details: [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) **Production vs `main`**, [CLAUDE.md](CLAUDE.md) **Source of truth for what’s live**, [AGENTS.md](AGENTS.md) Vercel MCP bullet, [AUTOMATION_BACKLOG.md](AUTOMATION_BACKLOG.md) **What commit is live on www**.
