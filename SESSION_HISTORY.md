@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Deploy workflow: Vercel Hobby `api-deployments-free-per-day` — skip CLI when prod already at SHA**
   MODE: AUDIT
-  Commit hash(es): WORKFLOW_SHA_PLACEHOLDER
+  Commit hash(es): `37242a4`
   Files changed: `.github/workflows/deploy.yml`, `docs/MASTER_PUNCHLIST.md`, `AGENTS.md`, `AUTOMATION_BACKLOG.md`, `CLAUDE.md`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
   **Root cause:** User logs — `vercel deploy --prebuilt` fails with **`Resource is limited - try again in 24 hours (more than 100, code: "api-deployments-free-per-day")`**. Retries **3×** re-upload the same archive into the same cap. **GitHub integration** + **CLI** each create production deployments → ~2× pushes toward Hobby **~100/24h**.
   **Change:** After checkout, **GET `https://api.vercel.com/v6/deployments`** (`projectId`, `teamId`, `target=production`); if any **READY** deployment has **`meta.githubCommitSha`** = **`workflow_run.head_sha`**, skip **`vercel pull` / `vercel build` / `vercel deploy`**. If CLI runs and output contains **`api-deployments-free-per-day`**, **exit 1** immediately (no retries).
