@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Deploy workflow run #217 — preflight before Git READY + quota exit 0 if Git wins**
   MODE: AUDIT
-  Commit hash(es): PLACEHOLDER_SHA
+  Commit hash(es): `727639f`
   Files changed: `.github/workflows/deploy.yml`, `scripts/ci/vercel-deploy-preflight.py`, `docs/MASTER_PUNCHLIST.md`, `AGENTS.md`, `AUTOMATION_BACKLOG.md`, `CLAUDE.md`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
   **Root cause:** User log **Deploy #217** — still **`api-deployments-free-per-day`** after round 2. Preflight ran **before** Vercel showed **READY** for the SHA (Git still **BUILDING** or webhook lag), so **`skip_cli`** stayed false and CLI uploaded into exhausted quota. Annotations show **2 errors** (Vercel’s + our `::error::`).
   **Change:** [scripts/ci/vercel-deploy-preflight.py](scripts/ci/vercel-deploy-preflight.py) — **35s** grace when no deployment row for SHA yet; **~10m** poll when production deploy for SHA is **in-flight**; **`check-ready`** after quota → **exit 0** if **READY** at **`head_sha`**. Workflow delegates to script; deploy step calls **`check-ready`** on quota.
