@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Ground decision-enforcement repair directive (remove accountable-owner boilerplate)**
   MODE: AUDIT
-  Commit hash(es): `c4d095d`
+  Commit hash(es): `c83fd40`
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/decision-enforced-fallback.test.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   **Vision alignment:** [docs/MEGA_PROMPT_PROGRAM.md](docs/MEGA_PROMPT_PROGRAM.md) S2 bar (artifact names real thread / concrete proposal); [docs/eval/rubric.md](docs/eval/rubric.md) **D** anti-template. **Root cause:** `buildDecisionEnforcedFallbackPayload` hardcoded dashboard `directive` “Send a decision request that secures one accountable owner…” while body already had `explicitAsk` — user-reported failure on pending row `cf7e33be…`.
   **Change:** `buildGroundedSendMessageDirective` (`Email {local-part}: {explicitAsk}`); `write_document` repair directive + content lead tied to winner title; `directive_template:generic_accountable_owner_request` in `validateGeneratedArtifact`.
