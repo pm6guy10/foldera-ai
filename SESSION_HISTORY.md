@@ -10,7 +10,7 @@
   Files changed: `lib/briefing/bracket-placeholder.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/bracket-placeholder.test.ts`, `lib/briefing/__tests__/artifact-decision-enforcement.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   **Problem:** Production rows showed `artifact.subject contains bracket placeholder text` and chained `decision_enforcement:missing_*` on realistic outreach copy.
   **Change:** Remove `subject` from bracket slot words; narrow ALL_CAPS bracket rule to named templates; `send_message` counts `?` in subject/body as explicit ask; add time/pressure regexes for days-since / no-reply threads.
-  What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run test:ci:e2e`; post-push `npm run test:prod` + health SHA — fill after push.
+  What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run test:ci:e2e` (46); post-push `GET /api/health` → **`revision.git_sha_short` `3b7eebb`**; `npm run test:prod` **61 passed**.
   Any unresolved issues: `passive_or_ignorable` / `obvious_first_layer` can still block “I wanted to follow up” bodies; separate prompt/repair pass if still noisy.
 
 - 2026-04-08 — AUDIT: **Golden path — bracket placeholder false positives blocked paid Generate**
