@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Cross-source evidence bundle (generator) + AZ-24 insight scan**
   MODE: AUDIT
-  Commit hash(es): `b6435f8`
+  Commit hash(es): `79b802c`
   Files changed: `lib/briefing/types.ts`, `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `lib/briefing/__tests__/evidence-bundle.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   What was verified: `npm run health` start/end (0 failing); `npm run scoreboard`; `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (866 passed); `npm run test:ci:e2e` (46); `npm run test:prod` (61)
   Changes: Life-context merge always on (financial: tighter caps); bucket backfill for ≥3 distinct `tkg_signals.source` when data exists; `life_context_signals` + LIFE_CONTEXT + `[source]` on recipient-short signals; `generation_log.evidence_bundle` + structured logs; insight candidates coerce `research` → `make_decision`.
