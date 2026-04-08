@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **LIFE_CONTEXT_WEAVE prompt + WORK SHOWN runbook**
   MODE: AUDIT
-  Commit hash(es): `24bcb3e` (code + initial docs), `5beb953` (session log + WHATS_NEXT closure)
+  Commit hash(es): `24bcb3e` (code + initial docs), `e8cbafc` (session log + WHATS_NEXT closure)
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/evidence-bundle.test.ts`, `docs/SESSION_SCOREBOARD.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`, `AUTOMATION_BACKLOG.md`; operator plan todos completed in `.cursor/plans/operator_proof_bundle_c1d624d9.plan.md`
   **WORK SHOWN (pre-code prod snapshot, owner):** AZ-05 **7d:** `do_nothing` 259, `send_message` 26, `research` 5. Latest rows: `7fc21c8e…` skipped `do_nothing` (gates); `cf7e33be…` **`send_message` pending_approval** conf **84**, directive prefix: `Send a decision request that secures one accountable owner and a committed answer by 5:00 PM PT on 2026-04-08.` — generic deadline framing (MEGA “how did it know” **not** met). `evidence_bundle` **null** on sampled rows (pre-ship / older persistence window).
   **Change:** `LIFE_CONTEXT_WEAVE_RULE` appended whenever `LIFE_CONTEXT` block is non-empty (recipient-short + long prompt paths).
