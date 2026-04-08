@@ -144,7 +144,9 @@ Any change affecting frontend, auth, onboarding, connectors, or routing must pas
 - Directory structure note: `tests/production/` now contains production auth-state scripts and smoke/audit suites referenced by CI workflows (introduced in commit `fbb1072`, extended in `2de4942`). **`tests/local/`** — gitignored `auth-state-owner.json` + `npm run test:local:setup` / `test:local:check` / `test:local:brain-receipt` for localhost owner `/api/dev/*` (see `tests/local/README.md`, `CLAUDE.md` Autonomous local hammer).
 
 ## Vercel Deployment
-Vercel deploys are triggered by GitHub Actions, NOT by Vercel's automatic git integration. This is because Vercel Hobby blocks deploys from committers who aren't the repo owner (CC and Codex commits were blocked). The workflow at `.github/workflows/deploy.yml` uses VERCEL_TOKEN to deploy on every push to main. Any committer identity works.
+**Authoritative CLI path:** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs after **CI** succeeds and uses `VERCEL_TOKEN` to `vercel build` + `vercel deploy --prebuilt` so any committer can ship (Hobby used to block non-owner Git integration deploys).
+
+**Reality check:** The Vercel project may **also** have GitHub integration enabled. That means two production deploys can race the same commit — `vercel deploy --prebuilt` sometimes exits **1** while Vercel still shows **READY** for the Git-built deployment. **Source of truth for www:** `GET /api/health` → `revision.git_sha`, not the GitHub “Deploy to Vercel” email alone. Runbook: [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) (**Deploy workflow red emails**). The deploy job uses **`concurrency: vercel-prod-cli-foldera`** + **retries** to reduce flakes.
 
 Required GitHub Secrets:
 - VERCEL_TOKEN: Vercel personal access token (Settings > Tokens)

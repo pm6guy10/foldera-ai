@@ -83,6 +83,12 @@
 - **DDL:** [`supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) — `user_tokens.oauth_reauth_required_at`, `user_subscriptions.last_dashboard_visit_at` + column comments. **Production:** applied via agent (Supabase MCP); hosted `oauth_reauth_dashboard_visit` / `20260408140704`; see [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).
 - **Code:** `needs_reauth` + dashboard reconnect banner + settings `?reconnect=`; non-blocking `last_dashboard_visit_at` on `GET /api/conviction/latest`; connector-health 14d secondary-source lookback + skip email if dashboard visited within 7d; Microsoft Graph 401 → `forceRefreshMicrosoftTokens`; CI E2E mocks for `/api/integrations/status` + flow-route stubs. **Commits:** `3c7722b`, `c71563a` (session hash note).
 
+### DONE (2026-04-08) — `Deploy to Vercel` GHA flake (CLI deploy step vs Git integration)
+
+- **Evidence (GitHub API, public):** Run `24153426510` @ `24bcb3e` — steps 1–7 **success**, step 8 **`Deploy prebuilt artifacts`** **failure** (~4s, exit 1). Same day: two runs @ `1fb2b7e` — **success** then **failure** 16s apart (duplicate `workflow_run` / overlap).
+- **Vercel:** Deployment **`dpl_4DPJiAwASktYEAMkbiNkpa8v2ZcH`** for **`24bcb3ee…`** is **READY** (production) — www was not “stuck”; the **email** reflected CLI-only failure.
+- **Fix:** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) — `concurrency` group **`vercel-prod-cli-foldera`** (`cancel-in-progress: false`); **3×** `vercel deploy --prebuilt` attempts with **45s** backoff; `VERCEL_TOKEN` via `env`. Docs: [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md), [AGENTS.md](AGENTS.md) Vercel section.
+
 ### DONE (2026-04-08) — Decision-enforcement repair: generic “accountable owner” dashboard directive
 
 - **Root cause:** `buildDecisionEnforcedFallbackPayload` used a **hardcoded** `send_message` `directive` while the email **body** already had the mechanism-specific `explicitAsk` — production rows showed the boilerplate line users hate.

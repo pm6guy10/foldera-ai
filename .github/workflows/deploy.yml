@@ -20,6 +20,12 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Serialize CLI deploys: parallel runs (duplicate workflow_run delivery, or overlap with the
+    # previous commit’s deploy) often make `vercel deploy --prebuilt` exit 1 while `vercel build`
+    # succeeded — classic race with Vercel’s own GitHub integration finishing first.
+    concurrency:
+      group: vercel-prod-cli-foldera
+      cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v5
@@ -53,7 +59,21 @@ jobs:
       # --archive=tgz: one upload instead of thousands of file API calls (avoids
       # Hobby "api-upload-free" 5000/24h limit — see Vercel CLI deploy docs).
       - name: Deploy prebuilt artifacts to production
-        run: vercel deploy --prebuilt --prod --archive=tgz --token=${{ secrets.VERCEL_TOKEN }}
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -e
+          for attempt in 1 2 3; do
+            echo "vercel deploy --prebuilt attempt ${attempt}/3"
+            if vercel deploy --prebuilt --prod --archive=tgz --token="$VERCEL_TOKEN"; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "All deploy attempts failed"
+              exit 1
+            fi
+            echo "Waiting 45s before retry (transient race with Git integration or in-flight deploy)..."
+            sleep 45
+          done

@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Deploy workflow hardening (concurrency + deploy retries)
+
+**This session:** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) serializes CLI production deploys and retries `vercel deploy --prebuilt` when the Git integration (or a duplicate run) races. **Red “Deploy to Vercel” email ≠ www broken** — confirm [`GET /api/health`](https://www.foldera.ai/api/health) `revision.git_sha`. Details: [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).
+
 ## STATUS: SHIPPED — Decision-enforcement repair: grounded `directive` (no hardcoded accountable-owner line)
 
 **This session:** Repair path `send_message` dashboard line matches **concrete `explicitAsk`**; validation bans the old boilerplate on any `send_message`. **After deploy:** re-run Generate Now / brain-receipt — new repaired rows should read like `Email partner: Can you confirm…` not “Send a decision request that secures…”. See [docs/eval/rubric.md](docs/eval/rubric.md) **D**.
