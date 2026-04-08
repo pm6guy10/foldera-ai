@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## Standing rule — production revision (locked in runbooks)
+
+**Canonical “what’s on www”:** **`GET https://www.foldera.ai/api/health`** → **`revision.git_sha`** (full) / **`revision.git_sha_short`** — not git history alone. **Docs-only** pushes (e.g. `759ca8a`, `8964ad8` after `a12db1d`) still produce a deploy; www may show a **newer** SHA than the feature commit — **expected**; always re-read health. Details: [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) **Production vs `main`**, [CLAUDE.md](CLAUDE.md) **Source of truth for what’s live**, [AGENTS.md](AGENTS.md) Vercel MCP bullet, [AUTOMATION_BACKLOG.md](AUTOMATION_BACKLOG.md) **What commit is live on www**.
+
 ## STATUS: SHIPPED — Production reconciled (www = `main` + Vercel log check + `test:prod`)
 
 **This session:** `www` had regressed to **`1b605cf`** (legacy health JSON) while `main` was **`3af031e`**. Empty commit **`a12db1d`** re-triggered CI → deploy; polled until `revision.git_sha_short === a12db1d`. **Vercel MCP** `get_runtime_logs` production **error/fatal** 24h → **none**. **`npm run test:prod`** → **61 passed**. **Punchlist:** prod vs `main` alias race playbook. **Evidence:** deployment `dpl_9CTWg6W6rB2t4s2a9QqqqfjkCGWo` READY @ `a12db1d`.

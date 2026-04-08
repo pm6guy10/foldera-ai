@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-08 — OPS: **Runbook — prod revision = `GET /api/health` (docs-only deploys can advance SHA)**
+  MODE: OPS (documentation)
+  Commit hash(es): pending
+  Files changed: `docs/MASTER_PUNCHLIST.md`, `CLAUDE.md`, `AGENTS.md`, `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing)
+  Changes: Locked in that **`GET https://www.foldera.ai/api/health`** `revision.git_sha` is **source of truth** for www; **docs-only** commits (e.g. `759ca8a`, `8964ad8` after `a12db1d`) still deploy — live SHA may be newer than a feature commit; cross-links punchlist, CLAUDE, AGENTS, backlog, spec, WHATS_NEXT.
+  Any unresolved issues: None.
+
 - 2026-04-08 — OPS: **Production reconciled — www = `main`, Vercel logs, `test:prod`**
   MODE: OPS
   Commit hash(es): `a12db1d` (empty `chore(ci): redeploy production to main tip` — fixes prod alias behind an older READY deploy), `759ca8a` (docs receipt + punchlist prod-drift note)
