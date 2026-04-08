@@ -4442,6 +4442,14 @@ function formatEntityLine(record: Record<string, unknown>): string {
 /** Inbox-only sources; calendar/drive/tasks/conversations use other `source` values. */
 const EVIDENCE_BUNDLE_EMAIL_SOURCES = new Set(['gmail', 'outlook']);
 
+/** Hard ceiling on snippet count returned from cross-source merge (prompt / token guard). */
+const CROSS_SOURCE_BUNDLE_MAX_SNIPPETS = 28;
+
+function capCrossSourceSnippetBundle(snippets: SignalSnippet[]): SignalSnippet[] {
+  if (snippets.length <= CROSS_SOURCE_BUNDLE_MAX_SNIPPETS) return snippets;
+  return snippets.slice(0, CROSS_SOURCE_BUNDLE_MAX_SNIPPETS);
+}
+
 function signalSnippetDedupeKey(s: SignalSnippet): string {
   return `${s.source}|${s.date}|${(s.snippet ?? '').slice(0, 80)}`;
 }
@@ -4450,6 +4458,8 @@ function signalSnippetDedupeKey(s: SignalSnippet): string {
  * Merges recent processed non-email signals into winner-scoped evidence so the generator
  * sees a cross-source slice of the user's life (calendar, drive, tasks, chats), not only
  * the winning mail thread IDs from the scorer.
+ *
+ * Never returns more than {@link CROSS_SOURCE_BUNDLE_MAX_SNIPPETS} snippets (existing + new).
  */
 async function appendCrossSourceLifeContextSnippets(
   userId: string,
@@ -4467,17 +4477,35 @@ async function appendCrossSourceLifeContextSnippets(
     .limit(400);
 
   if (error || !rows?.length) {
-    return existing;
+    const out = capCrossSourceSnippetBundle(existing);
+    logStructuredEvent({
+      event: 'cross_source_life_context_merge',
+      level: 'info',
+      userId,
+      artifactType: null,
+      generationStatus: 'cross_source_skipped',
+      details: {
+        scope: 'appendCrossSourceLifeContextSnippets',
+        cross_source_snippet_count: out.length,
+        existing_snippet_count: existing.length,
+        cross_source_new_added: 0,
+        merged_before_cap: existing.length,
+        db_row_scan_count: 0,
+        db_error: Boolean(error),
+      },
+    });
+    return out;
   }
 
   const used = new Set(existing.map(signalSnippetDedupeKey));
   const perSource = new Map<string, number>();
   const MAX_PER_SOURCE = 5;
-  const MAX_TOTAL_NEW = 28;
+  /** Room for new snippets after winner-scoped rows — total bundle must stay ≤ cap. */
+  const maxNew = Math.max(0, CROSS_SOURCE_BUNDLE_MAX_SNIPPETS - existing.length);
   const extra: SignalSnippet[] = [];
 
   for (const row of rows) {
-    if (extra.length >= MAX_TOTAL_NEW) break;
+    if (extra.length >= maxNew) break;
     const src = String((row as { source?: string }).source ?? '');
     if (EVIDENCE_BUNDLE_EMAIL_SOURCES.has(src)) continue;
     const n = perSource.get(src) ?? 0;
@@ -4494,8 +4522,24 @@ async function appendCrossSourceLifeContextSnippets(
     extra.push(parsed);
   }
 
-  if (extra.length === 0) return existing;
-  return [...existing, ...extra];
+  const merged = extra.length === 0 ? existing : [...existing, ...extra];
+  const out = capCrossSourceSnippetBundle(merged);
+  logStructuredEvent({
+    event: 'cross_source_life_context_merge',
+    level: 'info',
+    userId,
+    artifactType: null,
+    generationStatus: 'cross_source_merged',
+    details: {
+      scope: 'appendCrossSourceLifeContextSnippets',
+      cross_source_snippet_count: out.length,
+      existing_snippet_count: existing.length,
+      cross_source_new_added: extra.length,
+      merged_before_cap: merged.length,
+      db_row_scan_count: rows.length,
+    },
+  });
+  return out;
 }
 
 async function fetchWinnerSignalEvidence(

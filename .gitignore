@@ -21,3 +21,6 @@ tests/production/results.json
 .playwright-mcp/
 conversation_signals.json
 *.jpeg
+
+# Local scratch (curl cookies, etc.)
+tmp-cookie.txt
