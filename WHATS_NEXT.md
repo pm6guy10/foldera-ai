@@ -1,8 +1,8 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
-## STATUS: IN FLIGHT — `LIFE_CONTEXT_WEAVE` + WORK SHOWN in `SESSION_SCOREBOARD`
+## STATUS: SHIPPED — `LIFE_CONTEXT_WEAVE` + WORK SHOWN in `SESSION_SCOREBOARD`
 
-**This session:** User prompt mandates a concrete LIFE_CONTEXT detail in directive/why_now/body when non-mail snapshot present; scoreboard doc **WORK SHOWN** checklist + SQL. **After deploy:** owner `Generate Now` or brain-receipt → confirm new row `directive` references calendar/file/task/chat when `life_context_signals` populated; compare to pending `cf7e33be…` generic copy.
+**This session:** Commit **`24bcb3e`**; deploy **`dpl_4DPJiAwASktYEAMkbiNkpa8v2ZcH`**; www health SHA **`24bcb3e`**. User prompt mandates a concrete LIFE_CONTEXT detail when that block is present; scoreboard **WORK SHOWN** checklist + SQL. **Next:** owner `Generate Now` or brain-receipt → confirm new row ties to calendar/file/task/chat vs generic copy (`cf7e33be…` baseline).
 
 ## STATUS: SHIPPED — Pipeline choreography + `GENERATION_LOOP_DETECTION_WINDOW` = 12
 

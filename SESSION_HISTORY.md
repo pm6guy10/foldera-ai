@@ -6,12 +6,12 @@
 
 - 2026-04-08 — AUDIT: **LIFE_CONTEXT_WEAVE prompt + WORK SHOWN runbook**
   MODE: AUDIT
-  Commit hash(es): *(pending push)*
-  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/evidence-bundle.test.ts`, `docs/SESSION_SCOREBOARD.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`, `AUTOMATION_BACKLOG.md`, `.cursor/plans/operator_proof_bundle_c1d624d9.plan.md`
+  Commit hash(es): `24bcb3e` (code + initial docs), `5beb953` (session log + WHATS_NEXT closure)
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/evidence-bundle.test.ts`, `docs/SESSION_SCOREBOARD.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`, `AUTOMATION_BACKLOG.md`; operator plan todos completed in `.cursor/plans/operator_proof_bundle_c1d624d9.plan.md`
   **WORK SHOWN (pre-code prod snapshot, owner):** AZ-05 **7d:** `do_nothing` 259, `send_message` 26, `research` 5. Latest rows: `7fc21c8e…` skipped `do_nothing` (gates); `cf7e33be…` **`send_message` pending_approval** conf **84**, directive prefix: `Send a decision request that secures one accountable owner and a committed answer by 5:00 PM PT on 2026-04-08.` — generic deadline framing (MEGA “how did it know” **not** met). `evidence_bundle` **null** on sampled rows (pre-ship / older persistence window).
   **Change:** `LIFE_CONTEXT_WEAVE_RULE` appended whenever `LIFE_CONTEXT` block is non-empty (recipient-short + long prompt paths).
-  What was verified: *(post-push fill)* lint, build, vitest, `test:ci:e2e`, `test:prod`; health; latest-row SQL for `evidence_bundle` after a fresh generation on new SHA.
-  Any unresolved issues: Subjective “holy crap” bar needs human read of next real email after deploy + fresh generate; Gate 4 operator-pending.
+  What was verified: `npm run health` (2026-04-08 11:57 PT, 0 failing); `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (867); `npm run test:ci:e2e` (46); pre-push `npm run test:prod` (61). Post-push: `GET /api/health` → **`24bcb3e`** (poll after Vercel); `npm run test:prod` **61 passed** on live SHA. Vercel production deploy **`dpl_4DPJiAwASktYEAMkbiNkpa8v2ZcH`** for `24bcb3ee62436aed960745e3d18e7bb545b03a1d`.
+  Any unresolved issues: Subjective “holy crap” bar needs human read of next real email after **this** deploy + fresh generate; re-run scoreboard SQL for `evidence_bundle` on newest row. Gate 4 operator-pending.
 
 - 2026-04-08 — AUDIT: **Pipeline choreography + repeat-shape loop window (12-row)**
   MODE: AUDIT
