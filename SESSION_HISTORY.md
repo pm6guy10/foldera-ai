@@ -10,7 +10,7 @@
   Files changed: `docs/FULL_SURFACE_AUDIT_2026-04-07.md`, `lib/briefing/locked-contact-scan.ts`, `lib/briefing/__tests__/locked-contact-scan.test.ts`, `lib/briefing/generator.ts`, `lib/briefing/scorer-failure-suppression.ts`, `lib/briefing/__tests__/scorer-failure-suppression.test.ts`, `lib/briefing/__tests__/usefulness-gate.test.ts`, `tests/e2e/authenticated-routes.spec.ts`, `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`, plus `lib/signals/*` in `6255d01`
   What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (827 tests); `PLAYWRIGHT_WEB_PORT=3011 npm run test:ci:e2e` (42 passed — use alternate port if :3000 held by stale `next start`)
   Changes: §6 audit table + `/dashboard/signals` matrix green; signal batch per-signal try/catch + hardened `normalizeInteractionTimestamp` + `extracted_dates` ISO-only; locked-contact scan user-facing artifact text + word boundaries; stale dates scan directive/why_now/evidence/insight + slash ISO; CI e2e for Sources page; backlog Phase D/E operator pointers; closed OPEN rows for applied migrations (operator-confirmed).
-  Any unresolved issues: `npm run test:prod` not re-run this session (port contention / time); operator Sentry/Vercel/AZ items remain manual per AUTOMATION_BACKLOG.
+  Any unresolved issues: Operator Sentry/Vercel/AZ items remain manual per AUTOMATION_BACKLOG. **`npm run test:prod`:** 61/61 passed after local commits (before push).
 
 - 2026-04-08 — AUDIT: **Gmail incremental `newer_than` + Haiku extraction JSON repair**
   MODE: AUDIT
