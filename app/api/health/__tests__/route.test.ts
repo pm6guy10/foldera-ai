@@ -24,5 +24,13 @@ describe('GET /api/health', () => {
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.db).toBe(false);
     expect(body.status).toBe('degraded');
+    expect(body.build).toBe('local');
+    expect(body.revision).toEqual({
+      git_sha: null,
+      git_sha_short: null,
+      git_ref: null,
+      deployment_id: null,
+      vercel_env: null,
+    });
   });
 });

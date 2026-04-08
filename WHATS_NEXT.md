@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — `/api/health` deploy observability (revision + headers)
+
+**This session:** `lib/config/deploy-revision.ts` — Vercel `VERCEL_GIT_COMMIT_SHA`, `VERCEL_DEPLOYMENT_ID`, `VERCEL_GIT_COMMIT_REF`, `VERCEL_ENV`. `GET /api/health` JSON: **`build`** (7-char SHA or `local`), **`revision`** `{ git_sha, git_sha_short, git_ref, deployment_id, vercel_env }`; headers **`x-foldera-git-sha`**, **`x-foldera-deployment-id`**. CI E2E + prod smoke assertions; punchlist + AGENTS + CLAUDE + spec row. **After deploy:** compare response `revision.git_sha` to `git rev-parse HEAD` on the shipped commit. **Verified:** `npm run health`; lint; build; vitest 862; `test:ci:e2e` 46.
+
 ## STATUS: SHIPPED — Sentry transient socket noise (EPIPE / ECONNRESET)
 
 **This session:** Filter client-disconnect stream errors in Sentry (`lib/sentry/transient-socket-errors.ts`); wired in `instrumentation.ts`, `instrumentation-client.ts`; `apiError` skips capture for same class. **Optional:** after Vercel Ready, confirm no new **JAVASCRIPT-NEXTJS-A** / **JAVASCRIPT-NEXTJS-9** events; issues marked resolved in Sentry.

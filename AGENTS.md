@@ -135,7 +135,7 @@ Any change affecting frontend, auth, onboarding, connectors, or routing must pas
   - `.github/workflows/production-e2e.yml` runs production smoke checks on deploy success, daily schedule, and manual dispatch (commit `371f9ea`).
   - `.github/workflows/weekly-audit.yml` runs Monday production audit and uploads `tests/production/audit-summary.md`/`audit-report.json` artifacts (commit `2de4942`).
 - New route contracts added:
-  - `GET /api/health` is a schema/env/credit canary JSON contract used by cron health-check and prod smoke tests (commit `e1555d0`, `app/api/health/route.ts`).
+  - `GET /api/health` is a schema/env/credit canary JSON contract used by cron health-check and prod smoke tests (commit `e1555d0`, `app/api/health/route.ts`). Includes **`revision`** (git SHA, deployment id, `vercel_env`) and **`build`** short label for deploy correlation; headers **`x-foldera-git-sha`** / **`x-foldera-deployment-id`** when present.
   - `POST /api/dev/stress-test` is a dry-run pipeline stress endpoint for signed-in sessions (commit `9b3e719`, `app/api/dev/stress-test/route.ts`).
   - `GET /api/dev/email-preview` renders sample daily-brief HTML in the browser (`?variant=nothing` for the no-directive template); `?action_id=<uuid>` (owner session, after `POST /api/dev/brain-receipt`) loads that `tkg_actions` row and matches production send HTML; `lib/email/resend.ts` exports `buildDailyDirectiveEmailHtml` (same markup as send).
   - `GET /api/dev/ops-health` is owner-only; returns JSON env/DB readiness checks without exposing secret values (`app/api/dev/ops-health/route.ts`). See repo-root `LAUNCH_CHECKLIST.md` for manual launch steps.

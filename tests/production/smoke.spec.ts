@@ -319,6 +319,13 @@ test.describe('Schema health', () => {
     const body = await res.json();
     expect(body.db).toBe(true);
     expect(body.schema, `Schema degraded — missing: ${JSON.stringify(body.schema_errors ?? [])}`).toBe('ok');
+    // Deploy identity — confirms which commit is live (Vercel injects VERCEL_GIT_COMMIT_SHA)
+    expect(body.revision, 'revision object for deploy correlation').toBeTruthy();
+    expect(typeof body.revision.git_sha).toBe('string');
+    expect(body.revision.git_sha.length).toBeGreaterThanOrEqual(7);
+    expect(body.build).toBe(body.revision.git_sha_short);
+    const shaHeader = res.headers()['x-foldera-git-sha'];
+    expect(shaHeader).toBe(body.revision.git_sha);
   });
 });
 

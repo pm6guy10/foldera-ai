@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getDeployBuildLabel, getDeployRevision } from '@/lib/config/deploy-revision';
 import { createServerClient } from '@/lib/db/client';
 import { checkApiCreditCanary } from '@/lib/cron/acceptance-gate';
 
@@ -123,15 +124,36 @@ export async function GET() {
   const schemaOk = schemaErrors.length === 0;
   const allOk = dbOk && envOk && schemaOk && creditOk;
 
-  return NextResponse.json({
-    status: allOk ? 'ok' : 'degraded',
-    ts: new Date().toISOString(),
-    build: '2026-03-30-convergence',
-    db: dbOk,
-    env: envOk,
-    schema: schemaOk ? 'ok' : 'degraded',
-    credits: creditOk ? 'ok' : 'degraded',
-    ...(schemaErrors.length > 0 ? { schema_errors: schemaErrors } : {}),
-    ...(creditError ? { credit_error: creditError } : {}),
-  });
+  const revision = getDeployRevision();
+  const build = getDeployBuildLabel(revision);
+
+  const headers = new Headers();
+  if (revision.git_sha) {
+    headers.set('x-foldera-git-sha', revision.git_sha);
+  }
+  if (revision.deployment_id) {
+    headers.set('x-foldera-deployment-id', revision.deployment_id);
+  }
+
+  return NextResponse.json(
+    {
+      status: allOk ? 'ok' : 'degraded',
+      ts: new Date().toISOString(),
+      build,
+      revision: {
+        git_sha: revision.git_sha,
+        git_sha_short: revision.git_sha_short,
+        git_ref: revision.git_ref,
+        deployment_id: revision.deployment_id,
+        vercel_env: revision.vercel_env,
+      },
+      db: dbOk,
+      env: envOk,
+      schema: schemaOk ? 'ok' : 'degraded',
+      credits: creditOk ? 'ok' : 'degraded',
+      ...(schemaErrors.length > 0 ? { schema_errors: schemaErrors } : {}),
+      ...(creditError ? { credit_error: creditError } : {}),
+    },
+    { headers },
+  );
 }

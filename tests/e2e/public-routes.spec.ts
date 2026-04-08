@@ -46,6 +46,20 @@ test.describe('Public API', () => {
     expect(rid).toBeTruthy();
     expect(rid).toMatch(/^[0-9a-f-]{36}$/i);
   });
+
+  test('/api/health includes deploy revision block (local in CI)', async ({ request }) => {
+    const res = await request.get('/api/health');
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.revision).toEqual({
+      git_sha: null,
+      git_sha_short: null,
+      git_ref: null,
+      deployment_id: null,
+      vercel_env: null,
+    });
+    expect(body.build).toBe('local');
+  });
 });
 
 // ── Landing page (/) ────────────────────────────────────────────────────────

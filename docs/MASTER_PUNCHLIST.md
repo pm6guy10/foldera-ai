@@ -40,7 +40,7 @@ Confirm [GitHub remote](https://github.com/pm6guy10/foldera-ai) matches your for
 **Backlog:** [AUTOMATION_BACKLOG.md](../AUTOMATION_BACKLOG.md) **AZ-08**.
 
 1. Create a monitor (HTTP GET) pointing at **`https://www.foldera.ai/api/health`** (or your production origin + `/api/health`).
-2. Expect HTTP **200** and JSON with `"status":"ok"` or `"degraded"` per [app/api/health/route.ts](../app/api/health/route.ts) — alert on non-200 or timeout.
+2. Expect HTTP **200** and JSON with `"status":"ok"` or `"degraded"` per [app/api/health/route.ts](../app/api/health/route.ts) — alert on non-200 or timeout. Response includes **`revision.git_sha`** (full SHA on Vercel) and **`build`** (7-char prefix or `local`); optional headers **`x-foldera-git-sha`** / **`x-foldera-deployment-id`** — use to confirm prod matches the commit you expect after a deploy.
 3. Interval: 5 minutes is sufficient; avoid hammering the route.
 4. Optional second monitor: `GET https://www.foldera.ai/` (marketing availability only).
 
