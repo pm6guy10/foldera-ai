@@ -6,6 +6,7 @@ import {
   normalizeDirectiveForLoopDetection,
   rawScorerCandidateMatchesFailureSuppression,
   rowContributesUserSkipSuppression,
+  userFacingStaleDateScanText,
   USER_SKIP_SUPPRESSION_WINDOW_MS,
 } from '../scorer-failure-suppression';
 
@@ -40,6 +41,37 @@ describe('directiveHasStalePastDates', () => {
       now,
       3,
     );
+    expect(r.stale).toBe(true);
+  });
+
+  it('flags slash ISO dates in the past', () => {
+    const now = new Date('2026-04-07T12:00:00.000Z');
+    const r = directiveHasStalePastDates('Follow up after 2026/03/27.', now, 3);
+    expect(r.stale).toBe(true);
+    expect(r.matches.some((x) => x.includes('2026'))).toBe(true);
+  });
+});
+
+describe('userFacingStaleDateScanText', () => {
+  it('joins directive and supporting brief fields', () => {
+    const s = userFacingStaleDateScanText({
+      directive: 'Do the thing',
+      why_now: 'Because',
+      evidence: 'They said 2026-03-20',
+      insight: '',
+    });
+    expect(s).toContain('Do the thing');
+    expect(s).toContain('Because');
+    expect(s).toContain('2026-03-20');
+  });
+
+  it('allows stale detection when ISO is only in evidence', () => {
+    const now = new Date('2026-04-07T12:00:00.000Z');
+    const blob = userFacingStaleDateScanText({
+      directive: 'Send the recap today.',
+      evidence: 'Last commitment was due 2026-03-27.',
+    });
+    const r = directiveHasStalePastDates(blob, now, 3);
     expect(r.stale).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 /**
  * Authenticated route smoke tests — mocked NextAuth session.
- * Covers: /dashboard, /dashboard/settings, /dashboard/briefings
+ * Covers: /dashboard, /dashboard/settings, /dashboard/briefings, /dashboard/signals
  * Tests: directive card, approve/skip buttons, provider cards, console errors
  * Viewports: 390px (mobile) and 1280px (desktop)
  *
@@ -267,6 +267,31 @@ async function setupBriefingsMocks(page: Page) {
   );
 }
 
+/** Sources page — mocks `GET /api/graph/stats` + integrations (same as settings). */
+async function setupSignalsPageMocks(page: Page) {
+  await seedAuthenticatedSession(page);
+  await attachCheckoutGuards(page);
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/subscription/status'),
+    fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
+  );
+  await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+  await page.route(
+    matchApiPath('/api/graph/stats'),
+    fulfillJson({
+      signalsTotal: 0,
+      commitmentsActive: 0,
+      patternsActive: 0,
+      lastSignalAt: null,
+      lastSignalSource: null,
+    }),
+  );
+  await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
+}
+
 // ── Dashboard tests ─────────────────────────────────────────────────────────
 
 describeAuthMocked('Dashboard /dashboard — authenticated', () => {
@@ -457,6 +482,16 @@ describeAuthMocked('Briefings /dashboard/briefings — authenticated', () => {
     await page.goto('/dashboard/briefings');
     await expect(page.getByRole('heading', { name: /past directives/i })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/First directive preview text/i)).toBeVisible();
+  });
+});
+
+describeAuthMocked('Signals /dashboard/signals — authenticated', () => {
+  test('loads Sources heading and connected copy — desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await setupSignalsPageMocks(page);
+    await page.goto('/dashboard/signals');
+    await expect(page.getByRole('heading', { name: /^Sources$/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/connected inboxes and calendars/i)).toBeVisible();
   });
 });
 

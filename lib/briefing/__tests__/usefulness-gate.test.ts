@@ -337,7 +337,8 @@ describe('usefulness gate — execution proof', () => {
         subject: 'Q1 infrastructure budget — confirmation before April 3 board meeting',
         body: 'Hi Marcus,\n\nFollowing your Q1 update, can you confirm by 3 PM PT today whether the infrastructure figure you quoted is final and who owns board packet sign-off? If we miss this cutoff, the April 3 board packet goes forward with an unresolved budget line.\n\nThanks,\nBrandon',
       },
-      evidence: 'Marcus sent Q1 budget update on March 20; April 3 board meeting has no confirmed budget line.',
+      // Avoid past calendar month/day strings here — stale-date gate scans evidence + directive fields.
+      evidence: 'Marcus sent a recent Q1 budget update; the board packet still lacks a confirmed infrastructure line.',
       why_now: 'The board meeting is 7 days away and the budget line is unconfirmed.',
     }));
 
@@ -374,15 +375,15 @@ describe('usefulness gate — execution proof', () => {
       artifact: {
         document_purpose: 'Update Acme stakeholders on integration scope, timeline, and open blockers',
         target_reader: 'Acme stakeholders',
-        title: 'Acme Integration — Status Report March 27',
+        title: 'Acme Integration — Status Report',
         content: 'Decision required: confirm by 4 PM PT today whether we proceed with April 10 go-live and assign the accountable security sign-off owner.\n\nAsk: approve path A or B and name the owner before today\'s cutoff.\n\nConsequence: if unresolved, integration launch slips to next week and customer onboarding is blocked.',
       },
       causal_diagnosis: {
-        why_exists_now: 'Slack thread from March 24 left sign-off owner undefined.',
+        why_exists_now: 'Slack thread left sign-off owner undefined.',
         mechanism: 'Unowned security gate blocks go-live date.',
       },
-      evidence: 'Slack thread from March 24 shows blocker unresolved; deadline is April 10.',
-      why_now: 'Acme security sign-off deadline is March 29 — two days away.',
+      evidence: 'Slack shows the security sign-off blocker is still unresolved; go-live target is April 10.',
+      why_now: 'Security sign-off is due within 48 hours and the accountable owner is still undefined.',
     }));
 
     const { generateDirective } = await import('../generator');

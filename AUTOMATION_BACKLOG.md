@@ -1,5 +1,19 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-07) — Audit remediation roadmap (code + CI)
+
+- **Signal processor:** Per-signal try/catch in `processBatch` (`signal_processor_single_signal_failed`); hardened `normalizeInteractionTimestamp` (`unknown` + try/catch); `extracted_dates` only includes parseable dues. Tests: `lib/signals/__tests__/signal-processor.test.ts`.
+- **Locked contacts:** User-facing artifact scan only + word-boundary tokens — `lib/briefing/locked-contact-scan.ts`, `findLockedContactsInUserFacingPayload`; tests `lib/briefing/__tests__/locked-contact-scan.test.ts`.
+- **Stale dates:** `userFacingStaleDateScanText` + slash ISO in `lib/briefing/scorer-failure-suppression.ts`; generator uses combined scan. Tests: `scorer-failure-suppression.test.ts`.
+- **CI e2e:** `/dashboard/signals` — `tests/e2e/authenticated-routes.spec.ts` (`setupSignalsPageMocks`).
+- **Roadmap:** Cursor plan *Audit remediation roadmap* (do not edit plan file in repo); this backlog + [docs/FULL_SURFACE_AUDIT_2026-04-07.md](docs/FULL_SURFACE_AUDIT_2026-04-07.md) §6 updated for scoreboard/migrations.
+
+### OPERATOR (ongoing) — Phase D / E from full-surface audit (not code-closable here)
+
+- **Sentry 7d triage** — needs `SENTRY_AUTH_TOKEN` / dashboard; fix or log new OPEN items.
+- **Vercel** — latest deploy **Ready** before claiming prod verified; see [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).
+- **GTM / infra AZ items** — non-owner prod depth, UptimeRobot on `/api/health`, Stripe checkout proof, Supabase backups, `test:prod:setup` refresh: track in normalized table in this file (AZ-04, AZ-08, AZ-11, AZ-14–AZ-19, AZ-21).
+
 ### DONE (2026-04-07) — Full surface audit artifact
 
 - **Doc:** [docs/FULL_SURFACE_AUDIT_2026-04-07.md](docs/FULL_SURFACE_AUDIT_2026-04-07.md) — every page, API group, cron path, GitHub workflow, automation snapshot, merged OPEN summary, `npm audit` note. **Not** a backlog replacement; use for orientation + evidence URLs.
@@ -21,11 +35,9 @@
 - **Production (Supabase MCP, Foldera project):** `tkg_signals_type_check` **includes** `email_sent`, `email_received` (not the post–Mar-26 “silent mail” blocker). `tkg_signals_user_content_hash_idx` **unique** on `(user_id, content_hash)` WHERE `content_hash IS NOT NULL`. Aggregate `max(created_at)` mail-shaped: **gmail** `email_received` **2026-03-26**, **outlook** `email_received` **2026-03-27**; rows with `created_at >= 2026-03-27` exist for outlook only (39) in sampled query — classifies stall as **ingest window / provider / cursor**, not missing CHECK for mail types.
 - **Code:** `lib/sync/google-sync.ts` + `lib/sync/microsoft-sync.ts` log `tkg_signals` upsert failures (`console.warn`, message only — no row content).
 
-### OPEN (2026-04-07) — `tkg_directive_ml_snapshots.outcome_label` missing in production
+### DONE (2026-04-07) — `tkg_directive_ml_snapshots.outcome_label` (operator)
 
-- **Symptom:** Logs / inserts reference `outcome_label` on `tkg_directive_ml_snapshots` but Postgres column absent until migration is applied.
-- **Not blocking:** ML snapshot / global priors paths degrade or skip; directive pipeline still runs.
-- **Fix:** Apply [`supabase/migrations/20260405000001_directive_ml_moat.sql`](supabase/migrations/20260405000001_directive_ml_moat.sql) on production (`npx supabase db push` or SQL editor) so `outcome_label` + related indexes exist.
+- **Fix:** [`supabase/migrations/20260405000001_directive_ml_moat.sql`](supabase/migrations/20260405000001_directive_ml_moat.sql) applied on production (operator-confirmed). Re-open only if `migration list` / inserts disagree.
 
 ### OPEN (auto-logged 2026-04-07) — `scorer_loop`: same semantic directive regenerated after skip/suppress
 
@@ -34,12 +46,12 @@
 - **Fix required:** `getSuppressedCandidateKeys` + `scorerCandidateSuppressionKey` in `lib/briefing/scorer.ts` drop matching base candidates for 7d after duplicate-suppression skips (keys from `execution_result.generation_log.candidateDiscovery.topCandidates`).
 - **Proof of fix:** After deploy, same user: last-24h `GROUP BY md5(lower(trim(directive_text)))` has **no count ≥ 3** for hashes tied to prior duplicate-suppression rows; logs show `scorer_suppressed_candidate_cooldown`.
 
-### OPEN (auto-logged 2026-04-07) — `stale_date_in_directive`: LLM echoes old ISO deadlines in artifacts
+### OPEN (auto-logged 2026-04-07) — `stale_date_in_directive`: LLM echoes old ISO deadlines (mitigated — monitor)
 
 - **Evidence:** Repeated `directive_text` / artifacts referencing **2026-03-27** while generation runs in April 2026; production rows show template “accountable owner by 5:00 PM PT on 2026-03-27”.
 - **Impact:** Unactionable / embarrassing copy; false urgency; user ignores brief.
-- **Fix required:** `directiveHasStalePastDates` on `payload.directive` in `lib/briefing/generator.ts`; `resolveDecisionDeadline` clamps overdue ISO dates so repair templates do not embed stale cutoffs.
-- **Proof of fix:** New `send_message` / `write_document` rows lack ISO dates **>3 days** behind UTC today in `directive_text` + serialized artifact; structured log `stale_date_in_directive` when blocked.
+- **Mitigation shipped (2026-04-07):** `directiveHasStalePastDates` scans **directive + why_now + evidence + insight**; slash ISO `20xx/mm/dd` added; generator still does **not** scan full artifact JSON (historical cutoffs in document body allowed by design). `resolveDecisionDeadline` clamps overdue ISO dates for repair templates (existing).
+- **Proof of closure:** New `send_message` / `write_document` rows lack stale ISO in scanned fields; logs `stale_date_in_directive` when blocked. Re-open if stale dates appear **inside finished artifact** fields users see in email (`renderArtifactHtml` paths).
 
 ### OPEN (auto-logged 2026-04-07) — `noise_winner`: Foldera / Resend test recipients win scorer→generator
 
@@ -55,10 +67,10 @@
 - **Fix required:** `generation_loop_detected` gate in `lib/cron/daily-brief-generate.ts` (last **5** `tkg_actions`, **≥3** share same `md5(lower(trim(directive_text)))` → skip `generateDirective`); plus scorer/generator fixes above.
 - **Proof of fix:** Logs `[generate] GENERATION_LOOP_DETECTED streak=…`; 24h rolling `api_usage` `directive_retry` / `directive` ratio drops after loops cleared; no 3× same hash in 24h query.
 
-### OPEN (2026-04-07) — Production `user_brief_cycle_gates` migration
+### DONE (2026-04-07) — Production `user_brief_cycle_gates` migration (operator)
 
-- **Symptom:** Sentry **JAVASCRIPT-NEXTJS-7** — `Could not find the table 'public.user_brief_cycle_gates' in the schema cache` on `POST /api/settings/run-brief` (PostgREST **404** / **PGRST205**). Code shipped before DDL applied.
-- **Fix shipped:** `lib/cron/brief-cycle-gate.ts` degrades when the table is missing (no throttle, no throw). **Operator still must** run [`supabase/migrations/20260407000001_user_brief_cycle_gates.sql`](supabase/migrations/20260407000001_user_brief_cycle_gates.sql) on production Postgres (`npx supabase db push` or SQL editor) so the **20h full-cycle gate** actually enforces.
+- **Historical:** Sentry **JAVASCRIPT-NEXTJS-7** when table missing; `lib/cron/brief-cycle-gate.ts` degrades gracefully if absent.
+- **Fix:** [`supabase/migrations/20260407000001_user_brief_cycle_gates.sql`](supabase/migrations/20260407000001_user_brief_cycle_gates.sql) applied on production (operator-confirmed). **20h full-cycle gate** should now enforce when table exists.
 
 ### OPEN (2026-04-05) — Local `test:ci:e2e` `/login` HTTP 500
 

@@ -150,9 +150,24 @@ function startOfUtcDayMs(d: Date): number {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 }
 
+/** LLM fields that appear in the daily brief email (directive block + reason body uses evidence path). */
+export function userFacingStaleDateScanText(payload: {
+  directive?: unknown;
+  why_now?: unknown;
+  evidence?: unknown;
+  insight?: unknown;
+}): string {
+  const parts: string[] = [];
+  for (const key of ['directive', 'why_now', 'evidence', 'insight'] as const) {
+    const v = payload[key];
+    if (typeof v === 'string' && v.trim()) parts.push(v);
+  }
+  return parts.join('\n');
+}
+
 /**
- * Detect ISO dates (20xx-xx-xx) or "Month D" / "Month D, YYYY" in directive text
- * that are strictly more than `pastDaysGrace` full UTC days before today.
+ * Detect ISO dates (20xx-xx-xx), slash dates (20xx/mm/dd), or "Month D" / "Month D, YYYY"
+ * in user-facing text that are strictly more than `pastDaysGrace` full UTC days before today.
  */
 export function directiveHasStalePastDates(
   directiveText: string,
@@ -167,6 +182,23 @@ export function directiveHasStalePastDates(
   while ((m = isoRe.exec(directiveText)) !== null) {
     matches.push(m[0]);
     const t = new Date(`${m[0]}T12:00:00.000Z`).getTime();
+    if (Number.isFinite(t) && t < cutoff) {
+      return { stale: true, matches: [...new Set(matches)] };
+    }
+  }
+
+  const slashIsoRe = /\b20\d{2}\/\d{2}\/\d{2}\b/g;
+  slashIsoRe.lastIndex = 0;
+  while ((m = slashIsoRe.exec(directiveText)) !== null) {
+    matches.push(m[0]);
+    const segs = m[0].split('/');
+    const y = parseInt(segs[0]!, 10);
+    const mo = parseInt(segs[1]!, 10);
+    const d = parseInt(segs[2]!, 10);
+    if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d) || mo < 1 || mo > 12 || d < 1 || d > 31) {
+      continue;
+    }
+    const t = Date.UTC(y, mo - 1, d, 12, 0, 0, 0);
     if (Number.isFinite(t) && t < cutoff) {
       return { stale: true, matches: [...new Set(matches)] };
     }

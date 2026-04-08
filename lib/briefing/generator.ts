@@ -59,7 +59,8 @@ import {
   needsNoThreadNoOutcomeBlock,
 } from './thread-evidence-for-payload';
 import { buildDiagnosticLensBlock, getVagueMechanismIssues } from './diagnostic-lenses';
-import { directiveHasStalePastDates } from './scorer-failure-suppression';
+import { directiveHasStalePastDates, userFacingStaleDateScanText } from './scorer-failure-suppression';
+import { findLockedContactsInUserFacingPayload } from './locked-contact-scan';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -7258,9 +7259,7 @@ export async function generateDirective(
     const payload = payloadResult.payload;
     applyScheduleConflictCanonicalUserFacingCopy(payload, currentCandidate);
 
-    const staleDateCheck = directiveHasStalePastDates(
-      typeof payload.directive === 'string' ? payload.directive : '',
-    );
+    const staleDateCheck = directiveHasStalePastDates(userFacingStaleDateScanText(payload));
     if (staleDateCheck.stale) {
       const staleReason = `stale_date_in_directive:${staleDateCheck.matches.slice(0, 4).join(',')}`;
       candidateBlockLog.push({
@@ -7337,9 +7336,9 @@ export async function generateDirective(
       continue;
     }
 
-    // Stale ISO / month dates in user-facing headline only (`directiveHasStalePastDates` above).
-    // Do not scan full artifact bodies: repair paths and write_document content may cite historical
-    // cutoff dates from scorer context by design.
+    // Stale ISO / slash-ISO / month dates in brief-visible fields only (`directiveHasStalePastDates` above
+    // scans directive, why_now, evidence, insight). Do not scan full artifact bodies: repair paths and
+    // write_document content may cite historical cutoff dates from scorer context by design.
 
     const artTo = typeof payload.artifact === 'object' && payload.artifact && 'to' in payload.artifact
       ? String((payload.artifact as Record<string, unknown>).to ?? '').toLowerCase()
@@ -7495,22 +7494,11 @@ export async function generateDirective(
     // and try the next candidate. The LLM prompt asks the model to omit them,
     // but this enforcement is deterministic and cannot be overridden.
     if (lockedContactPromptLines.length > 0) {
-      const artifactText = typeof payload.artifact === 'object'
-        ? JSON.stringify(payload.artifact).toLowerCase()
-        : String(payload.artifact ?? '').toLowerCase();
-      const directiveText = directive.directive.toLowerCase();
-      const combinedText = `${directiveText} ${artifactText}`;
-      const violatingContacts: string[] = [];
-      for (const contactName of lockedContactPromptLines) {
-        const tokens = contactName.toLowerCase().split(/\s+/).filter((t) => t.length >= 3);
-        if (tokens.length === 0) {
-          if (combinedText.includes(contactName.toLowerCase())) {
-            violatingContacts.push(contactName);
-          }
-        } else if (tokens.every((token) => combinedText.includes(token))) {
-          violatingContacts.push(contactName);
-        }
-      }
+      const violatingContacts = findLockedContactsInUserFacingPayload(
+        lockedContactPromptLines,
+        directive.directive.toLowerCase(),
+        payload.artifact,
+      );
       if (violatingContacts.length > 0) {
         const reason = `locked_contact_in_artifact:${violatingContacts.join(',')}`;
         candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [reason] });

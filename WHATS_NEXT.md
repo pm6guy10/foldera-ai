@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
+## STATUS: SHIPPED — Audit remediation roadmap (pipeline + `/dashboard/signals` CI)
+
+**This session:** Signal processor isolation + timestamp hardening; `locked-contact-scan.ts` (user-facing fields + word boundaries); `userFacingStaleDateScanText` + slash ISO stale gate; `usefulness-gate` fixtures updated for expanded stale scan; `authenticated-routes` Sources e2e; audit §6 + matrix row; AUTOMATION_BACKLOG remediation + operator Phase D/E; spec rows. **Verify:** `npm run test:prod` after Vercel Ready; `npm run scoreboard` on linked DB.
+
 ## STATUS: SHIPPED — Full surface audit doc (`docs/FULL_SURFACE_AUDIT_2026-04-07.md`)
 
 **This session:** Point-in-time inventory (14 pages, 56 API routes, crons vs manual, 14 workflows), automation snapshot (health/scoreboard/lint/build/811 vitest/41 CI e2e/61 test:prod, `npm audit`), merged OPEN pointers, gaps (`/dashboard/signals` e2e, Sentry not triaged here). **Commits:** `b830724`, session-log hash fix `6d8396f`. **Ops:** `npm run scoreboard` still fails until `pipeline_runs` migration on linked DB.

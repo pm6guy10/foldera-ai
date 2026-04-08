@@ -61,7 +61,7 @@ Middleware: [middleware.ts](../middleware.ts) — UTM/ref cookies; **protected:*
 | `/dashboard` | Protected | [app/dashboard/page.tsx](../app/dashboard/page.tsx) | authenticated-routes, flow | smoke, audit | Green |
 | `/dashboard/settings` | Protected | [app/dashboard/settings/page.tsx](../app/dashboard/settings/page.tsx) | authenticated-routes | smoke, audit, Generate Now | Green |
 | `/dashboard/briefings` | Protected | [app/dashboard/briefings/page.tsx](../app/dashboard/briefings/page.tsx) | authenticated-routes | smoke (indirect) | Green |
-| `/dashboard/signals` | Protected | [app/dashboard/signals/page.tsx](../app/dashboard/signals/page.tsx) | No dedicated e2e in CI gate | Not in prod smoke list | Yellow — gap |
+| `/dashboard/signals` | Protected | [app/dashboard/signals/page.tsx](../app/dashboard/signals/page.tsx) | authenticated-routes (CI gate) | Not in prod smoke list | Green — CI covered |
 
 ---
 
@@ -175,11 +175,11 @@ Middleware: [middleware.ts](../middleware.ts) — UTM/ref cookies; **protected:*
 | Signal | Status | Notes |
 |--------|--------|-------|
 | `npm run health` | Green | [scripts/health.ts](../scripts/health.ts) |
-| `npm run scoreboard` | Red | Table missing — operator: apply `20260407120000` |
+| `npm run scoreboard` | Green (post-audit) | `pipeline_runs` and related migrations applied — re-run after deploy |
 | `x-request-id` | Green | E2E asserts on `/api/health` |
-| Sentry | Not verified | Operator triage |
+| Sentry | Not verified | Operator triage ([docs/MASTER_PUNCHLIST.md](MASTER_PUNCHLIST.md)) |
 | Vercel deploy | Not verified | Operator: latest **Ready** before claiming prod |
-| Supabase migrations pending | See backlog | `user_brief_cycle_gates`, `pipeline_runs`, `directive_ml_moat` |
+| Supabase migrations | Applied (post-audit) | `user_brief_cycle_gates`, `pipeline_runs`, `directive_ml_moat` — confirm with `npx supabase migration list` / prod |
 
 ---
 
@@ -212,12 +212,12 @@ Re-run `npm run build` and use the printed **Route (app)** table; it lists every
 
 ### B.1 OPEN bullets (top of backlog, 2026-04-07)
 
-1. **`tkg_directive_ml_snapshots.outcome_label` missing** — apply `20260405000001_directive_ml_moat.sql`.
+1. **`tkg_directive_ml_snapshots.outcome_label` missing** — **resolved post-audit:** apply `20260405000001_directive_ml_moat.sql` (operator confirmed applied).
 2. **`scorer_loop`** — duplicate semantic directives after skip/suppress (mitigation may be in flight — see WHATS_NEXT).
-3. **`stale_date_in_directive`** — LLM echoes old ISO deadlines (mitigation may be in flight).
+3. **`stale_date_in_directive`** — LLM echoes old ISO deadlines — **hardened in code** (`directiveHasStalePastDates` / generator gate; see remediation session).
 4. **`noise_winner`** — Foldera / `@resend.dev` recipients (mitigation may be in flight).
 5. **`generation_retry_storm`** — directive + directive_retry volume (mitigation may be in flight).
-6. **`user_brief_cycle_gates` migration** — apply `20260407000001_user_brief_cycle_gates.sql`.
+6. **`user_brief_cycle_gates` migration** — **resolved post-audit:** apply `20260407000001_user_brief_cycle_gates.sql` (operator confirmed applied).
 7. **Local `test:ci:e2e` `/login` 500** — **not observed** this audit run (41/41 passed).
 
 ### B.2 Normalized ranked table (excerpt — see backlog for full)
