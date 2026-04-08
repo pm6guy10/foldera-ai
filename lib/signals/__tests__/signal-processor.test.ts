@@ -875,3 +875,45 @@ describe('processUnextractedSignals sensitive data gate', () => {
     expect(signals[0].extracted_commitments).toEqual([]);
   });
 });
+
+describe('parseSignalExtractionJson', () => {
+  it('repairs trailing comma before closing bracket', async () => {
+    const { parseSignalExtractionJson } = await import('@/lib/signals/signal-processor');
+    const raw = `[{"signal_id":"a","persons":[],"commitments":[],"topics":[]},]`;
+    const { extractions, recovery } = parseSignalExtractionJson(raw);
+    expect(extractions).toHaveLength(1);
+    expect(extractions[0]?.signal_id).toBe('a');
+    expect(recovery).toBe('trailing_comma');
+  });
+
+  it('uses first balanced array when extra text follows', async () => {
+    const { parseSignalExtractionJson } = await import('@/lib/signals/signal-processor');
+    const raw = `Notes:\n[{"signal_id":"x","persons":[],"commitments":[],"topics":[]}]\n(trailing prose)`;
+    const { extractions, recovery } = parseSignalExtractionJson(raw);
+    expect(extractions).toHaveLength(1);
+    expect(extractions[0]?.signal_id).toBe('x');
+    expect(recovery).toBe('array_extract');
+  });
+});
+
+describe('normalizeInteractionTimestamp', () => {
+  it('returns null for unparseable values and never throws', async () => {
+    const { normalizeInteractionTimestamp } = await import('@/lib/signals/signal-processor');
+    expect(normalizeInteractionTimestamp(undefined)).toBeNull();
+    expect(normalizeInteractionTimestamp(null)).toBeNull();
+    expect(normalizeInteractionTimestamp('')).toBeNull();
+    expect(normalizeInteractionTimestamp('   ')).toBeNull();
+    expect(normalizeInteractionTimestamp('not a date')).toBeNull();
+    expect(normalizeInteractionTimestamp(Number.NaN)).toBeNull();
+    expect(normalizeInteractionTimestamp(Infinity)).toBeNull();
+    expect(normalizeInteractionTimestamp({})).toBeNull();
+    expect(normalizeInteractionTimestamp([2026, 4, 8])).toBeNull();
+  });
+
+  it('normalizes finite epoch ms and ISO strings', async () => {
+    const { normalizeInteractionTimestamp } = await import('@/lib/signals/signal-processor');
+    const juneMs = Date.UTC(2024, 5, 1, 0, 0, 0, 0);
+    expect(normalizeInteractionTimestamp(juneMs)).toBe(new Date(juneMs).toISOString());
+    expect(normalizeInteractionTimestamp('2026-04-08T12:00:00.000Z')).toBe('2026-04-08T12:00:00.000Z');
+  });
+});

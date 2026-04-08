@@ -22,7 +22,7 @@ import {
   type CalendarIntelEvent,
   type MailIntelMessage,
 } from '@/lib/sync/derive-mail-intelligence';
-import { gmailSearchAfterDateClause } from '@/lib/sync/gmail-query';
+import { buildGmailIncrementalListQuery, gmailSearchAfterDateClause } from '@/lib/sync/gmail-query';
 import { healMailCursorAfterIncrementalEmpty } from '@/lib/sync/mail-cursor-heal';
 
 function hash(content: string): string {
@@ -108,9 +108,10 @@ async function syncGmail(
   sinceMs: number,
 ): Promise<number> {
   const gmail = google.gmail({ version: 'v1', auth: oauth2 });
-  const afterDate = gmailSearchAfterDateClause(sinceMs);
+  const listQ = buildGmailIncrementalListQuery(sinceMs);
+  const afterDateUtc = gmailSearchAfterDateClause(sinceMs);
   console.log(
-    `[google-sync] Gmail incremental window after:${afterDate} (UTC) sinceMs=${sinceMs} iso=${new Date(sinceMs).toISOString()}`,
+    `[google-sync] Gmail incremental q=${listQ} (ref after:${afterDateUtc} UTC calendar) sinceMs=${sinceMs} iso=${new Date(sinceMs).toISOString()}`,
   );
 
   const messageRefs: Array<{ id?: string | null; threadId?: string | null }> = [];
@@ -118,10 +119,9 @@ async function syncGmail(
   do {
     const list = await gmail.users.messages.list({
       userId: 'me',
-      // Exclude spam/trash only. `-category:promotions` made incremental `messages.list`
-      // return empty for accounts where Gmail routes most mail to Promotions — stale graph
-      // while `last_synced_at` still advanced. Junk/newsletter handling stays in extraction.
-      q: `after:${afterDate} -in:spam -in:trash`,
+      // `newer_than:` covers elapsed time since last_synced_at in the mailbox clock model;
+      // `after:yyyy/mm/dd` uses the account timezone and can be empty while inbox has mail.
+      q: listQ,
       maxResults: GMAIL_PAGE_SIZE,
       pageToken,
     });
@@ -131,14 +131,12 @@ async function syncGmail(
       typeof list.data.resultSizeEstimate === 'number'
     ) {
       console.warn(
-        `[google-sync] Gmail list first page empty q=after:${afterDate}… resultSizeEstimate=${list.data.resultSizeEstimate}`,
+        `[google-sync] Gmail list first page empty q=${listQ.slice(0, 80)}… resultSizeEstimate=${list.data.resultSizeEstimate}`,
       );
     }
     messageRefs.push(...(list.data.messages ?? []));
     pageToken = list.data.nextPageToken ?? undefined;
   } while (pageToken && messageRefs.length < GMAIL_MAX_MESSAGES);
-
-  const listQ = `after:${afterDate} -in:spam -in:trash`;
   console.log(
     `[google-sync] syncGmail collected ${messageRefs.length} message refs (q=${listQ})`,
   );
@@ -150,8 +148,9 @@ async function syncGmail(
         q: 'in:inbox',
         maxResults: 3,
       });
+      const probeCount = (probe.data.messages ?? []).length;
       console.warn(
-        `[google-sync] Gmail incremental returned 0 message ids (q=${listQ}); probe in:inbox idCount=${(probe.data.messages ?? []).length} resultSizeEstimate=${probe.data.resultSizeEstimate ?? 'n/a'}`,
+        `[google-sync] Gmail incremental returned 0 message ids (q=${listQ}); probe in:inbox idCount=${probeCount} resultSizeEstimate=${probe.data.resultSizeEstimate ?? 'n/a'}`,
       );
     } catch (probeErr: unknown) {
       console.warn(

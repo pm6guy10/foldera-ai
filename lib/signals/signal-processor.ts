@@ -160,6 +160,85 @@ Return JSON matching this schema exactly:
 
 Extract only what is explicit or clearly implied. If a signal has nothing to extract, return empty arrays for that signal. Always return one object per signal_id.`;
 
+/** Remove trailing commas before `}` or `]` (common invalid LLM JSON). */
+function stripJsonTrailingCommas(s: string): string {
+  return s.replace(/,(\s*[}\]])/g, '$1');
+}
+
+/**
+ * First top-level `[` … `]` span with string-aware bracket depth (avoids greedy whole-string
+ * `[`…`]` regex swallowing prose after a malformed tail).
+ */
+function extractFirstTopLevelJsonArray(raw: string): string | null {
+  const start = raw.indexOf('[');
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < raw.length; i++) {
+    const ch = raw[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (inString) {
+      if (ch === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+        continue;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === '[') depth++;
+    else if (ch === ']') {
+      depth--;
+      if (depth === 0) return raw.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+/** Exported for unit tests (Haiku batch path uses this parser). */
+export function parseSignalExtractionJson(rawText: string): {
+  extractions: SignalExtraction[];
+  recovery?: 'trailing_comma' | 'array_extract' | 'array_extract_trailing_comma';
+} {
+  const cleaned = rawText.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
+  type ParseAttempt = { recovery?: 'trailing_comma' | 'array_extract' | 'array_extract_trailing_comma'; text: string };
+  const attempts: ParseAttempt[] = [
+    { text: cleaned },
+    { recovery: 'trailing_comma', text: stripJsonTrailingCommas(cleaned) },
+  ];
+  const balanced = extractFirstTopLevelJsonArray(cleaned);
+  if (balanced) {
+    attempts.push({ recovery: 'array_extract', text: balanced });
+    attempts.push({ recovery: 'array_extract_trailing_comma', text: stripJsonTrailingCommas(balanced) });
+  }
+  const seen = new Set<string>();
+  let lastErr = 'empty';
+  for (const { text, recovery } of attempts) {
+    if (seen.has(text)) continue;
+    seen.add(text);
+    try {
+      const parsed: unknown = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        return { extractions: parsed as SignalExtraction[], recovery };
+      }
+      lastErr = 'parsed_non_array';
+    } catch (e: unknown) {
+      lastErr = e instanceof Error ? e.message : String(e);
+    }
+  }
+  throw new Error(lastErr);
+}
+
 function getAnthropicClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
@@ -970,19 +1049,12 @@ async function processBatch(
   const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
   let extractions: SignalExtraction[] = [];
   try {
-    const cleaned = rawText.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
-    // Try full parse first; if it fails, extract just the JSON array portion
-    try {
-      extractions = JSON.parse(cleaned);
-    } catch {
-      const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
-      if (arrayMatch) {
-        extractions = JSON.parse(arrayMatch[0]);
-      } else {
-        throw new Error('No JSON array found in LLM response');
-      }
-    }
+    const parsed = parseSignalExtractionJson(rawText);
+    extractions = parsed.extractions;
     if (!Array.isArray(extractions)) extractions = [];
+    if (parsed.recovery) {
+      console.info(`[signal-processor] extraction JSON recovered via ${parsed.recovery}`);
+    }
   } catch (error: unknown) {
     // Parse failed — do NOT mark signals as processed. They will be retried
     // on the next run. This prevents the Class E data loss pattern (signal
@@ -1005,9 +1077,98 @@ async function processBatch(
   const allTopics: ExtractedTopic[] = [];
 
   for (const signal of decryptedBatch) {
-    const extraction = extractionMap.get(signal.id);
-    const entityIds: string[] = [];
-    const commitmentIds: string[] = [];
+    try {
+      await processSingleExtractedSignal({
+        signal,
+        extractionMap,
+        userId,
+        selfId,
+        dryRun,
+        supabase,
+        junkSignalIds,
+        trustClassBySignalId,
+        result,
+        allTopics,
+      });
+    } catch (signalErr: unknown) {
+      const message = signalErr instanceof Error ? signalErr.message : String(signalErr);
+      result.errors.push(`signal ${signal.id}: ${message}`);
+      logStructuredEvent({
+        event: 'signal_processor_single_signal_failed',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'single_signal_failed',
+        details: {
+          scope: 'signal-processor',
+          signalId: signal.id,
+          occurred_at: signal.occurred_at,
+          error: message.slice(0, 500),
+        },
+      });
+      // Leave signal unprocessed so a data fix or code fix can retry; rest of batch continues.
+      continue;
+    }
+  }
+
+  // Merge topics into self entity patterns
+  if (allTopics.length > 0 && selfId && !dryRun) {
+    const merged = { ...(selfPatterns ?? {}) };
+    for (const topic of allTopics) {
+      const key = topic.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60);
+      merged[key] = {
+        name: topic.name,
+        description: `Topic from synced signals`,
+        domain: topic.domain || 'other',
+        last_seen: new Date().toISOString(),
+        activation_count: ((merged[key]?.activation_count as number) || 0) + 1,
+      };
+    }
+    const updatePatternsResult = await supabase
+      .from('tkg_entities')
+      .update({ patterns: merged, patterns_updated_at: new Date().toISOString() })
+      .eq('id', selfId);
+
+    if (updatePatternsResult.error) {
+      throw new Error(`patterns_update: ${updatePatternsResult.error.message}`);
+    }
+
+    result.topics_merged = allTopics.length;
+  }
+
+  return result;
+}
+
+type TrustClassMap = Map<string, TrustClass>;
+
+async function processSingleExtractedSignal(args: {
+  signal: RawSignal;
+  extractionMap: Map<string, SignalExtraction>;
+  userId: string;
+  selfId: string | undefined;
+  dryRun: boolean;
+  supabase: ReturnType<typeof createServerClient>;
+  junkSignalIds: Set<string>;
+  trustClassBySignalId: TrustClassMap;
+  result: ProcessResult;
+  allTopics: ExtractedTopic[];
+}): Promise<void> {
+  const {
+    signal,
+    extractionMap,
+    userId,
+    selfId,
+    dryRun,
+    supabase,
+    junkSignalIds,
+    trustClassBySignalId,
+    result,
+    allTopics,
+  } = args;
+
+  const extraction = extractionMap.get(signal.id);
+  const entityIds: string[] = [];
+  const commitmentIds: string[] = [];
 
     // Skip commitment and entity extraction for Foldera's own sent emails.
     // These signals are kept for engagement tracking but must not produce
@@ -1064,9 +1225,12 @@ async function processBatch(
     }
 
     const extractedDates = extraction
-      ? (extraction.commitments ?? [])
-          .filter(c => c.due)
-          .map(c => ({ description: c.description, due: c.due }))
+      ? (extraction.commitments ?? []).flatMap((c) => {
+          if (!c.due?.trim()) return [];
+          const dueIso = normalizeInteractionTimestamp(c.due as unknown);
+          if (!dueIso) return [];
+          return [{ description: c.description, due: dueIso }];
+        })
       : [];
 
     // Mark signal processed with extracted data persisted to columns
@@ -1086,35 +1250,7 @@ async function processBatch(
       }
     }
 
-    result.signals_processed++;
-  }
-
-  // Merge topics into self entity patterns
-  if (allTopics.length > 0 && selfId && !dryRun) {
-    const merged = { ...(selfPatterns ?? {}) };
-    for (const topic of allTopics) {
-      const key = topic.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60);
-      merged[key] = {
-        name: topic.name,
-        description: `Topic from synced signals`,
-        domain: topic.domain || 'other',
-        last_seen: new Date().toISOString(),
-        activation_count: ((merged[key]?.activation_count as number) || 0) + 1,
-      };
-    }
-    const updatePatternsResult = await supabase
-      .from('tkg_entities')
-      .update({ patterns: merged, patterns_updated_at: new Date().toISOString() })
-      .eq('id', selfId);
-
-    if (updatePatternsResult.error) {
-      throw new Error(`patterns_update: ${updatePatternsResult.error.message}`);
-    }
-
-    result.topics_merged = allTopics.length;
-  }
-
-  return result;
+  result.signals_processed++;
 }
 
 function isMicrosoftRecoverableSignal(
@@ -1192,7 +1328,7 @@ async function upsertEntity(
 ): Promise<string | null> {
   const name = person.name.trim();
   const nameLower = name.toLowerCase();
-  const signalInteractionAt = normalizeInteractionTimestamp(signalOccurredAt);
+  const signalInteractionAt = normalizeInteractionTimestamp(signalOccurredAt as unknown);
   const isRealInteraction = REAL_INTERACTION_SOURCES.has(signalSource ?? '');
 
   const existingMatches = await findExistingEntityMatches(supabase, userId, person, nameLower);
@@ -1225,7 +1361,7 @@ async function upsertEntity(
         updates.trust_class = mergeTrustClass(signalMerged, entityTrustClass);
       }
 
-      const existingLastInteraction = normalizeInteractionTimestamp(match.last_interaction ?? null);
+      const existingLastInteraction = normalizeInteractionTimestamp(match.last_interaction);
       if (isRealInteraction && (!existingLastInteraction || (signalInteractionAt && signalInteractionAt > existingLastInteraction))) {
         updates.last_interaction = signalInteractionAt ?? new Date().toISOString();
       }
@@ -1469,11 +1605,35 @@ async function insertCommitment(
   return createCommitmentResult.data?.id ?? null;
 }
 
-function normalizeInteractionTimestamp(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toISOString();
+/**
+ * Coerces sync/LLM timestamps to UTC ISO strings. Returns null if unparseable.
+ * Never throws (avoids RangeError: Invalid time value from toISOString).
+ */
+export function normalizeInteractionTimestamp(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  try {
+    if (typeof value === 'number') {
+      if (!Number.isFinite(value)) return null;
+      const d = new Date(value);
+      const t = d.getTime();
+      if (!Number.isFinite(t)) return null;
+      return d.toISOString();
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      const d = new Date(trimmed);
+      if (!Number.isFinite(d.getTime())) return null;
+      return d.toISOString();
+    }
+    if (value instanceof Date) {
+      if (!Number.isFinite(value.getTime())) return null;
+      return value.toISOString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /**

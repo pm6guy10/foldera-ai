@@ -1,14 +1,44 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildGmailIncrementalListQuery,
   buildGmailMessagesListQuery,
   gmailIngestQueryPairDry,
+  gmailNewerThanClause,
   gmailSearchAfterDateClause,
 } from '../gmail-query';
 
 describe('gmailSearchAfterDateClause', () => {
-  it('uses yyyy/mm/dd UTC for Gmail after: operator (not Unix seconds)', () => {
+  it('uses yyyy/mm/dd from UTC calendar components (legacy after: helper)', () => {
     const ms = Date.UTC(2026, 2, 27, 15, 30, 0);
     expect(gmailSearchAfterDateClause(ms)).toBe('2026/03/27');
+  });
+});
+
+describe('gmailNewerThanClause', () => {
+  it('uses at least 1h for sub-hour windows', () => {
+    const now = Date.UTC(2026, 4, 1, 12, 0, 0);
+    const since = Date.UTC(2026, 4, 1, 11, 59, 30);
+    expect(gmailNewerThanClause(since, now)).toBe('newer_than:1h');
+  });
+
+  it('uses hours up to one week', () => {
+    const now = Date.UTC(2026, 4, 8, 12, 0, 0);
+    const since = Date.UTC(2026, 4, 8, 4, 0, 0);
+    expect(gmailNewerThanClause(since, now)).toBe('newer_than:8h');
+  });
+
+  it('uses days beyond one week', () => {
+    const now = Date.UTC(2026, 4, 8, 12, 0, 0);
+    const since = Date.UTC(2026, 3, 1, 12, 0, 0);
+    expect(gmailNewerThanClause(since, now)).toMatch(/^newer_than:\d+d$/);
+  });
+});
+
+describe('buildGmailIncrementalListQuery', () => {
+  it('combines newer_than with spam/trash filters', () => {
+    const now = Date.UTC(2026, 4, 8, 12, 0, 0);
+    const since = Date.UTC(2026, 4, 8, 11, 0, 0);
+    expect(buildGmailIncrementalListQuery(since, now)).toBe('newer_than:1h -in:spam -in:trash');
   });
 });
 

@@ -4,6 +4,22 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Audit remediation roadmap (B1–B3 + CI signals + docs/backlog)**
+  MODE: AUDIT
+  Commit hash(es): (this commit)
+  Files changed: `docs/FULL_SURFACE_AUDIT_2026-04-07.md`, `lib/signals/signal-processor.ts`, `lib/signals/__tests__/signal-processor.test.ts`, `lib/briefing/locked-contact-scan.ts`, `lib/briefing/__tests__/locked-contact-scan.test.ts`, `lib/briefing/generator.ts`, `lib/briefing/scorer-failure-suppression.ts`, `lib/briefing/__tests__/scorer-failure-suppression.test.ts`, `lib/briefing/__tests__/usefulness-gate.test.ts`, `tests/e2e/authenticated-routes.spec.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (827 tests); `PLAYWRIGHT_WEB_PORT=3011 npm run test:ci:e2e` (42 passed — use alternate port if :3000 held by stale `next start`)
+  Changes: §6 audit table + `/dashboard/signals` matrix green; signal batch per-signal try/catch + hardened `normalizeInteractionTimestamp` + `extracted_dates` ISO-only; locked-contact scan user-facing artifact text + word boundaries; stale dates scan directive/why_now/evidence/insight + slash ISO; CI e2e for Sources page; backlog Phase D/E operator pointers; closed OPEN rows for applied migrations (operator-confirmed).
+  Any unresolved issues: `npm run test:prod` not re-run this session (port contention / time); operator Sentry/Vercel/AZ items remain manual per AUTOMATION_BACKLOG.
+
+- 2026-04-08 — AUDIT: **Gmail incremental `newer_than` + Haiku extraction JSON repair**
+  MODE: AUDIT
+  Commit hash(es): `ff71aee`
+  Files changed: `lib/sync/gmail-query.ts`, `lib/sync/google-sync.ts`, `lib/sync/__tests__/gmail-query.test.ts`, `lib/signals/signal-processor.ts`, `lib/signals/__tests__/signal-processor.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run lint`; `npm run build`; `npx vitest run lib/sync/__tests__/gmail-query.test.ts lib/signals/__tests__/signal-processor.test.ts --exclude ".claude/worktrees/**"`
+  Changes: Incremental Gmail `messages.list` uses `newer_than:` from `last_synced_at`→now (min 1h) via `buildGmailIncrementalListQuery` — avoids empty `after:yyyy/mm/dd` when Gmail applies calendar dates in mailbox timezone. Signal batch extraction: `parseSignalExtractionJson` (balanced array extract + trailing-comma strip). Removed debug `127.0.0.1:7695` ingest from `syncGmail`.
+  Any unresolved issues: After deploy, confirm Vercel logs show `Gmail incremental q=newer_than:…` and `npm run test:prod` on Ready build.
+
 - 2026-04-08 — AUDIT: **Scorer locked_contact pre-filter (before scoring)**
   MODE: AUDIT
   Commit hash(es): `b32fd30`
