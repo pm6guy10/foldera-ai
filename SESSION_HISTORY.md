@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Generator blockers — bracket subject line + decision gates for unreplied mail**
   MODE: AUDIT
-  Commit hash(es): `e7cd83a`
+  Commit hash(es): `3b7eebb`
   Files changed: `lib/briefing/bracket-placeholder.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/bracket-placeholder.test.ts`, `lib/briefing/__tests__/artifact-decision-enforcement.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   **Problem:** Production rows showed `artifact.subject contains bracket placeholder text` and chained `decision_enforcement:missing_*` on realistic outreach copy.
   **Change:** Remove `subject` from bracket slot words; narrow ALL_CAPS bracket rule to named templates; `send_message` counts `?` in subject/body as explicit ask; add time/pressure regexes for days-since / no-reply threads.
