@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Pre-launch LLM spend policy (default dry-run, caps, cron + anomaly env)**
   MODE: AUDIT
-  Commit hash(es): (set after push)
+  Commit hash(es): `1cfd52f`
   Files changed: `lib/config/prelaunch-spend.ts`, `lib/config/__tests__/prelaunch-spend.test.ts`, `app/api/settings/run-brief/route.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `app/dashboard/settings/SettingsClient.tsx`, `app/api/cron/daily-brief/route.ts`, `lib/briefing/generator.ts`, `lib/cron/brief-service.ts`, `lib/cron/daily-brief-generate.ts`, `CLAUDE.md`, `FOLDERA_PRODUCT_SPEC.md`, `tests/production/smoke.spec.ts`, `tests/production/audit.spec.ts`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build`; `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts lib/config/__tests__/prelaunch-spend.test.ts`; `npm run test:ci:e2e` (45 passed)
   Changes: `PROD_DEFAULT_PIPELINE_DRY_RUN` + `ALLOW_PROD_PAID_LLM` + `use_llm` resolution; `spend_policy` on JSON; `skipSpendCap`/`skipManualCallLimit` false on run-brief; settings primary dry run + secondary paid with confirm; `CRON_DAILY_BRIEF_PIPELINE_DRY_RUN`; `FOLDERA_ANOMALY_USE_HAIKU` (Haiku + 8k prompt cap); docs + prod smoke/audit button selectors.
