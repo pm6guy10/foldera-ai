@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Audit remediation roadmap (canonical doc)
+
+**This session:** [docs/AUDIT_REMEDIATION_ROADMAP.md](docs/AUDIT_REMEDIATION_ROADMAP.md) — full pending program (Phases D–G, AZ table, monitoring, CI flake); links from `AUTOMATION_BACKLOG.md`, `FULL_SURFACE_AUDIT_2026-04-07.md` §Related docs, `AGENTS.md`.
+
 ## STATUS: SHIPPED — Settings mail stale banner: ingested mail date (not `processed` only)
 
 **This session:** `GET /api/integrations/status` — `newest_mail_signal_at` / `mail_ingest_looks_stale` no longer filter `tkg_signals.processed=true`. Sync stores mail as `processed=false` until the signal processor runs; the old query could show **Mar 27** while **Last synced** was current. Settings: **Newest mail synced from your inboxes…**. Tests: `app/api/integrations/status/__tests__/route.test.ts`. **If the banner still shows an old date after deploy**, no newer gmail/outlook mail-shaped rows exist — ops rewind / `audit:supabase:sync-fix` per spec.

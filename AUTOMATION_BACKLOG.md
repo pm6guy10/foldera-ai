@@ -6,7 +6,7 @@
 - **Locked contacts:** User-facing artifact scan only + word-boundary tokens — `lib/briefing/locked-contact-scan.ts`, `findLockedContactsInUserFacingPayload`; tests `lib/briefing/__tests__/locked-contact-scan.test.ts`.
 - **Stale dates:** `userFacingStaleDateScanText` + slash ISO in `lib/briefing/scorer-failure-suppression.ts`; generator uses combined scan. Tests: `scorer-failure-suppression.test.ts`.
 - **CI e2e:** `/dashboard/signals` — `tests/e2e/authenticated-routes.spec.ts` (`setupSignalsPageMocks`).
-- **Roadmap:** Cursor plan *Audit remediation roadmap* (do not edit plan file in repo); this backlog + [docs/FULL_SURFACE_AUDIT_2026-04-07.md](docs/FULL_SURFACE_AUDIT_2026-04-07.md) §6 updated for scoreboard/migrations.
+- **Roadmap:** Canonical extended program — [docs/AUDIT_REMEDIATION_ROADMAP.md](docs/AUDIT_REMEDIATION_ROADMAP.md) (phases A–G, pending + how to tackle). This backlog + [docs/FULL_SURFACE_AUDIT_2026-04-07.md](docs/FULL_SURFACE_AUDIT_2026-04-07.md) §6 updated for scoreboard/migrations.
 
 ### OPERATOR (ongoing) — Phase D / E from full-surface audit (not code-closable here)
 

@@ -4,13 +4,21 @@
 
 ## Session Logs
 
+- 2026-04-08 — OPS: **Audit remediation roadmap doc (`docs/AUDIT_REMEDIATION_ROADMAP.md`)**
+  MODE: OPS (documentation)
+  Commit hash(es): (pending)
+  Files changed: `docs/AUDIT_REMEDIATION_ROADMAP.md` (new), `AUTOMATION_BACKLOG.md`, `docs/FULL_SURFACE_AUDIT_2026-04-07.md`, `AGENTS.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  What was verified: N/A (doc-only); relative links in new file resolve under `docs/`.
+  Changes: Canonical living roadmap — mermaid loop, Phases A–C done, D–G pending with tackle steps, AZ table excerpt, ritual, suggested session order; cross-links from backlog, full-surface audit Related docs, AGENTS.
+  Any unresolved issues: None for this slice.
+
 - 2026-04-08 — AUDIT: **Cross-source evidence bundle for directive generation (fix inbox-only collapse)**
   MODE: AUDIT
-  Commit hash(es): (set after push)
+  Commit hash(es): (see push for generator merge commit)
   Files changed: `lib/briefing/generator.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
-  What was verified: `npm run health` (0 failing); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/generator.test.ts` (56 passed). `npm run build` hit transient Windows `.next` rename/ENOENT on this machine after compile+typecheck succeeded — retry on CI/Linux expected green.
-  Changes: **Root cause:** `fetchWinnerSignalEvidence` only loaded scorer `sourceSignals` + inbox keyword/entity scans, so `signalEvidence` was effectively mail-shaped; `buildStructuredContext` cannot surface calendar/drive/chat if those rows never enter `signalEvidence`. **Fix:** merge recent processed non-inbox signals into the evidence list (deduped, per-source cap). **Instrumentation:** NDJSON ingest logs `H1` (pre/post merge sources) and `H2` (`supporting_signals` distinct sources) — remove `#region agent log` blocks after operator confirms `bundleSourceCount >= 3` in `debug-9c6bc3.log`.
-  Any unresolved issues: Push only after a local or staging run proves **`bundleSourceCount` ≥ 3** with real `tkg_signals` data; clear `debug-9c6bc3.log` before each repro run.
+  What was verified: `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/generator.test.ts` (56 passed); `npm run build`.
+  Changes: **Root cause:** `fetchWinnerSignalEvidence` only loaded scorer `sourceSignals` + inbox keyword/entity scans, so `signalEvidence` was effectively mail-shaped. **Fix:** merge recent processed non-inbox signals into the evidence list (deduped, per-source cap). **Cleanup:** removed temporary localhost NDJSON ingest `fetch` blocks from `generator.ts` (must not ship to production).
+  Any unresolved issues: None for this item.
 
 - 2026-04-08 — OPS: **Cursor / runbook — production migration apply gate for schema work**
   MODE: OPS
@@ -31,10 +39,10 @@
 - 2026-04-08 — FLOW: **OAuth re-auth UX + connector-health email gating + Microsoft refresh via token-store**
   MODE: AUDIT / FLOW
   Commit hash(es): (set after push)
-  Files changed: `supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`, `lib/config/constants.ts`, `lib/auth/user-tokens.ts`, `lib/auth/token-store.ts`, `lib/sync/microsoft-sync.ts`, `lib/cron/connector-health.ts`, `app/api/integrations/status/route.ts`, `app/api/conviction/latest/route.ts`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `lib/cron/__tests__/connector-health.test.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `lib/sync/__tests__/microsoft-sync.test.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
-  What was verified: `npm run health` (0 failing); `npx vitest run` on the 4 touched test files (12 passed); `npm run build`.
-  Changes: `oauth_reauth_required_at` + `last_dashboard_visit_at` columns; fatal OAuth soft-disconnect marks reauth; integrations API returns `needs_reauth` and includes reauth rows; dashboard reconnect banner; settings `?reconnect=` auto-starts OAuth; connector-health uses 14d signal lookback, dashboard-visit skip (7d), reconnect URL in email body; Microsoft sync delegates refresh to `token-store`.
-  Any unresolved issues: Apply migration to production Supabase before new columns exist in prod. `npm run test:ci:e2e` / `npm run test:prod` not run this session.
+  Files changed: `supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`, `lib/config/constants.ts`, `lib/auth/user-tokens.ts`, `lib/auth/token-store.ts`, `lib/sync/microsoft-sync.ts`, `lib/cron/connector-health.ts`, `app/api/integrations/status/route.ts`, `app/api/conviction/latest/route.ts`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `lib/cron/__tests__/connector-health.test.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `lib/sync/__tests__/microsoft-sync.test.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `tests/e2e/authenticated-routes.spec.ts`, `tests/e2e/flow-routes.spec.ts`, `lib/briefing/generator.ts` (ingest cleanup), `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health`; `npm run lint`; `npm run build`; `npx vitest run` on touched unit tests; `npm run test:ci:e2e` (merge gate).
+  Changes: `oauth_reauth_required_at` + `last_dashboard_visit_at` columns; fatal OAuth soft-disconnect marks reauth; integrations API returns `needs_reauth` and includes reauth rows; dashboard reconnect banner; settings `?reconnect=` auto-starts OAuth; connector-health uses 14d signal lookback, dashboard-visit skip (7d), reconnect URL in email body; Microsoft sync delegates refresh to `token-store`; CI flow mocks integrations on dashboard + flow-route stubs.
+  Any unresolved issues: Apply [`20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) to production Supabase. Operator: `npm run test:prod` after deploy when `auth-state.json` is fresh.
 
 - 2026-04-07 — AUDIT: **Integrations status mail date = ingested signals (settings stale banner)**
   MODE: AUDIT

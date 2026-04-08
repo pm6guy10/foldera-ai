@@ -240,6 +240,7 @@ Re-run `npm run build` and use the printed **Route (app)** table; it lists every
 
 ## Related docs
 
+- [docs/AUDIT_REMEDIATION_ROADMAP.md](AUDIT_REMEDIATION_ROADMAP.md) — audit closure loop; Phases A–G; pending items + how to tackle
 - [docs/SESSION_SCOREBOARD.md](SESSION_SCOREBOARD.md) — SQL + ritual
 - [docs/AZ_AUDIT_2026-04.md](AZ_AUDIT_2026-04.md) — A–Z dimension matrix
 - [docs/LOCAL_E2E_AND_PROD_TESTS.md](LOCAL_E2E_AND_PROD_TESTS.md) — test commands
