@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Bracket slots + send_message decision strip + pipeline winner peek + test alignment**
   MODE: AUDIT
-  Commit hash(es): `7e15f53`
+  Commit hash(es): `8d178d2`
   Files changed: `lib/briefing/bracket-placeholder.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/bracket-placeholder.test.ts`, `lib/briefing/__tests__/artifact-decision-enforcement.test.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/__tests__/evaluate-readiness.test.ts`, `scripts/peek-pipeline-winner.ts`, `package.json`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   **Change:** Narrow bracket template false positives (`deadline`/`topic` out of slot list); `send_message` with **`?` in artifact** strips passive + obvious-first-layer decision issues; `pipeline_runs.raw_extras` stores **`winner_candidate_id`** + **`winner_decision_reason`**; add **`npm run peek:pipeline-winner`**; fix **`isSendWorthy`** test to use body without `?` when asserting passive subject.
   What was verified: `npm run health` (2026-04-08 15:47 PT, 0 failing); `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run build`; `npm run test:ci:e2e` (46); `npm run peek:pipeline-winner` (live DB — dry runs `winner_selected` / `write_document` 74; older actions still show pre-fix bracket validation on `discrepancy_bp_theme_deadline`).
