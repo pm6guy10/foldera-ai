@@ -53,6 +53,10 @@ export const INTEGRATIONS_MAIL_GRAPH_STALE_MS = daysMs(7);
  */
 export const MAIL_CURSOR_HEAL_GAP_MS = daysMs(1);
 export const MS_14D = daysMs(14);
+/** Connector-health email: secondary source (Calendar / Drive / OneDrive) must be empty this long while primary mail syncs. */
+export const CONNECTOR_HEALTH_EMAIL_SIGNAL_LOOKBACK_MS = MS_14D;
+/** Skip connector-health email if the user loaded the dashboard recently (in-app reconnect is enough). */
+export const CONNECTOR_HEALTH_EMAIL_SKIP_IF_DASHBOARD_VISIT_WITHIN_MS = MS_7D;
 export const MS_30D = daysMs(30);
 export const MS_90D = daysMs(90);
 export const MS_1Y  = daysMs(365);

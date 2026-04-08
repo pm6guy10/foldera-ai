@@ -11,13 +11,8 @@
  */
 
 import { createServerClient } from "@/lib/db/client";
-import {
-  getUserToken,
-  updateSyncTimestamp,
-  saveUserToken,
-  softDisconnectAfterFatalOAuthRefresh,
-} from "@/lib/auth/user-tokens";
-import { isMicrosoftRefreshFatalError } from "@/lib/auth/oauth-refresh-fatals";
+import { getUserToken, updateSyncTimestamp } from "@/lib/auth/user-tokens";
+import { getMicrosoftTokens, forceRefreshMicrosoftTokens } from "@/lib/auth/token-store";
 import { encrypt } from "@/lib/encryption";
 import { createHash } from "crypto";
 import mammoth from 'mammoth';
@@ -47,104 +42,6 @@ const TASK_LIST_PAGE_SIZE = 100;
 const TASK_MAX_ITEMS_PER_LIST = 200;
 const UPCOMING_CALENDAR_LOOKAHEAD_DAYS = 14;
 
-const MS_TOKEN_SCOPES =
-  "openid profile email offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read";
-
-/**
- * Refresh the Microsoft access token using the refresh_token from user_tokens,
- * then persist the new tokens back to user_tokens.
- */
-async function refreshMicrosoftAccessToken(
-  userId: string,
-  refreshToken: string,
-): Promise<{
-  access_token: string;
-  refresh_token: string;
-  expires_at: number;
-} | null> {
-  const response = await fetch(
-    "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: process.env.AZURE_AD_CLIENT_ID!,
-        client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
-        refresh_token: refreshToken,
-        grant_type: "refresh_token",
-        scope: MS_TOKEN_SCOPES,
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => "");
-    let errorCode = "unknown";
-    let errorDesc = "";
-    try {
-      const parsed = JSON.parse(errorBody);
-      errorCode = parsed.error ?? "unknown";
-      errorDesc = parsed.error_description ?? "";
-    } catch {
-      /* non-JSON */
-    }
-    console.error(
-      `[microsoft-sync] Token refresh failed (${response.status}): ${errorBody.slice(0, 200)}`,
-    );
-    if (isMicrosoftRefreshFatalError(errorCode, errorDesc)) {
-      await softDisconnectAfterFatalOAuthRefresh(userId, "microsoft", {
-        source: "microsoft-sync.refreshMicrosoftAccessToken",
-        error_code: errorCode,
-        error_description: errorDesc,
-      });
-    }
-    return null;
-  }
-
-  const data = await response.json();
-  const newTokens = {
-    access_token: data.access_token,
-    refresh_token: data.refresh_token || refreshToken,
-    expires_at: Math.floor(Date.now() / 1000) + (data.expires_in ?? 3600),
-  };
-
-  // Persist refreshed tokens back to user_tokens
-  await saveUserToken(userId, "microsoft", newTokens);
-  console.log(
-    `[microsoft-sync] Refreshed and saved Microsoft tokens for user ${userId}`,
-  );
-  return newTokens;
-}
-
-/**
- * Get a valid Microsoft access token from user_tokens, refreshing if expired.
- */
-async function getValidMicrosoftToken(
-  userId: string,
-): Promise<{
-  access_token: string;
-  refresh_token: string;
-  expires_at: number;
-} | null> {
-  const token = await getUserToken(userId, "microsoft");
-  if (!token) return null;
-  if (!token.access_token) return null;
-
-  // Check if token needs refresh (5-minute buffer)
-  const nowSec = Math.floor(Date.now() / 1000);
-  if (token.expires_at && token.expires_at < nowSec + 5 * 60) {
-    if (!token.refresh_token) {
-      console.error(
-        "[microsoft-sync] No refresh token — user must re-authenticate",
-      );
-      return null;
-    }
-    return refreshMicrosoftAccessToken(userId, token.refresh_token);
-  }
-
-  return token;
-}
-
 /**
  * Fetch with Microsoft Graph, retrying once on 401 with refreshed token.
  */
@@ -162,14 +59,7 @@ async function graphFetch(
   });
 
   if (res.status === 401) {
-    // Token expired mid-sync — refresh from user_tokens and retry
-    const token = await getUserToken(userId, "microsoft");
-    if (!token?.refresh_token)
-      throw new Error("Token refresh failed on 401 — no refresh token");
-    const refreshed = await refreshMicrosoftAccessToken(
-      userId,
-      token.refresh_token,
-    );
+    const refreshed = await forceRefreshMicrosoftTokens(userId);
     if (!refreshed) throw new Error("Token refresh failed on 401");
     res = await fetch(url, {
       headers: {
@@ -663,7 +553,7 @@ export async function recoverMicrosoftSignalContent(
 ): Promise<string | null> {
   if (!sourceId) return null;
 
-  const token = await getValidMicrosoftToken(userId);
+  const token = await getMicrosoftTokens(userId);
   if (!token) return null;
 
   if (source === "outlook") {
@@ -976,7 +866,7 @@ export async function syncMicrosoft(
   options?: { maxLookbackMs?: number },
 ): Promise<MicrosoftSyncResult> {
   // Get token from user_tokens, refreshing if expired
-  const validToken = await getValidMicrosoftToken(userId);
+  const validToken = await getMicrosoftTokens(userId);
   if (!validToken) {
     return {
       mail_signals: 0,
@@ -992,7 +882,7 @@ export async function syncMicrosoft(
     };
   }
 
-  // Read last_synced_at separately (getValidMicrosoftToken may have refreshed)
+  // Read last_synced_at separately (getMicrosoftTokens may have refreshed)
   const tokenMeta = await getUserToken(userId, "microsoft");
   const isFirstSync = !tokenMeta?.last_synced_at;
   const sinceMs = isFirstSync

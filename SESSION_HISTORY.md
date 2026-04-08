@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-08 — FLOW: **OAuth re-auth handoff — dashboard banner, CI mocks, connector-health tests, generator ingest cleanup**
+  MODE: AUDIT / FLOW
+  Commit hash(es): `6bd7a5f`
+  Files changed: `supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`, `app/api/conviction/latest/route.ts`, `app/api/integrations/status/route.ts`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `lib/auth/user-tokens.ts`, `lib/auth/token-store.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `lib/config/constants.ts`, `lib/cron/connector-health.ts`, `lib/cron/__tests__/connector-health.test.ts`, `lib/sync/microsoft-sync.ts`, `lib/briefing/generator.ts`, `tests/e2e/authenticated-routes.spec.ts`, `tests/e2e/flow-routes.spec.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build`; `npx vitest run lib/auth/__tests__/user-tokens.test.ts lib/cron/__tests__/connector-health.test.ts`; `npm run test:ci:e2e` (45 passed).
+  Changes: Finished OAuth re-auth UX (non-blocking `last_dashboard_visit_at`, reconnect banner, `?reconnect=` + conditional `replaceState`); migration for `oauth_reauth_required_at` / `last_dashboard_visit_at`; connector-health test mocks updated for `.is('disconnected_at', null)` + dashboard-visit skip case; Playwright mocks for `/api/integrations/status` on dashboard + flow-route API stubs; removed localhost debug `fetch` from `generator.ts`; spec row cleanup for evidence bundle.
+  Any unresolved issues: Apply `20260408180000_oauth_reauth_dashboard_visit.sql` to production Supabase.
+
 - 2026-04-08 — OPS: **Audit remediation roadmap doc (`docs/AUDIT_REMEDIATION_ROADMAP.md`)**
   MODE: OPS (documentation)
   Commit hash(es): `a79b578`
@@ -35,14 +43,6 @@
   What was verified: `npx vitest run app/api/integrations/status/__tests__/route.test.ts` (4 passed); `npx eslint` on route + test
   Root cause: fallback used `JSON.stringify` on `PostgrestError` — **non-enumerable `message`** dropped the Postgres text, so `isOauthReauthColumnMissing` stayed false. Fix: `supabaseErrorText()` reads `message`/`details`/`hint`/`code`; inner try/catch maps thrown errors to legacy path. Temporary **#region agent log** POSTs to debug ingest (`35fceb`) — remove after user confirms + log proof.
   Any unresolved issues: Run `npx supabase db push` (or apply SQL) for [`20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql).
-
-- 2026-04-08 — FLOW: **OAuth re-auth UX + connector-health email gating + Microsoft refresh via token-store**
-  MODE: AUDIT / FLOW
-  Commit hash(es): (set after push)
-  Files changed: `supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`, `lib/config/constants.ts`, `lib/auth/user-tokens.ts`, `lib/auth/token-store.ts`, `lib/sync/microsoft-sync.ts`, `lib/cron/connector-health.ts`, `app/api/integrations/status/route.ts`, `app/api/conviction/latest/route.ts`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `lib/cron/__tests__/connector-health.test.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `lib/sync/__tests__/microsoft-sync.test.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `tests/e2e/authenticated-routes.spec.ts`, `tests/e2e/flow-routes.spec.ts`, `lib/briefing/generator.ts` (ingest cleanup), `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
-  What was verified: `npm run health`; `npm run lint`; `npm run build`; `npx vitest run` on touched unit tests; `npm run test:ci:e2e` (merge gate).
-  Changes: `oauth_reauth_required_at` + `last_dashboard_visit_at` columns; fatal OAuth soft-disconnect marks reauth; integrations API returns `needs_reauth` and includes reauth rows; dashboard reconnect banner; settings `?reconnect=` auto-starts OAuth; connector-health uses 14d signal lookback, dashboard-visit skip (7d), reconnect URL in email body; Microsoft sync delegates refresh to `token-store`; CI flow mocks integrations on dashboard + flow-route stubs.
-  Any unresolved issues: Apply [`20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) to production Supabase. Operator: `npm run test:prod` after deploy when `auth-state.json` is fresh.
 
 - 2026-04-07 — AUDIT: **Integrations status mail date = ingested signals (settings stale banner)**
   MODE: AUDIT

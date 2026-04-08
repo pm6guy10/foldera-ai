@@ -59,6 +59,20 @@ export async function GET(request: Request) {
   try {
     const supabase = createServerClient();
 
+    void (async () => {
+      try {
+        const { error: visitErr } = await supabase
+          .from('user_subscriptions')
+          .update({ last_dashboard_visit_at: new Date().toISOString() })
+          .eq('user_id', userId);
+        if (visitErr) {
+          console.warn('[conviction/latest] last_dashboard_visit_at update failed:', visitErr.message);
+        }
+      } catch {
+        /* non-blocking */
+      }
+    })();
+
     const { data: actions, error } = await supabase
       .from('tkg_actions')
       .select('*')

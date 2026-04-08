@@ -200,6 +200,7 @@ async function setupDashboardMocks(page: Page) {
     fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
   );
   await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+  await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
   await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DIRECTIVE_RESPONSE));
   await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
     let decision: string | undefined;
@@ -225,6 +226,7 @@ async function setupEmptyDashboardMocks(page: Page) {
     fulfillJson({ plan: 'pro', status: 'active' }),
   );
   await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+  await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
   await page.route(matchApiPath('/api/conviction/latest'), fulfillJson({}));
 }
 

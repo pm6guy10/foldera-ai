@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Route } from '@playwright/test';
 import { config as loadEnv } from 'dotenv';
 import { encode } from 'next-auth/jwt';
 
@@ -43,9 +43,70 @@ async function seedAuthenticatedSession(page: Page) {
   ]);
 }
 
+function json(data: unknown) {
+  return JSON.stringify(data);
+}
+
+function fulfillJson(data: unknown) {
+  return (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: json(data) });
+}
+
+function matchApiPath(apiPath: string) {
+  return (url: URL | string): boolean => {
+    try {
+      const u = typeof url === 'string' ? new URL(url) : url;
+      const p = u.pathname;
+      return p === apiPath || p === `${apiPath}/`;
+    } catch {
+      return false;
+    }
+  };
+}
+
+const FLOW_INTEGRATIONS = {
+  integrations: [
+    { provider: 'google', is_active: true, sync_email: 'flow@gmail.com', needs_reauth: false },
+    { provider: 'azure_ad', is_active: true, sync_email: 'flow@outlook.com', needs_reauth: false },
+  ],
+};
+
+/** DB-free API stubs so /dashboard (integrations banner) and settings/briefings settle under `networkidle`. */
+async function attachFlowApiMocks(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      sessionStorage.removeItem('foldera_pending_checkout');
+    } catch {
+      /* ignore */
+    }
+  });
+  await page.route(matchApiPath('/api/stripe/checkout'), (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: json({ error: 'mock_checkout_disabled' }),
+    });
+  });
+  await page.route(matchApiPath('/api/stripe/portal'), (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    return route.fulfill({ status: 400, contentType: 'application/json', body: json({ error: 'mock' }) });
+  });
+  await page.route(matchApiPath('/api/integrations/status'), fulfillJson(FLOW_INTEGRATIONS));
+  await page.route(
+    matchApiPath('/api/subscription/status'),
+    fulfillJson({ plan: 'free', status: 'active', current_period_end: null, can_manage_billing: false }),
+  );
+  await page.route(matchApiPath('/api/conviction/latest'), fulfillJson({}));
+  await page.route(matchApiPath('/api/conviction/history'), fulfillJson({ items: [] }));
+  await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
+  await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+}
+
 test.describe('Flow routes', () => {
   test('no page performs client-side redirect after load', async ({ page }) => {
     await seedAuthenticatedSession(page);
+    await attachFlowApiMocks(page);
 
     for (const route of ['/dashboard', '/dashboard/settings', '/dashboard/briefings', '/onboard']) {
       await page.goto(route);
@@ -61,6 +122,7 @@ test.describe('Flow routes', () => {
 
   test('authenticated user is not looped between dashboard and onboard', async ({ page }) => {
     await seedAuthenticatedSession(page);
+    await attachFlowApiMocks(page);
 
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');

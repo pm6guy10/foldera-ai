@@ -1,7 +1,18 @@
 import { createServerClient } from '@/lib/db/client';
+import {
+  CONNECTOR_HEALTH_EMAIL_SIGNAL_LOOKBACK_MS,
+  CONNECTOR_HEALTH_EMAIL_SKIP_IF_DASHBOARD_VISIT_WITHIN_MS,
+} from '@/lib/config/constants';
 import { renderPlaintextEmailHtml, sendResendEmail } from '@/lib/email/resend';
 
 const HEALTH_ALERT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+function resolveAppBaseUrl(): string {
+  if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL.replace(/\/$/, '');
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, '');
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'https://www.foldera.ai';
+}
 
 interface ConnectorHealthFlag {
   provider: 'google' | 'microsoft';
@@ -59,6 +70,17 @@ function shouldSendHealthAlert(lastHealthAlertAt: string | null): boolean {
   return Date.now() - new Date(lastHealthAlertAt).getTime() > HEALTH_ALERT_WINDOW_MS;
 }
 
+function shouldEmailConnectorStaleAlert(
+  lastHealthAlertAt: string | null,
+  lastDashboardVisitAt: string | null,
+): boolean {
+  if (!shouldSendHealthAlert(lastHealthAlertAt)) return false;
+  if (!lastDashboardVisitAt) return true;
+  const visitMs = new Date(lastDashboardVisitAt).getTime();
+  if (!Number.isFinite(visitMs)) return true;
+  return Date.now() - visitMs > CONNECTOR_HEALTH_EMAIL_SKIP_IF_DASHBOARD_VISIT_WITHIN_MS;
+}
+
 function buildFlagsForRow(row: UserTokenRow, signalCounts: Record<string, number>): ConnectorHealthFlag[] {
   if (row.provider === 'google') {
     // Only flag calendar/drive if Gmail IS actively syncing (gmail > 0).
@@ -102,13 +124,14 @@ function buildFlagsForRow(row: UserTokenRow, signalCounts: Record<string, number
 
 export async function checkConnectorHealth(): Promise<ConnectorHealthResult> {
   const supabase = createServerClient();
-  const sevenDaysAgo = new Date(Date.now() - HEALTH_ALERT_WINDOW_MS).toISOString();
+  const signalLookbackIso = new Date(Date.now() - CONNECTOR_HEALTH_EMAIL_SIGNAL_LOOKBACK_MS).toISOString();
 
   const { data: tokenRows, error: tokenError } = await supabase
     .from('user_tokens')
     .select(
       'user_id, provider, email, last_health_alert_at, expires_at, access_token, refresh_token, disconnected_at',
-    );
+    )
+    .is('disconnected_at', null);
 
   if (tokenError) {
     return {
@@ -173,12 +196,43 @@ export async function checkConnectorHealth(): Promise<ConnectorHealthResult> {
   const signalCountsByUser = new Map<string, Record<string, number>>();
   const uniqueUserIds = [...new Set(rows.map((row) => row.user_id))];
 
+  const dashboardVisitByUser = new Map<string, string | null>();
+  if (uniqueUserIds.length > 0) {
+    const { data: subRows, error: subErr } = await supabase
+      .from('user_subscriptions')
+      .select('user_id, last_dashboard_visit_at')
+      .in('user_id', uniqueUserIds);
+    if (subErr && /last_dashboard_visit_at/i.test(subErr.message ?? '')) {
+      /* migration not applied — skip dashboard gate */
+    } else if (subErr) {
+      return {
+        ok: false,
+        checked_users: 0,
+        alerts_sent: 0,
+        flagged_sources: 0,
+        skipped_recent_alerts: 0,
+        oauth_token_diagnostics: {
+          rows: oauthRows,
+          expired_access_at_rest: expiredAccessAtRest,
+          missing_access_not_disconnected: missingAccessNotDisconnected,
+        },
+        error: subErr.message,
+      };
+    } else {
+      for (const r of subRows ?? []) {
+        const uid = (r as { user_id: string }).user_id;
+        const v = (r as { last_dashboard_visit_at?: string | null }).last_dashboard_visit_at ?? null;
+        dashboardVisitByUser.set(uid, v);
+      }
+    }
+  }
+
   for (const userId of uniqueUserIds) {
     const { data: signals, error: signalError } = await supabase
       .from('tkg_signals')
       .select('source')
       .eq('user_id', userId)
-      .gte('occurred_at', sevenDaysAgo);
+      .gte('occurred_at', signalLookbackIso);
 
     if (signalError) {
       return {
@@ -220,14 +274,18 @@ export async function checkConnectorHealth(): Promise<ConnectorHealthResult> {
       continue;
     }
 
-    if (!shouldSendHealthAlert(row.last_health_alert_at)) {
+    const lastDash = dashboardVisitByUser.get(row.user_id) ?? null;
+    if (!shouldEmailConnectorStaleAlert(row.last_health_alert_at, lastDash)) {
       skippedRecentAlerts += flags.length;
       continue;
     }
 
+    const baseUrl = resolveAppBaseUrl();
     for (const flag of flags) {
       const providerName = flag.provider === 'google' ? 'Google' : 'Microsoft';
-      const body = `${flag.sourceLabel} has been connected but hasn't synced data in 7 days. To enable ${flag.sourceLabel} sync, disconnect and reconnect ${providerName} from Settings to grant the required permissions.`;
+      const reconnectParam = flag.provider === 'microsoft' ? 'microsoft' : 'google';
+      const reconnectUrl = `${baseUrl}/dashboard/settings?reconnect=${reconnectParam}`;
+      const body = `${flag.sourceLabel} has been connected but hasn't synced data in 14+ days while ${providerName} mail is active. Reconnect in one tap:\n${reconnectUrl}\n\nIf you use the dashboard regularly, you can ignore this — we only email when we have not seen a recent dashboard visit.`;
       const result = await sendResendEmail({
         to: row.email,
         subject: `Foldera: ${flag.sourceLabel} isn't syncing`,

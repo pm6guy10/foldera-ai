@@ -53,38 +53,13 @@ export async function GET() {
     let data: unknown[] | null;
     let legacyReauthShape = false;
 
-    let modern: { data: unknown; error: unknown };
-    try {
-      modern = await supabase
-        .from('user_tokens')
-        .select(
-          'provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token, disconnected_at, oauth_reauth_required_at',
-        )
-        .eq('user_id', session.user.id)
-        .or('disconnected_at.is.null,oauth_reauth_required_at.not.is.null');
-    } catch (caught) {
-      if (!isOauthReauthColumnMissing(caught)) throw caught;
-      modern = { data: null, error: caught };
-    }
-
-    // #region agent log
-    fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '35fceb' },
-      body: JSON.stringify({
-        sessionId: '35fceb',
-        hypothesisId: 'H1',
-        location: 'integrations/status/route.ts:modern',
-        message: 'user_tokens query',
-        data: {
-          hasError: modern.error != null,
-          errTextSample: modern.error != null ? supabaseErrorText(modern.error).slice(0, 500) : null,
-          missingColMatch: modern.error != null ? isOauthReauthColumnMissing(modern.error) : false,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
+    const modern = await supabase
+      .from('user_tokens')
+      .select(
+        'provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token, disconnected_at, oauth_reauth_required_at',
+      )
+      .eq('user_id', session.user.id)
+      .or('disconnected_at.is.null,oauth_reauth_required_at.not.is.null');
 
     if (modern.error && isOauthReauthColumnMissing(modern.error)) {
       const legacy = await supabase

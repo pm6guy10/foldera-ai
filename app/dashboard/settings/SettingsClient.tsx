@@ -15,6 +15,7 @@ interface Integration {
   last_synced_at?: string | null;
   expires_at?: number | null;
   needs_reconnect?: boolean;
+  needs_reauth?: boolean;
   /** Mail sync timestamp has not advanced for several days (connector may be stuck). */
   sync_stale?: boolean;
 }
@@ -142,6 +143,24 @@ export default function SettingsClient() {
       .catch(() => setAgentsEnabled(true));
   }, [isOwnerAccount]);
 
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    const params = new URLSearchParams(window.location.search);
+    const reconnect = params.get('reconnect');
+    if (reconnect === 'microsoft' || reconnect === 'onedrive') {
+      window.history.replaceState({}, '', window.location.pathname);
+      localStorage.setItem('connecting_provider', 'microsoft');
+      window.location.href = '/api/microsoft/connect';
+      return;
+    }
+    if (reconnect === 'google') {
+      window.history.replaceState({}, '', window.location.pathname);
+      localStorage.setItem('connecting_provider', 'google');
+      window.location.href = '/api/google/connect';
+      return;
+    }
+  }, [status]);
+
   // Auto-sync after OAuth connection — makes the product feel alive on day one
   useEffect(() => {
     if (status !== 'authenticated') return;
@@ -164,8 +183,11 @@ export default function SettingsClient() {
       }));
     }
 
-    // Clean URL
-    window.history.replaceState({}, '', window.location.pathname);
+    const hadOAuthCallback =
+      googleConnected || microsoftConnected || googleError !== null || microsoftError !== null;
+    if (hadOAuthCallback) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
 
     if (!googleConnected && !microsoftConnected) return;
 
@@ -389,6 +411,11 @@ export default function SettingsClient() {
                         {google?.is_active && google.sync_email ? ` · ${google.sync_email}` : ''}
                       </p>
                     </div>
+                    {!google?.is_active && google?.needs_reauth && (
+                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                        Your Google sign-in expired. Tap Connect to restore sync.
+                      </p>
+                    )}
                     {google?.is_active && google.needs_reconnect && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
                         Reconnect required — Foldera can&apos;t refresh this connection in the background without a new sign-in.
@@ -482,6 +509,11 @@ export default function SettingsClient() {
                         {microsoft?.is_active && microsoft.sync_email ? ` · ${microsoft.sync_email}` : ''}
                       </p>
                     </div>
+                    {!microsoft?.is_active && microsoft?.needs_reauth && (
+                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                        Your Microsoft sign-in expired. Tap Connect to restore mail and OneDrive.
+                      </p>
+                    )}
                     {microsoft?.is_active && microsoft.needs_reconnect && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
                         Reconnect required — Foldera can&apos;t refresh this connection in the background without a new sign-in.

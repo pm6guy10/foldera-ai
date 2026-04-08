@@ -88,6 +88,7 @@ describe('saveUserToken', () => {
         refresh_token: 'enc:1//real_refresh_token',
         access_token: 'enc:ya29.real_access_token',
         disconnected_at: null,
+        oauth_reauth_required_at: null,
         email: 'user@example.com',
       }),
       { onConflict: 'user_id,provider', ignoreDuplicates: false },
@@ -110,6 +111,7 @@ describe('saveUserToken', () => {
         access_token: 'enc:valid_access_token',
         refresh_token: 'enc:valid_refresh_token',
         disconnected_at: null,
+        oauth_reauth_required_at: null,
       }),
       { onConflict: 'user_id,provider', ignoreDuplicates: false },
     );
@@ -180,6 +182,52 @@ describe('softDisconnectUserToken', () => {
       access_token: null,
       refresh_token: null,
       disconnected_at: expect.any(String),
+      oauth_reauth_required_at: null,
     }));
+  });
+
+  it('sets oauth_reauth_required_at when oauthReauthRequired is true', async () => {
+    const { softDisconnectUserToken } = await import('../user-tokens');
+
+    await softDisconnectUserToken('user-1', 'google', { oauthReauthRequired: true });
+
+    expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      oauth_reauth_required_at: expect.any(String),
+    }));
+  });
+});
+
+describe('softDisconnectAfterFatalOAuthRefresh', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    updateEqSpy.mockReset();
+    updateSpy.mockReset();
+    updateEqSpy.mockResolvedValue({ error: null });
+    updateSpy.mockReturnValue({
+      eq() {
+        return {
+          eq: updateEqSpy,
+        };
+      },
+    });
+  });
+
+  it('soft-disconnects with oauth re-auth flag set', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { softDisconnectAfterFatalOAuthRefresh } = await import('../user-tokens');
+
+    await softDisconnectAfterFatalOAuthRefresh('user-1', 'microsoft', {
+      source: 'unit_test',
+      error_code: 'invalid_grant',
+    });
+
+    expect(updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        access_token: null,
+        refresh_token: null,
+        oauth_reauth_required_at: expect.any(String),
+      }),
+    );
+    errSpy.mockRestore();
   });
 });

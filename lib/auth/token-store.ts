@@ -220,6 +220,23 @@ async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens, e
 }
 
 /**
+ * Force Microsoft token refresh (e.g. after Graph 401) regardless of stored expiry skew.
+ */
+export async function forceRefreshMicrosoftTokens(userId: string): Promise<MicrosoftTokens | null> {
+  const row = await getUserToken(userId, 'microsoft');
+  if (!row?.refresh_token) return null;
+  return refreshMicrosoftTokens(
+    userId,
+    {
+      access_token: row.access_token,
+      refresh_token: row.refresh_token,
+      expires_at: row.expires_at,
+    },
+    row.email ?? undefined,
+  );
+}
+
+/**
  * Checks if a user has connected a specific provider.
  * Reads from user_tokens table.
  */

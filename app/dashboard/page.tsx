@@ -67,6 +67,7 @@ export default function DashboardPage() {
   const [lastDecision, setLastDecision] = useState<'approve' | 'skip' | null>(null);
   const [executedActionId, setExecutedActionId] = useState<string | null>(null);
   const [outcomeRecorded, setOutcomeRecorded] = useState(false);
+  const [oauthReconnect, setOauthReconnect] = useState<'google' | 'microsoft' | null>(null);
 
   const loadAbortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(false);
@@ -87,6 +88,25 @@ export default function DashboardPage() {
       setTimeout(() => setFlash(null), 6000);
     }
   }, []);
+
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    let cancelled = false;
+    void fetch('/api/integrations/status', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { integrations?: Array<{ provider: string; needs_reauth?: boolean }> } | null) => {
+        if (cancelled || !data?.integrations) return;
+        const ms = data.integrations.find((i) => i.provider === 'azure_ad' && i.needs_reauth);
+        const g = data.integrations.find((i) => i.provider === 'google' && i.needs_reauth);
+        if (ms) setOauthReconnect('microsoft');
+        else if (g) setOauthReconnect('google');
+        else setOauthReconnect(null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
 
   // After OAuth from /start?plan=pro, send user to Stripe Checkout once.
   useEffect(() => {
@@ -410,6 +430,24 @@ export default function DashboardPage() {
         id="main"
         className="relative z-10 pt-[calc(5rem+env(safe-area-inset-top,0px))] pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] px-4 max-w-2xl mx-auto w-full min-w-0"
       >
+        {oauthReconnect && (
+          <div
+            role="status"
+            className="mb-5 w-full rounded-xl border border-amber-500/35 bg-amber-950/40 px-4 py-3.5 backdrop-blur-md"
+          >
+            <p className="text-sm text-amber-100/95 font-medium">
+              Your {oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google'} connection needs a quick refresh so Foldera
+              can keep your brief accurate.
+            </p>
+            <a
+              href={oauthReconnect === 'microsoft' ? '/api/microsoft/connect' : '/api/google/connect'}
+              className="mt-3 inline-flex items-center justify-center rounded-lg bg-cyan-500 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-black hover:bg-cyan-400 transition-colors"
+            >
+              Reconnect {oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google'}
+            </a>
+          </div>
+        )}
+
         {isOwner && (
           <div className="flex gap-1 p-1 rounded-xl bg-zinc-900/80 border border-white/10 mb-6 max-w-md">
             <button

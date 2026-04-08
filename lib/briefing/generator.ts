@@ -4754,27 +4754,6 @@ async function fetchWinnerSignalEvidence(
   }
   const postMergeSources = [...new Set(snippets.map((s) => s.source))];
 
-  // #region agent log
-  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '9c6bc3' },
-    body: JSON.stringify({
-      sessionId: '9c6bc3',
-      location: 'generator.ts:fetchWinnerSignalEvidence:exit',
-      message: 'evidence_fetch_merge_sources',
-      data: {
-        hypothesisId: 'H1',
-        preMergeSources,
-        postMergeSources,
-        preSourceCount: preMergeSources.length,
-        postSourceCount: postMergeSources.length,
-        snippetCount: snippets.length,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
   if (senderBlockedCount > 0) {
     logStructuredEvent({
       event: 'sender_blocked',
@@ -7171,28 +7150,6 @@ export async function generateDirective(
         userVoicePatterns,
         lockedContactPromptLines,
       );
-
-      // #region agent log
-      {
-        const bundleSources = [...new Set(ctx.supporting_signals.map((s) => s.source))];
-        fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '9c6bc3' },
-          body: JSON.stringify({
-            sessionId: '9c6bc3',
-            location: 'generator.ts:generateDirective:structuredContext',
-            message: 'supporting_signals_bundle_sources',
-            data: {
-              hypothesisId: 'H2',
-              bundleSources,
-              bundleSourceCount: bundleSources.length,
-              supportingSignalRows: ctx.supporting_signals.length,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      }
-      // #endregion
 
       // --- DECISION PAYLOAD — the canonical binding contract ---
       const decisionPayload = buildDecisionPayload(hydratedWinner, ctx, confidence, lockedContacts);

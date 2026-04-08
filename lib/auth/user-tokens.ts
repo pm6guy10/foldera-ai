@@ -91,6 +91,7 @@ export async function saveUserToken(
     refresh_token: encryptToken(params.refresh_token),
     access_token: encryptToken(params.access_token),
     disconnected_at: null,
+    oauth_reauth_required_at: null,
     expires_at: expiresAtSec,
     email,
     scopes,
@@ -249,15 +250,18 @@ export async function deleteUserToken(
 export async function softDisconnectUserToken(
   userId: string,
   provider: 'google' | 'microsoft',
+  options?: { oauthReauthRequired?: boolean },
 ): Promise<void> {
   const supabase = createServerClient();
+  const nowIso = new Date().toISOString();
   const { error } = await supabase
     .from('user_tokens')
     .update({
       access_token: null,
       refresh_token: null,
-      disconnected_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      disconnected_at: nowIso,
+      oauth_reauth_required_at: options?.oauthReauthRequired ? nowIso : null,
+      updated_at: nowIso,
     })
     .eq('user_id', userId)
     .eq('provider', provider);
@@ -288,5 +292,5 @@ export async function softDisconnectAfterFatalOAuthRefresh(
       error_description: (meta.error_description ?? '').slice(0, 200),
     }),
   );
-  await softDisconnectUserToken(userId, provider);
+  await softDisconnectUserToken(userId, provider, { oauthReauthRequired: true });
 }
