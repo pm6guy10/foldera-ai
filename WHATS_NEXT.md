@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Pre-launch pipeline spend (settings + cron + generator anomaly)
+
+**This session:** Default production dry-run via `PROD_DEFAULT_PIPELINE_DRY_RUN` + paid opt-in `use_llm` + `ALLOW_PROD_PAID_LLM`; manual run-brief enforces daily/manual caps; `CRON_DAILY_BRIEF_PIPELINE_DRY_RUN`; `FOLDERA_ANOMALY_USE_HAIKU`; settings UI two buttons; `spend_policy` in API JSON. See `CLAUDE.md` env list and `FOLDERA_PRODUCT_SPEC.md` 2026-04-08 bullet. **Ops:** set Vercel envs to match launch intent; optional `npm run test:ci:e2e` / `npm run test:prod` after deploy.
+
 ## OUTSTANDING — ranked by severity (source: [AUTOMATION_BACKLOG.md](AUTOMATION_BACKLOG.md) top table)
 
 | Tier | Urgent if… | Top items |

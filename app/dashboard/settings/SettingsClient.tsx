@@ -41,7 +41,9 @@ export default function SettingsClient() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [generateState, setGenerateState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
-  const lastGenerateRef = useRef<number>(0);
+  const [paidGenerateState, setPaidGenerateState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [paidGenerateMessage, setPaidGenerateMessage] = useState<string | null>(null);
+  const lastPipelineRunRef = useRef<number>(0);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [goalBuckets, setGoalBuckets] = useState<string[]>([]);
   const [goalFreeText, setGoalFreeText] = useState<string | null>(null);
@@ -695,26 +697,34 @@ export default function SettingsClient() {
           </div>
         </section>
 
-        {/* ── Generate Now (prominent) ── */}
+        {/* ── Generate / pipeline (dry run default on prod when env is set) ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
           <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
             <SectionHeading className="mb-2">Generate</SectionHeading>
-            <p className="text-xs text-zinc-600 leading-relaxed">Sync your data and generate today&apos;s brief. Takes up to 60 seconds.</p>
+            <p className="text-xs text-zinc-600 leading-relaxed">
+              Sync connectors and run the brief pipeline. <span className="text-zinc-500">Dry run</span> exercises scoring and a mock directive without Anthropic.{' '}
+              <span className="text-zinc-500">AI generate</span> uses your daily caps and API credits.
+            </p>
           </div>
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6">
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 flex flex-col gap-3">
             <button
-              disabled={generateState === 'loading' || generateState === 'success'}
+              disabled={
+                generateState === 'loading' ||
+                generateState === 'success' ||
+                paidGenerateState === 'loading'
+              }
               onClick={async () => {
                 const now = Date.now();
-                if (now - lastGenerateRef.current < 30_000) {
+                if (now - lastPipelineRunRef.current < 30_000) {
                   setGenerateMessage('Please wait 30 seconds before trying again.');
                   return;
                 }
-                lastGenerateRef.current = now;
+                lastPipelineRunRef.current = now;
                 setGenerateState('loading');
                 setGenerateMessage(null);
+                setPaidGenerateMessage(null);
                 try {
-                  const res = await fetch('/api/settings/run-brief?force=true', { method: 'POST' });
+                  const res = await fetch('/api/settings/run-brief?force=true&dry_run=true', { method: 'POST' });
                   const data = await res.json().catch(() => null);
                   if (res.ok && data?.ok) {
                     setGenerateState('success');
@@ -722,23 +732,29 @@ export default function SettingsClient() {
                     return;
                   }
                   if (res.ok && data?.stages) {
-                    const stages = data.stages as Record<string, any>;
-                    const genStatus = stages.daily_brief?.generate?.status;
-                    if (genStatus === 'ok') {
+                    const stages = data.stages as Record<string, unknown>;
+                    const genStatus = (stages.daily_brief as Record<string, unknown> | undefined)?.generate;
+                    const genRec = genStatus as { status?: string } | undefined;
+                    if (genRec?.status === 'ok') {
                       setGenerateState('success');
                       window.location.href = '/dashboard?generated=true';
                       return;
                     }
-                    const signalOnly = stages.daily_brief?.signal_processing?.status === 'failed' && genStatus !== 'failed';
+                    const sp = stages.daily_brief as Record<string, unknown> | undefined;
+                    const sig = sp?.signal_processing as { status?: string } | undefined;
+                    const genFailed = genRec?.status === 'failed';
+                    const signalOnly = sig?.status === 'failed' && !genFailed;
                     if (signalOnly) {
                       setGenerateState('success');
                       window.location.href = '/dashboard?generated=true';
                       return;
                     }
                     const parts: string[] = [];
-                    if (genStatus === 'failed') parts.push('Brief generation failed');
-                    if (stages.sync_microsoft?.ok === false) parts.push('Microsoft sync issue');
-                    if (stages.sync_google?.ok === false) parts.push('Google sync issue');
+                    if (genRec?.status === 'failed') parts.push('Brief generation failed');
+                    const sm = stages.sync_microsoft as { ok?: boolean } | undefined;
+                    const sg = stages.sync_google as { ok?: boolean } | undefined;
+                    if (sm?.ok === false) parts.push('Microsoft sync issue');
+                    if (sg?.ok === false) parts.push('Google sync issue');
                     setGenerateState('error');
                     setGenerateMessage(parts.length > 0 ? parts.join('. ') + '.' : 'Something went wrong.');
                     return;
@@ -761,13 +777,119 @@ export default function SettingsClient() {
               {generateState === 'loading' ? (
                 <>
                   <span className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
-                  Running sync + generate…
+                  Running sync + dry run…
                 </>
-              ) : generateState === 'success' ? 'Redirecting…' : 'Generate now'}
+              ) : generateState === 'success' ? (
+                'Redirecting…'
+              ) : (
+                'Run pipeline (dry run)'
+              )}
+            </button>
+            <button
+              disabled={
+                paidGenerateState === 'loading' ||
+                paidGenerateState === 'success' ||
+                generateState === 'loading'
+              }
+              onClick={async () => {
+                if (
+                  !window.confirm(
+                    'Generate with AI uses Anthropic API credits and counts toward your daily limits. Continue?',
+                  )
+                ) {
+                  return;
+                }
+                const now = Date.now();
+                if (now - lastPipelineRunRef.current < 30_000) {
+                  setPaidGenerateMessage('Please wait 30 seconds before trying again.');
+                  return;
+                }
+                lastPipelineRunRef.current = now;
+                setPaidGenerateState('loading');
+                setPaidGenerateMessage(null);
+                setGenerateMessage(null);
+                try {
+                  const res = await fetch('/api/settings/run-brief?force=true&use_llm=true', { method: 'POST' });
+                  const data = await res.json().catch(() => null);
+                  const spend = data?.spend_policy as
+                    | { paid_llm_requested?: boolean; pipeline_dry_run?: boolean }
+                    | undefined;
+                  if (spend?.paid_llm_requested && spend?.pipeline_dry_run) {
+                    setPaidGenerateState('error');
+                    setPaidGenerateMessage(
+                      'Paid generation is not enabled on the server (needs ALLOW_PROD_PAID_LLM). You received a dry run instead.',
+                    );
+                    return;
+                  }
+                  if (res.ok && data?.ok) {
+                    setPaidGenerateState('success');
+                    window.location.href = '/dashboard?generated=true';
+                    return;
+                  }
+                  if (res.ok && data?.stages) {
+                    const stages = data.stages as Record<string, unknown>;
+                    const genStatus = (stages.daily_brief as Record<string, unknown> | undefined)?.generate;
+                    const genRec = genStatus as { status?: string } | undefined;
+                    if (genRec?.status === 'ok') {
+                      setPaidGenerateState('success');
+                      window.location.href = '/dashboard?generated=true';
+                      return;
+                    }
+                    const sp = stages.daily_brief as Record<string, unknown> | undefined;
+                    const sig = sp?.signal_processing as { status?: string } | undefined;
+                    const genFailed = genRec?.status === 'failed';
+                    const signalOnly = sig?.status === 'failed' && !genFailed;
+                    if (signalOnly) {
+                      setPaidGenerateState('success');
+                      window.location.href = '/dashboard?generated=true';
+                      return;
+                    }
+                    const parts: string[] = [];
+                    if (genRec?.status === 'failed') parts.push('Brief generation failed');
+                    const sm = stages.sync_microsoft as { ok?: boolean } | undefined;
+                    const sg = stages.sync_google as { ok?: boolean } | undefined;
+                    if (sm?.ok === false) parts.push('Microsoft sync issue');
+                    if (sg?.ok === false) parts.push('Google sync issue');
+                    setPaidGenerateState('error');
+                    setPaidGenerateMessage(parts.length > 0 ? parts.join('. ') + '.' : 'Something went wrong.');
+                    return;
+                  }
+                  setPaidGenerateState('error');
+                  setPaidGenerateMessage(data?.error || 'Request failed. Try again in 30 seconds.');
+                } catch {
+                  setPaidGenerateState('error');
+                  setPaidGenerateMessage('Network error — try again in 30 seconds.');
+                }
+              }}
+              className={`w-full min-h-[48px] touch-manipulation rounded-xl py-3 text-[10px] font-black uppercase tracking-[0.12em] transition-all border flex items-center justify-center gap-2 ${
+                paidGenerateState === 'loading'
+                  ? 'bg-zinc-900/40 text-zinc-500 cursor-wait border-white/5'
+                  : paidGenerateState === 'success'
+                    ? 'bg-cyan-500/5 text-cyan-400 border-cyan-500/20 cursor-default'
+                    : 'bg-transparent text-zinc-400 hover:text-zinc-200 border-white/15 hover:border-white/25'
+              }`}
+            >
+              {paidGenerateState === 'loading' ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
+                  Running sync + AI…
+                </>
+              ) : paidGenerateState === 'success' ? (
+                'Redirecting…'
+              ) : (
+                'Generate with AI (uses credits)'
+              )}
             </button>
             {generateMessage && (
-              <p className={`mt-3 text-xs leading-relaxed ${generateState === 'error' ? 'text-red-400' : 'text-cyan-400'}`}>
+              <p className={`text-xs leading-relaxed ${generateState === 'error' ? 'text-red-400' : 'text-cyan-400'}`}>
                 {generateMessage}
+              </p>
+            )}
+            {paidGenerateMessage && (
+              <p
+                className={`text-xs leading-relaxed ${paidGenerateState === 'error' ? 'text-red-400' : 'text-cyan-400'}`}
+              >
+                {paidGenerateMessage}
               </p>
             )}
           </div>

@@ -444,11 +444,11 @@ test.describe('Section 5 — Generate now button', () => {
         }
       });
 
-      const generateBtn = page.getByRole('button', { name: /generate now/i }).first();
+      const generateBtn = page.getByRole('button', { name: /run pipeline.*dry run/i }).first();
       const btnVisible = await generateBtn.isVisible({ timeout: 5000 }).catch(() => false);
 
       if (!btnVisible) {
-        record('INFO', 'generate-now', pageLabel, 'Generate now button not found on /dashboard/settings');
+        record('INFO', 'generate-now', pageLabel, 'Run pipeline (dry run) button not found on /dashboard/settings');
         await ctx.close();
         expect(true).toBe(true);
         return;
@@ -456,7 +456,7 @@ test.describe('Section 5 — Generate now button', () => {
 
       const isDisabled = await generateBtn.isDisabled().catch(() => false);
       if (isDisabled) {
-        record('INFO', 'generate-now', pageLabel, 'Generate now button is disabled — skipping click');
+        record('INFO', 'generate-now', pageLabel, 'Run pipeline (dry run) button is disabled — skipping click');
         await ctx.close();
         expect(true).toBe(true);
         return;
@@ -476,7 +476,9 @@ test.describe('Section 5 — Generate now button', () => {
               body.includes('Brief generation failed') ||
               body.includes('already sent') ||
               body.includes('do_nothing') ||
-              body.includes('Generating')
+              body.includes('Generating') ||
+              body.includes('dry run') ||
+              body.includes('Redirecting')
             );
           },
           { timeout: 115_000 },

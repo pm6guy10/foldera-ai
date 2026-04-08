@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
+import { resolveSettingsRunBriefPipelineDryRun } from '@/lib/config/prelaunch-spend';
 import { runBriefLifecycle } from '@/lib/cron/brief-service';
 import { syncGoogle } from '@/lib/sync/google-sync';
 import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
@@ -73,7 +74,13 @@ export async function POST(request: Request) {
     const userId = auth.userId;
     const url = new URL(request.url);
     const forceFreshRun = url.searchParams.get('force') === 'true';
-    const pipelineDryRun = url.searchParams.get('dry_run') === 'true';
+    const explicitDryRun = url.searchParams.get('dry_run') === 'true';
+    const useLlm = url.searchParams.get('use_llm') === 'true';
+    const spend = resolveSettingsRunBriefPipelineDryRun({
+      explicitDryRun,
+      useLlm,
+    });
+    const { pipelineDryRun, paidLlmRequested, paidLlmEffective } = spend;
     const [syncMicrosoftResult, syncGoogleResult] = await Promise.all([
       withSyncTimeout(
         runManualSync('microsoft', userId),
@@ -92,8 +99,8 @@ export async function POST(request: Request) {
       ensureSend: !pipelineDryRun,
       briefInvocationSource: 'settings_run_brief',
       skipStaleGate: true,
-      skipSpendCap: true,
-      skipManualCallLimit: true,
+      skipSpendCap: false,
+      skipManualCallLimit: false,
       ...(forceFreshRun ? { forceFreshRun: true } : {}),
       ...(pipelineDryRun ? { pipelineDryRun: true } : {}),
     });
@@ -102,6 +109,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok,
+      spend_policy: {
+        pipeline_dry_run: pipelineDryRun,
+        paid_llm_requested: paidLlmRequested,
+        paid_llm_effective: paidLlmEffective,
+      },
       stages: {
         sync_microsoft: syncMicrosoftResult,
         sync_google: syncGoogleResult,

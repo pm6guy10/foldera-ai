@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextResponse } from 'next/server';
 
 const mockResolveUser = vi.fn();
@@ -59,6 +59,7 @@ describe('POST /api/settings/run-brief', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
     mockRunCommitmentCeilingDefense.mockResolvedValue(undefined);
     mockApiError.mockImplementation((error: unknown) =>
       NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 }));
@@ -72,6 +73,10 @@ describe('POST /api/settings/run-brief', () => {
     });
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('returns auth response when the session is missing', async () => {
     mockResolveUser.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const { POST } = await import('../route');
@@ -82,7 +87,7 @@ describe('POST /api/settings/run-brief', () => {
     expect(await response.json()).toEqual({ error: 'Unauthorized' });
   });
 
-  it('runs the manual brief for any authenticated user instead of blocking non-owner sessions', async () => {
+  it('runs the manual brief with spend caps enforced (no skipSpendCap / skipManualCallLimit)', async () => {
     const userId = '22222222-2222-2222-2222-222222222222';
     mockResolveUser.mockResolvedValue({ userId });
     mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
@@ -90,21 +95,25 @@ describe('POST /api/settings/run-brief', () => {
 
     const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
 
-    // Route must pass ensureSend + skipStaleGate + skipSpendCap + skipManualCallLimit so manual runs bypass all throttles
     expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         userIds: [userId],
         ensureSend: true,
         briefInvocationSource: 'settings_run_brief',
         skipStaleGate: true,
-        skipSpendCap: true,
-        skipManualCallLimit: true,
+        skipSpendCap: false,
+        skipManualCallLimit: false,
       }),
     );
     expect(mockRunBriefLifecycle.mock.calls[0][0].forceFreshRun).toBeUndefined();
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.ok).toBe(true);
+    expect(payload.spend_policy).toEqual({
+      pipeline_dry_run: false,
+      paid_llm_requested: false,
+      paid_llm_effective: true,
+    });
     expect(payload.stages.daily_brief.send.results).toEqual([
       expect.objectContaining({ code: 'email_sent', userId }),
     ]);
@@ -128,10 +137,16 @@ describe('POST /api/settings/run-brief', () => {
         briefInvocationSource: 'settings_run_brief',
         pipelineDryRun: true,
         skipStaleGate: true,
-        skipSpendCap: true,
-        skipManualCallLimit: true,
+        skipSpendCap: false,
+        skipManualCallLimit: false,
       }),
     );
+    const payload = await response.json();
+    expect(payload.spend_policy).toEqual({
+      pipeline_dry_run: true,
+      paid_llm_requested: false,
+      paid_llm_effective: false,
+    });
   });
 
   it('passes forceFreshRun and pipelineDryRun together for ?force=true&dry_run=true', async () => {
@@ -154,6 +169,8 @@ describe('POST /api/settings/run-brief', () => {
         briefInvocationSource: 'settings_run_brief',
         ensureSend: false,
         pipelineDryRun: true,
+        skipSpendCap: false,
+        skipManualCallLimit: false,
       }),
     );
   });
@@ -176,10 +193,83 @@ describe('POST /api/settings/run-brief', () => {
         briefInvocationSource: 'settings_run_brief',
         ensureSend: true,
         skipStaleGate: true,
-        skipSpendCap: true,
-        skipManualCallLimit: true,
+        skipSpendCap: false,
+        skipManualCallLimit: false,
       }),
     );
+  });
+
+  it('defaults to pipelineDryRun on Vercel production when PROD_DEFAULT_PIPELINE_DRY_RUN is set', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('PROD_DEFAULT_PIPELINE_DRY_RUN', 'true');
+
+    const userId = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
+    const { POST } = await import('../route');
+
+    await POST(new Request('http://localhost:3000/api/settings/run-brief?force=true', { method: 'POST' }));
+
+    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pipelineDryRun: true,
+        ensureSend: false,
+      }),
+    );
+  });
+
+  it('on prod default dry-run, use_llm without ALLOW_PROD_PAID_LLM stays dry', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('PROD_DEFAULT_PIPELINE_DRY_RUN', 'true');
+
+    const userId = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
+    const { POST } = await import('../route');
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/settings/run-brief?force=true&use_llm=true', { method: 'POST' }),
+    );
+
+    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pipelineDryRun: true,
+        ensureSend: false,
+      }),
+    );
+    const payload = await response.json();
+    expect(payload.spend_policy).toEqual({
+      pipeline_dry_run: true,
+      paid_llm_requested: true,
+      paid_llm_effective: false,
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it('on prod default dry-run, use_llm with ALLOW_PROD_PAID_LLM runs paid path', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('PROD_DEFAULT_PIPELINE_DRY_RUN', 'true');
+    vi.stubEnv('ALLOW_PROD_PAID_LLM', 'true');
+
+    const userId = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
+    const { POST } = await import('../route');
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/settings/run-brief?force=true&use_llm=true', { method: 'POST' }),
+    );
+
+    const paidCall = mockRunBriefLifecycle.mock.calls[0][0];
+    expect(paidCall.pipelineDryRun).toBeUndefined();
+    expect(paidCall.ensureSend).toBe(true);
+    const payload = await response.json();
+    expect(payload.spend_policy).toEqual({
+      pipeline_dry_run: false,
+      paid_llm_requested: true,
+      paid_llm_effective: true,
+    });
+    expect(response.status).toBe(200);
   });
 
   it('surfaces manual_send_fallback_attempted = true from the service when the send fallback ran', async () => {

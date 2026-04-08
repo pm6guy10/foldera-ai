@@ -71,8 +71,18 @@ const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
 export const BUDGET_CAP_DIRECTIVE_SENTINEL = '__BUDGET_CAP_REACHED__';
 /** Main directive JSON + retries — Haiku for cost (structured output from fixed prompt). */
 const GENERATION_MODEL_FAST = 'claude-haiku-4-5-20251001';
-/** Pass-1 anomaly sentence only — needs stronger reasoning over evidence. */
+/** Pass-1 anomaly sentence only — Sonnet when quality matters; Haiku when `FOLDERA_ANOMALY_USE_HAIKU=true`. */
 const GENERATION_MODEL_REASON = 'claude-sonnet-4-20250514';
+
+const ANOMALY_PROMPT_CHARS_SONNET = 14_000;
+const ANOMALY_PROMPT_CHARS_HAIKU = 8_000;
+
+function getAnomalyPassModelAndPromptCap(): { model: string; maxPromptChars: number } {
+  if (process.env.FOLDERA_ANOMALY_USE_HAIKU === 'true') {
+    return { model: GENERATION_MODEL_FAST, maxPromptChars: ANOMALY_PROMPT_CHARS_HAIKU };
+  }
+  return { model: GENERATION_MODEL_REASON, maxPromptChars: ANOMALY_PROMPT_CHARS_SONNET };
+}
 const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
 const STALE_SIGNAL_THRESHOLD_DAYS = 21;
 
@@ -6512,13 +6522,14 @@ async function generatePayload(
 
   let anomalyIdentification: string | undefined;
   if (!options.dryRun) {
+    const { model: anomalyModel, maxPromptChars } = getAnomalyPassModelAndPromptCap();
     const anomalyUserMsg =
-      `${prompt.slice(0, 14000)}\n\nTASK: Reply with ONE sentence only (max 45 words). ` +
+      `${prompt.slice(0, maxPromptChars)}\n\nTASK: Reply with ONE sentence only (max 45 words). ` +
       `State the single most surprising actionable finding using ONLY names, dollar amounts, or dates that appear verbatim in the text above. ` +
       `No preamble, no JSON, no bullet points.`;
     try {
       const anomalyRes = await getAnthropic().messages.create({
-        model: GENERATION_MODEL_REASON,
+        model: anomalyModel,
         max_tokens: 150,
         temperature: 0.1,
         system: 'You output one factual sentence only. No meta-commentary.',
@@ -6526,7 +6537,7 @@ async function generatePayload(
       });
       await trackApiCall({
         userId,
-        model: GENERATION_MODEL_REASON,
+        model: anomalyModel,
         inputTokens: anomalyRes.usage.input_tokens,
         outputTokens: anomalyRes.usage.output_tokens,
         callType: 'anomaly_identification',

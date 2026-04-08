@@ -20,6 +20,7 @@ import { runPlatformHealthAlert } from '@/lib/cron/cron-health-alert';
 import { logApiBudgetStatusToSystemHealth } from '@/lib/cron/api-budget';
 import { createServerClient } from '@/lib/db/client';
 import { TEST_USER_ID } from '@/lib/config/constants';
+import { isCronDailyBriefPipelineDryRunEnabled } from '@/lib/config/prelaunch-spend';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { insertPipelineCronPhase } from '@/lib/observability/pipeline-run';
 
@@ -62,10 +63,12 @@ async function handler(request: NextRequest) {
 
   try {
     const signalCreatedAtGte = resolveSignalCreatedAtGte(request);
+    const cronPipelineDryRun = isCronDailyBriefPipelineDryRunEnabled();
     const briefOptions = {
       signalCreatedAtGte: signalCreatedAtGte ?? undefined,
       briefInvocationSource: 'cron_daily_brief' as const,
       cronInvocationId,
+      ...(cronPipelineDryRun ? { pipelineDryRun: true as const } : {}),
     };
 
     const eligibleUserIds = (await resolveDailyBriefUserIds()).filter((id) => id !== TEST_USER_ID);

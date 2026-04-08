@@ -1677,7 +1677,7 @@ export async function runDailyGenerate(
     }
 
     // Hard gate: one full generation cycle (signal processing onward) per user per 20h for batch/cron callers.
-    // Manual POST /api/settings/run-brief and owner brain-receipt set skipManualCallLimit and/or settings_run_brief.
+    // Dev brain-receipt may set skipManualCallLimit; settings route uses settings_run_brief (20h bypass) without skipManualCallLimit.
     if (
       !options.pipelineDryRun &&
       userId !== TEST_USER_ID &&

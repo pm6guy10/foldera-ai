@@ -15,8 +15,9 @@
  *
  * After pending-queue short-circuits, each user may enter signal processing at most
  * once per 20 hours (`user_brief_cycle_gates.last_cycle_at`) for cron/trigger/daily-generate
- * and other callers that do not opt out. **Bypass:** `skipManualCallLimit: true` (Generate Now,
- * dev brain-receipt) or `briefInvocationSource === 'settings_run_brief'` (settings route).
+ * and other callers that do not opt out. **Bypass:** `skipManualCallLimit: true` (e.g. dev
+ * brain-receipt) or `briefInvocationSource === 'settings_run_brief'` (settings route — still
+ * bypasses the 20h gate; daily spend / manual-call caps are enforced separately when not skipped).
  * `pipelineDryRun` and `TEST_USER_ID` do not advance or enforce the gate.
  *
  * `forceFreshRun` (`?force=true`, brain-receipt) does **not** clear valid

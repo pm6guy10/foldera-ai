@@ -260,7 +260,7 @@ describeAuth('Authenticated: Path B Generation Loop', () => {
     await page.goto('/dashboard/settings');
     await page.waitForLoadState('networkidle');
 
-    const generateButton = page.getByRole('button', { name: /generate now/i }).first();
+    const generateButton = page.getByRole('button', { name: /run pipeline.*dry run/i }).first();
     await expect(generateButton).toBeVisible({ timeout: 15000 });
 
     const [runBriefResponse] = await Promise.all([
