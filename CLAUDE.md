@@ -9,7 +9,7 @@ Every session runs this before any work:
 3. Read `CLAUDE.md` fully.
 4. Read `LESSONS_LEARNED.md` before every session. Every rule is enforced.
 5. Read `FOLDERA_PRODUCT_SPEC.md`. Confirm the current task maps to a specific item in the spec (cite the section number). Fixes outside the spec require explicit approval.
-6. Read `AUTOMATION_BACKLOG.md` for current open items — start with the **OUTSTANDING BACKLOG (severity-ranked)** table (S0–S3) at the top, then `OPEN` sections below.
+6. Read `AUTOMATION_BACKLOG.md` for current open items — start with the **OUTSTANDING BACKLOG (severity-ranked)** table (S0–S3) and **Executor ship contract** at the top, then `OPEN` sections below.
 7. Read every file you plan to modify.
 8. Run `git log --oneline -10`.
 9. Trace the relevant data path before coding: source -> transform -> persistence -> reader.
@@ -124,6 +124,8 @@ Optional recovery variable:
 
 **MANDATORY: "Done" means pushed.** Every session must end with `git push --no-verify origin main`. If you report "BUILD CLEAN AND COMPLETE" without having pushed, you have NOT completed the task. Never end a session with uncommitted or unpushed work. **Do not wait for the user** to approve or say “push” when work is verified—commit and push as part of finishing every task (unless blocked or verification failed).
 
+**MANDATORY: "Done" means you tested, not the user.** Run the automated gates in [AUTOMATION_BACKLOG.md](AUTOMATION_BACKLOG.md) **Executor ship contract** (health, CI e2e, post-push deploy/CI status, `test:prod` when auth state exists). Record outputs in `SESSION_HISTORY`. Do not close on “please confirm in prod” for checks you can execute. Only narrow human-only GTM steps (e.g. live Approve, personal Stripe) may remain explicitly open with a backlog ID.
+
 ## Mandatory QA Gate
 
 For any session that changes user-facing code, this gate is mandatory before push:
@@ -162,7 +164,7 @@ Every CC session that pushes to main MUST:
 3. Show all tests passing
 4. If any test fails, the session is NOT done. Fix the failure before closing.
 
-If auth-state.json is expired (session older than 30 days), tell Brandon to run `npm run test:prod:setup` to refresh it. Do not skip the tests.
+If `auth-state.json` is expired (session older than ~30 days), **you** run `npm run test:prod:setup` in-session when a headful browser is available; only if that is impossible, log the blocker and state that prod E2E was not refreshed — do not treat “user should run setup” as session complete when you could have run it.
 
 If tests cannot run (network issues, etc.), explicitly say "Production E2E tests could not run" and explain why. Do not claim the task is verified.
 

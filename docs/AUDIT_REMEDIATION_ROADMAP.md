@@ -13,7 +13,7 @@ Full table at the **top** of [AUTOMATION_BACKLOG.md](../AUTOMATION_BACKLOG.md). 
 | **S2** | Phases D–G operational items; OPEN monitors; CI `/login` flake; AZ-14 |
 | **S3** | Remaining AZ operator polish (uptime, UX sweep, backups, etc.) |
 
-**Urgent only if S0**; else **S1** for business priority.
+**Triage order:** Fix **S0** first when *executor-run* checks show deploy/health/scoreboard/migration failure. When S0 is green, prioritize **S1** for business/GTM — the agent still drives receipts and automation; human steps are the narrow exceptions listed at the top of [AUTOMATION_BACKLOG.md](../AUTOMATION_BACKLOG.md) (ship contract).
 
 ## Source of truth
 

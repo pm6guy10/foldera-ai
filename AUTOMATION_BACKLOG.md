@@ -11,7 +11,9 @@
 | **S2 — Medium** | CI flake, observability, **mitigated** monitors | **AZ-14** — refresh `tests/production/auth-state.json` (`npm run test:prod:setup`); **Phase D** — Sentry 7d triage, `npm audit` policy ([CLAUDE.md](CLAUDE.md)); **Phase F** — `stale_date_in_directive` (monitor), locked-contact log ratio, `directive_retry` vs `directive` in `api_usage`; **Phase G** — local `test:ci:e2e` `/login` 500 + `NEXTAUTH_URL` vs `127.0.0.1` ([playwright.ci.config.ts](playwright.ci.config.ts)) | Weekly triage; fix when blocking merge or masking prod regressions |
 | **S3 — Lower / ongoing** | Depth, UX, infra polish | **AZ-04** non-owner prod depth; **AZ-08** UptimeRobot; **AZ-09** FLOW screenshot sweep; **AZ-11** stranger onboarding; **AZ-17**–**AZ-19**, **AZ-21** (Supabase security/backup/owner scopes) | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) operator checklist |
 
-**Is anything critical *right now*?** Only if **S0** is true (check Vercel, health, scoreboard, and prod migration parity). If S0 is green, **S1** (AZ-24 + revenue gates) is the highest **business** urgency—not necessarily an outage.
+**Executor ship contract (Codex / CC):** A session is **not done** until **you** run the automated gates you can run and record evidence in `SESSION_HISTORY` (command outputs or pass counts). Minimum every session: `npm run health` (full output). Before push (matches CI): `npm run lint`, `npm run build`, `npx vitest run --exclude ".claude/worktrees/**"`, `npm run test:ci:e2e`. After push: wait for **Vercel Ready** and **GitHub `build-and-test` green** on `main` (dashboard or MCP — do not ask the product owner to “check Vercel”). Pipeline / prod-behavior sessions: also `npm run scoreboard` when the DB is linked; **`npm run test:prod`** when `tests/production/auth-state.json` exists — refresh it **in-session** with `npm run test:prod:setup` when headful Playwright is possible; if impossible, log the blocker and do **not** claim prod E2E verified. Prod DDL: **you** apply via Supabase MCP / CLI per `AGENTS.md` — never a human follow-up todo. **Do not** close with “please confirm in prod” for checks you can automate. **Human-only exceptions** (cannot be fully closed by the agent): e.g. live Approve on a real mailbox, personal-card Stripe checkout, legal-only account actions — log under OPEN with backlog ID; that list is narrow, not a substitute for running health/CI/prod Playwright.
+
+**Priority right now:** **S0** means *your* checks showed deploy/health/scoreboard/migration failure — fix that first. If those gates are green, **S1** (AZ-24 + revenue proof) is the highest **business** priority next — still driven by the agent with SQL receipts and code, not by asking the user to substitute for missing runs.
 
 ### DONE (2026-04-07) — Audit remediation roadmap (code + CI)
 
@@ -23,9 +25,9 @@
 
 ### OPERATOR (ongoing) — Phase D / E from full-surface audit (not code-closable here)
 
-- **Sentry 7d triage** — needs `SENTRY_AUTH_TOKEN` / dashboard; fix or log new OPEN items.
-- **Vercel** — latest deploy **Ready** before claiming prod verified; see [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).
-- **GTM / infra AZ items** — non-owner prod depth, UptimeRobot on `/api/health`, Stripe checkout proof, Supabase backups, `test:prod:setup` refresh: track in normalized table in this file (AZ-04, AZ-08, AZ-11, AZ-14–AZ-19, AZ-21).
+- **Sentry 7d triage** — agent uses token/script when configured; else log OPEN — not “Brandon triage this.”
+- **Vercel / GitHub** — **agent** confirms latest deploy **Ready** + CI green (dashboard/MCP) before claiming prod verified; see [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).
+- **GTM / infra AZ items** — narrow human-only steps (live Approve, personal Stripe, etc.); everything automatable stays on the agent per **Executor ship contract** above. Track remaining items in normalized table (AZ-04, AZ-08, AZ-11, AZ-14–AZ-19, AZ-21).
 
 ### DONE (2026-04-07) — Full surface audit artifact
 

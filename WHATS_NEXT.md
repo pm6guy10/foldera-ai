@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Runbook: agent verifies (Executor ship contract; no user confirmation punt)
+
+**This session:** `AUTOMATION_BACKLOG.md` — **Executor ship contract** (health, lint, build, vitest, `test:ci:e2e`, post-push Vercel/GitHub, `test:prod` + in-session `test:prod:setup` when possible); **Priority right now** replaces “user checks S0.” `WHATS_NEXT.md` — **Who verifies** row. `docs/AUDIT_REMEDIATION_ROADMAP.md` — triage order + link to ship contract. `AGENTS.md` — **No verification punt.** `CLAUDE.md` — **Done means you tested** + `test:prod:setup` is agent-first; pre-flight step 6. `FOLDERA_PRODUCT_SPEC.md` — pointer to ship contract. `SESSION_HISTORY.md` — S0 wording. OPERATOR section: agent runs deploy/CI checks. **Verified:** `npm run health` (0 failing); `npm run lint`; `npm run build`.
+
 ## STATUS: SHIPPED — Pre-launch pipeline spend (settings + cron + generator anomaly)
 
 **This session:** Default production dry-run via `PROD_DEFAULT_PIPELINE_DRY_RUN` + paid opt-in `use_llm` + `ALLOW_PROD_PAID_LLM`; manual run-brief enforces daily/manual caps; `CRON_DAILY_BRIEF_PIPELINE_DRY_RUN`; `FOLDERA_ANOMALY_USE_HAIKU`; settings UI two buttons; `spend_policy` in API JSON. See `CLAUDE.md` env list and `FOLDERA_PRODUCT_SPEC.md` 2026-04-08 bullet. **Ops:** set Vercel envs to match launch intent; optional `npm run test:ci:e2e` / `npm run test:prod` after deploy.
@@ -13,7 +17,7 @@
 | **S2** | CI / monitoring | **AZ-14** prod Playwright auth; Sentry; OPEN `stale_date` / retry monitors; `/login` CI flake |
 | **S3** | Polish | AZ-04, 08, 09, 11, 17–19, 21 — [MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
 
-**Critical today?** Only when **S0** is true. Otherwise prioritize **S1** for product/GTM.
+**Who verifies:** The **agent** runs health, CI e2e, post-push Vercel/GitHub, and `test:prod` when auth state exists — and logs results. **S0** = those checks (or scoreboard/migrations) **failed** and must be fixed first; **S1** = next business priority when S0 gates are green — not “the user should confirm.”
 
 ## STATUS: SHIPPED — OAuth re-auth UX, connector-health gating, dashboard visit tracking
 
