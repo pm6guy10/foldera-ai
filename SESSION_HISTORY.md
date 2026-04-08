@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Deploy workflow: concurrency + retries (GHA red / Vercel READY mismatch)**
   MODE: AUDIT
-  Commit hash(es): `422400d`
+  Commit hash(es): `3100506`
   Files changed: `.github/workflows/deploy.yml`, `docs/MASTER_PUNCHLIST.md`, `AGENTS.md`, `AUTOMATION_BACKLOG.md`, `CLAUDE.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   **Evidence:** GitHub API — failed run `24153426510` @ `24bcb3e`: **`vercel deploy --prebuilt`** failed after successful **`vercel build`**. Vercel MCP — **`dpl_4DPJiAwASktYEAMkbiNkpa8v2ZcH`** for same commit **READY**. Duplicate outcomes @ `1fb2b7e` (success + failure). Root cause: **parallel / racing** CLI deploy vs Vercel Git integration (and possible duplicate `workflow_run`).
   **Change:** `concurrency` group `vercel-prod-cli-foldera`; 3 deploy attempts + 45s sleep; token via `env`. Runbook updates in MASTER_PUNCHLIST + AGENTS + backlog.
