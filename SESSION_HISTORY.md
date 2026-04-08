@@ -6,7 +6,7 @@
 
 - 2026-04-07 — AUDIT: **Integrations status mail date = ingested signals (settings stale banner)**
   MODE: AUDIT
-  Commit hash(es): (pending)
+  Commit hash(es): `9218549`
   Files changed: `app/api/integrations/status/route.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `app/dashboard/settings/SettingsClient.tsx`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
   What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build`; `npx vitest run app/api/integrations/status/__tests__/route.test.ts` (3 passed); `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "Settings"` (4 passed).
   Changes: Dropped `.eq('processed', true)` from newest-mail query; banner copy aligned. Evidence: `lib/sync/google-sync.ts` upserts `processed: false`; banner previously used newest **processed** mail only.
