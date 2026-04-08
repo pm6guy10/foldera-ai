@@ -147,7 +147,7 @@ export function normalizeDirectiveForLoopDetection(text: string): string {
 }
 
 /** Persisted directives examined for identical-normalized loop (newest first). */
-export const GENERATION_LOOP_DETECTION_WINDOW = 5;
+export const GENERATION_LOOP_DETECTION_WINDOW = 12;
 /** Minimum occurrences of the same normalized directive within the window to treat as a loop. */
 export const GENERATION_LOOP_MIN_REPEATS = 3;
 

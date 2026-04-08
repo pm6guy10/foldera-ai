@@ -83,10 +83,10 @@
 - **DDL:** [`supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) — `user_tokens.oauth_reauth_required_at`, `user_subscriptions.last_dashboard_visit_at` + column comments. **Production:** applied via agent (Supabase MCP); hosted `oauth_reauth_dashboard_visit` / `20260408140704`; see [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).
 - **Code:** `needs_reauth` + dashboard reconnect banner + settings `?reconnect=`; non-blocking `last_dashboard_visit_at` on `GET /api/conviction/latest`; connector-health 14d secondary-source lookback + skip email if dashboard visited within 7d; Microsoft Graph 401 → `forceRefreshMicrosoftTokens`; CI E2E mocks for `/api/integrations/status` + flow-route stubs. **Commits:** `3c7722b`, `c71563a` (session hash note).
 
-### DONE (2026-04-08) — `generation_retry_storm` loop gate (5-window / ≥3 match)
+### DONE (2026-04-08) — `generation_retry_storm` loop gate (widened window / ≥3 match)
 
-- **Prior:** `GENERATION_LOOP_DETECTED` required last **3** rows identical after normalization.
-- **This session:** `detectDominantNormalizedDirectiveLoop` in `lib/briefing/scorer-failure-suppression.ts` — last **5** rows, **≥3** shares same normalized directive → skip LLM + persist loop row. `daily-brief-generate.ts` log: `last_5_at_least_3_normalized_match`. Tests: `scorer-failure-suppression.test.ts`.
+- **Prior:** `GENERATION_LOOP_DETECTED` required last **3** rows identical after normalization; then **5**-row window (**2026-04-08** choreography).
+- **This session:** `GENERATION_LOOP_DETECTION_WINDOW` **12** (was 5) — last **12** persisted directives (newest first), **≥3** same normalized text → skip LLM + persist loop row + suppression keys. Catches repeat shapes when other action types interleave. `daily-brief-generate.ts` uses `GENERATION_LOOP_DETECTION_WINDOW` for `.limit()` and log/detail strings. Tests: `scorer-failure-suppression.test.ts` (sparse-window case).
 - **Monitor:** `api_usage` `directive_retry` / `directive` ratio after deploy; operator re-open if storm persists.
 
 ### DONE (2026-04-07) — Production `user_brief_cycle_gates` migration (operator)

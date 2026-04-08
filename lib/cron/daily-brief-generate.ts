@@ -18,6 +18,8 @@ import {
 } from '@/lib/briefing/generator';
 import {
   detectDominantNormalizedDirectiveLoop,
+  GENERATION_LOOP_DETECTION_WINDOW,
+  GENERATION_LOOP_MIN_REPEATS,
   extractSuppressionKeysFromExecutionResult,
   normalizeDirectiveForLoopDetection,
 } from '@/lib/briefing/scorer-failure-suppression';
@@ -1214,9 +1216,9 @@ async function detectPersistedDirectiveContentLoop(
     .select('directive_text, execution_result')
     .eq('user_id', userId)
     .order('generated_at', { ascending: false })
-    .limit(5);
+    .limit(GENERATION_LOOP_DETECTION_WINDOW);
 
-  if (error || !data || data.length < 3) return { isLoop: false };
+  if (error || !data || data.length < GENERATION_LOOP_MIN_REPEATS) return { isLoop: false };
 
   const texts = data.map((r) => String((r as { directive_text?: string }).directive_text ?? ''));
   const loop = detectDominantNormalizedDirectiveLoop(texts, LOOP_DIRECTIVE_MIN_NORMALIZED_LEN);
@@ -1960,7 +1962,7 @@ export async function runDailyGenerate(
         const loopCheck = await detectPersistedDirectiveContentLoop(supabase, userId);
         if (loopCheck.isLoop) {
           console.log(
-            `[generate] GENERATION_LOOP_DETECTED last_5_at_least_3_normalized_match keys=${loopCheck.keys.length}`,
+            `[generate] GENERATION_LOOP_DETECTED last_${GENERATION_LOOP_DETECTION_WINDOW}_at_least_${GENERATION_LOOP_MIN_REPEATS}_normalized_match keys=${loopCheck.keys.length}`,
           );
           logStructuredEvent({
             event: 'generation_loop_detected',
@@ -2008,7 +2010,7 @@ export async function runDailyGenerate(
             results.push({
               code: 'generation_loop_detected',
               detail:
-                'Last 5 directives: at least 3 share the same normalized text; skipped LLM and recorded suppression keys.',
+                `Last ${GENERATION_LOOP_DETECTION_WINDOW} directives: at least ${GENERATION_LOOP_MIN_REPEATS} share the same normalized text; skipped LLM and recorded suppression keys.`,
               meta: {
                 ...cleanupMeta,
                 action_id: savedLoop.id,

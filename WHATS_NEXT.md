@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: IN FLIGHT — Pipeline choreography + `GENERATION_LOOP_DETECTION_WINDOW` = 12
+
+**This session:** `docs/SESSION_SCOREBOARD.md` Piece 1 snapshot + az05 baseline; widen normalized directive loop window (**5 → 12**) in `scorer-failure-suppression.ts` + `daily-brief-generate.ts` fetch limit; tests + push + `test:prod`. **After deploy:** watch `generation_loop_detected` / duplicate shape metrics vs prior 174-copy hash.
+
 ## STATUS: SHIPPED — Cross-source evidence bundle (`generation_log.evidence_bundle`, LIFE_CONTEXT prompt)
 
 **This session:** Generator merges non-mail life context for every winner (financial: narrower caps + non-mail preserved with payment mail collapse); bucket queries when &lt;3 distinct sources; logs `evidence_bundle_commit` / `winner_signal_evidence_sources`; insight scan no longer emits `research`. **After deploy:** spot-check `tkg_actions.execution_result.generation_log.evidence_bundle` on a fresh row. **Gate 4** still operator-pending.

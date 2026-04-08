@@ -51,6 +51,28 @@ describe('detectDominantNormalizedDirectiveLoop', () => {
     expect(r.isLoop).toBe(true);
   });
 
+  it('returns isLoop when three matches are sparse across the full detection window', () => {
+    const f = (i: number) =>
+      `Filler directive number ${i} with enough characters to exceed minimum length`;
+    const seq = [
+      longA,
+      longB,
+      f(0),
+      f(1),
+      f(2),
+      f(3),
+      f(4),
+      longA,
+      f(5),
+      f(6),
+      f(7),
+      longA,
+    ];
+    expect(seq).toHaveLength(GENERATION_LOOP_DETECTION_WINDOW);
+    const r = detectDominantNormalizedDirectiveLoop(seq, minLen);
+    expect(r.isLoop).toBe(true);
+  });
+
   it('uses at most GENERATION_LOOP_DETECTION_WINDOW rows', () => {
     const many = Array.from({ length: GENERATION_LOOP_DETECTION_WINDOW + 2 }, () => longA);
     const r = detectDominantNormalizedDirectiveLoop(many, minLen);

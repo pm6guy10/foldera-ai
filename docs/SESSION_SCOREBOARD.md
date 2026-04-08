@@ -46,6 +46,28 @@ Requires `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE
 
 **Green** on ingest + cursors usually means mail plumbing is honest; **red** on actions / duplicates / pending / failures means scoring, generation, or UX loop—pick **one** red row per session.
 
+### Piece 1 snapshot — 2026-04-08 session (baseline before loop-window change)
+
+Filled from production (`user_id` owner `e40b7cd8-4925-42f7-bc99-5022969f1d22`) + `npm run health` + `npm run scoreboard` + Supabase SQL. Timestamps UTC.
+
+| Check | Right now (fill) | Pass condition | Pass? |
+|-------|------------------|----------------|-------|
+| Gmail data fresh | `2026-04-08 17:06:22+00` max `occurred_at` (mail-shaped) | Within **25h** of session | Yes |
+| Outlook data fresh | `2026-04-08 17:15:59+00` | Within **25h** | Yes |
+| Cursors current | Google `last_synced_at` `2026-04-08 17:16:54+00`; Microsoft `2026-04-08 17:16:58+00` | Aligned with “today” | Yes |
+| Actions 24h | total **11**, distinct hash ≈ **6** → duplicate rate ≈ **45%** | Duplicate rate **< 20%** | **No** |
+| Top repeated directive | max **174** copies / one shape (**30d**) | **≤ 2** copies / hash (operator tune) | **No** |
+| Pending approval | **1** | **≥ 1** when expecting surfaced directive | Yes |
+| Generation failures | **193** rows (7d) with `__GENERATION_FAILED__` in directive or `execution_result` | **Zero** in window | **No** |
+
+**`npm run health` (2026-04-08 11:17 PT):** 0 FAILING; ⚠ repeated directive (max 6 / shape / 24h); ⚠ last generation `do_nothing`.
+
+**`npm run scoreboard`:** latest `daily_brief` `cron_complete` outcome `partial_or_failed`; `nightly_ops` `degraded`.
+
+**AZ-05 `action_type` (all users):** **14d:** `do_nothing` 604, `write_document` 59, `send_message` 51, `research` 5. **7d:** `do_nothing` 276, `write_document` 44, `send_message` 26, `research` 5.
+
+**Pick this session:** **Top repeated directive / duplicate shape** → widen normalized loop window (`GENERATION_LOOP_DETECTION_WINDOW` + `daily-brief-generate` fetch limit) so interleaved rows still trip `GENERATION_LOOP_DETECTED`.
+
 ---
 
 ## Piece 2 — Automated test baseline (repo truth)
