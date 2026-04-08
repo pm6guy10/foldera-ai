@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-08 — AUDIT: **Backlog closure sweep (scorer_loop, noise_winner, generation_retry_storm, CI pages, local login doc)**
+  MODE: AUDIT
+  Commit hash(es): verify `git log -1 --oneline` on `main` — subject `fix: duplicate cooldown skip_reason, loop 5/≥3, foldera scorer filter, try/terms/privacy CI`
+  Files changed: `lib/briefing/scorer.ts`, `lib/briefing/scorer-failure-suppression.ts`, `lib/cron/daily-brief-generate.ts`, `lib/briefing/__tests__/scorer-failure-suppression.test.ts`, `lib/briefing/__tests__/skipped-row-duplicate-cooldown.test.ts`, `tests/e2e/public-routes.spec.ts`, `playwright.ci.config.ts`, `AUTOMATION_BACKLOG.md`, `docs/FULL_SURFACE_AUDIT_2026-04-07.md`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (835 tests); `npm run test:ci:e2e` (45 passed; `PLAYWRIGHT_WEB_PORT=3011` if :3000 busy)
+  Changes: Duplicate-suppression cooldown keys now include reconcile **`Auto-suppressed duplicate pending…`** and legacy **`forced fresh`** skips when `topCandidates` present. Generation loop: **5** recent actions, **≥3** same normalized directive (non-consecutive). Scorer drops **`foldera`** in candidate **id** before scoring. CI smoke for `/try`, `/terms`, `/privacy`. Operator-only items (Sentry, UptimeRobot, Stripe, non-owner prod) unchanged — see AUTOMATION_BACKLOG **OPERATOR**.
+  Any unresolved issues: `npm run test:prod` not re-run this session (optional after Vercel Ready).
+
 - 2026-04-07 — FLOW: **Settings `/dashboard/settings` header accessible name dedupe (“FolderaFoldera”)**
   MODE: FLOW (a11y / copy linearization)
   Commit hash(es): `00566a4`

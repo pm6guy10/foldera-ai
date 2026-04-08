@@ -13,6 +13,7 @@
  *   tests/production/*      — requires auth-state.json + live foldera.ai
  *
  * Requires: NEXTAUTH_SECRET, NEXTAUTH_URL must match the server origin (see WEB_ORIGIN below).
+ *   Use http://127.0.0.1:${WEB_PORT} (not http://localhost:…) so it matches Playwright’s baseURL — mismatch can yield HTTP 500 on /login locally.
  * The build step runs before this step in CI, so webServer uses `next start` on WEB_PORT.
  *
  * Optional PLAYWRIGHT_WEB_PORT (e.g. 3011) when :3000 is in use locally — same as playwright.config.ts.

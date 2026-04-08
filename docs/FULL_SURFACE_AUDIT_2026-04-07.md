@@ -52,10 +52,10 @@ Middleware: [middleware.ts](../middleware.ts) — UTM/ref cookies; **protected:*
 | `/start` | Auth entry | [app/start/page.tsx](../app/start/page.tsx) | public-routes, flow | smoke, audit, mobile | Green |
 | `/login` | Auth entry | [app/login/page.tsx](../app/login/page.tsx) | public-routes, flow | smoke, audit, mobile | Green |
 | `/pricing` | Public | [app/pricing/page.tsx](../app/pricing/page.tsx) | public-routes | smoke, audit, mobile | Green |
-| `/try` | Public | [app/try/page.tsx](../app/try/page.tsx) | Optional: [mobile-visual-qa.spec.ts](../tests/e2e/mobile-visual-qa.spec.ts), [public-screenshots.spec.ts](../tests/production/public-screenshots.spec.ts) | Not in CI e2e gate | Yellow — partial |
+| `/try` | Public | [app/try/page.tsx](../app/try/page.tsx) | [public-routes.spec.ts](../tests/e2e/public-routes.spec.ts) (CI gate); optional mobile-visual / public-screenshots | Not in prod smoke list | Green — CI covered |
 | `/onboard` | Protected | [app/onboard/page.tsx](../app/onboard/page.tsx) | flow-routes | audit §3, mobile auth | Green |
-| `/terms` | Public | [app/terms/page.tsx](../app/terms/page.tsx) | Optional mobile-visual / public-screenshots | Not in default gates | Yellow — partial |
-| `/privacy` | Public | [app/privacy/page.tsx](../app/privacy/page.tsx) | Optional mobile-visual / public-screenshots | Not in default gates | Yellow — partial |
+| `/terms` | Public | [app/terms/page.tsx](../app/terms/page.tsx) | [public-routes.spec.ts](../tests/e2e/public-routes.spec.ts) (CI gate); optional mobile-visual | Not in prod smoke list | Green — CI covered |
+| `/privacy` | Public | [app/privacy/page.tsx](../app/privacy/page.tsx) | [public-routes.spec.ts](../tests/e2e/public-routes.spec.ts) (CI gate); optional mobile-visual | Not in prod smoke list | Green — CI covered |
 | `/blog` | Public | [app/(marketing)/blog/page.tsx](../app/(marketing)/blog/page.tsx) | public-routes | audit crawl | Green |
 | `/blog/[slug]` | Public | [app/(marketing)/blog/[slug]/page.tsx](../app/(marketing)/blog/[slug]/page.tsx) | public-routes | audit crawl | Green |
 | `/dashboard` | Protected | [app/dashboard/page.tsx](../app/dashboard/page.tsx) | authenticated-routes, flow | smoke, audit | Green |

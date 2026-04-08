@@ -39,12 +39,10 @@
 
 - **Fix:** [`supabase/migrations/20260405000001_directive_ml_moat.sql`](supabase/migrations/20260405000001_directive_ml_moat.sql) applied on production (operator-confirmed). Re-open only if `migration list` / inserts disagree.
 
-### OPEN (auto-logged 2026-04-07) — `scorer_loop`: same semantic directive regenerated after skip/suppress
+### DONE (2026-04-08) — `scorer_loop` cooldown + reconcile skips
 
-- **Evidence:** Production `tkg_actions` (owner): **14** rows in 50 with identical normalized `directive_text` hash; many `skip_reason` values `Auto-suppressed pending action before forced fresh generation` while identical `send_message` text kept reappearing (Apr 6–7).
-- **Impact:** Wastes scorer/generator cycles and trains user distrust; duplicates burn `directive` + `directive_retry` API rows.
-- **Fix required:** `getSuppressedCandidateKeys` + `scorerCandidateSuppressionKey` in `lib/briefing/scorer.ts` drop matching base candidates for 7d after duplicate-suppression skips (keys from `execution_result.generation_log.candidateDiscovery.topCandidates`).
-- **Proof of fix:** After deploy, same user: last-24h `GROUP BY md5(lower(trim(directive_text)))` has **no count ≥ 3** for hashes tied to prior duplicate-suppression rows; logs show `scorer_suppressed_candidate_cooldown`.
+- **Code:** `skippedRowQualifiesForDuplicateSuppressionCooldown` + `getSuppressedCandidateKeys` now treat **`skip_reason` / `auto_suppression_reason`** containing **duplicate pending** or **forced fresh** (legacy copy) like in-prod rows, not only `duplicate_*` in `directive_text`. Still extracts keys from `generation_log.candidateDiscovery.topCandidates`. Tests: `lib/briefing/__tests__/skipped-row-duplicate-cooldown.test.ts`.
+- **Proof:** After deploy, logs `scorer_suppressed_candidate_cooldown` when those skipped rows carry `topCandidates`; operator SQL: duplicate-hash streak should thin vs Apr 6–7 baseline.
 
 ### OPEN (auto-logged 2026-04-07) — `stale_date_in_directive`: LLM echoes old ISO deadlines (mitigated — monitor)
 
@@ -53,19 +51,16 @@
 - **Mitigation shipped (2026-04-07):** `directiveHasStalePastDates` scans **directive + why_now + evidence + insight**; slash ISO `20xx/mm/dd` added; generator still does **not** scan full artifact JSON (historical cutoffs in document body allowed by design). `resolveDecisionDeadline` clamps overdue ISO dates for repair templates (existing).
 - **Proof of closure:** New `send_message` / `write_document` rows lack stale ISO in scanned fields; logs `stale_date_in_directive` when blocked. Re-open if stale dates appear **inside finished artifact** fields users see in email (`renderArtifactHtml` paths).
 
-### OPEN (auto-logged 2026-04-07) — `noise_winner`: Foldera / Resend test recipients win scorer→generator
+### DONE (2026-04-08) — `noise_winner` scorer pre-filter
 
-- **Evidence:** `execution_result.inspection.winner_selection_trace.finalWinnerId` = `hunt_ignored_brief_foldera_ai`; **14**/7d actions with `finalWinnerId` ILIKE `%foldera%`; artifact `to: onboarding@resend.dev`.
-- **Impact:** Non-user “directives” dominate the queue; blocks real mailbox-grounded work.
-- **Fix required:** Exclude candidate ids containing `foldera` before hydration; reject artifacts with `to` ending `@resend.dev` after LLM (`lib/briefing/generator.ts`); console `[generator] noise_winner_excluded`.
-- **Proof of fix:** New rows: `finalWinnerId` not ILIKE `%foldera%`; artifact `to` not `@resend.dev`; logs `noise_winner_excluded`.
+- **Prior:** Generator already skipped candidate ids containing `foldera` and artifacts with `to` `@resend.dev` (`noise_winner_excluded`).
+- **This session:** `lib/briefing/scorer.ts` — pre-scoring stage **`foldera_id_noise`** drops those candidates before hydrate/score; logs `scorer_foldera_id_filtered`.
 
-### OPEN (auto-logged 2026-04-07) — `generation_retry_storm`: directive + directive_retry volume
+### DONE (2026-04-08) — `generation_retry_storm` loop gate (5-window / ≥3 match)
 
-- **Evidence:** Production `api_usage` (owner, 7d): **`directive` 230** (~$6.14) + **`directive_retry` 121** (~$2.86); Apr 7 UTC **`directive_retry` 45** vs **`directive` 48**.
-- **Impact:** Runaway cost on blocked/looping paths before a sendable row exists.
-- **Fix required:** `generation_loop_detected` gate in `lib/cron/daily-brief-generate.ts` (last **5** `tkg_actions`, **≥3** share same `md5(lower(trim(directive_text)))` → skip `generateDirective`); plus scorer/generator fixes above.
-- **Proof of fix:** Logs `[generate] GENERATION_LOOP_DETECTED streak=…`; 24h rolling `api_usage` `directive_retry` / `directive` ratio drops after loops cleared; no 3× same hash in 24h query.
+- **Prior:** `GENERATION_LOOP_DETECTED` required last **3** rows identical after normalization.
+- **This session:** `detectDominantNormalizedDirectiveLoop` in `lib/briefing/scorer-failure-suppression.ts` — last **5** rows, **≥3** shares same normalized directive → skip LLM + persist loop row. `daily-brief-generate.ts` log: `last_5_at_least_3_normalized_match`. Tests: `scorer-failure-suppression.test.ts`.
+- **Monitor:** `api_usage` `directive_retry` / `directive` ratio after deploy; operator re-open if storm persists.
 
 ### DONE (2026-04-07) — Production `user_brief_cycle_gates` migration (operator)
 
@@ -74,7 +69,7 @@
 
 ### OPEN (2026-04-05) — Local `test:ci:e2e` `/login` HTTP 500
 
-- **Symptom:** `npx next start` + Playwright CI config against `127.0.0.1:3011` (or `3012`) returned generic **500** on `/login` in this workspace; `test:ci:e2e` therefore failed locally. **GitHub Actions** should still run the same gate with repo secrets (`NEXTAUTH_*`, etc.). **Next:** reproduce with server logs (`next start` stderr) and confirm `NEXTAUTH_URL` matches `WEB_ORIGIN` from `playwright.ci.config.ts`.
+- **Symptom:** `npx next start` + Playwright CI config against `127.0.0.1:3011` (or `3012`) returned generic **500** on `/login` in this workspace; `test:ci:e2e` therefore failed locally. **GitHub Actions** should still run the same gate with repo secrets (`NEXTAUTH_*`, etc.). **Doc (2026-04-08):** [`playwright.ci.config.ts`](playwright.ci.config.ts) — **`NEXTAUTH_URL`** must use **`http://127.0.0.1:${WEB_PORT}`** (not `http://localhost:…`) to match Playwright **`baseURL`**. **Next:** reproduce with server logs (`next start` stderr) if still failing after URL alignment.
 
 ### DONE (2026-04-03) — UI Critic auto-trigger killed (agent)
 

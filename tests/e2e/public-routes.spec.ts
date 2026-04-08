@@ -196,6 +196,35 @@ test.describe('Pricing page /pricing', () => {
   });
 });
 
+// ── Try / legal (CI gate: public-routes) ────────────────────────────────────
+
+test.describe('Try page /try', () => {
+  test('loads with primary heading', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const res = await page.goto('/try');
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: /^Try Foldera$/i })).toBeVisible();
+  });
+});
+
+test.describe('Terms page /terms', () => {
+  test('loads with Terms of Service heading', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const res = await page.goto('/terms');
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: /^Terms of Service$/i })).toBeVisible();
+  });
+});
+
+test.describe('Privacy page /privacy', () => {
+  test('loads with Privacy Policy heading', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const res = await page.goto('/privacy');
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: /^Privacy Policy$/i })).toBeVisible();
+  });
+});
+
 // ── Blog routes (/blog, /blog/[slug]) ──────────────────────────────────────
 
 test.describe('Blog routes', () => {

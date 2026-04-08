@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   collectActiveFailureSuppressionKeys,
+  detectDominantNormalizedDirectiveLoop,
   directiveHasStalePastDates,
   extractSuppressionKeysFromExecutionResult,
+  GENERATION_LOOP_DETECTION_WINDOW,
+  GENERATION_LOOP_MIN_REPEATS,
   normalizeDirectiveForLoopDetection,
   rawScorerCandidateMatchesFailureSuppression,
   rowContributesUserSkipSuppression,
@@ -13,6 +16,52 @@ import {
 describe('normalizeDirectiveForLoopDetection', () => {
   it('lowercases and strips punctuation', () => {
     expect(normalizeDirectiveForLoopDetection('Hello, World!!')).toBe('hello world');
+  });
+});
+
+describe('detectDominantNormalizedDirectiveLoop', () => {
+  const minLen = 16;
+  const longA = 'Follow up with Acme about the contract renewal this week';
+  const longB = 'Different directive about something else entirely here';
+
+  it('returns isLoop when last three of three are identical', () => {
+    const r = detectDominantNormalizedDirectiveLoop([longA, longA, longA], minLen);
+    expect(r.isLoop).toBe(true);
+    if (r.isLoop) {
+      expect(r.dominantNorm).toBe(normalizeDirectiveForLoopDetection(longA));
+    }
+  });
+
+  it('returns no loop when no normalized text appears three times in the window', () => {
+    const longC = 'Third unique directive about a different topic altogether';
+    const longD = 'Fourth unique directive with enough length for the min threshold';
+    const longE = 'Fifth unique directive so we fill the window without triples';
+    const r = detectDominantNormalizedDirectiveLoop(
+      [longA, longB, longA, longC, longD, longE],
+      minLen,
+    );
+    expect(r.isLoop).toBe(false);
+  });
+
+  it('returns isLoop when three matches are non-consecutive in a window of five', () => {
+    const r = detectDominantNormalizedDirectiveLoop(
+      [longA, longB, longA, longB, longA],
+      minLen,
+    );
+    expect(r.isLoop).toBe(true);
+  });
+
+  it('uses at most GENERATION_LOOP_DETECTION_WINDOW rows', () => {
+    const many = Array.from({ length: GENERATION_LOOP_DETECTION_WINDOW + 2 }, () => longA);
+    const r = detectDominantNormalizedDirectiveLoop(many, minLen);
+    expect(r.isLoop).toBe(true);
+    const windowOnly = many.slice(0, GENERATION_LOOP_DETECTION_WINDOW);
+    const counts = new Map<string, number>();
+    for (const t of windowOnly) {
+      const n = normalizeDirectiveForLoopDetection(t);
+      if (n.length >= minLen) counts.set(n, (counts.get(n) ?? 0) + 1);
+    }
+    expect([...counts.values()].some((c) => c >= GENERATION_LOOP_MIN_REPEATS)).toBe(true);
   });
 });
 

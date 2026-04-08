@@ -17,6 +17,7 @@ import {
   validateDirectiveForPersistence,
 } from '@/lib/briefing/generator';
 import {
+  detectDominantNormalizedDirectiveLoop,
   extractSuppressionKeysFromExecutionResult,
   normalizeDirectiveForLoopDetection,
 } from '@/lib/briefing/scorer-failure-suppression';
@@ -1213,17 +1214,22 @@ async function detectPersistedDirectiveContentLoop(
     .select('directive_text, execution_result')
     .eq('user_id', userId)
     .order('generated_at', { ascending: false })
-    .limit(3);
+    .limit(5);
 
   if (error || !data || data.length < 3) return { isLoop: false };
 
-  const norms = data.map((r) => normalizeDirectiveForLoopDetection(String(r.directive_text ?? '')));
-  if (!norms[0] || norms[0].length < LOOP_DIRECTIVE_MIN_NORMALIZED_LEN) return { isLoop: false };
-  if (norms[0] !== norms[1] || norms[1] !== norms[2]) return { isLoop: false };
+  const texts = data.map((r) => String((r as { directive_text?: string }).directive_text ?? ''));
+  const loop = detectDominantNormalizedDirectiveLoop(texts, LOOP_DIRECTIVE_MIN_NORMALIZED_LEN);
+  if (!loop.isLoop) return { isLoop: false };
 
   const keys = new Set<string>();
   for (const r of data) {
-    for (const k of extractSuppressionKeysFromExecutionResult(r.execution_result)) {
+    const dt = String((r as { directive_text?: string }).directive_text ?? '');
+    const n = normalizeDirectiveForLoopDetection(dt);
+    if (n !== loop.dominantNorm) continue;
+    for (const k of extractSuppressionKeysFromExecutionResult(
+      (r as { execution_result?: unknown }).execution_result,
+    )) {
       keys.add(k);
     }
   }
@@ -1954,7 +1960,7 @@ export async function runDailyGenerate(
         const loopCheck = await detectPersistedDirectiveContentLoop(supabase, userId);
         if (loopCheck.isLoop) {
           console.log(
-            `[generate] GENERATION_LOOP_DETECTED last_3_normalized_match keys=${loopCheck.keys.length}`,
+            `[generate] GENERATION_LOOP_DETECTED last_5_at_least_3_normalized_match keys=${loopCheck.keys.length}`,
           );
           logStructuredEvent({
             event: 'generation_loop_detected',
@@ -2002,7 +2008,7 @@ export async function runDailyGenerate(
             results.push({
               code: 'generation_loop_detected',
               detail:
-                'Last 3 directives identical after normalization; skipped LLM and recorded suppression keys.',
+                'Last 5 directives: at least 3 share the same normalized text; skipped LLM and recorded suppression keys.',
               meta: {
                 ...cleanupMeta,
                 action_id: savedLoop.id,

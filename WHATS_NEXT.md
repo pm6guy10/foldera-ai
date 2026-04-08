@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Backlog sweep: duplicate cooldown, loop gate (5/≥3), foldera scorer filter, try/terms/privacy CI
+
+**This session:** `skippedRowQualifiesForDuplicateSuppressionCooldown` + `getSuppressedCandidateKeys` (`skip_reason` / `auto_suppression_reason`: duplicate pending, forced fresh); `detectDominantNormalizedDirectiveLoop` + `runDailyGenerate` last-5 / ≥3 match; scorer **`foldera_id_noise`**; `public-routes` e2e for `/try`, `/terms`, `/privacy`; audit matrix Green; `playwright.ci.config` NEXTAUTH_URL vs 127.0.0.1 note; AUTOMATION_BACKLOG CLOSED rows. **Verify after deploy:** `scorer_suppressed_candidate_cooldown`, `scorer_foldera_id_filtered`, `GENERATION_LOOP_DETECTED` log line; `npm run test:prod`.
+
 ## STATUS: SHIPPED — Settings header: single “Foldera” accessible name (no “FolderaFoldera”)
 
 **This session:** `/dashboard/settings` center home link used **`aria-label="Foldera"`** plus **`FolderaMark`** `alt="Foldera"` plus a wordmark — linearized copy / some AT stacked them as **FolderaFoldera**. **`FolderaMark`** adds optional **`decorative`** (`alt=""`, `aria-hidden`); settings header uses **`decorative`** + **`sr-only sm:hidden`** + **`hidden sm:inline`** wordmark. **Verify:** VoiceOver/NVDA or select-all on header should announce/show **Foldera** once.

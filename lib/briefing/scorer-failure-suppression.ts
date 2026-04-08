@@ -146,6 +146,33 @@ export function normalizeDirectiveForLoopDetection(text: string): string {
     .trim();
 }
 
+/** Persisted directives examined for identical-normalized loop (newest first). */
+export const GENERATION_LOOP_DETECTION_WINDOW = 5;
+/** Minimum occurrences of the same normalized directive within the window to treat as a loop. */
+export const GENERATION_LOOP_MIN_REPEATS = 3;
+
+/**
+ * True when at least `GENERATION_LOOP_MIN_REPEATS` rows in the first `GENERATION_LOOP_DETECTION_WINDOW`
+ * entries share the same normalized directive text (and that text is long enough).
+ */
+export function detectDominantNormalizedDirectiveLoop(
+  directiveTextsNewestFirst: readonly string[],
+  minNormalizedLen: number,
+): { isLoop: false } | { isLoop: true; dominantNorm: string } {
+  const window = directiveTextsNewestFirst.slice(0, GENERATION_LOOP_DETECTION_WINDOW);
+  if (window.length < GENERATION_LOOP_MIN_REPEATS) return { isLoop: false };
+  const counts = new Map<string, number>();
+  for (const dt of window) {
+    const n = normalizeDirectiveForLoopDetection(String(dt ?? ''));
+    if (!n || n.length < minNormalizedLen) continue;
+    counts.set(n, (counts.get(n) ?? 0) + 1);
+  }
+  for (const [norm, c] of counts) {
+    if (c >= GENERATION_LOOP_MIN_REPEATS) return { isLoop: true, dominantNorm: norm };
+  }
+  return { isLoop: false };
+}
+
 function startOfUtcDayMs(d: Date): number {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 }

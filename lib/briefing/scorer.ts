@@ -885,6 +885,37 @@ function suppressionKeyFromLoggedCandidate(tc: GenerationCandidateLog): string |
 }
 
 /**
+ * Whether a skipped `tkg_actions` row should contribute scorer cooldown keys from
+ * `generation_log.candidateDiscovery.topCandidates` (duplicate generator path, or reconcile
+ * auto-suppression of extra pending rows / legacy forced-fresh skips).
+ */
+export function skippedRowQualifiesForDuplicateSuppressionCooldown(row: {
+  directive_text?: string | null;
+  skip_reason?: string | null;
+  execution_result?: Record<string, unknown> | null;
+}): boolean {
+  const dt = String(row.directive_text ?? '');
+  const er = row.execution_result ?? null;
+
+  const dupInDirective = /duplicate_\d+pct_similar/i.test(dt) || /duplicate_100pct_similar/i.test(dt);
+  const orig = er?.original_candidate as Record<string, unknown> | undefined;
+  const blockedBy = typeof orig?.blocked_by === 'string' ? orig.blocked_by : '';
+  const dupInBlockedBy = /duplicate_\d+pct_similar/i.test(blockedBy) || /duplicate_100pct_similar/i.test(blockedBy);
+  const fc = er?.failure_class;
+  const dupFailureClass = fc === 'duplicate_100pct_similar';
+
+  if (dupInDirective || dupInBlockedBy || dupFailureClass) return true;
+
+  const sr = (row.skip_reason ?? '').toLowerCase();
+  const auto =
+    typeof er?.auto_suppression_reason === 'string' ? er.auto_suppression_reason.toLowerCase() : '';
+  if (sr.includes('duplicate pending') || sr.includes('forced fresh')) return true;
+  if (auto.includes('duplicate pending') || auto.includes('forced fresh')) return true;
+
+  return false;
+}
+
+/**
  * Reads recent skipped `tkg_actions` where near-duplicate suppression fired (directive text or
  * `original_candidate.blocked_by`), then derives `${signalId}:${entityId}` keys from persisted
  * `execution_result.generation_log.candidateDiscovery.topCandidates` when present.
@@ -900,7 +931,7 @@ export async function getSuppressedCandidateKeys(
   const since = new Date(Date.now() - daysMs(windowDays)).toISOString();
   const { data: rows, error } = await supabase
     .from('tkg_actions')
-    .select('directive_text, execution_result')
+    .select('directive_text, execution_result, skip_reason')
     .eq('user_id', userId)
     .eq('status', 'skipped')
     .gte('generated_at', since);
@@ -910,18 +941,14 @@ export async function getSuppressedCandidateKeys(
   const keys = new Set<string>();
 
   for (const row of rows) {
-    const dt = String((row as { directive_text?: string }).directive_text ?? '');
-    const er = (row as { execution_result?: Record<string, unknown> | null }).execution_result ?? null;
+    const r = row as {
+      directive_text?: string | null;
+      skip_reason?: string | null;
+      execution_result?: Record<string, unknown> | null;
+    };
+    if (!skippedRowQualifiesForDuplicateSuppressionCooldown(r)) continue;
 
-    const dupInDirective = /duplicate_\d+pct_similar/i.test(dt) || /duplicate_100pct_similar/i.test(dt);
-    const orig = er?.original_candidate as Record<string, unknown> | undefined;
-    const blockedBy = typeof orig?.blocked_by === 'string' ? orig.blocked_by : '';
-    const dupInBlockedBy = /duplicate_\d+pct_similar/i.test(blockedBy) || /duplicate_100pct_similar/i.test(blockedBy);
-    const fc = er?.failure_class;
-    const dupFailureClass = fc === 'duplicate_100pct_similar';
-
-    if (!dupInDirective && !dupInBlockedBy && !dupFailureClass) continue;
-
+    const er = r.execution_result ?? null;
     const genLog = er?.generation_log as Record<string, unknown> | undefined;
     const discovery = genLog?.candidateDiscovery as { topCandidates?: GenerationCandidateLog[] } | undefined;
     const top = discovery?.topCandidates ?? [];
@@ -4260,6 +4287,41 @@ export async function scoreOpenLoops(
         before: preCooldown,
         after: candidates.length,
         dropped: cooldownDrops,
+      });
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // PRE-SCORING: Foldera / product-noise candidate ids (cheap — before heavy work)
+  // Mirrors generator `noise_winner` so hunt/test ids never hydrate or score.
+  // -----------------------------------------------------------------------
+  {
+    const preFoldera = candidates.length;
+    const folderaDrops: ScorerDropEntry[] = [];
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      const c = candidates[i];
+      if (!c.id.toLowerCase().includes('foldera')) continue;
+      folderaDrops.push({
+        candidateId: c.id,
+        type: c.type,
+        title: c.title.slice(0, 100),
+        stage: 'foldera_id_noise',
+        reason: 'noise_winner_id',
+      });
+      candidates.splice(i, 1);
+    }
+    if (preFoldera !== candidates.length) {
+      console.log(JSON.stringify({
+        event: 'scorer_foldera_id_filtered',
+        userId,
+        before: preFoldera,
+        after: candidates.length,
+      }));
+      diag.filterStages.push({
+        stage: 'foldera_id_noise',
+        before: preFoldera,
+        after: candidates.length,
+        dropped: folderaDrops,
       });
     }
   }
