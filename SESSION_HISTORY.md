@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Pipeline choreography + repeat-shape loop window (12-row)**
   MODE: AUDIT
-  Commit hash(es): `3996bbd` (loop window + baseline docs), `41f8023` (Piece 1 end + WHATS_NEXT closure)
+  Commit hash(es): `3996bbd` (loop window + baseline docs), `0af2a02` (Piece 1 end + WHATS_NEXT closure)
   Files changed: `docs/SESSION_SCOREBOARD.md` (Piece 1 baseline + end), `lib/briefing/scorer-failure-suppression.ts`, `lib/cron/daily-brief-generate.ts`, `lib/briefing/__tests__/scorer-failure-suppression.test.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   **Start (baseline):** `npm run health` 2026-04-08 11:17 PT — 0 FAILING; ⚠ repeated directive; ⚠ last gen `do_nothing`. `npm run scoreboard` — `daily_brief` `partial_or_failed`, `nightly_ops` `degraded`. Piece 1 SQL (owner): Gmail newest `2026-04-08 17:06:22Z`, Outlook `17:15:59Z`; cursors Google/Microsoft `~17:16Z`; actions 24h **11** / distinct **6** (~45% dup); top shape **174** copies / 30d; pending **1**; `__GENERATION_FAILED__` **193** / 7d. **AZ-05:** 14d `do_nothing` 604, `send_message` 51, `research` 5; 7d `do_nothing` 276, `send_message` 26, `research` 5.
   **Pick one row:** top repeated directive / interleaved duplicate shapes → widen `GENERATION_LOOP_DETECTION_WINDOW` to **12** + matching `tkg_actions` fetch limit.
