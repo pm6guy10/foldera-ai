@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Decision-enforcement repair: grounded `directive` (no hardcoded accountable-owner line)
+
+**This session:** Repair path `send_message` dashboard line matches **concrete `explicitAsk`**; validation bans the old boilerplate on any `send_message`. **After deploy:** re-run Generate Now / brain-receipt — new repaired rows should read like `Email partner: Can you confirm…` not “Send a decision request that secures…”. See [docs/eval/rubric.md](docs/eval/rubric.md) **D**.
+
 ## STATUS: SHIPPED — `LIFE_CONTEXT_WEAVE` + WORK SHOWN in `SESSION_SCOREBOARD`
 
 **This session:** Commit **`24bcb3e`**; deploy **`dpl_4DPJiAwASktYEAMkbiNkpa8v2ZcH`**; www health SHA **`24bcb3e`**. User prompt mandates a concrete LIFE_CONTEXT detail when that block is present; scoreboard **WORK SHOWN** checklist + SQL. **Next:** owner `Generate Now` or brain-receipt → confirm new row ties to calendar/file/task/chat vs generic copy (`cf7e33be…` baseline).

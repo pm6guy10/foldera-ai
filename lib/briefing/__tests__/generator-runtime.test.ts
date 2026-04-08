@@ -546,7 +546,7 @@ describe('generateDirective runtime failures', () => {
     expect(directive.directive).not.toBe('__GENERATION_FAILED__');
     expect(directive.action_type).toBe('write_document');
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
-    expect(embeddedArtifact?.content).toContain('Decision required:');
+    expect(String(embeddedArtifact?.content)).toMatch(/Decision required/i);
     expect(embeddedArtifact?.content).toContain('Ask:');
     expect(embeddedArtifact?.content).toContain('Consequence:');
     expect(String(embeddedArtifact?.content)).toContain('owner');

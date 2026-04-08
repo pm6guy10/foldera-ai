@@ -5606,6 +5606,14 @@ function validateGeneratedArtifact(
     issues.push('directive must make one concrete move instead of reopening the choice');
   }
 
+  if (
+    canonicalArtifactType === 'send_message' &&
+    directive &&
+    BANNED_GENERIC_SEND_MESSAGE_DIRECTIVE_RE.test(directive)
+  ) {
+    issues.push('directive_template:generic_accountable_owner_request');
+  }
+
   // Structural validation per artifact type — always the system-committed type
   const a = payload.artifact;
   switch (canonicalArtifactType) {
@@ -5984,6 +5992,26 @@ function shouldAttemptDecisionEnforcementRepair(
   return hardBlockers.length === 0;
 }
 
+/** Local-part only for dashboard directive lines — avoids extra "." that breaks one-sentence validation. */
+function formatEmailLocalPartForDirective(email: string): string {
+  const e = email.trim().toLowerCase();
+  const at = e.indexOf('@');
+  const local = (at > 0 ? e.slice(0, at) : e).replace(/\./g, ' ').trim();
+  const cleaned = local.replace(/\s+/g, ' ').slice(0, 48);
+  return cleaned || e.slice(0, 48);
+}
+
+/** Decision-enforcement repair must not ship the old generic "accountable owner" dashboard line — use recipient + concrete ask (eval rubric D/C). */
+function buildGroundedSendMessageDirective(recipientEmail: string, explicitAsk: string): string {
+  const who = formatEmailLocalPartForDirective(recipientEmail);
+  const core = `Email ${who}: ${explicitAsk.trim()}`;
+  if (core.length <= 340) return core;
+  return `${core.slice(0, 337)}…`;
+}
+
+const BANNED_GENERIC_SEND_MESSAGE_DIRECTIVE_RE =
+  /send a decision request that secures one accountable owner and a committed answer by/i;
+
 function resolveDecisionDeadline(candidateDueDate: string | null): string {
   const dueMatch = candidateDueDate?.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
   const now = new Date();
@@ -6051,7 +6079,7 @@ function buildCausalFallbackCopy(input: {
   }
 }
 
-function buildDecisionEnforcedFallbackPayload(input: {
+export function buildDecisionEnforcedFallbackPayload(input: {
   winner: ScoredLoop;
   actionType: ValidArtifactTypeCanonical;
   candidateDueDate: string | null;
@@ -6192,7 +6220,7 @@ function buildDecisionEnforcedFallbackPayload(input: {
       insight: copy.insight,
       causal_diagnosis: input.causalDiagnosis,
       decision: 'ACT',
-      directive: `Send a decision request that secures one accountable owner and a committed answer by ${deadline}.`,
+      directive: buildGroundedSendMessageDirective(recipient, explicitAsk),
       artifact_type: 'send_message',
       artifact: {
         to: recipient,
@@ -6209,18 +6237,22 @@ function buildDecisionEnforcedFallbackPayload(input: {
   }
 
   if (input.actionType === 'write_document') {
+    const memoAsk = copy.ask.replace(/^Ask:\s*/i, '').trim();
+    const safeTarget = target.replace(/[.!?]+$/g, '').trim().slice(0, 72) || target.slice(0, 72);
+    const writeDirective = `Write a decision memo on "${safeTarget}" — ${memoAsk}`.slice(0, 340);
+
     return {
       insight: copy.insight,
       causal_diagnosis: input.causalDiagnosis,
       decision: 'ACT',
-      directive: `Publish a decision memo that locks owner accountability and deadline by ${deadline}.`,
+      directive: writeDirective,
       artifact_type: 'write_document',
       artifact: {
         document_purpose: 'proposal',
         target_reader: 'decision owner',
-        title: `Decision lock: ${target}`,
+        title: `Decision lock: ${target.slice(0, 90)}`,
         content: [
-          `Decision required: confirm the decision path for "${target}" and assign one accountable owner.`,
+          `Decision required for "${safeTarget}": confirm the path, name one owner, and time-bound the commitment.`,
           '',
           copy.ask,
           '',

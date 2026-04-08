@@ -83,6 +83,11 @@
 - **DDL:** [`supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) — `user_tokens.oauth_reauth_required_at`, `user_subscriptions.last_dashboard_visit_at` + column comments. **Production:** applied via agent (Supabase MCP); hosted `oauth_reauth_dashboard_visit` / `20260408140704`; see [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).
 - **Code:** `needs_reauth` + dashboard reconnect banner + settings `?reconnect=`; non-blocking `last_dashboard_visit_at` on `GET /api/conviction/latest`; connector-health 14d secondary-source lookback + skip email if dashboard visited within 7d; Microsoft Graph 401 → `forceRefreshMicrosoftTokens`; CI E2E mocks for `/api/integrations/status` + flow-route stubs. **Commits:** `3c7722b`, `c71563a` (session hash note).
 
+### DONE (2026-04-08) — Decision-enforcement repair: generic “accountable owner” dashboard directive
+
+- **Root cause:** `buildDecisionEnforcedFallbackPayload` used a **hardcoded** `send_message` `directive` while the email **body** already had the mechanism-specific `explicitAsk` — production rows showed the boilerplate line users hate.
+- **Fix:** `buildGroundedSendMessageDirective` + `formatEmailLocalPartForDirective`; `write_document` repair directive/content tied to **winner title**; **`directive_template:generic_accountable_owner_request`** validation gate. Tests: `lib/briefing/__tests__/decision-enforced-fallback.test.ts`.
+
 ### DONE (2026-04-08) — `LIFE_CONTEXT_WEAVE` user prompt + WORK SHOWN runbook
 
 - **Code:** `lib/briefing/generator.ts` — `LIFE_CONTEXT_WEAVE_RULE` after `LIFE_CONTEXT` block (recipient-short + long paths) so outputs must ground at least one concrete non-thread detail when life snapshot is present. Tests: `evidence-bundle.test.ts`.
