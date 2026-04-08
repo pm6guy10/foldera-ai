@@ -6,7 +6,7 @@
 
 - 2026-04-08 — OPS: **Runbook — prod revision = `GET /api/health` (docs-only deploys can advance SHA)**
   MODE: OPS (documentation)
-  Commit hash(es): pending
+  Commit hash(es): `6c2b3c8`
   Files changed: `docs/MASTER_PUNCHLIST.md`, `CLAUDE.md`, `AGENTS.md`, `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run health` (0 failing)
   Changes: Locked in that **`GET https://www.foldera.ai/api/health`** `revision.git_sha` is **source of truth** for www; **docs-only** commits (e.g. `759ca8a`, `8964ad8` after `a12db1d`) still deploy — live SHA may be newer than a feature commit; cross-links punchlist, CLAUDE, AGENTS, backlog, spec, WHATS_NEXT.
