@@ -6,7 +6,7 @@
 
 - 2026-04-08 — FLOW: **OAuth re-auth handoff — dashboard banner, CI mocks, connector-health tests, generator ingest cleanup**
   MODE: AUDIT / FLOW
-  Commit hash(es): `6bd7a5f`
+  Commit hash(es): `3c7722b`
   Files changed: `supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`, `app/api/conviction/latest/route.ts`, `app/api/integrations/status/route.ts`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `lib/auth/user-tokens.ts`, `lib/auth/token-store.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `lib/config/constants.ts`, `lib/cron/connector-health.ts`, `lib/cron/__tests__/connector-health.test.ts`, `lib/sync/microsoft-sync.ts`, `lib/briefing/generator.ts`, `tests/e2e/authenticated-routes.spec.ts`, `tests/e2e/flow-routes.spec.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build`; `npx vitest run lib/auth/__tests__/user-tokens.test.ts lib/cron/__tests__/connector-health.test.ts`; `npm run test:ci:e2e` (45 passed).
   Changes: Finished OAuth re-auth UX (non-blocking `last_dashboard_visit_at`, reconnect banner, `?reconnect=` + conditional `replaceState`); migration for `oauth_reauth_required_at` / `last_dashboard_visit_at`; connector-health test mocks updated for `.is('disconnected_at', null)` + dashboard-visit skip case; Playwright mocks for `/api/integrations/status` on dashboard + flow-route API stubs; removed localhost debug `fetch` from `generator.ts`; spec row cleanup for evidence bundle.
