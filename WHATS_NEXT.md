@@ -1,8 +1,8 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
-## STATUS: SHIPPED — Deploy workflow: Hobby quota (`api-deployments-free-per-day`) + skip-if-already-live
+## STATUS: SHIPPED — Deploy workflow: Hobby quota + Git lag (preflight wait + quota success if Git READY)
 
-**This session:** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) calls **Vercel `/v6/deployments`**; if **production READY** already matches the CI commit SHA, **skips** CLI build/deploy (stops double-counting Git integration + GHA against **~100 deploys/24h**). If CLI runs and hits **`api-deployments-free-per-day`**, **fails fast** (no pointless 3× upload). **Red email** can still mean quota — confirm [`GET /api/health`](https://www.foldera.ai/api/health) `revision.git_sha`. [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md), [AGENTS.md](AGENTS.md) Vercel section.
+**This session:** [scripts/ci/vercel-deploy-preflight.py](scripts/ci/vercel-deploy-preflight.py) — **preflight** skips CLI when **READY** matches SHA, **waits** for Git **BUILDING** (bounded), **`check-ready`** after **`api-deployments-free-per-day`** so Actions can stay **green** if Git landed the commit while CLI was blocked ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)). Confirm [`GET /api/health`](https://www.foldera.ai/api/health) `revision.git_sha`. [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).
 
 ## STATUS: SHIPPED — Decision-enforcement repair: grounded `directive` (no hardcoded accountable-owner line)
 
