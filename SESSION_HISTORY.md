@@ -6,7 +6,7 @@
 
 - 2026-04-08 — OPS: **Vercel MCP — re-auth path + post-push deploy / error log check**
   MODE: OPS
-  Commit hash(es): (set after push)
+  Commit hash(es): `489e46b`
   Files changed: `docs/MASTER_PUNCHLIST.md`, `AGENTS.md`, `SESSION_HISTORY.md`
   What was verified: Vercel MCP `mcp_auth` OK; `list_deployments` — latest production **READY** (`dpl_D5WnHr9dQn4k8TSp9J5itDaBG275`); `get_runtime_logs` production **error/fatal** (24h) — none.
   Changes: Punchlist row for **Cursor Settings → MCP → Vercel** OAuth; AGENTS bullet for `list_deployments` + error logs after pushes (project/team from `.vercel/project.json`).
@@ -14,7 +14,7 @@
 
 - 2026-04-08 — OPS: **Runbook — Executor ship contract (agent tests; no user confirmation punt)**
   MODE: OPS (documentation)
-  Commit hash(es): (set after push)
+  Commit hash(es): `489e46b` (AGENTS + SESSION template + punchlist), `3a4c26a` (backlog ship contract + CLAUDE + WHATS_NEXT + roadmap + spec)
   Files changed: `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `docs/AUDIT_REMEDIATION_ROADMAP.md`, `AGENTS.md`, `CLAUDE.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build` (success)
   Changes: Ship contract block at top of backlog; OPERATOR lines aligned; WHATS_NEXT “Who verifies”; roadmap triage text; AGENTS “No verification punt”; CLAUDE “Done means you tested” + auth-setup agent-first + pre-flight step 6; spec pointer; session log S0 clarification.
