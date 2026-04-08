@@ -4439,6 +4439,65 @@ function formatEntityLine(record: Record<string, unknown>): string {
 // Signal evidence fetching (preserved from original)
 // ---------------------------------------------------------------------------
 
+/** Inbox-only sources; calendar/drive/tasks/conversations use other `source` values. */
+const EVIDENCE_BUNDLE_EMAIL_SOURCES = new Set(['gmail', 'outlook']);
+
+function signalSnippetDedupeKey(s: SignalSnippet): string {
+  return `${s.source}|${s.date}|${(s.snippet ?? '').slice(0, 80)}`;
+}
+
+/**
+ * Merges recent processed non-email signals into winner-scoped evidence so the generator
+ * sees a cross-source slice of the user's life (calendar, drive, tasks, chats), not only
+ * the winning mail thread IDs from the scorer.
+ */
+async function appendCrossSourceLifeContextSnippets(
+  userId: string,
+  existing: SignalSnippet[],
+): Promise<SignalSnippet[]> {
+  const supabase = createServerClient();
+  const lookbackIso = new Date(Date.now() - daysMs(90)).toISOString();
+  const { data: rows, error } = await supabase
+    .from('tkg_signals')
+    .select('content, source, occurred_at, author, type')
+    .eq('user_id', userId)
+    .eq('processed', true)
+    .gte('occurred_at', lookbackIso)
+    .order('occurred_at', { ascending: false })
+    .limit(400);
+
+  if (error || !rows?.length) {
+    return existing;
+  }
+
+  const used = new Set(existing.map(signalSnippetDedupeKey));
+  const perSource = new Map<string, number>();
+  const MAX_PER_SOURCE = 5;
+  const MAX_TOTAL_NEW = 28;
+  const extra: SignalSnippet[] = [];
+
+  for (const row of rows) {
+    if (extra.length >= MAX_TOTAL_NEW) break;
+    const src = String((row as { source?: string }).source ?? '');
+    if (EVIDENCE_BUNDLE_EMAIL_SOURCES.has(src)) continue;
+    const n = perSource.get(src) ?? 0;
+    if (n >= MAX_PER_SOURCE) continue;
+    if (isBlockedSender((row as { author?: string }).author as string)) continue;
+    const decrypted = decryptWithStatus(String((row as { content?: string }).content ?? ''));
+    if (decrypted.usedFallback) continue;
+    const parsed = parseSignalSnippet(decrypted.plaintext, row as Record<string, unknown>);
+    if (!parsed) continue;
+    const key = signalSnippetDedupeKey(parsed);
+    if (used.has(key)) continue;
+    used.add(key);
+    perSource.set(src, n + 1);
+    extra.push(parsed);
+  }
+
+  if (extra.length === 0) return existing;
+  return [...existing, ...extra];
+}
+
 async function fetchWinnerSignalEvidence(
   userId: string,
   winner: ScoredLoop,
@@ -4681,6 +4740,40 @@ async function fetchWinnerSignalEvidence(
       snippets = snippets.filter((s) => signalSnippetMatchesDecayEntity(s, anchors));
     }
   }
+
+  const preMergeSources = [...new Set(snippets.map((s) => s.source))];
+  if (!shouldApplyFinancialSingleFocus(winner)) {
+    try {
+      snippets = await appendCrossSourceLifeContextSnippets(userId, snippets);
+    } catch (e) {
+      console.warn(
+        '[generator] appendCrossSourceLifeContextSnippets failed (non-fatal):',
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+  }
+  const postMergeSources = [...new Set(snippets.map((s) => s.source))];
+
+  // #region agent log
+  fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '9c6bc3' },
+    body: JSON.stringify({
+      sessionId: '9c6bc3',
+      location: 'generator.ts:fetchWinnerSignalEvidence:exit',
+      message: 'evidence_fetch_merge_sources',
+      data: {
+        hypothesisId: 'H1',
+        preMergeSources,
+        postMergeSources,
+        preSourceCount: preMergeSources.length,
+        postSourceCount: postMergeSources.length,
+        snippetCount: snippets.length,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   if (senderBlockedCount > 0) {
     logStructuredEvent({
@@ -7078,6 +7171,28 @@ export async function generateDirective(
         userVoicePatterns,
         lockedContactPromptLines,
       );
+
+      // #region agent log
+      {
+        const bundleSources = [...new Set(ctx.supporting_signals.map((s) => s.source))];
+        fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '9c6bc3' },
+          body: JSON.stringify({
+            sessionId: '9c6bc3',
+            location: 'generator.ts:generateDirective:structuredContext',
+            message: 'supporting_signals_bundle_sources',
+            data: {
+              hypothesisId: 'H2',
+              bundleSources,
+              bundleSourceCount: bundleSources.length,
+              supportingSignalRows: ctx.supporting_signals.length,
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+      }
+      // #endregion
 
       // --- DECISION PAYLOAD — the canonical binding contract ---
       const decisionPayload = buildDecisionPayload(hydratedWinner, ctx, confidence, lockedContacts);
