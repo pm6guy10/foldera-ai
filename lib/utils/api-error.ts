@@ -7,6 +7,7 @@
 
 import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
+import { isTransientSocketError } from '@/lib/sentry/transient-socket-errors';
 import { getRequestId, REQUEST_ID_HEADER } from './request-id';
 
 const GENERIC_MESSAGE = 'Internal server error';
@@ -45,13 +46,15 @@ export function apiError(
   const logLine = context
     ? `[${context}] ${message}`
     : message;
-  Sentry.captureException(toError(err, message), {
-    tags: {
-      context: context ?? 'unknown',
-      ...(requestId ? { request_id: requestId } : {}),
-    },
-    extra: { requestId },
-  });
+  if (!isTransientSocketError(err)) {
+    Sentry.captureException(toError(err, message), {
+      tags: {
+        context: context ?? 'unknown',
+        ...(requestId ? { request_id: requestId } : {}),
+      },
+      extra: { requestId },
+    });
+  }
   if (requestId) {
     console.error(logLine, { requestId });
   } else {

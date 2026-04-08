@@ -115,7 +115,7 @@ March 24 production hotfix evidence:
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
-| Sentry error tracking | BUILT | `@sentry/nextjs` installed, `next.config.mjs` wrapped with `withSentryConfig`, `sentry.client.config.ts`/`sentry.server.config.ts`/`sentry.edge.config.ts` added; repo root `.env.example` lists `SENTRY_DSN` and all primary app env vars (placeholders). Sentry wizard could not run in this non-TTY environment (`ERR_TTY_INIT_FAILED`), so setup was applied manually. | Needs real DSN + live error confirmation |
+| Sentry error tracking | BUILT | `@sentry/nextjs` + `instrumentation.ts` / `instrumentation-client.ts` (not legacy `sentry.*.config.ts`); `next.config.mjs` `withSentryConfig`; `.env.example` lists `SENTRY_DSN`. **April 8, 2026:** `lib/sentry/transient-socket-errors.ts` — `ignoreErrors` + `beforeSend` drop **EPIPE** / **ECONNRESET** / **socket hang up** (client disconnect while writing API JSON); `apiError` skips `captureException` for same. Vitest: `lib/sentry/__tests__/transient-socket-errors.test.ts`. | — |
 | Request correlation (`x-request-id`) | BUILT | April 3, 2026: `middleware.ts` stamps all matched routes including `/api/*`; `lib/utils/request-id-core.ts` + `request-id.ts`; `apiError` / `apiErrorForRoute` set Sentry tag `request_id`, response header + JSON `requestId` on 500; E2E `tests/e2e/public-routes.spec.ts` asserts `/api/health` echoes or generates UUID. | — |
 
 ### 1.7 CI Integrity

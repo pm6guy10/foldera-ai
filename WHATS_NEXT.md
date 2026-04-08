@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Sentry transient socket noise (EPIPE / ECONNRESET)
+
+**This session:** Filter client-disconnect stream errors in Sentry (`lib/sentry/transient-socket-errors.ts`); wired in `instrumentation.ts`, `instrumentation-client.ts`; `apiError` skips capture for same class. **Optional:** after Vercel Ready, confirm no new **JAVASCRIPT-NEXTJS-A** / **JAVASCRIPT-NEXTJS-9** events; issues marked resolved in Sentry.
+
 ## STATUS: SHIPPED — Runbook: agent verifies (Executor ship contract; no user confirmation punt)
 
 **This session:** `AUTOMATION_BACKLOG.md` — **Executor ship contract** (health, lint, build, vitest, `test:ci:e2e`, post-push Vercel/GitHub, `test:prod` + in-session `test:prod:setup` when possible); **Priority right now** replaces “user checks S0.” `WHATS_NEXT.md` — **Who verifies** row. `docs/AUDIT_REMEDIATION_ROADMAP.md` — triage order + link to ship contract. `AGENTS.md` — **No verification punt.** `CLAUDE.md` — **Done means you tested** + `test:prod:setup` is agent-first; pre-flight step 6. `FOLDERA_PRODUCT_SPEC.md` — pointer to ship contract. `SESSION_HISTORY.md` — S0 wording. OPERATOR section: agent runs deploy/CI checks. **Verified:** `npm run health` (0 failing); `npm run lint`; `npm run build`.
