@@ -21,6 +21,7 @@ Confirm [GitHub remote](https://github.com/pm6guy10/foldera-ai) matches your for
 |--------|-------------|---------|
 | **Production app** | [https://www.foldera.ai](https://www.foldera.ai) | Live product; Settings → Generate Now; Approve flow |
 | **Vercel** | [vercel.com/dashboard](https://vercel.com/dashboard) → project `prj_eG5St3NmUtqYGXJwXsANdZBLYr9N` (org `team_y2RdnSgeVsCExRheya1QRB5z`) | Deployments, logs, env vars, cron errors |
+| **Cursor → Vercel MCP** | **Cursor Settings** → **Features** → **MCP** → **Vercel** → **Connect** / re-authenticate (browser OAuth). IDs: same as **Vercel** row; also in [`.vercel/project.json`](../.vercel/project.json). | Agents use MCP tools: `list_deployments`, `get_deployment`, `get_deployment_build_logs`, `get_runtime_logs` (e.g. production + `level: error`). **Re-auth** when MCP returns auth errors — there is no separate magic URL; the IDE opens Vercel OAuth when you connect the integration. |
 | **GitHub repo** | [github.com/pm6guy10/foldera-ai](https://github.com/pm6guy10/foldera-ai) | Code, Actions |
 | **GitHub Actions** | [github.com/pm6guy10/foldera-ai/actions](https://github.com/pm6guy10/foldera-ai/actions) | Workflow runs, artifacts |
 | **Supabase** | [supabase.com/dashboard/project/neydszeamsflpghtrhue](https://supabase.com/dashboard/project/neydszeamsflpghtrhue) | Table `tkg_actions`, column `execution_result`, send/debug |

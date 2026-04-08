@@ -4,6 +4,22 @@
 
 ## Session Logs
 
+- 2026-04-08 — OPS: **Vercel MCP — re-auth path + post-push deploy / error log check**
+  MODE: OPS
+  Commit hash(es): (set after push)
+  Files changed: `docs/MASTER_PUNCHLIST.md`, `AGENTS.md`, `SESSION_HISTORY.md`
+  What was verified: Vercel MCP `mcp_auth` OK; `list_deployments` — latest production **READY** (`dpl_D5WnHr9dQn4k8TSp9J5itDaBG275`); `get_runtime_logs` production **error/fatal** (24h) — none.
+  Changes: Punchlist row for **Cursor Settings → MCP → Vercel** OAuth; AGENTS bullet for `list_deployments` + error logs after pushes (project/team from `.vercel/project.json`).
+  Any unresolved issues: Vercel log API may return empty (sampling); keep Sentry + dashboard as backstop.
+
+- 2026-04-08 — OPS: **Runbook — Executor ship contract (agent tests; no user confirmation punt)**
+  MODE: OPS (documentation)
+  Commit hash(es): (set after push)
+  Files changed: `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `docs/AUDIT_REMEDIATION_ROADMAP.md`, `AGENTS.md`, `CLAUDE.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build` (success)
+  Changes: Ship contract block at top of backlog; OPERATOR lines aligned; WHATS_NEXT “Who verifies”; roadmap triage text; AGENTS “No verification punt”; CLAUDE “Done means you tested” + auth-setup agent-first + pre-flight step 6; spec pointer; session log S0 clarification.
+  Any unresolved issues: `vitest` / `test:ci:e2e` / `test:prod` not run this slice (docs-only change); required before any code-affecting push per ship contract.
+
 - 2026-04-08 — AUDIT: **Pre-launch LLM spend policy (default dry-run, caps, cron + anomaly env)**
   MODE: AUDIT
   Commit hash(es): `1cfd52f`
@@ -34,7 +50,7 @@
   Files changed: `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `docs/AUDIT_REMEDIATION_ROADMAP.md`, `AGENTS.md`, `FOLDERA_PRODUCT_SPEC.md`, `CLAUDE.md`, `SESSION_HISTORY.md`
   What was verified: N/A (doc-only).
   Changes: Top-of-backlog table S0–S3; WHATS_NEXT summary; roadmap + AGENTS + spec header + CLAUDE pre-flight step 6 pointers. **S0** = prod/deploy/health/scoreboard/migration drift; **S1** = AZ-24 + REVENUE_PROOF gates + Stripe; **S2**–**S3** = CI/monitoring vs polish.
-  Any unresolved issues: **Critical/urgent** only when **S0** is true on live checks.
+  Any unresolved issues: **S0** is when **executor-run** gates (health, deploy/CI, scoreboard/migrations) fail — not “user must check prod.”
 
 - 2026-04-08 — OPS: **AUTOMATION_BACKLOG — OAuth re-auth + connector-health (DONE row)**
   MODE: OPS
