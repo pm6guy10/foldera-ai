@@ -6,8 +6,8 @@
 
 - 2026-04-08 — OPS: **Production reconciled — www = `main`, Vercel logs, `test:prod`**
   MODE: OPS
-  Commit hash(es): `a12db1d` (empty `chore(ci): redeploy production to main tip` — fixes prod alias behind an older READY deploy)
-  Files changed: `docs/MASTER_PUNCHLIST.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  Commit hash(es): `a12db1d` (empty `chore(ci): redeploy production to main tip` — fixes prod alias behind an older READY deploy), `759ca8a` (docs receipt + punchlist prod-drift note)
+  Files changed: `docs/MASTER_PUNCHLIST.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`, `FOLDERA_PRODUCT_SPEC.md`
   What was verified: Polled `GET https://www.foldera.ai/api/health` until `revision.git_sha_short ===` first 7 of `origin/main` (`a12db1d`); `x-foldera-git-sha` header matches full `revision.git_sha`. Vercel MCP `list_deployments` — top production **READY** `dpl_9CTWg6W6rB2t4s2a9QqqqfjkCGWo` @ `a12db1d`. `get_runtime_logs` production **`error`/`fatal`** last 24h — **none**. `npm run test:prod` — **61 passed** (smoke + audit). `npm run health` — 0 failing. Root cause of prior drift: a **newer** production deployment at **`1b605cf`** completed after **`3af031e`**, reverting www to an older tree without the health `revision` field.
   Any unresolved issues: None for this receipt.
 
