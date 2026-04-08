@@ -6,12 +6,12 @@
 
 - 2026-04-08 — AUDIT: **Pipeline choreography + repeat-shape loop window (12-row)**
   MODE: AUDIT
-  Commit hash(es): *(pending push)*
-  Files changed: `docs/SESSION_SCOREBOARD.md` (Piece 1 snapshot), `lib/briefing/scorer-failure-suppression.ts`, `lib/cron/daily-brief-generate.ts`, `lib/briefing/__tests__/scorer-failure-suppression.test.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  Commit hash(es): `3996bbd` (loop window + baseline docs), `41f8023` (Piece 1 end + WHATS_NEXT closure)
+  Files changed: `docs/SESSION_SCOREBOARD.md` (Piece 1 baseline + end), `lib/briefing/scorer-failure-suppression.ts`, `lib/cron/daily-brief-generate.ts`, `lib/briefing/__tests__/scorer-failure-suppression.test.ts`, `AUTOMATION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   **Start (baseline):** `npm run health` 2026-04-08 11:17 PT — 0 FAILING; ⚠ repeated directive; ⚠ last gen `do_nothing`. `npm run scoreboard` — `daily_brief` `partial_or_failed`, `nightly_ops` `degraded`. Piece 1 SQL (owner): Gmail newest `2026-04-08 17:06:22Z`, Outlook `17:15:59Z`; cursors Google/Microsoft `~17:16Z`; actions 24h **11** / distinct **6** (~45% dup); top shape **174** copies / 30d; pending **1**; `__GENERATION_FAILED__` **193** / 7d. **AZ-05:** 14d `do_nothing` 604, `send_message` 51, `research` 5; 7d `do_nothing` 276, `send_message` 26, `research` 5.
   **Pick one row:** top repeated directive / interleaved duplicate shapes → widen `GENERATION_LOOP_DETECTION_WINDOW` to **12** + matching `tkg_actions` fetch limit.
   **Receipt (quality, prod DB pre-push):** pending `send_message` `cf7e33be-4d5c-416a-9d26-9aae1863a11d`, confidence **84**, directive prefix: `Send a decision request that secures one accountable owner and a committed answer by 5:00 PM PT on 2026-04-08.` — names a time-bound external ask (MEGA S2 partial: person/thread depth not verified from this snippet alone). Latest row overall was skipped `do_nothing` (gates). **Post-deploy:** re-query az05 + health after next cron cycle for loop-window effect.
-  What was verified: *(pre-push)* `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (867); `npm run test:ci:e2e` (46). *(post-push — fill after deploy)* `npm run test:prod`; `npm run health`; `npm run scoreboard`; az05 + Piece 1 end in `docs/SESSION_SCOREBOARD.md`.
+  What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (867); `npm run test:ci:e2e` (46); push pre-hook vitest 867. Post-deploy: Vercel **READY** `dpl_GjJhuzoo8R7MvgD3JAZ7pU2Fsw6g`; `GET /api/health` → `3996bbd`; `npm run health` + `npm run scoreboard`; az05 end (7d `do_nothing` 269); `npm run test:prod` **61 passed**; Piece 1 end + victory note in `docs/SESSION_SCOREBOARD.md`.
   Any unresolved issues: Gate 4 operator-pending; generation-failure count includes intentional loop rows — separate hygiene later.
 
 - 2026-04-08 — AUDIT: **Cross-source evidence bundle (generator) + AZ-24 insight scan**

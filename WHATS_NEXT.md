@@ -1,8 +1,8 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
-## STATUS: IN FLIGHT — Pipeline choreography + `GENERATION_LOOP_DETECTION_WINDOW` = 12
+## STATUS: SHIPPED — Pipeline choreography + `GENERATION_LOOP_DETECTION_WINDOW` = 12
 
-**This session:** `docs/SESSION_SCOREBOARD.md` Piece 1 snapshot + az05 baseline; widen normalized directive loop window (**5 → 12**) in `scorer-failure-suppression.ts` + `daily-brief-generate.ts` fetch limit; tests + push + `test:prod`. **After deploy:** watch `generation_loop_detected` / duplicate shape metrics vs prior 174-copy hash.
+**This session:** Piece 1 baseline + end in `docs/SESSION_SCOREBOARD.md`; loop window **5 → 12**; deploy **`3996bbd`** / `dpl_GjJhuzoo8R7MvgD3JAZ7pU2Fsw6g`; `npm run test:prod` 61. **Victory:** target row (max 30d shape copies) still **174** until cron churn — re-check after `daily-generate` runs.
 
 ## STATUS: SHIPPED — Cross-source evidence bundle (`generation_log.evidence_bundle`, LIFE_CONTEXT prompt)
 

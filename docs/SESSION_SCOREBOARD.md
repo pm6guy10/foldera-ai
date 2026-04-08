@@ -68,6 +68,17 @@ Filled from production (`user_id` owner `e40b7cd8-4925-42f7-bc99-5022969f1d22`) 
 
 **Pick this session:** **Top repeated directive / duplicate shape** → widen normalized loop window (`GENERATION_LOOP_DETECTION_WINDOW` + `daily-brief-generate` fetch limit) so interleaved rows still trip `GENERATION_LOOP_DETECTED`.
 
+### Piece 1 end — 2026-04-08 post-deploy (`3996bbd` / `dpl_GjJhuzoo8R7MvgD3JAZ7pU2Fsw6g`)
+
+Re-ran immediately after Vercel **READY** + `GET /api/health` `revision.git_sha_short=3996bbd`. **Victory (target row):** not yet — max repeated shape **30d** still **174** copies (historical rows unchanged until new generations roll). **AZ-05:** 14d unchanged vs baseline (`do_nothing` 604, …); **7d** `do_nothing` **269** (was **276** at baseline — within rolling-window noise, not claimed as product win).
+
+| Check | End state | Notes |
+|-------|-----------|--------|
+| `npm run health` (11:30 PT) | 0 FAILING | Same ⚠ as baseline |
+| `npm run scoreboard` | unchanged rows | Still `partial_or_failed` / `degraded` |
+| `npm run test:prod` | **61 passed** | No regression |
+| Top repeated hash (30d, owner) | **174** | Same as baseline — monitor after next `daily-generate` cycles |
+
 ---
 
 ## Piece 2 — Automated test baseline (repo truth)
