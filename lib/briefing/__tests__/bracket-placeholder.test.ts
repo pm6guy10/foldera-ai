@@ -18,8 +18,13 @@ describe('hasBracketTemplatePlaceholder', () => {
     expect(hasBracketTemplatePlaceholder('Ref: [US] payroll')).toBe(false);
   });
 
-  it('flags multi-word ALL_CAPS template phrases in brackets', () => {
+  it('flags named ALL_CAPS template brackets only (not generic two-word labels)', () => {
     expect(hasBracketTemplatePlaceholder('x [INSERT DATE] y')).toBe(true);
-    expect(hasBracketTemplatePlaceholder('[DUE DATE]')).toBe(true);
+    expect(hasBracketTemplatePlaceholder('[YOUR NAME]')).toBe(true);
+    expect(hasBracketTemplatePlaceholder('[FILL HERE]')).toBe(true);
+    expect(hasBracketTemplatePlaceholder('[DUE DATE] reminder')).toBe(true);
+    // Real segment / org labels — not auto-fail
+    expect(hasBracketTemplatePlaceholder('Intro [VIP CLIENT] team')).toBe(false);
+    expect(hasBracketTemplatePlaceholder('Ref [US GOV] form')).toBe(false);
   });
 });

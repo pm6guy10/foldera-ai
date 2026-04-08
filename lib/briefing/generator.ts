@@ -3909,6 +3909,10 @@ const TIME_CONSTRAINT_PATTERNS = [
   /\bcutoff\b/i,
   /\b\d{4}-\d{2}-\d{2}\b/,
   /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+\d{1,2}\b/i,
+  /\b(?:this|next)\s+week\b/i,
+  /\b(?:last|past)\s+\d+\s+days?\b/i,
+  /\bin\s+the\s+last\s+\d+\s+days?\b/i,
+  /\b\d+\s+days?\s+(?:ago|without)\b/i,
 ];
 
 const PRESSURE_OR_CONSEQUENCE_PATTERNS = [
@@ -3933,6 +3937,10 @@ const PRESSURE_OR_CONSEQUENCE_PATTERNS = [
   /\bwhich\s+(?:takes\s+priority|(?:event|meeting)\s+wins)\b/i,
   /\b(?:late fee|late fees)\b/i,
   /\bavoid\s+(?:a\s+)?late\b/i,
+  /\b(?:no|zero)\s+replies?\b/i,
+  /\bunreplied\b/i,
+  /\bwithout\s+(?:a\s+)?response\b/i,
+  /\bstill\s+(?:waiting|no\s+word)\b/i,
 ];
 
 const OWNERSHIP_PATTERNS = [
@@ -4055,7 +4063,10 @@ export function getDecisionEnforcementIssues(input: {
   const combinedText = `${input.directiveText}\n${input.reason}\n${artifactText}`.trim();
   const issues: string[] = [];
 
-  if (!textHasAny(combinedText, EXPLICIT_ASK_PATTERNS)) {
+  const sendMessageHasQuestion =
+    normalizedType === 'send_message' && artifactText.length > 0 && /\?/.test(artifactText);
+
+  if (!textHasAny(combinedText, EXPLICIT_ASK_PATTERNS) && !sendMessageHasQuestion) {
     issues.push('decision_enforcement:missing_explicit_ask');
   }
   if (!textHasAny(combinedText, TIME_CONSTRAINT_PATTERNS)) {

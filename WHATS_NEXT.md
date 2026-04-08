@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Bracket guards + decision gates (subject line + unreplied-thread outreach)
+
+**This session:** `hasBracketTemplatePlaceholder` — no `subject` slot word; named caps templates only; `send_message` `?` = explicit ask; time/pressure patterns for “last N days” / “no replies”. **After deploy:** paid **Generate with AI** — confirm fewer `artifact.subject contains bracket placeholder` + `decision_enforcement:missing_*` strings in `pipeline_runs` / skipped rows.
+
 ## STATUS: SHIPPED — Golden path: bracket placeholder validation (paid Generate no longer false-fails on real names in titles)
 
 **This session:** `lib/briefing/bracket-placeholder.ts` + `validateGeneratedArtifact` uses `hasBracketTemplatePlaceholder` instead of `\[[A-Z][a-zA-Z\s]*\]` (which matched `[Nicole Vreeland]`-style titles). **After deploy:** Settings → **Generate with AI** → confirm `spend_policy.paid_llm_effective` and `pipeline_runs` / dashboard move past `artifact.title contains bracket placeholder text`; judge artifact specificity (holy-crap bar). **`npm run scoreboard`** should show fewer `generation_failed_sentinel` rows for that failure mode.

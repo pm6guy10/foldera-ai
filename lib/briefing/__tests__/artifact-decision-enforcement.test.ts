@@ -42,6 +42,28 @@ describe('artifact decision enforcement', () => {
     );
   });
 
+  it('accepts send_message when body has a question plus recent-days timing and no-reply pressure', () => {
+    const directive = baseDirective({
+      directive: 'Ask Aya whether the contract review is still active.',
+      reason: 'Multiple inbound messages in the last 30 days with no acknowledgment.',
+    });
+    const artifact = {
+      type: 'email',
+      to: 'aya@healthcare.example',
+      subject: 'Contract review — status',
+      body: 'Hi — are you still planning to finish review this week? There have been no replies to the last three messages in the past 14 days.',
+      draft_type: 'email_compose',
+    };
+
+    const issues = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+    });
+
+    expect(issues.filter((issue) => issue.includes('decision_enforcement:'))).toHaveLength(0);
+  });
+
   it('accepts send_message artifact that forces a decision with deadline and consequence', () => {
     const directive = baseDirective({
       directive: 'Request a yes/no decision and owner assignment for the approval packet by 4 PM PT today.',
