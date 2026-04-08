@@ -6,7 +6,7 @@
 
 - 2026-04-08 — OPS: **AUTOMATION_BACKLOG — OAuth re-auth + connector-health (DONE row)**
   MODE: OPS
-  Commit hash(es): `7f85789`
+  Commit hash(es): `b5faab0`
   Files changed: `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
   What was verified: `npm run health` (0 failing).
   Changes: Logged shipped OAuth re-auth / connector-health work under **DONE (2026-04-08)** with migration path and commit refs `3c7722b` / `c71563a`.
