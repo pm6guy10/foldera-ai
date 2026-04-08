@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Cross-source evidence — hard 28-snippet cap + structured logging**
   MODE: AUDIT
-  Commit hash(es): `7945408`
+  Commit hash(es): `f867e5e`
   Files changed: `lib/briefing/generator.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `.gitignore`
   What was verified: `npm run lint`; `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/generator.test.ts` (56 passed). `npm run build` hit transient Windows `.next` manifest ENOENT on this machine — retry/CI expected green.
   Changes: `appendCrossSourceLifeContextSnippets` now enforces **`CROSS_SOURCE_BUNDLE_MAX_SNIPPETS` (28)** on the **returned** array (`maxNew = 28 - existing.length`, `capCrossSourceSnippetBundle` on all paths including DB skip). Logs **`cross_source_life_context_merge`** with **`cross_source_snippet_count`**, `cross_source_new_added`, `merged_before_cap`, `db_row_scan_count`. Spec row updated. `.gitignore`: `tmp-cookie.txt`.
