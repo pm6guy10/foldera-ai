@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Scorer locked_contact pre-filter (before scoring)**
   MODE: AUDIT
-  Commit hash(es): `b3e1566`
+  Commit hash(es): `b32fd30`
   Files changed: `lib/briefing/scorer.ts`, `lib/briefing/generator.ts`, `lib/cron/daily-brief-generate.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (811 tests)
   Changes: Drop candidates whose `entityName` matches `tkg_constraints` locked_contact before expensive scoring; reuse keys for hunt; `diag.candidatesEnteringScoreLoop` for pipeline `candidates_evaluated`; generator keeps DecisionPayload guard only.
