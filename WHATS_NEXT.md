@@ -1,5 +1,16 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## OUTSTANDING — ranked by severity (source: [AUTOMATION_BACKLOG.md](AUTOMATION_BACKLOG.md) top table)
+
+| Tier | Urgent if… | Top items |
+|------|------------|-----------|
+| **S0** | Vercel not Ready; prod migration missing vs repo; `npm run health` / `npm run scoreboard` FAIL | Fix before anything else |
+| **S1** | Core loop / revenue proof | **AZ-24** pipeline mix; **Gate 4** / **Stripe** ([REVENUE_PROOF.md](REVENUE_PROOF.md)); `ALLOW_EMAIL_SEND` awareness |
+| **S2** | CI / monitoring | **AZ-14** prod Playwright auth; Sentry; OPEN `stale_date` / retry monitors; `/login` CI flake |
+| **S3** | Polish | AZ-04, 08, 09, 11, 17–19, 21 — [MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) |
+
+**Critical today?** Only when **S0** is true. Otherwise prioritize **S1** for product/GTM.
+
 ## STATUS: SHIPPED — OAuth re-auth UX, connector-health gating, dashboard visit tracking
 
 **This session:** Migration `20260408180000_oauth_reauth_dashboard_visit.sql` (`oauth_reauth_required_at`, `last_dashboard_visit_at`); fatal OAuth soft-disconnect + `needs_reauth`; dashboard reconnect banner + settings `?reconnect=`; `GET /api/conviction/latest` updates visit timestamp non-blockingly; connector-health 14d lookback + skip email if dashboard visited within 7d; Microsoft sync refresh via `token-store`; removed debug ingest `fetch` from `generator.ts`; CI E2E mocks for integrations + flow-route API stubs. **Ops:** apply migration to production Supabase; `npm run test:prod` after Vercel Ready when auth-state is fresh.

@@ -2,6 +2,19 @@
 
 **Purpose:** Single scannable view of the April 2026 full-surface audit closure **loop**: what is **done** (Phases A–C), what is **pending** (D–G), and **how to tackle** each bucket. Historical detail stays in [AUTOMATION_BACKLOG.md](../AUTOMATION_BACKLOG.md); point-in-time inventory stays in [FULL_SURFACE_AUDIT_2026-04-07.md](./FULL_SURFACE_AUDIT_2026-04-07.md).
 
+## Outstanding backlog — severity (summary)
+
+Full table at the **top** of [AUTOMATION_BACKLOG.md](../AUTOMATION_BACKLOG.md). Abbreviated:
+
+| Severity | Scope |
+|----------|--------|
+| **S0** | Prod/deploy/health/scoreboard red; unapplied prod migrations |
+| **S1** | AZ-24 pipeline mix; REVENUE_PROOF Gate 4 / Stripe; `ALLOW_EMAIL_SEND` |
+| **S2** | Phases D–G operational items; OPEN monitors; CI `/login` flake; AZ-14 |
+| **S3** | Remaining AZ operator polish (uptime, UX sweep, backups, etc.) |
+
+**Urgent only if S0**; else **S1** for business priority.
+
 ## Source of truth
 
 | What | Where |

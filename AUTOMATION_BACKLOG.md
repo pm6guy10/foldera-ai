@@ -1,5 +1,18 @@
 # AUTOMATION BACKLOG
 
+### OUTSTANDING BACKLOG (severity-ranked) — scan this first
+
+**Detail:** Every `### OPEN (…)` section below + normalized AZ table (~`OPEN (normalized`)). **Roadmap phases D–G:** [docs/AUDIT_REMEDIATION_ROADMAP.md](docs/AUDIT_REMEDIATION_ROADMAP.md).
+
+| Severity | Meaning | What to watch | Typical next action |
+|----------|---------|---------------|---------------------|
+| **S0 — Critical / urgent** | Prod error surface, deploy broken, or health/scoreboard **hard FAIL** | **Vercel** latest deploy not **Ready**; **Supabase** migration in repo not applied on prod (see [docs/SUPABASE_MIGRATIONS.md](docs/SUPABASE_MIGRATIONS.md), `supabase migration list`); `npm run health` / `npm run scoreboard` red rows; API **500** from schema drift | Fix deploy or apply DDL first—no “done” session on broken prod |
+| **S1 — High** | Core daily loop or **GTM proof** weak | **AZ-24** — actionable share vs `do_nothing` / `research` (rank 1 in normalized table); [REVENUE_PROOF.md](REVENUE_PROOF.md) **Gate 4** second receipt + explicit `sent_via`; **AZ-16** Stripe checkout + webhook row; **`ALLOW_EMAIL_SEND`** off by choice (Approve does not hit mailbox—see [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md)) | Agent: SQL receipts (`scripts/az05-action-type-distribution.sql`) + targeted pipeline code; Operator: approve/send + checkout proof |
+| **S2 — Medium** | CI flake, observability, **mitigated** monitors | **AZ-14** — refresh `tests/production/auth-state.json` (`npm run test:prod:setup`); **Phase D** — Sentry 7d triage, `npm audit` policy ([CLAUDE.md](CLAUDE.md)); **Phase F** — `stale_date_in_directive` (monitor), locked-contact log ratio, `directive_retry` vs `directive` in `api_usage`; **Phase G** — local `test:ci:e2e` `/login` 500 + `NEXTAUTH_URL` vs `127.0.0.1` ([playwright.ci.config.ts](playwright.ci.config.ts)) | Weekly triage; fix when blocking merge or masking prod regressions |
+| **S3 — Lower / ongoing** | Depth, UX, infra polish | **AZ-04** non-owner prod depth; **AZ-08** UptimeRobot; **AZ-09** FLOW screenshot sweep; **AZ-11** stranger onboarding; **AZ-17**–**AZ-19**, **AZ-21** (Supabase security/backup/owner scopes) | [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) operator checklist |
+
+**Is anything critical *right now*?** Only if **S0** is true (check Vercel, health, scoreboard, and prod migration parity). If S0 is green, **S1** (AZ-24 + revenue gates) is the highest **business** urgency—not necessarily an outage.
+
 ### DONE (2026-04-07) — Audit remediation roadmap (code + CI)
 
 - **Signal processor:** Per-signal try/catch in `processBatch` (`signal_processor_single_signal_failed`); hardened `normalizeInteractionTimestamp` (`unknown` + try/catch); `extracted_dates` only includes parseable dues. Tests: `lib/signals/__tests__/signal-processor.test.ts`.

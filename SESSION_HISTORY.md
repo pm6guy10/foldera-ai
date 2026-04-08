@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-08 — OPS: **Severity-ranked outstanding backlog (S0–S3) in knowledge files**
+  MODE: OPS (documentation)
+  Commit hash(es): (pending)
+  Files changed: `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `docs/AUDIT_REMEDIATION_ROADMAP.md`, `AGENTS.md`, `FOLDERA_PRODUCT_SPEC.md`, `CLAUDE.md`, `SESSION_HISTORY.md`
+  What was verified: N/A (doc-only).
+  Changes: Top-of-backlog table S0–S3; WHATS_NEXT summary; roadmap + AGENTS + spec header + CLAUDE pre-flight step 6 pointers. **S0** = prod/deploy/health/scoreboard/migration drift; **S1** = AZ-24 + REVENUE_PROOF gates + Stripe; **S2**–**S3** = CI/monitoring vs polish.
+  Any unresolved issues: **Critical/urgent** only when **S0** is true on live checks.
+
 - 2026-04-08 — OPS: **AUTOMATION_BACKLOG — OAuth re-auth + connector-health (DONE row)**
   MODE: OPS
   Commit hash(es): `b5faab0`

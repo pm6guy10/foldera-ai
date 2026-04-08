@@ -9,7 +9,7 @@ Every session runs this before any work:
 3. Read `CLAUDE.md` fully.
 4. Read `LESSONS_LEARNED.md` before every session. Every rule is enforced.
 5. Read `FOLDERA_PRODUCT_SPEC.md`. Confirm the current task maps to a specific item in the spec (cite the section number). Fixes outside the spec require explicit approval.
-6. Read `AUTOMATION_BACKLOG.md` for current open items.
+6. Read `AUTOMATION_BACKLOG.md` for current open items — start with the **OUTSTANDING BACKLOG (severity-ranked)** table (S0–S3) at the top, then `OPEN` sections below.
 7. Read every file you plan to modify.
 8. Run `git log --oneline -10`.
 9. Trace the relevant data path before coding: source -> transform -> persistence -> reader.
