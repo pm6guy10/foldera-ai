@@ -17,6 +17,5 @@ rules:
   - "Stop only when the repo compiles cleanly and all tasks are complete."
   - "Provide a concise final report including: files modified, reasoning, and build verification."
   - "When the task is complete and verified (build/tests per scope), commit and push to main immediately. Never wait for the user to say push, approve, or go ahead unless the work is blocked."
----
-alwaysApply: true
+  - "When you add or edit database schema or any file under supabase/migrations/: after pushing, apply any new migration files to production Supabase immediately. Do not consider the task done until the migration is confirmed applied."
 ---

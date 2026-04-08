@@ -1,0 +1,12 @@
+---
+description: Supabase schema and migrations — production apply gate
+globs:
+  - supabase/**/*
+alwaysApply: false
+---
+
+# Schema / migrations (production Supabase)
+
+**After pushing, apply any new migration files to production Supabase immediately. Do not consider the task done until the migration is confirmed applied.**
+
+Use `npx supabase db push`, the Supabase Dashboard SQL editor (exact migration file contents), or your operator process — then confirm in hosted migration history / `migration list`. See [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).

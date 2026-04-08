@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-08 — OPS: **Cursor / runbook — production migration apply gate for schema work**
+  MODE: OPS
+  Commit hash(es): (set after push)
+  Files changed: `.cursor/rules/agent.mdc`, `.cursor/rules/schema-migrations.mdc` (new), `CLAUDE.md`, `AGENTS.md`, `docs/SUPABASE_MIGRATIONS.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing)
+  Changes: Added the exact instruction — after pushing, apply new migrations to production Supabase immediately and do not treat the task as done until confirmed — to always-apply agent rules (when touching schema/migrations), a glob-scoped rule for `supabase/**/*`, CLAUDE, AGENTS, and SUPABASE_MIGRATIONS. Removed duplicate trailing frontmatter in `agent.mdc`.
+  Any unresolved issues: None.
+
 - 2026-04-08 — DEBUG: **`GET /api/integrations/status` 500 — missing `oauth_reauth_required_at` column**
   MODE: DEBUG
   Commit hash(es): verify `git log -1 --oneline` on `main` after push

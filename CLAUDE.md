@@ -44,6 +44,10 @@ Brain-receipt and `email-preview?action_id=` require an **owner** session on the
 
 **Human-only revenue gates** (cannot be automated): live **Approve** on a real `send_message` with mailbox connected (`sent_via` in `REVENUE_PROOF.md`), Stripe checkout + webhook row, optional non-owner signup — see `AUTOMATION_BACKLOG.md` (Operator-only GTM gates).
 
+## Supabase schema and migrations
+
+**After pushing, apply any new migration files to production Supabase immediately. Do not consider the task done until the migration is confirmed applied.** (`npx supabase db push`, Dashboard SQL with the exact migration file, or operator workflow — confirm in hosted migration history.) See [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).
+
 ## Database CHECK Constraints (tkg_goals)
 
 These are enforced by Postgres. Invalid values cause silent insert failures.

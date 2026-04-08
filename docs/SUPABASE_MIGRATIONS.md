@@ -2,6 +2,8 @@
 
 **Maps to:** `AUTOMATION_BACKLOG` AZ-20, `FOLDERA_PRODUCT_SPEC` data integrity.
 
+**After pushing, apply any new migration files to production Supabase immediately. Do not consider the task done until the migration is confirmed applied.**
+
 ## Rules
 
 1. **Every DDL change is a versioned file** under [`supabase/migrations/`](../supabase/migrations/). No “just run this in the SQL editor” without a matching migration file in the repo (except emergency hotfix — follow up with a migration that matches prod within one session).
