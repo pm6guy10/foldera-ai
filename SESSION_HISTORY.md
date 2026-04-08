@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Full surface audit doc (`docs/FULL_SURFACE_AUDIT_2026-04-07.md`)**
+  MODE: AUDIT
+  Commit hash(es): `6643afb`
+  Files changed: `docs/FULL_SURFACE_AUDIT_2026-04-07.md`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing, 2 warnings); `npm run scoreboard` (failed — `pipeline_runs` missing on linked DB); `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (85 files, 811 tests); `npm run test:ci:e2e` (41 passed); `npm run test:prod` (61 passed); `npm audit` (13 vulns, exit 1)
+  Changes: Point-in-time inventory of pages, APIs, crons, workflows, observability gaps, merged OPEN pointers; spec + backlog cross-links.
+  Any unresolved issues: Apply `20260407120000_pipeline_runs` (and other pending DDL from backlog) to production; Sentry 7d triage operator-only; `/dashboard/signals` has no CI e2e row.
+
 - 2026-04-07 — AUDIT: **`runBriefLifecycle` send retry passes `ensureSend: true`**
   MODE: AUDIT
   Commit hash(es): `4faf9c2` (session log only — `brief-service.ts` missed staging), `4a163ca` (code)

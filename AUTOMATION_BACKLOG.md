@@ -1,5 +1,9 @@
 # AUTOMATION BACKLOG
 
+### DONE (2026-04-07) — Full surface audit artifact
+
+- **Doc:** [docs/FULL_SURFACE_AUDIT_2026-04-07.md](docs/FULL_SURFACE_AUDIT_2026-04-07.md) — every page, API group, cron path, GitHub workflow, automation snapshot, merged OPEN summary, `npm audit` note. **Not** a backlog replacement; use for orientation + evidence URLs.
+
 ### DONE (2026-04-07) — Pipeline observability (`pipeline_runs`, scoreboard, cron heartbeat)
 
 - **DDL:** [`supabase/migrations/20260407120000_pipeline_runs.sql`](supabase/migrations/20260407120000_pipeline_runs.sql) — apply in prod before relying on rows (`docs/SUPABASE_MIGRATIONS.md`).
