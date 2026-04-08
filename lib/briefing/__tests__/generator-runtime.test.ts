@@ -682,9 +682,11 @@ describe('generateDirective runtime failures', () => {
     expect(String(relArtifact?.content)).toContain('Relationship cooling');
   });
 
-  it('hard-drops a send_message candidate whose entity name matches a locked_contact row (with spaces)', async () => {
+  it('blocks send_message via DecisionPayload when winner entity matches locked_contact (scorer should pre-filter; generator still guards)', async () => {
     // AB-25: normalized_entity stored with spaces ("nicole vreeland") must still match
     // entityName "Nicole Vreeland" after both sides strip whitespace.
+    // scoreOpenLoops normally drops locked entities before generation; if a mocked winner still
+    // carries the locked entity, buildDecisionPayload adds locked_contact_suppression before LLM.
     const scored = buildScorerResult();
     scored.winner.entityName = 'Nicole Vreeland';
     scored.winner.suggestedActionType = 'send_message';
@@ -699,15 +701,14 @@ describe('generateDirective runtime failures', () => {
     const { generateDirective } = await import('../generator');
     const directive = await generateDirective('user-1', { dryRun: true });
 
-    // The candidate must be hard-dropped before any LLM call.
     expect(anthropicCreate).not.toHaveBeenCalled();
-    // All candidates exhausted → sentinel fallback.
     expect(directive.directive).toBe('__GENERATION_FAILED__');
-    // Constraint-blocked event must have been logged.
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_blocked',
-      generationStatus: 'constraint_blocked',
-      details: expect.objectContaining({ reason: 'locked_contact' }),
+      generationStatus: 'decision_payload_blocked',
+      details: expect.objectContaining({
+        payload_errors: expect.arrayContaining(['locked_contact_suppression']),
+      }),
     }));
   });
 

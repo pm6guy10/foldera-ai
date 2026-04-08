@@ -506,6 +506,8 @@ export interface ScorerDiagnostics {
   finalWinner: ScorerSurvivorEntry | null;
   finalOutcome: 'winner_selected' | 'no_valid_action' | 'zero_candidates_early';
   earlyExitStage?: string;
+  /** Pool size immediately before computeCandidateScore loop (after all pre-scoring filters). */
+  candidatesEnteringScoreLoop?: number;
 }
 
 let _lastDiagnostics: ScorerDiagnostics | null = null;
@@ -4499,6 +4501,70 @@ export async function scoreOpenLoops(
   }
 
   // -----------------------------------------------------------------------
+  // PRE-SCORING: locked_contact — drop before computeCandidateScore / tractability / Gemini.
+  // Same normalized keys as generator + hunt (whitespace-stripped lower).
+  // -----------------------------------------------------------------------
+  let lockedContactNormalizedKeys = new Set<string>();
+  {
+    const { data: lockedRowsForContacts } = await supabase
+      .from('tkg_constraints')
+      .select('normalized_entity')
+      .eq('user_id', userId)
+      .eq('constraint_type', 'locked_contact')
+      .eq('is_active', true);
+    for (const row of lockedRowsForContacts ?? []) {
+      const raw = row.normalized_entity;
+      if (typeof raw === 'string' && raw.trim()) {
+        lockedContactNormalizedKeys.add(raw.replace(/\s+/g, '').toLowerCase());
+      }
+    }
+  }
+
+  if (lockedContactNormalizedKeys.size > 0) {
+    const preLocked = candidates.length;
+    const lockDrops: ScorerDropEntry[] = [];
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      const c = candidates[i];
+      if (!c.entityName?.trim()) continue;
+      const key = c.entityName.replace(/\s+/g, '').toLowerCase();
+      if (!lockedContactNormalizedKeys.has(key)) continue;
+      lockDrops.push({
+        candidateId: c.id,
+        type: c.type,
+        title: c.title.slice(0, 100),
+        stage: 'locked_contact_pre_filter',
+        reason: 'locked_contact_entity',
+        score: 0,
+      });
+      logStructuredEvent({
+        event: 'locked_contact_pre_filter',
+        level: 'info',
+        userId,
+        artifactType: artifactTypeForAction(c.actionType),
+        generationStatus: 'scoring',
+        details: {
+          scope: 'scorer',
+          candidate_id: c.id,
+          candidate_title: c.title.slice(0, 100),
+          entity_name: c.entityName.slice(0, 120),
+          action_type: c.actionType,
+        },
+      });
+      candidates.splice(i, 1);
+    }
+    diag.filterStages.push({
+      stage: 'locked_contact_pre_filter',
+      before: preLocked,
+      after: candidates.length,
+      dropped: lockDrops,
+    });
+    if (candidates.length === 0) {
+      diag.earlyExitStage = 'locked_contact_pre_filter';
+      return null;
+    }
+  }
+
+  // -----------------------------------------------------------------------
   // Goal-text date urgency boost: if a matched goal mentions a date within
   // 7 days, boost urgency so time-sensitive goals surface when they should.
   // -----------------------------------------------------------------------
@@ -4515,6 +4581,7 @@ export async function scoreOpenLoops(
   // Score each candidate (v4: Gemini scoring function)
   // -----------------------------------------------------------------------
 
+  diag.candidatesEnteringScoreLoop = candidates.length;
   let scored: ScoredLoop[] = [];
   const approvalHistory = await getApprovalHistory(userId);
   const globalMlPriors = await fetchGlobalMlPriorMap();
@@ -5478,20 +5545,6 @@ export async function scoreOpenLoops(
   // Score 999; try up to 3 findings skipping locked contacts. Before ranking invariants.
   // -----------------------------------------------------------------------
   {
-    const { data: lockRows } = await supabase
-      .from('tkg_constraints')
-      .select('normalized_entity')
-      .eq('user_id', userId)
-      .eq('constraint_type', 'locked_contact')
-      .eq('is_active', true);
-    const lockedKeys = new Set<string>();
-    for (const row of lockRows ?? []) {
-      const raw = row.normalized_entity;
-      if (typeof raw === 'string' && raw.trim()) {
-        lockedKeys.add(raw.replace(/\s+/g, '').toLowerCase());
-      }
-    }
-
     const huntResult = runHuntAnomalies({
       signals,
       commitments,
@@ -5501,7 +5554,7 @@ export async function scoreOpenLoops(
     let skippedLocked = 0;
     const loopsToAdd: ScoredLoop[] = [];
     for (const f of huntResult.findings) {
-      if (huntFindingBlockedByLock(f, lockedKeys)) {
+      if (huntFindingBlockedByLock(f, lockedContactNormalizedKeys)) {
         skippedLocked++;
         continue;
       }

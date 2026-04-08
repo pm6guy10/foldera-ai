@@ -2104,7 +2104,8 @@ export async function runDailyGenerate(
           winnerActionType: directive.action_type ?? null,
           winnerConfidence: typeof directive.confidence === 'number' ? directive.confidence : null,
           blockedGate,
-          candidatesEvaluated: diag?.filterStages?.[0]?.before ?? null,
+          candidatesEvaluated:
+            diag?.candidatesEnteringScoreLoop ?? diag?.filterStages?.[0]?.before ?? null,
           rawExtras: {
             pipeline_dry_run: Boolean(options.pipelineDryRun),
             budget_cap_sentinel: directive.directive === BUDGET_CAP_DIRECTIVE_SENTINEL,
