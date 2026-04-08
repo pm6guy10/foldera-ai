@@ -4,6 +4,22 @@
 
 ## Session Logs
 
+- 2026-04-08 — DEBUG: **`GET /api/integrations/status` 500 — missing `oauth_reauth_required_at` column**
+  MODE: DEBUG
+  Commit hash(es): verify `git log -1 --oneline` on `main` after push
+  Files changed: `app/api/integrations/status/route.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `docs/SUPABASE_MIGRATIONS.md`, `SESSION_HISTORY.md`
+  What was verified: `npx vitest run app/api/integrations/status/__tests__/route.test.ts` (4 passed); `npx eslint` on route + test
+  Root cause: fallback used `JSON.stringify` on `PostgrestError` — **non-enumerable `message`** dropped the Postgres text, so `isOauthReauthColumnMissing` stayed false. Fix: `supabaseErrorText()` reads `message`/`details`/`hint`/`code`; inner try/catch maps thrown errors to legacy path. Temporary **#region agent log** POSTs to debug ingest (`35fceb`) — remove after user confirms + log proof.
+  Any unresolved issues: Run `npx supabase db push` (or apply SQL) for [`20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql).
+
+- 2026-04-08 — FLOW: **OAuth re-auth UX + connector-health email gating + Microsoft refresh via token-store**
+  MODE: AUDIT / FLOW
+  Commit hash(es): (set after push)
+  Files changed: `supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`, `lib/config/constants.ts`, `lib/auth/user-tokens.ts`, `lib/auth/token-store.ts`, `lib/sync/microsoft-sync.ts`, `lib/cron/connector-health.ts`, `app/api/integrations/status/route.ts`, `app/api/conviction/latest/route.ts`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `lib/cron/__tests__/connector-health.test.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `lib/sync/__tests__/microsoft-sync.test.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing); `npx vitest run` on the 4 touched test files (12 passed); `npm run build`.
+  Changes: `oauth_reauth_required_at` + `last_dashboard_visit_at` columns; fatal OAuth soft-disconnect marks reauth; integrations API returns `needs_reauth` and includes reauth rows; dashboard reconnect banner; settings `?reconnect=` auto-starts OAuth; connector-health uses 14d signal lookback, dashboard-visit skip (7d), reconnect URL in email body; Microsoft sync delegates refresh to `token-store`.
+  Any unresolved issues: Apply migration to production Supabase before new columns exist in prod. `npm run test:ci:e2e` / `npm run test:prod` not run this session.
+
 - 2026-04-07 — AUDIT: **Integrations status mail date = ingested signals (settings stale banner)**
   MODE: AUDIT
   Commit hash(es): `9218549`

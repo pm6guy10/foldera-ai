@@ -14,6 +14,33 @@ import { INTEGRATIONS_MAIL_GRAPH_STALE_MS, INTEGRATIONS_SYNC_STALE_MS } from '@/
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * PostgREST errors are often `PostgrestError extends Error`. `JSON.stringify(err)` drops
+ * non-enumerable `message`, so schema errors never match `/oauth_reauth_required_at/`.
+ */
+function supabaseErrorText(err: unknown): string {
+  if (err == null) return '';
+  if (typeof err === 'string') return err;
+  if (err instanceof Error) {
+    const e = err as Error & { details?: string; hint?: string; code?: string };
+    return [e.message, e.details, e.hint, e.code].filter(Boolean).join(' | ');
+  }
+  if (typeof err === 'object') {
+    const o = err as Record<string, unknown>;
+    const parts = [o.message, o.details, o.hint, o.code].filter((x) => typeof x === 'string') as string[];
+    try {
+      return `${parts.join(' | ')} | ${JSON.stringify(err)}`;
+    } catch {
+      return parts.join(' | ');
+    }
+  }
+  return String(err);
+}
+
+function isOauthReauthColumnMissing(err: unknown): boolean {
+  return /oauth_reauth_required_at/i.test(supabaseErrorText(err));
+}
+
 export async function GET() {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
@@ -23,14 +50,57 @@ export async function GET() {
   try {
     const supabase = createServerClient();
 
-    const { data, error } = await supabase
-      .from('user_tokens')
-      .select('provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token')
-      .eq('user_id', session.user.id)
-      .is('disconnected_at', null);
+    let data: unknown[] | null;
+    let legacyReauthShape = false;
 
-    if (error) {
-      throw error;
+    let modern: { data: unknown; error: unknown };
+    try {
+      modern = await supabase
+        .from('user_tokens')
+        .select(
+          'provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token, disconnected_at, oauth_reauth_required_at',
+        )
+        .eq('user_id', session.user.id)
+        .or('disconnected_at.is.null,oauth_reauth_required_at.not.is.null');
+    } catch (caught) {
+      if (!isOauthReauthColumnMissing(caught)) throw caught;
+      modern = { data: null, error: caught };
+    }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7695/ingest/9e285a70-f4df-4ff8-9890-574a4203a08e', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '35fceb' },
+      body: JSON.stringify({
+        sessionId: '35fceb',
+        hypothesisId: 'H1',
+        location: 'integrations/status/route.ts:modern',
+        message: 'user_tokens query',
+        data: {
+          hasError: modern.error != null,
+          errTextSample: modern.error != null ? supabaseErrorText(modern.error).slice(0, 500) : null,
+          missingColMatch: modern.error != null ? isOauthReauthColumnMissing(modern.error) : false,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+
+    if (modern.error && isOauthReauthColumnMissing(modern.error)) {
+      const legacy = await supabase
+        .from('user_tokens')
+        .select('provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token')
+        .eq('user_id', session.user.id)
+        .is('disconnected_at', null);
+      if (legacy.error) {
+        throw legacy.error;
+      }
+      data = legacy.data as unknown[];
+      legacyReauthShape = true;
+    } else if (modern.error) {
+      throw modern.error;
+    } else {
+      data = modern.data as unknown[];
     }
 
     const nowMs = Date.now();
@@ -46,6 +116,10 @@ export async function GET() {
       // Do NOT treat short-lived access_token expiry as "reconnect": cron/sync refreshes via
       // refresh_token; DB expires_at can lag behind a successful last_synced_at (Google).
       const needsReconnect = hasToken && !hasRefreshInDb;
+      const reauthRequired =
+        !legacyReauthShape &&
+        row.oauth_reauth_required_at != null &&
+        typeof row.oauth_reauth_required_at === 'string';
 
       const lastSyncMs = row.last_synced_at ? new Date(row.last_synced_at as string).getTime() : 0;
       const syncStale =
@@ -62,6 +136,7 @@ export async function GET() {
         scopes: row.scopes ?? null,
         expires_at: expSec,
         needs_reconnect: needsReconnect,
+        needs_reauth: reauthRequired,
         sync_stale: syncStale,
       };
     });
@@ -93,8 +168,13 @@ export async function GET() {
       .limit(1)
       .maybeSingle();
 
-    const hasMailConnector = (data ?? []).some(
-      (row: { provider?: string; access_token?: unknown; refresh_token?: unknown }) =>
+    const tokenRows = (data ?? []) as Array<{
+      provider?: string;
+      access_token?: unknown;
+      refresh_token?: unknown;
+    }>;
+    const hasMailConnector = tokenRows.some(
+      (row) =>
         (row.provider === 'google' || row.provider === 'microsoft') &&
         typeof row.access_token === 'string' &&
         row.access_token.length > 0 &&

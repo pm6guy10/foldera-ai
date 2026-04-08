@@ -30,6 +30,8 @@ There is no automated `supabase db push` in GitHub Actions today (secrets / link
 
 - **Pending:** [`supabase/migrations/20260407120000_pipeline_runs.sql`](../supabase/migrations/20260407120000_pipeline_runs.sql) — `pipeline_runs` + `api_usage.pipeline_run_id` for `npm run scoreboard` and cron heartbeats. Apply with `npx supabase db push` before relying on observability rows in prod.
 
+- **Pending (OAuth re-auth columns):** [`supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`](../supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) — `user_tokens.oauth_reauth_required_at`, `user_subscriptions.last_dashboard_visit_at`. Until applied, `GET /api/integrations/status` uses a legacy `user_tokens` select (no `needs_reauth` from DB). Apply in prod to match code that writes these columns.
+
 ## References
 
 - [Supabase CLI migrations](https://supabase.com/docs/guides/cli/local-development#database-migrations)

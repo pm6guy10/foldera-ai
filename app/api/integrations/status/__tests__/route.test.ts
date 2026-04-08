@@ -20,7 +20,7 @@ function userTokensChain() {
   return {
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
-        is: vi.fn().mockResolvedValue({
+        or: vi.fn().mockResolvedValue({
           data: [
             {
               provider: 'google',
@@ -30,6 +30,8 @@ function userTokensChain() {
               access_token: 'access',
               expires_at: 9999999999,
               refresh_token: 'refresh',
+              disconnected_at: null,
+              oauth_reauth_required_at: null,
             },
           ],
           error: null,
@@ -113,6 +115,67 @@ describe('GET /api/integrations/status', () => {
     expect(body.mail_ingest_looks_stale).toBe(false);
     expect(newest._eqUser).toHaveBeenCalledWith('user_id', 'user-1');
     expect(newest._eqUser).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to legacy user_tokens select when oauth_reauth_required_at column is missing (PostgREST error message)', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
+    const missingColErr = new Error(
+      'column user_tokens.oauth_reauth_required_at does not exist',
+    ) as Error & { code?: string };
+    missingColErr.code = '42703';
+
+    const legacySelect = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        is: vi.fn().mockResolvedValue({
+          data: [
+            {
+              provider: 'google',
+              email: 'u@gmail.com',
+              last_synced_at: '2026-04-07T10:00:00.000Z',
+              scopes: 's',
+              access_token: 'access',
+              expires_at: 9999999999,
+              refresh_token: 'refresh',
+            },
+          ],
+          error: null,
+        }),
+      }),
+    });
+
+    let userTokensCalls = 0;
+    let signalsPass = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'user_tokens') {
+        userTokensCalls += 1;
+        if (userTokensCalls === 1) {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                or: vi.fn().mockResolvedValue({ data: null, error: missingColErr }),
+              }),
+            }),
+          };
+        }
+        return { select: legacySelect };
+      }
+      if (table === 'tkg_signals') {
+        signalsPass += 1;
+        if (signalsPass === 1) return signalSourceCountsChain();
+        return newestMailChain(null);
+      }
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const { GET } = await import('../route');
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { integrations: Array<{ needs_reauth?: boolean }> };
+    expect(body.integrations.length).toBe(1);
+    expect(body.integrations[0].needs_reauth).toBe(false);
+    expect(legacySelect).toHaveBeenCalledWith(
+      'provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token',
+    );
   });
 
   it('sets mail_ingest_looks_stale when newest ingested mail is older than 7d', async () => {
