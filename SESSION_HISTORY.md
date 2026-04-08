@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Sentry — suppress transient EPIPE / ECONNRESET (client disconnect noise)**
   MODE: AUDIT
-  Commit hash(es): `282bb61`
+  Commit hash(es): `282bb61`, `fee2d18`
   Files changed: `lib/sentry/transient-socket-errors.ts`, `lib/sentry/__tests__/transient-socket-errors.test.ts`, `instrumentation.ts`, `instrumentation-client.ts`, `lib/utils/api-error.ts`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
   What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run test:ci:e2e` (45 passed)
   Changes: Shared detector + Sentry `ignoreErrors` / `beforeSend` on Node + Edge + client; API routes skip Sentry capture for same class of errors. Sentry issues **JAVASCRIPT-NEXTJS-A** (write EPIPE) and **JAVASCRIPT-NEXTJS-9** (read ECONNRESET) marked resolved in dashboard after push.
