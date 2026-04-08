@@ -1,8 +1,8 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
-## STATUS: SHIPPED — Deploy workflow hardening (concurrency + deploy retries)
+## STATUS: SHIPPED — Deploy workflow: Hobby quota (`api-deployments-free-per-day`) + skip-if-already-live
 
-**This session:** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) serializes CLI production deploys and retries `vercel deploy --prebuilt` when the Git integration (or a duplicate run) races. **Red “Deploy to Vercel” email ≠ www broken** — confirm [`GET /api/health`](https://www.foldera.ai/api/health) `revision.git_sha`. Details: [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).
+**This session:** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) calls **Vercel `/v6/deployments`**; if **production READY** already matches the CI commit SHA, **skips** CLI build/deploy (stops double-counting Git integration + GHA against **~100 deploys/24h**). If CLI runs and hits **`api-deployments-free-per-day`**, **fails fast** (no pointless 3× upload). **Red email** can still mean quota — confirm [`GET /api/health`](https://www.foldera.ai/api/health) `revision.git_sha`. [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md), [AGENTS.md](AGENTS.md) Vercel section.
 
 ## STATUS: SHIPPED — Decision-enforcement repair: grounded `directive` (no hardcoded accountable-owner line)
 

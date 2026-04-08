@@ -87,7 +87,8 @@
 
 - **Evidence (GitHub API, public):** Run `24153426510` @ `24bcb3e` — steps 1–7 **success**, step 8 **`Deploy prebuilt artifacts`** **failure** (~4s, exit 1). Same day: two runs @ `1fb2b7e` — **success** then **failure** 16s apart (duplicate `workflow_run` / overlap).
 - **Vercel:** Deployment **`dpl_4DPJiAwASktYEAMkbiNkpa8v2ZcH`** for **`24bcb3ee…`** is **READY** (production) — www was not “stuck”; the **email** reflected CLI-only failure.
-- **Fix:** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) — `concurrency` group **`vercel-prod-cli-foldera`** (`cancel-in-progress: false`); **3×** `vercel deploy --prebuilt` attempts with **45s** backoff; `VERCEL_TOKEN` via `env`. Docs: [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md), [AGENTS.md](AGENTS.md) Vercel section.
+- **Fix (round 1):** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) — `concurrency` group **`vercel-prod-cli-foldera`** (`cancel-in-progress: false`); **3×** `vercel deploy --prebuilt` attempts with **45s** backoff; `VERCEL_TOKEN` via `env`. Docs: [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md), [AGENTS.md](AGENTS.md) Vercel section.
+- **Fix (round 2, same day):** Logs show **`api-deployments-free-per-day`** (Hobby **~100 deployments / 24h**). **Each** Git integration deploy **plus** CLI `vercel deploy` counts; **3× retries** triple-uploads into the same wall. Workflow now **GET `/v6/deployments`** after checkout — if **READY** **`target=production`** **`meta.githubCommitSha`** matches CI **`head_sha`**, **skip** `vercel pull` / `build` / `deploy` entirely; on first CLI failure containing **`api-deployments-free-per-day`**, **exit 1 without further retries**. Operator if still blocked: wait rolling 24h, disable duplicate path (Git vs CLI), or **Vercel Pro**.
 
 ### DONE (2026-04-08) — Decision-enforcement repair: generic “accountable owner” dashboard directive
 

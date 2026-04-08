@@ -3,11 +3,12 @@ name: Deploy to Vercel
 # Fires after the CI workflow completes on main.
 # Using workflow_run (not push) means:
 #   1. Deploy only happens when build + tests pass.
-#   2. No double-deploy if Vercel GitHub integration is also configured —
-#      this runs after CI, the integration runs on raw push, they race but
-#      both result in the same commit being live (idempotent).
-#   3. Works regardless of committer identity (VERCEL_TOKEN auth, not
-#      Vercel Hobby's committer allowlist).
+#   2. Vercel Hobby enforces ~100 production deployments / 24h (code: api-deployments-free-per-day).
+#      If the Vercel GitHub integration already created a READY production deployment for this
+#      commit, we SKIP vercel pull/build/deploy here — avoids burning double quota per push and
+#      pointless CLI failures when www is already correct.
+#   3. Still runs vercel build + vercel deploy when production is not yet at HEAD (e.g. integration
+#      off, non-owner push, or integration lag) — VERCEL_TOKEN auth, not Hobby committer allowlist.
 on:
   workflow_run:
     workflows: [CI]
@@ -20,9 +21,7 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Serialize CLI deploys: parallel runs (duplicate workflow_run delivery, or overlap with the
-    # previous commit’s deploy) often make `vercel deploy --prebuilt` exit 1 while `vercel build`
-    # succeeded — classic race with Vercel’s own GitHub integration finishing first.
+    # Serialize CLI deploys: overlapping jobs still waste quota / race uploads.
     concurrency:
       group: vercel-prod-cli-foldera
       cancel-in-progress: false
@@ -33,24 +32,98 @@ jobs:
           # Check out the commit that CI ran on, not whatever HEAD is now.
           ref: ${{ github.event.workflow_run.head_sha }}
 
+      - name: Check if production already has this commit (Hobby deploy quota)
+        id: skip_check
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          python3 << 'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          def write_output(key: str, val: str) -> None:
+              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+                  f.write(f"{key}={val}\n")
+
+          token = os.environ["VERCEL_TOKEN"]
+          pid = os.environ["VERCEL_PROJECT_ID"]
+          team = os.environ.get("VERCEL_ORG_ID", "").strip()
+          head = os.environ["HEAD_SHA"].strip().lower()
+
+          params = {"projectId": pid, "target": "production", "limit": "30"}
+          if team:
+              params["teamId"] = team
+          q = urllib.parse.urlencode(params)
+          url = f"https://api.vercel.com/v6/deployments?{q}"
+          req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+
+          try:
+              with urllib.request.urlopen(req, timeout=90) as resp:
+                  data = json.load(resp)
+          except urllib.error.HTTPError as e:
+              body = e.read().decode("utf-8", errors="replace")
+              print(f"::warning::Vercel deployments list HTTP {e.code}: {body[:500]} — continuing with CLI deploy")
+              write_output("skip_cli", "false")
+              raise SystemExit(0)
+          except Exception as e:
+              print(f"::warning::Vercel probe failed ({e}) — continuing with CLI deploy")
+              write_output("skip_cli", "false")
+              raise SystemExit(0)
+
+          deployments = data.get("deployments") or []
+          for d in deployments:
+              if d.get("state") != "READY":
+                  continue
+              if d.get("target") != "production":
+                  continue
+              meta = d.get("meta") or {}
+              sha = (meta.get("githubCommitSha") or "").strip().lower()
+              if sha and sha == head:
+                  print(
+                      f"Production READY deployment already at {head[:7]} — skipping CLI "
+                      f"build/deploy (saves Hobby api-deployments-free-per-day quota)."
+                  )
+                  write_output("skip_cli", "true")
+                  raise SystemExit(0)
+
+          print(f"No READY production deployment at HEAD {head[:7]} — running CLI build/deploy.")
+          write_output("skip_cli", "false")
+          PY
+
+      - name: Skip CLI deploy (production already at this commit)
+        if: ${{ steps.skip_check.outputs.skip_cli == 'true' }}
+        run: |
+          echo "::notice::Deploy workflow finished without CLI upload — www should already match ${{ github.event.workflow_run.head_sha }} (confirm GET /api/health revision)."
+
       - uses: actions/setup-node@v5
+        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
+        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
         run: npm ci
 
       - name: Install Vercel CLI
+        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
         run: npm install --global vercel@latest
 
       - name: Pull Vercel project environment
+        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Build project artifacts
+        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -59,16 +132,27 @@ jobs:
       # --archive=tgz: one upload instead of thousands of file API calls (avoids
       # Hobby "api-upload-free" 5000/24h limit — see Vercel CLI deploy docs).
       - name: Deploy prebuilt artifacts to production
+        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           set -e
-          for attempt in 1 2 3; do
+          attempt=1
+          while [ "$attempt" -le 3 ]; do
             echo "vercel deploy --prebuilt attempt ${attempt}/3"
-            if vercel deploy --prebuilt --prod --archive=tgz --token="$VERCEL_TOKEN"; then
+            set +e
+            out=$(vercel deploy --prebuilt --prod --archive=tgz --token="$VERCEL_TOKEN" 2>&1)
+            code=$?
+            set -e
+            printf '%s\n' "$out"
+            if [ "$code" -eq 0 ]; then
               exit 0
+            fi
+            if printf '%s' "$out" | grep -q 'api-deployments-free-per-day'; then
+              echo "::error::Vercel Hobby daily deployment limit (api-deployments-free-per-day). Retries will not help — wait for the rolling 24h window, reduce deploy frequency (disable duplicate Git integration vs CLI), or upgrade Pro. Confirm www via GET /api/health."
+              exit 1
             fi
             if [ "$attempt" -eq 3 ]; then
               echo "All deploy attempts failed"
@@ -76,4 +160,5 @@ jobs:
             fi
             echo "Waiting 45s before retry (transient race with Git integration or in-flight deploy)..."
             sleep 45
+            attempt=$((attempt + 1))
           done
