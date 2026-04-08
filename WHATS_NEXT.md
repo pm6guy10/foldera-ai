@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Settings header: single “Foldera” accessible name (no “FolderaFoldera”)
+
+**This session:** `/dashboard/settings` center home link used **`aria-label="Foldera"`** plus **`FolderaMark`** `alt="Foldera"` plus a wordmark — linearized copy / some AT stacked them as **FolderaFoldera**. **`FolderaMark`** adds optional **`decorative`** (`alt=""`, `aria-hidden`); settings header uses **`decorative`** + **`sr-only sm:hidden`** + **`hidden sm:inline`** wordmark. **Verify:** VoiceOver/NVDA or select-all on header should announce/show **Foldera** once.
+
 ## STATUS: SHIPPED — Gmail incremental `newer_than` + Haiku extraction JSON parse
 
 **This session:** `lib/sync/gmail-query.ts` + `google-sync.ts` — incremental **`messages.list`** uses **`newer_than:`** (min 1h) instead of timezone-sensitive **`after:yyyy/mm/dd`**. `lib/signals/signal-processor.ts` — **`parseSignalExtractionJson`** (balanced array + trailing-comma repair). **Commit:** `6255d01`. **After Vercel Ready:** logs should show **`Gmail incremental q=newer_than:…`**; run **`npm run test:prod`** when convenient.

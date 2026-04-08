@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — FLOW: **Settings `/dashboard/settings` header accessible name dedupe (“FolderaFoldera”)**
+  MODE: FLOW (a11y / copy linearization)
+  Commit hash(es): (pending)
+  Files changed: `components/nav/FolderaMark.tsx` (`decorative` prop), `app/dashboard/settings/SettingsClient.tsx` (header home link), `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "Settings"` (4 passed). Full `vitest` run: 1 failure in `scorer-failure-suppression.test.ts` (unrelated to this change; pre-existing on tree).
+  Changes: Root cause — triple naming on the centered dashboard link (`aria-label` + image `alt` + visible text). Fix — decorative glyph + screen-reader-only label on `<sm` + visible wordmark on `sm+`, single accessible name.
+  Any unresolved issues: After deploy, quick check on production settings header (AT or copy). Optional follow-up: same pattern on `/dashboard` header uses `alt` + visible “Foldera” (duplicate for some AT) — narrower blast radius left for a later pass.
+
 - 2026-04-07 — AUDIT: **Audit remediation roadmap (B1–B3 + CI signals + docs/backlog)**
   MODE: AUDIT
   Commit hash(es): `7ff2409` (briefing, e2e, audit doc, backlog); signal batch + `normalizeInteractionTimestamp` + tests in `6255d01` (`lib/signals/signal-processor.ts`, `lib/signals/__tests__/signal-processor.test.ts`); spec header/rows updated in `6255d01` / follow-on doc commits as on `main`

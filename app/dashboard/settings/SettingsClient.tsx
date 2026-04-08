@@ -942,12 +942,13 @@ function Header({ onSignOut }: { onSignOut: () => void }) {
           <Link
             href="/dashboard"
             className="flex items-center gap-2 group min-h-[44px] min-w-[44px] justify-center rounded-lg px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-            aria-label="Foldera"
           >
             <FolderaMark
               size="sm"
+              decorative
               className="shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform group-hover:scale-105 shrink-0"
             />
+            <span className="sr-only sm:hidden">Foldera</span>
             <span className="text-sm font-black tracking-tighter text-white uppercase hidden sm:inline">Foldera</span>
           </Link>
         </div>
