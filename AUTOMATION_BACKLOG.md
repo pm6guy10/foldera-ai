@@ -56,6 +56,11 @@
 - **Prior:** Generator already skipped candidate ids containing `foldera` and artifacts with `to` `@resend.dev` (`noise_winner_excluded`).
 - **This session:** `lib/briefing/scorer.ts` — pre-scoring stage **`foldera_id_noise`** drops those candidates before hydrate/score; logs `scorer_foldera_id_filtered`.
 
+### DONE (2026-04-08) — OAuth re-auth UX + connector-health email gating
+
+- **DDL:** [`supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) — `user_tokens.oauth_reauth_required_at`, `user_subscriptions.last_dashboard_visit_at`. **Ops:** apply in prod when ready (`docs/SUPABASE_MIGRATIONS.md` pending row); until then integrations route falls back to legacy select.
+- **Code:** `needs_reauth` + dashboard reconnect banner + settings `?reconnect=`; non-blocking `last_dashboard_visit_at` on `GET /api/conviction/latest`; connector-health 14d secondary-source lookback + skip email if dashboard visited within 7d; Microsoft Graph 401 → `forceRefreshMicrosoftTokens`; CI E2E mocks for `/api/integrations/status` + flow-route stubs. **Commits:** `3c7722b`, `c71563a` (session hash note).
+
 ### DONE (2026-04-08) — `generation_retry_storm` loop gate (5-window / ≥3 match)
 
 - **Prior:** `GENERATION_LOOP_DETECTED` required last **3** rows identical after normalization.

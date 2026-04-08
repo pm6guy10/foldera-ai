@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-08 — OPS: **AUTOMATION_BACKLOG — OAuth re-auth + connector-health (DONE row)**
+  MODE: OPS
+  Commit hash(es): `7f85789`
+  Files changed: `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing).
+  Changes: Logged shipped OAuth re-auth / connector-health work under **DONE (2026-04-08)** with migration path and commit refs `3c7722b` / `c71563a`.
+  Any unresolved issues: Operator applies `20260408180000_oauth_reauth_dashboard_visit.sql` to production when ready.
+
 - 2026-04-08 — AUDIT: **Cross-source evidence — hard 28-snippet cap + structured logging**
   MODE: AUDIT
   Commit hash(es): `f867e5e`
