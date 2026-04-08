@@ -6,7 +6,7 @@
 
 - 2026-04-08 — AUDIT: **Golden path — bracket placeholder false positives blocked paid Generate**
   MODE: AUDIT
-  Commit hash(es): `4caf64f`
+  Commit hash(es): `14e9f46`
   Files changed: `lib/briefing/bracket-placeholder.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/bracket-placeholder.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
   **Ops baseline:** `npm run health` (2026-04-08 15:02 PT) — Gmail/Outlook fresh, mail cursors current, 0 failing; warnings duplicate directive / last gen `do_nothing`. `npm run scoreboard` — seven consecutive `settings_run_brief` rows **`generation_failed_sentinel`** with `llm_failed:Generation validation failed: artifact.title contains bracket placeholder text` (winner text referenced real contacts).
   **Change:** Template-only detection via `hasBracketTemplatePlaceholder()`; removed broad `\[[A-Z][a-z]+\s*[A-Za-z]*\]/` from `PLACEHOLDER_PATTERNS`.
