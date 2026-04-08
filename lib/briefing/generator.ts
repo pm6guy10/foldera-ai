@@ -4122,6 +4122,14 @@ export function getDecisionEnforcementIssues(input: {
   ) {
     out = out.filter((i) => i !== 'decision_enforcement:missing_owner_assignment');
   }
+  // Real question in outbound copy — “following up…” openers are common; don’t fail the whole run.
+  if (sendMessageHasQuestion) {
+    out = out.filter(
+      (i) =>
+        i !== 'decision_enforcement:passive_or_ignorable_tone' &&
+        i !== 'decision_enforcement:obvious_first_layer_advice',
+    );
+  }
   return out;
 }
 

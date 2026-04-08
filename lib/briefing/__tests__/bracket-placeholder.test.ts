@@ -18,6 +18,11 @@ describe('hasBracketTemplatePlaceholder', () => {
     expect(hasBracketTemplatePlaceholder('Ref: [US] payroll')).toBe(false);
   });
 
+  it('allows [deadline] / [topic] in finished document titles (deadline-cluster winners)', () => {
+    expect(hasBracketTemplatePlaceholder('Cross-vendor [deadline] coordination memo')).toBe(false);
+    expect(hasBracketTemplatePlaceholder('Weekly [topic] summary for leadership')).toBe(false);
+  });
+
   it('flags named ALL_CAPS template brackets only (not generic two-word labels)', () => {
     expect(hasBracketTemplatePlaceholder('x [INSERT DATE] y')).toBe(true);
     expect(hasBracketTemplatePlaceholder('[YOUR NAME]')).toBe(true);

@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: READY TO SHIP — Pipeline winner DB fields + peek script + bracket `deadline`/`topic` + `?` strips passive gates
+
+**This session:** `pipeline_runs.raw_extras` → **`winner_candidate_id`**, **`winner_decision_reason`**; **`npm run peek:pipeline-winner`**; bracket slot list no longer treats **`deadline`** / **`topic`** as template placeholders; **`send_message`** artifact with **`?`** drops passive + obvious-first-layer decision issues. **After push:** `GET /api/health` SHA; **`npm run test:prod`**; operator **Generate with AI** or dry run — confirm new rows and peek output align; stale skipped rows may still show old **`bracket placeholder`** until refreshed.
+
 ## STATUS: SHIPPED — Bracket guards + decision gates (subject line + unreplied-thread outreach)
 
 **This session:** `hasBracketTemplatePlaceholder` — no `subject` slot word; named caps templates only; `send_message` `?` = explicit ask; time/pressure patterns for “last N days” / “no replies”. **After deploy:** paid **Generate with AI** — confirm fewer `artifact.subject contains bracket placeholder` + `decision_enforcement:missing_*` strings in `pipeline_runs` / skipped rows.

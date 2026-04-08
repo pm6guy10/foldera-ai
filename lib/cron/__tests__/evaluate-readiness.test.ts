@@ -324,8 +324,16 @@ describe('isSendWorthy', () => {
     expect(result.reason).toBe('vague_subject');
   });
 
-  it('blocks subject "Following up on the contract" as obvious first-layer advice', () => {
-    const result = isSendWorthy(makeDirective(), makeArtifact({ subject: 'Following up on the contract' }));
+  it('blocks subject "Following up on the contract" as passive tone when the artifact has no question mark', () => {
+    // Default makeArtifact body ends with a question — that triggers sendMessageHasQuestion and strips
+    // passive_or_ignorable per generator.ts. Use a declarative body so the subject line is the signal.
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({
+        subject: 'Following up on the contract',
+        body: 'Hi Alice, we need alignment on contract filing before end of day. Please confirm the submission owner so we avoid missing the filing window. If we miss the cutoff, execution risk increases. Thanks, Brandon',
+      }),
+    );
     expect(result.worthy).toBe(false);
     expect(result.reason).toBe('decision_enforcement_passive_or_ignorable_tone');
   });

@@ -5,12 +5,13 @@
 
 /**
  * Known template slot words (whole bracket = slot).
- * Omit `subject` — models often emit meta like [Subject] / [SUBJECT] in email subjects; that is
- * finished copy for the user, not a fill-in slot. Omit overly generic tokens that rarely appear as
- * literal [word] placeholders in subjects.
+ * Omit `subject` — models emit [Subject] in real subjects. Omit `deadline|time|topic` — those
+ * tokens appear in **finished** write_document titles about real deadline/time/thread work (e.g.
+ * behavioral-pattern “deadline across contacts” winners); `[INSERT DATE]` / `[DUE DATE]` still
+ * fail via named caps + fill-markers.
  */
 const SLOT_WORD =
-  'name|company|date|role|title|recipient|amount|contact|user|sender|client|person|candidate|reader|addressee|employer|organization|department|signature|phone|email|address|link|deadline|time|location|venue|host|topic|here|unknown|placeholder';
+  'name|company|date|role|title|recipient|amount|contact|user|sender|client|person|candidate|reader|addressee|employer|organization|department|signature|phone|email|address|link|location|venue|host|here|unknown|placeholder';
 
 /** Whole-bracket content is a known slot word, e.g. [name], [date] */
 const WHOLE_SLOT = new RegExp(`\\[(?:${SLOT_WORD})\\](?!\\w)`, 'i');

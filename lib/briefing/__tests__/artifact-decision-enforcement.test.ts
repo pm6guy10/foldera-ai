@@ -42,6 +42,28 @@ describe('artifact decision enforcement', () => {
     );
   });
 
+  it('accepts send_message when a real question appears despite follow-up / checking-in openers', () => {
+    const directive = baseDirective({
+      directive: 'Send a short check-in on the open thread.',
+      reason: 'Vendor has not confirmed after prior nudges.',
+    });
+    const artifact = {
+      type: 'email',
+      to: 'vendor@example.com',
+      subject: 'Following up on the contract',
+      body: 'Hi — I wanted to follow up and check in on this thread. There have been no replies in the past 10 days — are you still able to send the countersign by Friday?',
+      draft_type: 'email_compose',
+    };
+
+    const issues = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+    });
+
+    expect(issues.filter((issue) => issue.includes('decision_enforcement:'))).toHaveLength(0);
+  });
+
   it('accepts send_message when body has a question plus recent-days timing and no-reply pressure', () => {
     const directive = baseDirective({
       directive: 'Ask Aya whether the contract review is still active.',

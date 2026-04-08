@@ -2117,6 +2117,10 @@ export async function runDailyGenerate(
           rawExtras: {
             pipeline_dry_run: Boolean(options.pipelineDryRun),
             budget_cap_sentinel: directive.directive === BUDGET_CAP_DIRECTIVE_SENTINEL,
+            winner_candidate_id:
+              directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.id ?? null,
+            winner_decision_reason:
+              directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.decisionReason ?? null,
           },
         });
       }
