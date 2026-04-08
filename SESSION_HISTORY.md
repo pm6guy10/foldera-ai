@@ -4,13 +4,20 @@
 
 ## Session Logs
 
+- 2026-04-08 — OPS: **Production reconciled — www = `main`, Vercel logs, `test:prod`**
+  MODE: OPS
+  Commit hash(es): `a12db1d` (empty `chore(ci): redeploy production to main tip` — fixes prod alias behind an older READY deploy)
+  Files changed: `docs/MASTER_PUNCHLIST.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  What was verified: Polled `GET https://www.foldera.ai/api/health` until `revision.git_sha_short ===` first 7 of `origin/main` (`a12db1d`); `x-foldera-git-sha` header matches full `revision.git_sha`. Vercel MCP `list_deployments` — top production **READY** `dpl_9CTWg6W6rB2t4s2a9QqqqfjkCGWo` @ `a12db1d`. `get_runtime_logs` production **`error`/`fatal`** last 24h — **none**. `npm run test:prod` — **61 passed** (smoke + audit). `npm run health` — 0 failing. Root cause of prior drift: a **newer** production deployment at **`1b605cf`** completed after **`3af031e`**, reverting www to an older tree without the health `revision` field.
+  Any unresolved issues: None for this receipt.
+
 - 2026-04-08 — AUDIT: **`/api/health` deploy identity (git SHA, deployment id, headers)**
   MODE: AUDIT
-  Commit hash(es): `be3d646`
+  Commit hash(es): `be3d646`, `3af031e`
   Files changed: `lib/config/deploy-revision.ts`, `lib/config/__tests__/deploy-revision.test.ts`, `app/api/health/route.ts`, `app/api/health/__tests__/route.test.ts`, `tests/e2e/public-routes.spec.ts`, `tests/production/smoke.spec.ts`, `FOLDERA_PRODUCT_SPEC.md`, `docs/MASTER_PUNCHLIST.md`, `AGENTS.md`, `CLAUDE.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (862 passed); `npm run test:ci:e2e` (46 passed)
   Changes: Replaced static `build` string with Vercel-driven **`build`** + **`revision`** object; optional **`x-foldera-git-sha`** / **`x-foldera-deployment-id`** response headers. CI E2E asserts local `revision` nulls + `build: local`; prod smoke asserts live SHA + header matches JSON.
-  Any unresolved issues: Run `npm run test:prod` after Vercel Ready to confirm production smoke passes against www (needs fresh `auth-state.json`).
+  Any unresolved issues: **Closed** by `a12db1d` redeploy + `npm run test:prod` receipt (same day).
 
 - 2026-04-08 — AUDIT: **Sentry — suppress transient EPIPE / ECONNRESET (client disconnect noise)**
   MODE: AUDIT

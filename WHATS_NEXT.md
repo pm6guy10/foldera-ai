@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Production reconciled (www = `main` + Vercel log check + `test:prod`)
+
+**This session:** `www` had regressed to **`1b605cf`** (legacy health JSON) while `main` was **`3af031e`**. Empty commit **`a12db1d`** re-triggered CI → deploy; polled until `revision.git_sha_short === a12db1d`. **Vercel MCP** `get_runtime_logs` production **error/fatal** 24h → **none**. **`npm run test:prod`** → **61 passed**. **Punchlist:** prod vs `main` alias race playbook. **Evidence:** deployment `dpl_9CTWg6W6rB2t4s2a9QqqqfjkCGWo` READY @ `a12db1d`.
+
 ## STATUS: SHIPPED — `/api/health` deploy observability (revision + headers)
 
 **This session:** `lib/config/deploy-revision.ts` — Vercel `VERCEL_GIT_COMMIT_SHA`, `VERCEL_DEPLOYMENT_ID`, `VERCEL_GIT_COMMIT_REF`, `VERCEL_ENV`. `GET /api/health` JSON: **`build`** (7-char SHA or `local`), **`revision`** `{ git_sha, git_sha_short, git_ref, deployment_id, vercel_env }`; headers **`x-foldera-git-sha`**, **`x-foldera-deployment-id`**. CI E2E + prod smoke assertions; punchlist + AGENTS + CLAUDE + spec row. **After deploy:** compare response `revision.git_sha` to `git rev-parse HEAD` on the shipped commit. **Verified:** `npm run health`; lint; build; vitest 862; `test:ci:e2e` 46.

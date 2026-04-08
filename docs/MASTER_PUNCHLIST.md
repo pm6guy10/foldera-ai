@@ -33,6 +33,8 @@ Confirm [GitHub remote](https://github.com/pm6guy10/foldera-ai) matches your for
 
 **Owner env smoke (production):** while signed in as **owner**, open [https://www.foldera.ai/api/dev/ops-health](https://www.foldera.ai/api/dev/ops-health) — JSON env + DB checks, no secret values ([app/api/dev/ops-health/route.ts](../app/api/dev/ops-health/route.ts)).
 
+**Production vs `main` (alias race):** `GET https://www.foldera.ai/api/health` must include **`revision.git_sha_short`** (7 chars). Compare to `git rev-parse origin/main` — if www is behind or still shows legacy `build` without `revision`, multiple production deploys finished **out of order** and the wrong one took the alias. **Fix:** push an empty commit to `main` (CI → [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)) or **Promote** the deployment whose SHA matches `main` in the Vercel dashboard.
+
 ---
 
 ## External uptime (UptimeRobot — operator)
