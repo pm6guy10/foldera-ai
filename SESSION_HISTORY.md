@@ -6,7 +6,7 @@
 
 - 2026-04-07 — AUDIT: **Full surface audit doc (`docs/FULL_SURFACE_AUDIT_2026-04-07.md`)**
   MODE: AUDIT
-  Commit hash(es): `6643afb`
+  Commit hash(es): `b830724`
   Files changed: `docs/FULL_SURFACE_AUDIT_2026-04-07.md`, `FOLDERA_PRODUCT_SPEC.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
   What was verified: `npm run health` (0 failing, 2 warnings); `npm run scoreboard` (failed — `pipeline_runs` missing on linked DB); `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (85 files, 811 tests); `npm run test:ci:e2e` (41 passed); `npm run test:prod` (61 passed); `npm audit` (13 vulns, exit 1)
   Changes: Point-in-time inventory of pages, APIs, crons, workflows, observability gaps, merged OPEN pointers; spec + backlog cross-links.
