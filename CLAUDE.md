@@ -46,7 +46,7 @@ Brain-receipt and `email-preview?action_id=` require an **owner** session on the
 
 ## Supabase schema and migrations
 
-**After pushing, apply any new migration files to production Supabase immediately. Do not consider the task done until the migration is confirmed applied.** (`npx supabase db push`, Dashboard SQL with the exact migration file, or operator workflow — confirm in hosted migration history.) See [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).
+**Applying production migrations is always the agent’s responsibility — not the user’s.** After pushing new files under `supabase/migrations/`, apply them to production Supabase in the same session and confirm (MCP `list_migrations` / `apply_migration`, or `npx supabase db push`, or Dashboard SQL matching the committed file). Do not close the session or tell Brandon to apply DDL. Foldera project ref: **neydszeamsflpghtrhue**. See [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).
 
 ## Database CHECK Constraints (tkg_goals)
 

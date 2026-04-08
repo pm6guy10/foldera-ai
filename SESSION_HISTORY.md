@@ -4,6 +4,22 @@
 
 ## Session Logs
 
+- 2026-04-08 — OPS: **Ship vitest pre-push stability + verify GitHub + Supabase prod**
+  MODE: OPS
+  Commit hash(es): `40bac00`
+  Files changed: `vitest.config.ts`, `lib/sync/__tests__/microsoft-sync.test.ts`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing); `npm run lint`; `npx vitest run --exclude ".claude/worktrees/**"` (842 passed); `git push` (pre-push build grep “Compiled successfully” + full vitest passed). Supabase MCP **`list_migrations`** on **neydszeamsflpghtrhue** — includes `oauth_reauth_dashboard_visit` (**20260408140704**) and `pipeline_runs` (**20260408030300**); **`execute_sql`** confirms `user_tokens.oauth_reauth_required_at` and `user_subscriptions.last_dashboard_visit_at`. `npx supabase db push --dry-run` reports remote version IDs not matching local filenames (expected drift) — **not** missing prod DDL.
+  Changes: Global Vitest `testTimeout` / `hookTimeout` 20s; microsoft-sync no_token case 30s cap.
+  Any unresolved issues: Local `next build` can ENOENT `pages-manifest.json` / incomplete `.next` on Windows after clean — CI/Linux is canonical; re-run build if E2E needs `next start`.
+
+- 2026-04-08 — OPS: **Runbook — agent always applies Supabase prod migrations (never the user)**
+  MODE: OPS
+  Commit hash(es): (set after push)
+  Files changed: `supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`, `docs/SUPABASE_MIGRATIONS.md`, `.cursor/rules/schema-migrations.mdc`, `.cursor/rules/agent.mdc`, `CLAUDE.md`, `AGENTS.md`, `AUTOMATION_BACKLOG.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
+  What was verified: Supabase MCP `list_migrations` + `execute_sql` on project **neydszeamsflpghtrhue** — `oauth_reauth_dashboard_visit` present; `COMMENT ON COLUMN` for both new columns executed; `information_schema` confirms columns.
+  Changes: Docs + rules state **agent** applies DDL (MCP `apply_migration` / `db push`). OAuth migration file gains `COMMENT ON COLUMN`; production comments applied live. Backlog OAuth row + WHATS_NEXT updated (no human “apply migration” handoff).
+  Any unresolved issues: None.
+
 - 2026-04-08 — OPS: **Severity-ranked outstanding backlog (S0–S3) in knowledge files**
   MODE: OPS (documentation)
   Commit hash(es): `a115a34`
@@ -18,7 +34,7 @@
   Files changed: `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
   What was verified: `npm run health` (0 failing).
   Changes: Logged shipped OAuth re-auth / connector-health work under **DONE (2026-04-08)** with migration path and commit refs `3c7722b` / `c71563a`.
-  Any unresolved issues: Operator applies `20260408180000_oauth_reauth_dashboard_visit.sql` to production when ready.
+  Any unresolved issues: None — production DDL tracked in `docs/SUPABASE_MIGRATIONS.md` (agent-applied).
 
 - 2026-04-08 — AUDIT: **Cross-source evidence — hard 28-snippet cap + structured logging**
   MODE: AUDIT
@@ -34,7 +50,7 @@
   Files changed: `supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`, `app/api/conviction/latest/route.ts`, `app/api/integrations/status/route.ts`, `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `lib/auth/user-tokens.ts`, `lib/auth/token-store.ts`, `lib/auth/__tests__/user-tokens.test.ts`, `lib/config/constants.ts`, `lib/cron/connector-health.ts`, `lib/cron/__tests__/connector-health.test.ts`, `lib/sync/microsoft-sync.ts`, `lib/briefing/generator.ts`, `tests/e2e/authenticated-routes.spec.ts`, `tests/e2e/flow-routes.spec.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build`; `npx vitest run lib/auth/__tests__/user-tokens.test.ts lib/cron/__tests__/connector-health.test.ts`; `npm run test:ci:e2e` (45 passed).
   Changes: Finished OAuth re-auth UX (non-blocking `last_dashboard_visit_at`, reconnect banner, `?reconnect=` + conditional `replaceState`); migration for `oauth_reauth_required_at` / `last_dashboard_visit_at`; connector-health test mocks updated for `.is('disconnected_at', null)` + dashboard-visit skip case; Playwright mocks for `/api/integrations/status` on dashboard + flow-route API stubs; removed localhost debug `fetch` from `generator.ts`; spec row cleanup for evidence bundle.
-  Any unresolved issues: Apply `20260408180000_oauth_reauth_dashboard_visit.sql` to production Supabase.
+  Any unresolved issues: None — see `docs/SUPABASE_MIGRATIONS.md` (agent applies migrations).
 
 - 2026-04-08 — OPS: **Audit remediation roadmap doc (`docs/AUDIT_REMEDIATION_ROADMAP.md`)**
   MODE: OPS (documentation)
@@ -66,7 +82,7 @@
   Files changed: `app/api/integrations/status/route.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `docs/SUPABASE_MIGRATIONS.md`, `SESSION_HISTORY.md`
   What was verified: `npx vitest run app/api/integrations/status/__tests__/route.test.ts` (4 passed); `npx eslint` on route + test
   Root cause: fallback used `JSON.stringify` on `PostgrestError` — **non-enumerable `message`** dropped the Postgres text, so `isOauthReauthColumnMissing` stayed false. Fix: `supabaseErrorText()` reads `message`/`details`/`hint`/`code`; inner try/catch maps thrown errors to legacy path. Temporary **#region agent log** POSTs to debug ingest (`35fceb`) — remove after user confirms + log proof.
-  Any unresolved issues: Run `npx supabase db push` (or apply SQL) for [`20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql).
+  Any unresolved issues: None — subsequent agent session applied migration via MCP; see `docs/SUPABASE_MIGRATIONS.md`.
 
 - 2026-04-07 — AUDIT: **Integrations status mail date = ingested signals (settings stale banner)**
   MODE: AUDIT

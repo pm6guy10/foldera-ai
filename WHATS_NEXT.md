@@ -13,7 +13,7 @@
 
 ## STATUS: SHIPPED — OAuth re-auth UX, connector-health gating, dashboard visit tracking
 
-**This session:** Migration `20260408180000_oauth_reauth_dashboard_visit.sql` (`oauth_reauth_required_at`, `last_dashboard_visit_at`); fatal OAuth soft-disconnect + `needs_reauth`; dashboard reconnect banner + settings `?reconnect=`; `GET /api/conviction/latest` updates visit timestamp non-blockingly; connector-health 14d lookback + skip email if dashboard visited within 7d; Microsoft sync refresh via `token-store`; removed debug ingest `fetch` from `generator.ts`; CI E2E mocks for integrations + flow-route API stubs. **Ops:** apply migration to production Supabase; `npm run test:prod` after Vercel Ready when auth-state is fresh.
+**This session:** Migration `20260408180000_oauth_reauth_dashboard_visit.sql` (`oauth_reauth_required_at`, `last_dashboard_visit_at`); fatal OAuth soft-disconnect + `needs_reauth`; dashboard reconnect banner + settings `?reconnect=`; `GET /api/conviction/latest` updates visit timestamp non-blockingly; connector-health 14d lookback + skip email if dashboard visited within 7d; Microsoft sync refresh via `token-store`; removed debug ingest `fetch` from `generator.ts`; CI E2E mocks for integrations + flow-route API stubs. **Production DDL** applied by agent (MCP), not a human follow-up — see `docs/SUPABASE_MIGRATIONS.md`. **Optional:** `npm run test:prod` after Vercel Ready when auth-state is fresh.
 
 ## STATUS: SHIPPED — Audit remediation roadmap (canonical doc)
 

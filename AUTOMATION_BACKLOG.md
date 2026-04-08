@@ -71,7 +71,7 @@
 
 ### DONE (2026-04-08) — OAuth re-auth UX + connector-health email gating
 
-- **DDL:** [`supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) — `user_tokens.oauth_reauth_required_at`, `user_subscriptions.last_dashboard_visit_at`. **Ops:** apply in prod when ready (`docs/SUPABASE_MIGRATIONS.md` pending row); until then integrations route falls back to legacy select.
+- **DDL:** [`supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) — `user_tokens.oauth_reauth_required_at`, `user_subscriptions.last_dashboard_visit_at` + column comments. **Production:** applied via agent (Supabase MCP); hosted `oauth_reauth_dashboard_visit` / `20260408140704`; see [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).
 - **Code:** `needs_reauth` + dashboard reconnect banner + settings `?reconnect=`; non-blocking `last_dashboard_visit_at` on `GET /api/conviction/latest`; connector-health 14d secondary-source lookback + skip email if dashboard visited within 7d; Microsoft Graph 401 → `forceRefreshMicrosoftTokens`; CI E2E mocks for `/api/integrations/status` + flow-route stubs. **Commits:** `3c7722b`, `c71563a` (session hash note).
 
 ### DONE (2026-04-08) — `generation_retry_storm` loop gate (5-window / ≥3 match)

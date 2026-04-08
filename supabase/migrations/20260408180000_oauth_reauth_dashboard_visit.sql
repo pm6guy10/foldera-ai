@@ -4,3 +4,9 @@ ALTER TABLE user_tokens
 
 ALTER TABLE user_subscriptions
   ADD COLUMN IF NOT EXISTS last_dashboard_visit_at TIMESTAMPTZ;
+
+COMMENT ON COLUMN public.user_tokens.oauth_reauth_required_at IS
+  'Set when OAuth refresh fails fatally (e.g. invalid_grant); cleared on reconnect via saveUserToken.';
+
+COMMENT ON COLUMN public.user_subscriptions.last_dashboard_visit_at IS
+  'Updated on GET /api/conviction/latest; connector-health may skip stale-source alert emails if visit is recent.';

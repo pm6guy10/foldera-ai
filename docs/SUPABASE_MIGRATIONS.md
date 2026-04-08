@@ -2,19 +2,15 @@
 
 **Maps to:** `AUTOMATION_BACKLOG` AZ-20, `FOLDERA_PRODUCT_SPEC` data integrity.
 
-**After pushing, apply any new migration files to production Supabase immediately. Do not consider the task done until the migration is confirmed applied.**
+## Who applies production DDL
+
+**The agent (Codex / Cursor) always applies migrations to production.** This is never Brandon’s or an “operator” follow-up task. In the same session as pushing migration files to `main`, use Supabase MCP **`apply_migration`** (Foldera **`project_id` / ref: `neydszeamsflpghtrhue`**) or `npx supabase db push` with the repo linked. Confirm via MCP **`list_migrations`** or hosted migration history. Do not close the session with “user should run db push.”
 
 ## Rules
 
 1. **Every DDL change is a versioned file** under [`supabase/migrations/`](../supabase/migrations/). No “just run this in the SQL editor” without a matching migration file in the repo (except emergency hotfix — follow up with a migration that matches prod within one session).
 
-2. **Apply via CLI linked to the project:** from repo root, with the project linked and credentials available:
-
-   ```bash
-   npx supabase db push
-   ```
-
-   Or use the Supabase Dashboard SQL editor **only** to run the exact contents of a migration file you are also committing.
+2. **Apply after push:** Prefer MCP `apply_migration` with the exact SQL from the committed file (name in snake_case). **`npx supabase db push`** when the CLI is linked and the database password is available. Dashboard SQL editor **only** as fallback — paste the **exact** file contents.
 
 3. **Never drift:** If production was altered manually, capture the final state in a new migration (or revert prod to match repo) so `migration list` and the database stay aligned.
 
@@ -24,15 +20,15 @@
 
 ## CI
 
-There is no automated `supabase db push` in GitHub Actions today (secrets / linked project). The gate is human: migrations committed + applied at deploy or maintenance window.
+GitHub Actions does not run `supabase db push` today (no DB secret in Actions). **The agent still applies to production** after merging schema work — CI not wiring `db push` does not transfer the obligation to a human.
 
-## Production apply log (operator / MCP)
+## Production apply log
 
 - **2026-04-04:** `apply_commitment_ceiling` applied to production (`apply_commitment_ceiling` / version `20260403144654` in hosted migration history). SQL matches [`supabase/migrations/20260404000001_apply_commitment_ceiling.sql`](../supabase/migrations/20260404000001_apply_commitment_ceiling.sql).
 
-- **Pending:** [`supabase/migrations/20260407120000_pipeline_runs.sql`](../supabase/migrations/20260407120000_pipeline_runs.sql) — `pipeline_runs` + `api_usage.pipeline_run_id` for `npm run scoreboard` and cron heartbeats. Apply with `npx supabase db push` before relying on observability rows in prod.
+- **2026-04-08:** **OAuth re-auth + dashboard visit** — columns `user_tokens.oauth_reauth_required_at`, `user_subscriptions.last_dashboard_visit_at`. Hosted migration name **`oauth_reauth_dashboard_visit`** (version **`20260408140704`** via MCP). Repo file [`supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`](../supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) is the canonical SQL (same `ALTER`s; **2026-04-08** follow-up: `COMMENT ON COLUMN` added in file and applied live). If CLI history shows a version mismatch vs filename, use `supabase migration repair` or align via dashboard history — do not ask Brandon to fix.
 
-- **Pending (OAuth re-auth columns):** [`supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`](../supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) — `user_tokens.oauth_reauth_required_at`, `user_subscriptions.last_dashboard_visit_at`. Until applied, `GET /api/integrations/status` uses a legacy `user_tokens` select (no `needs_reauth` from DB). Apply in prod to match code that writes these columns.
+- **2026-04-08:** **`pipeline_runs`** — hosted version **`20260408030300`** (`pipeline_runs`); aligns with repo [`supabase/migrations/20260407120000_pipeline_runs.sql`](../supabase/migrations/20260407120000_pipeline_runs.sql) (timestamp in filename may differ from hosted row — verify with `list_migrations`).
 
 ## References
 

@@ -7,6 +7,8 @@ alwaysApply: false
 
 # Schema / migrations (production Supabase)
 
-**After pushing, apply any new migration files to production Supabase immediately. Do not consider the task done until the migration is confirmed applied.**
+**Applying migrations to production is the agent’s job — never delegate this to Brandon or any human “operator.”** After pushing migration files, apply them in the same session before closing. Do not mark the task done until applied and verified (columns exist / `list_migrations` / `migration list`).
 
-Use `npx supabase db push`, the Supabase Dashboard SQL editor (exact migration file contents), or your operator process — then confirm in hosted migration history / `migration list`. See [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).
+**Preferred (Foldera project):** Supabase MCP — `apply_migration` with `project_id` for **neydszeamsflpghtrhue** (see [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md)). **Also valid:** `npx supabase db push` with the repo linked and DB password available. Dashboard SQL editor only as a fallback using the **exact** committed migration file body.
+
+See [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).
