@@ -4,9 +4,17 @@
 
 ## Session Logs
 
+- 2026-04-08 — AUDIT: **Cross-source evidence bundle for directive generation (fix inbox-only collapse)**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `lib/briefing/generator.ts`, `app/api/integrations/status/route.ts` (type fix for `hasMailConnector` / `unknown[]` token rows), `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/generator.test.ts` (56 passed). `npm run build` hit transient Windows `.next` rename/ENOENT on this machine after compile+typecheck succeeded — retry on CI/Linux expected green.
+  Changes: **Root cause:** `fetchWinnerSignalEvidence` only loaded scorer `sourceSignals` + inbox keyword/entity scans, so `signalEvidence` was effectively mail-shaped; `buildStructuredContext` cannot surface calendar/drive/chat if those rows never enter `signalEvidence`. **Fix:** merge recent processed non-inbox signals into the evidence list (deduped, per-source cap). **Instrumentation:** NDJSON ingest logs `H1` (pre/post merge sources) and `H2` (`supporting_signals` distinct sources) — remove `#region agent log` blocks after operator confirms `bundleSourceCount >= 3` in `debug-9c6bc3.log`.
+  Any unresolved issues: Push only after a local or staging run proves **`bundleSourceCount` ≥ 3** with real `tkg_signals` data; clear `debug-9c6bc3.log` before each repro run.
+
 - 2026-04-08 — OPS: **Cursor / runbook — production migration apply gate for schema work**
   MODE: OPS
-  Commit hash(es): (set after push)
+  Commit hash(es): `698e15d`
   Files changed: `.cursor/rules/agent.mdc`, `.cursor/rules/schema-migrations.mdc` (new), `CLAUDE.md`, `AGENTS.md`, `docs/SUPABASE_MIGRATIONS.md`, `SESSION_HISTORY.md`
   What was verified: `npm run health` (0 failing)
   Changes: Added the exact instruction — after pushing, apply new migrations to production Supabase immediately and do not treat the task as done until confirmed — to always-apply agent rules (when touching schema/migrations), a glob-scoped rule for `supabase/**/*`, CLAUDE, AGENTS, and SUPABASE_MIGRATIONS. Removed duplicate trailing frontmatter in `agent.mdc`.
