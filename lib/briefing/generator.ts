@@ -62,6 +62,7 @@ import {
 import { buildDiagnosticLensBlock, getVagueMechanismIssues } from './diagnostic-lenses';
 import { directiveHasStalePastDates, userFacingStaleDateScanText } from './scorer-failure-suppression';
 import { findLockedContactsInUserFacingPayload } from './locked-contact-scan';
+import { hasBracketTemplatePlaceholder } from './bracket-placeholder';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -3361,7 +3362,6 @@ const PLACEHOLDER_PATTERNS = [
   /\[your\s*name\]/i,
   /\[RECIPIENT\]/i,
   /\b(tbd|placeholder|lorem ipsum|example@|recipient@email\.com)\b/i,
-  /\[[A-Z][a-z]+\s*[A-Za-z]*\]/,
   /\[placeholder\]/i,
   /\[your\s/i,
   /\[insert\b/i,
@@ -3393,8 +3393,6 @@ const BANNED_LANGUAGE_PATTERNS = [
   /\bspend time offline\b/i,
   /\baffirmation\b/i,
 ];
-
-const BRACKET_PLACEHOLDER_RE = /\[[A-Z][a-zA-Z\s]*\]/;
 
 // ---------------------------------------------------------------------------
 // Utility functions
@@ -5695,16 +5693,16 @@ function validateGeneratedArtifact(
     }
   }
 
-  // Global placeholder scan on all artifact string fields
+  // Global placeholder scan on all artifact string fields (template slots only — not real names)
   for (const [key, val] of Object.entries(payload.artifact)) {
-    if (typeof val === 'string' && BRACKET_PLACEHOLDER_RE.test(val)) {
+    if (typeof val === 'string' && hasBracketTemplatePlaceholder(val)) {
       issues.push(`artifact.${key} contains bracket placeholder text`);
     }
   }
-  if (payload.directive && BRACKET_PLACEHOLDER_RE.test(payload.directive)) {
+  if (payload.directive && hasBracketTemplatePlaceholder(payload.directive)) {
     issues.push('directive contains bracket placeholder text');
   }
-  if (payload.insight && BRACKET_PLACEHOLDER_RE.test(payload.insight)) {
+  if (payload.insight && hasBracketTemplatePlaceholder(payload.insight)) {
     issues.push('insight contains bracket placeholder text');
   }
 

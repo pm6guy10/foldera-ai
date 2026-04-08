@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Golden path: bracket placeholder validation (paid Generate no longer false-fails on real names in titles)
+
+**This session:** `lib/briefing/bracket-placeholder.ts` + `validateGeneratedArtifact` uses `hasBracketTemplatePlaceholder` instead of `\[[A-Z][a-zA-Z\s]*\]` (which matched `[Nicole Vreeland]`-style titles). **After deploy:** Settings → **Generate with AI** → confirm `spend_policy.paid_llm_effective` and `pipeline_runs` / dashboard move past `artifact.title contains bracket placeholder text`; judge artifact specificity (holy-crap bar). **`npm run scoreboard`** should show fewer `generation_failed_sentinel` rows for that failure mode.
+
 ## STATUS: SHIPPED — Deploy workflow: Hobby quota + Git lag (preflight wait + quota success if Git READY)
 
 **This session:** [scripts/ci/vercel-deploy-preflight.py](scripts/ci/vercel-deploy-preflight.py) — **preflight** skips CLI when **READY** matches SHA, **waits** for Git **BUILDING** (bounded), **`check-ready`** after **`api-deployments-free-per-day`** so Actions can stay **green** if Git landed the commit while CLI was blocked ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)). Confirm [`GET /api/health`](https://www.foldera.ai/api/health) `revision.git_sha`. [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).

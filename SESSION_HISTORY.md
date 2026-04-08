@@ -4,6 +4,15 @@
 
 ## Session Logs
 
+- 2026-04-08 — AUDIT: **Golden path — bracket placeholder false positives blocked paid Generate**
+  MODE: AUDIT
+  Commit hash(es): `4caf64f`
+  Files changed: `lib/briefing/bracket-placeholder.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/bracket-placeholder.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
+  **Ops baseline:** `npm run health` (2026-04-08 15:02 PT) — Gmail/Outlook fresh, mail cursors current, 0 failing; warnings duplicate directive / last gen `do_nothing`. `npm run scoreboard` — seven consecutive `settings_run_brief` rows **`generation_failed_sentinel`** with `llm_failed:Generation validation failed: artifact.title contains bracket placeholder text` (winner text referenced real contacts).
+  **Change:** Template-only detection via `hasBracketTemplatePlaceholder()`; removed broad `\[[A-Z][a-z]+\s*[A-Za-z]*\]/` from `PLACEHOLDER_PATTERNS`.
+  What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run test:ci:e2e` (46). Post-push: `GET /api/health` SHA + `npm run test:prod` — fill below.
+  Any unresolved issues: Subjective “holy crap” artifact still depends on scorer + LLM; this fix only removes the **title bracket** false reject. Operator: re-run **Generate with AI** after deploy and re-check scoreboard.
+
 - 2026-04-08 — AUDIT: **Deploy workflow run #217 — preflight before Git READY + quota exit 0 if Git wins**
   MODE: AUDIT
   Commit hash(es): `727639f`
