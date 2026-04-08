@@ -83,6 +83,11 @@
 - **DDL:** [`supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`](supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) — `user_tokens.oauth_reauth_required_at`, `user_subscriptions.last_dashboard_visit_at` + column comments. **Production:** applied via agent (Supabase MCP); hosted `oauth_reauth_dashboard_visit` / `20260408140704`; see [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).
 - **Code:** `needs_reauth` + dashboard reconnect banner + settings `?reconnect=`; non-blocking `last_dashboard_visit_at` on `GET /api/conviction/latest`; connector-health 14d secondary-source lookback + skip email if dashboard visited within 7d; Microsoft Graph 401 → `forceRefreshMicrosoftTokens`; CI E2E mocks for `/api/integrations/status` + flow-route stubs. **Commits:** `3c7722b`, `c71563a` (session hash note).
 
+### DONE (2026-04-08) — `LIFE_CONTEXT_WEAVE` user prompt + WORK SHOWN runbook
+
+- **Code:** `lib/briefing/generator.ts` — `LIFE_CONTEXT_WEAVE_RULE` after `LIFE_CONTEXT` block (recipient-short + long paths) so outputs must ground at least one concrete non-thread detail when life snapshot is present. Tests: `evidence-bundle.test.ts`.
+- **Ops:** `docs/SESSION_SCOREBOARD.md` — **WORK SHOWN** checklist + SQL for latest row / `evidence_bundle`. Hammer-loop sessions paste proof in chat + `SESSION_HISTORY`.
+
 ### DONE (2026-04-08) — `generation_retry_storm` loop gate (widened window / ≥3 match)
 
 - **Prior:** `GENERATION_LOOP_DETECTED` required last **3** rows identical after normalization; then **5**-row window (**2026-04-08** choreography).

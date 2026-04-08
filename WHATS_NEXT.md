@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: IN FLIGHT — `LIFE_CONTEXT_WEAVE` + WORK SHOWN in `SESSION_SCOREBOARD`
+
+**This session:** User prompt mandates a concrete LIFE_CONTEXT detail in directive/why_now/body when non-mail snapshot present; scoreboard doc **WORK SHOWN** checklist + SQL. **After deploy:** owner `Generate Now` or brain-receipt → confirm new row `directive` references calendar/file/task/chat when `life_context_signals` populated; compare to pending `cf7e33be…` generic copy.
+
 ## STATUS: SHIPPED — Pipeline choreography + `GENERATION_LOOP_DETECTION_WINDOW` = 12
 
 **This session:** Piece 1 baseline + end in `docs/SESSION_SCOREBOARD.md`; loop window **5 → 12**; deploy **`3996bbd`** / `dpl_GjJhuzoo8R7MvgD3JAZ7pU2Fsw6g`; `npm run test:prod` 61. **Victory:** target row (max 30d shape copies) still **174** until cron churn — re-check after `daily-generate` runs.

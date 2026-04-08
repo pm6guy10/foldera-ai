@@ -86,5 +86,6 @@ describe('buildPromptFromStructuredContext recipient-short', () => {
     const prompt = buildPromptFromStructuredContext(ctx, 'send_message');
     expect(prompt).toContain('LIFE_CONTEXT');
     expect(prompt).toContain('[drive]');
+    expect(prompt).toContain('LIFE_CONTEXT_WEAVE');
   });
 });

@@ -2729,6 +2729,13 @@ function formatLifeContextPromptBlock(signals: CompressedSignal[]): string | nul
   );
 }
 
+/** When LIFE_CONTEXT is in the user prompt, require a concrete cross-surface detail in outputs ("how did it know that"). */
+const LIFE_CONTEXT_WEAVE_RULE =
+  'LIFE_CONTEXT_WEAVE (mandatory when LIFE_CONTEXT appears above):\n' +
+  '- In `directive`, `why_now`, and (for send_message) the email `body`, include at least one concrete detail clearly grounded in LIFE_CONTEXT (calendar event title or date, file or doc name, task title, chat topic). Paraphrase closely; do not invent facts not listed there.\n' +
+  '- The reader should feel you noticed their life beyond the primary email thread. If LIFE_CONTEXT items are unrelated to this recipient, one short grounded phrase still counts.\n' +
+  '- Do not output the labels "LIFE_CONTEXT", "cross-source snapshot", or other system jargon in `directive`, `why_now`, subject, or body.\n';
+
 export function buildPromptFromStructuredContext(
   ctx: StructuredContext,
   committedArtifactType?: ValidArtifactTypeCanonical,
@@ -2797,6 +2804,7 @@ export function buildPromptFromStructuredContext(
     const lifeCtxRecipient = formatLifeContextPromptBlock(ctx.life_context_signals ?? []);
     if (lifeCtxRecipient) {
       m.push(lifeCtxRecipient);
+      m.push(LIFE_CONTEXT_WEAVE_RULE);
     }
 
     if (ctx.locked_contacts_prompt) {
@@ -3149,6 +3157,7 @@ export function buildPromptFromStructuredContext(
   const lifeCtxLong = formatLifeContextPromptBlock(ctx.life_context_signals ?? []);
   if (lifeCtxLong) {
     sections.push(lifeCtxLong);
+    sections.push(LIFE_CONTEXT_WEAVE_RULE);
   }
 
   if (ctx.supporting_signals.length > 0) {

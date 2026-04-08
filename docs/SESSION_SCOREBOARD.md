@@ -108,6 +108,20 @@ Record pass/fail counts or save the log snippet.
 
 ---
 
+## WORK SHOWN (hammer loop — paste in chat + `SESSION_HISTORY`)
+
+Every pipeline-quality session must prove **what** was evaluated, not only “tests passed”:
+
+1. **Row** — `tkg_actions.id` (or latest by `generated_at`).
+2. **Directive** — `action_type`, `confidence`, `status`, first ~500 chars of `directive_text`.
+3. **Artifact** — merged `artifact` + `execution_result.artifact`: keys + ~300 chars of body/subject/content; or “skipped / no executable artifact” + `reason`.
+4. **Bundle / gates** — `execution_result.generation_log.evidence_bundle` (or `combined_distinct_sources` + `meets_three_source_bar`); local `POST /api/dev/brain-receipt` → `send_worthiness`, `bottom_gate`.
+5. **Funnel** — one line: AZ-05 7d/14d + `npm run health` warnings.
+
+Local: [`tests/local/README.md`](../tests/local/README.md) → `npm run test:local:brain-receipt`; email HTML: `/api/dev/email-preview?action_id=` (owner, `ALLOW_DEV_ROUTES=true`).
+
+---
+
 ## SQL helpers (Supabase SQL editor; replace `:user_id`)
 
 **Newest mail `occurred_at` by source (mail-shaped):**
@@ -156,6 +170,18 @@ SELECT count(*) AS pending
 FROM tkg_actions
 WHERE user_id = :user_id
   AND status = 'pending_approval';
+```
+
+**Latest action row (WORK SHOWN — directive + evidence_bundle):**
+
+```sql
+SELECT id, generated_at, action_type, confidence, status,
+  left(directive_text, 500) AS directive_prefix,
+  execution_result->'generation_log'->'evidence_bundle' AS evidence_bundle
+FROM tkg_actions
+WHERE user_id = :user_id
+ORDER BY generated_at DESC
+LIMIT 1;
 ```
 
 **Generation sentinel (adjust if you store failure only in `execution_result` JSON):**
