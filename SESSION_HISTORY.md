@@ -6,7 +6,7 @@
 
 - 2026-04-07 — FLOW: **Settings `/dashboard/settings` header accessible name dedupe (“FolderaFoldera”)**
   MODE: FLOW (a11y / copy linearization)
-  Commit hash(es): (pending)
+  Commit hash(es): `00566a4`
   Files changed: `components/nav/FolderaMark.tsx` (`decorative` prop), `app/dashboard/settings/SettingsClient.tsx` (header home link), `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
   What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "Settings"` (4 passed). Full `vitest` run: 1 failure in `scorer-failure-suppression.test.ts` (unrelated to this change; pre-existing on tree).
   Changes: Root cause — triple naming on the centered dashboard link (`aria-label` + image `alt` + visible text). Fix — decorative glyph + screen-reader-only label on `<sm` + visible wordmark on `sm+`, single accessible name.
