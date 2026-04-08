@@ -6,8 +6,8 @@
 
 - 2026-04-08 — OPS: **Audit remediation roadmap doc (`docs/AUDIT_REMEDIATION_ROADMAP.md`)**
   MODE: OPS (documentation)
-  Commit hash(es): (pending)
-  Files changed: `docs/AUDIT_REMEDIATION_ROADMAP.md` (new), `AUTOMATION_BACKLOG.md`, `docs/FULL_SURFACE_AUDIT_2026-04-07.md`, `AGENTS.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  Commit hash(es): `a79b578`
+  Files changed: `docs/AUDIT_REMEDIATION_ROADMAP.md` (new), `AUTOMATION_BACKLOG.md`, `docs/FULL_SURFACE_AUDIT_2026-04-07.md`, `AGENTS.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
   What was verified: N/A (doc-only); relative links in new file resolve under `docs/`.
   Changes: Canonical living roadmap — mermaid loop, Phases A–C done, D–G pending with tackle steps, AZ table excerpt, ritual, suggested session order; cross-links from backlog, full-surface audit Related docs, AGENTS.
   Any unresolved issues: None for this slice.
