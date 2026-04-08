@@ -1,4 +1,8 @@
-# WHAT'S NEXT — Updated 2026-04-07
+# WHAT'S NEXT — Updated 2026-04-08
+
+## STATUS: SHIPPED — Gmail incremental `newer_than` + Haiku extraction JSON parse
+
+**This session:** `lib/sync/gmail-query.ts` + `google-sync.ts` — incremental **`messages.list`** uses **`newer_than:`** (min 1h) instead of timezone-sensitive **`after:yyyy/mm/dd`**. `lib/signals/signal-processor.ts` — **`parseSignalExtractionJson`** (balanced array + trailing-comma repair). **Commit:** `6255d01`. **After Vercel Ready:** logs should show **`Gmail incremental q=newer_than:…`**; run **`npm run test:prod`** when convenient.
 
 ## STATUS: SHIPPED — Audit remediation roadmap (pipeline + `/dashboard/signals` CI)
 

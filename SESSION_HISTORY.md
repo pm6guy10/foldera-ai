@@ -14,7 +14,7 @@
 
 - 2026-04-08 — AUDIT: **Gmail incremental `newer_than` + Haiku extraction JSON repair**
   MODE: AUDIT
-  Commit hash(es): `ff71aee`
+  Commit hash(es): `6255d01`
   Files changed: `lib/sync/gmail-query.ts`, `lib/sync/google-sync.ts`, `lib/sync/__tests__/gmail-query.test.ts`, `lib/signals/signal-processor.ts`, `lib/signals/__tests__/signal-processor.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   What was verified: `npm run lint`; `npm run build`; `npx vitest run lib/sync/__tests__/gmail-query.test.ts lib/signals/__tests__/signal-processor.test.ts --exclude ".claude/worktrees/**"`
   Changes: Incremental Gmail `messages.list` uses `newer_than:` from `last_synced_at`→now (min 1h) via `buildGmailIncrementalListQuery` — avoids empty `after:yyyy/mm/dd` when Gmail applies calendar dates in mailbox timezone. Signal batch extraction: `parseSignalExtractionJson` (balanced array extract + trailing-comma strip). Removed debug `127.0.0.1:7695` ingest from `syncGmail`.
