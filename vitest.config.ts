@@ -5,6 +5,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    /** Pre-push runs the full suite in parallel; Windows CI-like runs can exceed 5s on cold imports. */
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
     /**
      * - `FOLDERA_DRY_RUN` empty so tests do not inherit local fixture mode from `.env.local`.
      * - `ANTHROPIC_API_KEY` set so modules that throw when missing a key still load; **all** SDK

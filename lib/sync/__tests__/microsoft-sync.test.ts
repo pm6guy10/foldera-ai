@@ -34,25 +34,29 @@ describe('syncMicrosoft', () => {
     vi.clearAllMocks();
   });
 
-  it('returns no_token without running sync work when token lookup resolves as disconnected', async () => {
-    getUserToken.mockResolvedValue(null);
-    const { syncMicrosoft } = await import('../microsoft-sync');
+  it(
+    'returns no_token without running sync work when token lookup resolves as disconnected',
+    async () => {
+      getUserToken.mockResolvedValue(null);
+      const { syncMicrosoft } = await import('../microsoft-sync');
 
-    const result = await syncMicrosoft('user-1');
+      const result = await syncMicrosoft('user-1');
 
-    expect(result).toEqual({
-      mail_signals: 0,
-      calendar_signals: 0,
-      file_signals: 0,
-      task_signals: 0,
-      mail_total_signals: 0,
-      calendar_total_signals: 0,
-      file_total_signals: 0,
-      task_total_signals: 0,
-      is_first_sync: false,
-      error: 'no_token',
-    });
-    expect(updateSyncTimestamp).not.toHaveBeenCalled();
-    expect(saveUserToken).not.toHaveBeenCalled();
-  });
+      expect(result).toEqual({
+        mail_signals: 0,
+        calendar_signals: 0,
+        file_signals: 0,
+        task_signals: 0,
+        mail_total_signals: 0,
+        calendar_total_signals: 0,
+        file_total_signals: 0,
+        task_total_signals: 0,
+        is_first_sync: false,
+        error: 'no_token',
+      });
+      expect(updateSyncTimestamp).not.toHaveBeenCalled();
+      expect(saveUserToken).not.toHaveBeenCalled();
+    },
+    30_000,
+  );
 });
