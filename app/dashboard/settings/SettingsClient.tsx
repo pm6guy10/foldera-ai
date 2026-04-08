@@ -359,10 +359,10 @@ export default function SettingsClient() {
         {mailIngestLooksStale && (
           <div className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 backdrop-blur-sm">
             <p className="text-sm text-amber-200/90 leading-relaxed">
-              Latest mail in your graph is from{' '}
+              Newest mail synced from your inboxes is dated{' '}
               {newestMailSignalAt
                 ? new Date(newestMailSignalAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
-                : 'no ingested messages yet'}
+                : '— none on file yet'}
               . If you have exchanged mail since then, use Sync now below or reconnect — new messages may not be reaching Foldera.
             </p>
           </div>

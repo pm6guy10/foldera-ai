@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-07 — AUDIT: **Integrations status mail date = ingested signals (settings stale banner)**
+  MODE: AUDIT
+  Commit hash(es): (pending)
+  Files changed: `app/api/integrations/status/route.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `app/dashboard/settings/SettingsClient.tsx`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
+  What was verified: `npm run health` (0 failing); `npm run lint`; `npm run build`; `npx vitest run app/api/integrations/status/__tests__/route.test.ts` (3 passed); `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "Settings"` (4 passed).
+  Changes: Dropped `.eq('processed', true)` from newest-mail query; banner copy aligned. Evidence: `lib/sync/google-sync.ts` upserts `processed: false`; banner previously used newest **processed** mail only.
+  Any unresolved issues: If DB has no ingested mail newer than Mar 27, banner stays stale legitimately — rewind / sync repair per `FOLDERA_PRODUCT_SPEC.md` mail-graph row.
+
 - 2026-04-08 — AUDIT: **Backlog closure sweep (scorer_loop, noise_winner, generation_retry_storm, CI pages, local login doc)**
   MODE: AUDIT
   Commit hash(es): verify `git log -1 --oneline` on `main` — subject `fix: duplicate cooldown skip_reason, loop 5/≥3, foldera scorer filter, try/terms/privacy CI`

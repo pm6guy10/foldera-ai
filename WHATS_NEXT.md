@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-08
 
+## STATUS: SHIPPED — Settings mail stale banner: ingested mail date (not `processed` only)
+
+**This session:** `GET /api/integrations/status` — `newest_mail_signal_at` / `mail_ingest_looks_stale` no longer filter `tkg_signals.processed=true`. Sync stores mail as `processed=false` until the signal processor runs; the old query could show **Mar 27** while **Last synced** was current. Settings: **Newest mail synced from your inboxes…**. Tests: `app/api/integrations/status/__tests__/route.test.ts`. **If the banner still shows an old date after deploy**, no newer gmail/outlook mail-shaped rows exist — ops rewind / `audit:supabase:sync-fix` per spec.
+
 ## STATUS: SHIPPED — Backlog sweep: duplicate cooldown, loop gate (5/≥3), foldera scorer filter, try/terms/privacy CI
 
 **This session:** `skippedRowQualifiesForDuplicateSuppressionCooldown` + `getSuppressedCandidateKeys` (`skip_reason` / `auto_suppression_reason`: duplicate pending, forced fresh); `detectDominantNormalizedDirectiveLoop` + `runDailyGenerate` last-5 / ≥3 match; scorer **`foldera_id_noise`**; `public-routes` e2e for `/try`, `/terms`, `/privacy`; audit matrix Green; `playwright.ci.config` NEXTAUTH_URL vs 127.0.0.1 note; AUTOMATION_BACKLOG CLOSED rows. **Verify after deploy:** `scorer_suppressed_candidate_cooldown`, `scorer_foldera_id_filtered`, `GENERATION_LOOP_DETECTED` log line; `npm run test:prod`.

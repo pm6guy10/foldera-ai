@@ -80,11 +80,13 @@ export async function GET() {
       sourceCounts[src] = (sourceCounts[src] ?? 0) + 1;
     }
 
+    // Newest mail by message date among ingested Gmail/Outlook rows — not `processed=true`.
+    // Sync upserts with processed=false until the signal processor runs; filtering only processed
+    // made "Latest mail…" look weeks stale while connectors showed fresh sync (misleading banner).
     const { data: newestMailRow } = await supabase
       .from('tkg_signals')
       .select('occurred_at')
       .eq('user_id', session.user.id)
-      .eq('processed', true)
       .in('source', ['gmail', 'outlook'])
       .in('type', ['email_received', 'email_sent'])
       .order('occurred_at', { ascending: false })
