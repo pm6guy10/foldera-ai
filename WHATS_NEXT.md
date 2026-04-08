@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-07
 
+## STATUS: SHIPPED — Full surface audit doc (`docs/FULL_SURFACE_AUDIT_2026-04-07.md`)
+
+**This session:** Point-in-time inventory (14 pages, 56 API routes, crons vs manual, 14 workflows), automation snapshot (health/scoreboard/lint/build/811 vitest/41 CI e2e/61 test:prod, `npm audit`), merged OPEN pointers, gaps (`/dashboard/signals` e2e, Sentry not triaged here). **Commits:** `b830724`, session-log hash fix `6d8396f`. **Ops:** `npm run scoreboard` still fails until `pipeline_runs` migration on linked DB.
+
 ## STATUS: SHIPPED — Microsoft To Do: `$top` only (narrowest Graph task query)
 
 **This session:** **`lib/sync/microsoft-sync.ts`** — logs still showed **`ParseUri`** after removing **`$filter`** if production ran the brief with **`$orderby`** (8603b91). **`2ba6584+`** dropped **`$orderby`**. This change drops **`$select`** too — only **`?$top=`** on **`/me/todo/lists/{id}/tasks`**, to shave broker OData parse failures; default payload still has fields we read.
