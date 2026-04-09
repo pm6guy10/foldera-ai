@@ -6,7 +6,7 @@
 
 - 2026-04-09 — AUDIT: **Hunt marketing filter + nightly signal batch 1.5x + post-salvage artifact peek**
   MODE: AUDIT
-  Commit hash(es): (pending push)
+  Commit hash(es): `26c5d6b`
   Files changed: `lib/briefing/hunt-anomalies.ts`, `lib/briefing/__tests__/hunt-anomalies.test.ts`, `lib/config/constants.ts`, `app/api/cron/nightly-ops/route.ts`, `app/api/cron/nightly-ops/__tests__/route.test.ts`, `lib/briefing/generator.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   **Change:** (1) **`isBulkOrMarketingSender`** — `repeated_ignored_sender` hunt candidates skip marketing/noreply-style addresses and a small ESP domain set. (2) **`NIGHTLY_OPS_SIGNAL_BATCH_MULTIPLIER`** — nightly-ops multiplies backlog-mode `maxSignals` by 1.5 only (daily-brief unchanged); logs `signal_batch_size_base` + multiplier. (3) **`post_bracket_salvage_artifact_peek`** after `applyBracketTemplateSalvage` — full `title`/`subject` in dev or **`FOLDERA_LOG_SALVAGE_ARTIFACT=true`**, else lengths only.
   What was verified: `npm run health`; `npx vitest run` hunt + nightly-ops tests; `npm run lint`; `npm run build` (pending full suite if time).
