@@ -5589,11 +5589,76 @@ function persistedDirectiveLooksLikePaymentDeadline(input: {
   }
 }
 
+/** Do not salvage bracket tokens into email routing fields. */
+const BRACKET_SALVAGE_SKIP_ARTIFACT_KEYS = new Set([
+  'to',
+  'recipient',
+  'gmail_thread_id',
+  'in_reply_to',
+  'references',
+]);
+
+function buildBracketSalvageFallbackText(ctx: StructuredContext): string {
+  const raw = (ctx.candidate_reason || ctx.candidate_title || '').trim();
+  const head = raw.slice(0, 80).trim() || 'Priority follow-up based on your recent signals and goals';
+  if (head.length >= 50) return head;
+  return `${head} — full thread context is available in Foldera.`.slice(0, 220);
+}
+
+/**
+ * Replaces template-style bracket fields with scorer context so validation can pass.
+ * Exported for unit tests only.
+ */
+export function applyBracketTemplateSalvage(
+  payload: GeneratedDirectivePayload,
+  ctx: StructuredContext,
+  userId?: string,
+): boolean {
+  const fallback = buildBracketSalvageFallbackText(ctx);
+  let salvaged = false;
+  const salvagedKeys: string[] = [];
+  const art = payload.artifact as Record<string, unknown>;
+  for (const key of Object.keys(art)) {
+    if (BRACKET_SALVAGE_SKIP_ARTIFACT_KEYS.has(key)) continue;
+    const val = art[key];
+    if (typeof val !== 'string' || !hasBracketTemplatePlaceholder(val)) continue;
+    art[key] = fallback;
+    salvaged = true;
+    salvagedKeys.push(key);
+  }
+  if (typeof payload.directive === 'string' && hasBracketTemplatePlaceholder(payload.directive)) {
+    payload.directive = fallback;
+    salvaged = true;
+    salvagedKeys.push('directive');
+  }
+  if (typeof payload.insight === 'string' && hasBracketTemplatePlaceholder(payload.insight)) {
+    payload.insight = fallback;
+    salvaged = true;
+    salvagedKeys.push('insight');
+  }
+  if (salvaged && userId) {
+    logStructuredEvent({
+      event: 'bracket_strip_salvage',
+      level: 'info',
+      userId,
+      artifactType: payload.artifact_type ?? null,
+      generationStatus: 'bracket_strip_salvage',
+      details: {
+        bracket_strip_salvage: true,
+        scope: 'validateGeneratedArtifact',
+        salvaged_keys: salvagedKeys,
+        candidate_title: ctx.candidate_title?.slice(0, 80),
+      },
+    });
+  }
+  return salvaged;
+}
+
 function validateGeneratedArtifact(
   payload: GeneratedDirectivePayload | null,
   ctx: StructuredContext,
   canonicalArtifactType: ValidArtifactTypeCanonical,
-  relax?: { pipelineDryRun?: boolean },
+  relax?: { pipelineDryRun?: boolean; userIdForLogs?: string },
 ): string[] {
   if (!payload) {
     return ['Response was not valid JSON in the required schema.'];
@@ -5601,6 +5666,9 @@ function validateGeneratedArtifact(
 
   const issues: string[] = [];
   const pipelineDry = relax?.pipelineDryRun === true;
+  if (!pipelineDry) {
+    applyBracketTemplateSalvage(payload, ctx, relax?.userIdForLogs);
+  }
 
   // Type check
   if (!VALID_ARTIFACT_TYPES.has(payload.artifact_type)) {
@@ -6934,7 +7002,27 @@ async function generatePayload(
     // DecisionPayload committed type is validated here — wrong artifact_type fails closed.
     // Post-parse drift logging still compares llm artifact_type to canonical on success.
 
-    const issues = validateGeneratedArtifact(parsed, ctx, committed);
+    // Pre-validation artifact visibility (full JSON only when FOLDERA_LOG_PRE_VALIDATION_ARTIFACT=true or non-production).
+    if (parsed) {
+      const pre = JSON.stringify(parsed);
+      if (
+        process.env.FOLDERA_LOG_PRE_VALIDATION_ARTIFACT === 'true' ||
+        process.env.NODE_ENV !== 'production'
+      ) {
+        console.log('[generator] pre_validate_artifact_json', pre);
+      } else {
+        console.log(
+          '[generator] pre_validate_artifact_json (redacted)',
+          JSON.stringify({
+            artifact_type: parsed.artifact_type,
+            artifact_keys: parsed.artifact && typeof parsed.artifact === 'object' ? Object.keys(parsed.artifact) : [],
+            payload_char_len: pre.length,
+          }),
+        );
+      }
+    }
+
+    const issues = validateGeneratedArtifact(parsed, ctx, committed, { userIdForLogs: userId });
     lastIssues = issues;
     if (attempt === 0) {
       issuesAttempt0 = [...issues];
@@ -7591,6 +7679,7 @@ export async function generateDirective(
             repairedPayload,
             ctx,
             decisionPayload.recommended_action,
+            { userIdForLogs: userId },
           );
           if (repairedIssues.length === 0) {
             payloadResult = { issues: [], payload: repairedPayload };
@@ -7642,7 +7731,9 @@ export async function generateDirective(
           ctx,
           decisionPayload.recommended_action,
         );
-        const fbIssues = validateGeneratedArtifact(fallback, ctx, 'wait_rationale');
+        const fbIssues = validateGeneratedArtifact(fallback, ctx, 'wait_rationale', {
+          userIdForLogs: userId,
+        });
         if (fbIssues.length === 0) {
           logStructuredEvent({
             event: 'low_cross_signal_wait_rationale',
