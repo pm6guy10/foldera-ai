@@ -6,7 +6,7 @@
 
 - 2026-04-09 — AUDIT: **Bracket template salvage + pre-validation artifact logging**
   MODE: AUDIT
-  Commit hash(es): (pending push)
+  Commit hash(es): `8699f54`
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/bracket-salvage.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   **Change:** Before other validation (excluding `pipelineDryRun`), **`applyBracketTemplateSalvage`** rewrites bracket-template artifact fields / directive / insight using scorer **`candidate_reason`** (fallback **`candidate_title`**); skips `to`/`recipient`/thread headers. **`logStructuredEvent`** `bracket_strip_salvage` with **`bracket_strip_salvage: true`**. Pre-validate **`console.log`**: full parsed payload in non-production or when **`FOLDERA_LOG_PRE_VALIDATION_ARTIFACT=true`**; production default is redacted keys/length only.
   What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (95 files, 877 tests); `npm run test:ci:e2e` (46 passed).
