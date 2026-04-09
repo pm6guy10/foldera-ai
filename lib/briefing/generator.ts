@@ -91,6 +91,24 @@ const STALE_SIGNAL_THRESHOLD_DAYS = 21;
 /** Exact operator-visible mock body for HTTP `dry_run=true` / `pipelineDryRun` (no Anthropic). */
 export const PIPELINE_DRY_RUN_MOCK_ARTIFACT = '[DRY RUN - no API call made]';
 
+/** Plain-language blurb for API responses and operators (dry run only). */
+function buildPipelineDryRunOperatorSummary(input: {
+  title: string;
+  canonicalAction: ValidArtifactTypeCanonical;
+  confidence: number;
+}): string {
+  const t = input.title.trim().slice(0, 400);
+  const verb =
+    input.canonicalAction === 'send_message'
+      ? 'draft an email for you to send'
+      : input.canonicalAction === 'write_document'
+        ? 'write a short document or memo for you to approve'
+        : input.canonicalAction === 'schedule_block'
+          ? 'suggest a calendar block'
+          : 'pause on outbound action this cycle';
+  return `Foldera's top focus right now: "${t}". It would next ${verb}. The internal match score is ${input.confidence} out of 100. This was a dry run — no AI wrote real subject or body text; use Generate with AI when you want an actual draft.`;
+}
+
 function isAbsenceDrivenWinnerType(t: string): boolean {
   return t === 'discrepancy' || t === 'hunt';
 }
@@ -7847,6 +7865,11 @@ export async function generateDirective(
                 candidate_title: currentCandidate.title,
                 candidate_id: currentCandidate.id,
                 candidate_type: currentCandidate.type,
+                operator_summary: buildPipelineDryRunOperatorSummary({
+                  title: currentCandidate.title,
+                  canonicalAction,
+                  confidence: effectiveConfidence,
+                }),
               },
             }
           : {}),

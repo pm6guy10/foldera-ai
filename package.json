@@ -17,6 +17,7 @@
     "health": "npx tsx scripts/health.ts",
     "scoreboard": "npx tsx scripts/scoreboard.ts",
     "peek:pipeline-winner": "npx tsx scripts/peek-pipeline-winner.ts",
+    "prod:dry-run-plain": "npx tsx scripts/prod-dry-run-plain.ts",
     "check:pipeline-heartbeat": "npx tsx scripts/pipeline-cron-heartbeat-check.ts",
     "test:prod:setup": "npx tsx tests/production/setup-auth.ts",
     "test:local:setup": "npx tsx tests/local/setup-auth-localhost.ts",

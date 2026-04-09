@@ -188,6 +188,8 @@ export interface PipelineDryRunReceipt {
   candidate_title: string;
   candidate_id: string;
   candidate_type: string;
+  /** One paragraph for operators/users — no code IDs required to understand the run. */
+  operator_summary: string;
 }
 
 /** Distinct `tkg_signals.source` values in the bundle passed to the LLM (supporting + life snapshot). */

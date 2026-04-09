@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-08 — AUDIT: **Production dry run script + `operator_summary` on pipeline dry-run receipt**
+  MODE: AUDIT
+  Commit hash(es): *(after push)*
+  Files changed: `lib/briefing/types.ts`, `lib/briefing/generator.ts`, `scripts/prod-dry-run-plain.ts`, `package.json`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  **Change:** `PipelineDryRunReceipt.operator_summary` — plain-English paragraph; `buildPipelineDryRunOperatorSummary()` in `generator.ts`; **`npm run prod:dry-run-plain`** (Playwright + `tests/production/auth-state.json`, POST `run-brief?dry_run=true&force=true`, **150s** timeout).
+  What was verified: `npm run health` (2026-04-08 17:24 PT); `npm run lint`; `npx vitest run` generator + generator-runtime; `npm run build`; live **`npm run prod:dry-run-plain`** — winner **deadline across contacts** / **write_document** / **74** (30s runtime).
+  Any unresolved issues: **`operator_summary`** ships after next deploy; re-run script on www to see the new field in JSON.
+
 - 2026-04-08 — AUDIT: **Bracket slots + send_message decision strip + pipeline winner peek + test alignment**
   MODE: AUDIT
   Commit hash(es): `8d178d2`
