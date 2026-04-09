@@ -6,7 +6,7 @@
 
 - 2026-04-09 — AUDIT: **Supabase linter — pin `search_path` on `api_budget_*` RPCs**
   MODE: AUDIT
-  Commit hash(es): _(set after push)_
+  Commit hash(es): `2c92ebf`
   Files changed: `supabase/migrations/20260409200000_api_budget_functions_search_path.sql`, `docs/SUPABASE_MIGRATIONS.md`, `SESSION_HISTORY.md`
   **Change:** Production **`api_budget_check_and_reserve(integer)`** and **`api_budget_record_actual(integer)`** now have **`proconfig`** **`search_path=public`** (fixes **function_search_path_mutable**). Migration uses **`to_regprocedure`** guards so local DBs without `api_budget` objects no-op.
   What was verified: Supabase MCP **`apply_migration`** + **`execute_sql`** on **`neydszeamsflpghtrhue`** (`proconfig` on both functions).
