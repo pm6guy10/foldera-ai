@@ -9,7 +9,7 @@
   Commit hash(es): `8699f54`
   Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/bracket-salvage.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
   **Change:** Before other validation (excluding `pipelineDryRun`), **`applyBracketTemplateSalvage`** rewrites bracket-template artifact fields / directive / insight using scorer **`candidate_reason`** (fallback **`candidate_title`**); skips `to`/`recipient`/thread headers. **`logStructuredEvent`** `bracket_strip_salvage` with **`bracket_strip_salvage: true`**. Pre-validate **`console.log`**: full parsed payload in non-production or when **`FOLDERA_LOG_PRE_VALIDATION_ARTIFACT=true`**; production default is redacted keys/length only.
-  What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (95 files, 877 tests); `npm run test:ci:e2e` (46 passed).
+  What was verified: `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"` (95 files, 877 tests); `npm run test:ci:e2e` (46 passed); post-push `npm run test:prod` (61 passed; prod still prior SHA until deploy catches `3bd0816`).
   Any unresolved issues: Salvage is a **degraded** artifact bar — monitor quality; other validation gates (decision_enforcement, cross-signal, etc.) still apply after salvage. Operator: for full pre-validate JSON on Vercel, set **`FOLDERA_LOG_PRE_VALIDATION_ARTIFACT=true`** temporarily.
 
 - 2026-04-08 — AUDIT: **Production dry run script + `operator_summary` on pipeline dry-run receipt**
