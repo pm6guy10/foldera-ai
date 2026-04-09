@@ -59,6 +59,19 @@ describe('runHuntAnomalies', () => {
     expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
   });
 
+  it('does not promote bulk/marketing senders as repeated_ignored_sender hunt candidates', () => {
+    const base = Date.now() - 5 * 24 * 60 * 60 * 1000;
+    const iso = (d: number) => new Date(base - d * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived('m1', iso(0), 'Bass Pro <marketing@basspro.com>', 'Sale A'),
+      mailReceived('m2', iso(10), 'Bass Pro <marketing@basspro.com>', 'Sale B'),
+      mailReceived('m3', iso(20), 'Bass Pro <marketing@basspro.com>', 'Sale C'),
+    ];
+    const { countsByKind, findings } = runHuntAnomalies({ signals, commitments: [] });
+    expect(countsByKind.repeated_ignored_sender).toBe(0);
+    expect(findings.filter((f) => f.kind === 'repeated_ignored_sender')).toHaveLength(0);
+  });
+
   it('does not flag repeated ignored sender when From is user mailbox', () => {
     const base = Date.now() - 5 * 24 * 60 * 60 * 1000;
     const iso = (d: number) => new Date(base - d * 60 * 60 * 1000).toISOString();

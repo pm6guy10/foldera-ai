@@ -220,7 +220,7 @@ describe('nightly-ops route', () => {
     vi.useRealTimers();
   });
 
-  it('keeps the original low-cap signal processing behavior when the backlog is below 100', async () => {
+  it('applies nightly 1.5x signal batch cap when the backlog is below 100', async () => {
     const { GET } = await import('../route');
     const response = await GET(new NextRequest('http://localhost/api/cron/nightly-ops'));
     const payload = await response.json();
@@ -230,7 +230,7 @@ describe('nightly-ops route', () => {
     expect(processUnextractedSignals).toHaveBeenNthCalledWith(
       1,
       'user-1',
-      expect.objectContaining({ maxSignals: 50 }),
+      expect.objectContaining({ maxSignals: 75 }),
     );
     expect(payload.stages.signal_processing).toMatchObject({
       rounds: 1,
@@ -241,7 +241,9 @@ describe('nightly-ops route', () => {
       event: 'nightly_ops_signal_mode',
       details: expect.objectContaining({
         nightly_ops_signal_mode: 'low',
-        signal_batch_size: 50,
+        signal_batch_size: 75,
+        signal_batch_size_base: 50,
+        nightly_ops_signal_batch_multiplier: 1.5,
         max_signal_rounds: 3,
       }),
     }));
@@ -273,13 +275,15 @@ describe('nightly-ops route', () => {
     expect(processUnextractedSignals).toHaveBeenNthCalledWith(
       1,
       'user-1',
-      expect.objectContaining({ maxSignals: 100 }),
+      expect.objectContaining({ maxSignals: 150 }),
     );
     expect(logStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'nightly_ops_signal_mode',
       details: expect.objectContaining({
         nightly_ops_signal_mode: 'high',
-        signal_batch_size: 100,
+        signal_batch_size: 150,
+        signal_batch_size_base: 100,
+        nightly_ops_signal_batch_multiplier: 1.5,
         max_signal_rounds: 10,
       }),
     }));

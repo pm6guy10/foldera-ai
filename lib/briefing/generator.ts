@@ -5668,6 +5668,21 @@ function validateGeneratedArtifact(
   const pipelineDry = relax?.pipelineDryRun === true;
   if (!pipelineDry) {
     applyBracketTemplateSalvage(payload, ctx, relax?.userIdForLogs);
+    // Diagnostic: compare model output vs salvage. In production log lengths only unless
+    // FOLDERA_LOG_SALVAGE_ARTIFACT=true (avoids shipping full title/subject in default logs).
+    const art = payload.artifact as Record<string, unknown>;
+    const title = art.title;
+    const subject = art.subject;
+    const allowFullSalvagePeek =
+      process.env.NODE_ENV !== 'production' || process.env.FOLDERA_LOG_SALVAGE_ARTIFACT === 'true';
+    if (allowFullSalvagePeek) {
+      console.log('[generator] post_bracket_salvage_artifact_peek', { title, subject });
+    } else {
+      console.log('[generator] post_bracket_salvage_artifact_peek', {
+        title_len: typeof title === 'string' ? title.length : typeof title,
+        subject_len: typeof subject === 'string' ? subject.length : typeof subject,
+      });
+    }
   }
 
   // Type check

@@ -79,3 +79,9 @@ export const APPROVAL_LOOKBACK_MS = MS_7D;
  * Created by the stress-test route; never has real tokens.
  */
 export const TEST_USER_ID = '22222222-2222-2222-2222-222222222222';
+
+/**
+ * Nightly `/api/cron/nightly-ops` scales `resolveSignalBacklogMode().maxSignals` by this factor
+ * so backlog drains faster. Daily-brief signal processing is unchanged.
+ */
+export const NIGHTLY_OPS_SIGNAL_BATCH_MULTIPLIER = 1.5;

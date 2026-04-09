@@ -97,6 +97,43 @@ function peerIsSelfOrProductNoise(peer: string | undefined, selfEmails: Set<stri
   return false;
 }
 
+/** Local-part patterns and known bulk domains — never treat as a hunt "ignored human peer". */
+const BULK_MARKETING_EMAIL_PREFIXES = [
+  'marketing@',
+  'noreply@',
+  'no-reply@',
+  'donotreply@',
+  'do-not-reply@',
+  'notifications@',
+  'newsletter@',
+  'promotions@',
+  'offers@',
+  'deals@',
+] as const;
+
+const BULK_MARKETING_DOMAINS = new Set<string>([
+  'mailchimp.com',
+  'mailgun.org',
+  'sendgrid.net',
+  'amazonses.com',
+  'constantcontact.com',
+  'ccsend.com',
+  'rsgsv.net',
+  'list-manage.com',
+  'hubspot.com',
+  'hubspotemail.net',
+]);
+
+/** Exported for unit tests. */
+export function isBulkOrMarketingSender(email: string): boolean {
+  const lower = email.trim().toLowerCase();
+  if (!lower.includes('@')) return false;
+  if (BULK_MARKETING_EMAIL_PREFIXES.some((p) => lower.startsWith(p))) return true;
+  const domain = lower.split('@').pop() ?? '';
+  if (BULK_MARKETING_DOMAINS.has(domain)) return true;
+  return false;
+}
+
 /** Inbound row whose From resolves to the user's mailbox — not "someone waiting on your reply". */
 function inboundFromSelf(fromEmails: string[], selfEmails: Set<string> | undefined): boolean {
   if (!fromEmails.length) return false;
@@ -489,6 +526,7 @@ export function runHuntAnomalies(args: {
   }
 
   for (const [sender, arr] of inboundBySender) {
+    if (isBulkOrMarketingSender(sender)) continue;
     const recent = arr.filter((m) => now - m.occurredMs <= window30);
     if (recent.length < 3) continue;
     const outboundToSender = sent.filter(

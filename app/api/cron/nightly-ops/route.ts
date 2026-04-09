@@ -33,7 +33,7 @@ import { runCommitmentCeilingDefense, runSelfHeal } from '@/lib/cron/self-heal';
 import { runAcceptanceGate } from '@/lib/cron/acceptance-gate';
 import { checkConnectorHealth } from '@/lib/cron/connector-health';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
-import { TEST_USER_ID, SIGNAL_RETENTION_DAYS, daysMs } from '@/lib/config/constants';
+import { TEST_USER_ID, SIGNAL_RETENTION_DAYS, daysMs, NIGHTLY_OPS_SIGNAL_BATCH_MULTIPLIER } from '@/lib/config/constants';
 import { runBehavioralGraph } from '@/lib/signals/behavioral-graph';
 import { runAttentionDecay } from '@/lib/signals/entity-attention-runtime';
 import { logApiBudgetStatusToSystemHealth } from '@/lib/cron/api-budget';
@@ -189,7 +189,11 @@ async function stageProcessSignals(): Promise<SignalProcessingResult> {
     ? await countNightlyOpsUnprocessedSignals()
     : totalUnprocessedBeforeReset;
   const userIdsWithBacklog = (await listUsersWithUnprocessedSignals({})).filter((id) => id !== TEST_USER_ID);
-  const backlogMode = resolveSignalBacklogMode(totalUnprocessed);
+  const baseBacklogMode = resolveSignalBacklogMode(totalUnprocessed);
+  const backlogMode = {
+    ...baseBacklogMode,
+    maxSignals: Math.ceil(baseBacklogMode.maxSignals * NIGHTLY_OPS_SIGNAL_BATCH_MULTIPLIER),
+  };
 
   logStructuredEvent({
     event: 'nightly_ops_signal_mode',
@@ -203,6 +207,8 @@ async function stageProcessSignals(): Promise<SignalProcessingResult> {
       unprocessed_signals_before_reset: totalUnprocessedBeforeReset,
       reset_stale_signals: resetStaleSignals,
       signal_batch_size: backlogMode.maxSignals,
+      signal_batch_size_base: baseBacklogMode.maxSignals,
+      nightly_ops_signal_batch_multiplier: NIGHTLY_OPS_SIGNAL_BATCH_MULTIPLIER,
       max_signal_rounds: backlogMode.rounds,
       low_backlog_signal_batch_size: LOW_BACKLOG_SIGNAL_BATCH_SIZE,
       low_backlog_max_signal_rounds: LOW_BACKLOG_MAX_SIGNAL_ROUNDS,
