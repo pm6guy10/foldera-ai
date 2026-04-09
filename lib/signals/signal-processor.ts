@@ -206,10 +206,40 @@ function extractFirstTopLevelJsonArray(raw: string): string | null {
   return null;
 }
 
+/** Haiku sometimes wraps the array in an object or returns a single row object. */
+function coerceExtractionsArray(parsed: unknown): {
+  arr: SignalExtraction[];
+  shape?: 'object_wrapper' | 'single_object';
+} | null {
+  if (Array.isArray(parsed)) {
+    return { arr: parsed as SignalExtraction[] };
+  }
+  if (parsed && typeof parsed === 'object') {
+    const o = parsed as Record<string, unknown>;
+    for (const key of ['extractions', 'signals', 'results', 'data'] as const) {
+      const v = o[key];
+      if (Array.isArray(v)) {
+        return { arr: v as SignalExtraction[], shape: 'object_wrapper' };
+      }
+    }
+    if (typeof o.signal_id === 'string') {
+      return { arr: [parsed as SignalExtraction], shape: 'single_object' };
+    }
+  }
+  return null;
+}
+
+export type SignalExtractionJsonRecovery =
+  | 'trailing_comma'
+  | 'array_extract'
+  | 'array_extract_trailing_comma'
+  | 'object_wrapper'
+  | 'single_object';
+
 /** Exported for unit tests (Haiku batch path uses this parser). */
 export function parseSignalExtractionJson(rawText: string): {
   extractions: SignalExtraction[];
-  recovery?: 'trailing_comma' | 'array_extract' | 'array_extract_trailing_comma';
+  recovery?: SignalExtractionJsonRecovery;
 } {
   const cleaned = rawText.replace(/```(?:json|JSON)?\s*\n?/g, '').trim();
   type ParseAttempt = { recovery?: 'trailing_comma' | 'array_extract' | 'array_extract_trailing_comma'; text: string };
@@ -229,8 +259,16 @@ export function parseSignalExtractionJson(rawText: string): {
     seen.add(text);
     try {
       const parsed: unknown = JSON.parse(text);
-      if (Array.isArray(parsed)) {
-        return { extractions: parsed as SignalExtraction[], recovery };
+      const coerced = coerceExtractionsArray(parsed);
+      if (coerced) {
+        const combined: SignalExtractionJsonRecovery | undefined =
+          recovery ??
+          (coerced.shape === 'object_wrapper'
+            ? 'object_wrapper'
+            : coerced.shape === 'single_object'
+              ? 'single_object'
+              : undefined);
+        return { extractions: coerced.arr, recovery: combined };
       }
       lastErr = 'parsed_non_array';
     } catch (e: unknown) {
@@ -932,6 +970,7 @@ async function processBatch(
             extracted_entities: [],
             extracted_commitments: [],
             extracted_dates: null,
+            extraction_parse_error: null,
           })
           .eq('id', s.id)
           .then((r) => r.error);
@@ -972,6 +1011,7 @@ async function processBatch(
             extracted_entities: [],
             extracted_commitments: [],
             extracted_dates: redactionMetadata,
+            extraction_parse_error: null,
           })
           .eq('id', s.id);
         if (redactResult.error) {
@@ -1007,6 +1047,7 @@ async function processBatch(
             extracted_entities: [],
             extracted_commitments: [],
             extracted_dates: null,
+            extraction_parse_error: null,
           })
           .eq('id', s.id);
       }
@@ -1062,14 +1103,33 @@ async function processBatch(
       console.info(`[signal-processor] extraction JSON recovered via ${parsed.recovery}`);
     }
   } catch (error: unknown) {
-    // Parse failed — do NOT mark signals as processed. They will be retried
-    // on the next run. This prevents the Class E data loss pattern (signal
-    // consumed with zero extraction on transient LLM output issues).
-    // Signals that fail extraction repeatedly will eventually be quarantined
-    // by the stale-signal mechanism in self-heal (24h+ old with processed=false).
+    // Unrecoverable parse after all parser repairs — mark batch processed so the
+    // backlog cannot stall indefinitely (api_usage still shows the Haiku call).
+    // extraction_parse_error documents the failure for operators.
     const errMsg = error instanceof Error ? error.message : String(error);
     result.errors.push(`parse: ${errMsg}`);
-    console.error(`[signal-processor] LLM parse failure — ${decryptedBatch.length} signals left unprocessed for retry: ${errMsg}`);
+    console.error(
+      `[signal-processor] LLM parse failure — quarantining ${decryptedBatch.length} signal(s) with processed=true: ${errMsg}`,
+    );
+    const reason = errMsg.slice(0, 2000);
+    if (!dryRun) {
+      for (const signal of decryptedBatch) {
+        const { error: upErr } = await supabase
+          .from('tkg_signals')
+          .update({
+            processed: true,
+            extracted_entities: [],
+            extracted_commitments: [],
+            extracted_dates: null,
+            extraction_parse_error: reason,
+          })
+          .eq('id', signal.id);
+        if (upErr) {
+          result.errors.push(`parse_quarantine:${signal.id}:${upErr.message}`);
+        }
+      }
+    }
+    result.signals_processed += decryptedBatch.length;
     return result;
   }
 
@@ -1248,6 +1308,7 @@ async function processSingleExtractedSignal(args: {
           extracted_entities: entityIds.length > 0 ? entityIds : [],
           extracted_commitments: commitmentIds.length > 0 ? commitmentIds : [],
           extracted_dates: extractedDates.length > 0 ? extractedDates : null,
+          extraction_parse_error: null,
         })
         .eq('id', signal.id);
 
@@ -1712,6 +1773,7 @@ async function quarantineDeferredSignals(
       extracted_entities: [],
       extracted_commitments: [],
       extracted_dates: null,
+      extraction_parse_error: null,
     })
     .eq('user_id', userId)
     .eq('processed', false)

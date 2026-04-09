@@ -62,6 +62,7 @@ type SignalRow = {
   extracted_entities?: string[] | null;
   extracted_commitments?: string[] | null;
   extracted_dates?: Array<Record<string, unknown>> | null;
+  extraction_parse_error?: string | null;
 };
 
 function createSupabaseMock({
@@ -893,6 +894,85 @@ describe('parseSignalExtractionJson', () => {
     expect(extractions).toHaveLength(1);
     expect(extractions[0]?.signal_id).toBe('x');
     expect(recovery).toBe('array_extract');
+  });
+
+  it('accepts { extractions: [...] } wrapper from the model', async () => {
+    const { parseSignalExtractionJson } = await import('@/lib/signals/signal-processor');
+    const inner = [{ signal_id: 'a', persons: [], commitments: [], topics: [] }];
+    const raw = JSON.stringify({ extractions: inner });
+    const { extractions, recovery } = parseSignalExtractionJson(raw);
+    expect(extractions).toEqual(inner);
+    expect(recovery).toBe('object_wrapper');
+  });
+
+  it('accepts a single extraction object instead of an array', async () => {
+    const { parseSignalExtractionJson } = await import('@/lib/signals/signal-processor');
+    const one = { signal_id: 'solo', persons: [], commitments: [], topics: [] };
+    const { extractions, recovery } = parseSignalExtractionJson(JSON.stringify(one));
+    expect(extractions).toHaveLength(1);
+    expect(extractions[0]?.signal_id).toBe('solo');
+    expect(recovery).toBe('single_object');
+  });
+});
+
+describe('processUnextractedSignals parse failure quarantine', () => {
+  const USER_ID = '33333333-3333-3333-3333-333333333333';
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    mockIsOverDailyLimit.mockResolvedValue(false);
+    mockTrackApiCall.mockResolvedValue(undefined);
+    mockRecoverMicrosoftSignalContent.mockResolvedValue(null);
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+  });
+
+  it('marks each signal processed with extraction_parse_error when JSON is unrecoverable', async () => {
+    const entities: EntityRow[] = [
+      { id: 'self-1', user_id: USER_ID, name: 'self', display_name: 'You', patterns: {} },
+    ];
+    const signals: SignalRow[] = [
+      {
+        id: 'sig-a',
+        user_id: USER_ID,
+        source: 'gmail',
+        source_id: 'a',
+        type: 'email_received',
+        content: 'From: a@test.com\nSubject: Hi\n\nBody',
+        author: 'a@test.com',
+        occurred_at: '2026-04-01T12:00:00.000Z',
+        processed: false,
+      },
+      {
+        id: 'sig-b',
+        user_id: USER_ID,
+        source: 'gmail',
+        source_id: 'b',
+        type: 'email_received',
+        content: 'From: b@test.com\nSubject: Yo\n\nBody',
+        author: 'b@test.com',
+        occurred_at: '2026-04-02T12:00:00.000Z',
+        processed: false,
+      },
+    ];
+    const supabase = createSupabaseMock({ entities, signals });
+    vi.doMock('@/lib/db/client', () => ({
+      createServerClient: () => supabase,
+    }));
+
+    mockMessagesCreate.mockResolvedValue({
+      content: [{ type: 'text', text: 'NOT VALID JSON {{{' }],
+      usage: { input_tokens: 5, output_tokens: 5 },
+    });
+
+    const { processUnextractedSignals } = await import('@/lib/signals/signal-processor');
+    const result = await processUnextractedSignals(USER_ID, { maxSignals: 2 });
+
+    expect(result.signals_processed).toBe(2);
+    expect(result.errors.some((e) => e.startsWith('parse:'))).toBe(true);
+    expect(signals.every((s) => s.processed)).toBe(true);
+    expect(signals[0].extraction_parse_error).toBeTruthy();
+    expect(signals[1].extraction_parse_error).toBeTruthy();
   });
 });
 
