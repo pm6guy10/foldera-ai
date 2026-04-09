@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-09 — AUDIT: **Supabase security linter — `api_budget_status` security invoker + RLS on internal tables**
+  MODE: AUDIT
+  Commit hash(es): _(set after push)_
+  Files changed: `supabase/migrations/20260410100000_security_invoker_api_budget_status_and_rls_internal.sql`, `docs/SUPABASE_MIGRATIONS.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  **Change:** Recreated **`public.api_budget_status`** as **`security_invoker`** (replaces **SECURITY DEFINER** view). Enabled **RLS** with **`deny_all_public_*` RESTRICTIVE** policies on **`system_health`**, **`api_budget`**, **`session_state`**, **`tkg_directive_ml_snapshots`**, **`tkg_directive_ml_global_priors`**. **`api_budget` / view / `session_state`** blocks are guarded when tables are absent locally. Production MCP **`apply_migration`**; verified **`reloptions`** **`security_invoker=true`** and **`relrowsecurity`** on all listed tables.
+  What was verified: `npm run health` (0 failing); `npm run build`; Supabase **`execute_sql`** on **`neydszeamsflpghtrhue`**.
+  Any unresolved issues: Re-run Supabase Database Advisor for **0010** / **0013**.
+
 - 2026-04-09 — AUDIT: **RLS initplan + dedupe permissive policies (user_tokens, goals, signal_summaries, pattern_metrics)**
   MODE: AUDIT
   Commit hash(es): `71d2c42`
