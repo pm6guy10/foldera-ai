@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/db/client';
 import Anthropic from '@anthropic-ai/sdk';
 import { decryptWithStatus } from '@/lib/encryption';
+import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
 
 /** CE-5: at least two goal keywords appear in the same decrypted signal snippet (exported for tests). */
@@ -51,6 +52,11 @@ export async function refreshGoalContext(): Promise<{ ok: boolean; updated: numb
       .limit(100);
 
     if (!signals || signals.length < 5) { skipped++; continue; }
+
+    if (!isPaidLlmAllowed()) {
+      skipped++;
+      continue;
+    }
 
     // Use Claude to enrich each goal with entity names from signals
     const anthropic = new Anthropic();

@@ -31,6 +31,7 @@ import type {
   WaitRationaleArtifact,
 } from '@/lib/briefing/types';
 import type { DiscrepancyClass } from '@/lib/briefing/discrepancy-detector';
+import { assertPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import {
@@ -952,6 +953,7 @@ export async function generateArtifact(
       const { system, user } = buildDiscrepancyTransformPrompt(directive, flavor, relationships);
 
       try {
+        assertPaidLlmAllowed('artifact-generator.write_document_transform');
         const response = await getAnthropic().messages.create({
           model: ARTIFACT_MODEL,
           max_tokens: 800,
@@ -1038,6 +1040,7 @@ export async function generateArtifact(
     : [];
 
   try {
+    assertPaidLlmAllowed('artifact-generator.generateArtifact');
     const response = await getAnthropic().messages.create({
       model: ARTIFACT_MODEL,
       max_tokens: 4000,

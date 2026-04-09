@@ -21,6 +21,7 @@ import {
   ANTHROPIC_BUDGET_RESERVE_ESTIMATE_CENTS,
   reserveAnthropicBudgetSlot,
 } from '@/lib/cron/api-budget';
+import { assertPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { isOverDailyLimit, isOverManualCallLimit, trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import {
@@ -6875,6 +6876,8 @@ async function generatePayload(
       anomalyIdentification: undefined,
     };
   }
+
+  assertPaidLlmAllowed('generator.generatePayload');
 
   let anomalyIdentification: string | undefined;
   if (!options.dryRun) {

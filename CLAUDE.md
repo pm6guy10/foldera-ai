@@ -69,6 +69,7 @@ Any insert with values outside these sets will fail silently (Supabase returns s
 ## Environment Variables Required In Vercel
 
 - `ANTHROPIC_API_KEY`
+- `ALLOW_PAID_LLM` — global fail-closed gate: **only** when set exactly to `true` may the app call Anthropic (`messages.create`). Unset/false = zero paid LLM traffic from any pipeline, cron, ingest, agents, or `/api/try/analyze`. Vitest sets `ALLOW_PAID_LLM=true` in `vitest.config.ts` so tests still exercise call sites against the offline SDK stub.
 - `ENCRYPTION_KEY`
 - `CRON_SECRET`
 - `ALLOW_DEV_ROUTES` (`true` only in local/dev environments when testing `/api/dev/*`; leave unset in production)

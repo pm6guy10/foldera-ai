@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
 import Anthropic from '@anthropic-ai/sdk';
+import { assertPaidLlmAllowed } from '../lib/llm/paid-llm-gate';
 
 const BASE = (process.env.AGENT_UI_BASE_URL || 'https://www.foldera.ai').replace(/\/$/, '');
 const PAGES = ['/', '/start', '/login', '/pricing', '/blog'];
@@ -34,6 +35,8 @@ async function main() {
     console.error('[ui-critic] Missing ANTHROPIC_API_KEY or CRON_SECRET');
     process.exit(1);
   }
+
+  assertPaidLlmAllowed('scripts.agent-ui-critic');
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
 

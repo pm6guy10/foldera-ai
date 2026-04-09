@@ -14,6 +14,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus } from '@/lib/encryption';
+import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import type { ScoredLoop } from './scorer';
@@ -226,6 +227,10 @@ export async function researchWinner(
 
   try {
     if (process.env.FOLDERA_DRY_RUN === 'true' || options.pipelineDryRun) {
+      return null;
+    }
+
+    if (!isPaidLlmAllowed()) {
       return null;
     }
 

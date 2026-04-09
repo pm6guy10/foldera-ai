@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import type { AgentJobId } from '@/lib/agents/constants';
 import { AGENT_USAGE_ENDPOINT } from '@/lib/agents/constants';
@@ -29,6 +30,10 @@ export async function runAgentSonnet(params: {
   const anthropic = getClient();
   if (!anthropic) {
     return { error: 'ANTHROPIC_API_KEY not configured' };
+  }
+
+  if (!isPaidLlmAllowed()) {
+    return { error: 'Paid LLM disabled (set ALLOW_PAID_LLM=true)' };
   }
 
   try {
@@ -74,6 +79,10 @@ export async function runAgentSonnetVision(params: {
   const anthropic = getClient();
   if (!anthropic) {
     return { error: 'ANTHROPIC_API_KEY not configured' };
+  }
+
+  if (!isPaidLlmAllowed()) {
+    return { error: 'Paid LLM disabled (set ALLOW_PAID_LLM=true)' };
   }
 
   const content: Anthropic.ContentBlockParam[] = params.userParts.map((p) => {

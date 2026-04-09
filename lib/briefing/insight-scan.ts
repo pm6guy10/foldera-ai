@@ -7,6 +7,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
+import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { getDailySpend, trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
@@ -204,6 +205,10 @@ export async function runInsightScan(args: {
     .replace('{signals}', signalText)
     .replace('{goals}', goalText || '(none stated)')
     .replace('{entities}', entityText || '(none)');
+
+  if (!isPaidLlmAllowed()) {
+    return [];
+  }
 
   try {
     const client = new Anthropic();

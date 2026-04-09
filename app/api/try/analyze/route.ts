@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { rateLimit } from '@/lib/utils/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -103,6 +104,13 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+  }
+
+  if (!isPaidLlmAllowed()) {
+    return NextResponse.json(
+      { error: 'Paid LLM disabled. Set ALLOW_PAID_LLM=true to enable this demo route.' },
+      { status: 503 },
+    );
   }
 
   try {

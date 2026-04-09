@@ -19,6 +19,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus, encrypt } from '@/lib/encryption';
 import { recoverMicrosoftSignalContent } from '@/lib/sync/microsoft-sync';
+import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { isOverDailyLimit } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -279,6 +280,11 @@ export async function processUnextractedSignals(
     }
   } catch (err: unknown) {
     result.errors.push(`spend_cap: ${err instanceof Error ? err.message : String(err)}`);
+    return result;
+  }
+
+  if (!isPaidLlmAllowed()) {
+    result.errors.push('paid_llm_disabled');
     return result;
   }
 

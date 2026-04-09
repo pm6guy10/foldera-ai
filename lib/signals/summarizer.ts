@@ -13,6 +13,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus } from '@/lib/encryption';
+import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
@@ -38,6 +39,10 @@ export async function summarizeSignals(
   opts?: { skipAnthropic?: boolean },
 ): Promise<number> {
   if (opts?.skipAnthropic) {
+    return 0;
+  }
+
+  if (!isPaidLlmAllowed()) {
     return 0;
   }
 

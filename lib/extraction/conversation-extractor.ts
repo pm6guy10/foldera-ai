@@ -20,6 +20,7 @@ import { createHash } from 'crypto';
 import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 import { encrypt } from '@/lib/encryption';
 import { isNonCommitment } from '@/lib/signals/signal-processor';
+import { assertPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
 
 // ---------------------------------------------------------------------------
@@ -195,6 +196,8 @@ export async function extractFromConversation(
   if (await isOverDailyLimit(userId, 'extraction')) {
     throw new Error('Daily extraction spend limit reached');
   }
+
+  assertPaidLlmAllowed('conversation-extractor.extractFromConversation');
 
   const supabase = createServerClient();
   const anthropic = getAnthropicClient();

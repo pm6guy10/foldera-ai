@@ -16,6 +16,8 @@ export default defineConfig({
     env: {
       FOLDERA_DRY_RUN: '',
       ANTHROPIC_API_KEY: 'vitest-offline-stub-key-not-for-production',
+      /** Required so real code paths that call assertPaidLlmAllowed still run against the offline SDK stub. */
+      ALLOW_PAID_LLM: 'true',
     },
     include: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
     exclude: ['node_modules', '.next', 'dist'],
