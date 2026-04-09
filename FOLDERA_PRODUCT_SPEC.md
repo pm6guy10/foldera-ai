@@ -126,7 +126,7 @@ March 24 production hotfix evidence:
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|
 | ENCRYPTION_KEY workflow fallback removed | BUILT | `.github/workflows/ci.yml` now requires `secrets.ENCRYPTION_KEY` without a hardcoded default. | — |
-| Supabase migrations discipline (repo ↔ prod) | BUILT | April 3, 2026: `docs/SUPABASE_MIGRATIONS.md` — versioned files only, no silent prod drift; linked from `docs/MASTER_PUNCHLIST.md`. **April 8, 2026:** **Agent** applies production DDL (Supabase MCP `apply_migration` for project `neydszeamsflpghtrhue` and/or `npx supabase db push`) in the same session as the push — **not** a human/operator follow-up. | Automated CI `db push` not wired (no DB secret in Actions); agent still applies prod after schema changes |
+| Supabase migrations discipline (repo ↔ prod) | BUILT | April 3, 2026: `docs/SUPABASE_MIGRATIONS.md` — versioned files only, no silent prod drift; linked from `docs/MASTER_PUNCHLIST.md`. **April 8, 2026:** **Agent** applies production DDL (Supabase MCP `apply_migration` for project `neydszeamsflpghtrhue` and/or `npx supabase db push`) in the same session as the push — **not** a human/operator follow-up. **April 9, 2026:** FK covering indexes `20260410110000_fkey_indexes_ml_snapshots_and_goals.sql` (advisor **unindexed_foreign_keys**). | Automated CI `db push` not wired (no DB secret in Actions); agent still applies prod after schema changes |
 
 ### 1.8 Marketing & product chrome (secondary surface)
 

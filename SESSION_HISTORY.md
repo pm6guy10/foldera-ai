@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-09 — AUDIT: **FK covering indexes (`tkg_directive_ml_snapshots.action_id`, `tkg_goals.entity_id`)**
+  MODE: AUDIT
+  Commit hash(es): _(set after push)_
+  Files changed: `supabase/migrations/20260410110000_fkey_indexes_ml_snapshots_and_goals.sql`, `docs/SUPABASE_MIGRATIONS.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  **Change:** **`CREATE INDEX IF NOT EXISTS`** for Supabase **unindexed_foreign_keys** (lint 0001). **`unused_index`** INFO findings not acted on (advisory-only; partial **`idx_system_health_failure`** and ML indexes retained).
+  What was verified: `npm run health` (0 failing); `npm run build`; MCP **`apply_migration`** + **`execute_sql`** index presence on **`neydszeamsflpghtrhue`**.
+  Any unresolved issues: Re-run advisor for **0001** on the two FKs; expect **unused_index** until workloads use those indexes.
+
 - 2026-04-09 — AUDIT: **Supabase security linter — `api_budget_status` security invoker + RLS on internal tables**
   MODE: AUDIT
   Commit hash(es): `8b5734e`
