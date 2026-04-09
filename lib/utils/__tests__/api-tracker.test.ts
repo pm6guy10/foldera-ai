@@ -62,7 +62,7 @@ describe('trackApiCall', () => {
     const summary = await getSpendSummary('user-1');
 
     expect(summary.dailyCapUSD).toBe(0.05);
-    expect(summary.extractionDailyCapUSD).toBe(0.25);
+    expect(summary.extractionDailyCapUSD).toBe(4);
     expect(summary.capPct).toBe(0);
   });
 

@@ -3,7 +3,8 @@
  *
  * Logs every Claude API call to api_usage table.
  * Enforces a daily spend cap on non-extraction traffic; extraction (`extraction`,
- * `signal_extraction` endpoints) uses a separate daily cap (`EXTRACTION_DAILY_CAP`).
+ * `signal_extraction` endpoints) uses a separate daily cap (`EXTRACTION_DAILY_CAP`,
+ * from `EXTRACTION_DAILY_CAP_USD` or a conservative default).
  *
  * Pricing (per 1M tokens, USD):
  *   Haiku 4.5                   input: $0.80   output: $4.00
@@ -16,7 +17,17 @@ import { getPipelineRunContext } from '@/lib/observability/pipeline-run-context'
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 const DAILY_SPEND_CAP_USD = 0.05;
-export const EXTRACTION_DAILY_CAP = 0.25;
+/** USD/day UTC for `extraction` + `signal_extraction`. Env override for backlog catch-up; unset uses default. */
+function resolveExtractionDailyCapUsd(): number {
+  const raw = process.env.EXTRACTION_DAILY_CAP_USD?.trim();
+  if (raw) {
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0 && n <= 100) return n;
+  }
+  // Temporary raise (2026-04-09): drain extractable backlog; revert default to 0.25 after backlog near zero.
+  return 4;
+}
+export const EXTRACTION_DAILY_CAP = resolveExtractionDailyCapUsd();
 // Max directive-generation LLM calls per UTC day for manual/interactive runs.
 // Applies only when skipSpendCap=true (Generate Now, smoke tests).
 // Cron runs are bounded by DAILY_SPEND_CAP_USD instead.

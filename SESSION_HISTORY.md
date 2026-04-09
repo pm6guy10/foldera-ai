@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-09 — AUDIT: **P0 signal backlog drain — extraction cap unblock + real cron generate path**
+  MODE: AUDIT
+  Commit hash(es): _(set after push)_
+  Files changed: `lib/utils/api-tracker.ts`, `lib/utils/__tests__/api-tracker.test.ts`, `app/api/cron/daily-generate/route.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  **Change:** Production **`POST /api/cron/nightly-ops`** showed **`total_processed: 0`** with **~556** extractable `tkg_signals` (`processed=false`, extractable sources) — extraction blocked at **`extraction_daily_spend_cap_reached`** vs **$0.25** cap. **`EXTRACTION_DAILY_CAP`:** env **`EXTRACTION_DAILY_CAP_USD`** (optional) + default **$4** UTC/day until backlog cleared (then revert default toward **$0.25**). **`/api/cron/daily-generate`:** `maxDuration = 120` for signal+generate window.
+  What was verified: `npx vitest run lib/utils/__tests__/api-tracker.test.ts`; _(post-push: nightly-ops drain loop, `daily-generate`, SQL backlog + latest `tkg_actions`)_
+  Any unresolved issues: Revert default extraction cap after extractable backlog near zero; optional **`EXTRACTION_DAILY_CAP_USD`** on Vercel for finer control without redeploying constant.
+
 - 2026-04-09 — AUDIT: **Production readiness punch list — OAuth column verify + integrations fallback + scoreboard snapshot**
   MODE: AUDIT
   Commit hash(es): `d0e193e`

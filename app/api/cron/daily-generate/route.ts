@@ -13,6 +13,8 @@ import { runDailyGenerate, toSafeDailyBriefStageStatus } from '@/lib/cron/daily-
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
+/** Signal processing + scoring + directive can exceed default 60s on Hobby. */
+export const maxDuration = 120;
 
 async function handler(request: NextRequest) {
   const authErr = validateCronAuth(request);
