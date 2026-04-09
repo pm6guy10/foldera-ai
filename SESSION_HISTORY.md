@@ -4,6 +4,15 @@
 
 ## Session Logs
 
+- 2026-04-09 — AUDIT: **Extraction JSON parse recovery + parse-failure quarantine (`extraction_parse_error`)**
+  MODE: AUDIT
+  Commit hash(es): `6eabd33`
+  Files changed: `lib/signals/signal-processor.ts`, `lib/signals/__tests__/signal-processor.test.ts`, `supabase/migrations/20260409180000_tkg_signals_extraction_parse_error.sql`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+  **Change:** Haiku batch responses that were not a bare JSON array left the whole batch `processed=false` (infinite retry). Added **`coerceExtractionsArray`** for wrappers (`extractions`, `signals`, `results`, `data`) and single-object rows; on unrecoverable parse, mark each batch row **`processed=true`**, clear extracted fields, set **`extraction_parse_error`** (truncated), increment **`signals_processed`**. Migration adds **`tkg_signals.extraction_parse_error`** (applied prod via Supabase MCP).
+  What was verified: `npx vitest run lib/signals/__tests__/signal-processor.test.ts` (15 passed); pre-push hook `npm run build` + full `vitest` (882 passed); `git push origin main` (`329ed00..6eabd33`); Vercel prod **`/api/health`** → **`6eabd33`** (`dpl_GD26wQPKJ5btQmbVk7U2XCXhfFdJ`); `npm run health` (0 failing).
+  **Prod SQL (post-deploy, before next extraction run):** `unprocessed` **594**, `extraction_parse_error` rows **0** — backlog unchanged until **`processUnextractedSignals`** runs on new code.
+  Any unresolved issues: Re-query counts after nightly-ops / process-unprocessed runs; expect **`parse_error_rows`** > 0 only for genuinely bad model output; successful paths clear **`extraction_parse_error`**.
+
 - 2026-04-09 — AUDIT: **P0 signal backlog drain — extraction cap unblock + real cron generate path**
   MODE: AUDIT
   Commit hash(es): _(set after push)_
