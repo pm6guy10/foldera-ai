@@ -6,7 +6,7 @@
 
 - 2026-04-09 — AUDIT: **RLS initplan + dedupe permissive policies (user_tokens, goals, signal_summaries, pattern_metrics)**
   MODE: AUDIT
-  Commit hash(es): _(set after push)_
+  Commit hash(es): `71d2c42`
   Files changed: `supabase/migrations/20260409210000_rls_initplan_and_dedupe_policies.sql`, `docs/SUPABASE_MIGRATIONS.md`, `SESSION_HISTORY.md`
   **Change:** Recreated four authenticated RLS policies using **`(select auth.uid())`** per Supabase **auth_rls_initplan** guidance. Dropped duplicate permissive policies **`Users can access own signal summaries`** and **`tkg_pattern_metrics_owner`** (**multiple_permissive_policies**). Production apply via Supabase MCP **`apply_migration`** (`rls_initplan_and_dedupe_policies`); verified **`pg_policies`** — one **`users_manage_own_*`** (+ **`service_role_all`**) per table.
   What was verified: `npm run health` (0 failing); `npm run build`; MCP **`execute_sql`** policy list on **`neydszeamsflpghtrhue`**.
