@@ -1,4 +1,8 @@
-# WHAT'S NEXT — Updated 2026-04-08
+# WHAT'S NEXT — Updated 2026-04-09
+
+## STATUS: SHIPPED — Prod readiness punch list (OAuth DDL verified + integrations 42703 fallback + scoreboard snapshot)
+
+**This session:** MCP confirmed **`oauth_reauth_required_at`** on production (migration already applied); **`/api/integrations/status`** treats **42703** + **`oauth_reauth`** in error text as missing-column path; **SESSION_SCOREBOARD** snapshot (**591** unprocessed signals, dry-run scoreboard rows); **AUTOMATION_BACKLOG** OPEN for paid-cron bracket receipt; **REVENUE_PROOF** operator nudge for Stripe + second user. **After push:** `GET /api/health` SHA; when turning off **`CRON_DAILY_BRIEF_PIPELINE_DRY_RUN`**, add new scoreboard snapshot + close OPEN item with real LLM validation evidence.
 
 ## STATUS: READY TO SHIP — Pipeline winner DB fields + peek script + bracket `deadline`/`topic` + `?` strips passive gates
 

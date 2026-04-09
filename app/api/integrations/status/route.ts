@@ -37,8 +37,18 @@ function supabaseErrorText(err: unknown): string {
   return String(err);
 }
 
+function postgresErrorCode(err: unknown): string {
+  if (err == null || typeof err !== 'object') return '';
+  const code = (err as Record<string, unknown>).code;
+  return typeof code === 'string' ? code : '';
+}
+
 function isOauthReauthColumnMissing(err: unknown): boolean {
-  return /oauth_reauth_required_at/i.test(supabaseErrorText(err));
+  const text = supabaseErrorText(err);
+  if (/oauth_reauth_required_at/i.test(text)) return true;
+  // Some PostgREST paths surface 42703 with the column name only in details/hint.
+  if (postgresErrorCode(err) === '42703' && /oauth_reauth/i.test(text)) return true;
+  return false;
 }
 
 export async function GET() {

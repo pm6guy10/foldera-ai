@@ -25,11 +25,18 @@
 - **CI e2e:** `/dashboard/signals` — `tests/e2e/authenticated-routes.spec.ts` (`setupSignalsPageMocks`).
 - **Roadmap:** Canonical extended program — [docs/AUDIT_REMEDIATION_ROADMAP.md](docs/AUDIT_REMEDIATION_ROADMAP.md) (phases A–G, pending + how to tackle). This backlog + [docs/FULL_SURFACE_AUDIT_2026-04-07.md](docs/FULL_SURFACE_AUDIT_2026-04-07.md) §6 updated for scoreboard/migrations.
 
+### OPEN (2026-04-09) — Paid cron + bracket validation receipt (after dry-run lift)
+
+- **Not closable until:** `CRON_DAILY_BRIEF_PIPELINE_DRY_RUN` is intentionally **off** for production and at least one **non–dry-run** `daily_brief` / `settings_run_brief` row exists in `pipeline_runs` (or equivalent logs).
+- **Agent:** `npm run scoreboard`; SQL `SELECT COUNT(*) FROM tkg_signals WHERE processed = false`; sample latest `tkg_actions` **`generation_log`** for validation / bracket buckets — synthetic **`[DRY RUN]`** text does **not** prove `validateGeneratedArtifact` / `hasBracketTemplatePlaceholder` on real LLM output.
+- **Evidence home:** [`docs/SESSION_SCOREBOARD.md`](docs/SESSION_SCOREBOARD.md) **Piece 1 snapshot — 2026-04-09** + next snapshot after paid cron.
+
 ### OPERATOR (ongoing) — Phase D / E from full-surface audit (not code-closable here)
 
 - **Sentry 7d triage** — agent uses token/script when configured; else log OPEN — not “Brandon triage this.”
 - **Vercel / GitHub** — **agent** confirms latest deploy **Ready** + CI green (dashboard/MCP) before claiming prod verified; see [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md).
 - **GTM / infra AZ items** — narrow human-only steps (live Approve, personal Stripe, etc.); everything automatable stays on the agent per **Executor ship contract** above. Track remaining items in normalized table (AZ-04, AZ-08, AZ-11, AZ-14–AZ-19, AZ-21).
+- **2026-04-09 — Stripe + second user** — calendar operator time for [`REVENUE_PROOF.md`](REVENUE_PROOF.md) **Stripe live test** and **Non-owner proof**; no code substitute for first paid checkout or first real non-owner brief loop.
 
 ### DONE (2026-04-07) — Full surface audit artifact
 

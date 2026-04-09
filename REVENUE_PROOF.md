@@ -145,6 +145,8 @@ Smart user CANNOT replicate cross-source prioritized outputs (calendar + mail + 
 3. Confirm Pro welcome email (Resend) if configured.
 4. Record date + mode (test/live) here when done.
 
+**2026-04-09 (punch list):** Live checkout is still **unscheduled** — no agent-closable proof. Operator should **calendar** a 15m window for test-mode checkout + webhook row (or live card if prod keys are live-only), then paste receipt above. Same session or next: **non-owner onboarding** ([Non-owner proof](#non-owner-proof-operator)) so product validation is not owner-only.
+
 ---
 
 ## GTM post–Gate 4

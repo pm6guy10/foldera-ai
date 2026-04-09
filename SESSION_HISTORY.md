@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-09 — AUDIT: **Production readiness punch list — OAuth column verify + integrations fallback + scoreboard snapshot**
+  MODE: AUDIT
+  Commit hash(es): _(single commit on main — run \`git log -1 --oneline\` for SHA after push)_
+  Files changed: `app/api/integrations/status/route.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `docs/SUPABASE_MIGRATIONS.md`, `docs/SESSION_SCOREBOARD.md`, `FOLDERA_PRODUCT_SPEC.md`, `REVENUE_PROOF.md`, `AUTOMATION_BACKLOG.md`, `SESSION_HISTORY.md`
+  **Change:** (1) Supabase MCP **`list_migrations`** + **`execute_sql`** on **`neydszeamsflpghtrhue`** — confirmed **`user_tokens.oauth_reauth_required_at`** and migration **`oauth_reauth_dashboard_visit`** (no re-apply needed). (2) **`isOauthReauthColumnMissing`** — also treats Postgres **`42703`** + **`oauth_reauth`** in concatenated error text; new unit test. (3) Docs: production apply log + **SESSION_SCOREBOARD** snapshot (scoreboard dry-run rows, **591** unprocessed signals); **AUTOMATION_BACKLOG** OPEN for post–dry-run bracket/paid verification; **REVENUE_PROOF** / operator bullets for Stripe + second-user scheduling; **FOLDERA_PRODUCT_SPEC** evidence on Microsoft/OAuth row.
+  What was verified: `npm run health` (2026-04-09 09:14 PT, 0 failing); `npm run scoreboard`; `npx vitest run app/api/integrations/status/__tests__/route.test.ts`; `npm run test:prod` **61 passed**; `npm run lint`; `npm run build`; `npx vitest run --exclude ".claude/worktrees/**"`; `npm run test:ci:e2e`.
+  Any unresolved issues: **OPEN** backlog item — paid cron + real LLM bracket validation after **`CRON_DAILY_BRIEF_PIPELINE_DRY_RUN`** lift; operator Stripe + non-owner onboarding.
+
 - 2026-04-09 — AUDIT: **Hunt marketing filter + nightly signal batch 1.5x + post-salvage artifact peek**
   MODE: AUDIT
   Commit hash(es): `26c5d6b`

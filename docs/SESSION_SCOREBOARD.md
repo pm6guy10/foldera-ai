@@ -198,6 +198,23 @@ ORDER BY generated_at DESC
 LIMIT 20;
 ```
 
+### Piece 1 snapshot — 2026-04-09 (prod readiness / punch list)
+
+Filled after Supabase MCP DDL check + `npm run health` + `npm run scoreboard` + `npm run test:prod` (61 passed). Timestamps PT/UTC as noted.
+
+| Check | Right now | Pass condition / next step |
+|-------|-----------|----------------------------|
+| `user_tokens.oauth_reauth_required_at` | **Present** on prod (`information_schema` + migration `oauth_reauth_dashboard_visit` / `20260408140704`) | If Sentry still shows missing column, resolve project mismatch or stale issue — not missing migration on this DB |
+| `GET /api/integrations/status` (authed) | **200** in prod smoke | Stay green; route now treats Postgres **42703** + `oauth_reauth` in error text like missing column |
+| `npm run scoreboard` (recent rows) | **`pipeline_dry_run_returned`** on manual `settings_run_brief` | **After** unsetting `CRON_DAILY_BRIEF_PIPELINE_DRY_RUN` for paid cron: re-run scoreboard; confirm real LLM outcomes + inspect `generation_log` / `api_usage` for bracket / `validateGeneratedArtifact` buckets — **`[DRY RUN]` fixtures do not prove the bracket gate** |
+| Unprocessed `tkg_signals` (all users) | **591** (`SELECT COUNT(*) WHERE processed = false`) | Re-check after nightly-ops / budget fixes; compare to prior ~521 baseline |
+
+**SQL (signal backlog):**
+
+```sql
+SELECT COUNT(*) AS unprocessed FROM tkg_signals WHERE processed = false;
+```
+
 ---
 
 ## Related docs

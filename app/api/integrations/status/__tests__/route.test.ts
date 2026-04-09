@@ -178,6 +178,62 @@ describe('GET /api/integrations/status', () => {
     );
   });
 
+  it('falls back on 42703 when details mention oauth_reauth but not full column name', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
+    const missingColErr = new Error('query failed') as Error & { code?: string; details?: string };
+    missingColErr.code = '42703';
+    // Unlikely real shape, but proves the 42703 + oauth_reauth branch (not /oauth_reauth_required_at/)
+    missingColErr.details = 'undefined_column user_tokens oauth_reauth';
+
+    const legacySelect = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        is: vi.fn().mockResolvedValue({
+          data: [
+            {
+              provider: 'google',
+              email: 'u@gmail.com',
+              last_synced_at: '2026-04-07T10:00:00.000Z',
+              scopes: 's',
+              access_token: 'access',
+              expires_at: 9999999999,
+              refresh_token: 'refresh',
+            },
+          ],
+          error: null,
+        }),
+      }),
+    });
+
+    let userTokensCalls = 0;
+    let signalsPass = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'user_tokens') {
+        userTokensCalls += 1;
+        if (userTokensCalls === 1) {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                or: vi.fn().mockResolvedValue({ data: null, error: missingColErr }),
+              }),
+            }),
+          };
+        }
+        return { select: legacySelect };
+      }
+      if (table === 'tkg_signals') {
+        signalsPass += 1;
+        if (signalsPass === 1) return signalSourceCountsChain();
+        return newestMailChain(null);
+      }
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const { GET } = await import('../route');
+    const res = await GET();
+    expect(res.status).toBe(200);
+    expect(legacySelect).toHaveBeenCalled();
+  });
+
   it('sets mail_ingest_looks_stale when newest ingested mail is older than 7d', async () => {
     getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
     let signalsPass = 0;

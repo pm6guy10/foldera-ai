@@ -28,6 +28,8 @@ GitHub Actions does not run `supabase db push` today (no DB secret in Actions). 
 
 - **2026-04-08:** **OAuth re-auth + dashboard visit** — columns `user_tokens.oauth_reauth_required_at`, `user_subscriptions.last_dashboard_visit_at`. Hosted migration name **`oauth_reauth_dashboard_visit`** (version **`20260408140704`** via MCP). Repo file [`supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql`](../supabase/migrations/20260408180000_oauth_reauth_dashboard_visit.sql) is the canonical SQL (same `ALTER`s; **2026-04-08** follow-up: `COMMENT ON COLUMN` added in file and applied live). If CLI history shows a version mismatch vs filename, use `supabase migration repair` or align via dashboard history — do not ask Brandon to fix.
 
+- **2026-04-09:** **Re-verified production DDL** — MCP `execute_sql` on **`neydszeamsflpghtrhue`**: `information_schema` confirms `user_tokens.oauth_reauth_required_at` (timestamptz) and `user_subscriptions.last_dashboard_visit_at`; `list_migrations` includes **`oauth_reauth_dashboard_visit`** / **`20260408140704`**. If Sentry still showed “column does not exist” before this date, cause was likely stale deploy, transient replica, or a non-prod project — not missing migration on this database.
+
 - **2026-04-08:** **`pipeline_runs`** — hosted version **`20260408030300`** (`pipeline_runs`); aligns with repo [`supabase/migrations/20260407120000_pipeline_runs.sql`](../supabase/migrations/20260407120000_pipeline_runs.sql) (timestamp in filename may differ from hosted row — verify with `list_migrations`).
 
 ## References
