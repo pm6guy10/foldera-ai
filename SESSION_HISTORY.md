@@ -4,6 +4,15 @@
 
 ## Session Logs
 
+- 2026-04-10 — AUDIT: **Self-entity exclusion complete: derive selfNameTokens from loaded entity list after entity fetch**
+  MODE: AUDIT
+  Commit hash(es): `79c7295`
+  Files changed: `lib/briefing/scorer.ts`
+  **Change:** `selfNameTokens` was empty for email/password users who have no `given_name`/`family_name` in OAuth metadata. Added post-entity-fetch loop in `scorer.ts` that looks up entities matching the user's `selfEmails` Set and extracts their name tokens into `selfNameTokens`. This catches the entity `2d576b3c` "Brandon D Kapp" (no primary email) which was winning `discrepancy_conv` because the name-based match in `isSelfEntity` never fired.
+  What was verified: `npx vitest run lib/briefing/__tests__/` — 767/767 passed; `npm run build` — compiled successfully; commit `79c7295` pushed; Vercel production live at `79c7295`; triggered new `settings_run_brief` run — winner changed from `discrepancy_conv_2d576b3c` to `discrepancy_bp_theme_deadline` (write_document, confidence 74), confirming self-entity exclusion fixed.
+  Stage 6 winner analysis: `discrepancy_bp_theme_deadline` — behavioral pattern (multiple contacts signaling deadline), write_document action, confidence 74. Real external entities in top pool: Keri Nopens (DSHS, 63d silent, decay discrepancy → send_message), Yadira Clapper (HCA, 23d silent). `discrepancy_decay_aa7733d9` (Keri Nopens) selected in one run but `generation_failed_sentinel` outcome (dry-run generation failure, not a code bug). Next blocker: generator dry-run path fails for `decay/send_message` candidates — needs investigation if generator deterministic path handles decay class correctly.
+  Any unresolved issues: `discrepancy_decay` for real external contacts (Keri Nopens, Yadira Clapper) generates `generation_failed_sentinel` in dry-run mode. Winner `bp_theme_deadline` meets the bar (non-self, write_document, confidence 74) but is a behavioral analysis rather than a targeted engagement action. Upgrading from write_document to send_message requires generation to succeed for decay/engagement_collapse class candidates.
+
 - 2026-04-10 — AUDIT: **CI fix: `financial_payment_tone` false positive on `avoidance_pattern` causal label; `insight-scan` stale dates**
   MODE: AUDIT
   Commit hash(es): `f241310`

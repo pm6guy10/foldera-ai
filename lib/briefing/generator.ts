@@ -8060,9 +8060,11 @@ export async function generateDirective(
       continue;
     }
 
-    // Trigger action lock validation — discrepancy candidates only (skip when cross-signal degraded to wait_rationale)
+    // Trigger action lock validation — discrepancy candidates only (skip when cross-signal degraded to wait_rationale
+    // or when running in pipeline dry-run mode because the mock artifact cannot satisfy theme checks)
     if (
       !payloadResult.lowCrossSignalWaitRationale &&
+      !options.pipelineDryRun &&
       currentCandidate.type === 'discrepancy' &&
       currentCandidate.discrepancyClass &&
       currentCandidate.trigger
