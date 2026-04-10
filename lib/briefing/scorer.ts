@@ -1017,7 +1017,13 @@ async function getFreshness(
       const overlap = [...titleWords].filter(w => searchText.includes(w)).length;
       if (overlap >= 2 || (overlap >= 1 && titleWords.size <= 2)) {
         similarCount++;
-        if (a.status === 'skipped' || a.status === 'draft_rejected') {
+        // Only count as user-skipped when the generation actually produced a real directive
+        // (outcome === 'selected'). Generation failures (no_send) are internal errors —
+        // the user never saw the content, so they cannot have "rejected" it.
+        const genLogOutcome = (execResult?.generation_log as Record<string, unknown> | undefined)?.outcome;
+        const userActuallySkipped = (a.status === 'skipped' || a.status === 'draft_rejected')
+          && genLogOutcome === 'selected';
+        if (userActuallySkipped) {
           anySkipped = true;
         }
       }
