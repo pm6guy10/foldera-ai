@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-10 — Hunt send_message: validate artifact.to against hunt_send_message_recipient_allowlist
+ MODE: AUDIT
+ Commit hash(es): `dca015b`
+ Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/hunt-recipient-grounding.test.ts`, `lib/briefing/__tests__/bracket-salvage.test.ts`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npx vitest run lib/briefing/__tests__/hunt-recipient-grounding.test.ts lib/briefing/__tests__/bracket-salvage.test.ts`; `npm run build`; `npm run test:ci:e2e` (pre-push)
+ Changes: `extractEligibleBracketEmailsFromRelationshipContext()` — single parser for relationship `recipient_email:` facts and hunt allowlist. `StructuredContext.hunt_send_message_recipient_allowlist` = grounded hunt peers ∪ eligible relationship emails. `validateGeneratedArtifact` → `collectHuntSendMessageToValidationIssues()` rejects hunt `send_message` when allowlist empty or `to` not in allowlist (closes hallucinated `to` after noreply-only threads).
+ Any unresolved issues: none for this scope
+
 - 2026-04-10 — Hunt recipient grounding: has_real_recipient only from winning thread + eligible peer
  MODE: AUDIT
  Commit hash(es): `bfc3210`

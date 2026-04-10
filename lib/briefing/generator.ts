@@ -1539,6 +1539,12 @@ export interface StructuredContext {
   // Populated for send_message candidates with a confirmed external recipient.
   // When present, non-decay send_message path strips most system metrics; decay keeps rich context.
   recipient_brief: string | null;
+  /**
+   * Hunt + send_message only: lowercase emails allowed as artifact.to (winning-signal grounded peers
+   * ∪ relationshipContext brackets). Same derivation as hunt_grounded_peer_email / recipient_brief.
+   * Empty for non-hunt candidates.
+   */
+  hunt_send_message_recipient_allowlist: string[];
   /** Discrepancy subclass when candidate_class is discrepancy (e.g. schedule_conflict). */
   discrepancy_class: string | null;
   /** True when the winner originated from runInsightScan (see INSIGHT_SCAN_WINNER in system prompt). */
@@ -1894,6 +1900,26 @@ function isEligibleExternalPeerEmail(address: string, userEmails?: Set<string>):
 }
 
 /**
+ * Eligible external emails from relationshipContext bracket forms — shared by surgical_raw_facts,
+ * hasRecipientEmailInContext, and hunt_send_message_recipient_allowlist (no second parser).
+ */
+function extractEligibleBracketEmailsFromRelationshipContext(
+  relationshipContext: string | null | undefined,
+  userEmails?: Set<string>,
+): string[] {
+  if (!relationshipContext) return [];
+  const bracketEmails = relationshipContext.match(/<([^@\s>]+@[^@\s>]+\.[^@\s>]+)>/g);
+  if (!bracketEmails) return [];
+  const out: string[] = [];
+  for (const e of bracketEmails.slice(0, 3)) {
+    const addr = e.replace(/[<>]/g, '').trim();
+    if (!isEligibleExternalPeerEmail(addr, userEmails)) continue;
+    out.push(addr.toLowerCase());
+  }
+  return out;
+}
+
+/**
  * Recipient short-path for hunt when there is no relationshipContext but peers are grounded
  * on winning `tkg_signals` rows (see hunt_grounded_peer_email / signal_id).
  */
@@ -2110,17 +2136,25 @@ export function buildStructuredContext(
           )
         : signalEvidence.slice(0, 7);
 
-  // Extract emails from relationship context
-  if (winner.relationshipContext) {
-    const bracketEmails = winner.relationshipContext.match(/<([^@\s>]+@[^@\s>]+\.[^@\s>]+)>/g);
-    if (bracketEmails) {
-      for (const e of bracketEmails.slice(0, 3)) {
-        const addr = e.replace(/[<>]/g, '').trim();
-        if (!isEligibleExternalPeerEmail(addr, userEmails)) continue;
-        surgical_raw_facts.push(`recipient_email: ${addr}`);
-      }
-    }
+  for (const addr of extractEligibleBracketEmailsFromRelationshipContext(
+    winner.relationshipContext,
+    userEmails,
+  )) {
+    surgical_raw_facts.push(`recipient_email: ${addr}`);
   }
+
+  const hunt_send_message_recipient_allowlist =
+    winner.type === 'hunt'
+      ? [
+          ...new Set([
+            ...huntGroundedPeerEmails,
+            ...extractEligibleBracketEmailsFromRelationshipContext(
+              winner.relationshipContext,
+              userEmails,
+            ),
+          ]),
+        ]
+      : [];
 
   // Extract emails from signals
   for (const s of evidenceForSurgicalFacts.slice(0, 7)) {
@@ -2392,6 +2426,7 @@ export function buildStructuredContext(
     entity_analysis: buildEntityAnalysisBlock(winner.entityName, winner.entityBxStats),
     entity_conversation_state: entityConversationState ?? null,
     user_voice_patterns: userVoicePatterns ?? null,
+    hunt_send_message_recipient_allowlist,
   };
 }
 
@@ -5748,6 +5783,34 @@ export function applyBracketTemplateSalvage(
   return salvaged;
 }
 
+/**
+ * Hunt + send_message: artifact.to must match hunt_send_message_recipient_allowlist from
+ * buildStructuredContext (grounded peers ∪ relationshipContext). Exported for unit tests.
+ */
+export function collectHuntSendMessageToValidationIssues(
+  ctx: Pick<StructuredContext, 'candidate_class' | 'hunt_send_message_recipient_allowlist'>,
+  canonicalArtifactType: ValidArtifactTypeCanonical,
+  rawRecipient: unknown,
+): string[] {
+  if (ctx.candidate_class !== 'hunt' || canonicalArtifactType !== 'send_message') return [];
+  const allow = ctx.hunt_send_message_recipient_allowlist;
+  if (!allow.length) {
+    return [
+      'send_message hunt candidate has no hunt-grounded recipient (winning-signal peer or relationship context email)',
+    ];
+  }
+  if (!isNonEmptyString(rawRecipient)) {
+    return ['send_message "to" is required for hunt candidates with a grounded recipient'];
+  }
+  const recipientNorm = String(rawRecipient).trim().toLowerCase();
+  if (!allow.includes(recipientNorm)) {
+    return [
+      'send_message "to" must be one of the hunt-grounded recipient emails from the winning signal thread or relationship context',
+    ];
+  }
+  return [];
+}
+
 function validateGeneratedArtifact(
   payload: GeneratedDirectivePayload | null,
   ctx: StructuredContext,
@@ -5840,6 +5903,9 @@ function validateGeneratedArtifact(
           issues.push('send_message "to" contains placeholder text');
         }
       }
+      issues.push(
+        ...collectHuntSendMessageToValidationIssues(ctx, canonicalArtifactType, rawRecipient),
+      );
       validateStringField(a.subject, 'send_message subject', issues, { allowShort: true });
       validateStringField(a.body, 'send_message body', issues);
       break;

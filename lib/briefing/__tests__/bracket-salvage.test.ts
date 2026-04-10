@@ -47,6 +47,7 @@ function minimalCtx(overrides: Partial<StructuredContext> = {}): StructuredConte
     },
     trigger_context: null,
     recipient_brief: null,
+    hunt_send_message_recipient_allowlist: [],
     discrepancy_class: 'behavioral_pattern',
     candidate_analysis: '',
     entity_analysis: null,
