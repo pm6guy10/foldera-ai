@@ -742,10 +742,11 @@ function extractRisk(
 // This is active deterioration: not silence, but measurable withdrawal.
 // ---------------------------------------------------------------------------
 
-function extractEngagementCollapse(entities: EntityRow[]): Discrepancy[] {
+function extractEngagementCollapse(entities: EntityRow[], selfEmails?: Set<string>): Discrepancy[] {
   const results: Discrepancy[] = [];
   const candidates = entities
     .filter((e) => {
+      if (isSelfEntity(e, selfEmails)) return false;
       const bx = (e.patterns as any)?.bx_stats;
       if (!bx) return false;
       return (
@@ -824,10 +825,11 @@ function extractEngagementCollapse(entities: EntityRow[]): Discrepancy[] {
 // a discrete stop — something changed between then and now.
 // ---------------------------------------------------------------------------
 
-function extractRelationshipDropout(entities: EntityRow[]): Discrepancy[] {
+function extractRelationshipDropout(entities: EntityRow[], selfEmails?: Set<string>): Discrepancy[] {
   const results: Discrepancy[] = [];
   const candidates = entities
     .filter((e) => {
+      if (isSelfEntity(e, selfEmails)) return false;
       const bx = (e.patterns as any)?.bx_stats;
       if (!bx) return false;
       const count30 = (bx.signal_count_30d ?? -1) as number;
@@ -2332,8 +2334,8 @@ export function detectDiscrepancies(args: {
     ),
     // Delta-based (higher urgency scores — float to top naturally)
     ...extractDeadlineStaleness(commitments, goals, nowMs),
-    ...extractEngagementCollapse(entities),
-    ...extractRelationshipDropout(entities),
+    ...extractEngagementCollapse(entities, args.selfEmails),
+    ...extractRelationshipDropout(entities, args.selfEmails),
     ...extractGoalVelocityMismatch(goals, decryptedSignals),
     // Absence-based (existing)
     ...extractRisk(entities, goals, decryptedSignals, nowMs),
