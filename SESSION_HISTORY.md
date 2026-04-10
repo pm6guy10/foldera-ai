@@ -6,9 +6,9 @@
 
 - 2026-04-10 — send_message (real human + thread) must beat emergent/make_decision invariant
  MODE: AUDIT
- Commit hash(es): pending
+ Commit hash(es): `53d2133`
  Files changed: `lib/briefing/scorer.ts`
- What was verified: health check 0 FAIL; `npx vitest run lib/briefing/__tests__/` — 57 files, 768 tests passed; `npm run build` passed; `npm run test:ci:e2e` — 46/46 passed; debug-top-candidates.ts confirmed winner = discrepancy/decay/keri nopens/send_message (score 3.301) over emergent/make_decision (score 3.30) with `sendable_forced_over_emergent_make_decision` invariant firing
+ What was verified: health check 0 FAIL; `npx vitest run lib/briefing/__tests__/` — 57 files, 768 tests passed; `npm run build` passed; `npm run test:ci:e2e` — 46/46 passed; debug-top-candidates.ts confirmed winner = discrepancy/decay/keri nopens/send_message (score 3.301) over emergent/make_decision (score 3.30) with `sendable_forced_over_emergent_make_decision` invariant firing; pre-push: 901 tests passed
  Changes: Added product invariant to `applyRankingInvariants()` in `lib/briefing/scorer.ts`: if any valid thread-backed sendable candidate exists (real entity + send_message + passes ranking invariants), it MUST outrank all emergent and make_decision candidates. Implementation: after existing discrepancy block, scan all emergent/make_decision candidates; if any beat the top sendable, force sendable score = that candidate's score + 0.001. Logs `sendable_forced_over_emergent_make_decision` / `emergent_make_decision_yielded_to_thread_backed_sendable` in diagnostics.
  Any unresolved issues: Keri Nopens goal-suppression active (DO NOT contact until stable employment + supervisor reference). The decay discrepancy for Keri wins via discrepancy exemption from goal-based suppression. This is correct behavior per suppression rules.
 
