@@ -576,6 +576,8 @@ export interface SignalSnippet {
   direction: 'sent' | 'received' | 'unknown';
   /** Original `tkg_signals.type` when present (e.g. response_pattern). */
   row_type?: string | null;
+  /** When loaded from `tkg_signals`, the row id — used to ground hunt recipients to the winning thread only. */
+  signal_id?: string;
 }
 
 interface GenerateDirectiveOptions {
@@ -1882,7 +1884,59 @@ async function enrichWinnerWithEntityBxStats(userId: string, winner: ScoredLoop)
   return { ...winner, entityBxStats: bx };
 }
 
-function buildStructuredContext(
+/** True when an address can be a send_message To: peer (not self, not automated/bulk per blocklist). */
+function isEligibleExternalPeerEmail(address: string, userEmails?: Set<string>): boolean {
+  const lower = address.trim().toLowerCase();
+  if (!lower.includes('@')) return false;
+  if (userEmails && userEmails.size > 0 && userEmails.has(lower)) return false;
+  if (isBlockedSender(lower)) return false;
+  return true;
+}
+
+/**
+ * Recipient short-path for hunt when there is no relationshipContext but peers are grounded
+ * on winning `tkg_signals` rows (see hunt_grounded_peer_email / signal_id).
+ */
+function buildHuntRecipientBriefFromGroundedPeers(
+  emails: string[],
+  groundedSnippets: SignalSnippet[],
+): string | null {
+  if (emails.length === 0) return null;
+  const primary = emails[0];
+  let displayName: string | null = null;
+  for (const s of groundedSnippets) {
+    if (!s.author?.toLowerCase().includes(primary)) continue;
+    const au = s.author.trim();
+    const lt = au.indexOf('<');
+    if (lt > 0) {
+      const cand = au.slice(0, lt).replace(/^["']|["']$/g, '').trim();
+      if (cand && !cand.includes('@')) {
+        displayName = cand;
+        break;
+      }
+    }
+  }
+  if (!displayName) {
+    const local = primary.split('@')[0] ?? 'Contact';
+    displayName = local.replace(/[._]/g, ' ');
+  }
+  const sortedDates = groundedSnippets
+    .map((s) => s.date)
+    .filter(Boolean)
+    .sort()
+    .reverse();
+  const lastSignal = sortedDates.length > 0
+    ? new Date(sortedDates[0]).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : null;
+  const lines = [
+    `${displayName} <${primary}>`,
+    'Recipient is grounded in the winning hunt signal thread — To: must be this address.',
+  ];
+  if (lastSignal) lines.push(`Last signal in thread: ${lastSignal}`);
+  return lines.join('\n');
+}
+
+export function buildStructuredContext(
   winner: ScoredLoop,
   guardrails: { approvedRecently: RecentActionRow[]; skippedRecently: RecentSkippedActionRow[] },
   userId: string,
@@ -2011,19 +2065,59 @@ function buildStructuredContext(
   const surgical_raw_facts: string[] = [];
   const emailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 
-  const evidenceForSurgicalFacts =
-    shouldApplyFinancialSingleFocus(winner) && supporting_signals.length > 0
-      ? signalEvidence.filter((e) =>
-          supporting_signals.some((cs) => cs.occurred_at === e.date),
+  const huntSourceSignalIds =
+    winner.type === 'hunt'
+      ? new Set(
+          (winner.sourceSignals ?? [])
+            .filter((s) => s.kind === 'signal' && typeof s.id === 'string' && s.id.length > 0)
+            .map((s) => s.id as string),
         )
-      : signalEvidence.slice(0, 7);
+      : new Set<string>();
+
+  const huntGroundedSnippets =
+    winner.type === 'hunt' && huntSourceSignalIds.size > 0
+      ? signalEvidence.filter(
+          (s) => typeof s.signal_id === 'string' && huntSourceSignalIds.has(s.signal_id),
+        )
+      : [];
+
+  const collectEligiblePeerEmailsFromSnippets = (snippets: SignalSnippet[]): string[] => {
+    const out = new Set<string>();
+    for (const s of snippets) {
+      if (!s.author) continue;
+      emailPattern.lastIndex = 0;
+      const em = s.author.match(emailPattern);
+      if (!em) continue;
+      const addr = em[0].toLowerCase();
+      if (!isEligibleExternalPeerEmail(addr, userEmails)) continue;
+      out.add(addr);
+    }
+    return [...out];
+  };
+
+  const huntGroundedPeerEmails = collectEligiblePeerEmailsFromSnippets(huntGroundedSnippets);
+
+  const evidenceForSurgicalFacts =
+    winner.type === 'hunt'
+      ? huntGroundedSnippets.length > 0
+        ? huntGroundedSnippets
+        : huntSourceSignalIds.size > 0
+          ? []
+          : signalEvidence.slice(0, 7)
+      : shouldApplyFinancialSingleFocus(winner) && supporting_signals.length > 0
+        ? signalEvidence.filter((e) =>
+            supporting_signals.some((cs) => cs.occurred_at === e.date),
+          )
+        : signalEvidence.slice(0, 7);
 
   // Extract emails from relationship context
   if (winner.relationshipContext) {
     const bracketEmails = winner.relationshipContext.match(/<([^@\s>]+@[^@\s>]+\.[^@\s>]+)>/g);
     if (bracketEmails) {
       for (const e of bracketEmails.slice(0, 3)) {
-        surgical_raw_facts.push(`recipient_email: ${e.replace(/[<>]/g, '')}`);
+        const addr = e.replace(/[<>]/g, '').trim();
+        if (!isEligibleExternalPeerEmail(addr, userEmails)) continue;
+        surgical_raw_facts.push(`recipient_email: ${addr}`);
       }
     }
   }
@@ -2033,8 +2127,17 @@ function buildStructuredContext(
     if (s.subject) surgical_raw_facts.push(`email_subject: ${s.subject.slice(0, 100)}`);
     if (s.author) {
       const authorEmail = s.author.match(emailPattern);
-      if (authorEmail) surgical_raw_facts.push(`contact_email: ${authorEmail[0]}`);
+      if (authorEmail) {
+        const raw = authorEmail[0];
+        if (isEligibleExternalPeerEmail(raw, userEmails)) {
+          surgical_raw_facts.push(`contact_email: ${raw}`);
+        }
+      }
     }
+  }
+
+  for (const addr of huntGroundedPeerEmails.slice(0, 3)) {
+    surgical_raw_facts.push(`hunt_grounded_peer_email: ${addr}`);
   }
 
   // Extract due date from winner content
@@ -2103,15 +2206,19 @@ function buildStructuredContext(
   const hasRecipientEmailInContext = surgical_raw_facts.some((f) => {
     if (!f.startsWith('recipient_email:')) return false;
     const email = f.slice('recipient_email: '.length).trim().toLowerCase();
-    return !userEmails || userEmails.size === 0 || !userEmails.has(email);
+    return isEligibleExternalPeerEmail(email, userEmails);
   });
+
+  // Hunt: never treat arbitrary LIFE_CONTEXT / keyword-expanded mail senders as To:.
+  // Only relationshipContext (filtered) or peer emails from winning source signal rows qualify.
+  const hasHuntGroundedPeerRecipient = winner.type === 'hunt' && huntGroundedPeerEmails.length > 0;
 
   // For entity-linked discrepancies, ONLY the entity's DB email counts as a confirmed
   // recipient. Signal senders in the evidence window are unrelated parties, not the
   // target person — using them causes the LLM to address emails to random senders.
   const has_real_recipient =
     winner.type === 'hunt'
-      ? (hasRecipientEmailInContext || externalEmails.length > 0)
+      ? (hasRecipientEmailInContext || hasHuntGroundedPeerRecipient)
       : (isGoalLinkedDiscrepancy || isEntityLinkedDiscrepancy)
         // Discrepancy (goal-linked or entity-linked): only entity-db email counts
         ? hasRecipientEmailInContext
@@ -2271,6 +2378,9 @@ function buildStructuredContext(
       if (brief) return brief;
       if (winner.type === 'discrepancy' && winner.discrepancyClass === 'decay') {
         return buildDecayRecipientBriefFromEntity(winner, signalEvidence);
+      }
+      if (winner.type === 'hunt' && huntGroundedPeerEmails.length > 0) {
+        return buildHuntRecipientBriefFromGroundedPeers(huntGroundedPeerEmails, huntGroundedSnippets);
       }
       return null;
     })(),
@@ -4635,7 +4745,7 @@ async function ensureMinimumEvidenceSourceDiversity(
     try {
       const res = await supabase
         .from('tkg_signals')
-        .select('content, source, occurred_at, author, type')
+        .select('id, content, source, occurred_at, author, type')
         .eq('user_id', userId)
         .eq('processed', true)
         .gte('occurred_at', lookbackIso)
@@ -4689,7 +4799,7 @@ async function appendCrossSourceLifeContextSnippets(
   const lookbackIso = new Date(Date.now() - daysMs(90)).toISOString();
   const { data: rows, error } = await supabase
     .from('tkg_signals')
-    .select('content, source, occurred_at, author, type')
+    .select('id, content, source, occurred_at, author, type')
     .eq('user_id', userId)
     .eq('processed', true)
     .gte('occurred_at', lookbackIso)
@@ -4779,7 +4889,7 @@ async function fetchWinnerSignalEvidence(
   if (sourceIds.length > 0) {
     const { data: sourceRows } = await supabase
       .from('tkg_signals')
-      .select('content, source, occurred_at, author, type')
+      .select('id, content, source, occurred_at, author, type')
       .eq('user_id', userId)
       .in('id', sourceIds);
 
@@ -4803,7 +4913,7 @@ async function fetchWinnerSignalEvidence(
     const ninetyDaysAgoEvidence = new Date(Date.now() - daysMs(90)).toISOString();
     const { data: contextRows } = await supabase
       .from('tkg_signals')
-      .select('content, source, occurred_at, author, type')
+      .select('id, content, source, occurred_at, author, type')
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', ninetyDaysAgoEvidence)
@@ -4846,7 +4956,7 @@ async function fetchWinnerSignalEvidence(
       const lookbackIso = new Date(Date.now() - daysMs(SIGNAL_RETENTION_DAYS)).toISOString();
       const { data: decayRows } = await supabase
         .from('tkg_signals')
-        .select('content, source, occurred_at, author, type')
+        .select('id, content, source, occurred_at, author, type')
         .eq('user_id', userId)
         .eq('processed', true)
         .gte('occurred_at', lookbackIso)
@@ -4889,7 +4999,7 @@ async function fetchWinnerSignalEvidence(
       if (entityEmails.length > 0) {
         const { data: rpAuthorRows } = await supabase
           .from('tkg_signals')
-          .select('content, source, occurred_at, author, type')
+          .select('id, content, source, occurred_at, author, type')
           .eq('user_id', userId)
           .eq('type', 'response_pattern')
           .eq('processed', true)
@@ -4912,7 +5022,7 @@ async function fetchWinnerSignalEvidence(
 
       const { data: rpRows } = await supabase
         .from('tkg_signals')
-        .select('content, source, occurred_at, author, type')
+        .select('id, content, source, occurred_at, author, type')
         .eq('user_id', userId)
         .eq('type', 'response_pattern')
         .eq('processed', true)
@@ -4951,7 +5061,7 @@ async function fetchWinnerSignalEvidence(
       const ninetyDaysAgo = new Date(Date.now() - daysMs(90)).toISOString();
       const { data: entityRows } = await supabase
         .from('tkg_signals')
-        .select('content, source, occurred_at, author, type')
+        .select('id, content, source, occurred_at, author, type')
         .eq('user_id', userId)
         .eq('processed', true)
         .gte('occurred_at', ninetyDaysAgo)
@@ -5060,6 +5170,10 @@ function parseSignalSnippet(
     rowType === 'email_received' ? 'received' :
     'unknown';
 
+  const idRaw = row.id;
+  const signal_id =
+    typeof idRaw === 'string' && idRaw.length > 0 ? idRaw : undefined;
+
   return {
     source: (row.source as string) ?? 'unknown',
     date: row.occurred_at ? new Date(row.occurred_at as string).toISOString().slice(0, 10) : 'unknown',
@@ -5068,6 +5182,7 @@ function parseSignalSnippet(
     author: (row.author as string) ?? null,
     direction,
     row_type: rowType || null,
+    ...(signal_id ? { signal_id } : {}),
   };
 }
 
