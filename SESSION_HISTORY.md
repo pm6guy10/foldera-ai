@@ -6,7 +6,7 @@
 
 - 2026-04-10 — Unify suppression goals across discrepancy, emergent, insight scan, and hunt (no type bypass)
  MODE: AUDIT
- Commit hash(es): `3f4f56e`
+ Commit hash(es): `4550885`
  Files changed: `lib/briefing/scorer.ts`, `lib/briefing/__tests__/scorer-suppression-unified.test.ts`
  What was verified: `npm run health` — 0 FAIL; `npx vitest run --exclude ".claude/worktrees/**"` — 98 files, 904 tests passed; `npm run build` passed; `npm run test:ci:e2e` — 46/46 passed; `lib/briefing/__tests__/scorer-ranking-invariants.test.ts` still green (thread-backed vs emergent invariant untouched)
  Changes: Prior inconsistency: suppression from priority-1/2 DO NOT goals ran only in the main `for (c of candidates)` loop (commitment/signal/relationship). Discrepancy and other injected `ScoredLoop` rows were scored later with no `suppressionEntities` check. Fix: `evaluateSuppressionGoalMatch()` (also matches optional `entityName` for entity-linked rows) + same helper wired into discrepancy injection, emergent divergence/patterns, insight scan, and hunt; `CONTACT_ACTION_TYPES` hoisted to module scope. Convergence pre-pass now skips zero-score discrepancies so suppressed discrepancy entities do not boost other candidates.
