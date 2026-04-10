@@ -23,6 +23,10 @@ vi.mock('@/lib/utils/api-tracker', () => ({
   trackApiCall: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('@/lib/llm/paid-llm-gate', () => ({
+  isPaidLlmAllowed: () => true,
+}));
+
 const mockLogStructuredEvent = vi.fn();
 vi.mock('@/lib/utils/structured-logger', () => ({
   logStructuredEvent: (...args: unknown[]) => mockLogStructuredEvent(...(args as [])),
@@ -48,7 +52,7 @@ describe('runInsightScan', () => {
   });
 
   it('returns insight candidates from LLM response', async () => {
-    const base = Date.UTC(2026, 2, 20);
+    const base = Date.now();
     const d0 = new Date(base).toISOString().split('T')[0];
     const d1 = new Date(base - 86400000).toISOString().split('T')[0];
     const d2 = new Date(base - 2 * 86400000).toISOString().split('T')[0];

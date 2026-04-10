@@ -5515,10 +5515,6 @@ export function getFinancialPaymentToneValidationIssues(
     return [];
   }
   try {
-    const cd = payload.causal_diagnosis;
-    const cdText = cd && typeof cd === 'object'
-      ? `${String((cd as CausalDiagnosis).why_exists_now ?? '')}\n${String((cd as CausalDiagnosis).mechanism ?? '')}`
-      : '';
     const art = payload.artifact ?? {};
     const primaryDoc =
       typeof art.content === 'string' && art.content.trim()
@@ -5526,11 +5522,13 @@ export function getFinancialPaymentToneValidationIssues(
         : typeof art.body === 'string'
           ? art.body
           : '';
+    // Intentionally exclude causal_diagnosis from this scan — the internal mechanism
+    // label (e.g. "Avoidance pattern: …") is a structural classifier, not user-facing
+    // copy. Scanning it produces false positives for legitimate commitment candidates.
     const combined = [
       payload.directive ?? '',
       payload.insight ?? '',
       payload.why_now ?? '',
-      cdText,
       primaryDoc,
       String(art.title ?? ''),
       String(art.subject ?? ''),
@@ -6029,10 +6027,14 @@ export function validateDirectiveForPersistence(input: {
       const art = input.artifact as Record<string, unknown>;
       const primary = artifactPrimaryBodyOrContent(art);
       const ev = Array.isArray(input.directive.evidence) ? input.directive.evidence : [];
+      // Exclude 'pattern' evidence items (causal mechanism descriptions — internal
+      // behavioral labels that legitimately use words like "avoidance"). Only scan
+      // user-facing signal/goal descriptions and artifact copy.
+      const evTexts = ev.filter((e) => e.type !== 'pattern').map((e) => e.description ?? '');
       const combined = [
         input.directive.directive,
         input.directive.reason,
-        ...ev.map((e) => e.description ?? ''),
+        ...evTexts,
         primary,
         String(art.title ?? ''),
         String(art.subject ?? ''),
