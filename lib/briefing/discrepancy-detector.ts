@@ -1397,6 +1397,7 @@ function extractCalendarEntityGaps(
   structured: StructuredSignalInput[],
   entities: EntityRow[],
   nowMs: number,
+  selfEmails?: Set<string>,
 ): Discrepancy[] {
   const results: Discrepancy[] = [];
   const horizon = nowMs + SEVEN_DAYS_MS;
@@ -1409,6 +1410,7 @@ function extractCalendarEntityGaps(
     const matchedEntities = entityIdsForCalendarRow(evt, entities);
     for (const ent of matchedEntities) {
       if (results.length >= MAX_CROSS_CLASS * 2) break;
+      if (isSelfEntity(ent, selfEmails)) continue;
       const daysUntil = Math.max(0, Math.ceil((evt.startMs - nowMs) / 86400000));
       const openTh = openThreadHeuristic(structured, ent, nowMs);
       const recentEmail = hasRecentEmailWithEntity(structured, ent, nowMs);
@@ -1651,11 +1653,12 @@ function extractUnresolvedIntent(
   return results;
 }
 
-function extractConvergence(structured: StructuredSignalInput[], entities: EntityRow[], nowMs: number): Discrepancy[] {
+function extractConvergence(structured: StructuredSignalInput[], entities: EntityRow[], nowMs: number, selfEmails?: Set<string>): Discrepancy[] {
   const results: Discrepancy[] = [];
   const since = nowMs - FOURTEEN_DAYS_MS;
   for (const ent of entities) {
     if (results.length >= MAX_CROSS_CLASS) break;
+    if (isSelfEntity(ent, selfEmails)) continue;
     const n = ent.name.toLowerCase();
     if (n.length < 3) continue;
     const tokens = n.split(/\s+/).filter((t) => t.length >= 3);
@@ -2318,9 +2321,9 @@ export function detectDiscrepancies(args: {
   const all: Discrepancy[] = [
     ...extractScheduleConflicts(structured, nowMs),
     ...extractStaleDocuments(structured, goals, nowMs),
-    ...extractCalendarEntityGaps(structured, entities, nowMs),
+    ...extractCalendarEntityGaps(structured, entities, nowMs, args.selfEmails),
     ...extractDocumentFollowupGaps(structured, nowMs),
-    ...extractConvergence(structured, entities, nowMs),
+    ...extractConvergence(structured, entities, nowMs, args.selfEmails),
     ...extractUnresolvedIntent(structured, entities, recentDirectives, nowMs),
     ...extractBehavioralPatterns(
       entities,
