@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-10 — Hunt HUNT_CONTEXT: mail extras scoped to winning source signal ids (no cross-thread prompt leakage)
+ MODE: AUDIT
+ Commit hash(es): `32c2949`
+ Files changed: `lib/briefing/generator.ts` (`enrichCandidateContext` hunt branch; export for tests), `lib/briefing/__tests__/generator.test.ts`
+ What was verified: `npm run health` — 0 FAIL (preflight); `npx vitest run lib/briefing/__tests__/generator.test.ts` — pass including new hunt case; pushed `main`
+ Changes: Hunt `HUNT_CONTEXT` no longer prepends six arbitrary recent gmail/outlook snippets from `evidenceSortedChrono`; extras require `signal_id` ∈ `winner.sourceSignals` signal ids. Closes seam where tie-break peer subject text appeared in `send_message` body while `winner_candidate_id` stayed on another hunt row (live `tkg_actions` `e7059b0f-7ac4-4868-90c0-2adeb6512943` predates fix).
+ Any unresolved issues: live product-bar verdict on **new** row awaits post-deploy generation; likely next seam = transactional/low-signal hunts (e.g. allowlisted `wfe-*@outlier.ai` + marketing inbox) if still failing bar
+
 - 2026-04-10 — Hunt allowlist: thread-only peers (no relationshipContext union) + aligned has_real_recipient
  MODE: AUDIT
  Commit hash(es): `f978e23`
