@@ -4,6 +4,19 @@
 
 ## Session Logs
 
+- 2026-04-10 — AUDIT: **Hunt false-positive elimination — all hunt types now require trusted sender / known entity**
+  MODE: AUDIT
+  Commit hash(es): pending
+  Files changed: `lib/briefing/hunt-anomalies.ts`, `lib/briefing/scorer.ts`
+  What was verified: 901 tests passed (97 files); `npm run build` passed; local scorer run shows hunt no longer wins — winner is ESD overpayment divergence (emergent, score 3.30) with Keri Nopens (discrepancy, send_message, score 1.36) as the best real-human send_message candidate
+  Changes:
+    (1) `hunt-anomalies.ts`: Added `blockedSenderEmails` parameter (newsletter_promo_source drops from entity_reality_gate) — applied to ALL 4 hunt finding types (unreplied_inbound, unresolved_financial, reply_latency_degradation, repeated_ignored_sender)
+    (2) `hunt-anomalies.ts`: Added `trustedSenderEmails` parameter — unreplied_inbound now requires sender to be a known human entity (prevents cold-outreach/bulk emails from winning); unresolved_financial also requires trusted sender (prevents travel/retail receipts from winning as financial obligations)
+    (3) `scorer.ts`: Added `trustedEntityEmails` set built from tkg_entities (trusted with ≥1 interaction, unclassified with ≥2 interactions); passed to runHuntAnomalies as `trustedSenderEmails`
+    (4) `scorer.ts`: Also collects dropped signal author emails from entity_reality_gate as `gateBlockedSenderEmails` and passes to hunt
+    (5) `hunt-anomalies.ts`: Added travel/e-commerce domains to BULK_MARKETING_DOMAINS (expedia, hotels.com, airbnb, amazon, doordash, uber, etc.)
+  Any unresolved issues: The emergent ESD divergence winner does not have `action_type = send_message`. Keri Nopens (discrepancy decay, send_message) is the best real-human sendable candidate at rank 2. A fresh pipeline run is needed to confirm production behavior post-fix.
+
 - 2026-04-10 — AUDIT: **Fix hunt_unreplied false positives — noreply/bulk senders blocked from unreplied_inbound candidacy**
   MODE: AUDIT
   Commit hash(es): `7f4cf55`

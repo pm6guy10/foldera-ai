@@ -115,6 +115,29 @@ const BULK_MARKETING_DOMAINS = new Set<string>([
   'mailchimp.com',
   'mailgun.org',
   'sendgrid.net',
+  // Travel / booking transactional senders (not human financial obligations)
+  'eg.expedia.com',
+  'expedia.com',
+  'eg.hotels.com',
+  'hotels.com',
+  'airbnb.com',
+  'booking.com',
+  'vrbo.com',
+  'tripadvisor.com',
+  // E-commerce / retail transactional
+  'amazon.com',
+  'amazon.co.uk',
+  'ebay.com',
+  'etsy.com',
+  'shopify.com',
+  // Food delivery
+  'doordash.com',
+  'ubereats.com',
+  'grubhub.com',
+  'email.tacobell.com',
+  // Ride-sharing
+  'uber.com',
+  'lyft.com',
   'amazonses.com',
   'constantcontact.com',
   'ccsend.com',
@@ -281,8 +304,21 @@ export function runHuntAnomalies(args: {
   commitments: HuntCommitmentInput[];
   /** Auth + connected Google/Microsoft mailbox addresses — inbound From these must not count as unreplied/ignored/latency. */
   selfEmails?: Set<string>;
+  /**
+   * Sender emails already classified as newsletter/promo/junk by the entity_reality_gate.
+   * Hunt findings from these senders are skipped — they are not real human threads.
+   */
+  blockedSenderEmails?: Set<string>;
+  /**
+   * Email addresses of known human entities (from tkg_entities with ≥1 verified interaction).
+   * When provided, unreplied_inbound findings are restricted to senders in this set.
+   * Prevents cold-outreach and bulk emails from winning as "unreplied human threads".
+   */
+  trustedSenderEmails?: Set<string>;
 }): { findings: HuntFinding[]; countsByKind: Record<HuntFindingKind, number> } {
   const selfEmails = args.selfEmails;
+  const blockedSenderEmails = args.blockedSenderEmails;
+  const trustedSenderEmails = args.trustedSenderEmails;
   const counts = emptyCounts();
   const rawFindings: HuntFinding[] = [];
 
@@ -311,6 +347,11 @@ export function runHuntAnomalies(args: {
     const peer = r.fromEmails[0];
     if (peerIsSelfOrProductNoise(peer, selfEmails) || inboundFromSelf(r.fromEmails, selfEmails)) continue;
     if (peer && isBulkOrMarketingSender(peer)) continue;
+    if (peer && blockedSenderEmails?.has(peer)) continue;
+    // Require sender to be a known human entity — prevents cold-outreach and bulk emails
+    // from winning as unreplied threads. If trustedSenderEmails is provided, skip any
+    // sender not in the set (they are not established correspondents).
+    if (trustedSenderEmails && trustedSenderEmails.size > 0 && peer && !trustedSenderEmails.has(peer)) continue;
 
     let replied = false;
     for (const se of sent) {
@@ -358,6 +399,14 @@ export function runHuntAnomalies(args: {
   for (const r of received) {
     if (inboundFromSelf(r.fromEmails, selfEmails)) continue;
     if (now - r.occurredMs > window30) continue;
+    const finPeer = r.fromEmails[0];
+    // Skip bulk/blocked senders — their financial emails are transactional, not open loops
+    if (finPeer && isBulkOrMarketingSender(finPeer)) continue;
+    if (finPeer && blockedSenderEmails?.has(finPeer)) continue;
+    // Require sender to be a known human/entity correspondent — prevents transactional emails
+    // (travel bookings, meal kits, retailer receipts) from winning as unresolved financial obligations.
+    // Real financial obligations (invoices, rent, client billing) come from known correspondents.
+    if (trustedSenderEmails && trustedSenderEmails.size > 0 && finPeer && !trustedSenderEmails.has(finPeer)) continue;
     const text = r.preview.toLowerCase();
     const finHit = FIN_INBOUND.some((re) => re.test(text)) || DOLLAR_RE.test(r.preview);
     if (!finHit) continue;
@@ -464,6 +513,8 @@ export function runHuntAnomalies(args: {
         ? m.fromEmails[0]
         : m.toEmails[0];
     if (!key || peerIsSelfOrProductNoise(key, selfEmails)) continue;
+    if (isBulkOrMarketingSender(key)) continue;
+    if (blockedSenderEmails?.has(key)) continue;
     if (!byPeer.has(key)) byPeer.set(key, []);
     byPeer.get(key)!.push(m);
   }
@@ -522,6 +573,8 @@ export function runHuntAnomalies(args: {
   for (const r of received) {
     const k = r.fromEmails[0];
     if (!k || peerIsSelfOrProductNoise(k, selfEmails) || inboundFromSelf(r.fromEmails, selfEmails)) continue;
+    if (isBulkOrMarketingSender(k)) continue;
+    if (blockedSenderEmails?.has(k)) continue;
     if (!inboundBySender.has(k)) inboundBySender.set(k, []);
     inboundBySender.get(k)!.push(r);
   }

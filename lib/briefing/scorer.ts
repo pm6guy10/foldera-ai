@@ -3787,6 +3787,24 @@ export async function scoreOpenLoops(
   );
 
   const entities = entitiesRes.data ?? [];
+
+  // Build set of trusted/known human entity emails — used later to filter hunt_unreplied.
+  // Only emails from verified entities (trusted or unclassified with multiple interactions)
+  // are considered real human correspondents. Cold-outreach senders are excluded.
+  const trustedEntityEmails = new Set<string>();
+  for (const ent of entities) {
+    // Require at least 2 interactions to distinguish real relationships from one-off contacts.
+    // "unclassified" entities with a single appearance are likely cold-outreach.
+    const minInteractions = (ent.trust_class as string) === 'trusted' ? 1 : 2;
+    if (((ent.total_interactions as number) ?? 0) >= minInteractions) {
+      const primary = ent.primary_email as string | null | undefined;
+      if (primary) trustedEntityEmails.add(primary.toLowerCase());
+      for (const e of (ent.emails as string[] | undefined) ?? []) {
+        trustedEntityEmails.add(e.toLowerCase());
+      }
+    }
+  }
+
   // Supplement selfNameTokens from entities: find entities that match user's emails
   // and extract their name tokens. This handles email/password users who have no
   // given_name/family_name in OAuth metadata (only email in identity_data).
@@ -4557,6 +4575,24 @@ export async function scoreOpenLoops(
     stage: 'entity_reality_gate', reason: `${d.reason} (entity: ${d.entity})`,
   }));
   diag.filterStages.push({ stage: 'entity_reality_gate', before: preEntityGateCount, after: candidates.length, dropped: entityGateDrops });
+
+  // Collect sender emails from candidates dropped by the entity_reality_gate so the hunt can exclude them.
+  // Prevents bulk/promo/unverified senders from winning as "unreplied human threads".
+  // Covers newsletter_promo_source, no_active_thread (bulk cold-outreach), and other non-human drops.
+  // Does NOT block known trusted entities (those were passed, not dropped).
+  const gateBlockedSenderEmails = new Set<string>();
+  const EMAIL_RE = /([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i;
+  for (const d of entityGateResult.dropped) {
+    // Only block sender emails for signal candidates (not relationship/commitment)
+    // and only for non-human entity reasons (not self_addressed which is the user's own email)
+    if (d.candidate.type === 'signal' && d.reason !== 'self_addressed') {
+      const authorEmail = d.candidate.author;
+      if (authorEmail) {
+        const emailMatch = authorEmail.match(EMAIL_RE);
+        if (emailMatch) gateBlockedSenderEmails.add(emailMatch[1].toLowerCase());
+      }
+    }
+  }
 
   if (candidates.length === 0) {
     console.log(JSON.stringify({
@@ -5744,6 +5780,8 @@ export async function scoreOpenLoops(
       signals,
       commitments,
       selfEmails,
+      blockedSenderEmails: gateBlockedSenderEmails,
+      trustedSenderEmails: trustedEntityEmails,
     });
 
     let skippedLocked = 0;
