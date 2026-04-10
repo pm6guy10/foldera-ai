@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-10 — AUDIT: **CI fix: `financial_payment_tone` false positive on `avoidance_pattern` causal label; `insight-scan` stale dates**
+  MODE: AUDIT
+  Commit hash(es): `f241310`
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/insight-scan.test.ts`
+  **Change:** (1) `getFinancialPaymentToneValidationIssues` and `validateDirectiveForPersistence` both scanned `causal_diagnosis.mechanism` — the internal label `'Avoidance pattern: …'` (template line 1649) matched `/\bavoidance\b/i`, blocking all financial-category candidates. Fix: excluded `causal_diagnosis` from `validateGeneratedArtifact` scan; excluded `type: 'pattern'` evidence items from persistence scan — only user-facing directive/insight/why_now/artifact copy is checked. (2) `insight-scan.test.ts` used `Date.UTC(2026, 2, 20)` (March 20) as signal base — 21+ days before today → all 15 signals fell outside the 30-day window → `recent.length < 10` → LLM never called → result `[]`. Fix: changed to `Date.now()` so signals are always fresh relative to run time. Added missing `isPaidLlmAllowed` mock.
+  What was verified: `npx vitest run lib/briefing/__tests__/decision-payload-adversarial.test.ts lib/briefing/__tests__/insight-scan.test.ts` (9/9); `npx vitest run --exclude ".claude/worktrees/**"` (97 files, 900 tests); pushed `f241310`.
+  Any unresolved issues: None from this session.
+
 - 2026-04-10 — AUDIT: **Scorer: mail-anchored commitment boost + exclude calendar / Claude chat from signal candidate pool**
   MODE: AUDIT
   Commit hash(es): `3baa43b`
