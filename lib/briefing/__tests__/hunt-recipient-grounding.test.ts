@@ -17,7 +17,7 @@ const baseBreakdown = {
   final_score: 5,
 } as const;
 
-function huntWinner(sourceIds: string[]): ScoredLoop {
+function huntWinner(sourceIds: string[], relationshipContext?: string): ScoredLoop {
   return {
     id: 'hunt_test',
     type: 'hunt',
@@ -36,6 +36,7 @@ function huntWinner(sourceIds: string[]): ScoredLoop {
       actionability: 'actionable',
       reason: 'test',
     },
+    ...(relationshipContext !== undefined ? { relationshipContext } : {}),
   };
 }
 
@@ -137,7 +138,7 @@ describe('hunt recipient grounding (buildStructuredContext)', () => {
 });
 
 describe('hunt send_message artifact.to validation (collectHuntSendMessageToValidationIssues)', () => {
-  it('a) grounded hunt peer email passes', () => {
+  it('a) hunt with grounded external peer on winning signal passes allowlist + validation', () => {
     const winner = huntWinner(['sig-a']);
     const userEmails = new Set(['me@me.com']);
     const evidence = [
@@ -174,7 +175,7 @@ describe('hunt send_message artifact.to validation (collectHuntSendMessageToVali
     ).toEqual([]);
   });
 
-  it('b) hallucinated unrelated syntactically valid email fails', () => {
+  it('d) hallucinated unrelated syntactically valid email fails validation', () => {
     const winner = huntWinner(['sig-a']);
     const userEmails = new Set(['me@me.com']);
     const evidence = [
@@ -214,7 +215,7 @@ describe('hunt send_message artifact.to validation (collectHuntSendMessageToVali
     expect(bad[0]).toContain('hunt-grounded recipient');
   });
 
-  it('c) noreply-only hunt cannot validate send_message (empty allowlist)', () => {
+  it('b) hunt with only noreply on winning signal — empty allowlist, no send_message recipient', () => {
     const winner = huntWinner(['sig-hunt-1']);
     const userEmails = new Set(['owner@test.com']);
     const evidence = [
@@ -251,6 +252,53 @@ describe('hunt send_message artifact.to validation (collectHuntSendMessageToVali
       ctx,
       'send_message',
       'anyone@example.com',
+    );
+    expect(issues.length).toBe(1);
+    expect(issues[0]).toContain('no hunt-grounded recipient');
+  });
+
+  it('c) relationshipContext-only email not on winning hunt thread cannot authorize artifact.to', () => {
+    const rc =
+      'Other Person <wfe-6921e4b356ccff5a5f336b22@outlier.ai> | role | company';
+    const winner = huntWinner(['sig-hunt-amex'], rc);
+    const userEmails = new Set(['owner@test.com']);
+    const evidence = [
+      {
+        source: 'gmail',
+        date: '2026-04-01',
+        subject: 'Statement ready',
+        snippet: 'View your statement',
+        author: 'Amex <noreply@notification.americanexpress.com>',
+        direction: 'received' as const,
+        signal_id: 'sig-hunt-amex',
+      },
+    ];
+    const ctx = buildStructuredContext(
+      winner,
+      emptyGuard,
+      'user-test',
+      evidence,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      userEmails,
+    );
+    expect(ctx.hunt_send_message_recipient_allowlist).toEqual([]);
+    expect(ctx.has_real_recipient).toBe(false);
+    expect(
+      ctx.surgical_raw_facts.some((l) => l.includes('wfe-6921e4b356ccff5a5f336b22@outlier.ai')),
+    ).toBe(false);
+    const issues = collectHuntSendMessageToValidationIssues(
+      ctx,
+      'send_message',
+      'wfe-6921e4b356ccff5a5f336b22@outlier.ai',
     );
     expect(issues.length).toBe(1);
     expect(issues[0]).toContain('no hunt-grounded recipient');

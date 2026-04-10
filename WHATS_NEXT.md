@@ -1,5 +1,9 @@
 # WHAT'S NEXT — Updated 2026-04-10
 
+## STATUS: SHIPPED — Hunt `send_message` recipient allowlist is winning-thread peers only (relationshipContext cannot expand it)
+
+**This session:** `lib/briefing/generator.ts` `buildStructuredContext` + `collectHuntSendMessageToValidationIssues`; tests `hunt-recipient-grounding.test.ts`; live receipt script `scripts/verify-hunt-allowlist-receipt.ts`. **After push:** `GET /api/health` SHA; next real hunt generation should fail validation / downgrade if thread has no eligible external peer (e.g. noreply-only).
+
 ## STATUS: SHIPPED — Scorer prefers mail-anchored commitments; drops calendar + Claude chat from signal candidate pool
 
 **This session:** `scorer-candidate-sources.ts` + `scoreOpenLoops` — see `SESSION_HISTORY.md` 2026-04-10. **After push:** `GET /api/health` SHA; optional **`npm run test:prod`**; **`npm run scoreboard`** if chasing `do_nothing` / backlog.

@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-10 — Hunt allowlist: thread-only peers (no relationshipContext union) + aligned has_real_recipient
+ MODE: AUDIT
+ Commit hash(es): `5c04ff1`
+ Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/hunt-recipient-grounding.test.ts`, `scripts/verify-hunt-allowlist-receipt.ts`, `FOLDERA_PRODUCT_SPEC.md`, `WHATS_NEXT.md`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npx vitest run lib/briefing/__tests__/hunt-recipient-grounding.test.ts`; `npm run build`; `npm run test:ci:e2e` — 46/46; `npx tsx scripts/verify-hunt-allowlist-receipt.ts` — live DB signal `08b906c3-3e54-4981-b541-1ad868bfd43e` with synthetic contaminated `relationshipContext`: `grounded_hunt_allowlist` [], `artifact_to_matched_grounded_hunt_allowlist` false, `hunt_remained_send_message_eligible` false, `exact_blocker_if_failing` null
+ Changes: `buildStructuredContext` — `hunt_send_message_recipient_allowlist` = `huntGroundedPeerEmails` only; hunt `recipient_email:` surgical facts only when address ∈ grounded set; hunt `has_real_recipient` = `hasHuntGroundedPeerRecipient` only. `collectHuntSendMessageToValidationIssues` copy updated. Focused tests a–d in `hunt-recipient-grounding.test.ts`.
+ Any unresolved issues: none for this scope
+
 - 2026-04-10 — Hunt send_message: validate artifact.to against hunt_send_message_recipient_allowlist
  MODE: AUDIT
  Commit hash(es): `92a2c5d`

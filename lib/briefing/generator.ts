@@ -1540,9 +1540,9 @@ export interface StructuredContext {
   // When present, non-decay send_message path strips most system metrics; decay keeps rich context.
   recipient_brief: string | null;
   /**
-   * Hunt + send_message only: lowercase emails allowed as artifact.to (winning-signal grounded peers
-   * ∪ relationshipContext brackets). Same derivation as hunt_grounded_peer_email / recipient_brief.
-   * Empty for non-hunt candidates.
+   * Hunt + send_message only: lowercase emails allowed as artifact.to — strictly peers extracted
+   * from winning hunt source signal rows (same set as hunt_grounded_peer_email / recipient_brief).
+   * Relationship context never expands this list. Empty for non-hunt candidates.
    */
   hunt_send_message_recipient_allowlist: string[];
   /** Discrepancy subclass when candidate_class is discrepancy (e.g. schedule_conflict). */
@@ -1900,8 +1900,9 @@ function isEligibleExternalPeerEmail(address: string, userEmails?: Set<string>):
 }
 
 /**
- * Eligible external emails from relationshipContext bracket forms — shared by surgical_raw_facts,
- * hasRecipientEmailInContext, and hunt_send_message_recipient_allowlist (no second parser).
+ * Eligible external emails from relationshipContext bracket forms — shared by surgical_raw_facts
+ * and hasRecipientEmailInContext for non-hunt candidates. Hunt uses the same parser but only emits
+ * `recipient_email:` facts when the address is also on the winning hunt signal thread.
  */
 function extractEligibleBracketEmailsFromRelationshipContext(
   relationshipContext: string | null | undefined,
@@ -2122,6 +2123,7 @@ export function buildStructuredContext(
   };
 
   const huntGroundedPeerEmails = collectEligiblePeerEmailsFromSnippets(huntGroundedSnippets);
+  const huntGroundedPeerEmailSet = new Set(huntGroundedPeerEmails);
 
   const evidenceForSurgicalFacts =
     winner.type === 'hunt'
@@ -2136,25 +2138,25 @@ export function buildStructuredContext(
           )
         : signalEvidence.slice(0, 7);
 
-  for (const addr of extractEligibleBracketEmailsFromRelationshipContext(
+  const relationshipContextEligibleEmails = extractEligibleBracketEmailsFromRelationshipContext(
     winner.relationshipContext,
     userEmails,
-  )) {
-    surgical_raw_facts.push(`recipient_email: ${addr}`);
+  );
+  if (winner.type === 'hunt') {
+    // Hunt: only label recipient_email when DB relationship context agrees with a thread-grounded peer.
+    for (const addr of relationshipContextEligibleEmails) {
+      if (huntGroundedPeerEmailSet.has(addr)) {
+        surgical_raw_facts.push(`recipient_email: ${addr}`);
+      }
+    }
+  } else {
+    for (const addr of relationshipContextEligibleEmails) {
+      surgical_raw_facts.push(`recipient_email: ${addr}`);
+    }
   }
 
   const hunt_send_message_recipient_allowlist =
-    winner.type === 'hunt'
-      ? [
-          ...new Set([
-            ...huntGroundedPeerEmails,
-            ...extractEligibleBracketEmailsFromRelationshipContext(
-              winner.relationshipContext,
-              userEmails,
-            ),
-          ]),
-        ]
-      : [];
+    winner.type === 'hunt' ? [...huntGroundedPeerEmails] : [];
 
   // Extract emails from signals
   for (const s of evidenceForSurgicalFacts.slice(0, 7)) {
@@ -2243,8 +2245,8 @@ export function buildStructuredContext(
     return isEligibleExternalPeerEmail(email, userEmails);
   });
 
-  // Hunt: never treat arbitrary LIFE_CONTEXT / keyword-expanded mail senders as To:.
-  // Only relationshipContext (filtered) or peer emails from winning source signal rows qualify.
+  // Hunt: never treat relationshipContext or LIFE_CONTEXT senders as To: unless the same address
+  // appears on the winning hunt source signal rows (huntGroundedPeerEmails).
   const hasHuntGroundedPeerRecipient = winner.type === 'hunt' && huntGroundedPeerEmails.length > 0;
 
   // For entity-linked discrepancies, ONLY the entity's DB email counts as a confirmed
@@ -2252,7 +2254,7 @@ export function buildStructuredContext(
   // target person — using them causes the LLM to address emails to random senders.
   const has_real_recipient =
     winner.type === 'hunt'
-      ? (hasRecipientEmailInContext || hasHuntGroundedPeerRecipient)
+      ? hasHuntGroundedPeerRecipient
       : (isGoalLinkedDiscrepancy || isEntityLinkedDiscrepancy)
         // Discrepancy (goal-linked or entity-linked): only entity-db email counts
         ? hasRecipientEmailInContext
@@ -5785,7 +5787,7 @@ export function applyBracketTemplateSalvage(
 
 /**
  * Hunt + send_message: artifact.to must match hunt_send_message_recipient_allowlist from
- * buildStructuredContext (grounded peers ∪ relationshipContext). Exported for unit tests.
+ * buildStructuredContext (winning hunt source signals only). Exported for unit tests.
  */
 export function collectHuntSendMessageToValidationIssues(
   ctx: Pick<StructuredContext, 'candidate_class' | 'hunt_send_message_recipient_allowlist'>,
@@ -5796,7 +5798,7 @@ export function collectHuntSendMessageToValidationIssues(
   const allow = ctx.hunt_send_message_recipient_allowlist;
   if (!allow.length) {
     return [
-      'send_message hunt candidate has no hunt-grounded recipient (winning-signal peer or relationship context email)',
+      'send_message hunt candidate has no hunt-grounded recipient (eligible external peer on winning hunt signal rows only)',
     ];
   }
   if (!isNonEmptyString(rawRecipient)) {
@@ -5805,7 +5807,7 @@ export function collectHuntSendMessageToValidationIssues(
   const recipientNorm = String(rawRecipient).trim().toLowerCase();
   if (!allow.includes(recipientNorm)) {
     return [
-      'send_message "to" must be one of the hunt-grounded recipient emails from the winning signal thread or relationship context',
+      'send_message "to" must be one of the hunt-grounded recipient emails from the winning hunt signal thread only',
     ];
   }
   return [];
