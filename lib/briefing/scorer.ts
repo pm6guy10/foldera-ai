@@ -1782,6 +1782,32 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
     }
   }
 
+  // -----------------------------------------------------------------------
+  // Product invariant: send_message (real human + thread) > emergent / make_decision
+  //
+  // If ANY valid thread-backed sendable candidate exists, it MUST outrank
+  // emergent and make_decision candidates. Foldera's product is action, not
+  // analysis — emergent patterns are valuable but cannot displace a concrete
+  // obligation to a real human being.
+  // -----------------------------------------------------------------------
+  const topSendableAfterDiscrepancy = ranked
+    .filter((c) => c.score > 0 && isThreadBackedSendable(c) && passesTop3RankingInvariants(c))
+    .sort(compareScoredLoops)[0];
+
+  if (topSendableAfterDiscrepancy) {
+    for (const candidate of ranked) {
+      if (candidate.score <= 0) continue;
+      if (candidate.type !== 'emergent' && candidate.suggestedActionType !== 'make_decision') continue;
+      if (candidate.id === topSendableAfterDiscrepancy.id) continue;
+      if (candidate.score >= topSendableAfterDiscrepancy.score) {
+        // Force the thread-backed sendable above this emergent/make_decision candidate
+        topSendableAfterDiscrepancy.score = candidate.score + 0.001;
+        ensureDiagnostic(topSendableAfterDiscrepancy).penaltyReasons.push('sendable_forced_over_emergent_make_decision');
+        ensureDiagnostic(candidate).penaltyReasons.push('emergent_make_decision_yielded_to_thread_backed_sendable');
+      }
+    }
+  }
+
   ranked.sort(compareScoredLoops);
   for (const candidate of ranked) {
     const diag = ensureDiagnostic(candidate);
