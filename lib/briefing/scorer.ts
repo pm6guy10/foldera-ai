@@ -108,6 +108,41 @@ function parseCalendarEventFromContent(text: string): { startMs: number } | null
   return null;
 }
 
+/** Contact outreach types: entity skip penalty + contact-only suppression scope. */
+export const CONTACT_ACTION_TYPES = new Set<ActionType>(['send_message', 'schedule']);
+
+export type SuppressionGoalEntityPattern = { pattern: RegExp; goalText: string; contactOnly: boolean };
+
+/**
+ * Shared suppression-goal evaluation for all candidate types (signal, relationship,
+ * discrepancy, emergent, hunt, etc.). Optionally checks `entityName` so entity-linked
+ * rows match even when the title omits the full proper noun.
+ */
+export function evaluateSuppressionGoalMatch(
+  title: string,
+  content: string,
+  actionType: ActionType,
+  entityName: string | undefined | null,
+  suppressionEntities: ReadonlyArray<SuppressionGoalEntityPattern>,
+  contactActionTypes: ReadonlySet<ActionType> = CONTACT_ACTION_TYPES,
+): { patternMatched: boolean; isSuppressed: boolean; matchedGoalText: string | null; contactOnly: boolean } {
+  let matchedGoalText: string | null = null;
+  let contactOnly = false;
+  const ent = typeof entityName === 'string' ? entityName.trim() : '';
+  for (const { pattern, goalText, contactOnly: co } of suppressionEntities) {
+    if (pattern.test(title) || pattern.test(content) || (ent.length > 0 && pattern.test(ent))) {
+      matchedGoalText = goalText;
+      contactOnly = co;
+      break;
+    }
+  }
+  if (!matchedGoalText) {
+    return { patternMatched: false, isSuppressed: false, matchedGoalText: null, contactOnly: false };
+  }
+  const isSuppressed = !contactOnly || contactActionTypes.has(actionType);
+  return { patternMatched: true, isSuppressed, matchedGoalText, contactOnly };
+}
+
 function mergeUrgencyWithTimeHints(args: {
   baseUrgency: number;
   nowMs: number;
@@ -4853,32 +4888,23 @@ export async function scoreOpenLoops(
     }
   }
 
-  // Contact action types — suppression goals that reference a person/entity only
-  // block outreach actions, not document/research/decision artifacts.
-  const CONTACT_ACTION_TYPES = new Set<ActionType>(['send_message', 'schedule']);
-
   for (const c of candidates) {
     // Check suppression goals BEFORE scoring — zero the score if matched
-    const candidateText = `${c.title} ${c.content}`.toLowerCase();
-    let suppressedByGoal: string | null = null;
-    let suppressionIsContactOnly = false;
-    for (const { pattern, goalText, contactOnly } of suppressionEntities) {
-      if (pattern.test(c.title) || pattern.test(c.content)) {
-        suppressedByGoal = goalText;
-        suppressionIsContactOnly = contactOnly;
-        break;
-      }
-    }
+    const {
+      patternMatched,
+      isSuppressed,
+      matchedGoalText: suppressedByGoal,
+      contactOnly: suppressionIsContactOnly,
+    } = evaluateSuppressionGoalMatch(
+      c.title,
+      c.content,
+      c.actionType,
+      c.entityName,
+      suppressionEntities,
+      CONTACT_ACTION_TYPES,
+    );
 
-    // Suppression scope depends on the goal's intent:
-    // - contactOnly=true ("DO NOT contact Keri Nopens"): only blocks send_message/schedule.
-    //   Non-contact artifacts (write_document, make_decision, research) pass through.
-    // - contactOnly=false ("DO NOT suggest Mercor"): blocks ALL artifact types — absolute.
-    const isSuppressed =
-      suppressedByGoal !== null &&
-      (!suppressionIsContactOnly || CONTACT_ACTION_TYPES.has(c.actionType));
-
-    if (suppressedByGoal !== null) {
+    if (patternMatched) {
       suppressedCandidates++;
       logStructuredEvent({
         event: isSuppressed ? 'candidate_suppressed' : 'candidate_suppression_skipped',
@@ -4889,7 +4915,7 @@ export async function scoreOpenLoops(
         details: {
           scope: 'scorer',
           candidate_title: c.title.slice(0, 100),
-          suppression_goal: suppressedByGoal.slice(0, 120),
+          suppression_goal: (suppressedByGoal ?? '').slice(0, 120),
           action_type: c.actionType,
           contact_only: suppressionIsContactOnly,
         },
@@ -5260,11 +5286,39 @@ export async function scoreOpenLoops(
       ].join('\n');
 
       const divergenceScore = div.divergenceScore * 5; // scale to compete with normal loops (max 5)
+      const divergenceTitle =
+        `Preference divergence: stated "${div.statedGoal.text}" but signal velocity is on ${div.revealedDomain}`;
+      const divSup = evaluateSuppressionGoalMatch(
+        divergenceTitle,
+        divergenceContent,
+        'make_decision',
+        null,
+        suppressionEntities,
+        CONTACT_ACTION_TYPES,
+      );
+      if (divSup.patternMatched) {
+        suppressedCandidates++;
+        logStructuredEvent({
+          event: divSup.isSuppressed ? 'candidate_suppressed' : 'candidate_suppression_skipped',
+          level: 'info',
+          userId,
+          artifactType: artifactTypeForAction('make_decision'),
+          generationStatus: divSup.isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+          details: {
+            scope: 'scorer',
+            candidate_type: 'emergent_divergence',
+            candidate_title: divergenceTitle.slice(0, 100),
+            suppression_goal: (divSup.matchedGoalText ?? '').slice(0, 120),
+            action_type: 'make_decision',
+            contact_only: divSup.contactOnly,
+          },
+        });
+      }
 
       scored.push({
         id: `divergence-${div.revealedDomain}-${div.statedGoal.category}`,
         type: 'emergent',
-        title: `Preference divergence: stated "${div.statedGoal.text}" but signal velocity is on ${div.revealedDomain}`,
+        title: divergenceTitle,
         content: divergenceContent,
         suggestedActionType: 'make_decision',
         matchedGoal: {
@@ -5272,14 +5326,14 @@ export async function scoreOpenLoops(
           priority: div.statedGoal.priority,
           category: div.statedGoal.category,
         },
-        score: divergenceScore,
+        score: divSup.isSuppressed ? 0 : divergenceScore,
         breakdown: {
           stakes: div.statedGoal.priority,
           urgency: div.divergenceScore,
           tractability: 1.0,
           freshness: 1.0,
           actionTypeRate: 0.5,
-          entityPenalty: 0,
+          entityPenalty: divSup.isSuppressed ? -999 : 0,
         },
         relatedSignals: div.topSignals.slice(0, 3),
         sourceSignals: div.topSignals.slice(0, 3).map((signal) => ({
@@ -5327,6 +5381,33 @@ export async function scoreOpenLoops(
         ep.mirrorQuestion,
       ].join('\n');
 
+      const emergSup = evaluateSuppressionGoalMatch(
+        ep.title,
+        mirrorContent,
+        ep.suggestedActionType,
+        null,
+        suppressionEntities,
+        CONTACT_ACTION_TYPES,
+      );
+      if (emergSup.patternMatched) {
+        suppressedCandidates++;
+        logStructuredEvent({
+          event: emergSup.isSuppressed ? 'candidate_suppressed' : 'candidate_suppression_skipped',
+          level: 'info',
+          userId,
+          artifactType: artifactTypeForAction(ep.suggestedActionType),
+          generationStatus: emergSup.isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+          details: {
+            scope: 'scorer',
+            candidate_type: 'emergent_pattern',
+            candidate_title: ep.title.slice(0, 100),
+            suppression_goal: (emergSup.matchedGoalText ?? '').slice(0, 120),
+            action_type: ep.suggestedActionType,
+            contact_only: emergSup.contactOnly,
+          },
+        });
+      }
+
       scored.push({
         id: `emergent-${ep.type}`,
         type: 'emergent',
@@ -5334,14 +5415,14 @@ export async function scoreOpenLoops(
         content: mirrorContent,
         suggestedActionType: ep.suggestedActionType,
         matchedGoal: null,
-        score: adjustedEV + 0.01, // tiny bump to ensure it wins over the loop it beat
+        score: emergSup.isSuppressed ? 0 : adjustedEV + 0.01, // tiny bump to ensure it wins over the loop it beat
         breakdown: {
           stakes: ep.surpriseValue,
           urgency: ep.dataConfidence,
           tractability: 1.0,
           freshness: emergentFreshness,
           actionTypeRate: 0.5,
-          entityPenalty: 0,
+          entityPenalty: emergSup.isSuppressed ? -999 : 0,
         },
         relatedSignals: [],
         sourceSignals: ep.dataPoints.slice(0, 3).map((point) => ({
@@ -5411,6 +5492,72 @@ export async function scoreOpenLoops(
     ) {
       continue;
     }
+
+    const discSup = evaluateSuppressionGoalMatch(
+      d.title,
+      d.content,
+      d.suggestedActionType,
+      d.entityName,
+      suppressionEntities,
+      CONTACT_ACTION_TYPES,
+    );
+    if (discSup.patternMatched) {
+      suppressedCandidates++;
+      logStructuredEvent({
+        event: discSup.isSuppressed ? 'candidate_suppressed' : 'candidate_suppression_skipped',
+        level: 'info',
+        userId,
+        artifactType: artifactTypeForAction(d.suggestedActionType),
+        generationStatus: discSup.isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+        details: {
+          scope: 'scorer',
+          candidate_type: 'discrepancy',
+          discrepancy_class: d.class,
+          candidate_title: d.title.slice(0, 100),
+          suppression_goal: (discSup.matchedGoalText ?? '').slice(0, 120),
+          action_type: d.suggestedActionType,
+          contact_only: discSup.contactOnly,
+        },
+      });
+    }
+    if (discSup.isSuppressed) {
+      scored.push({
+        id: d.id,
+        type: 'discrepancy',
+        title: d.title,
+        content: d.content,
+        suggestedActionType: d.suggestedActionType,
+        matchedGoal: d.matchedGoal,
+        score: 0,
+        breakdown: {
+          stakes: 0,
+          urgency: 0,
+          tractability: 0,
+          freshness: 0,
+          actionTypeRate: 0,
+          entityPenalty: -999,
+        },
+        relatedSignals: [],
+        sourceSignals: d.sourceSignals,
+        entityName: d.entityName,
+        confidence_prior: 30,
+        discrepancyClass: d.class,
+        trigger: d.trigger,
+        discrepancyEvidence: d.evidence,
+        discrepancyPreferredAction: d.discrepancyPreferredAction,
+      });
+      diag.discrepancies.push({
+        id: d.id,
+        class: d.class,
+        title: d.title.slice(0, 100),
+        entityName: d.entityName,
+        score: 0,
+        stakes: d.stakes,
+        urgency: d.urgency,
+      });
+      continue;
+    }
+
     const daysSinceLastSurface = await getDaysSinceLastSurface(userId, d.title);
     const mergedDiscUrgency = mergeUrgencyWithTimeHints({
       baseUrgency: d.urgency,
@@ -5506,6 +5653,62 @@ export async function scoreOpenLoops(
       continue;
     }
 
+    const insightAction: ActionType =
+      String(insight.suggested_action) === 'research' ? 'make_decision' : (insight.suggested_action as ActionType);
+
+    const insightSup = evaluateSuppressionGoalMatch(
+      insight.title,
+      insight.content,
+      insightAction,
+      insight.suggested_entity ?? null,
+      suppressionEntities,
+      CONTACT_ACTION_TYPES,
+    );
+    if (insightSup.patternMatched) {
+      suppressedCandidates++;
+      logStructuredEvent({
+        event: insightSup.isSuppressed ? 'candidate_suppressed' : 'candidate_suppression_skipped',
+        level: 'info',
+        userId,
+        artifactType: artifactTypeForAction(insightAction),
+        generationStatus: insightSup.isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+        details: {
+          scope: 'scorer',
+          candidate_type: 'insight_scan',
+          candidate_title: insight.title.slice(0, 100),
+          suppression_goal: (insightSup.matchedGoalText ?? '').slice(0, 120),
+          action_type: insightAction,
+          contact_only: insightSup.contactOnly,
+        },
+      });
+    }
+    if (insightSup.isSuppressed) {
+      scored.push({
+        id: insight.id,
+        type: 'discrepancy',
+        title: insight.title,
+        content: insight.content,
+        suggestedActionType: insightAction,
+        matchedGoal: null,
+        score: 0,
+        breakdown: {
+          stakes: 0,
+          urgency: 0,
+          tractability: 0,
+          freshness: 1.0,
+          actionTypeRate: 0.5,
+          entityPenalty: -999,
+        },
+        relatedSignals: [],
+        sourceSignals: insightPreSourceSignals,
+        entityName: insight.suggested_entity,
+        confidence_prior: 30,
+        discrepancyClass: 'behavioral_pattern',
+        fromInsightScan: true,
+      });
+      continue;
+    }
+
     const entityMatch = entities.find(
       (e) =>
         insight.suggested_entity &&
@@ -5551,7 +5754,7 @@ export async function scoreOpenLoops(
       stakes: 4,
       urgency: 0.85,
       tractability: 0.8,
-      actionType: insight.suggested_action,
+      actionType: insightAction,
       entityPenalty: 0,
       daysSinceLastSurface: daysSinceInsightSurface,
       approvalHistory,
@@ -5580,8 +5783,7 @@ export async function scoreOpenLoops(
       title: insight.title,
       content: insight.content,
       // AZ-24: insight scan must not emit open-ended research rows — frame a decision.
-      suggestedActionType:
-        String(insight.suggested_action) === 'research' ? 'make_decision' : insight.suggested_action,
+      suggestedActionType: insightAction,
       matchedGoal: null,
       score: insightScore,
       breakdown: {
@@ -5629,6 +5831,8 @@ export async function scoreOpenLoops(
   const discrepancyGoalTexts = new Set<string>();
   for (const s of scored) {
     if (s.type !== 'discrepancy') continue;
+    // Suppressed / zeroed discrepancies must not drive cross-signal convergence boosts.
+    if (s.score <= 0) continue;
     if (s.entityName) discrepancyEntityNames.add(s.entityName.toLowerCase());
     if (s.matchedGoal) discrepancyGoalTexts.add(s.matchedGoal.text);
   }
@@ -5824,7 +6028,45 @@ export async function scoreOpenLoops(
       ) {
         continue;
       }
-      loopsToAdd.push(huntLoop);
+      const huntSup = evaluateSuppressionGoalMatch(
+        huntLoop.title,
+        huntLoop.content,
+        huntLoop.suggestedActionType,
+        huntLoop.entityName,
+        suppressionEntities,
+        CONTACT_ACTION_TYPES,
+      );
+      if (huntSup.patternMatched) {
+        suppressedCandidates++;
+        logStructuredEvent({
+          event: huntSup.isSuppressed ? 'candidate_suppressed' : 'candidate_suppression_skipped',
+          level: 'info',
+          userId,
+          artifactType: artifactTypeForAction(huntLoop.suggestedActionType),
+          generationStatus: huntSup.isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+          details: {
+            scope: 'scorer',
+            candidate_type: 'hunt',
+            candidate_title: huntLoop.title.slice(0, 100),
+            suppression_goal: (huntSup.matchedGoalText ?? '').slice(0, 120),
+            action_type: huntLoop.suggestedActionType,
+            contact_only: huntSup.contactOnly,
+          },
+        });
+      }
+      if (huntSup.isSuppressed) {
+        loopsToAdd.push({
+          ...huntLoop,
+          score: 0,
+          breakdown: {
+            ...huntLoop.breakdown,
+            entityPenalty: -999,
+            final_score: 0,
+          },
+        });
+      } else {
+        loopsToAdd.push(huntLoop);
+      }
       if (loopsToAdd.length >= 3) break;
     }
     for (const hLoop of loopsToAdd) {
