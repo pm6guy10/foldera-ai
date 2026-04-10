@@ -4,6 +4,17 @@
 
 ## Session Logs
 
+- 2026-04-10 — AUDIT: **Fix freshness penalty from generation failures + skip trigger-lock validation in dry-run + goal-linked stakes boost for decay candidates**
+  MODE: AUDIT
+  Commit hash(es): `18f9f31` (trigger-lock skip in dry-run), `04ec410` (freshness fix + goal-linked stakes boost)
+  Files changed: `lib/briefing/generator.ts`, `lib/briefing/scorer.ts`, `lib/briefing/discrepancy-detector.ts`
+  **Changes:**
+  (1) `lib/briefing/generator.ts` — `generateDirective` now skips the `validateTriggerArtifact` call when `options.pipelineDryRun === true`. The mock dry-run artifact `[DRY RUN - no API call made]` cannot satisfy natural-language theme checks (e.g. `missing_relationship_decay_theme`), causing all `decay/send_message` discrepancy candidates to produce `generation_failed_sentinel` in dry-run mode. Fix: add `!options.pipelineDryRun` guard before the trigger-lock block.
+  (2) `lib/briefing/scorer.ts` — `getFreshness` was treating generation-failure `tkg_actions` rows (with `generation_log.outcome === 'no_send'`) as "user rejected similar content" and applying a 0.05 freshness floor. When a run produced `generation_failed_sentinel` for the Keri Nopens decay candidate, the resulting `skipped` row in `tkg_actions` suppressed the same candidate for 3 days via `getFreshness`. The user never saw or interacted with the content. Fix: only set `anySkipped=true` when `generation_log.outcome === 'selected'` (real directive was presented to user).
+  (3) `lib/briefing/discrepancy-detector.ts` — `extractDecay` stakes formula now includes a +1 boost when the silenced entity's email domain appears verbatim in any P1/P2 goal (e.g. `hca.wa.gov` → "hca" → matches "Land MAS3 position at HCA"). `matchedGoal` is now populated from entity blob + domain. Helps Yadira Clapper (HCA) when she eventually hits silence threshold.
+  What was verified: `npx vitest run lib/briefing/__tests__/` — 767/767; `npm run build` — compiled; `npm run test:ci:e2e` — 46/46; pushed `18f9f31` + `04ec410`; Vercel live at `04ec410`; triggered `settings_run_brief` dry-run — winner `discrepancy_bp_theme_deadline` (write_document, conf=74), `generation_failed_sentinel` no longer occurs; freshness penalty no longer suppresses decay candidates from failure rows.
+  Any unresolved issues: The `discrepancy_decay` for Keri Nopens (stakes=3) still ranks below `discrepancy_bp_theme_deadline` (stakes=4) in the scorer. No active code blocker. The `do_nothing` in `npm run health` reflects nightly cron stale-signal backlog (447 unprocessed signals), not a code defect — `settings_run_brief` dry-run correctly returns `pipeline_dry_run_returned` with real winner. Remaining path to live `pending_approval` action: nightly-ops must drain the signal backlog, then `daily-brief` cron generates with real LLM.
+
 - 2026-04-10 — AUDIT: **Self-entity exclusion complete: derive selfNameTokens from loaded entity list after entity fetch**
   MODE: AUDIT
   Commit hash(es): `79c7295`

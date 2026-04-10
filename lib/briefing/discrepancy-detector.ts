@@ -420,6 +420,19 @@ function extractDecay(
         : `Relationship with ${e.total_interactions} interactions went to zero — the longer the silence, the harder the restart`,
     };
 
+    const primaryEmail = (e.primary_email as string | null | undefined) ?? '';
+    const entityBlob = [e.name, primaryEmail].join(' ');
+    const goalMatch = matchGoal(entityBlob, goals);
+    // Also check if the entity's email domain appears verbatim in any high-priority goal
+    // (e.g. "hca.wa.gov" → check goals for "hca"). textKeywords filters short tokens so
+    // we do a direct substring check for short org identifiers.
+    const emailDomain = primaryEmail.includes('@') ? primaryEmail.split('@')[1]?.split('.')[0]?.toLowerCase() ?? '' : '';
+    const domainInHighPriorityGoal = emailDomain.length >= 2 && goals.some(
+      g => g.priority <= 2 && g.goal_text.toLowerCase().includes(emailDomain),
+    );
+    // Boost stakes by 1 when the silenced contact is goal-linked (e.g. P1/P2 career goal)
+    const goalStakesBoost = ((goalMatch && goalMatch.priority <= 2) || domainInHighPriorityGoal) ? 1 : 0;
+
     results.push({
       id: `discrepancy_decay_${e.id}`,
       class: 'decay',
@@ -428,7 +441,7 @@ function extractDecay(
         `Your relationship with ${e.name} has gone silent after ${e.total_interactions} past interactions. ` +
         `No contact in ${silentStr}. Baseline was ~${baselinePer14d} interactions per 14 days. ` +
         `Current: 0. This is not drift — it is a temperature drop that is getting harder to reverse.`,
-      stakes: Math.min(5, Math.floor(e.total_interactions / 5) + 2),
+      stakes: Math.min(5, Math.floor(e.total_interactions / 5) + 2 + goalStakesBoost),
       urgency: daysSilent != null && daysSilent > 60 ? 0.75 : 0.55,
       suggestedActionType: 'send_message' as ActionType,
       evidence: JSON.stringify({
@@ -444,7 +457,7 @@ function extractDecay(
           summary: `${e.name}: ${e.total_interactions} total interactions, last seen ${silentStr} ago`,
         },
       ],
-      matchedGoal: null,
+      matchedGoal: goalMatch ? { text: goalMatch.text, priority: goalMatch.priority, category: goalMatch.category } : null,
       entityName: e.name,
       trigger,
     });
