@@ -6,7 +6,7 @@
 
 - 2026-04-10 — Hunt recipient grounding: has_real_recipient only from winning thread + eligible peer
  MODE: AUDIT
- Commit hash(es): `cb67b03`
+ Commit hash(es): `bfc3210`
  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/hunt-recipient-grounding.test.ts`, `SESSION_HISTORY.md`
  What was verified: `npm run health` — 0 FAIL; `npx vitest run lib/briefing/__tests__/hunt-recipient-grounding.test.ts`; `npm run build`; `npm run test:ci:e2e` — 46/46 passed
  Changes: For `winner.type === 'hunt'`, `has_real_recipient` no longer becomes true from any `externalEmails` in the merged evidence bundle (keyword expansion + LIFE_CONTEXT). Added `signal_id` on `SignalSnippet` from `tkg_signals.id` in fetches; hunt peers are emails from authors on snippets whose `signal_id` is in `winner.sourceSignals` (signal kind), filtered with `isEligibleExternalPeerEmail` (self + `isBlockedSender`). Injected `hunt_grounded_peer_email` surgical facts; `recipient_brief` uses `buildHuntRecipientBriefFromGroundedPeers` when there is no relationshipContext. `buildDecisionPayload` already maps hunt `send_message` → `write_document` when `!has_real_recipient`.
