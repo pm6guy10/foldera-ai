@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-10 — Platform health alert: retry fetch + honest email when `/api/health` unreachable
+ MODE: AUDIT
+ Commit hash(es): `d7e0e7c`
+ Files changed: `lib/cron/cron-health-alert.ts`, `lib/cron/__tests__/cron-health-alert.test.ts`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npx vitest run lib/cron/__tests__/cron-health-alert.test.ts`; `npm run lint`; `npm run build`
+ Changes: Explained 7:48 UTC alert: `runPlatformHealthAlert` `fetch` threw (`fetch failed`), so synthetic payload had no `db`/`env` and email showed misleading Database FAILED / Env MISSING. Added 3-attempt retry (800ms backoff), `formatHealthField` for unreachable case, and unit tests.
+ Any unresolved issues: none
+
 - 2026-04-10 — Unify suppression goals across discrepancy, emergent, insight scan, and hunt (no type bypass)
  MODE: AUDIT
  Commit hash(es): `4550885`

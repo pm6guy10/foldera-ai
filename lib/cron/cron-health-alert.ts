@@ -20,20 +20,62 @@ function resolveHealthBaseUrl(): string {
   return 'https://www.foldera.ai';
 }
 
+const HEALTH_FETCH_RETRIES = 3;
+const HEALTH_FETCH_RETRY_MS = 800;
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * GET /api/health with small retries — transient "fetch failed" from the same
+ * region as daily-brief is a known false positive; DB/env were never read.
+ */
+async function fetchHealthJson(baseUrl: string): Promise<Record<string, unknown>> {
+  const url = `${baseUrl}/api/health`;
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= HEALTH_FETCH_RETRIES; attempt += 1) {
+    try {
+      const healthRes = await fetch(url, { cache: 'no-store' });
+      const healthData = (await healthRes.json()) as Record<string, unknown>;
+      if (!healthRes.ok) {
+        return {
+          ...healthData,
+          status: healthData.status ?? 'degraded',
+          _httpStatus: healthRes.status,
+        };
+      }
+      return healthData;
+    } catch (err: unknown) {
+      lastErr = err;
+      if (attempt < HEALTH_FETCH_RETRIES) await sleep(HEALTH_FETCH_RETRY_MS);
+    }
+  }
+  const message = lastErr instanceof Error ? lastErr.message : String(lastErr);
+  return { status: 'degraded', error: `Health endpoint unreachable: ${message}` };
+}
+
+function formatHealthField(
+  health: Record<string, unknown>,
+  key: 'db' | 'env',
+  label: string,
+): string {
+  const v = health[key];
+  if (typeof v === 'boolean') {
+    return `${label}: ${v ? 'OK' : 'FAILED'}`;
+  }
+  if (typeof health.error === 'string' && health.error.includes('unreachable')) {
+    return `${label}: UNKNOWN (endpoint not reached — not a live DB/env check)`;
+  }
+  return `${label}: UNKNOWN`;
+}
+
 /**
  * GET /api/health on the deployment; if not ok, email DAILY_BRIEF_TO_EMAIL when Resend is configured.
  */
 export async function runPlatformHealthAlert(): Promise<PlatformHealthAlertResult> {
   const baseUrl = resolveHealthBaseUrl();
-  let healthData: Record<string, unknown>;
-
-  try {
-    const healthRes = await fetch(`${baseUrl}/api/health`, { cache: 'no-store' });
-    healthData = (await healthRes.json()) as Record<string, unknown>;
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    healthData = { status: 'degraded', error: `Health endpoint unreachable: ${message}` };
-  }
+  const healthData = await fetchHealthJson(baseUrl);
 
   const isHealthy = healthData.status === 'ok';
 
@@ -56,8 +98,8 @@ export async function runPlatformHealthAlert(): Promise<PlatformHealthAlertResul
       'Foldera health check failed.',
       '',
       `Time: ${String(healthData.ts ?? new Date().toISOString())}`,
-      `Database: ${healthData.db ? 'OK' : 'FAILED'}`,
-      `Env vars: ${healthData.env ? 'OK' : 'MISSING'}`,
+      formatHealthField(healthData, 'db', 'Database'),
+      formatHealthField(healthData, 'env', 'Env vars'),
       `Status: ${String(healthData.status ?? 'degraded')}`,
       '',
       'Full response:',
