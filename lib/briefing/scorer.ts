@@ -3727,6 +3727,23 @@ export async function scoreOpenLoops(
   );
 
   const entities = entitiesRes.data ?? [];
+  // Supplement selfNameTokens from entities: find entities that match user's emails
+  // and extract their name tokens. This handles email/password users who have no
+  // given_name/family_name in OAuth metadata (only email in identity_data).
+  if (selfNameTokens.length === 0 && selfEmails.size > 0) {
+    for (const ent of entities) {
+      const entEmail = (ent.primary_email as string | null | undefined);
+      const entEmails = (ent.emails as string[] | undefined) ?? [];
+      const isOwnerEntity = (entEmail && selfEmails.has(entEmail.toLowerCase()))
+        || entEmails.some(e => selfEmails.has(e.toLowerCase()));
+      if (isOwnerEntity) {
+        const tokens = (ent.name as string).toLowerCase().split(/\s+/).filter((t: string) => t.length >= 2);
+        for (const t of tokens) {
+          if (!selfNameTokens.includes(t)) selfNameTokens.push(t);
+        }
+      }
+    }
+  }
   // Entity ID → name map so commitment candidates can resolve promisor/promisee.
   // Seed from loaded entities, then batch-resolve any missing commitment actor IDs.
   const entityIdToName = new Map<string, string>();
