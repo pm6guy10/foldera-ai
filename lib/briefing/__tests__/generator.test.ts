@@ -7,6 +7,7 @@ import {
 } from '../pinned-constraints';
 import {
   applyScheduleConflictCanonicalUserFacingCopy,
+  enrichCandidateContext,
   extractJsonFromResponse,
   getDecisionEnforcementIssues,
   getFinancialPaymentToneValidationIssues,
@@ -502,5 +503,50 @@ describe('getFinancialPaymentToneValidationIssues', () => {
       },
     );
     expect(issues).toHaveLength(0);
+  });
+});
+
+describe('enrichCandidateContext (hunt)', () => {
+  it('does not inject unrelated inbox threads into HUNT_CONTEXT', () => {
+    const winner: ScoredLoop = {
+      id: 'hunt_unreplied_win-signal-id',
+      type: 'hunt',
+      title: 'hunt',
+      content: 'Inbound email unanswered',
+      suggestedActionType: 'send_message',
+      sourceSignals: [
+        {
+          kind: 'signal',
+          id: 'win-signal-id',
+          source: 'outlook',
+          summary: 'Inbound email unanswered 14+ days — Your FICO score',
+        },
+      ],
+    } as ScoredLoop;
+
+    const evidence = [
+      {
+        source: 'outlook',
+        date: '2026-03-27',
+        subject: 'Other thread',
+        snippet: 'Brandon: closed account',
+        author: 'other@example.com',
+        direction: 'received' as const,
+        signal_id: 'other-signal-id',
+      },
+      {
+        source: 'outlook',
+        date: '2026-03-27',
+        subject: 'FICO',
+        snippet: 'Score increased',
+        author: 'fico@example.com',
+        direction: 'received' as const,
+        signal_id: 'win-signal-id',
+      },
+    ];
+
+    const ctx = enrichCandidateContext(winner, evidence);
+    expect(ctx).toContain('FICO');
+    expect(ctx).not.toContain('closed account');
   });
 });

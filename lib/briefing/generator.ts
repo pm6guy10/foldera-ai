@@ -1680,16 +1680,29 @@ function inferRequiredCausalDiagnosis(input: {
 }
 
 /** Extra lines for calendar/drive/conversation discrepancy winners. */
-function enrichCandidateContext(winner: ScoredLoop, evidenceSortedChrono: SignalSnippet[]): string | null {
+export function enrichCandidateContext(winner: ScoredLoop, evidenceSortedChrono: SignalSnippet[]): string | null {
   if (winner.type === 'hunt') {
     const parts: string[] = [];
     for (const s of winner.sourceSignals ?? []) {
       const src = s.source ? `${s.kind}/${s.source}` : s.kind;
       parts.push(`• [${src}] ${(s.summary ?? '').slice(0, 220)}`);
     }
+    const huntSourceIds = new Set(
+      (winner.sourceSignals ?? [])
+        .filter((sig) => sig.kind === 'signal' && typeof sig.id === 'string' && sig.id.length > 0)
+        .map((sig) => sig.id as string),
+    );
     const EMAIL_SOURCES = new Set(['gmail', 'outlook']);
+    // Do not append arbitrary recent inbox lines: they pull unrelated threads into HUNT_CONTEXT and
+    // the model then cites another hunt's subject in send_message while To: stays hunt-allowlisted.
     const extras = evidenceSortedChrono
       .filter((e) => EMAIL_SOURCES.has(e.source))
+      .filter(
+        (e) =>
+          huntSourceIds.size > 0 &&
+          typeof e.signal_id === 'string' &&
+          huntSourceIds.has(e.signal_id),
+      )
       .slice(0, 6);
     for (const e of extras) {
       const head = [e.subject, e.snippet].filter(Boolean).join(' — ');
