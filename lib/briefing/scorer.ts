@@ -3528,6 +3528,7 @@ export async function scoreOpenLoops(
 
   // Fetch user's own email addresses for self-addressed routing + inbound-vs-self scoring (multi-user: DB only, never hardcoded).
   const selfEmails = new Set<string>();
+  let selfNameTokens: string[] = [];
   try {
     const { data: authUserData } = await supabase.auth.admin.getUserById(userId);
     const authUser = authUserData?.user;
@@ -3544,6 +3545,20 @@ export async function scoreOpenLoops(
     for (const row of connectorEmailRows ?? []) {
       const em = row.email as string | null | undefined;
       if (typeof em === 'string' && em.trim()) selfEmails.add(em.trim().toLowerCase());
+    }
+    // Build name tokens for name-based self-entity exclusion (catches "Brandon D Kapp" etc.)
+    const meta = authUser?.user_metadata as Record<string, unknown> | undefined;
+    const fullName = (meta?.['full_name'] ?? meta?.['name'] ?? '') as string;
+    if (fullName) {
+      selfNameTokens = fullName.toLowerCase().split(/\s+/).filter(t => t.length >= 2);
+    }
+    // Also mine from identity_data
+    for (const identity of (authUser?.identities ?? [])) {
+      const id = identity.identity_data as Record<string, unknown> | undefined;
+      const given = id?.['given_name'] as string | undefined;
+      const family = id?.['family_name'] as string | undefined;
+      if (given) for (const t of given.toLowerCase().split(/\s+/)) if (t.length >= 2 && !selfNameTokens.includes(t)) selfNameTokens.push(t);
+      if (family) for (const t of family.toLowerCase().split(/\s+/)) if (t.length >= 2 && !selfNameTokens.includes(t)) selfNameTokens.push(t);
     }
   } catch {
     // Non-blocking — if lookup fails the self-addressed check in isSendWorthy still catches it
@@ -5213,6 +5228,7 @@ export async function scoreOpenLoops(
     structuredSignals,
     recentDirectives,
     selfEmails,
+    selfNameTokens: selfNameTokens.length > 0 ? selfNameTokens : undefined,
   });
   console.log(JSON.stringify({
     event: 'discrepancy_detection_debug',

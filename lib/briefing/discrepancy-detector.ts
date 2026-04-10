@@ -742,11 +742,11 @@ function extractRisk(
 // This is active deterioration: not silence, but measurable withdrawal.
 // ---------------------------------------------------------------------------
 
-function extractEngagementCollapse(entities: EntityRow[], selfEmails?: Set<string>): Discrepancy[] {
+function extractEngagementCollapse(entities: EntityRow[], selfEmails?: Set<string>, selfNameTokens?: string[]): Discrepancy[] {
   const results: Discrepancy[] = [];
   const candidates = entities
     .filter((e) => {
-      if (isSelfEntity(e, selfEmails)) return false;
+      if (isSelfEntity(e, selfEmails, selfNameTokens)) return false;
       const bx = (e.patterns as any)?.bx_stats;
       if (!bx) return false;
       return (
@@ -825,11 +825,11 @@ function extractEngagementCollapse(entities: EntityRow[], selfEmails?: Set<strin
 // a discrete stop — something changed between then and now.
 // ---------------------------------------------------------------------------
 
-function extractRelationshipDropout(entities: EntityRow[], selfEmails?: Set<string>): Discrepancy[] {
+function extractRelationshipDropout(entities: EntityRow[], selfEmails?: Set<string>, selfNameTokens?: string[]): Discrepancy[] {
   const results: Discrepancy[] = [];
   const candidates = entities
     .filter((e) => {
-      if (isSelfEntity(e, selfEmails)) return false;
+      if (isSelfEntity(e, selfEmails, selfNameTokens)) return false;
       const bx = (e.patterns as any)?.bx_stats;
       if (!bx) return false;
       const count30 = (bx.signal_count_30d ?? -1) as number;
@@ -1398,6 +1398,7 @@ function extractCalendarEntityGaps(
   entities: EntityRow[],
   nowMs: number,
   selfEmails?: Set<string>,
+  selfNameTokens?: string[],
 ): Discrepancy[] {
   const results: Discrepancy[] = [];
   const horizon = nowMs + SEVEN_DAYS_MS;
@@ -1410,7 +1411,7 @@ function extractCalendarEntityGaps(
     const matchedEntities = entityIdsForCalendarRow(evt, entities);
     for (const ent of matchedEntities) {
       if (results.length >= MAX_CROSS_CLASS * 2) break;
-      if (isSelfEntity(ent, selfEmails)) continue;
+      if (isSelfEntity(ent, selfEmails, selfNameTokens)) continue;
       const daysUntil = Math.max(0, Math.ceil((evt.startMs - nowMs) / 86400000));
       const openTh = openThreadHeuristic(structured, ent, nowMs);
       const recentEmail = hasRecentEmailWithEntity(structured, ent, nowMs);
@@ -1653,12 +1654,12 @@ function extractUnresolvedIntent(
   return results;
 }
 
-function extractConvergence(structured: StructuredSignalInput[], entities: EntityRow[], nowMs: number, selfEmails?: Set<string>): Discrepancy[] {
+function extractConvergence(structured: StructuredSignalInput[], entities: EntityRow[], nowMs: number, selfEmails?: Set<string>, selfNameTokens?: string[]): Discrepancy[] {
   const results: Discrepancy[] = [];
   const since = nowMs - FOURTEEN_DAYS_MS;
   for (const ent of entities) {
     if (results.length >= MAX_CROSS_CLASS) break;
-    if (isSelfEntity(ent, selfEmails)) continue;
+    if (isSelfEntity(ent, selfEmails, selfNameTokens)) continue;
     const n = ent.name.toLowerCase();
     if (n.length < 3) continue;
     const tokens = n.split(/\s+/).filter((t) => t.length >= 3);
@@ -1808,12 +1809,24 @@ function isInboundAuthoredBySelf(s: StructuredSignalInput, selfEmails: Set<strin
   return parseEmailsFromText(fromLine).some((e) => selfEmails.has(e));
 }
 
-function isSelfEntity(ent: EntityRow, selfEmails?: Set<string>): boolean {
-  if (!selfEmails || selfEmails.size === 0) return false;
-  if (ent.primary_email && selfEmails.has(ent.primary_email.toLowerCase())) return true;
-  if (ent.emails) {
-    for (const e of ent.emails) {
-      if (selfEmails.has(e.toLowerCase())) return true;
+function isSelfEntity(ent: EntityRow, selfEmails?: Set<string>, selfNameTokens?: string[]): boolean {
+  // Email-based match (primary path)
+  if (selfEmails && selfEmails.size > 0) {
+    if (ent.primary_email && selfEmails.has(ent.primary_email.toLowerCase())) return true;
+    if (ent.emails) {
+      for (const e of ent.emails) {
+        if (selfEmails.has(e.toLowerCase())) return true;
+      }
+    }
+  }
+  // Name-based match: entity whose name is a subset of the user's own name tokens
+  // (catches "Brandon D Kapp", "Brandon", "B Kapp", etc. — no email, same person)
+  if (selfNameTokens && selfNameTokens.length >= 2) {
+    const entTokens = ent.name.toLowerCase().split(/\s+/).filter(t => t.length >= 2);
+    if (entTokens.length >= 2) {
+      const matchedTokens = entTokens.filter(t => selfNameTokens.includes(t));
+      // If ≥2 name tokens match, treat as self
+      if (matchedTokens.length >= 2) return true;
     }
   }
   return false;
@@ -1907,6 +1920,7 @@ export function extractBehavioralPatterns(
   decryptedSignals: string[],
   nowMs: number,
   selfEmails?: Set<string>,
+  selfNameTokens?: string[],
 ): Discrepancy[] {
   const since14 = nowMs - FOURTEEN_DAYS_MS;
   const since7 = nowMs - SEVEN_DAYS_MS;
@@ -1923,7 +1937,7 @@ export function extractBehavioralPatterns(
     const linked = goalLinkedEntities(g, entities);
     if (linked.length === 0) continue;
     for (const ent of linked) {
-      if (isSelfEntity(ent, selfEmails)) continue;
+      if (isSelfEntity(ent, selfEmails, selfNameTokens)) continue;
       const { count: recv, sampleId } = countReceivedForEntity(structured, ent, nowMs, since14, selfEmails);
       if (recv < 3) continue;
       const sent = countSentForEntity(structured, ent, nowMs, since14);
@@ -1981,7 +1995,7 @@ export function extractBehavioralPatterns(
 
   // --- PATTERN 2: repeated avoidance ---
   for (const ent of entities) {
-    if (isSelfEntity(ent, selfEmails)) continue;
+    if (isSelfEntity(ent, selfEmails, selfNameTokens)) continue;
     const { count: recv, sampleId } = countReceivedForEntity(structured, ent, nowMs, since14, selfEmails);
     if (recv < 3) continue;
     if (countSentForEntity(structured, ent, nowMs, since14) > 0) continue;
@@ -2141,7 +2155,7 @@ export function extractBehavioralPatterns(
     const hitEntities: EntityRow[] = [];
     const sampleIds: string[] = [];
     for (const ent of entities) {
-      if (isSelfEntity(ent, selfEmails)) continue; // never include the account owner as a "contact"
+      if (isSelfEntity(ent, selfEmails, selfNameTokens)) continue; // never include the account owner as a "contact"
       let hit = false;
       for (const s of structured) {
         const t = new Date(s.occurred_at).getTime();
@@ -2310,8 +2324,11 @@ export function detectDiscrepancies(args: {
   recentDirectives?: RecentDirectiveInput[];
   now?: Date;
   selfEmails?: Set<string>;
+  /** Lowercase name tokens from the authenticated user (first, middle, last) for name-based self-exclusion */
+  selfNameTokens?: string[];
 }): Discrepancy[] {
   const nowMs = (args.now ?? new Date()).getTime();
+  const selfNameTokens = args.selfNameTokens;
   const commitments = args.commitments.filter((c) => (c.trust_class ?? 'unclassified') === 'trusted' || (c.trust_class ?? 'unclassified') === 'unclassified');
   const entities = args.entities.filter((e) => (e.trust_class ?? 'unclassified') === 'trusted' || (e.trust_class ?? 'unclassified') === 'unclassified');
   const { goals, decryptedSignals } = args;
@@ -2321,9 +2338,9 @@ export function detectDiscrepancies(args: {
   const all: Discrepancy[] = [
     ...extractScheduleConflicts(structured, nowMs),
     ...extractStaleDocuments(structured, goals, nowMs),
-    ...extractCalendarEntityGaps(structured, entities, nowMs, args.selfEmails),
+    ...extractCalendarEntityGaps(structured, entities, nowMs, args.selfEmails, selfNameTokens),
     ...extractDocumentFollowupGaps(structured, nowMs),
-    ...extractConvergence(structured, entities, nowMs, args.selfEmails),
+    ...extractConvergence(structured, entities, nowMs, args.selfEmails, selfNameTokens),
     ...extractUnresolvedIntent(structured, entities, recentDirectives, nowMs),
     ...extractBehavioralPatterns(
       entities,
@@ -2334,11 +2351,12 @@ export function detectDiscrepancies(args: {
       decryptedSignals,
       nowMs,
       args.selfEmails,
+      selfNameTokens,
     ),
     // Delta-based (higher urgency scores — float to top naturally)
     ...extractDeadlineStaleness(commitments, goals, nowMs),
-    ...extractEngagementCollapse(entities, args.selfEmails),
-    ...extractRelationshipDropout(entities, args.selfEmails),
+    ...extractEngagementCollapse(entities, args.selfEmails, selfNameTokens),
+    ...extractRelationshipDropout(entities, args.selfEmails, selfNameTokens),
     ...extractGoalVelocityMismatch(goals, decryptedSignals),
     // Absence-based (existing)
     ...extractRisk(entities, goals, decryptedSignals, nowMs),
