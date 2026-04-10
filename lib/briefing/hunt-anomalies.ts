@@ -310,6 +310,7 @@ export function runHuntAnomalies(args: {
     if (now - r.occurredMs < ms72h) continue;
     const peer = r.fromEmails[0];
     if (peerIsSelfOrProductNoise(peer, selfEmails) || inboundFromSelf(r.fromEmails, selfEmails)) continue;
+    if (peer && isBulkOrMarketingSender(peer)) continue;
 
     let replied = false;
     for (const se of sent) {

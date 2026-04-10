@@ -86,6 +86,18 @@ describe('runHuntAnomalies', () => {
     expect(findings.some((f) => f.kind === 'repeated_ignored_sender')).toBe(false);
   });
 
+  it('does not flag noreply/bulk senders as unreplied_inbound candidates', () => {
+    const recvIso = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived('noreply1', recvIso, 'AmEx <noreply@notificationmycredit-guide.americanexpress.com>', 'Your statement is ready'),
+      mailReceived('notif1', recvIso, 'CreditKarma <notifications@notifications.creditkarma.com>', 'Score update'),
+      mailReceived('mktg1', recvIso, 'Bass Pro <marketing@basspro.com>', 'Big sale'),
+    ];
+    const { countsByKind, findings } = runHuntAnomalies({ signals, commitments: [] });
+    expect(countsByKind.unreplied_inbound).toBe(0);
+    expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
+  });
+
   it('huntFindingToScoredLoopContent includes kind and title', () => {
     const f = {
       kind: 'repeated_ignored_sender' as const,
