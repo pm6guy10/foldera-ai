@@ -64,6 +64,7 @@ import { buildDiagnosticLensBlock, getVagueMechanismIssues } from './diagnostic-
 import { directiveHasStalePastDates, userFacingStaleDateScanText } from './scorer-failure-suppression';
 import { findLockedContactsInUserFacingPayload } from './locked-contact-scan';
 import { hasBracketTemplatePlaceholder } from './bracket-placeholder';
+import { resolveEvidenceSignalIdsForWinner } from './resolve-evidence-signal-ids';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -4770,29 +4771,7 @@ async function fetchWinnerSignalEvidence(
   const isDecayDiscrepancy =
     winner.type === 'discrepancy' && winner.discrepancyClass === 'decay';
 
-  const rawIds = (winner.sourceSignals ?? [])
-    .map((s) => s.id)
-    .filter((id): id is string => Boolean(id));
-  let sourceIds = [...new Set(rawIds)];
-
-  // Commitment winners: scorer puts commitment UUID in sourceSignals[].id, not tkg_signals.id.
-  // Originating mail row is tkg_commitments.source_id — load it first so evidence is not keyword-only.
-  if (winner.type === 'commitment' && winner.id) {
-    sourceIds = sourceIds.filter((id) => id !== winner.id);
-    const { data: commitRow } = await supabase
-      .from('tkg_commitments')
-      .select('source_id')
-      .eq('user_id', userId)
-      .eq('id', winner.id)
-      .maybeSingle();
-    const origSignalId =
-      typeof commitRow?.source_id === 'string' && commitRow.source_id.length > 0
-        ? commitRow.source_id
-        : null;
-    if (origSignalId) {
-      sourceIds = [origSignalId, ...sourceIds.filter((id) => id !== origSignalId)];
-    }
-  }
+  const sourceIds = await resolveEvidenceSignalIdsForWinner(supabase, userId, winner);
 
   let snippets: SignalSnippet[] = [];
   let senderBlockedCount = 0;
@@ -4801,6 +4780,7 @@ async function fetchWinnerSignalEvidence(
     const { data: sourceRows } = await supabase
       .from('tkg_signals')
       .select('content, source, occurred_at, author, type')
+      .eq('user_id', userId)
       .in('id', sourceIds);
 
     for (const row of sourceRows ?? []) {

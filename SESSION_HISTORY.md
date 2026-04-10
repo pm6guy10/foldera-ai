@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-09 — AUDIT: **Evidence graph: resolve commitment UUIDs to originating signals (compound / mixed winners)**
+  MODE: AUDIT
+  Commit hash(es): `1bd4014`
+  Files changed: `lib/briefing/resolve-evidence-signal-ids.ts`, `lib/briefing/__tests__/resolve-evidence-signal-ids.test.ts`, `lib/briefing/generator.ts`, `SESSION_HISTORY.md`
+  **Change:** `fetchWinnerSignalEvidence` previously unioned all `sourceSignals[].id` and queried `tkg_signals` — commitment PKs never match signal rows, so compound/discrepancy winners with `kind: 'commitment'` sources got **zero** linked mail evidence. New `resolveEvidenceSignalIdsForWinner` maps `kind === 'commitment'` → `tkg_commitments.source_id`, keeps `kind === 'signal'` as signal ids, skips relationship entity ids; commitment winners still prepend originating signal. Signal fetch adds `.eq('user_id', userId)`.
+  What was verified: `npm run health` (0 failing); `npx vitest run lib/briefing/__tests__/resolve-evidence-signal-ids.test.ts lib/briefing/__tests__/generator-runtime.test.ts`; `npm run build`.
+  Any unresolved issues: Live Supabase spot-check for `extracted_commitments` samples did not complete in-session (tsx query timed out); next session can re-run bounded query.
+
 - 2026-04-09 — AUDIT: **FK covering indexes (`tkg_directive_ml_snapshots.action_id`, `tkg_goals.entity_id`)**
   MODE: AUDIT
   Commit hash(es): `7651293`
