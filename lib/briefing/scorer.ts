@@ -57,6 +57,10 @@ import {
   type EntitySalienceRow,
   computeLivingGraphMultiplier,
 } from '@/lib/signals/entity-attention';
+import {
+  commitmentAnchoredToMailSignal,
+  isExcludedSignalSourceForScorerPool,
+} from './scorer-candidate-sources';
 
 // ---------------------------------------------------------------------------
 // Self-referential signal filter — excludes Foldera's own directive outputs
@@ -3555,7 +3559,9 @@ export async function scoreOpenLoops(
     // Open commitments (last 14 days or no deadline), excluding user-suppressed ones
     supabase
       .from('tkg_commitments')
-      .select('id, description, category, status, risk_score, due_at, implied_due_at, source_context, updated_at, trust_class, promisor_id, promisee_id')
+      .select(
+        'id, description, category, status, risk_score, due_at, implied_due_at, source_context, updated_at, trust_class, promisor_id, promisee_id, source, source_id',
+      )
       .eq('user_id', userId)
       .in('trust_class', ['trusted', 'unclassified'])
       .in('status', ['active', 'at_risk'])
@@ -3667,6 +3673,11 @@ export async function scoreOpenLoops(
     })
     .filter((signal: any) => signal && !isSelfReferentialSignal(signal.content));
   diag.sourceCounts.signals_after_decrypt = signals.length;
+
+  const signalSourceByRowId = new Map<string, string>();
+  for (const s of signals) {
+    signalSourceByRowId.set(String(s.id), String(s.source ?? ''));
+  }
 
   const { data: recentDirectiveRows } = await supabase
     .from('tkg_actions')
@@ -3869,6 +3880,8 @@ export async function scoreOpenLoops(
     author?: string;
     commitmentDueMs?: number;
     calendarEventStartMs?: number;
+    /** True when commitment.source_id resolves to a gmail/outlook signal row (real thread). */
+    mailThreadAnchored?: boolean;
   }> = [];
   let suppressedCandidates = 0;
 
@@ -4041,6 +4054,12 @@ export async function scoreOpenLoops(
     const dueStr = (c.due_at as string | null) || (c.implied_due_at as string | null);
     const commitmentDueMs = dueStr ? new Date(dueStr).getTime() : undefined;
 
+    const mailThreadAnchored = commitmentAnchoredToMailSignal(
+      c.source as string | undefined,
+      c.source_id as string | undefined,
+      signalSourceByRowId,
+    );
+
     candidates.push({
       id: c.id,
       type: 'commitment',
@@ -4060,11 +4079,13 @@ export async function scoreOpenLoops(
       ],
       entityName: commitEntityName,
       commitmentDueMs,
+      mailThreadAnchored,
     });
   }
 
   // 2. Signals — skip self-fed directive signals to avoid circular loops
   for (const s of signals) {
+    if (isExcludedSignalSourceForScorerPool(s.source as string | undefined)) continue;
     const text = s.content as string;
     if (!text || text.length < 20) continue;
     // Skip signals that are Foldera's own self-fed directives
@@ -4836,6 +4857,23 @@ export async function scoreOpenLoops(
       { id: c.id, type: c.type, entityName: c.entityName },
       c.title.slice(0, 80),
     );
+
+    // Mail-thread commitments with meaningful goal stakes beat calendar-only and internal-chat noise.
+    if (c.type === 'commitment' && c.mailThreadAnchored && specificityAdjustedStakes >= 3) {
+      score *= 1.35;
+      logStructuredEvent({
+        event: 'mail_thread_commitment_boost',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'scoring',
+        details: {
+          scope: 'scorer',
+          candidate_id: c.id,
+          adjusted_stakes: specificityAdjustedStakes,
+        },
+      });
+    }
 
     // Find related signals: keyword overlap with this loop's content
     const loopWords = new Set(

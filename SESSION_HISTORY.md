@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-10 — AUDIT: **Scorer: mail-anchored commitment boost + exclude calendar / Claude chat from signal candidate pool**
+  MODE: AUDIT
+  Commit hash(es): (set after push)
+  Files changed: `lib/briefing/scorer-candidate-sources.ts`, `lib/briefing/__tests__/scorer-candidate-sources.test.ts`, `lib/briefing/scorer.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `WHATS_NEXT.md`
+  **Change:** Live SQL showed **~33%** of recent `tkg_commitments.source_id` values do **not** resolve to an existing `tkg_signals.id` (orphan UUIDs — deleted signals or bad writes); **valid** PK joins behave as designed. Scorer now (1) skips **`outlook_calendar` / `google_calendar` / `claude_conversation`** rows when building **signal** candidates; (2) loads **`source` + `source_id`** on open commitments; (3) marks commitments anchored to **gmail/outlook** signal rows; (4) applies **×1.35** score after living-graph when `mailThreadAnchored && stakes≥3`.
+  What was verified: `npm run health` (0 failing); `npx vitest run lib/briefing/__tests__/scorer-candidate-sources.test.ts`; `npm run build`; `npm run test:ci:e2e` (46 passed).
+  Any unresolved issues: Latest prod actions still **`do_nothing`** from **unprocessed signal backlog** / gen validation — not fixed by scorer-only change; orphan **`source_id`** needs separate hygiene if evidence gaps persist.
+
 - 2026-04-09 — AUDIT: **Evidence graph: resolve commitment UUIDs to originating signals (compound / mixed winners)**
   MODE: AUDIT
   Commit hash(es): `2e46d27`

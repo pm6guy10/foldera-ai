@@ -1,4 +1,8 @@
-# WHAT'S NEXT — Updated 2026-04-09
+# WHAT'S NEXT — Updated 2026-04-10
+
+## STATUS: SHIPPED — Scorer prefers mail-anchored commitments; drops calendar + Claude chat from signal candidate pool
+
+**This session:** `scorer-candidate-sources.ts` + `scoreOpenLoops` — see `SESSION_HISTORY.md` 2026-04-10. **After push:** `GET /api/health` SHA; optional **`npm run test:prod`**; **`npm run scoreboard`** if chasing `do_nothing` / backlog.
 
 ## STATUS: SHIPPED — Prod readiness punch list (OAuth DDL verified + integrations 42703 fallback + scoreboard snapshot)
 
