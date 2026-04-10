@@ -1,65 +1,93 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
+import * as crypto from 'crypto';
 dotenv.config({ path: '.env.local' });
+
+function decryptContent(encryptedContent: string): string {
+  try {
+    const key = process.env.ENCRYPTION_KEY!;
+    const parts = encryptedContent.split(':');
+    if (parts.length !== 2) return '[not encrypted]';
+    const iv = Buffer.from(parts[0], 'hex');
+    const encrypted = Buffer.from(parts[1], 'hex');
+    const keyBuf = Buffer.from(key, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuf, iv);
+    let decrypted = decipher.update(encrypted, undefined, 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (e) {
+    return `[decrypt error: ${e}]`;
+  }
+}
 
 async function main() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
+
   const userId = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
-  const keriId = 'aa7733d9-a098-47a0-9acf-57977320ecc8';
-  const keriId2 = 'c7740f58-e9fd-491e-896e-1ec9d6e31d6f'; // "Nopens, Keri L (DSHS/HCLA/WCF)"
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString();
 
-  // Check all signals for all keri entity IDs
-  for (const eid of [keriId, keriId2]) {
-    const { data: signals, error } = await supabase
-      .from('tkg_signals')
-      .select('id, type, source, occurred_at, processed, entity_id')
-      .eq('user_id', userId)
-      .eq('entity_id', eid)
-      .order('occurred_at', { ascending: false })
-      .limit(5);
-    
-    if (error) console.log(`Entity ${eid} error:`, error.message);
-    else console.log(`Entity ${eid} (${signals?.length ?? 0} signals):`, JSON.stringify(signals?.map(s => ({ type: s.type, occurred: s.occurred_at, processed: s.processed })), null, 2));
-  }
-
-  // Count unprocessed signals for user
-  const { count } = await supabase
+  // Get all 90d signals
+  const { data: allSignals } = await supabase
     .from('tkg_signals')
-    .select('*', { count: 'exact', head: true })
+    .select('id, content, source, type, occurred_at')
     .eq('user_id', userId)
-    .eq('processed', false);
-  console.log('\nUnprocessed signals for user:', count);
+    .gte('occurred_at', ninetyDaysAgo)
+    .eq('processed', true)
+    .order('occurred_at', { ascending: false })
+    .limit(200);
 
-  // Check discrepancy detector: what passes entity_reality_gate?
-  // The detector checks: has_email, is_proper_name, not_calendar
-  // keri nopens aa7733d9 has primary_email = keri.nopens@dshs.wa.gov → should pass
-  
-  // Look at the discrepancy_decay candidates from recent runs
-  const { data: runs } = await supabase
-    .from('pipeline_runs')
-    .select('created_at, outcome, winner_action_type, blocked_gate, raw_extras')
-    .order('created_at', { ascending: false })
-    .limit(20);
-  
-  console.log('\n=== Decay candidates in pipeline runs ===');
-  runs?.forEach(r => {
-    const e = r.raw_extras as Record<string, unknown>;
-    const winnerId = e?.winner_candidate_id as string | undefined;
-    if (winnerId?.includes('decay') || winnerId?.includes('aa7733') || r.blocked_gate?.toString().includes('decay')) {
-      console.log(`${r.created_at.slice(0, 16)}: outcome=${r.outcome} winner=${winnerId} blocked=${r.blocked_gate?.toString().slice(0, 120)}`);
-    }
+  const decrypted = (allSignals ?? []).map(s => {
+    const text = decryptContent(s.content as string);
+    return { ...s, text };
   });
 
-  // Check what gate funnel looks like in latest run
-  const latestRun = runs?.[0];
-  if (latestRun?.raw_extras) {
-    const e = latestRun.raw_extras as Record<string, unknown>;
-    console.log('\nLatest run gate funnel:', JSON.stringify(e.gate_funnel, null, 2));
-    console.log('Latest run top candidates:', JSON.stringify((e.candidateDiscovery as Record<string, unknown>)?.topCandidates, null, 2));
+  // Find signals mentioning keri
+  const keriSignals = decrypted.filter(s => /\bkeri\b/i.test(s.text));
+  console.log(`\n=== SIGNALS MENTIONING KERI IN 90d WINDOW (${keriSignals.length}) ===`);
+  for (const s of keriSignals) {
+    console.log(`\n  [${s.occurred_at?.toString().slice(0,10)}] ${s.source} | ${s.type}`);
+    console.log(`  ${s.text.slice(0, 400)}`);
   }
+
+  // OUTCOME patterns from discrepancy-detector
+  const OUTCOME_PATTERNS = [
+    /\b(?:offer|hiring|hired|interview|approval|approved|contract|deal|partnership|opportunity)\b/i,
+    /\b(?:\$|budget|cash|runway|invoice|payment|revenue|funding|raise|investment|client)\b/i,
+    /\b(?:recruiter|hiring\s+manager|vp|cto|ceo|director|founder|partner|stakeholder|decision\s+maker)\b/i,
+    /\b(?:deadline|due\s+date|by\s+(?:monday|tuesday|wednesday|thursday|friday|eod|end\s+of\s+week))\b/i,
+    /\b(?:follow\s+up|next\s+steps?|proposal|scope|statement\s+of\s+work|sow|nda|term\s+sheet)\b/i,
+  ];
+
+  if (keriSignals.length > 0) {
+    const anyOutcome = keriSignals.some(s => OUTCOME_PATTERNS.some(p => p.test(s.text)));
+    console.log(`\n=== ENTITY GATE RESULT ===`);
+    console.log(`has_outcome_keywords=${anyOutcome}`);
+    if (!anyOutcome) {
+      console.log('❌ BLOCKED by no_goal_linkage — keri signals have no outcome keywords');
+      console.log('   This prevents decay_keri from being generated as a discrepancy candidate');
+    } else {
+      console.log('✅ Passes goal_linkage check');
+    }
+  } else {
+    console.log('\nNo 90d signals mention keri — no_goal_linkage gate does NOT fire for keri');
+    console.log('Check other rejection reasons instead');
+  }
+
+  // Also check cheryl
+  const cherylSignals = decrypted.filter(s => /\bcheryl\b/i.test(s.text));
+  console.log(`\n=== SIGNALS MENTIONING CHERYL IN 90d WINDOW (${cherylSignals.length}) ===`);
+  for (const s of cherylSignals.slice(0, 3)) {
+    const hasOutcome = OUTCOME_PATTERNS.some(p => p.test(s.text));
+    console.log(`  [${s.occurred_at?.toString().slice(0,10)}] ${s.source} | outcome=${hasOutcome} | ${s.text.slice(0, 200)}`);
+  }
+
+  // Total signal count  
+  console.log(`\nTotal 90d signals: ${decrypted.length}`);
+  console.log(`Total keri mentions: ${keriSignals.length}`);
+  console.log(`Total cheryl mentions: ${cherylSignals.length}`);
 }
 
 main().catch(console.error);
