@@ -3727,6 +3727,20 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 
 ---
 
+- 2026-04-10 — Fix discrepancy-detector self-entity exclusion in engagement_collapse and relationship_dropout extractors
+- MODE: AUDIT
+- Commit hash(es): pending
+- Files changed: `lib/briefing/discrepancy-detector.ts` (6 insertions, 4 deletions — add `selfEmails` param to `extractEngagementCollapse` and `extractRelationshipDropout`, call `isSelfEntity` guard at top of each filter)
+- What was verified:
+  - Root cause confirmed: Brandon Kapp entity (id `115183eb`) has `velocity_ratio: 0`, `signal_count_90d: 10` — fires `engagement_collapse` as highest-urgency winner; `isSelfEntity` function existed but was NOT called in these two extractors; self-entity match confirmed (`b-kapp@outlook.com` = entity `primary_email`)
+  - Fix: added `selfEmails?: Set<string>` param to both functions, added `if (isSelfEntity(e, selfEmails)) return false` in filter; `detectDiscrepancies` already passes `selfEmails` — updated calls at lines 2335–2336 to pass it through
+  - `npx vitest run lib/briefing/__tests__/discrepancy-detector.test.ts` — 100/100 passed
+  - `npx vitest run lib/briefing/__tests__/` — 767/767 passed (all briefing tests)
+  - `npm run build` — clean pass
+- Any unresolved issues: After self-entity removed, next pipeline winner is the stakes=4.5 candidate from existing 9 survivors; identity of that candidate to be confirmed after deploy dry-run
+
+---
+
 - 2026-03-31 — Added 85 short-form SEO blog posts from Foldera SEO Blog Batch 30
 - MODE: OPS
 - Commit hash(es): pending
