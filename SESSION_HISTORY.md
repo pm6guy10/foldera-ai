@@ -6,9 +6,9 @@
 
 - 2026-04-10 — AUDIT: **Hunt false-positive elimination — all hunt types now require trusted sender / known entity**
   MODE: AUDIT
-  Commit hash(es): pending
+  Commit hash(es): `16d6271`
   Files changed: `lib/briefing/hunt-anomalies.ts`, `lib/briefing/scorer.ts`
-  What was verified: 901 tests passed (97 files); `npm run build` passed; local scorer run shows hunt no longer wins — winner is ESD overpayment divergence (emergent, score 3.30) with Keri Nopens (discrepancy, send_message, score 1.36) as the best real-human send_message candidate
+  What was verified: 901 tests passed (97 files, pre-push hook confirmed); `npm run build` passed; local scorer run shows hunt no longer wins — winner is ESD overpayment divergence (emergent, score 3.30) with Keri Nopens (discrepancy, send_message, score 1.36) as the best real-human send_message candidate
   Changes:
     (1) `hunt-anomalies.ts`: Added `blockedSenderEmails` parameter (newsletter_promo_source drops from entity_reality_gate) — applied to ALL 4 hunt finding types (unreplied_inbound, unresolved_financial, reply_latency_degradation, repeated_ignored_sender)
     (2) `hunt-anomalies.ts`: Added `trustedSenderEmails` parameter — unreplied_inbound now requires sender to be a known human entity (prevents cold-outreach/bulk emails from winning); unresolved_financial also requires trusted sender (prevents travel/retail receipts from winning as financial obligations)
