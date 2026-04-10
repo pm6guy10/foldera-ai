@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-10 — isSendWorthy: block Outlier workflow inboxes `wfe-*@outlier.ai` as send_message recipients
+ MODE: AUDIT
+ Commit hash(es): `6fc0f0a`
+ Files changed: `lib/email/automated-routing-recipient.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/__tests__/evaluate-readiness.test.ts`, `lib/email/__tests__/automated-routing-recipient.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npx vitest run lib/cron/__tests__/evaluate-readiness.test.ts lib/email/__tests__/automated-routing-recipient.test.ts`; `npm run build`; `npm run test:ci:e2e` — 46/46
+ Changes: Live `tkg_actions` `e7059b0f-7ac4-4868-90c0-2adeb6512943` had `artifact.to = wfe-6921e4b356ccff5a5f336b22@outlier.ai` (platform task inbox, not a person). `isSendWorthy` now returns `automated_routing_recipient` for that pattern so new generates do not persist/send such drafts.
+ Any unresolved issues: **Pre-fix row** remains in prod `pending_approval` until skipped/replaced by a new generation after deploy; product-bar WIN requires a fresh post-deploy `tkg_actions` row.
+
 - 2026-04-10 — Hunt HUNT_CONTEXT: mail extras scoped to winning source signal ids (no cross-thread prompt leakage)
  MODE: AUDIT
  Commit hash(es): `32c2949`

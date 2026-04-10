@@ -71,6 +71,7 @@ import {
   scheduleConflictArtifactIsOwnerProcedure,
 } from '@/lib/briefing/schedule-conflict-guards';
 import { effectiveDiscrepancyClassForGates } from '@/lib/briefing/effective-discrepancy-class';
+import { isAutomatedRoutingRecipient } from '@/lib/email/automated-routing-recipient';
 import { insertDirectiveMlSnapshot } from '@/lib/ml/directive-ml-snapshot';
 import { logMlSendworthShadow } from '@/lib/ml/sendworth-shadow';
 import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
@@ -445,6 +446,10 @@ export function isSendWorthy(
     // Self-addressed emails are never valid external actions.
     if (userEmails && userEmails.size > 0 && userEmails.has(to.toLowerCase())) {
       return { worthy: false, reason: 'self_addressed' };
+    }
+    // Platform workflow inboxes (e.g. gig-marketplace task routes) are not people.
+    if (isAutomatedRoutingRecipient(to)) {
+      return { worthy: false, reason: 'automated_routing_recipient' };
     }
     const body = artifactRecord.body;
     if (typeof body !== 'string' || body.trim().length < 30) {

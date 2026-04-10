@@ -306,6 +306,15 @@ describe('isSendWorthy', () => {
     expect(result.reason).toBe('invalid_recipient');
   });
 
+  it('blocks send_message to Outlier workflow inbox wfe-*@outlier.ai', () => {
+    const result = isSendWorthy(
+      makeDirective(),
+      makeArtifact({ to: 'wfe-6921e4b356ccff5a5f336b22@outlier.ai' }),
+    );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('automated_routing_recipient');
+  });
+
   it('blocks send_message with body shorter than 30 chars', () => {
     const result = isSendWorthy(makeDirective(), makeArtifact({ body: 'Short.' }));
     expect(result.worthy).toBe(false);
