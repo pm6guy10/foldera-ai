@@ -6,7 +6,7 @@
 
 - 2026-04-10 — AUDIT: **Fix hunt_unreplied false positives — noreply/bulk senders blocked from unreplied_inbound candidacy**
   MODE: AUDIT
-  Commit hash(es): pending
+  Commit hash(es): `7f4cf55`
   Files changed: `lib/briefing/hunt-anomalies.ts`, `lib/briefing/__tests__/hunt-anomalies.test.ts`
   What was verified: Identified that `hunt_unreplied_08b906c3` (winner @ confidence 83) was backed by `noreply@notificationmycredit-guide.americanexpress.com` and `hunt_unreplied_5b851583` by `notifications@notifications.creditkarma.com` — automated noreply senders, not real human threads. Root cause: `unreplied_inbound` pattern in `runHuntAnomalies()` applied `peerIsSelfOrProductNoise` guard but NOT `isBulkOrMarketingSender` (which `repeated_ignored_sender` already used). Fix: add `if (peer && isBulkOrMarketingSender(peer)) continue;` on line 312. Added test `'does not flag noreply/bulk senders as unreplied_inbound candidates'`. All 97 vitest files / 901 tests passed. `npm run build` clean. `npm run test:ci:e2e` 46/46 passed.
   Any unresolved issues: After deploy, need to verify new post-fix winner is a real external person tied to a real thread. decay_keri (aa7733d9) is still suppressed until ~April 17; next expected winner is a real-relationship decay or hunt candidate backed by a real human sender.
