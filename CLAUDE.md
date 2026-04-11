@@ -142,6 +142,7 @@ If a session is still using paid calls to discover basic breakage, the session i
 - Push directly to `main`
 - Do not create branches unless the task explicitly requires it
 - `npm run build` must pass before every commit
+- **Always commit and push in the same session** once verified — never leave git work for the user unless blocked (credentials, conflict, or documented impossibility)
 - Do not say “done” unless the relevant proof exists
 - Commit receipts must be specific and factual
 

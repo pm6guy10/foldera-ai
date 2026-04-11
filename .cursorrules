@@ -21,6 +21,7 @@ alwaysApply: true
 ## Git / Verification
 - Push directly to main. Never create branches.
 - `npm run build` must pass before every commit.
+- Always commit and push when the slice is verified; never defer git to the user unless blocked.
 - For live-path or user-facing changes, require one production-like verification before calling the work complete.
 - For deterministic harness/test-only changes, local proof is enough until final live verification.
 

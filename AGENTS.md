@@ -101,7 +101,7 @@ Build passing is required, but never enough by itself.
 
 - Push directly to `main`
 - Do not create branches unless explicitly required by the task
-- Commit and push in the same session once the slice is actually verified
+- **Always commit and push yourself** as soon as the slice is verified (`npm run build` must pass first per repo policy). Never leave commit, push, or “please push this” follow-ups for the user unless blocked (no credentials, merge conflict, or an explicit documented blocker).
 - Do not leave partial, ambiguous work presented as complete
 
 ---
