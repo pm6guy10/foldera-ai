@@ -252,15 +252,15 @@ function LiveProofStrip() {
 
   return (
     <div
-      className="w-full max-w-2xl xl:max-w-none mt-6 md:mt-8 xl:mt-10 rounded-xl xl:rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-sm px-4 sm:px-6 py-4 sm:py-5 xl:px-8 xl:py-6 text-left shadow-[inset_0_0_24px_rgba(6,182,212,0.06)]"
+      className="w-full max-w-2xl xl:max-w-[40rem] 2xl:max-w-[44rem] mt-6 md:mt-8 xl:mt-12 rounded-xl xl:rounded-[1.25rem] border border-white/10 bg-white/[0.03] backdrop-blur-sm px-4 sm:px-6 py-4 sm:py-5 xl:px-10 xl:py-7 text-left shadow-[inset_0_0_32px_rgba(6,182,212,0.08)]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <p className="text-[10px] xl:text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1.5 xl:mb-2">What Foldera catches</p>
-      <div className="h-11 sm:h-10 xl:h-14 overflow-hidden">
+      <p className="text-[11px] xl:text-xs font-black uppercase tracking-[0.18em] text-zinc-400 mb-2 xl:mb-2.5">What Foldera catches</p>
+      <div className="h-12 sm:h-11 xl:h-16 overflow-hidden">
         <p
           key={index}
-          className={`text-sm sm:text-[15px] xl:text-lg xl:leading-snug text-zinc-200 transition-all duration-150 ${
+          className={`text-[15px] sm:text-base xl:text-xl 2xl:text-[1.35rem] xl:leading-snug text-zinc-100 transition-all duration-150 ${
             visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'
           }`}
         >
@@ -300,11 +300,11 @@ function HeroDirectiveDemo() {
 
   if (phase === 'cta') {
     return (
-      <div className="relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] xl:max-w-none mx-auto xl:mx-0 text-center xl:text-left px-2 sm:px-4 xl:px-0">
-        <p className="text-white font-black text-xl xl:text-2xl mb-6 xl:mb-8 tracking-tight">Like what you see?</p>
+      <div className="relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] xl:max-w-[min(100%,56rem)] mx-auto xl:mx-0 text-center xl:text-left px-2 sm:px-4 xl:px-0">
+        <p className="text-white font-black text-xl xl:text-3xl 2xl:text-4xl mb-6 xl:mb-10 tracking-tight">Like what you see?</p>
         <a
           href="/start"
-          className="inline-flex items-center justify-center gap-2 px-8 py-4 xl:px-10 xl:py-[1.125rem] rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs xl:text-sm hover:bg-zinc-200 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95"
+          className="inline-flex items-center justify-center gap-2 px-8 py-4 xl:px-12 xl:py-[1.25rem] rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs xl:text-sm hover:bg-zinc-200 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95"
         >
           Get started free <ChevronRight className="w-4 h-4" aria-hidden="true" />
         </a>
@@ -316,16 +316,16 @@ function HeroDirectiveDemo() {
 
   return (
     <div
-      className={`relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] xl:max-w-none hero-output pointer-events-auto transition-all duration-300 ease-out ${
+      className={`relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] xl:max-w-[min(100%,56rem)] 2xl:max-w-[min(100%,62rem)] hero-output pointer-events-auto transition-all duration-300 ease-out ${
         phase === 'out' ? 'opacity-0 translate-x-10 scale-[0.96]' : 'opacity-100 translate-x-0 scale-100'
       }`}
     >
-      <div className="rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.75rem] 2xl:rounded-[3rem] bg-[#0a0a0f] border border-cyan-500/45 xl:border-cyan-400/50 shadow-[0_56px_140px_-28px_rgba(0,0,0,1),_0_0_80px_rgba(6,182,212,0.22),_0_0_1px_rgba(6,182,212,0.4)_inset] flex flex-col text-left overflow-hidden xl:shadow-[0_72px_180px_-32px_rgba(0,0,0,1),_0_0_100px_rgba(6,182,212,0.28)]">
-        <div className="w-full h-1.5 xl:h-2 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
-        <div className="p-5 sm:p-7 lg:p-9 xl:p-11 2xl:p-12 border-b border-white/10">
-          <div className="mb-3 xl:mb-4">
+      <div className="rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.75rem] 2xl:rounded-[3.25rem] bg-[#0a0a0f] border border-cyan-500/45 xl:border-cyan-400/55 shadow-[0_64px_160px_-28px_rgba(0,0,0,1),_0_0_96px_rgba(6,182,212,0.28),_0_0_1px_rgba(6,182,212,0.45)_inset] flex flex-col text-left overflow-hidden xl:shadow-[0_88px_200px_-36px_rgba(0,0,0,1),_0_0_120px_rgba(6,182,212,0.32)] xl:min-h-[min(52vh,520px)]">
+        <div className="w-full h-1.5 xl:h-2.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+        <div className="p-5 sm:p-7 lg:p-9 xl:p-12 2xl:p-14 border-b border-white/10">
+          <div className="mb-3 xl:mb-5">
             <div
-              className={`px-3 py-1.5 xl:px-4 xl:py-2 rounded-lg flex items-center gap-2 w-fit border ${
+              className={`px-3 py-1.5 xl:px-5 xl:py-2.5 rounded-lg xl:rounded-xl flex items-center gap-2 w-fit border ${
                 badgeRose
                   ? 'bg-rose-500/10 border-rose-500/30'
                   : 'bg-cyan-500/10 border-cyan-500/30'
@@ -333,7 +333,7 @@ function HeroDirectiveDemo() {
             >
               <div className={`w-2 h-2 xl:w-2.5 xl:h-2.5 rounded-full ${badgeRose ? 'bg-rose-500' : 'bg-cyan-400'}`} />
               <span
-                className={`text-[10px] xl:text-xs font-bold uppercase tracking-widest ${
+                className={`text-[10px] xl:text-sm font-bold uppercase tracking-widest ${
                   badgeRose ? 'text-rose-400' : 'text-cyan-400'
                 }`}
               >
@@ -341,29 +341,29 @@ function HeroDirectiveDemo() {
               </span>
             </div>
           </div>
-          <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl 2xl:text-[2rem] font-bold text-white mb-2 lg:mb-3 xl:mb-4 tracking-tight">{slide.title}</h3>
-          <p className="text-sm sm:text-[15px] lg:text-base xl:text-lg text-zinc-400 xl:text-zinc-300 max-w-3xl">{slide.subtitle}</p>
+          <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-4xl 2xl:text-[2.35rem] font-bold text-white mb-2 lg:mb-3 xl:mb-5 tracking-tight leading-[1.12]">{slide.title}</h3>
+          <p className="text-sm sm:text-[15px] lg:text-base xl:text-xl 2xl:text-[1.35rem] text-zinc-400 xl:text-zinc-300 max-w-3xl xl:max-w-[42rem] leading-relaxed">{slide.subtitle}</p>
         </div>
-        <div className="p-5 sm:p-7 lg:p-9 xl:p-11 2xl:p-12 bg-black/40 xl:bg-black/50">
-          <div className="p-4 sm:p-5 lg:p-6 xl:p-8 2xl:p-9 rounded-2xl lg:rounded-[1.25rem] xl:rounded-3xl bg-cyan-500/10 border border-cyan-500/30 border-l-4 xl:border-l-[5px] border-l-cyan-500 space-y-2 xl:space-y-3">
-            <p className="text-cyan-400 text-[10px] xl:text-xs font-black uppercase tracking-widest flex items-center gap-2">
-              <Zap className="w-3 h-3 xl:w-4 xl:h-4 shrink-0" aria-hidden="true" /> Drafted Reply
+        <div className="p-5 sm:p-7 lg:p-9 xl:p-12 2xl:p-14 bg-black/40 xl:bg-black/50 flex-1 flex flex-col justify-center">
+          <div className="p-4 sm:p-5 lg:p-6 xl:p-9 2xl:p-10 rounded-2xl lg:rounded-[1.25rem] xl:rounded-[1.75rem] bg-cyan-500/[0.12] border border-cyan-500/35 border-l-4 xl:border-l-[6px] border-l-cyan-500 space-y-2 xl:space-y-4 shadow-[inset_0_0_48px_rgba(6,182,212,0.06)]">
+            <p className="text-cyan-400 text-[10px] xl:text-sm font-black uppercase tracking-widest flex items-center gap-2">
+              <Zap className="w-3 h-3 xl:w-5 xl:h-5 shrink-0" aria-hidden="true" /> Drafted Reply
             </p>
-            <p className="text-zinc-200 text-sm sm:text-[15px] lg:text-base xl:text-lg 2xl:text-xl leading-relaxed">{slide.artifact}</p>
+            <p className="text-zinc-100 text-sm sm:text-[15px] lg:text-lg xl:text-xl 2xl:text-2xl leading-relaxed">{slide.artifact}</p>
           </div>
         </div>
-        <div className="p-4 sm:p-5 lg:p-7 xl:p-8 2xl:px-10 2xl:py-9 flex flex-col max-[400px]:flex-col sm:flex-row gap-3 sm:gap-4 xl:gap-5 bg-white/[0.02] border-t border-white/10 max-[400px]:[&>button]:w-full">
+        <div className="p-4 sm:p-5 lg:p-7 xl:p-9 2xl:px-12 2xl:py-10 flex flex-col max-[400px]:flex-col sm:flex-row gap-3 sm:gap-4 xl:gap-5 bg-white/[0.02] border-t border-white/10 max-[400px]:[&>button]:w-full">
           <button
             type="button"
             onClick={advance}
-            className="flex-1 min-h-[48px] bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-colors"
+            className="flex-1 min-h-[48px] xl:min-h-[52px] bg-cyan-500 text-black py-3.5 xl:py-4 rounded-xl font-black text-xs xl:text-sm uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-colors"
           >
             <Check className="w-4 h-4" aria-hidden="true" /> Approve
           </button>
           <button
             type="button"
             onClick={advance}
-            className="w-full sm:w-auto sm:px-6 min-h-[48px] bg-zinc-900 border border-white/20 text-zinc-500 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+            className="w-full sm:w-auto sm:px-6 min-h-[48px] xl:min-h-[52px] bg-zinc-900 border border-white/20 text-zinc-500 py-3.5 xl:py-4 rounded-xl font-black text-xs xl:text-sm uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
           >
             Skip
           </button>
@@ -378,28 +378,28 @@ function HeroDirectiveDemo() {
 // ============================================================================
 function SignalEngineHero() {
   return (
-    <div className="w-full max-w-[min(100%,112rem)] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(7.5rem+env(safe-area-inset-top,0px))] xl:pt-[calc(8.5rem+env(safe-area-inset-top,0px))] pb-24 md:pb-32 lg:pb-40 xl:pb-44 text-center xl:text-left relative z-10 flex flex-col xl:grid xl:grid-cols-12 xl:items-start xl:gap-x-14 2xl:gap-x-20 min-w-0">
-      {/* Headlines & CTA */}
-      <Reveal alwaysVisible className="xl:col-span-5 flex flex-col items-center xl:items-start min-w-0 w-full">
-        <div className="inline-flex items-center justify-center gap-2 px-4 py-2 xl:px-5 xl:py-2.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 text-[10px] xl:text-[11px] font-black uppercase tracking-[0.2em] mb-4 md:mb-6 xl:mb-8">
+    <div className="w-full max-w-[min(100%,120rem)] mx-auto px-4 sm:px-6 lg:px-12 xl:px-14 2xl:px-24 pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(7.5rem+env(safe-area-inset-top,0px))] xl:pt-[calc(9.5rem+env(safe-area-inset-top,0px))] 2xl:pt-[calc(10.5rem+env(safe-area-inset-top,0px))] pb-28 md:pb-36 lg:pb-44 xl:pb-52 2xl:pb-56 text-center xl:text-left relative z-10 flex flex-col xl:grid xl:grid-cols-12 xl:items-start xl:gap-x-10 2xl:gap-x-14 min-w-0">
+      {/* Headlines & CTA — narrow column reads as editorial; artifact owns the width */}
+      <Reveal alwaysVisible className="xl:col-span-4 xl:col-start-1 xl:row-start-1 flex flex-col items-center xl:items-start min-w-0 w-full">
+        <div className="inline-flex items-center justify-center gap-2 px-4 py-2 xl:px-6 xl:py-3 rounded-full bg-white/[0.06] border border-white/10 text-zinc-300 text-[10px] xl:text-xs font-black uppercase tracking-[0.2em] mb-5 md:mb-7 xl:mb-10">
           A model of you. One move a day.
         </div>
-        <h1 className="text-3xl sm:text-5xl md:text-7xl xl:text-8xl 2xl:[font-size:clamp(4rem,4.2vw+2.25rem,5.75rem)] font-black tracking-tighter text-white mb-5 md:mb-8 xl:mb-10 leading-[1.06] px-1 xl:px-0 max-w-[min(100%,58rem)] xl:max-w-none mx-auto xl:mx-0">
+        <h1 className="text-3xl sm:text-5xl md:text-7xl xl:text-[clamp(3.25rem,3.8vw+2rem,5.5rem)] 2xl:text-[clamp(4rem,3.2vw+2.5rem,6.25rem)] font-black tracking-tighter text-white mb-6 md:mb-9 xl:mb-11 leading-[1.04] px-1 xl:px-0 max-w-[min(100%,58rem)] xl:max-w-none mx-auto xl:mx-0">
           You missed it.<br className="hidden md:block" /> Foldera didn’t.
         </h1>
-        <p className="text-base md:text-xl xl:text-[1.35rem] 2xl:text-2xl text-zinc-400 xl:text-zinc-300 max-w-xl md:max-w-2xl xl:max-w-none mx-auto xl:mx-0 font-medium leading-relaxed mb-7 md:mb-12 xl:mb-10 px-4 xl:px-0">
+        <p className="text-base md:text-xl xl:text-[1.4rem] 2xl:text-[1.55rem] text-zinc-400 xl:text-zinc-300 max-w-xl md:max-w-2xl xl:max-w-none mx-auto xl:mx-0 font-medium leading-relaxed mb-8 md:mb-14 xl:mb-12 px-4 xl:px-0">
           One morning email with finished work: approve to send from your mailbox when connected, or skip. Foldera finds what slipped and drafts the move—no extra tabs.
         </p>
-        <div className="mb-7 md:mb-12 xl:mb-10 -mt-1 md:-mt-2 xl:mt-0 w-full flex justify-center xl:justify-start">
-          <p className="inline-flex items-center gap-2 rounded-full border border-cyan-400/35 bg-cyan-500/10 px-3 py-1.5 xl:px-4 xl:py-2 text-xs xl:text-sm font-black uppercase tracking-[0.14em] text-cyan-100 shadow-[0_0_24px_rgba(6,182,212,0.14)]">
+        <div className="mb-8 md:mb-14 xl:mb-12 -mt-1 md:-mt-2 xl:mt-0 w-full flex justify-center xl:justify-start">
+          <p className="inline-flex items-center gap-2 rounded-full border border-cyan-400/35 bg-cyan-500/10 px-3 py-1.5 xl:px-5 xl:py-2.5 text-xs xl:text-sm font-black uppercase tracking-[0.14em] text-cyan-100 shadow-[0_0_24px_rgba(6,182,212,0.14)]">
             <Lock className="h-3.5 w-3.5 xl:h-4 xl:w-4 text-cyan-300 shrink-0" aria-hidden="true" />
             No credit card required
           </p>
         </div>
-        <div className="w-full max-w-xl md:max-w-2xl xl:max-w-md mx-auto xl:mx-0 px-4 xl:px-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-center xl:justify-start gap-3 sm:gap-4">
+        <div className="w-full max-w-xl md:max-w-2xl xl:max-w-lg 2xl:max-w-xl mx-auto xl:mx-0 px-4 xl:px-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-center xl:justify-start gap-3 sm:gap-4">
           <a
             href="/start"
-            className="w-full sm:w-auto xl:w-full xl:max-w-sm min-h-[48px] xl:min-h-[52px] px-8 py-4 xl:py-[1.125rem] rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs xl:text-sm hover:bg-zinc-200 transition-all duration-150 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+            className="w-full sm:w-auto xl:w-full min-h-[48px] xl:min-h-[56px] px-8 py-4 xl:px-10 xl:py-[1.2rem] rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs xl:text-sm hover:bg-zinc-200 transition-all duration-150 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
           >
             Get started free <ChevronRight className="w-4 h-4" />
           </a>
@@ -410,37 +410,37 @@ function SignalEngineHero() {
       </Reveal>
 
       {/* The Mechanism: inputs → convergence → directive */}
-      <div className="w-full xl:col-span-7 mt-10 md:mt-20 lg:mt-28 xl:mt-4 relative flex flex-col items-center xl:items-stretch min-w-0">
-        {/* Background Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(96vw,780px)] xl:w-[min(110vw,980px)] h-[min(96vw,780px)] xl:h-[min(110vw,980px)] bg-cyan-500/[0.045] xl:bg-cyan-500/[0.055] blur-[160px] xl:blur-[200px] rounded-full pointer-events-none z-0" />
+      <div className="w-full xl:col-span-8 xl:col-start-5 xl:row-start-1 mt-10 md:mt-20 lg:mt-28 xl:mt-0 xl:pl-1 2xl:pl-3 relative flex flex-col items-center xl:items-stretch min-w-0">
+        {/* Background Glow — anchors the artifact as the visual centerpiece */}
+        <div className="absolute top-[42%] left-1/2 xl:left-[54%] -translate-x-1/2 -translate-y-1/2 w-[min(110vw,880px)] xl:w-[min(125vw,1200px)] h-[min(110vw,880px)] xl:h-[min(125vw,1200px)] bg-cyan-500/[0.055] xl:bg-cyan-500/[0.075] blur-[180px] xl:blur-[240px] rounded-full pointer-events-none z-0" />
 
         {/* Signal chips — abstract inputs (details live on /start) */}
-        <div className="flex flex-wrap items-center justify-center xl:justify-end gap-3 sm:gap-5 xl:gap-4 mb-3 xl:mb-4 relative z-10 max-w-3xl xl:max-w-none mx-auto xl:ml-auto xl:mr-0 px-1 xl:pr-2 xl:pl-0">
-          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 xl:px-4 xl:py-2 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] xl:text-xs font-semibold">
-            <Zap className="w-3 h-3 xl:w-3.5 xl:h-3.5 text-zinc-500 shrink-0" />
+        <div className="flex flex-wrap items-center justify-center xl:justify-end gap-3 sm:gap-5 xl:gap-4 mb-4 xl:mb-6 relative z-10 max-w-3xl xl:max-w-none mx-auto xl:ml-auto xl:mr-0 px-1 xl:pr-2 xl:pl-0">
+          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 xl:px-5 xl:py-2.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-400 text-[10px] sm:text-[11px] xl:text-sm font-semibold">
+            <Zap className="w-3 h-3 xl:w-4 xl:h-4 text-zinc-500 shrink-0" />
             <span>High-signal items</span>
           </div>
-          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 xl:px-4 xl:py-2 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] xl:text-xs font-semibold">
-            <LayoutGrid className="w-3 h-3 xl:w-3.5 xl:h-3.5 text-zinc-500 shrink-0" />
+          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 xl:px-5 xl:py-2.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-400 text-[10px] sm:text-[11px] xl:text-sm font-semibold">
+            <LayoutGrid className="w-3 h-3 xl:w-4 xl:h-4 text-zinc-500 shrink-0" />
             <span>Cross-thread patterns</span>
           </div>
-          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 xl:px-4 xl:py-2 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-500 text-[10px] sm:text-[11px] xl:text-xs font-semibold">
-            <Brain className="w-3 h-3 xl:w-3.5 xl:h-3.5 text-zinc-500 shrink-0" />
+          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 xl:px-5 xl:py-2.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-400 text-[10px] sm:text-[11px] xl:text-sm font-semibold">
+            <Brain className="w-3 h-3 xl:w-4 xl:h-4 text-zinc-500 shrink-0" />
             <span>One ranked move</span>
           </div>
         </div>
 
         {/* Convergence line + processing dot */}
-        <div className="flex flex-col items-center xl:items-end xl:pr-[min(42%,18rem)] my-0 xl:-my-1 relative z-10 w-full">
-          <div className="w-[1px] h-5 xl:h-6 bg-gradient-to-b from-zinc-700/0 to-zinc-600/60" />
-          <div className="w-7 h-7 xl:w-9 xl:h-9 rounded-full bg-[#0a0a0f] border border-zinc-600/50 flex items-center justify-center hero-process-dot relative">
+        <div className="flex flex-col items-center xl:items-end xl:pr-[min(38%,20rem)] 2xl:pr-[min(36%,22rem)] my-0 xl:my-1 relative z-10 w-full">
+          <div className="w-[1px] h-5 xl:h-7 bg-gradient-to-b from-zinc-700/0 to-zinc-600/60" />
+          <div className="w-7 h-7 xl:w-11 xl:h-11 rounded-full bg-[#0a0a0f] border border-zinc-600/50 flex items-center justify-center hero-process-dot relative">
             <span className="hero-ignition" aria-hidden="true" />
-            <Brain className="w-3.5 h-3.5 xl:w-4.5 xl:h-4.5 text-cyan-400/70" />
+            <Brain className="w-3.5 h-3.5 xl:w-5 xl:h-5 text-cyan-400/70" />
           </div>
-          <div className="w-[1px] h-5 xl:h-6 bg-gradient-to-b from-cyan-500/40 to-cyan-500/0" />
+          <div className="w-[1px] h-5 xl:h-7 bg-gradient-to-b from-cyan-500/40 to-cyan-500/0" />
         </div>
 
-        <div className="relative z-20 w-full flex justify-center xl:justify-end xl:pl-4 2xl:pl-8">
+        <div className="relative z-20 w-full flex justify-center xl:justify-end xl:pl-0 2xl:pl-2">
           <HeroDirectiveDemo />
         </div>
       </div>
@@ -503,7 +503,7 @@ function ScenarioDemos() {
 
   return (
     <div className="w-full max-w-[min(100%,112rem)] mx-auto relative z-10 px-0 sm:px-0 min-w-0">
-      <div className={`relative w-full max-w-full h-[440px] sm:h-[520px] md:h-[clamp(560px,50vw,780px)] lg:h-[clamp(600px,48vw,860px)] xl:h-[clamp(640px,44vw,920px)] rounded-[2rem] lg:rounded-[2.5rem] xl:rounded-[2.75rem] bg-black/40 backdrop-blur-3xl border transition-all duration-1000 overflow-hidden shadow-2xl ${
+      <div className={`relative w-full max-w-full h-[440px] sm:h-[520px] md:h-[clamp(580px,52vw,820px)] lg:h-[clamp(620px,50vw,900px)] xl:h-[clamp(680px,46vw,980px)] 2xl:h-[clamp(720px,42vw,1040px)] rounded-[2rem] lg:rounded-[2.5rem] xl:rounded-[2.75rem] bg-black/40 backdrop-blur-3xl border transition-all duration-1000 overflow-hidden shadow-2xl ${
         isProcessing ? 'border-cyan-500/45 shadow-[0_0_80px_-25px_rgba(6,182,212,0.32)]' : 'border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,1)]'
       }`}
       onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null; }}
@@ -572,21 +572,21 @@ function ScenarioDemos() {
           <div className={`absolute inset-0 pt-11 md:pt-12 px-4 pb-4 md:p-12 flex items-start md:items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 pointer-events-none ${
             phase === 'clarity' ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90'
           }`}>
-          <div className="w-full max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-[min(48rem,92%)] 2xl:max-w-[52rem] rounded-[1.5rem] md:rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.5rem] bg-zinc-950/90 backdrop-blur-2xl border border-cyan-400/30 overflow-hidden shadow-[0_60px_140px_-28px_rgba(0,0,0,1),_0_0_56px_rgba(6,182,212,0.2)] ring-1 ring-cyan-300/15">
+          <div className="w-full max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-[min(52rem,94%)] 2xl:max-w-[56rem] rounded-[1.5rem] md:rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.75rem] bg-zinc-950/90 backdrop-blur-2xl border border-cyan-400/35 overflow-hidden shadow-[0_72px_160px_-32px_rgba(0,0,0,1),_0_0_72px_rgba(6,182,212,0.22)] ring-1 ring-cyan-300/15">
             <div className="h-1 xl:h-1.5 w-full bg-gradient-to-r from-cyan-500 to-cyan-300" />
-            <div className="p-4 md:p-8 xl:p-10 border-b border-white/5 bg-white/[0.02] flex items-start gap-3 md:gap-4 xl:gap-5 text-left">
-              <div className="p-3 md:p-3.5 xl:p-4 rounded-xl md:rounded-2xl bg-cyan-500/12 border border-cyan-400/35 shadow-[inset_0_0_22px_rgba(6,182,212,0.15)] shrink-0">
-                <Check className="w-5 h-5 md:w-6 md:h-6 xl:w-7 xl:h-7 text-cyan-400" />
+            <div className="p-4 md:p-8 xl:p-12 2xl:p-14 border-b border-white/5 bg-white/[0.02] flex items-start gap-3 md:gap-4 xl:gap-6 text-left">
+              <div className="p-3 md:p-3.5 xl:p-5 rounded-xl md:rounded-2xl bg-cyan-500/12 border border-cyan-400/35 shadow-[inset_0_0_22px_rgba(6,182,212,0.15)] shrink-0">
+                <Check className="w-5 h-5 md:w-6 md:h-6 xl:w-8 xl:h-8 text-cyan-400" />
               </div>
               <div className="flex-1 pt-1 min-w-0">
-                <p className="text-[10px] xl:text-xs text-cyan-300 font-black uppercase tracking-[0.18em] mb-2 xl:mb-3">Finished work</p>
-                <p className="text-white font-black tracking-tight text-base sm:text-xl xl:text-2xl 2xl:text-[1.65rem]">{current.clarity.action}</p>
-                <p className="text-zinc-300 font-medium text-[13px] sm:text-sm xl:text-base mt-1.5 xl:mt-2 leading-snug">{current.clarity.subject}</p>
+                <p className="text-[10px] xl:text-sm text-cyan-300 font-black uppercase tracking-[0.18em] mb-2 xl:mb-4">Finished work</p>
+                <p className="text-white font-black tracking-tight text-base sm:text-xl xl:text-3xl 2xl:text-[1.85rem]">{current.clarity.action}</p>
+                <p className="text-zinc-300 font-medium text-[13px] sm:text-sm xl:text-lg mt-1.5 xl:mt-3 leading-snug">{current.clarity.subject}</p>
               </div>
             </div>
-            <div className="p-4 md:p-8 xl:p-10 space-y-4 md:space-y-5 xl:space-y-6 bg-black/45 text-left">
-              <p className="text-zinc-200 leading-relaxed text-[13px] md:text-base xl:text-lg font-medium">{current.clarity.desc}</p>
-              <button className="w-full group flex items-center justify-center gap-3 py-3.5 md:py-4 rounded-xl bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-colors duration-200 shadow-[0_0_24px_rgba(255,255,255,0.16)] active:scale-95">
+            <div className="p-4 md:p-8 xl:p-12 2xl:p-14 space-y-4 md:space-y-5 xl:space-y-7 bg-black/45 text-left">
+              <p className="text-zinc-100 leading-relaxed text-[13px] md:text-base xl:text-xl 2xl:text-[1.35rem] font-medium">{current.clarity.desc}</p>
+              <button className="w-full group flex items-center justify-center gap-3 py-3.5 md:py-4 xl:py-5 rounded-xl bg-white text-black text-[11px] xl:text-sm font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-colors duration-200 shadow-[0_0_24px_rgba(255,255,255,0.16)] active:scale-95">
                 <Zap className="w-4 h-4 fill-black" />
                 {current.clarity.button}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -653,7 +653,7 @@ const FlipSection = memo(() => {
   const [ref, inView] = useInView(0.2);
 
   return (
-    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-32 md:py-44 lg:py-52 xl:py-56 px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 bg-[#07070c] relative overflow-x-hidden border-t border-white/5">
+    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-32 md:py-44 lg:py-52 xl:py-60 2xl:py-64 px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 bg-[#07070c] relative overflow-x-hidden border-t border-white/5">
       <AmbientGrid />
       <div className="max-w-[min(100%,112rem)] mx-auto relative z-10 min-w-0">
         <Reveal>
@@ -663,44 +663,44 @@ const FlipSection = memo(() => {
           </div>
         </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,0.92fr)_minmax(0,1.12fr)] gap-10 md:gap-12 lg:gap-14 xl:gap-20 relative perspective-1000 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,0.88fr)_minmax(0,1.18fr)] gap-10 md:gap-12 lg:gap-14 xl:gap-16 2xl:gap-24 relative perspective-1000 items-stretch">
           <div className="hidden md:block absolute left-[47%] top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent" aria-hidden="true" />
 
           {/* Left — what you see */}
-          <div className={`bg-zinc-950/50 backdrop-blur-xl rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.75rem] p-8 md:p-12 lg:p-16 xl:p-14 2xl:p-16 border border-white/5 transition-all duration-1000 text-left md:translate-y-4 xl:translate-y-6 ${inView ? 'opacity-40 grayscale' : 'opacity-0 -translate-x-12'}`}>
-            <div className="flex items-center gap-2 mb-10 xl:mb-12 text-zinc-500 text-[11px] xl:text-xs font-black uppercase tracking-widest">
+          <div className={`bg-zinc-950/50 backdrop-blur-xl rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.75rem] p-8 md:p-12 lg:p-16 xl:p-12 2xl:p-14 border border-white/5 transition-all duration-1000 text-left md:translate-y-4 xl:translate-y-8 ${inView ? 'opacity-40 grayscale' : 'opacity-0 -translate-x-12'}`}>
+            <div className="flex items-center gap-2 mb-10 xl:mb-12 text-zinc-500 text-[11px] xl:text-sm font-black uppercase tracking-widest">
               <Eye className="w-4 h-4 xl:w-5 xl:h-5 shrink-0" /> What you see
             </div>
-            <div className="space-y-4 xl:space-y-5">
+            <div className="space-y-4 xl:space-y-6">
                 {[
                 { label: 'Open loops', val: '47', color: 'text-rose-400' },
                 { label: 'Slipping deadlines', val: '12', color: 'text-amber-400' },
                 { label: 'Stalled decisions', val: '8', color: 'text-zinc-400' },
               ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-6 xl:p-7 rounded-2xl xl:rounded-[1.35rem] bg-[#0a0a0a] border border-white/5 shadow-inner">
+                <div key={i} className="flex items-center justify-between p-6 xl:p-8 rounded-2xl xl:rounded-[1.35rem] bg-[#0a0a0a] border border-white/5 shadow-inner">
                   <span className="text-zinc-400 font-bold text-base xl:text-lg">{item.label}</span>
-                  <span className={`text-2xl xl:text-3xl font-black tabular-nums ${item.color}`}>{item.val}</span>
+                  <span className={`text-2xl xl:text-4xl font-black tabular-nums ${item.color}`}>{item.val}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Right — what Foldera sees */}
-          <div className={`bg-zinc-950/80 backdrop-blur-2xl rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.75rem] p-8 md:p-12 lg:p-16 xl:p-14 2xl:p-16 border border-cyan-500/30 relative overflow-hidden shadow-[0_0_160px_rgba(6,182,212,0.22)] transition-all duration-1000 delay-150 text-left ${inView ? 'opacity-100 translate-x-0 md:-translate-y-1 xl:-translate-y-2' : 'opacity-0 translate-x-12'}`}>
-            <div className="absolute top-0 right-0 w-96 h-96 xl:w-[28rem] xl:h-[28rem] bg-cyan-500/10 blur-[120px] pointer-events-none" aria-hidden="true" />
-            <div className="flex items-center gap-3 mb-10 xl:mb-12 text-cyan-400 text-[11px] xl:text-xs font-black uppercase tracking-widest relative z-10">
+          <div className={`bg-zinc-950/80 backdrop-blur-2xl rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.75rem] p-8 md:p-12 lg:p-16 xl:p-12 2xl:p-16 border border-cyan-500/30 relative overflow-hidden shadow-[0_0_200px_rgba(6,182,212,0.26)] transition-all duration-1000 delay-150 text-left ${inView ? 'opacity-100 translate-x-0 md:-translate-y-1 xl:-translate-y-3' : 'opacity-0 translate-x-12'}`}>
+            <div className="absolute top-0 right-0 w-96 h-96 xl:w-[32rem] xl:h-[32rem] bg-cyan-500/10 blur-[120px] pointer-events-none" aria-hidden="true" />
+            <div className="flex items-center gap-3 mb-10 xl:mb-12 text-cyan-400 text-[11px] xl:text-sm font-black uppercase tracking-widest relative z-10">
               <Brain className="w-5 h-5 xl:w-6 xl:h-6 shrink-0" /> What Foldera sees
             </div>
-            <div className="space-y-6 xl:space-y-8 relative z-10">
-              <div className="p-8 xl:p-10 rounded-2xl xl:rounded-3xl bg-black/80 border border-white/10 shadow-2xl backdrop-blur-md">
-                <div className="text-[11px] xl:text-xs font-black uppercase tracking-widest text-white mb-6 xl:mb-7">One thread identified</div>
-                <div className="text-zinc-300 text-sm xl:text-base leading-relaxed mb-4 xl:mb-5">Marcus reopened the terms thread Friday. Legal was CC&rsquo;d on the last three rounds. He typically responds within 22 minutes.</div>
-                <div className="text-[10px] xl:text-[11px] font-black uppercase tracking-widest text-cyan-400">Pattern Extracted</div>
+            <div className="space-y-6 xl:space-y-10 relative z-10">
+              <div className="p-8 xl:p-12 rounded-2xl xl:rounded-3xl bg-black/80 border border-white/10 shadow-2xl backdrop-blur-md">
+                <div className="text-[11px] xl:text-sm font-black uppercase tracking-widest text-white mb-6 xl:mb-8">One thread identified</div>
+                <div className="text-zinc-200 text-base xl:text-lg 2xl:text-xl leading-relaxed mb-4 xl:mb-6">Marcus reopened the terms thread Friday. Legal was CC&rsquo;d on the last three rounds. He typically responds within 22 minutes.</div>
+                <div className="text-[10px] xl:text-xs font-black uppercase tracking-widest text-cyan-400">Pattern Extracted</div>
               </div>
-              <div className="p-8 xl:p-10 rounded-2xl xl:rounded-3xl bg-black/50 border border-white/5 relative overflow-hidden group">
+              <div className="p-8 xl:p-12 rounded-2xl xl:rounded-3xl bg-black/50 border border-white/5 relative overflow-hidden group">
                 <div className="absolute left-0 top-0 bottom-0 w-1 xl:w-1.5 bg-cyan-400" aria-hidden="true" />
-                <div className="text-zinc-600 text-[10px] xl:text-[11px] font-black uppercase tracking-widest mb-3 xl:mb-4">Artifact Ready</div>
-                <div className="text-zinc-200 text-sm md:text-base xl:text-lg font-medium leading-relaxed">&ldquo;Hi Marcus — attached are the revised terms with the two changes from Friday. Let me know if legal needs anything else.&rdquo;</div>
+                <div className="text-zinc-500 text-[10px] xl:text-xs font-black uppercase tracking-widest mb-3 xl:mb-5">Artifact Ready</div>
+                <div className="text-zinc-100 text-base md:text-lg xl:text-xl font-medium leading-relaxed">&ldquo;Hi Marcus — attached are the revised terms with the two changes from Friday. Let me know if legal needs anything else.&rdquo;</div>
               </div>
             </div>
           </div>
@@ -718,7 +718,7 @@ const MathConsole = memo(() => {
   const [ref, inView] = useInView(0.2);
 
   return (
-    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-36 md:py-44 lg:py-52 xl:py-56 px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 bg-[#07070c] border-y border-white/5 relative overflow-hidden">
+    <section ref={ref as React.RefObject<HTMLElement> as any} className="py-36 md:py-44 lg:py-52 xl:py-60 2xl:py-64 px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 bg-[#07070c] border-y border-white/5 relative overflow-hidden">
       <AmbientGrid />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(6,182,212,0.08),transparent_60%)] pointer-events-none" aria-hidden="true" />
 
@@ -735,8 +735,8 @@ const MathConsole = memo(() => {
         </Reveal>
 
         <Reveal delay={150}>
-          <div className="w-full rounded-[2rem] lg:rounded-[2.5rem] xl:rounded-[2.75rem] bg-zinc-950/80 backdrop-blur-2xl border border-white/10 shadow-[0_56px_140px_-28px_rgba(0,0,0,1)] overflow-hidden font-mono text-[11px] sm:text-xs xl:text-sm">
-            <div className="h-12 md:h-14 xl:h-16 bg-white/[0.02] border-b border-white/5 flex items-center px-6 md:px-8 xl:px-10 gap-3 backdrop-blur-md">
+          <div className="w-full rounded-[2rem] lg:rounded-[2.5rem] xl:rounded-[2.75rem] bg-zinc-950/80 backdrop-blur-2xl border border-white/10 shadow-[0_64px_160px_-28px_rgba(0,0,0,1)] overflow-hidden font-mono text-[11px] sm:text-xs xl:text-base">
+            <div className="h-12 md:h-14 xl:h-[4.25rem] bg-white/[0.02] border-b border-white/5 flex items-center px-6 md:px-8 xl:px-12 gap-3 backdrop-blur-md">
               <div className="flex gap-2" aria-hidden="true">
                 <div className="w-3 h-3 rounded-full bg-zinc-700/50" />
                 <div className="w-3 h-3 rounded-full bg-zinc-700/50" />
@@ -745,34 +745,34 @@ const MathConsole = memo(() => {
               <div className="ml-2 text-zinc-500 font-bold tracking-[0.2em] uppercase">How it works</div>
             </div>
 
-            <div className="p-8 md:p-12 lg:p-16 xl:p-[4.5rem] 2xl:p-[5rem] space-y-8 md:space-y-12 xl:space-y-14 text-zinc-400 leading-relaxed bg-black/60 break-words text-left font-sans">
+            <div className="p-8 md:p-12 lg:p-16 xl:p-[4.75rem] 2xl:p-[5.25rem] space-y-8 md:space-y-12 xl:space-y-16 text-zinc-400 leading-relaxed bg-black/60 break-words text-left font-sans">
               <div>
-                <span className="text-cyan-400 font-bold text-sm xl:text-base">01</span>
-                <span className="text-white font-bold text-sm xl:text-lg ml-3">Finds what you missed. Drafts the response.</span>
+                <span className="text-cyan-400 font-bold text-base xl:text-lg">01</span>
+                <span className="text-white font-bold text-base xl:text-xl ml-3">Finds what you missed. Drafts the response.</span>
                 <br />
-                <span className="text-zinc-600 font-medium mt-2 xl:mt-3 inline-block text-sm xl:text-base">One tap to send — no digging, no rewrites.</span>
+                <span className="text-zinc-500 font-medium mt-2 xl:mt-4 inline-block text-base xl:text-lg">One tap to send — no digging, no rewrites.</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '500ms' }}>
-                <span className="text-cyan-400 font-bold text-sm xl:text-base">02</span>
-                <span className="text-white font-bold text-sm xl:text-lg ml-3">Pick the one thread with the highest stakes</span>
+                <span className="text-cyan-400 font-bold text-base xl:text-lg">02</span>
+                <span className="text-white font-bold text-base xl:text-xl ml-3">Pick the one thread with the highest stakes</span>
                 <br />
-                <span className="text-zinc-600 font-medium mt-2 xl:mt-3 inline-block text-sm xl:text-base">Scoring stays backstage. You only see the winner.</span>
+                <span className="text-zinc-500 font-medium mt-2 xl:mt-4 inline-block text-base xl:text-lg">Scoring stays backstage. You only see the winner.</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '1000ms' }}>
-                <span className="text-cyan-400 font-bold text-sm xl:text-base">03</span>
-                <span className="text-white font-bold text-sm xl:text-lg ml-3">Draft the finished artifact</span>
+                <span className="text-cyan-400 font-bold text-base xl:text-lg">03</span>
+                <span className="text-white font-bold text-base xl:text-xl ml-3">Draft the finished artifact</span>
                 <br />
-                <span className="text-zinc-600 font-medium mt-2 xl:mt-3 inline-block text-sm xl:text-base">The reply, document, or decision frame — details already filled in.</span>
+                <span className="text-zinc-500 font-medium mt-2 xl:mt-4 inline-block text-base xl:text-lg">The reply, document, or decision frame — details already filled in.</span>
               </div>
 
               <div className={`transition-opacity duration-1000 ${inView ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '2200ms' }}>
-                <span className="text-cyan-400 font-bold text-sm xl:text-base">04</span>
-                <span className="text-white font-bold text-sm xl:text-lg ml-3">Deliver one move every morning</span>
+                <span className="text-cyan-400 font-bold text-base xl:text-lg">04</span>
+                <span className="text-white font-bold text-base xl:text-xl ml-3">Deliver one move every morning</span>
                 <br />
-                <div className="mt-4 xl:mt-6 bg-cyan-500/10 border border-cyan-500/20 p-4 xl:p-5 rounded-xl xl:rounded-2xl inline-block max-w-full">
-                  <span className="text-cyan-400 font-bold text-xs sm:text-sm xl:text-base tracking-widest">
+                <div className="mt-4 xl:mt-8 bg-cyan-500/10 border border-cyan-500/20 p-4 xl:p-6 rounded-xl xl:rounded-2xl inline-block max-w-full">
+                  <span className="text-cyan-400 font-bold text-xs sm:text-sm xl:text-lg tracking-widest">
                     ONE DIRECTIVE. ONE ARTIFACT. READY TO APPROVE.
                   </span>
                 </div>
@@ -792,14 +792,14 @@ MathConsole.displayName = 'MathConsole';
 function FeatureCarousel() {
 
   return (
-    <section id="product" className="py-32 md:py-44 lg:py-52 xl:py-56 relative bg-[#07070c] border-t border-white/5 overflow-x-hidden">
+    <section id="product" className="py-32 md:py-44 lg:py-52 xl:py-60 2xl:py-64 relative bg-[#07070c] border-t border-white/5 overflow-x-hidden">
       <AmbientGrid />
       <div className="max-w-[min(100%,112rem)] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 relative z-10 min-w-0">
         <Reveal className="mb-16 md:mb-28 xl:mb-32 text-left md:text-center max-w-5xl xl:max-w-6xl mx-auto">
           <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tighter text-white mb-8 xl:mb-10">Stop checking.<br />Start finishing.</h2>
           <p className="text-zinc-400 text-base md:text-2xl xl:text-[1.65rem] font-medium leading-relaxed">Foldera doesn&apos;t ask for more attention. It gives some back.</p>
         </Reveal>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 md:gap-10 xl:gap-x-10 xl:gap-y-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 md:gap-10 xl:gap-x-10 xl:gap-y-14">
           {FEATURES.map((feature, i) => {
             const Icon = feature.icon;
             const span =
@@ -816,12 +816,12 @@ function FeatureCarousel() {
                         : 'xl:col-span-6 xl:row-span-1 xl:row-start-3';
             return (
               <Reveal key={feature.title} delay={i * 100} className={span}>
-                <div className={`p-8 sm:p-10 lg:p-14 xl:p-12 2xl:p-14 rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.5rem] bg-zinc-950/80 backdrop-blur-xl border border-white/[0.08] shadow-2xl shadow-black/40 hover:border-cyan-500/30 hover:shadow-[0_0_56px_rgba(6,182,212,0.18)] hover:-translate-y-2 transition-all duration-700 h-full relative overflow-hidden text-left min-w-0 ${i === 0 ? 'xl:min-h-[280px] xl:border-cyan-500/20' : ''}`}>
-                  <div className={`rounded-2xl border bg-black border-white/10 flex items-center justify-center mb-8 shadow-inner ${i === 0 ? 'w-16 h-16 xl:w-[4.5rem] xl:h-[4.5rem]' : 'w-14 h-14'}`}>
-                    <Icon className={`text-zinc-500 ${i === 0 ? 'w-8 h-8 xl:w-9 xl:h-9' : 'w-7 h-7'}`} />
+                <div className={`p-8 sm:p-10 lg:p-14 xl:p-14 2xl:p-16 rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.5rem] bg-zinc-950/80 backdrop-blur-xl border border-white/[0.08] shadow-2xl shadow-black/40 hover:border-cyan-500/30 hover:shadow-[0_0_56px_rgba(6,182,212,0.18)] hover:-translate-y-2 transition-all duration-700 h-full relative overflow-hidden text-left min-w-0 ${i === 0 ? 'xl:min-h-[320px] xl:border-cyan-500/25 xl:shadow-[0_40px_100px_-40px_rgba(0,0,0,0.9),0_0_0_1px_rgba(6,182,212,0.12)]' : ''}`}>
+                  <div className={`rounded-2xl border bg-black border-white/10 flex items-center justify-center mb-8 xl:mb-10 shadow-inner ${i === 0 ? 'w-16 h-16 xl:w-[5rem] xl:h-[5rem]' : 'w-14 h-14 xl:w-16 xl:h-16'}`}>
+                    <Icon className={`text-zinc-500 ${i === 0 ? 'w-8 h-8 xl:w-10 xl:h-10' : 'w-7 h-7 xl:w-8 xl:h-8'}`} />
                   </div>
-                  <h3 className={`font-black text-white mb-4 tracking-tight relative z-10 ${i === 0 ? 'text-xl xl:text-2xl' : 'text-xl'}`}>{feature.title}</h3>
-                  <p className={`leading-relaxed font-medium relative z-10 text-zinc-400 ${i === 0 ? 'text-base xl:text-lg' : 'text-base xl:text-[1.05rem]'}`}>{feature.desc}</p>
+                  <h3 className={`font-black text-white mb-4 xl:mb-5 tracking-tight relative z-10 ${i === 0 ? 'text-xl xl:text-3xl' : 'text-xl xl:text-2xl'}`}>{feature.title}</h3>
+                  <p className={`leading-relaxed font-medium relative z-10 text-zinc-400 ${i === 0 ? 'text-base xl:text-xl' : 'text-base xl:text-lg'}`}>{feature.desc}</p>
                 </div>
               </Reveal>
             );
@@ -913,10 +913,10 @@ export default function App() {
       </section>
 
       {/* ── SCENARIO DEMOS — "with a month of your data" ── */}
-      <section className="py-28 md:py-40 lg:py-48 xl:py-52 relative bg-[#07070c] border-t border-white/5 overflow-x-hidden">
+      <section className="py-28 md:py-40 lg:py-48 xl:py-56 2xl:py-60 relative bg-[#07070c] border-t border-white/5 overflow-x-hidden">
         <AmbientGrid />
-        <div className="max-w-[min(100%,112rem)] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 relative z-10">
-          <Reveal className="text-center mb-12 md:mb-24 xl:mb-28 px-2 sm:px-4 max-w-5xl xl:max-w-6xl mx-auto">
+        <div className="max-w-[min(100%,118rem)] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 relative z-10">
+          <Reveal className="text-center mb-12 md:mb-24 xl:mb-32 px-2 sm:px-4 max-w-5xl xl:max-w-7xl mx-auto">
             <h2 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tighter text-white mb-6 xl:mb-8">
               One move changes the outcome.<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-cyan-400">
@@ -937,15 +937,15 @@ export default function App() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section className="py-36 md:py-44 lg:py-52 xl:py-56 relative bg-[#07070c] border-t border-white/5">
+      <section className="py-36 md:py-44 lg:py-52 xl:py-60 2xl:py-64 relative bg-[#07070c] border-t border-white/5">
         <AmbientGrid />
-        <div className="max-w-[min(100%,112rem)] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 relative z-10">
-          <Reveal className="mb-20 md:mb-28 xl:mb-32 max-w-4xl xl:max-w-5xl text-left">
-            <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tighter text-white mb-8 xl:mb-10 break-words">It finds what changed.<br />One decision. Done.</h2>
-            <p className="text-lg sm:text-xl md:text-2xl xl:text-[1.65rem] text-zinc-400 max-w-2xl xl:max-w-3xl font-medium leading-relaxed">Not another list. Not another reminder. Foldera sees what is drifting, what is exposed, and what needs action now. Approve it or skip it. No planning. No prompts.</p>
+        <div className="max-w-[min(100%,118rem)] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 relative z-10">
+          <Reveal className="mb-20 md:mb-28 xl:mb-36 max-w-4xl xl:max-w-6xl text-left">
+            <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tighter text-white mb-8 xl:mb-12 break-words">It finds what changed.<br />One decision. Done.</h2>
+            <p className="text-lg sm:text-xl md:text-2xl xl:text-[1.75rem] text-zinc-400 max-w-2xl xl:max-w-4xl font-medium leading-relaxed">Not another list. Not another reminder. Foldera sees what is drifting, what is exposed, and what needs action now. Approve it or skip it. No planning. No prompts.</p>
           </Reveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 lg:gap-12 xl:gap-x-12 xl:gap-y-10">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 lg:gap-12 xl:gap-x-12 xl:gap-y-12">
             {(['Gather', 'Decide', 'Finish'] as const).map((title, i) => (
               <Reveal
                 key={i}
@@ -958,14 +958,14 @@ export default function App() {
                       : 'md:col-span-12 xl:col-span-12 md:max-w-none'
                 }
               >
-                <div className={`relative p-8 sm:p-10 md:p-12 lg:p-16 xl:p-14 2xl:p-16 rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.75rem] bg-zinc-950/80 backdrop-blur-xl border border-white/[0.08] group hover:border-cyan-500/40 transition-all duration-700 h-full overflow-hidden shadow-2xl shadow-black/40 hover:shadow-[0_0_72px_rgba(6,182,212,0.18)] hover:-translate-y-2 text-left min-w-0 ${i === 2 ? 'md:max-w-3xl xl:max-w-4xl md:mx-auto xl:mx-0 xl:ml-12 2xl:ml-20' : ''}`}>
+                <div className={`relative p-8 sm:p-10 md:p-12 lg:p-16 xl:p-14 2xl:p-20 rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.75rem] bg-zinc-950/80 backdrop-blur-xl border border-white/[0.08] group hover:border-cyan-500/40 transition-all duration-700 h-full overflow-hidden shadow-2xl shadow-black/40 hover:shadow-[0_0_72px_rgba(6,182,212,0.18)] hover:-translate-y-2 text-left min-w-0 ${i === 2 ? 'md:max-w-3xl xl:max-w-5xl md:mx-auto xl:mx-0 xl:ml-8 2xl:ml-16' : ''}`}>
                   <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                  <div className="absolute -right-6 -bottom-10 text-[180px] font-black text-white/[0.02] leading-none pointer-events-none transition-all duration-700 group-hover:text-cyan-500/[0.05] group-hover:scale-110">{`0${i + 1}`}</div>
-                  <h3 className="text-2xl xl:text-3xl font-black text-white mb-6 xl:mb-8 flex flex-col items-start gap-4 tracking-tight">
-                    <span className="text-cyan-400 text-[10px] xl:text-[11px] tracking-[0.2em] uppercase font-mono bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 xl:px-4 xl:py-2 rounded-md shadow-inner">{`Step 0${i + 1}`}</span>
+                  <div className="absolute -right-6 -bottom-10 text-[180px] xl:text-[220px] font-black text-white/[0.02] leading-none pointer-events-none transition-all duration-700 group-hover:text-cyan-500/[0.05] group-hover:scale-110">{`0${i + 1}`}</div>
+                  <h3 className="text-2xl xl:text-4xl font-black text-white mb-6 xl:mb-10 flex flex-col items-start gap-4 xl:gap-5 tracking-tight">
+                    <span className="text-cyan-400 text-[10px] xl:text-xs tracking-[0.2em] uppercase font-mono bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 xl:px-4 xl:py-2 rounded-md shadow-inner">{`Step 0${i + 1}`}</span>
                     {title}
                   </h3>
-                  <p className="text-zinc-400 text-base md:text-lg xl:text-xl leading-relaxed relative z-10 font-medium group-hover:text-zinc-300 transition-colors duration-150">
+                  <p className="text-zinc-400 text-base md:text-lg xl:text-2xl leading-relaxed relative z-10 font-medium group-hover:text-zinc-300 transition-colors duration-150">
                     {i === 0 && 'Your context becomes one canvas — before you open a single tool.'}
                     {i === 1 && 'The highest-stakes move surfaces first. Everything else waits.'}
                     {i === 2 && 'Approve and it sends. Skip and the model learns.'}
