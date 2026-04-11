@@ -360,6 +360,25 @@ export function evaluateReadiness(
   return { decision: 'SEND', reason: '', stage: 'system' };
 }
 
+/**
+ * Settings "Generate now", brain-receipt, and other manual invocations must reach scoring
+ * even when the per-run signal budget leaves 24h+ unprocessed rows — otherwise owners see
+ * INSUFFICIENT_SIGNAL forever while cron backlog work lags. Cron batches keep the strict gate
+ * unless they explicitly pass skipStaleGate.
+ */
+export function applyInteractiveStaleGateBypass(
+  options: DailyBriefSignalWindowOptions,
+): DailyBriefSignalWindowOptions {
+  if (
+    options.skipStaleGate === true ||
+    options.briefInvocationSource === 'settings_run_brief' ||
+    options.skipManualCallLimit === true
+  ) {
+    return { ...options, skipStaleGate: true };
+  }
+  return options;
+}
+
 // ---------------------------------------------------------------------------
 // Post-generation quality gate
 // ---------------------------------------------------------------------------
@@ -1715,7 +1734,11 @@ export async function runDailyGenerate(
     }
 
     const userEmails = await fetchUserEmailAddresses(userId);
-    const signalResult = await runSignalProcessingForUser(supabase, userId, options);
+    const signalResult = await runSignalProcessingForUser(
+      supabase,
+      userId,
+      applyInteractiveStaleGateBypass(options),
+    );
     signalResults.push(signalResult);
 
     if (!options.pipelineDryRun && userId !== TEST_USER_ID) {
