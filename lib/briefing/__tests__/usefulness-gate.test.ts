@@ -77,6 +77,16 @@ function makeSignalsQuery() {
   };
 }
 
+/** Matches generator-runtime: locked-contact fetch must not throw (avoids locked_contacts_fetch_failed noise). */
+function emptyConstraintsSelect() {
+  const result = { data: [] as unknown[], error: null };
+  const builder: Record<string, unknown> & { then: (resolve: (r: unknown) => void) => void } = {
+    eq() { return builder; },
+    then(resolve: (r: unknown) => void) { resolve(result); },
+  };
+  return { select() { return builder; } };
+}
+
 vi.mock('@/lib/db/client', () => ({
   createServerClient: () => ({
     from(table: string) {
@@ -84,6 +94,7 @@ vi.mock('@/lib/db/client', () => ({
         return { select() { return makeLimitQuery(table); } };
       }
       if (table === 'tkg_signals') { return makeSignalsQuery(); }
+      if (table === 'tkg_constraints') { return emptyConstraintsSelect(); }
       throw new Error(`Unexpected table: ${table}`);
     },
     auth: {
@@ -104,7 +115,13 @@ vi.mock('@/lib/db/client', () => ({
   }),
 }));
 
-vi.mock('@/lib/briefing/scorer', () => ({ scoreOpenLoops: mockScoreOpenLoops }));
+vi.mock('@/lib/briefing/scorer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../scorer')>();
+  return {
+    ...actual,
+    scoreOpenLoops: mockScoreOpenLoops,
+  };
+});
 vi.mock('@/lib/utils/api-tracker', () => ({ isOverDailyLimit: mockIsOverDailyLimit, trackApiCall: mockTrackApiCall }));
 vi.mock('@/lib/briefing/researcher', () => ({ researchWinner: mockResearchWinner }));
 vi.mock('@/lib/briefing/pinned-constraints', () => ({
