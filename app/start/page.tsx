@@ -15,7 +15,7 @@ function StartContent() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (searchParams.get('plan') === 'pro') {
+    if (searchParams?.get('plan') === 'pro') {
       sessionStorage.setItem(PENDING_CHECKOUT_KEY, 'pro');
     } else {
       sessionStorage.removeItem(PENDING_CHECKOUT_KEY);

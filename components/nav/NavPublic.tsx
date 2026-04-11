@@ -47,7 +47,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
           : 'bg-transparent py-4 md:py-8'
       }`}
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between min-w-0">
+      <div className="max-w-[min(100%,88rem)] mx-auto px-4 sm:px-6 lg:px-10 flex items-center justify-between min-w-0">
         <a
           href="/"
           className="flex items-center gap-3 group cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
@@ -185,7 +185,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
 
 export function NavAuthMinimal({ variant }: { variant: 'login' | 'start' }) {
   return (
-    <nav className="relative z-10 w-full px-4 sm:px-6 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-5 flex items-center justify-between max-w-6xl mx-auto border-b border-white/5 gap-3">
+    <nav className="relative z-10 w-full px-4 sm:px-6 lg:px-10 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-5 flex items-center justify-between max-w-[min(100%,88rem)] mx-auto border-b border-white/5 gap-3">
       <a
         href="/"
         className="flex items-center gap-3 group rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c] min-w-0"

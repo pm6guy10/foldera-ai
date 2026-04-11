@@ -18,7 +18,7 @@ function OnboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { update } = useSession();
-  const isEdit = searchParams.get('edit') === 'true';
+  const isEdit = searchParams?.get('edit') === 'true';
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set(DEFAULT_SELECTED));
   const [saving, setSaving] = useState(false);
