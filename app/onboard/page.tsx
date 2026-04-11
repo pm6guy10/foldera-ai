@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 const FOCUS_PILLS: { label: string; bucket: string }[] = [
   { label: 'Career', bucket: 'Career growth' },
@@ -16,6 +17,7 @@ const DEFAULT_SELECTED = new Set(['Career growth', 'Relationships']);
 function OnboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { update } = useSession();
   const isEdit = searchParams.get('edit') === 'true';
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set(DEFAULT_SELECTED));
@@ -75,6 +77,8 @@ function OnboardContent() {
         setSubmitError(errorMessage);
         return;
       }
+      // Refresh JWT `hasOnboarded` so middleware allows /dashboard (avoids redirect loop).
+      await update();
       router.push(isEdit ? '/dashboard/settings' : '/dashboard');
     } catch {
       setSubmitError('Could not save. Try again.');

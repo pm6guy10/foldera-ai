@@ -88,6 +88,15 @@ export async function middleware(request: NextRequest) {
       return applyTrackingCookies(request, NextResponse.redirect(loginUrl));
     }
 
+    // First-time sign-in uses callbackUrl=/dashboard; force onboarding before any dashboard surface.
+    const onOnboardPath = pathname === '/onboard' || pathname.startsWith('/onboard/');
+    if (isProtectedRoute && token && !hasOnboarded && !onOnboardPath) {
+      return applyTrackingCookies(
+        request,
+        stamp(NextResponse.redirect(new URL('/onboard', origin))),
+      );
+    }
+
     if (isAuthEntryRoute && token) {
       const destination = hasOnboarded ? '/dashboard' : '/onboard';
       return applyTrackingCookies(

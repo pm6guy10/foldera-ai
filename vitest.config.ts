@@ -20,7 +20,7 @@ export default defineConfig({
       ALLOW_PAID_LLM: 'true',
     },
     include: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
-    exclude: ['node_modules', '.next', 'dist'],
+    exclude: ['node_modules', '.next', 'dist', '**/.claude/**', '**/.clone/**'],
   },
   resolve: {
     alias: {

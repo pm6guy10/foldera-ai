@@ -1,154 +1,179 @@
-Always start in Debug mode. Read and audit before writing any code.
+---
+description: 
+alwaysApply: true
+---
 
-# AGENTS.md — Behavioral Contract
+# AGENTS.md — Active Behavioral Contract
 
-## Role Definition
+## Purpose
 
-- Every pipeline session starts with `npm run scoreboard` (last 7 `pipeline_runs` — cron + funnel + spend + delivery) then `npm run health`. Paste output. Fix FAIL rows first. No exceptions.
-- Codex is the autonomous executor for this repo.
-- Read `CLAUDE.md` fully at the start of every session and follow it as the operational source of truth.
-- **Scoreboard + tests = truth:** For any session that touches the pipeline, connectors, or production behavior, follow `docs/SESSION_SCOREBOARD.md` and `CLAUDE.md` **Session scoreboard + test ritual**: **start** with production scoreboard + automated test baseline, **end** with the same scoreboard + same tests. Victory = target scoreboard row(s) green (or agreed threshold) **and** no test regressions—not “build passed” or “I’m done.”
-- Read `LESSONS_LEARNED.md`. Every rule is enforced. No exceptions.
-- Read `FOLDERA_PRODUCT_SPEC.md`. Every fix must map to a spec item. Fixes outside the spec require explicit approval. Update the spec before closing.
-- Read every file you plan to modify, inspect recent history, and trace the relevant data path before making changes.
-- Complete the requested task end-to-end without broadening scope.
-- Multi-session “mega prompt” quality work: follow the sequenced program in `docs/MEGA_PROMPT_PROGRAM.md` (one session per row; baseline + receipts).
-- **Operator quick links** (Vercel, Supabase, GitHub, Resend, “no email” after Generate Now, Gate 4 steps): `docs/MASTER_PUNCHLIST.md`.
-- **Quarterly A–Z audit artifact + prioritized backlog table:** `docs/AZ_AUDIT_2026-04.md`, `AUTOMATION_BACKLOG.md` OPEN; **severity-ranked outstanding (S0–S3):** top of `AUTOMATION_BACKLOG.md`; **audit remediation roadmap (pending + tackle):** `docs/AUDIT_REMEDIATION_ROADMAP.md`; local vs prod Playwright: `docs/LOCAL_E2E_AND_PROD_TESTS.md`.
-- **Vercel + CI:** Before push, run **`npm run test:ci:e2e`** (matches `.github/workflows/ci.yml`). After push, Vercel **Ready** + GitHub **build-and-test** green on `main` before closing the session (`CLAUDE.md`). Do not merge dependency PRs that break `npm install` on Vercel (e.g. ESLint 10 vs `eslint-config-next@14`).
-- **Vercel MCP (Cursor):** After schema or runtime changes land on `main`, use the **Vercel** MCP server: `list_deployments` (confirm latest production **READY**), then `get_runtime_logs` on production with `level: ["error","fatal"]` (and build logs via `get_deployment_build_logs` if state ≠ READY). **Project / team:** `prj_eG5St3NmUtqYGXJwXsANdZBLYr9N`, `team_y2RdnSgeVsCExRheya1QRB5z` (see `.vercel/project.json`). **Re-authenticate:** Cursor **Settings → Features → MCP → Vercel → Connect** (OAuth in browser) if tools fail with auth errors — not a hand-built URL. **What’s actually on www:** trust **`GET /api/health`** `revision.git_sha` on the production origin — not git log alone; docs-only pushes can advance the live SHA past a feature commit ([docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) **Production vs `main`**).
-- **Schema / migrations:** **You (the agent) always apply production migrations** — Supabase MCP (`apply_migration` / project **neydszeamsflpghtrhue**) or `npx supabase db push`; never leave this as a human follow-up. Same session as the push; confirm in migration history. See `docs/SUPABASE_MIGRATIONS.md` and `.cursor/rules/schema-migrations.mdc`.
-- **No verification punt:** Do not end with “operator should confirm” or “user must verify” for anything you can run via `npm run health`, `npm run scoreboard` (when in scope), lint/build/vitest, `npm run test:ci:e2e`, post-push Vercel Ready + GitHub green, `npm run test:prod` (refresh `auth-state` in-session when headful Playwright is possible), or Supabase MCP. **Done** = pushed **and** gates run **and** evidence in `SESSION_HISTORY`. If a gate is impossible (no secrets, no network, no headful browser), state the blocker — do not ask the product owner to substitute.
+This file defines how the agent should operate in the Foldera repo.
 
-## Execution Modes
+It is intentionally short.
+It contains active doctrine only.
 
-MODE: AUDIT - For code changes, debugging, architecture, auth, database, cron, sync, encryption, prompts, tests, or anything user-facing. Read all relevant repo docs. Trace execution paths. Verify with build and runtime checks. Be thorough.
+Historical notes, long-form ops procedures, and legacy rules belong in `docs/**` or archive files, not here.
 
-MODE: OPS - For cleanup, git hygiene, worktree management, file moves, local resets, log inspection. Read only AGENTS.md. Use direct commands. No temp scripts unless a direct command fails twice. Keep output minimal.
+---
 
-MODE: FLOW - For user-flow continuity fixes (auth, onboarding, connectors, dashboard, navigation, redirect logic, UI interaction bugs).
-Rules:
-- You are fixing a full user journey, not a single file.
-- You may modify multiple files if required to restore end-to-end flow.
-- Trace the real runtime path (routing, session, state, handlers) before editing.
-- Fix root causes, not surface symptoms.
-- Remove conflicting logic instead of layering conditions.
-- Build must pass AND flow must be verified through actual navigation paths.
+## Core Role
 
-Verification required:
-- No dead clicks
-- No redirect loops
-- No blocked progression
-- No session mismatch between pages
-- No visible flicker from auth/onboarding race conditions
+The agent is an autonomous executor.
 
-FLOW mode overrides "one task per file" constraints but still respects:
-- no backend feature expansion
-- no redesign
-- no scope creep outside the defined flow
+Its job is to change the board, not narrate effort.
 
-The task prompt will specify which mode. If not specified, default to AUDIT for code changes, OPS for cleanup, and FLOW for any cross-route UX or auth/session interaction bugs.
+Default mission:
+- identify one seam
+- trace it
+- patch it
+- verify it
+- return a hard receipt
 
-## Session Log Rule
+---
 
-Every session, regardless of mode, must append a session log to SESSION_HISTORY.md before the final push. The log must include:
+## Session Start
 
-- Date and one-line session description
-- MODE used (AUDIT, OPS, or FLOW)
-- Commit hash(es)
-- Files changed
-- What was verified
-- Any unresolved issues
+Before doing anything else:
 
-This is not optional. No push happens without a session log entry.
+1. Run `npm run health`
+2. Inspect the output
+3. If there is a relevant `FAIL`, prioritize it unless the assigned task explicitly targets another proven seam
+4. If health is green or warnings-only, continue autonomously
+5. Include the health summary in the final receipt
 
-## Communication Rules
+Do not stop to ask for permission after health.
 
-- Do not ask clarification questions when the answer can be derived from the repo, `CLAUDE.md`, or the stricter existing rule.
-- If a required reference is missing, a rule conflicts, or a safe assumption cannot be made, state the blocker briefly and proceed only as far as the evidence supports.
-- Ship clean. If you cannot produce a verified fix, revert your own partial work and report the blocker.
+---
 
-## Commit And Push Rules
+## Execution Doctrine
 
-- Do not rebase. Commit only task files. Leave unrelated worktree changes untouched.
-- Push to `main`.
-- **No waiting:** When the task is done and verified (build + tests per `CLAUDE.md` / task scope), **commit and push in the same session** without asking Brandon to approve, confirm, or “say when to push.” Only stop short of push if the task is blocked or verification failed.
+- One seam at a time
+- One proof path at a time
+- Free tests first
+- Paid/live proof only at the end
+- Do not reopen closed seams without fresh evidence
+- Do not broad-audit when the blocker is already known
+- Do not stop at “improved”
+- Stop only on:
+  - WIN
+  - EXACT BLOCKER
+  - FINAL LIMIT
 
-## ABSOLUTE RULE — NO BRANCHES, NO PRs, NO EXCEPTIONS
+### WIN
+A real board change exists and proof is shown.
 
-NEVER create a branch. NEVER create a PR. NEVER use git checkout -b. NEVER use gh pr create.
+### EXACT BLOCKER
+A narrow blocker is proven with:
+- seam name
+- file
+- function
+- line or tight range
+- proof
 
-The only valid final action is:
-  git add -A
-  git commit -m "..."
-  git push origin main
+### FINAL LIMIT
+No narrow code bug remains.
+The next move requires product policy, weak-data acceptance, environment access, or another explicit decision.
 
-If you are about to create a branch or PR, STOP. Run the three commands above instead.
-If the UI shows "Create PR", do not click it. Run git push origin main in the terminal.
-Brandon is never the middleman. CC never asks Brandon to merge, push, or resolve anything.
-Violating this rule means the session produced zero value regardless of code quality.
+---
 
-## FLOW Verification Requirement
+## Verification Doctrine
 
-Any change affecting frontend, auth, onboarding, connectors, or routing must pass the end-to-end flow test suite (tests/e2e/). If E2E tests fail, the task is not complete. Build success is not sufficient.
+### Deterministic / harness / internal hardening work
+Use:
+- focused tests
+- replay fixtures
+- build
 
-## Error Handling
+Local proof is sufficient until final live verification.
 
-- If `npm run build` fails, the work is not shippable. Fix it before commit or revert your changes and report the failure.
-- If tests fail, fix them before push. If they cannot be fixed in-session, flag the issue in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW` and report it.
-- Never leave unresolved failures hidden behind a success claim.
+### Live-path / user-facing / pipeline behavior changes
+Require one real proof before calling the task complete:
+- deployed proof
+- production-like run
+- persisted row
+- actual route / flow success
 
-## Pipeline Verification
+Build passing is required, but never enough by itself.
 
-- Every session that touches the pipeline must re-trigger production after deploying, query the database for the expected outcome, and show the receipt (email delivered, action row created, correct status).
-- A build pass alone is not sufficient verification. "Done" without a production receipt is not done.
-- No session closes without confirming the acceptance gate passes against production.
+---
 
-## Nightly Orchestrator Contract (Job 1)
+## Git Doctrine
 
-- The nightly orchestrator must fully prepare next-day execution during **Job 1**.
-- For every backlog item created in Job 1, include these fields:
-  - `Status`
-  - `Classification`
-  - `Evidence`
-  - `Human Action`
-- If `Classification = AUTO_FIXABLE`, `CODEX_PROMPT` is required in Job 1 (not Job 2).
-- `CODEX_PROMPT` must be complete and paste-ready, and must follow the exact mega-prompt template in `CLAUDE.md`. It must:
-  - name the specific files to edit
-  - state the exact fix to make
-  - include verification steps
-  - include a multi-user check
-  - end with the exact line: `Push directly to main. Do not create a branch.`
-- By the time `NIGHTLY_REPORT.md` is written, every AUTO_FIXABLE item must already include its final `CODEX_PROMPT`.
+- Push directly to `main`
+- Do not create branches unless explicitly required by the task
+- Commit and push in the same session once the slice is actually verified
+- Do not leave partial, ambiguous work presented as complete
 
-## Scope Discipline
+---
 
-- One task per session.
-- No opportunistic refactors, adjacent fixes, or extra docs outside the requested task and required runbook maintenance.
-- If you encounter unrelated issues, mention them only if they block the task or must be logged in the audit.
+## Communication Doctrine
 
-## Standing Rules Additions (2026-03-20 to 2026-03-26)
+- Do not ask clarification questions when the repo or task evidence answers them
+- Do not hand work back while an obvious next move exists
+- Do not say “done” without proof
+- Do not say “still broken” without naming the exact blocker
+- Do not ask the user to do work the agent can do directly
 
-- Production Playwright flow commands are now standard: `npm run test:prod`, `npm run test:prod:setup`, and `npm run test:prod:refresh` (commit `fbb1072`, `package.json`, `tests/production/setup-auth.ts`, `tests/production/smoke.spec.ts`, `playwright.prod.config.ts`).
-- Weekly adversarial production audit command exists: `npm run test:audit` (commit `2de4942`, `package.json`, `tests/production/audit.spec.ts`).
-- CI/ops workflows to account for during verification:
-  - `.github/workflows/production-e2e.yml` runs production smoke checks on deploy success, daily schedule, and manual dispatch (commit `371f9ea`).
-  - `.github/workflows/weekly-audit.yml` runs Monday production audit and uploads `tests/production/audit-summary.md`/`audit-report.json` artifacts (commit `2de4942`).
-- New route contracts added:
-  - `GET /api/health` is a schema/env/credit canary JSON contract used by cron health-check and prod smoke tests (commit `e1555d0`, `app/api/health/route.ts`). Includes **`revision`** (git SHA, deployment id, `vercel_env`) and **`build`** short label for deploy correlation; headers **`x-foldera-git-sha`** / **`x-foldera-deployment-id`** when present.
-  - `POST /api/dev/stress-test` is a dry-run pipeline stress endpoint for signed-in sessions (commit `9b3e719`, `app/api/dev/stress-test/route.ts`).
-  - `GET /api/dev/email-preview` renders sample daily-brief HTML in the browser (`?variant=nothing` for the no-directive template); `?action_id=<uuid>` (owner session, after `POST /api/dev/brain-receipt`) loads that `tkg_actions` row and matches production send HTML; `lib/email/resend.ts` exports `buildDailyDirectiveEmailHtml` (same markup as send).
-  - `GET /api/dev/ops-health` is owner-only; returns JSON env/DB readiness checks without exposing secret values (`app/api/dev/ops-health/route.ts`). See repo-root `LAUNCH_CHECKLIST.md` for manual launch steps.
-  - `GET /api/model/state` is a read-only behavioral model state endpoint (commit `95c2edf`, `app/api/model/state/route.ts`).
-- Environment variable note: `ALLOW_DEV_ROUTES=true` is required to access dev-only API routes such as `/api/dev/stress-test` (commit `9b3e719`, `app/api/dev/stress-test/route.ts`).
-- Directory structure note: `tests/production/` now contains production auth-state scripts and smoke/audit suites referenced by CI workflows (introduced in commit `fbb1072`, extended in `2de4942`). **`tests/local/`** — gitignored `auth-state-owner.json` + `npm run test:local:setup` / `test:local:check` / `test:local:brain-receipt` for localhost owner `/api/dev/*` (see `tests/local/README.md`, `CLAUDE.md` Autonomous local hammer).
+---
 
-## Vercel Deployment
-**Authoritative CLI path:** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs after **CI** succeeds and uses `VERCEL_TOKEN` to `vercel build` + `vercel deploy --prebuilt` so any committer can ship (Hobby used to block non-owner Git integration deploys).
+## Scope Doctrine
 
-**Reality check:** The Vercel project may **also** have GitHub integration enabled. That means **two production deploys per push** unless the post-CI workflow skips the CLI path. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs [scripts/ci/vercel-deploy-preflight.py](scripts/ci/vercel-deploy-preflight.py) **preflight** (poll **`/v6/deployments`**: skip CLI if **READY** at SHA; bounded wait if Git **BUILDING**; **check-ready** after CLI **`api-deployments-free-per-day`** so the job can succeed if Git delivered anyway). **Source of truth for www:** `GET /api/health` → `revision.git_sha`, not the GitHub “Deploy to Vercel” email alone. Runbook: [docs/MASTER_PUNCHLIST.md](docs/MASTER_PUNCHLIST.md) (**Deploy workflow red emails**). **`concurrency: vercel-prod-cli-foldera`** + CLI **retries** only when preflight does not skip.
+- Fix the proven seam first
+- Broaden only when the same failure class is clearly shared
+- Do not opportunistically refactor adjacent systems
+- If unrelated issues are discovered, mention them only if they block the current seam or must be logged
 
-Required GitHub Secrets:
-- VERCEL_TOKEN: Vercel personal access token (Settings > Tokens)
-- VERCEL_ORG_ID: team_y2RdnSgeVsCExRheya1QRB5z
-- VERCEL_PROJECT_ID: prj_eG5St3NmUtqYGXJwXsANdZBLYr9N
+---
+
+## Required Final Receipt
+
+Every completed session must include:
+
+- health summary
+- what changed
+- tests run
+- build result
+- live/prod-like proof if applicable
+- exact remaining unproven items
+
+---
+
+## Required Session Log
+
+If code meaningfully changed, append a concise entry to `SESSION_HISTORY.md`:
+- date
+- session description
+- files changed
+- verification
+- unresolved issues
+
+This is a record of the board change, not the main work.
+
+---
+
+## Foldera-Specific Product Bar
+
+Optimize for outputs that are:
+- grounded
+- timely
+- materially useful
+- artifact-first
+- clearly better than generic reminders or summaries
+
+For backend work:
+prefer one persisted, believable artifact over vague system improvement.
+
+For frontend work:
+prefer one polished completed journey over broad UI churn.
+
+---
+
+## What Not To Do
+
+- do not start with a broad repo audit
+- do not read giant docs by default
+- do not use paid model calls to discover basic bugs
+- do not stop after one fixed seam if the mission still has an obvious next move
+- do not confuse ritual with progress
+
+Anything else is sludge.

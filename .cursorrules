@@ -1,50 +1,52 @@
+---
+description: 
+alwaysApply: true
+---
+
 # CURSOR RULES — FOLDERA
 
-## Read Before Every Session
-- AGENTS.md (execution contract)
-- CLAUDE.md (operational source of truth)  
-- LESSONS_LEARNED.md (permanent rules)
-- CURRENT_STATE.md (what layer we're on)
+## Session Start
+- Read: AGENTS.md, CLAUDE.md, LESSONS_LEARNED.md, CURRENT_STATE.md
+- Run `npm run health` first.
+- If health shows FAIL, prioritize the first relevant failing row unless the assigned task explicitly targets another proven seam.
+- If health is green or warnings-only, continue autonomously.
 
-## Stack
-- Next.js 14 App Router
-- Supabase (RLS enabled, service_role for backend)
-- Claude API (Anthropic, NOT OpenAI)
-- Tailwind CSS, Lucide React icons
-- Dark mode default: bg-slate-950, text-slate-100
+## Execution Doctrine
+- One seam at a time.
+- Free tests first. Paid/live proof only at the end.
+- Do not reopen closed seams without fresh evidence.
+- Do not stop at “improved.” Stop only on win, exact blocker, or final limit.
+- Fix the proven seam first. Broaden only if the same failure class is clearly shared.
 
-## Absolute Rules
+## Git / Verification
 - Push directly to main. Never create branches.
-- npm run build must pass before every commit.
-- Never say "done" without production verification.
-- Never initialize Supabase or read env vars at top 
-  level. Always inside functions.
-- useSession/useState/useEffect require 'use client'.
-- Server components use getServerSession(authOptions).
-- Frontend uses NEXT_PUBLIC_SUPABASE_ANON_KEY.
-- Backend uses SUPABASE_SERVICE_ROLE_KEY. Never mix.
-- Every fix must include: what changed, build pass, 
-  test pass, production verification.
+- `npm run build` must pass before every commit.
+- For live-path or user-facing changes, require one production-like verification before calling the work complete.
+- For deterministic harness/test-only changes, local proof is enough until final live verification.
 
-## After Every Push
-- Update SESSION_HISTORY.md with: date, commit hash, 
-  files changed, what was verified, what remains unproven
-- Update CURRENT_STATE.md section B (what is broken) 
-  to remove anything you just fixed
-- If a fix closes an AUTOMATION_BACKLOG.md item, mark 
-  it DONE with the commit hash and date
+## Architecture Constraints
+- Never initialize Supabase or read env vars at top level. Always inside functions.
+- `useSession` / `useState` / `useEffect` require `'use client'`.
+- Server components use `getServerSession(authOptions)`.
+- Frontend uses `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- Backend uses `SUPABASE_SERVICE_ROLE_KEY`. Never mix.
 
-These updates are part of the commit. Not separate.
+## Required Commit Receipt
+Every completed task must include:
+- what changed
+- tests run
+- build result
+- production/live proof if applicable
+- what remains unproven
 
-## Locked Decisions (never change without asking)
+## Post-Commit Docs
+- Update SESSION_HISTORY.md
+- Update CURRENT_STATE.md
+- Update AUTOMATION_BACKLOG.md when applicable
+
+## Locked Decisions
 - Pricing: Free forever + Pro $29/mo
 - Tagline: "Finished work, every morning"
 - No trial countdown. No credit card for free tier.
 - Nicole Vreeland: never a reference or directive target
 - Brandon is never the training mechanism
-
-## Quality Standard
-- If fixing a bug, scan the file for architectural flaws
-- Fix the class not the instance
-- Every commit must be verified against production
-- "Build passed" is not verification

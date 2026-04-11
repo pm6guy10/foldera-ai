@@ -64,6 +64,8 @@ export const VALIDITY_CONTEXT_ENTITY_STOPWORDS = new Set([
   'end',
   // Common promo / system nouns mis-extracted
   'payment',
+  'financial',
+  'personal',
   'automatic',
   'reactivate',
   'paid',

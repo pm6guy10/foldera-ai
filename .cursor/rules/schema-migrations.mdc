@@ -1,14 +1,32 @@
 ---
-description: Supabase schema and migrations — production apply gate
-globs:
-  - supabase/**/*
+description: 
+globs: supabase/**/*
 alwaysApply: false
 ---
 
 # Schema / migrations (production Supabase)
 
-**Applying migrations to production is the agent’s job — never delegate this to Brandon or any human “operator.”** After pushing migration files, apply them in the same session before closing. Do not mark the task done until applied and verified (columns exist / `list_migrations` / `migration list`).
+If a session creates, edits, or depends on a production schema change, applying that migration to production Supabase is the agent’s job — never delegate it to Brandon or any human operator.
 
-**Preferred (Foldera project):** Supabase MCP — `apply_migration` with `project_id` for **neydszeamsflpghtrhue** (see [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md)). **Also valid:** `npx supabase db push` with the repo linked and DB password available. Dashboard SQL editor only as a fallback using the **exact** committed migration file body.
+Do not mark the task done until the migration is:
+1. committed,
+2. applied to production,
+3. verified.
 
-See [`docs/SUPABASE_MIGRATIONS.md`](docs/SUPABASE_MIGRATIONS.md).
+Verification must show the expected production state, for example:
+- migration appears in migration history / list_migrations
+- expected columns / indexes / constraints exist
+- dependent code path works against production
+
+Preferred (Foldera project):
+- Supabase MCP `apply_migration` for project `neydszeamsflpghtrhue`
+
+Also valid:
+- `npx supabase db push` when the repo is linked and credentials are available
+
+Fallback only:
+- Supabase SQL editor using the exact committed migration body
+
+If production apply is impossible in-session because of missing credentials, missing tool access, or network failure, state that exact blocker and do not claim the migration task complete.
+
+See `docs/SUPABASE_MIGRATIONS.md`.

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   findLockedContactsInUserFacingPayload,
+  sanitizeConvictionPayloadLockedContactsInPlace,
+  sanitizeStringForLockedContactDisplayNames,
   userFacingArtifactTextForLockedScan,
 } from '../locked-contact-scan';
 
@@ -61,5 +63,58 @@ describe('findLockedContactsInUserFacingPayload', () => {
       { type: 'email', body: 'ok' },
     );
     expect(v).toEqual([]);
+  });
+});
+
+describe('sanitizeStringForLockedContactDisplayNames', () => {
+  it('replaces multi-word locked display names', () => {
+    const s = sanitizeStringForLockedContactDisplayNames(
+      'deadline across 4 contacts: nicole vreeland, michael',
+      ['Nicole Vreeland'],
+    );
+    expect(s.toLowerCase()).not.toContain('nicole');
+    expect(s.toLowerCase()).not.toContain('vreeland');
+    expect(s).toContain('michael');
+  });
+
+  it('replaces Cheryl Anderson without touching unrelated text', () => {
+    const s = sanitizeStringForLockedContactDisplayNames(
+      'Fading connection: Cheryl Anderson vs other work',
+      ['Cheryl Anderson'],
+    );
+    expect(s).not.toMatch(/cheryl/i);
+    expect(s).not.toMatch(/anderson/i);
+    expect(s.toLowerCase()).toContain('other work');
+  });
+});
+
+describe('sanitizeConvictionPayloadLockedContactsInPlace', () => {
+  it('clears locked_contact_in_artifact violations on directive + email artifact', () => {
+    const payload = {
+      directive: 'Follow up with Nicole Vreeland about the deadline.',
+      artifact: {
+        type: 'email',
+        to: 'ops@example.com',
+        subject: 'Nicole Vreeland — deadline',
+        body: 'Hi — Nicole Vreeland asked about April.',
+      },
+    };
+    const changed = sanitizeConvictionPayloadLockedContactsInPlace(payload, ['Nicole Vreeland']);
+    expect(changed).toBe(true);
+    expect(
+      findLockedContactsInUserFacingPayload(
+        ['Nicole Vreeland'],
+        payload.directive.toLowerCase(),
+        payload.artifact,
+      ),
+    ).toEqual([]);
+  });
+
+  it('returns false when nothing matches', () => {
+    const payload = {
+      directive: 'Pay the utility bill today.',
+      artifact: { type: 'email', body: 'Reminder only.' },
+    };
+    expect(sanitizeConvictionPayloadLockedContactsInPlace(payload, ['Nicole Vreeland'])).toBe(false);
   });
 });

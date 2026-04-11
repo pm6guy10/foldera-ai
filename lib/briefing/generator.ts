@@ -68,7 +68,10 @@ import {
 } from './thread-evidence-for-payload';
 import { buildDiagnosticLensBlock, getVagueMechanismIssues } from './diagnostic-lenses';
 import { directiveHasStalePastDates, userFacingStaleDateScanText } from './scorer-failure-suppression';
-import { findLockedContactsInUserFacingPayload } from './locked-contact-scan';
+import {
+  findLockedContactsInUserFacingPayload,
+  sanitizeConvictionPayloadLockedContactsInPlace,
+} from './locked-contact-scan';
 import { hasBracketTemplatePlaceholder } from './bracket-placeholder';
 import { resolveEvidenceSignalIdsForWinner } from './resolve-evidence-signal-ids';
 
@@ -5883,6 +5886,46 @@ export function collectHuntSendMessageToValidationIssues(
   return [];
 }
 
+/**
+ * When the winning hunt thread has exactly one eligible external peer, the model sometimes
+ * invents a plausible address (e.g. name@example.com). Deterministically set To: to the
+ * singleton allowlist entry before validation so a grounded hunt can persist.
+ */
+export function applyHuntSendMessageRecipientCoercion(
+  parsed: GeneratedDirectivePayload,
+  ctx: Pick<StructuredContext, 'candidate_class' | 'hunt_send_message_recipient_allowlist'>,
+  canonicalArtifactType: ValidArtifactTypeCanonical,
+  userId?: string,
+): boolean {
+  if (ctx.candidate_class !== 'hunt' || canonicalArtifactType !== 'send_message') return false;
+  const allow = ctx.hunt_send_message_recipient_allowlist;
+  if (allow.length !== 1) return false;
+  if (!parsed.artifact || typeof parsed.artifact !== 'object') return false;
+  const art = parsed.artifact as Record<string, unknown>;
+  const raw = art.to ?? art.recipient;
+  const norm = isNonEmptyString(raw) ? String(raw).trim().toLowerCase() : '';
+  if (allow.includes(norm)) return false;
+  const canonical = allow[0];
+  art.to = canonical;
+  art.recipient = canonical;
+  if (userId) {
+    logStructuredEvent({
+      event: 'hunt_send_to_coerced',
+      level: 'info',
+      userId,
+      artifactType: 'send_message',
+      generationStatus: 'hunt_recipient_coerced',
+      details: {
+        scope: 'generator',
+        prior_to: norm || '(missing)',
+        coerced_to: canonical,
+        allowlist_size: 1,
+      },
+    });
+  }
+  return true;
+}
+
 function validateGeneratedArtifact(
   payload: GeneratedDirectivePayload | null,
   ctx: StructuredContext,
@@ -7275,6 +7318,10 @@ async function generatePayload(
       }
     }
 
+    if (parsed) {
+      applyHuntSendMessageRecipientCoercion(parsed, ctx, committed, userId);
+    }
+
     const issues = validateGeneratedArtifact(parsed, ctx, committed, { userIdForLogs: userId });
     lastIssues = issues;
     if (attempt === 0) {
@@ -7936,6 +7983,12 @@ export async function generateDirective(
         });
 
         if (repairedPayload) {
+          applyHuntSendMessageRecipientCoercion(
+            repairedPayload,
+            ctx,
+            decisionPayload.recommended_action,
+            userId,
+          );
           const repairedIssues = validateGeneratedArtifact(
             repairedPayload,
             ctx,
@@ -8140,6 +8193,22 @@ export async function generateDirective(
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), reason: usefulnessCheck.reason },
       });
       continue;
+    }
+
+    // Strip locked display names from directive + artifact strings before persistence
+    // and post-LLM validation. The model often echoes candidate titles (discrepancy lists).
+    if (lockedContactPromptLines.length > 0) {
+      const scrubbed = sanitizeConvictionPayloadLockedContactsInPlace(payload, lockedContactPromptLines);
+      if (scrubbed) {
+        logStructuredEvent({
+          event: 'locked_contact_names_scrubbed',
+          level: 'info',
+          userId,
+          artifactType: canonicalAction,
+          generationStatus: 'locked_contact_artifact_sanitized',
+          details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80) },
+        });
+      }
     }
 
     // =====================================================================

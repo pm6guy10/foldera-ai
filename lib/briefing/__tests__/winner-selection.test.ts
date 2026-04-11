@@ -213,6 +213,39 @@ describe('selectFinalWinner', () => {
     expect(winner.id).toBe('hidden-risk');
   });
 
+  it('hunt send_message is preferred over internal discrepancy write_document when both are short-listed', () => {
+    const discrepancy = makeCandidate({
+      id: 'disc-internal-memo',
+      score: 10,
+      type: 'discrepancy',
+      suggestedActionType: 'write_document',
+      discrepancyClass: 'drift',
+      title: 'Cross-thread drift needs internal diagnosis memo',
+      content: 'Signals show priority drift with no single external reply obligation.',
+    });
+    const hunt = makeCandidate({
+      id: 'hunt-reply-external',
+      score: 8,
+      type: 'hunt',
+      suggestedActionType: 'send_message',
+      entityName: 'Alex Rivera',
+      title: 'Reply pending on Alex Rivera contract thread',
+      content: 'Inbound from Alex Rivera <alex@clientco.com> on redlines; response overdue.',
+      sourceSignals: [
+        { kind: 'signal', id: 'sig-alex-1', summary: 'Alex contract thread', occurredAt: new Date().toISOString() },
+      ],
+      lifecycle: {
+        state: 'active_now',
+        horizon: 'now',
+        actionability: 'actionable',
+        reason: 'test',
+      },
+    });
+
+    const { winner } = selectFinalWinner([discrepancy, hunt], NO_GUARDRAILS);
+    expect(winner.id).toBe('hunt-reply-external');
+  });
+
   it('thread-backed relationship send_message wins viability over internal write_document discrepancy', () => {
     const outreach = makeCandidate({
       id: 'outreach-keri',

@@ -1,6 +1,6 @@
 # Foldera Production Audit
 
-**Generated:** 2026-04-03T17:08:14.538Z
+**Generated:** 2026-04-11T02:14:43.393Z
 **Total findings:** 47 (0 errors, 0 warnings, 47 info)
 
 ## INFO (47)
@@ -46,14 +46,14 @@
 - **[button-ok]** `interact/` — Button "" clicked — no errors
 - **[button-effect]** `interact/` — Button "" changed page content
 - **[button-ok]** `interact/` — Button "" clicked — no errors
-- **[api-health]** `/api/auth/session` — 200 in 687ms — shape OK (expected: { user: { id, email } })
+- **[api-health]** `/api/auth/session` — 200 in 823ms — shape OK (expected: { user: { id, email } })
   > {"user":{"name":"Brandon Kapp","email":"b-kapp@outlook.com","image":"data:image/jpeg;base64, iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcd
-- **[api-health]** `/api/integrations/status` — 200 in 139ms — shape OK (expected: { integrations: [] })
-  > {"integrations":[{"provider":"google","is_active":true,"sync_email":null,"last_synced_at":"2026-04-03T17:06:54.945+00:00","scopes":null,"expires_at":1775239613,"needs_reconnect":false},{"provider":"az
-- **[api-health]** `/api/conviction/latest` — 200 in 1443ms — shape OK (expected: status 200 (any body))
-  > {"context_greeting":"Friday evening. 105 active commitments. Top priority: Resolve ESD overpayment waiver (Claim 2MFDBB-007, RCW 50.20.190, hardship waiver submitted, follow up 800-318-6022 if no resp
-- **[api-health]** `/api/subscription/status` — 200 in 734ms — shape OK (expected: { status: string })
-  > {"plan":"pro","status":"active","current_period_end":"2026-04-19T23:10:33.661601+00:00","daysRemaining":17,"can_manage_billing":true}
-- **[api-health]** `/api/onboard/set-goals` — 200 in 783ms — shape OK (expected: status 200)
-  > {"buckets":["Business ops","Relationships","Job search","Financial","Health & family"],"freeText":"Be a stronger spiritual leader"}
-- **[generate-now]** `settings/generate-now` — Success: "generated and sent" appeared after 8686ms
+- **[api-health]** `/api/integrations/status` — 200 in 1036ms — shape OK (expected: { integrations: [] })
+  > {"integrations":[{"provider":"google","is_active":true,"sync_email":"b.kapp1010@gmail.com","last_synced_at":"2026-04-11T02:13:00.306+00:00","scopes":"https://www.googleapis.com/auth/gmail.send https:/
+- **[api-health]** `/api/conviction/latest` — 200 in 1522ms — shape OK (expected: status 200 (any body))
+  > {"context_greeting":"Saturday morning. 150 active commitments. Top priority: Resolve ESD overpayment waiver (Claim 2MFDBB-007, RCW 50.20.190, hardship waiver submitted).","account_created_at":"2025-09
+- **[api-health]** `/api/subscription/status` — 200 in 820ms — shape OK (expected: { status: string })
+  > {"plan":"pro","status":"active","current_period_end":"2026-04-19T23:10:33.661601+00:00","daysRemaining":9,"can_manage_billing":true}
+- **[api-health]** `/api/onboard/set-goals` — 200 in 977ms — shape OK (expected: status 200)
+  > {"buckets":[],"freeText":null}
+- **[generate-now]** `settings/generate-now` — Success: "generated and sent" appeared after 21802ms

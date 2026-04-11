@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyHuntSendMessageRecipientCoercion,
   buildStructuredContext,
   collectHuntSendMessageToValidationIssues,
 } from '../generator';
@@ -302,5 +303,70 @@ describe('hunt send_message artifact.to validation (collectHuntSendMessageToVali
     );
     expect(issues.length).toBe(1);
     expect(issues[0]).toContain('no hunt-grounded recipient');
+  });
+
+  it('coerces invented To: to singleton hunt allowlist before validation', () => {
+    const winner = huntWinner(['sig-a']);
+    const userEmails = new Set(['me@me.com']);
+    const evidence = [
+      {
+        source: 'gmail',
+        date: '2026-04-01',
+        subject: 'Re: Project',
+        snippet: 'Following up',
+        author: 'Alex Rivera <alex@clientco.com>',
+        direction: 'received' as const,
+        signal_id: 'sig-a',
+      },
+    ];
+    const ctx = buildStructuredContext(
+      winner,
+      emptyGuard,
+      'user-test',
+      evidence,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      userEmails,
+    );
+    expect(ctx.hunt_send_message_recipient_allowlist).toEqual(['alex@clientco.com']);
+
+    const parsed = {
+      action: 'send_message' as const,
+      artifact_type: 'send_message' as const,
+      confidence: 80,
+      reason: 'test',
+      directive: 'Follow up with Alex about the project.',
+      insight: 'test',
+      why_now: 'test',
+      decision: 'ACT' as const,
+      artifact: {
+        to: 'alex.rivera@example.com',
+        subject: 'Hi',
+        body: 'Body',
+      },
+    };
+
+    expect(
+      collectHuntSendMessageToValidationIssues(ctx, 'send_message', 'alex.rivera@example.com').length,
+    ).toBeGreaterThan(0);
+
+    const did = applyHuntSendMessageRecipientCoercion(parsed, ctx, 'send_message');
+    expect(did).toBe(true);
+    expect((parsed.artifact as { to: string }).to).toBe('alex@clientco.com');
+    expect(
+      collectHuntSendMessageToValidationIssues(
+        ctx,
+        'send_message',
+        (parsed.artifact as { to: string }).to,
+      ).length,
+    ).toBe(0);
   });
 });

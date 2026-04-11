@@ -315,7 +315,9 @@ class InsertQuery {
               ? 'ml_snapshot'
               : this.table === 'mlGlobalPriors'
                 ? 'ml_global_prior'
-                : this.table.slice(0, -1);
+                : this.table === 'entities'
+                  ? 'entity'
+                  : this.table.slice(0, -1);
         row.id = nextId(prefix as keyof RuntimeState['ids']);
       }
       if (this.table === 'apiUsage' && !row.created_at) {

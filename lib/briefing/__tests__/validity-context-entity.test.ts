@@ -34,6 +34,10 @@ describe('filterPersonNamesForValidityContext', () => {
     expect(filterPersonNamesForValidityContext(['Reference Checks'])).toEqual([]);
   });
 
+  it('removes Financial / Personal mis-extractions (rejection gate false positives)', () => {
+    expect(filterPersonNamesForValidityContext(['Financial', 'Personal'])).toEqual([]);
+  });
+
   it('stopword set is lowercase for lookup', () => {
     expect(VALIDITY_CONTEXT_ENTITY_STOPWORDS.has('reference')).toBe(true);
     expect(VALIDITY_CONTEXT_ENTITY_STOPWORDS.has('Reference')).toBe(false);

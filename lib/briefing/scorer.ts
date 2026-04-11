@@ -1650,7 +1650,8 @@ export function passesTop3RankingInvariants(candidate: ScoredLoop): boolean {
 /**
  * Thread-backed external send_message: real entity + sendable action. Used by ranking
  * invariants and generator viability to prefer concrete outreach over internal
- * discrepancy artifacts (write_document / make_decision).
+ * discrepancy artifacts (write_document / make_decision). Includes `hunt` (mail-thread
+ * reply obligations) alongside relationship/commitment and eligible discrepancy classes.
  */
 const THREAD_BACKED_SENDABLE_DISCREPANCY_CLASSES = new Set<string>([
   'decay',
@@ -1673,6 +1674,12 @@ export function isThreadBackedSendableLoop(c: ScoredLoop): boolean {
       && c.discrepancyClass !== 'behavioral_pattern'
       && THREAD_BACKED_SENDABLE_DISCREPANCY_CLASSES.has(c.discrepancyClass ?? '')
     );
+  }
+  // Hunt: mail-thread–grounded external reply obligation (same product bar as
+  // relationship send_message — must not lose final viability to an internal
+  // discrepancy write_document when both are in the top shortlist).
+  if (c.type === 'hunt') {
+    return hasSendableAction && hasExternalEntity;
   }
   if (c.type === 'commitment' || c.type === 'relationship') {
     return hasSendableAction && hasExternalEntity;
