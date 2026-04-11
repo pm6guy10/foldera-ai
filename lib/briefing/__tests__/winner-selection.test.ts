@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { selectFinalWinner } from '../generator';
+import { selectFinalWinner, selectRankedCandidates } from '../generator';
 import type { ScoredLoop } from '../scorer';
 
 // ---------------------------------------------------------------------------
@@ -38,11 +38,46 @@ const NO_GUARDRAILS = { approvedRecently: [], skippedRecently: [] };
 // ---------------------------------------------------------------------------
 
 describe('selectFinalWinner', () => {
-  it('single candidate always wins', () => {
+  it('single candidate always wins when viable', () => {
     const candidate = makeCandidate({ score: 2.0 });
     const result = selectFinalWinner([candidate], NO_GUARDRAILS);
     expect(result.winner).toBe(candidate);
-    expect(result.competitionContext).toBe('');
+    expect(result.competitionContext).toContain('Winner:');
+  });
+
+  it('disqualifies low-value hunt send_message and falls back to runner-up', () => {
+    const junkHunt = makeCandidate({
+      id: 'hunt-junk',
+      type: 'hunt',
+      score: 99,
+      suggestedActionType: 'send_message',
+      title: 'Inbound email unanswered 12+ days — Summer kickoff',
+      content: 'HUNT_ANOMALY_FINDING\nKind: unreplied_inbound\nPhoto contest — submit today. Enter to win swag.',
+    });
+    const runner = makeCandidate({
+      id: 'runner',
+      score: 2.5,
+      type: 'discrepancy',
+      suggestedActionType: 'write_document',
+      title: 'Permit review packet still unsigned',
+    });
+    const { winner } = selectFinalWinner([junkHunt, runner], NO_GUARDRAILS);
+    expect(winner.id).toBe('runner');
+  });
+
+  it('marks single low-value hunt send_message as disqualified (no single-candidate bypass)', () => {
+    const junkHunt = makeCandidate({
+      id: 'solo-junk',
+      type: 'hunt',
+      score: 80,
+      suggestedActionType: 'send_message',
+      title: 'Inbound email unanswered — Flash sale today only',
+      content: 'Limited-time offer — shop now and save 40%.',
+    });
+    const { ranked } = selectRankedCandidates([junkHunt], NO_GUARDRAILS);
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].disqualified).toBe(true);
+    expect(ranked[0].disqualifyReason).toBe('low_value_inbound_promotional_thread');
   });
 
   it('throws on empty candidate list', () => {

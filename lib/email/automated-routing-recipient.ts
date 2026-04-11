@@ -17,5 +17,16 @@ export function isAutomatedRoutingRecipient(email: string): boolean {
   // Outlier task / workflow inboxes (e.g. wfe-<id>@outlier.ai) — live slip Apr 2026
   if (domain === 'outlier.ai' && local.startsWith('wfe-')) return true;
 
+  // Outlier community / campaign / events inboxes — not 1:1 human peers for send_message
+  if (domain === 'outlier.ai') {
+    const baseLocal = local.split('+')[0]?.split('-')[0] ?? local;
+    if (
+      ['community', 'notifications', 'events', 'marketing', 'news'].includes(baseLocal)
+      || local.startsWith('notify')
+    ) {
+      return true;
+    }
+  }
+
   return false;
 }

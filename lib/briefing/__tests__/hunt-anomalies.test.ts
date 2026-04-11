@@ -135,6 +135,22 @@ describe('runHuntAnomalies', () => {
     expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
   });
 
+  it('does not admit unreplied_inbound when promo cues appear only deep in the body (past 400-char preview)', () => {
+    const recvIso = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const deepBody = `${'x'.repeat(500)}\n\nOfficial contest rules: enter the photo contest to win.`;
+    const signals = [
+      mailReceived('deep1', recvIso, 'Brand <hello@humanbrand.io>', 'FYI', deepBody),
+    ];
+    const trusted = new Set(['hello@humanbrand.io']);
+    const { countsByKind, findings } = runHuntAnomalies({
+      signals,
+      commitments: [],
+      trustedSenderEmails: trusted,
+    });
+    expect(countsByKind.unreplied_inbound).toBe(0);
+    expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
+  });
+
   it('does not flag noreply/bulk senders as unreplied_inbound candidates', () => {
     const recvIso = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
     const signals = [

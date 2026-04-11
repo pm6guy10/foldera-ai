@@ -53,6 +53,7 @@ import {
 } from './trigger-action-map';
 import type { EntityBehavioralStats } from '@/lib/signals/behavioral-graph';
 import { isAutomatedRoutingRecipient } from '@/lib/email/automated-routing-recipient';
+import { isLowValueHuntSendMessagePresentation } from './hunt-anomalies';
 import { isBlockedSender } from '@/lib/signals/sender-blocklist';
 import type { DiscrepancyClass } from './discrepancy-detector';
 import { effectiveDiscrepancyClassForGates } from './effective-discrepancy-class';
@@ -945,7 +946,6 @@ export function selectRankedCandidates(
   guardrails: { approvedRecently: RecentActionRow[]; skippedRecently?: RecentSkippedActionRow[] },
 ): { ranked: Array<{ candidate: import('./scorer').ScoredLoop; note: string; disqualified: boolean; disqualifyReason: string | null }>; competitionContext: string } {
   if (topCandidates.length === 0) throw new Error('selectRankedCandidates: empty candidate list');
-  if (topCandidates.length === 1) return { ranked: [{ candidate: topCandidates[0], note: 'only candidate', disqualified: false, disqualifyReason: null }], competitionContext: '' };
 
   const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
   const OBVIOUS_FIRST_LAYER_RE = /^(?:follow\s+up|check\s+in|touch\s+base|circle\s+back|schedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session))\b/i;
@@ -978,6 +978,15 @@ export function selectRankedCandidates(
         note: '',
         disqualified: true,
         disqualifyReason: 'obvious first-layer advice',
+      };
+    }
+    if (isLowValueHuntSendMessagePresentation(candidate)) {
+      return {
+        candidate,
+        viabilityScore: 0,
+        note: '',
+        disqualified: true,
+        disqualifyReason: 'low_value_inbound_promotional_thread',
       };
     }
 

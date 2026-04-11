@@ -108,6 +108,7 @@ const BULK_MARKETING_EMAIL_PREFIXES = [
   'do-not-reply@',
   'notifications@',
   'newsletter@',
+  'community@',
   'promotions@',
   'offers@',
   'deals@',
@@ -149,13 +150,14 @@ const BULK_MARKETING_DOMAINS = new Set<string>([
   'hubspotemail.net',
 ]);
 
+const LOW_VALUE_MAIL_SCAN_MAX = 16000;
+
 /**
- * Thread copy cues that a reply is not a real human/business obligation — e.g. vendor
- * caption/photo contests and similar blasts (often From a branded non-noreply address).
- * Kept narrow to avoid blocking legitimate work threads.
+ * Full-thread scan for vendor promo / contest / community-blast mail — not a human reply obligation.
+ * Used for hunt admission (raw signal) and final hunt winner viability (title + hunt blob).
  */
-export function isLowValuePromotionalInboundThread(subject: string, preview: string): boolean {
-  const blob = `${subject}\n${preview}`.toLowerCase();
+export function isLowValueInboundMailBlob(text: string): boolean {
+  const blob = text.slice(0, LOW_VALUE_MAIL_SCAN_MAX).toLowerCase();
   if (/\bcaption\s+contest\b/.test(blob)) return true;
   if (/\bphoto\s+contest\b/.test(blob)) return true;
   if (/\bvideo\s+contest\b/.test(blob)) return true;
@@ -164,7 +166,40 @@ export function isLowValuePromotionalInboundThread(subject: string, preview: str
   if (/\benter\s+to\s+win\b/.test(blob)) return true;
   if (/\bno\s+purchase\s+necessary\b/.test(blob)) return true;
   if (/\bofficial\s+(?:contest|sweepstakes)\s+rules\b/.test(blob)) return true;
+  if (/\bsweepstakes\b/.test(blob)) return true;
+  if (/\bflash\s+sale\b/.test(blob)) return true;
+  if (/\b(?:limited[\s-]time|today[\s-]only)\s+(?:offer|deal|sale)\b/.test(blob)) return true;
+  if (/\bcommunity\s+(?:update|highlights|roundup|newsletter)\b/.test(blob)) return true;
+  if (/\bmembers?\s+exclusive\b/.test(blob) && /\b(?:offer|deal|save|sale|discount)\b/.test(blob)) return true;
+  if (/\bshop\s+now\b/.test(blob) && /\b(?:save|deal|sale|%\s*off|off\s+\d+)\b/.test(blob)) return true;
+  if (/\bweekly\s+deals?\b/.test(blob)) return true;
   return false;
+}
+
+/**
+ * Thread copy cues that a reply is not a real human/business obligation — e.g. vendor
+ * caption/photo contests and similar blasts (often From a branded non-noreply address).
+ * Kept narrow to avoid blocking legitimate work threads.
+ */
+export function isLowValuePromotionalInboundThread(subject: string, preview: string): boolean {
+  return isLowValueInboundMailBlob(`${subject}\n${preview}`);
+}
+
+/** Final viability gate: hunt send_message winners that still read as promo/contest mail. */
+export function isLowValueHuntSendMessagePresentation(candidate: {
+  type: string;
+  suggestedActionType: string;
+  title: string;
+  content: string;
+  sourceSignals?: Array<{ summary?: string | null }>;
+}): boolean {
+  if (candidate.type !== 'hunt' || candidate.suggestedActionType !== 'send_message') return false;
+  const blob = [
+    candidate.title,
+    candidate.content,
+    ...(candidate.sourceSignals ?? []).map((s) => s.summary ?? ''),
+  ].join('\n');
+  return isLowValueInboundMailBlob(blob);
 }
 
 /** Exported for unit tests. */
@@ -371,7 +406,7 @@ export function runHuntAnomalies(args: {
     if (peer && blockedSenderEmails?.has(peer)) continue;
     const unrepliedRowContent = args.signals.find((x) => x.id === r.id)?.content ?? '';
     if (isLikelyAutomatedTransactionalInbound(unrepliedRowContent)) continue;
-    if (isLowValuePromotionalInboundThread(r.subject, r.preview)) continue;
+    if (isLowValueInboundMailBlob(unrepliedRowContent)) continue;
     // Require sender to be a known human entity — prevents cold-outreach and bulk emails
     // from winning as unreplied threads. If trustedSenderEmails is provided, skip any
     // sender not in the set (they are not established correspondents).
@@ -604,7 +639,7 @@ export function runHuntAnomalies(args: {
     if (blockedSenderEmails?.has(k)) continue;
     const ignoredRowContent = args.signals.find((x) => x.id === r.id)?.content ?? '';
     if (isLikelyAutomatedTransactionalInbound(ignoredRowContent)) continue;
-    if (isLowValuePromotionalInboundThread(r.subject, r.preview)) continue;
+    if (isLowValueInboundMailBlob(ignoredRowContent)) continue;
     if (!inboundBySender.has(k)) inboundBySender.set(k, []);
     inboundBySender.get(k)!.push(r);
   }
