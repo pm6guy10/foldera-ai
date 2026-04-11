@@ -151,6 +151,37 @@ export const GENERATION_LOOP_DETECTION_WINDOW = 12;
 /** Minimum occurrences of the same normalized directive within the window to treat as a loop. */
 export const GENERATION_LOOP_MIN_REPEATS = 3;
 
+/** Normalized directive must be at least this long to count toward loop detection (noise guard). */
+export const LOOP_DIRECTIVE_MIN_NORMALIZED_LEN = 16;
+
+/**
+ * Pure evaluation of identical-directive loops on persisted funnel rows (newest first).
+ * Mirrors `detectPersistedDirectiveContentLoop` in `daily-brief-generate` after the DB
+ * returns only approval-funnel statuses (excludes `do_nothing` tombstones and `skipped`).
+ */
+export function evaluatePersistedDirectiveContentLoopFromRows(
+  rowsNewestFirst: readonly { directive_text?: string; execution_result?: unknown }[],
+  minNormalizedLen: number = LOOP_DIRECTIVE_MIN_NORMALIZED_LEN,
+): { isLoop: false } | { isLoop: true; keys: string[]; dominantNorm: string } {
+  const windowRows = rowsNewestFirst.slice(0, GENERATION_LOOP_DETECTION_WINDOW);
+  if (windowRows.length < GENERATION_LOOP_MIN_REPEATS) return { isLoop: false };
+
+  const texts = windowRows.map((r) => String(r.directive_text ?? ''));
+  const loop = detectDominantNormalizedDirectiveLoop(texts, minNormalizedLen);
+  if (!loop.isLoop) return { isLoop: false };
+
+  const keys = new Set<string>();
+  for (const r of windowRows) {
+    const dt = String(r.directive_text ?? '');
+    const n = normalizeDirectiveForLoopDetection(dt);
+    if (n !== loop.dominantNorm) continue;
+    for (const k of extractSuppressionKeysFromExecutionResult(r.execution_result)) {
+      keys.add(k);
+    }
+  }
+  return { isLoop: true, keys: [...keys], dominantNorm: loop.dominantNorm };
+}
+
 /**
  * True when at least `GENERATION_LOOP_MIN_REPEATS` rows in the first `GENERATION_LOOP_DETECTION_WINDOW`
  * entries share the same normalized directive text (and that text is long enough).

@@ -17,11 +17,9 @@ import {
   validateDirectiveForPersistence,
 } from '@/lib/briefing/generator';
 import {
-  detectDominantNormalizedDirectiveLoop,
+  evaluatePersistedDirectiveContentLoopFromRows,
   GENERATION_LOOP_DETECTION_WINDOW,
   GENERATION_LOOP_MIN_REPEATS,
-  extractSuppressionKeysFromExecutionResult,
-  normalizeDirectiveForLoopDetection,
 } from '@/lib/briefing/scorer-failure-suppression';
 import { generateArtifact, getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
 import { persistDirectiveHistorySignal } from '@/lib/signals/directive-history-signal';
@@ -1210,37 +1208,27 @@ function buildWaitRationale(
   };
 }
 
-const LOOP_DIRECTIVE_MIN_NORMALIZED_LEN = 16;
-
 async function detectPersistedDirectiveContentLoop(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
 ): Promise<{ isLoop: false } | { isLoop: true; keys: string[] }> {
+  // Only rows that were (or are) in the live approval/send funnel count. Skip `do_nothing`
+  // system summaries and `skipped` / tombstone send_message rows — otherwise repeated dry-run
+  // or auto-skipped duplicates block real generation (false GENERATION_LOOP_DETECTED).
   const { data, error } = await supabase
     .from('tkg_actions')
     .select('directive_text, execution_result')
     .eq('user_id', userId)
+    .neq('action_type', 'do_nothing')
+    .in('status', ['pending_approval', 'approved', 'executed'])
     .order('generated_at', { ascending: false })
     .limit(GENERATION_LOOP_DETECTION_WINDOW);
 
   if (error || !data || data.length < GENERATION_LOOP_MIN_REPEATS) return { isLoop: false };
 
-  const texts = data.map((r) => String((r as { directive_text?: string }).directive_text ?? ''));
-  const loop = detectDominantNormalizedDirectiveLoop(texts, LOOP_DIRECTIVE_MIN_NORMALIZED_LEN);
-  if (!loop.isLoop) return { isLoop: false };
-
-  const keys = new Set<string>();
-  for (const r of data) {
-    const dt = String((r as { directive_text?: string }).directive_text ?? '');
-    const n = normalizeDirectiveForLoopDetection(dt);
-    if (n !== loop.dominantNorm) continue;
-    for (const k of extractSuppressionKeysFromExecutionResult(
-      (r as { execution_result?: unknown }).execution_result,
-    )) {
-      keys.add(k);
-    }
-  }
-  return { isLoop: true, keys: [...keys] };
+  const evaluated = evaluatePersistedDirectiveContentLoopFromRows(data as { directive_text?: string; execution_result?: unknown }[]);
+  if (!evaluated.isLoop) return { isLoop: false };
+  return { isLoop: true, keys: evaluated.keys };
 }
 
 async function persistNoSendOutcome(
