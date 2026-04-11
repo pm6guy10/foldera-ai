@@ -246,7 +246,8 @@ function buildSendMessageRecipientGroundingBlob(directive: ConvictionDirective |
   if (!directive) return '';
   const ev = Array.isArray(directive.evidence) ? directive.evidence : [];
   const evText = ev.map((e) => (typeof e.description === 'string' ? e.description : '')).join('\n');
-  return [directive.directive, typeof directive.reason === 'string' ? directive.reason : '', evText].join('\n');
+  const fullContext = typeof directive.fullContext === 'string' ? directive.fullContext : '';
+  return [directive.directive, typeof directive.reason === 'string' ? directive.reason : '', evText, fullContext].join('\n');
 }
 
 /**

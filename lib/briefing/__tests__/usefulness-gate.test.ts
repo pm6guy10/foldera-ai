@@ -338,7 +338,8 @@ describe('usefulness gate — execution proof', () => {
         body: 'Hi Marcus,\n\nFollowing your Q1 update, can you confirm by 3 PM PT today whether the infrastructure figure you quoted is final and who owns board packet sign-off? If we miss this cutoff, the April 3 board packet goes forward with an unresolved budget line.\n\nThanks,\nBrandon',
       },
       // Avoid past calendar month/day strings here — stale-date gate scans evidence + directive fields.
-      evidence: 'Marcus sent a recent Q1 budget update; the board packet still lacks a confirmed infrastructure line.',
+      evidence:
+        'Marcus (marcus@company.com) sent a recent Q1 budget update; the board packet still lacks a confirmed infrastructure line.',
       why_now: 'The board meeting is 7 days away and the budget line is unconfirmed.',
     }));
 
