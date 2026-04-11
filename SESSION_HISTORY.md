@@ -6,7 +6,7 @@
 
 - 2026-04-11 — Agent doctrine: always commit/push; Gmail sync debug instrumentation
  MODE: HYGIENE
- Commit hash(es): `2e87209`
+ Commit hash(es): `d8f5598`
  Files changed: `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `lib/sync/google-sync.ts`, `SESSION_HISTORY.md` (`.cursor/rules/agent.mdc` already matched main)
  What was verified: `npm run health` — 0 FAIL; `npm run build`
  Changes: **Git doctrine** — `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, and `.cursor/rules/agent.mdc` require the agent to commit and push autonomously in the same turn once verified (never defer to user unless blocked). **`syncGmail`** — debug ingest logs (session `263f2d`) for incremental window vs inbox probe age when list returns zero.
