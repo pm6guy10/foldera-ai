@@ -6,7 +6,7 @@
 
 - 2026-04-10 — Golden-path audit: locked-contact parity + discrepancy skip + directive sentence count
  MODE: AUDIT
- Commit hash(es): `9a1e5b1`
+ Commit hash(es): `7e81608`
  Files changed: `lib/briefing/scorer.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/directive-sentence-count.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
  What was verified: `npm run health` — 0 FAIL; `npx vitest run lib/briefing/__tests__/directive-sentence-count.test.ts lib/cron/__tests__/daily-brief.test.ts`; `npm run build`
  Changes: (1) `tkg_constraints` locked keys now union `normalized_entity` and `entity_text` (same squish as candidate `entityName`) in scorer + generator so display names match DB rows that drifted. (2) Discrepancy candidates skip when `entityName` is locked (`locked_contact_discrepancy_skipped`). (3) `countSentences` — mask email dots; split on whitespace after sentence enders only; fixes false “multi-sentence” rejects. (4) `topCandidates` = `slice(0, 3)`.
