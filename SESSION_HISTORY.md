@@ -6,7 +6,7 @@
 
 - 2026-04-10 — Golden-case trace: entity promo head-scan + hunt skips Outlier wfe + peer eligibility
  MODE: AUDIT
- Commit hash(es): (pending)
+ Commit hash(es): `6d4fc7f`
  Files changed: `lib/briefing/entity-reality-gate.ts`, `lib/briefing/__tests__/entity-reality-gate.test.ts`, `lib/briefing/hunt-anomalies.ts`, `lib/briefing/__tests__/hunt-anomalies.test.ts`, `lib/briefing/generator.ts`, `SESSION_HISTORY.md`
  What was verified: `npm run health` — 0 FAIL; `npx vitest run lib/briefing/__tests__/entity-reality-gate.test.ts lib/briefing/__tests__/hunt-anomalies.test.ts lib/briefing/__tests__/hunt-recipient-grounding.test.ts`; `npm run build`; `npm run test:ci:e2e` — 46/46
  Changes: (1) Entity reality gate — `promoGateScanText`: signal rows use first 3.5k chars for `isPromoContent` when sender is not bulk-automated (full body still scanned for obvious noreply/marketing authors). Reduces footer “unsubscribe” false positives on real threads; Experis `knowledge@experis.com` row stays dropped (body is literally “EXP-Newsletter” / hot jobs marketing). (2) `runHuntAnomalies` — skip `isAutomatedRoutingRecipient` peers everywhere hunt treated a mailbox as a human (unreplied_inbound, financial bucket, latency, repeated_ignored). Stops `hunt_unreplied_*` from winning on Outlier `wfe-*@outlier.ai` even if trusted-entity allowlist contained the address. (3) `isEligibleExternalPeerEmail` — also rejects automated routing addresses so hunt allowlists never include wfe inboxes.
