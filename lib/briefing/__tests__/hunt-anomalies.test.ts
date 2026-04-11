@@ -59,6 +59,19 @@ describe('runHuntAnomalies', () => {
     expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
   });
 
+  it('does not promote low-value contest blasts as repeated_ignored_sender (3+ in 30d)', () => {
+    const base = Date.now() - 5 * 24 * 60 * 60 * 1000;
+    const iso = (d: number) => new Date(base - d * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived('c1', iso(0), 'Brand <hello@brand.com>', 'Weekly caption contest', 'Submit your caption today'),
+      mailReceived('c2', iso(10), 'Brand <hello@brand.com>', 'Caption contest reminder', 'Enter to win'),
+      mailReceived('c3', iso(20), 'Brand <hello@brand.com>', 'Last chance: caption contest', 'Official contest rules inside'),
+    ];
+    const { countsByKind, findings } = runHuntAnomalies({ signals, commitments: [] });
+    expect(countsByKind.repeated_ignored_sender).toBe(0);
+    expect(findings.filter((f) => f.kind === 'repeated_ignored_sender')).toHaveLength(0);
+  });
+
   it('does not promote bulk/marketing senders as repeated_ignored_sender hunt candidates', () => {
     const base = Date.now() - 5 * 24 * 60 * 60 * 1000;
     const iso = (d: number) => new Date(base - d * 60 * 60 * 1000).toISOString();
@@ -92,6 +105,27 @@ describe('runHuntAnomalies', () => {
       mailReceived('wfe1', recvIso, 'Outlier <wfe-abc123@outlier.ai>', 'Task available'),
     ];
     const trusted = new Set(['wfe-abc123@outlier.ai']);
+    const { countsByKind, findings } = runHuntAnomalies({
+      signals,
+      commitments: [],
+      trustedSenderEmails: trusted,
+    });
+    expect(countsByKind.unreplied_inbound).toBe(0);
+    expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
+  });
+
+  it('does not flag caption-contest / promo blast as unreplied_inbound even when sender is trusted', () => {
+    const recvIso = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived(
+        'cc1',
+        recvIso,
+        'Outlier <community@outlier.ai>',
+        "This week's caption contest — submit now!",
+        'Enter your caption for a chance to win swag. No purchase necessary.',
+      ),
+    ];
+    const trusted = new Set(['community@outlier.ai']);
     const { countsByKind, findings } = runHuntAnomalies({
       signals,
       commitments: [],

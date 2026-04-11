@@ -5,6 +5,7 @@
 
 import { daysMs, MS_30D } from '@/lib/config/constants';
 import { isAutomatedRoutingRecipient } from '@/lib/email/automated-routing-recipient';
+import { isLikelyAutomatedTransactionalInbound } from '@/lib/briefing/automated-inbound-signal';
 
 export type HuntFindingKind =
   | 'unreplied_inbound'
@@ -147,6 +148,24 @@ const BULK_MARKETING_DOMAINS = new Set<string>([
   'hubspot.com',
   'hubspotemail.net',
 ]);
+
+/**
+ * Thread copy cues that a reply is not a real human/business obligation — e.g. vendor
+ * caption/photo contests and similar blasts (often From a branded non-noreply address).
+ * Kept narrow to avoid blocking legitimate work threads.
+ */
+export function isLowValuePromotionalInboundThread(subject: string, preview: string): boolean {
+  const blob = `${subject}\n${preview}`.toLowerCase();
+  if (/\bcaption\s+contest\b/.test(blob)) return true;
+  if (/\bphoto\s+contest\b/.test(blob)) return true;
+  if (/\bvideo\s+contest\b/.test(blob)) return true;
+  if (/\bsubmit\s+your\s+caption\b/.test(blob)) return true;
+  if (/\benter\s+(?:the\s+)?contest\b/.test(blob)) return true;
+  if (/\benter\s+to\s+win\b/.test(blob)) return true;
+  if (/\bno\s+purchase\s+necessary\b/.test(blob)) return true;
+  if (/\bofficial\s+(?:contest|sweepstakes)\s+rules\b/.test(blob)) return true;
+  return false;
+}
 
 /** Exported for unit tests. */
 export function isBulkOrMarketingSender(email: string): boolean {
@@ -350,6 +369,9 @@ export function runHuntAnomalies(args: {
     if (peer && isBulkOrMarketingSender(peer)) continue;
     if (peer && isAutomatedRoutingRecipient(peer)) continue;
     if (peer && blockedSenderEmails?.has(peer)) continue;
+    const unrepliedRowContent = args.signals.find((x) => x.id === r.id)?.content ?? '';
+    if (isLikelyAutomatedTransactionalInbound(unrepliedRowContent)) continue;
+    if (isLowValuePromotionalInboundThread(r.subject, r.preview)) continue;
     // Require sender to be a known human entity — prevents cold-outreach and bulk emails
     // from winning as unreplied threads. If trustedSenderEmails is provided, skip any
     // sender not in the set (they are not established correspondents).
@@ -580,6 +602,9 @@ export function runHuntAnomalies(args: {
     if (isBulkOrMarketingSender(k)) continue;
     if (isAutomatedRoutingRecipient(k)) continue;
     if (blockedSenderEmails?.has(k)) continue;
+    const ignoredRowContent = args.signals.find((x) => x.id === r.id)?.content ?? '';
+    if (isLikelyAutomatedTransactionalInbound(ignoredRowContent)) continue;
+    if (isLowValuePromotionalInboundThread(r.subject, r.preview)) continue;
     if (!inboundBySender.has(k)) inboundBySender.set(k, []);
     inboundBySender.get(k)!.push(r);
   }
