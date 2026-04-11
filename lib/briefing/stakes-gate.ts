@@ -9,6 +9,7 @@
 // Does NOT modify generator, mapping, validation, or action types.
 // ---------------------------------------------------------------------------
 
+import { MS_14D, MS_30D } from '@/lib/config/constants';
 import type { ActionType, GenerationCandidateSource } from './types';
 import type { MatchedGoal } from './scorer';
 
@@ -95,17 +96,22 @@ const PENDING_EXPECTATION_PATTERNS = [
   /\b(?:no\s+(?:response|reply)\s+(?:yet|since))\b/i,
 ];
 
-const MS_14D = 14 * 24 * 60 * 60 * 1000;
-
 function isActiveThread(c: StakesCandidate): boolean {
   const text = `${c.title} ${c.content}`;
 
-  // Check recency from source signals
+  // Check recency from source signals.
+  // Mail `signal` candidates are loaded up to 180d; a 14d cutoff drops real human
+  // threads in the common 2–4 week follow-up band. Use 30d for signal rows only;
+  // commitments/relationships keep 14d on source timestamps (deadline + text paths still apply).
   const now = Date.now();
   for (const s of c.sourceSignals) {
     if (s.occurredAt) {
-      const age = now - new Date(s.occurredAt).getTime();
-      if (age <= MS_14D) return true;
+      const ts = new Date(s.occurredAt).getTime();
+      if (!Number.isFinite(ts)) continue;
+      const age = now - ts;
+      if (!Number.isFinite(age)) continue;
+      const maxAge = c.type === 'signal' ? MS_30D : MS_14D;
+      if (age <= maxAge) return true;
     }
   }
 
@@ -146,6 +152,27 @@ function hasTimePressureOrDecay(c: StakesCandidate): boolean {
 
   // Scorer-computed urgency already encodes deadline proximity
   if (c.urgency >= URGENCY_THRESHOLD) return true;
+
+  // `signalUrgency()` often lands below 0.4 for 4–30d mail even when the thread is
+  // still a live human loop. If the same signal passed the live-thread window, treat
+  // reply pressure as real so external send_message rows can reach scoring.
+  if (c.type === 'signal') {
+    const now = Date.now();
+    for (const s of c.sourceSignals) {
+      if (!s.occurredAt) continue;
+      const ts = new Date(s.occurredAt).getTime();
+      if (!Number.isFinite(ts)) continue;
+      const age = now - ts;
+      if (Number.isFinite(age) && age <= MS_30D) return true;
+    }
+  }
+
+  // Relationship `send_message` is only built when the scorer found a concrete open
+  // commitment for that entity (`hasOpenThread`). Silence regex + urgency often miss
+  // same-week threads (last contact <2d, ISO "(due YYYY-MM-DD)" not matching deadline patterns).
+  if (c.type === 'relationship' && c.actionType === 'send_message') {
+    return true;
+  }
 
   // Relationship candidates: silence IS the decay signal
   if (c.type === 'relationship') {

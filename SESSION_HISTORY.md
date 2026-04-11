@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-10 — Stakes gate: external mail + relationship open-thread rows survive pre-scoring
+ MODE: AUDIT
+ Commit hash(es): `7853866`
+ Files changed: `lib/briefing/stakes-gate.ts`, `lib/briefing/__tests__/stakes-gate.test.ts`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npx vitest run lib/briefing/__tests__/stakes-gate.test.ts` — 31/31; `npm run build`; `npm run test:ci:e2e` — 46/46
+ Changes: **Seam `stakes_gate` — `applyStakesGate` (`lib/briefing/stakes-gate.ts`).** (1) **Condition 2 (active thread):** for `type === 'signal'`, treat `sourceSignals[].occurredAt` within **30d** (`MS_30D`) as live; keep **14d** for commitment/relationship source timestamps — closes mismatch vs 180d signal pool + 14d cutoff (`no_active_thread`). (2) **Condition 3 (time pressure):** if `type === 'signal'` and any source signal is within **30d**, pass — `signalUrgency()` often stays **below 0.4** for 4–30d mail (`no_time_pressure`). (3) **Condition 3:** if `type === 'relationship'` and `actionType === 'send_message'`, pass — scorer only assigns that when `hasOpenThread` (open commitment); silence regex misses “Last contact 1 days ago” and ISO `(due YYYY-MM-DD)` does not match existing deadline patterns (`no_time_pressure` on Keri/Yadira/Jim-style rows in prod logs).
+ Golden-path: **EXACT BLOCKER patched** for the above admission drops; **A+ top-pool win not claimed** — owner `scoreOpenLoops` can still rank discrepancy `write_document` above surviving externals (separate scoring/goal-primacy competition).
+
 - 2026-04-10 — Scorer/generator: thread-backed send_message must beat internal discrepancy steal
  MODE: AUDIT
  Commit hash(es): `e4d8bca`

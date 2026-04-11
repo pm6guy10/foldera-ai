@@ -132,6 +132,36 @@ describe('Stakes Gate — Condition 2: Active or Live Thread', () => {
     expect(result.passed).toHaveLength(1);
   });
 
+  it('passes mail signal candidate 20 days old (30d live-thread window)', () => {
+    const c = boardChangingCandidate({
+      type: 'signal',
+      actionType: 'send_message',
+      urgency: 0.22, // below 0.4 — would fail condition 3 without signal carve-out
+      sourceSignals: [{ kind: 'signal', occurredAt: new Date(Date.now() - 20 * 86400000).toISOString() }],
+      title: 'Re: project timeline from Alex Morgan',
+      content:
+        'Alex Morgan (alex@acmecorp.com) asked for a quick status on the rollout. Plain thread, no explicit deadline wording.',
+    });
+    const result = applyStakesGate([c]);
+    expect(result.passed).toHaveLength(1);
+    expect(result.dropped).toHaveLength(0);
+  });
+
+  it('drops mail signal candidate 35 days old without pending-expectation language', () => {
+    const c = boardChangingCandidate({
+      type: 'signal',
+      actionType: 'send_message',
+      urgency: 0.15,
+      sourceSignals: [{ kind: 'signal', occurredAt: new Date(Date.now() - 35 * 86400000).toISOString() }],
+      title: 'Old thread',
+      content:
+        'Jordan Lee discussed notes from last month. General recap, no open ask.',
+    });
+    const result = applyStakesGate([c]);
+    expect(result.dropped).toHaveLength(1);
+    expect(result.dropped[0].reason).toBe('no_active_thread');
+  });
+
   it('passes old thread with pending expectation language', () => {
     const c = boardChangingCandidate({
       urgency: 0,
@@ -184,6 +214,22 @@ describe('Stakes Gate — Condition 3: Time Pressure or Decay', () => {
     });
     const result = applyStakesGate([c]);
     expect(result.passed).toHaveLength(1);
+  });
+
+  it('passes relationship send_message with fresh last contact (open-commitment path)', () => {
+    const c = boardChangingCandidate({
+      type: 'relationship',
+      entityName: 'Keri Nopens',
+      actionType: 'send_message',
+      urgency: 0.08,
+      sourceSignals: [{ kind: 'relationship', occurredAt: new Date(Date.now() - 86400000).toISOString() }],
+      title: 'keri nopens: Send outreach email to Keri Nopens',
+      content:
+        'keri nopens: Open thread: Send outreach email to Keri Nopens. Last contact 1 days ago, 12 total interactions.',
+    });
+    const result = applyStakesGate([c]);
+    expect(result.passed).toHaveLength(1);
+    expect(result.dropped).toHaveLength(0);
   });
 
   it('passes candidate with deadline language', () => {
