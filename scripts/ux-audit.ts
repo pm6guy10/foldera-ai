@@ -7,11 +7,13 @@
  *
  * Usage: npx tsx scripts/ux-audit.ts
  *
- * Requires: ANTHROPIC_API_KEY env var (or runs in offline mode without LLM eval)
+ * Requires: ANTHROPIC_API_KEY and ALLOW_PAID_LLM=true for LLM eval (or heuristic-only / offline).
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+
+import { isPaidLlmAllowed } from '../lib/llm/paid-llm-gate';
 
 const OUTPUT_DIR = path.resolve(process.cwd(), 'audit-output');
 const REPORT_PATH = path.resolve(process.cwd(), 'FOLDERA_UX_AUDIT.md');
@@ -173,6 +175,12 @@ async function evaluateWithLLM(
 ): Promise<LLMEvaluation | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
+  if (!isPaidLlmAllowed()) {
+    console.warn(
+      `[ux-audit] Skipping Anthropic LLM eval for ${route} (${viewport}): ALLOW_PAID_LLM is not true.`,
+    );
+    return null;
+  }
 
   const visibleElements = (elements || []).filter((e: any) => e.visible);
   const elementSummary = visibleElements

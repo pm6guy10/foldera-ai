@@ -1,13 +1,17 @@
 /**
- * Runs in CI after deploy: screenshots public pages → Sonnet UX critique → DraftQueue ingest.
+ * Optional CI/manual job: screenshots public pages → optional Sonnet UX critique → DraftQueue ingest.
  *
- * Env: ANTHROPIC_API_KEY, CRON_SECRET, AGENT_UI_BASE_URL (default https://www.foldera.ai)
+ * Default: screenshots + ingest with placeholder critique (no Anthropic spend).
+ * Owner proof: set `ALLOW_PAID_LLM=true` for Sonnet critique (consumes credits).
+ *
+ * Env: CRON_SECRET; optional ANTHROPIC_API_KEY when `ALLOW_PAID_LLM=true`.
+ * AGENT_UI_BASE_URL (default https://www.foldera.ai)
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
 import Anthropic from '@anthropic-ai/sdk';
-import { assertPaidLlmAllowed } from '../lib/llm/paid-llm-gate';
+import { assertPaidLlmAllowed, isPaidLlmAllowed } from '../lib/llm/paid-llm-gate';
 
 const BASE = (process.env.AGENT_UI_BASE_URL || 'https://www.foldera.ai').replace(/\/$/, '');
 const PAGES = ['/', '/start', '/login', '/pricing', '/blog'];
@@ -31,17 +35,28 @@ If all scores are >= 7, set any_below_7 to false and still give a brief critique
 async function main() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const cronSecret = process.env.CRON_SECRET;
-  if (!apiKey || !cronSecret) {
-    console.error('[ui-critic] Missing ANTHROPIC_API_KEY or CRON_SECRET');
+  if (!cronSecret) {
+    console.error('[ui-critic] Missing CRON_SECRET');
     process.exit(1);
   }
 
-  assertPaidLlmAllowed('scripts.agent-ui-critic');
+  const paidCritique = isPaidLlmAllowed();
+  if (paidCritique && !apiKey) {
+    console.error('[ui-critic] Paid critique enabled but ANTHROPIC_API_KEY is missing');
+    process.exit(1);
+  }
+  if (paidCritique) {
+    assertPaidLlmAllowed('scripts.agent-ui-critic');
+  } else {
+    console.log(
+      '[ui-critic] ALLOW_PAID_LLM is not true — screenshots only; placeholder critique in ingest (set ALLOW_PAID_LLM=true for paid Sonnet run).',
+    );
+  }
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
   const browser = await chromium.launch();
-  const anthropic = new Anthropic({ apiKey });
+  const anthropic = paidCritique && apiKey ? new Anthropic({ apiKey }) : null;
 
   let totalIn = 0;
   let totalOut = 0;
@@ -78,6 +93,19 @@ async function main() {
       await page.screenshot({ path: desktopPath, fullPage: false });
 
       await context.close();
+
+      if (!anthropic) {
+        items.push({
+          page_path: pagePath,
+          viewport_label: '375+1280',
+          scores_json: '{}',
+          critique:
+            'Paid LLM skipped. Set ALLOW_PAID_LLM=true for Sonnet UX critique (owner proof run). Screenshots saved under tests/production/screenshots.',
+          fix_prompt: '',
+          below_seven: false,
+        });
+        continue;
+      }
 
       const mBuf = fs.readFileSync(mobilePath);
       const dBuf = fs.readFileSync(desktopPath);
@@ -148,7 +176,7 @@ async function main() {
     body: JSON.stringify({
       items,
       llm_usage: {
-        model: 'claude-sonnet-4-20250514',
+        model: paidCritique ? 'claude-sonnet-4-20250514' : 'none',
         input_tokens: totalIn,
         output_tokens: totalOut,
       },

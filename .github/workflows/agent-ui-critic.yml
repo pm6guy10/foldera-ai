@@ -1,7 +1,12 @@
-# Manual dispatch only — Playwright screenshots + Sonnet critique → DraftQueue.
+# Manual dispatch — Playwright screenshots; optional Sonnet critique when paid_proof is enabled.
 name: Agent — UI Critic
 on:
   workflow_dispatch:
+    inputs:
+      paid_proof:
+        description: 'Owner only — run Sonnet UX critique (bills Anthropic). Default is screenshots + placeholder only.'
+        type: boolean
+        default: false
 
 jobs:
   ui-critic:
@@ -20,4 +25,5 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           AGENT_UI_BASE_URL: ${{ secrets.AGENT_BASE_URL }}
+          ALLOW_PAID_LLM: ${{ github.event.inputs.paid_proof == 'true' && 'true' || 'false' }}
         run: npx tsx scripts/agent-ui-critic.ts

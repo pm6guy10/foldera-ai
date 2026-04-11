@@ -1,5 +1,6 @@
 /**
  * Vitest resolution alias for `@anthropic-ai/sdk` — **never performs HTTP**.
+ * Paid gate: `lib/llm/paid-llm-gate.ts` allows call sites when `process.env.VITEST === 'true'` because this stub replaces the SDK.
  *
  * Individual test files may still `vi.mock('@anthropic-ai/sdk', ...)`; those factories
  * take precedence over this module.

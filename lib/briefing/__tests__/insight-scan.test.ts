@@ -23,10 +23,6 @@ vi.mock('@/lib/utils/api-tracker', () => ({
   trackApiCall: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/lib/llm/paid-llm-gate', () => ({
-  isPaidLlmAllowed: () => true,
-}));
-
 const mockLogStructuredEvent = vi.fn();
 vi.mock('@/lib/utils/structured-logger', () => ({
   logStructuredEvent: (...args: unknown[]) => mockLogStructuredEvent(...(args as [])),

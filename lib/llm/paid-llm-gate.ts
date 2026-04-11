@@ -1,9 +1,12 @@
 /**
  * Global fail-closed gate for all Anthropic (paid) model traffic.
  *
- * When unset or not exactly the string "true", no production code path may call
- * `messages.create`. Vitest sets ALLOW_PAID_LLM=true in vitest.config.ts so the
- * offline SDK stub can still exercise call sites.
+ * When unset or not exactly the string "true", no runtime code path may call
+ * `messages.create` against api.anthropic.com.
+ *
+ * Vitest sets `process.env.VITEST === 'true'` and resolves `@anthropic-ai/sdk` to
+ * `test/stubs/anthropic-sdk-vitest.ts` (no HTTP). In that case this gate returns
+ * true so `assertPaidLlmAllowed` can exercise real call sites without spending.
  */
 
 export class PaidLlmDisabledError extends Error {
@@ -16,6 +19,9 @@ export class PaidLlmDisabledError extends Error {
 }
 
 export function isPaidLlmAllowed(): boolean {
+  if (process.env.VITEST === 'true') {
+    return true;
+  }
   return process.env.ALLOW_PAID_LLM === 'true';
 }
 

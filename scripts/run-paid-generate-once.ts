@@ -1,11 +1,14 @@
 /**
- * Local one-shot: runDailyGenerate with ALLOW_PAID_LLM=true (same opts as dev brain-receipt).
+ * Owner proof only: one-shot runDailyGenerate with real Anthropic usage (bills credits).
+ * Not for casual debugging — use pipeline dry-run / FOLDERA_DRY_RUN / vitest for free paths.
+ *
  * Usage: npx tsx scripts/run-paid-generate-once.ts
  */
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
 process.env.ALLOW_PAID_LLM = 'true';
+console.error('[run-paid-generate-once] OWNER PROOF: real Anthropic calls; not a free test path.');
 config({ path: resolve(process.cwd(), '.env.local') });
 
 async function main() {
