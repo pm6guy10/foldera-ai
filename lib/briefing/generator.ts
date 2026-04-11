@@ -949,7 +949,7 @@ export function selectRankedCandidates(
 
   const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
   const OBVIOUS_FIRST_LAYER_RE = /^(?:follow\s+up|check\s+in|touch\s+base|circle\s+back|schedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session))\b/i;
-  const SEND_WRITE_ACTIONS = new Set<ActionType>(['send_message', 'write_document', 'make_decision', 'research']);
+  const SEND_WRITE_ACTIONS = new Set<ActionType>(['send_message', 'write_document', 'make_decision', 'research', 'schedule']);
   const hasDiscrepancy = topCandidates.some((candidate) => candidate.type === 'discrepancy');
 
   interface Rated {
@@ -972,13 +972,17 @@ export function selectRankedCandidates(
       };
     }
     if (OBVIOUS_FIRST_LAYER_RE.test(candidate.title.trim())) {
-      return {
-        candidate,
-        viabilityScore: 0,
-        note: '',
-        disqualified: true,
-        disqualifyReason: 'obvious first-layer advice',
-      };
+      const recipientAnchored =
+        typeof candidate.relationshipContext === 'string' && candidate.relationshipContext.includes('@');
+      if (!recipientAnchored) {
+        return {
+          candidate,
+          viabilityScore: 0,
+          note: '',
+          disqualified: true,
+          disqualifyReason: 'obvious first-layer advice',
+        };
+      }
     }
     if (isLowValueHuntSendMessagePresentation(candidate)) {
       return {

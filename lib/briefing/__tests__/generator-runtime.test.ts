@@ -107,9 +107,13 @@ vi.mock('@/lib/db/client', () => ({
   }),
 }));
 
-vi.mock('@/lib/briefing/scorer', () => ({
-  scoreOpenLoops: mockScoreOpenLoops,
-}));
+vi.mock('@/lib/briefing/scorer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../scorer')>();
+  return {
+    ...actual,
+    scoreOpenLoops: mockScoreOpenLoops,
+  };
+});
 
 vi.mock('@/lib/utils/api-tracker', () => ({
   isOverDailyLimit: mockIsOverDailyLimit,
