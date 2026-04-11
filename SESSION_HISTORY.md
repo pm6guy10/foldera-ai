@@ -4,6 +4,12 @@
 
 ## Session Logs
 
+- 2026-04-11 — Cursor rules hygiene: dedupe CLAUDE.md frontmatter
+ MODE: HYGIENE
+ Files changed: `CLAUDE.md`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npm run build`
+ Changes: Removed the duplicated YAML frontmatter block at the top of `CLAUDE.md` so the file has a single `alwaysApply` header consistent with `AGENTS.md` and `.cursorrules`.
+
 - 2026-04-10 — Stakes gate: external mail + relationship open-thread rows survive pre-scoring
  MODE: AUDIT
  Commit hash(es): `797d8e7`

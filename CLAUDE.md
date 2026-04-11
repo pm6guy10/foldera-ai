@@ -3,11 +3,6 @@ description:
 alwaysApply: true
 ---
 
----
-description:
-alwaysApply: true
----
-
 # CLAUDE.md — Active Operator Runbook
 
 ## Purpose
