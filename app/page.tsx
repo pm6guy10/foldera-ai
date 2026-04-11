@@ -252,7 +252,7 @@ function LiveProofStrip() {
 
   return (
     <div
-      className="w-full max-w-2xl xl:max-w-[40rem] 2xl:max-w-[44rem] mt-6 md:mt-8 xl:mt-12 rounded-xl xl:rounded-[1.25rem] border border-white/10 bg-white/[0.03] backdrop-blur-sm px-4 sm:px-6 py-4 sm:py-5 xl:px-10 xl:py-7 text-left shadow-[inset_0_0_32px_rgba(6,182,212,0.08)]"
+      className="w-full max-w-2xl xl:max-w-[26rem] 2xl:max-w-[28rem] mt-6 md:mt-8 xl:mt-10 rounded-xl xl:rounded-2xl border border-white/[0.07] bg-white/[0.02] backdrop-blur-sm px-4 sm:px-6 py-4 sm:py-5 xl:px-7 xl:py-6 text-left shadow-[inset_0_0_24px_rgba(6,182,212,0.05)] xl:opacity-95"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -300,7 +300,7 @@ function HeroDirectiveDemo() {
 
   if (phase === 'cta') {
     return (
-      <div className="relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] xl:max-w-[min(100%,56rem)] mx-auto xl:mx-0 text-center xl:text-left px-2 sm:px-4 xl:px-0">
+      <div className="relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] xl:max-w-none mx-auto xl:mx-0 text-center xl:text-left px-2 sm:px-4 xl:px-0">
         <p className="text-white font-black text-xl xl:text-3xl 2xl:text-4xl mb-6 xl:mb-10 tracking-tight">Like what you see?</p>
         <a
           href="/start"
@@ -316,16 +316,17 @@ function HeroDirectiveDemo() {
 
   return (
     <div
-      className={`relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] xl:max-w-[min(100%,56rem)] 2xl:max-w-[min(100%,62rem)] hero-output pointer-events-auto transition-all duration-300 ease-out ${
+      className={`relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] xl:max-w-none hero-output pointer-events-auto transition-all duration-300 ease-out xl:[perspective:2200px] ${
         phase === 'out' ? 'opacity-0 translate-x-10 scale-[0.96]' : 'opacity-100 translate-x-0 scale-100'
       }`}
     >
-      <div className="rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2.75rem] 2xl:rounded-[3.25rem] bg-[#0a0a0f] border border-cyan-500/45 xl:border-cyan-400/55 shadow-[0_64px_160px_-28px_rgba(0,0,0,1),_0_0_96px_rgba(6,182,212,0.28),_0_0_1px_rgba(6,182,212,0.45)_inset] flex flex-col text-left overflow-hidden xl:shadow-[0_88px_200px_-36px_rgba(0,0,0,1),_0_0_120px_rgba(6,182,212,0.32)] xl:min-h-[min(52vh,520px)]">
-        <div className="w-full h-1.5 xl:h-2.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
-        <div className="p-5 sm:p-7 lg:p-9 xl:p-12 2xl:p-14 border-b border-white/10">
-          <div className="mb-3 xl:mb-5">
+      <div className="xl:[transform-style:preserve-3d] xl:origin-[90%_50%] xl:[transform:rotateY(-2.5deg)_scale(1.02)] 2xl:[transform:rotateY(-3deg)_scale(1.035)] transition-transform duration-300 max-xl:[transform:none]">
+      <div className="rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2rem] 2xl:rounded-[2.25rem] bg-[#08080d] border border-cyan-500/50 xl:border-cyan-400/60 shadow-[0_80px_200px_-40px_rgba(0,0,0,1),0_0_0_1px_rgba(6,182,212,0.12)_inset,0_48px_120px_-30px_rgba(6,182,212,0.35)] flex flex-col text-left overflow-hidden xl:shadow-[0_120px_240px_-48px_rgba(0,0,0,1),0_0_140px_rgba(6,182,212,0.38),0_0_0_1px_rgba(34,211,238,0.18)_inset] xl:min-h-[min(58vh,640px)] 2xl:min-h-[min(62vh,720px)] ring-1 ring-white/[0.06]">
+        <div className="w-full h-1.5 xl:h-2 bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-90" />
+        <div className="p-5 sm:p-7 lg:p-9 xl:p-10 2xl:p-12 border-b border-white/[0.08] bg-gradient-to-b from-zinc-900/40 to-[#0a0a0f]/90">
+          <div className="mb-3 xl:mb-4">
             <div
-              className={`px-3 py-1.5 xl:px-5 xl:py-2.5 rounded-lg xl:rounded-xl flex items-center gap-2 w-fit border ${
+              className={`px-3 py-1.5 xl:px-4 xl:py-2 rounded-lg xl:rounded-xl flex items-center gap-2 w-fit border ${
                 badgeRose
                   ? 'bg-rose-500/10 border-rose-500/30'
                   : 'bg-cyan-500/10 border-cyan-500/30'
@@ -341,18 +342,19 @@ function HeroDirectiveDemo() {
               </span>
             </div>
           </div>
-          <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-4xl 2xl:text-[2.35rem] font-bold text-white mb-2 lg:mb-3 xl:mb-5 tracking-tight leading-[1.12]">{slide.title}</h3>
-          <p className="text-sm sm:text-[15px] lg:text-base xl:text-xl 2xl:text-[1.35rem] text-zinc-400 xl:text-zinc-300 max-w-3xl xl:max-w-[42rem] leading-relaxed">{slide.subtitle}</p>
+          <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-[1.85rem] 2xl:text-[2.15rem] font-bold text-white mb-2 lg:mb-3 xl:mb-4 tracking-tight leading-[1.12] xl:text-zinc-100">{slide.title}</h3>
+          <p className="text-sm sm:text-[15px] lg:text-base xl:text-lg 2xl:text-xl text-zinc-500 xl:text-zinc-400 max-w-3xl xl:max-w-[36rem] leading-relaxed">{slide.subtitle}</p>
         </div>
-        <div className="p-5 sm:p-7 lg:p-9 xl:p-12 2xl:p-14 bg-black/40 xl:bg-black/50 flex-1 flex flex-col justify-center">
-          <div className="p-4 sm:p-5 lg:p-6 xl:p-9 2xl:p-10 rounded-2xl lg:rounded-[1.25rem] xl:rounded-[1.75rem] bg-cyan-500/[0.12] border border-cyan-500/35 border-l-4 xl:border-l-[6px] border-l-cyan-500 space-y-2 xl:space-y-4 shadow-[inset_0_0_48px_rgba(6,182,212,0.06)]">
-            <p className="text-cyan-400 text-[10px] xl:text-sm font-black uppercase tracking-widest flex items-center gap-2">
-              <Zap className="w-3 h-3 xl:w-5 xl:h-5 shrink-0" aria-hidden="true" /> Drafted Reply
+        <div className="relative p-5 sm:p-7 lg:p-9 xl:p-10 2xl:p-12 xl:pt-11 xl:pb-12 bg-gradient-to-b from-black/80 via-[#050508] to-black/90 flex-1 flex flex-col justify-center min-h-0">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-500/25 to-transparent" aria-hidden="true" />
+          <div className="p-4 sm:p-5 lg:p-6 xl:p-10 2xl:p-11 rounded-2xl lg:rounded-[1.25rem] xl:rounded-2xl bg-gradient-to-br from-cyan-500/[0.18] via-cyan-500/[0.08] to-black/60 border border-cyan-400/45 border-l-[5px] xl:border-l-[8px] border-l-cyan-400 space-y-2 xl:space-y-5 shadow-[inset_0_0_64px_rgba(6,182,212,0.12),0_24px_64px_-24px_rgba(6,182,212,0.25)] ring-1 ring-cyan-500/20">
+            <p className="text-cyan-300 text-[10px] xl:text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
+              <Zap className="w-3 h-3 xl:w-5 xl:h-5 shrink-0 text-cyan-400" aria-hidden="true" /> Drafted Reply
             </p>
-            <p className="text-zinc-100 text-sm sm:text-[15px] lg:text-lg xl:text-xl 2xl:text-2xl leading-relaxed">{slide.artifact}</p>
+            <p className="text-zinc-50 text-sm sm:text-[15px] lg:text-lg xl:text-2xl 2xl:text-[1.65rem] leading-[1.55] xl:leading-relaxed font-medium">{slide.artifact}</p>
           </div>
         </div>
-        <div className="p-4 sm:p-5 lg:p-7 xl:p-9 2xl:px-12 2xl:py-10 flex flex-col max-[400px]:flex-col sm:flex-row gap-3 sm:gap-4 xl:gap-5 bg-white/[0.02] border-t border-white/10 max-[400px]:[&>button]:w-full">
+        <div className="p-4 sm:p-5 lg:p-7 xl:p-8 2xl:px-10 2xl:py-9 flex flex-col max-[400px]:flex-col sm:flex-row gap-3 sm:gap-4 xl:gap-4 bg-black/60 border-t border-white/[0.07] max-[400px]:[&>button]:w-full">
           <button
             type="button"
             onClick={advance}
@@ -369,6 +371,7 @@ function HeroDirectiveDemo() {
           </button>
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -378,25 +381,25 @@ function HeroDirectiveDemo() {
 // ============================================================================
 function SignalEngineHero() {
   return (
-    <div className="w-full max-w-[min(100%,120rem)] mx-auto px-4 sm:px-6 lg:px-12 xl:px-14 2xl:px-24 pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(7.5rem+env(safe-area-inset-top,0px))] xl:pt-[calc(9.5rem+env(safe-area-inset-top,0px))] 2xl:pt-[calc(10.5rem+env(safe-area-inset-top,0px))] pb-28 md:pb-36 lg:pb-44 xl:pb-52 2xl:pb-56 text-center xl:text-left relative z-10 flex flex-col xl:grid xl:grid-cols-12 xl:items-start xl:gap-x-10 2xl:gap-x-14 min-w-0">
-      {/* Headlines & CTA — narrow column reads as editorial; artifact owns the width */}
-      <Reveal alwaysVisible className="xl:col-span-4 xl:col-start-1 xl:row-start-1 flex flex-col items-center xl:items-start min-w-0 w-full">
-        <div className="inline-flex items-center justify-center gap-2 px-4 py-2 xl:px-6 xl:py-3 rounded-full bg-white/[0.06] border border-white/10 text-zinc-300 text-[10px] xl:text-xs font-black uppercase tracking-[0.2em] mb-5 md:mb-7 xl:mb-10">
+    <div className="w-full max-w-[min(100%,124rem)] mx-auto px-4 sm:px-6 lg:px-10 xl:px-12 2xl:px-16 pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(7.5rem+env(safe-area-inset-top,0px))] xl:pt-[calc(8.5rem+env(safe-area-inset-top,0px))] 2xl:pt-[calc(9rem+env(safe-area-inset-top,0px))] pb-28 md:pb-36 lg:pb-40 xl:pb-28 2xl:pb-32 text-center xl:text-left relative z-10 flex flex-col xl:grid xl:grid-cols-12 xl:items-start xl:gap-x-6 2xl:gap-x-10 xl:min-h-[min(92dvh,1080px)] 2xl:min-h-[min(90dvh,1120px)] min-w-0">
+      {/* Headlines & CTA — tight editorial rail; artifact column carries scale */}
+      <Reveal alwaysVisible className="xl:col-span-5 2xl:col-span-4 xl:col-start-1 xl:row-start-1 flex flex-col items-center xl:items-start min-w-0 w-full xl:pr-2 2xl:pr-4 xl:pt-1">
+        <div className="inline-flex items-center justify-center gap-2 px-4 py-2 xl:px-5 xl:py-2.5 rounded-full bg-white/[0.05] border border-white/[0.07] text-zinc-400 text-[10px] xl:text-[11px] font-black uppercase tracking-[0.2em] mb-5 md:mb-7 xl:mb-8">
           A model of you. One move a day.
         </div>
-        <h1 className="text-3xl sm:text-5xl md:text-7xl xl:text-[clamp(3.25rem,3.8vw+2rem,5.5rem)] 2xl:text-[clamp(4rem,3.2vw+2.5rem,6.25rem)] font-black tracking-tighter text-white mb-6 md:mb-9 xl:mb-11 leading-[1.04] px-1 xl:px-0 max-w-[min(100%,58rem)] xl:max-w-none mx-auto xl:mx-0">
+        <h1 className="text-3xl sm:text-5xl md:text-7xl xl:text-[clamp(3.5rem,4.2vw+2rem,5.85rem)] 2xl:text-[clamp(4.25rem,3.6vw+2.75rem,6.5rem)] font-black tracking-tighter text-white mb-6 md:mb-9 xl:mb-10 leading-[1.03] px-1 xl:px-0 max-w-[min(100%,58rem)] xl:max-w-[min(100%,22ch)] mx-auto xl:mx-0">
           You missed it.<br className="hidden md:block" /> Foldera didn’t.
         </h1>
-        <p className="text-base md:text-xl xl:text-[1.4rem] 2xl:text-[1.55rem] text-zinc-400 xl:text-zinc-300 max-w-xl md:max-w-2xl xl:max-w-none mx-auto xl:mx-0 font-medium leading-relaxed mb-8 md:mb-14 xl:mb-12 px-4 xl:px-0">
+        <p className="text-base md:text-xl xl:text-[1.35rem] 2xl:text-[1.45rem] text-zinc-500 xl:text-zinc-400 max-w-xl md:max-w-2xl xl:max-w-[22rem] 2xl:max-w-[24rem] mx-auto xl:mx-0 font-medium leading-relaxed mb-8 md:mb-12 xl:mb-10 px-4 xl:px-0">
           One morning email with finished work: approve to send from your mailbox when connected, or skip. Foldera finds what slipped and drafts the move—no extra tabs.
         </p>
-        <div className="mb-8 md:mb-14 xl:mb-12 -mt-1 md:-mt-2 xl:mt-0 w-full flex justify-center xl:justify-start">
-          <p className="inline-flex items-center gap-2 rounded-full border border-cyan-400/35 bg-cyan-500/10 px-3 py-1.5 xl:px-5 xl:py-2.5 text-xs xl:text-sm font-black uppercase tracking-[0.14em] text-cyan-100 shadow-[0_0_24px_rgba(6,182,212,0.14)]">
-            <Lock className="h-3.5 w-3.5 xl:h-4 xl:w-4 text-cyan-300 shrink-0" aria-hidden="true" />
+        <div className="mb-8 md:mb-12 xl:mb-10 -mt-1 md:-mt-2 xl:mt-0 w-full flex justify-center xl:justify-start">
+          <p className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/[0.07] px-3 py-1.5 xl:px-4 xl:py-2 text-[11px] xl:text-xs font-black uppercase tracking-[0.14em] text-cyan-200/90 shadow-[0_0_20px_rgba(6,182,212,0.1)]">
+            <Lock className="h-3.5 w-3.5 xl:h-4 xl:w-4 text-cyan-400/80 shrink-0" aria-hidden="true" />
             No credit card required
           </p>
         </div>
-        <div className="w-full max-w-xl md:max-w-2xl xl:max-w-lg 2xl:max-w-xl mx-auto xl:mx-0 px-4 xl:px-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-center xl:justify-start gap-3 sm:gap-4">
+        <div className="w-full max-w-xl md:max-w-2xl xl:max-w-[19rem] 2xl:max-w-[21rem] mx-auto xl:mx-0 px-4 xl:px-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-center xl:justify-start gap-3 sm:gap-4">
           <a
             href="/start"
             className="w-full sm:w-auto xl:w-full min-h-[48px] xl:min-h-[56px] px-8 py-4 xl:px-10 xl:py-[1.2rem] rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs xl:text-sm hover:bg-zinc-200 transition-all duration-150 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
@@ -410,37 +413,37 @@ function SignalEngineHero() {
       </Reveal>
 
       {/* The Mechanism: inputs → convergence → directive */}
-      <div className="w-full xl:col-span-8 xl:col-start-5 xl:row-start-1 mt-10 md:mt-20 lg:mt-28 xl:mt-0 xl:pl-1 2xl:pl-3 relative flex flex-col items-center xl:items-stretch min-w-0">
+      <div className="w-full xl:col-span-7 2xl:col-span-8 xl:col-start-6 2xl:col-start-5 xl:row-start-1 mt-10 md:mt-20 lg:mt-24 xl:mt-2 xl:-mr-2 2xl:-mr-4 2xl:ml-0 relative flex flex-col items-center xl:items-stretch min-w-0">
         {/* Background Glow — anchors the artifact as the visual centerpiece */}
-        <div className="absolute top-[42%] left-1/2 xl:left-[54%] -translate-x-1/2 -translate-y-1/2 w-[min(110vw,880px)] xl:w-[min(125vw,1200px)] h-[min(110vw,880px)] xl:h-[min(125vw,1200px)] bg-cyan-500/[0.055] xl:bg-cyan-500/[0.075] blur-[180px] xl:blur-[240px] rounded-full pointer-events-none z-0" />
+        <div className="absolute top-[40%] left-1/2 xl:left-[56%] -translate-x-1/2 -translate-y-1/2 w-[min(115vw,920px)] xl:w-[min(135vw,1400px)] h-[min(115vw,920px)] xl:h-[min(135vw,1400px)] bg-cyan-500/[0.045] xl:bg-cyan-400/[0.09] blur-[190px] xl:blur-[260px] rounded-full pointer-events-none z-0" />
 
-        {/* Signal chips — abstract inputs (details live on /start) */}
-        <div className="flex flex-wrap items-center justify-center xl:justify-end gap-3 sm:gap-5 xl:gap-4 mb-4 xl:mb-6 relative z-10 max-w-3xl xl:max-w-none mx-auto xl:ml-auto xl:mr-0 px-1 xl:pr-2 xl:pl-0">
-          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 xl:px-5 xl:py-2.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-400 text-[10px] sm:text-[11px] xl:text-sm font-semibold">
-            <Zap className="w-3 h-3 xl:w-4 xl:h-4 text-zinc-500 shrink-0" />
+        {/* Signal chips — lighter weight vs. the finished artifact */}
+        <div className="flex flex-wrap items-center justify-center xl:justify-end gap-2.5 sm:gap-4 xl:gap-3 mb-3 xl:mb-5 relative z-10 max-w-3xl xl:max-w-none mx-auto xl:ml-auto xl:mr-0 px-1 xl:pr-4 xl:pl-0">
+          <div className="hero-input-chip flex items-center gap-1.5 px-2.5 py-1.5 xl:px-3.5 xl:py-2 rounded-full bg-zinc-950/90 border border-zinc-800/60 text-zinc-500 text-[9px] sm:text-[10px] xl:text-[11px] font-medium">
+            <Zap className="w-3 h-3 xl:w-3.5 xl:h-3.5 text-zinc-600 shrink-0" />
             <span>High-signal items</span>
           </div>
-          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 xl:px-5 xl:py-2.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-400 text-[10px] sm:text-[11px] xl:text-sm font-semibold">
-            <LayoutGrid className="w-3 h-3 xl:w-4 xl:h-4 text-zinc-500 shrink-0" />
+          <div className="hero-input-chip flex items-center gap-1.5 px-2.5 py-1.5 xl:px-3.5 xl:py-2 rounded-full bg-zinc-950/90 border border-zinc-800/60 text-zinc-500 text-[9px] sm:text-[10px] xl:text-[11px] font-medium">
+            <LayoutGrid className="w-3 h-3 xl:w-3.5 xl:h-3.5 text-zinc-600 shrink-0" />
             <span>Cross-thread patterns</span>
           </div>
-          <div className="hero-input-chip flex items-center gap-1.5 px-3 py-1.5 xl:px-5 xl:py-2.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 text-zinc-400 text-[10px] sm:text-[11px] xl:text-sm font-semibold">
-            <Brain className="w-3 h-3 xl:w-4 xl:h-4 text-zinc-500 shrink-0" />
+          <div className="hero-input-chip flex items-center gap-1.5 px-2.5 py-1.5 xl:px-3.5 xl:py-2 rounded-full bg-zinc-950/90 border border-zinc-800/60 text-zinc-500 text-[9px] sm:text-[10px] xl:text-[11px] font-medium">
+            <Brain className="w-3 h-3 xl:w-3.5 xl:h-3.5 text-zinc-600 shrink-0" />
             <span>One ranked move</span>
           </div>
         </div>
 
         {/* Convergence line + processing dot */}
-        <div className="flex flex-col items-center xl:items-end xl:pr-[min(38%,20rem)] 2xl:pr-[min(36%,22rem)] my-0 xl:my-1 relative z-10 w-full">
-          <div className="w-[1px] h-5 xl:h-7 bg-gradient-to-b from-zinc-700/0 to-zinc-600/60" />
-          <div className="w-7 h-7 xl:w-11 xl:h-11 rounded-full bg-[#0a0a0f] border border-zinc-600/50 flex items-center justify-center hero-process-dot relative">
+        <div className="flex flex-col items-center xl:items-end xl:pr-[min(34%,18rem)] 2xl:pr-[min(32%,20rem)] my-0 xl:my-0.5 relative z-10 w-full opacity-90 xl:opacity-100">
+          <div className="w-px h-4 xl:h-6 bg-gradient-to-b from-transparent to-zinc-700/50" />
+          <div className="w-6 h-6 xl:w-9 xl:h-9 rounded-full bg-[#06060a] border border-zinc-700/40 flex items-center justify-center hero-process-dot relative shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
             <span className="hero-ignition" aria-hidden="true" />
-            <Brain className="w-3.5 h-3.5 xl:w-5 xl:h-5 text-cyan-400/70" />
+            <Brain className="w-3 h-3 xl:w-4 xl:h-4 text-cyan-500/50" />
           </div>
-          <div className="w-[1px] h-5 xl:h-7 bg-gradient-to-b from-cyan-500/40 to-cyan-500/0" />
+          <div className="w-px h-4 xl:h-6 bg-gradient-to-b from-cyan-500/30 to-transparent" />
         </div>
 
-        <div className="relative z-20 w-full flex justify-center xl:justify-end xl:pl-0 2xl:pl-2">
+        <div className="relative z-20 w-full flex justify-center xl:justify-end xl:pl-0 2xl:pl-1 mt-1 xl:mt-2">
           <HeroDirectiveDemo />
         </div>
       </div>
