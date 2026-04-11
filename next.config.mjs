@@ -2,6 +2,13 @@ import { withSentryConfig } from '@sentry/nextjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  webpack: (config, { dev }) => {
+    // Dev-only: avoid webpack filesystem pack cache (*.pack.gz) ENOENT on Windows.
+    if (dev) {
+      config.cache = { type: 'memory' };
+    }
+    return config;
+  },
   experimental: {
     // Prevent Next.js from trying to bundle server-only markdown/parsing deps
     // into vendor chunks (fixes esprima vendor chunk missing error in dev)
