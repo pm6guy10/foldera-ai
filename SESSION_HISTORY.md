@@ -2,7 +2,86 @@
 
 # Session History
 
+## Tool Routing (mandatory)
+
+Use the best available tool instead of local-only reasoning whenever the task crosses these boundaries.
+
+### Playwright
+
+Use Playwright for:
+
+* local and CI regression checks
+* repeatable route/flow verification
+* pre-push frontend sanity checks
+* deterministic browser automation when localhost/CI is sufficient
+
+Playwright is the default frontend verification tool.
+
+### Vercel
+
+Use Vercel for:
+
+* deploy truth
+* production deployment status
+* build logs
+* runtime logs
+* confirming which commit is live in production
+
+Do not claim a deploy or production runtime issue is fixed without checking Vercel when the Vercel tool is available.
+
+### Supabase
+
+Use Supabase for:
+
+* production DB truth
+* migration apply/verification
+* schema checks
+* row/state verification
+* confirming that expected records actually exist
+
+Do not guess about production data or schema state when Supabase can answer directly.
+
+### Sentry
+
+Use Sentry first for:
+
+* production runtime errors
+* server/client exceptions
+* failing routes
+* stack traces after deploy
+
+Do not speculate from code first when Sentry can provide the actual runtime failure.
+
+### Browserstack
+
+Use Browserstack for:
+
+* real-device and real-browser verification
+* mobile UI proof
+* Safari/iPhone issues
+* Android/browser-specific layout issues
+* OAuth flow sanity checks when localhost/dev-browser automation is unreliable
+* screenshot/video proof for frontend work that is sensitive to browser/device behavior
+
+Browserstack complements Playwright. It does not replace Playwright.
+For mobile/browser-sensitive frontend work, use Browserstack when Playwright/localhost is not enough to provide real-device truth.
+
+### Mandatory rule
+
+If a task touches deploys, production data, production errors, mobile layout, browser-specific behavior, or OAuth/browser flow issues, the final receipt must name which relevant tool(s) were used.
+
+Do not call a task complete with local-only reasoning when Playwright, Vercel, Supabase, Sentry, or Browserstack could provide the truth directly.
+
+---
+
 ## Session Logs
+
+- 2026-04-11 — Repo doctrine: mandatory Tool Routing (Playwright, Vercel, Supabase, Sentry, Browserstack) + hard-stop truth-tool sentence
+ MODE: HYGIENE
+ Commit hash(es): pending
+ Files changed: `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.cursor/rules/agent.mdc`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npm run build`
+ Changes: Added identical `## Tool Routing (mandatory)` section and receipt rules to agent contract files; appended hard-stop sentence to `AGENTS.md` and `.cursor/rules/agent.mdc`.
 
 - 2026-04-11 — Agent doctrine: always commit/push; Gmail sync debug instrumentation
  MODE: HYGIENE
