@@ -27,6 +27,7 @@ function candidate(overrides: Partial<ScoredLoop> & { id: string; score: number 
     relatedSignals: overrides.relatedSignals ?? ['Signal with outcome evidence'],
     sourceSignals: overrides.sourceSignals ?? [{ kind: 'signal', summary: 'Signal with outcome evidence' }],
     confidence_prior: overrides.confidence_prior ?? 70,
+    ...overrides,
   };
 }
 
@@ -108,6 +109,37 @@ describe('applyRankingInvariants', () => {
 
     const { ranked } = applyRankingInvariants(input);
     expect(ranked[0]?.id).toBe('risk-discrepancy');
+  });
+
+  it('thread-backed relationship send_message beats internal write_document discrepancy (no forced discrepancy steal)', () => {
+    const input = [
+      candidate({
+        id: 'ext-keri',
+        score: 6.0,
+        type: 'relationship',
+        entityName: 'Keri Nopens',
+        suggestedActionType: 'send_message',
+        title: 'Send outreach email to Keri Nopens',
+        content: 'Outreach to Keri with concrete reference timeline and next step.',
+        relatedSignals: ['Thread: Keri agreed to supervisor reference for MAS3'],
+      }),
+      candidate({
+        id: 'drift-doc',
+        score: 4.5,
+        type: 'discrepancy',
+        discrepancyClass: 'goal_velocity_mismatch',
+        suggestedActionType: 'write_document',
+        title: 'Goal momentum lost on Foldera revenue work',
+        content: 'Signal velocity on stated revenue goal dropped versus prior window.',
+        matchedGoal: { text: 'Build Foldera into a revenue-generating product.', priority: 1, category: 'project' },
+      }),
+    ];
+
+    const { ranked, diagnostics } = applyRankingInvariants(input);
+    const extD = diagnostics.find((d) => d.id === 'ext-keri');
+    expect(extD?.hardRejectReasons ?? []).toEqual([]);
+    const top = ranked.filter((c) => c.score > 0).sort((a, b) => b.score - a.score)[0];
+    expect(top?.id).toBe('ext-keri');
   });
 
   it('obvious first-layer advice is penalized below high-signal discrepancy', () => {

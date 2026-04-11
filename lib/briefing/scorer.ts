@@ -1647,6 +1647,39 @@ export function passesTop3RankingInvariants(candidate: ScoredLoop): boolean {
   return getInvariantFailureReasons(candidate).length === 0;
 }
 
+/**
+ * Thread-backed external send_message: real entity + sendable action. Used by ranking
+ * invariants and generator viability to prefer concrete outreach over internal
+ * discrepancy artifacts (write_document / make_decision).
+ */
+const THREAD_BACKED_SENDABLE_DISCREPANCY_CLASSES = new Set<string>([
+  'decay',
+  'risk',
+  'engagement_collapse',
+  'relationship_dropout',
+  'meeting_open_thread',
+  'preparation_gap',
+  'convergence',
+]);
+
+export function isThreadBackedSendableLoop(c: ScoredLoop): boolean {
+  if (c.score <= 0) return false;
+  const hasSendableAction = c.suggestedActionType === 'send_message';
+  const hasExternalEntity = Boolean(c.entityName && c.entityName.trim().length > 0);
+  if (c.type === 'discrepancy') {
+    return (
+      hasSendableAction
+      && hasExternalEntity
+      && c.discrepancyClass !== 'behavioral_pattern'
+      && THREAD_BACKED_SENDABLE_DISCREPANCY_CLASSES.has(c.discrepancyClass ?? '')
+    );
+  }
+  if (c.type === 'commitment' || c.type === 'relationship') {
+    return hasSendableAction && hasExternalEntity;
+  }
+  return false;
+}
+
 export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantResult {
   const ranked = scored.map((candidate) => ({
     ...candidate,
@@ -1719,25 +1752,6 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
   // EXCEPTION (hard invariant): a thread-backed sendable candidate — real external entity,
   // real thread evidence, suggestedActionType === send_message — always beats a
   // behavioral_pattern discrepancy (abstract cross-contact pattern, no single obligation).
-  const THREAD_BACKED_SENDABLE_DISC_CLASSES = new Set([
-    'decay', 'risk', 'engagement_collapse', 'relationship_dropout',
-    'meeting_open_thread', 'preparation_gap', 'convergence',
-  ]);
-  const isThreadBackedSendable = (c: ScoredLoop): boolean => {
-    if (c.score <= 0) return false;
-    const hasSendableAction = c.suggestedActionType === 'send_message';
-    const hasExternalEntity = Boolean(c.entityName && c.entityName.trim().length > 0);
-    if (c.type === 'discrepancy') {
-      return hasSendableAction
-        && hasExternalEntity
-        && c.discrepancyClass !== 'behavioral_pattern'
-        && THREAD_BACKED_SENDABLE_DISC_CLASSES.has(c.discrepancyClass ?? '');
-    }
-    if (c.type === 'commitment' || c.type === 'relationship') {
-      return hasSendableAction && hasExternalEntity;
-    }
-    return false;
-  };
 
   const qualifiedDiscrepancies = ranked.filter(
     (candidate) => candidate.type === 'discrepancy' && candidate.score > 0 && passesTop3RankingInvariants(candidate),
@@ -1745,7 +1759,7 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
 
   // Any candidate that is a thread-backed sendable real-person action
   const topThreadBackedSendable = ranked
-    .filter((c) => c.score > 0 && isThreadBackedSendable(c) && passesTop3RankingInvariants(c))
+    .filter((c) => c.score > 0 && isThreadBackedSendableLoop(c) && passesTop3RankingInvariants(c))
     .sort(compareScoredLoops)[0];
 
   if (qualifiedDiscrepancies.length > 0) {
@@ -1778,7 +1792,7 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
       // Thread-backed sendable candidates are exempt from the discrepancy penalty — they
       // represent verified external obligations (real person, real thread, sendable action)
       // and must not be crushed by abstract pattern discrepancies.
-      if (isThreadBackedSendable(candidate)) {
+      if (isThreadBackedSendableLoop(candidate)) {
         diag.penaltyReasons.push('thread_backed_sendable_exempt_from_discrepancy_penalty');
         continue;
       }
@@ -1812,6 +1826,11 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
       topDiscrepancy
       && topNonDiscrepancy
       && topDiscrepancy.score <= topNonDiscrepancy.score
+      && !(
+        isThreadBackedSendableLoop(topNonDiscrepancy)
+        && !isThreadBackedSendableLoop(topDiscrepancy)
+        && passesTop3RankingInvariants(topNonDiscrepancy)
+      )
     ) {
       topDiscrepancy.score = topNonDiscrepancy.score + 0.001;
       ensureDiagnostic(topDiscrepancy).penaltyReasons.push('discrepancy_priority_forced_over_task');
@@ -1827,7 +1846,7 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
   // obligation to a real human being.
   // -----------------------------------------------------------------------
   const topSendableAfterDiscrepancy = ranked
-    .filter((c) => c.score > 0 && isThreadBackedSendable(c) && passesTop3RankingInvariants(c))
+    .filter((c) => c.score > 0 && isThreadBackedSendableLoop(c) && passesTop3RankingInvariants(c))
     .sort(compareScoredLoops)[0];
 
   if (topSendableAfterDiscrepancy) {

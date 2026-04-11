@@ -4,6 +4,14 @@
 
 ## Session Logs
 
+- 2026-04-10 — Scorer/generator: thread-backed send_message must beat internal discrepancy steal
+ MODE: AUDIT
+ Commit hash(es): `e4d8bca`
+ Files changed: `lib/briefing/scorer.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/scorer-ranking-invariants.test.ts`, `lib/briefing/__tests__/winner-selection.test.ts`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npm run lint`; `npx vitest run lib/briefing/__tests__/scorer-ranking-invariants.test.ts lib/briefing/__tests__/winner-selection.test.ts`; `npm run build`; `npm run test:ci:e2e` — 46/46
+ Changes: (1) **`applyRankingInvariants`** — skip `discrepancy_priority_forced_over_task` when `topNonDiscrepancy` is thread-backed sendable and `topDiscrepancy` is not (`isThreadBackedSendableLoop` exported, same rules as invariants for decay/risk/… vs relationship/commitment). (2) **`selectRankedCandidates`** — under `hasDiscrepancy`, thread-backed sendables skip the 0.55/0.88 task penalty; if viability #1 is still an internal discrepancy, bump the best valid thread-backed row above it. (3) Test helper `candidate()` now spreads `...overrides` so `entityName`/`discrepancyClass` survive.
+ Golden-path: **EXACT BLOCKER closed** — forced discrepancy-over-task was the ordering seam when both sides survived scoring; **owner `scoreOpenLoops` dry run unchanged** — Keri/Yadira/Jim rows still dropped earlier (`stakes_gate` `no_time_pressure` / `no_active_thread`) and Keri-targeting decay suppressed by DO-NOT goal, so final pool stayed discrepancy-only (data/policy upstream of ranking).
+
 - 2026-04-10 — Golden-case trace: entity promo head-scan + hunt skips Outlier wfe + peer eligibility
  MODE: AUDIT
  Commit hash(es): `6d4fc7f`

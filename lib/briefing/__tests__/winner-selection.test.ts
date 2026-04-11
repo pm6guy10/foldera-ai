@@ -213,6 +213,32 @@ describe('selectFinalWinner', () => {
     expect(winner.id).toBe('hidden-risk');
   });
 
+  it('thread-backed relationship send_message wins viability over internal write_document discrepancy', () => {
+    const outreach = makeCandidate({
+      id: 'outreach-keri',
+      score: 6.0,
+      type: 'relationship',
+      suggestedActionType: 'send_message',
+      entityName: 'Keri Nopens',
+      title: 'Send outreach email to Keri Nopens',
+      content: 'Concrete reference and timeline thread with Keri Nopens regarding MAS3 role.',
+      relatedSignals: ['Email thread with Keri about references'],
+      sourceSignals: [{ kind: 'signal', summary: 'Keri reference coordination', occurredAt: new Date().toISOString() }],
+    });
+    const discrepancy = makeCandidate({
+      id: 'goal-drift',
+      score: 4.5,
+      type: 'discrepancy',
+      discrepancyClass: 'goal_velocity_mismatch',
+      suggestedActionType: 'write_document',
+      title: 'Goal momentum lost on revenue target',
+      content: 'Stated revenue goal shows dropped signal velocity versus prior weeks.',
+    });
+
+    const { winner } = selectFinalWinner([outreach, discrepancy], NO_GUARDRAILS);
+    expect(winner.id).toBe('outreach-keri');
+  });
+
   it('obvious first-layer advice is disqualified in favor of decision-moving candidate', () => {
     const obvious = makeCandidate({
       id: 'obvious',

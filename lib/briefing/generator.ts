@@ -16,7 +16,12 @@ import type {
 } from './types';
 import { validateDecisionPayload } from './types';
 import type { DeprioritizedLoop, ScoredLoop, ScorerResult } from './scorer';
-import { enrichRelationshipContext, scoreOpenLoops } from './scorer';
+import {
+  enrichRelationshipContext,
+  isThreadBackedSendableLoop,
+  passesTop3RankingInvariants,
+  scoreOpenLoops,
+} from './scorer';
 import {
   ANTHROPIC_BUDGET_RESERVE_ESTIMATE_CENTS,
   reserveAnthropicBudgetSlot,
@@ -1038,6 +1043,11 @@ export function selectRankedCandidates(
       if (candidate.type === 'discrepancy') {
         mult *= 1.2;
         notes.push('discrepancy-priority boost');
+      } else if (
+        isThreadBackedSendableLoop(candidate)
+        && passesTop3RankingInvariants(candidate)
+      ) {
+        notes.push('thread-backed sendable exempt from discrepancy task penalty');
       } else {
         const strongCommitment =
           candidate.type === 'commitment'
@@ -1146,17 +1156,54 @@ export function selectRankedCandidates(
 
   let top = rated[0];
 
+  // Mirror scorer: a valid thread-backed external send must not lose viability to an internal
+  // discrepancy (write_document / make_decision) when both are in the shortlist.
+  if (
+    !top.disqualified
+    && top.candidate.type === 'discrepancy'
+    && !isThreadBackedSendableLoop(top.candidate)
+  ) {
+    const sendableEntry = rated
+      .filter(
+        (r) =>
+          !r.disqualified
+          && isThreadBackedSendableLoop(r.candidate)
+          && passesTop3RankingInvariants(r.candidate),
+      )
+      .sort((a, b) => b.viabilityScore - a.viabilityScore)[0];
+    if (sendableEntry) {
+      sendableEntry.viabilityScore = Math.max(
+        sendableEntry.viabilityScore,
+        top.viabilityScore + 0.001,
+      );
+      sendableEntry.note = [sendableEntry.note, 'preferred over internal discrepancy'].filter(Boolean).join('; ');
+      rated.sort((a, b) => {
+        if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
+        return b.viabilityScore - a.viabilityScore;
+      });
+      top = rated[0];
+    }
+  }
+
   const topDiscrepancy = rated
     .filter((entry) => !entry.disqualified && entry.candidate.type === 'discrepancy')
     .sort((a, b) => b.viabilityScore - a.viabilityScore)[0];
   if (topDiscrepancy && !top.disqualified && top.candidate.type !== 'discrepancy' && topDiscrepancy.viabilityScore <= top.viabilityScore) {
-    topDiscrepancy.viabilityScore = top.viabilityScore + 0.001;
-    topDiscrepancy.note = `${topDiscrepancy.note}; discrepancy forced above task`;
-    rated.sort((a, b) => {
-      if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
-      return b.viabilityScore - a.viabilityScore;
-    });
-    top = rated[0];
+    const runner = top.candidate;
+    const discCand = topDiscrepancy.candidate;
+    const protectThreadBackedSendable =
+      isThreadBackedSendableLoop(runner)
+      && !isThreadBackedSendableLoop(discCand)
+      && passesTop3RankingInvariants(runner);
+    if (!protectThreadBackedSendable) {
+      topDiscrepancy.viabilityScore = top.viabilityScore + 0.001;
+      topDiscrepancy.note = `${topDiscrepancy.note}; discrepancy forced above task`;
+      rated.sort((a, b) => {
+        if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
+        return b.viabilityScore - a.viabilityScore;
+      });
+      top = rated[0];
+    }
   }
 
   // Pathological fallback: all disqualified → still return ranked list so fallback loop can try
