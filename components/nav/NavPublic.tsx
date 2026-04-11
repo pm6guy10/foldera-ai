@@ -47,7 +47,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
           : 'bg-transparent py-4 md:py-8'
       }`}
     >
-      <div className="max-w-[min(100%,96rem)] mx-auto px-4 sm:px-6 lg:px-12 xl:px-14 flex items-center justify-between min-w-0">
+      <div className="max-w-[min(100%,112rem)] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 flex items-center justify-between min-w-0">
         <a
           href="/"
           className="flex items-center gap-3 group cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
