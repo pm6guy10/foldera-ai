@@ -36,6 +36,7 @@ import {
 import { researchWinner } from './researcher';
 import type { ResearchInsight } from './researcher';
 import { decryptWithStatus } from '@/lib/encryption';
+import { getSendMessageRecipientGroundingIssues } from '@/lib/conviction/artifact-generator';
 import {
   APPROVAL_LOOKBACK_MS,
   CONFIDENCE_PERSIST_THRESHOLD,
@@ -6339,6 +6340,20 @@ export function validateDirectiveForPersistence(input: {
     } catch (err) {
       console.warn('[generator] validateDirectiveForPersistence financial tone gate failed (ignored):', err);
     }
+  }
+
+  if (
+    input.artifact &&
+    typeof input.artifact === 'object' &&
+    normalizeDecisionActionType(String(input.directive.action_type)) === 'send_message'
+  ) {
+    issues.push(
+      ...getSendMessageRecipientGroundingIssues(
+        'send_message',
+        input.artifact as Record<string, unknown>,
+        input.directive,
+      ),
+    );
   }
 
   return [...new Set(issues)];

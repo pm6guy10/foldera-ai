@@ -241,6 +241,46 @@ function buildDeterministicDocumentFallback(
   };
 }
 
+/** Directive + evidence text used to prove outbound email recipients are not hallucinated. */
+function buildSendMessageRecipientGroundingBlob(directive: ConvictionDirective | undefined): string {
+  if (!directive) return '';
+  const ev = Array.isArray(directive.evidence) ? directive.evidence : [];
+  const evText = ev.map((e) => (typeof e.description === 'string' ? e.description : '')).join('\n');
+  return [directive.directive, typeof directive.reason === 'string' ? directive.reason : '', evText].join('\n');
+}
+
+/**
+ * Blocks send_message rows where artifact.to is absent from directive + evidence.
+ * Production leak: hunt winner pointed at Chase signals but artifact addressed dmarcreport@microsoft.com
+ * with no grounding string (tkg_actions e204dd04-4854-4269-b775-58ad16d791e6).
+ */
+export function getSendMessageRecipientGroundingIssues(
+  actionType: string,
+  artifact: Record<string, unknown>,
+  directive: ConvictionDirective | undefined,
+): string[] {
+  if (actionType !== 'send_message') return [];
+  if (artifact.emergency_fallback === true) return [];
+  const threadBacked =
+    (typeof artifact.gmail_thread_id === 'string' && artifact.gmail_thread_id.trim().length > 0) ||
+    (typeof artifact.in_reply_to === 'string' && artifact.in_reply_to.trim().length > 0);
+  if (threadBacked) return [];
+
+  const rawTo = artifact.to ?? artifact.recipient;
+  if (typeof rawTo !== 'string') return [];
+  const to = rawTo.trim().toLowerCase();
+  if (!to.includes('@')) return [];
+
+  const blob = buildSendMessageRecipientGroundingBlob(directive).toLowerCase();
+  if (!directive || blob.trim().length < 8) {
+    return ['send_message recipient cannot be verified (directive/evidence missing)'];
+  }
+  if (!blob.includes(to)) {
+    return ['send_message artifact.to is not grounded in directive or evidence'];
+  }
+  return [];
+}
+
 export function getArtifactPersistenceIssues(
   actionType: string,
   artifact: ConvictionArtifact | Record<string, unknown> | null,
@@ -284,6 +324,8 @@ export function getArtifactPersistenceIssues(
       issues.push(`artifact.${key} contains internal analysis scaffolding`);
     }
   }
+
+  issues.push(...getSendMessageRecipientGroundingIssues(actionType, record, directive));
 
   return [...new Set(issues)];
 }

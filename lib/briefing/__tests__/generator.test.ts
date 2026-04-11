@@ -27,7 +27,11 @@ function buildDirective(overrides: Partial<ConvictionDirective>): ConvictionDire
     confidence: 79,
     reason: 'MAS3 is in final stages and reference preparation could be the deciding factor between candidates.',
     evidence: [
-      { type: 'signal', description: 'Holly can strengthen the MAS3 reference package right now.' },
+      {
+        type: 'signal',
+        description:
+          'Holly (holly@example.com) can strengthen the MAS3 reference package right now.',
+      },
     ],
     ...overrides,
   };
