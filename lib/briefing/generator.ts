@@ -46,6 +46,7 @@ import {
   validateTriggerArtifact,
 } from './trigger-action-map';
 import type { EntityBehavioralStats } from '@/lib/signals/behavioral-graph';
+import { isAutomatedRoutingRecipient } from '@/lib/email/automated-routing-recipient';
 import { isBlockedSender } from '@/lib/signals/sender-blocklist';
 import type { DiscrepancyClass } from './discrepancy-detector';
 import { effectiveDiscrepancyClassForGates } from './effective-discrepancy-class';
@@ -1909,6 +1910,7 @@ function isEligibleExternalPeerEmail(address: string, userEmails?: Set<string>):
   if (!lower.includes('@')) return false;
   if (userEmails && userEmails.size > 0 && userEmails.has(lower)) return false;
   if (isBlockedSender(lower)) return false;
+  if (isAutomatedRoutingRecipient(lower)) return false;
   return true;
 }
 

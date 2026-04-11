@@ -86,6 +86,21 @@ describe('runHuntAnomalies', () => {
     expect(findings.some((f) => f.kind === 'repeated_ignored_sender')).toBe(false);
   });
 
+  it('does not flag Outlier wfe-* workflow inbox as unreplied_inbound', () => {
+    const recvIso = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived('wfe1', recvIso, 'Outlier <wfe-abc123@outlier.ai>', 'Task available'),
+    ];
+    const trusted = new Set(['wfe-abc123@outlier.ai']);
+    const { countsByKind, findings } = runHuntAnomalies({
+      signals,
+      commitments: [],
+      trustedSenderEmails: trusted,
+    });
+    expect(countsByKind.unreplied_inbound).toBe(0);
+    expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
+  });
+
   it('does not flag noreply/bulk senders as unreplied_inbound candidates', () => {
     const recvIso = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
     const signals = [

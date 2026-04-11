@@ -209,6 +209,43 @@ describe('Entity Reality Gate — unverified entities dropped', () => {
     expect(result.dropped[0].reason).toBe('newsletter_promo_source');
   });
 
+  it('passes 1:1 signal when promo keywords exist only in footer past scan head', () => {
+    const filler = 'x'.repeat(3600);
+    const c = makeCandidate({
+      type: 'signal',
+      title: 'Re: interview next steps',
+      content: `Thanks for your time today. We will follow up shortly.\n${filler}\nUnsubscribe from this thread.`,
+      author: 'Sarah Chen <sarah@example.com>',
+    });
+    const result = applyEntityRealityGate([c], KNOWN_ENTITIES, SIGNAL_HISTORY);
+    expect(result.passed).toHaveLength(1);
+    expect(result.dropped).toHaveLength(0);
+  });
+
+  it('passes signal without structured author when footer alone contains promo keywords', () => {
+    const filler = 'x'.repeat(3600);
+    const c = makeCandidate({
+      type: 'signal',
+      title: 'Sarah Chen sent interview availability',
+      content: `Sarah Chen confirmed she can meet Tuesday.\n${filler}\nUnsubscribe from future messages.`,
+    });
+    const result = applyEntityRealityGate([c], KNOWN_ENTITIES, SIGNAL_HISTORY);
+    expect(result.passed).toHaveLength(1);
+    expect(result.dropped).toHaveLength(0);
+  });
+
+  it('still drops 1:1 signal when promo keywords appear in scanned head', () => {
+    const c = makeCandidate({
+      type: 'signal',
+      title: 'Weekly digest',
+      content: 'Unsubscribe here if you no longer want updates.',
+      author: 'Sarah Chen <sarah@example.com>',
+    });
+    const result = applyEntityRealityGate([c], KNOWN_ENTITIES, SIGNAL_HISTORY);
+    expect(result.dropped).toHaveLength(1);
+    expect(result.dropped[0].reason).toBe('newsletter_promo_source');
+  });
+
   it('drops entity appearing only once with no email', () => {
     const c = makeCandidate({
       title: 'Talk to Random Visitor',

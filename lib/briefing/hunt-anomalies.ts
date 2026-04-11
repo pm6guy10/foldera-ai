@@ -4,6 +4,7 @@
  */
 
 import { daysMs, MS_30D } from '@/lib/config/constants';
+import { isAutomatedRoutingRecipient } from '@/lib/email/automated-routing-recipient';
 
 export type HuntFindingKind =
   | 'unreplied_inbound'
@@ -347,6 +348,7 @@ export function runHuntAnomalies(args: {
     const peer = r.fromEmails[0];
     if (peerIsSelfOrProductNoise(peer, selfEmails) || inboundFromSelf(r.fromEmails, selfEmails)) continue;
     if (peer && isBulkOrMarketingSender(peer)) continue;
+    if (peer && isAutomatedRoutingRecipient(peer)) continue;
     if (peer && blockedSenderEmails?.has(peer)) continue;
     // Require sender to be a known human entity — prevents cold-outreach and bulk emails
     // from winning as unreplied threads. If trustedSenderEmails is provided, skip any
@@ -402,6 +404,7 @@ export function runHuntAnomalies(args: {
     const finPeer = r.fromEmails[0];
     // Skip bulk/blocked senders — their financial emails are transactional, not open loops
     if (finPeer && isBulkOrMarketingSender(finPeer)) continue;
+    if (finPeer && isAutomatedRoutingRecipient(finPeer)) continue;
     if (finPeer && blockedSenderEmails?.has(finPeer)) continue;
     // Require sender to be a known human/entity correspondent — prevents transactional emails
     // (travel bookings, meal kits, retailer receipts) from winning as unresolved financial obligations.
@@ -514,6 +517,7 @@ export function runHuntAnomalies(args: {
         : m.toEmails[0];
     if (!key || peerIsSelfOrProductNoise(key, selfEmails)) continue;
     if (isBulkOrMarketingSender(key)) continue;
+    if (isAutomatedRoutingRecipient(key)) continue;
     if (blockedSenderEmails?.has(key)) continue;
     if (!byPeer.has(key)) byPeer.set(key, []);
     byPeer.get(key)!.push(m);
@@ -574,6 +578,7 @@ export function runHuntAnomalies(args: {
     const k = r.fromEmails[0];
     if (!k || peerIsSelfOrProductNoise(k, selfEmails) || inboundFromSelf(r.fromEmails, selfEmails)) continue;
     if (isBulkOrMarketingSender(k)) continue;
+    if (isAutomatedRoutingRecipient(k)) continue;
     if (blockedSenderEmails?.has(k)) continue;
     if (!inboundBySender.has(k)) inboundBySender.set(k, []);
     inboundBySender.get(k)!.push(r);

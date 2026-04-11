@@ -140,6 +140,33 @@ function isPromoContent(text: string): boolean {
   return PROMO_PATTERNS.some(p => p.test(text));
 }
 
+/** Local-part hints for obvious bulk/marketing automation (not role mailboxes like knowledge@staffing.com). */
+const BULK_LOCAL_HINTS =
+  /^(?:noreply|no[-_]?reply|donotreply|newsletters?|marketing|notifications?|notification|mailer|bounce|promo|e[.-]?mailmarketing)/i;
+
+function authorLooksBulkOrAutomated(author: string): boolean {
+  const a = author.toLowerCase();
+  if (/\b(?:noreply|no-reply|donotreply|mailer[- ]?daemon)\b/.test(a)) return true;
+  const m = a.match(/([a-zA-Z0-9._%+-]+)@/);
+  if (m && BULK_LOCAL_HINTS.test(m[1])) return true;
+  return false;
+}
+
+/** Promo scan window for 1:1 signal threads — footers often contain "unsubscribe" without making the thread bulk mail. */
+const PROMO_HEAD_CHARS = 3500;
+
+function promoGateScanText(c: EntityGateCandidate): string {
+  if (c.type !== 'signal') {
+    return `${c.title} ${c.content}`;
+  }
+  const body = c.content ?? '';
+  const head = body.length > PROMO_HEAD_CHARS ? body.slice(0, PROMO_HEAD_CHARS) : body;
+  // Missing author (legacy rows) still gets head-only scan so footers don't false-positive.
+  const bulk = c.author ? authorLooksBulkOrAutomated(c.author) : false;
+  const scanChunk = bulk ? body : head;
+  return `${c.title}\n${scanChunk}`;
+}
+
 /**
  * Build a set of verified entity names from known entity records and signal history.
  *
@@ -360,8 +387,8 @@ export function applyEntityRealityGate(
   for (const c of candidates) {
     const text = `${c.title} ${c.content}`;
 
-    // Newsletter/promo content — instant drop
-    if (isPromoContent(text)) {
+    // Newsletter/promo content — instant drop (1:1 signals: scan head only so footers don't false-positive)
+    if (isPromoContent(promoGateScanText(c))) {
       const entity = findPrimaryEntity(c) ?? '(promo)';
       dropped.push({ candidate: c, entity, reason: 'newsletter_promo_source' });
       if (!unverifiedEntities.includes(entity)) unverifiedEntities.push(entity);
