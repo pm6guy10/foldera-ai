@@ -4,6 +4,18 @@
 
 ## Session Logs
 
+- 2026-04-11 — Agent doctrine: always commit/push; Gmail sync debug instrumentation
+ MODE: HYGIENE
+ Files changed: `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.cursor/rules/agent.mdc`, `lib/sync/google-sync.ts`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npm run build`
+ Changes: **Git doctrine** — `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, and `.cursor/rules/agent.mdc` require the agent to commit and push autonomously in the same turn once verified (never defer to user unless blocked). **`syncGmail`** — debug ingest logs (session `263f2d`) for incremental window vs inbox probe age when list returns zero.
+
+- 2026-04-11 — Agent rule + branch hygiene: main-only doctrine in `.cursor/rules/agent.mdc`; remove stray zip branch
+ MODE: HYGIENE
+ Files changed: `.cursor/rules/agent.mdc`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npm run build` (after clean `.next`); remote `cursor/data-batch-2026-04-03-zip` deleted; local same-name branch removed
+ Changes: Replaced scoreboard-first / pipeline scoreboard ritual in repo-backed Cursor rule with health-first session start, one-seam execution, build-before-commit, direct-to-main commit+push in-session, in-session production migrations, and no requests to Brandon for push/merge/migrations. Deleted accidental `cursor/data-batch-2026-04-03-zip` on origin and locally.
+
 - 2026-04-11 — Cursor rules hygiene: dedupe CLAUDE.md frontmatter
  MODE: HYGIENE
  Files changed: `CLAUDE.md`, `SESSION_HISTORY.md`

@@ -1,21 +1,12 @@
 ---
 alwaysApply: true
-description: "Agent Execution Protocol"
+description: "Agent Execution Protocol — aligned with AGENTS.md / CLAUDE.md"
+---
 
 rules:
-  - "Pipeline sessions: first actions are `npm run scoreboard` then `npm run health`. Paste the full output before writing any code. If health shows FAIL, fix that row before touching anything else. Do not skip this step."
-  - "Pipeline/prod sessions: read docs/SESSION_SCOREBOARD.md and CLAUDE.md Session scoreboard ritual — run production scoreboard + test baseline BEFORE edits and AGAIN before declaring done; victory requires target scoreboard row(s) to pass AND no test regressions vs start."
-  - "Make only the minimum required changes to complete the task."
-  - "Search the repo before editing to understand all dependencies."
-  - "Never create new files unless explicitly required."
-  - "Never modify unrelated files."
-  - "Maintain full type-safety across all affected files."
-  - "Simulate the full build mentally before applying changes."
-  - "Anticipate downstream type errors before they occur."
-  - "After writing changes, run the appropriate build or test command."
-  - "Fix any errors proactively without waiting for user input."
-  - "Stop only when the repo compiles cleanly and all tasks are complete."
-  - "Provide a concise final report including: files modified, reasoning, and build verification."
-  - "When the task is complete and verified (build/tests per scope), commit and push to main immediately. Never wait for the user to say push, approve, or go ahead unless the work is blocked."
-  - "When you add or edit database schema or any file under supabase/migrations/: you (the agent) apply new migrations to production Supabase in the same session (MCP apply_migration for project neydszeamsflpghtrhue or npx supabase db push). Never tell the user to apply migrations. Do not consider the task done until applied and verified."
----
+  - "Session start: run `npm run health`, read the full output, and include a health summary in the final receipt. If any row shows FAIL, treat the first relevant failure as top priority unless the task explicitly targets another proven seam. Green health does not mean the mission is done."
+  - "Execution: one seam at a time; minimum change; search the repo before editing; no new files unless required; no unrelated edits; full type-safety on touched code."
+  - "Verification: run the appropriate tests/build for the seam before commit; fix errors without waiting for the user."
+  - "Git / shipping: push directly to `main`; do not use feature branches or PR workflow unless the task explicitly requires it; `npm run build` must pass before every commit; **always commit and push in the same turn** once the slice is verified — never leave commit/push for the user. Never ask Brandon to push, merge, or apply migrations (only state a blocker if impossible)."
+  - "Schema: when you add or change `supabase/migrations/` or production schema, apply migrations to production Supabase in the same session (MCP `apply_migration` for project `neydszeamsflpghtrhue` or `npx supabase db push`). Do not tell the user to apply them; do not call the task done until applied and verified (or state the exact blocker if impossible)."
+  - "Receipt: concise final report with files changed, reasoning, and build/test verification."
