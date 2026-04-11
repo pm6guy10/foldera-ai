@@ -454,9 +454,10 @@ export interface CandidateLifecycle {
 export interface ScorerResult {
   winner: ScoredLoop;
   /**
-   * Top 3 raw scored candidates (winner + up to 2 runner-ups) before kill-reason
+   * Top scored candidates (winner + runner-ups, capped) before kill-reason
    * classification. Used by the generator's viability competition pass so it can
-   * pick a different final winner when the top scorer is less executable.
+   * pick a different final winner when the top scorer is less executable or excluded
+   * (e.g. noise_winner guard).
    */
   topCandidates: ScoredLoop[];
   deprioritized: DeprioritizedLoop[];
@@ -4780,7 +4781,7 @@ export async function scoreOpenLoops(
   {
     const { data: lockedRowsForContacts } = await supabase
       .from('tkg_constraints')
-      .select('normalized_entity')
+      .select('normalized_entity, entity_text')
       .eq('user_id', userId)
       .eq('constraint_type', 'locked_contact')
       .eq('is_active', true);
@@ -4788,6 +4789,12 @@ export async function scoreOpenLoops(
       const raw = row.normalized_entity;
       if (typeof raw === 'string' && raw.trim()) {
         lockedContactNormalizedKeys.add(raw.replace(/\s+/g, '').toLowerCase());
+      }
+      // Match scorer/candidate entityName normalization (whitespace-stripped lower) even when
+      // normalized_entity drifted (e.g. middle initial in DB vs graph display name).
+      const et = row.entity_text;
+      if (typeof et === 'string' && et.trim()) {
+        lockedContactNormalizedKeys.add(et.replace(/\s+/g, '').toLowerCase());
       }
     }
   }
@@ -5491,6 +5498,28 @@ export async function scoreOpenLoops(
       )
     ) {
       continue;
+    }
+
+    // Parity with locked_contact_pre_filter on the main candidate pool: discrepancies are
+    // injected into `scored` later and must not resurrect locked entities as winners.
+    if (lockedContactNormalizedKeys.size > 0 && d.entityName?.trim()) {
+      const lockedKey = d.entityName.replace(/\s+/g, '').toLowerCase();
+      if (lockedContactNormalizedKeys.has(lockedKey)) {
+        logStructuredEvent({
+          event: 'locked_contact_discrepancy_skipped',
+          level: 'info',
+          userId,
+          artifactType: null,
+          generationStatus: 'scoring',
+          details: {
+            scope: 'scorer',
+            discrepancy_id: d.id,
+            discrepancy_class: d.class,
+            entity_name: d.entityName.slice(0, 120),
+          },
+        });
+        continue;
+      }
     }
 
     const discSup = evaluateSuppressionGoalMatch(
@@ -6236,7 +6265,7 @@ export async function scoreOpenLoops(
 
   return {
     winner,
-    topCandidates: validScoredCandidates.slice(0, 2),
+    topCandidates: validScoredCandidates.slice(0, 3),
     deprioritized,
     candidateDiscovery: buildCandidateDiscoveryLog(winner, scored, suppressedCandidates, null),
     antiPatterns,

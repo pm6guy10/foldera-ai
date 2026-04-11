@@ -4019,10 +4019,18 @@ function isInternalNoSendExecutionResult(executionResult: unknown): boolean {
   return (executionResult as Record<string, unknown>).outcome_type === 'no_send';
 }
 
-function countSentences(value: string): number {
+/**
+ * Mask dots inside email addresses, then split on whitespace that follows true sentence
+ * enders (. ! ?). Avoids splitting on dots inside emails and on year decimals like "2026."
+ * when not followed by space (single-sentence directives ending in a year stay one sentence).
+ */
+export function countSentences(value: string): number {
   const trimmed = value.trim();
   if (!trimmed) return 0;
-  const parts = trimmed.split(/[.!?]+/).map((p) => p.trim()).filter(Boolean);
+  const masked = trimmed.replace(/\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b/gi, (email) =>
+    email.replace(/\./g, '\u00b7'),
+  );
+  const parts = masked.split(/(?<=[.!?])\s+/).map((p) => p.trim()).filter(Boolean);
   return parts.length === 0 ? 1 : parts.length;
 }
 
@@ -7587,11 +7595,19 @@ export async function generateDirective(
             .eq('is_active', true);
           for (const row of data ?? []) {
             const raw = row.normalized_entity;
-            if (typeof raw !== 'string' || !raw.trim()) continue;
-            set.add(raw.replace(/\s+/g, '').toLowerCase());
-            const displayName = typeof row.entity_text === 'string' && row.entity_text.trim()
-              ? row.entity_text.trim()
-              : raw.trim();
+            if (typeof raw === 'string' && raw.trim()) {
+              set.add(raw.replace(/\s+/g, '').toLowerCase());
+            }
+            const entityText =
+              typeof row.entity_text === 'string' && row.entity_text.trim()
+                ? row.entity_text.trim()
+                : '';
+            if (entityText) {
+              set.add(entityText.replace(/\s+/g, '').toLowerCase());
+            }
+            const displayName =
+              entityText || (typeof raw === 'string' && raw.trim() ? raw.trim() : '');
+            if (!displayName) continue;
             const lineKey = displayName.replace(/\s+/g, '').toLowerCase();
             if (seenLineKeys.has(lineKey)) continue;
             seenLineKeys.add(lineKey);
