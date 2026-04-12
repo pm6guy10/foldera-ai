@@ -4009,3 +4009,9 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Files changed: `components/nav/NavPublic.tsx`, `app/page.tsx` (SignalEngineHero + HeroDirectiveDemo), `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/dashboard/system/SystemClient.tsx`
 - What changed: Center nav + hamburger breakpoint moved to `lg` (1024px); tighter CTA padding and shortened guest CTA label below `xl`; hero two-column grid starts at `lg` with shorter-laptop padding/min-height tuning; settings/system/dashboard headers get overflow-safe back row + narrow-hide “Dashboard” label; Playwright viewport screenshots written under `.screenshots/responsive-hardening-pass/`.
 - Verification: `npm run health` (0 failing); `npm run build` (pass); Playwright CLI screenshots at 390×844, 768×1024, 820×1180, 1024×768, 1280×800, 1440×900, 1920×1080 vs local `next start`.
+
+## 2026-04-12 — Production index: tkg_signals (user_id, occurred_at)
+- MODE: INFRA
+- Files changed: `supabase/migrations/20260412161045_tkg_signals_user_occurred_at_index.sql`
+- What changed: Added `idx_tkg_signals_user_occurred_at` on `public.tkg_signals (user_id, occurred_at)`; applied to production via Supabase MCP. Removes sort-on-user_id plan for `created_at < … ORDER BY occurred_at ASC` (e.g. `lib/signals/summarizer.ts`); verified with `EXPLAIN` on a high-row user: `Index Scan using idx_tkg_signals_user_occurred_at` + `Limit`, no `Sort`.
+- Verification: `npm run health` (0 failing); `npm run build`; Supabase `list_migrations` includes `tkg_signals_user_occurred_at_index`; `execute_sql` confirms index exists.
