@@ -4011,6 +4011,19 @@ export async function scoreOpenLoops(
 
   logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
 
+  // Related-signal keyword overlap (scoring loop): same logical pool as the legacy
+  // second query (≤90d, max 150 bodies) but derived from the already-decrypted
+  // `signals` rows from the parallel fetch above — avoids a duplicate tkg_signals
+  // round-trip and re-decrypting overlapping ciphertext for every open_loops run.
+  const ninetyDaysAgoMs = Date.now() - daysMs(90);
+  const decryptedSignals = signals
+    .filter((s: { occurred_at?: string }) => {
+      const t = new Date(s.occurred_at as string ?? 0).getTime();
+      return Number.isFinite(t) && t >= ninetyDaysAgoMs;
+    })
+    .slice(0, 150)
+    .map((s: { content: string }) => s.content as string);
+
   // Goal signal velocity — count signals in the last 7 days per goal category.
   // Used to boost candidates whose matched goal has high recent activity.
   const sevenDaysAgoMs = Date.now() - daysMs(7);
@@ -4027,34 +4040,6 @@ export async function scoreOpenLoops(
     const existing = goalVelocityMap.get(g.goal_category) ?? 0;
     goalVelocityMap.set(g.goal_category, existing + count);
   }
-
-  // Context enrichment signals — 90-day window with 150 limit so the scorer
-  // can find keyword overlap across email, calendar, files, and tasks.
-  const ninetyDaysAgoContext = new Date(Date.now() - daysMs(90)).toISOString();
-  const { data: allRecentSignals } = await supabase
-    .from('tkg_signals')
-    .select('content, source, occurred_at')
-    .eq('user_id', userId)
-    .gte('occurred_at', ninetyDaysAgoContext)
-    .eq('processed', true)
-    .order('occurred_at', { ascending: false })
-    .limit(150);
-
-  let contextDecryptSkips = 0;
-  const decryptedSignals = (allRecentSignals ?? [])
-    .map((signal: any) => {
-      const decrypted = decryptWithStatus(signal.content as string ?? '');
-      if (decrypted.usedFallback) {
-        contextDecryptSkips++;
-        return null;
-      }
-      return decrypted.plaintext;
-    })
-    .filter((content: string | null): content is string => {
-      if (!content) return false;
-      return !isSelfReferentialSignal(content);
-    });
-  logDecryptSkip(userId, 'scorer:recent_signal_context', contextDecryptSkips);
 
   const suppressedCandidateKeys = await getSuppressedCandidateKeys(userId, supabase, 7);
 

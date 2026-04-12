@@ -4021,3 +4021,9 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Files changed: `app/page.tsx`, `app/HomePageClient.tsx` (split from former `app/page.tsx`), `app/layout.js`, `components/BuildMarker.tsx`, `components/nav/NavPublic.tsx`, `next.config.mjs`, `SESSION_HISTORY.md`
 - What changed: Stale-shell audit documented (no service worker / PWA / Cache Storage in repo). Homepage route uses `force-dynamic`; `Cache-Control: public, max-age=0, must-revalidate` on `/` and `/pricing`; global server-rendered build fingerprint (`VERCEL_GIT_COMMIT_SHA`, 7 chars) bottom-right. Nav scrolled state softened; hero badge/proof strip and scenario section gradient/scenario card treatments reduced visual fatigue.
 - Verification: `npm run health` (0 failing); `npm run build`; Playwright local mobile visual QA + production mobile marketing layout (see session receipt).
+
+## 2026-04-12 — scoreOpenLoops: drop duplicate tkg_signals context fetch
+- MODE: PERF
+- Files changed: `lib/briefing/scorer.ts`, `SESSION_HISTORY.md`
+- What changed: `scoreOpenLoops` no longer runs a second `tkg_signals` select (90d / 150 rows, full `content`) for related-signal keyword overlap; that pool is derived in-memory from the already-decrypted primary signal batch (180d / 200 rows), filtered to ≤90d and capped at 150 plaintext bodies — same overlap logic as before without an extra round-trip or second decrypt pass.
+- Verification: `npm run health` (0 failing); `npm run build`; `npx vitest run lib/briefing/__tests__/` (pass).
