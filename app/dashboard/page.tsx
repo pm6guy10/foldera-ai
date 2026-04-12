@@ -387,15 +387,15 @@ export default function DashboardPage() {
 
       {/* Fixed header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 pt-[env(safe-area-inset-top,0px)]">
-        <div className="max-w-2xl mx-auto h-14 flex items-center justify-between px-4 gap-2">
-          <Link href="/dashboard" className="flex items-center gap-2.5 group min-w-0">
+        <div className="max-w-2xl mx-auto h-14 flex items-center justify-between px-3 sm:px-5 gap-2 min-w-0 w-full">
+          <Link href="/dashboard" className="flex items-center gap-2 sm:gap-2.5 group min-w-0 max-w-[55%] sm:max-w-none">
             <FolderaMark
               size="sm"
               className="shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform group-hover:scale-105 shrink-0"
             />
             <span className="text-sm font-black tracking-tighter text-white uppercase truncate">Foldera</span>
           </Link>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             <Link
               href="/dashboard/briefings"
               className="touch-manipulation min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"

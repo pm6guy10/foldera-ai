@@ -73,15 +73,15 @@ export default function SystemClient() {
       </div>
 
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 border-emerald-500/15 pt-[env(safe-area-inset-top,0px)]">
-        <div className="max-w-3xl mx-auto h-14 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:px-4 gap-1 sm:gap-2">
-          <div className="flex justify-start min-w-0">
+        <div className="max-w-3xl mx-auto h-14 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-2.5 sm:px-4 gap-1 sm:gap-2 min-w-0">
+          <div className="flex justify-start min-w-0 overflow-hidden">
             <Link
               href="/dashboard"
-              className="text-zinc-500 hover:text-white transition-colors flex items-center gap-1 min-h-[44px] min-w-[44px] -ml-1 pl-1 pr-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+              className="text-zinc-500 hover:text-white transition-colors flex items-center gap-0.5 sm:gap-1 min-h-[44px] min-w-[44px] -ml-1 pl-1 pr-1 sm:pr-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c] max-w-full"
               aria-label="Back to dashboard"
             >
               <ChevronLeft className="w-5 h-5 shrink-0" aria-hidden="true" />
-              <span className="text-xs font-black uppercase tracking-[0.12em] truncate max-w-[6rem] sm:max-w-none">
+              <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.12em] truncate min-w-0 max-[420px]:hidden">
                 Dashboard
               </span>
             </Link>

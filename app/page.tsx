@@ -300,8 +300,8 @@ function HeroDirectiveDemo() {
 
   if (phase === 'cta') {
     return (
-      <div className="relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] xl:max-w-none mx-auto xl:mx-0 text-center xl:text-left px-2 sm:px-4 xl:px-0">
-        <p className="text-white font-black text-xl xl:text-3xl 2xl:text-4xl mb-6 xl:mb-10 tracking-tight">Like what you see?</p>
+      <div className="relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] lg:max-w-none mx-auto lg:mx-0 text-center lg:text-left px-2 sm:px-4 lg:px-0">
+        <p className="text-white font-black text-xl lg:text-3xl 2xl:text-4xl mb-6 lg:mb-10 tracking-tight">Like what you see?</p>
         <a
           href="/start"
           className="inline-flex items-center justify-center gap-2 px-8 py-4 xl:px-12 xl:py-[1.25rem] rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs xl:text-sm hover:bg-zinc-200 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95"
@@ -316,12 +316,12 @@ function HeroDirectiveDemo() {
 
   return (
     <div
-      className={`relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] xl:max-w-none hero-output pointer-events-auto transition-all duration-300 ease-out xl:[perspective:2200px] ${
+      className={`relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] lg:max-w-none hero-output pointer-events-auto transition-all duration-300 ease-out lg:[perspective:2200px] ${
         phase === 'out' ? 'opacity-0 translate-x-10 scale-[0.96]' : 'opacity-100 translate-x-0 scale-100'
       }`}
     >
-      <div className="xl:[transform-style:preserve-3d] xl:origin-[90%_50%] xl:[transform:rotateY(-2.5deg)_scale(1.02)] 2xl:[transform:rotateY(-3deg)_scale(1.035)] transition-transform duration-300 max-xl:[transform:none]">
-      <div className="rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2rem] 2xl:rounded-[2.25rem] bg-[#08080d] border border-cyan-500/50 xl:border-cyan-400/60 shadow-[0_80px_200px_-40px_rgba(0,0,0,1),0_0_0_1px_rgba(6,182,212,0.12)_inset,0_48px_120px_-30px_rgba(6,182,212,0.35)] flex flex-col text-left overflow-hidden xl:shadow-[0_120px_240px_-48px_rgba(0,0,0,1),0_0_140px_rgba(6,182,212,0.38),0_0_0_1px_rgba(34,211,238,0.18)_inset] xl:min-h-[min(58vh,640px)] 2xl:min-h-[min(62vh,720px)] ring-1 ring-white/[0.06]">
+      <div className="lg:[transform-style:preserve-3d] lg:origin-[90%_50%] lg:[transform:rotateY(-2.5deg)_scale(1.02)] 2xl:[transform:rotateY(-3deg)_scale(1.035)] transition-transform duration-300 max-lg:[transform:none]">
+      <div className="rounded-[2rem] lg:rounded-[2.25rem] xl:rounded-[2rem] 2xl:rounded-[2.25rem] bg-[#08080d] border border-cyan-500/50 xl:border-cyan-400/60 shadow-[0_80px_200px_-40px_rgba(0,0,0,1),0_0_0_1px_rgba(6,182,212,0.12)_inset,0_48px_120px_-30px_rgba(6,182,212,0.35)] flex flex-col text-left overflow-hidden xl:shadow-[0_120px_240px_-48px_rgba(0,0,0,1),0_0_140px_rgba(6,182,212,0.38),0_0_0_1px_rgba(34,211,238,0.18)_inset] lg:min-h-[min(52vh,580px)] xl:min-h-[min(58vh,640px)] 2xl:min-h-[min(62vh,720px)] [@media(max-height:760px)]:lg:min-h-0 ring-1 ring-white/[0.06]">
         <div className="w-full h-1.5 xl:h-2 bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-90" />
         <div className="p-5 sm:p-7 lg:p-9 xl:p-10 2xl:p-12 border-b border-white/[0.08] bg-gradient-to-b from-zinc-900/40 to-[#0a0a0f]/90">
           <div className="mb-3 xl:mb-4">
@@ -381,44 +381,44 @@ function HeroDirectiveDemo() {
 // ============================================================================
 function SignalEngineHero() {
   return (
-    <div className="w-full max-w-[min(100%,124rem)] mx-auto px-4 sm:px-6 lg:px-10 xl:px-12 2xl:px-16 pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(7.5rem+env(safe-area-inset-top,0px))] xl:pt-[calc(8.5rem+env(safe-area-inset-top,0px))] 2xl:pt-[calc(9rem+env(safe-area-inset-top,0px))] pb-28 md:pb-36 lg:pb-40 xl:pb-28 2xl:pb-32 text-center xl:text-left relative z-10 flex flex-col xl:grid xl:grid-cols-12 xl:items-start xl:gap-x-6 2xl:gap-x-10 xl:min-h-[min(92dvh,1080px)] 2xl:min-h-[min(90dvh,1120px)] min-w-0">
+    <div className="w-full max-w-[min(100%,124rem)] mx-auto px-4 sm:px-6 lg:px-10 xl:px-12 2xl:px-16 pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(6.25rem+env(safe-area-inset-top,0px))] lg:pt-[calc(7rem+env(safe-area-inset-top,0px))] xl:pt-[calc(8.5rem+env(safe-area-inset-top,0px))] 2xl:pt-[calc(9rem+env(safe-area-inset-top,0px))] pb-20 md:pb-28 lg:pb-24 xl:pb-28 2xl:pb-32 [@media(max-height:820px)]:lg:pb-16 [@media(max-height:820px)]:lg:pt-[calc(5.5rem+env(safe-area-inset-top,0px))] text-center lg:text-left relative z-10 flex flex-col lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-5 xl:gap-x-6 2xl:gap-x-10 lg:min-h-[min(88dvh,980px)] xl:min-h-[min(92dvh,1080px)] 2xl:min-h-[min(90dvh,1120px)] [@media(max-height:780px)]:lg:min-h-0 min-w-0">
       {/* Headlines & CTA — tight editorial rail; artifact column carries scale */}
-      <Reveal alwaysVisible className="xl:col-span-5 2xl:col-span-4 xl:col-start-1 xl:row-start-1 flex flex-col items-center xl:items-start min-w-0 w-full xl:pr-2 2xl:pr-4 xl:pt-1">
-        <div className="inline-flex items-center justify-center gap-2 px-4 py-2 xl:px-5 xl:py-2.5 rounded-full bg-white/[0.05] border border-white/[0.07] text-zinc-400 text-[10px] xl:text-[11px] font-black uppercase tracking-[0.2em] mb-5 md:mb-7 xl:mb-8">
+      <Reveal alwaysVisible className="lg:col-span-5 2xl:col-span-4 lg:col-start-1 lg:row-start-1 flex flex-col items-center lg:items-start min-w-0 w-full lg:pr-2 2xl:pr-4 lg:pt-1">
+        <div className="inline-flex items-center justify-center gap-2 px-4 py-2 xl:px-5 xl:py-2.5 rounded-full bg-white/[0.05] border border-white/[0.07] text-zinc-400 text-[10px] xl:text-[11px] font-black uppercase tracking-[0.2em] mb-5 md:mb-6 lg:mb-7 xl:mb-8 max-lg:[@media(max-height:700px)]:hidden">
           A model of you. One move a day.
         </div>
-        <h1 className="text-3xl sm:text-5xl md:text-7xl xl:text-[clamp(3.5rem,4.2vw+2rem,5.85rem)] 2xl:text-[clamp(4.25rem,3.6vw+2.75rem,6.5rem)] font-black tracking-tighter text-white mb-6 md:mb-9 xl:mb-10 leading-[1.03] px-1 xl:px-0 max-w-[min(100%,58rem)] xl:max-w-[min(100%,22ch)] mx-auto xl:mx-0">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[clamp(3.5rem,4.2vw+2rem,5.85rem)] 2xl:text-[clamp(4.25rem,3.6vw+2.75rem,6.5rem)] font-black tracking-tighter text-white mb-5 sm:mb-6 md:mb-8 lg:mb-9 xl:mb-10 leading-[1.03] px-1 lg:px-0 max-w-[min(100%,58rem)] lg:max-w-[min(100%,22ch)] mx-auto lg:mx-0">
           You missed it.<br className="hidden md:block" /> Foldera didn’t.
         </h1>
-        <p className="text-base md:text-xl xl:text-[1.35rem] 2xl:text-[1.45rem] text-zinc-500 xl:text-zinc-400 max-w-xl md:max-w-2xl xl:max-w-[22rem] 2xl:max-w-[24rem] mx-auto xl:mx-0 font-medium leading-relaxed mb-8 md:mb-12 xl:mb-10 px-4 xl:px-0">
+        <p className="text-base md:text-lg lg:text-xl xl:text-[1.35rem] 2xl:text-[1.45rem] text-zinc-500 lg:text-zinc-400 max-w-xl md:max-w-2xl lg:max-w-[22rem] 2xl:max-w-[24rem] mx-auto lg:mx-0 font-medium leading-relaxed mb-6 md:mb-10 lg:mb-10 xl:mb-10 px-4 sm:px-6 lg:px-0">
           One morning email with finished work: approve to send from your mailbox when connected, or skip. Foldera finds what slipped and drafts the move—no extra tabs.
         </p>
-        <div className="mb-8 md:mb-12 xl:mb-10 -mt-1 md:-mt-2 xl:mt-0 w-full flex justify-center xl:justify-start">
-          <p className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/[0.07] px-3 py-1.5 xl:px-4 xl:py-2 text-[11px] xl:text-xs font-black uppercase tracking-[0.14em] text-cyan-200/90 shadow-[0_0_20px_rgba(6,182,212,0.1)]">
+        <div className="mb-6 md:mb-10 lg:mb-10 -mt-1 md:-mt-2 lg:mt-0 w-full flex justify-center lg:justify-start">
+          <p className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/[0.07] px-3 py-1.5 xl:px-4 xl:py-2 text-[10px] sm:text-[11px] xl:text-xs font-black uppercase tracking-[0.14em] text-cyan-200/90 shadow-[0_0_20px_rgba(6,182,212,0.1)] max-md:max-w-[min(100%,20rem)] max-md:text-center max-md:leading-snug">
             <Lock className="h-3.5 w-3.5 xl:h-4 xl:w-4 text-cyan-400/80 shrink-0" aria-hidden="true" />
             No credit card required
           </p>
         </div>
-        <div className="w-full max-w-xl md:max-w-2xl xl:max-w-[19rem] 2xl:max-w-[21rem] mx-auto xl:mx-0 px-4 xl:px-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-center xl:justify-start gap-3 sm:gap-4">
+        <div className="w-full max-w-xl md:max-w-2xl lg:max-w-[19rem] 2xl:max-w-[21rem] mx-auto lg:mx-0 px-4 lg:px-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3 sm:gap-4">
           <a
             href="/start"
-            className="w-full sm:w-auto xl:w-full min-h-[48px] xl:min-h-[56px] px-8 py-4 xl:px-10 xl:py-[1.2rem] rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs xl:text-sm hover:bg-zinc-200 transition-all duration-150 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+            className="w-full sm:w-auto lg:w-full min-h-[48px] xl:min-h-[56px] px-8 py-4 xl:px-10 xl:py-[1.2rem] rounded-xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs xl:text-sm hover:bg-zinc-200 transition-all duration-150 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
           >
             Get started free <ChevronRight className="w-4 h-4" />
           </a>
         </div>
-        <div className="w-full max-w-xl md:max-w-2xl xl:max-w-none mx-auto xl:mx-0 px-4 xl:px-0">
+        <div className="w-full max-w-xl md:max-w-2xl lg:max-w-none mx-auto lg:mx-0 px-4 lg:px-0">
           <LiveProofStrip />
         </div>
       </Reveal>
 
       {/* The Mechanism: inputs → convergence → directive */}
-      <div className="w-full xl:col-span-7 2xl:col-span-8 xl:col-start-6 2xl:col-start-5 xl:row-start-1 mt-10 md:mt-20 lg:mt-24 xl:mt-2 xl:-mr-2 2xl:-mr-4 2xl:ml-0 relative flex flex-col items-center xl:items-stretch min-w-0">
+      <div className="w-full lg:col-span-7 2xl:col-span-8 lg:col-start-6 2xl:col-start-5 lg:row-start-1 mt-10 md:mt-14 lg:mt-2 xl:mt-2 lg:-mr-1 xl:-mr-2 2xl:-mr-4 2xl:ml-0 relative flex flex-col items-center lg:items-stretch min-w-0">
         {/* Background Glow — anchors the artifact as the visual centerpiece */}
-        <div className="absolute top-[40%] left-1/2 xl:left-[56%] -translate-x-1/2 -translate-y-1/2 w-[min(115vw,920px)] xl:w-[min(135vw,1400px)] h-[min(115vw,920px)] xl:h-[min(135vw,1400px)] bg-cyan-500/[0.045] xl:bg-cyan-400/[0.09] blur-[190px] xl:blur-[260px] rounded-full pointer-events-none z-0" />
+        <div className="absolute top-[40%] left-1/2 lg:left-[56%] -translate-x-1/2 -translate-y-1/2 w-[min(115vw,920px)] lg:w-[min(125vw,1200px)] xl:w-[min(135vw,1400px)] h-[min(115vw,920px)] lg:h-[min(125vw,1200px)] xl:h-[min(135vw,1400px)] bg-cyan-500/[0.045] max-lg:bg-cyan-500/[0.035] lg:bg-cyan-400/[0.08] xl:bg-cyan-400/[0.09] blur-[190px] lg:blur-[220px] xl:blur-[260px] rounded-full pointer-events-none z-0" />
 
         {/* Signal chips — lighter weight vs. the finished artifact */}
-        <div className="flex flex-wrap items-center justify-center xl:justify-end gap-2.5 sm:gap-4 xl:gap-3 mb-3 xl:mb-5 relative z-10 max-w-3xl xl:max-w-none mx-auto xl:ml-auto xl:mr-0 px-1 xl:pr-4 xl:pl-0">
+        <div className="flex flex-wrap items-center justify-center lg:justify-end gap-2 sm:gap-3 xl:gap-3 mb-3 lg:mb-4 xl:mb-5 relative z-10 max-w-3xl lg:max-w-none mx-auto lg:ml-auto lg:mr-0 px-1 lg:pr-3 xl:pr-4 lg:pl-0 max-lg:[@media(max-height:700px)]:opacity-80">
           <div className="hero-input-chip flex items-center gap-1.5 px-2.5 py-1.5 xl:px-3.5 xl:py-2 rounded-full bg-zinc-950/90 border border-zinc-800/60 text-zinc-500 text-[9px] sm:text-[10px] xl:text-[11px] font-medium">
             <Zap className="w-3 h-3 xl:w-3.5 xl:h-3.5 text-zinc-600 shrink-0" />
             <span>High-signal items</span>
@@ -434,16 +434,16 @@ function SignalEngineHero() {
         </div>
 
         {/* Convergence line + processing dot */}
-        <div className="flex flex-col items-center xl:items-end xl:pr-[min(34%,18rem)] 2xl:pr-[min(32%,20rem)] my-0 xl:my-0.5 relative z-10 w-full opacity-90 xl:opacity-100">
-          <div className="w-px h-4 xl:h-6 bg-gradient-to-b from-transparent to-zinc-700/50" />
-          <div className="w-6 h-6 xl:w-9 xl:h-9 rounded-full bg-[#06060a] border border-zinc-700/40 flex items-center justify-center hero-process-dot relative shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
+        <div className="flex flex-col items-center lg:items-end lg:pr-[min(34%,18rem)] 2xl:pr-[min(32%,20rem)] my-0 lg:my-0.5 relative z-10 w-full opacity-90 lg:opacity-100 max-lg:[@media(max-height:700px)]:scale-90">
+          <div className="w-px h-4 lg:h-6 bg-gradient-to-b from-transparent to-zinc-700/50" />
+          <div className="w-6 h-6 lg:w-9 lg:h-9 rounded-full bg-[#06060a] border border-zinc-700/40 flex items-center justify-center hero-process-dot relative shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
             <span className="hero-ignition" aria-hidden="true" />
-            <Brain className="w-3 h-3 xl:w-4 xl:h-4 text-cyan-500/50" />
+            <Brain className="w-3 h-3 lg:w-4 lg:h-4 text-cyan-500/50" />
           </div>
-          <div className="w-px h-4 xl:h-6 bg-gradient-to-b from-cyan-500/30 to-transparent" />
+          <div className="w-px h-4 lg:h-6 bg-gradient-to-b from-cyan-500/30 to-transparent" />
         </div>
 
-        <div className="relative z-20 w-full flex justify-center xl:justify-end xl:pl-0 2xl:pl-1 mt-1 xl:mt-2">
+        <div className="relative z-20 w-full flex justify-center lg:justify-end lg:pl-0 2xl:pl-1 mt-1 lg:mt-2">
           <HeroDirectiveDemo />
         </div>
       </div>

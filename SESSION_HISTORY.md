@@ -4003,3 +4003,9 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Files changed: `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/dashboard/system/SystemClient.tsx`, `app/dashboard/system/page.tsx`, `components/dashboard/AgentSystemPanel.tsx`, `tests/production/smoke.spec.ts`, `tests/production/audit.spec.ts`
 - What changed: Dashboard header keeps history + settings only (no sign-out, no owner System tab). Owner pipeline/agents/draft queue moved to `/dashboard/system` (client redirect if not owner). Settings reordered into Data sources, Preferences, Subscription, optional Owner strip → System tools, Account (sign out), Danger zone (delete). Removed Focus areas UI and Generate block from settings.
 - Verification: `npm run health` (0 failing); `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep Settings` (4 passed).
+
+## 2026-04-12 — Responsive hardening: public nav, hero laptop band, app headers
+- MODE: FLOW
+- Files changed: `components/nav/NavPublic.tsx`, `app/page.tsx` (SignalEngineHero + HeroDirectiveDemo), `app/dashboard/page.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/dashboard/system/SystemClient.tsx`
+- What changed: Center nav + hamburger breakpoint moved to `lg` (1024px); tighter CTA padding and shortened guest CTA label below `xl`; hero two-column grid starts at `lg` with shorter-laptop padding/min-height tuning; settings/system/dashboard headers get overflow-safe back row + narrow-hide “Dashboard” label; Playwright viewport screenshots written under `.screenshots/responsive-hardening-pass/`.
+- Verification: `npm run health` (0 failing); `npm run build` (pass); Playwright CLI screenshots at 390×844, 768×1024, 820×1180, 1024×768, 1280×800, 1440×900, 1920×1080 vs local `next start`.

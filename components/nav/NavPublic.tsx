@@ -47,17 +47,18 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
           : 'bg-transparent py-4 md:py-8'
       }`}
     >
-      <div className="max-w-[min(100%,112rem)] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 flex items-center justify-between min-w-0">
+      <div className="max-w-[min(100%,112rem)] mx-auto px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 flex items-center justify-between min-w-0 gap-3">
         <a
           href="/"
-          className="flex items-center gap-3 group cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+          className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c] min-w-0 shrink"
         >
-          <FolderaMark className="shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-transform group-hover:scale-105" />
-          <span className="hidden sm:inline text-xl font-black tracking-tighter text-white uppercase">Foldera</span>
+          <FolderaMark className="shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-transform group-hover:scale-105 shrink-0" />
+          <span className="hidden sm:inline text-lg sm:text-xl font-black tracking-tighter text-white uppercase truncate">Foldera</span>
         </a>
 
+        {/* Desktop-only center rail: lg+ avoids tablet/laptop collisions with logo + CTAs */}
         <div
-          className={`hidden md:flex items-center gap-12 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 transition-opacity duration-200 ${
+          className={`hidden lg:flex items-center justify-center gap-6 xl:gap-10 2xl:gap-12 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 transition-opacity duration-200 flex-1 min-w-0 px-2 ${
             sessionReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
@@ -65,24 +66,24 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
             <a
               key={l.label}
               href={l.href}
-              className="hover:text-white transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+              className="hover:text-white transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c] whitespace-nowrap shrink-0"
             >
               {l.label}
             </a>
           ))}
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4 min-h-[2.5rem] shrink-0">
-          {/* Tablet/desktop: inline auth CTAs (hidden below sm — menu holds these) */}
+        <div className="flex items-center gap-2 sm:gap-3 min-h-[2.5rem] shrink-0">
+          {/* Inline auth: sm+ ; full labels return xl+ where width is comfortable */}
           <div
-            className={`hidden sm:flex items-center gap-3 sm:gap-4 transition-opacity duration-200 ${
+            className={`hidden sm:flex items-center gap-2 sm:gap-3 transition-opacity duration-200 ${
               sessionReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
           >
             {!isLoggedIn && (
               <a
                 href="/login"
-                className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                className="text-[10px] xl:text-[11px] font-black uppercase tracking-[0.18em] xl:tracking-[0.2em] text-zinc-500 hover:text-white transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c] whitespace-nowrap"
               >
                 Sign in
               </a>
@@ -90,16 +91,18 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
             {isLoggedIn ? (
               <a
                 href="/dashboard"
-                className="px-5 md:px-7 py-2.5 md:py-3 rounded-full bg-white text-black text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all duration-150 flex items-center gap-2 hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                className="px-4 sm:px-5 xl:px-7 py-2.5 xl:py-3 rounded-full bg-white text-black text-[10px] xl:text-[11px] font-black uppercase tracking-[0.15em] xl:tracking-[0.2em] hover:bg-zinc-200 transition-all duration-150 flex items-center gap-1.5 xl:gap-2 hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c] whitespace-nowrap"
               >
-                Dashboard <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                Dashboard <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
               </a>
             ) : (
               <a
                 href="/start"
-                className="flex px-5 md:px-7 py-2.5 md:py-3 rounded-full bg-white text-black text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-all duration-150 items-center gap-2 hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                className="flex px-4 sm:px-5 xl:px-7 py-2.5 xl:py-3 rounded-full bg-white text-black text-[10px] xl:text-[11px] font-black uppercase tracking-[0.15em] xl:tracking-[0.2em] hover:bg-zinc-200 transition-all duration-150 items-center gap-1.5 xl:gap-2 hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c] whitespace-nowrap"
               >
-                Get started free <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                <span className="max-xl:hidden">Start free</span>
+                <span className="hidden xl:inline">Get started free</span>
+                <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
               </a>
             )}
           </div>
@@ -108,7 +111,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
             type="button"
             data-testid="nav-mobile-menu-toggle"
             onClick={() => setMenuOpen((v) => !v)}
-            className="sm:hidden flex flex-col items-center justify-center gap-[5px] w-10 h-10 min-w-[44px] min-h-[44px] rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+            className="lg:hidden flex flex-col items-center justify-center gap-[5px] w-10 h-10 min-w-[44px] min-h-[44px] rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
             aria-label={menuOpen ? 'Close menu (toggle)' : 'Open menu'}
             aria-expanded={menuOpen}
           >
@@ -120,7 +123,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
       </div>
 
       {menuOpen && (
-        <div className="sm:hidden fixed inset-0 z-[70] flex flex-col" role="dialog" aria-modal="true" aria-label="Site menu">
+        <div className="lg:hidden fixed inset-0 z-[70] flex flex-col" role="dialog" aria-modal="true" aria-label="Site menu">
           <div
             role="presentation"
             className="absolute inset-0 bg-[#07070c] backdrop-blur-xl"
