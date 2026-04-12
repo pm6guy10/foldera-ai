@@ -300,7 +300,7 @@ function HeroDirectiveDemo() {
 
   if (phase === 'cta') {
     return (
-      <div className="relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] lg:max-w-none mx-auto lg:mx-0 text-center lg:text-left px-2 sm:px-4 lg:px-0">
+      <div className="relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-none mx-auto lg:mx-0 text-center lg:text-left px-2 sm:px-4 lg:px-0">
         <p className="text-white font-black text-xl lg:text-3xl 2xl:text-4xl mb-6 lg:mb-10 tracking-tight">Like what you see?</p>
         <a
           href="/start"
@@ -316,7 +316,7 @@ function HeroDirectiveDemo() {
 
   return (
     <div
-      className={`relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-[min(52rem,100%)] lg:max-w-none hero-output pointer-events-auto transition-all duration-300 ease-out lg:[perspective:2200px] ${
+      className={`relative z-30 w-full max-w-[min(100%,420px)] md:max-w-[640px] lg:max-w-none hero-output pointer-events-auto transition-all duration-300 ease-out lg:[perspective:2200px] ${
         phase === 'out' ? 'opacity-0 translate-x-10 scale-[0.96]' : 'opacity-100 translate-x-0 scale-100'
       }`}
     >
