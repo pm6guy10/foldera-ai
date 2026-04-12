@@ -18,7 +18,7 @@ import type { ScoredLoop, ScorerResult } from '../scorer';
 
 // ─── Mocks (identical pattern to generator-runtime.test.ts) ───────────────
 
-const mockScoreOpenLoops = vi.fn<() => Promise<ScorerResult | null>>();
+const mockScoreOpenLoops = vi.fn<() => Promise<ScorerResult>>();
 const mockIsOverDailyLimit = vi.fn<() => Promise<boolean>>();
 const mockTrackApiCall = vi.fn<() => Promise<void>>();
 const mockResearchWinner = vi.fn<() => Promise<null>>();
@@ -167,12 +167,16 @@ function buildWinner(): ScoredLoop {
 
 function buildScorerResult(): ScorerResult {
   return {
+    outcome: 'winner_selected',
     winner: buildWinner(),
     deprioritized: [],
     candidateDiscovery: {
       candidateCount: 3, suppressedCandidateCount: 0, selectionMargin: 0.8,
       selectionReason: 'score 4.8 beat next-best', failureReason: null, topCandidates: [],
     },
+    antiPatterns: [],
+    divergences: [],
+    exact_blocker: null,
   };
 }
 

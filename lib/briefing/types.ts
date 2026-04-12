@@ -217,6 +217,8 @@ export interface GenerationRunLog {
   pipeline_dry_run?: PipelineDryRunReceipt;
   /** Cross-source evidence audit: distinct signal sources in the generator bundle. */
   evidence_bundle?: EvidenceBundleReceipt;
+  /** True when the scorer returned no_valid_action and the generator built a deterministic blocker artifact. */
+  no_valid_action_blocker?: boolean;
 }
 
 /**

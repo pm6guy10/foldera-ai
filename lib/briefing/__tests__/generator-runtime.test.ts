@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ScoredLoop, ScorerResult } from '../scorer';
+import type { ScoredLoop, ScorerResult, ScorerResultWinnerSelected } from '../scorer';
 
-const mockScoreOpenLoops = vi.fn<() => Promise<ScorerResult | null>>();
+const mockScoreOpenLoops = vi.fn<() => Promise<ScorerResult>>();
 const mockIsOverDailyLimit = vi.fn<() => Promise<boolean>>();
 const mockTrackApiCall = vi.fn<() => Promise<void>>();
 const mockResearchWinner = vi.fn<() => Promise<null>>();
@@ -180,12 +180,23 @@ function buildWinner(): ScoredLoop {
       },
     ],
     relationshipContext: '- MAS3 Hiring Manager <manager@mas3corp.com> (Hiring)',
+    confidence_prior: 72,
   };
 }
 
+function asWinnerScored(sr: ScorerResult): ScorerResultWinnerSelected {
+  if (sr.outcome !== 'winner_selected') {
+    throw new Error('expected winner_selected');
+  }
+  return sr;
+}
+
 function buildScorerResult(): ScorerResult {
+  const w = buildWinner();
   return {
-    winner: buildWinner(),
+    outcome: 'winner_selected',
+    winner: w,
+    topCandidates: [w],
     deprioritized: [],
     candidateDiscovery: {
       candidateCount: 3,
@@ -195,6 +206,9 @@ function buildScorerResult(): ScorerResult {
       failureReason: null,
       topCandidates: [],
     },
+    antiPatterns: [],
+    divergences: [],
+    exact_blocker: null,
   };
 }
 
@@ -245,8 +259,43 @@ describe('generateDirective runtime failures', () => {
     20_000,
   );
 
+  it('maps scorer no_valid_action to a deterministic blocker (not GENERATION_FAILED)', async () => {
+    mockScoreOpenLoops.mockResolvedValue({
+      outcome: 'no_valid_action',
+      winner: null,
+      topCandidates: [],
+      deprioritized: [],
+      candidateDiscovery: {
+        candidateCount: 1,
+        suppressedCandidateCount: 0,
+        selectionMargin: null,
+        selectionReason: null,
+        failureReason: 'Every candidate failed the final authorization bar.',
+        topCandidates: [],
+      },
+      antiPatterns: [],
+      divergences: [],
+      exact_blocker: {
+        blocker_type: 'no_valid_action_final_gate',
+        blocker_reason: 'Every candidate failed the final authorization bar.',
+        top_blocked_candidate_title: 'Noise: shipping notification',
+        top_blocked_candidate_type: 'signal',
+        top_blocked_candidate_action_type: 'send_message',
+        suppression_goal_text: null,
+        survivors_before_final_gate: 0,
+        rejected_by_stage: { final_gate: 1 },
+      },
+    });
+    const { generateDirective } = await import('../generator');
+    const d = await generateDirective('user-1', { dryRun: true });
+    expect(d.directive).not.toBe('__GENERATION_FAILED__');
+    expect(d.action_type).toBe('do_nothing');
+    expect(d.generationLog?.no_valid_action_blocker).toBe(true);
+    expect((d as { embeddedArtifact?: { type?: string } }).embeddedArtifact?.type).toBe('wait_rationale');
+  });
+
   it('skips research below the winner-score threshold and logs the triggering score', async () => {
-    const scored = buildScorerResult();
+    const scored = asWinnerScored(buildScorerResult());
     scored.winner.score = 1.9;
     mockScoreOpenLoops.mockResolvedValue(scored);
     anthropicCreate.mockResolvedValue({
@@ -328,7 +377,7 @@ describe('generateDirective runtime failures', () => {
   });
 
   it('suppresses send_message candidates when the same contact was actioned in the last 7 days', async () => {
-    const scored = buildScorerResult();
+    const scored = asWinnerScored(buildScorerResult());
     scored.winner.title = 'Email Yadira about the project timeline update';
     scored.winner.content = 'Yadira asked for a timeline update and still needs the status summary.';
     scored.winner.relationshipContext = '- Yadira Clapper <yadira@example.com> (Client)';
@@ -368,7 +417,7 @@ describe('generateDirective runtime failures', () => {
   });
 
   it('suppresses schedule candidates when the same contact was actioned in the last 7 days', async () => {
-    const scored = buildScorerResult();
+    const scored = asWinnerScored(buildScorerResult());
     scored.winner.suggestedActionType = 'schedule';
     scored.winner.title = 'Schedule a focused block with Yadira before Friday';
     scored.winner.content = 'Yadira has not replied and the Friday deadline is near.';
@@ -407,7 +456,7 @@ describe('generateDirective runtime failures', () => {
     // entity from the new winner's narrative, then matches the old action, and suppresses the
     // directive. With the fix, "Brandon" is filtered out (it's the user's own name) so the
     // suppression does NOT fire.
-    const scored = buildScorerResult();
+    const scored = asWinnerScored(buildScorerResult());
     scored.winner.title = 'Follow up with Arman on the contract proposal';
     scored.winner.content = 'Arman asked for a status update. Brandon mentioned this was urgent.';
     scored.winner.relatedSignals = ['Brandon asked Arman about the contract status last week.'];
@@ -463,7 +512,7 @@ describe('generateDirective runtime failures', () => {
   });
 
   it('forces discrepancy winners to default to send_message when recipient context exists', async () => {
-    const scored = buildScorerResult();
+    const scored = asWinnerScored(buildScorerResult());
     scored.winner.type = 'discrepancy';
     scored.winner.id = 'discrepancy_deadline_staleness_commitment-1';
     scored.winner.suggestedActionType = 'send_message';
@@ -511,7 +560,7 @@ describe('generateDirective runtime failures', () => {
   });
 
   it('repairs decision-enforcement-only failures with a deterministic write_document fallback', async () => {
-    const scored = buildScorerResult();
+    const scored = asWinnerScored(buildScorerResult());
     scored.winner.type = 'commitment';
     scored.winner.suggestedActionType = 'write_document';
     scored.winner.title = "Commitment due in 0d: Webinar 'Algoritmo Zero' launch decision";
@@ -561,7 +610,7 @@ describe('generateDirective runtime failures', () => {
   });
 
   it('repairs send_message fallback with an explicit ask that passes enforcement', async () => {
-    const scored = buildScorerResult();
+    const scored = asWinnerScored(buildScorerResult());
     scored.winner.type = 'commitment';
     scored.winner.suggestedActionType = 'send_message';
     scored.winner.title = 'Commitment due today: confirm launch approval owner';
@@ -610,7 +659,7 @@ describe('generateDirective runtime failures', () => {
   });
 
   it('produces different repaired artifacts when causal diagnosis mechanism changes', async () => {
-    const scored = buildScorerResult();
+    const scored = asWinnerScored(buildScorerResult());
     scored.winner.type = 'commitment';
     scored.winner.suggestedActionType = 'write_document';
     scored.winner.title = 'Approval thread drift before legal cutoff';
@@ -691,7 +740,7 @@ describe('generateDirective runtime failures', () => {
     // entityName "Nicole Vreeland" after both sides strip whitespace.
     // scoreOpenLoops normally drops locked entities before generation; if a mocked winner still
     // carries the locked entity, buildDecisionPayload adds locked_contact_suppression before LLM.
-    const scored = buildScorerResult();
+    const scored = asWinnerScored(buildScorerResult());
     scored.winner.entityName = 'Nicole Vreeland';
     scored.winner.suggestedActionType = 'send_message';
     scored.winner.title = 'Follow up with Nicole about the reference letter';
@@ -717,7 +766,7 @@ describe('generateDirective runtime failures', () => {
   });
 
   it('does not block a send_message candidate whose entity name is not in the locked_contact list', async () => {
-    const scored = buildScorerResult();
+    const scored = asWinnerScored(buildScorerResult());
     scored.winner.entityName = 'Jane Smith';
     scored.winner.title = 'Follow up with Jane about the proposal';
     scored.winner.content = 'Jane has not responded to the proposal.';

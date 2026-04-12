@@ -14,7 +14,7 @@ import { validateDecisionPayload } from '../types';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────
 
-const mockScoreOpenLoops = vi.fn<() => Promise<ScorerResult | null>>();
+const mockScoreOpenLoops = vi.fn<() => Promise<ScorerResult>>();
 const mockIsOverDailyLimit = vi.fn<() => Promise<boolean>>();
 const mockTrackApiCall = vi.fn<() => Promise<void>>();
 const mockResearchWinner = vi.fn<() => Promise<null>>();
@@ -148,6 +148,7 @@ function buildWinner(overrides: Partial<ScoredLoop> = {}): ScoredLoop {
 
 function buildScorerResult(overrides: Partial<ScoredLoop> = {}): ScorerResult {
   return {
+    outcome: 'winner_selected',
     winner: buildWinner(overrides),
     topCandidates: [buildWinner(overrides)],
     deprioritized: [],
@@ -157,6 +158,7 @@ function buildScorerResult(overrides: Partial<ScoredLoop> = {}): ScorerResult {
     },
     antiPatterns: [],
     divergences: [],
+    exact_blocker: null,
   };
 }
 

@@ -15,7 +15,14 @@ import type {
   ValidArtifactTypeCanonical,
 } from './types';
 import { validateDecisionPayload } from './types';
-import type { DeprioritizedLoop, ScoredLoop, ScorerResult } from './scorer';
+import type {
+  DeprioritizedLoop,
+  ScoredLoop,
+  ScorerExactBlocker,
+  ScorerResult,
+  ScorerResultNoValidAction,
+  ScorerResultWinnerSelected,
+} from './scorer';
 import {
   enrichRelationshipContext,
   isThreadBackedSendableLoop,
@@ -4700,8 +4707,81 @@ function emptyDirective(reason: string, generationLog?: GenerationRunLog): Convi
   };
 }
 
+/**
+ * Deterministic operator-facing copy from scorer exact_blocker (one sentence directive + concrete fields).
+ */
+export function formatExactBlockerToOperatorText(block: ScorerExactBlocker): {
+  directive: string;
+  why_now: string;
+  blocked_by: string;
+} {
+  const title = block.top_blocked_candidate_title?.trim();
+  const stages = Object.entries(block.rejected_by_stage)
+    .map(([k, v]) => `${k}=${v}`)
+    .slice(0, 14)
+    .join(', ');
+
+  const directive = title
+    ? `Foldera is not authorizing an outbound send while “${title.slice(0, 110)}” remains below the final authorization bar.`
+    : `Foldera is not authorizing an outbound send today because ${block.blocker_reason.charAt(0).toLowerCase()}${block.blocker_reason.slice(1)}`.replace(/\s+/g, ' ').trim();
+
+  const why_now = block.suppression_goal_text
+    ? `A suppression goal still applies: ${block.suppression_goal_text.slice(0, 420).trim()}`
+    : `The strongest surfaced rows were notifications, suppressed, or failed ranking invariants — none cleared a thread-backed outbound move.`;
+
+  const blocked_by = [
+    block.blocker_reason,
+    title ? `Top surfaced row: “${title.slice(0, 100)}” (${block.top_blocked_candidate_type ?? 'unknown'} / ${block.top_blocked_candidate_action_type ?? 'unknown'}).` : null,
+    `Survivors above score floor before final gate: ${block.survivors_before_final_gate}.`,
+    stages ? `Stage drops: ${stages}.` : null,
+    block.suppression_goal_text ? `Suppression: ${block.suppression_goal_text.slice(0, 320)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return {
+    directive: directive.replace(/\s+/g, ' ').trim(),
+    why_now: why_now.replace(/\s+/g, ' ').trim(),
+    blocked_by: blocked_by.replace(/\s+/g, ' ').trim(),
+  };
+}
+
+function buildNoValidActionBlockerDirective(scored: ScorerResultNoValidAction): ConvictionDirective {
+  const b = scored.exact_blocker;
+  const { directive, why_now, blocked_by } = formatExactBlockerToOperatorText(b);
+  const baseLog = buildNoSendGenerationLog(b.blocker_reason, 'scoring', scored.candidateDiscovery);
+  const generationLog: GenerationRunLog = { ...baseLog, no_valid_action_blocker: true };
+
+  const embeddedArtifact = {
+    type: 'wait_rationale' as const,
+    context: `${why_now} ${blocked_by}`.slice(0, 3800),
+    evidence: blocked_by.slice(0, 1800),
+    tripwires: [
+      b.suppression_goal_text
+        ? `Re-evaluate when this suppression goal no longer applies: ${b.suppression_goal_text.slice(0, 220)}`
+        : 'Unlock when a thread-backed candidate clears the score floor and ranking invariants (fresh reply-worthy mail or commitment).',
+    ],
+  };
+
+  const evidence: EvidenceItem[] = [{ type: 'pattern', description: blocked_by.slice(0, 420) }];
+  if (b.suppression_goal_text) {
+    evidence.push({ type: 'goal', description: b.suppression_goal_text.slice(0, 420) });
+  }
+
+  return {
+    directive,
+    action_type: 'do_nothing',
+    confidence: 55,
+    reason: why_now,
+    evidence,
+    generationLog,
+    embeddedArtifact,
+    embeddedArtifactType: 'wait_rationale',
+  } as ConvictionDirective;
+}
+
 function buildBudgetCapDirectiveFromScored(
-  scored: ScorerResult,
+  scored: ScorerResultWinnerSelected,
   budgetRaw: unknown,
   rpcErrorMessage?: string,
 ): ConvictionDirective {
@@ -6875,7 +6955,7 @@ async function loadRecentActionGuardrails(userId: string): Promise<{
 // Confidence computation
 // ---------------------------------------------------------------------------
 
-function computeDirectiveConfidence(result: ScorerResult): number {
+function computeDirectiveConfidence(result: ScorerResultWinnerSelected): number {
   const runnerUpScore = result.deprioritized[0]?.score ?? 0;
   const winner = result.winner;
   const stakes = Math.min(1, winner.breakdown.stakes / 5);
@@ -6909,7 +6989,7 @@ function computeDirectiveConfidence(result: ScorerResult): number {
 // Evidence / context builders for directive output
 // ---------------------------------------------------------------------------
 
-function buildEvidenceItems(result: ScorerResult, payload: GeneratedDirectivePayload): EvidenceItem[] {
+function buildEvidenceItems(result: ScorerResultWinnerSelected, payload: GeneratedDirectivePayload): EvidenceItem[] {
   const evidence: EvidenceItem[] = [
     { type: 'signal', description: payload.insight.trim() },
   ];
@@ -6935,7 +7015,7 @@ function buildEvidenceItems(result: ScorerResult, payload: GeneratedDirectivePay
   return evidence;
 }
 
-function buildFullContext(result: ScorerResult, payload: GeneratedDirectivePayload): string {
+function buildFullContext(result: ScorerResultWinnerSelected, payload: GeneratedDirectivePayload): string {
   const sections = [
     // Lead with the non-obvious insight so it's always the first thing surfaced
     payload.insight?.trim() ? `INSIGHT: ${payload.insight.trim()}` : '',
@@ -7652,11 +7732,8 @@ export async function generateDirective(
       loadRecentActionGuardrails(userId),
     ]);
 
-    if (!scored?.winner) {
-      return emptyDirective(
-        'No ranked daily brief candidate.',
-        buildNoSendGenerationLog('No ranked daily brief candidate.', 'scoring', null),
-      );
+    if (scored.outcome === 'no_valid_action') {
+      return buildNoValidActionBlockerDirective(scored);
     }
 
     // Part 2b: Rank all candidates by viability before trying each one.

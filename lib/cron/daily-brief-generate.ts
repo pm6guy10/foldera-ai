@@ -399,8 +399,11 @@ export function isSendWorthy(
   artifact: ConvictionArtifact,
   userEmails?: Set<string>,
 ): { worthy: boolean; reason: string } {
-  // Must be a real action — do_nothing is a no-send outcome, not a user-facing directive
+  // do_nothing is normally a tombstone; structured scorer blockers are persisted on purpose.
   if (directive.action_type === 'do_nothing') {
+    if (directive.generationLog?.no_valid_action_blocker) {
+      return { worthy: true, reason: 'no_valid_action_blocker' };
+    }
     return { worthy: false, reason: 'do_nothing_directive' };
   }
 

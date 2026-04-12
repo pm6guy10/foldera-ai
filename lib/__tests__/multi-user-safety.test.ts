@@ -5,6 +5,7 @@ import { getSubscriptionStatus } from '@/lib/auth/subscription';
 import { filterDailyBriefEligibleUserIds } from '@/lib/auth/daily-brief-users';
 import * as userTokens from '@/lib/auth/user-tokens';
 import * as scorer from '@/lib/briefing/scorer';
+import type { ScorerResult } from '@/lib/briefing/scorer';
 import { SCORER_STATIC_DUPLICATE_STOPWORDS } from '@/lib/briefing/scorer';
 import {
   buildUserIdentityContext,
@@ -377,7 +378,7 @@ describe('multi-user safety', () => {
     await expect(scorer.scoreOpenLoops(FAKE_USER_ID)).resolves.toBeDefined();
   }, 120_000);
 
-  it('generateDirective handles null scorer result without throwing (safe empty directive)', async () => {
+  it('generateDirective maps scorer no_valid_action to a deterministic blocker (no failure sentinel)', async () => {
     const limitResult = async () => ({ data: [] as unknown[], error: null });
     const mockClient = {
       from: () => ({
@@ -398,11 +399,38 @@ describe('multi-user safety', () => {
     const dbSpy = vi.spyOn(dbClient, 'createServerClient').mockReturnValue(
       mockClient as ReturnType<typeof dbClient.createServerClient>,
     );
-    const scoreSpy = vi.spyOn(scorer, 'scoreOpenLoops').mockResolvedValue(null);
+    const noValid: ScorerResult = {
+      outcome: 'no_valid_action',
+      winner: null,
+      topCandidates: [],
+      deprioritized: [],
+      candidateDiscovery: {
+        candidateCount: 0,
+        suppressedCandidateCount: 0,
+        selectionMargin: null,
+        selectionReason: null,
+        failureReason: 'Unit test pool exhausted',
+        topCandidates: [],
+      },
+      antiPatterns: [],
+      divergences: [],
+      exact_blocker: {
+        blocker_type: 'unit_test',
+        blocker_reason: 'Test: no viable candidate.',
+        top_blocked_candidate_title: null,
+        top_blocked_candidate_type: null,
+        top_blocked_candidate_action_type: null,
+        suppression_goal_text: null,
+        survivors_before_final_gate: 0,
+        rejected_by_stage: {},
+      },
+    };
+    const scoreSpy = vi.spyOn(scorer, 'scoreOpenLoops').mockResolvedValue(noValid);
     try {
       const d = await generateDirective(FAKE_USER_ID, { dryRun: true, skipSpendCap: true });
       expect(d.action_type).toBe('do_nothing');
-      expect(d.reason).toContain('No ranked daily brief candidate');
+      expect(d.directive).not.toBe('__GENERATION_FAILED__');
+      expect(d.generationLog?.no_valid_action_blocker).toBe(true);
     } finally {
       dbSpy.mockRestore();
       scoreSpy.mockRestore();

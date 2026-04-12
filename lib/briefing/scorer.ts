@@ -451,7 +451,23 @@ export interface CandidateLifecycle {
   reason: string;
 }
 
-export interface ScorerResult {
+/** Structured explanation when no thread-backed outbound move is allowed. */
+export interface ScorerExactBlocker {
+  blocker_type: string;
+  blocker_reason: string;
+  top_blocked_candidate_title: string | null;
+  top_blocked_candidate_type: string | null;
+  top_blocked_candidate_action_type: ActionType | null;
+  /** Full suppression goal text when a DO NOT / SUPPRESS goal matched the strongest remaining candidate. */
+  suppression_goal_text: string | null;
+  /** Candidates with score above the floor before the final gate (diagnostic). */
+  survivors_before_final_gate: number;
+  /** Count of drops recorded per scorer filter stage (diagnostic). */
+  rejected_by_stage: Record<string, number>;
+}
+
+export interface ScorerResultWinnerSelected {
+  outcome: 'winner_selected';
   winner: ScoredLoop;
   /**
    * Top scored candidates (winner + runner-ups, capped) before kill-reason
@@ -462,11 +478,24 @@ export interface ScorerResult {
   topCandidates: ScoredLoop[];
   deprioritized: DeprioritizedLoop[];
   candidateDiscovery: GenerationCandidateDiscoveryLog;
-  /** Anti-patterns detected regardless of whether they won scoring */
   antiPatterns: AntiPattern[];
-  /** Revealed-preference divergences detected regardless of whether they won scoring */
   divergences: RevealedGoalDivergence[];
+  exact_blocker: null;
 }
+
+export interface ScorerResultNoValidAction {
+  outcome: 'no_valid_action';
+  winner: null;
+  /** Best remaining scored loops for context (may include sub-threshold or invariant-failed rows). */
+  topCandidates: ScoredLoop[];
+  deprioritized: DeprioritizedLoop[];
+  candidateDiscovery: GenerationCandidateDiscoveryLog;
+  antiPatterns: AntiPattern[];
+  divergences: RevealedGoalDivergence[];
+  exact_blocker: ScorerExactBlocker;
+}
+
+export type ScorerResult = ScorerResultWinnerSelected | ScorerResultNoValidAction;
 
 // ---------------------------------------------------------------------------
 // Diagnostic accumulator — captures every candidate drop at every stage.
@@ -2995,6 +3024,169 @@ function buildCandidateDiscoveryLog(
   };
 }
 
+function buildRejectedByStageCounts(diag: ScorerDiagnostics): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const stage of diag.filterStages) {
+    out[stage.stage] = stage.dropped.length;
+  }
+  return out;
+}
+
+function buildCandidateDiscoveryLogForNoWinner(
+  scored: ScoredLoop[],
+  suppressedCandidateCount: number,
+  failureReason: string,
+): GenerationCandidateDiscoveryLog {
+  const top = [...scored].sort(compareScoredLoops).slice(0, 3);
+  const rankedCandidates: GenerationCandidateLog[] = top.map((candidate, index) => {
+    const inv = getInvariantFailureReasons(candidate);
+    let decisionReason = 'Not eligible as today’s outbound move after the final scoring gate.';
+    if (candidate.score <= 0.001) {
+      decisionReason = 'Score at or below the generation floor (suppression, repeat penalty, or validity).';
+    } else if (inv.length > 0) {
+      decisionReason = `Ranking invariant: ${inv.join('; ')}.`;
+    }
+    const logDiscrepancyClass =
+      candidate.type === 'discrepancy'
+        ? (candidate.discrepancyClass
+          ?? (candidate.id.startsWith('discrepancy_conflict_') ? 'schedule_conflict' : undefined))
+        : undefined;
+
+    return {
+      id: candidate.id,
+      rank: index + 1,
+      candidateType: candidate.fromInsightScan ? 'insight' : candidate.type,
+      ...(logDiscrepancyClass ? { discrepancyClass: logDiscrepancyClass } : {}),
+      actionType: candidate.suggestedActionType,
+      score: Number(candidate.score.toFixed(2)),
+      scoreBreakdown: candidate.breakdown,
+      targetGoal: candidate.matchedGoal
+        ? {
+          text: candidate.matchedGoal.text,
+          priority: candidate.matchedGoal.priority,
+          category: candidate.matchedGoal.category,
+        }
+        : null,
+      sourceSignals: candidate.sourceSignals,
+      decision: 'rejected',
+      decisionReason,
+    };
+  });
+
+  return {
+    candidateCount: scored.length,
+    suppressedCandidateCount,
+    selectionMargin: null,
+    selectionReason: null,
+    failureReason,
+    topCandidates: rankedCandidates,
+  };
+}
+
+function inferSuppressionGoalTextForPool(
+  scored: ScoredLoop[],
+  suppressionEntities: ReadonlyArray<SuppressionGoalEntityPattern>,
+): string | null {
+  const sorted = [...scored].sort(compareScoredLoops);
+  for (const c of sorted) {
+    const { patternMatched, matchedGoalText } = evaluateSuppressionGoalMatch(
+      c.title,
+      c.content,
+      c.suggestedActionType,
+      c.entityName,
+      suppressionEntities,
+      CONTACT_ACTION_TYPES,
+    );
+    if (patternMatched && matchedGoalText) {
+      return matchedGoalText;
+    }
+  }
+  return null;
+}
+
+function buildTopBlockedFields(scored: ScoredLoop[]): {
+  title: string | null;
+  type: string | null;
+  actionType: ActionType | null;
+} {
+  if (scored.length === 0) {
+    return { title: null, type: null, actionType: null };
+  }
+  const top = [...scored].sort(compareScoredLoops)[0];
+  return {
+    title: top.title.slice(0, 200),
+    type: top.type,
+    actionType: top.suggestedActionType,
+  };
+}
+
+function buildNoValidActionFinalGateExactBlocker(
+  scored: ScoredLoop[],
+  suppressionEntities: ReadonlyArray<SuppressionGoalEntityPattern>,
+  diag: ScorerDiagnostics,
+): ScorerExactBlocker {
+  const rejected_by_stage = buildRejectedByStageCounts(diag);
+  const suppression_goal_text = inferSuppressionGoalTextForPool(scored, suppressionEntities);
+  const top = buildTopBlockedFields(scored);
+  const survivors_before_final_gate = scored.filter((c) => c.score > 0.001).length;
+
+  const primaryReason =
+    suppression_goal_text
+      ? 'No outbound move cleared the bar: a suppression goal still matches the strongest surfaced candidate (or every candidate was scored to zero).'
+      : scored.length === 0
+        ? 'No candidates remained after upstream scoring gates.'
+        : 'No candidate combined sufficient score and ranking invariants to authorize an outbound move today.';
+
+  return {
+    blocker_type: 'no_valid_action_final_gate',
+    blocker_reason: primaryReason,
+    top_blocked_candidate_title: top.title,
+    top_blocked_candidate_type: top.type,
+    top_blocked_candidate_action_type: top.actionType,
+    suppression_goal_text,
+    survivors_before_final_gate,
+    rejected_by_stage,
+  };
+}
+
+function buildNoValidActionEarlyExitExactBlocker(
+  diag: ScorerDiagnostics,
+  blocker_type: string,
+  blocker_reason: string,
+): ScorerExactBlocker {
+  return {
+    blocker_type,
+    blocker_reason,
+    top_blocked_candidate_title: null,
+    top_blocked_candidate_type: null,
+    top_blocked_candidate_action_type: null,
+    suppression_goal_text: null,
+    survivors_before_final_gate: 0,
+    rejected_by_stage: buildRejectedByStageCounts(diag),
+  };
+}
+
+function wrapNoValidActionResult(params: {
+  antiPatterns: AntiPattern[];
+  divergences: RevealedGoalDivergence[];
+  scored: ScoredLoop[];
+  suppressedCandidates: number;
+  candidateDiscovery: GenerationCandidateDiscoveryLog;
+  exact_blocker: ScorerExactBlocker;
+}): ScorerResultNoValidAction {
+  const topCandidates = [...params.scored].sort(compareScoredLoops).slice(0, 3);
+  return {
+    outcome: 'no_valid_action',
+    winner: null,
+    topCandidates,
+    deprioritized: [],
+    candidateDiscovery: params.candidateDiscovery,
+    antiPatterns: params.antiPatterns,
+    divergences: params.divergences,
+    exact_blocker: params.exact_blocker,
+  };
+}
+
 /**
  * Classify why a loop lost to the winner.
  * - Noise: High Urgency but Low Stakes (no goal alignment → feels urgent but doesn't matter)
@@ -3650,7 +3842,7 @@ function huntFindingToScoredLoop(f: HuntFinding): ScoredLoop {
 export async function scoreOpenLoops(
   userId: string,
   options?: { pipelineDryRun?: boolean; extraSuppressedCandidateKeys?: Set<string> },
-): Promise<ScorerResult | null> {
+): Promise<ScorerResult> {
   const diag = initDiagnostics();
   _lastDiagnostics = diag;
 
@@ -4679,7 +4871,23 @@ export async function scoreOpenLoops(
       }, {} as Record<string, number>),
     }));
     diag.earlyExitStage = 'entity_reality_gate';
-    return null;
+    diag.finalOutcome = 'no_valid_action';
+    return wrapNoValidActionResult({
+      antiPatterns,
+      divergences: [],
+      scored: [],
+      suppressedCandidates: 0,
+      candidateDiscovery: buildCandidateDiscoveryLogForNoWinner(
+        [],
+        0,
+        'No candidates passed the entity reality gate.',
+      ),
+      exact_blocker: buildNoValidActionEarlyExitExactBlocker(
+        diag,
+        'early_exit_entity_reality_gate',
+        'No thread-backed candidates passed the entity reality gate (verified human correspondence required).',
+      ),
+    });
   }
 
   // -----------------------------------------------------------------------
@@ -4728,10 +4936,24 @@ export async function scoreOpenLoops(
   diag.filterStages.push({ stage: 'stakes_gate', before: preStakesGateCount, after: candidates.length, dropped: stakesDrops });
 
   if (candidates.length === 0) {
-    // No board-changing candidates survived the stakes gate. Return null for
-    // a valid no-send. A correct NO_ACTION is better than a weak directive.
     diag.earlyExitStage = 'stakes_gate';
-    return null;
+    diag.finalOutcome = 'no_valid_action';
+    return wrapNoValidActionResult({
+      antiPatterns,
+      divergences: [],
+      scored: [],
+      suppressedCandidates: 0,
+      candidateDiscovery: buildCandidateDiscoveryLogForNoWinner(
+        [],
+        0,
+        'No candidates passed the stakes gate.',
+      ),
+      exact_blocker: buildNoValidActionEarlyExitExactBlocker(
+        diag,
+        'early_exit_stakes_gate',
+        'No candidates passed the stakes gate (board-changing outcome required).',
+      ),
+    });
   }
 
   // -----------------------------------------------------------------------
@@ -4780,7 +5002,23 @@ export async function scoreOpenLoops(
     }
     if (candidates.length === 0) {
       diag.earlyExitStage = 'failure_suppression';
-      return null;
+      diag.finalOutcome = 'no_valid_action';
+      return wrapNoValidActionResult({
+        antiPatterns,
+        divergences: [],
+        scored: [],
+        suppressedCandidates: 0,
+        candidateDiscovery: buildCandidateDiscoveryLogForNoWinner(
+          [],
+          0,
+          'All candidates were filtered by recent duplicate or validation-failure memory.',
+        ),
+        exact_blocker: buildNoValidActionEarlyExitExactBlocker(
+          diag,
+          'early_exit_failure_suppression',
+          'Every candidate was removed by recent duplicate or validation-failure suppression.',
+        ),
+      });
     }
   }
 
@@ -4850,7 +5088,23 @@ export async function scoreOpenLoops(
     });
     if (candidates.length === 0) {
       diag.earlyExitStage = 'locked_contact_pre_filter';
-      return null;
+      diag.finalOutcome = 'no_valid_action';
+      return wrapNoValidActionResult({
+        antiPatterns,
+        divergences: [],
+        scored: [],
+        suppressedCandidates: 0,
+        candidateDiscovery: buildCandidateDiscoveryLogForNoWinner(
+          [],
+          0,
+          'All candidates were excluded by locked-contact constraints.',
+        ),
+        exact_blocker: buildNoValidActionEarlyExitExactBlocker(
+          diag,
+          'early_exit_locked_contact',
+          'Every remaining candidate targeted a locked contact excluded by your constraints.',
+        ),
+      });
     }
   }
 
@@ -6171,8 +6425,7 @@ export async function scoreOpenLoops(
   //
   // Any candidate with score ≤ SCORED_MIN_THRESHOLD is effectively zeroed
   // (suppressed by entity penalty, suppression goals, or validity filter).
-  // If no candidate clears the bar, return null — a clean no-send — rather
-  // than forwarding a worthless candidate to the generator.
+  // If no candidate clears the bar, return structured no_valid_action — never null.
   //
   // Captures:
   //   - previously-skipped identical directives (same entity + action type
@@ -6242,11 +6495,22 @@ export async function scoreOpenLoops(
         threshold: SCORED_MIN_THRESHOLD,
       },
     });
-    return null;
+    const exactBlocker = buildNoValidActionFinalGateExactBlocker(scored, suppressionEntities, diag);
+    return wrapNoValidActionResult({
+      antiPatterns,
+      divergences,
+      scored,
+      suppressedCandidates,
+      candidateDiscovery: buildCandidateDiscoveryLogForNoWinner(
+        scored,
+        suppressedCandidates,
+        exactBlocker.blocker_reason,
+      ),
+      exact_blocker: exactBlocker,
+    });
   }
 
   const winner = validScoredCandidates[0];
-  if (!winner) return null;
 
   // Populate final winner diagnostic
   diag.finalOutcome = 'winner_selected';
@@ -6275,12 +6539,14 @@ export async function scoreOpenLoops(
   });
 
   return {
+    outcome: 'winner_selected',
     winner,
     topCandidates: validScoredCandidates.slice(0, 3),
     deprioritized,
     candidateDiscovery: buildCandidateDiscoveryLog(winner, scored, suppressedCandidates, null),
     antiPatterns,
     divergences,
+    exact_blocker: null,
   };
 }
 

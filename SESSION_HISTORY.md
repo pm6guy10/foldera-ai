@@ -76,6 +76,12 @@ Do not call a task complete with local-only reasoning when Playwright, Vercel, S
 
 ## Session Logs
 
+- 2026-04-12 — Scorer/generator: structured `no_valid_action` (no null); deterministic blocker artifact
+ MODE: FEATURE
+ Files changed: `lib/briefing/scorer.ts`, `lib/briefing/generator.ts`, `lib/briefing/types.ts`, `lib/cron/daily-brief-generate.ts`, `lib/briefing/__tests__/no-valid-action.test.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/briefing/__tests__/usefulness-gate.test.ts`, `lib/briefing/__tests__/decision-payload-adversarial.test.ts`, `lib/__tests__/multi-user-safety.test.ts`, `SESSION_HISTORY.md`
+ What was verified: `npm run health`; `npx vitest run lib/briefing/__tests__/no-valid-action.test.ts lib/briefing/__tests__/generator-runtime.test.ts`; `npm run build`
+ Changes: `scoreOpenLoops` always returns `ScorerResult` (`winner_selected` | `no_valid_action`) with `exact_blocker` diagnostics; early exits and final gate return structured payloads instead of `null`. `generateDirective` builds `do_nothing` + embedded `wait_rationale` + `generationLog.no_valid_action_blocker`; daily `isSendWorthy` allows persistence for that flag.
+
 - 2026-04-12 — Generator: `PROOF_MODE_THREAD_BACKED_SEND_ONLY` golden path (external send_message only)
  MODE: FEATURE
  Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/proof-mode-thread-backed-send.test.ts`, `SESSION_HISTORY.md`
