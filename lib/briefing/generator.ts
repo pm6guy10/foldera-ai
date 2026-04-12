@@ -101,6 +101,20 @@ function getAnomalyPassModelAndPromptCap(): { model: string; maxPromptChars: num
 const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
 const STALE_SIGNAL_THRESHOLD_DAYS = 21;
 
+/**
+ * Thread-backed external `send_message` proof path: no write_document / schedule_block /
+ * wait_rationale / do_nothing wins when enabled.
+ *
+ * Defaults **on** in production; defaults **off** when `NODE_ENV=test` so Vitest integration
+ * tests stay unchanged. Override anytime with `FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY=true|false`.
+ */
+export function isProofModeThreadBackedSendOnly(): boolean {
+  const o = process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY;
+  if (o === 'true' || o === '1') return true;
+  if (o === 'false' || o === '0') return false;
+  return process.env.NODE_ENV !== 'test';
+}
+
 /** Exact operator-visible mock body for HTTP `dry_run=true` / `pipelineDryRun` (no Anthropic). */
 export const PIPELINE_DRY_RUN_MOCK_ARTIFACT = '[DRY RUN - no API call made]';
 
@@ -1976,6 +1990,86 @@ function isEligibleExternalPeerEmail(address: string, userEmails?: Set<string>):
   if (isBlockedSender(lower)) return false;
   if (isAutomatedRoutingRecipient(lower)) return false;
   return true;
+}
+
+/** At least one grounded recipient line in facts is a non-self, non-automated external address. */
+function proofModeHasEligibleExternalRecipientInFacts(
+  ctx: StructuredContext,
+  userEmails: Set<string> | undefined,
+): boolean {
+  for (const f of ctx.surgical_raw_facts) {
+    const m = f.match(/^(?:recipient_email|hunt_grounded_peer_email|contact_email):\s*(.+)$/i);
+    if (!m?.[1]) continue;
+    const email = m[1].trim();
+    if (isEligibleExternalPeerEmail(email, userEmails)) return true;
+  }
+  return false;
+}
+
+export type ProofModePreflightSkipEvent =
+  | 'proof_mode_candidate_skipped_non_send'
+  | 'proof_mode_candidate_skipped_no_real_recipient'
+  | 'proof_mode_candidate_skipped_not_thread_backed'
+  | 'proof_mode_candidate_skipped_low_value_promo';
+
+export type ProofModeThreadBackedSendPreflightResult =
+  | { ok: true }
+  | { ok: false; event: ProofModePreflightSkipEvent; detail?: string };
+
+/**
+ * Proof-mode gates before LLM spend: only ranked candidates that can still end in
+ * real external thread-backed send_message are allowed through.
+ */
+export function evaluateProofModeThreadBackedSendPreflight(input: {
+  proofModeEnabled: boolean;
+  decisionRecommendedAction: ValidArtifactTypeCanonical;
+  ctx: StructuredContext;
+  hydratedWinner: ScoredLoop;
+  userEmails: Set<string> | undefined;
+}): ProofModeThreadBackedSendPreflightResult {
+  if (!input.proofModeEnabled) return { ok: true };
+  const { decisionRecommendedAction, ctx, hydratedWinner, userEmails } = input;
+  if (decisionRecommendedAction !== 'send_message') {
+    return {
+      ok: false,
+      event: 'proof_mode_candidate_skipped_non_send',
+      detail: decisionRecommendedAction,
+    };
+  }
+  if (!ctx.has_real_recipient) {
+    return {
+      ok: false,
+      event: 'proof_mode_candidate_skipped_no_real_recipient',
+      detail: 'has_real_recipient_false',
+    };
+  }
+  if (!proofModeHasEligibleExternalRecipientInFacts(ctx, userEmails)) {
+    return {
+      ok: false,
+      event: 'proof_mode_candidate_skipped_no_real_recipient',
+      detail: 'no_eligible_external_recipient_in_facts',
+    };
+  }
+  if (!isThreadBackedSendableLoop(hydratedWinner)) {
+    return {
+      ok: false,
+      event: 'proof_mode_candidate_skipped_not_thread_backed',
+      detail: `${hydratedWinner.type}:${hydratedWinner.id.slice(0, 48)}`,
+    };
+  }
+  if (isLowValueHuntSendMessagePresentation(hydratedWinner)) {
+    return { ok: false, event: 'proof_mode_candidate_skipped_low_value_promo' };
+  }
+  return { ok: true };
+}
+
+/** In proof mode, success means persisted canonical action is send_message only. */
+export function proofModeCanonicalCountsAsProofSuccess(
+  proofModeEnabled: boolean,
+  canonicalAction: ValidArtifactTypeCanonical,
+): boolean {
+  if (!proofModeEnabled) return true;
+  return canonicalAction === 'send_message';
 }
 
 /**
@@ -7940,6 +8034,36 @@ export async function generateDirective(
         continue; // ← THE FIX: try next candidate instead of dying
       }
 
+      if (isProofModeThreadBackedSendOnly()) {
+        const proofPre = evaluateProofModeThreadBackedSendPreflight({
+          proofModeEnabled: true,
+          decisionRecommendedAction: decisionPayload.recommended_action,
+          ctx,
+          hydratedWinner,
+          userEmails,
+        });
+        if (!proofPre.ok) {
+          candidateBlockLog.push({
+            title: currentCandidate.title.slice(0, 80),
+            reasons: [`${proofPre.event}${proofPre.detail ? `:${proofPre.detail}` : ''}`],
+          });
+          logStructuredEvent({
+            event: proofPre.event,
+            level: 'info',
+            userId,
+            artifactType: null,
+            generationStatus: 'proof_mode_preflight_skip',
+            details: {
+              scope: 'generator',
+              detail: proofPre.detail ?? null,
+              candidate_title: currentCandidate.title.slice(0, 80),
+              candidate_id: currentCandidate.id,
+            },
+          });
+          continue;
+        }
+      }
+
       // Confidence threshold gate
       if (confidence < dynamicThreshold) {
         candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [`confidence_${confidence}_below_${dynamicThreshold}`] });
@@ -8024,19 +8148,43 @@ export async function generateDirective(
             { userIdForLogs: userId },
           );
           if (repairedIssues.length === 0) {
-            payloadResult = { issues: [], payload: repairedPayload };
-            logStructuredEvent({
-              event: 'candidate_repaired',
-              level: 'info',
-              userId,
-              artifactType: decisionPayload.recommended_action,
-              generationStatus: 'decision_enforcement_repaired',
-              details: {
-                scope: 'generator',
-                candidate_title: currentCandidate.title.slice(0, 80),
-                repaired_from_issues: originalIssues,
-              },
-            });
+            if (
+              isProofModeThreadBackedSendOnly() &&
+              decisionPayload.recommended_action === 'send_message' &&
+              repairedPayload.artifact_type !== 'send_message'
+            ) {
+              logStructuredEvent({
+                event: 'proof_mode_candidate_skipped_non_send',
+                level: 'info',
+                userId,
+                artifactType: repairedPayload.artifact_type ?? null,
+                generationStatus: 'proof_mode_repair_non_send_blocked',
+                details: {
+                  scope: 'generator',
+                  candidate_title: currentCandidate.title.slice(0, 80),
+                  repaired_artifact_type: repairedPayload.artifact_type,
+                },
+              });
+              payloadResult = {
+                issues: [...originalIssues, 'proof_mode: decision-enforcement repair produced non-send artifact'],
+                payload: null,
+                pendingLowCrossSignalFallback: pendingLowCross,
+              };
+            } else {
+              payloadResult = { issues: [], payload: repairedPayload };
+              logStructuredEvent({
+                event: 'candidate_repaired',
+                level: 'info',
+                userId,
+                artifactType: decisionPayload.recommended_action,
+                generationStatus: 'decision_enforcement_repaired',
+                details: {
+                  scope: 'generator',
+                  candidate_title: currentCandidate.title.slice(0, 80),
+                  repaired_from_issues: originalIssues,
+                },
+              });
+            }
           } else {
             logStructuredEvent({
               event: 'candidate_repair_failed',
@@ -8064,6 +8212,7 @@ export async function generateDirective(
       }
 
       if (
+        !isProofModeThreadBackedSendOnly() &&
         !payloadResult.payload &&
         payloadResult.pendingLowCrossSignalFallback &&
         (decisionPayload.recommended_action === 'send_message' ||
@@ -8090,6 +8239,31 @@ export async function generateDirective(
           });
           payloadResult = { issues: [], payload: fallback, lowCrossSignalWaitRationale: true };
         }
+      } else if (
+        isProofModeThreadBackedSendOnly() &&
+        !payloadResult.payload &&
+        payloadResult.pendingLowCrossSignalFallback &&
+        (decisionPayload.recommended_action === 'send_message' ||
+          decisionPayload.recommended_action === 'write_document')
+      ) {
+        logStructuredEvent({
+          event: 'proof_mode_candidate_skipped_non_send',
+          level: 'info',
+          userId,
+          artifactType: null,
+          generationStatus: 'proof_mode_low_cross_wait_blocked',
+          details: {
+            scope: 'generator',
+            candidate_title: currentCandidate.title.slice(0, 80),
+            original_commitment: decisionPayload.recommended_action,
+            note: 'low_cross_signal would degrade to wait_rationale — blocked in proof mode',
+          },
+        });
+        candidateBlockLog.push({
+          title: currentCandidate.title.slice(0, 80),
+          reasons: ['proof_mode:low_cross_wait_rationale_blocked'],
+        });
+        continue;
       }
     }
 
@@ -8140,6 +8314,53 @@ export async function generateDirective(
       canonicalAction = 'wait_rationale';
     }
     const llmAttemptedAction = payload.artifact_type;
+
+    if (
+      isProofModeThreadBackedSendOnly() &&
+      !proofModeCanonicalCountsAsProofSuccess(true, canonicalAction)
+    ) {
+      candidateBlockLog.push({
+        title: currentCandidate.title.slice(0, 80),
+        reasons: [`proof_mode:blocked_canonical_${canonicalAction}`],
+      });
+      logStructuredEvent({
+        event: 'proof_mode_candidate_skipped_non_send',
+        level: 'info',
+        userId,
+        artifactType: canonicalAction,
+        generationStatus: 'proof_mode_blocked_canonical_outcome',
+        details: {
+          scope: 'generator',
+          canonical_action: canonicalAction,
+          low_cross_wait_rationale: Boolean(payloadResult.lowCrossSignalWaitRationale),
+          candidate_title: currentCandidate.title.slice(0, 80),
+        },
+      });
+      continue;
+    }
+
+    if (
+      isProofModeThreadBackedSendOnly() &&
+      payload.artifact_type !== 'send_message'
+    ) {
+      candidateBlockLog.push({
+        title: currentCandidate.title.slice(0, 80),
+        reasons: [`proof_mode:artifact_type_${payload.artifact_type}`],
+      });
+      logStructuredEvent({
+        event: 'proof_mode_candidate_skipped_non_send',
+        level: 'info',
+        userId,
+        artifactType: payload.artifact_type ?? null,
+        generationStatus: 'proof_mode_blocked_artifact_type',
+        details: {
+          scope: 'generator',
+          artifact_type: payload.artifact_type,
+          candidate_title: currentCandidate.title.slice(0, 80),
+        },
+      });
+      continue;
+    }
 
     if (llmAttemptedAction !== canonicalAction) {
       logStructuredEvent({
@@ -8486,6 +8707,21 @@ export async function generateDirective(
       },
     });
 
+    if (isProofModeThreadBackedSendOnly()) {
+      logStructuredEvent({
+        event: 'proof_mode_send_message_success',
+        level: 'info',
+        userId,
+        artifactType: 'send_message',
+        generationStatus: 'proof_mode_send_message_success',
+        details: {
+          scope: 'generator',
+          candidate_id: currentCandidate.id,
+          candidate_title: currentCandidate.title.slice(0, 80),
+        },
+      });
+    }
+
     return directive;
     } // end candidate fallback loop
 
@@ -8498,6 +8734,11 @@ export async function generateDirective(
       (bl) => `"${bl.title}" → ${bl.reasons.join('; ')}`,
     ).join(' | ');
     const summaryReason = `All ${rankedCandidates.length} candidates blocked: ${allBlockReasons}`;
+    const proofModeFailureMessage =
+      'No thread-backed external send_message candidate cleared proof-mode gates.';
+    const failureUserReason = isProofModeThreadBackedSendOnly()
+      ? proofModeFailureMessage
+      : summaryReason;
     console.log(`[generator] ${summaryReason}`);
     logStructuredEvent({
       event: 'all_candidates_blocked', level: 'warn', userId,
@@ -8508,9 +8749,24 @@ export async function generateDirective(
         block_log: candidateBlockLog,
       },
     });
+    if (isProofModeThreadBackedSendOnly()) {
+      logStructuredEvent({
+        event: 'proof_mode_all_candidates_failed',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'proof_mode_all_candidates_failed',
+        details: {
+          scope: 'generator',
+          candidate_count: rankedCandidates.length,
+          block_log: candidateBlockLog,
+          summary_reason: summaryReason,
+        },
+      });
+    }
     return emptyDirective(
-      summaryReason,
-      buildNoSendGenerationLog(summaryReason, 'validation', scored.candidateDiscovery),
+      failureUserReason,
+      buildNoSendGenerationLog(failureUserReason, 'validation', scored.candidateDiscovery),
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

@@ -76,6 +76,12 @@ Do not call a task complete with local-only reasoning when Playwright, Vercel, S
 
 ## Session Logs
 
+- 2026-04-12 — Generator: `PROOF_MODE_THREAD_BACKED_SEND_ONLY` golden path (external send_message only)
+ MODE: FEATURE
+ Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/proof-mode-thread-backed-send.test.ts`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npx vitest run lib/briefing/__tests__/proof-mode-thread-backed-send.test.ts lib/briefing/__tests__/generator.test.ts lib/briefing/__tests__/pipeline-receipt.test.ts lib/cron/__tests__/daily-brief.test.ts`; `npm run build`
+ Changes: Strict proof mode gates pre-LLM (`evaluateProofModeThreadBackedSendPreflight`), block low-cross `wait_rationale`, block non-send repair outcomes, require canonical + artifact `send_message`, structured events (`proof_mode_*`), fail-closed user reason when no candidate clears; exported `proofModeCanonicalCountsAsProofSuccess` for tests. **`isProofModeThreadBackedSendOnly()`** — on in production, off when `NODE_ENV=test` (Vitest), override with `FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY`.
+
 - 2026-04-11 — Repo doctrine: mandatory Tool Routing (Playwright, Vercel, Supabase, Sentry, Browserstack) + hard-stop truth-tool sentence
  MODE: HYGIENE
  Commit hash(es): pending
