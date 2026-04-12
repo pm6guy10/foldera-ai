@@ -19,6 +19,26 @@ const nextConfig = {
   },
   async headers() {
     return [
+      // Public HTML: allow CDN/browser storage but require revalidation so “stale tab” sessions
+      // pick up new document shells after deploy (asset URLs still content-hashed by Next).
+      {
+        source: '/',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/pricing',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
       // Session-scoped JSON (e.g. GET /api/integrations/status) — never cache on shared caches;
       // s-maxage caused stale connector state after OAuth reconnect on production.
       {

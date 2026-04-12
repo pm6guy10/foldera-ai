@@ -43,8 +43,8 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
     <nav
       className={`fixed top-0 w-full z-[60] overflow-visible transition-all duration-500 pt-[env(safe-area-inset-top,0px)] ${
         scrolled
-          ? 'bg-black/90 backdrop-blur-2xl border-b border-white/5 py-4 shadow-2xl'
-          : 'bg-transparent py-4 md:py-8'
+          ? 'bg-[#07070c]/92 backdrop-blur-xl border-b border-white/[0.06] py-3.5 shadow-[0_12px_48px_-16px_rgba(0,0,0,0.75)]'
+          : 'bg-transparent py-4 md:py-7'
       }`}
     >
       <div className="max-w-[min(100%,112rem)] mx-auto px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 flex items-center justify-between min-w-0 gap-3">

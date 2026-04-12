@@ -3,6 +3,7 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { Providers } from "./providers";
+import { BuildMarker } from "@/components/BuildMarker";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -73,6 +74,7 @@ export default function RootLayout({ children }) {
         <Providers>
           {children}
         </Providers>
+        <BuildMarker />
       </body>
     </html>
   );

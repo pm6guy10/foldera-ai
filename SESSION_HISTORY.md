@@ -4015,3 +4015,9 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Files changed: `supabase/migrations/20260412161045_tkg_signals_user_occurred_at_index.sql`
 - What changed: Added `idx_tkg_signals_user_occurred_at` on `public.tkg_signals (user_id, occurred_at)`; applied to production via Supabase MCP. Removes sort-on-user_id plan for `created_at < … ORDER BY occurred_at ASC` (e.g. `lib/signals/summarizer.ts`); verified with `EXPLAIN` on a high-row user: `Index Scan using idx_tkg_signals_user_occurred_at` + `Limit`, no `Sort`.
 - Verification: `npm run health` (0 failing); `npm run build`; Supabase `list_migrations` includes `tkg_signals_user_occurred_at_index`; `execute_sql` confirms index exists.
+
+## 2026-04-12 — Deploy freshness marker, dynamic marketing HTML, premium homepage polish
+- MODE: FLOW
+- Files changed: `app/page.tsx`, `app/HomePageClient.tsx` (split from former `app/page.tsx`), `app/layout.js`, `components/BuildMarker.tsx`, `components/nav/NavPublic.tsx`, `next.config.mjs`, `SESSION_HISTORY.md`
+- What changed: Stale-shell audit documented (no service worker / PWA / Cache Storage in repo). Homepage route uses `force-dynamic`; `Cache-Control: public, max-age=0, must-revalidate` on `/` and `/pricing`; global server-rendered build fingerprint (`VERCEL_GIT_COMMIT_SHA`, 7 chars) bottom-right. Nav scrolled state softened; hero badge/proof strip and scenario section gradient/scenario card treatments reduced visual fatigue.
+- Verification: `npm run health` (0 failing); `npm run build`; Playwright local mobile visual QA + production mobile marketing layout (see session receipt).
