@@ -66,7 +66,7 @@ export function AgentSystemPanel() {
     return (
       <div className="mt-10 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-6 py-10 text-center">
         <p className="text-sm text-zinc-300">No agent drafts in queue.</p>
-        <p className="text-xs text-zinc-500 mt-2">Silence means healthy — or agents are disabled in Settings.</p>
+        <p className="text-xs text-zinc-500 mt-2">Silence means healthy — or agents are off in System tools.</p>
       </div>
     );
   }

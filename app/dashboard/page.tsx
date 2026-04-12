@@ -3,11 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { FolderaMark } from '@/components/nav/FolderaMark';
-import { signOut, useSession } from 'next-auth/react';
-import { Settings, Lock, LogOut, History } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { Settings, Lock, History } from 'lucide-react';
 import type { ConvictionAction } from '@/lib/briefing/types';
-import { OWNER_USER_ID } from '@/lib/auth/constants';
-import { AgentSystemPanel } from '@/components/dashboard/AgentSystemPanel';
 
 type ArtifactWithDraftedEmail = {
   type: string;
@@ -49,12 +47,7 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
-  const { data: session, status } = useSession();
-  const isOwner =
-    mounted &&
-    status === 'authenticated' &&
-    session?.user?.id === OWNER_USER_ID;
-  const [mainTab, setMainTab] = useState<'directive' | 'system'>('directive');
+  const { status } = useSession();
   const [action, setAction] = useState<ActionWithDomain | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
@@ -413,14 +406,6 @@ export default function DashboardPage() {
             <Link href="/dashboard/settings" className="touch-manipulation min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]" aria-label="Settings">
               <Settings className="w-5 h-5" />
             </Link>
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: '/' })}
-              className="touch-manipulation min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-              aria-label="Sign out"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </header>
@@ -448,42 +433,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {isOwner && (
-          <div className="flex gap-1 p-1 rounded-xl bg-zinc-900/80 border border-white/10 mb-6 max-w-md">
-            <button
-              type="button"
-              onClick={() => setMainTab('directive')}
-              className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${
-                mainTab === 'directive' ? 'bg-cyan-500/20 text-cyan-300' : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              Directive
-            </button>
-            <button
-              type="button"
-              onClick={() => setMainTab('system')}
-              className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${
-                mainTab === 'system' ? 'bg-emerald-500/20 text-emerald-300' : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              System
-            </button>
-          </div>
-        )}
-
-        {isOwner && mainTab === 'system' ? (
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400 mb-1">Autonomous agents</p>
-            <h1 className="text-xl font-bold text-white">Draft queue</h1>
-            <p className="text-sm text-zinc-500 mt-1">
-              Agent outputs stay out of your morning email. Approve to file artifacts, or skip to train the agent.
-            </p>
-            <AgentSystemPanel />
-          </div>
-        ) : null}
-
-        {(!isOwner || mainTab === 'directive') && (
-          <>
         {/* Flash message */}
         {flash && !done && (
           <div
@@ -751,8 +700,6 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
-        )}
-          </>
         )}
 
       </main>

@@ -415,20 +415,26 @@ test.describe('Section 4 — API health check', () => {
 // ── SECTION 5: Generate now button ────────────────────────────────────────
 
 test.describe('Section 5 — Generate now button', () => {
-  test('click Generate now on /dashboard/settings', async ({ browser }) => {
+  test('click Generate now on /dashboard/system', async ({ browser }) => {
     test.setTimeout(180_000);
 
     const ctx = await authContext(browser);
     const page = await ctx.newPage();
-    const pageLabel = 'settings/generate-now';
+    const pageLabel = 'system/generate-now';
     const localFindings: Finding[] = [];
 
     try {
-      await page.goto('/dashboard/settings', { waitUntil: 'networkidle' });
+      await page.goto('/dashboard/system', { waitUntil: 'networkidle' });
 
       const finalUrl = page.url();
       if (finalUrl.includes('/login') || finalUrl.includes('/start')) {
         record('INFO', 'auth-guard', pageLabel, `Redirected to ${finalUrl} — skipping Generate now test`);
+        await ctx.close();
+        expect(true).toBe(true);
+        return;
+      }
+      if (!finalUrl.includes('/dashboard/system')) {
+        record('INFO', 'generate-now', pageLabel, `Not on system tools (owner-only) — got ${finalUrl}`);
         await ctx.close();
         expect(true).toBe(true);
         return;
@@ -448,7 +454,7 @@ test.describe('Section 5 — Generate now button', () => {
       const btnVisible = await generateBtn.isVisible({ timeout: 5000 }).catch(() => false);
 
       if (!btnVisible) {
-        record('INFO', 'generate-now', pageLabel, 'Run pipeline (dry run) button not found on /dashboard/settings');
+        record('INFO', 'generate-now', pageLabel, 'Run pipeline (dry run) button not found on /dashboard/system');
         await ctx.close();
         expect(true).toBe(true);
         return;

@@ -255,10 +255,15 @@ describeAuth('Authenticated: Settings interactions', () => {
 });
 
 describeAuth('Authenticated: Path B Generation Loop', () => {
-  test('Generate Now triggers pipeline and renders action card', async ({ page }) => {
+  test('Generate Now triggers pipeline and renders action card', async ({ page }, testInfo) => {
     test.setTimeout(180000);
-    await page.goto('/dashboard/settings');
+    await page.goto('/dashboard/system');
     await page.waitForLoadState('networkidle');
+
+    if (!page.url().includes('/dashboard/system')) {
+      testInfo.skip(true, 'Pipeline controls live on /dashboard/system (owner only)');
+      return;
+    }
 
     const generateButton = page.getByRole('button', { name: /run pipeline.*dry run/i }).first();
     await expect(generateButton).toBeVisible({ timeout: 15000 });

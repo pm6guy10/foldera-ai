@@ -27,11 +27,6 @@ interface SubscriptionInfo {
   can_manage_billing?: boolean;
 }
 
-const ALL_BUCKETS = [
-  'Job search', 'Career growth', 'Side project', 'Business ops',
-  'Health & family', 'Financial', 'Relationships', 'Learning',
-];
-
 export default function SettingsClient() {
   const { data: session, status } = useSession();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -39,14 +34,7 @@ export default function SettingsClient() {
   const [loading, setLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [generateState, setGenerateState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [generateMessage, setGenerateMessage] = useState<string | null>(null);
-  const [paidGenerateState, setPaidGenerateState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [paidGenerateMessage, setPaidGenerateMessage] = useState<string | null>(null);
-  const lastPipelineRunRef = useRef<number>(0);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
-  const [goalBuckets, setGoalBuckets] = useState<string[]>([]);
-  const [goalFreeText, setGoalFreeText] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState<'google' | 'microsoft' | null>(null);
   const [connectingProvider, setConnectingProvider] = useState<'google' | 'microsoft' | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -57,13 +45,6 @@ export default function SettingsClient() {
   const [upgrading, setUpgrading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
-  const [editingFocus, setEditingFocus] = useState(false);
-  const [editBuckets, setEditBuckets] = useState<Set<string>>(new Set());
-  const [editFreeText, setEditFreeText] = useState('');
-  const [savingFocus, setSavingFocus] = useState(false);
-  const [focusSaveError, setFocusSaveError] = useState<string | null>(null);
-  const [agentsEnabled, setAgentsEnabled] = useState<boolean | null>(null);
-  const [agentsSaving, setAgentsSaving] = useState(false);
   /** True when connected mail graph has no recent processed mail signals (ingest may be empty despite cron). */
   const [mailIngestLooksStale, setMailIngestLooksStale] = useState(false);
   const [newestMailSignalAt, setNewestMailSignalAt] = useState<string | null>(null);
@@ -107,8 +88,7 @@ export default function SettingsClient() {
     Promise.all([
       fetch('/api/integrations/status', { cache: 'no-store' }),
       fetch('/api/subscription/status'),
-      fetch('/api/onboard/set-goals'),
-    ]).then(async ([intRes, subRes, goalsRes]) => {
+    ]).then(async ([intRes, subRes]) => {
       if (intRes.ok) {
         const d = await intRes.json();
         if (intGen === integrationsFetchGenRef.current) {
@@ -124,26 +104,10 @@ export default function SettingsClient() {
       if (subRes.ok) {
         setSubscription(await subRes.json());
       }
-      if (goalsRes.ok) {
-        const g = await goalsRes.json();
-        setGoalBuckets(g.buckets ?? []);
-        setGoalFreeText(g.freeText ?? null);
-      }
     }).catch((err: unknown) => {
       console.error('[settings] failed to load initial data:', err instanceof Error ? err.message : err);
     }).finally(() => setLoading(false));
   }, [status]);
-
-  useEffect(() => {
-    if (!isOwnerAccount) return;
-    void fetch('/api/settings/agents')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (j && typeof j.enabled === 'boolean') setAgentsEnabled(j.enabled);
-        else setAgentsEnabled(true);
-      })
-      .catch(() => setAgentsEnabled(true));
-  }, [isOwnerAccount]);
 
   useEffect(() => {
     if (status !== 'authenticated') return;
@@ -248,41 +212,6 @@ export default function SettingsClient() {
     }
   }, [actionError]);
 
-  const handleEditFocus = () => {
-    setEditBuckets(new Set(goalBuckets));
-    setEditFreeText(goalFreeText ?? '');
-    setFocusSaveError(null);
-    setEditingFocus(true);
-  };
-
-  const handleSaveFocus = async () => {
-    setSavingFocus(true);
-    setFocusSaveError(null);
-    try {
-      const res = await fetch('/api/onboard/set-goals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          buckets: Array.from(editBuckets),
-          freeText: editFreeText.trim() || null,
-          skipped: false,
-        }),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        setFocusSaveError(typeof d.error === 'string' ? d.error : 'Could not save. Try again.');
-        return;
-      }
-      setGoalBuckets(Array.from(editBuckets));
-      setGoalFreeText(editFreeText.trim() || null);
-      setEditingFocus(false);
-    } catch {
-      setFocusSaveError('Network error. Try again.');
-    } finally {
-      setSavingFocus(false);
-    }
-  };
-
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
 
@@ -323,7 +252,7 @@ export default function SettingsClient() {
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen bg-[#07070c]">
-        <Header onSignOut={handleSignOut} />
+        <Header />
         <main id="main" className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
           <div className="animate-pulse space-y-4 mt-8">
             <div className="h-3 w-32 bg-zinc-800/60 rounded" />
@@ -340,7 +269,7 @@ export default function SettingsClient() {
   if (status !== 'authenticated') {
     return (
       <div className="min-h-screen bg-[#07070c]">
-        <Header onSignOut={handleSignOut} />
+        <Header />
         <main id="main" className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
           <p className="text-zinc-500 text-sm mt-8">Please sign in to view settings.</p>
         </main>
@@ -355,15 +284,13 @@ export default function SettingsClient() {
     subscription?.status === 'past_due' ? 'Payment past due'
     : '';
 
-  const activeBuckets = goalBuckets.filter(b => ALL_BUCKETS.includes(b));
-
   return (
     <div className="min-h-[100dvh] bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white pb-[env(safe-area-inset-bottom,0px)]">
       {/* Ambient grid */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
       </div>
-      <Header onSignOut={handleSignOut} />
+      <Header />
       <main
         id="main"
         className="relative z-10 pt-[calc(5rem+env(safe-area-inset-top,0px))] pb-16 sm:pb-14 px-4 max-w-3xl mx-auto space-y-9 sm:space-y-10 w-full min-w-0"
@@ -392,11 +319,13 @@ export default function SettingsClient() {
           </div>
         )}
 
-        {/* ── Connected accounts ── */}
+        {/* ── Data sources ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
           <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
-            <SectionHeading className="mb-2">Connected accounts</SectionHeading>
-            <p className="text-xs text-zinc-600 leading-relaxed">Connect Google and Microsoft so Foldera can keep your model current.</p>
+            <SectionHeading className="mb-2">Data sources</SectionHeading>
+            <p className="text-xs text-zinc-600 leading-relaxed">
+              Connect Google and Microsoft mail so Foldera can read context for your morning brief.
+            </p>
           </div>
           <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 space-y-4">
             {/* Google card */}
@@ -599,299 +528,16 @@ export default function SettingsClient() {
           </div>
         </section>
 
-        {/* ── Focus areas ── */}
+        {/* ── Preferences ── */}
         <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
           <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
-            <SectionHeading className="mb-2">Focus areas</SectionHeading>
-            <p className="text-xs text-zinc-600 leading-relaxed">What Foldera optimizes for.</p>
+            <SectionHeading className="mb-2">Preferences</SectionHeading>
+            <p className="text-xs text-zinc-600 leading-relaxed">How Foldera adapts to you over time.</p>
           </div>
           <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6">
-            {!editingFocus ? (
-              <>
-                {activeBuckets.length === 0 && !goalFreeText ? (
-                  <p className="text-sm text-zinc-500">No focus areas set.</p>
-                ) : (
-                  <>
-                    {activeBuckets.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {activeBuckets.map((label) => (
-                          <span
-                            key={label}
-                            className="rounded-lg py-1.5 px-3 text-xs font-black uppercase tracking-[0.1em] bg-cyan-500/10 border border-cyan-500/30 text-cyan-300"
-                          >
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {goalFreeText && (
-                      <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
-                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mr-2">Goal:</span>
-                        {goalFreeText}
-                      </p>
-                    )}
-                  </>
-                )}
-                <button
-                  onClick={handleEditFocus}
-                  className="mt-4 text-[10px] font-black uppercase tracking-[0.15em] text-cyan-400 hover:text-cyan-300 transition-colors"
-                >
-                  Edit focus areas →
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  {ALL_BUCKETS.map((label) => {
-                    const active = editBuckets.has(label);
-                    return (
-                      <button
-                        key={label}
-                        onClick={() => {
-                          setEditBuckets(prev => {
-                            const next = new Set(prev);
-                            if (next.has(label)) next.delete(label);
-                            else next.add(label);
-                            return next;
-                          });
-                        }}
-                        className={`rounded-xl py-2.5 px-3 text-xs font-black uppercase tracking-[0.08em] transition-colors border text-left ${
-                          active
-                            ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-300'
-                            : 'bg-zinc-900/60 border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-400'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <input
-                  type="text"
-                  value={editFreeText}
-                  onChange={(e) => setEditFreeText(e.target.value)}
-                  placeholder="e.g., land the MAS3 role at HCA"
-                  className="mt-3 w-full min-h-[44px] bg-zinc-900/60 border border-white/10 rounded-xl py-2.5 px-3 text-base text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50"
-                />
-                {focusSaveError && (
-                  <p className="mt-2 text-xs text-red-400">{focusSaveError}</p>
-                )}
-                <div className="mt-4 flex gap-2">
-                  <button
-                    onClick={handleSaveFocus}
-                    disabled={savingFocus}
-                    className="flex-1 bg-white text-black hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-wait rounded-xl py-2.5 text-xs font-black uppercase tracking-[0.12em] transition-colors"
-                  >
-                    {savingFocus ? 'Saving…' : 'Save'}
-                  </button>
-                  <button
-                    onClick={() => setEditingFocus(false)}
-                    disabled={savingFocus}
-                    className="flex-1 bg-zinc-900/60 hover:bg-zinc-800/60 border border-white/10 text-zinc-400 rounded-xl py-2.5 text-xs font-black uppercase tracking-[0.12em] transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </section>
-
-        {/* ── Generate / pipeline (dry run default on prod when env is set) ── */}
-        <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
-            <SectionHeading className="mb-2">Generate</SectionHeading>
-            <p className="text-xs text-zinc-600 leading-relaxed">
-              Sync connectors and run the brief pipeline. <span className="text-zinc-500">Dry run</span> exercises scoring and a mock directive without Anthropic.{' '}
-              <span className="text-zinc-500">AI generate</span> uses your daily caps and API credits.
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              Approve and skip on your daily directive train Foldera. No extra sliders here yet.
             </p>
-          </div>
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 flex flex-col gap-3">
-            <button
-              disabled={
-                generateState === 'loading' ||
-                generateState === 'success' ||
-                paidGenerateState === 'loading'
-              }
-              onClick={async () => {
-                const now = Date.now();
-                if (now - lastPipelineRunRef.current < 30_000) {
-                  setGenerateMessage('Please wait 30 seconds before trying again.');
-                  return;
-                }
-                lastPipelineRunRef.current = now;
-                setGenerateState('loading');
-                setGenerateMessage(null);
-                setPaidGenerateMessage(null);
-                try {
-                  const res = await fetch('/api/settings/run-brief?force=true&dry_run=true', { method: 'POST' });
-                  const data = await res.json().catch(() => null);
-                  if (res.ok && data?.ok) {
-                    setGenerateState('success');
-                    window.location.href = '/dashboard?generated=true';
-                    return;
-                  }
-                  if (res.ok && data?.stages) {
-                    const stages = data.stages as Record<string, unknown>;
-                    const genStatus = (stages.daily_brief as Record<string, unknown> | undefined)?.generate;
-                    const genRec = genStatus as { status?: string } | undefined;
-                    if (genRec?.status === 'ok') {
-                      setGenerateState('success');
-                      window.location.href = '/dashboard?generated=true';
-                      return;
-                    }
-                    const sp = stages.daily_brief as Record<string, unknown> | undefined;
-                    const sig = sp?.signal_processing as { status?: string } | undefined;
-                    const genFailed = genRec?.status === 'failed';
-                    const signalOnly = sig?.status === 'failed' && !genFailed;
-                    if (signalOnly) {
-                      setGenerateState('success');
-                      window.location.href = '/dashboard?generated=true';
-                      return;
-                    }
-                    const parts: string[] = [];
-                    if (genRec?.status === 'failed') parts.push('Brief generation failed');
-                    const sm = stages.sync_microsoft as { ok?: boolean } | undefined;
-                    const sg = stages.sync_google as { ok?: boolean } | undefined;
-                    if (sm?.ok === false) parts.push('Microsoft sync issue');
-                    if (sg?.ok === false) parts.push('Google sync issue');
-                    setGenerateState('error');
-                    setGenerateMessage(parts.length > 0 ? parts.join('. ') + '.' : 'Something went wrong.');
-                    return;
-                  }
-                  setGenerateState('error');
-                  setGenerateMessage(data?.error || 'Request failed. Try again in 30 seconds.');
-                } catch {
-                  setGenerateState('error');
-                  setGenerateMessage('Network error — try again in 30 seconds.');
-                }
-              }}
-              className={`w-full min-h-[52px] touch-manipulation rounded-xl py-4 text-xs font-black uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${
-                generateState === 'loading'
-                  ? 'bg-zinc-800/60 text-zinc-500 cursor-wait border border-white/5'
-                  : generateState === 'success'
-                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 cursor-default'
-                    : 'bg-white text-black hover:bg-zinc-200 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-[1.01] active:scale-[0.99]'
-              }`}
-            >
-              {generateState === 'loading' ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
-                  Running sync + dry run…
-                </>
-              ) : generateState === 'success' ? (
-                'Redirecting…'
-              ) : (
-                'Run pipeline (dry run)'
-              )}
-            </button>
-            <button
-              disabled={
-                paidGenerateState === 'loading' ||
-                paidGenerateState === 'success' ||
-                generateState === 'loading'
-              }
-              onClick={async () => {
-                if (
-                  !window.confirm(
-                    'Generate with AI uses Anthropic API credits and counts toward your daily limits. Continue?',
-                  )
-                ) {
-                  return;
-                }
-                const now = Date.now();
-                if (now - lastPipelineRunRef.current < 30_000) {
-                  setPaidGenerateMessage('Please wait 30 seconds before trying again.');
-                  return;
-                }
-                lastPipelineRunRef.current = now;
-                setPaidGenerateState('loading');
-                setPaidGenerateMessage(null);
-                setGenerateMessage(null);
-                try {
-                  const res = await fetch('/api/settings/run-brief?force=true&use_llm=true', { method: 'POST' });
-                  const data = await res.json().catch(() => null);
-                  const spend = data?.spend_policy as
-                    | { paid_llm_requested?: boolean; pipeline_dry_run?: boolean }
-                    | undefined;
-                  if (spend?.paid_llm_requested && spend?.pipeline_dry_run) {
-                    setPaidGenerateState('error');
-                    setPaidGenerateMessage(
-                      'Paid generation is not enabled on the server (needs ALLOW_PROD_PAID_LLM). You received a dry run instead.',
-                    );
-                    return;
-                  }
-                  if (res.ok && data?.ok) {
-                    setPaidGenerateState('success');
-                    window.location.href = '/dashboard?generated=true';
-                    return;
-                  }
-                  if (res.ok && data?.stages) {
-                    const stages = data.stages as Record<string, unknown>;
-                    const genStatus = (stages.daily_brief as Record<string, unknown> | undefined)?.generate;
-                    const genRec = genStatus as { status?: string } | undefined;
-                    if (genRec?.status === 'ok') {
-                      setPaidGenerateState('success');
-                      window.location.href = '/dashboard?generated=true';
-                      return;
-                    }
-                    const sp = stages.daily_brief as Record<string, unknown> | undefined;
-                    const sig = sp?.signal_processing as { status?: string } | undefined;
-                    const genFailed = genRec?.status === 'failed';
-                    const signalOnly = sig?.status === 'failed' && !genFailed;
-                    if (signalOnly) {
-                      setPaidGenerateState('success');
-                      window.location.href = '/dashboard?generated=true';
-                      return;
-                    }
-                    const parts: string[] = [];
-                    if (genRec?.status === 'failed') parts.push('Brief generation failed');
-                    const sm = stages.sync_microsoft as { ok?: boolean } | undefined;
-                    const sg = stages.sync_google as { ok?: boolean } | undefined;
-                    if (sm?.ok === false) parts.push('Microsoft sync issue');
-                    if (sg?.ok === false) parts.push('Google sync issue');
-                    setPaidGenerateState('error');
-                    setPaidGenerateMessage(parts.length > 0 ? parts.join('. ') + '.' : 'Something went wrong.');
-                    return;
-                  }
-                  setPaidGenerateState('error');
-                  setPaidGenerateMessage(data?.error || 'Request failed. Try again in 30 seconds.');
-                } catch {
-                  setPaidGenerateState('error');
-                  setPaidGenerateMessage('Network error — try again in 30 seconds.');
-                }
-              }}
-              className={`w-full min-h-[48px] touch-manipulation rounded-xl py-3 text-[10px] font-black uppercase tracking-[0.12em] transition-all border flex items-center justify-center gap-2 ${
-                paidGenerateState === 'loading'
-                  ? 'bg-zinc-900/40 text-zinc-500 cursor-wait border-white/5'
-                  : paidGenerateState === 'success'
-                    ? 'bg-cyan-500/5 text-cyan-400 border-cyan-500/20 cursor-default'
-                    : 'bg-transparent text-zinc-400 hover:text-zinc-200 border-white/15 hover:border-white/25'
-              }`}
-            >
-              {paidGenerateState === 'loading' ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
-                  Running sync + AI…
-                </>
-              ) : paidGenerateState === 'success' ? (
-                'Redirecting…'
-              ) : (
-                'Generate with AI (uses credits)'
-              )}
-            </button>
-            {generateMessage && (
-              <p className={`text-xs leading-relaxed ${generateState === 'error' ? 'text-red-400' : 'text-cyan-400'}`}>
-                {generateMessage}
-              </p>
-            )}
-            {paidGenerateMessage && (
-              <p
-                className={`text-xs leading-relaxed ${paidGenerateState === 'error' ? 'text-red-400' : 'text-cyan-400'}`}
-              >
-                {paidGenerateMessage}
-              </p>
-            )}
           </div>
         </section>
 
@@ -979,46 +625,21 @@ export default function SettingsClient() {
           </div>
         </section>
 
-        {isOwnerAccount && agentsEnabled !== null && (
-          <section className="rounded-2xl border border-emerald-500/20 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-            <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
-              <SectionHeading className="mb-2">Autonomous agents</SectionHeading>
-              <p className="text-xs text-zinc-600 leading-relaxed">
-                Scheduled jobs stage drafts on your dashboard System tab. Turn off to stop all agent runs immediately.
-              </p>
-            </div>
-            <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 flex items-center justify-between gap-4">
-              <p className="text-sm text-zinc-300">Agents enabled</p>
-              <button
-                type="button"
-                disabled={agentsSaving}
-                onClick={async () => {
-                  setAgentsSaving(true);
-                  try {
-                    const next = !agentsEnabled;
-                    const res = await fetch('/api/settings/agents', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ enabled: next }),
-                    });
-                    if (res.ok) {
-                      setAgentsEnabled(next);
-                    }
-                  } finally {
-                    setAgentsSaving(false);
-                  }
-                }}
-                className={`relative w-14 h-8 rounded-full transition-colors ${
-                  agentsEnabled ? 'bg-emerald-500/80' : 'bg-zinc-700'
-                } ${agentsSaving ? 'opacity-50' : ''}`}
-                aria-pressed={agentsEnabled}
+        {isOwnerAccount && (
+          <section className="rounded-2xl border border-emerald-500/25 bg-emerald-950/15 backdrop-blur-xl overflow-hidden">
+            <div className="px-4 py-4 sm:px-5 sm:py-5 md:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400/90">Owner</p>
+                <p className="text-sm text-zinc-400 mt-1 leading-snug">
+                  Pipeline runs, agent toggle, and system draft queue — not part of the normal product path.
+                </p>
+              </div>
+              <Link
+                href="/dashboard/system"
+                className="inline-flex justify-center min-h-[44px] items-center rounded-xl bg-emerald-500/15 border border-emerald-500/35 px-5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-200 hover:bg-emerald-500/25 transition-colors shrink-0"
               >
-                <span
-                  className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow transition-transform ${
-                    agentsEnabled ? 'translate-x-6' : ''
-                  }`}
-                />
-              </button>
+                System tools
+              </Link>
             </div>
           </section>
         )}
@@ -1037,8 +658,25 @@ export default function SettingsClient() {
             )}
             <button
               type="button"
+              onClick={handleSignOut}
+              className="w-full min-h-[48px] flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-300 py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+            >
+              <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
+              Sign out
+            </button>
+          </div>
+        </section>
+
+        {/* ── Danger zone ── */}
+        <section className="rounded-2xl border border-red-900/30 bg-red-950/10 backdrop-blur-xl overflow-hidden">
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-red-900/20">
+            <SectionHeading className="!mb-0 text-red-400/80">Danger zone</SectionHeading>
+          </div>
+          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 space-y-3">
+            <button
+              type="button"
               onClick={handleDeleteAccount}
-              className="w-full min-h-[48px] border border-red-900/40 hover:border-red-700/60 bg-transparent hover:bg-red-950/10 text-red-500/70 hover:text-red-400 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
+              className="w-full min-h-[48px] border border-red-900/50 hover:border-red-600/70 bg-transparent hover:bg-red-950/20 text-red-400/90 hover:text-red-300 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
             >
               {deleteConfirm ? 'Tap again to confirm deletion' : 'Delete account'}
             </button>
@@ -1076,7 +714,7 @@ function formatLastSynced(iso: string | null | undefined): string | null {
   }
 }
 
-function Header({ onSignOut }: { onSignOut: () => void }) {
+function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 pt-[env(safe-area-inset-top,0px)]">
       <div className="max-w-3xl mx-auto h-14 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:px-4 gap-1 sm:gap-2">
@@ -1106,17 +744,7 @@ function Header({ onSignOut }: { onSignOut: () => void }) {
             <span className="text-sm font-black tracking-tighter text-white uppercase hidden sm:inline">Foldera</span>
           </Link>
         </div>
-        <div className="flex justify-end min-w-0">
-          <button
-            type="button"
-            onClick={onSignOut}
-            className="touch-manipulation flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.12em] shrink-0 min-h-[44px] min-w-[44px] sm:min-w-0 px-2 rounded-lg justify-end focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-            aria-label="Sign out"
-          >
-            <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline truncate">Sign out</span>
-          </button>
-        </div>
+        <div className="min-w-0" aria-hidden="true" />
       </div>
     </header>
   );
