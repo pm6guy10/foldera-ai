@@ -4051,3 +4051,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Files changed: `app/HomePageClient.tsx`, `SESSION_HISTORY.md`
 - What changed: Center-weighted hero with headline “Finished work. / Before you ask.”, subhead on change→rank→draft, large artifact card (directive + context + drafted email + approve/skip), primary CTA below artifact, quiet “No credit card” line. Single proof strip; editorial “Intelligence layer” how-it-works (no icon card grid); two-column pricing with unchanged Free/Pro copy and $29/mo; minimal footer (AES as text). Softer atmosphere grid; `NavPublic` `platformHref` → `#product`. Removed hero pill, duplicate proof mini-card, three-column mechanism grid, footer shield pill, and competing uppercase chrome.
 - Verification: `npm run health` (0 failing); `npm run build`; `npx playwright test tests/e2e/public-routes.spec.ts --grep Landing` (6 passed).
+
+## 2026-04-12 — Homepage recovery: flagship hero, dominant artifact, Gather/Decide/Finish, premium pricing
+- MODE: FLOW
+- Files changed: `app/HomePageClient.tsx`, `SESSION_HISTORY.md`
+- What changed: Stronger atmospheric spotlight and depth (fainter grid); XL headline and subhead; artifact card widened to ~72rem with integrated machine hierarchy (directive / why / draft / controls), heavier shadows and cyan stage glow; larger hero CTA tied tight under artifact; compact horizontal proof strip copy; middle section replaced with three large steps (Gather / Decide / Finish); pricing section scaled up (larger type, premium cards, Pro “Recommended”).
+
+- Verification: `npm run health` (0 failing); `npm run build`.
