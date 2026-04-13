@@ -4101,6 +4101,12 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Signed-in journey ended on `/dashboard` and clicked **Sign out**, but the dashboard shell no longer exposes that control (only Settings / Briefings). Navigate to `/dashboard/settings` before the sign-out + home URL wait so Playwright targets a real button.
 - Verification: `npm run health` (0 failing); `npm run build`.
 
+## 2026-04-13 — Production E2E workflow: checkout `main`; mobile-journey sign-out wait hardening
+- MODE: CI + TESTFIX
+- Files changed: `.github/workflows/production-e2e.yml`, `tests/production/mobile-journey.spec.ts`, `SESSION_HISTORY.md`
+- What changed: `deployment_status` runs defaulted to the **deployed** commit, so a deploy at `6547c49` executed Playwright from that SHA while fixes on `main` (e.g. Settings sign-out path) were ignored — logs still showed `goto('/dashboard')` at line 141. Checkout now uses `ref: main` so prod smoke always uses current tests against `https://www.foldera.ai`. Sign-out step: click then `waitForURL` with `waitUntil: 'domcontentloaded'` and 60s timeout to reduce stalls on the `load` event after redirect home.
+- Verification: `npm run health` (0 failing); `npm run build`.
+
 ## 2026-04-13 — Generator: skip low_cross anchor gate for discrepancy write_document (validation → generation_failed_sentinel)
 - MODE: BUGFIX
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/low-cross-signal-discrepancy.test.ts`, `SESSION_HISTORY.md`

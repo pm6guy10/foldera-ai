@@ -140,10 +140,13 @@ for (const { w, h, tag } of VIEWPORTS) {
 
       // Sign out lives under Settings (dashboard home has no Sign out after IA refresh).
       await page.goto('/dashboard/settings', { waitUntil: 'networkidle', timeout: 45000 });
-      await Promise.all([
-        page.waitForURL((url) => url.pathname === '/' || url.pathname === '', { timeout: 45000 }),
-        page.getByRole('button', { name: 'Sign out' }).first().click(),
-      ]);
+      const signOutBtn = page.getByRole('button', { name: 'Sign out' }).first();
+      await signOutBtn.scrollIntoViewIfNeeded();
+      await signOutBtn.click();
+      await page.waitForURL((url) => url.pathname === '/' || url.pathname === '', {
+        timeout: 60000,
+        waitUntil: 'domcontentloaded',
+      });
 
       await assertNoHorizontalOverflow(page);
       await page.screenshot({ path: path.join(dir, '16-after-signout-home.png'), fullPage: true });

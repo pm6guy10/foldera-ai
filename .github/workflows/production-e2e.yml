@@ -15,7 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Use latest `main` test sources. `deployment_status` would otherwise checkout the deployed
+      # commit, which can lag behind test fixes while production URL is already current.
       - uses: actions/checkout@v5
+        with:
+          ref: main
 
       - uses: actions/setup-node@v5
         with:
