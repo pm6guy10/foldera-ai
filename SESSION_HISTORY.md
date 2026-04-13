@@ -4137,6 +4137,12 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: `verificationStubPersist` merges `pipelineDryRun` + auto `cronInvocationId`, skips the early `pipeline_dry_run` return so `generateArtifact` uses the existing pipeline-dry embedded-artifact fast-path (no Anthropic). Canonical stub payloads (one-sentence directive, substantive body) pass validator + typical gates. `pipeline_runs` rows get `verification_stub_post_directive` then `patchUserPipelineRunOutcome` → `verification_stub_persisted` with action id. Owner `POST /api/dev/brain-receipt` with JSON `{"verification_stub_persist":true}` enables the path; response includes `pipeline_run` ids when present.
 - Verification: `npm run health` (0 failing); `npx vitest run lib/observability/__tests__/pipeline-run.test.ts`; `npm run build`.
 
+## 2026-04-13 — Golden path verified: `run-verification-golden-path-once` + production DB proof
+- MODE: VERIFICATION
+- Files changed: `scripts/run-verification-golden-path-once.ts`, `SESSION_HISTORY.md`
+- What changed: Operator script mirrors `POST /api/dev/brain-receipt` with `verification_stub_persist` (no `ALLOW_PAID_LLM`). One run against production-linked DB produced `pending_approval_persisted` / `write_document`, `pipeline_runs.outcome=verification_stub_persisted`, `raw_extras.verification_generation_failed_sentinel_avoided=true`, action `e153abe5-8935-4697-bffa-6991814f21fb` (pending_approval).
+- Verification: `npm run health` (0 failing); `npx tsx scripts/run-verification-golden-path-once.ts` (exit 0); Supabase `pipeline_runs` + `tkg_actions` spot-check; `npm run build`.
+
 ## 2026-04-13 — Owner golden path: schedule_conflict first + pipeline_runs verification extras
 - MODE: TESTABILITY
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/verification-golden-path-order.test.ts`, `lib/cron/daily-brief-types.ts`, `lib/cron/daily-brief-generate.ts`, `app/api/dev/brain-receipt/route.ts`, `app/api/dev/brain-receipt/__tests__/route.test.ts`, `SESSION_HISTORY.md`
