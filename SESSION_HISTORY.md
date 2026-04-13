@@ -4058,3 +4058,9 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Stronger atmospheric spotlight and depth (fainter grid); XL headline and subhead; artifact card widened to ~72rem with integrated machine hierarchy (directive / why / draft / controls), heavier shadows and cyan stage glow; larger hero CTA tied tight under artifact; compact horizontal proof strip copy; middle section replaced with three large steps (Gather / Decide / Finish); pricing section scaled up (larger type, premium cards, Pro “Recommended”).
 
 - Verification: `npm run health` (0 failing); `npm run build`.
+
+## 2026-04-12 — Homepage clarity pass (category definition, no layout change)
+- MODE: FLOW
+- Files changed: `app/HomePageClient.tsx`, `SESSION_HISTORY.md`
+- What changed: Hero subhead and second line state reads→finds→drafts plus approve/skip/learning; label “What Foldera delivers each morning” above artifact; proof strip plain-English items; middle section title “How Foldera works” with three legible steps (threads → stakes move → morning draft).
+- Verification: `npm run health` (0 failing); `npm run build`.

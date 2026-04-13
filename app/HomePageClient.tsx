@@ -108,7 +108,7 @@ function ArtifactCard() {
 }
 
 function ProofStrip() {
-  const items = ['Notices what shifted', 'Ranks one move', 'Drafts the artifact', 'Approve or skip'];
+  const items = ['Reads email and threads', 'Finds what needs action', 'Drafts the reply or document', 'You approve or skip'];
   return (
     <div
       className="relative border-y border-white/[0.06] bg-[#050508]/90 backdrop-blur-sm"
@@ -135,16 +135,16 @@ function ProofStrip() {
 function MiddleSection() {
   const steps = [
     {
-      title: 'Gather',
-      body: 'Signals from your threads, obligations, and drift—surfaced before you drown in tabs.',
+      title: 'Reads your live threads',
+      body: 'Foldera connects to your email and ongoing conversations, so it sees what actually changed overnight.',
     },
     {
-      title: 'Decide',
-      body: 'One ranked move. Not a dashboard of possibilities—the highest-leverage action right now.',
+      title: 'Finds the highest-stakes move',
+      body: 'It picks the one reply or decision that would hurt most if it slipped—not a pile of reminders.',
     },
     {
-      title: 'Finish',
-      body: 'A sendable artifact, drafted overnight. Approve or skip—Foldera learns the pattern.',
+      title: 'Drafts the artifact before you open the day',
+      body: 'You wake up to a finished email or document—your move, already written. Approve, send, or skip—and Foldera learns what you care about.',
     },
   ];
   return (
@@ -152,7 +152,7 @@ function MiddleSection() {
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(34,211,238,0.05),transparent_55%)]" />
       <div className="relative z-10 max-w-[min(100%,72rem)] mx-auto px-4 sm:px-6 py-20 md:py-28 lg:py-32">
         <h2 className="text-white text-center text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-semibold tracking-[-0.03em] leading-[1.1] mb-14 md:mb-20 max-w-4xl mx-auto">
-          Gather. Decide. Finish.
+          How Foldera works
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 lg:gap-12">
           {steps.map((s, idx) => (
@@ -279,12 +279,18 @@ export default function HomePageClient() {
                 <br />
                 Before you ask.
               </h1>
-              <p className="mt-6 sm:mt-7 md:mt-8 text-zinc-300 text-lg sm:text-xl md:text-2xl leading-snug max-w-[40rem] mx-auto font-medium">
-                Foldera notices what changed, ranks the one move that matters, and drafts the artifact before the day gets
-                away from you.
+              <p className="mt-6 sm:mt-7 md:mt-8 text-zinc-300 text-lg sm:text-xl md:text-2xl leading-snug max-w-[42rem] mx-auto font-medium">
+                Foldera reads your email and live threads, finds the one thing that needs action, and drafts the response
+                for you.
+              </p>
+              <p className="mt-4 sm:mt-5 text-zinc-400 text-base sm:text-lg md:text-xl leading-snug max-w-[36rem] mx-auto font-medium">
+                Approve it, send it, or skip it. Foldera learns what matters to you over time.
               </p>
             </header>
 
+            <p className="text-center text-[11px] sm:text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500 mb-4 sm:mb-5 md:mb-6">
+              What Foldera delivers each morning
+            </p>
             <ArtifactCard />
 
             <div className="mt-8 sm:mt-9 md:mt-10 flex flex-col items-center gap-2.5">
