@@ -4869,25 +4869,13 @@ export async function scoreOpenLoops(
         acc[d.reason] = (acc[d.reason] ?? 0) + 1;
         return acc;
       }, {} as Record<string, number>),
+      /** Thread-backed pool is empty, but scoreOpenLoops continues so detectDiscrepancies() still runs (calendar/drive/cross-source gaps are not thread candidates). */
+      continue_past_empty_thread_pool: true,
     }));
-    diag.earlyExitStage = 'entity_reality_gate';
-    diag.finalOutcome = 'no_valid_action';
-    return wrapNoValidActionResult({
-      antiPatterns,
-      divergences: [],
-      scored: [],
-      suppressedCandidates: 0,
-      candidateDiscovery: buildCandidateDiscoveryLogForNoWinner(
-        [],
-        0,
-        'No candidates passed the entity reality gate.',
-      ),
-      exact_blocker: buildNoValidActionEarlyExitExactBlocker(
-        diag,
-        'early_exit_entity_reality_gate',
-        'No thread-backed candidates passed the entity reality gate (verified human correspondence required).',
-      ),
-    });
+    // Do not return early: structural discrepancies are injected after the scoring loop
+    // (detectDiscrepancies ~5700). Returning here collapsed live runs to no_valid_action
+    // whenever mail-thread candidates failed the entity gate, even when schedule_conflict
+    // or other cross-source discrepancies were available.
   }
 
   // -----------------------------------------------------------------------
@@ -4936,24 +4924,15 @@ export async function scoreOpenLoops(
   diag.filterStages.push({ stage: 'stakes_gate', before: preStakesGateCount, after: candidates.length, dropped: stakesDrops });
 
   if (candidates.length === 0) {
-    diag.earlyExitStage = 'stakes_gate';
-    diag.finalOutcome = 'no_valid_action';
-    return wrapNoValidActionResult({
-      antiPatterns,
-      divergences: [],
-      scored: [],
-      suppressedCandidates: 0,
-      candidateDiscovery: buildCandidateDiscoveryLogForNoWinner(
-        [],
-        0,
-        'No candidates passed the stakes gate.',
-      ),
-      exact_blocker: buildNoValidActionEarlyExitExactBlocker(
-        diag,
-        'early_exit_stakes_gate',
-        'No candidates passed the stakes gate (board-changing outcome required).',
-      ),
-    });
+    console.log(JSON.stringify({
+      event: 'scorer_zero_after_stakes_gate',
+      stakes_passed: stakesGateResult.passed.length,
+      stakes_dropped: stakesGateResult.dropped.length,
+      continue_past_empty_thread_pool: true,
+    }));
+    // Do not return early: same as entity gate — stakes gate filters only mail/relationship/
+    // commitment thread candidates. Cross-source write_document / make_decision discrepancies
+    // are added later via detectDiscrepancies().
   }
 
   // -----------------------------------------------------------------------

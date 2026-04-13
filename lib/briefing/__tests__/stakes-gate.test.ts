@@ -410,4 +410,11 @@ describe('Stakes Gate — NO_ACTION scenarios', () => {
     expect(result.passed).toHaveLength(0);
     expect(result.dropped).toHaveLength(0);
   });
+
+  it('empty thread-backed pool after stakes gate must not skip structural discrepancy scoring in scoreOpenLoops', () => {
+    // Regression: scoreOpenLoops previously returned early_exit_stakes_gate / entity_reality_gate
+    // when candidates.length === 0, before detectDiscrepancies() ran. Calendar/drive discrepancies
+    // are not thread-backed candidates and must still be evaluated (see scorer.ts).
+    expect(applyStakesGate([]).passed).toEqual([]);
+  });
 });

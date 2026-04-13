@@ -4070,3 +4070,9 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Files changed: `app/HomePageClient.tsx`, `SESSION_HISTORY.md`
 - What changed: Hero subhead and second line state reads→finds→drafts plus approve/skip/learning; label “What Foldera delivers each morning” above artifact; proof strip plain-English items; middle section title “How Foldera works” with three legible steps (threads → stakes move → morning draft).
 - Verification: `npm run health` (0 failing); `npm run build`.
+
+## 2026-04-13 — scoreOpenLoops: do not early-exit before detectDiscrepancies when thread pool is empty
+- MODE: BUGFIX
+- Files changed: `lib/briefing/scorer.ts`, `lib/briefing/__tests__/stakes-gate.test.ts`, `SESSION_HISTORY.md`
+- What changed: Removed `no_valid_action` early returns after the entity reality gate and stakes gate when the mail/relationship/commitment candidate list was empty. Those returns ran *before* `detectDiscrepancies()`, so structural candidates (e.g. `schedule_conflict` → `write_document`) were never injected when thread-backed rows all failed gates — a root cause of repeated `do_nothing` / `no_valid_action` despite cross-source data. Added structured logs `continue_past_empty_thread_pool` and a stakes-gate regression note.
+- Verification: `npm run health`; `npm run build`; `npx vitest run lib/briefing/__tests__/stakes-gate.test.ts`.
