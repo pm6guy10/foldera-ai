@@ -122,6 +122,25 @@ export function isProofModeThreadBackedSendOnly(): boolean {
   return process.env.NODE_ENV !== 'test';
 }
 
+/**
+ * Thread-backed send-only enforcement: external `send_message` is the only allowed persisted
+ * proof outcome — except for **discrepancy winners whose canonical action is not `send_message`**.
+ * Those are structural cross-source artifacts (`write_document`, `make_decision`, …); applying
+ * send preflight + artifact_type=send gates to them collapses the run to the
+ * generation-failed sentinel even when the decision payload is valid.
+ * Discrepancy winners that resolve to `send_message` still run the full proof-mode stack.
+ */
+export function proofModeThreadBackedSendEnforcementApplies(
+  winner: Pick<ScoredLoop, 'type'>,
+  recommendedAction: ValidArtifactTypeCanonical,
+): boolean {
+  if (!isProofModeThreadBackedSendOnly()) return false;
+  if (winner.type === 'discrepancy' && recommendedAction !== 'send_message') {
+    return false;
+  }
+  return true;
+}
+
 /** Exact operator-visible mock body for HTTP `dry_run=true` / `pipelineDryRun` (no Anthropic). */
 export const PIPELINE_DRY_RUN_MOCK_ARTIFACT = '[DRY RUN - no API call made]';
 
@@ -8119,7 +8138,7 @@ export async function generateDirective(
         continue; // ← THE FIX: try next candidate instead of dying
       }
 
-      if (isProofModeThreadBackedSendOnly()) {
+      if (proofModeThreadBackedSendEnforcementApplies(hydratedWinner, decisionPayload.recommended_action)) {
         const proofPre = evaluateProofModeThreadBackedSendPreflight({
           proofModeEnabled: true,
           decisionRecommendedAction: decisionPayload.recommended_action,
@@ -8297,7 +8316,7 @@ export async function generateDirective(
       }
 
       if (
-        !isProofModeThreadBackedSendOnly() &&
+        !proofModeThreadBackedSendEnforcementApplies(hydratedWinner, decisionPayload.recommended_action) &&
         !payloadResult.payload &&
         payloadResult.pendingLowCrossSignalFallback &&
         (decisionPayload.recommended_action === 'send_message' ||
@@ -8325,7 +8344,7 @@ export async function generateDirective(
           payloadResult = { issues: [], payload: fallback, lowCrossSignalWaitRationale: true };
         }
       } else if (
-        isProofModeThreadBackedSendOnly() &&
+        proofModeThreadBackedSendEnforcementApplies(hydratedWinner, decisionPayload.recommended_action) &&
         !payloadResult.payload &&
         payloadResult.pendingLowCrossSignalFallback &&
         (decisionPayload.recommended_action === 'send_message' ||
@@ -8401,7 +8420,7 @@ export async function generateDirective(
     const llmAttemptedAction = payload.artifact_type;
 
     if (
-      isProofModeThreadBackedSendOnly() &&
+      proofModeThreadBackedSendEnforcementApplies(currentCandidate, decisionPayload.recommended_action) &&
       !proofModeCanonicalCountsAsProofSuccess(true, canonicalAction)
     ) {
       candidateBlockLog.push({
@@ -8425,7 +8444,7 @@ export async function generateDirective(
     }
 
     if (
-      isProofModeThreadBackedSendOnly() &&
+      proofModeThreadBackedSendEnforcementApplies(currentCandidate, decisionPayload.recommended_action) &&
       payload.artifact_type !== 'send_message'
     ) {
       candidateBlockLog.push({
@@ -8792,7 +8811,7 @@ export async function generateDirective(
       },
     });
 
-    if (isProofModeThreadBackedSendOnly()) {
+    if (proofModeThreadBackedSendEnforcementApplies(currentCandidate, decisionPayload.recommended_action)) {
       logStructuredEvent({
         event: 'proof_mode_send_message_success',
         level: 'info',
@@ -8821,9 +8840,18 @@ export async function generateDirective(
     const summaryReason = `All ${rankedCandidates.length} candidates blocked: ${allBlockReasons}`;
     const proofModeFailureMessage =
       'No thread-backed external send_message candidate cleared proof-mode gates.';
-    const failureUserReason = isProofModeThreadBackedSendOnly()
-      ? proofModeFailureMessage
-      : summaryReason;
+    const blockLogMentionsProofModeGates = candidateBlockLog.some((bl) =>
+      bl.reasons.some(
+        (r) =>
+          r.includes('proof_mode_candidate_') ||
+          r.includes('proof_mode:') ||
+          r.startsWith('proof_mode:'),
+      ),
+    );
+    const failureUserReason =
+      isProofModeThreadBackedSendOnly() && blockLogMentionsProofModeGates
+        ? proofModeFailureMessage
+        : summaryReason;
     console.log(`[generator] ${summaryReason}`);
     logStructuredEvent({
       event: 'all_candidates_blocked', level: 'warn', userId,
@@ -8834,7 +8862,7 @@ export async function generateDirective(
         block_log: candidateBlockLog,
       },
     });
-    if (isProofModeThreadBackedSendOnly()) {
+    if (isProofModeThreadBackedSendOnly() && blockLogMentionsProofModeGates) {
       logStructuredEvent({
         event: 'proof_mode_all_candidates_failed',
         level: 'warn',

@@ -3,6 +3,7 @@ import {
   evaluateProofModeThreadBackedSendPreflight,
   isProofModeThreadBackedSendOnly,
   proofModeCanonicalCountsAsProofSuccess,
+  proofModeThreadBackedSendEnforcementApplies,
 } from '../generator';
 import type { StructuredContext } from '../generator';
 import type { ScoredLoop } from '../scorer';
@@ -104,6 +105,61 @@ describe('isProofModeThreadBackedSendOnly', () => {
   it('forces on when FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY=true', () => {
     process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY = 'true';
     expect(isProofModeThreadBackedSendOnly()).toBe(true);
+  });
+});
+
+describe('proofModeThreadBackedSendEnforcementApplies', () => {
+  const prev = process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY;
+
+  afterEach(() => {
+    if (prev === undefined) delete process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY;
+    else process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY = prev;
+  });
+
+  it('is false when global proof-mode send-only is off', () => {
+    delete process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY;
+    expect(
+      proofModeThreadBackedSendEnforcementApplies(
+        { type: 'commitment' },
+        'send_message',
+      ),
+    ).toBe(false);
+  });
+
+  it('when proof-mode is on, still enforces thread-backed send for non-discrepancy write_document', () => {
+    process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY = 'true';
+    expect(
+      proofModeThreadBackedSendEnforcementApplies(
+        { type: 'commitment' },
+        'write_document',
+      ),
+    ).toBe(true);
+  });
+
+  it('when proof-mode is on, exempts discrepancy winners whose canonical action is not send_message', () => {
+    process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY = 'true';
+    expect(
+      proofModeThreadBackedSendEnforcementApplies(
+        { type: 'discrepancy' },
+        'write_document',
+      ),
+    ).toBe(false);
+    expect(
+      proofModeThreadBackedSendEnforcementApplies(
+        { type: 'discrepancy' },
+        'make_decision',
+      ),
+    ).toBe(false);
+  });
+
+  it('when proof-mode is on, discrepancy send_message winners still use full enforcement', () => {
+    process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY = 'true';
+    expect(
+      proofModeThreadBackedSendEnforcementApplies(
+        { type: 'discrepancy' },
+        'send_message',
+      ),
+    ).toBe(true);
   });
 });
 
