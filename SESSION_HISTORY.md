@@ -4082,3 +4082,9 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Files changed: `lib/briefing/scorer.ts`, `lib/observability/pipeline-run.ts`, `lib/observability/__tests__/pipeline-run.test.ts`, `SESSION_HISTORY.md`
 - What changed: `ScorerDiagnostics` now records raw `detectDiscrepancies()` summary (count, classes, bounded preview), pre-pool skips (locked contact / failure suppression), `actionType` on structural discrepancy rows, and insight-scan discrepancy rows scored count. `buildGateFunnelFromScorerDiagnostics` persists `discrepancy_count`, `discrepancy_classes`, `discrepancy_candidates_preview`, survivor counts, `discrepancy_drops_by_stage`, and related counters into `pipeline_runs.gate_funnel` so production can tell detector emission vs downstream loss.
 - Verification: `npm run health` (0 failing); `npx vitest run lib/observability/__tests__/pipeline-run.test.ts`; `npm run build`.
+
+## 2026-04-13 — Sign-out lands on marketing home (fix prod mobile-journey E2E)
+- MODE: BUGFIX
+- Files changed: `lib/auth/constants.ts`, `lib/auth/auth-options.ts`, `components/layout/dashboard-shell.tsx`, `components/layout/sidebar.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/dashboard/briefings/page.tsx`, `SESSION_HISTORY.md`
+- What changed: NextAuth `redirect` sent bare `/` to `/dashboard` (OAuth convenience), which also applied to `signOut({ callbackUrl: '/' })`, so users stayed in the app after logout and Playwright never saw `/`. Introduced `SIGN_OUT_CALLBACK_URL` (`/?signedOut=1`) and wired all sign-out buttons to it so post-logout navigation reaches the marketing home with pathname `/`.
+- Verification: `npm run health` (0 failing); `npm run build`. Production E2E (`test:prod` mobile-journey signed-in) expected to pass after deploy.

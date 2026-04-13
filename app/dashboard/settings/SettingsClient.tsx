@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+
 import Link from 'next/link';
 import { ChevronLeft, LogOut } from 'lucide-react';
 import { FolderaMark } from '@/components/nav/FolderaMark';
-import { OWNER_USER_ID } from '@/lib/auth/constants';
+import { OWNER_USER_ID, SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
 
 interface Integration {
   provider: string;
@@ -230,7 +231,7 @@ export default function SettingsClient() {
   };
 
   const handleSignOut = () => {
-    signOut({ callbackUrl: '/' });
+    signOut({ callbackUrl: SIGN_OUT_CALLBACK_URL });
   };
 
   const handleDeleteAccount = async () => {
@@ -239,7 +240,7 @@ export default function SettingsClient() {
     try {
       const res = await fetch('/api/account/delete', { method: 'POST' });
       if (res.ok) {
-        await signOut({ callbackUrl: '/' });
+        await signOut({ callbackUrl: SIGN_OUT_CALLBACK_URL });
       } else {
         const d = await res.json().catch(() => ({}));
         setDeleteError(typeof d.error === 'string' ? d.error : 'Could not delete account right now.');

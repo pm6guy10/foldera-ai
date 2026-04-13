@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
+
+import { SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
 import { cn } from '@/lib/design-system';
 import { spacing } from '@/lib/design-system/spacing';
 import { TrialBanner } from '@/components/dashboard/trial-banner';
@@ -36,7 +38,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   Settings
                 </Link>
                 <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
+                  onClick={() => signOut({ callbackUrl: SIGN_OUT_CALLBACK_URL })}
                   className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
                 >
                   Sign out

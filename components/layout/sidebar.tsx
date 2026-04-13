@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
+
+import { SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
 import { cn } from '@/lib/design-system';
 import { typography } from '@/lib/design-system/typography';
 import { transitions } from '@/lib/design-system/animations';
@@ -111,7 +113,7 @@ export function Sidebar() {
             <p className="text-sm font-medium text-zinc-50 truncate">{userName}</p>
           </div>
           <button
-            onClick={() => signOut({ callbackUrl: '/' })}
+            onClick={() => signOut({ callbackUrl: SIGN_OUT_CALLBACK_URL })}
             title="Sign out"
             className={cn('p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800', transitions.colors)}
           >

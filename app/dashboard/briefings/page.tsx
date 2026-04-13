@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FolderaMark } from '@/components/nav/FolderaMark';
 import { signOut, useSession } from 'next-auth/react';
 import { History, LogOut, Settings } from 'lucide-react';
+
+import { SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
+import { FolderaMark } from '@/components/nav/FolderaMark';
 
 type HistoryItem = {
   id: string;
@@ -96,7 +98,7 @@ export default function BriefingsHistoryPage() {
             </Link>
             <button
               type="button"
-              onClick={() => signOut({ callbackUrl: '/' })}
+              onClick={() => signOut({ callbackUrl: SIGN_OUT_CALLBACK_URL })}
               className="touch-manipulation min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
               aria-label="Sign out"
             >

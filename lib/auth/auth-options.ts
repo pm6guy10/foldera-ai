@@ -361,6 +361,7 @@ export function getAuthOptions(): NextAuthOptions {
         return session;
       },
       async redirect({ url, baseUrl }) {
+        // Bare site root → app after OAuth; use SIGN_OUT_CALLBACK_URL (/?signedOut=1) for sign-out.
         if (url === baseUrl || url === `${baseUrl}/`) return `${baseUrl}/dashboard`;
         if (url.startsWith('/')) return `${baseUrl}${url}`;
         if (url.startsWith(baseUrl)) return url;
