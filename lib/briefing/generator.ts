@@ -141,6 +141,30 @@ export function proofModeThreadBackedSendEnforcementApplies(
   return true;
 }
 
+/**
+ * `unresolved_intent` may set discrepancyPreferredAction=send_message when an entity is matched,
+ * but assistant-chat-only rows have no mail thread — proof-mode preflight then blocks every run.
+ * In that case fall back to TRIGGER_ACTION_MAP (make_decision → write_document), which is exempt
+ * from send-only proof enforcement for discrepancy winners.
+ */
+function winnerSourceSignalsLookMailBacked(
+  sourceSignals: ScoredLoop['sourceSignals'] | undefined,
+): boolean {
+  return (sourceSignals ?? []).some((s) => {
+    const src = `${s.source ?? ''}`.toLowerCase();
+    if (src.includes('gmail') || src.includes('outlook')) return true;
+    return /\b(?:email_received|email_sent|mail_received|mail_sent)\b/.test(src);
+  });
+}
+
+export function shouldFallbackUnresolvedIntentSendToTriggerCanonical(
+  winner: Pick<ScoredLoop, 'type' | 'discrepancyClass' | 'discrepancyPreferredAction' | 'sourceSignals'>,
+): boolean {
+  if (winner.type !== 'discrepancy' || winner.discrepancyClass !== 'unresolved_intent') return false;
+  if (winner.discrepancyPreferredAction !== 'send_message') return false;
+  return !winnerSourceSignalsLookMailBacked(winner.sourceSignals);
+}
+
 /** Exact operator-visible mock body for HTTP `dry_run=true` / `pipelineDryRun` (no Anthropic). */
 export const PIPELINE_DRY_RUN_MOCK_ARTIFACT = '[DRY RUN - no API call made]';
 
@@ -1365,6 +1389,12 @@ function buildDecisionPayload(
 
   if (isAbsenceDrivenWinnerType(winner.type) && recommended_action === 'send_message' && !ctx.has_real_recipient) {
     recommended_action = 'write_document';
+  }
+
+  if (shouldFallbackUnresolvedIntentSendToTriggerCanonical(winner)) {
+    recommended_action = actionTypeToArtifactType(
+      resolveTriggerAction('unresolved_intent', ctx.has_real_recipient),
+    ) as ValidArtifactTypeCanonical;
   }
 
   // Build justification facts from concrete evidence
