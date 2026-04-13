@@ -5807,7 +5807,8 @@ function countDistinctAnchorHits(haystackLower: string, anchors: string[]): numb
   return matched.size;
 }
 
-function getLowCrossSignalIssues(
+/** Exported for deterministic tests of the cross-signal anchor gate. */
+export function getLowCrossSignalIssues(
   payload: GeneratedDirectivePayload,
   ctx: StructuredContext,
   canonicalArtifactType: ValidArtifactTypeCanonical,
@@ -5816,6 +5817,13 @@ function getLowCrossSignalIssues(
     return [];
   }
   if (canonicalArtifactType === 'send_message' && shouldSkipLowCrossSignalForThreadBackedOutreach(ctx)) {
+    return [];
+  }
+  // Structural discrepancy winners (schedule_conflict, behavioral patterns, etc.) are already
+  // cross-source by scorer construction. Requiring two literal token hits from
+  // collectCrossSignalAnchors causes spurious validation failures when the model paraphrases
+  // titles (gen_stage validation → all candidates blocked → generation_failed_sentinel).
+  if (canonicalArtifactType === 'write_document' && ctx.candidate_class === 'discrepancy') {
     return [];
   }
   const anchors = collectCrossSignalAnchors(ctx);

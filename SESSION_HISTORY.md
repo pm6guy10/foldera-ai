@@ -4094,3 +4094,15 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Files changed: `lib/auth/constants.ts`, `lib/auth/auth-options.ts`, `components/layout/dashboard-shell.tsx`, `components/layout/sidebar.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/dashboard/briefings/page.tsx`, `SESSION_HISTORY.md`
 - What changed: NextAuth `redirect` sent bare `/` to `/dashboard` (OAuth convenience), which also applied to `signOut({ callbackUrl: '/' })`, so users stayed in the app after logout and Playwright never saw `/`. Introduced `SIGN_OUT_CALLBACK_URL` (`/?signedOut=1`) and wired all sign-out buttons to it so post-logout navigation reaches the marketing home with pathname `/`.
 - Verification: `npm run health` (0 failing); `npm run build`. Production E2E (`test:prod` mobile-journey signed-in) expected to pass after deploy.
+
+## 2026-04-13 — Prod mobile-journey: sign out from Settings (dashboard has no Sign out CTA)
+- MODE: TESTFIX
+- Files changed: `tests/production/mobile-journey.spec.ts`, `SESSION_HISTORY.md`
+- What changed: Signed-in journey ended on `/dashboard` and clicked **Sign out**, but the dashboard shell no longer exposes that control (only Settings / Briefings). Navigate to `/dashboard/settings` before the sign-out + home URL wait so Playwright targets a real button.
+- Verification: `npm run health` (0 failing); `npm run build`.
+
+## 2026-04-13 — Generator: skip low_cross anchor gate for discrepancy write_document (validation → generation_failed_sentinel)
+- MODE: BUGFIX
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/low-cross-signal-discrepancy.test.ts`, `SESSION_HISTORY.md`
+- What changed: `getLowCrossSignalIssues` required two literal substring hits from `collectCrossSignalAnchors` for every `write_document`, including discrepancy winners. Structural discrepancy artifacts (e.g. `schedule_conflict`) are already cross-source; paraphrased titles often failed the token bar → `validateGeneratedArtifact` exhausted retries → `gen_stage: validation` → all candidates blocked → `generation_failed_sentinel` despite `winner_selected` in gate_funnel. Skipped the low-cross check when `canonicalArtifactType === 'write_document'` and `candidate_class === 'discrepancy'`. Exported `getLowCrossSignalIssues` for narrow tests.
+- Verification: `npm run health` (0 failing); `npx vitest run lib/briefing/__tests__/low-cross-signal-discrepancy.test.ts`; `npm run build`.
