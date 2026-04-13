@@ -223,4 +223,40 @@ describe('POST /api/dev/brain-receipt', () => {
     expect(body.winner_selection_trace).toEqual(winnerTrace);
     expect(body.active_goals).toEqual(['[career, p1] DSHS applications']);
   });
+
+  it('passes verification stub and golden-path flags to runDailyGenerate from JSON body', async () => {
+    mockResolveUser.mockResolvedValue({ userId: 'e40b7cd8-4925-42f7-bc99-5022969f1d22' });
+    mockRunDailyGenerate.mockResolvedValue({ results: [] });
+    mockSupabase.from.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          gte: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    });
+    const { POST } = await import('../route');
+    await POST(
+      new Request('http://localhost:3000/api/dev/brain-receipt', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          verification_stub_persist: true,
+          verification_golden_path_write_document: false,
+        }),
+      }),
+    );
+    expect(mockRunDailyGenerate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        verificationStubPersist: true,
+        verificationGoldenPathWriteDocument: false,
+        briefInvocationSource: 'dev_brain_receipt_verification',
+      }),
+    );
+  });
 });

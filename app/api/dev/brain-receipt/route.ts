@@ -33,11 +33,15 @@ export async function POST(request: Request) {
 
   try {
     let verificationStubPersist = false;
+    let verificationGoldenPathWriteDocument = true;
     try {
       const ct = request.headers.get('content-type') ?? '';
       if (ct.includes('application/json')) {
         const body = (await request.json()) as Record<string, unknown>;
         verificationStubPersist = body.verification_stub_persist === true;
+        if (body.verification_golden_path_write_document === false) {
+          verificationGoldenPathWriteDocument = false;
+        }
       }
     } catch {
       verificationStubPersist = false;
@@ -54,6 +58,7 @@ export async function POST(request: Request) {
         ? 'dev_brain_receipt_verification'
         : 'dev_brain_receipt',
       verificationStubPersist,
+      ...(verificationStubPersist ? { verificationGoldenPathWriteDocument } : {}),
     });
 
     // Retrieve the full scorer diagnostics populated during scoreOpenLoops()
@@ -168,6 +173,9 @@ export async function POST(request: Request) {
         ok: true,
         started_at: startedAt,
         verification_stub_persist: verificationStubPersist,
+        verification_golden_path_write_document: verificationStubPersist
+          ? verificationGoldenPathWriteDocument
+          : null,
         ...(ownerMeta?.pipeline_run_id || ownerMeta?.cron_invocation_id
           ? {
               pipeline_run: {
@@ -219,6 +227,9 @@ export async function POST(request: Request) {
       ok: false,
       started_at: startedAt,
       verification_stub_persist: verificationStubPersist,
+      verification_golden_path_write_document: verificationStubPersist
+        ? verificationGoldenPathWriteDocument
+        : null,
       ...(failMeta?.pipeline_run_id || failMeta?.cron_invocation_id
         ? {
             pipeline_run: {

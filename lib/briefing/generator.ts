@@ -677,6 +677,12 @@ interface GenerateDirectiveOptions {
    * daily-brief path can reach real artifact validation and DB writes without Anthropic (owner verification).
    */
   verificationStubPersist?: boolean;
+  /**
+   * Owner verification only: when set with `verificationStubPersist`, try `schedule_conflict` discrepancy
+   * candidates before others so the golden path hits `write_document` without paid LLM when that class exists.
+   * Default true whenever `verificationStubPersist` is true (opt out with `false`).
+   */
+  verificationGoldenPathWriteDocument?: boolean;
 }
 
 /** Internal: generatePayload only — locks LLM render to DecisionPayload.recommended_action */
@@ -1326,6 +1332,27 @@ export function selectRankedCandidates(
     `This context proves why you are generating for this candidate today. Use it to write a specific, grounded artifact — not a generic follow-up.`;
 
   return { ranked: rated.map(r => ({ candidate: r.candidate, note: r.note, disqualified: r.disqualified, disqualifyReason: r.disqualifyReason })), competitionContext };
+}
+
+/**
+ * Owner verification: prefer `schedule_conflict` discrepancy rows so DecisionPayload locks to
+ * `write_document` when that candidate exists and is not disqualified.
+ */
+export function reorderRankedCandidatesForVerificationGoldenPathWriteDocument<
+  T extends {
+    candidate: { id: string; type: string; discrepancyClass?: string | null };
+    disqualified: boolean;
+  },
+>(ranked: T[]): T[] {
+  const preferred = ranked.filter(
+    (r) =>
+      !r.disqualified &&
+      r.candidate.type === 'discrepancy' &&
+      r.candidate.discrepancyClass === 'schedule_conflict',
+  );
+  if (preferred.length === 0) return ranked;
+  const preferredIds = new Set(preferred.map((p) => p.candidate.id));
+  return [...preferred, ...ranked.filter((r) => !preferredIds.has(r.candidate.id))];
 }
 
 // Backward-compat wrapper — callers that only need the top pick
@@ -7919,10 +7946,16 @@ export async function generateDirective(
     }
 
     // Part 2b: Rank all candidates by viability before trying each one.
-    const { ranked: rankedCandidates, competitionContext } = selectRankedCandidates(
+    let { ranked: rankedCandidates, competitionContext } = selectRankedCandidates(
       scored.topCandidates ?? [scored.winner],
       guardrails,
     );
+    if (
+      options.verificationStubPersist === true &&
+      options.verificationGoldenPathWriteDocument !== false
+    ) {
+      rankedCandidates = reorderRankedCandidatesForVerificationGoldenPathWriteDocument(rankedCandidates);
+    }
     console.log(`[generator] ${rankedCandidates.length} candidates ranked for user ${userId.slice(0, 8)}`);
 
     // =====================================================================

@@ -2083,6 +2083,8 @@ export async function runDailyGenerate(
           dryRun: process.env.FOLDERA_DRY_RUN === 'true',
           pipelineDryRun: runOpts.pipelineDryRun === true,
           verificationStubPersist: runOpts.verificationStubPersist === true,
+          verificationGoldenPathWriteDocument:
+            runOpts.verificationStubPersist === true && runOpts.verificationGoldenPathWriteDocument !== false,
         };
         if (trackPipelineRun) {
           directive = await runWithPipelineRunContext(
@@ -2611,6 +2613,19 @@ export async function runDailyGenerate(
           rawExtrasPatch: {
             verification_stub_action_id: saved.id,
             verification_stub_completed_at: new Date().toISOString(),
+            verification_run_id: pipelineRunId,
+            verification_cron_invocation_id: cronInv ?? null,
+            verification_timestamp: new Date().toISOString(),
+            verification_winner_candidate_id:
+              directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.id ?? null,
+            verification_canonical_action_type: directive.action_type,
+            verification_artifact_record_type: (artifact as { type?: string } | null)?.type ?? null,
+            verification_persisted_action_id: saved.id,
+            verification_persisted_status: 'pending_approval',
+            verification_validation_outcome: 'passed',
+            verification_final_outcome: 'pending_approval_persisted',
+            verification_non_skipped: directive.action_type !== 'do_nothing',
+            verification_generation_failed_sentinel_avoided: directive.directive !== '__GENERATION_FAILED__',
           },
         });
       }

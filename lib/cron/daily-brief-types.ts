@@ -93,6 +93,11 @@ export interface DailyBriefSignalWindowOptions {
    * `cronInvocationId` is set (auto-generated if omitted). Intended for `/api/dev/brain-receipt` production checks.
    */
   verificationStubPersist?: boolean;
+  /**
+   * When true with `verificationStubPersist`, generator tries `schedule_conflict` discrepancy candidates first
+   * (write_document golden path). Default true unless explicitly set false.
+   */
+  verificationGoldenPathWriteDocument?: boolean;
 }
 
 export interface SafeDailyBriefStageStatus {
