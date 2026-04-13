@@ -76,6 +76,12 @@ Do not call a task complete with local-only reasoning when Playwright, Vercel, S
 
 ## Session Logs
 
+- 2026-04-13 — Homepage: business-outcomes band (revenue, hiring, decisions) between How it works and pricing
+ MODE: FEATURE
+ Files changed: `app/HomePageClient.tsx`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npm run build`
+ Changes: Added `BusinessOutcomesSection` with headline “Where Foldera protects outcomes,” support line on delay cost, three panels (revenue reply, hiring threads, reopening decisions) matching existing card/grid styling.
+
 - 2026-04-12 — Scorer/generator: structured `no_valid_action` (no null); deterministic blocker artifact
  MODE: FEATURE
  Files changed: `lib/briefing/scorer.ts`, `lib/briefing/generator.ts`, `lib/briefing/types.ts`, `lib/cron/daily-brief-generate.ts`, `lib/briefing/__tests__/no-valid-action.test.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/briefing/__tests__/usefulness-gate.test.ts`, `lib/briefing/__tests__/decision-payload-adversarial.test.ts`, `lib/__tests__/multi-user-safety.test.ts`, `SESSION_HISTORY.md`

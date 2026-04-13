@@ -173,6 +173,59 @@ function MiddleSection() {
   );
 }
 
+function BusinessOutcomesSection() {
+  const panels = [
+    {
+      title: 'Revenue waiting on your reply',
+      body: 'A buyer reopened the thread, the proposal is sitting there, and response time keeps stretching.',
+      output: 'Foldera drafts the follow-up, scope update, or close-the-loop reply.',
+    },
+    {
+      title: 'Hiring threads cooling down',
+      body: 'A recruiter, hiring manager, or candidate thread has gone quiet and momentum is fading.',
+      output: 'Foldera drafts the next-step reply, follow-up, or interview coordination note.',
+    },
+    {
+      title: 'Decisions you keep reopening',
+      body: 'The same issue keeps resurfacing, but nobody has written the recommendation clearly enough to move.',
+      output: 'Foldera drafts the decision memo, written recommendation, or frame for approval.',
+    },
+  ];
+  return (
+    <section
+      className="relative bg-[#050508] border-t border-white/[0.05]"
+      aria-labelledby="business-outcomes-heading"
+    >
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_65%_45%_at_50%_0%,rgba(34,211,238,0.04),transparent_58%)]" />
+      <div className="relative z-10 max-w-[min(100%,72rem)] mx-auto px-4 sm:px-6 py-20 md:py-24 lg:py-28">
+        <h2
+          id="business-outcomes-heading"
+          className="text-white text-center text-2xl sm:text-3xl md:text-4xl lg:text-[2.75rem] font-semibold tracking-[-0.03em] leading-[1.12] mb-5 md:mb-6 max-w-3xl mx-auto"
+        >
+          Where Foldera protects outcomes
+        </h2>
+        <p className="text-zinc-400 text-center text-base sm:text-lg md:text-xl leading-relaxed max-w-2xl mx-auto font-medium mb-14 md:mb-16 lg:mb-20">
+          Foldera is built for the moments where delay costs revenue, momentum, or trust.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-7 lg:gap-10">
+          {panels.map((p) => (
+            <div
+              key={p.title}
+              className="relative rounded-2xl border border-white/[0.08] bg-[linear-gradient(165deg,rgba(255,255,255,0.03)_0%,transparent_42%,#07080c_100%)] p-7 md:p-8 lg:p-9 shadow-[0_32px_80px_-56px_rgba(0,0,0,0.85)] flex flex-col"
+            >
+              <h3 className="text-white text-xl md:text-2xl font-semibold tracking-tight mb-3">{p.title}</h3>
+              <p className="text-zinc-400 text-base md:text-[17px] leading-relaxed flex-1">{p.body}</p>
+              <p className="mt-5 pt-5 border-t border-white/[0.07] text-zinc-200 text-sm md:text-[15px] leading-relaxed font-medium">
+                {p.output}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PricingSection() {
   return (
     <section id="pricing" className="relative bg-[#050508] overflow-hidden scroll-mt-20 border-t border-white/[0.06]">
@@ -307,6 +360,7 @@ export default function HomePageClient() {
 
         <ProofStrip />
         <MiddleSection />
+        <BusinessOutcomesSection />
         <PricingSection />
 
         <footer className="relative border-t border-white/[0.06] bg-[#07070c]">
