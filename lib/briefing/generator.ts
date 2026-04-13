@@ -678,9 +678,9 @@ interface GenerateDirectiveOptions {
    */
   verificationStubPersist?: boolean;
   /**
-   * Owner verification only: when set with `verificationStubPersist`, try `schedule_conflict` discrepancy
-   * candidates before others so the golden path hits `write_document` without paid LLM when that class exists.
-   * Default true whenever `verificationStubPersist` is true (opt out with `false`).
+   * Owner verification only: when set with `verificationStubPersist`, try `write_document` discrepancy
+   * classes first (`schedule_conflict`, then `stale_document`) so the stub hits `write_document` without
+   * paid LLM when those rows exist. Default true with `verificationStubPersist` (opt out with `false`).
    */
   verificationGoldenPathWriteDocument?: boolean;
 }
@@ -1334,9 +1334,13 @@ export function selectRankedCandidates(
   return { ranked: rated.map(r => ({ candidate: r.candidate, note: r.note, disqualified: r.disqualified, disqualifyReason: r.disqualifyReason })), competitionContext };
 }
 
+/** Discrepancy classes that lock to `write_document` — verification mode tries these before other winners. */
+const VERIFICATION_GOLDEN_PATH_WRITE_DOC_CLASSES = ['schedule_conflict', 'stale_document'] as const;
+
 /**
- * Owner verification: prefer `schedule_conflict` discrepancy rows so DecisionPayload locks to
- * `write_document` when that candidate exists and is not disqualified.
+ * Owner verification: prefer discrepancy rows whose trigger maps to `write_document`
+ * (`schedule_conflict` first, then `stale_document`) so the deterministic stub hits the same
+ * payload branch when those candidates exist and are not disqualified.
  */
 export function reorderRankedCandidatesForVerificationGoldenPathWriteDocument<
   T extends {
@@ -1344,12 +1348,15 @@ export function reorderRankedCandidatesForVerificationGoldenPathWriteDocument<
     disqualified: boolean;
   },
 >(ranked: T[]): T[] {
-  const preferred = ranked.filter(
-    (r) =>
-      !r.disqualified &&
-      r.candidate.type === 'discrepancy' &&
-      r.candidate.discrepancyClass === 'schedule_conflict',
+  const tiers: T[][] = VERIFICATION_GOLDEN_PATH_WRITE_DOC_CLASSES.map((cls) =>
+    ranked.filter(
+      (r) =>
+        !r.disqualified &&
+        r.candidate.type === 'discrepancy' &&
+        r.candidate.discrepancyClass === cls,
+    ),
   );
+  const preferred = tiers.flat();
   if (preferred.length === 0) return ranked;
   const preferredIds = new Set(preferred.map((p) => p.candidate.id));
   return [...preferred, ...ranked.filter((r) => !preferredIds.has(r.candidate.id))];

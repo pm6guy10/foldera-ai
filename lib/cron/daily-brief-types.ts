@@ -94,8 +94,8 @@ export interface DailyBriefSignalWindowOptions {
    */
   verificationStubPersist?: boolean;
   /**
-   * When true with `verificationStubPersist`, generator tries `schedule_conflict` discrepancy candidates first
-   * (write_document golden path). Default true unless explicitly set false.
+   * When true with `verificationStubPersist`, generator tries `write_document` discrepancy classes first:
+   * `schedule_conflict`, then `stale_document`. Default true unless explicitly set false.
    */
   verificationGoldenPathWriteDocument?: boolean;
 }

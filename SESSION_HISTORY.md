@@ -4137,6 +4137,12 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: `verificationStubPersist` merges `pipelineDryRun` + auto `cronInvocationId`, skips the early `pipeline_dry_run` return so `generateArtifact` uses the existing pipeline-dry embedded-artifact fast-path (no Anthropic). Canonical stub payloads (one-sentence directive, substantive body) pass validator + typical gates. `pipeline_runs` rows get `verification_stub_post_directive` then `patchUserPipelineRunOutcome` → `verification_stub_persisted` with action id. Owner `POST /api/dev/brain-receipt` with JSON `{"verification_stub_persist":true}` enables the path; response includes `pipeline_run` ids when present.
 - Verification: `npm run health` (0 failing); `npx vitest run lib/observability/__tests__/pipeline-run.test.ts`; `npm run build`.
 
+## 2026-04-13 — Verification golden path: second `write_document` discrepancy class (`stale_document`)
+- MODE: TESTABILITY (one-step generalization)
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/verification-golden-path-order.test.ts`, `lib/cron/daily-brief-types.ts`, `SESSION_HISTORY.md`
+- What changed: `reorderRankedCandidatesForVerificationGoldenPathWriteDocument` now tiers `schedule_conflict` then `stale_document` (both resolve to `write_document` per trigger map) before other ranked candidates. Docs only; same stub/persist path.
+- Verification: `npm run health` (0 failing); `npx vitest run lib/briefing/__tests__/verification-golden-path-order.test.ts`; `npm run build`; `npx tsx scripts/run-verification-golden-path-once.ts` — returned **`pending_approval_reused`** (existing stub row still in queue; reorder tiering not re-hit end-to-end in that run).
+
 ## 2026-04-13 — Golden path verified: `run-verification-golden-path-once` + production DB proof
 - MODE: VERIFICATION
 - Files changed: `scripts/run-verification-golden-path-once.ts`, `SESSION_HISTORY.md`
