@@ -4083,6 +4083,12 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: `ScorerDiagnostics` now records raw `detectDiscrepancies()` summary (count, classes, bounded preview), pre-pool skips (locked contact / failure suppression), `actionType` on structural discrepancy rows, and insight-scan discrepancy rows scored count. `buildGateFunnelFromScorerDiagnostics` persists `discrepancy_count`, `discrepancy_classes`, `discrepancy_candidates_preview`, survivor counts, `discrepancy_drops_by_stage`, and related counters into `pipeline_runs.gate_funnel` so production can tell detector emission vs downstream loss.
 - Verification: `npm run health` (0 failing); `npx vitest run lib/observability/__tests__/pipeline-run.test.ts`; `npm run build`.
 
+## 2026-04-13 — Scorer: structural discrepancies bypass open-loop failure memory; invariant exemption
+- MODE: BUGFIX
+- Files changed: `lib/briefing/scorer.ts`, `lib/briefing/__tests__/scorer-ranking-invariants.test.ts`, `SESSION_HISTORY.md`
+- What changed: Production gate_funnel showed most discrepancy loss in `discrepancy_skipped_pre_pool.failure_suppression` while structural classes were still desired. `scoredLoopMatchesFailureSuppression` now applies only to `behavioral_pattern` discrepancies (pattern-shaped, same fatigue model as loops); decay, `unresolved_intent`, calendar/drive classes, etc. inject even when shared signal ids appear in recent gate-failure memory — those failures attach to open-loop winners, not discrepancy artifacts. `getInvariantFailureReasons` exempts `discrepancy` and `hunt` from obvious-advice / noise heuristics (same rationale as relationship) so titles like “Follow up on…” cannot hard-reject detector output.
+- Verification: `npm run health` (0 failing); `npx vitest run lib/briefing/__tests__/scorer-ranking-invariants.test.ts`; `npm run build`.
+
 ## 2026-04-13 — Sign-out lands on marketing home (fix prod mobile-journey E2E)
 - MODE: BUGFIX
 - Files changed: `lib/auth/constants.ts`, `lib/auth/auth-options.ts`, `components/layout/dashboard-shell.tsx`, `components/layout/sidebar.tsx`, `app/dashboard/settings/SettingsClient.tsx`, `app/dashboard/briefings/page.tsx`, `SESSION_HISTORY.md`

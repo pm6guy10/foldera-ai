@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyRankingInvariants,
+  DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET,
   passesTop3RankingInvariants,
   type ScoredLoop,
 } from '../scorer';
@@ -167,6 +168,28 @@ describe('applyRankingInvariants', () => {
 
     const { ranked } = applyRankingInvariants(input);
     expect(ranked[0]?.id).toBe('high-signal-discrepancy');
+  });
+
+  it('discrepancy titles that match obvious_first_layer patterns still pass invariants', () => {
+    const disc: ScoredLoop = candidate({
+      id: 'disc-follow-up-shaped',
+      score: 3.8,
+      type: 'discrepancy',
+      suggestedActionType: 'write_document',
+      discrepancyClass: 'meeting_open_thread',
+      title: 'Follow up on open thread before meeting',
+      content: 'Meeting starts in 2h; last inbound thread has no owner reply.',
+      matchedGoal: null,
+      relatedSignals: [],
+      sourceSignals: [{ kind: 'signal', id: 'sig-1' }],
+    });
+    expect(passesTop3RankingInvariants(disc)).toBe(true);
+  });
+
+  it('only behavioral_pattern discrepancies are subject to failure-suppression class set', () => {
+    expect(DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET.has('behavioral_pattern')).toBe(true);
+    expect(DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET.has('decay')).toBe(false);
+    expect(DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET.has('unresolved_intent')).toBe(false);
   });
 
   it('top 3 after invariants are all actionable SEND/WRITE-quality candidates', () => {

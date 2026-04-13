@@ -340,6 +340,13 @@ export const SCORER_STATIC_DUPLICATE_STOPWORDS = new Set([
 
 const DUPLICATE_STOPWORDS = SCORER_STATIC_DUPLICATE_STOPWORDS;
 
+/**
+ * Only these discrepancy classes inherit open-loop failure memory (shared signal ids with
+ * prior duplicate/usefulness gate failures). Structural gap classes use a different artifact
+ * path and must not be blocked solely because an unrelated loop candidate failed on the same id.
+ */
+export const DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET = new Set<DiscrepancyClass>(['behavioral_pattern']);
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -1678,9 +1685,14 @@ function getInvariantFailureReasons(candidate: ScoredLoop): string[] {
   // Relationship candidates are exempt from both noise and obvious-advice checks.
   // "Follow up with X" is their canonical title format (built from tkg_entities) —
   // it looks like a generic phrase but represents a verified entity with real interaction history.
+  // Discrepancy and hunt rows are detector- or thread-anchored — same rationale as relationship.
   const isRelationship = candidate.type === 'relationship';
-  const obviousAdvice = isRelationship ? false : isObviousFirstLayerAdvice(candidate);
-  const routineMaintenance = isRelationship
+  const exemptFromObviousNoiseHeuristics =
+    isRelationship
+    || candidate.type === 'discrepancy'
+    || candidate.type === 'hunt';
+  const obviousAdvice = exemptFromObviousNoiseHeuristics ? false : isObviousFirstLayerAdvice(candidate);
+  const routineMaintenance = exemptFromObviousNoiseHeuristics
     ? false
     : isNoiseCandidateText(candidate.title, candidate.content);
   const evidenceDensity = computeEvidenceDensity(candidate);
@@ -5774,8 +5786,9 @@ export async function scoreOpenLoops(
   const nowMsDisc = Date.now();
   for (const d of discrepancies) {
     if (
-      failureSuppressionKeys.size > 0 &&
-      scoredLoopMatchesFailureSuppression(
+      DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET.has(d.class)
+      && failureSuppressionKeys.size > 0
+      && scoredLoopMatchesFailureSuppression(
         { id: d.id, type: 'discrepancy', sourceSignals: d.sourceSignals },
         failureSuppressionKeys,
       )
