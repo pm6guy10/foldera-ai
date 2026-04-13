@@ -138,7 +138,8 @@ for (const { w, h, tag } of VIEWPORTS) {
         await page.screenshot({ path: path.join(dir, '15-pricing-checkout-cta.png'), fullPage: true });
       }
 
-      await page.goto('/dashboard', { waitUntil: 'networkidle', timeout: 45000 });
+      // Sign out lives under Settings (dashboard home has no Sign out after IA refresh).
+      await page.goto('/dashboard/settings', { waitUntil: 'networkidle', timeout: 45000 });
       await Promise.all([
         page.waitForURL((url) => url.pathname === '/' || url.pathname === '', { timeout: 45000 }),
         page.getByRole('button', { name: 'Sign out' }).first().click(),
