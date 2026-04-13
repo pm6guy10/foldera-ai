@@ -327,6 +327,67 @@ export async function attachApiSpendSnapshot(pipelineRunId: string): Promise<voi
   }
 }
 
+/**
+ * Best-effort: update outcome + merge raw_extras after verification-stub persistence (initial finalize
+ * runs before artifact stage).
+ */
+export async function patchUserPipelineRunOutcome(params: {
+  id: string;
+  userId: string;
+  outcome: string;
+  rawExtrasPatch?: Record<string, unknown>;
+}): Promise<void> {
+  try {
+    const supabase = createServerClient();
+    const { data: row, error: fetchErr } = await supabase
+      .from('pipeline_runs')
+      .select('raw_extras')
+      .eq('id', params.id)
+      .eq('user_id', params.userId)
+      .maybeSingle();
+
+    if (fetchErr || !row) {
+      if (fetchErr) {
+        console.error(
+          JSON.stringify({
+            event: 'pipeline_runs_patch_fetch_error',
+            message: fetchErr.message,
+          }),
+        );
+      }
+      return;
+    }
+
+    const prev =
+      row.raw_extras && typeof row.raw_extras === 'object'
+        ? (row.raw_extras as Record<string, unknown>)
+        : {};
+    const merged = { ...prev, ...(params.rawExtrasPatch ?? {}) };
+
+    const { error: upErr } = await supabase
+      .from('pipeline_runs')
+      .update({
+        outcome: params.outcome,
+        raw_extras: merged,
+      })
+      .eq('id', params.id)
+      .eq('user_id', params.userId);
+
+    if (upErr) {
+      console.error(
+        JSON.stringify({ event: 'pipeline_runs_patch_update_error', message: upErr.message }),
+      );
+    }
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        event: 'pipeline_runs_patch_throw',
+        error: e instanceof Error ? e.message : String(e),
+      }),
+    );
+  }
+}
+
 export async function mergePipelineRunDelivery(params: {
   userId: string;
   cronInvocationId: string;

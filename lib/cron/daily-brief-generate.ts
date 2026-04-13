@@ -77,6 +77,7 @@ import {
   buildGateFunnelFromScorerDiagnostics,
   finalizeUserPipelineRun,
   insertUserPipelineRunStart,
+  patchUserPipelineRunOutcome,
 } from '@/lib/observability/pipeline-run';
 import { runWithPipelineRunContext } from '@/lib/observability/pipeline-run-context';
 
@@ -1587,6 +1588,16 @@ export async function runDailyGenerate(
   const date = new Date().toISOString().slice(0, 10);
   const todayStart = todayStartIso();
 
+  const runOpts: DailyBriefSignalWindowOptions =
+    options.verificationStubPersist === true
+      ? {
+          ...options,
+          pipelineDryRun: true,
+          cronInvocationId: options.cronInvocationId ?? randomUUID(),
+          briefInvocationSource: options.briefInvocationSource ?? 'dev_verification_stub',
+        }
+      : options;
+
   const { error: expireError } = await supabase
     .from('user_subscriptions')
     .update({ status: 'expired' })
@@ -1596,7 +1607,7 @@ export async function runDailyGenerate(
 
   if (expireError) throw expireError;
 
-  const eligibleUserIds = await resolveDailyBriefUserIds(options.userIds);
+  const eligibleUserIds = await resolveDailyBriefUserIds(runOpts.userIds);
   if (eligibleUserIds.length === 0) {
     const emptySignalStage = buildRunResult(
       date,
@@ -1615,8 +1626,8 @@ export async function runDailyGenerate(
   const cycleLastAt = await fetchBriefCycleLastAtMap(supabase, eligibleUserIds);
   /** Cron/trigger paths stay throttled; authenticated Generate Now + dev brain-receipt bypass. */
   const bypassBriefGenerationCycleCooldown =
-    options.skipManualCallLimit === true ||
-    options.briefInvocationSource === 'settings_run_brief';
+    runOpts.skipManualCallLimit === true ||
+    runOpts.briefInvocationSource === 'settings_run_brief';
 
   for (let ui = 0; ui < eligibleUserIds.length; ui++) {
     const userId = eligibleUserIds[ui];
@@ -1640,7 +1651,7 @@ export async function runDailyGenerate(
 
     // Reconcile stale/duplicate pending BEFORE guards that read pending_approval — otherwise the
     // early guard short-circuits and reconciliation never runs (dead air for the rest of the UTC day).
-    const pendingQueuePre = await reconcilePendingApprovalQueue(supabase, userId, todayStart, options);
+    const pendingQueuePre = await reconcilePendingApprovalQueue(supabase, userId, todayStart, runOpts);
     if (pendingQueuePre.error) {
       results.push({
         code: 'directive_persist_failed',
@@ -1696,7 +1707,7 @@ export async function runDailyGenerate(
     // Hard gate: one full generation cycle (signal processing onward) per user per 20h for batch/cron callers.
     // Dev brain-receipt may set skipManualCallLimit; settings route uses settings_run_brief (20h bypass) without skipManualCallLimit.
     if (
-      !options.pipelineDryRun &&
+      !runOpts.pipelineDryRun &&
       userId !== TEST_USER_ID &&
       !bypassBriefGenerationCycleCooldown
     ) {
@@ -1716,7 +1727,7 @@ export async function runDailyGenerate(
                 scope: 'pre_signal_processing',
                 last_cycle_at: lastIso,
                 next_eligible_at: nextAt,
-                brief_invocation_source: options.briefInvocationSource ?? null,
+                brief_invocation_source: runOpts.briefInvocationSource ?? null,
               },
             });
             results.push({
@@ -1740,11 +1751,11 @@ export async function runDailyGenerate(
     const signalResult = await runSignalProcessingForUser(
       supabase,
       userId,
-      applyInteractiveStaleGateBypass(options),
+      applyInteractiveStaleGateBypass(runOpts),
     );
     signalResults.push(signalResult);
 
-    if (!options.pipelineDryRun && userId !== TEST_USER_ID) {
+    if (!runOpts.pipelineDryRun && userId !== TEST_USER_ID) {
       try {
         await recordBriefCycleCheckpoint(supabase, userId);
         cycleLastAt.set(userId, new Date().toISOString());
@@ -1755,7 +1766,7 @@ export async function runDailyGenerate(
     }
 
     try {
-      const pendingQueue = await reconcilePendingApprovalQueue(supabase, userId, todayStart, options);
+      const pendingQueue = await reconcilePendingApprovalQueue(supabase, userId, todayStart, runOpts);
       if (pendingQueue.error) {
         results.push({
           code: 'directive_persist_failed',
@@ -1840,7 +1851,7 @@ export async function runDailyGenerate(
         const accountYoung =
           createdMs !== null && Date.now() - createdMs < FIRST_MORNING_ACCOUNT_MAX_MS;
         if (
-          !options.pipelineDryRun &&
+          !runOpts.pipelineDryRun &&
           signalTotal < FIRST_MORNING_SIGNAL_CAP &&
           accountYoung &&
           !(await hasPriorFirstMorningBrief(supabase, userId))
@@ -1977,7 +1988,7 @@ export async function runDailyGenerate(
         console.warn('[daily-brief] pre-generate commitment ceiling defense failed:', err);
       }
 
-      if (!options.pipelineDryRun && userId !== TEST_USER_ID) {
+      if (!runOpts.pipelineDryRun && userId !== TEST_USER_ID) {
         const loopCheck = await detectPersistedDirectiveContentLoop(supabase, userId);
         if (loopCheck.isLoop) {
           console.log(
@@ -2053,7 +2064,7 @@ export async function runDailyGenerate(
 
       let directive;
       const pipelineRunId = randomUUID();
-      const cronInv = options.cronInvocationId;
+      const cronInv = runOpts.cronInvocationId;
       const trackPipelineRun = Boolean(cronInv);
 
       if (trackPipelineRun) {
@@ -2061,16 +2072,17 @@ export async function runDailyGenerate(
           id: pipelineRunId,
           userId,
           cronInvocationId: cronInv!,
-          invocationSource: options.briefInvocationSource ?? 'daily_brief',
+          invocationSource: runOpts.briefInvocationSource ?? 'daily_brief',
         });
       }
 
       try {
         const genOpts = {
-          skipSpendCap: options.skipSpendCap,
-          skipManualCallLimit: options.skipManualCallLimit,
+          skipSpendCap: runOpts.skipSpendCap,
+          skipManualCallLimit: runOpts.skipManualCallLimit,
           dryRun: process.env.FOLDERA_DRY_RUN === 'true',
-          pipelineDryRun: options.pipelineDryRun === true,
+          pipelineDryRun: runOpts.pipelineDryRun === true,
+          verificationStubPersist: runOpts.verificationStubPersist === true,
         };
         if (trackPipelineRun) {
           directive = await runWithPipelineRunContext(
@@ -2121,9 +2133,11 @@ export async function runDailyGenerate(
           userId,
           outcome: genFailed
             ? 'generation_failed_sentinel'
-            : options.pipelineDryRun
-              ? 'pipeline_dry_run_returned'
-              : 'generation_returned',
+            : runOpts.verificationStubPersist && runOpts.pipelineDryRun
+              ? 'verification_stub_post_directive'
+              : runOpts.pipelineDryRun
+                ? 'pipeline_dry_run_returned'
+                : 'generation_returned',
           gateFunnel: buildGateFunnelFromScorerDiagnostics(diag, {
             candidate_discovery_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? null,
             gen_stage: directive.generationLog?.stage ?? null,
@@ -2134,7 +2148,8 @@ export async function runDailyGenerate(
           candidatesEvaluated:
             diag?.candidatesEnteringScoreLoop ?? diag?.filterStages?.[0]?.before ?? null,
           rawExtras: {
-            pipeline_dry_run: Boolean(options.pipelineDryRun),
+            pipeline_dry_run: Boolean(runOpts.pipelineDryRun),
+            verification_stub_persist: Boolean(runOpts.verificationStubPersist),
             budget_cap_sentinel: directive.directive === BUDGET_CAP_DIRECTIVE_SENTINEL,
             winner_candidate_id:
               directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.id ?? null,
@@ -2145,7 +2160,7 @@ export async function runDailyGenerate(
       }
 
       const pipelineDryReceipt = directive.generationLog?.pipeline_dry_run;
-      if (options.pipelineDryRun && pipelineDryReceipt) {
+      if (runOpts.pipelineDryRun && pipelineDryReceipt && !runOpts.verificationStubPersist) {
         results.push({
           code: 'pipeline_dry_run',
           meta: {
@@ -2497,7 +2512,10 @@ export async function runDailyGenerate(
               directive,
               artifact: artifactForRow ?? artifact,
               briefOrigin: 'daily_cron',
-              extras: { inspection: inspectionMeta },
+              extras: {
+                inspection: inspectionMeta,
+                ...(runOpts.verificationStubPersist ? { verification_stub_persist: true } : {}),
+              },
             }),
             approve: null,
             outcome_receipt: outcomeReceipt,
@@ -2573,11 +2591,29 @@ export async function runDailyGenerate(
           candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
           top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
           outcome_receipt: outcomeReceipt,
+          ...(runOpts.verificationStubPersist && trackPipelineRun
+            ? {
+                verification_stub_persist: true,
+                pipeline_run_id: pipelineRunId,
+                cron_invocation_id: cronInv,
+              }
+            : {}),
           ...extractThresholdValues(directive),
         },
         success: true,
         userId,
       });
+      if (trackPipelineRun && runOpts.verificationStubPersist) {
+        void patchUserPipelineRunOutcome({
+          id: pipelineRunId,
+          userId,
+          outcome: 'verification_stub_persisted',
+          rawExtrasPatch: {
+            verification_stub_action_id: saved.id,
+            verification_stub_completed_at: new Date().toISOString(),
+          },
+        });
+      }
       const artifactRecord = artifact as unknown as Record<string, unknown>;
       logStructuredEvent({
         event: 'daily_generate_complete',

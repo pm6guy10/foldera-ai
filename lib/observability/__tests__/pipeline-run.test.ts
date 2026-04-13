@@ -1,6 +1,60 @@
-import { describe, expect, it } from 'vitest';
-import { buildGateFunnelFromScorerDiagnostics } from '@/lib/observability/pipeline-run';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildGateFunnelFromScorerDiagnostics, patchUserPipelineRunOutcome } from '@/lib/observability/pipeline-run';
 import type { ScorerDiagnostics } from '@/lib/briefing/scorer';
+
+const updateMock = vi.fn(() => ({
+  eq: vi.fn(() => ({
+    eq: vi.fn(() => Promise.resolve({ error: null })),
+  })),
+}));
+const selectMock = vi.fn(() => ({
+  eq: vi.fn(() => ({
+    eq: vi.fn(() => ({
+      maybeSingle: () =>
+        Promise.resolve({
+          data: { raw_extras: { existing: true } },
+          error: null,
+        }),
+    })),
+  })),
+}));
+
+vi.mock('@/lib/db/client', () => ({
+  createServerClient: () => ({
+    from: (table: string) => {
+      if (table !== 'pipeline_runs') {
+        return {};
+      }
+      return {
+        select: selectMock,
+        update: updateMock,
+      };
+    },
+  }),
+}));
+
+beforeEach(() => {
+  updateMock.mockClear();
+  selectMock.mockClear();
+});
+
+describe('patchUserPipelineRunOutcome', () => {
+  it('merges raw_extras and sets outcome', async () => {
+    await patchUserPipelineRunOutcome({
+      id: 'run-1',
+      userId: 'user-1',
+      outcome: 'verification_stub_persisted',
+      rawExtrasPatch: { verification_stub_action_id: 'action-xyz' },
+    });
+    expect(updateMock).toHaveBeenCalled();
+    const payload = updateMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(payload.outcome).toBe('verification_stub_persisted');
+    expect(payload.raw_extras).toEqual({
+      existing: true,
+      verification_stub_action_id: 'action-xyz',
+    });
+  });
+});
 
 describe('buildGateFunnelFromScorerDiagnostics', () => {
   it('returns empty scorer marker when diag is null', () => {

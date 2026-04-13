@@ -32,6 +32,17 @@ export async function POST(request: Request) {
   }
 
   try {
+    let verificationStubPersist = false;
+    try {
+      const ct = request.headers.get('content-type') ?? '';
+      if (ct.includes('application/json')) {
+        const body = (await request.json()) as Record<string, unknown>;
+        verificationStubPersist = body.verification_stub_persist === true;
+      }
+    } catch {
+      verificationStubPersist = false;
+    }
+
     const startedAt = new Date().toISOString();
     const generate = await runDailyGenerate({
       userIds: [auth.userId],
@@ -39,7 +50,10 @@ export async function POST(request: Request) {
       skipSpendCap: true,
       skipManualCallLimit: true,
       forceFreshRun: true,
-      briefInvocationSource: 'dev_brain_receipt',
+      briefInvocationSource: verificationStubPersist
+        ? 'dev_brain_receipt_verification'
+        : 'dev_brain_receipt',
+      verificationStubPersist,
     });
 
     // Retrieve the full scorer diagnostics populated during scoreOpenLoops()
@@ -145,9 +159,23 @@ export async function POST(request: Request) {
       const activeGoalsFromLog =
         generationLog?.brief_context_debug?.active_goals ?? null;
 
+      const ownerMeta =
+        ownerResult?.meta && typeof ownerResult.meta === 'object'
+          ? (ownerResult.meta as Record<string, unknown>)
+          : null;
+
       return NextResponse.json({
         ok: true,
         started_at: startedAt,
+        verification_stub_persist: verificationStubPersist,
+        ...(ownerMeta?.pipeline_run_id || ownerMeta?.cron_invocation_id
+          ? {
+              pipeline_run: {
+                pipeline_run_id: ownerMeta.pipeline_run_id ?? null,
+                cron_invocation_id: ownerMeta.cron_invocation_id ?? null,
+              },
+            }
+          : {}),
         // ── SCORER DIAGNOSTICS (the full drop receipt) ────────────────────
         scorer_diagnostics: scorerDiagnostics,
         // ── PERSISTED GENERATION TRACE (same row the email preview uses) ─
@@ -183,9 +211,22 @@ export async function POST(request: Request) {
     }
 
     // No action persisted — return diagnostics anyway
+    const failMeta =
+      ownerResult?.meta && typeof ownerResult.meta === 'object'
+        ? (ownerResult.meta as Record<string, unknown>)
+        : null;
     return NextResponse.json({
       ok: false,
       started_at: startedAt,
+      verification_stub_persist: verificationStubPersist,
+      ...(failMeta?.pipeline_run_id || failMeta?.cron_invocation_id
+        ? {
+            pipeline_run: {
+              pipeline_run_id: failMeta.pipeline_run_id ?? null,
+              cron_invocation_id: failMeta.cron_invocation_id ?? null,
+            },
+          }
+        : {}),
       blocker: 'no_fresh_action_persisted',
       scorer_diagnostics: scorerDiagnostics,
       generate_stage_result: ownerResult,

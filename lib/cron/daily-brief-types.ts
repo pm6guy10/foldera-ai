@@ -87,6 +87,12 @@ export interface DailyBriefSignalWindowOptions {
    * no Anthropic calls, no DB persist of a new action, no email. Inspect `generate.results[].meta.pipeline_dry_run`.
    */
   pipelineDryRun?: boolean;
+  /**
+   * Owner-only: combined with `pipelineDryRun`, uses deterministic stub payloads (no Anthropic) but continues
+   * through `generateArtifact` fast-path and real persistence / gate validation. Writes `pipeline_runs` when
+   * `cronInvocationId` is set (auto-generated if omitted). Intended for `/api/dev/brain-receipt` production checks.
+   */
+  verificationStubPersist?: boolean;
 }
 
 export interface SafeDailyBriefStageStatus {

@@ -672,6 +672,11 @@ interface GenerateDirectiveOptions {
    * without widening Generate Now / smoke-test budgets.
    */
   skipManualCallLimit?: boolean;
+  /**
+   * With `pipelineDryRun`, use canonical stub text that passes one-sentence + persistence checks so the
+   * daily-brief path can reach real artifact validation and DB writes without Anthropic (owner verification).
+   */
+  verificationStubPersist?: boolean;
 }
 
 /** Internal: generatePayload only — locks LLM render to DecisionPayload.recommended_action */
@@ -7357,6 +7362,121 @@ function buildPipelineDryRunGeneratedPayload(
   };
 }
 
+/**
+ * Same shape as pipeline dry-run, but prose is long enough and concrete enough to pass
+ * `validateGeneratedArtifact`, `isSendWorthy`, and `evaluateBottomGate` for typical winners — without Anthropic.
+ * Directive lines must stay a single sentence (generator contract).
+ */
+function buildVerificationStubPersistGeneratedPayload(
+  committed: ValidArtifactTypeCanonical,
+  ctx: StructuredContext,
+): GeneratedDirectivePayload {
+  const cd = ctx.required_causal_diagnosis;
+  const insight =
+    'Owner verification stub: deterministic payload exercises downstream validation without Anthropic.';
+  const whyNow =
+    'Verification path uses the real scorer winner and gates; model output is replaced by canonical stub text.';
+  const dirSend =
+    'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.';
+  const bodySend =
+    'We need a written confirmation before COB Friday 2026-04-18 so Legal can file the renewal; ' +
+    'please reply with approval or the specific blocker so we can escalate to the board before the window closes.';
+  const dirDoc =
+    'Send Alex Morgan at alex@partner.example.com a concrete resolution for the 2026-04-16 overlap before Friday 2026-04-18.';
+  const contentDoc =
+    'MESSAGE TO Alex Morgan (alex@partner.example.com):\n\n' +
+    'We have overlapping commitments on 2026-04-16 that force a trade-off before Friday 2026-04-18. ' +
+    'Please confirm whether you can move the partner review so Customer Success can protect the renewal timeline.';
+
+  if (committed === 'send_message') {
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'ACT',
+      directive: dirSend,
+      artifact_type: 'send_message',
+      artifact: {
+        to: 'partner@example.com',
+        subject: 'Q2 plan — confirmation needed before 2026-04-18 (action required)',
+        body: bodySend,
+        draft_type: 'email_compose',
+      },
+      why_now: whyNow,
+    };
+  }
+
+  if (committed === 'write_document') {
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'ACT',
+      directive: dirDoc,
+      artifact_type: 'write_document',
+      artifact: {
+        document_purpose: 'Foldera owner verification — calendar conflict resolution draft',
+        target_reader: 'External partner contact',
+        title: 'Resolution note — April 2026 calendar overlap',
+        content: contentDoc,
+      },
+      why_now: whyNow,
+    };
+  }
+
+  if (committed === 'schedule_block') {
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'ACT',
+      directive:
+        'Block 45 minutes before Friday 2026-04-18 to finalize the partner escalation with the team.',
+      artifact_type: 'schedule_block',
+      artifact: {
+        title: 'Partner escalation — finalize plan',
+        reason: 'Verification stub: timeboxed working session before the 2026-04-18 deadline.',
+        start: new Date(Date.now() + 86400000).toISOString(),
+        duration_minutes: 45,
+      },
+      why_now: whyNow,
+    };
+  }
+
+  if (committed === 'wait_rationale') {
+    const trip = new Date(Date.now() + daysMs(7)).toISOString().slice(0, 10);
+    return {
+      insight,
+      causal_diagnosis: cd,
+      causal_diagnosis_source: 'template_fallback',
+      decision: 'HOLD',
+      directive: 'Wait until fresh inbound signals arrive before pushing the partner thread again.',
+      artifact_type: 'wait_rationale',
+      artifact: {
+        why_wait:
+          'No new external signal in the verification stub path — hold until the next inbox or calendar change.',
+        tripwire_date: trip,
+        trigger_condition: 'Unset verification mode and regenerate with live Anthropic when allowed.',
+      },
+      why_now: whyNow,
+    };
+  }
+
+  return {
+    insight,
+    causal_diagnosis: cd,
+    causal_diagnosis_source: 'template_fallback',
+    decision: 'HOLD',
+    directive: 'No outbound action in the verification stub path for this action class.',
+    artifact_type: 'do_nothing',
+    artifact: {
+      exact_reason: 'verification_stub_do_nothing',
+      blocked_by: 'verification_stub',
+    },
+    why_now: whyNow,
+  };
+}
+
 async function generatePayload(
   userId: string,
   ctx: StructuredContext,
@@ -7396,7 +7516,10 @@ async function generatePayload(
   }
 
   if (options.pipelineDryRun) {
-    const dryPayload = buildPipelineDryRunGeneratedPayload(options.committedArtifactType, ctx);
+    const dryPayload =
+      options.verificationStubPersist === true
+        ? buildVerificationStubPersistGeneratedPayload(options.committedArtifactType, ctx)
+        : buildPipelineDryRunGeneratedPayload(options.committedArtifactType, ctx);
     const dryIssues = validateGeneratedArtifact(dryPayload, ctx, options.committedArtifactType, {
       pipelineDryRun: true,
     });
