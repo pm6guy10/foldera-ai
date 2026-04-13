@@ -4076,3 +4076,9 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Files changed: `lib/briefing/scorer.ts`, `lib/briefing/__tests__/stakes-gate.test.ts`, `SESSION_HISTORY.md`
 - What changed: Removed `no_valid_action` early returns after the entity reality gate and stakes gate when the mail/relationship/commitment candidate list was empty. Those returns ran *before* `detectDiscrepancies()`, so structural candidates (e.g. `schedule_conflict` → `write_document`) were never injected when thread-backed rows all failed gates — a root cause of repeated `do_nothing` / `no_valid_action` despite cross-source data. Added structured logs `continue_past_empty_thread_pool` and a stakes-gate regression note.
 - Verification: `npm run health`; `npm run build`; `npx vitest run lib/briefing/__tests__/stakes-gate.test.ts`.
+
+## 2026-04-13 — Pipeline runs: discrepancy observability in gate_funnel
+- MODE: OBSERVABILITY
+- Files changed: `lib/briefing/scorer.ts`, `lib/observability/pipeline-run.ts`, `lib/observability/__tests__/pipeline-run.test.ts`, `SESSION_HISTORY.md`
+- What changed: `ScorerDiagnostics` now records raw `detectDiscrepancies()` summary (count, classes, bounded preview), pre-pool skips (locked contact / failure suppression), `actionType` on structural discrepancy rows, and insight-scan discrepancy rows scored count. `buildGateFunnelFromScorerDiagnostics` persists `discrepancy_count`, `discrepancy_classes`, `discrepancy_candidates_preview`, survivor counts, `discrepancy_drops_by_stage`, and related counters into `pipeline_runs.gate_funnel` so production can tell detector emission vs downstream loss.
+- Verification: `npm run health` (0 failing); `npx vitest run lib/observability/__tests__/pipeline-run.test.ts`; `npm run build`.

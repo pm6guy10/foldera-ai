@@ -555,7 +555,28 @@ export interface ScorerDiagnostics {
     score: number;
     stakes: number;
     urgency: number;
+    /** Canonical action for this discrepancy (for observability; no raw evidence). */
+    actionType?: ActionType;
   }>;
+  /** Raw `detectDiscrepancies()` output before locked / failure-suppression skips. */
+  discrepancyDetectorSummary?: {
+    count: number;
+    classes: string[];
+    preview: Array<{
+      class: string;
+      action_type: ActionType;
+      stakes: number;
+      urgency: number;
+      title: string;
+    }>;
+  };
+  /** Structural discrepancies skipped before entering the scored pool. */
+  discrepancyInjectionSkips?: {
+    locked_contact: number;
+    failure_suppression: number;
+  };
+  /** Insight-scan behavioral_pattern rows added to `scored` (including score-0 suppressed). */
+  insightDiscrepanciesScored?: number;
   /** Hunt layer: raw detector hit counts (pre-rank cap) + injection summary */
   huntAnomalies?: {
     countsByKind: Record<string, number>;
@@ -595,6 +616,9 @@ function initDiagnostics(): ScorerDiagnostics {
     candidatePool: { commitment: 0, signal: 0, relationship: 0, relationship_skipped_no_thread: 0 },
     filterStages: [],
     discrepancies: [],
+    discrepancyDetectorSummary: { count: 0, classes: [], preview: [] },
+    discrepancyInjectionSkips: { locked_contact: 0, failure_suppression: 0 },
+    insightDiscrepanciesScored: 0,
     convergenceBoosts: [],
     survivors: [],
     finalWinner: null,
@@ -5701,6 +5725,21 @@ export async function scoreOpenLoops(
     selfEmails,
     selfNameTokens: selfNameTokens.length > 0 ? selfNameTokens : undefined,
   });
+  {
+    const previewCap = 8;
+    const cls = [...new Set(discrepancies.map((x) => x.class))];
+    diag.discrepancyDetectorSummary = {
+      count: discrepancies.length,
+      classes: cls.slice(0, 48),
+      preview: discrepancies.slice(0, previewCap).map((x) => ({
+        class: x.class,
+        action_type: x.suggestedActionType,
+        stakes: x.stakes,
+        urgency: x.urgency,
+        title: x.title.slice(0, 80),
+      })),
+    };
+  }
   console.log(JSON.stringify({
     event: 'discrepancy_detection_debug',
     entity_count: entities.length,
@@ -5741,6 +5780,7 @@ export async function scoreOpenLoops(
         failureSuppressionKeys,
       )
     ) {
+      (diag.discrepancyInjectionSkips ??= { locked_contact: 0, failure_suppression: 0 }).failure_suppression += 1;
       continue;
     }
 
@@ -5749,6 +5789,7 @@ export async function scoreOpenLoops(
     if (lockedContactNormalizedKeys.size > 0 && d.entityName?.trim()) {
       const lockedKey = d.entityName.replace(/\s+/g, '').toLowerCase();
       if (lockedContactNormalizedKeys.has(lockedKey)) {
+        (diag.discrepancyInjectionSkips ??= { locked_contact: 0, failure_suppression: 0 }).locked_contact += 1;
         logStructuredEvent({
           event: 'locked_contact_discrepancy_skipped',
           level: 'info',
@@ -5827,6 +5868,7 @@ export async function scoreOpenLoops(
         score: 0,
         stakes: d.stakes,
         urgency: d.urgency,
+        actionType: d.suggestedActionType,
       });
       continue;
     }
@@ -5891,7 +5933,16 @@ export async function scoreOpenLoops(
       discrepancyEvidence: d.evidence,
       discrepancyPreferredAction: d.discrepancyPreferredAction,
     });
-    diag.discrepancies.push({ id: d.id, class: d.class, title: d.title.slice(0, 100), entityName: d.entityName, score: finalScore, stakes: d.stakes, urgency: mergedDiscUrgency });
+    diag.discrepancies.push({
+      id: d.id,
+      class: d.class,
+      title: d.title.slice(0, 100),
+      entityName: d.entityName,
+      score: finalScore,
+      stakes: d.stakes,
+      urgency: mergedDiscUrgency,
+      actionType: d.suggestedActionType,
+    });
     logStructuredEvent({
       event: 'discrepancy_candidate_scored',
       level: 'info',
@@ -5911,6 +5962,7 @@ export async function scoreOpenLoops(
     });
   }
 
+  let insightDiscrepanciesScored = 0;
   for (const insight of insightCandidates) {
     const insightPreSourceSignals: GenerationCandidateSource[] = insight.evidence_signals.map((id) => ({
       kind: 'signal',
@@ -5979,6 +6031,7 @@ export async function scoreOpenLoops(
         discrepancyClass: 'behavioral_pattern',
         fromInsightScan: true,
       });
+      insightDiscrepanciesScored += 1;
       continue;
     }
 
@@ -6092,7 +6145,9 @@ export async function scoreOpenLoops(
         title: insight.title.slice(0, 80),
       },
     });
+    insightDiscrepanciesScored += 1;
   }
+  diag.insightDiscrepanciesScored = insightDiscrepanciesScored;
 
   // -----------------------------------------------------------------------
   // Convergence scoring: candidates that independently corroborate a

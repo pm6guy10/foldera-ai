@@ -35,6 +35,70 @@ function stakesKilledSummary(diag: ScorerDiagnostics | null): Array<{ reason: st
   return [...counts.entries()].map(([reason, count]) => ({ reason, count }));
 }
 
+const DISCREPANCY_PREVIEW_CAP = 8;
+
+function round4(n: number): number {
+  return Math.round(n * 1e4) / 1e4;
+}
+
+/**
+ * Bounded discrepancy observability for pipeline_runs.gate_funnel — distinguishes
+ * detector emission vs pool injection vs downstream drops (no raw evidence blobs).
+ */
+function buildDiscrepancyObservability(diag: ScorerDiagnostics): Record<string, unknown> {
+  const det = diag.discrepancyDetectorSummary;
+  const detCount = det?.count ?? 0;
+  const detClasses = det?.classes ?? [];
+  const detPreview = det?.preview ?? [];
+
+  const poolPreview = diag.discrepancies.slice(0, DISCREPANCY_PREVIEW_CAP).map((d) => ({
+    class: d.class,
+    action_type: d.actionType ?? 'unknown',
+    score: round4(d.score),
+    urgency: round4(d.urgency),
+    title: d.title.slice(0, 80),
+  }));
+
+  const candidatesPreview =
+    poolPreview.length > 0
+      ? poolPreview
+      : detPreview.slice(0, DISCREPANCY_PREVIEW_CAP).map((p) => ({
+          class: p.class,
+          action_type: p.action_type,
+          stakes: round4(p.stakes),
+          urgency: round4(p.urgency),
+          title: p.title,
+          score: null as number | null,
+        }));
+
+  const skips = diag.discrepancyInjectionSkips ?? { locked_contact: 0, failure_suppression: 0 };
+  const discSurvivors = diag.survivors.filter((s) => s.type === 'discrepancy');
+
+  const dropsByStage: Record<string, number> = {};
+  for (const fs of diag.filterStages) {
+    let n = 0;
+    for (const drop of fs.dropped) {
+      if (drop.type === 'discrepancy') n += 1;
+    }
+    if (n > 0) dropsByStage[fs.stage] = n;
+  }
+
+  return {
+    discrepancy_count: detCount,
+    discrepancy_classes: detClasses,
+    discrepancy_candidates_preview: candidatesPreview,
+    discrepancy_structural_injected_count: diag.discrepancies.length,
+    discrepancy_insight_scored_count: diag.insightDiscrepanciesScored ?? 0,
+    discrepancy_skipped_pre_pool: {
+      locked_contact: skips.locked_contact,
+      failure_suppression: skips.failure_suppression,
+    },
+    discrepancy_survivor_count: discSurvivors.length,
+    has_discrepancy_survivor: discSurvivors.length > 0,
+    discrepancy_drops_by_stage: dropsByStage,
+  };
+}
+
 /**
  * Build gate_funnel JSON for pipeline_runs from post-scoreOpenLoops diagnostics.
  */
@@ -68,6 +132,7 @@ export function buildGateFunnelFromScorerDiagnostics(
     survivors_count: diag.survivors.length,
     final_outcome: diag.finalOutcome,
     early_exit_stage: diag.earlyExitStage ?? null,
+    ...buildDiscrepancyObservability(diag),
   };
 }
 
