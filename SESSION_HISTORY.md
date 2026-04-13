@@ -76,6 +76,12 @@ Do not call a task complete with local-only reasoning when Playwright, Vercel, S
 
 ## Session Logs
 
+- 2026-04-13 — Production check: map discrepancy `resolveTriggerAction` through `actionTypeToArtifactType` (fixes invalid canonical `make_decision` for e.g. `unresolved_intent`)
+ MODE: FIX
+ Files changed: `lib/briefing/generator.ts`, `SESSION_HISTORY.md`
+ What was verified: `npm run health` — 0 FAIL; `npx vitest run lib/briefing/__tests__/proof-mode-thread-backed-send.test.ts lib/briefing/__tests__/trigger-action-lock.test.ts`; `npm run build`
+ Evidence: Supabase `pipeline_runs` after deploy `496e6a5` — `settings_run_brief` + `pipeline_dry_run` with `discrepancy_intent_*` winner still hit `generation_failed_sentinel` and misleading proof-mode `blocked_gate` because dry-run validation expected a real `ValidArtifactTypeCanonical`; trigger path leaked `make_decision` instead of `write_document`.
+
 - 2026-04-13 — Homepage: business-outcomes band (revenue, hiring, decisions) between How it works and pricing
  MODE: FEATURE
  Files changed: `app/HomePageClient.tsx`, `SESSION_HISTORY.md`

@@ -1350,7 +1350,9 @@ function buildDecisionPayload(
     if (winner.discrepancyPreferredAction) {
       recommended_action = actionTypeToArtifactType(winner.discrepancyPreferredAction) as ValidArtifactTypeCanonical;
     } else {
-      recommended_action = resolveTriggerAction(winner.discrepancyClass, ctx.has_real_recipient) as ValidArtifactTypeCanonical;
+      recommended_action = actionTypeToArtifactType(
+        resolveTriggerAction(winner.discrepancyClass, ctx.has_real_recipient),
+      ) as ValidArtifactTypeCanonical;
     }
   } else {
     recommended_action = actionTypeToArtifactType(winner.suggestedActionType);
