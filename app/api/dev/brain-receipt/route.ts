@@ -60,7 +60,7 @@ export async function POST(request: Request) {
         ? 'dev_brain_receipt_verification'
         : 'dev_brain_receipt',
       verificationStubPersist,
-      ...(verificationStubPersist ? { verificationGoldenPathWriteDocument } : {}),
+      verificationGoldenPathWriteDocument,
     });
 
     // Retrieve the full scorer diagnostics populated during scoreOpenLoops()

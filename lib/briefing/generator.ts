@@ -7984,10 +7984,10 @@ export async function generateDirective(
       scored.topCandidates ?? [scored.winner],
       guardrails,
     );
-    if (
-      options.verificationStubPersist === true &&
-      options.verificationGoldenPathWriteDocument !== false
-    ) {
+    const goldenPathReorder =
+      options.verificationGoldenPathWriteDocument === true ||
+      (options.verificationStubPersist === true && options.verificationGoldenPathWriteDocument !== false);
+    if (goldenPathReorder) {
       rankedCandidates = reorderRankedCandidatesForVerificationGoldenPathWriteDocument(rankedCandidates);
     }
     console.log(`[generator] ${rankedCandidates.length} candidates ranked for user ${userId.slice(0, 8)}`);

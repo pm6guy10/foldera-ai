@@ -2105,7 +2105,9 @@ export async function runDailyGenerate(
           pipelineDryRun: runOpts.pipelineDryRun === true,
           verificationStubPersist: runOpts.verificationStubPersist === true,
           verificationGoldenPathWriteDocument:
-            runOpts.verificationStubPersist === true && runOpts.verificationGoldenPathWriteDocument !== false,
+            runOpts.verificationGoldenPathWriteDocument !== false &&
+            (runOpts.verificationStubPersist === true ||
+              runOpts.briefInvocationSource === 'dev_brain_receipt'),
         };
         if (trackPipelineRun) {
           directive = await runWithPipelineRunContext(

@@ -94,8 +94,9 @@ export interface DailyBriefSignalWindowOptions {
    */
   verificationStubPersist?: boolean;
   /**
-   * When true with `verificationStubPersist`, generator tries `write_document` discrepancy classes first:
-   * `schedule_conflict`, then `stale_document`. Default true unless explicitly set false.
+   * When true with `verificationStubPersist` or `briefInvocationSource === 'dev_brain_receipt'`,
+   * generator tries `write_document` discrepancy classes first: `schedule_conflict`, then `stale_document`.
+   * Default true on brain-receipt unless JSON sets `verification_golden_path_write_document: false`.
    */
   verificationGoldenPathWriteDocument?: boolean;
 }
