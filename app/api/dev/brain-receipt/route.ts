@@ -14,6 +14,8 @@ import {
 import { getDecisionEnforcementIssues } from '@/lib/briefing/generator';
 import {
   directiveLooksLikeScheduleConflict,
+  scheduleConflictArtifactHasResolutionShape,
+  scheduleConflictArtifactIsMessageShaped,
   scheduleConflictArtifactIsOwnerProcedure,
 } from '@/lib/briefing/schedule-conflict-guards';
 import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
@@ -148,7 +150,10 @@ export async function POST(request: Request) {
         scheduleConflictFinishedWorkApplies || discrepancyFinishedWorkApplies;
 
       const scheduleConflictFinishedWorkFailed =
-        scheduleConflictFinishedWorkApplies && scheduleConflictArtifactIsOwnerProcedure(finishedWorkBody);
+        scheduleConflictFinishedWorkApplies &&
+        (scheduleConflictArtifactIsOwnerProcedure(finishedWorkBody) ||
+          scheduleConflictArtifactIsMessageShaped(finishedWorkBody) ||
+          !scheduleConflictArtifactHasResolutionShape(finishedWorkBody));
       const discrepancyFinishedWorkFailed =
         discrepancyFinishedWorkApplies &&
         bottomGate.blocked_reasons.includes('FINISHED_WORK_REQUIRED');

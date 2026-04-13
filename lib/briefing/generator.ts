@@ -67,6 +67,8 @@ import { effectiveDiscrepancyClassForGates } from './effective-discrepancy-class
 import { looksLikeDiscrepancyTriageOrChoreList } from './discrepancy-finished-work';
 import {
   directiveLooksLikeScheduleConflict,
+  scheduleConflictArtifactHasResolutionShape,
+  scheduleConflictArtifactIsMessageShaped,
   scheduleConflictArtifactIsOwnerProcedure,
 } from './schedule-conflict-guards';
 import {
@@ -6525,8 +6527,17 @@ export function validateDirectiveForPersistence(input: {
     ) {
       const t = typeof art.title === 'string' ? art.title : '';
       const c = typeof art.content === 'string' ? art.content : '';
-      if (scheduleConflictArtifactIsOwnerProcedure(`${t}\n${c}`)) {
-        return ['schedule_conflict artifact must be finished outbound work, not owner instructions'];
+      const blob = `${t}\n${c}`;
+      if (scheduleConflictArtifactIsOwnerProcedure(blob)) {
+        return ['schedule_conflict artifact must be a grounded resolution decision note, not owner chore instructions'];
+      }
+      if (scheduleConflictArtifactIsMessageShaped(blob)) {
+        return ['schedule_conflict artifact must be a grounded resolution decision note, not outbound message copy'];
+      }
+      if (!scheduleConflictArtifactHasResolutionShape(blob)) {
+        return [
+          'schedule_conflict artifact must include situation, conflict, recommendation, owner/next step, and timing',
+        ];
       }
     }
     return [];
@@ -6545,8 +6556,17 @@ export function validateDirectiveForPersistence(input: {
       const art = input.artifact as Record<string, unknown>;
       const t = typeof art.title === 'string' ? art.title : '';
       const c = typeof art.content === 'string' ? art.content : '';
-      if (scheduleConflictArtifactIsOwnerProcedure(`${t}\n${c}`)) {
-        issues.push('schedule_conflict artifact must be finished outbound work, not an owner checklist');
+      const blob = `${t}\n${c}`;
+      if (scheduleConflictArtifactIsOwnerProcedure(blob)) {
+        issues.push('schedule_conflict artifact must be a grounded resolution decision note, not an owner checklist');
+      }
+      if (scheduleConflictArtifactIsMessageShaped(blob)) {
+        issues.push('schedule_conflict artifact must be a grounded resolution decision note, not outbound message copy');
+      }
+      if (!scheduleConflictArtifactHasResolutionShape(blob)) {
+        issues.push(
+          'schedule_conflict artifact must include situation, conflict, recommendation, owner/next step, and timing',
+        );
       }
     }
   }
@@ -7418,9 +7438,16 @@ function buildVerificationStubPersistGeneratedPayload(
   const dirDoc =
     'Send Alex Morgan at alex@partner.example.com a concrete resolution for the 2026-04-16 overlap before Friday 2026-04-18.';
   const contentDoc =
-    'MESSAGE TO Alex Morgan (alex@partner.example.com):\n\n' +
-    'We have overlapping commitments on 2026-04-16 that force a trade-off before Friday 2026-04-18. ' +
-    'Please confirm whether you can move the partner review so Customer Success can protect the renewal timeline.';
+    '## Situation\n' +
+    'Partner review and Customer Success renewal prep both sit on 2026-04-16; Alex Morgan (alex@partner.example.com) is on the partner thread.\n\n' +
+    '## Conflicting commitments or risk\n' +
+    'Overlapping calendar blocks risk missing the renewal filing before Friday 2026-04-18.\n\n' +
+    '## Recommendation / decision\n' +
+    'Move or delegate the partner review so Customer Success can protect the COB Friday 2026-04-18 deadline.\n\n' +
+    '## Owner / next step\n' +
+    'Please confirm whether you can move the partner review with Alex Morgan before 2026-04-17 so invites update.\n\n' +
+    '## Timing / deadline\n' +
+    'Decide before Friday 2026-04-18; the hard overlap is 2026-04-16.';
 
   if (committed === 'send_message') {
     return {

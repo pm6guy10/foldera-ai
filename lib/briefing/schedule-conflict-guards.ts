@@ -17,9 +17,47 @@ export function directiveLooksLikeScheduleConflict(directive: ConvictionDirectiv
 }
 
 /**
- * schedule_conflict write_document must be finished outbound copy (messages to others),
- * or a concrete scheduling artifact — not owner-facing procedures, planning notes,
- * or numbered "go do this" instructions.
+ * Outbound-email / chat disguised as a document — not acceptable for schedule_conflict
+ * write_document (use a decision/resolution note for the calendar owner instead).
+ */
+export function scheduleConflictArtifactIsMessageShaped(artifactBody: string): boolean {
+  const b = artifactBody;
+  if (/\bMESSAGE TO\b/i.test(b)) return true;
+  if (/^\s*(?:to|TO)\s*:\s*\S/m.test(b)) return true;
+  if (/\n(?:to|TO)\s+[A-Z][a-z]+\s*\((?:SMS|text|email|chat)\)/i.test(b)) return true;
+  if (/\bsubject\s*:\s*.+/i.test(b) && /\b(dear|hi|hello)\b/i.test(b)) return true;
+  // Salutation-led outbound lines (not section headers)
+  if (/(?:^|\n)\s*(?:Hi|Hello|Hey|Dear)\s+[A-Za-z][^\n]{0,40}[—–-]\s*I\b/m.test(b)) return true;
+  return false;
+}
+
+/**
+ * Minimum structure for a believable calendar-conflict resolution note (grounded decision doc).
+ * Fails closed when the body looks like a message or lacks enough structure.
+ */
+export function scheduleConflictArtifactHasResolutionShape(artifactBody: string): boolean {
+  if (scheduleConflictArtifactIsMessageShaped(artifactBody)) return false;
+  const lower = artifactBody.toLowerCase();
+  const signals = [
+    /(?:^|\n)#+\s*(issue|situation|context)\b/im.test(artifactBody) ||
+      /^\s*\*\*(issue|situation)\b/im.test(artifactBody),
+    /conflict|overlap|double[- ]book|both (events|commitments|blocks)|same (window|slot|time)/i.test(
+      lower,
+    ),
+    /recommend|decision|resolve|priorit|trade[-‐‑–—]?\s*off|which (event|meeting|block|slot)/i.test(
+      lower,
+    ),
+    /owner|next step|accountable|responsible|your call|you (?:confirm|choose|decide)/i.test(lower),
+    /\d{4}-\d{2}-\d{2}|\bdeadline\b|\bby (?:eod|cob|monday|friday|tomorrow|tonight|end of day)\b/i.test(
+      lower,
+    ),
+  ];
+  return signals.filter(Boolean).length >= 4;
+}
+
+/**
+ * schedule_conflict write_document must be a grounded resolution/decision note — not
+ * owner-facing chore checklists, planning memo scaffolds, or outbound message copy.
  */
 export function scheduleConflictArtifactIsOwnerProcedure(artifactBody: string): boolean {
   const b = artifactBody;

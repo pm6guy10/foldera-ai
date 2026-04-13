@@ -89,7 +89,7 @@ function mapGateToFix(gate: string): string {
     vague_subject:
       'Subject line is vague. Generator prompt needs subject quality rule',
     schedule_conflict_not_finished_outbound:
-      'Schedule conflict produced owner-procedure memo, not outbound message',
+      'Schedule conflict artifact failed resolution-note bar (owner checklist, message-shaped, or missing sections)',
   };
   return (
     fixes[gate] ??

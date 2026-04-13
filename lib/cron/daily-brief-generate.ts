@@ -66,6 +66,8 @@ import {
 import { looksLikeDiscrepancyTriageOrChoreList } from '@/lib/briefing/discrepancy-finished-work';
 import {
   directiveLooksLikeScheduleConflict,
+  scheduleConflictArtifactHasResolutionShape,
+  scheduleConflictArtifactIsMessageShaped,
   scheduleConflictArtifactIsOwnerProcedure,
 } from '@/lib/briefing/schedule-conflict-guards';
 import { effectiveDiscrepancyClassForGates } from '@/lib/briefing/effective-discrepancy-class';
@@ -230,8 +232,16 @@ export function evaluateBottomGate(
   const topCandidateTypeForGate = directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType;
   const isDiscrepancyCandidate = topCandidateTypeForGate === 'discrepancy' || topCandidateTypeForGate === 'insight';
 
-  if (scheduleConflictWriteDoc && scheduleConflictArtifactIsOwnerProcedure(artifactBody)) {
-    blocked_reasons.push('FINISHED_WORK_REQUIRED');
+  if (scheduleConflictWriteDoc) {
+    if (scheduleConflictArtifactIsOwnerProcedure(artifactBody)) {
+      blocked_reasons.push('FINISHED_WORK_REQUIRED');
+    }
+    if (scheduleConflictArtifactIsMessageShaped(artifactBody)) {
+      blocked_reasons.push('FINISHED_WORK_REQUIRED');
+    }
+    if (!scheduleConflictArtifactHasResolutionShape(artifactBody)) {
+      blocked_reasons.push('FINISHED_WORK_REQUIRED');
+    }
   }
 
   // 1. Self-referential document — check FIRST because this is the primary memo-sludge class
@@ -268,9 +278,14 @@ export function evaluateBottomGate(
         REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
       const hasExecutableMotion =
         CONCRETE_ASK_PATTERN.test(combined) ||
-        /\bMESSAGE TO\b/i.test(artifactBody) ||
-        /\?/.test(artifactBody) ||
-        /\b(Hi\b|Hello\b|Dear\b)/i.test(artifactBody);
+        /\b(decide|decision|recommendation|resolve|choose|priority|trade[-‐‑–—]?\s*off|which (event|meeting|block|slot))\b/i.test(
+          artifactBody,
+        ) ||
+        /^#{1,3}\s+\S/m.test(artifactBody) ||
+        /\*\*(situation|issue|recommendation|decision|owner|timing|deadline|conflict)/i.test(
+          artifactBody,
+        ) ||
+        /\?/.test(artifactBody);
       if (!hasAnchoredTime) {
         blocked_reasons.push('NO_REAL_PRESSURE');
       }
@@ -454,6 +469,12 @@ export function isSendWorthy(
       (typeof artifactRecord.body === 'string' ? artifactRecord.body : '') +
       (typeof artifactRecord.title === 'string' ? artifactRecord.title : '');
     if (scheduleConflictArtifactIsOwnerProcedure(scheduleBody)) {
+      return { worthy: false, reason: 'schedule_conflict_not_finished_outbound' };
+    }
+    if (scheduleConflictArtifactIsMessageShaped(scheduleBody)) {
+      return { worthy: false, reason: 'schedule_conflict_not_finished_outbound' };
+    }
+    if (!scheduleConflictArtifactHasResolutionShape(scheduleBody)) {
       return { worthy: false, reason: 'schedule_conflict_not_finished_outbound' };
     }
   }

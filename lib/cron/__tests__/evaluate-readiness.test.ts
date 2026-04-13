@@ -531,7 +531,7 @@ describe('isSendWorthy', () => {
     expect(result.reason).toBe('schedule_conflict_not_finished_outbound');
   });
 
-  it('allows schedule_conflict write_document with outbound copy and ISO date', () => {
+  it('blocks schedule_conflict write_document with outbound message copy (MESSAGE TO)', () => {
     const discovery = {
       candidateCount: 5,
       suppressedCandidateCount: 0,
@@ -584,6 +584,75 @@ describe('isSendWorthy', () => {
           'MESSAGE TO Pat:\n\nHi Pat — I am double-booked on 2026-04-02 (calendar conflict). Could we shift our sync to Wednesday afternoon?',
       } as unknown as ConvictionArtifact,
     );
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('schedule_conflict_not_finished_outbound');
+  });
+
+  it('allows schedule_conflict write_document with grounded resolution note and ISO dates', () => {
+    const discovery = {
+      candidateCount: 5,
+      suppressedCandidateCount: 0,
+      selectionMargin: 0.1,
+      selectionReason: null,
+      failureReason: null,
+      topCandidates: [
+        {
+          id: 'disc-1',
+          rank: 1,
+          candidateType: 'discrepancy',
+          discrepancyClass: 'schedule_conflict' as const,
+          actionType: 'write_document' as const,
+          score: 2.1,
+          scoreBreakdown: {
+            stakes: 2,
+            urgency: 0.5,
+            tractability: 0.7,
+            freshness: 1,
+            actionTypeRate: 0.5,
+            entityPenalty: 0,
+          },
+          targetGoal: null,
+          sourceSignals: [],
+          decision: 'selected' as const,
+          decisionReason: '',
+        },
+      ],
+    };
+    const result = isSendWorthy(
+      makeDirective({
+        action_type: 'write_document',
+        confidence: 80,
+        directive: 'Pick one block on 2026-04-02.',
+        reason: 'Two calendar items collide.',
+        discrepancyClass: 'schedule_conflict',
+        generationLog: {
+          outcome: 'selected',
+          stage: 'persistence',
+          reason: 'ok',
+          candidateFailureReasons: [],
+          candidateDiscovery: discovery,
+        },
+        evidence: [{ type: 'signal', description: 'Calendar overlap detected' }],
+      }),
+      {
+        type: 'document',
+        title: 'Resolution — overlap 2026-04-02',
+        content: `## Situation
+Pat's sync and the vendor call both sit on 2026-04-02 in the same window.
+
+## Conflicting commitments or risk
+Overlapping blocks mean one invite must move or decline — trade-off is planning vs vendor cadence.
+
+## Recommendation / decision
+Move the vendor check-in to Wednesday afternoon; keep Pat's sync if it is the planning source of truth.
+
+## Owner / next step
+You confirm which event slides and notify Pat before 2026-04-01.
+
+## Timing / deadline
+Lock the call by 2026-04-01; conflict date is 2026-04-02.`,
+      } as unknown as ConvictionArtifact,
+    );
     expect(result.worthy).toBe(true);
   });
 
@@ -633,9 +702,21 @@ describe('isSendWorthy', () => {
       }),
       {
         type: 'document',
-        title: 'Calendar resolution',
-        content:
-          'MESSAGE TO Chris:\n\nHi Chris — I am double-booked on 2026-04-02 with two overlapping commitments. Could we move our sync to Thursday morning?',
+        title: 'Calendar resolution — 2026-04-02',
+        content: `## Situation
+Chris's sync and the board prep session overlap on 2026-04-02.
+
+## Conflicting commitments or risk
+Double-booking risks missing board materials review.
+
+## Recommendation / decision
+Slide Chris's sync to Thursday morning; keep board prep fixed.
+
+## Owner / next step
+You tell Chris today so invites update before 2026-04-02.
+
+## Timing / deadline
+Confirm by 2026-04-01 EOD.`,
       } as unknown as ConvictionArtifact,
     );
     expect(result.worthy).toBe(true);

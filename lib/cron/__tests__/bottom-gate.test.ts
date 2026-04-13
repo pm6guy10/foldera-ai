@@ -221,7 +221,7 @@ describe('evaluateBottomGate', () => {
     expect(result.blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
   });
 
-  it('passes schedule_conflict write_document with outbound messages and anchored date (no external person in directive)', () => {
+  it('blocks schedule_conflict write_document that is message-shaped (MESSAGE TO + salutation)', () => {
     const directive = makeDirective({
       action_type: 'write_document',
       discrepancyClass: 'schedule_conflict',
@@ -233,6 +233,36 @@ describe('evaluateBottomGate', () => {
       title: 'Outbound — 2026-04-02 overlap',
       content:
         'MESSAGE TO Jamie (SMS):\n\nHi Jamie — I am double-booked on 2026-04-02. Could we move our call to Thursday morning?',
+    });
+    const result = evaluateBottomGate(directive, artifact);
+    expect(result.pass).toBe(false);
+    expect(result.blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
+  });
+
+  it('passes schedule_conflict write_document with resolution note sections and anchored date', () => {
+    const directive = makeDirective({
+      action_type: 'write_document',
+      discrepancyClass: 'schedule_conflict',
+      directive: 'Resolve overlapping events on 2026-04-02',
+      reason: 'Two calendar events occupy the same window.',
+    });
+    const artifact = makeDocArtifact({
+      type: 'document',
+      title: 'Calendar conflict — 2026-04-02',
+      content: `## Situation
+Two blocks overlap on 2026-04-02: "Team sync" and "Dentist".
+
+## Conflicting commitments or risk
+Both are time-bounded; double-booking forces a priority call.
+
+## Recommendation / decision
+Keep the dentist (hard to reschedule); move Team sync to Thursday 4pm or delegate your seat.
+
+## Owner / next step
+You confirm with the organizer before 2026-04-01 EOD which option holds.
+
+## Timing / deadline
+Decide by 2026-04-01 COB; the overlap on 2026-04-02 is not recoverable otherwise.`,
     });
     const result = evaluateBottomGate(directive, artifact);
     expect(result.pass).toBe(true);

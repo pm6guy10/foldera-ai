@@ -36,6 +36,8 @@ import { trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import {
   directiveLooksLikeScheduleConflict,
+  scheduleConflictArtifactHasResolutionShape,
+  scheduleConflictArtifactIsMessageShaped,
   scheduleConflictArtifactIsOwnerProcedure,
 } from '@/lib/briefing/schedule-conflict-guards';
 import { effectiveDiscrepancyClassForGates } from '@/lib/briefing/effective-discrepancy-class';
@@ -301,8 +303,15 @@ export function getArtifactPersistenceIssues(
     ) {
       const title = isNonEmptyString(record.title) ? record.title.trim() : '';
       const content = isNonEmptyString(record.content) ? record.content.trim() : '';
-      if (scheduleConflictArtifactIsOwnerProcedure(`${title}\n${content}`)) {
+      const blob = `${title}\n${content}`;
+      if (scheduleConflictArtifactIsOwnerProcedure(blob)) {
         return ['schedule_conflict finished-work required (emergency fallback is owner-facing)'];
+      }
+      if (scheduleConflictArtifactIsMessageShaped(blob)) {
+        return ['schedule_conflict finished-work required (emergency fallback is message-shaped)'];
+      }
+      if (!scheduleConflictArtifactHasResolutionShape(blob)) {
+        return ['schedule_conflict finished-work required (emergency fallback lacks resolution shape)'];
       }
     }
     return [];
@@ -311,12 +320,23 @@ export function getArtifactPersistenceIssues(
     const title = isNonEmptyString(record.title) ? record.title.trim() : '';
     const content = isNonEmptyString(record.content) ? record.content.trim() : '';
     issues.push(...getFinishedDocumentIssues(title, content));
-    if (
-      directive &&
-      directiveLooksLikeScheduleConflict(directive) &&
-      scheduleConflictArtifactIsOwnerProcedure(`${title}\n${content}`)
-    ) {
-      issues.push('schedule_conflict artifact must be finished outbound work, not an owner checklist');
+    if (directive && directiveLooksLikeScheduleConflict(directive)) {
+      const blob = `${title}\n${content}`;
+      if (scheduleConflictArtifactIsOwnerProcedure(blob)) {
+        issues.push(
+          'schedule_conflict artifact must be a resolution decision note, not a calendar-owner chore list',
+        );
+      }
+      if (scheduleConflictArtifactIsMessageShaped(blob)) {
+        issues.push(
+          'schedule_conflict artifact must be a resolution decision note, not outbound message copy',
+        );
+      }
+      if (!scheduleConflictArtifactHasResolutionShape(blob)) {
+        issues.push(
+          'schedule_conflict document must include situation, conflict, recommendation, owner/next step, and timing grounded in calendar facts',
+        );
+      }
     }
   }
 
@@ -508,7 +528,7 @@ type DiscrepancyFlavor = 'person' | 'deadline' | 'goal' | 'schedule_conflict';
 /**
  * Infer what kind of finished artifact the discrepancy should become.
  * person  → sendable outreach message (decay / risk only)
- * schedule_conflict → ready-to-send outbound copy only (no owner checklist)
+ * schedule_conflict → grounded calendar resolution / decision note (no outbound message disguise)
  * deadline → pre-filled execution steps (calendar pressure, exposure, drift, etc.)
  * goal    → concrete action plan (fallback)
  *
@@ -563,24 +583,30 @@ ${relationships.slice(0, 400)}`;
   switch (flavor) {
     case 'schedule_conflict':
       return {
-        system: `You write FINISHED OUTBOUND MESSAGES for a calendar double-booking — not a memo, checklist, or instructions to the calendar owner.
+        system: `You write a CALENDAR CONFLICT RESOLUTION NOTE for the calendar owner (the user). This is NOT an email, not chat, not "MESSAGE TO", and not salutation-led outbound copy.
 
-The product requires one-tap approval of real work product: only text the user can send as-is (SMS, email, or chat) to someone else involved in the overlap.
+Purpose: one-tap approval of a clear decision record: what overlaps, what is at risk, what to do, who moves what, and by when — using ONLY facts from SITUATION/ANALYSIS (event titles, times, dates). Do not invent people, companies, or addresses not present in the input.
+
+Required sections in markdown (use ## headings exactly):
+## Situation
+## Conflicting commitments or risk
+## Recommendation / decision
+## Owner / next step
+## Timing / deadline
 
 Rules (non-negotiable):
-- Return JSON with type "document", a short title, and content that contains ONLY send-ready messages.
-- If multiple people need different messages, label each block on its own line, e.g. "To Mom (text):" then the message, blank line, then "To Alex (text):" etc.
-- Each message must reference the real conflict using event titles and the date from SITUATION/ANALYSIS; propose a specific reschedule, regret, or time trade-off in natural language.
-- Forbidden anywhere in content: numbered lists (1. 2. 3.), bullet step lists, "Open your calendar", "Click", "Decide which", "Update/decline/reschedule the event" as orders to the user, "Block time", "within X minutes/hours", "Step 1", planning notes, or "you should" coaching.
-- No bracket placeholders ([phone], [date], [name]) — use facts from SITUATION or plain wording.
-- No INSIGHT/WHY NOW labels or analysis scaffolding.
-- Under 450 words total.
+- Return JSON with type "document", a specific title (not the directive echoed verbatim), and "content" with those five sections filled in.
+- Quote or paraphrase the real event titles and the conflict date/window from ANALYSIS; if a detail is missing, say what is unknown instead of fabricating names or venues.
+- The recommendation must name a concrete trade-off (which commitment wins, what moves, or what declines) — not generic enterprise filler.
+- Include at least one explicit decision phrase the owner can act on (e.g. "Please confirm whether…", "Choose which event keeps the slot", or a direct question) — not vague reflection.
+- Forbidden: "MESSAGE TO", "To: name (SMS/email):", "Hi/Hello/Dear …", Subject:/email headers, numbered owner chore lists (1. Open calendar 2. …), bracket placeholders, INSIGHT/WHY NOW scaffolding.
+- Under 500 words total.
 
 Return ONLY valid JSON:
-{"type":"document","title":"<3-8 words>","content":"<only labeled outbound messages>"}`,
+{"type":"document","title":"<3-10 words>","content":"<markdown sections>"}`,
         user: `${shared}
 
-Write only send-ready messages for the people involved in the overlap. Return JSON only.`,
+Write the resolution note (markdown sections). Return JSON only.`,
       };
 
     case 'person':
@@ -938,10 +964,12 @@ export async function generateArtifact(
         !isAnalysisDump(d.embeddedArtifact.context)
       ) {
         const ctx = d.embeddedArtifact.context.trim();
-        if (
+        const scheduleOk =
           !directiveLooksLikeScheduleConflict(directive) ||
-          !scheduleConflictArtifactIsOwnerProcedure(ctx)
-        ) {
+          (!scheduleConflictArtifactIsOwnerProcedure(ctx) &&
+            !scheduleConflictArtifactIsMessageShaped(ctx) &&
+            scheduleConflictArtifactHasResolutionShape(ctx));
+        if (scheduleOk) {
           return {
             type: 'document',
             title: directive.directive.slice(0, 120).replace(/\.$/, '').trim(),
@@ -999,7 +1027,7 @@ export async function generateArtifact(
         assertPaidLlmAllowed('artifact-generator.write_document_transform');
         const response = await getAnthropic().messages.create({
           model: ARTIFACT_MODEL,
-          max_tokens: 800,
+          max_tokens: 1000,
           temperature: 0.2 as any,
           system,
           messages: [{ role: 'user', content: user }],
@@ -1043,11 +1071,16 @@ export async function generateArtifact(
           ? directive.reason.trim()
           : null;
     if (bodyContent) {
+      const sc =
+        effectiveDiscrepancyClassForGates(directive) === 'schedule_conflict';
+      const blob = `${directive.directive.slice(0, 120)}\n${bodyContent}`;
       if (
-        effectiveDiscrepancyClassForGates(directive) === 'schedule_conflict' &&
-        scheduleConflictArtifactIsOwnerProcedure(bodyContent)
+        sc &&
+        (scheduleConflictArtifactIsOwnerProcedure(bodyContent) ||
+          scheduleConflictArtifactIsMessageShaped(blob) ||
+          !scheduleConflictArtifactHasResolutionShape(blob))
       ) {
-        // Do not ship owner checklists as finished work — force transform / fallback paths.
+        // Do not ship owner checklists, disguised messages, or unstructured blobs — force LLM path.
       } else {
         return {
           type: 'document',
@@ -1197,14 +1230,23 @@ function validateArtifact(
       if (documentIssues.length > 0) {
         throw new Error(documentIssues.join('; '));
       }
-      if (
-        directive &&
-        directiveLooksLikeScheduleConflict(directive) &&
-        scheduleConflictArtifactIsOwnerProcedure(a.content)
-      ) {
-        throw new Error(
-          'schedule_conflict document must be finished outbound messages only — not a calendar-owner checklist',
-        );
+      if (directive && directiveLooksLikeScheduleConflict(directive)) {
+        const blob = `${a.title.trim()}\n${a.content.trim()}`;
+        if (scheduleConflictArtifactIsOwnerProcedure(a.content)) {
+          throw new Error(
+            'schedule_conflict document must be a resolution decision note — not a calendar-owner chore checklist',
+          );
+        }
+        if (scheduleConflictArtifactIsMessageShaped(blob)) {
+          throw new Error(
+            'schedule_conflict document must be a resolution decision note — not outbound message or chat copy',
+          );
+        }
+        if (!scheduleConflictArtifactHasResolutionShape(blob)) {
+          throw new Error(
+            'schedule_conflict document must include situation, conflict, recommendation, owner/next step, and timing',
+          );
+        }
       }
       return {
         type: 'document',

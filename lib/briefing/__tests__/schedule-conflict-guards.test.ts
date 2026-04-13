@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   directiveLooksLikeScheduleConflict,
+  scheduleConflictArtifactHasResolutionShape,
+  scheduleConflictArtifactIsMessageShaped,
   scheduleConflictArtifactIsOwnerProcedure,
 } from '../schedule-conflict-guards';
 import type { ConvictionDirective } from '../types';
@@ -42,7 +44,7 @@ describe('scheduleConflictArtifactIsOwnerProcedure', () => {
     ).toBe(true);
   });
 
-  it('allows plain outbound-style messages without owner procedure markers', () => {
+  it('does not classify outbound message copy as owner procedure (message shape is handled separately)', () => {
     expect(
       scheduleConflictArtifactIsOwnerProcedure(
         'MESSAGE TO Dana:\n\nHi Dana — I have a conflict on 2026-04-02. Could we reschedule our sync to Monday?',
@@ -53,5 +55,57 @@ describe('scheduleConflictArtifactIsOwnerProcedure', () => {
         'Hi Mom — I double-booked 2026-04-02. Would morning or afternoon work better for cake?',
       ),
     ).toBe(false);
+  });
+});
+
+describe('scheduleConflictArtifactIsMessageShaped', () => {
+  it('flags MESSAGE TO blocks and salutation-led outbound copy', () => {
+    expect(
+      scheduleConflictArtifactIsMessageShaped(
+        'MESSAGE TO Dana:\n\nHi Dana — I have a conflict on 2026-04-02.',
+      ),
+    ).toBe(true);
+    expect(
+      scheduleConflictArtifactIsMessageShaped(
+        'Hi Chris — I am double-booked on 2026-04-02. Could we move the sync?',
+      ),
+    ).toBe(true);
+  });
+
+  it('returns false for resolution-note markdown', () => {
+    expect(
+      scheduleConflictArtifactIsMessageShaped(`## Situation
+Overlap on 2026-04-02.
+
+## Recommendation / decision
+Move the sync; keep the dentist.
+
+## Owner / next step
+You confirm by 2026-04-01.
+
+## Timing / deadline
+2026-04-02 is the conflict date.`),
+    ).toBe(false);
+  });
+});
+
+describe('scheduleConflictArtifactHasResolutionShape', () => {
+  it('requires situation, conflict, recommendation, ownership, and timing signals', () => {
+    const good = `## Situation
+Two events overlap on 2026-04-02.
+
+## Conflicting commitments or risk
+Double-booking forces a trade-off.
+
+## Recommendation / decision
+Move Event A; keep Event B.
+
+## Owner / next step
+You decide before EOD.
+
+## Timing / deadline
+2026-04-01 COB; conflict 2026-04-02.`;
+    expect(scheduleConflictArtifactHasResolutionShape(good)).toBe(true);
+    expect(scheduleConflictArtifactHasResolutionShape('MESSAGE TO Pat:\n\nHi Pat — …')).toBe(false);
   });
 });

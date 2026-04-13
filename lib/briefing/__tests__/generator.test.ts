@@ -319,7 +319,7 @@ describe('applyScheduleConflictCanonicalUserFacingCopy', () => {
     expect(payload!.why_now).toContain('explicit priority');
   });
 
-  it('getDecisionEnforcementIssues passes for schedule_conflict outbound document with ask, time anchor, pressure, and first-person ownership', () => {
+  it('getDecisionEnforcementIssues passes for schedule_conflict resolution note with ask, time anchor, pressure, and ownership', () => {
     const issues = getDecisionEnforcementIssues({
       actionType: 'write_document',
       directiveText: 'Overlapping events on 2026-04-02.',
@@ -327,8 +327,20 @@ describe('applyScheduleConflictCanonicalUserFacingCopy', () => {
       artifact: {
         type: 'document',
         title: 'Resolve overlap',
-        content:
-          'MESSAGE TO Sam (text):\n\nHi Sam — I am double-booked on 2026-04-02. Could we move our check-in to Friday?',
+        content: `## Situation
+Sam's check-in and the client review overlap on 2026-04-02.
+
+## Conflicting commitments or risk
+Both are scheduled; one must move.
+
+## Recommendation / decision
+Move Sam's check-in to Friday; keep the client review fixed.
+
+## Owner / next step
+You confirm with Sam before 2026-04-01 which option holds.
+
+## Timing / deadline
+Decide by 2026-04-01; overlap date is 2026-04-02.`,
       },
       discrepancyClass: 'schedule_conflict',
     });

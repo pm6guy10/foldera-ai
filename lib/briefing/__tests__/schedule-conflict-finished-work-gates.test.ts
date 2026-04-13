@@ -116,13 +116,25 @@ describe('schedule_conflict finished-work gates (aligned)', () => {
     expect(getArtifactPersistenceIssues('write_document', artifact, directive).length).toBeGreaterThan(0);
   });
 
-  it('allows outbound message artifact consistently', () => {
+  it('allows grounded resolution note artifact consistently', () => {
     const directive = baseDirective();
     const artifact = {
       type: 'document',
-      title: 'Messages for 2026-04-02 conflict',
-      content:
-        'MESSAGE TO Alex (text):\n\nHi Alex — I am double-booked on 2026-04-02 (calendar conflict). Could we shift our sync to the morning of 2026-04-03?',
+      title: 'Resolution — 2026-04-02 overlap',
+      content: `## Situation
+Alex's sync and the hiring block overlap on 2026-04-02.
+
+## Conflicting commitments or risk
+Double-booking forces a trade-off between recruiting and the standing sync.
+
+## Recommendation / decision
+Move the hiring block to Wednesday afternoon; keep Alex's sync if it is immovable for the team.
+
+## Owner / next step
+Please confirm whether you can move the hiring block before 2026-04-01 so calendars update.
+
+## Timing / deadline
+Decide by 2026-04-01 EOD; conflict is on 2026-04-02.`,
     } as unknown as ConvictionArtifact;
 
     const bottom = evaluateBottomGate(directive, artifact);
