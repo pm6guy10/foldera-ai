@@ -116,6 +116,32 @@ describe('schedule_conflict finished-work gates (aligned)', () => {
     expect(getArtifactPersistenceIssues('write_document', artifact, directive).length).toBeGreaterThan(0);
   });
 
+  it('rejects message-shaped schedule_conflict documents', () => {
+    const directive = baseDirective();
+    const artifact = {
+      type: 'document',
+      title: 'Overlap note',
+      content:
+        'Hi Alex,\nWe have overlapping events on 2026-04-02 between "Quarterly review" and "Hiring sync".\nPlease confirm which event to move by 2026-04-01.\nThanks,',
+    } as unknown as ConvictionArtifact;
+
+    const issues = getArtifactPersistenceIssues('write_document', artifact, directive);
+    expect(issues.some((m) => m.includes('message'))).toBe(true);
+  });
+
+  it('rejects unsectioned overlap notes even if they mention the conflict', () => {
+    const directive = baseDirective();
+    const artifact = {
+      type: 'document',
+      title: 'Overlap note',
+      content:
+        'There is a schedule conflict on 2026-04-02 between "Quarterly review" and "Hiring sync". Choose which commitment keeps the slot and confirm by 2026-04-01.',
+    } as unknown as ConvictionArtifact;
+
+    const issues = getArtifactPersistenceIssues('write_document', artifact, directive);
+    expect(issues.some((m) => m.includes('schedule_conflict document must include'))).toBe(true);
+  });
+
   it('allows grounded resolution note artifact consistently', () => {
     const directive = baseDirective();
     const artifact = {

@@ -193,12 +193,95 @@ function emergencyEmailArtifact(directive: ConvictionDirective): EmailArtifact {
   };
 }
 
+function extractScheduleConflictFacts(text: string): {
+  dateLabel?: string;
+  eventA?: string;
+  eventB?: string;
+} {
+  const dateMatch = text.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  let eventA: string | undefined;
+  let eventB: string | undefined;
+
+  const patterns: RegExp[] = [
+    /overlap[^.\n]*?["“]([^"”\n]+)["”]\s+(?:vs|and)\s+["“]([^"”\n]+)["”]/i,
+    /overlapping.*?on\s+\d{4}-\d{2}-\d{2}:\s*["“]([^"”\n]+)["”]\s+and\s+["“]([^"”\n]+)["”]/i,
+    /Overlap:\s*([^"\n]+?)\s+and\s+([^"\n]+)/i,
+    /overlap:\s*["“]?([^"”\n]+?)["”]?\s+(?:vs|and)\s+["“]?([^"”\n]+?)["”]?/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      eventA = match[1]?.trim();
+      eventB = match[2]?.trim();
+      break;
+    }
+  }
+
+  return {
+    dateLabel: dateMatch?.[1],
+    eventA: eventA?.replace(/[.\s]+$/, ''),
+    eventB: eventB?.replace(/[.\s]+$/, ''),
+  };
+}
+
+function subtractIsoDate(dateLabel: string, days: number): string | null {
+  const d = new Date(`${dateLabel}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+function buildScheduleConflictFallback(
+  directive: ConvictionDirective,
+  rawContext: string,
+): DocumentArtifact | null {
+  if (!directiveLooksLikeScheduleConflict(directive)) return null;
+  const blob = [directive.directive, directive.reason ?? '', rawContext].filter(Boolean).join('\n');
+  const { dateLabel, eventA, eventB } = extractScheduleConflictFacts(blob);
+
+  const dateText = dateLabel ?? 'the upcoming window';
+  const eventAText = eventA ? `"${eventA}"` : 'one event (title not present in signals)';
+  const eventBText = eventB ? `"${eventB}"` : 'another event (title not present in signals)';
+  const deadline = dateLabel ? subtractIsoDate(dateLabel, 1) : null;
+  const deadlineLine = dateLabel
+    ? `Decide by ${deadline ?? dateLabel} so the calendar is settled before ${dateLabel}.`
+    : 'Deadline: decide before the overlapping window so the calendar is settled in time.';
+
+  const content = `## Situation
+You have overlapping calendar commitments on ${dateText}. ${eventAText} and ${eventBText} are scheduled for the same window.
+
+## Conflicting commitments or risk
+Double-booking forces a trade-off; if no decision is made, you default under pressure in the moment.
+
+## Recommendation / decision
+Choose which commitment keeps the slot: ${eventAText} or ${eventBText}. If one is immovable, move the other commitment to the next open slot.
+
+## Owner / next step
+Owner: calendar owner. Confirm which commitment keeps the slot so the other can move.
+
+## Timing / deadline
+${deadlineLine}`.trim();
+
+  const title = dateLabel
+    ? `Schedule conflict decision - ${dateLabel}`
+    : 'Schedule conflict decision';
+  const issues = getFinishedDocumentIssues(title, content);
+  if (issues.length > 0) return null;
+
+  return {
+    type: 'document',
+    title,
+    content,
+  };
+}
+
 function buildDeterministicDocumentFallback(
   directive: ConvictionDirective,
   rawContext: string,
 ): DocumentArtifact | null {
   if (directiveLooksLikeScheduleConflict(directive)) {
-    return null;
+    return buildScheduleConflictFallback(directive, rawContext);
   }
 
   const lines = rawContext.split(/\r?\n/);
@@ -1172,6 +1255,14 @@ export async function generateArtifact(
       },
     });
     if (directive.action_type === 'write_document') {
+      const fallbackContext =
+        typeof (directive as any).fullContext === 'string'
+          ? (directive as any).fullContext
+          : typeof directive.reason === 'string'
+            ? directive.reason
+            : directive.directive;
+      const scheduleFallback = buildScheduleConflictFallback(directive, fallbackContext);
+      if (scheduleFallback) return scheduleFallback;
       return emergencyWriteDocumentArtifact(directive);
     }
     if (directive.action_type === 'send_message') {

@@ -2,6 +2,23 @@
 
 ## OPEN — Requires Action
 
+### NEEDS_REVIEW — 2026-04-13 — schedule_conflict write_document quality pass blocked by paid_llm_disabled + local Playwright 401
+
+This session tightened schedule_conflict write_document guards, added deterministic fallback, and added focused tests:
+- `lib/briefing/schedule-conflict-guards.ts`
+- `lib/conviction/artifact-generator.ts`
+- `lib/briefing/__tests__/schedule-conflict-finished-work-gates.test.ts`
+
+Mandatory QA gate results:
+- `npx vitest run lib/briefing/__tests__/schedule-conflict-finished-work-gates.test.ts` passed.
+- `npm run build` passed.
+- `npx playwright test` failed on `tests/e2e/backend-safety-gates.spec.ts:374` (`resend webhook rejects empty body`: expected 400, got 401).
+
+Production-like proof blocker:
+- `npx tsx scripts/run-brain-receipt-real-once.ts` blocked with `paid_llm_disabled` during signal processing; no schedule_conflict write_document persisted. `no_send` action persisted instead (`action_id: 2afe8bf0-9836-4d57-980b-029a24b73178`).
+
+Status: `NEEDS_REVIEW` (local Playwright failure outside this seam; production-like proof blocked by paid_llm_disabled).
+
 ### SHIPPED — 2026-04-03 — A+ remediation (conviction CE-3–6, 2 Vercel crons, OPEN table cleanup)
 
 - **`vercel.json`** — **2** scheduled crons (Hobby-safe); **`runPlatformHealthAlert`** after **`/api/cron/daily-brief`** (`lib/cron/cron-health-alert.ts`); **`GET /api/cron/health-check`** manual-only.

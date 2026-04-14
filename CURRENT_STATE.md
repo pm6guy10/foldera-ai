@@ -22,6 +22,7 @@
 ## B. WHAT IS BROKEN (REAL)
 
 - **Post-deploy verification** — After `fix: autonomous brain quality loop`, run owner `POST /api/dev/brain-receipt` once deploy is READY to confirm `schedule_conflict` → `write_document` persists `pending_approval` (not `Artifact generation failed.`).
+- **Production-like proof blocked** — `scripts/run-brain-receipt-real-once.ts` is currently blocked by `paid_llm_disabled` during signal processing, so a fresh `schedule_conflict` → `write_document` artifact cannot be generated yet (no pending_approval persisted from that path).
 - **Convergence depends on name overlap** — `extractConvergence` requires the entity name to appear in signal bodies; calendar titles without names may under-match.
 - **Confidence scores remain variable** — richer candidates help, but thin relationship context still pulls confidence down.
 

@@ -26,9 +26,26 @@ export function scheduleConflictArtifactIsMessageShaped(artifactBody: string): b
   if (/^\s*(?:to|TO)\s*:\s*\S/m.test(b)) return true;
   if (/\n(?:to|TO)\s+[A-Z][a-z]+\s*\((?:SMS|text|email|chat)\)/i.test(b)) return true;
   if (/\bsubject\s*:\s*.+/i.test(b) && /\b(dear|hi|hello)\b/i.test(b)) return true;
+  if (/(?:^|\n)\s*(?:Hi|Hello|Hey|Dear)\s+[A-Z][^\n]{0,60},/m.test(b)) return true;
+  if (/(?:^|\n)\s*To\s+[A-Z][^\n]{0,60}$/m.test(b)) return true;
+  if (/(?:^|\n)\s*(?:Thanks|Best|Regards|Sincerely|Cheers)\s*[,\-–—]/m.test(b)) return true;
   // Salutation-led outbound lines (not section headers)
   if (/(?:^|\n)\s*(?:Hi|Hello|Hey|Dear)\s+[A-Za-z][^\n]{0,40}[—–-]\s*I\b/m.test(b)) return true;
   return false;
+}
+
+const SCHEDULE_CONFLICT_SECTION_PATTERNS = {
+  situation: [/^##\s*Situation\s*$/im],
+  conflict: [/^##\s*(Conflicting commitments or risk|Conflict|Risk)\s*$/im],
+  recommendation: [/^##\s*(Recommendation\s*\/\s*decision|Recommendation|Decision)\s*$/im],
+  owner: [/^##\s*(Owner\s*\/\s*next step|Owner|Next step|Next steps)\s*$/im],
+  timing: [/^##\s*(Timing\s*\/\s*deadline|Timing|Deadline)\s*$/im],
+};
+
+function hasRequiredSections(artifactBody: string): boolean {
+  return Object.values(SCHEDULE_CONFLICT_SECTION_PATTERNS).every((patterns) =>
+    patterns.some((pattern) => pattern.test(artifactBody)),
+  );
 }
 
 /**
@@ -37,22 +54,14 @@ export function scheduleConflictArtifactIsMessageShaped(artifactBody: string): b
  */
 export function scheduleConflictArtifactHasResolutionShape(artifactBody: string): boolean {
   if (scheduleConflictArtifactIsMessageShaped(artifactBody)) return false;
+  if (!hasRequiredSections(artifactBody)) return false;
+
   const lower = artifactBody.toLowerCase();
-  const signals = [
-    /(?:^|\n)#+\s*(issue|situation|context)\b/im.test(artifactBody) ||
-      /^\s*\*\*(issue|situation)\b/im.test(artifactBody),
-    /conflict|overlap|double[- ]book|both (events|commitments|blocks)|same (window|slot|time)/i.test(
+  const hasTimingAnchor =
+    /\d{4}-\d{2}-\d{2}|\bdeadline\b|\bby (?:eod|cob|monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|tonight|end of day)\b/i.test(
       lower,
-    ),
-    /recommend|decision|resolve|priorit|trade[-‐‑–—]?\s*off|which (event|meeting|block|slot)/i.test(
-      lower,
-    ),
-    /owner|next step|accountable|responsible|your call|you (?:confirm|choose|decide)/i.test(lower),
-    /\d{4}-\d{2}-\d{2}|\bdeadline\b|\bby (?:eod|cob|monday|friday|tomorrow|tonight|end of day)\b/i.test(
-      lower,
-    ),
-  ];
-  return signals.filter(Boolean).length >= 4;
+    );
+  return hasTimingAnchor;
 }
 
 /**
