@@ -113,6 +113,31 @@ function extractDeadlineAnchor(text: string): string | null {
   return null;
 }
 
+function parseBehavioralPatternFacts(text: string): {
+  entityName?: string;
+  count?: string;
+  window?: string;
+} {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  const patterns: Array<{ pattern: RegExp; entityIndex: number; countIndex: number; windowIndex: number }> = [
+    { pattern: /^(.+?)\s+has not replied after\s+(\d+)\s+messages?\s+in\s+(\d+\s+\w+)/i, entityIndex: 1, countIndex: 2, windowIndex: 3 },
+    { pattern: /^(\d+)\s+(?:inbound\s+)?messages?\s+(?:to|for)\s+(.+?)\s+in\s+(\d+\s+\w+)(?:,?\s*\d+\s+replies?)?/i, entityIndex: 2, countIndex: 1, windowIndex: 3 },
+    { pattern: /^(\d+)\s+unresolved\s+follow-?ups?\s+(?:to|for)\s+(.+?)\s+in\s+(\d+\s+\w+)(?:,?\s*\d+\s+replies?)?/i, entityIndex: 2, countIndex: 1, windowIndex: 3 },
+    { pattern: /^(.+?)\s+after\s+(\d+)\s+(?:inbound\s+)?messages?\s+in\s+(\d+\s+\w+)/i, entityIndex: 1, countIndex: 2, windowIndex: 3 },
+  ];
+  for (const { pattern, entityIndex, countIndex, windowIndex } of patterns) {
+    const match = normalized.match(pattern);
+    if (!match) continue;
+    const entityName = match[entityIndex]?.trim().replace(/[.,;:!?]+$/, '');
+    const count = match[countIndex]?.trim();
+    const window = match[windowIndex]?.trim();
+    if (entityName && count && window) {
+      return { entityName, count, window };
+    }
+  }
+  return {};
+}
+
 function isAnalysisDump(text: string): boolean {
   return ANALYSIS_PATTERNS.some((pattern) => pattern.test(text));
 }
@@ -226,26 +251,25 @@ function buildBehavioralPatternFallback(
 ): DocumentArtifact | null {
   if (directive.discrepancyClass !== 'behavioral_pattern') return null;
 
-  const patternLine = directive.directive.trim().replace(/\s+/g, ' ').replace(/[.!?]+$/, '');
-  const whyNowLine =
-    (directive.reason ?? rawContext).trim().replace(/\s+/g, ' ') ||
-    'This pattern is recurring now, so another cycle without a decision will keep the stall open.';
+  const signalText = [directive.directive, directive.reason ?? '', rawContext].filter(Boolean).join('\n');
+  const parsedFacts = parseBehavioralPatternFacts(signalText);
+  const entityName = parsedFacts.entityName ?? directive.directive.trim().replace(/\s+/g, ' ').replace(/[.!?]+$/, '');
+  const count = parsedFacts.count ?? '1';
+  const window = parsedFacts.window ?? '14 days';
+  const salutation = entityName.split(/\s+/)[0] || entityName;
+  const title = `${entityName} has not replied after ${count} messages in ${window}`;
   const deadlineAnchor =
-    extractDeadlineAnchor([directive.directive, directive.reason ?? '', rawContext].join('\n')) ?? 'today';
-  const title = cleanTitle(patternLine.slice(0, 90)) || 'Behavioral pattern note';
+    extractDeadlineAnchor(signalText) ?? 'today';
   const content = [
-    '## Pattern observed',
-    patternLine,
+    `You have sent ${entityName} ${count} messages in the last ${window} and have not received a reply. This thread is now stalled, not active.`,
     '',
-    '## Why it matters now',
-    whyNowLine,
+    'Send this exact message today:',
     '',
-    '## Concrete decision / next move',
-    'Send one direct follow-up today that names the gap, asks for the next step, and closes the loop on this pattern.',
+    `“Hey ${salutation} — I’ve followed up a few times and don’t want to keep clogging your inbox. Should I close this out, or is there a next step you want me to take?”`,
     '',
-    '## Owner / deadline',
-    'Owner: account owner.',
-    `Deadline: ${deadlineAnchor}.`,
+    `If there is no reply after this message, archive the thread and stop spending attention on it.`,
+    '',
+    `Deadline: ${deadlineAnchor}`,
   ].join('\n');
 
   const issues = getFinishedDocumentIssues(title, content);

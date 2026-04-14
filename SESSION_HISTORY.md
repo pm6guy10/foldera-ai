@@ -4220,3 +4220,4 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Reverted the accidental scorer-file additions that had been staged into `cc7e745`, leaving the behavioral_pattern artifact-generator slice intact and isolated.
 - Verification: `npx vitest run lib/briefing/__tests__/scorer-ranking-invariants.test.ts` passed; broader hook failures remained unrelated baseline issues in `decision-payload-adversarial` and `usefulness-gate`.
 - Unresolved issues: pre-push hook still reports unrelated baseline failures outside the behavioral_pattern artifact-generator seam.
+

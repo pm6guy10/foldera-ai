@@ -199,23 +199,28 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const title = String((result as any).title ?? '');
     const content = String((result as any).content ?? '');
 
-    expect(title).toBe('3 inbound messages to Pat Lee in 14 days, 0 replies');
+    expect(title).toBe('Pat Lee has not replied after 3 messages in 14 days');
     expect(content).toBe(
       [
-        '## Pattern observed',
-        '3 inbound messages to Pat Lee in 14 days, 0 replies',
+        'You have sent Pat Lee 3 messages in the last 14 days and have not received a reply. This thread is now stalled, not active.',
         '',
-        '## Why it matters now',
-        'The same reply gap has repeated long enough to be a pattern.',
+        'Send this exact message today:',
         '',
-        '## Concrete decision / next move',
-        'Send one direct follow-up today that names the gap, asks for the next step, and closes the loop on this pattern.',
+        '“Hey Pat — I’ve followed up a few times and don’t want to keep clogging your inbox. Should I close this out, or is there a next step you want me to take?”',
         '',
-        '## Owner / deadline',
-        'Owner: account owner.',
-        'Deadline: today.',
+        'If there is no reply after this message, archive the thread and stop spending attention on it.',
+        '',
+        'Deadline: today',
       ].join('\n'),
     );
+    expect(content).toContain('Pat Lee 3 messages in the last 14 days');
+    expect(content).toContain('“Hey Pat — I’ve followed up a few times and don’t want to keep clogging your inbox. Should I close this out, or is there a next step you want me to take?”');
+    expect(content).toContain('archive the thread and stop spending attention on it');
+    expect(content).not.toContain('## Pattern observed');
+    expect(content).not.toContain('## Why it matters now');
+    expect(content).not.toContain('## Concrete decision / next move');
+    expect(content).not.toContain('## Owner / deadline');
+    expect(content).not.toContain('Send one direct follow-up');
   });
 
   it('routes behavioral_pattern wait_rationale context through the finished-note fallback instead of raw passthrough', async () => {
@@ -236,9 +241,11 @@ describe('artifact-generator — analysis dump leak prevention', () => {
 
     expect(result).not.toBeNull();
     const content = String((result as any).content ?? '');
-    expect(content).toContain('## Pattern observed');
-    expect(content).toContain('## Concrete decision / next move');
+    expect(content).toContain('is now stalled, not active');
+    expect(content).toContain('Send this exact message today:');
+    expect(content).toContain('archive the thread and stop spending attention on it');
     expect(content).not.toContain('Weak analysis blob that would be sludge if returned verbatim.');
+    expect(content).not.toContain('This should not be copied through.');
   });
 
   it('schedule_conflict discrepancy uses deadline transform, not person outreach, even if reason mentions reconnect', async () => {
