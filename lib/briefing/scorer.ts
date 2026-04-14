@@ -1829,6 +1829,11 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
     (candidate) => candidate.type === 'discrepancy' && candidate.score > 0 && passesTop3RankingInvariants(candidate),
   );
 
+  // Any candidate that is a thread-backed sendable real-person action
+  const topThreadBackedSendable = ranked
+    .filter((c) => c.score > 0 && isThreadBackedSendableLoop(c) && passesTop3RankingInvariants(c))
+    .sort(compareScoredLoops)[0];
+
   if (qualifiedDiscrepancies.length > 0) {
     for (const candidate of ranked) {
       if (candidate.score <= 0) continue;
@@ -1837,6 +1842,13 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
         continue;
       }
       if (candidate.type === 'discrepancy') {
+        // behavioral_pattern discrepancies do NOT receive the priority boost when a
+        // thread-backed sendable candidate exists — they are abstract patterns, not
+        // single-obligation actions tied to a real external person.
+        if (candidate.discrepancyClass === 'behavioral_pattern' && topThreadBackedSendable) {
+          diag.penaltyReasons.push('behavioral_pattern_no_boost_thread_backed_present');
+          continue;
+        }
         candidate.score *= 1.2;
         diag.penaltyReasons.push('discrepancy_priority_boost');
         continue;
@@ -1870,25 +1882,30 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
       .filter((candidate) => candidate.type !== 'discrepancy' && candidate.score > 0)
       .sort(compareScoredLoops)[0];
 
+    // Hard invariant: a thread-backed sendable candidate (real person + real thread +
+    // send_message) MUST always beat a behavioral_pattern discrepancy.
+    // This is a product rule, not a scoring adjustment.
     if (
+      topDiscrepancy
+      && topDiscrepancy.discrepancyClass === 'behavioral_pattern'
+      && topThreadBackedSendable
+      && passesTop3RankingInvariants(topThreadBackedSendable)
+    ) {
+      topThreadBackedSendable.score = Math.max(topThreadBackedSendable.score, topDiscrepancy.score + 0.001);
+      ensureDiagnostic(topThreadBackedSendable).penaltyReasons.push('thread_backed_sendable_forced_over_behavioral_pattern');
+      ensureDiagnostic(topDiscrepancy).penaltyReasons.push('behavioral_pattern_yielded_to_thread_backed_sendable');
+    } else if (
       topDiscrepancy
       && topNonDiscrepancy
       && topDiscrepancy.score <= topNonDiscrepancy.score
-    ) {
-      const isThreadSendableOverride =
+      && !(
         isThreadBackedSendableLoop(topNonDiscrepancy)
         && !isThreadBackedSendableLoop(topDiscrepancy)
-        && passesTop3RankingInvariants(topNonDiscrepancy);
-
-      if (topDiscrepancy.discrepancyClass === 'behavioral_pattern') {
-        topDiscrepancy.score = topNonDiscrepancy.score + 0.001;
-        ensureDiagnostic(topDiscrepancy).penaltyReasons.push(
-          'discrepancy_priority_forced_over_task_behavioral_pattern',
-        );
-      } else if (!isThreadSendableOverride) {
-        topDiscrepancy.score = topNonDiscrepancy.score + 0.001;
-        ensureDiagnostic(topDiscrepancy).penaltyReasons.push('discrepancy_priority_forced_over_task');
-      }
+        && passesTop3RankingInvariants(topNonDiscrepancy)
+      )
+    ) {
+      topDiscrepancy.score = topNonDiscrepancy.score + 0.001;
+      ensureDiagnostic(topDiscrepancy).penaltyReasons.push('discrepancy_priority_forced_over_task');
     }
   }
 

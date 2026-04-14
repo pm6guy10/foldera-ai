@@ -4185,3 +4185,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Added a behavioral_pattern-specific finished-document fallback and prompt so `write_document` now renders as a short note with `## Pattern observed`, `## Why it matters now`, `## Concrete decision / next move`, and `## Owner / deadline`, instead of generic analysis sludge. Added a regression that feeds an analysis dump and asserts the behavioral_pattern artifact still resolves to the finished note shape.
 - Verification: `npm run health` (0 FAILING; warning-only); `npx vitest run lib/conviction/__tests__/artifact-generator.test.ts`; `npm run build`; `npx playwright test` (74 passed, 1 failed unrelated pre-existing blocker: `tests/e2e/backend-safety-gates.spec.ts:374` expected 400, got 401 on empty-body resend webhook).
 - Unresolved issues: unrelated Playwright backend-safety-gates webhook expectation mismatch remains `NEEDS_REVIEW`.
+
+## 2026-04-13 — corrective cleanup: strip accidental scorer files from cc7e745
+- MODE: CORRECTION
+- Files changed: `lib/briefing/scorer.ts`, `lib/briefing/__tests__/scorer-ranking-invariants.test.ts`, `SESSION_HISTORY.md`
+- What changed: Reverted the accidental scorer-file additions that had been staged into `cc7e745`, leaving the behavioral_pattern artifact-generator slice intact and isolated.
+- Verification: `npx vitest run lib/briefing/__tests__/scorer-ranking-invariants.test.ts` passed; broader hook failures remained unrelated baseline issues in `decision-payload-adversarial` and `usefulness-gate`.
+- Unresolved issues: pre-push hook still reports unrelated baseline failures outside the behavioral_pattern artifact-generator seam.
