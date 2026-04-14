@@ -26,6 +26,20 @@ const mockGetDirectiveConstraintViolations = vi.fn();
 const mockGetPinnedConstraintPrompt = vi.fn();
 const mockLogStructuredEvent = vi.fn();
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function dateLabel(daysAhead: number): string {
+  return new Date(Date.now() + daysAhead * DAY_MS).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+const FOIL_DEADLINE_LABEL = dateLabel(30);
+const BOARD_MEETING_LABEL = dateLabel(7);
+const GO_LIVE_LABEL = dateLabel(10);
+
 const queryResult = { data: [], error: null };
 const tkgActionsResultsQueue: Array<{ data: unknown[]; error: null }> = [];
 
@@ -34,7 +48,7 @@ const tkgActionsResultsQueue: Array<{ data: unknown[]; error: null }> = [];
 const SIGNAL_72H_AGO = new Date(Date.now() - 72 * 3600000).toISOString();
 const qualifyingSignal = {
   id: 'sig-db-1',
-  content: 'From: Steven Goulden <sgoulden@nyc.gov>\nTo: brandon@example.com\nSubject: FOIL-2025-025-00440 Appeal Deadline April 10\n\nPlease respond to proceed with your FOIL appeal before the deadline.',
+  content: `From: Steven Goulden <sgoulden@nyc.gov>\nTo: brandon@example.com\nSubject: FOIL-2025-025-00440 Appeal Deadline ${FOIL_DEADLINE_LABEL}\n\nPlease respond to proceed with your FOIL appeal before the deadline.`,
   source: 'email_received',
   occurred_at: SIGNAL_72H_AGO,
   author: 'sgoulden@nyc.gov',
@@ -351,17 +365,17 @@ describe('usefulness gate — execution proof', () => {
   // ── VALID CASE 1: send_message ─────────────────────────────────────────
   it('VALID1 — send_message: well-formed payload → NOT GENERATION_FAILED_SENTINEL (passes all gates)', async () => {
     anthropicCreate.mockResolvedValue(anthropicResponse({
-      directive: 'Send the budget confirmation email to Marcus before the April board meeting.',
+      directive: `Send the budget confirmation email to Marcus before the ${BOARD_MEETING_LABEL} board meeting.`,
       artifact_type: 'send_message',
       artifact: {
         to: 'marcus@company.com',
-        subject: 'Q1 infrastructure budget — confirmation before April 3 board meeting',
-        body: 'Hi Marcus,\n\nFollowing your Q1 update, can you confirm by 3 PM PT today whether the infrastructure figure you quoted is final and who owns board packet sign-off? If we miss this cutoff, the April 3 board packet goes forward with an unresolved budget line.\n\nThanks,\nBrandon',
+        subject: `Q1 infrastructure budget — confirmation before ${BOARD_MEETING_LABEL} board meeting`,
+        body: `Hi Marcus,\n\nFollowing your Q1 update, can you confirm by 3 PM PT today whether the infrastructure figure you quoted is final and who owns board packet sign-off? If we miss this cutoff, the ${BOARD_MEETING_LABEL} board packet goes forward with an unresolved budget line.\n\nThanks,\nBrandon`,
       },
       // Avoid past calendar month/day strings here — stale-date gate scans evidence + directive fields.
       evidence:
         'Marcus (marcus@company.com) sent a recent Q1 budget update; the board packet still lacks a confirmed infrastructure line.',
-      why_now: 'The board meeting is 7 days away and the budget line is unconfirmed.',
+      why_now: `The ${BOARD_MEETING_LABEL} board meeting is 7 days away and the budget line is unconfirmed.`,
     }));
 
     const { generateDirective } = await import('../generator');
@@ -398,13 +412,13 @@ describe('usefulness gate — execution proof', () => {
         document_purpose: 'Update Acme stakeholders on integration scope, timeline, and open blockers',
         target_reader: 'Acme stakeholders',
         title: 'Acme Integration — Status Report',
-        content: 'Decision required: confirm by 4 PM PT today whether we proceed with April 10 go-live and assign the accountable security sign-off owner.\n\nAsk: approve path A or B and name the owner before today\'s cutoff.\n\nConsequence: if unresolved, integration launch slips to next week and customer onboarding is blocked.',
+        content: `Decision required: confirm by 4 PM PT today whether we proceed with ${GO_LIVE_LABEL} go-live and assign the accountable security sign-off owner.\n\nAsk: approve path A or B and name the owner before today's cutoff.\n\nConsequence: if unresolved, integration launch slips to next week and customer onboarding is blocked.`,
       },
       causal_diagnosis: {
         why_exists_now: 'Slack thread left sign-off owner undefined.',
         mechanism: 'Unowned security gate blocks go-live date.',
       },
-      evidence: 'Slack shows the security sign-off blocker is still unresolved; go-live target is April 10.',
+      evidence: `Slack shows the security sign-off blocker is still unresolved; go-live target is ${GO_LIVE_LABEL}.`,
       why_now: 'Security sign-off is due within 48 hours and the accountable owner is still undefined.',
     }));
 

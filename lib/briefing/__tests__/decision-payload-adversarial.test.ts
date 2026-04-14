@@ -22,13 +22,31 @@ const mockGetDirectiveConstraintViolations = vi.fn();
 const mockGetPinnedConstraintPrompt = vi.fn();
 const mockLogStructuredEvent = vi.fn();
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function dateLabel(daysAhead: number): string {
+  return new Date(Date.now() + daysAhead * DAY_MS).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function isoDate(daysAhead: number): string {
+  return new Date(Date.now() + daysAhead * DAY_MS).toISOString();
+}
+
+const FOIL_DEADLINE_LABEL = dateLabel(30);
+const FOIL_REVIEW_LABEL = dateLabel(28);
+const FOIL_FILING_LABEL = dateLabel(26);
+
 // Qualifying signal: received email 72h ago with no reply — satisfies all 4 discrepancy filters
 const SIGNAL_72H_AGO = new Date(Date.now() - 72 * 3600000).toISOString();
 const qualifyingSignal = {
   id: 'sig-db-1',
   // Proper email format: Subject header is required for parseSignalSnippet to extract subject,
   // which is required for buildAvoidanceObservations to detect no-reply-sent pattern.
-  content: 'From: Steven Goulden <sgoulden@nyc.gov>\nTo: brandon@example.com\nSubject: FOIL-2025-025-00440 Appeal Deadline April 10\n\nPlease respond to proceed with your FOIL appeal before the deadline.',
+  content: `From: Steven Goulden <sgoulden@nyc.gov>\nTo: brandon@example.com\nSubject: FOIL-2025-025-00440 Appeal Deadline ${FOIL_DEADLINE_LABEL}\n\nPlease respond to proceed with your FOIL appeal before the deadline.`,
   source: 'email_received',
   occurred_at: SIGNAL_72H_AGO,
   author: 'sgoulden@nyc.gov',
@@ -128,7 +146,7 @@ function buildWinner(overrides: Partial<ScoredLoop> = {}): ScoredLoop {
   return {
     id: 'loop-1',
     type: 'commitment',
-    title: 'Send FOIL appeal to Steven Goulden before April 10 deadline',
+    title: `Send FOIL appeal to Steven Goulden before ${FOIL_DEADLINE_LABEL} deadline`,
     content: 'FOIL request denial FOIL-2025-025-00440 must be appealed in writing.',
     suggestedActionType: 'send_message',
     matchedGoal: { text: 'Resolve ESD overpayment waiver', priority: 5, category: 'financial' },
@@ -194,7 +212,7 @@ describe('TEST A — Hostile action drift', () => {
         artifact_type: 'wait_rationale',
         artifact: {
           why_wait: 'No clear next step identified in recent signals',
-          tripwire_date: '2026-04-01',
+          tripwire_date: isoDate(7),
           trigger_condition: 'New correspondence from Records Officer',
         },
         causal_diagnosis: { why_exists_now: 'Stable inbox', mechanism: 'No new inbound' },
@@ -207,11 +225,11 @@ describe('TEST A — Hostile action drift', () => {
         artifact_type: 'send_message',
         artifact: {
           to: 'sgoulden@nyc.gov',
-          subject: 'Decision needed by 4 PM PT today: FOIL appeal acceptance',
+          subject: `Decision needed by 4 PM PT today: FOIL appeal acceptance before ${FOIL_REVIEW_LABEL}`,
           body: 'Can you confirm by 4 PM PT today whether this FOIL appeal submission is accepted, and who is the accountable owner for next-step review? If we miss this cutoff, the statutory appeal timeline is at risk.',
         },
         causal_diagnosis: { why_exists_now: 'Deadline pressure', mechanism: 'Unconfirmed acceptance path' },
-        why_now: 'April 10 appeal deadline requires confirmation today.',
+        why_now: `The ${FOIL_DEADLINE_LABEL} appeal deadline requires confirmation today.`,
       },
     ];
 
@@ -240,7 +258,7 @@ describe('TEST A — Hostile action drift', () => {
         artifact_type: 'send_message',
         artifact: {
           to: 'sgoulden@nyc.gov',
-          subject: 'Decision needed by 4 PM PT today: FOIL appeal review owner',
+          subject: `Decision needed by 4 PM PT today: FOIL appeal review owner before ${FOIL_REVIEW_LABEL}`,
           body: 'Can you confirm by 4 PM PT today whether the FOIL appeal is accepted for review and who owns the legal response? If this is not confirmed today, the filing window slips.',
         },
         causal_diagnosis: { why_exists_now: 'Deadline', mechanism: 'Unconfirmed owner' },
@@ -252,10 +270,10 @@ describe('TEST A — Hostile action drift', () => {
         directive: 'Produce a one-page FOIL appeal decision brief naming owner and deadline.',
         artifact_type: 'write_document',
         artifact: {
-          document_purpose: 'Align legal on appeal path before April 10',
+          document_purpose: `Align legal on appeal path before ${FOIL_DEADLINE_LABEL}`,
           target_reader: 'Internal counsel',
           title: 'FOIL Appeal Decision Brief',
-          content: 'Decision required: confirm acceptance path and owner by 4 PM PT today. Next step: counsel must approve filing path by April 8 or the window slips.',
+          content: `Decision required: confirm acceptance path and owner by 4 PM PT today. Next step: counsel must approve filing path by ${FOIL_FILING_LABEL} or the window slips.`,
         },
         causal_diagnosis: { why_exists_now: 'Deadline', mechanism: 'Unclear filing path' },
         why_now: 'Deadline approaching.',
@@ -297,7 +315,7 @@ describe('TEST B — Hostile false-positive render (blocked payload)', () => {
         directive: 'Send the FOIL appeal immediately.',
         artifact_type: 'send_message',
         artifact: { to: 'sgoulden@nyc.gov', subject: 'FOIL Appeal', body: 'Dear Mr. Goulden, I am writing to appeal...' },
-        why_now: 'April 10 deadline.',
+        why_now: `The ${FOIL_DEADLINE_LABEL} deadline.`,
       },
     ];
 
@@ -361,16 +379,16 @@ describe('TEST C — Renderer-only contract', () => {
       {
         insight: 'Schedule a prep meeting to prepare the FOIL appeal documents.',
         decision: 'ACT',
-        directive: 'Schedule a one-hour FOIL appeal preparation session for April 8.',
+        directive: `Schedule a one-hour FOIL appeal preparation session for ${FOIL_FILING_LABEL}.`,
         artifact_type: 'schedule_block',
         artifact: {
           title: 'FOIL Appeal Prep',
-          start: '2026-04-08T10:00:00Z',
+          start: `${new Date(Date.now() + 10 * DAY_MS).toISOString().slice(0, 10)}T10:00:00Z`,
           duration_minutes: 60,
-          reason: 'Prepare appeal documents before April 10 deadline',
+          reason: `Prepare appeal documents before ${FOIL_DEADLINE_LABEL} deadline`,
         },
         causal_diagnosis: { why_exists_now: 'Prep gap', mechanism: 'No session booked' },
-        why_now: 'The April 10 FOIL deadline is two days away and prep has not started.',
+        why_now: `The ${FOIL_DEADLINE_LABEL} FOIL deadline is two days away and prep has not started.`,
       },
       {
         insight: 'Records officer must confirm submission path before the deadline.',
@@ -379,11 +397,11 @@ describe('TEST C — Renderer-only contract', () => {
         artifact_type: 'send_message',
         artifact: {
           to: 'sgoulden@nyc.gov',
-          subject: 'Decision needed by 4 PM PT today: FOIL appeal submission path',
+          subject: `Decision needed by 4 PM PT today: FOIL appeal submission path before ${FOIL_REVIEW_LABEL}`,
           body: 'Can you confirm by 4 PM PT today whether we proceed with FOIL submission path A or B and who owns final filing? If we miss this, the deadline window closes.',
         },
         causal_diagnosis: { why_exists_now: 'Deadline', mechanism: 'Unconfirmed path' },
-        why_now: 'The April 10 FOIL deadline is two days away and prep has not started.',
+        why_now: `The ${FOIL_DEADLINE_LABEL} FOIL deadline is two days away and prep has not started.`,
       },
     ];
 
@@ -418,13 +436,13 @@ describe('TEST C — Renderer-only contract', () => {
         directive: 'Draft the FOIL appeal letter addressing denial FOIL-2025-025-00440 for Steven Goulden.',
         artifact_type: 'write_document',
         artifact: {
-          title: 'FOIL Appeal Letter — FOIL-2025-025-00440',
+          title: `FOIL Appeal Letter — FOIL-2025-025-00440 (${FOIL_DEADLINE_LABEL})`,
           document_purpose: 'Formal appeal of FOIL denial to NYC Records Officer',
           target_reader: 'Steven Goulden, Records Officer',
-          content: 'Decision required: confirm acceptance of FOIL-2025-025-00440 appeal and assign the accountable review owner.\n\nAsk: provide yes/no acceptance and owner assignment by 4 PM PT today.\n\nConsequence: if unresolved, statutory appeal timing risk increases and filing slips.',
+          content: `Decision required: confirm acceptance of FOIL-2025-025-00440 appeal and assign the accountable review owner.\n\nAsk: provide yes/no acceptance and owner assignment by 4 PM PT today.\n\nConsequence: if unresolved, statutory appeal timing risk increases and filing slips before ${FOIL_DEADLINE_LABEL}.`,
         },
         causal_diagnosis: { why_exists_now: 'Denial received', mechanism: 'Statutory window' },
-        why_now: 'The statutory appeal deadline is April 10 — 14 days from the denial date.',
+        why_now: `The statutory appeal deadline is ${FOIL_DEADLINE_LABEL} — 14 days from the denial date.`,
       },
     ];
 

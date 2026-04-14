@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-14 — briefing test fix: replace stale fixture dates in the two red specs
+- MODE: TEST FIX
+- Files changed: `lib/briefing/__tests__/decision-payload-adversarial.test.ts`, `lib/briefing/__tests__/usefulness-gate.test.ts`, `SESSION_HISTORY.md`
+- What changed: Replaced hardcoded stale April date strings in the two failing briefing specs with future-safe dynamic date labels so the tests still exercise the same authority/usefulness seams without tripping the generator's stale-date guard.
+- Verification: `npx vitest run lib/briefing/__tests__/decision-payload-adversarial.test.ts`; `npx vitest run lib/briefing/__tests__/usefulness-gate.test.ts`; `npm run build`
+- Unresolved issues: unrelated local worktree changes remain untouched.
+
 ## 2026-04-14 — nightly-ops route test harness: align Supabase mock with real cron query chains
 - MODE: TEST FIX
 - Files changed: `app/api/cron/nightly-ops/__tests__/route.test.ts`, `SESSION_HISTORY.md`
