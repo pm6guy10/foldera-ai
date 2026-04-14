@@ -143,6 +143,35 @@ describe('applyRankingInvariants', () => {
     expect(top?.id).toBe('ext-keri');
   });
 
+  it('behavioral_pattern wins when a thread-backed send_message candidate is present', () => {
+    const input = [
+      candidate({
+        id: 'decay-send',
+        score: 5.2,
+        type: 'discrepancy',
+        discrepancyClass: 'decay',
+        suggestedActionType: 'send_message',
+        entityName: 'Keri Nopens',
+        title: 'Decay: Keri thread needing reply',
+        content: 'Thread with Keri shows inbound pressure and no outbound reply in 9 days.',
+        relatedSignals: ['Thread: Keri asked for update', 'Thread: Keri confirmed next steps'],
+      }),
+      candidate({
+        id: 'behavioral-pattern',
+        score: 4.3,
+        type: 'discrepancy',
+        discrepancyClass: 'behavioral_pattern',
+        suggestedActionType: 'write_document',
+        title: 'Cross-thread pattern: leadership inbound with zero action',
+        content: 'Leadership emails reference goal priority but no outbound commitments surfaced.',
+        relatedSignals: ['Inbox: leadership update', 'Calendar: goal check-in missing'],
+      }),
+    ];
+
+    const { ranked } = applyRankingInvariants(input);
+    expect(ranked[0]?.id).toBe('behavioral-pattern');
+  });
+
   it('obvious first-layer advice is penalized below high-signal discrepancy', () => {
     const input = [
       candidate({
@@ -240,4 +269,3 @@ describe('applyRankingInvariants', () => {
     expect(top3.every((c) => passesTop3RankingInvariants(c))).toBe(true);
   });
 });
-

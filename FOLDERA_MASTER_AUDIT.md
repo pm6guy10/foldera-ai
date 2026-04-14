@@ -357,3 +357,4 @@ Superseded by **P0 — OPEN 2026-03-29 — Real non-owner production depth still
 
 - Full local `npx playwright test` omnibus suite fails for pre-existing local-auth reasons: `tests/production/smoke.spec.ts` runs against localhost without auth → redirects to /login → assertions fail. This is a test-harness issue, not a product break. Production E2E (`npm run test:prod`) against live site is the real gate.
 - `tests/audit/clickflow.spec.ts` times out on `/` in local suite — pre-existing, unrelated to pipeline work.
+- `tests/e2e/backend-safety-gates.spec.ts:374` (`resend webhook rejects empty body`) expects `400` but local Playwright returned `401` for an empty-body resend request. Status: `NEEDS_REVIEW` (unrelated to the behavioral_pattern artifact fix; likely auth/header handling order in the webhook test harness or route).

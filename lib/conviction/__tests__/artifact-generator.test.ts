@@ -180,6 +180,37 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(content).not.toMatch(/this candidate/i);
   });
 
+  it('renders behavioral_pattern write_document as a finished move, not an analysis dump', async () => {
+    mockCreate.mockResolvedValue(anthropicResponse(ANALYSIS_DUMP));
+
+    const directive: any = {
+      ...BASE_WRITE_DOCUMENT_DIRECTIVE,
+      discrepancyClass: 'behavioral_pattern',
+      directive: '3 inbound messages to Pat Lee in 14 days, 0 replies.',
+      reason: 'The same reply gap has repeated long enough to be a pattern.',
+      fullContext: ANALYSIS_DUMP,
+    };
+
+    const result = await generateArtifact('user-1', directive);
+
+    expect(result).not.toBeNull();
+    expect((result as any).emergency_fallback).not.toBe(true);
+
+    const title = String((result as any).title ?? '');
+    const content = String((result as any).content ?? '');
+
+    expect(title).not.toMatch(/^INSIGHT:/i);
+    expect(content).toContain('## Pattern observed');
+    expect(content).toContain('## Why it matters now');
+    expect(content).toContain('## Concrete decision / next move');
+    expect(content).toContain('## Owner / deadline');
+    expect(content).not.toMatch(/^INSIGHT:/m);
+    expect(content).not.toMatch(/^WHY NOW:/m);
+    expect(content).not.toMatch(/CAUSAL_DIAGNOSIS/i);
+    expect(content).not.toMatch(/Objective:/);
+    expect(content).not.toMatch(/Execution Notes:/);
+  });
+
   it('schedule_conflict discrepancy uses deadline transform, not person outreach, even if reason mentions reconnect', async () => {
     mockCreate.mockResolvedValue(
       anthropicResponse(

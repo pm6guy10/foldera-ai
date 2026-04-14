@@ -4178,3 +4178,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Files changed: `app/dashboard/page.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `.screenshots/write-document-journey-1280.png`, `SESSION_HISTORY.md`
 - What changed: Primary CTA reads **Save document** for `write_document`; document body in a bounded scroll region with helper line; hint row with **Copy full text** (mirrors email “Copy as text”); success flash already document-specific via `approveSuccessFlash` + `action_type`. E2E asserts preview, hint, save, and post-save status; Playwright writes `.screenshots/write-document-journey-1280.png` for route proof.
 - Verification: `npm run health` (0 failing); `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts -g "write_document journey"`.
+
+## 2026-04-13 — behavioral_pattern write_document: finished-move note instead of analysis dump
+- MODE: PRODUCT QUALITY (artifact)
+- Files changed: `lib/conviction/artifact-generator.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
+- What changed: Added a behavioral_pattern-specific finished-document fallback and prompt so `write_document` now renders as a short note with `## Pattern observed`, `## Why it matters now`, `## Concrete decision / next move`, and `## Owner / deadline`, instead of generic analysis sludge. Added a regression that feeds an analysis dump and asserts the behavioral_pattern artifact still resolves to the finished note shape.
+- Verification: `npm run health` (0 FAILING; warning-only); `npx vitest run lib/conviction/__tests__/artifact-generator.test.ts`; `npm run build`; `npx playwright test` (74 passed, 1 failed unrelated pre-existing blocker: `tests/e2e/backend-safety-gates.spec.ts:374` expected 400, got 401 on empty-body resend webhook).
+- Unresolved issues: unrelated Playwright backend-safety-gates webhook expectation mismatch remains `NEEDS_REVIEW`.

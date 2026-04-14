@@ -225,6 +225,21 @@ function extractScheduleConflictFacts(text: string): {
   };
 }
 
+function extractDeadlineAnchor(text: string): string | null {
+  const patterns = [
+    /\b\d{4}-\d{2}-\d{2}\b/,
+    /\b(?:today|tonight|tomorrow|this week|next week)\b/i,
+    /\b(?:by|before)\s+(?:today|tonight|tomorrow|this week|next week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
+    /\b(?:by|before)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return match[0].trim();
+  }
+  return null;
+}
+
 function subtractIsoDate(dateLabel: string, days: number): string | null {
   const d = new Date(`${dateLabel}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return null;
@@ -276,12 +291,49 @@ ${deadlineLine}`.trim();
   };
 }
 
+function buildBehavioralPatternFallback(
+  directive: ConvictionDirective,
+  rawContext: string,
+): DocumentArtifact | null {
+  if (directive.discrepancyClass !== 'behavioral_pattern') return null;
+
+  const patternLine = directive.directive.trim().replace(/\s+/g, ' ').replace(/[.!?]+$/, '');
+  const whyNowLine = (directive.reason ?? rawContext).trim().replace(/\s+/g, ' ') ||
+    'This pattern is recurring now, so another cycle without a decision will keep the stall open.';
+  const deadlineAnchor = extractDeadlineAnchor([directive.directive, directive.reason ?? '', rawContext].join('\n')) ?? 'today';
+  const title = patternLine.slice(0, 90).replace(/[.!?]+$/, '').trim() || 'Behavioral pattern note';
+  const content = `## Pattern observed
+${patternLine}
+
+## Why it matters now
+${whyNowLine}
+
+## Concrete decision / next move
+Choose one finished move today and close the loop in the smallest usable form: send the reply, write the note, or block the follow-up work.
+
+## Owner / deadline
+Owner: account owner.
+Deadline: ${deadlineAnchor}.`;
+
+  const issues = getFinishedDocumentIssues(title, content);
+  if (issues.length > 0) return null;
+
+  return {
+    type: 'document',
+    title,
+    content,
+  };
+}
+
 function buildDeterministicDocumentFallback(
   directive: ConvictionDirective,
   rawContext: string,
 ): DocumentArtifact | null {
   if (directiveLooksLikeScheduleConflict(directive)) {
     return buildScheduleConflictFallback(directive, rawContext);
+  }
+  if (directive.discrepancyClass === 'behavioral_pattern') {
+    return buildBehavioralPatternFallback(directive, rawContext);
   }
 
   const lines = rawContext.split(/\r?\n/);
@@ -606,7 +658,7 @@ function isAnalysisDump(text: string): boolean {
   return hasAnalysisScaffolding(text);
 }
 
-type DiscrepancyFlavor = 'person' | 'deadline' | 'goal' | 'schedule_conflict';
+type DiscrepancyFlavor = 'behavioral_pattern' | 'person' | 'deadline' | 'goal' | 'schedule_conflict';
 
 /**
  * Infer what kind of finished artifact the discrepancy should become.
@@ -621,6 +673,9 @@ type DiscrepancyFlavor = 'person' | 'deadline' | 'goal' | 'schedule_conflict';
 function detectDiscrepancyFlavor(directive: ConvictionDirective): DiscrepancyFlavor {
   const cls = directive.discrepancyClass as DiscrepancyClass | undefined;
 
+  if (cls === 'behavioral_pattern') {
+    return 'behavioral_pattern';
+  }
   if (cls === 'decay' || cls === 'risk') {
     return 'person';
   }
@@ -664,6 +719,32 @@ RELATIONSHIPS:
 ${relationships.slice(0, 400)}`;
 
   switch (flavor) {
+    case 'behavioral_pattern':
+      return {
+        system: `You write a short finished behavioral pattern note for the user.
+This is not an analysis dump, not a diagnosis memo, and not a triage list.
+
+Use exactly these markdown headings:
+## Pattern observed
+## Why it matters now
+## Concrete decision / next move
+## Owner / deadline
+
+Rules (non-negotiable):
+- Lead with the actual pattern already visible in the signals.
+- Keep the note concise and grounded in the given situation.
+- Make the next move concrete and finished, not a suggestion to think about it.
+- Use "Owner: account owner." or another specific owner label, never "Owner: you."
+- Do not include INSIGHT, WHY NOW, CAUSAL_DIAGNOSIS, Winning loop, runner-ups, or scoring language.
+- Under 220 words total.
+
+Return ONLY valid JSON:
+{"type":"document","title":"<3-8 words>","content":"<markdown sections>"}`,
+        user: `${shared}
+
+Write the finished behavioral pattern note. Return JSON only.`,
+      };
+
     case 'schedule_conflict':
       return {
         system: `You write a CALENDAR CONFLICT RESOLUTION NOTE for the calendar owner (the user). This is NOT an email, not chat, not "MESSAGE TO", and not salutation-led outbound copy.
