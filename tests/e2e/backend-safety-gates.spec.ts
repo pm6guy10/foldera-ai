@@ -379,11 +379,11 @@ test.describe('Backend safety gates', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        data: '',
+        data: Buffer.alloc(0),
       }),
     );
 
-    // Empty body is rejected before Svix verify (400). Unsigned JSON still → 401.
+    // Zero-byte body is rejected before Svix verify (400). A non-empty body without Svix headers still → 401.
     expect(result.response.status()).toBe(400);
     expect(result.response.status()).not.toBe(500);
   });
