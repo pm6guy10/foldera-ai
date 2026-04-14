@@ -24,7 +24,25 @@ const mockSupabase = {
   retentionUserIds: ['user-1', '22222222-2222-2222-2222-222222222222'] as string[],
   signalResetUpdates: [] as Array<Record<string, unknown>>,
   signalDeleteCountByUser: {} as Record<string, number>,
+  insertedRows: [] as Array<{ table: string; payload: Record<string, unknown> }>,
   from(table: string) {
+    const emptyResult = Promise.resolve({ data: [], error: null });
+    const emptySingleResult = Promise.resolve({ data: null, error: null });
+    const emptyQuery = {
+      eq: () => emptyQuery,
+      neq: () => emptyQuery,
+      is: () => emptyQuery,
+      in: () => emptyQuery,
+      gte: () => emptyQuery,
+      lt: () => emptyQuery,
+      not: () => emptyQuery,
+      order: () => emptyQuery,
+      limit: () => emptyQuery,
+      maybeSingle: () => emptySingleResult,
+      then: (resolve: any, reject?: any) => emptyResult.then(resolve, reject),
+      catch: (reject: any) => emptyResult.catch(reject),
+    };
+
     if (table === 'tkg_signals') {
       let deleteUserId: string | null = null;
       return {
@@ -62,6 +80,49 @@ const mockSupabase = {
             return Promise.resolve({ error: null });
           },
         }),
+      };
+    }
+
+    if (table === 'tkg_entities') {
+      return {
+        select: () => emptyQuery,
+        update: () => ({
+          eq: () => Promise.resolve({ error: null }),
+        }),
+      };
+    }
+
+    if (table === 'tkg_directive_ml_snapshots') {
+      return {
+        select: () => emptyQuery,
+        delete: () => ({
+          neq: () => Promise.resolve({ error: null }),
+        }),
+        insert: (payload: Record<string, unknown>) => {
+          this.insertedRows.push({ table, payload });
+          return Promise.resolve({ error: null });
+        },
+      };
+    }
+
+    if (table === 'tkg_directive_ml_global_priors') {
+      return {
+        delete: () => ({
+          neq: () => Promise.resolve({ error: null }),
+        }),
+        insert: (payload: Record<string, unknown>) => {
+          this.insertedRows.push({ table, payload });
+          return Promise.resolve({ error: null });
+        },
+      };
+    }
+
+    if (table === 'pipeline_runs') {
+      return {
+        insert: (payload: Record<string, unknown>) => {
+          this.insertedRows.push({ table, payload });
+          return Promise.resolve({ error: null });
+        },
       };
     }
 
@@ -214,6 +275,7 @@ describe('nightly-ops route', () => {
     mockSupabase.retentionUserIds = ['user-1', '22222222-2222-2222-2222-222222222222'];
     mockSupabase.signalResetUpdates = [];
     mockSupabase.signalDeleteCountByUser = {};
+    mockSupabase.insertedRows = [];
   });
 
   afterEach(() => {

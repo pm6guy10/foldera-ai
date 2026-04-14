@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-14 — nightly-ops route test harness: align Supabase mock with real cron query chains
+- MODE: TEST FIX
+- Files changed: `app/api/cron/nightly-ops/__tests__/route.test.ts`, `SESSION_HISTORY.md`
+- What changed: Expanded the nightly-ops route test mock client so it supports the `tkg_entities`, `tkg_directive_ml_snapshots`, `tkg_directive_ml_global_priors`, and `pipeline_runs` query chains used by the cron stages. The test now reaches the intended zero-row/no-op behavior instead of throwing on missing `.eq`, `.neq`, and `.insert` methods.
+- Verification: `npx vitest run app/api/cron/nightly-ops/__tests__/route.test.ts`; `npm run build`; `npx playwright test` failed on the pre-existing `tests/e2e/backend-safety-gates.spec.ts:374` empty-body resend webhook expectation mismatch (`400` expected, `401` received).
+- Unresolved issues: unrelated Playwright blocker remains.
+
 ## 2026-04-14 — behavioral_pattern write_document: goal → obstruction → move artifact
 - MODE: PRODUCT QUALITY (artifact)
 - Files changed: `lib/conviction/artifact-generator-compat.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `SESSION_HISTORY.md`
