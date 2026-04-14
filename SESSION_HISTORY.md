@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-14 — conviction module contract: restore legacy artifact-generator exports
+- MODE: FIX
+- Files changed: `lib/conviction/artifact-generator.ts`, `lib/conviction/artifact-generator-compat.ts`, `lib/conviction/__tests__/artifact-generator-contract.test.ts`, `SESSION_HISTORY.md`
+- What changed: Restored the public `lib/conviction/artifact-generator` contract by turning it back into a barrel that re-exports `generateArtifact`, `getSendMessageRecipientGroundingIssues`, and `getArtifactPersistenceIssues` from a compatibility implementation. The shim preserves the behavioral_pattern finished-note fallback and the schedule_conflict persistence gates.
+- Verification: `npm run build`; `npx vitest run lib/conviction/__tests__/artifact-generator-contract.test.ts lib/conviction/__tests__/artifact-generator.test.ts lib/conviction/__tests__/send-message-recipient-grounding.test.ts lib/briefing/__tests__/schedule-conflict-finished-work-gates.test.ts`
+- Unresolved issues: none for this seam.
+
 ## 2026-04-14 — Build recovery: restore artifact-generator exports after remote rewrite
 - MODE: FIX
 - Files changed: `lib/conviction/artifact-generator.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `SESSION_HISTORY.md`
