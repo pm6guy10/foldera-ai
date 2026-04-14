@@ -257,17 +257,17 @@ function buildBehavioralPatternFallback(
   const count = parsedFacts.count ?? '1';
   const window = parsedFacts.window ?? '14 days';
   const salutation = entityName.split(/\s+/)[0] || entityName;
-  const title = `${entityName} has not replied after ${count} messages in ${window}`;
+  const title = `${entityName} going dark is now blocking the pilot decision`;
   const deadlineAnchor =
     extractDeadlineAnchor(signalText) ?? 'today';
   const content = [
-    `You have sent ${entityName} ${count} messages in the last ${window} and have not received a reply. This thread is now stalled, not active.`,
+    `You were trying to move this thread toward a real yes/no. ${count} follow-ups in ${window} without a reply means it is no longer active, just mentally open.`,
     '',
-    'Send this exact message today:',
+    'Send this today:',
     '',
-    `“Hey ${salutation} — I’ve followed up a few times and don’t want to keep clogging your inbox. Should I close this out, or is there a next step you want me to take?”`,
+    `“Hey ${salutation} — I’ve followed up a few times on the pilot thread and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”`,
     '',
-    `If there is no reply after this message, archive the thread and stop spending attention on it.`,
+    'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
     '',
     `Deadline: ${deadlineAnchor}`,
   ].join('\n');

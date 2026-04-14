@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-14 — behavioral_pattern write_document: goal → obstruction → move artifact
+- MODE: PRODUCT QUALITY (artifact)
+- Files changed: `lib/conviction/artifact-generator-compat.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `SESSION_HISTORY.md`
+- What changed: Reworked the behavioral_pattern write_document fallback so it now reads like a finished move: inferred goal, obstruction/discrepancy, one-sentence implication, exact sendable message, explicit stop rule, and no advisory headings or sludge.
+- Verification: `npx vitest run lib/conviction/__tests__/artifact-generator.test.ts`; `npm run build`
+- Unresolved issues: none for this seam.
+
 ## 2026-04-14 — conviction module contract: restore legacy artifact-generator exports
 - MODE: FIX
 - Files changed: `lib/conviction/artifact-generator.ts`, `lib/conviction/artifact-generator-compat.ts`, `lib/conviction/__tests__/artifact-generator-contract.test.ts`, `SESSION_HISTORY.md`

@@ -199,28 +199,31 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const title = String((result as any).title ?? '');
     const content = String((result as any).content ?? '');
 
-    expect(title).toBe('Pat Lee has not replied after 3 messages in 14 days');
+    expect(title).toBe('Pat Lee going dark is now blocking the pilot decision');
     expect(content).toBe(
       [
-        'You have sent Pat Lee 3 messages in the last 14 days and have not received a reply. This thread is now stalled, not active.',
+        'You were trying to move this thread toward a real yes/no. 3 follow-ups in 14 days without a reply means it is no longer active, just mentally open.',
         '',
-        'Send this exact message today:',
+        'Send this today:',
         '',
-        '“Hey Pat — I’ve followed up a few times and don’t want to keep clogging your inbox. Should I close this out, or is there a next step you want me to take?”',
+        '“Hey Pat — I’ve followed up a few times on the pilot thread and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”',
         '',
-        'If there is no reply after this message, archive the thread and stop spending attention on it.',
+        'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
         '',
         'Deadline: today',
       ].join('\n'),
     );
-    expect(content).toContain('Pat Lee 3 messages in the last 14 days');
-    expect(content).toContain('“Hey Pat — I’ve followed up a few times and don’t want to keep clogging your inbox. Should I close this out, or is there a next step you want me to take?”');
-    expect(content).toContain('archive the thread and stop spending attention on it');
+    expect(content).toContain('You were trying to move this thread toward a real yes/no.');
+    expect(content).toContain('3 follow-ups in 14 days without a reply');
+    expect(content).toContain('If there is no reply after this, mark the thread stalled and stop allocating attention to it.');
+    expect(content).toContain('“Hey Pat — I’ve followed up a few times on the pilot thread and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”');
     expect(content).not.toContain('## Pattern observed');
     expect(content).not.toContain('## Why it matters now');
     expect(content).not.toContain('## Concrete decision / next move');
     expect(content).not.toContain('## Owner / deadline');
     expect(content).not.toContain('Send one direct follow-up');
+    expect(content).not.toContain('should I close this out');
+    expect(content).not.toContain('keep clogging your inbox');
   });
 
   it('routes behavioral_pattern wait_rationale context through the finished-note fallback instead of raw passthrough', async () => {
@@ -241,9 +244,10 @@ describe('artifact-generator — analysis dump leak prevention', () => {
 
     expect(result).not.toBeNull();
     const content = String((result as any).content ?? '');
-    expect(content).toContain('is now stalled, not active');
-    expect(content).toContain('Send this exact message today:');
-    expect(content).toContain('archive the thread and stop spending attention on it');
+    expect(content).toContain('You were trying to move this thread toward a real yes/no.');
+    expect(content).toContain('Send this today:');
+    expect(content).toContain('mark the thread stalled and stop allocating attention to it');
+    expect(content).toContain('Is this something you still want to pursue, or should I close the loop on my side?');
     expect(content).not.toContain('Weak analysis blob that would be sludge if returned verbatim.');
     expect(content).not.toContain('This should not be copied through.');
   });
