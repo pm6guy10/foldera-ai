@@ -360,7 +360,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     expect(errors).toHaveLength(0);
   });
 
-  test('document directive shows finished document body (not blank artifact panel)', async ({ page }) => {
+  test('write_document journey: document preview, Save document, copy hint, saved status', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await seedAuthenticatedSession(page);
     await attachCheckoutGuards(page);
@@ -372,16 +372,38 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
     );
     await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+    await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
     await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DOCUMENT_DIRECTIVE_RESPONSE));
     await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: json({ status: 'skipped' }) });
+      if (route.request().method() !== 'POST') return route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({
+          status: 'executed',
+          action_id: DOCUMENT_DIRECTIVE_RESPONSE.id,
+          action_type: 'write_document',
+          result: { saved: true },
+        }),
+      });
     });
     await page.goto('/dashboard');
     await expect(
       page.locator('.text-xl.font-bold').filter({ hasText: /Overlapping events on 2026-04-02/i }),
     ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('dashboard-document-body')).toBeVisible();
     await expect(page.getByText(/Objective: Overlapping events/i)).toBeVisible();
     await expect(page.getByText(/Finished document/i)).toBeVisible();
+    await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Save document adds/i);
+    await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
+    await page.screenshot({
+      path: '.screenshots/write-document-journey-1280.png',
+      fullPage: true,
+    });
+
+    await page.getByTestId('dashboard-primary-action').click();
+    await expect(page.getByText(/Saved\. Your document is in Foldera Signals/i)).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText(/It worked/i)).toBeVisible();
   });
 
   test('stale email deep-link skip reconciles after execute 404 (query params cleared)', async ({ page }) => {

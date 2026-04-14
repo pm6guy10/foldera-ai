@@ -39,6 +39,31 @@ function artifactPrimaryText(a: ArtifactWithDraftedEmail | null | undefined): st
   return null;
 }
 
+/** Human copy after Approve — write_document is save + optional Resend, not outbox send. */
+function approveSuccessFlash(actionType: string | undefined, result: unknown): string {
+  const r = result && typeof result === 'object' ? (result as Record<string, unknown>) : null;
+  if (actionType === 'write_document') {
+    const de = r?.document_ready_email;
+    if (de && typeof de === 'object') {
+      const o = de as { sent?: boolean; reason?: string; send_error?: string };
+      if (o.sent === true) return 'Saved. We also emailed you the full document.';
+      if (o.reason === 'no_verified_email') {
+        return 'Saved to your Foldera record. Add a verified email in Settings to receive a copy by email.';
+      }
+      if (typeof o.send_error === 'string' && o.send_error.length > 0) {
+        return 'Saved. Email delivery failed — your document is still in Foldera Signals.';
+      }
+    }
+    if (r?.saved === true) return 'Saved. Your document is in Foldera Signals.';
+    return 'Saved.';
+  }
+  const sentVia = (r as { sent_via?: string } | null)?.sent_via;
+  if (sentVia === 'gmail') return 'Sent from your Gmail.';
+  if (sentVia === 'outlook') return 'Sent from your Outlook.';
+  if (sentVia === 'resend') return 'Sent via Foldera. Connect Gmail in Settings to send from your own inbox.';
+  return 'Sent. Check your outbox.';
+}
+
 type ActionWithDomain = ConvictionAction & { domain?: string; generatedAt?: string };
 
 export default function DashboardPage() {
@@ -200,14 +225,13 @@ export default function DashboardPage() {
           setDone(true);
           setLastDecision(deepAction === 'approve' ? 'approve' : 'skip');
           if (deepAction === 'approve') {
-            const sentVia = (data.result as { sent_via?: string } | undefined)?.sent_via;
             setExecutedActionId((data.action_id as string | undefined) ?? null);
-            const sentFlash =
-              sentVia === 'gmail' ? 'Sent from your Gmail.' :
-              sentVia === 'outlook' ? 'Sent from your Outlook.' :
-              sentVia === 'resend' ? 'Sent via Foldera. Connect Gmail in Settings to send from your own inbox.' :
-              'Sent. Check your outbox.';
-            setFlash(sentFlash);
+            setFlash(
+              approveSuccessFlash(
+                (data as { action_type?: string }).action_type ?? undefined,
+                data.result,
+              ),
+            );
           } else {
             setFlash('Skipped. Foldera will adjust.');
           }
@@ -257,14 +281,13 @@ export default function DashboardPage() {
       if (data.status === 'executed' || data.status === 'skipped') {
         setDone(true);
         setLastDecision('approve');
-        const sentVia = (data.result as { sent_via?: string } | undefined)?.sent_via;
         setExecutedActionId((data.action_id as string | undefined) ?? null);
-        const sentFlash =
-          sentVia === 'gmail' ? 'Sent from your Gmail.' :
-          sentVia === 'outlook' ? 'Sent from your Outlook.' :
-          sentVia === 'resend' ? 'Sent via Foldera. Connect Gmail in Settings to send from your own inbox.' :
-          'Sent. Check your outbox.';
-        setFlash(sentFlash);
+        setFlash(
+          approveSuccessFlash(
+            (data as { action_type?: string }).action_type ?? action.action_type,
+            data.result,
+          ),
+        );
       } else {
         throw new Error('Unexpected response from Foldera.');
       }
@@ -358,6 +381,21 @@ export default function DashboardPage() {
       setTimeout(() => setFlash(null), 5000);
     }
   }, [action, artifact, isEmail]);
+
+  const handleCopyDocument = useCallback(async () => {
+    if (!action || !artifact || !isDocument) return;
+    const title = typeof artifact.title === 'string' ? artifact.title : 'Document';
+    const bodyText = artifactPrimaryText(artifact) ?? '';
+    const block = [title, '', bodyText].join('\n');
+    try {
+      await navigator.clipboard.writeText(block);
+      setFlash('Copied full document — paste anywhere, or tap Save document to file it in Foldera.');
+      setTimeout(() => setFlash(null), 6000);
+    } catch {
+      setFlash('Could not copy automatically — select the text in the preview below.');
+      setTimeout(() => setFlash(null), 5000);
+    }
+  }, [action, artifact, isDocument]);
 
   const isProArtifactUnlocked =
     subPlan === 'pro' && (subStatus === 'active' || subStatus === 'past_due');
@@ -601,17 +639,25 @@ export default function DashboardPage() {
 
                     {isDocument && (
                       <div className="rounded-2xl bg-zinc-950/60 border border-cyan-500/20 border-l-4 border-l-cyan-500 p-4 md:p-5 m-4 md:m-5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">
                           Finished document
                         </p>
+                        <p className="text-[11px] text-zinc-500 leading-snug mb-3">
+                          Ready to file or share — save it to your Foldera record when you&apos;re happy with it.
+                        </p>
                         {artifact.title && (
-                          <p className="text-sm font-semibold text-white mb-2">{artifact.title}</p>
+                          <p className="text-base font-semibold text-white mb-2">{artifact.title}</p>
                         )}
                         {artifactBody ? (
-                          <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{artifactBody}</p>
+                          <div
+                            className="max-h-[min(50vh,24rem)] overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-3"
+                            data-testid="dashboard-document-body"
+                          >
+                            <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{artifactBody}</p>
+                          </div>
                         ) : (
                           <p className="text-sm text-zinc-400 leading-relaxed">
-                            Full text is in your morning email. Approve to file it, or skip to adjust.
+                            Full text is in your morning email. Save document to file it, or skip to adjust.
                           </p>
                         )}
                       </div>
@@ -672,16 +718,34 @@ export default function DashboardPage() {
               </div>
             )}
 
+            {action.action_type === 'write_document' && isDocument && artifactBody && (
+              <div className="px-4 pt-2 pb-1 border-t border-white/5 text-center" data-testid="dashboard-document-actions-hint">
+                <p className="text-[11px] text-zinc-500 leading-relaxed px-1 mb-1">
+                  Save document adds the full text to your Foldera record.{' '}
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyDocument()}
+                    className="underline text-zinc-400 hover:text-zinc-300 transition-colors focus-visible:outline-none"
+                  >
+                    Copy full text
+                  </button>
+                </p>
+              </div>
+            )}
+
             {/* Action buttons */}
             <div className="p-4 flex flex-row gap-3 max-[400px]:flex-col bg-white/[0.02] border-t border-white/10 max-[400px]:[&>button]:w-full">
               <button
                 type="button"
                 onClick={handleApprove}
                 disabled={executing}
+                data-testid="dashboard-primary-action"
                 className="touch-manipulation flex-1 w-full sm:w-auto min-h-[56px] bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
               >
                 {executing ? (
                   <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                ) : action.action_type === 'write_document' ? (
+                  'Save document'
                 ) : (
                   'Approve'
                 )}

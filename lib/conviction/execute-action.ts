@@ -36,6 +36,8 @@ export interface ExecuteActionInput {
 export interface ExecuteActionResult {
   status: 'executed' | 'skipped' | 'draft_rejected' | 'failed';
   action_id: string;
+  /** Present on executed so clients can show action-specific success copy without re-fetching. */
+  action_type?: string;
   result?: Record<string, unknown>;
   error?: string;
 }
@@ -743,6 +745,7 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
   return {
     status: 'executed',
     action_id: actionId,
+    action_type: typeof action.action_type === 'string' ? action.action_type : undefined,
     result: executionResult,
   };
 }

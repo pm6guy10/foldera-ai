@@ -44,6 +44,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       status: result.status,
       action_id: result.action_id,
+      ...(result.action_type ? { action_type: result.action_type } : {}),
       result: result.result,
     });
   } catch (error) {
