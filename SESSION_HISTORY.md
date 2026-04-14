@@ -80,7 +80,7 @@ Do not call a task complete with local-only reasoning when Playwright, Vercel, S
  MODE: PRODUCT QUALITY
  Files changed: `lib/briefing/schedule-conflict-guards.ts`, `lib/conviction/artifact-generator.ts`, `lib/briefing/__tests__/schedule-conflict-finished-work-gates.test.ts`, `CURRENT_STATE.md`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
  What was verified: `npm run health` — 0 FAIL; `npx vitest run lib/briefing/__tests__/schedule-conflict-finished-work-gates.test.ts`; `npm run build`; `npx playwright test` failed on `tests/e2e/backend-safety-gates.spec.ts:374` (expected 400, got 401).
- Unresolved issues: production-like proof blocked by `paid_llm_disabled` during `scripts/run-brain-receipt-real-once.ts` (no schedule_conflict write_document persisted); local Playwright failure above logged in `FOLDERA_MASTER_AUDIT.md`.
+ Unresolved issues: production-like proof blocked by `paid_llm_disabled` during `scripts/run-brain-receipt-real-once.ts` (no schedule_conflict write_document persisted); local Playwright failure above; pre-push unit test gate failed (`decision-payload-adversarial.test.ts` + `usefulness-gate.test.ts` due to `credit balance too low`) so `git push` was blocked. All logged in `FOLDERA_MASTER_AUDIT.md`.
 
 - 2026-04-13 — Production check: map discrepancy `resolveTriggerAction` through `actionTypeToArtifactType` (fixes invalid canonical `make_decision` for e.g. `unresolved_intent`)
  MODE: FIX

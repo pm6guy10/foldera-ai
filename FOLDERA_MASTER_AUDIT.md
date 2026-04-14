@@ -16,6 +16,7 @@ Mandatory QA gate results:
 
 Production-like proof blocker:
 - `npx tsx scripts/run-brain-receipt-real-once.ts` blocked with `paid_llm_disabled` during signal processing; no schedule_conflict write_document persisted. `no_send` action persisted instead (`action_id: 2afe8bf0-9836-4d57-980b-029a24b73178`).
+- Pre-push unit test gate (`npx vitest run --exclude ".claude/worktrees/**"`) failed: `decision-payload-adversarial.test.ts` (TEST A + TEST C) and `usefulness-gate.test.ts` VALID2. Logs show real LLM call returning `credit balance too low`, causing `generateDirective` to fall back to `do_nothing` and blocking `git push`.
 
 Status: `NEEDS_REVIEW` (local Playwright failure outside this seam; production-like proof blocked by paid_llm_disabled).
 
