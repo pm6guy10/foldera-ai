@@ -394,8 +394,10 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByTestId('dashboard-document-body')).toBeVisible();
     await expect(page.getByText(/Objective: Overlapping events/i)).toBeVisible();
     await expect(page.getByText(/Finished document/i)).toBeVisible();
-    await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Save document adds/i);
+    await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Save document files/i);
+    await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Skip keeps it out/i);
     await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /skip and adjust/i })).toBeVisible();
     await page.screenshot({
       path: '.screenshots/write-document-journey-1280.png',
       fullPage: true,

@@ -720,8 +720,10 @@ export default function DashboardPage() {
 
             {action.action_type === 'write_document' && isDocument && artifactBody && (
               <div className="px-4 pt-2 pb-1 border-t border-white/5 text-center" data-testid="dashboard-document-actions-hint">
-                <p className="text-[11px] text-zinc-500 leading-relaxed px-1 mb-1">
-                  Save document adds the full text to your Foldera record.{' '}
+                <p className="text-[12px] text-zinc-400 leading-relaxed px-1 mb-1">
+                  Save document files the full text to your Foldera record. Skip keeps it out of your record and tells Foldera to adjust.
+                </p>
+                <p className="text-[11px] text-zinc-500 leading-relaxed px-1">
                   <button
                     type="button"
                     onClick={() => void handleCopyDocument()}
@@ -759,7 +761,7 @@ export default function DashboardPage() {
                 {executing ? (
                   <span className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
                 ) : (
-                  'Skip'
+                  action.action_type === 'write_document' ? 'Skip and adjust' : 'Skip'
                 )}
               </button>
             </div>
