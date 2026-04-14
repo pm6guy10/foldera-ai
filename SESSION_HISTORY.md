@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-14 — Build recovery: restore artifact-generator exports after remote rewrite
+- MODE: FIX
+- Files changed: `lib/conviction/artifact-generator.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `SESSION_HISTORY.md`
+- What changed: Restored the previously working `artifact-generator` export surface so the app build could resolve `generateArtifact`, `getSendMessageRecipientGroundingIssues`, and `getArtifactPersistenceIssues` again after the remote branch rewrite.
+- Verification: `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts -g "write_document journey" --workers=1 --reporter=line` on `PLAYWRIGHT_WEB_PORT=3012`.
+- Unresolved issues: none for this recovery step.
+
 ## 2026-04-14 — Dashboard write_document: explicit skip wording for approve/skip clarity
 - MODE: UX (narrow seam)
 - Files changed: `app/dashboard/page.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`
