@@ -180,7 +180,7 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(content).not.toMatch(/this candidate/i);
   });
 
-  it('renders behavioral_pattern write_document as a finished move, not an analysis dump', async () => {
+  it('renders behavioral_pattern write_document with a grounded goal when one is available', async () => {
     mockCreate.mockResolvedValue(anthropicResponse(ANALYSIS_DUMP));
 
     const directive: any = {
@@ -189,34 +189,73 @@ describe('artifact-generator — analysis dump leak prevention', () => {
       directive: '3 inbound messages to Pat Lee in 14 days, 0 replies.',
       reason: 'The same reply gap has repeated long enough to be a pattern.',
       fullContext: ANALYSIS_DUMP,
+      generationLog: {
+        outcome: 'selected',
+        stage: 'generation',
+        reason: 'Matched goal metadata is grounded in the current thread.',
+        candidateFailureReasons: [],
+        candidateDiscovery: {
+          candidateCount: 1,
+          suppressedCandidateCount: 0,
+          selectionMargin: 1,
+          selectionReason: 'Goal metadata and active goals agree.',
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'candidate-1',
+              rank: 1,
+              candidateType: 'discrepancy',
+              actionType: 'write_document',
+              score: 9.2,
+              scoreBreakdown: {
+                stakes: 4,
+                urgency: 0.85,
+                tractability: 0.8,
+                freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
+              },
+              targetGoal: {
+                text: 'pilot decision',
+                priority: 4,
+                category: 'work',
+              },
+              sourceSignals: [{ kind: 'signal', summary: 'Pat Lee thread' }],
+              decision: 'selected',
+              decisionReason: 'The pilot decision is the strongest grounded goal in the current context.',
+            },
+          ],
+        },
+        brief_context_debug: {
+          active_goals: ['pilot decision'],
+        },
+      },
     };
 
     const result = await generateArtifact('user-1', directive);
 
     expect(result).not.toBeNull();
-    expect((result as any).emergency_fallback).not.toBe(true);
-
     const title = String((result as any).title ?? '');
     const content = String((result as any).content ?? '');
 
     expect(title).toBe('Pat Lee going dark is now blocking the pilot decision');
     expect(content).toBe(
       [
-        'You were trying to move this thread toward a real yes/no. 3 follow-ups in 14 days without a reply means it is no longer active, just mentally open.',
+        'You were trying to get this thread to a real yes/no on the pilot decision. 3 follow-ups in 14 days without a reply means it is no longer active, just mentally open.',
         '',
         'Send this today:',
         '',
-        '“Hey Pat — I’ve followed up a few times on the pilot thread and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”',
+        '“Hey Pat — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”',
         '',
         'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
         '',
         'Deadline: today',
       ].join('\n'),
     );
-    expect(content).toContain('You were trying to move this thread toward a real yes/no.');
+    expect(content).toContain('You were trying to get this thread to a real yes/no on the pilot decision.');
     expect(content).toContain('3 follow-ups in 14 days without a reply');
     expect(content).toContain('If there is no reply after this, mark the thread stalled and stop allocating attention to it.');
-    expect(content).toContain('“Hey Pat — I’ve followed up a few times on the pilot thread and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”');
+    expect(content).toContain('“Hey Pat — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”');
     expect(content).not.toContain('## Pattern observed');
     expect(content).not.toContain('## Why it matters now');
     expect(content).not.toContain('## Concrete decision / next move');
@@ -224,6 +263,70 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(content).not.toContain('Send one direct follow-up');
     expect(content).not.toContain('should I close this out');
     expect(content).not.toContain('keep clogging your inbox');
+  });
+
+  it('falls back to a non-goal behavioral_pattern note when grounded goal evidence is weak', async () => {
+    mockCreate.mockResolvedValue(anthropicResponse(ANALYSIS_DUMP));
+
+    const directive: any = {
+      ...BASE_WRITE_DOCUMENT_DIRECTIVE,
+      discrepancyClass: 'behavioral_pattern',
+      directive: '3 inbound messages to Pat Lee in 14 days, 0 replies.',
+      reason: 'The same reply gap has repeated long enough to be a pattern.',
+      fullContext: ANALYSIS_DUMP,
+      generationLog: {
+        outcome: 'selected',
+        stage: 'generation',
+        reason: 'No grounded goal evidence is available.',
+        candidateFailureReasons: [],
+        candidateDiscovery: {
+          candidateCount: 1,
+          suppressedCandidateCount: 0,
+          selectionMargin: 1,
+          selectionReason: 'No target goal metadata was present.',
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'candidate-2',
+              rank: 1,
+              candidateType: 'discrepancy',
+              actionType: 'write_document',
+              score: 8.1,
+              scoreBreakdown: {
+                stakes: 4,
+                urgency: 0.85,
+                tractability: 0.8,
+                freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
+              },
+              targetGoal: null,
+              sourceSignals: [{ kind: 'signal', summary: 'Pat Lee thread' }],
+              decision: 'selected',
+              decisionReason: 'The obstruction is grounded, but no goal context is strong enough to name.',
+            },
+          ],
+        },
+      },
+    };
+
+    const result = await generateArtifact('user-1', directive);
+
+    expect(result).not.toBeNull();
+    const title = String((result as any).title ?? '');
+    const content = String((result as any).content ?? '');
+
+    expect(title).toBe('Pat Lee going dark is now blocking the thread');
+    expect(content).toContain('3 follow-ups in 14 days without a reply means this thread is stalled, not active.');
+    expect(content).toContain('If there is no reply after this, mark the thread stalled and stop allocating attention to it.');
+    expect(content).toContain('“Hey Pat — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”');
+    expect(content).not.toContain('pilot decision');
+    expect(content).not.toContain('You were trying to get this thread to a real yes/no');
+    expect(content).not.toContain('## Pattern observed');
+    expect(content).not.toContain('## Why it matters now');
+    expect(content).not.toContain('## Concrete decision / next move');
+    expect(content).not.toContain('## Owner / deadline');
+    expect(content).not.toContain('Send one direct follow-up');
   });
 
   it('routes behavioral_pattern wait_rationale context through the finished-note fallback instead of raw passthrough', async () => {
@@ -243,13 +346,15 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const result = await generateArtifact('user-1', directive);
 
     expect(result).not.toBeNull();
+    expect((result as any).emergency_fallback).not.toBe(true);
     const content = String((result as any).content ?? '');
-    expect(content).toContain('You were trying to move this thread toward a real yes/no.');
+    expect(content).toContain('4 follow-ups in 10 days without a reply means this thread is stalled, not active.');
     expect(content).toContain('Send this today:');
     expect(content).toContain('mark the thread stalled and stop allocating attention to it');
-    expect(content).toContain('Is this something you still want to pursue, or should I close the loop on my side?');
+    expect(content).toContain('I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted.');
     expect(content).not.toContain('Weak analysis blob that would be sludge if returned verbatim.');
     expect(content).not.toContain('This should not be copied through.');
+    expect(content).not.toContain('You were trying to get this thread to a real yes/no');
   });
 
   it('schedule_conflict discrepancy uses deadline transform, not person outreach, even if reason mentions reconnect', async () => {

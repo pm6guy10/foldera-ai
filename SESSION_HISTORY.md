@@ -4155,6 +4155,13 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Signed-in journey ended on `/dashboard` and clicked **Sign out**, but the dashboard shell no longer exposes that control (only Settings / Briefings). Navigate to `/dashboard/settings` before the sign-out + home URL wait so Playwright targets a real button.
 - Verification: `npm run health` (0 failing); `npm run build`.
 
+## 2026-04-14 — behavioral_pattern goal grounding: use grounded goal metadata, fall back when weak
+- MODE: PRODUCT QUALITY (artifact)
+- Files changed: `lib/conviction/artifact-generator.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `SESSION_HISTORY.md`
+- What changed: Wrapped the public artifact generator so `behavioral_pattern` write_document artifacts now infer the strongest grounded goal from `generationLog.brief_context_debug.active_goals`, `generationLog.candidateDiscovery.topCandidates[].targetGoal`, and only explicit context goal text. When goal evidence is weak, the artifact stays on the obstruction + exact move + stop-rule path instead of inventing a synthetic goal. Added regressions for grounded-goal and weak-goal cases.
+- Verification: `npm run health` (0 failing; warnings only), `npx vitest run lib/conviction/__tests__/artifact-generator.test.ts`, `npm run build`, `npx playwright test`.
+- Unresolved issues: none in this seam.
+
 ## 2026-04-13 — Production E2E workflow: checkout `main`; mobile-journey sign-out wait hardening
 - MODE: CI + TESTFIX
 - Files changed: `.github/workflows/production-e2e.yml`, `tests/production/mobile-journey.spec.ts`, `SESSION_HISTORY.md`
