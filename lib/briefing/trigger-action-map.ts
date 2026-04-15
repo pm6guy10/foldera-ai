@@ -180,11 +180,12 @@ export const TRIGGER_ACTION_MAP: Record<DiscrepancyClass, TriggerActionRule> = {
 // ---------------------------------------------------------------------------
 
 /**
- * Internal-drift classes that MUST have a real recipient.
+ * Trigger classes that MUST have a real recipient.
  * Without one, write_document degenerates to a self-directed memo (sludge).
  * These fall back to do_nothing instead of write_document.
  */
 const RECIPIENT_REQUIRED_CLASSES: ReadonlySet<DiscrepancyClass> = new Set([
+  'decay',
   'drift',
   'goal_velocity_mismatch',
 ]);
@@ -192,7 +193,7 @@ const RECIPIENT_REQUIRED_CLASSES: ReadonlySet<DiscrepancyClass> = new Set([
 /**
  * Resolve the deterministic action for a trigger class.
  * For send_message triggers: falls back to write_document if no recipient,
- * EXCEPT for internal-drift classes which fall back to do_nothing.
+ * EXCEPT for recipient-required classes which fall back to do_nothing.
  */
 export function resolveTriggerAction(
   triggerClass: DiscrepancyClass,
@@ -200,7 +201,7 @@ export function resolveTriggerAction(
 ): ActionType {
   const rule = TRIGGER_ACTION_MAP[triggerClass];
   if (rule.primary_action === 'send_message' && !hasRecipient) {
-    // Internal drift without a recipient = no external action possible = do_nothing.
+    // Recipient-required send triggers without a recipient = no external action possible = do_nothing.
     // A self-directed document artifact for these classes is sludge.
     if (RECIPIENT_REQUIRED_CLASSES.has(triggerClass)) {
       return 'do_nothing';
@@ -390,7 +391,9 @@ export function validateTriggerArtifact(
     artifactAction === 'schedule_block' ? 'schedule' : artifactAction;
   const actionOk =
     normArtifact === expectedAction ||
-    (expectedAction === 'send_message' && normArtifact === 'write_document') ||
+    (expectedAction === 'send_message' &&
+      normArtifact === 'write_document' &&
+      !RECIPIENT_REQUIRED_CLASSES.has(triggerClass)) ||
     (expectedAction === 'make_decision' && normArtifact === 'write_document') ||
     (expectedAction === 'schedule' && (normArtifact === 'schedule' || artifactAction === 'schedule_block')) ||
     (triggerClass === 'unresolved_intent' &&

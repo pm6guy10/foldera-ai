@@ -205,8 +205,8 @@ describe('resolveTriggerAction — deterministic mapping', () => {
   it('decay → send_message (with recipient)', () => {
     expect(resolveTriggerAction('decay', true)).toBe('send_message');
   });
-  it('decay → write_document (no recipient)', () => {
-    expect(resolveTriggerAction('decay', false)).toBe('write_document');
+  it('decay → do_nothing (no recipient)', () => {
+    expect(resolveTriggerAction('decay', false)).toBe('do_nothing');
   });
   it('risk → send_message (with recipient)', () => {
     expect(resolveTriggerAction('risk', true)).toBe('send_message');
@@ -436,8 +436,8 @@ describe('validateTriggerArtifact — enforcement', () => {
     expect(result.violations.some(v => v.includes('banned_phrase'))).toBe(true);
   });
 
-  // write_document fallback for send_message trigger without recipient
-  it('PASS: decay trigger falls back to write_document when no recipient', () => {
+  // recipientless decay must be blocked, not laundered into a memo
+  it('FAIL: decay trigger write_document fallback is rejected when no recipient', () => {
     const result = validateTriggerArtifact(
       'decay',
       TRIGGERS.decay,
@@ -445,7 +445,8 @@ describe('validateTriggerArtifact — enforcement', () => {
       'write_document', // fallback because no recipient
       null,
     );
-    expect(result.pass).toBe(true);
+    expect(result.pass).toBe(false);
+    expect(result.violations.some(v => v.includes('action_mismatch'))).toBe(true);
   });
 });
 

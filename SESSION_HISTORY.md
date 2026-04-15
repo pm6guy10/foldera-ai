@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-15 — owner-data wow seam: block recipientless decay memo laundering, expose generator decision-enforcement blocker
+- MODE: OWNER DATA / PRODUCT QUALITY
+- Files changed: `lib/briefing/trigger-action-map.ts`, `lib/briefing/__tests__/trigger-action-lock.test.ts`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
+- What changed: Hardened the trigger-action map so recipientless `decay` discrepancies no longer downgrade from `send_message` to `write_document`. The live owner run had been persisting a weak Marissa Kapp “Missing Context Audit” memo; after the patch that laundering path is blocked and the same live route advances to the next real winner instead of saving a self-directed document.
+- Verification: `npm run health` (0 FAILING; warning-only `Last generation do_nothing`); `npx vitest run lib/briefing/__tests__/trigger-action-lock.test.ts`; live owner production route before patch (`/api/dev/brain-receipt` => `paid_llm_disabled`); live owner local live-data run before patch (`ALLOW_PAID_LLM=true npx tsx scripts/run-brain-receipt-real-once.ts` => persisted weak Marissa decay memo); live owner route rerun after patch on localhost-authenticated `POST /api/dev/brain-receipt` => winner advanced to `hunt_ignored_hello_deako_com` but persistence failed on generator decision-enforcement; `npm run build`; `npx playwright test` timed out after ~20 minutes without completing.
+- Unresolved issues: exact remaining blocker is in `lib/briefing/generator.ts` decision-enforcement / repair path (around lines `4603-4622` and `8662-8690`): the live post-patch winner still collapses to `do_nothing` because the generated artifact misses `missing_explicit_ask`, `missing_pressure_or_consequence`, and `missing_owner_assignment`.
+
 ## 2026-04-14 — owner-data wow seam: suppress DMARC report mail from hunt unreplied_inbound
 - MODE: OWNER DATA / PRODUCT QUALITY
 - Files changed: `lib/briefing/automated-inbound-signal.ts`, `lib/briefing/__tests__/automated-inbound-signal.test.ts`, `lib/briefing/__tests__/hunt-anomalies.test.ts`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`

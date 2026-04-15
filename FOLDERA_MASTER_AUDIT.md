@@ -1,3 +1,23 @@
+### NEEDS_REVIEW — 2026-04-15 — Owner wow artifact still blocked after recipientless decay fix: generator decision-enforcement rejects the new live winner
+This session fixed the first proven live owner-data seam still inside the current path: recipientless `decay` discrepancies were allowed to downgrade from `send_message` to `write_document`, which persisted a weak Marissa Kapp self-memo instead of forcing fallback to another candidate. `lib/briefing/trigger-action-map.ts` now treats `decay` as recipient-required and rejects `write_document` fallback for that class.
+
+The same live owner route was rerun on Brandon's current data after the patch and advanced to a stronger winner:
+- `winner_id`: `hunt_ignored_hello_deako_com`
+- title: `3 inbound emails from same sender in 30 days — zero replies synced`
+
+The owner artifact is still not approvable today because one exact blocker remains downstream:
+- File: `lib/briefing/generator.ts`
+- Function / seam: decision-enforcement validation and repair on the final generated artifact
+- Tight ranges: `4603-4622` (issues added for explicit ask / pressure or consequence / owner assignment) and `8662-8690` (repair outcome handling that still returns the repaired issues)
+- Proof from the same live route rerun: `POST /api/dev/brain-receipt` on authenticated localhost returned `do_nothing` with `Directive rejected by persistence validation: decision_enforcement:missing_explicit_ask; decision_enforcement:missing_pressure_or_consequence; decision_enforcement:missing_owner_assignment`
+
+Mandatory QA gate results:
+- `npx vitest run lib/briefing/__tests__/trigger-action-lock.test.ts` passed.
+- `npm run build` passed.
+- `npx playwright test` timed out after ~20 minutes without completing.
+
+Status: `NEEDS_REVIEW` — the weak decay memo laundering is fixed, but the final live owner winner still cannot persist until the generator's decision-enforcement repair path emits a truly send-worthy / finished artifact.
+
 ### NEEDS_REVIEW — 2026-04-14 — Owner wow artifact still blocked after DMARC suppression: write_document path discards the generator’s structured artifact
 This session fixed the first live owner-data blocker: the scorer/hunt path was selecting `DMARC Aggregate Report <dmarcreport@microsoft.com>` / `Report Domain: foldera.ai Submitter: protection.outlook.com` as Brandon’s top unreplied-inbound winner. `lib/briefing/automated-inbound-signal.ts` now classifies DMARC aggregate/report mail as automated, and the same live owner scorer+generator rerun moved off that machine report and onto a real discrepancy candidate.
 
