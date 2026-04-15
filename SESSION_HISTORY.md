@@ -4337,3 +4337,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: `generatePayload` now bypasses `assertPaidLlmAllowed('generator.generatePayload')` **only** when `userId === OWNER_USER_ID` and the call is the dev brain-receipt proof shape (`skipSpendCap && skipManualCallLimit`). Adds a structured warning event so bypass is visible in logs. Playwright screenshot tests now ensure output paths exist (mobile screenshots write under `testInfo.outputPath`).
 - Verification: `npm run health` (0 FAILING); pre-patch `npx tsx scripts/run-brain-receipt-real-once.ts` blocked at generator `Paid LLM disabled`; post-patch same run reached real LLM generation (raw response logged) and bypass event emitted; `npx vitest run app/api/dev/brain-receipt/__tests__/route.test.ts`; `npm run build`; `npx playwright test` (78 passed, 4 skipped); Vercel production deployment `dpl_fCFUjxWaxbGrCEGvxFkG5d5SR1fG` READY on commit `6e88d51`.
 - Unresolved issues: owner/dev proof still does **not** persist a fresh `pending_approval` artifact because the top candidate is blocked by `stale_date_in_directive` (past date `2026-04-03`) in generator validation (`event=candidate_blocked`, candidate `"Unresolved assistant intent"`).
+
+## 2026-04-15 — behavioral_pattern write_document: stop-rule enforcement accepts valid variants
+- MODE: PRODUCT QUALITY (single seam)
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator.test.ts`, `SESSION_HISTORY.md`
+- What changed: Behavioral-pattern decision enforcement still requires a stop-rule, but `getBehavioralPatternFinishedWorkIssues` now recognizes common valid wording (e.g. “If you don’t hear back… close the loop and stop following up”), and the generator’s behavioral_pattern guidance explicitly requires a stop-rule line.
+- Verification: `npm run health` (0 FAILING); `npx vitest run lib/briefing/__tests__/generator.test.ts`; `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts`; `npx tsx scripts/run-brain-receipt-real-once.ts` (persisted `pending_approval`); `npm run build`; `npx playwright test` (78 passed, 4 skipped).
+- Unresolved issues: none for this seam.

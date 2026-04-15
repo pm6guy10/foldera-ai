@@ -377,6 +377,9 @@ explicitly in the directive text — except for financial winners where
 the scorer surfaced a concrete payment or statement deadline: then the
 directive is one factual sentence (issuer, amount or minimum, due date),
 not a character sketch.
+Behavioral-pattern artifacts must include an explicit stop rule (e.g.
+"If there is no reply after this, mark the thread stalled and stop
+allocating attention to it.").
 
 ARTIFACT QUALITY CONTRACT (mandatory for send_message and write_document):
 Every artifact must demonstrate at least one cross-signal connection the user has not explicitly made. Examples of cross-signal connections: linking a decaying contact to an active goal, linking response-time degradation across multiple threads to a relationship risk, linking calendar gaps to email commitments. If the generator cannot produce a cross-signal connection for the winning candidate, it must set recommended_action: 'do_nothing' with a wait_rationale explaining what additional signal would unlock a real directive. Never send filler.
@@ -4568,7 +4571,16 @@ function getBehavioralPatternFinishedWorkIssues(input: {
   if (!hasSendReadyLead && !hasQuotedCopyPasteBlock) {
     issues.push('decision_enforcement:behavioral_pattern_missing_send_ready_move');
   }
-  if (!/\bif (?:there is )?no (?:reply|response)\b/i.test(content) || !/\b(?:mark the thread stalled|stop allocating attention)\b/i.test(content)) {
+  const hasNoReplyStopCondition =
+    /\bif (?:there is )?no (?:reply|response|answer)\b/i.test(content) ||
+    /\bif you (?:do not|don['’]t) hear back\b/i.test(content) ||
+    /\bif (?:they|he|she|we)\s+(?:do not|don['’]t)\s+(?:reply|respond|get back)\b/i.test(content);
+  const hasStopAction =
+    /\bmark (?:the )?(?:thread|conversation)\s+(?:as\s+)?stalled\b/i.test(content) ||
+    /\bstop\b[^.\n]{0,40}\b(?:allocating attention|spending attention|following up|pursuing|chasing)\b/i.test(content) ||
+    /\bclose the loop\b/i.test(content) ||
+    /\barchive (?:the )?(?:thread|conversation)\b/i.test(content);
+  if (!hasNoReplyStopCondition || !hasStopAction) {
     issues.push('decision_enforcement:behavioral_pattern_missing_stop_rule');
   }
 
