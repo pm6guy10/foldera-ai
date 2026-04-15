@@ -208,7 +208,12 @@ function startOfUtcDayMs(d: Date): number {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 }
 
-/** LLM fields that appear in the daily brief email (directive block + reason body uses evidence path). */
+/**
+ * Action-forward fields scanned for stale deadline dates.
+ * Only `directive` and `why_now` are included — these are the only fields where the LLM
+ * should write forward-looking action deadlines. `evidence` and `insight` are historical
+ * context by design and will naturally contain past reference dates that are not stale deadlines.
+ */
 export function userFacingStaleDateScanText(payload: {
   directive?: unknown;
   why_now?: unknown;
@@ -216,7 +221,7 @@ export function userFacingStaleDateScanText(payload: {
   insight?: unknown;
 }): string {
   const parts: string[] = [];
-  for (const key of ['directive', 'why_now', 'evidence', 'insight'] as const) {
+  for (const key of ['directive', 'why_now'] as const) {
     const v = payload[key];
     if (typeof v === 'string' && v.trim()) parts.push(v);
   }

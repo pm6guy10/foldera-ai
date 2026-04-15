@@ -124,22 +124,34 @@ describe('directiveHasStalePastDates', () => {
 });
 
 describe('userFacingStaleDateScanText', () => {
-  it('joins directive and supporting brief fields', () => {
+  it('includes directive and why_now only', () => {
     const s = userFacingStaleDateScanText({
       directive: 'Do the thing',
-      why_now: 'Because',
+      why_now: 'Because now',
       evidence: 'They said 2026-03-20',
-      insight: '',
+      insight: 'Old insight',
     });
     expect(s).toContain('Do the thing');
-    expect(s).toContain('Because');
-    expect(s).toContain('2026-03-20');
+    expect(s).toContain('Because now');
+    // evidence and insight are historical context — not scanned for stale dates
+    expect(s).not.toContain('2026-03-20');
+    expect(s).not.toContain('Old insight');
   });
 
-  it('allows stale detection when ISO is only in evidence', () => {
+  it('does not flag stale when ISO is only in evidence (historical context, not a deadline)', () => {
     const now = new Date('2026-04-07T12:00:00.000Z');
     const blob = userFacingStaleDateScanText({
       directive: 'Send the recap today.',
+      evidence: 'Last commitment was due 2026-03-27.',
+    });
+    const r = directiveHasStalePastDates(blob, now, 3);
+    expect(r.stale).toBe(false);
+  });
+
+  it('flags stale when ISO deadline is in directive', () => {
+    const now = new Date('2026-04-07T12:00:00.000Z');
+    const blob = userFacingStaleDateScanText({
+      directive: 'Please confirm by 2026-04-01.',
       evidence: 'Last commitment was due 2026-03-27.',
     });
     const r = directiveHasStalePastDates(blob, now, 3);
