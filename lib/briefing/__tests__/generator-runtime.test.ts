@@ -609,6 +609,72 @@ describe('generateDirective runtime failures', () => {
     }));
   });
 
+  it('repairs weak behavioral_pattern write_document into a goal-anchored close-the-loop move', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    scored.winner.type = 'discrepancy';
+    scored.winner.discrepancyClass = 'behavioral_pattern' as import('../../briefing/discrepancy-detector').DiscrepancyClass;
+    scored.winner.suggestedActionType = 'write_document';
+    scored.winner.title = '3 inbound messages to Pat Lee in 14 days, 0 replies.';
+    scored.winner.content = 'The same follow-up gap keeps repeating across this thread.';
+    scored.winner.matchedGoal = {
+      text: 'pilot decision',
+      priority: 4,
+      category: 'work',
+    };
+    scored.winner.trigger = {
+      baseline_state: 'Repeated inbound thematic signals across multiple contacts',
+      current_state: 'User has not connected the pattern into one consolidated move',
+      delta: 'isolated threads → visible cross-signal theme',
+      timeframe: '30 days',
+      outcome_class: 'risk',
+      why_now: 'The same behavioral shape appears in multiple channels — without naming the pattern, each thread feels like a one-off.',
+    };
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Write up the reply-gap pattern for review.',
+          artifact_type: 'write_document',
+          artifact: {
+            document_purpose: 'summary',
+            target_reader: 'user',
+            title: 'Reply-gap pattern',
+            content: 'Pat Lee has gone quiet and the thread needs attention. A short summary of the pattern is below for review before deciding what to do next.',
+          },
+          evidence: 'Pat Lee has not replied after several follow-ups.',
+          why_now: 'The pattern is visible now.',
+          causal_diagnosis: {
+            why_exists_now: 'Repeated follow-ups are not producing a real yes/no.',
+            mechanism: 'Thread stayed open without a closing move.',
+          },
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(anthropicCreate).toHaveBeenCalledTimes(2);
+    expect(directive.action_type).toBe('write_document');
+    expect(directive.directive).toBe('Pat Lee going dark is now blocking the pilot decision.');
+    const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    expect(String(embeddedArtifact?.title)).toBe('Pat Lee going dark is now blocking the pilot decision');
+    expect(String(embeddedArtifact?.content)).toContain('You were trying to get this thread to a real yes/no on the pilot decision.');
+    expect(String(embeddedArtifact?.content)).toContain('Send this today:');
+    expect(String(embeddedArtifact?.content)).toContain('If there is no reply after this, mark the thread stalled and stop allocating attention to it.');
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_repaired',
+      generationStatus: 'decision_enforcement_repaired',
+    }));
+  });
+
   it('repairs send_message fallback with an explicit ask that passes enforcement', async () => {
     const scored = asWinnerScored(buildScorerResult());
     scored.winner.type = 'commitment';
@@ -813,4 +879,3 @@ describe('generateDirective runtime failures', () => {
   });
 
 });
-

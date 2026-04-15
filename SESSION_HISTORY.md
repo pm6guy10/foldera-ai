@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-14 — behavioral_pattern generator: block generic summaries, repair to goal-blocking close-the-loop move
+- MODE: PRODUCT QUALITY (brain)
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/briefing/__tests__/generator.test.ts`, `SESSION_HISTORY.md`
+- What changed: Added a behavioral-pattern-specific finished-work invariant to the generator and persistence gate. If a grounded goal exists, `write_document` now has to name the blocked goal, include a send-ready close-the-loop move, and include the explicit stop rule. Weak behavioral-pattern summaries are deterministically repaired into a goal-anchored note instead of passing as technically valid sludge.
+- Verification: `npm run health` (0 FAILING; warning-only); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts -t "repairs weak behavioral_pattern write_document into a goal-anchored close-the-loop move"`; `npx vitest run lib/briefing/__tests__/generator.test.ts -t "rejects weak behavioral_pattern write_document artifacts that omit the blocked goal and send/stop move"`; `npx vitest run lib/conviction/__tests__/artifact-generator.test.ts -t "renders behavioral_pattern write_document with a grounded goal when one is available"`; `npm run build`; `npx playwright test`
+- Unresolved issues: unrelated local worktree changes remain untouched.
+
 ## 2026-04-14 — beta first-run loop: connected provider, sync timing, and reconnect clarity
 - MODE: UX / onboarding seam
 - Files changed: `app/api/integrations/status/route.ts`, `app/dashboard/settings/SettingsClient.tsx`, `app/layout.js`, `tests/e2e/authenticated-routes.spec.ts`, `pages/500.tsx`, `SESSION_HISTORY.md`

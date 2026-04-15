@@ -472,6 +472,70 @@ describe('validateDirectiveForPersistence — evidence array safety', () => {
       }),
     ).not.toThrow();
   });
+
+  it('rejects weak behavioral_pattern write_document artifacts that omit the blocked goal and send/stop move', () => {
+    const directive = buildDirective({
+      directive: 'Pat Lee keeps going quiet.',
+      action_type: 'write_document',
+      reason: 'The pattern is visible now.',
+      discrepancyClass: 'behavioral_pattern' as import('../discrepancy-detector').DiscrepancyClass,
+      generationLog: {
+        outcome: 'selected',
+        stage: 'generation',
+        reason: 'Behavioral pattern winner.',
+        candidateFailureReasons: [],
+        candidateDiscovery: {
+          candidateCount: 1,
+          suppressedCandidateCount: 0,
+          selectionMargin: 1,
+          selectionReason: 'Behavioral pattern selected.',
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'bp-1',
+              rank: 1,
+              candidateType: 'discrepancy',
+              discrepancyClass: 'behavioral_pattern' as import('../discrepancy-detector').DiscrepancyClass,
+              actionType: 'write_document',
+              score: 8.7,
+              scoreBreakdown: {
+                stakes: 4,
+                urgency: 0.8,
+                tractability: 0.75,
+                freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
+              },
+              targetGoal: {
+                text: 'pilot decision',
+                priority: 4,
+                category: 'work',
+              },
+              sourceSignals: [],
+              decision: 'selected',
+              decisionReason: 'Grounded goal + repeated silence pattern.',
+            },
+          ],
+        },
+      },
+    });
+
+    const issues = validateDirectiveForPersistence({
+      userId: OWNER_USER_ID,
+      directive,
+      artifact: {
+        type: 'document',
+        title: 'Reply-gap summary',
+        content: 'Pat Lee has gone quiet and the thread needs attention. Review the pattern and decide what to do next.',
+      },
+      candidateType: 'discrepancy',
+      matchedGoalCategory: 'work',
+    });
+
+    expect(issues).toContain('decision_enforcement:behavioral_pattern_missing_goal_anchor');
+    expect(issues).toContain('decision_enforcement:behavioral_pattern_missing_send_ready_move');
+    expect(issues).toContain('decision_enforcement:behavioral_pattern_missing_stop_rule');
+  });
 });
 
 describe('getFinancialPaymentToneValidationIssues', () => {

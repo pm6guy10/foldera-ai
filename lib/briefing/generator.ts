@@ -4480,6 +4480,93 @@ function getWriteDocumentTaskManagerLabelIssues(artifact: Record<string, unknown
   return out;
 }
 
+const BEHAVIORAL_PATTERN_GOAL_STOPWORDS = new Set([
+  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'your', 'about',
+  'after', 'before', 'while', 'where', 'when', 'what', 'have', 'will', 'would',
+  'could', 'should', 'them', 'they', 'their', 'there', 'then', 'than', 'just',
+  'real', 'yes', 'no', 'thread', 'decision',
+]);
+
+function extractBehavioralPatternGoalLabel(candidateGoal: string | null | undefined): string | null {
+  if (!isNonEmptyString(candidateGoal)) return null;
+  const cleaned = candidateGoal.replace(/\s*\[[^\]]+\]\s*$/, '').trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+function normalizeBehavioralPatternText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function behavioralPatternGoalAppearsInText(text: string, goalLabel: string): boolean {
+  const normalizedText = normalizeBehavioralPatternText(text);
+  const normalizedGoal = normalizeBehavioralPatternText(goalLabel);
+  if (!normalizedText || !normalizedGoal) return false;
+  if (normalizedText.includes(normalizedGoal)) return true;
+
+  const goalTokens = normalizedGoal
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 4 && !BEHAVIORAL_PATTERN_GOAL_STOPWORDS.has(token));
+  if (goalTokens.length === 0) return false;
+
+  const matched = goalTokens.filter((token) => normalizedText.includes(token));
+  return matched.length >= Math.min(2, goalTokens.length);
+}
+
+function parseBehavioralPatternRepairFacts(text: string): {
+  entityName?: string;
+  count?: string;
+  window?: string;
+} {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  const patterns: Array<{ pattern: RegExp; entityIndex: number; countIndex: number; windowIndex: number }> = [
+    { pattern: /^(.+?)\s+has not replied after\s+(\d+)\s+messages?\s+in\s+(\d+\s+\w+)/i, entityIndex: 1, countIndex: 2, windowIndex: 3 },
+    { pattern: /^(\d+)\s+(?:inbound\s+)?messages?\s+(?:to|for)\s+(.+?)\s+in\s+(\d+\s+\w+)(?:,?\s*\d+\s+replies?)?/i, entityIndex: 2, countIndex: 1, windowIndex: 3 },
+    { pattern: /^(\d+)\s+unresolved\s+follow-?ups?\s+(?:to|for)\s+(.+?)\s+in\s+(\d+\s+\w+)(?:,?\s*\d+\s+replies?)?/i, entityIndex: 2, countIndex: 1, windowIndex: 3 },
+    { pattern: /^(.+?)\s+after\s+(\d+)\s+(?:inbound\s+)?messages?\s+in\s+(\d+\s+\w+)/i, entityIndex: 1, countIndex: 2, windowIndex: 3 },
+  ];
+
+  for (const { pattern, entityIndex, countIndex, windowIndex } of patterns) {
+    const match = normalized.match(pattern);
+    if (!match) continue;
+    const entityName = match[entityIndex]?.trim().replace(/[.,;:!?]+$/, '');
+    const count = match[countIndex]?.trim();
+    const window = match[windowIndex]?.trim();
+    if (entityName && count && window) {
+      return { entityName, count, window };
+    }
+  }
+
+  return {};
+}
+
+function getBehavioralPatternFinishedWorkIssues(input: {
+  directiveText: string;
+  reason: string;
+  artifact: Record<string, unknown> | null;
+  candidateGoal: string | null;
+}): string[] {
+  if (!input.artifact || typeof input.artifact !== 'object') return [];
+
+  const title = isNonEmptyString(input.artifact.title) ? input.artifact.title.trim() : '';
+  const content = isNonEmptyString(input.artifact.content) ? input.artifact.content.trim() : '';
+  const combined = `${input.directiveText}\n${input.reason}\n${title}\n${content}`.trim();
+  const issues: string[] = [];
+  const goalLabel = extractBehavioralPatternGoalLabel(input.candidateGoal);
+
+  if (goalLabel && !behavioralPatternGoalAppearsInText(combined, goalLabel)) {
+    issues.push('decision_enforcement:behavioral_pattern_missing_goal_anchor');
+  }
+  if (!/\bSend this (?:today|now)\b/i.test(content) && !/[“"][^"”\n]{20,}[”"]/.test(content)) {
+    issues.push('decision_enforcement:behavioral_pattern_missing_send_ready_move');
+  }
+  if (!/\bif (?:there is )?no (?:reply|response)\b/i.test(content) || !/\b(?:mark the thread stalled|stop allocating attention)\b/i.test(content)) {
+    issues.push('decision_enforcement:behavioral_pattern_missing_stop_rule');
+  }
+
+  return issues;
+}
+
 /** Payment deadline write_document with $ + pay path — ownership lines like "Owner: you" are not required. */
 function financialPaymentWriteDocumentLooksFinished(combinedText: string): boolean {
   const hasDollar = /\$\s*[\d,]+(?:\.\d{2})?/.test(combinedText);
@@ -6376,6 +6463,22 @@ function validateGeneratedArtifact(
     }
   }
 
+  if (
+    !pipelineDry &&
+    ctx.candidate_class === 'discrepancy' &&
+    ctx.discrepancy_class === 'behavioral_pattern' &&
+    canonicalArtifactType === 'write_document'
+  ) {
+    issues.push(
+      ...getBehavioralPatternFinishedWorkIssues({
+        directiveText: payload.directive ?? '',
+        reason: payload.why_now ?? '',
+        artifact: payload.artifact ?? null,
+        candidateGoal: ctx.candidate_goal,
+      }),
+    );
+  }
+
   // Global placeholder scan on all artifact string fields (template slots only — not real names)
   for (const [key, val] of Object.entries(payload.artifact)) {
     if (typeof val === 'string' && hasBracketTemplatePlaceholder(val)) {
@@ -6614,6 +6717,18 @@ export function validateDirectiveForPersistence(input: {
     );
   } else if (normalizeDecisionActionType(input.directive.action_type) === 'write_document') {
     issues.push(...getWriteDocumentTaskManagerLabelIssues(input.artifact as Record<string, unknown>));
+    if (effectiveDiscrepancyClassForGates(input.directive) === 'behavioral_pattern') {
+      issues.push(
+        ...getBehavioralPatternFinishedWorkIssues({
+          directiveText: input.directive.directive,
+          reason: input.directive.reason,
+          artifact: input.artifact as Record<string, unknown>,
+          candidateGoal:
+            input.directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.targetGoal?.text ??
+            null,
+        }),
+      );
+    }
   }
 
   if (
@@ -6800,6 +6915,7 @@ export function buildDecisionEnforcedFallbackPayload(input: {
   winner: ScoredLoop;
   actionType: ValidArtifactTypeCanonical;
   candidateDueDate: string | null;
+  candidateGoal: string | null;
   causalDiagnosis: CausalDiagnosis;
   userEmails?: Set<string>;
   userPromptNames: UserPromptNames;
@@ -6954,6 +7070,51 @@ export function buildDecisionEnforcedFallbackPayload(input: {
   }
 
   if (input.actionType === 'write_document') {
+    if (input.winner.discrepancyClass === 'behavioral_pattern') {
+      const factText = `${input.winner.title}. ${input.winner.content}`;
+      const parsedFacts = parseBehavioralPatternRepairFacts(factText);
+      const entityName = parsedFacts.entityName ?? input.winner.entityName ?? 'This thread';
+      const count = parsedFacts.count ?? '1';
+      const window = parsedFacts.window ?? '14 days';
+      const firstName = entityName.split(/\s+/)[0] || entityName;
+      const goalLabel = extractBehavioralPatternGoalLabel(input.candidateGoal);
+      const title = goalLabel
+        ? `${entityName} going dark is now blocking the ${goalLabel}`
+        : `${entityName} going dark is now blocking the thread`;
+      const intro = goalLabel
+        ? `You were trying to get this thread to a real yes/no on the ${goalLabel}. ${count} follow-ups in ${window} without a reply means it is no longer active, just mentally open.`
+        : `${count} follow-ups in ${window} without a reply means this thread is stalled, not active.`;
+
+      return {
+        insight: goalLabel
+          ? `${entityName} going quiet is now blocking the ${goalLabel}.`
+          : `${entityName} going quiet is no longer a live thread; it is open attention with no movement.`,
+        causal_diagnosis: input.causalDiagnosis,
+        decision: 'ACT',
+        directive: title.endsWith('.') ? title : `${title}.`,
+        artifact_type: 'write_document',
+        artifact: {
+          document_purpose: 'close_the_loop',
+          target_reader: 'user',
+          title,
+          content: [
+            intro,
+            '',
+            'Send this today:',
+            '',
+            `“Hey ${firstName} — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”`,
+            '',
+            'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
+            '',
+            `Deadline: ${input.candidateDueDate ? deadline : 'today'}`,
+          ].join('\n'),
+        },
+        why_now: goalLabel
+          ? `The ${goalLabel} is still mentally open, but the thread has already stopped moving.`
+          : 'Each extra follow-up keeps this mentally open without increasing the chance of a real answer.',
+      };
+    }
+
     const memoAsk = copy.ask.replace(/^Ask:\s*/i, '').trim();
     const safeTarget = target.replace(/[.!?]+$/g, '').trim().slice(0, 72) || target.slice(0, 72);
     const writeDirective = `Write a decision memo on "${safeTarget}" — ${memoAsk}`.slice(0, 340);
@@ -8452,6 +8613,7 @@ export async function generateDirective(
           winner: hydratedWinner,
           actionType: decisionPayload.recommended_action,
           candidateDueDate: ctx.candidate_due_date,
+          candidateGoal: ctx.candidate_goal,
           causalDiagnosis: ctx.required_causal_diagnosis,
           userEmails,
           userPromptNames: {
