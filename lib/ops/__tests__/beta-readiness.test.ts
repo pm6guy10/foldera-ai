@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBetaReadinessReport } from '../beta-readiness.ts';
+import { buildBetaReadinessReport } from '../beta-readiness';
 
 type QueryResult = { data?: any; error?: any; count?: number | null };
 
@@ -42,7 +42,8 @@ function makeSupabaseStub(fixtures: {
 
     if (table === 'tkg_signals') {
       const gte = state.filters.find((f) => f.k === 'occurred_at' && f.op === 'gte')?.v as string | undefined;
-      const is14 = typeof gte === 'string' && gte.includes('T') && new Date().getTime() - new Date(gte).getTime() < 20 * 86400000;
+      const deltaMs = typeof gte === 'string' ? (new Date().getTime() - new Date(gte).getTime()) : Number.POSITIVE_INFINITY;
+      const is14 = Number.isFinite(deltaMs) && deltaMs <= 15 * 86400000;
       const count = is14 ? fixtures.signalsCount14 : fixtures.signalsCount30;
       reset();
       return { data: null, error: null, count };
@@ -147,8 +148,8 @@ describe('buildBetaReadinessReport', () => {
         artifact: {
           type: 'email',
           to: 'someone.else@example.com',
-          subject: 'Quick follow-up on the proposal',
-          body: 'Following up with the concrete next step and a clear ask tied to the thread.',
+          subject: 'Permit appeal draft — confirm owner + filing cutoff',
+          body: 'Can you confirm by 4 PM PT today who owns final submission, and whether the signed permit appeal draft is approved for filing? If we miss this cutoff, the window slips.',
           draft_type: 'email_compose',
         },
         execution_result: { generation_log: {} },

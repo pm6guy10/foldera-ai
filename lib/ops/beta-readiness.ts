@@ -1,9 +1,9 @@
-import type { SupabaseClient } from '../db/client.ts';
-import { createServerClient } from '../db/client.ts';
-import { INTEGRATIONS_SYNC_STALE_MS, MS_14D, MS_30D } from '../config/constants.ts';
-import { OWNER_USER_ID } from '../auth/constants.ts';
-import type { ConvictionArtifact, ConvictionDirective } from '../briefing/types.ts';
-import { isSendWorthy } from '../cron/daily-brief-generate.ts';
+import type { SupabaseClient } from '../db/client';
+import { createServerClient } from '../db/client';
+import { INTEGRATIONS_SYNC_STALE_MS, MS_14D, MS_30D } from '../config/constants';
+import { OWNER_USER_ID } from '../auth/constants';
+import type { ConvictionArtifact, ConvictionDirective } from '../briefing/types';
+import { isSendWorthy } from '../cron/daily-brief-generate';
 
 export type BetaReadinessVerdict = 'READY' | 'NOT_READY';
 

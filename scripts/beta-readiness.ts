@@ -7,8 +7,8 @@
 
 import { config } from 'dotenv';
 import { resolve } from 'path';
-import type { BetaReadinessReport } from '../lib/ops/beta-readiness.ts';
-import { buildBetaReadinessReport } from '../lib/ops/beta-readiness.ts';
+import type { BetaReadinessReport } from '../lib/ops/beta-readiness';
+import { buildBetaReadinessReport } from '../lib/ops/beta-readiness';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 
