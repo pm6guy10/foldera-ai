@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  appendHuntRecipientGroundingEvidence,
   applyHuntSendMessageRecipientCoercion,
   buildStructuredContext,
   collectHuntSendMessageToValidationIssues,
 } from '../generator';
+import { getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
+import type { ConvictionDirective } from '../types';
 import type { ScoredLoop } from '../scorer';
 
 const emptyGuard = { approvedRecently: [] as never[], skippedRecently: [] as never[] };
@@ -368,5 +371,62 @@ describe('hunt send_message artifact.to validation (collectHuntSendMessageToVali
         (parsed.artifact as { to: string }).to,
       ).length,
     ).toBe(0);
+  });
+});
+
+describe('hunt recipient evidence bridge (appendHuntRecipientGroundingEvidence)', () => {
+  it('appends grounded recipient evidence only when recipient is in hunt allowlist', () => {
+    const out = appendHuntRecipientGroundingEvidence(
+      [{ type: 'signal', description: 'Existing insight.' }],
+      {
+        candidateClass: 'hunt',
+        canonicalArtifactType: 'send_message',
+        artifact: { to: 'alex@clientco.com' },
+        huntRecipientAllowlist: ['alex@clientco.com'],
+      },
+    );
+
+    expect(
+      out.some((item) =>
+        item.description.includes('Hunt grounded recipient from winning signal thread: alex@clientco.com'),
+      ),
+    ).toBe(true);
+
+    const directive = {
+      directive: 'Follow up on the winning hunt thread.',
+      reason: 'The thread needs a clear next step.',
+      action_type: 'send_message',
+      confidence: 80,
+      evidence: out,
+    } as ConvictionDirective;
+    const persistenceIssues = getArtifactPersistenceIssues(
+      'send_message',
+      {
+        type: 'email',
+        to: 'alex@clientco.com',
+        subject: 'Re: thread',
+        body: 'Quick follow-up.',
+      },
+      directive,
+    );
+    expect(
+      persistenceIssues.includes('send_message artifact.to is not grounded in directive or evidence'),
+    ).toBe(false);
+  });
+
+  it('does not append recipient evidence when recipient is not hunt-allowlisted', () => {
+    const out = appendHuntRecipientGroundingEvidence(
+      [{ type: 'signal', description: 'Existing insight.' }],
+      {
+        candidateClass: 'hunt',
+        canonicalArtifactType: 'send_message',
+        artifact: { to: 'invented@example.com' },
+        huntRecipientAllowlist: ['alex@clientco.com'],
+      },
+    );
+
+    expect(
+      out.some((item) => item.description.toLowerCase().includes('invented@example.com')),
+    ).toBe(false);
   });
 });

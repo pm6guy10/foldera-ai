@@ -7422,6 +7422,42 @@ function buildEvidenceItems(result: ScorerResultWinnerSelected, payload: Generat
   return evidence;
 }
 
+export function appendHuntRecipientGroundingEvidence(
+  evidence: EvidenceItem[],
+  options: {
+    candidateClass: string;
+    canonicalArtifactType: ValidArtifactTypeCanonical;
+    artifact: unknown;
+    huntRecipientAllowlist: string[];
+  },
+): EvidenceItem[] {
+  if (options.candidateClass !== 'hunt' || options.canonicalArtifactType !== 'send_message') {
+    return evidence;
+  }
+
+  if (!options.artifact || typeof options.artifact !== 'object') return evidence;
+  const artifactRecord = options.artifact as Record<string, unknown>;
+  const rawRecipient = artifactRecord.to ?? artifactRecord.recipient;
+  if (!isNonEmptyString(rawRecipient)) return evidence;
+
+  const recipient = rawRecipient.trim().toLowerCase();
+  if (!options.huntRecipientAllowlist.includes(recipient)) return evidence;
+
+  const alreadyGrounded = evidence.some((item) => {
+    if (!isNonEmptyString(item.description)) return false;
+    return item.description.toLowerCase().includes(recipient);
+  });
+  if (alreadyGrounded) return evidence;
+
+  return [
+    ...evidence,
+    {
+      type: 'signal',
+      description: `Hunt grounded recipient from winning signal thread: ${recipient}`,
+    },
+  ];
+}
+
 function buildFullContext(result: ScorerResultWinnerSelected, payload: GeneratedDirectivePayload): string {
   const sections = [
     // Lead with the non-obvious insight so it's always the first thing surfaced
@@ -9129,7 +9165,12 @@ export async function generateDirective(
       action_type: artifactTypeToActionType(canonicalAction),
       confidence: effectiveConfidence,
       reason: payload.why_now.trim(),
-      evidence: buildEvidenceItems(scored, payload),
+      evidence: appendHuntRecipientGroundingEvidence(buildEvidenceItems(scored, payload), {
+        candidateClass: currentCandidate.type,
+        canonicalArtifactType: canonicalAction,
+        artifact: payload.artifact,
+        huntRecipientAllowlist: ctx.hunt_send_message_recipient_allowlist,
+      }),
       fullContext: buildFullContext({ ...scored, winner: hydratedWinner }, payload),
       embeddedArtifact: payload.artifact,
       embeddedArtifactType: canonicalAction,
