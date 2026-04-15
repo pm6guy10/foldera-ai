@@ -4470,6 +4470,104 @@ function getArtifactTextForDecisionEnforcement(
   return `${title}\n${content}`.trim();
 }
 
+type ResolvedTemporalAnchor = {
+  dayKey: string;
+  timeMinutes: number | null;
+};
+
+function toDayKey(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+function parseTimeMinutes(text: string): number | null {
+  const twelveHour = text.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i);
+  if (twelveHour) {
+    const hourRaw = Number(twelveHour[1]);
+    const minute = Number(twelveHour[2] ?? '0');
+    if (!Number.isFinite(hourRaw) || hourRaw < 1 || hourRaw > 12 || minute < 0 || minute > 59) return null;
+    const suffix = twelveHour[3].toLowerCase();
+    let hour = hourRaw % 12;
+    if (suffix === 'pm') hour += 12;
+    return (hour * 60) + minute;
+  }
+
+  const twentyFourHour = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  if (twentyFourHour) {
+    const hour = Number(twentyFourHour[1]);
+    const minute = Number(twentyFourHour[2]);
+    return (hour * 60) + minute;
+  }
+
+  return null;
+}
+
+function resolveTemporalAnchor(text: string, now = new Date()): ResolvedTemporalAnchor | null {
+  if (!isNonEmptyString(text)) return null;
+  const lower = text.toLowerCase();
+  const timeMinutes = parseTimeMinutes(lower);
+
+  const iso = lower.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+  if (iso) {
+    const day = new Date(`${iso[1]}T00:00:00Z`);
+    if (!Number.isNaN(day.getTime())) return { dayKey: toDayKey(day), timeMinutes };
+  }
+
+  const monthDay = lower.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:,\s*(20\d{2}))?\b/i);
+  if (monthDay) {
+    const monthToken = monthDay[1].slice(0, 3).toLowerCase();
+    const monthMap: Record<string, number> = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+    };
+    const month = monthMap[monthToken];
+    const day = Number(monthDay[2]);
+    const year = monthDay[3] ? Number(monthDay[3]) : now.getUTCFullYear();
+    if (month !== undefined && Number.isFinite(day) && day >= 1 && day <= 31) {
+      const resolved = new Date(Date.UTC(year, month, day));
+      if (!Number.isNaN(resolved.getTime())) return { dayKey: toDayKey(resolved), timeMinutes };
+    }
+  }
+
+  if (/\btomorrow\b/i.test(lower)) {
+    const d = new Date(now);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return { dayKey: toDayKey(d), timeMinutes };
+  }
+  if (/\b(?:today|tonight)\b/i.test(lower)) {
+    return { dayKey: toDayKey(now), timeMinutes };
+  }
+
+  return null;
+}
+
+function getSendMessageTemporalConsistencyIssues(
+  directiveText: string,
+  artifact: Record<string, unknown> | null,
+): string[] {
+  if (!artifact || typeof artifact !== 'object') return [];
+  const subject = isNonEmptyString(artifact.subject) ? artifact.subject : '';
+  const body = isNonEmptyString(artifact.body) ? artifact.body : '';
+  const content = isNonEmptyString(artifact.content) ? artifact.content : '';
+  const artifactText = `${subject}\n${body || content}`.trim();
+  if (!artifactText) return [];
+
+  const directiveAnchor = resolveTemporalAnchor(directiveText);
+  const artifactAnchor = resolveTemporalAnchor(artifactText);
+  if (!directiveAnchor || !artifactAnchor) return [];
+
+  if (directiveAnchor.dayKey !== artifactAnchor.dayKey) {
+    return ['send_message temporal reference conflicts with directive timing'];
+  }
+  if (
+    directiveAnchor.timeMinutes !== null &&
+    artifactAnchor.timeMinutes !== null &&
+    directiveAnchor.timeMinutes !== artifactAnchor.timeMinutes
+  ) {
+    return ['send_message temporal reference conflicts with directive timing'];
+  }
+  return [];
+}
+
 /** Finished documents must not use task-manager scaffolding (applies even when full decision-enforcement is skipped for discrepancy/insight). */
 function getWriteDocumentTaskManagerLabelIssues(artifact: Record<string, unknown> | null): string[] {
   if (!artifact || typeof artifact !== 'object') return [];
@@ -6792,6 +6890,12 @@ export function validateDirectiveForPersistence(input: {
         'send_message',
         input.artifact as Record<string, unknown>,
         input.directive,
+      ),
+    );
+    issues.push(
+      ...getSendMessageTemporalConsistencyIssues(
+        input.directive.directive,
+        input.artifact as Record<string, unknown>,
       ),
     );
   }

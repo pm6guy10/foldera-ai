@@ -126,6 +126,44 @@ describe('daily brief pinned constraints', () => {
 
     expect(issues).toEqual([]);
   });
+
+  it('rejects send_message when directive and artifact use conflicting event timing', () => {
+    const issues = validateDirectiveForPersistence({
+      userId: OWNER_USER_ID,
+      directive: buildDirective({
+        directive:
+          'Phone screen with Alex Crisler is 30 hours away (April 15, 22:15 UTC); your last reply was April 13, and Alex\'s confirmation arrived April 14 with no acknowledgment since.',
+      }),
+      artifact: {
+        type: 'email',
+        to: 'alex.crisler@comphc.org',
+        subject: 'Re: Comprehensive Healthcare - Phone Screen',
+        body: 'Hi Alex,\n\nThanks for confirming tomorrow\'s call at 10:15 PM.\n\nBest,\nBrandon',
+        draft_type: 'email_compose',
+      },
+    });
+
+    expect(issues).toContain('send_message temporal reference conflicts with directive timing');
+  });
+
+  it('allows send_message when directive and artifact resolve to the same timing anchor', () => {
+    const issues = validateDirectiveForPersistence({
+      userId: OWNER_USER_ID,
+      directive: buildDirective({
+        directive:
+          'Phone screen with Alex Crisler is tomorrow at 10:15 PM, and your latest thread has no confirmation from your side yet.',
+      }),
+      artifact: {
+        type: 'email',
+        to: 'alex.crisler@comphc.org',
+        subject: 'Re: Comprehensive Healthcare - Phone Screen',
+        body: 'Hi Alex,\n\nThanks for confirming tomorrow\'s call at 10:15 PM.\n\nBest,\nBrandon',
+        draft_type: 'email_compose',
+      },
+    });
+
+    expect(issues).not.toContain('send_message temporal reference conflicts with directive timing');
+  });
 });
 
 describe('generator response parsing', () => {

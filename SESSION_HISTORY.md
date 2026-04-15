@@ -4344,3 +4344,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Behavioral-pattern decision enforcement still requires a stop-rule, but `getBehavioralPatternFinishedWorkIssues` now recognizes common valid wording (e.g. “If you don’t hear back… close the loop and stop following up”), and the generator’s behavioral_pattern guidance explicitly requires a stop-rule line.
 - Verification: `npm run health` (0 FAILING); `npx vitest run lib/briefing/__tests__/generator.test.ts`; `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts`; `npx tsx scripts/run-brain-receipt-real-once.ts` (persisted `pending_approval`); `npm run build`; `npx playwright test` (78 passed, 4 skipped).
 - Unresolved issues: none for this seam.
+
+## 2026-04-15 — send_message temporal consistency gate (directive vs artifact)
+- MODE: BUGFIX (single seam)
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator.test.ts`, `SESSION_HISTORY.md`
+- What changed: Added a narrow persistence validator for `send_message` that resolves explicit date/day/time anchors in `directive_text` and email subject/body; when both sides are resolvable and point to different event timing, persistence is rejected with `send_message temporal reference conflicts with directive timing`. No candidate selection, stale-date gate, or broader quality gates were changed.
+- Verification: `npm run health` (0 FAILING); `npx vitest run lib/briefing/__tests__/generator.test.ts`; real run `npx tsx scripts/run-paid-generate-once.ts` blocked a conflicting send_message candidate with `persistence_validation_failed` + issue `send_message temporal reference conflicts with directive timing`; `npm run build`; `npx playwright test` (78 passed, 4 skipped).
+- Unresolved issues: none for this seam.
