@@ -9,7 +9,7 @@ export default defineConfig({
   testMatch: '**/public-screenshots.spec.ts',
   timeout: 60000,
   use: {
-    baseURL: 'https://www.foldera.ai',
+    baseURL: 'https://foldera.ai',
     trace: 'off',
   },
   reporter: [['list']],

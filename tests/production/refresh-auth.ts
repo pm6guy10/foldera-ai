@@ -14,7 +14,7 @@ async function refreshAuth() {
   const context = await browser.newContext({ storageState: statePath });
   const page = await context.newPage();
 
-  const response = await page.goto('https://www.foldera.ai/api/auth/session');
+  const response = await page.goto('https://foldera.ai/api/auth/session');
   const body = await response?.json().catch(() => null);
 
   if (body?.user?.id) {

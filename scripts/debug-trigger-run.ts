@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
-const PROD_URL = 'https://www.foldera.ai';
+const PROD_URL = 'https://foldera.ai';
 const CRON_SECRET = process.env.CRON_SECRET!;
 const OWNER = process.env.INGEST_USER_ID!;
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);

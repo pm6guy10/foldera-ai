@@ -35,7 +35,7 @@ async function main() {
   if (!newRuns?.length) {
     console.log('\nNo new runs since deploy. Triggering daily-brief cron...');
     const CRON_SECRET = process.env.CRON_SECRET!;
-    const resp = await fetch('https://www.foldera.ai/api/cron/daily-brief', {
+    const resp = await fetch('https://foldera.ai/api/cron/daily-brief', {
       method: 'POST', 
       headers: { 'Authorization': `Bearer ${CRON_SECRET}`, 'Content-Type': 'application/json' },
     });

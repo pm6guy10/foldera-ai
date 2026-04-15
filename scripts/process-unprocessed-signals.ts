@@ -16,7 +16,7 @@ const LOOKBACK_MS = 60 * 60 * 1000;
 const MICROSOFT_SOURCES = new Set(['outlook', 'outlook_calendar']);
 const PROCESS_ROUTE_URL = new URL(
   '/api/cron/process-unprocessed-signals',
-  process.env.NEXTAUTH_URL ?? 'https://www.foldera.ai',
+  process.env.NEXTAUTH_URL ?? 'https://foldera.ai',
 );
 
 interface VerificationSummary {

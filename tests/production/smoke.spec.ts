@@ -1,7 +1,7 @@
 /**
  * PRODUCTION SMOKE TESTS
  *
- * Runs against https://www.foldera.ai with real session cookies.
+ * Runs against https://foldera.ai with real session cookies.
  * These tests catch every class of bug from the last two weeks:
  * - Sign-in loops (middleware redirect race)
  * - Session persistence (cookie domain mismatch)
@@ -185,7 +185,7 @@ test.describe('Public: Login page (anonymous)', () => {
     // away from /login before the error banner can render.
     const context = await browser.newContext({ storageState: undefined });
     const page = await context.newPage();
-    await page.goto('https://www.foldera.ai/login?error=OAuthCallback');
+    await page.goto('https://foldera.ai/login?error=OAuthCallback');
     await page.waitForLoadState('networkidle');
     await expect(page.getByText('Sign-in failed. Please try again or use a different account.')).toBeVisible({ timeout: 10000 });
     await context.close();
@@ -319,7 +319,7 @@ test.describe('Public: Pricing page', () => {
 // ── Schema health — catches migration drift before it reaches users ─────────
 test.describe('Schema health', () => {
   test('/api/health reports schema ok', async ({ request }) => {
-    const res = await request.get('https://www.foldera.ai/api/health');
+    const res = await request.get('https://foldera.ai/api/health');
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.db).toBe(true);
@@ -339,7 +339,7 @@ test.describe('New user flow: unauthenticated simulation', () => {
     const context = await browser.newContext({ storageState: undefined });
     const page = await context.newPage();
     try {
-      await page.goto('https://www.foldera.ai/');
+      await page.goto('https://foldera.ai/');
       await page.waitForLoadState('networkidle');
 
       // Find primary CTA — text contains "Get started" or href="/start"
@@ -379,7 +379,7 @@ test.describe('New user flow: unauthenticated simulation', () => {
       }
     });
     try {
-      await page.goto('https://www.foldera.ai/start');
+      await page.goto('https://foldera.ai/start');
       await page.waitForLoadState('networkidle');
 
       // At least one sign-in button or link should be present
@@ -412,7 +412,7 @@ test.describe('New user flow: unauthenticated simulation', () => {
       }
     });
     try {
-      const response = await page.goto('https://www.foldera.ai/login');
+      const response = await page.goto('https://foldera.ai/login');
       await page.waitForLoadState('networkidle');
 
       // Must not be a 500
@@ -448,7 +448,7 @@ test.describe('New user flow: unauthenticated simulation', () => {
       }
     });
     try {
-      const response = await page.goto('https://www.foldera.ai/pricing');
+      const response = await page.goto('https://foldera.ai/pricing');
       await page.waitForLoadState('networkidle');
 
       if (response?.status() === 404) {
@@ -487,7 +487,7 @@ test.describe('New user flow: unauthenticated simulation', () => {
     const context = await browser.newContext({ storageState: undefined });
     const page = await context.newPage();
     try {
-      await page.goto('https://www.foldera.ai/dashboard');
+      await page.goto('https://foldera.ai/dashboard');
       await page.waitForLoadState('networkidle');
 
       const url = page.url();
@@ -502,7 +502,7 @@ test.describe('New user flow: unauthenticated simulation', () => {
     const context = await browser.newContext({ storageState: undefined });
     const page = await context.newPage();
     try {
-      await page.goto('https://www.foldera.ai/dashboard/settings');
+      await page.goto('https://foldera.ai/dashboard/settings');
       await page.waitForLoadState('networkidle');
 
       const url = page.url();

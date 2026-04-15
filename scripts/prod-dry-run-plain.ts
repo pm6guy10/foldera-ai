@@ -11,7 +11,7 @@ import { chromium } from '@playwright/test';
 
 loadEnv({ path: path.resolve(process.cwd(), '.env.local') });
 
-const PROD = 'https://www.foldera.ai';
+const PROD = 'https://foldera.ai';
 const statePath = path.join(process.cwd(), 'tests', 'production', 'auth-state.json');
 
 function actionPlain(action: string | undefined): string {

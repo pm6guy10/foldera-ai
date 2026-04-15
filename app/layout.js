@@ -3,9 +3,12 @@
 import "./globals.css";
 import { Providers } from "./providers";
 import { BuildMarker } from "@/components/BuildMarker";
+import { resolveCanonicalSiteOrigin } from "@/lib/site-canonical";
+
+const siteOrigin = resolveCanonicalSiteOrigin();
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://www.foldera.ai'),
+  metadataBase: new URL(siteOrigin),
   title: {
     default: "Foldera — Finished work, every morning",
     template: "%s — Foldera",
@@ -29,12 +32,12 @@ export const metadata = {
     title: "Foldera — Finished work, every morning",
     description:
       "AI email assistant that turns your inbox into one clear daily directive with a finished draft—approve or skip.",
-    url: "https://www.foldera.ai",
+    url: siteOrigin,
     siteName: "Foldera",
     locale: "en_US",
     images: [
       {
-        url: 'https://www.foldera.ai/foldera-logo.png',
+        url: `${siteOrigin}/foldera-logo.png`,
         width: 1200,
         height: 630,
         alt: 'Foldera',
@@ -47,7 +50,7 @@ export const metadata = {
     title: "Foldera — Finished work, every morning",
     description:
       "AI email assistant that turns your inbox into one clear daily directive with a finished draft—approve or skip.",
-    images: ['https://www.foldera.ai/foldera-logo.png'],
+    images: [`${siteOrigin}/foldera-logo.png`],
   },
 };
 

@@ -62,7 +62,7 @@ async function main() {
   }
   
   // Also check if health endpoint returns the new SHA
-  const healthResp = await fetch('https://www.foldera.ai/api/health');
+  const healthResp = await fetch('https://foldera.ai/api/health');
   const health = await healthResp.json() as Record<string, unknown>;
   const revision = health.revision as Record<string, unknown> | undefined;
   console.log('\n=== PRODUCTION HEALTH ===');

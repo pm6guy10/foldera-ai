@@ -9,7 +9,7 @@ function baseUrl(): string {
   return (
     process.env.NEXTAUTH_URL ||
     process.env.NEXT_PUBLIC_BASE_URL ||
-    'https://www.foldera.ai'
+    'https://foldera.ai'
   ).replace(/\/$/, '');
 }
 

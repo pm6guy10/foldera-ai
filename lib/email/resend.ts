@@ -164,7 +164,7 @@ const EMAIL_SKIP_BORDER = 'rgba(255,255,255,0.2)';
 
 /** Wordmark for email clients; absolute URL required. */
 const EMAIL_LOGO_MARKUP =
-  '<img src="https://www.foldera.ai/foldera-logo.png" alt="Foldera" width="140" style="margin-bottom:24px" />';
+  '<img src="https://foldera.ai/foldera-logo.png" alt="Foldera" width="140" style="margin-bottom:24px" />';
 
 /** Dark transactional template (Pro welcome, billing alerts) — matches daily directive styling. */
 export function renderDarkTransactionalEmailHtml(opts: {

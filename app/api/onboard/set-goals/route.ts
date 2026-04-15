@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
           : session.user.email ?? null;
 
         if (!welcomeEmailSent && email) {
-          const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://www.foldera.ai').replace(/\/$/, '');
+          const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
           const bodyText = `Welcome to Foldera.
 
 You're connected. Your first read arrives tomorrow morning.

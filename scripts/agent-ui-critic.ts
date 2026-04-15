@@ -5,7 +5,7 @@
  * Owner proof: set `ALLOW_PAID_LLM=true` for Sonnet critique (consumes credits).
  *
  * Env: CRON_SECRET; optional ANTHROPIC_API_KEY when `ALLOW_PAID_LLM=true`.
- * AGENT_UI_BASE_URL (default https://www.foldera.ai)
+ * AGENT_UI_BASE_URL (default https://foldera.ai)
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,7 +13,7 @@ import { chromium } from '@playwright/test';
 import Anthropic from '@anthropic-ai/sdk';
 import { assertPaidLlmAllowed, isPaidLlmAllowed } from '../lib/llm/paid-llm-gate';
 
-const BASE = (process.env.AGENT_UI_BASE_URL || 'https://www.foldera.ai').replace(/\/$/, '');
+const BASE = (process.env.AGENT_UI_BASE_URL || 'https://foldera.ai').replace(/\/$/, '');
 const PAGES = ['/', '/start', '/login', '/pricing', '/blog'];
 const OUT_DIR = path.join(process.cwd(), 'tests', 'production', 'screenshots');
 

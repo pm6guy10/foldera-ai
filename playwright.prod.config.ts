@@ -17,7 +17,7 @@ export default defineConfig({
   timeout: 60000,
   retries: 1,
   use: {
-    baseURL: 'https://www.foldera.ai',
+    baseURL: 'https://foldera.ai',
     ...(useAuthState ? { storageState: authPath } : {}),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

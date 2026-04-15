@@ -2,6 +2,12 @@
 
 # Session History
 
+## 2026-04-15 — canonical site domain: apex https://foldera.ai metadata, sitemap, URL fallbacks
+- MODE: SEO / canonical URLs
+- Files changed: `lib/site-canonical.ts`, `app/layout.js`, `app/page.tsx`, `app/sitemap.ts`, `lib/cron/connector-health.ts`, `lib/cron/cron-health-alert.ts`, `lib/agents/health-watchdog.ts`, `lib/email/resend.ts`, `app/api/onboard/set-goals/route.ts`, `scripts/process-unprocessed-signals.ts`, `scripts/agent-ui-critic.ts`, `scripts/debug-run-brief-new.ts`, `scripts/debug-trigger-post-fix.ts`, `scripts/debug-trigger-run.ts`, `scripts/debug-trigger-dryrun.ts`, `scripts/prod-dry-run-plain.ts`, `lib/cron/__tests__/cron-health-alert.test.ts`, `lib/briefing/__tests__/pipeline-receipt.test.ts`, `tests/production/setup-auth.ts`, `tests/production/refresh-auth.ts`, `tests/production/smoke.spec.ts`, `playwright.prod.config.ts`, `playwright.screenshots.config.ts`, `SESSION_HISTORY.md`
+- What changed: Root `metadataBase` and OG/Twitter image URLs use apex `https://foldera.ai` (with normalization when `NEXT_PUBLIC_BASE_URL` is legacy `https://www.foldera.ai`). Homepage sets `alternates.canonical` to `/`. Added `app/sitemap.ts` emitting apex URLs for static marketing routes and all blog posts. Replaced hardcoded `www.foldera.ai` fallbacks and tooling URLs with apex; left Microsoft OAuth redirect normalization on `www` unchanged (Azure registration).
+- Verification: `npm run health` (0 FAILING); `npx vitest run lib/cron/__tests__/cron-health-alert.test.ts`; `npm run build`.
+
 ## 2026-04-15 — generator repair: let hunt send_message fallback use grounded recipient allowlist
 - MODE: OWNER DATA / PRODUCT QUALITY
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/decision-enforced-fallback.test.ts`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`

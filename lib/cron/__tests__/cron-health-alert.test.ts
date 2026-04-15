@@ -15,7 +15,7 @@ describe('runPlatformHealthAlert', () => {
     vi.stubEnv('DAILY_BRIEF_TO_EMAIL', 'ops@test.example');
     vi.stubEnv('RESEND_API_KEY', 're_test');
     vi.stubEnv('RESEND_FROM_EMAIL', 'Foldera <noreply@test.example>');
-    vi.stubEnv('NEXTAUTH_URL', 'https://www.foldera.ai');
+    vi.stubEnv('NEXTAUTH_URL', 'https://foldera.ai');
   });
 
   afterEach(() => {

@@ -16,7 +16,7 @@ async function main() {
   const before = new Date().toISOString();
   console.log('Triggering nightly-ops at:', before);
   
-  const resp = await fetch('https://www.foldera.ai/api/cron/nightly-ops', {
+  const resp = await fetch('https://foldera.ai/api/cron/nightly-ops', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${CRON_SECRET}`,
