@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { ChevronLeft } from 'lucide-react';
 import { getAllBlogPosts, getBlogPostBySlug } from '@/lib/blog';
+import { resolveCanonicalSiteOrigin } from '@/lib/site-canonical';
 import { NavPublic } from '@/components/nav/NavPublic';
 import { BlogFooter } from '@/components/nav/BlogFooter';
 
@@ -30,12 +31,38 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     return {};
   }
 
+  const siteOrigin = resolveCanonicalSiteOrigin();
+  const postPath = `/blog/${post.slug}`;
+  const postUrl = `${siteOrigin}${postPath}`;
+  const ogImageUrl = `${siteOrigin}/foldera-logo.png`;
+
   return {
     title: post.title,
     description: post.description,
+    alternates: {
+      canonical: postPath,
+    },
     openGraph: {
       title: post.title,
       description: post.description,
+      url: postUrl,
+      siteName: 'Foldera',
+      locale: 'en_US',
+      type: 'article',
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: 'Foldera',
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.description,
+      images: [ogImageUrl],
     },
   };
 }

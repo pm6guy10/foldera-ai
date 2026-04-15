@@ -2,6 +2,12 @@
 
 # Session History
 
+## 2026-04-15 — blog post metadata: per-post canonical, og:url, og:image (apex)
+- MODE: SEO / marketing
+- Files changed: `app/(marketing)/blog/[slug]/page.tsx`, `SESSION_HISTORY.md`
+- What changed: `generateMetadata` for blog posts now sets `alternates.canonical` to `/blog/{slug}`, `openGraph.url` to the full apex post URL, shared `foldera-logo.png` for `openGraph.images` and `twitter.images`, matching homepage OG/Twitter shape.
+- Verification: `npm run health` (0 FAILING); `npm run build`; production HTML check for `/blog/...` after deploy (canonical + og:url + og:image).
+
 ## 2026-04-15 — canonical site domain: apex https://foldera.ai metadata, sitemap, URL fallbacks
 - MODE: SEO / canonical URLs
 - Files changed: `lib/site-canonical.ts`, `app/layout.js`, `app/page.tsx`, `app/sitemap.ts`, `lib/cron/connector-health.ts`, `lib/cron/cron-health-alert.ts`, `lib/agents/health-watchdog.ts`, `lib/email/resend.ts`, `app/api/onboard/set-goals/route.ts`, `scripts/process-unprocessed-signals.ts`, `scripts/agent-ui-critic.ts`, `scripts/debug-run-brief-new.ts`, `scripts/debug-trigger-post-fix.ts`, `scripts/debug-trigger-run.ts`, `scripts/debug-trigger-dryrun.ts`, `scripts/prod-dry-run-plain.ts`, `lib/cron/__tests__/cron-health-alert.test.ts`, `lib/briefing/__tests__/pipeline-receipt.test.ts`, `tests/production/setup-auth.ts`, `tests/production/refresh-auth.ts`, `tests/production/smoke.spec.ts`, `playwright.prod.config.ts`, `playwright.screenshots.config.ts`, `SESSION_HISTORY.md`
