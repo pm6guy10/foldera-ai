@@ -365,11 +365,11 @@ describe('usefulness gate — execution proof', () => {
   // ── VALID CASE 1: send_message ─────────────────────────────────────────
   it('VALID1 — send_message: well-formed payload → NOT GENERATION_FAILED_SENTINEL (passes all gates)', async () => {
     anthropicCreate.mockResolvedValue(anthropicResponse({
-      directive: `Send the budget confirmation email to Marcus before the ${BOARD_MEETING_LABEL} board meeting.`,
+      directive: 'Send the budget confirmation email to Marcus today.',
       artifact_type: 'send_message',
       artifact: {
         to: 'marcus@company.com',
-        subject: `Q1 infrastructure budget — confirmation before ${BOARD_MEETING_LABEL} board meeting`,
+        subject: 'Q1 infrastructure budget — confirmation needed today',
         body: `Hi Marcus,\n\nFollowing your Q1 update, can you confirm by 3 PM PT today whether the infrastructure figure you quoted is final and who owns board packet sign-off? If we miss this cutoff, the ${BOARD_MEETING_LABEL} board packet goes forward with an unresolved budget line.\n\nThanks,\nBrandon`,
       },
       // Avoid past calendar month/day strings here — stale-date gate scans evidence + directive fields.

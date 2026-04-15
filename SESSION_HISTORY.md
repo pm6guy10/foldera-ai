@@ -4351,3 +4351,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Added a narrow persistence validator for `send_message` that resolves explicit date/day/time anchors in `directive_text` and email subject/body; when both sides are resolvable and point to different event timing, persistence is rejected with `send_message temporal reference conflicts with directive timing`. No candidate selection, stale-date gate, or broader quality gates were changed.
 - Verification: `npm run health` (0 FAILING); `npx vitest run lib/briefing/__tests__/generator.test.ts`; real run `npx tsx scripts/run-paid-generate-once.ts` blocked a conflicting send_message candidate with `persistence_validation_failed` + issue `send_message temporal reference conflicts with directive timing`; `npm run build`; `npx playwright test` (78 passed, 4 skipped).
 - Unresolved issues: none for this seam.
+
+## 2026-04-15 — temporal gate fixture alignments (adversarial + usefulness)
+- MODE: TEST FIX (same seam)
+- Files changed: `lib/briefing/__tests__/usefulness-gate.test.ts`, `SESSION_HISTORY.md`
+- What changed: Updated the VALID1 send_message fixture to use a single primary `today` timing anchor in directive + subject so it remains a valid control under the new send_message temporal-consistency gate.
+- Verification: `npx vitest run lib/briefing/__tests__/usefulness-gate.test.ts`; `npx vitest run lib/briefing/__tests__/decision-payload-adversarial.test.ts`.
+- Unresolved issues: none for this seam.
