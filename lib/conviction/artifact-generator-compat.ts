@@ -706,6 +706,15 @@ function generateArtifact(
       );
     }
 
+    const embedded = (directive as ConvictionDirective & { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    if (embedded) {
+      try {
+        return Promise.resolve(validateArtifact('write_document', embedded, directive));
+      } catch {
+        // fall through
+      }
+    }
+
     const fullContext = (directive as ConvictionDirective & { embeddedArtifact?: { context?: string } }).fullContext;
     if (isCleanFinishedDocument(fullContext ?? '')) {
       return Promise.resolve({

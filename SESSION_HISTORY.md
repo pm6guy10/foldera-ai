@@ -4276,3 +4276,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Added `npm run beta:readiness -- <user-id-or-email> [--json]` to print a single readiness report with explicit READY/NOT_READY verdict and exact blockers (user/account/providers/scopes/sync/signals/directive/artifact gates).
 - Verification: `npm run health` (0 FAILING); `npm run beta:readiness` against a real non-owner user; `npm run build`; `npx playwright test`.
 
+
+## 2026-04-14 — write_document compat: preserve validated embedded document artifact (stop Objective/Execution laundering)
+- MODE: PRODUCT QUALITY (single seam)
+- Files changed: `lib/conviction/artifact-generator-compat.ts`, `SESSION_HISTORY.md`
+- What changed: In `generateArtifact` write_document path, the compat layer now first validates and returns `directive.embeddedArtifact` when it is a valid finished document. This bypasses the legacy context-to-`Objective`/`Execution Notes` conversion when a stronger structured artifact already exists.
+- Verification: `npm run health` (0 FAILING; warning-only `Last generation do_nothing`); targeted replay via `npx tsx` before/after (`Follow up with Marissa Kapp` case) showing generic fallback before and structured `Reconnection Prep: Marissa Kapp — Missing Context` after; `npx vitest run lib/conviction/__tests__/artifact-generator.test.ts`; `npm run build`; `npx playwright test`.
+- Unresolved issues: none for this seam.
