@@ -15,6 +15,8 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 import { config as loadEnv } from 'dotenv';
 import { encode } from 'next-auth/jwt';
+import fs from 'node:fs';
+import path from 'node:path';
 
 loadEnv({ path: '.env.local' });
 
@@ -444,8 +446,10 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Skip keeps it out/i);
     await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /skip and adjust/i })).toBeVisible();
+    const screenshotPath = path.join(process.cwd(), '.screenshots', 'write-document-journey-1280.png');
+    fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
     await page.screenshot({
-      path: '.screenshots/write-document-journey-1280.png',
+      path: screenshotPath,
       fullPage: true,
     });
 

@@ -9,11 +9,6 @@ import path from 'node:path';
 
 const VIEW = { width: 375, height: 812 } as const;
 
-const SCREENSHOT_DIRS = [
-  path.join(process.cwd(), 'tests', 'screenshots', 'mobile'),
-  path.join(process.cwd(), 'tests', 'screenshots', 'mobile-after'),
-];
-
 const PUBLIC_PATHS: { name: string; path: string }[] = [
   { name: 'home', path: '/' },
   { name: 'start', path: '/start' },
@@ -65,15 +60,13 @@ test.describe('Mobile hamburger (/)', () => {
 });
 
 test.describe('Mobile screenshots', () => {
-  test.beforeAll(() => {
-    for (const dir of SCREENSHOT_DIRS) fs.mkdirSync(dir, { recursive: true });
-  });
-
-  test('capture all public pages at 375px (mobile + mobile-after)', async ({ page }) => {
+  test('capture all public pages at 375px (mobile + mobile-after)', async ({ page }, testInfo) => {
     await page.setViewportSize(VIEW);
+    const screenshotDirs = [testInfo.outputPath('mobile'), testInfo.outputPath('mobile-after')];
+    for (const dir of screenshotDirs) fs.mkdirSync(dir, { recursive: true });
     for (const { name, path: urlPath } of PUBLIC_PATHS) {
       await page.goto(urlPath, { waitUntil: 'networkidle', timeout: 60000 }).catch(() => page.goto(urlPath));
-      for (const dir of SCREENSHOT_DIRS) {
+      for (const dir of screenshotDirs) {
         await page.screenshot({ path: path.join(dir, `${name}.png`), fullPage: true });
       }
     }

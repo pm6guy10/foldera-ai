@@ -33,6 +33,7 @@ import {
   ANTHROPIC_BUDGET_RESERVE_ESTIMATE_CENTS,
   reserveAnthropicBudgetSlot,
 } from '@/lib/cron/api-budget';
+import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { assertPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { isOverDailyLimit, isOverManualCallLimit, trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -7765,7 +7766,20 @@ async function generatePayload(
     };
   }
 
-  assertPaidLlmAllowed('generator.generatePayload');
+  const allowOwnerDevPaidLlmBypass =
+    userId === OWNER_USER_ID && options.skipSpendCap === true && options.skipManualCallLimit === true;
+  if (!allowOwnerDevPaidLlmBypass) {
+    assertPaidLlmAllowed('generator.generatePayload');
+  } else {
+    logStructuredEvent({
+      event: 'paid_llm_gate_bypassed',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'paid_llm_bypass_active',
+      details: { scope: 'generator', reason: 'owner_dev_brain_receipt' },
+    });
+  }
 
   let anomalyIdentification: string | undefined;
   if (!options.dryRun) {
