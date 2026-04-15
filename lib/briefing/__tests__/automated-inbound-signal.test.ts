@@ -37,6 +37,14 @@ Body preview: x`;
     expect(isLikelyAutomatedTransactionalInbound(c)).toBe(true);
   });
 
+  it('detects DMARC aggregate reports as automated inbound', () => {
+    const c = `[Email received: 2026-01-01]
+From: DMARC Aggregate Report <dmarcreport@microsoft.com>
+Subject: Report Domain: foldera.ai Submitter: protection.outlook.com
+Body preview: x`;
+    expect(isLikelyAutomatedTransactionalInbound(c)).toBe(true);
+  });
+
   it('does not flag a normal human From', () => {
     const c = `[Email received: 2026-01-01]
 From: Holly Stenglein <holly.s@example.com>

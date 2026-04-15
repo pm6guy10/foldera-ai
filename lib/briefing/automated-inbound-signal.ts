@@ -13,6 +13,7 @@ export const AUTOMATED_TRANSACTIONAL_EMAIL_DOMAINS: readonly string[] = [
 ];
 
 const FROM_LINE_RE = /^From:\s*(.+)$/im;
+const SUBJECT_LINE_RE = /^Subject:\s*(.+)$/im;
 
 /** Substrings in the From line or local part that indicate no human reply is expected. */
 const AUTOMATED_FROM_SUBSTRINGS = [
@@ -24,6 +25,13 @@ const AUTOMATED_FROM_SUBSTRINGS = [
   'welcome',
   'newsletter',
   'mailer',
+  'dmarc aggregate report',
+] as const;
+
+/** Subject-line cues for machine-generated compliance / routing reports. */
+const AUTOMATED_SUBJECT_PATTERNS = [
+  /\bdmarc\s+aggregate\s+report\b/i,
+  /\breport domain:\b.*\bsubmitter:\b/i,
 ] as const;
 
 function extractEmailFromFromLine(fromLine: string): string | null {
@@ -48,6 +56,11 @@ export function extractFromLineFromSignalContent(content: string): string | null
   return m ? m[1].trim() : null;
 }
 
+function extractSubjectLineFromSignalContent(content: string): string | null {
+  const m = content.match(SUBJECT_LINE_RE);
+  return m ? m[1].trim() : null;
+}
+
 /**
  * True when this inbound signal is very likely automated/transactional — exclude from
  * "inbound expecting reply" style metrics. If From is missing, returns false.
@@ -62,10 +75,17 @@ export function isLikelyAutomatedTransactionalInbound(content: string): boolean 
   }
 
   const email = extractEmailFromFromLine(fromLine);
+  const subjectLine = extractSubjectLineFromSignalContent(content) ?? '';
+  if (AUTOMATED_SUBJECT_PATTERNS.some((pattern) => pattern.test(subjectLine))) {
+    return true;
+  }
+
   if (!email) return false;
 
   const at = email.lastIndexOf('@');
   if (at <= 0 || at >= email.length - 1) return false;
+  const local = email.slice(0, at);
   const domain = email.slice(at + 1);
+  if (/(?:^|[-_.])dmarc(?:$|[-_.]|report)/i.test(local)) return true;
   return domainMatchesList(domain, AUTOMATED_TRANSACTIONAL_EMAIL_DOMAINS);
 }

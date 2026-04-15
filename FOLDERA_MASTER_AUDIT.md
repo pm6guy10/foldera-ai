@@ -1,3 +1,17 @@
+### NEEDS_REVIEW — 2026-04-14 — Owner wow artifact still blocked after DMARC suppression: write_document path discards the generator’s structured artifact
+This session fixed the first live owner-data blocker: the scorer/hunt path was selecting `DMARC Aggregate Report <dmarcreport@microsoft.com>` / `Report Domain: foldera.ai Submitter: protection.outlook.com` as Brandon’s top unreplied-inbound winner. `lib/briefing/automated-inbound-signal.ts` now classifies DMARC aggregate/report mail as automated, and the same live owner scorer+generator rerun moved off that machine report and onto a real discrepancy candidate.
+
+The owner artifact is still not approvable today because a second exact blocker remains downstream:
+- File: `lib/conviction/artifact-generator-compat.ts`
+- Function: `generateArtifact`
+- Tight range: around the `write_document` branch that starts near the current `generateArtifact(...){ if (directive.action_type === 'write_document') { ... } }` block and falls through to `generateViaAnthropic(...)`, while only `send_message` checks `directive.embeddedArtifact`.
+- Proof from the same live owner rerun: generator `pre_validate_artifact_json` produced a structured `write_document` artifact for Marissa (`title: "Reconnection Prep: Marissa Kapp — Missing Context"` with grounded sections). The final returned artifact from `generateArtifact` was instead a generic fallback document starting with `Objective:` / `Execution Notes:` and dumping context bullets, which is not finished work Brandon would approve today.
+
+Status: `NEEDS_REVIEW` — no further bottleneck was patched in this session because the one-seam fix was the DMARC false-winner suppression.
+
+### NEEDS_REVIEW — 2026-04-14 — Cannot run one real non-Brandon beta loop: no real non-owner auth account exists in production
+Owner-seam execution attempted with production truth queries and owner tooling. Evidence shows only owner auth user activity plus one synthetic test id (`22222222-2222-2222-2222-222222222222`) that exists in app tables but has no auth user row (`beta:readiness` returns `user_missing` for both UUID and `gate2-test@foldera.ai`). With no real non-owner auth account, the required connect -> readiness -> first directive artifact loop cannot be completed without DB archaeology/fabrication. This is an environment/product-data blocker, not a code-path blocker in this run.
+
 ### NEEDS_REVIEW — 2026-04-14 — nightly-ops route test harness now covers real query chains; full Playwright still has one unrelated webhook blocker
 This session expanded `app/api/cron/nightly-ops/__tests__/route.test.ts` so the Supabase mock supports `tkg_entities`, `tkg_directive_ml_snapshots`, `tkg_directive_ml_global_priors`, and `pipeline_runs` query chains used by the nightly cron stages. The failing CI seam was the test harness, not the route logic.
 

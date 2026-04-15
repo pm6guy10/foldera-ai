@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-14 — owner-data wow seam: suppress DMARC report mail from hunt unreplied_inbound
+- MODE: OWNER DATA / PRODUCT QUALITY
+- Files changed: `lib/briefing/automated-inbound-signal.ts`, `lib/briefing/__tests__/automated-inbound-signal.test.ts`, `lib/briefing/__tests__/hunt-anomalies.test.ts`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
+- What changed: Hardened the shared automated-inbound classifier so DMARC aggregate/report mail is treated as machine-generated, not a human thread waiting on Brandon. The live owner run had been selecting `DMARC Aggregate Report <dmarcreport@microsoft.com>` / `Report Domain: foldera.ai Submitter: protection.outlook.com` as the top hunt winner; after the patch that winner is excluded and the scorer advances to the next real owner-data candidate.
+- Verification: `npm run health` (0 FAILING; warning-only `Last generation do_nothing`); `npx vitest run lib/briefing/__tests__/automated-inbound-signal.test.ts`; `npx vitest run lib/briefing/__tests__/hunt-anomalies.test.ts`; live owner scorer+generator+artifact run before patch (DMARC hunt winner) and after patch (Marissa decay discrepancy winner); `npm run build`; `npx playwright test`
+- Unresolved issues: owner artifact is still not approval-worthy because `lib/conviction/artifact-generator-compat.ts` rebuilds `write_document` from noisy context instead of using the generator's structured embedded artifact; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.
+
 ## 2026-04-14 — behavioral_pattern generator: block generic summaries, repair to goal-blocking close-the-loop move
 - MODE: PRODUCT QUALITY (brain)
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/briefing/__tests__/generator.test.ts`, `SESSION_HISTORY.md`

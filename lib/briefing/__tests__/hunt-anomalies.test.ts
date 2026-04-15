@@ -163,6 +163,26 @@ describe('runHuntAnomalies', () => {
     expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
   });
 
+  it('does not flag DMARC aggregate reports as unreplied_inbound even when sender is trusted', () => {
+    const recvIso = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived(
+        'dmarc1',
+        recvIso,
+        'DMARC Aggregate Report <dmarcreport@microsoft.com>',
+        'Report Domain: foldera.ai Submitter: protection.outlook.com',
+      ),
+    ];
+    const trusted = new Set(['dmarcreport@microsoft.com']);
+    const { countsByKind, findings } = runHuntAnomalies({
+      signals,
+      commitments: [],
+      trustedSenderEmails: trusted,
+    });
+    expect(countsByKind.unreplied_inbound).toBe(0);
+    expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
+  });
+
   it('huntFindingToScoredLoopContent includes kind and title', () => {
     const f = {
       kind: 'repeated_ignored_sender' as const,
