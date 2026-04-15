@@ -99,3 +99,21 @@ Mandatory QA gate results:
 - `npx playwright test` passed (`78 passed`, `4 skipped`).
 
 Status: `NEEDS_REVIEW` — this session intentionally fixed one blocker only (signal-stage paid gate), and exposed the next exact blocker at generator paid gate.
+
+### NEEDS_REVIEW — 2026-04-15 — ranking seam fixed, but live run still falls back to Momco after hunt persistence validation failure
+Single seam fixed in this session: calendar/admin discrepancy classes (`meeting_open_thread`, `preparation_gap`) without a goal anchor no longer receive discrepancy-priority force promotion in ranking.
+
+Before patch evidence (persisted row `75f1e9c1-da34-4543-a89f-d7796dec3c1d`):
+- `candidateDiscovery.topCandidates[0]`: `discrepancy_meeting_8eab1a74-468d-4d6f-bab8-12888117f0a0` (`meeting_open_thread`, score logged `999`, scoreBreakdown.final_score `1.5913`, decision `selected`).
+- `candidateDiscovery.topCandidates[1]`: `hunt_ignored_notification_slack_com` (score `999`, decision `rejected`).
+- Persisted artifact was Momco `write_document` prep brief.
+
+After patch one real generation call (`npx tsx scripts/run-brain-receipt-real-once.ts`):
+- `candidateDiscovery.topCandidates[0]`: `hunt_ignored_notification_slack_com` (selected, score `999`).
+- `candidateDiscovery.topCandidates[1]`: `discrepancy_exposure_0440f585-1b60-4196-927e-0bca9f872931` (Momco, score `1.72`, rejected).
+- Run still persisted `no_send` because selected hunt candidate was blocked by `send_message artifact.to is not grounded in directive or evidence`; fallback candidate produced Momco write_document content that failed persistence validation.
+
+Exact remaining blocker:
+- File: `lib/briefing/generator.ts`
+- Function/seam: fallback/persistence path after selected hunt candidate fails recipient grounding (`candidate_blocked`), allowing low-value fallback artifact to dominate no-send context.
+- Proof: latest action `395e7d98-482f-4535-9252-6daa3545316c` stores no-send evidence with blocked selected hunt candidate and Momco fallback context.

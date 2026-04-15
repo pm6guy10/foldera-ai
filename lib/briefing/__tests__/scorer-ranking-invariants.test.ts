@@ -186,6 +186,35 @@ describe('applyRankingInvariants', () => {
     expect(passesTop3RankingInvariants(disc)).toBe(true);
   });
 
+  it('calendar/admin discrepancy without goal anchor does not force-rank over stronger candidate', () => {
+    const input = [
+      candidate({
+        id: 'strong-outbound',
+        score: 5.4,
+        type: 'relationship',
+        entityName: 'Brandon Kapp',
+        suggestedActionType: 'send_message',
+        title: 'Reply to Brandon on active decision thread',
+        content: 'Decision thread with Brandon has concrete ask and unresolved approval dependency.',
+      }),
+      candidate({
+        id: 'meeting-admin',
+        score: 4.8,
+        type: 'discrepancy',
+        discrepancyClass: 'meeting_open_thread',
+        suggestedActionType: 'send_message',
+        matchedGoal: null,
+        title: 'Calendar meeting has no execution artifacts',
+        content: 'Meeting starts today and calendar metadata is incomplete.',
+      }),
+    ];
+
+    const { ranked, diagnostics } = applyRankingInvariants(input);
+    expect(ranked[0]?.id).toBe('strong-outbound');
+    const meetingDiag = diagnostics.find((d) => d.id === 'meeting-admin');
+    expect(meetingDiag?.penaltyReasons).toContain('calendar_admin_discrepancy_no_priority_boost');
+  });
+
   it('only behavioral_pattern discrepancies are subject to failure-suppression class set', () => {
     expect(DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET.has('behavioral_pattern')).toBe(true);
     expect(DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET.has('decay')).toBe(false);

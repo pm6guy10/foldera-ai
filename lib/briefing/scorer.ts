@@ -1728,6 +1728,25 @@ const THREAD_BACKED_SENDABLE_DISCREPANCY_CLASSES = new Set<string>([
   'convergence',
 ]);
 
+/**
+ * Calendar/admin discrepancy classes can be useful, but they should not inherit
+ * hard discrepancy-priority force promotion when they are not anchored to a
+ * stated goal. This prevents household/admin meeting prep artifacts from
+ * displacing materially higher-value outbound moves.
+ */
+const CALENDAR_ADMIN_DISCREPANCY_CLASSES = new Set<string>([
+  'meeting_open_thread',
+  'preparation_gap',
+]);
+
+function isLowValueCalendarAdminDiscrepancy(candidate: ScoredLoop): boolean {
+  return (
+    candidate.type === 'discrepancy'
+    && CALENDAR_ADMIN_DISCREPANCY_CLASSES.has(candidate.discrepancyClass ?? '')
+    && candidate.matchedGoal == null
+  );
+}
+
 export function isThreadBackedSendableLoop(c: ScoredLoop): boolean {
   if (c.score <= 0) return false;
   const hasSendableAction = c.suggestedActionType === 'send_message';
@@ -1849,6 +1868,10 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
           diag.penaltyReasons.push('behavioral_pattern_no_boost_thread_backed_present');
           continue;
         }
+        if (isLowValueCalendarAdminDiscrepancy(candidate)) {
+          diag.penaltyReasons.push('calendar_admin_discrepancy_no_priority_boost');
+          continue;
+        }
         candidate.score *= 1.2;
         diag.penaltyReasons.push('discrepancy_priority_boost');
         continue;
@@ -1898,6 +1921,7 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
       topDiscrepancy
       && topNonDiscrepancy
       && topDiscrepancy.score <= topNonDiscrepancy.score
+      && !isLowValueCalendarAdminDiscrepancy(topDiscrepancy)
       && !(
         isThreadBackedSendableLoop(topNonDiscrepancy)
         && !isThreadBackedSendableLoop(topDiscrepancy)

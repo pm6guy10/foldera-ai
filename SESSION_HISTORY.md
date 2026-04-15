@@ -4358,3 +4358,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Updated the VALID1 send_message fixture to use a single primary `today` timing anchor in directive + subject so it remains a valid control under the new send_message temporal-consistency gate.
 - Verification: `npx vitest run lib/briefing/__tests__/usefulness-gate.test.ts`; `npx vitest run lib/briefing/__tests__/decision-payload-adversarial.test.ts`.
 - Unresolved issues: none for this seam.
+
+## 2026-04-15 — ranking invariant: stop force-promoting low-value calendar/admin discrepancies
+- MODE: BUGFIX (single seam)
+- Files changed: `lib/briefing/scorer.ts`, `lib/briefing/__tests__/scorer-ranking-invariants.test.ts`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
+- What changed: Added a narrow ranking invariant exception so discrepancy-priority boost/force no longer applies to `meeting_open_thread` / `preparation_gap` candidates when they have no matched goal (`calendar_admin_discrepancy_no_priority_boost`). This prevents calendar/admin artifacts from being auto-lifted over materially stronger candidates.
+- Verification: `npm run health` (0 FAILING, warning-only repeated directive); `npx vitest run lib/briefing/__tests__/scorer-ranking-invariants.test.ts`; `npx tsx scripts/run-brain-receipt-real-once.ts` (one real call; top winner changed to hunt candidate, Momco moved to runner-up/fallback context); `npm run build`; `npx playwright test` (78 passed, 4 skipped).
+- Unresolved issues: fresh live run still ends `no_send` because selected hunt candidate fails recipient grounding persistence (`send_message artifact.to is not grounded in directive or evidence`), then fallback write_document remains Momco-shaped.
