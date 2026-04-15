@@ -16,6 +16,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus, encrypt } from '@/lib/encryption';
 import { recoverMicrosoftSignalContent } from '@/lib/sync/microsoft-sync';
@@ -99,6 +100,11 @@ export interface ProcessSignalsOptions {
   dryRun?: boolean;
   /** Skip Haiku extraction LLM (e.g. operator `pipelineDryRun`). */
   skipLlmExtraction?: boolean;
+  /**
+   * Owner/dev proof only: allows paid extraction calls even when ALLOW_PAID_LLM=false.
+   * Must be explicitly opted in by caller and still hard-checks owner user id.
+   */
+  allowOwnerDevPaidLlmBypass?: boolean;
 }
 
 export interface SignalQueryOptions {
@@ -321,7 +327,11 @@ export async function processUnextractedSignals(
     return result;
   }
 
-  if (!isPaidLlmAllowed()) {
+  const ownerDevPaidBypass =
+    options.allowOwnerDevPaidLlmBypass === true &&
+    userId === OWNER_USER_ID;
+
+  if (!isPaidLlmAllowed() && !ownerDevPaidBypass) {
     result.errors.push('paid_llm_disabled');
     return result;
   }

@@ -1509,6 +1509,12 @@ async function runSignalProcessingForUser(
     const deferredSignalIds = new Set<string>();
     const errors: string[] = [];
 
+    const allowOwnerDevSignalExtractionPaidLlmBypass =
+      options.skipManualCallLimit === true &&
+      options.forceFreshRun === true &&
+      (options.briefInvocationSource === 'dev_brain_receipt' ||
+        options.briefInvocationSource === 'dev_brain_receipt_verification');
+
     while (Date.now() < deadline) {
       const extraction = await processUnextractedSignals(userId, {
         createdAtGte: options.signalCreatedAtGte,
@@ -1516,6 +1522,7 @@ async function runSignalProcessingForUser(
         prioritizeOlderThanIso: staleCutoffIso,
         quarantineDeferredOlderThanIso: staleCutoffIso,
         skipLlmExtraction: options.pipelineDryRun === true,
+        allowOwnerDevPaidLlmBypass: allowOwnerDevSignalExtractionPaidLlmBypass,
       });
       signalsProcessed += extraction.signals_processed;
       for (const signalId of extraction.deferred_signal_ids ?? []) deferredSignalIds.add(signalId);

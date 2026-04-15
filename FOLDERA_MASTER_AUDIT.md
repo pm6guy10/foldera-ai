@@ -74,3 +74,28 @@ Proof after patch:
 - Run result no longer ends at `pending_approval_reused`; it reaches readiness gating and persists `no_send` with blocker `paid_llm_disabled`.
 
 Status: `NEEDS_REVIEW` — reuse blocker is fixed; remaining blocker is environment/policy (`paid_llm_disabled`) in signal/generation path, which prevents a new paid live artifact from persisting in this session.
+
+### NEEDS_REVIEW — 2026-04-15 — dev brain-receipt no longer blocks at signal `paid_llm_disabled`; next blocker is generator paid gate
+Single seam fixed in this session: owner/dev brain-receipt force-fresh runs can pass signal extraction gating even when `ALLOW_PAID_LLM` is false, without widening customer/prod paid semantics.
+
+Before (same owner live script):
+- `npx tsx scripts/run-brain-receipt-real-once.ts`
+- Signal stage failed with `signal_processing_failed` and `errors: ["paid_llm_disabled"]` from `lib/signals/signal-processor.ts` (`processUnextractedSignals`).
+
+After patch:
+- Same command reaches `brief_gate_decision: SEND`, processes fresh signals, and enters scorer/generator.
+- No fresh artifact persisted yet; run ends as `no_send_persisted` because all ranked candidates were blocked by `Paid LLM disabled (scope=generator.generatePayload)`.
+
+Exact remaining blocker:
+- File: `lib/briefing/generator.ts`
+- Function: `generatePayload`
+- Tight proof range: around `assertPaidLlmAllowed('generator.generatePayload')` (currently near line `7768`).
+- Why it still blocks holy-crap output: candidate generation cannot render payload JSON for any winner when paid LLM is disabled, so `runDailyGenerate` persists no-send instead of a fresh pending artifact.
+
+Mandatory QA gate results:
+- `npx vitest run app/api/dev/brain-receipt/__tests__/route.test.ts` passed.
+- `npx vitest run lib/cron/__tests__/daily-brief.test.ts` passed.
+- `npm run build` passed.
+- `npx playwright test` passed (`78 passed`, `4 skipped`).
+
+Status: `NEEDS_REVIEW` — this session intentionally fixed one blocker only (signal-stage paid gate), and exposed the next exact blocker at generator paid gate.
