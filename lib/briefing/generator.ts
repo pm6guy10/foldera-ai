@@ -4341,6 +4341,8 @@ const EXPLICIT_ASK_PATTERNS = [
   /\bdo you have\b/i,
   /\bhappy to\b/i,
   /\?$/m,
+  // Mid-sentence questions (write_document title/content often use ? not at line end; send_message already scans artifact for any ?).
+  /\?/,
   // Finished-work anchors (payment / submission) — do NOT use task-manager lines like NEXT_ACTION:
   /https?:\/\/[^\s)\]]+/i,
   /\bpay\s+(?:the\s+)?(?:minimum|balance)\b/i,
@@ -4558,7 +4560,12 @@ function getBehavioralPatternFinishedWorkIssues(input: {
   if (goalLabel && !behavioralPatternGoalAppearsInText(combined, goalLabel)) {
     issues.push('decision_enforcement:behavioral_pattern_missing_goal_anchor');
   }
-  if (!/\bSend this (?:today|now)\b/i.test(content) && !/[“"][^"”\n]{20,}[”"]/.test(content)) {
+  const hasSendReadyLead =
+    /\bSend this (?:today|now|tonight|tomorrow)\b/i.test(content) ||
+    /\bSend (?:it|this) (?:today|now|tonight|tomorrow)\b/i.test(content) ||
+    /\bSend (?:today|now|tonight|tomorrow)\b/i.test(content);
+  const hasQuotedCopyPasteBlock = /[“"][^"”\n]{20,}[”"]/.test(content);
+  if (!hasSendReadyLead && !hasQuotedCopyPasteBlock) {
     issues.push('decision_enforcement:behavioral_pattern_missing_send_ready_move');
   }
   if (!/\bif (?:there is )?no (?:reply|response)\b/i.test(content) || !/\b(?:mark the thread stalled|stop allocating attention)\b/i.test(content)) {
