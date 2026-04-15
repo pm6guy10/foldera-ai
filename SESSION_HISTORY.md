@@ -2,6 +2,12 @@
 
 # Session History
 
+## 2026-04-15 — behavioral_pattern send-ready gate: tonight/tomorrow / bare Send {day}
+- MODE: PRODUCT QUALITY (pre-repair enforcement)
+- Files changed: `lib/briefing/generator.ts` (`getBehavioralPatternFinishedWorkIssues`), `lib/briefing/__tests__/generator.test.ts`, `SESSION_HISTORY.md`
+- What changed: First listed decision-enforcement check among the behavioral_pattern quartet (`behavioral_pattern_missing_send_ready_move`) now treats `Send tonight`, `Send tomorrow`, `Send it tonight`, and imperative `Send {today|now|tonight|tomorrow}` (without requiring the word `this`) as send-ready leads, in addition to `Send this today|now` and long quoted copy-paste blocks. Reduces overfire when the model schedules the close-the-loop move in natural language.
+- Verification: `npm run health` (0 FAILING); `npx vitest run lib/briefing/__tests__/generator.test.ts`; pre-push hook (`npm test` 1008 + `next build`); `npx tsx scripts/run-real-generation-once.ts` post-patch (`pending_approval_persisted`, send_message winner — behavioral_pattern write_document not selected this run).
+
 ## 2026-04-15 — blog post metadata: per-post canonical, og:url, og:image (apex)
 - MODE: SEO / marketing
 - Files changed: `app/(marketing)/blog/[slug]/page.tsx`, `SESSION_HISTORY.md`
