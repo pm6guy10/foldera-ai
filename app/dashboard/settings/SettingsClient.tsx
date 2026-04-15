@@ -17,6 +17,7 @@ interface Integration {
   expires_at?: number | null;
   needs_reconnect?: boolean;
   needs_reauth?: boolean;
+  missing_scopes?: string[];
   /** Mail sync timestamp has not advanced for several days (connector may be stuck). */
   sync_stale?: boolean;
 }
@@ -215,6 +216,9 @@ export default function SettingsClient() {
 
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
+  const firstConnectedIntegration = integrations.find((integration) => integration.is_active);
+  const firstRunIntegration = firstConnectedIntegration ?? integrations[0];
+  const firstRunStatus = buildFirstRunStatus(firstRunIntegration);
 
   const startGoogleOAuth = () => {
     setProviderOAuthError((p) => ({ ...p, google: null }));
@@ -304,6 +308,35 @@ export default function SettingsClient() {
           </div>
         )}
 
+        {integrations.length > 0 && (
+          <section className="rounded-2xl border border-cyan-500/20 bg-cyan-500/8 backdrop-blur-xl overflow-hidden">
+            <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-cyan-500/10">
+              <SectionHeading className="mb-2 text-cyan-300/80">What happens next</SectionHeading>
+              <p className="text-sm text-zinc-100 leading-relaxed">
+                {firstRunStatus.headline}
+              </p>
+            </div>
+            <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 space-y-3">
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                {firstRunStatus.detail}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {firstRunStatus.steps.map((step) => (
+                  <div key={step.label} className="rounded-xl border border-white/10 bg-zinc-950/50 p-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-cyan-400">{step.label}</p>
+                    <p className="text-xs text-zinc-300 mt-1 leading-relaxed">{step.copy}</p>
+                  </div>
+                ))}
+              </div>
+              {firstRunStatus.missingScopes.length > 0 && (
+                <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                  {firstRunStatus.missingScopesLabel}
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+
         {actionError && (
           <p ref={errorRef} className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">{actionError}</p>
         )}
@@ -345,17 +378,27 @@ export default function SettingsClient() {
                     </div>
                     {!google?.is_active && google?.needs_reauth && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
-                        Your Google sign-in expired. Tap Connect to restore sync.
+                        Your Google sign-in expired. Tap Connect to keep Foldera reading your connected sources.
+                      </p>
+                    )}
+                    {google?.is_active && google.missing_scopes?.length ? (
+                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                        Reconnect required — missing {formatMissingScopes(google.missing_scopes)}.
+                      </p>
+                    ) : null}
+                    {google?.is_active && !google.missing_scopes?.length && !google.last_synced_at && (
+                      <p className="text-[11px] text-cyan-200/90 mt-1.5 leading-snug">
+                        Connected. Foldera is reading your connected sources and looking for the one thing silently blocking your real goal.
                       </p>
                     )}
                     {google?.is_active && google.needs_reconnect && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
-                        Reconnect required — Foldera can&apos;t refresh this connection in the background without a new sign-in.
+                        Reconnect required — Foldera can&apos;t keep reading this source in the background without a new sign-in.
                       </p>
                     )}
                     {google?.is_active && google.sync_stale && !google.needs_reconnect && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
-                        Sync looks stalled — last mail sync was a while ago. Disconnect and reconnect if new mail isn&apos;t showing up.
+                        Sync looks stalled — Foldera hasn&apos;t seen new history in a while. Disconnect and reconnect if new mail isn&apos;t showing up.
                       </p>
                     )}
                     {google?.is_active && formatLastSynced(google.last_synced_at) && (
@@ -443,17 +486,27 @@ export default function SettingsClient() {
                     </div>
                     {!microsoft?.is_active && microsoft?.needs_reauth && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
-                        Your Microsoft sign-in expired. Tap Connect to restore mail and OneDrive.
+                        Your Microsoft sign-in expired. Tap Connect to keep Foldera reading your connected sources.
+                      </p>
+                    )}
+                    {microsoft?.is_active && microsoft.missing_scopes?.length ? (
+                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                        Reconnect required — missing {formatMissingScopes(microsoft.missing_scopes)}.
+                      </p>
+                    ) : null}
+                    {microsoft?.is_active && !microsoft.missing_scopes?.length && !microsoft.last_synced_at && (
+                      <p className="text-[11px] text-cyan-200/90 mt-1.5 leading-snug">
+                        Connected. Foldera is reading your connected sources and looking for the one thing silently blocking your real goal.
                       </p>
                     )}
                     {microsoft?.is_active && microsoft.needs_reconnect && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
-                        Reconnect required — Foldera can&apos;t refresh this connection in the background without a new sign-in.
+                        Reconnect required — Foldera can&apos;t keep reading this source in the background without a new sign-in.
                       </p>
                     )}
                     {microsoft?.is_active && microsoft.sync_stale && !microsoft.needs_reconnect && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
-                        Sync looks stalled — last mail sync was a while ago. Disconnect and reconnect Microsoft to pull recent mail.
+                        Sync looks stalled — Foldera hasn&apos;t seen new history in a while. Disconnect and reconnect Microsoft to pull recent history.
                       </p>
                     )}
                     {microsoft?.is_active && formatLastSynced(microsoft.last_synced_at) && (
@@ -713,6 +766,79 @@ function formatLastSynced(iso: string | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+function formatMissingScopes(scopes: string[]): string {
+  if (scopes.length === 0) return '';
+  if (scopes.length === 1) return scopes[0];
+  if (scopes.length === 2) return `${scopes[0]} and ${scopes[1]}`;
+  return `${scopes.slice(0, -1).join(', ')}, and ${scopes[scopes.length - 1]}`;
+}
+
+function buildFirstRunStatus(integration: Integration | undefined): {
+  headline: string;
+  detail: string;
+  missingScopes: string[];
+  missingScopesLabel: string;
+  steps: Array<{ label: string; copy: string }>;
+} {
+  if (!integration) {
+    return {
+      headline: 'Connect one source and Foldera gets to work.',
+      detail: 'Once a provider is connected, Foldera reads recent history, then shows the first value when it is ready. No extra setup required.',
+      missingScopes: [],
+      missingScopesLabel: '',
+      steps: [
+        { label: 'Connect', copy: 'Sign in with Google or Microsoft.' },
+        { label: 'Read', copy: 'Foldera reads recent history for the one thing that matters.' },
+        { label: 'First value', copy: 'Your first value arrives when the first read is ready.' },
+      ],
+    };
+  }
+
+  const missingScopes = integration.missing_scopes ?? [];
+  const isWarm = Boolean(integration.last_synced_at);
+  const providerName = integration.provider === 'azure_ad' ? 'Microsoft' : 'Google';
+
+  if (missingScopes.length > 0) {
+    return {
+      headline: `${providerName} is connected, but Foldera needs one more consent step to keep reading.`,
+      detail: 'Reconnect to grant the missing permissions so Foldera can keep reading your connected sources and finish the first pass. No extra setup required.',
+      missingScopes,
+      missingScopesLabel: `Reconnect ${providerName} to restore ${formatMissingScopes(missingScopes)}.`,
+      steps: [
+        { label: 'Connected', copy: `${providerName} is linked to ${integration.sync_email ?? 'your account'}.` },
+        { label: 'Reconnect', copy: 'Foldera will ask for the missing permissions only.' },
+        { label: 'Resume', copy: 'After reconnect, Foldera keeps reading in the background.' },
+      ],
+    };
+  }
+
+  if (!isWarm) {
+    return {
+      headline: `${providerName} is connected and Foldera is reading recent history now.`,
+      detail: 'No extra setup required. Foldera is reading the connected source so it can surface one finished move instead of a to-do list.',
+      missingScopes,
+      missingScopesLabel: '',
+      steps: [
+        { label: 'Connected', copy: `${providerName} is linked to ${integration.sync_email ?? 'your account'}.` },
+        { label: 'Reading', copy: 'Foldera is reading recent history for the one thing already handled.' },
+        { label: 'First value', copy: 'The first value appears when the first read is ready.' },
+      ],
+    };
+  }
+
+  return {
+    headline: `${providerName} is connected and Foldera is ready to keep reading.`,
+    detail: 'Foldera has already read recent context. Keep using the product and it will keep surfacing one finished move, not a task list.',
+    missingScopes,
+    missingScopesLabel: '',
+    steps: [
+      { label: 'Connected', copy: `${providerName} is linked to ${integration.sync_email ?? 'your account'}.` },
+      { label: 'Handled', copy: 'Foldera already has the context it needs.' },
+      { label: 'First value', copy: 'Your next finished move arrives when it is ready.' },
+    ],
+  };
 }
 
 function Header() {

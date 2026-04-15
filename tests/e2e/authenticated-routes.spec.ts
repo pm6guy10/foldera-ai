@@ -98,8 +98,26 @@ const STALE_EMAIL_DIRECTIVE = {
 
 const INTEGRATIONS_RESPONSE = {
   integrations: [
-    { provider: 'google', is_active: true, sync_email: 'test@gmail.com' },
-    { provider: 'azure_ad', is_active: true, sync_email: 'test@outlook.com' },
+    { provider: 'google', is_active: true, sync_email: 'test@gmail.com', last_synced_at: null, missing_scopes: [] },
+    { provider: 'azure_ad', is_active: true, sync_email: 'test@outlook.com', last_synced_at: '2026-04-13T10:00:00.000Z', missing_scopes: [] },
+  ],
+};
+
+const INTEGRATIONS_SYNCING_RESPONSE = {
+  integrations: [
+    { provider: 'google', is_active: true, sync_email: 'test@gmail.com', last_synced_at: null, missing_scopes: [] },
+  ],
+};
+
+const INTEGRATIONS_MISSING_SCOPES_RESPONSE = {
+  integrations: [
+    {
+      provider: 'google',
+      is_active: true,
+      sync_email: 'test@gmail.com',
+      last_synced_at: '2026-04-13T10:00:00.000Z',
+      missing_scopes: ['Gmail read access', 'send access'],
+    },
   ],
 };
 
@@ -245,6 +263,34 @@ async function setupSettingsMocks(page: Page) {
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
 }
 
+async function setupSettingsSyncingMocks(page: Page) {
+  await seedAuthenticatedSession(page);
+  await attachCheckoutGuards(page);
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/subscription/status'),
+    fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
+  );
+  await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_SYNCING_RESPONSE));
+  await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
+}
+
+async function setupSettingsMissingScopesMocks(page: Page) {
+  await seedAuthenticatedSession(page);
+  await attachCheckoutGuards(page);
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/subscription/status'),
+    fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
+  );
+  await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_MISSING_SCOPES_RESPONSE));
+  await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
+}
+
 /** Past directives list — mocks `GET /api/conviction/history`. */
 async function setupBriefingsMocks(page: Page) {
   await seedAuthenticatedSession(page);
@@ -329,7 +375,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupEmptyDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(
-      page.getByText(/next read|tomorrow morning|learning from your patterns|set until tomorrow|directive is queued|connect accounts/i).first(),
+      page.getByText(/finished move|one thing that matters|reading connected sources|task list|connect accounts/i).first(),
     ).toBeVisible({
       timeout: 15000,
     });
@@ -498,6 +544,36 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     await page.goto('/dashboard/settings');
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
+  });
+
+  test('shows first-run sync and next-step guidance — desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await setupSettingsSyncingMocks(page);
+    await page.goto('/dashboard/settings');
+    await expect(page.getByText(/Foldera is reading your connected sources and looking for the one thing silently blocking your real goal/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/No extra setup required/i)).toBeVisible();
+    await expect(page.getByText(/first value/i).first()).toBeVisible();
+    await expect(page.getByText(/signed in as/i)).toBeVisible();
+  });
+
+  test('shows missing-scope reconnect guidance — mobile 390px', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupSettingsMissingScopesMocks(page);
+    await page.goto('/dashboard/settings');
+    await expect(page.getByText(/one more consent step to keep reading/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/reconnect required/i).first()).toBeVisible();
+    await expect(page.getByText(/Gmail read access/i).first()).toBeVisible();
+  });
+});
+
+test.describe('Beta loop /start smoke', () => {
+  test('unauthenticated user can reach start/login', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/start');
+    await expect(page.getByRole('heading', { name: /get started with foldera/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /continue with google/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /continue with microsoft/i })).toBeVisible();
+    await expect(page.getByText(/first read arrives tomorrow morning/i)).toBeVisible();
   });
 });
 

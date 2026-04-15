@@ -14,6 +14,42 @@ import { INTEGRATIONS_MAIL_GRAPH_STALE_MS, INTEGRATIONS_SYNC_STALE_MS } from '@/
 
 export const dynamic = 'force-dynamic';
 
+const GOOGLE_REQUIRED_SCOPE_HINTS = [
+  { needle: 'userinfo.email', label: 'email access' },
+  { needle: 'userinfo.profile', label: 'profile access' },
+  { needle: 'gmail.readonly', label: 'Gmail read access' },
+  { needle: 'gmail.send', label: 'send access' },
+  { needle: 'calendar', label: 'Calendar access' },
+  { needle: 'drive.readonly', label: 'Drive access' },
+];
+
+const MICROSOFT_REQUIRED_SCOPE_HINTS = [
+  { needle: 'user.read', label: 'Microsoft profile access' },
+  { needle: 'mail.read', label: 'mail read access' },
+  { needle: 'mail.send', label: 'mail send access' },
+  { needle: 'calendars.read', label: 'calendar access' },
+  { needle: 'files.read', label: 'files access' },
+  { needle: 'tasks.read', label: 'tasks access' },
+  { needle: 'offline_access', label: 'offline refresh access' },
+];
+
+function normalizeScopes(scopes: unknown): string[] {
+  return typeof scopes === 'string'
+    ? scopes
+        .split(/\s+/)
+        .map((scope) => scope.trim().toLowerCase())
+        .filter(Boolean)
+    : [];
+}
+
+function missingScopeLabels(provider: string, scopes: unknown): string[] {
+  const granted = normalizeScopes(scopes);
+  const hints = provider === 'microsoft' ? MICROSOFT_REQUIRED_SCOPE_HINTS : GOOGLE_REQUIRED_SCOPE_HINTS;
+  return hints
+    .filter(({ needle }) => !granted.some((scope) => scope.includes(needle)))
+    .map(({ label }) => label);
+}
+
 /**
  * PostgREST errors are often `PostgrestError extends Error`. `JSON.stringify(err)` drops
  * non-enumerable `message`, so schema errors never match `/oauth_reauth_required_at/`.
@@ -119,6 +155,7 @@ export async function GET() {
         sync_email: row.email ?? null,
         last_synced_at: row.last_synced_at ?? null,
         scopes: row.scopes ?? null,
+        missing_scopes: hasToken ? missingScopeLabels(uiProvider === 'azure_ad' ? 'microsoft' : 'google', row.scopes) : [],
         expires_at: expSec,
         needs_reconnect: needsReconnect,
         needs_reauth: reauthRequired,

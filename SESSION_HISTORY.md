@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-14 — beta first-run loop: connected provider, sync timing, and reconnect clarity
+- MODE: UX / onboarding seam
+- Files changed: `app/api/integrations/status/route.ts`, `app/dashboard/settings/SettingsClient.tsx`, `app/layout.js`, `tests/e2e/authenticated-routes.spec.ts`, `pages/500.tsx`, `SESSION_HISTORY.md`
+- What changed: Added a clear first-run beta status block on `/dashboard/settings` that explains what Foldera is doing now, when first value arrives, and what to do when a provider is missing scopes or still syncing. The integration status payload now includes human-readable missing-scope hints so reconnect copy can say why the user needs to re-consent. Removed the Google font build dependency from the root layout so `next build` no longer depends on `fonts.gstatic.com`.
+- Verification: `npm run health` (0 FAILING, warnings only); `npx vitest run app/api/integrations/status/__tests__/route.test.ts`; `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts`
+- Unresolved issues: unrelated worktree changes remain untouched.
+
 ## 2026-04-14 — briefing test fix: replace stale fixture dates in the two red specs
 - MODE: TEST FIX
 - Files changed: `lib/briefing/__tests__/decision-payload-adversarial.test.ts`, `lib/briefing/__tests__/usefulness-gate.test.ts`, `SESSION_HISTORY.md`
