@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDecisionEnforcedFallbackPayload } from '../generator';
+import { buildDecisionEnforcedFallbackPayload, getDecisionEnforcementIssues } from '../generator';
 import type { ScoredLoop } from '../scorer';
 import type { ValidArtifactTypeCanonical } from '../types';
 
@@ -54,5 +54,50 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
       /^publish a decision memo that locks owner accountability/i,
     );
     expect(payload!.artifact.content.toLowerCase()).toMatch(/decision required/);
+  });
+
+  it('uses hunt grounded recipient allowlist when summaries omit the external email', () => {
+    const payload = buildDecisionEnforcedFallbackPayload({
+      winner: baseWinner({
+        id: 'hunt_ignored_hello_deako_com',
+        type: 'hunt',
+        title: 'Inbound email unanswered 9+ days — Deako',
+        content: '3 inbound emails from same sender in 30 days — zero replies synced',
+        suggestedActionType: 'send_message',
+        relationshipContext: null,
+        relatedSignals: ['3 inbound emails from same sender in 30 days — zero replies synced'],
+        sourceSignals: [
+          {
+            kind: 'signal',
+            id: 'sig-1',
+            source: 'gmail',
+            summary: '3 inbound emails from same sender in 30 days — zero replies synced',
+          },
+        ],
+      }),
+      actionType: 'send_message' as ValidArtifactTypeCanonical,
+      candidateDueDate: null,
+      candidateGoal: null,
+      causalDiagnosis: {
+        why_exists_now: 'Three unanswered Deako emails are still sitting open.',
+        mechanism: 'The thread stayed open without a closing yes/no response.',
+      },
+      huntRecipientAllowlist: ['hello@deako.com'],
+      userEmails: new Set(['owner@me.com']),
+      userPromptNames: { user_full_name: 'Brandon Kapp', user_first_name: 'Brandon' },
+    });
+
+    expect(payload).not.toBeNull();
+    expect(payload!.artifact_type).toBe('send_message');
+    expect(payload!.artifact.to).toBe('hello@deako.com');
+    expect(payload!.directive.toLowerCase()).toMatch(/email hello/);
+
+    const issues = getDecisionEnforcementIssues({
+      actionType: 'send_message',
+      directiveText: payload!.directive,
+      reason: payload!.why_now,
+      artifact: payload!.artifact,
+    });
+    expect(issues.filter((issue) => issue.startsWith('decision_enforcement:'))).toEqual([]);
   });
 });

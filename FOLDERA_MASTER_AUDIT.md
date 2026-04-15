@@ -1,3 +1,17 @@
+### NEEDS_REVIEW — 2026-04-15 — Fresh owner proof blocked after hunt repair because pending_approval reuse short-circuits generation
+This session fixed the exact hunt repair seam in `lib/briefing/generator.ts`: deterministic `send_message` repair for hunt winners can now use `ctx.hunt_send_message_recipient_allowlist` when scorer summaries omit the real email address. That addresses the Deako-style failure where the winning thread had `author: Deako <hello@deako.com>` on the source signals, but `buildDecisionEnforcedFallbackPayload` only searched summary text and returned `null`.
+
+Mandatory QA gate results:
+- `npx vitest run lib/briefing/__tests__/decision-enforced-fallback.test.ts` passed.
+- `npm run build` passed.
+- `npx playwright test` passed (`78 passed`, `4 skipped`).
+
+Live proof status after patch:
+- Pre-patch live owner failure remained visible in persisted row `d0152721-f151-4ad1-b2cf-0b24ec8a84e3` with top candidate `hunt_ignored_hello_deako_com` and no-send reason `decision_enforcement:missing_explicit_ask; decision_enforcement:missing_pressure_or_consequence; decision_enforcement:missing_owner_assignment`.
+- Post-patch `npx tsx scripts/run-paid-generate-once.ts` did not reach generation. `runDailyGenerate` returned `pending_approval_reused` and preserved action `385be7db-5746-4590-b52d-56b934ee0c30` before a new directive could be generated, even under `forceFreshRun`.
+
+Status: `NEEDS_REVIEW` — the generator repair is in place and verified locally, but a fresh owner-data end-to-end proof now requires clearing or aging out the preserved `pending_approval` row in `lib/cron/daily-brief-generate.ts`.
+
 ### NEEDS_REVIEW — 2026-04-15 — Owner wow artifact still blocked after recipientless decay fix: generator decision-enforcement rejects the new live winner
 This session fixed the first proven live owner-data seam still inside the current path: recipientless `decay` discrepancies were allowed to downgrade from `send_message` to `write_document`, which persisted a weak Marissa Kapp self-memo instead of forcing fallback to another candidate. `lib/briefing/trigger-action-map.ts` now treats `decay` as recipient-required and rejects `write_document` fallback for that class.
 

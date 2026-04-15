@@ -6917,6 +6917,7 @@ export function buildDecisionEnforcedFallbackPayload(input: {
   candidateDueDate: string | null;
   candidateGoal: string | null;
   causalDiagnosis: CausalDiagnosis;
+  huntRecipientAllowlist?: string[];
   userEmails?: Set<string>;
   userPromptNames: UserPromptNames;
 }): GeneratedDirectivePayload | null {
@@ -6949,7 +6950,10 @@ export function buildDecisionEnforcedFallbackPayload(input: {
   });
 
   if (input.actionType === 'send_message') {
-    const recipient = extractAllEmailAddresses(input.winner, input.userEmails)[0];
+    const recipient = (
+      input.huntRecipientAllowlist?.find((email) => isEligibleExternalPeerEmail(email, input.userEmails)) ??
+      extractAllEmailAddresses(input.winner, input.userEmails)[0]
+    )?.toLowerCase();
     if (!recipient) return null;
 
     // For relationship decay/risk candidates, produce a warm reconnect email
@@ -8615,6 +8619,7 @@ export async function generateDirective(
           candidateDueDate: ctx.candidate_due_date,
           candidateGoal: ctx.candidate_goal,
           causalDiagnosis: ctx.required_causal_diagnosis,
+          huntRecipientAllowlist: ctx.hunt_send_message_recipient_allowlist,
           userEmails,
           userPromptNames: {
             user_full_name: ctx.user_full_name,

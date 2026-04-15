@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-15 — generator repair: let hunt send_message fallback use grounded recipient allowlist
+- MODE: OWNER DATA / PRODUCT QUALITY
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/decision-enforced-fallback.test.ts`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
+- What changed: Narrowed the generator repair seam for live hunt winners. `buildDecisionEnforcedFallbackPayload` now prefers the hunt winner’s grounded recipient allowlist when scorer summaries omit the actual external email, and the repair call site now passes `ctx.hunt_send_message_recipient_allowlist`. This prevents thread-backed hunt winners like Deako from failing repair solely because the winning summaries say “same sender” instead of surfacing `hello@deako.com`.
+- Verification: `npm run health` (0 FAILING; warning-only `Last generation do_nothing`); live owner proof before patch from persisted row `d0152721-f151-4ad1-b2cf-0b24ec8a84e3` showed top candidate `hunt_ignored_hello_deako_com` with no-send reason `decision_enforcement:missing_explicit_ask; decision_enforcement:missing_pressure_or_consequence; decision_enforcement:missing_owner_assignment`; production data proof showed Deako signal authors on the winning thread as `Deako <hello@deako.com>` while repair lookup only searched summaries/context; `npx vitest run lib/briefing/__tests__/decision-enforced-fallback.test.ts`; `npm run build`; `npx playwright test` (78 passed, 4 skipped); post-patch live owner rerun `npx tsx scripts/run-paid-generate-once.ts` returned `pending_approval_reused` because existing valid action `385be7db-5746-4590-b52d-56b934ee0c30` was preserved before generation.
+- Unresolved issues: fresh post-patch owner generation is still blocked by `lib/cron/daily-brief-generate.ts` pending-action reuse (`forceFreshRun` still preserves recent valid `pending_approval` rows), so the repaired hunt send path could not be re-exercised end to end in this session.
+
 ## 2026-04-15 — owner-data wow seam: block recipientless decay memo laundering, expose generator decision-enforcement blocker
 - MODE: OWNER DATA / PRODUCT QUALITY
 - Files changed: `lib/briefing/trigger-action-map.ts`, `lib/briefing/__tests__/trigger-action-lock.test.ts`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
