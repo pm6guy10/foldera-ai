@@ -4372,3 +4372,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Added a narrow hunt-only bridge `appendHuntRecipientGroundingEvidence` so when the winning candidate class is `hunt` and committed action is `send_message`, the validated `artifact.to` is written into directive evidence only if it is in `hunt_send_message_recipient_allowlist` (winning-thread grounded). This preserves strict recipient validation and prevents later persistence from failing due to missing directive/evidence recipient anchoring.
 - Verification: `npm run health` (0 FAILING); `npx vitest run lib/briefing/__tests__/hunt-recipient-grounding.test.ts`; `npx vitest run lib/conviction/__tests__/send-message-recipient-grounding.test.ts`; `npx tsx scripts/run-brain-receipt-real-once.ts` (exactly one real generation call); `npm run build`; `npx playwright test` (78 passed, 4 skipped).
 - Unresolved issues: the single real rerun selected a non-hunt discrepancy winner (`discrepancy_exposure_0440f585-1b60-4196-927e-0bca9f872931`), so live hunt persistence was not re-exercised in that call.
+
+## 2026-04-15 — ranking invariant: treat unanchored exposure as calendar/admin discrepancy
+- MODE: BUGFIX (single seam)
+- Files changed: `lib/briefing/scorer.ts`, `SESSION_HISTORY.md`
+- What changed: Added `exposure` to `CALENDAR_ADMIN_DISCREPANCY_CLASSES` so unanchored exposure discrepancies do not inherit discrepancy-priority boost (same policy as other calendar/admin classes).
+- Verification: `npm run health` (0 FAILING, warning-only repeated directive); one real generation call via local `/api/dev/brain-receipt` with paid LLM enabled (persisted a `pending_approval` write_document); `npm run build`; `npx playwright test` (78 passed, 4 skipped).
+- Unresolved issues: none proven for this seam; next quality work should target exposure discrepancies that are goal-anchored (separate seam).

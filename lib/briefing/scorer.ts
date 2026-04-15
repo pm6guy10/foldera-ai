@@ -1737,6 +1737,7 @@ const THREAD_BACKED_SENDABLE_DISCREPANCY_CLASSES = new Set<string>([
 const CALENDAR_ADMIN_DISCREPANCY_CLASSES = new Set<string>([
   'meeting_open_thread',
   'preparation_gap',
+  'exposure',
 ]);
 
 function isLowValueCalendarAdminDiscrepancy(candidate: ScoredLoop): boolean {
