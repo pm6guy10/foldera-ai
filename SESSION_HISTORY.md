@@ -4256,3 +4256,9 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Verification: `npx vitest run lib/briefing/__tests__/scorer-ranking-invariants.test.ts` passed; broader hook failures remained unrelated baseline issues in `decision-payload-adversarial` and `usefulness-gate`.
 - Unresolved issues: pre-push hook still reports unrelated baseline failures outside the behavioral_pattern artifact-generator seam.
 
+## 2026-04-14 — Owner beta readiness: single-command report for one user
+- MODE: OPS / OWNER TOOLING (narrow seam)
+- Files changed: `scripts/beta-readiness.ts`, `package.json`, `SESSION_HISTORY.md`
+- What changed: Added `npm run beta:readiness -- <user-id-or-email> [--json]` to print a single readiness report with explicit READY/NOT_READY verdict and exact blockers (user/account/providers/scopes/sync/signals/directive/artifact gates).
+- Verification: `npm run health` (0 FAILING); `npm run beta:readiness` against a real non-owner user; `npm run build`; `npx playwright test`.
+

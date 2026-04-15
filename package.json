@@ -15,6 +15,7 @@
     "audit:all": "npx playwright test --config=playwright.audit.config.ts && npx tsx scripts/ux-audit.ts",
     "audit:supabase:sync-fix": "node scripts/audit-supabase-sync-fix.mjs",
     "health": "npx tsx scripts/health.ts",
+    "beta:readiness": "npx tsx scripts/beta-readiness.ts",
     "scoreboard": "npx tsx scripts/scoreboard.ts",
     "peek:pipeline-winner": "npx tsx scripts/peek-pipeline-winner.ts",
     "prod:dry-run-plain": "npx tsx scripts/prod-dry-run-plain.ts",
