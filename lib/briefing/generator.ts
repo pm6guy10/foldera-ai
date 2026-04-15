@@ -4506,6 +4506,15 @@ function resolveTemporalAnchor(text: string, now = new Date()): ResolvedTemporal
   const lower = text.toLowerCase();
   const timeMinutes = parseTimeMinutes(lower);
 
+  if (/\btomorrow\b/i.test(lower)) {
+    const d = new Date(now);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return { dayKey: toDayKey(d), timeMinutes };
+  }
+  if (/\b(?:today|tonight)\b/i.test(lower)) {
+    return { dayKey: toDayKey(now), timeMinutes };
+  }
+
   const iso = lower.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
   if (iso) {
     const day = new Date(`${iso[1]}T00:00:00Z`);
@@ -4526,15 +4535,6 @@ function resolveTemporalAnchor(text: string, now = new Date()): ResolvedTemporal
       const resolved = new Date(Date.UTC(year, month, day));
       if (!Number.isNaN(resolved.getTime())) return { dayKey: toDayKey(resolved), timeMinutes };
     }
-  }
-
-  if (/\btomorrow\b/i.test(lower)) {
-    const d = new Date(now);
-    d.setUTCDate(d.getUTCDate() + 1);
-    return { dayKey: toDayKey(d), timeMinutes };
-  }
-  if (/\b(?:today|tonight)\b/i.test(lower)) {
-    return { dayKey: toDayKey(now), timeMinutes };
   }
 
   return null;
