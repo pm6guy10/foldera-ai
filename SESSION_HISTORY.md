@@ -4297,3 +4297,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: In `generateArtifact` write_document path, the compat layer now first validates and returns `directive.embeddedArtifact` when it is a valid finished document. This bypasses the legacy context-to-`Objective`/`Execution Notes` conversion when a stronger structured artifact already exists.
 - Verification: `npm run health` (0 FAILING; warning-only `Last generation do_nothing`); targeted replay via `npx tsx` before/after (`Follow up with Marissa Kapp` case) showing generic fallback before and structured `Reconnection Prep: Marissa Kapp — Missing Context` after; `npx vitest run lib/conviction/__tests__/artifact-generator.test.ts`; `npm run build`; `npx playwright test`.
 - Unresolved issues: none for this seam.
+
+## 2026-04-15 — pending approval reuse seam: dev brain-receipt force-fresh bypass
+- MODE: BUGFIX (single seam)
+- Files changed: `lib/cron/daily-brief-generate.ts`, `lib/cron/daily-brief-types.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
+- What changed: Added a narrow owner/dev-only bypass in `reconcilePendingApprovalQueue` so `forceFreshRun` with `briefInvocationSource` `dev_brain_receipt` or `dev_brain_receipt_verification` suppresses otherwise reusable in-window pending actions instead of returning `pending_approval_reused`. Default production reuse behavior remains unchanged.
+- Verification: `npm run health` (0 FAILING); pre-patch live run `npx tsx scripts/run-brain-receipt-real-once.ts` -> `pending_approval_reused`; post-patch same run bypassed reuse and reached fresh processing (`no_send_persisted`, blocker `paid_llm_disabled`); `npx vitest run lib/cron/__tests__/daily-brief.test.ts`; `npm run build`; `npx playwright test` (78 passed, 4 skipped).
+- Unresolved issues: fresh artifact persistence is still blocked by `paid_llm_disabled` after generation is allowed; logged in `FOLDERA_MASTER_AUDIT.md` as `NEEDS_REVIEW`.

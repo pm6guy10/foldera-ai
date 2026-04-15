@@ -1021,6 +1021,10 @@ async function reconcilePendingApprovalQueue(
 
   const rows = (data ?? []) as PendingActionRow[];
   const staleCutoffIso = new Date(Date.now() - STALE_PENDING_HOURS * 3_600_000).toISOString();
+  const shouldBypassPendingReuseForDevProof =
+    options.forceFreshRun === true &&
+    (options.briefInvocationSource === 'dev_brain_receipt' ||
+      options.briefInvocationSource === 'dev_brain_receipt_verification');
   let preservedAction: PendingActionRow | null = null;
   const skippedActionIds: string[] = [];
   let recentDoNothingGeneratedAt: string | null = null;
@@ -1038,14 +1042,16 @@ async function reconcilePendingApprovalQueue(
       typeof row.confidence === 'number' &&
       row.confidence >= CONFIDENCE_THRESHOLD;
 
-    // Valid + within STALE_PENDING_HOURS: always preserve (even under forceFreshRun / ?force=true).
-    // Fresh generation only after approve/skip clears pending or age passes the window.
-    if (!isValid || !isRecentEnough) {
+    // Valid + within STALE_PENDING_HOURS is preserved by default.
+    // Owner-only brain-receipt proof runs may bypass reuse to verify a fresh post-patch generation.
+    if (!isValid || !isRecentEnough || shouldBypassPendingReuseForDevProof) {
       const executionResult =
         row.execution_result && typeof row.execution_result === 'object'
           ? (row.execution_result as Record<string, unknown>)
           : {};
-      const suppressionReason = alreadySent
+      const suppressionReason = shouldBypassPendingReuseForDevProof
+        ? 'Auto-suppressed pending action for dev brain-receipt force-fresh run.'
+        : alreadySent
         ? 'Auto-suppressed already-sent pending action before daily brief generation.'
         : isDoNothing
         ? 'Auto-suppressed do_nothing pending action — never send to user.'

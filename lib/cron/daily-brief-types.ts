@@ -70,9 +70,8 @@ export interface DailyBriefSignalWindowOptions {
   /** When true, skip manual directive call-count cap and the 20h full-cycle cooldown (Generate Now, brain-receipt). */
   skipManualCallLimit?: boolean;
   /**
-   * When true, manual/debug run (e.g. `?force=true`). Does **not** bypass pending reuse:
-   * a valid `pending_approval` within STALE_PENDING_HOURS is still returned. Use after
-   * approve/skip clears the queue to get a new generation pass.
+   * When true, manual/debug run (e.g. `?force=true`). Pending reuse remains the default.
+   * Dev brain-receipt invocations may bypass pending reuse to prove a fresh generation path.
    */
   forceFreshRun?: boolean;
   /** Caller label for structured logs (cron vs settings vs dev). Not a security boundary. */
