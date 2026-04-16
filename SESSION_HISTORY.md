@@ -6,8 +6,8 @@
 - MODE: BUGFIX (single seam)
 - Files changed: `lib/cron/duplicate-truth.ts`, `lib/cron/__tests__/duplicate-truth.test.ts`, `lib/cron/daily-brief-generate.ts`, `scripts/health.ts`, `scripts/run-verification-golden-path-once.ts`, `scripts/run-brain-receipt-real-once.ts`, `SESSION_HISTORY.md`
 - What changed: Added one shared duplicate-truth classifier so health now separates historical duplicate backlog from an active duplicate regression, `runDailyGenerate()` stamps protective duplicate-blocked no-send outcomes, and both proof scripts accept `no_send_persisted` only when duplicate suppression truthfully blocked another persistence rather than treating every no-send as success.
-- Verification: `npx vitest run lib/cron/__tests__/duplicate-truth.test.ts` (4 passed); `npx vitest run lib/cron/__tests__/daily-brief.test.ts` (19 passed); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts` (18 passed); `npm run health` (`⚠ Duplicate backlog ... latest run protected with no_send_persisted`, `0 FAILING`); `npx tsx scripts/run-verification-golden-path-once.ts` (accepted current proof semantics and persisted fresh `pending_approval`); `npm run build`.
-- Unresolved issues: Vercel deploy verification was pending when this log entry was written.
+- Verification: `npx vitest run lib/cron/__tests__/duplicate-truth.test.ts` (4 passed); `npx vitest run lib/cron/__tests__/daily-brief.test.ts` (19 passed); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts` (18 passed); `npm run health` (`⚠ Duplicate backlog ... latest run protected with no_send_persisted`, `0 FAILING`); `npx tsx scripts/run-verification-golden-path-once.ts` (accepted current proof semantics and persisted fresh `pending_approval`); `npm run build`; Vercel production deployment `dpl_BDuMFjhwpYq4v7YXRMgYqbEj4WeG` READY; `https://www.foldera.ai/api/health` reports `build=ef49f74`.
+- Unresolved issues: none for this seam.
 
 ## 2026-04-16 — proof-noise warning compatibility guards
 - MODE: BUGFIX (single seam)
