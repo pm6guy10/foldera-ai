@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-16 — proof-noise warning compatibility guards
+- MODE: BUGFIX (single seam)
+- Files changed: `lib/signals/directive-history-signal.ts`, `lib/signals/__tests__/directive-history-signal.test.ts`, `lib/ml/directive-ml-snapshot.ts`, `lib/ml/__tests__/directive-ml-snapshot.test.ts`, `SESSION_HISTORY.md`
+- What changed: Narrow backward-compat guards now treat two proven stale-schema sidecars as non-blocking compatibility gaps instead of operator-facing warnings. `persistDirectiveHistorySignal()` disables further directive-history inserts after `tkg_signals_source_check` / `tkg_signals_type_check` compatibility failures, and the ML snapshot writer disables snapshot insert/update/engagement after the proven stale `tkg_directive_ml_snapshots` schema-mismatch class (`bucket_key` / missing snapshot columns). Unexpected DB failures still warn.
+- Verification: `npx vitest run lib/signals/__tests__/directive-history-signal.test.ts lib/ml/__tests__/directive-ml-snapshot.test.ts` (4 passed); `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/conviction/__tests__/execute-action.test.ts lib/webhooks/__tests__/resend-webhook.test.ts` (36 passed); `npm run health` (0 FAILING, repeated-directive warning only); `npx tsx scripts/run-verification-golden-path-once.ts` before patch reproduced both warnings and after patch persisted fresh `pending_approval` with those warning lines absent; `npm run build`.
+- Unresolved issues: the underlying production schema still appears older than these two sidecar writers, but the proof and health receipts are now clean unless a real active failure occurs.
+
 ## 2026-04-16 — non-owner first-read trigger surface
 - MODE: PROD READINESS (first-user seam)
 - Files changed: `app/dashboard/page.tsx`, `SESSION_HISTORY.md`
