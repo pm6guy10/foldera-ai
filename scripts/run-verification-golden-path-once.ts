@@ -12,6 +12,7 @@ config({ path: resolve(process.cwd(), '.env.local') });
 async function main() {
   const { runDailyGenerate } = await import('../lib/cron/daily-brief-generate');
   const { OWNER_USER_ID } = await import('../lib/auth/constants');
+  const { assessProofOutcome } = await import('../lib/cron/duplicate-truth');
 
   const result = await runDailyGenerate({
     userIds: [OWNER_USER_ID],
@@ -25,8 +26,9 @@ async function main() {
 
   console.log(JSON.stringify(result, null, 2));
   const row = result.results?.find((r) => r.userId === OWNER_USER_ID);
-  const code = row?.code;
-  if (code !== 'pending_approval_persisted') {
+  const assessment = assessProofOutcome(row);
+  if (!assessment.accepted) {
+    console.error(`Verification proof rejected outcome: ${assessment.reason}`);
     process.exit(1);
   }
 }

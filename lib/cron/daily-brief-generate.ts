@@ -64,6 +64,7 @@ import {
   buildSignalProcessingMessage,
   SAFE_ERROR_MESSAGES,
 } from './daily-brief-status';
+import { hasDuplicateSuppressionSignal } from './duplicate-truth';
 import { looksLikeDiscrepancyTriageOrChoreList } from '@/lib/briefing/discrepancy-finished-work';
 import {
   directiveLooksLikeScheduleConflict,
@@ -1202,6 +1203,28 @@ function buildNoSendExecutionResult(
   });
 }
 
+function hasProtectiveDuplicateBlock(
+  directive: ConvictionDirective,
+  reason: string,
+): boolean {
+  if (hasDuplicateSuppressionSignal(reason)) return true;
+  const candidateFailureReasons = directive.generationLog?.candidateFailureReasons ?? [];
+  return candidateFailureReasons.some((entry) => hasDuplicateSuppressionSignal(String(entry ?? '')));
+}
+
+function buildNoSendResultMeta(
+  cleanupMeta: Record<string, unknown>,
+  savedNoSend: { id: string; protectiveDuplicateBlock: boolean },
+  extras: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    ...cleanupMeta,
+    action_id: savedNoSend.id,
+    ...(savedNoSend.protectiveDuplicateBlock ? { protective_duplicate_block: true } : {}),
+    ...extras,
+  };
+}
+
 function buildWaitRationale(
   directive: ConvictionDirective,
   reason: string,
@@ -1294,9 +1317,10 @@ async function persistNoSendOutcome(
   reason: string,
   stage: GenerationRunLog['stage'],
   executionResultExtras?: Record<string, unknown>,
-): Promise<{ id: string } | null> {
+): Promise<{ id: string; protectiveDuplicateBlock: boolean } | null> {
   const executionResult = buildNoSendExecutionResult(directive, reason, stage);
   const waitRationale = buildWaitRationale(directive, reason);
+  const protectiveDuplicateBlock = hasProtectiveDuplicateBlock(directive, reason);
 
   const { data, error } = await supabase
     .from('tkg_actions')
@@ -1314,6 +1338,7 @@ async function persistNoSendOutcome(
       execution_result: {
         ...executionResult,
         artifact: waitRationale.artifact,
+        protective_duplicate_block: protectiveDuplicateBlock,
         original_candidate: {
           action_type: directive.action_type,
           candidate_description: typeof directive.directive === 'string' ? directive.directive.trim().slice(0, 500) : null,
@@ -1326,7 +1351,7 @@ async function persistNoSendOutcome(
     .single();
 
   if (error || !data?.id) return null;
-  return { id: data.id };
+  return { id: data.id, protectiveDuplicateBlock };
 }
 
 // ---------------------------------------------------------------------------
@@ -2074,7 +2099,9 @@ export async function runDailyGenerate(
         results.push({
           code: 'no_send_persisted',
           detail: readiness.reason,
-          meta: { ...cleanupMeta, action_id: savedNoSend.id, readiness_decision: readiness.decision },
+          meta: buildNoSendResultMeta(cleanupMeta, savedNoSend, {
+            readiness_decision: readiness.decision,
+          }),
           success: true,
           userId,
         });
@@ -2310,13 +2337,11 @@ export async function runDailyGenerate(
         results.push({
           code: 'no_send_persisted',
           detail: directive.reason,
-          meta: {
-            ...cleanupMeta,
-            action_id: savedNoSend.id,
+          meta: buildNoSendResultMeta(cleanupMeta, savedNoSend, {
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
             top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
             ...extractThresholdValues(directive),
-          },
+          }),
           success: true,
           userId,
         });
@@ -2352,13 +2377,11 @@ export async function runDailyGenerate(
         results.push({
           code: 'no_send_persisted',
           detail: candidateDiscoveryFailure,
-          meta: {
-            ...cleanupMeta,
-            action_id: savedNoSend.id,
+          meta: buildNoSendResultMeta(cleanupMeta, savedNoSend, {
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
             top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
             ...extractThresholdValues(directive),
-          },
+          }),
           success: true,
           userId,
         });
@@ -2397,13 +2420,11 @@ export async function runDailyGenerate(
         results.push({
           code: 'no_send_persisted',
           detail: 'Artifact generation failed.',
-          meta: {
-            ...cleanupMeta,
-            action_id: savedNoSend.id,
+          meta: buildNoSendResultMeta(cleanupMeta, savedNoSend, {
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
             top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
             ...extractThresholdValues(directive),
-          },
+          }),
           success: true,
           userId,
         });
@@ -2444,13 +2465,11 @@ export async function runDailyGenerate(
         results.push({
           code: 'no_send_persisted',
           detail: `Directive rejected by persistence validation: ${persistenceIssues.join('; ')}`,
-          meta: {
-            ...cleanupMeta,
-            action_id: savedNoSend.id,
+          meta: buildNoSendResultMeta(cleanupMeta, savedNoSend, {
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
             top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
             ...extractThresholdValues(directive),
-          },
+          }),
           success: true,
           userId,
         });
@@ -2505,13 +2524,11 @@ export async function runDailyGenerate(
         results.push({
           code: 'no_send_persisted',
           detail: `Output blocked by quality gate: ${sendWorthiness.reason}`,
-          meta: {
-            ...cleanupMeta,
-            action_id: savedNoSend.id,
+          meta: buildNoSendResultMeta(cleanupMeta, savedNoSend, {
             quality_gate_reason: sendWorthiness.reason,
             outcome_receipt: qualityGateReceipt,
             ...extractThresholdValues(directive),
-          },
+          }),
           success: true,
           userId,
         });
@@ -2560,13 +2577,11 @@ export async function runDailyGenerate(
         results.push({
           code: 'no_send_persisted',
           detail: blockDetail,
-          meta: {
-            ...cleanupMeta,
-            action_id: savedNoSend.id,
+          meta: buildNoSendResultMeta(cleanupMeta, savedNoSend, {
             bottom_gate_blocked_reasons: bottomGate.blocked_reasons,
             outcome_receipt: blockedReceipt,
             ...extractThresholdValues(directive),
-          },
+          }),
           success: true,
           userId,
         });

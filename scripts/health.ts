@@ -5,9 +5,9 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import { config } from 'dotenv';
-import { createHash } from 'crypto';
 import { resolve } from 'path';
 import { STALE_PENDING_APPROVAL_MAX_AGE_HOURS } from '../lib/config/constants';
+import { summarizeRepeatedDirectiveHealth } from '../lib/cron/duplicate-truth';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 
@@ -16,10 +16,6 @@ const TWENTY_FOUR_H_MS = 24 * 60 * 60 * 1000;
 const MAIL_TYPES = ['email_received', 'email_sent'] as const;
 
 type CheckRow = { ok: boolean; line: string };
-
-function md5Hex(s: string): string {
-  return createHash('md5').update(s, 'utf8').digest('hex');
-}
 
 function formatPtHeader(): string {
   const now = new Date();
@@ -182,26 +178,35 @@ async function main() {
     const since = new Date(now - TWENTY_FOUR_H_MS).toISOString();
     const { data: acts, error } = await supabase
       .from('tkg_actions')
-      .select('directive_text')
+      .select('directive_text, generated_at, reason, execution_result')
       .eq('user_id', userId)
       .gte('generated_at', since);
 
     if (error) throw new Error(error.message);
-    const hashes = new Map<string, number>();
-    for (const row of acts ?? []) {
-      const prefix = (row.directive_text ?? '').slice(0, 400);
-      const h = md5Hex(prefix);
-      hashes.set(h, (hashes.get(h) ?? 0) + 1);
-    }
-    let maxCopies = 0;
-    for (const c of hashes.values()) maxCopies = Math.max(maxCopies, c);
-    const repeated = maxCopies >= 3;
+    const repeated = summarizeRepeatedDirectiveHealth(
+      (acts ?? []).map((row) => ({
+        directive_text: row.directive_text,
+        generated_at: row.generated_at,
+        reason: row.reason,
+        protective_duplicate_block:
+          Boolean(
+            row.execution_result &&
+            typeof row.execution_result === 'object' &&
+            (row.execution_result as Record<string, unknown>).protective_duplicate_block === true,
+          ),
+      })),
+      now,
+    );
     checks.push({
-      // Informational only: 24h window can hold historical duplicates until it clears.
-      ok: true,
-      line: repeated
-        ? `⚠ Repeated directive    max ${maxCopies} copies of one shape in 24h`
-        : '✓ No repeated directive',
+      ok: repeated.status !== 'active_regression',
+      line:
+        repeated.status === 'clear'
+          ? '✓ No repeated directive'
+          : repeated.status === 'historical_backlog'
+            ? repeated.latestRowProtectedDuplicateBlock
+              ? `⚠ Duplicate backlog     max ${repeated.maxCopies} copies of one shape in 24h; latest run protected with no_send_persisted`
+              : `⚠ Duplicate backlog     max ${repeated.maxCopies} copies of one shape in 24h; latest persisted copy ${relAgo(repeated.dominantLatestGeneratedAt, now)}`
+            : `✗ Active duplicate regression  max ${repeated.maxCopies} copies of one shape in 24h; latest persisted copy ${relAgo(repeated.dominantLatestGeneratedAt, now)}`,
     });
   } catch (e) {
     checks.push({
