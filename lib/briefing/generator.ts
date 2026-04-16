@@ -7396,13 +7396,14 @@ export function buildDecisionEnforcedFallbackPayload(input: {
   candidateDueDate: string | null;
   candidateGoal: string | null;
   causalDiagnosis: CausalDiagnosis;
-  supportingSignals: CompressedSignal[];
+  supportingSignals?: CompressedSignal[];
   huntRecipientAllowlist?: string[];
   userEmails?: Set<string>;
   userPromptNames: UserPromptNames;
 }): GeneratedDirectivePayload | null {
   const target = cleanDecisionTarget(input.winner.title);
   const deadline = resolveDecisionDeadline(input.candidateDueDate);
+  const supportingSignals = input.supportingSignals ?? [];
 
   // If winner has trigger metadata, use it to produce specific copy.
   // But skip trigger metadata that contains system metric strings (e.g. "52% drop in
@@ -7558,7 +7559,7 @@ export function buildDecisionEnforcedFallbackPayload(input: {
       winner: input.winner,
       candidateDueDate: input.candidateDueDate,
       causalDiagnosis: input.causalDiagnosis,
-      supportingSignals: input.supportingSignals,
+      supportingSignals,
     });
     if (interviewPayload !== undefined) {
       return interviewPayload;
