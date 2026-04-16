@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-16 — non-owner first-read trigger surface
+- MODE: PROD READINESS (first-user seam)
+- Files changed: `app/dashboard/page.tsx`, `SESSION_HISTORY.md`
+- What changed: The normal dashboard empty state now detects active connected integrations and exposes the existing authenticated `/api/settings/run-brief?force=true&use_llm=true` first-read trigger to non-owner users. Owner-only `/dashboard/system` remains owner-only; the pipeline route still uses the session user and existing spend gates.
+- Verification: `npm run health` (0 FAILING, warning-only repeated directive); production Vercel inspect (`foldera.ai` READY); production Supabase product-state check (0 non-owner product users with connected/onboarded/artifact chain before this change); production Playwright anonymous new-user/schema smoke (7 passed); `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts --exclude ".claude/worktrees/**"` (10 passed); `npm run build`; `npx playwright test` (78 passed, 4 skipped).
+- Unresolved issues: no non-owner OAuth credentials/session were available in this workspace, so the deployed post-change path still needs a real non-owner OAuth run after Vercel promotes the commit.
+
 ## 2026-04-16 — interview-week reality gate
 - MODE: BUGFIX (single seam)
 - Files changed: `lib/briefing/discrepancy-detector.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `SESSION_HISTORY.md`

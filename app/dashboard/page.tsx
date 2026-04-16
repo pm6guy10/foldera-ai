@@ -86,6 +86,8 @@ export default function DashboardPage() {
   const [executedActionId, setExecutedActionId] = useState<string | null>(null);
   const [outcomeRecorded, setOutcomeRecorded] = useState(false);
   const [oauthReconnect, setOauthReconnect] = useState<'google' | 'microsoft' | null>(null);
+  const [hasActiveIntegration, setHasActiveIntegration] = useState(false);
+  const [firstReadRunning, setFirstReadRunning] = useState(false);
 
   const loadAbortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(false);
@@ -112,8 +114,9 @@ export default function DashboardPage() {
     let cancelled = false;
     void fetch('/api/integrations/status', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { integrations?: Array<{ provider: string; needs_reauth?: boolean }> } | null) => {
+      .then((data: { integrations?: Array<{ provider: string; is_active?: boolean; needs_reauth?: boolean }> } | null) => {
         if (cancelled || !data?.integrations) return;
+        setHasActiveIntegration(data.integrations.some((i) => i.is_active === true));
         const ms = data.integrations.find((i) => i.provider === 'azure_ad' && i.needs_reauth);
         const g = data.integrations.find((i) => i.provider === 'google' && i.needs_reauth);
         if (ms) setOauthReconnect('microsoft');
@@ -401,6 +404,45 @@ export default function DashboardPage() {
     subPlan === 'pro' && (subStatus === 'active' || subStatus === 'past_due');
   const showArtifactBlur = Boolean(artifact) && !isProArtifactUnlocked;
 
+  async function runFirstReadNow() {
+    if (firstReadRunning) return;
+    setFirstReadRunning(true);
+    setFlash(null);
+    try {
+      const res = await fetch('/api/settings/run-brief?force=true&use_llm=true', {
+        method: 'POST',
+      });
+      const data = await res.json().catch(() => ({}));
+      const spend = data?.spend_policy as
+        | { paid_llm_requested?: boolean; pipeline_dry_run?: boolean }
+        | undefined;
+
+      if (spend?.paid_llm_requested && spend?.pipeline_dry_run) {
+        setFlash('First read ran as a dry run. Real generation is not enabled on this deployment.');
+        return;
+      }
+
+      if (!res.ok && !data?.stages) {
+        const msg =
+          typeof data?.error === 'string'
+            ? data.error
+            : 'Could not run your first read right now.';
+        throw new Error(msg);
+      }
+
+      await load();
+      setFlash(
+        data?.ok === true
+          ? 'First read generated.'
+          : 'First read ran. Foldera will show the result when the pipeline has enough signal.',
+      );
+    } catch (err: unknown) {
+      setFlash(err instanceof Error ? err.message : 'Could not run your first read right now.');
+    } finally {
+      setFirstReadRunning(false);
+    }
+  }
+
   async function startStripeCheckout() {
     try {
       const res = await fetch('/api/stripe/checkout', {
@@ -552,6 +594,23 @@ export default function DashboardPage() {
               <p className="text-zinc-500 text-sm mt-3 leading-relaxed max-w-sm mx-auto">
                 No directive is queued in the app right now. Your next read still lands in email — connect accounts in Settings if you want deeper context.
               </p>
+              {hasActiveIntegration && (
+                <button
+                  type="button"
+                  onClick={() => void runFirstReadNow()}
+                  disabled={firstReadRunning}
+                  className="mt-6 w-full min-h-[52px] touch-manipulation rounded-xl bg-white px-5 py-3.5 text-xs font-black uppercase tracking-[0.15em] text-black shadow-[0_0_30px_rgba(255,255,255,0.14)] transition-all hover:bg-zinc-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-wait disabled:opacity-50 disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                >
+                  {firstReadRunning ? (
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <span className="h-4 w-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />
+                      Running first read
+                    </span>
+                  ) : (
+                    'Run first read now'
+                  )}
+                </button>
+              )}
             </div>
           </div>
         ) : (
