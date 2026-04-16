@@ -4261,6 +4261,7 @@ export async function checkConsecutiveDuplicate(
       if (actionType === 'do_nothing' || actionType === 'wait_rationale') continue;
       if (isInternalNoSendExecutionResult(action.execution_result)) continue;
       if (isVerificationStubPersistExecutionResult(action.execution_result)) continue;
+      if (isDevForceFreshAutoSuppressedExecutionResult(action.execution_result)) continue;
 
       const existingNormalized = normalizeText(action.directive_text);
       const sim = similarityScore(newNormalized, existingNormalized);
@@ -4342,6 +4343,13 @@ function containsBannedLanguage(value: string): boolean {
 function isInternalNoSendExecutionResult(executionResult: unknown): boolean {
   if (!executionResult || typeof executionResult !== 'object') return false;
   return (executionResult as Record<string, unknown>).outcome_type === 'no_send';
+}
+
+function isDevForceFreshAutoSuppressedExecutionResult(executionResult: unknown): boolean {
+  if (!executionResult || typeof executionResult !== 'object') return false;
+  const reason = (executionResult as Record<string, unknown>).auto_suppression_reason;
+  if (typeof reason !== 'string') return false;
+  return /dev brain-receipt force-fresh run|forced fresh generation/i.test(reason);
 }
 
 /**

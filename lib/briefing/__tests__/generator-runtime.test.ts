@@ -851,6 +851,72 @@ describe('generateDirective runtime failures', () => {
     expect(duplicate.isDuplicate).toBe(false);
   });
 
+  it('ignores dev force-fresh auto-suppressed ghost rows when checking live duplicate suppression', async () => {
+    queueTkgActionsResult([
+      {
+        id: 'force-fresh-ghost-1',
+        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        action_type: 'send_message',
+        execution_result: {
+          artifact: { to: 'partner@example.com' },
+          auto_suppression_reason: 'Auto-suppressed pending action for dev brain-receipt force-fresh run.',
+        },
+        status: 'skipped',
+      },
+      {
+        id: 'force-fresh-ghost-2',
+        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        action_type: 'send_message',
+        execution_result: {
+          artifact: { to: 'partner@example.com' },
+          auto_suppression_reason: 'Auto-suppressed pending action for dev brain-receipt force-fresh run.',
+        },
+        status: 'skipped',
+      },
+    ]);
+
+    const { checkConsecutiveDuplicate } = await import('../generator');
+    const duplicate = await checkConsecutiveDuplicate(
+      'user-1',
+      'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+    );
+
+    expect(duplicate.isDuplicate).toBe(false);
+  });
+
+  it('still blocks real user-visible prior directives after ghost rows are excluded', async () => {
+    queueTkgActionsResult([
+      {
+        id: 'force-fresh-ghost-1',
+        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        action_type: 'send_message',
+        execution_result: {
+          artifact: { to: 'partner@example.com' },
+          auto_suppression_reason: 'Auto-suppressed pending action for dev brain-receipt force-fresh run.',
+        },
+        status: 'skipped',
+      },
+      {
+        id: 'real-visible-1',
+        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        action_type: 'send_message',
+        execution_result: { artifact: { to: 'partner@example.com' } },
+        status: 'approved',
+      },
+    ]);
+
+    const { checkConsecutiveDuplicate } = await import('../generator');
+    const duplicate = await checkConsecutiveDuplicate(
+      'user-1',
+      'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+    );
+
+    expect(duplicate).toEqual(expect.objectContaining({
+      isDuplicate: true,
+      matchingActionId: 'real-visible-1',
+    }));
+  });
+
   it('ignores verification-stub persistence when checking live duplicate suppression', async () => {
     const scored = asWinnerScored(buildScorerResult());
     scored.winner.type = 'commitment';

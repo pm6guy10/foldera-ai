@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-16 — exclude dev force-fresh ghost rows from duplicate suppression
+- MODE: BUGFIX (single seam)
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `SESSION_HISTORY.md`
+- What changed: `checkConsecutiveDuplicate` now ignores skipped rows whose `execution_result.auto_suppression_reason` marks them as dev brain-receipt force-fresh auto-suppressed ghosts, while leaving real visible directives eligible for duplicate blocking. Added deterministic regression tests proving ghost rows do not count and approved rows still do.
+- Verification: reproduced on HEAD with `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts -t "ignores dev force-fresh auto-suppressed ghost rows when checking live duplicate suppression"` failing (`expected true to be false`); after patch `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/skipped-row-duplicate-cooldown.test.ts lib/cron/__tests__/duplicate-truth.test.ts` passed (30 tests); `npm run health` passed (`0 FAILING`); `npx tsx scripts/run-verification-golden-path-once.ts` persisted fresh action `470901e1-2b08-4986-b9db-7bd344e7463f` with `code=pending_approval_persisted`; `npm run build` passed.
+- Unresolved issues: none for this seam. Unrelated local modification remains in `app/api/settings/run-brief/route.ts` and was not touched.
+
 ## 2026-04-16 — health gate excludes verification-stub duplicate artifacts
 - MODE: BUGFIX (single seam)
 - Files changed: `lib/cron/duplicate-truth.ts`, `lib/cron/__tests__/duplicate-truth.test.ts`, `scripts/health.ts`, `SESSION_HISTORY.md`
