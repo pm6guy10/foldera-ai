@@ -1835,6 +1835,39 @@ function isGenericPrepStyleDocumentCandidate(candidate: ScoredLoop): boolean {
   );
 }
 
+function isPriorityCareerOutcomeArtifactCandidate(candidate: ScoredLoop): boolean {
+  if (candidate.suggestedActionType !== 'write_document') return false;
+
+  const text = scoredLoopSearchText(candidate);
+  const hasInterviewOrHiringPressure =
+    /\binterview|phone screen|panel interview|screening interview|candidate interview|hiring decision|offer\b/i.test(text);
+  const isCareerGoalMatched = candidate.matchedGoal?.category === 'career';
+  const hasOutcomeValue = (candidate.breakdown.stakes ?? 0) >= 3 && (candidate.breakdown.urgency ?? 0) >= 0.7;
+
+  return hasOutcomeValue && (isCareerGoalMatched || hasInterviewOrHiringPressure);
+}
+
+function isRelationshipMaintenanceOrAbstractRiskCandidate(candidate: ScoredLoop): boolean {
+  if (candidate.type !== 'discrepancy') return false;
+  if (candidate.matchedGoal?.category === 'career') return false;
+
+  if (
+    candidate.discrepancyClass === 'decay'
+    || candidate.discrepancyClass === 'relationship_dropout'
+    || candidate.discrepancyClass === 'engagement_collapse'
+  ) {
+    return true;
+  }
+
+  if (candidate.discrepancyClass !== 'behavioral_pattern') return false;
+
+  const text = scoredLoopSearchText(candidate);
+  return (
+    /\bacross \d+ contacts\b|\btheme\b|\bdeadline appears\b/.test(text)
+    && !/\binterview|phone screen|panel interview|screening interview|candidate interview\b/.test(text)
+  );
+}
+
 export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantResult {
   const ranked = scored.map((candidate) => ({
     ...candidate,
@@ -2015,6 +2048,34 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
       topDecisiveScheduling.score = topGenericPrepDocument.score + 0.001;
       ensureDiagnostic(topDecisiveScheduling).penaltyReasons.push('decisive_scheduling_forced_over_generic_prep_document');
       ensureDiagnostic(topGenericPrepDocument).penaltyReasons.push('generic_prep_document_yielded_to_decisive_scheduling');
+    }
+  }
+
+  // Product invariant: urgent career/interview outcome artifacts beat relationship
+  // maintenance and abstract risk rows. Those rows may be easier to write, but they
+  // must not displace the highest-value interview/career thread for the week.
+  const topPriorityCareerOutcome = ranked
+    .filter((c) => c.score > 0 && passesTop3RankingInvariants(c) && isPriorityCareerOutcomeArtifactCandidate(c))
+    .sort(compareScoredLoops)[0];
+  if (topPriorityCareerOutcome) {
+    const topRelationshipMaintenanceOrAbstractRisk = ranked
+      .filter((c) =>
+        c.score > 0
+        && c.id !== topPriorityCareerOutcome.id
+        && passesTop3RankingInvariants(c)
+        && isRelationshipMaintenanceOrAbstractRiskCandidate(c))
+      .sort(compareScoredLoops)[0];
+    if (
+      topRelationshipMaintenanceOrAbstractRisk
+      && topRelationshipMaintenanceOrAbstractRisk.score >= topPriorityCareerOutcome.score
+    ) {
+      topPriorityCareerOutcome.score = topRelationshipMaintenanceOrAbstractRisk.score + 0.001;
+      ensureDiagnostic(topPriorityCareerOutcome).penaltyReasons.push(
+        'priority_career_outcome_forced_over_relationship_maintenance',
+      );
+      ensureDiagnostic(topRelationshipMaintenanceOrAbstractRisk).penaltyReasons.push(
+        'relationship_maintenance_yielded_to_priority_career_outcome',
+      );
     }
   }
 

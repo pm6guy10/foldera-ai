@@ -297,6 +297,72 @@ describe('applyRankingInvariants', () => {
       .not.toContain('decisive_scheduling_forced_over_generic_prep_document');
   });
 
+  it('urgent interview outcome artifact outranks relationship maintenance and abstract theme discrepancies', () => {
+    const input = [
+      candidate({
+        id: 'alex-decay',
+        score: 1.359,
+        type: 'discrepancy',
+        discrepancyClass: 'decay',
+        suggestedActionType: 'send_message',
+        matchedGoal: null,
+        title: 'Fading connection: alex crisler',
+        content:
+          'Your relationship with Alex Crisler has gone silent after 10 past interactions. ' +
+          'No contact in 7 days. Baseline was 2.1 interactions per 14 days.',
+        breakdown: {
+          ...BASE_BREAKDOWN,
+          stakes: 4,
+          urgency: 0.75,
+        },
+        relatedSignals: [],
+        sourceSignals: [{ kind: 'relationship', summary: 'Alex Crisler: 10 total interactions, last seen 7 days ago' }],
+      }),
+      candidate({
+        id: 'deadline-theme',
+        score: 1.358,
+        type: 'discrepancy',
+        discrepancyClass: 'behavioral_pattern',
+        suggestedActionType: 'write_document',
+        matchedGoal: null,
+        title: 'deadline appears across 8 contacts: alex crisler, wellfound, cursor team',
+        content: 'The same deadline theme repeats across 8 contacts and hides a broad process risk.',
+        breakdown: {
+          ...BASE_BREAKDOWN,
+          stakes: 4,
+          urgency: 0.8,
+        },
+      }),
+      candidate({
+        id: 'dshs-interview',
+        score: 1.299,
+        type: 'discrepancy',
+        discrepancyClass: 'exposure',
+        suggestedActionType: 'write_document',
+        matchedGoal: null,
+        title: 'Commitment due in 3d: Interview; DSHS HCLA Developmental Disabilities Case/Resource Manager',
+        content:
+          'You committed to the DSHS HCLA Developmental Disabilities Case/Resource Manager interview. ' +
+          'The interview is already scheduled this week and no execution artifact exists yet.',
+        breakdown: {
+          ...BASE_BREAKDOWN,
+          stakes: 4,
+          urgency: 0.7,
+        },
+        sourceSignals: [
+          { kind: 'commitment', summary: 'Interview; DSHS HCLA Developmental Disabilities Case/Resource Manager' },
+        ],
+      }),
+    ];
+
+    const { ranked, diagnostics } = applyRankingInvariants(input);
+    expect(ranked[0]?.id).toBe('dshs-interview');
+    expect(diagnostics.find((d) => d.id === 'dshs-interview')?.penaltyReasons)
+      .toContain('priority_career_outcome_forced_over_relationship_maintenance');
+    expect(diagnostics.find((d) => d.id === 'deadline-theme')?.penaltyReasons)
+      .toContain('relationship_maintenance_yielded_to_priority_career_outcome');
+  });
+
   it('only behavioral_pattern discrepancies are subject to failure-suppression class set', () => {
     expect(DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET.has('behavioral_pattern')).toBe(true);
     expect(DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET.has('decay')).toBe(false);
