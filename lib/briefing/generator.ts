@@ -210,6 +210,36 @@ function findThinEntryPhrase(combinedLower: string): string | null {
   return null;
 }
 
+const HOMEWORK_HANDOFF_PATTERNS: Array<{ reason: string; pattern: RegExp }> = [
+  {
+    reason: 'research_handoff',
+    pattern: /(?:research|review|look up|read up on)[\s\S]{0,120}(?:website|site|news|materials|documentation|policy changes|initiatives)/i,
+  },
+  {
+    reason: 'familiarize_handoff',
+    pattern: /familiarize yourself with/i,
+  },
+  {
+    reason: 'prepare_examples_handoff',
+    pattern: /prepare[\s\S]{0,80}(?:example|answer|story|talking point|brief|materials)/i,
+  },
+  {
+    reason: 'conditional_homework_menu',
+    pattern: /if this is (?:a|an)[\s\S]{0,160}(?:prepare|confirm|review|locate)/i,
+  },
+  {
+    reason: 'locate_source_handoff',
+    pattern: /(?:locate|find)[\s\S]{0,80}(?:original|invitation|thread|email|materials)/i,
+  },
+];
+
+function findHomeworkHandoffReason(value: string): string | null {
+  for (const { reason, pattern } of HOMEWORK_HANDOFF_PATTERNS) {
+    if (pattern.test(value)) return reason;
+  }
+  return null;
+}
+
 /** Dollar amounts in artifact JSON must appear verbatim in grounding blob (Check 4). */
 function ungroundedDollarAmounts(artifactJson: string, groundingBlob: string): string[] {
   const dollars = artifactJson.match(/\$\s*[\d,]+(?:\.\d{2})?/g) ?? [];
@@ -4262,6 +4292,11 @@ function isUseful(output: { artifact: string; evidence: string; action: string }
     return { ok: false, reason: 'generic_language' };
   }
 
+  const homeworkReason = findHomeworkHandoffReason(`${output.action}\n${output.artifact}`);
+  if (homeworkReason) {
+    return { ok: false, reason: `homework_handoff_${homeworkReason}` };
+  }
+
   if (!output.action || output.action.length < 5) {
     return { ok: false, reason: 'no_action' };
   }
@@ -6565,6 +6600,21 @@ function validateGeneratedArtifact(
 
   if (!pipelineDry) {
     issues.push(...getLowCrossSignalIssues(payload, ctx, canonicalArtifactType));
+  }
+
+  if (!pipelineDry && canonicalArtifactType === 'write_document') {
+    const homeworkReason = findHomeworkHandoffReason(
+      [
+        payload.directive ?? '',
+        payload.why_now ?? '',
+        JSON.stringify(payload.artifact ?? {}),
+      ].join('\n'),
+    );
+    if (homeworkReason) {
+      issues.push(
+        `homework_handoff:${homeworkReason} — artifact hands unfinished prep or research back to the user`,
+      );
+    }
   }
 
   if (

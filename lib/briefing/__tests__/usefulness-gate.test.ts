@@ -362,6 +362,75 @@ describe('usefulness gate — execution proof', () => {
     );
   });
 
+  it('BAD6 — homework_handoff: prep document sends research/examples back to user → GENERATION_FAILED_SENTINEL before persistence', async () => {
+    const writeWinner = {
+      ...buildWinner(),
+      id: 'discrepancy_exposure_mas3_interview',
+      type: 'discrepancy' as const,
+      discrepancyClass: 'exposure' as const,
+      suggestedActionType: 'write_document' as const,
+      title: 'MAS3 Project interview is 4 days away with no prep artifact',
+      content: 'Interview is scheduled and authorization forms were sent, but no finished prep artifact exists.',
+      matchedGoal: { text: 'Land the MAS3 role', priority: 5, category: 'career' },
+      sourceSignals: [{
+        kind: 'commitment' as const,
+        id: 'commitment-mas3',
+        occurredAt: new Date().toISOString(),
+        summary: 'MAS3 Project interview',
+      }],
+    };
+    mockScoreOpenLoops.mockResolvedValue({
+      ...buildScorerResult(),
+      winner: writeWinner,
+      topCandidates: [writeWinner],
+    });
+
+    anthropicCreate.mockResolvedValue(anthropicResponse({
+      directive: 'Prepare the MAS3 interview artifact before the interview window closes.',
+      artifact_type: 'write_document',
+      artifact: {
+        document_purpose: 'interview prep',
+        target_reader: 'user',
+        title: 'MAS3 Project Interview Prep',
+        content: [
+          'INTERVIEW DETAILS',
+          'Position: Health Benefits Specialist 3 (MAS3/AHSO) - Project',
+          'Scheduled: April 20, 2026',
+          '',
+          'PREPARED ANSWERS',
+          'Prepare a specific example for your most complex benefits eligibility case.',
+          '',
+          'RESEARCH BEFORE APRIL 20',
+          "Review HCA's website for current initiatives and recent healthcare policy changes.",
+          'Familiarize yourself with Washington State Medicaid before the interview.',
+        ].join('\n'),
+      },
+      evidence: 'MAS3 interview is scheduled and authorization forms were sent, but no prep artifact exists.',
+      why_now: 'The interview window closes this week.',
+      causal_diagnosis: {
+        why_exists_now: 'Interview prep is still unresolved while the date is fixed.',
+        mechanism: 'The calendar commitment exists but finished interview material has not been produced.',
+      },
+    }));
+
+    const { generateDirective } = await import('../generator');
+    const result = await generateDirective('user-1', { dryRun: true });
+
+    expect(result.directive).toBe(SENTINEL);
+    expect(result.generationLog?.reason).toContain('homework_handoff:');
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'candidate_blocked',
+        generationStatus: 'llm_generation_failed',
+        details: expect.objectContaining({
+          issues: expect.arrayContaining([
+            expect.stringMatching(/^homework_handoff:/),
+          ]),
+        }),
+      })
+    );
+  });
+
   // ── VALID CASE 1: send_message ─────────────────────────────────────────
   it('VALID1 — send_message: well-formed payload → NOT GENERATION_FAILED_SENTINEL (passes all gates)', async () => {
     anthropicCreate.mockResolvedValue(anthropicResponse({

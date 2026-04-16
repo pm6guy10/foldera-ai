@@ -4400,3 +4400,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Added `exposure` to `CALENDAR_ADMIN_DISCREPANCY_CLASSES` so unanchored exposure discrepancies do not inherit discrepancy-priority boost (same policy as other calendar/admin classes).
 - Verification: `npm run health` (0 FAILING, warning-only repeated directive); one real generation call via local `/api/dev/brain-receipt` with paid LLM enabled (persisted a `pending_approval` write_document); `npm run build`; `npx playwright test` (78 passed, 4 skipped).
 - Unresolved issues: none proven for this seam; next quality work should target exposure discrepancies that are goal-anchored (separate seam).
+
+## 2026-04-16 — finished-work gate: block homework handoff artifacts
+- MODE: PRODUCT QUALITY (single seam)
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/usefulness-gate.test.ts`, `SESSION_HISTORY.md`
+- What changed: Added a deterministic homework-handoff gate so write_document outputs that tell the user to research, prepare examples, familiarize themselves, locate materials, or follow conditional prep menus fail validation instead of persisting as finished artifacts.
+- Verification: `npm run health` (0 FAILING, warning-only repeated directive); `npx vitest run lib/briefing/__tests__/usefulness-gate.test.ts`; `npx tsx scripts/run-paid-generate-once.ts` persisted action `85a6f986-9d71-4c9b-bc16-514753423bf1` with `artifact_pass_fail=PASS`; `npm run build`; `npx playwright test` (78 passed, 4 skipped).
+- Unresolved issues: none for this seam.
