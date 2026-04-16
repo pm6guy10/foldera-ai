@@ -987,6 +987,84 @@ describe('runDailyGenerate candidate logging', () => {
     expect(mockSupabase.updatedActions).toEqual([]);
   });
 
+  it('keeps normal pending reuse unless proof-specific bypass is requested', async () => {
+    const reusablePendingId = 'proof-specific-bypass-pending-1';
+    const pendingRow = {
+      id: reusablePendingId,
+      user_id: USER_ID,
+      status: 'pending_approval',
+      action_type: 'send_message',
+      directive_text: 'Previously valid pending action.',
+      confidence: 90,
+      generated_at: new Date().toISOString(),
+      execution_result: {
+        artifact: {
+          type: 'email',
+          to: 'owner@example.com',
+          subject: 'Previous',
+          body: 'Previous valid body that would normally be reused.',
+          draft_type: 'email_compose',
+        },
+      },
+      reason: null,
+    };
+
+    mockSupabase.actionRows = [{ ...pendingRow }];
+    const normalResult = await runDailyGenerate({ userIds: [USER_ID], forceFreshRun: true });
+
+    expect(normalResult.results).toEqual([
+      expect.objectContaining({
+        code: 'pending_approval_reused',
+        success: true,
+        meta: expect.objectContaining({ action_id: reusablePendingId }),
+      }),
+    ]);
+    expect(generateDirective).not.toHaveBeenCalled();
+
+    vi.mocked(generateDirective).mockReset();
+    vi.mocked(generateArtifact).mockReset();
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+    mockSupabase.updatedActions = [];
+    mockSupabase.actionRows = [{ ...pendingRow }];
+
+    const proofResult = await runDailyGenerate({
+      userIds: [USER_ID],
+      forceFreshRun: true,
+      briefInvocationSource: 'dev_brain_receipt',
+      skipManualCallLimit: true,
+    });
+
+    expect(proofResult.results).toEqual([
+      expect.objectContaining({
+        code: 'pending_approval_persisted',
+        success: true,
+        meta: expect.objectContaining({
+          proof_fresh_run: true,
+          proof_invocation_source: 'dev_brain_receipt',
+        }),
+      }),
+    ]);
+    expect(generateDirective).toHaveBeenCalledTimes(1);
+    expect(mockSupabase.updatedActions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: reusablePendingId,
+          payload: expect.objectContaining({
+            status: 'skipped',
+            skip_reason: 'Auto-suppressed pending action for dev brain-receipt force-fresh run.',
+          }),
+        }),
+      ]),
+    );
+  });
+
   it('forceFreshRun bypasses pending reuse for dev brain-receipt and runs fresh generation', async () => {
     const reusablePendingId = 'reusable-pending-dev-1';
     mockSupabase.actionRows = [

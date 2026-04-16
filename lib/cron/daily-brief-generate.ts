@@ -45,6 +45,7 @@ import {
   STALE_PENDING_APPROVAL_MAX_AGE_HOURS,
   TEST_USER_ID,
 } from '@/lib/config/constants';
+import { getDeployRevision } from '@/lib/config/deploy-revision';
 import {
   BRIEF_FULL_CYCLE_COOLDOWN_MS,
   fetchBriefCycleLastAtMap,
@@ -901,6 +902,14 @@ function isoHoursAgo(hours: number): string {
   return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 }
 
+function isFreshProofInvocation(options: DailyBriefSignalWindowOptions): boolean {
+  return (
+    options.forceFreshRun === true &&
+    (options.briefInvocationSource === 'dev_brain_receipt' ||
+      options.briefInvocationSource === 'dev_brain_receipt_verification')
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Signal counting helper (used by runSignalProcessingForUser)
 // ---------------------------------------------------------------------------
@@ -1021,10 +1030,7 @@ async function reconcilePendingApprovalQueue(
 
   const rows = (data ?? []) as PendingActionRow[];
   const staleCutoffIso = new Date(Date.now() - STALE_PENDING_HOURS * 3_600_000).toISOString();
-  const shouldBypassPendingReuseForDevProof =
-    options.forceFreshRun === true &&
-    (options.briefInvocationSource === 'dev_brain_receipt' ||
-      options.briefInvocationSource === 'dev_brain_receipt_verification');
+  const shouldBypassPendingReuseForDevProof = isFreshProofInvocation(options);
   let preservedAction: PendingActionRow | null = null;
   const skippedActionIds: string[] = [];
   let recentDoNothingGeneratedAt: string | null = null;
@@ -1632,6 +1638,21 @@ export async function runDailyGenerate(
         }
       : options;
 
+  const proofFreshRun = isFreshProofInvocation(runOpts);
+  const proofRevision = proofFreshRun ? getDeployRevision() : null;
+  const withProofMeta = (rows: DailyBriefUserResult[]): DailyBriefUserResult[] => {
+    if (!proofFreshRun || !proofRevision) return rows;
+    return rows.map((row) => ({
+      ...row,
+      meta: {
+        ...(row.meta ?? {}),
+        proof_fresh_run: true,
+        proof_invocation_source: runOpts.briefInvocationSource ?? null,
+        proof_revision: proofRevision,
+      },
+    }));
+  };
+
   const { error: expireError } = await supabase
     .from('user_subscriptions')
     .update({ status: 'expired' })
@@ -1697,6 +1718,22 @@ export async function runDailyGenerate(
     }
 
     if (pendingQueuePre.preservedAction) {
+      if (proofFreshRun) {
+        results.push({
+          code: 'proof_freshness_failed',
+          detail:
+            `Fresh-proof run blocked: pending_approval ${pendingQueuePre.preservedAction.id} survived pre-generation suppression and would have been reused.`,
+          meta: {
+            action_id: pendingQueuePre.preservedAction.id,
+            artifact_present: extractArtifact(pendingQueuePre.preservedAction.execution_result) !== null,
+            daily_brief_sent_at: extractSentAt(pendingQueuePre.preservedAction.execution_result),
+            blocker_stage: 'pre_generation_reconcile',
+          },
+          success: false,
+          userId,
+        });
+        continue;
+      }
       results.push({
         code: 'pending_approval_reused',
         meta: {
@@ -1729,6 +1766,20 @@ export async function runDailyGenerate(
     }) ?? null;
 
     if (existingPending) {
+      if (proofFreshRun) {
+        results.push({
+          code: 'proof_freshness_failed',
+          detail:
+            `Fresh-proof run blocked: pending_approval ${(existingPending as { id: string }).id} still matched the reuse guard after suppression.`,
+          meta: {
+            action_id: (existingPending as { id: string }).id,
+            blocker_stage: 'pending_guard',
+          },
+          success: false,
+          userId,
+        });
+        continue;
+      }
       results.push({
         code: 'pending_approval_guard',
         meta: { action_id: (existingPending as { id: string }).id },
@@ -1827,6 +1878,23 @@ export async function runDailyGenerate(
       };
 
       if (pendingQueue.preservedAction) {
+        if (proofFreshRun) {
+          results.push({
+            code: 'proof_freshness_failed',
+            detail:
+              `Fresh-proof run blocked: pending_approval ${pendingQueue.preservedAction.id} survived post-signal suppression and would have been reused.`,
+            meta: {
+              ...cleanupMeta,
+              action_id: pendingQueue.preservedAction.id,
+              artifact_present: extractArtifact(pendingQueue.preservedAction.execution_result) !== null,
+              daily_brief_sent_at: extractSentAt(pendingQueue.preservedAction.execution_result),
+              blocker_stage: 'post_signal_reconcile',
+            },
+            success: false,
+            userId,
+          });
+          continue;
+        }
         results.push({
           code: 'pending_approval_reused',
           meta: {
@@ -2704,7 +2772,11 @@ export async function runDailyGenerate(
   }
 
   return {
-    ...buildRunResult(date, buildGenerateMessage(results, eligibleUserIds.length), results),
+    ...buildRunResult(
+      date,
+      buildGenerateMessage(results, eligibleUserIds.length),
+      withProofMeta(results),
+    ),
     signalProcessing: buildRunResult(
       date,
       buildSignalProcessingMessage(signalResults, eligibleUserIds.length),

@@ -22,6 +22,7 @@ import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
 import type { ActionType, ConvictionArtifact, ConvictionDirective, GenerationRunLog } from '@/lib/briefing/types';
 import { apiError } from '@/lib/utils/api-error';
 import { getRequestId, REQUEST_ID_HEADER } from '@/lib/utils/request-id';
+import { getDeployRevision } from '@/lib/config/deploy-revision';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
     }
 
     const startedAt = new Date().toISOString();
+    const revision = getDeployRevision();
     const generate = await runDailyGenerate({
       userIds: [auth.userId],
       skipStaleGate: true,
@@ -177,6 +179,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         ok: true,
         started_at: startedAt,
+        revision,
         verification_stub_persist: verificationStubPersist,
         verification_golden_path_write_document: verificationStubPersist
           ? verificationGoldenPathWriteDocument
@@ -231,6 +234,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: false,
       started_at: startedAt,
+      revision,
       verification_stub_persist: verificationStubPersist,
       verification_golden_path_write_document: verificationStubPersist
         ? verificationGoldenPathWriteDocument
@@ -243,7 +247,9 @@ export async function POST(request: Request) {
             },
           }
         : {}),
-      blocker: 'no_fresh_action_persisted',
+      blocker: ownerResult?.code === 'proof_freshness_failed'
+        ? 'proof_reuse_detected'
+        : 'no_fresh_action_persisted',
       scorer_diagnostics: scorerDiagnostics,
       generate_stage_result: ownerResult,
     });
@@ -253,9 +259,11 @@ export async function POST(request: Request) {
     void apiError(error, 'dev/brain-receipt', requestId);
     const errorBody = error instanceof Error ? error.message : String(error);
     const hdrs = requestId ? { [REQUEST_ID_HEADER]: requestId } : undefined;
+    const revision = getDeployRevision();
     return NextResponse.json({
       ok: false,
       error: errorBody,
+      revision,
       scorer_diagnostics: scorerDiagnostics,
       ...(requestId ? { requestId } : {}),
     }, { status: 500, headers: hdrs });

@@ -16,6 +16,7 @@ export const SAFE_ERROR_MESSAGES: Record<DailyBriefFailureCode, string> = {
   stale_signal_backlog_remaining: 'Unprocessed signals older than 24 hours remain.',
   generation_failed: 'Directive generation failed.',
   artifact_generation_failed: 'Artifact generation failed.',
+  proof_freshness_failed: 'Fresh proof run reused a pending approval instead of exercising the current brain.',
   directive_persist_failed: 'Directive save failed.',
   no_verified_email: 'No verified recipient email was available.',
   directive_lookup_failed: 'Generated brief lookup failed.',
@@ -92,9 +93,18 @@ export function buildGenerateMessage(results: DailyBriefUserResult[], total: num
   const noSendCount = results.filter(
     (r) => r.code === 'no_send_persisted' || r.code === 'no_send_reused',
   ).length;
+  const failedCount = results.filter((r) => !r.success).length;
+  const failureDetails = collectResultDetails(results, (r) => !r.success);
 
   if (generatedCount === total) {
     return `A valid pending_approval action exists for ${generatedCount} eligible user${generatedCount === 1 ? '' : 's'}.`;
+  }
+
+  if (generatedCount === 0 && failedCount === total) {
+    return appendBlockerSummary(
+      `No pending_approval brief was persisted for ${formatEligibleUserCount(total)}.`,
+      failureDetails,
+    );
   }
 
   if (generatedCount === 0 && noSendCount === total) {
@@ -111,7 +121,10 @@ export function buildGenerateMessage(results: DailyBriefUserResult[], total: num
 
   return appendBlockerSummary(
     segments.join(' '),
-    collectResultDetails(results, (r) => r.code === 'no_send_persisted' || r.code === 'no_send_reused'),
+    collectResultDetails(
+      results,
+      (r) => r.code === 'no_send_persisted' || r.code === 'no_send_reused' || !r.success,
+    ),
   );
 }
 

@@ -8,6 +8,7 @@ export type DailyBriefFailureCode =
   | 'stale_signal_backlog_remaining'
   | 'generation_failed'
   | 'artifact_generation_failed'
+  | 'proof_freshness_failed'
   | 'directive_persist_failed'
   | 'no_verified_email'
   | 'directive_lookup_failed'

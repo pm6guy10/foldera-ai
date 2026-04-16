@@ -124,13 +124,15 @@ Before ending:
 
 ### Owner Real-Data Brain Receipt (forced fresh run)
 - Status: BUILT (owner-only debug path)
-- Last verified: 2026-03-29 (pending semantics updated 2026-04-07)
+- Last verified: 2026-04-16
 - Evidence:
   - New endpoint: `POST /api/dev/brain-receipt` (owner-only via `OWNER_USER_ID` check).
-  - `runDailyGenerate(... forceFreshRun=true)` still **reuses** valid `pending_approval` within **18h** (same as `?force=true` run-brief); clear the card first for a guaranteed new generation pass.
+  - Proof-specific invocations (`dev_brain_receipt`, `dev_brain_receipt_verification`) now **suppress** in-window `pending_approval` reuse during `forceFreshRun` so the current generation path runs instead of silently replaying old output.
+  - If a pending row still survives suppression on a proof run, `runDailyGenerate` now returns `proof_freshness_failed` (failed proof, explicit blocker) instead of a successful reuse code.
+  - Proof responses/results now carry `proof_revision` metadata and `/api/dev/brain-receipt` echoes top-level `revision`, so fresh output is tied to the current deploy/runtime revision.
   - Session receipt run created fresh action `3f8369a6-e557-4086-86c2-eab554d40766` at `2026-03-29T20:34:17.957+00:00`.
   - Stale reuse proof: `stale_action_not_reused=true` for `2e3a92ac-f93e-42b4-a978-bedd3dcee4d6`.
-  - Receipt includes top 5 candidates, full artifact, decision-enforcement result, and send-worthiness result.
+  - Fresh proof rerun on 2026-04-16: `npx tsx scripts/run-verification-golden-path-once.ts` auto-suppressed stale pending `85a6f986-9d71-4c9b-bc16-514753423bf1` and persisted fresh action `e2e10034-d9b3-48c3-97ac-5b1b40bc6840` with `generate.results[0].meta.proof_fresh_run = true`.
 
 ### Ranking Quality (candidate selection)
 - Status: HARDENED

@@ -21,6 +21,11 @@ async function main() {
   });
 
   console.log(JSON.stringify(result, null, 2));
+  const ownerRow = result.results?.find((row) => row.userId === OWNER_USER_ID);
+  const code = ownerRow?.code;
+  if (code !== 'pending_approval_persisted' && code !== 'no_send_persisted') {
+    process.exit(1);
+  }
 }
 
 main().catch((e) => {
