@@ -7,7 +7,10 @@ import { createClient } from '@supabase/supabase-js';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import { STALE_PENDING_APPROVAL_MAX_AGE_HOURS } from '../lib/config/constants';
-import { summarizeRepeatedDirectiveHealth } from '../lib/cron/duplicate-truth';
+import {
+  selectLatestMeaningfulGenerationRow,
+  summarizeRepeatedDirectiveHealth,
+} from '../lib/cron/duplicate-truth';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 
@@ -255,24 +258,24 @@ async function main() {
   try {
     const { data: byGen, error: e1 } = await supabase
       .from('tkg_actions')
-      .select('action_type, directive_text, generated_at')
+      .select('action_type, directive_text, generated_at, execution_result')
       .eq('user_id', userId)
       .not('generated_at', 'is', null)
       .order('generated_at', { ascending: false, nullsFirst: false })
-      .limit(1);
+      .limit(10);
 
     if (e1) throw new Error(e1.message);
 
-    let latest = byGen?.[0] ?? null;
+    let latest = selectLatestMeaningfulGenerationRow(byGen ?? []);
     if (!latest) {
       const { data: byGenerated, error: e2 } = await supabase
         .from('tkg_actions')
-        .select('action_type, directive_text, generated_at')
+        .select('action_type, directive_text, generated_at, execution_result')
         .eq('user_id', userId)
         .order('generated_at', { ascending: false })
-        .limit(1);
+        .limit(10);
       if (e2) throw new Error(e2.message);
-      latest = byGenerated?.[0] ?? null;
+      latest = selectLatestMeaningfulGenerationRow(byGenerated ?? []);
     }
 
     if (!latest) {

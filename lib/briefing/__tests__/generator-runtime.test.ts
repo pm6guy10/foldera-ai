@@ -851,7 +851,7 @@ describe('generateDirective runtime failures', () => {
     expect(duplicate.isDuplicate).toBe(false);
   });
 
-  it('applies duplicate suppression to verification-stub persistence without regressing a fresh write_document stub', async () => {
+  it('ignores verification-stub persistence when checking live duplicate suppression', async () => {
     const scored = asWinnerScored(buildScorerResult());
     scored.winner.type = 'commitment';
     scored.winner.suggestedActionType = 'write_document';
@@ -890,6 +890,7 @@ describe('generateDirective runtime failures', () => {
         action_type: 'write_document',
         execution_result: {
           artifact: { title: 'Resolution note — April 2026 calendar overlap' },
+          verification_stub_persist: true,
         },
         status: 'skipped',
       },
@@ -899,6 +900,7 @@ describe('generateDirective runtime failures', () => {
         action_type: 'write_document',
         execution_result: {
           artifact: { title: 'Resolution note — April 2026 calendar overlap' },
+          verification_stub_persist: true,
         },
         status: 'rejected',
       },
@@ -911,10 +913,12 @@ describe('generateDirective runtime failures', () => {
       verificationGoldenPathWriteDocument: true,
     });
 
-    expect(blockedDirective.directive).toBe('__GENERATION_FAILED__');
-    expect(blockedDirective.action_type).toBe('do_nothing');
+    expect(blockedDirective.action_type).toBe('write_document');
+    expect(blockedDirective.directive).toBe(
+      'Send Alex Morgan at alex@partner.example.com a concrete resolution for the 2026-04-16 overlap before Friday 2026-04-18.',
+    );
     expect(mockLogStructuredEvent.mock.calls.some(([event]) =>
-      event?.event === 'candidate_blocked' && event?.generationStatus === 'duplicate_suppressed')).toBe(true);
+      event?.event === 'candidate_blocked' && event?.generationStatus === 'duplicate_suppressed')).toBe(false);
   });
 
   it('blocks send_message via DecisionPayload when winner entity matches locked_contact (scorer should pre-filter; generator still guards)', async () => {

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   assessProofOutcome,
+  isVerificationStubPersistExecutionResult,
+  selectLatestMeaningfulGenerationRow,
   summarizeRepeatedDirectiveHealth,
 } from '../duplicate-truth';
 
@@ -72,6 +74,24 @@ describe('duplicate truth semantics', () => {
 
     expect(summary.status).toBe('clear');
     expect(summary.maxCopies).toBe(1);
+  });
+
+  it('selects the latest non-verification row for last-generation truth', () => {
+    const latest = selectLatestMeaningfulGenerationRow([
+      {
+        directive_text: 'Verification stub document',
+        generated_at: '2026-04-16T17:55:00.000Z',
+        execution_result: { verification_stub_persist: true },
+      },
+      {
+        directive_text: 'Real last generation do_nothing',
+        generated_at: '2026-04-16T17:45:00.000Z',
+        execution_result: { outcome_type: 'no_send' },
+      },
+    ]);
+
+    expect(latest?.directive_text).toBe('Real last generation do_nothing');
+    expect(isVerificationStubPersistExecutionResult(latest?.execution_result)).toBe(false);
   });
 
   it('accepts no_send_persisted when duplicate guard blocked another persistence', () => {

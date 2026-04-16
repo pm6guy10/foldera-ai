@@ -36,6 +36,11 @@ export interface ProofOutcomeAssessment {
   reason: string;
 }
 
+type LastGenerationLikeRow = {
+  generated_at?: MaybeString;
+  execution_result?: unknown;
+};
+
 function shapeKeyFromDirectiveText(text: MaybeString): string {
   return String(text ?? '').slice(0, 400);
 }
@@ -47,6 +52,27 @@ function safeMs(iso: MaybeString): number {
 
 export function hasDuplicateSuppressionSignal(text: MaybeString): boolean {
   return /duplicate_\d+pct_similar|duplicate_100pct_similar/i.test(String(text ?? ''));
+}
+
+export function isVerificationStubPersistExecutionResult(executionResult: unknown): boolean {
+  return Boolean(
+    executionResult &&
+    typeof executionResult === 'object' &&
+    (executionResult as Record<string, unknown>).verification_stub_persist === true,
+  );
+}
+
+export function selectLatestMeaningfulGenerationRow<T extends LastGenerationLikeRow>(
+  rows: T[],
+): T | null {
+  if (rows.length === 0) return null;
+
+  const sortedRows = [...rows].sort((a, b) => safeMs(b.generated_at) - safeMs(a.generated_at));
+  const liveRows = sortedRows.filter(
+    (row) => !isVerificationStubPersistExecutionResult(row.execution_result),
+  );
+
+  return liveRows[0] ?? sortedRows[0] ?? null;
 }
 
 export function isProtectiveDuplicateNoSend(result: Pick<ProofLikeResult, 'detail' | 'meta'>): boolean {

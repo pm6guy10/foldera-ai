@@ -65,6 +65,7 @@ import { isLowValueHuntSendMessagePresentation } from './hunt-anomalies';
 import { isBlockedSender } from '@/lib/signals/sender-blocklist';
 import type { DiscrepancyClass } from './discrepancy-detector';
 import { effectiveDiscrepancyClassForGates } from './effective-discrepancy-class';
+import { isVerificationStubPersistExecutionResult } from '@/lib/cron/duplicate-truth';
 import { looksLikeDiscrepancyTriageOrChoreList } from './discrepancy-finished-work';
 import {
   directiveLooksLikeScheduleConflict,
@@ -4259,6 +4260,7 @@ export async function checkConsecutiveDuplicate(
       const actionType = (action.action_type as string | null) ?? '';
       if (actionType === 'do_nothing' || actionType === 'wait_rationale') continue;
       if (isInternalNoSendExecutionResult(action.execution_result)) continue;
+      if (isVerificationStubPersistExecutionResult(action.execution_result)) continue;
 
       const existingNormalized = normalizeText(action.directive_text);
       const sim = similarityScore(newNormalized, existingNormalized);
