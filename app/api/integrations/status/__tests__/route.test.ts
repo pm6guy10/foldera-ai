@@ -41,18 +41,6 @@ function userTokensChain() {
   };
 }
 
-function signalSourceCountsChain() {
-  return {
-    select: vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-        }),
-      }),
-    }),
-  };
-}
-
 function newestMailChain(occurredAt: string | null) {
   const maybeSingle = vi.fn().mockResolvedValue({
     data: occurredAt ? { occurred_at: occurredAt } : null,
@@ -90,14 +78,9 @@ describe('GET /api/integrations/status', () => {
   it('uses ingested mail (not processed-only) for newest_mail_signal_at', async () => {
     getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
     const newest = newestMailChain('2026-04-06T15:00:00.000Z');
-    let signalsPass = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === 'user_tokens') return userTokensChain();
-      if (table === 'tkg_signals') {
-        signalsPass += 1;
-        if (signalsPass === 1) return signalSourceCountsChain();
-        return newest;
-      }
+      if (table === 'tkg_signals') return newest;
       throw new Error(`unexpected table ${table}`);
     });
 
@@ -110,9 +93,11 @@ describe('GET /api/integrations/status', () => {
     const body = (await res.json()) as {
       newest_mail_signal_at: string | null;
       mail_ingest_looks_stale: boolean;
+      sourceCounts?: unknown;
     };
     expect(body.newest_mail_signal_at).toBe('2026-04-06T15:00:00.000Z');
     expect(body.mail_ingest_looks_stale).toBe(false);
+    expect(body.sourceCounts).toBeUndefined();
     expect(newest._eqUser).toHaveBeenCalledWith('user_id', 'user-1');
     expect(newest._eqUser).toHaveBeenCalledTimes(1);
   });
@@ -144,7 +129,6 @@ describe('GET /api/integrations/status', () => {
     });
 
     let userTokensCalls = 0;
-    let signalsPass = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === 'user_tokens') {
         userTokensCalls += 1;
@@ -159,11 +143,7 @@ describe('GET /api/integrations/status', () => {
         }
         return { select: legacySelect };
       }
-      if (table === 'tkg_signals') {
-        signalsPass += 1;
-        if (signalsPass === 1) return signalSourceCountsChain();
-        return newestMailChain(null);
-      }
+      if (table === 'tkg_signals') return newestMailChain(null);
       throw new Error(`unexpected table ${table}`);
     });
 
@@ -205,7 +185,6 @@ describe('GET /api/integrations/status', () => {
     });
 
     let userTokensCalls = 0;
-    let signalsPass = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === 'user_tokens') {
         userTokensCalls += 1;
@@ -220,11 +199,7 @@ describe('GET /api/integrations/status', () => {
         }
         return { select: legacySelect };
       }
-      if (table === 'tkg_signals') {
-        signalsPass += 1;
-        if (signalsPass === 1) return signalSourceCountsChain();
-        return newestMailChain(null);
-      }
+      if (table === 'tkg_signals') return newestMailChain(null);
       throw new Error(`unexpected table ${table}`);
     });
 
@@ -236,14 +211,9 @@ describe('GET /api/integrations/status', () => {
 
   it('sets mail_ingest_looks_stale when newest ingested mail is older than 7d', async () => {
     getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
-    let signalsPass = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === 'user_tokens') return userTokensChain();
-      if (table === 'tkg_signals') {
-        signalsPass += 1;
-        if (signalsPass === 1) return signalSourceCountsChain();
-        return newestMailChain('2026-03-20T12:00:00.000Z');
-      }
+      if (table === 'tkg_signals') return newestMailChain('2026-03-20T12:00:00.000Z');
       throw new Error(`unexpected table ${table}`);
     });
 

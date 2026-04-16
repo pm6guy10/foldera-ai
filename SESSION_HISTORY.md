@@ -4484,3 +4484,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Added a server-side preflight for `pipelineDryRun` on `POST /api/settings/run-brief` that checks `tkg_actions` for a still-reusable `pending_approval` before any manual sync runs. If a valid unsent pending action already exists, the route now short-circuits immediately with `pending_approval_reused`; the earlier `pipeline_runs` cooldown remains as a secondary fallback. Real non-dry runs and scheduled/system brief-service paths remain unchanged.
 - Verification: `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts`; `npx vitest run lib/cron/__tests__/brief-service.test.ts`; `npm run health` (0 FAILING); `npm run build`.
 - Unresolved issues: live production route verification still required after deploy.
+
+## 2026-04-16 — removed unused 10k-row source-count scan from integrations status
+- MODE: COST CONTROL (single seam)
+- Files changed: `app/api/integrations/status/route.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `SESSION_HISTORY.md`
+- What changed: `GET /api/integrations/status` no longer scans up to 10,000 processed `tkg_signals` rows to build `sourceCounts`, because no current dashboard/settings/signals client consumes that field. The route now reads only `user_tokens` plus the single newest mail signal needed for stale-ingest status.
+- Verification: `npm run health` (0 FAILING; warning-only last generation `do_nothing`); `npx vitest run app/api/integrations/status/__tests__/route.test.ts`; `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts` (19 passed).
+- Unresolved issues: production Supabase egress metrics were not directly queryable in-session, so the reduction is proven from the eliminated query path rather than live org-byte counters.

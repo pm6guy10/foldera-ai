@@ -163,20 +163,6 @@ export async function GET() {
       };
     });
 
-    // Per-source signal counts for connector health display
-    const { data: signalRows } = await supabase
-      .from('tkg_signals')
-      .select('source')
-      .eq('user_id', session.user.id)
-      .eq('processed', true)
-      .limit(10000);
-
-    const sourceCounts: Record<string, number> = {};
-    for (const row of (signalRows ?? [])) {
-      const src = row.source as string;
-      sourceCounts[src] = (sourceCounts[src] ?? 0) + 1;
-    }
-
     // Newest mail by message date among ingested Gmail/Outlook rows — not `processed=true`.
     // Sync upserts with processed=false until the signal processor runs; filtering only processed
     // made "Latest mail…" look weeks stale while connectors showed fresh sync (misleading banner).
@@ -212,7 +198,6 @@ export async function GET() {
     return NextResponse.json(
       {
         integrations,
-        sourceCounts,
         newest_mail_signal_at: newestMailIso,
         mail_ingest_looks_stale: mailIngestLooksStale,
       },
