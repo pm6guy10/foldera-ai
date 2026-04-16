@@ -4408,6 +4408,13 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Verification: `npm run health` (0 FAILING, warning-only repeated directive); one real generation call via local `/api/dev/brain-receipt` with paid LLM enabled (persisted a `pending_approval` write_document); `npm run build`; `npx playwright test` (78 passed, 4 skipped).
 - Unresolved issues: none proven for this seam; next quality work should target exposure discrepancies that are goal-anchored (separate seam).
 
+## 2026-04-16 — repeated directive-shape suppression for verification/live-like runs
+- MODE: PRODUCT QUALITY (single seam)
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `SESSION_HISTORY.md`
+- What changed: moved duplicate-shape suppression onto the final generator guard that also runs for `verificationStubPersist`, widened the 24h visibility window to include skipped/rejected rows, and kept immediate accepted-duplicate blocking intact. Added deterministic tests for two-copy suppression, one-copy allowance, and verification-stub write-document integration.
+- Verification: `npm run health` (0 FAILING, warning-only repeated directive); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts`; `npx tsx scripts/run-verification-golden-path-once.ts` hit the live-like verification path and blocked three repeated shapes with `duplicate_100pct_similar`, persisting `no_send_persisted` instead of another duplicate directive; `npm run build`.
+- Unresolved issues: `npm run health` still warns `max 5 copies of one shape in 24h` because the pre-fix duplicate rows remain inside the rolling 24h window. The local golden-path script still exits nonzero because it expects `pending_approval_persisted`, but the fixed behavior under duplicate backlog is now `no_send_persisted`.
+
 ## 2026-04-16 — finished-work gate: block homework handoff artifacts
 - MODE: PRODUCT QUALITY (single seam)
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/usefulness-gate.test.ts`, `SESSION_HISTORY.md`

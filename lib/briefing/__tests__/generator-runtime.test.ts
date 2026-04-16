@@ -801,6 +801,122 @@ describe('generateDirective runtime failures', () => {
     expect(String(relArtifact?.content)).toContain('Relationship cooling');
   });
 
+  it('suppresses a repeated directive shape after two visible copies in 24h', async () => {
+    queueTkgActionsResult([
+      {
+        id: 'dup-shape-1',
+        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        action_type: 'send_message',
+        execution_result: { artifact: { to: 'partner@example.com' } },
+        status: 'skipped',
+      },
+      {
+        id: 'dup-shape-2',
+        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        action_type: 'send_message',
+        execution_result: { artifact: { to: 'partner@example.com' } },
+        status: 'pending_approval',
+      },
+    ]);
+
+    const { checkConsecutiveDuplicate } = await import('../generator');
+    const duplicate = await checkConsecutiveDuplicate(
+      'user-1',
+      'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+    );
+
+    expect(duplicate).toEqual(expect.objectContaining({
+      isDuplicate: true,
+      matchingActionId: 'dup-shape-2',
+    }));
+  });
+
+  it('keeps a single recent similar directive from blocking the next winner', async () => {
+    queueTkgActionsResult([
+      {
+        id: 'dup-shape-1',
+        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        action_type: 'send_message',
+        execution_result: { artifact: { to: 'partner@example.com' } },
+        status: 'skipped',
+      },
+    ]);
+
+    const { checkConsecutiveDuplicate } = await import('../generator');
+    const duplicate = await checkConsecutiveDuplicate(
+      'user-1',
+      'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+    );
+
+    expect(duplicate.isDuplicate).toBe(false);
+  });
+
+  it('applies duplicate suppression to verification-stub persistence without regressing a fresh write_document stub', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    scored.winner.type = 'commitment';
+    scored.winner.suggestedActionType = 'write_document';
+    scored.winner.title = "Commitment due in 0d: Webinar 'Algoritmo Zero' launch decision";
+    scored.winner.content = 'Webinar launch ownership is unresolved and cutoff is 2026-03-30.';
+    scored.winner.relationshipContext = '- Webinar Owner <owner@algoritmozero.com> (Partner)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    const { generateDirective } = await import('../generator');
+    const freshDirective = await generateDirective('user-1', {
+      dryRun: true,
+      pipelineDryRun: true,
+      verificationStubPersist: true,
+      verificationGoldenPathWriteDocument: true,
+    });
+
+    expect(freshDirective.action_type).toBe('write_document');
+    expect(freshDirective.directive).toBe('Send Alex Morgan at alex@partner.example.com a concrete resolution for the 2026-04-16 overlap before Friday 2026-04-18.');
+
+    vi.clearAllMocks();
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([
+      {
+        id: 'doc-dup-1',
+        directive_text: 'Send Alex Morgan at alex@partner.example.com a concrete resolution for the 2026-04-16 overlap before Friday 2026-04-18.',
+        action_type: 'write_document',
+        execution_result: {
+          artifact: { title: 'Resolution note — April 2026 calendar overlap' },
+        },
+        status: 'skipped',
+      },
+      {
+        id: 'doc-dup-2',
+        directive_text: 'Send Alex Morgan at alex@partner.example.com a concrete resolution for the 2026-04-16 overlap before Friday 2026-04-18.',
+        action_type: 'write_document',
+        execution_result: {
+          artifact: { title: 'Resolution note — April 2026 calendar overlap' },
+        },
+        status: 'rejected',
+      },
+    ]);
+
+    const blockedDirective = await generateDirective('user-1', {
+      dryRun: true,
+      pipelineDryRun: true,
+      verificationStubPersist: true,
+      verificationGoldenPathWriteDocument: true,
+    });
+
+    expect(blockedDirective.directive).toBe('__GENERATION_FAILED__');
+    expect(blockedDirective.action_type).toBe('do_nothing');
+    expect(mockLogStructuredEvent.mock.calls.some(([event]) =>
+      event?.event === 'candidate_blocked' && event?.generationStatus === 'duplicate_suppressed')).toBe(true);
+  });
+
   it('blocks send_message via DecisionPayload when winner entity matches locked_contact (scorer should pre-filter; generator still guards)', async () => {
     // AB-25: normalized_entity stored with spaces ("nicole vreeland") must still match
     // entityName "Nicole Vreeland" after both sides strip whitespace.

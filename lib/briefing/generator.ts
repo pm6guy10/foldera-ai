@@ -4223,21 +4223,27 @@ function isNonEmptyString(value: unknown): value is string {
 // Consecutive duplicate detection (FIX 3)
 // ---------------------------------------------------------------------------
 
-async function checkConsecutiveDuplicate(
+export async function checkConsecutiveDuplicate(
   userId: string,
   newDirectiveText: string,
 ): Promise<{ isDuplicate: boolean; matchingActionId?: string; similarity?: number }> {
+  const DUPLICATE_SHAPE_LOOKBACK_MS = daysMs(1);
+  const DUPLICATE_SHAPE_REPEAT_SIMILARITY = 0.88;
+  const DUPLICATE_SHAPE_IMMEDIATE_SIMILARITY = 0.5;
+  const DUPLICATE_SHAPE_MAX_VISIBLE_COPIES = 2;
   const supabase = createServerClient();
 
   try {
+    const since = new Date(Date.now() - DUPLICATE_SHAPE_LOOKBACK_MS).toISOString();
     const { data: recentActions } = await supabase
       .from('tkg_actions')
-      .select('id, directive_text, action_type')
+      .select('id, directive_text, action_type, execution_result, status')
       .eq('user_id', userId)
-      .in('status', ['pending_approval', 'executed'])
+      .in('status', ['pending_approval', 'approved', 'executed', 'skipped', 'draft_rejected', 'rejected'])
+      .gte('generated_at', since)
       .not('action_type', 'in', '("do_nothing")')
       .order('generated_at', { ascending: false })
-      .limit(3);
+      .limit(25);
 
     if (!recentActions || recentActions.length === 0) {
       return { isDuplicate: false };
@@ -4246,22 +4252,41 @@ async function checkConsecutiveDuplicate(
     const newNormalized = normalizeText(newDirectiveText);
     if (!newNormalized) return { isDuplicate: false };
 
+    const similarVisibleActions: Array<{ id: string; similarity: number }> = [];
+
     for (const action of recentActions) {
-      if (!action.directive_text) continue;
-      // Skip wait_rationale actions (they are valid silence, not real directives)
+      if (!isNonEmptyString(action.directive_text)) continue;
       const actionType = (action.action_type as string | null) ?? '';
-      if (actionType === 'do_nothing') continue;
+      if (actionType === 'do_nothing' || actionType === 'wait_rationale') continue;
+      if (isInternalNoSendExecutionResult(action.execution_result)) continue;
 
       const existingNormalized = normalizeText(action.directive_text);
       const sim = similarityScore(newNormalized, existingNormalized);
+      const actionId = action.id as string;
+      const status = (action.status as string | null) ?? '';
 
-      if (sim >= 0.50) {
+      if (
+        ['pending_approval', 'approved', 'executed'].includes(status) &&
+        sim >= DUPLICATE_SHAPE_IMMEDIATE_SIMILARITY
+      ) {
         return {
           isDuplicate: true,
-          matchingActionId: action.id as string,
+          matchingActionId: actionId,
           similarity: sim,
         };
       }
+
+      if (sim >= DUPLICATE_SHAPE_REPEAT_SIMILARITY) {
+        similarVisibleActions.push({ id: actionId, similarity: sim });
+      }
+    }
+
+    if (similarVisibleActions.length >= DUPLICATE_SHAPE_MAX_VISIBLE_COPIES) {
+      return {
+        isDuplicate: true,
+        matchingActionId: similarVisibleActions[0]?.id,
+        similarity: similarVisibleActions[0]?.similarity,
+      };
     }
 
     return { isDuplicate: false };
@@ -9107,7 +9132,7 @@ export async function generateDirective(
     }
 
     // Consecutive duplicate suppression — candidate-specific, try next
-    const duplicateCheck = options.pipelineDryRun
+    const duplicateCheck = options.pipelineDryRun && !options.verificationStubPersist
       ? { isDuplicate: false as const }
       : await checkConsecutiveDuplicate(userId, payload.directive);
     if (duplicateCheck.isDuplicate) {
