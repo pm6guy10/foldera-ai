@@ -120,6 +120,8 @@ interface CommitmentRow {
   /** When present (e.g. from scorer), used for behavioral_pattern “said-but-never-did” age. */
   created_at?: string | null;
   trust_class?: 'trusted' | 'junk' | 'transactional' | 'personal' | 'unclassified' | null;
+  source?: string | null;
+  source_id?: string | null;
 }
 
 interface GoalRow {
@@ -494,6 +496,7 @@ function extractExposure(
   commitments: CommitmentRow[],
   goals: GoalRow[],
   now: number,
+  structured: StructuredSignalInput[] = [],
 ): Discrepancy[] {
   const results: Discrepancy[] = [];
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
@@ -517,24 +520,36 @@ function extractExposure(
       0,
       Math.floor((new Date(dueAt).getTime() - now) / 86400000),
     );
+    const schedulingEvidence = findSchedulingPressureEvidenceForCommitment(c, structured, now);
     const urgency =
       daysUntilDue === 0
         ? 0.95
         : daysUntilDue <= 2
           ? 0.85
           : daysUntilDue <= 5
-            ? 0.70
+            ? (schedulingEvidence.length > 0 ? 0.90 : 0.70)
             : 0.55;
+    const schedulingEvidenceText = schedulingEvidence.length > 0
+      ? ` Related scheduling pressure: ${schedulingEvidence
+        .map((e) => (e.summary ?? '').replace(/^Scheduling pressure:\s*/i, ''))
+        .join(' ')}`
+      : '';
 
     const trigger: TriggerMetadata = {
       baseline_state: `Commitment accepted: "${c.description.slice(0, 80)}"`,
-      current_state: `Due in ${daysUntilDue} day(s), no execution artifact exists`,
-      delta: `commitment → no artifact (${daysUntilDue}d remaining)`,
+      current_state: schedulingEvidence.length > 0
+        ? `Due in ${daysUntilDue} day(s), scheduling instructions exist, no execution artifact exists`
+        : `Due in ${daysUntilDue} day(s), no execution artifact exists`,
+      delta: schedulingEvidence.length > 0
+        ? `commitment → unscheduled required next step (${daysUntilDue}d remaining)`
+        : `commitment → no artifact (${daysUntilDue}d remaining)`,
       timeframe: `${daysUntilDue} day(s) to deadline`,
       outcome_class: 'deadline',
-      why_now: daysUntilDue <= 2
-        ? `Due in ${daysUntilDue} day(s) with zero artifacts — this is not a reminder, it is an exposure gap`
-        : `Commitment approaching deadline with no visible execution — the gap is widening daily`,
+      why_now: schedulingEvidence.length > 0
+        ? `Scheduling instructions and deadline pressure are both present; the artifact should move appointment confirmation, not produce generic prep.`
+        : daysUntilDue <= 2
+          ? `Due in ${daysUntilDue} day(s) with zero artifacts — this is not a reminder, it is an exposure gap`
+          : `Commitment approaching deadline with no visible execution — the gap is widening daily`,
     };
 
     results.push({
@@ -544,19 +559,86 @@ function extractExposure(
       content:
         `You committed to "${c.description}" and it is due in ` +
         `${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}. ` +
-        `No execution artifact exists yet. The gap between commitment and delivery is exposure.`,
+        `No execution artifact exists yet. The gap between commitment and delivery is exposure.` +
+        schedulingEvidenceText,
       stakes: 4,
       urgency,
       suggestedActionType: 'write_document' as ActionType,
       evidence: `due_at=${dueAt}, days_until_due=${daysUntilDue}, status=${c.status}`,
       sourceSignals: [
         { kind: 'commitment', id: c.id, summary: c.description.slice(0, 160) },
+        ...schedulingEvidence,
       ],
       matchedGoal: matchGoal(c.description, goals),
       trigger,
     });
   }
   return results;
+}
+
+const SCHEDULING_PRESSURE_PATTERN =
+  /\bself[-\s]?schedul|\bschedule (?:your|the|an?)\b|\bschedule appointment\b|\bselect (?:the|your|an?) (?:desired )?(?:interview )?(?:date|time|slot)|\bconfirm appointment\b|\binterview slots?\b|\bfirst[-\s]?come\b|\bfirst served\b/i;
+
+function commitmentKeywordTokens(description: string): string[] {
+  const stopwords = new Set([
+    'interview',
+    'project',
+    'meeting',
+    'appointment',
+    'position',
+    'accepted',
+    'scheduled',
+  ]);
+  return normalizeInterviewToken(description)
+    .split(/\s+/)
+    .filter((token) => token.length >= 4 && !stopwords.has(token));
+}
+
+function summarizeSchedulingPressure(content: string): string {
+  const normalized = content.replace(/\s+/g, ' ').trim();
+  const directMatch = normalized.match(/(?:please follow the instructions below to schedule|go to www\.careers\.wa\.gov|confirm appointment|interview slots? are reserved|first come, first served)[^.]*\.?/i);
+  return (directMatch?.[0] ?? normalized).slice(0, 220);
+}
+
+function findSchedulingPressureEvidenceForCommitment(
+  commitment: CommitmentRow,
+  structured: StructuredSignalInput[],
+  nowMs: number,
+): GenerationCandidateSource[] {
+  const tokens = commitmentKeywordTokens(commitment.description);
+  if (tokens.length === 0) return [];
+  const sinceMs = nowMs - FOURTEEN_DAYS_MS;
+  const evidence: GenerationCandidateSource[] = [];
+  const seen = new Set<string>();
+
+  for (const signal of structured) {
+    if (evidence.length >= 2) break;
+    const signalType = (signal.type ?? '').toLowerCase();
+    const signalSource = signal.source.toLowerCase();
+    if (signalSource.includes('user_feedback') || signalType === 'rejection' || signalType === 'outcome_feedback') continue;
+    const occurredMs = Date.parse(signal.occurred_at);
+    if (!Number.isFinite(occurredMs) || occurredMs < sinceMs || occurredMs > nowMs + SEVEN_DAYS_MS) continue;
+
+    const exactSourceMatch = Boolean(commitment.source_id && (
+      signal.id === commitment.source_id || signal.source_id === commitment.source_id
+    ));
+    const lower = signal.content.toLowerCase();
+    const overlap = tokens.filter((token) => lower.includes(token)).length;
+    if (!exactSourceMatch && overlap < Math.min(2, tokens.length)) continue;
+    if (!SCHEDULING_PRESSURE_PATTERN.test(signal.content)) continue;
+    if (seen.has(signal.id)) continue;
+    seen.add(signal.id);
+
+    evidence.push({
+      kind: 'signal',
+      id: signal.id,
+      source: signal.source,
+      occurredAt: signal.occurred_at,
+      summary: `Scheduling pressure: ${summarizeSchedulingPressure(signal.content)}`,
+    });
+  }
+
+  return evidence;
 }
 
 // ---------------------------------------------------------------------------
@@ -2718,7 +2800,7 @@ export function detectDiscrepancies(args: {
     ...extractGoalVelocityMismatch(goals, decryptedSignals),
     // Absence-based (existing)
     ...extractRisk(entities, goals, decryptedSignals, nowMs),
-    ...extractExposure(commitments, goals, nowMs),
+    ...extractExposure(commitments, goals, nowMs, structured),
     ...extractAvoidance(commitments, goals, nowMs),
     ...extractDrift(goals, commitments, decryptedSignals),
     ...extractDecay(entities, goals, decryptedSignals, nowMs),

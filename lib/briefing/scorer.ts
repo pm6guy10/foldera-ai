@@ -1772,6 +1772,69 @@ export function isThreadBackedSendableLoop(c: ScoredLoop): boolean {
   return false;
 }
 
+function scoredLoopSearchText(candidate: ScoredLoop): string {
+  const sourceText = candidate.sourceSignals
+    .map((source) => `${source.summary ?? ''} ${source.source ?? ''}`)
+    .join(' ');
+  const triggerText = candidate.trigger
+    ? [
+      candidate.trigger.baseline_state,
+      candidate.trigger.current_state,
+      candidate.trigger.delta,
+      candidate.trigger.timeframe,
+      candidate.trigger.why_now,
+      candidate.trigger.outcome_class,
+    ].join(' ')
+    : '';
+  return [
+    candidate.title,
+    candidate.content,
+    sourceText,
+    triggerText,
+    candidate.discrepancyEvidence ?? '',
+    candidate.matchedGoal?.text ?? '',
+  ].join(' ').toLowerCase();
+}
+
+function isDecisiveSchedulingPressureCandidate(candidate: ScoredLoop): boolean {
+  if (candidate.type !== 'discrepancy') return false;
+  if (candidate.discrepancyClass !== 'exposure') return false;
+  if (candidate.suggestedActionType !== 'write_document') return false;
+
+  const text = scoredLoopSearchText(candidate);
+  const hasOpenCommitmentPattern =
+    /\bcommitment due\b|\bcommitted to\b|\bno execution artifact\b|\bopen commitment\b|\bdue in \d+d\b/i.test(text);
+  const hasSchedulingInstruction =
+    /\bself[-\s]?schedul|\bschedule (?:your|the|an?)\b|\bselect (?:your|an?) (?:interview )?(?:date|time|slot)|\bconfirm appointment\b|\binterview slots?\b|\bcareers\.wa\.gov\b/i.test(text);
+  const hasRequiredNextStep =
+    /\bnot (?:yet )?scheduled\b|\bunscheduled\b|\brequired next step\b|\bcritical next step\b|\bneeds to happen\b|\bmust\b|\brequired\b/i.test(text);
+  const hasFirstComePressure =
+    /\bfirst[-\s]?come\b|\bfirst come, first served\b|\bfirst served\b|\breserved on a first\b|\bslots? (?:are )?reserved\b/i.test(text);
+  const hasRealDatePressure =
+    /\b20\d{2}-\d{2}-\d{2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b|\b\d+\s+day(?:s)?\b|\bdue in \d+d\b|\bdeadline\b/i.test(text);
+
+  return (
+    hasOpenCommitmentPattern
+    && hasSchedulingInstruction
+    && hasRequiredNextStep
+    && hasFirstComePressure
+    && hasRealDatePressure
+  );
+}
+
+function isGenericPrepStyleDocumentCandidate(candidate: ScoredLoop): boolean {
+  if (candidate.suggestedActionType !== 'write_document') return false;
+  if (isDecisiveSchedulingPressureCandidate(candidate)) return false;
+  if (isThreadBackedSendableLoop(candidate)) return false;
+
+  const text = scoredLoopSearchText(candidate);
+  return (
+    candidate.discrepancyClass === 'preparation_gap'
+    || candidate.discrepancyClass === 'behavioral_pattern'
+    || /\bprep(?:aration)?\b|\binterview week\b|\bdeadline appears\b|\bgeneric\b|\bbrief\b|\bmemo\b|\bagenda\b/.test(text)
+  );
+}
+
 export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantResult {
   const ranked = scored.map((candidate) => ({
     ...candidate,
@@ -1931,6 +1994,27 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
     ) {
       topDiscrepancy.score = topNonDiscrepancy.score + 0.001;
       ensureDiagnostic(topDiscrepancy).penaltyReasons.push('discrepancy_priority_forced_over_task');
+    }
+  }
+
+  // Decisive scheduling pressure beats generic prep/document output. This keeps
+  // the MAS3-style "schedule the slot now" artifact selected before generation
+  // instead of letting a broad prep memo win and relying on late usefulness gates.
+  const topDecisiveScheduling = ranked
+    .filter((c) => c.score > 0 && passesTop3RankingInvariants(c) && isDecisiveSchedulingPressureCandidate(c))
+    .sort(compareScoredLoops)[0];
+  if (topDecisiveScheduling) {
+    const topGenericPrepDocument = ranked
+      .filter((c) =>
+        c.score > 0
+        && c.id !== topDecisiveScheduling.id
+        && passesTop3RankingInvariants(c)
+        && isGenericPrepStyleDocumentCandidate(c))
+      .sort(compareScoredLoops)[0];
+    if (topGenericPrepDocument && topGenericPrepDocument.score >= topDecisiveScheduling.score) {
+      topDecisiveScheduling.score = topGenericPrepDocument.score + 0.001;
+      ensureDiagnostic(topDecisiveScheduling).penaltyReasons.push('decisive_scheduling_forced_over_generic_prep_document');
+      ensureDiagnostic(topGenericPrepDocument).penaltyReasons.push('generic_prep_document_yielded_to_decisive_scheduling');
     }
   }
 

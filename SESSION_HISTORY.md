@@ -4407,3 +4407,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Added a deterministic homework-handoff gate so write_document outputs that tell the user to research, prepare examples, familiarize themselves, locate materials, or follow conditional prep menus fail validation instead of persisting as finished artifacts.
 - Verification: `npm run health` (0 FAILING, warning-only repeated directive); `npx vitest run lib/briefing/__tests__/usefulness-gate.test.ts`; `npx tsx scripts/run-paid-generate-once.ts` persisted action `85a6f986-9d71-4c9b-bc16-514753423bf1` with `artifact_pass_fail=PASS`; `npm run build`; `npx playwright test` (78 passed, 4 skipped).
 - Unresolved issues: none for this seam.
+
+## 2026-04-16 — upstream scheduling-action preference for exposure winners
+- MODE: PRODUCT QUALITY (single seam)
+- Files changed: `lib/briefing/discrepancy-detector.ts`, `lib/briefing/scorer.ts`, `lib/briefing/__tests__/scorer-ranking-invariants.test.ts`, `SESSION_HISTORY.md`
+- What changed: Exposure discrepancies now attach related real mail/calendar scheduling-pressure signals and lift urgency when explicit scheduling instructions are present. Ranking now forces decisive scheduling-pressure exposure candidates above generic prep/document discrepancies, without suppressing normal prep documents when those pressure signals are absent.
+- Verification: `npm run health` (0 FAILING, warning-only repeated directive); `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/scorer-ranking-invariants.test.ts`; `npx vitest run --exclude ".claude/worktrees/**" lib/briefing/__tests__/discrepancy-detector.test.ts`; prod-like local scorer run selected `discrepancy_exposure_a471f1d9-0cb0-4ab2-a6f3-db03b0b630d6` at score 1.881 with Outlook scheduling-pressure source signals before generation; `npm run build`; `npx playwright test` (78 passed, 4 skipped).
+- Unresolved issues: none for this seam.

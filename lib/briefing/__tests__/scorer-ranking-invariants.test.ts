@@ -215,6 +215,88 @@ describe('applyRankingInvariants', () => {
     expect(meetingDiag?.penaltyReasons).toContain('calendar_admin_discrepancy_no_priority_boost');
   });
 
+  it('decisive scheduling pressure outranks generic prep document before generation', () => {
+    const input = [
+      candidate({
+        id: 'generic-prep-doc',
+        score: 2.4,
+        type: 'discrepancy',
+        discrepancyClass: 'behavioral_pattern',
+        suggestedActionType: 'write_document',
+        title: 'MAS3 interview week prep memo',
+        content: 'Build a broad prep document for interview themes and talking points.',
+        sourceSignals: [{ kind: 'signal', summary: 'Interview prep theme across calendar and email' }],
+      }),
+      candidate({
+        id: 'scheduling-action',
+        score: 1.6,
+        type: 'discrepancy',
+        discrepancyClass: 'exposure',
+        suggestedActionType: 'write_document',
+        title: 'Commitment due in 3d: MAS3 Project interview',
+        content:
+          'You committed to the MAS3 Project interview. The interview is April 20, 2026, ' +
+          'the slot is not yet scheduled on careers.wa.gov, and the required next step is to self-schedule ' +
+          'and confirm appointment. Interview slots are reserved on a first-come-first-served basis.',
+        sourceSignals: [
+          {
+            kind: 'commitment',
+            summary:
+              'MAS3 Project interview: authorization forms sent April 15; scheduling still required before April 20.',
+          },
+        ],
+        trigger: {
+          baseline_state: 'Commitment accepted: MAS3 Project interview',
+          current_state: 'Due in 3 day(s), no execution artifact exists and no interview slot is scheduled',
+          delta: 'commitment -> no artifact, no confirmed appointment (3d remaining)',
+          timeframe: '3 day(s) to deadline',
+          outcome_class: 'deadline',
+          why_now:
+            'The scheduling instruction is explicit and slots are first-come-first-served, so the next artifact must move appointment confirmation now.',
+        },
+      }),
+    ];
+
+    expect([...input].sort((a, b) => b.score - a.score)[0]?.id).toBe('generic-prep-doc');
+
+    const { ranked, diagnostics } = applyRankingInvariants(input);
+    expect(ranked[0]?.id).toBe('scheduling-action');
+    expect(diagnostics.find((d) => d.id === 'scheduling-action')?.penaltyReasons)
+      .toContain('decisive_scheduling_forced_over_generic_prep_document');
+  });
+
+  it('normal prep document can still outrank exposure when scheduling pressure is absent', () => {
+    const input = [
+      candidate({
+        id: 'normal-prep-doc',
+        score: 2.4,
+        type: 'discrepancy',
+        discrepancyClass: 'behavioral_pattern',
+        suggestedActionType: 'write_document',
+        title: 'Interview prep memo',
+        content: 'Build a prep document for role themes and talking points.',
+        sourceSignals: [{ kind: 'signal', summary: 'Interview prep theme across calendar and email' }],
+      }),
+      candidate({
+        id: 'ordinary-exposure',
+        score: 1.6,
+        type: 'discrepancy',
+        discrepancyClass: 'exposure',
+        suggestedActionType: 'write_document',
+        title: 'Commitment due in 3d: practice interview answers',
+        content:
+          'You committed to practice interview answers and it is due in 3 days. ' +
+          'No execution artifact exists yet.',
+        sourceSignals: [{ kind: 'commitment', summary: 'Practice interview answers' }],
+      }),
+    ];
+
+    const { ranked, diagnostics } = applyRankingInvariants(input);
+    expect(ranked[0]?.id).toBe('normal-prep-doc');
+    expect(diagnostics.find((d) => d.id === 'ordinary-exposure')?.penaltyReasons)
+      .not.toContain('decisive_scheduling_forced_over_generic_prep_document');
+  });
+
   it('only behavioral_pattern discrepancies are subject to failure-suppression class set', () => {
     expect(DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET.has('behavioral_pattern')).toBe(true);
     expect(DISCREPANCY_FAILURE_SUPPRESSION_CLASS_SET.has('decay')).toBe(false);
