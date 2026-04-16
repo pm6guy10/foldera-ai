@@ -241,6 +241,12 @@ const INTERVIEW_ORG_PATTERN =
 const INTERVIEW_DETAIL_PROMPT_PATTERN =
   /\b(?:focus on|focus areas?|bring examples of|panel(?: is)? looking for|emphasis on|topics include|they care about)\s*:?\s*([^\n.]+)/ig;
 
+const INTERVIEW_CONFIRMATION_PATTERN =
+  /\b(?:confirm(?:ed|ing|ation)?|scheduled|schedule(?:d)?|invite(?:d|s|ation)?|selected\s+to\s+interview|interview\s+(?:is|has\s+been)\s+(?:set|scheduled|confirmed)|we\s+look\s+forward\s+to\s+(?:meeting|speaking)|panel\s+(?:will|is\s+scheduled\s+to)\s+(?:meet|interview))\b/i;
+
+const INTERVIEW_SPECULATIVE_PATTERN =
+  /\b(?:if\s+(?:you\s+are\s+)?selected|may\s+be\s+invited|might\s+be\s+invited|potential\s+interview|possible\s+interview|future\s+interview|interview\s+pool|eligible\s+list|screening\s+criteria|application\s+(?:received|under\s+review)|not\s+selected|cancel(?:ed|led)|postponed)\b/i;
+
 /**
  * Rejection reason codes for entity admission control.
  * Machine-readable; logged on every rejection.
@@ -1245,12 +1251,40 @@ function formatInterviewDateKeyPt(ms: number): string {
   }).format(ms);
 }
 
+function interviewDateVariantsPt(ms: number): string[] {
+  const formats: Intl.DateTimeFormatOptions[] = [
+    { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' },
+    { timeZone: 'America/Los_Angeles', year: 'numeric', month: 'numeric', day: 'numeric' },
+    { timeZone: 'America/Los_Angeles', month: 'long', day: 'numeric' },
+    { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric' },
+    { timeZone: 'America/Los_Angeles', weekday: 'long', month: 'long', day: 'numeric' },
+    { timeZone: 'America/Los_Angeles', weekday: 'short', month: 'short', day: 'numeric' },
+  ];
+  return [...new Set([
+    formatInterviewDateKeyPt(ms),
+    new Date(ms).toISOString().slice(0, 10),
+    ...formats.map((format) => new Intl.DateTimeFormat('en-US', format).format(ms)),
+  ].map(normalizeInterviewToken).filter(Boolean))];
+}
+
+function textMentionsInterviewDate(text: string, startMs: number): boolean {
+  const normalized = normalizeInterviewToken(text);
+  return interviewDateVariantsPt(startMs).some((variant) => normalized.includes(variant));
+}
+
+function hasInterviewConfirmationLanguage(text: string): boolean {
+  return INTERVIEW_CONFIRMATION_PATTERN.test(text) && !INTERVIEW_SPECULATIVE_PATTERN.test(text);
+}
+
+function calendarConfirmationText(content: string): string {
+  return content.replace(/\[Calendar event:\s*[^\]]+\]/ig, ' ');
+}
+
 function matchingInterviewEmailSignals(
   structured: StructuredSignalInput[],
   itemTitle: string,
   startMs: number,
 ): StructuredSignalInput[] {
-  const dateKey = formatInterviewDateKeyPt(startMs);
   const titleTokens = interviewTokens(itemTitle);
   const parsedTitle = splitInterviewTitle(itemTitle);
   const expectedOrg = normalizeInterviewField(parsedTitle.org);
@@ -1260,20 +1294,44 @@ function matchingInterviewEmailSignals(
     const body = signal.content;
     if (!looksLikeInterviewSignal(body)) return false;
     const emailText = `${extractSubjectFromSignal(body)} ${body}`;
+    if (!hasInterviewConfirmationLanguage(emailText)) return false;
     const normalized = normalizeInterviewToken(emailText);
     const overlap = titleTokens.filter((token) => normalized.includes(token)).length;
     const signalOrg = normalizeInterviewField(extractOrgFromInterviewText(emailText));
     const signalRole = normalizeInterviewField(extractRoleFromInterviewText(emailText));
-    const dateMatch = normalized.includes(dateKey.replace(/-/g, ' '));
+    const dateMatch = textMentionsInterviewDate(emailText, startMs);
     const orgMatch = expectedOrg.length > 0 && signalOrg === expectedOrg;
     const roleMatch = expectedRole.length > 0 && signalRole === expectedRole;
     const conflictingOrg = expectedOrg.length > 0 && signalOrg.length > 0 && signalOrg !== expectedOrg;
     const conflictingRole = expectedRole.length > 0 && signalRole.length > 0 && signalRole !== expectedRole;
 
-    if (dateMatch || orgMatch || roleMatch) return true;
     if (conflictingOrg || conflictingRole) return false;
-    return overlap >= 2;
+    if (!dateMatch) return false;
+    return roleMatch || orgMatch || overlap >= 2;
   });
+}
+
+function calendarHasConfirmationQualityEvidence(
+  content: string,
+  itemTitle: string,
+  startMs: number,
+): boolean {
+  const evidenceText = calendarConfirmationText(content);
+  if (!hasInterviewConfirmationLanguage(evidenceText)) return false;
+  if (!textMentionsInterviewDate(`${itemTitle}\n${evidenceText}`, startMs)) return false;
+
+  const parsedTitle = splitInterviewTitle(itemTitle);
+  const titleRole = normalizeInterviewField(parsedTitle.role);
+  const titleOrg = normalizeInterviewField(parsedTitle.org);
+  const evidenceRole = normalizeInterviewField(extractRoleFromInterviewText(evidenceText));
+  const evidenceOrg = normalizeInterviewField(extractOrgFromInterviewText(evidenceText));
+  const roleMatch = titleRole.length > 0 && evidenceRole === titleRole;
+  const orgMatch = titleOrg.length > 0 && evidenceOrg === titleOrg;
+  const conflictingRole = titleRole.length > 0 && evidenceRole.length > 0 && evidenceRole !== titleRole;
+  const conflictingOrg = titleOrg.length > 0 && evidenceOrg.length > 0 && evidenceOrg !== titleOrg;
+
+  if (conflictingRole || conflictingOrg) return false;
+  return roleMatch && orgMatch;
 }
 
 function buildInterviewWeekCluster(
@@ -1313,6 +1371,20 @@ function buildInterviewWeekCluster(
     if (!looksLikeInterviewSignal(`${parsed.title}\n${signal.content}`)) continue;
 
     const matchingEmails = matchingInterviewEmailSignals(structured, parsed.title, parsed.startMs);
+    const hasCalendarGrounding = calendarHasConfirmationQualityEvidence(
+      signal.content,
+      parsed.title,
+      parsed.startMs,
+    );
+    if (matchingEmails.length === 0 && !hasCalendarGrounding) {
+      excludedEvents.push({
+        startMs: parsed.startMs,
+        title: parsed.title,
+        reason: 'insufficient interview confirmation grounding',
+      });
+      continue;
+    }
+
     const combinedText = [
       parsed.title,
       signal.content,
@@ -1391,6 +1463,7 @@ function buildInterviewWeekCluster(
         window_pt_end: ptWindowEnd,
         interview_count: interviewEvents.length,
         excluded_count: excludedEvents.length,
+        grounding_rule: 'each included interview has confirmation-language email or calendar evidence with matching date plus exact role/org alignment',
       }),
       sourceSignals: interviewEvents.slice(0, 5).map((event) => ({
         kind: 'signal',

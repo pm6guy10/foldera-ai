@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-16 — interview-week reality gate
+- MODE: BUGFIX (single seam)
+- Files changed: `lib/briefing/discrepancy-detector.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `SESSION_HISTORY.md`
+- What changed: Hardened `buildInterviewWeekCluster()` and `matchingInterviewEmailSignals()` so calendar interview items require confirmation-quality grounding before inclusion: confirmation language, non-speculative wording, matching date, and exact role/org or strong title alignment with conflicts rejected. Weak interview-like calendar events are excluded with an evidence reason, and clusters still require at least two grounded interviews.
+- Verification: `npm run health` (0 FAILING, warning-only repeated directive); `npx vitest run lib/briefing/__tests__/discrepancy-detector.test.ts` (105 passed); `npm run build`; `npx playwright test` (78 passed, 4 skipped).
+- Unresolved issues: none for this seam.
+
 ## 2026-04-15 — interview-week battle plan deterministic artifact path
 - MODE: PRODUCT HARDENING (single seam)
 - Files changed: `lib/briefing/discrepancy-detector.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `lib/conviction/artifact-generator.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`

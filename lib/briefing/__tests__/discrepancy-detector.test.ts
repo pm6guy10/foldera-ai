@@ -2013,7 +2013,7 @@ describe('extractBehavioralPatterns — interview week cluster', () => {
         occurred_at: daysAgoISO(2),
         content: [
           'From: Cheryl Anderson <cheryl.anderson1@dshs.wa.gov>',
-          'Subject: SHPC4 interview confirmation for March 30',
+          'Subject: Social and Health Program Consultant 4 interview confirmation with DSHS for March 30',
           'Body: Focus on program operations, stakeholder coordination, and policy interpretation.',
         ].join('\n'),
       },
@@ -2036,7 +2036,7 @@ describe('extractBehavioralPatterns — interview week cluster', () => {
         occurred_at: daysAgoISO(2),
         content: [
           'From: Yadira Clapper <yadira.clapper@hca.wa.gov>',
-          'Subject: MEDS/MAS3 interview packet',
+          'Subject: Administrative Specialist 3 interview confirmation with HCA for April 1',
           'Body: Bring examples of appeals coordination, training handoffs, and policy interpretation.',
         ].join('\n'),
       },
@@ -2059,7 +2059,7 @@ describe('extractBehavioralPatterns — interview week cluster', () => {
         occurred_at: daysAgoISO(2),
         content: [
           'From: Keri Nopens <keri.nopens@wacares.wa.gov>',
-          'Subject: Training & Appeals Program Manager interview agenda',
+          'Subject: Training & Appeals Program Manager interview confirmed with WA Cares for April 3',
           'Body: Focus areas: training handoffs, stakeholder coordination, and program operations.',
         ].join('\n'),
       },
@@ -2120,5 +2120,241 @@ describe('extractBehavioralPatterns — interview week cluster', () => {
     expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-03-31T21:15:00.000Z || Dance || non-interview personal event');
     expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-04-01T02:00:00.000Z || Put Trash Can Out || non-interview personal event');
     expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-04-02T02:00:00.000Z || Bible study at Brightside || non-interview personal event');
+  });
+
+  it('excludes a weak SHPC4-style event when no confirmation-quality evidence exists', () => {
+    const structured = [
+      {
+        id: 'weak-shpc4',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: SHPC4 Interview - Social and Health Program Consultant 4 - DSHS]',
+          'Start: 2026-03-30T16:00:00.000Z',
+          'End: 2026-03-30T17:00:00.000Z',
+          'Attendees: cheryl.anderson1@dshs.wa.gov',
+        ].join('\n'),
+      },
+      {
+        id: 'real-hca-cal',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: Administrative Specialist 3 Interview - HCA]',
+          'Start: 2026-04-01T18:30:00.000Z',
+          'End: 2026-04-01T19:30:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'real-hca-mail',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: daysAgoISO(2),
+        content: [
+          'From: Yadira Clapper <yadira.clapper@hca.wa.gov>',
+          'Subject: Administrative Specialist 3 interview confirmation with HCA for April 1',
+          'Body: Your interview is scheduled for April 1. Bring examples of policy interpretation.',
+        ].join('\n'),
+      },
+      {
+        id: 'real-wa-cal',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: Training & Appeals Program Manager Interview - WA Cares]',
+          'Start: 2026-04-03T17:00:00.000Z',
+          'End: 2026-04-03T18:00:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'real-wa-mail',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: daysAgoISO(2),
+        content: [
+          'From: Keri Nopens <keri.nopens@wacares.wa.gov>',
+          'Subject: Training & Appeals Program Manager interview confirmed with WA Cares for April 3',
+          'Body: We look forward to meeting April 3. Focus areas: training handoffs.',
+        ].join('\n'),
+      },
+    ];
+
+    const out = extractBehavioralPatterns([], [], [], structured, [], [], now);
+    const cluster = out.find((d) => d.id.includes('interview_week'));
+
+    expect(cluster).toBeDefined();
+    expect(cluster?.content).not.toContain('INTERVIEW_ITEM: 2026-03-30T16:00:00.000Z || 2026-03-30T17:00:00.000Z || SHPC4 Interview');
+    expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-03-30T16:00:00.000Z || SHPC4 Interview - Social and Health Program Consultant 4 - DSHS || insufficient interview confirmation grounding');
+    expect(cluster?.content).toContain('INTERVIEW_COUNT: 2');
+  });
+
+  it('keeps a real confirmed interview included', () => {
+    const structured = [
+      {
+        id: 'confirmed-shpc4-cal',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: SHPC4 Interview - Social and Health Program Consultant 4 - DSHS]',
+          'Start: 2026-03-30T16:00:00.000Z',
+          'End: 2026-03-30T17:00:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'confirmed-shpc4-mail',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: daysAgoISO(2),
+        content: [
+          'From: Cheryl Anderson <cheryl.anderson1@dshs.wa.gov>',
+          'Subject: Social and Health Program Consultant 4 interview confirmation with DSHS for March 30',
+          'Body: Your interview is scheduled for March 30. Focus on program operations.',
+        ].join('\n'),
+      },
+      {
+        id: 'confirmed-hca-cal',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: Administrative Specialist 3 Interview - HCA]',
+          'Start: 2026-04-01T18:30:00.000Z',
+          'End: 2026-04-01T19:30:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'confirmed-hca-mail',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: daysAgoISO(2),
+        content: [
+          'From: Yadira Clapper <yadira.clapper@hca.wa.gov>',
+          'Subject: Administrative Specialist 3 interview confirmation with HCA for April 1',
+          'Body: Your panel interview is confirmed for April 1.',
+        ].join('\n'),
+      },
+    ];
+
+    const out = extractBehavioralPatterns([], [], [], structured, [], [], now);
+    const cluster = out.find((d) => d.id.includes('interview_week'));
+
+    expect(cluster).toBeDefined();
+    expect(cluster?.content).toContain('INTERVIEW_ITEM: 2026-03-30T16:00:00.000Z || 2026-03-30T17:00:00.000Z || SHPC4 Interview - Social and Health Program Consultant 4 - DSHS');
+    expect(cluster?.content).toContain('INTERVIEW_ITEM: 2026-04-01T18:30:00.000Z || 2026-04-01T19:30:00.000Z || Administrative Specialist 3 Interview - HCA');
+  });
+
+  it('rejects cross-role email bleed from an adjacent confirmed interview', () => {
+    const structured = [
+      {
+        id: 'hca-cal',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: Administrative Specialist 3 Interview - HCA]',
+          'Start: 2026-04-01T18:30:00.000Z',
+          'End: 2026-04-01T19:30:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'hca-mail',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: daysAgoISO(2),
+        content: [
+          'From: Yadira Clapper <yadira.clapper@hca.wa.gov>',
+          'Subject: Administrative Specialist 3 interview confirmation with HCA for April 1',
+          'Body: Bring examples of appeals coordination, training handoffs, and policy interpretation.',
+        ].join('\n'),
+      },
+      {
+        id: 'shpc4-cal',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: SHPC4 Interview - Social and Health Program Consultant 4 - DSHS]',
+          'Start: 2026-03-30T16:00:00.000Z',
+          'End: 2026-03-30T17:00:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'shpc4-mail',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: daysAgoISO(2),
+        content: [
+          'From: Cheryl Anderson <cheryl.anderson1@dshs.wa.gov>',
+          'Subject: Social and Health Program Consultant 4 interview confirmation with DSHS for March 30',
+          'Body: Your panel interview is confirmed for March 30.',
+        ].join('\n'),
+      },
+      {
+        id: 'wa-weak-cal',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: Training & Appeals Program Manager Interview - WA Cares]',
+          'Start: 2026-04-01T18:30:00.000Z',
+          'End: 2026-04-01T19:30:00.000Z',
+        ].join('\n'),
+      },
+    ];
+
+    const out = extractBehavioralPatterns([], [], [], structured, [], [], now);
+    const cluster = out.find((d) => d.id.includes('interview_week'));
+
+    expect(cluster).toBeDefined();
+    expect(cluster?.content).toContain('INTERVIEW_COUNT: 2');
+    expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-04-01T18:30:00.000Z || Training & Appeals Program Manager Interview - WA Cares || insufficient interview confirmation grounding');
+    expect(cluster?.content).not.toContain('Training & Appeals Program Manager Interview - WA Cares || Training & Appeals Program Manager || WA Cares || appeals coordination');
+  });
+
+  it('does not emit interview_week_cluster when grounding leaves fewer than two interviews', () => {
+    const structured = [
+      {
+        id: 'confirmed-hca-cal',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: Administrative Specialist 3 Interview - HCA]',
+          'Start: 2026-04-01T18:30:00.000Z',
+          'End: 2026-04-01T19:30:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'confirmed-hca-mail',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: daysAgoISO(2),
+        content: [
+          'From: Yadira Clapper <yadira.clapper@hca.wa.gov>',
+          'Subject: Administrative Specialist 3 interview confirmation with HCA for April 1',
+          'Body: Your panel interview is confirmed for April 1.',
+        ].join('\n'),
+      },
+      {
+        id: 'weak-shpc4',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: SHPC4 Interview - Social and Health Program Consultant 4 - DSHS]',
+          'Start: 2026-03-30T16:00:00.000Z',
+          'End: 2026-03-30T17:00:00.000Z',
+          'Attendees: cheryl.anderson1@dshs.wa.gov',
+        ].join('\n'),
+      },
+    ];
+
+    const out = extractBehavioralPatterns([], [], [], structured, [], [], now);
+
+    expect(out.find((d) => d.id.includes('interview_week'))).toBeUndefined();
   });
 });
