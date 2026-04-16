@@ -8,6 +8,8 @@ const mockSyncGoogle = vi.fn();
 const mockSyncMicrosoft = vi.fn();
 const mockRunCommitmentCeilingDefense = vi.fn();
 const mockRecentDryRunMaybeSingle = vi.fn();
+const mockPendingApprovalSelect = vi.fn();
+const mockPendingApprovalLimit = vi.fn();
 
 vi.mock('@/lib/cron/self-heal', () => ({
   runCommitmentCeilingDefense: mockRunCommitmentCeilingDefense,
@@ -24,18 +26,34 @@ vi.mock('@/lib/cron/brief-service', () => ({
 vi.mock('@/lib/db/client', () => ({
   createServerClient: () => ({
     from: (table: string) => {
-      if (table !== 'pipeline_runs') {
-        throw new Error(`Unexpected table: ${table}`);
+      if (table === 'pipeline_runs') {
+        const chain = {
+          select: () => chain,
+          eq: () => chain,
+          gte: () => chain,
+          order: () => chain,
+          limit: () => chain,
+          maybeSingle: mockRecentDryRunMaybeSingle,
+        };
+        return chain;
       }
-      const chain = {
-        select: () => chain,
-        eq: () => chain,
-        gte: () => chain,
-        order: () => chain,
-        limit: () => chain,
-        maybeSingle: mockRecentDryRunMaybeSingle,
-      };
-      return chain;
+
+      if (table === 'tkg_actions') {
+        const chain = {
+          select: (...args: unknown[]) => {
+            mockPendingApprovalSelect(...args);
+            return chain;
+          },
+          eq: () => chain,
+          neq: () => chain,
+          gte: () => chain,
+          order: () => chain,
+          limit: mockPendingApprovalLimit,
+        };
+        return chain;
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
     },
   }),
 }));
@@ -82,6 +100,8 @@ describe('POST /api/settings/run-brief', () => {
     vi.unstubAllEnvs();
     mockRunCommitmentCeilingDefense.mockResolvedValue(undefined);
     mockRecentDryRunMaybeSingle.mockResolvedValue({ data: null, error: null });
+    mockPendingApprovalSelect.mockReset();
+    mockPendingApprovalLimit.mockResolvedValue({ data: [], error: null });
     mockApiError.mockImplementation((error: unknown) =>
       NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 }));
     mockSyncGoogle.mockResolvedValue({ gmail_signals: 0, calendar_signals: 0, drive_signals: 0, error: 'no_token' });
@@ -96,6 +116,47 @@ describe('POST /api/settings/run-brief', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  it('short-circuits dry_run when a reusable pending approval already exists', async () => {
+    const userId = '10101010-1010-1010-1010-101010101010';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockPendingApprovalLimit.mockResolvedValue({
+      data: [{
+        id: 'pending-action-1',
+        generated_at: new Date().toISOString(),
+        confidence: 72,
+        action_type: 'send_message',
+        execution_result: { artifact: { summary: 'kept' } },
+      }],
+      error: null,
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/settings/run-brief?force=true&dry_run=true', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockSyncMicrosoft).not.toHaveBeenCalled();
+    expect(mockSyncGoogle).not.toHaveBeenCalled();
+    expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
+
+    const payload = await response.json();
+    expect(payload.ok).toBe(true);
+    expect(payload.short_circuit).toEqual(
+      expect.objectContaining({
+        reason: 'pending_approval_reused',
+        pending_action_id: 'pending-action-1',
+        reuse_window_hours: 18,
+      }),
+    );
+    expect(payload.stages.sync_microsoft).toEqual(
+      expect.objectContaining({ skipped: true, error: 'pending_approval_reused' }),
+    );
+    expect(payload.stages.daily_brief).toEqual(
+      expect.objectContaining({ status: 'short_circuited', reason: 'pending_approval_reused' }),
+    );
   });
 
   it('short-circuits repeated dry_run clicks on the server before sync or lifecycle work', async () => {
@@ -134,6 +195,47 @@ describe('POST /api/settings/run-brief', () => {
     );
     expect(payload.stages.daily_brief).toEqual(
       expect.objectContaining({ status: 'short_circuited', reason: 'pipeline_dry_run_cooldown' }),
+    );
+  });
+
+  it('ignores stale or already-sent pending approvals and still runs the dry-run lifecycle', async () => {
+    const userId = '12121212-1212-1212-1212-121212121212';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockPendingApprovalLimit.mockResolvedValue({
+      data: [
+        {
+          id: 'pending-action-stale',
+          generated_at: new Date().toISOString(),
+          confidence: 80,
+          action_type: 'send_message',
+          execution_result: { artifact: { summary: 'sent' }, daily_brief_sent_at: new Date().toISOString() },
+        },
+        {
+          id: 'pending-action-low-confidence',
+          generated_at: new Date().toISOString(),
+          confidence: 20,
+          action_type: 'send_message',
+          execution_result: { artifact: { summary: 'weak' } },
+        },
+      ],
+      error: null,
+    });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
+    const { POST } = await import('../route');
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/settings/run-brief?dry_run=true', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockSyncMicrosoft).toHaveBeenCalledTimes(1);
+    expect(mockSyncGoogle).toHaveBeenCalledTimes(1);
+    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: [userId],
+        ensureSend: false,
+        pipelineDryRun: true,
+      }),
     );
   });
 
@@ -266,6 +368,35 @@ describe('POST /api/settings/run-brief', () => {
     );
     expect(mockSyncMicrosoft).toHaveBeenCalledTimes(1);
     expect(mockSyncGoogle).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not apply the pending-approval dry-run guard to real non-dry runs', async () => {
+    const userId = '13131313-1313-1313-1313-131313131313';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockPendingApprovalLimit.mockResolvedValue({
+      data: [{
+        id: 'pending-action-2',
+        generated_at: new Date().toISOString(),
+        confidence: 72,
+        action_type: 'send_message',
+        execution_result: { artifact: { summary: 'keep' } },
+      }],
+      error: null,
+    });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
+    const { POST } = await import('../route');
+
+    const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
+
+    expect(response.status).toBe(200);
+    expect(mockSyncMicrosoft).toHaveBeenCalledTimes(1);
+    expect(mockSyncGoogle).toHaveBeenCalledTimes(1);
+    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: [userId],
+        ensureSend: true,
+      }),
+    );
   });
 
   it('defaults to pipelineDryRun on Vercel production when PROD_DEFAULT_PIPELINE_DRY_RUN is set', async () => {

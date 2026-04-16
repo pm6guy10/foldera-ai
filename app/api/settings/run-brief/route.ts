@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { resolveSettingsRunBriefPipelineDryRun } from '@/lib/config/prelaunch-spend';
+import { CONFIDENCE_PERSIST_THRESHOLD } from '@/lib/config/constants';
 import { runBriefLifecycle } from '@/lib/cron/brief-service';
+import { extractArtifact, extractSentAt } from '@/lib/cron/daily-brief-generate';
 import { createServerClient } from '@/lib/db/client';
 import { syncGoogle } from '@/lib/sync/google-sync';
 import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
@@ -13,6 +15,7 @@ export const maxDuration = 120;
 const SYNC_TIMEOUT_MS = 15_000; // 15s max — remainder goes to scoring + LLM
 const MANUAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000; // 7 days for manual runs
 const DRY_RUN_SERVER_COOLDOWN_MS = 5 * 60 * 1000;
+const DRY_RUN_PENDING_REUSE_WINDOW_HOURS = 18;
 
 function withSyncTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
   return Promise.race([
@@ -31,6 +34,14 @@ interface ManualSyncStageResult {
 
 interface RecentDryRunRow {
   created_at: string | null;
+  id: string;
+}
+
+interface PendingApprovalReuseRow {
+  action_type: string | null;
+  confidence: number | null;
+  execution_result: unknown;
+  generated_at: string;
   id: string;
 }
 
@@ -70,6 +81,47 @@ async function runManualSync(
       provider,
       error: error instanceof Error ? error.message : String(error),
     };
+  }
+}
+
+function isReusablePendingApproval(row: PendingApprovalReuseRow): boolean {
+  if (row.action_type === 'do_nothing') return false;
+  if (typeof row.confidence !== 'number' || row.confidence < CONFIDENCE_PERSIST_THRESHOLD) return false;
+  if (extractArtifact(row.execution_result) === null) return false;
+  if (extractSentAt(row.execution_result)) return false;
+  return true;
+}
+
+async function findReusablePendingApproval(userId: string): Promise<PendingApprovalReuseRow | null> {
+  try {
+    const supabase = createServerClient();
+    const staleCutoffIso = new Date(
+      Date.now() - DRY_RUN_PENDING_REUSE_WINDOW_HOURS * 3_600_000,
+    ).toISOString();
+    const { data, error } = await supabase
+      .from('tkg_actions')
+      .select('id, generated_at, confidence, action_type, execution_result')
+      .eq('user_id', userId)
+      .eq('status', 'pending_approval')
+      .neq('action_type', 'do_nothing')
+      .gte('generated_at', staleCutoffIso)
+      .order('confidence', { ascending: false })
+      .order('generated_at', { ascending: false })
+      .limit(5);
+
+    if (error) {
+      console.warn('[settings/run-brief] pending approval reuse lookup failed:', error.message);
+      return null;
+    }
+
+    const rows = (data ?? []) as PendingApprovalReuseRow[];
+    return rows.find(isReusablePendingApproval) ?? null;
+  } catch (error: unknown) {
+    console.warn(
+      '[settings/run-brief] pending approval reuse lookup threw:',
+      error instanceof Error ? error.message : String(error),
+    );
+    return null;
   }
 }
 
@@ -119,9 +171,46 @@ export async function POST(request: Request) {
       useLlm,
     });
     const { pipelineDryRun, paidLlmRequested, paidLlmEffective } = spend;
-    const recentPipelineDryRun = pipelineDryRun
-      ? await findRecentPipelineDryRun(userId)
-      : null;
+    const reusablePendingApproval = pipelineDryRun ? await findReusablePendingApproval(userId) : null;
+
+    if (reusablePendingApproval) {
+      return NextResponse.json({
+        ok: true,
+        spend_policy: {
+          pipeline_dry_run: pipelineDryRun,
+          paid_llm_requested: paidLlmRequested,
+          paid_llm_effective: paidLlmEffective,
+        },
+        short_circuit: {
+          reason: 'pending_approval_reused',
+          pending_action_id: reusablePendingApproval.id,
+          pending_action_generated_at: reusablePendingApproval.generated_at,
+          reuse_window_hours: DRY_RUN_PENDING_REUSE_WINDOW_HOURS,
+        },
+        stages: {
+          sync_microsoft: {
+            ok: true,
+            provider: 'microsoft',
+            skipped: true,
+            error: 'pending_approval_reused',
+          },
+          sync_google: {
+            ok: true,
+            provider: 'google',
+            skipped: true,
+            error: 'pending_approval_reused',
+          },
+          daily_brief: {
+            ok: true,
+            status: 'short_circuited',
+            reason: 'pending_approval_reused',
+            manual_send_fallback_attempted: false,
+          },
+        },
+      }, { status: 200 });
+    }
+
+    const recentPipelineDryRun = pipelineDryRun ? await findRecentPipelineDryRun(userId) : null;
 
     if (recentPipelineDryRun) {
       const retryAfterMs = Math.max(

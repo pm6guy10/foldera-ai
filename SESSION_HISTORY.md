@@ -4477,3 +4477,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Added a persistent server-side cooldown for `pipelineDryRun` on `POST /api/settings/run-brief`. When a recent `settings_run_brief` dry run already exists in `pipeline_runs`, the route now short-circuits before manual sync and `runBriefLifecycle`, returns a successful dry-run cooldown receipt, and sets `Retry-After`. Real non-dry runs still bypass the cooldown and execute normally.
 - Verification: `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts`; `npm run health` (0 FAILING); `npm run build`.
 - Unresolved issues: none for this seam.
+
+## 2026-04-16 — pending-approval reuse guard before manual dry-run sync
+- MODE: COST CONTROL (single seam)
+- Files changed: `app/api/settings/run-brief/route.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `SESSION_HISTORY.md`
+- What changed: Added a server-side preflight for `pipelineDryRun` on `POST /api/settings/run-brief` that checks `tkg_actions` for a still-reusable `pending_approval` before any manual sync runs. If a valid unsent pending action already exists, the route now short-circuits immediately with `pending_approval_reused`; the earlier `pipeline_runs` cooldown remains as a secondary fallback. Real non-dry runs and scheduled/system brief-service paths remain unchanged.
+- Verification: `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts`; `npx vitest run lib/cron/__tests__/brief-service.test.ts`; `npm run health` (0 FAILING); `npm run build`.
+- Unresolved issues: live production route verification still required after deploy.
