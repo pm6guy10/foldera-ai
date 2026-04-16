@@ -226,6 +226,21 @@ const CALENDAR_EVENT_MARKERS = [
   /\battendees?:\s*\w+/i,
 ];
 
+const INTERVIEW_SIGNAL_PATTERN =
+  /\b(?:interview|panel interview|phone screen|screening interview|final round|hiring panel|candidate interview)\b/i;
+
+const INTERVIEW_NOISE_TITLE_PATTERN =
+  /\b(?:dance|trash|recycling|bible study|soccer|baby shower|bby shower|birthday|dentist|counseling|parents visit|telehealth|zoloft)\b/i;
+
+const INTERVIEW_ROLE_PATTERN =
+  /\b(?:social and health program consultant\s*\d+|administrative specialist\s*\d+|program manager|training(?:\s+(?:and|&))?\s+appeals program manager|project manager|operations manager|program specialist|policy analyst|program analyst|coordinator|consultant|specialist|manager|administrator|administrative assistant\s*\d+)\b/i;
+
+const INTERVIEW_ORG_PATTERN =
+  /\b(?:dshs|hca|wa cares|washington state(?: department of [^,\n]+)?|department of social and health services|health care authority)\b/i;
+
+const INTERVIEW_DETAIL_PROMPT_PATTERN =
+  /\b(?:focus on|focus areas?|bring examples of|panel(?: is)? looking for|emphasis on|topics include|they care about)\s*:?\s*([^\n.]+)/ig;
+
 /**
  * Rejection reason codes for entity admission control.
  * Machine-readable; logged on every rejection.
@@ -1147,6 +1162,260 @@ export function parseCalendarEventFromContent(content: string): {
   return { title, startMs, endMs, attendeeEmails };
 }
 
+function normalizeInterviewToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function normalizeInterviewField(value: string | null | undefined): string {
+  return normalizeInterviewToken(value ?? '');
+}
+
+function interviewTokens(value: string): string[] {
+  const stopwords = new Set([
+    'interview', 'panel', 'with', 'from', 'for', 'the', 'and', 'state', 'washington', 'candidate',
+    'meeting', 'call', 'round', 'final', 'phone', 'screen', 'hiring',
+  ]);
+  return normalizeInterviewToken(value)
+    .split(/\s+/)
+    .filter((token) => token.length >= 4 && !stopwords.has(token));
+}
+
+function looksLikeInterviewSignal(content: string): boolean {
+  return INTERVIEW_SIGNAL_PATTERN.test(content);
+}
+
+function isInterviewNoiseTitle(title: string): boolean {
+  return INTERVIEW_NOISE_TITLE_PATTERN.test(title);
+}
+
+function extractSubjectFromSignal(content: string): string {
+  const subjectMatch = content.match(/^Subject:\s*(.+)$/im);
+  return (subjectMatch?.[1] ?? '').trim();
+}
+
+function extractInterviewFocusNotes(content: string): string[] {
+  const notes: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = INTERVIEW_DETAIL_PROMPT_PATTERN.exec(content)) !== null) {
+    const note = match[1]?.trim().replace(/\s+/g, ' ');
+    if (note) notes.push(note.replace(/[.;:]+$/, ''));
+  }
+  return [...new Set(notes)];
+}
+
+function extractInterviewContacts(content: string): string[] {
+  const contacts = new Set<string>();
+  const fromMatch = content.match(/^From:\s*([^<\n]+?)(?:\s*<|$)/im);
+  if (fromMatch?.[1]) contacts.add(fromMatch[1].trim().replace(/\s+/g, ' '));
+
+  const withMatches = content.match(/\bwith\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b/g) ?? [];
+  for (const raw of withMatches) {
+    const cleaned = raw.replace(/^with\s+/i, '').trim();
+    if (cleaned) contacts.add(cleaned);
+  }
+
+  return [...contacts];
+}
+
+function extractRoleFromInterviewText(text: string): string | null {
+  const match = text.match(INTERVIEW_ROLE_PATTERN);
+  return match?.[0]?.trim() ?? null;
+}
+
+function extractOrgFromInterviewText(text: string): string | null {
+  const match = text.match(INTERVIEW_ORG_PATTERN);
+  return match?.[0]?.trim() ?? null;
+}
+
+function splitInterviewTitle(title: string): { label: string; role: string | null; org: string | null } {
+  const cleaned = title.replace(/\s+/g, ' ').trim();
+  const parts = cleaned.split(/\s+(?:[-|]|—)\s+/).map((part) => part.trim()).filter(Boolean);
+  const label = cleaned;
+  const role = parts.map(extractRoleFromInterviewText).find(Boolean) ?? extractRoleFromInterviewText(cleaned);
+  const org = parts.map(extractOrgFromInterviewText).find(Boolean) ?? extractOrgFromInterviewText(cleaned);
+  return { label, role: role ?? null, org: org ?? null };
+}
+
+function formatInterviewDateKeyPt(ms: number): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(ms);
+}
+
+function matchingInterviewEmailSignals(
+  structured: StructuredSignalInput[],
+  itemTitle: string,
+  startMs: number,
+): StructuredSignalInput[] {
+  const dateKey = formatInterviewDateKeyPt(startMs);
+  const titleTokens = interviewTokens(itemTitle);
+  const parsedTitle = splitInterviewTitle(itemTitle);
+  const expectedOrg = normalizeInterviewField(parsedTitle.org);
+  const expectedRole = normalizeInterviewField(parsedTitle.role);
+  return structured.filter((signal) => {
+    if (!isEmailLikeSource(signal.source)) return false;
+    const body = signal.content;
+    if (!looksLikeInterviewSignal(body)) return false;
+    const emailText = `${extractSubjectFromSignal(body)} ${body}`;
+    const normalized = normalizeInterviewToken(emailText);
+    const overlap = titleTokens.filter((token) => normalized.includes(token)).length;
+    const signalOrg = normalizeInterviewField(extractOrgFromInterviewText(emailText));
+    const signalRole = normalizeInterviewField(extractRoleFromInterviewText(emailText));
+    const dateMatch = normalized.includes(dateKey.replace(/-/g, ' '));
+    const orgMatch = expectedOrg.length > 0 && signalOrg === expectedOrg;
+    const roleMatch = expectedRole.length > 0 && signalRole === expectedRole;
+    const conflictingOrg = expectedOrg.length > 0 && signalOrg.length > 0 && signalOrg !== expectedOrg;
+    const conflictingRole = expectedRole.length > 0 && signalRole.length > 0 && signalRole !== expectedRole;
+
+    if (dateMatch || orgMatch || roleMatch) return true;
+    if (conflictingOrg || conflictingRole) return false;
+    return overlap >= 2;
+  });
+}
+
+function buildInterviewWeekCluster(
+  structured: StructuredSignalInput[],
+  goals: GoalRow[],
+  nowMs: number,
+): Discrepancy[] {
+  const horizon = nowMs + SEVEN_DAYS_MS;
+  const interviewEvents: Array<{
+    id: string;
+    title: string;
+    startMs: number;
+    endMs: number;
+    role: string | null;
+    org: string | null;
+    focusNotes: string[];
+    contacts: string[];
+  }> = [];
+  const excludedEvents: Array<{ startMs: number; title: string; reason: string }> = [];
+
+  for (const signal of structured) {
+    const src = signal.source.toLowerCase();
+    const type = String(signal.type ?? '').toLowerCase();
+    if (!src.includes('calendar') && !type.includes('calendar')) continue;
+    const parsed = parseCalendarEventFromContent(signal.content);
+    if (!parsed) continue;
+    if (parsed.startMs < nowMs || parsed.startMs > horizon) continue;
+
+    if (isInterviewNoiseTitle(parsed.title)) {
+      excludedEvents.push({
+        startMs: parsed.startMs,
+        title: parsed.title,
+        reason: 'non-interview personal event',
+      });
+      continue;
+    }
+    if (!looksLikeInterviewSignal(`${parsed.title}\n${signal.content}`)) continue;
+
+    const matchingEmails = matchingInterviewEmailSignals(structured, parsed.title, parsed.startMs);
+    const combinedText = [
+      parsed.title,
+      signal.content,
+      ...matchingEmails.map((email) => email.content),
+    ].join('\n');
+    const focusNotes = [
+      ...extractInterviewFocusNotes(combinedText),
+      ...matchingEmails.flatMap((email) => extractInterviewFocusNotes(email.content)),
+    ];
+    const contacts = [
+      ...extractInterviewContacts(combinedText),
+      ...matchingEmails.flatMap((email) => extractInterviewContacts(email.content)),
+    ];
+    const parsedTitle = splitInterviewTitle(parsed.title);
+
+    interviewEvents.push({
+      id: signal.id,
+      title: parsedTitle.label,
+      startMs: parsed.startMs,
+      endMs: parsed.endMs,
+      role: parsedTitle.role ?? extractRoleFromInterviewText(combinedText),
+      org: parsedTitle.org ?? extractOrgFromInterviewText(combinedText),
+      focusNotes: [...new Set(focusNotes)].slice(0, 3),
+      contacts: [...new Set(contacts)].slice(0, 3),
+    });
+  }
+
+  if (interviewEvents.length < 2) return [];
+
+  interviewEvents.sort((a, b) => a.startMs - b.startMs);
+  excludedEvents.sort((a, b) => a.startMs - b.startMs);
+
+  const first = interviewEvents[0];
+  const last = interviewEvents[interviewEvents.length - 1];
+  const matchedCareerGoal = goals.find((goal) => goal.goal_category === 'career') ?? null;
+  const ptWindowStart = formatInterviewDateKeyPt(first.startMs);
+  const ptWindowEnd = formatInterviewDateKeyPt(last.startMs);
+
+  const title = `Interview week cluster detected: ${interviewEvents.length} interviews scheduled ${ptWindowStart} to ${ptWindowEnd}`;
+  const contentLines = [
+    'INTERVIEW_WEEK_CLUSTER',
+    `WINDOW_PT: ${ptWindowStart} || ${ptWindowEnd}`,
+    `INTERVIEW_COUNT: ${interviewEvents.length}`,
+    ...interviewEvents.map((event) =>
+      `INTERVIEW_ITEM: ${[
+        new Date(event.startMs).toISOString(),
+        new Date(event.endMs).toISOString(),
+        event.title,
+        event.role ?? 'unknown role',
+        event.org ?? 'unknown organization',
+        event.focusNotes.join('; ') || 'no extra focus notes in signals',
+        event.contacts.join('; ') || 'no named contact in signals',
+      ].join(' || ')}`,
+    ),
+    ...excludedEvents.slice(0, 8).map((event) =>
+      `EXCLUDED_ITEM: ${[
+        new Date(event.startMs).toISOString(),
+        event.title,
+        event.reason,
+      ].join(' || ')}`,
+    ),
+  ];
+
+  return [
+    {
+      id: `discrepancy_bp_interview_week_${ptWindowStart}_${ptWindowEnd}`.replace(/[^a-z0-9_]+/gi, '_'),
+      class: 'behavioral_pattern',
+      title,
+      content: contentLines.join('\n'),
+      stakes: 5,
+      urgency: 0.96,
+      suggestedActionType: 'write_document',
+      evidence: JSON.stringify({
+        pattern: 'interview_week_cluster',
+        window_pt_start: ptWindowStart,
+        window_pt_end: ptWindowEnd,
+        interview_count: interviewEvents.length,
+        excluded_count: excludedEvents.length,
+      }),
+      sourceSignals: interviewEvents.slice(0, 5).map((event) => ({
+        kind: 'signal',
+        id: event.id,
+        summary: `${event.title} — ${formatInterviewDateKeyPt(event.startMs)}`,
+      })),
+      matchedGoal: matchedCareerGoal
+        ? {
+            text: matchedCareerGoal.goal_text,
+            priority: matchedCareerGoal.priority,
+            category: matchedCareerGoal.goal_category,
+          }
+        : null,
+      trigger: {
+        baseline_state: 'Interview threads and calendar events handled one by one',
+        current_state: `${interviewEvents.length} interview signals land inside one Pacific-time workweek`,
+        delta: 'multi-event interview stack requires one integrated preparation artifact',
+        timeframe: `${ptWindowStart} to ${ptWindowEnd} PT`,
+        outcome_class: 'job',
+        why_now: 'Several real interview signals now share the same next-7-days window, so handling them separately hides reusable stories and lets personal calendar noise steal prep attention.',
+      },
+    },
+  ];
+}
+
 function isEmailLikeSource(source: string): boolean {
   const s = source.toLowerCase();
   return s.includes('mail') || s.includes('gmail') || s.includes('inbox') || s === 'email' || s.includes('outlook');
@@ -1941,7 +2210,7 @@ export function extractBehavioralPatterns(
   const win15to45End = nowMs - 15 * 86400000;
   const since30 = nowMs - THIRTY_DAYS_MS;
 
-  const patternBuckets: Discrepancy[][] = [[], [], [], [], []];
+  const patternBuckets: Discrepancy[][] = [[], [], [], [], [], []];
 
   // --- PATTERN 1: goal–behavior contradiction (goals with priority >= 3 on 1–5 scale) ---
   const p1Goals = goals.filter((g) => g.priority >= 3);
@@ -2313,6 +2582,9 @@ export function extractBehavioralPatterns(
     });
   }
   patternBuckets[4] = pickTopBehavioral(patternBuckets[4], MAX_BEHAVIORAL_PER_PATTERN);
+
+  // --- PATTERN 6: clustered interview week ---
+  patternBuckets[5] = buildInterviewWeekCluster(structured, goals, nowMs);
 
   const merged = patternBuckets.flat();
   return pickTopBehavioral(merged, MAX_BEHAVIORAL_TOTAL);

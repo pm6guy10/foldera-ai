@@ -74,6 +74,228 @@ function extractDeadlineAnchor(text: string): string | null {
   return null;
 }
 
+type InterviewWeekItem = {
+  startIso: string;
+  endIso: string;
+  title: string;
+  role: string;
+  organization: string;
+  focusNotes: string[];
+  contacts: string[];
+};
+
+type InterviewWeekCluster = {
+  windowStart: string;
+  windowEnd: string;
+  items: InterviewWeekItem[];
+  exclusions: Array<{ startIso: string; title: string; reason: string }>;
+};
+
+function parseDelimitedFieldList(value: string): string[] {
+  return value
+    .split(';')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0 && !/^no\b/i.test(part));
+}
+
+function parseInterviewWeekCluster(text: string): InterviewWeekCluster | null {
+  if (!text.includes('INTERVIEW_WEEK_CLUSTER')) return null;
+
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const windowLine = lines.find((line) => line.startsWith('WINDOW_PT: '));
+  if (!windowLine) return null;
+  const [, rawWindow] = windowLine.split('WINDOW_PT: ');
+  const [windowStart, windowEnd] = rawWindow.split(' || ').map((part) => part.trim());
+  if (!windowStart || !windowEnd) return null;
+
+  const items: InterviewWeekItem[] = [];
+  const exclusions: Array<{ startIso: string; title: string; reason: string }> = [];
+
+  for (const line of lines) {
+    if (line.startsWith('INTERVIEW_ITEM:')) {
+      const fields = line.replace(/^INTERVIEW_ITEM:\s*/, '').split(' || ').map((part) => part.trim());
+      if (fields.length < 7) continue;
+      items.push({
+        startIso: fields[0],
+        endIso: fields[1],
+        title: fields[2],
+        role: fields[3],
+        organization: fields[4],
+        focusNotes: parseDelimitedFieldList(fields[5]),
+        contacts: parseDelimitedFieldList(fields[6]),
+      });
+    }
+    if (line.startsWith('EXCLUDED_ITEM:')) {
+      const fields = line.replace(/^EXCLUDED_ITEM:\s*/, '').split(' || ').map((part) => part.trim());
+      if (fields.length < 3) continue;
+      exclusions.push({
+        startIso: fields[0],
+        title: fields[1],
+        reason: fields[2],
+      });
+    }
+  }
+
+  return items.length >= 2 ? { windowStart, windowEnd, items, exclusions } : null;
+}
+
+function formatPtDateRange(windowStart: string, windowEnd: string): string {
+  const start = new Date(`${windowStart}T12:00:00Z`);
+  const end = new Date(`${windowEnd}T12:00:00Z`);
+  const sameMonth = start.getUTCMonth() === end.getUTCMonth();
+  const monthFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    month: 'long',
+  });
+  const dayFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    day: 'numeric',
+  });
+  const yearFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+  });
+  const startMonth = monthFormatter.format(start);
+  const endMonth = monthFormatter.format(end);
+  const startDay = dayFormatter.format(start);
+  const endDay = dayFormatter.format(end);
+  const year = yearFormatter.format(end);
+  return sameMonth
+    ? `${startMonth} ${startDay}\u2013${endDay}, ${year}`
+    : `${startMonth} ${startDay}\u2013${endMonth} ${endDay}, ${year}`;
+}
+
+function formatPtScheduleLine(startIso: string, endIso: string): string {
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+  const timeFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  return `${dateFormatter.format(start)}, ${timeFormatter.format(start)}-${timeFormatter.format(end)} PT`;
+}
+
+function formatPtDateOnly(iso: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(iso));
+}
+
+function sentenceCaseTopic(topic: string): string {
+  const cleaned = topic.trim().replace(/[.;:]+$/, '');
+  if (!cleaned) return cleaned;
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
+function buildInterviewWeekBattlePlanArtifact(cluster: InterviewWeekCluster): DocumentArtifact {
+  const items = [...cluster.items].sort((a, b) => Date.parse(a.startIso) - Date.parse(b.startIso));
+  const title = `Interview Week Battle Plan \u2014 ${formatPtDateRange(cluster.windowStart, cluster.windowEnd)}`;
+
+  const frequency = new Map<string, number>();
+  for (const item of items) {
+    for (const note of item.focusNotes) {
+      const key = note.toLowerCase();
+      frequency.set(key, (frequency.get(key) ?? 0) + 1);
+    }
+  }
+  const repeatedTopics = [...frequency.entries()]
+    .filter(([, count]) => count >= 2)
+    .map(([topic]) => topic);
+  const storyTopics = repeatedTopics.length > 0
+    ? repeatedTopics
+    : items.flatMap((item) => item.focusNotes.map((note) => note.toLowerCase())).slice(0, 3);
+
+  const masterSchedule = items.map((item) => {
+    const noteText = item.focusNotes.length > 0
+      ? ` Signals point to ${item.focusNotes.map(sentenceCaseTopic).join(', ')}.`
+      : '';
+    const contactText = item.contacts.length > 0
+      ? ` Contact anchor: ${item.contacts.join(', ')}.`
+      : '';
+    return `- ${formatPtScheduleLine(item.startIso, item.endIso)} — ${item.title} (${item.organization}).${noteText}${contactText}`;
+  });
+
+  const priorityOrder = items.map((item, index) => {
+    const roleAnchor = item.role !== 'unknown role' ? item.role : item.title;
+    const focus = item.focusNotes[0] ? sentenceCaseTopic(item.focusNotes[0]) : 'the exact scope named in the signal';
+    return `${index + 1}. ${roleAnchor} — ${focus} is the first story to lock before this slot because it is what the signal already named.`;
+  });
+
+  const coreStories = storyTopics.length > 0
+    ? storyTopics.map((topic) => {
+        const matching = items.filter((item) => item.focusNotes.some((note) => note.toLowerCase() === topic));
+        const labels = matching.map((item) => item.role !== 'unknown role' ? item.role : item.title).join(', ');
+        return `- ${sentenceCaseTopic(topic)} — reuse one tight story across ${labels}.`;
+      })
+    : items.map((item) => `- ${item.title} — keep one story tied directly to ${item.role !== 'unknown role' ? item.role : item.title}.`);
+
+  const roleSpecificAngles = items.map((item) => {
+    const angle = item.focusNotes.length > 0
+      ? item.focusNotes.map(sentenceCaseTopic).join(', ')
+      : `${item.role !== 'unknown role' ? item.role : item.title} decisions and execution`;
+    return `- ${item.title}: stay on ${angle}; do not drift into generic public-sector filler.`;
+  });
+
+  const questionsToAsk = items.map((item) => {
+    const focus = item.focusNotes.length > 0
+      ? item.focusNotes.slice(0, 2).map(sentenceCaseTopic).join(' and ')
+      : `${item.role !== 'unknown role' ? item.role : item.title} scope`;
+    return `- ${item.title}: "What separates a strong first-90-days operator here on ${focus}?"`;
+  });
+
+  const firstItem = items[0];
+  const prepTopics = storyTopics.slice(0, 2).map(sentenceCaseTopic).join(' and ');
+  const todaysPrepPlan = [
+    `- Rewrite your opening answer for ${firstItem.title} so it lands on ${prepTopics || 'the focus explicitly named in the signals'} in under 60 seconds.`,
+    `- Tighten one reusable story that can travel across ${items.slice(0, 2).map((item) => item.title).join(' and ')} without changing the facts.`,
+    `- Put the ${questionsToAsk.length > 0 ? 'role questions' : 'closing question'} in front of each slot now so you are not inventing them mid-week.`,
+  ];
+
+  const redFlags = [
+    `- This week compresses ${items.length} interview signals into one artifact; treat it as one operating week, not isolated prep bursts.`,
+    ...cluster.exclusions.map((item) => `- Excluded as ${item.reason}: ${item.title} (${formatPtDateOnly(item.startIso)}).`),
+  ];
+
+  const content = [
+    'MASTER SCHEDULE',
+    ...masterSchedule,
+    '',
+    'PRIORITY ORDER',
+    ...priorityOrder,
+    '',
+    'CORE STORIES TO REUSE',
+    ...coreStories,
+    '',
+    'ROLE-SPECIFIC ANGLES',
+    ...roleSpecificAngles,
+    '',
+    'QUESTIONS TO ASK',
+    ...questionsToAsk,
+    '',
+    'TODAY’S PREP PLAN',
+    ...todaysPrepPlan,
+    '',
+    'RED FLAGS / CONFLICTS',
+    ...redFlags,
+  ].join('\n');
+
+  return {
+    type: 'document',
+    title,
+    content,
+  };
+}
+
 function deriveGoalLabel(goalText: string): string {
   const normalized = cleanText(goalText);
   const contextualMatch = normalized.match(/(?:\bon\b|\babout\b|\baround\b|\bfor\b)\s+the\s+(.+)$/i);
@@ -166,6 +388,17 @@ function inferBehavioralPatternGoal(directive: ConvictionDirective): string | nu
 }
 
 function buildBehavioralPatternArtifact(directive: ConvictionDirective): DocumentArtifact {
+  const cluster = parseInterviewWeekCluster(
+    [
+      directive.directive,
+      directive.reason ?? '',
+      directive.fullContext ?? '',
+    ].join('\n'),
+  );
+  if (cluster) {
+    return buildInterviewWeekBattlePlanArtifact(cluster);
+  }
+
   const rawContext =
     (directive as ConvictionDirective & { embeddedArtifact?: { context?: string } }).fullContext ??
     (directive as ConvictionDirective & { embeddedArtifact?: { context?: string } }).embeddedArtifact?.context ??

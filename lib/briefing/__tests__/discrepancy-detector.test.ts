@@ -1990,3 +1990,135 @@ describe('extractBehavioralPatterns — selfEmails filter in cross-entity theme'
     expect(themeCandidates).toHaveLength(0);
   });
 });
+
+describe('extractBehavioralPatterns — interview week cluster', () => {
+  it('detects a next-7-days interview cluster and excludes personal calendar noise', () => {
+    const structured = [
+      {
+        id: 'int-1',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: SHPC4 Interview - Social and Health Program Consultant 4 - DSHS]',
+          'Start: 2026-03-30T16:00:00.000Z',
+          'End: 2026-03-30T17:00:00.000Z',
+          'Attendees: cheryl.anderson1@dshs.wa.gov',
+        ].join('\n'),
+      },
+      {
+        id: 'int-2',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: daysAgoISO(2),
+        content: [
+          'From: Cheryl Anderson <cheryl.anderson1@dshs.wa.gov>',
+          'Subject: SHPC4 interview confirmation for March 30',
+          'Body: Focus on program operations, stakeholder coordination, and policy interpretation.',
+        ].join('\n'),
+      },
+      {
+        id: 'int-3',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: MEDS/MAS3 Interview - Administrative Specialist 3 - HCA]',
+          'Start: 2026-04-01T18:30:00.000Z',
+          'End: 2026-04-01T19:30:00.000Z',
+          'Attendees: yadira.clapper@hca.wa.gov',
+        ].join('\n'),
+      },
+      {
+        id: 'int-4',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: daysAgoISO(2),
+        content: [
+          'From: Yadira Clapper <yadira.clapper@hca.wa.gov>',
+          'Subject: MEDS/MAS3 interview packet',
+          'Body: Bring examples of appeals coordination, training handoffs, and policy interpretation.',
+        ].join('\n'),
+      },
+      {
+        id: 'int-5',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: Training & Appeals Program Manager Interview - WA Cares]',
+          'Start: 2026-04-03T17:00:00.000Z',
+          'End: 2026-04-03T18:00:00.000Z',
+          'Attendees: keri.nopens@wacares.wa.gov',
+        ].join('\n'),
+      },
+      {
+        id: 'int-6',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: daysAgoISO(2),
+        content: [
+          'From: Keri Nopens <keri.nopens@wacares.wa.gov>',
+          'Subject: Training & Appeals Program Manager interview agenda',
+          'Body: Focus areas: training handoffs, stakeholder coordination, and program operations.',
+        ].join('\n'),
+      },
+      {
+        id: 'noise-1',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: Dance]',
+          'Start: 2026-03-31T21:15:00.000Z',
+          'End: 2026-03-31T22:15:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'noise-2',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: Put Trash Can Out]',
+          'Start: 2026-04-01T02:00:00.000Z',
+          'End: 2026-04-01T02:15:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'noise-3',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: Bible study at Brightside]',
+          'Start: 2026-04-02T02:00:00.000Z',
+          'End: 2026-04-02T04:00:00.000Z',
+        ].join('\n'),
+      },
+    ];
+
+    const out = extractBehavioralPatterns(
+      [],
+      [{ goal_text: 'Land a state role in the next cycle', priority: 4, goal_category: 'career' }],
+      [],
+      structured,
+      [],
+      [],
+      now,
+    );
+
+    const cluster = out.find((d) => d.id.includes('interview_week'));
+    expect(cluster).toBeDefined();
+    expect(cluster?.suggestedActionType).toBe('write_document');
+    expect(cluster?.title).toContain('Interview week cluster detected');
+    expect(cluster?.content).toContain('INTERVIEW_WEEK_CLUSTER');
+    expect(cluster?.content).toContain('INTERVIEW_ITEM: 2026-03-30T16:00:00.000Z || 2026-03-30T17:00:00.000Z || SHPC4 Interview - Social and Health Program Consultant 4 - DSHS');
+    expect(cluster?.content).toContain('INTERVIEW_ITEM: 2026-04-01T18:30:00.000Z || 2026-04-01T19:30:00.000Z || MEDS/MAS3 Interview - Administrative Specialist 3 - HCA');
+    expect(cluster?.content).toContain('INTERVIEW_ITEM: 2026-04-03T17:00:00.000Z || 2026-04-03T18:00:00.000Z || Training & Appeals Program Manager Interview - WA Cares || Training & Appeals Program Manager || WA Cares || training handoffs, stakeholder coordination, and program operations || Keri Nopens');
+    expect(cluster?.content).not.toContain('Training & Appeals Program Manager Interview - WA Cares || Training & Appeals Program Manager || WA Cares || appeals coordination, training handoffs, and policy interpretation || Yadira Clapper');
+    expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-03-31T21:15:00.000Z || Dance || non-interview personal event');
+    expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-04-01T02:00:00.000Z || Put Trash Can Out || non-interview personal event');
+    expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-04-02T02:00:00.000Z || Bible study at Brightside || non-interview personal event');
+  });
+});

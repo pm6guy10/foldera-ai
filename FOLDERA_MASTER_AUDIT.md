@@ -117,3 +117,18 @@ Exact remaining blocker:
 - File: `lib/briefing/generator.ts`
 - Function/seam: fallback/persistence path after selected hunt candidate fails recipient grounding (`candidate_blocked`), allowing low-value fallback artifact to dominate no-send context.
 - Proof: latest action `395e7d98-482f-4535-9252-6daa3545316c` stores no-send evidence with blocked selected hunt candidate and Momco fallback context.
+
+### NEEDS_REVIEW — 2026-04-15 — full `npx playwright test` drops the Next server mid-run after this seam verified
+Single seam fixed in this session: next-7-days interview signals now collapse into one deterministic weekly battle plan artifact path.
+
+Mandatory QA gate results for this seam:
+- `npm run health` passed (`0 FAILING`, warnings only).
+- `npx vitest run lib/briefing/__tests__/discrepancy-detector.test.ts lib/conviction/__tests__/artifact-generator.test.ts` passed (`111` tests).
+- `npm run build` passed.
+- `npx playwright test` failed outside this seam: `31 passed`, `4 skipped`, `47 failed`.
+
+Exact remaining blocker:
+- File: `playwright.config.ts` / runtime `npx next start -p 3000`
+- Seam: full Playwright harness stability, not interview-week artifact generation
+- Tight proof: the suite starts green, then later routes fail with `page.goto: net::ERR_ABORTED; maybe frame was detached?` and eventually `net::ERR_CONNECTION_REFUSED`, which means the local Next server dropped during the run rather than the new interview seam failing.
+- Why it is not fixed here: failures span unrelated public, settings, blog, and safety specs after the server dies; reproducing and repairing the test-harness/server stability issue is a separate seam.

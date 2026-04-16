@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-15 — interview-week battle plan deterministic artifact path
+- MODE: PRODUCT HARDENING (single seam)
+- Files changed: `lib/briefing/discrepancy-detector.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `lib/conviction/artifact-generator.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `FOLDERA_MASTER_AUDIT.md`, `SESSION_HISTORY.md`
+- What changed: Added one `behavioral_pattern` discrepancy extractor that detects clustered next-7-days interview signals and writes explicit exclusion notes for personal calendar noise, then taught the deterministic artifact renderer to convert that cluster payload into one Pacific-time weekly battle plan document with fixed sections.
+- Verification: `npm run health` (0 FAILING, warnings only); `npx vitest run lib/briefing/__tests__/discrepancy-detector.test.ts lib/conviction/__tests__/artifact-generator.test.ts`; `npm run build`; `npx playwright test` (31 passed, 4 skipped, 47 failed after local Next server dropped mid-run; blocker logged in `FOLDERA_MASTER_AUDIT.md`).
+- Unresolved issues: full Playwright harness/server stability remains unresolved and is outside this seam.
+
 ## 2026-04-15 — behavioral_pattern send-ready gate: tonight/tomorrow / bare Send {day}
 - MODE: PRODUCT QUALITY (pre-repair enforcement)
 - Files changed: `lib/briefing/generator.ts` (`getBehavioralPatternFinishedWorkIssues`), `lib/briefing/__tests__/generator.test.ts`, `SESSION_HISTORY.md`
