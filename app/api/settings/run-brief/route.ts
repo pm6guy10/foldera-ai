@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { resolveSettingsRunBriefPipelineDryRun } from '@/lib/config/prelaunch-spend';
 import { runBriefLifecycle } from '@/lib/cron/brief-service';
+import { createServerClient } from '@/lib/db/client';
 import { syncGoogle } from '@/lib/sync/google-sync';
 import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
@@ -11,6 +12,7 @@ export const maxDuration = 120;
 
 const SYNC_TIMEOUT_MS = 15_000; // 15s max — remainder goes to scoring + LLM
 const MANUAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000; // 7 days for manual runs
+const DRY_RUN_SERVER_COOLDOWN_MS = 5 * 60 * 1000;
 
 function withSyncTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
   return Promise.race([
@@ -25,6 +27,11 @@ interface ManualSyncStageResult {
   skipped?: boolean;
   error?: string;
   total?: number;
+}
+
+interface RecentDryRunRow {
+  created_at: string | null;
+  id: string;
 }
 
 async function runManualSync(
@@ -66,6 +73,37 @@ async function runManualSync(
   }
 }
 
+async function findRecentPipelineDryRun(userId: string): Promise<RecentDryRunRow | null> {
+  try {
+    const supabase = createServerClient();
+    const cooldownFloorIso = new Date(Date.now() - DRY_RUN_SERVER_COOLDOWN_MS).toISOString();
+    const { data, error } = await supabase
+      .from('pipeline_runs')
+      .select('id, created_at')
+      .eq('user_id', userId)
+      .eq('phase', 'user_run')
+      .eq('invocation_source', 'settings_run_brief')
+      .eq('outcome', 'pipeline_dry_run_returned')
+      .gte('created_at', cooldownFloorIso)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[settings/run-brief] dry-run cooldown lookup failed:', error.message);
+      return null;
+    }
+
+    return data ?? null;
+  } catch (error: unknown) {
+    console.warn(
+      '[settings/run-brief] dry-run cooldown lookup threw:',
+      error instanceof Error ? error.message : String(error),
+    );
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   const auth = await resolveUser(request);
   if (auth instanceof NextResponse) return auth;
@@ -81,6 +119,57 @@ export async function POST(request: Request) {
       useLlm,
     });
     const { pipelineDryRun, paidLlmRequested, paidLlmEffective } = spend;
+    const recentPipelineDryRun = pipelineDryRun
+      ? await findRecentPipelineDryRun(userId)
+      : null;
+
+    if (recentPipelineDryRun) {
+      const retryAfterMs = Math.max(
+        0,
+        DRY_RUN_SERVER_COOLDOWN_MS - (Date.now() - new Date(recentPipelineDryRun.created_at ?? 0).getTime()),
+      );
+      return NextResponse.json({
+        ok: true,
+        spend_policy: {
+          pipeline_dry_run: pipelineDryRun,
+          paid_llm_requested: paidLlmRequested,
+          paid_llm_effective: paidLlmEffective,
+        },
+        short_circuit: {
+          reason: 'pipeline_dry_run_cooldown',
+          recent_pipeline_run_id: recentPipelineDryRun.id,
+          recent_pipeline_run_at: recentPipelineDryRun.created_at,
+          cooldown_window_ms: DRY_RUN_SERVER_COOLDOWN_MS,
+          retry_after_ms: retryAfterMs,
+        },
+        stages: {
+          sync_microsoft: {
+            ok: true,
+            provider: 'microsoft',
+            skipped: true,
+            error: 'pipeline_dry_run_cooldown',
+          },
+          sync_google: {
+            ok: true,
+            provider: 'google',
+            skipped: true,
+            error: 'pipeline_dry_run_cooldown',
+          },
+          daily_brief: {
+            ok: true,
+            status: 'short_circuited',
+            reason: 'pipeline_dry_run_cooldown',
+            manual_send_fallback_attempted: false,
+          },
+        },
+      }, {
+        status: 200,
+        headers: {
+          'Retry-After': String(Math.ceil(retryAfterMs / 1000)),
+        },
+      });
+    }
+
     const [syncMicrosoftResult, syncGoogleResult] = await Promise.all([
       withSyncTimeout(
         runManualSync('microsoft', userId),

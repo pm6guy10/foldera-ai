@@ -7,6 +7,7 @@ const mockRunBriefLifecycle = vi.fn();
 const mockSyncGoogle = vi.fn();
 const mockSyncMicrosoft = vi.fn();
 const mockRunCommitmentCeilingDefense = vi.fn();
+const mockRecentDryRunMaybeSingle = vi.fn();
 
 vi.mock('@/lib/cron/self-heal', () => ({
   runCommitmentCeilingDefense: mockRunCommitmentCeilingDefense,
@@ -18,6 +19,25 @@ vi.mock('@/lib/auth/resolve-user', () => ({
 
 vi.mock('@/lib/cron/brief-service', () => ({
   runBriefLifecycle: mockRunBriefLifecycle,
+}));
+
+vi.mock('@/lib/db/client', () => ({
+  createServerClient: () => ({
+    from: (table: string) => {
+      if (table !== 'pipeline_runs') {
+        throw new Error(`Unexpected table: ${table}`);
+      }
+      const chain = {
+        select: () => chain,
+        eq: () => chain,
+        gte: () => chain,
+        order: () => chain,
+        limit: () => chain,
+        maybeSingle: mockRecentDryRunMaybeSingle,
+      };
+      return chain;
+    },
+  }),
 }));
 
 vi.mock('@/lib/sync/google-sync', () => ({
@@ -61,6 +81,7 @@ describe('POST /api/settings/run-brief', () => {
     vi.clearAllMocks();
     vi.unstubAllEnvs();
     mockRunCommitmentCeilingDefense.mockResolvedValue(undefined);
+    mockRecentDryRunMaybeSingle.mockResolvedValue({ data: null, error: null });
     mockApiError.mockImplementation((error: unknown) =>
       NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 }));
     mockSyncGoogle.mockResolvedValue({ gmail_signals: 0, calendar_signals: 0, drive_signals: 0, error: 'no_token' });
@@ -75,6 +96,45 @@ describe('POST /api/settings/run-brief', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  it('short-circuits repeated dry_run clicks on the server before sync or lifecycle work', async () => {
+    const userId = '11111111-1111-1111-1111-111111111111';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockRecentDryRunMaybeSingle.mockResolvedValue({
+      data: {
+        id: 'recent-dry-run',
+        created_at: new Date().toISOString(),
+      },
+      error: null,
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/settings/run-brief?force=true&dry_run=true', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Retry-After')).toMatch(/^\d+$/);
+    expect(mockSyncMicrosoft).not.toHaveBeenCalled();
+    expect(mockSyncGoogle).not.toHaveBeenCalled();
+    expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
+
+    const payload = await response.json();
+    expect(payload.ok).toBe(true);
+    expect(payload.short_circuit).toEqual(
+      expect.objectContaining({
+        reason: 'pipeline_dry_run_cooldown',
+        recent_pipeline_run_id: 'recent-dry-run',
+        cooldown_window_ms: 300000,
+      }),
+    );
+    expect(payload.stages.sync_microsoft).toEqual(
+      expect.objectContaining({ skipped: true, error: 'pipeline_dry_run_cooldown' }),
+    );
+    expect(payload.stages.daily_brief).toEqual(
+      expect.objectContaining({ status: 'short_circuited', reason: 'pipeline_dry_run_cooldown' }),
+    );
   });
 
   it('returns auth response when the session is missing', async () => {
@@ -178,6 +238,13 @@ describe('POST /api/settings/run-brief', () => {
   it('passes forceFreshRun when the URL has ?force=true', async () => {
     const userId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
     mockResolveUser.mockResolvedValue({ userId });
+    mockRecentDryRunMaybeSingle.mockResolvedValue({
+      data: {
+        id: 'recent-dry-run',
+        created_at: new Date().toISOString(),
+      },
+      error: null,
+    });
     mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
     const { POST } = await import('../route');
 
@@ -197,6 +264,8 @@ describe('POST /api/settings/run-brief', () => {
         skipManualCallLimit: false,
       }),
     );
+    expect(mockSyncMicrosoft).toHaveBeenCalledTimes(1);
+    expect(mockSyncGoogle).toHaveBeenCalledTimes(1);
   });
 
   it('defaults to pipelineDryRun on Vercel production when PROD_DEFAULT_PIPELINE_DRY_RUN is set', async () => {

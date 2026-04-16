@@ -4470,3 +4470,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: verification-only `verification_stub_persist` rows no longer count as live duplicate history in `checkConsecutiveDuplicate`, and health now selects the latest non-verification generation row before classifying `Last generation`. This prevents proof stubs from both causing false duplicate-driven `do_nothing` outcomes and masking the real last organic result.
 - Verification: `npm run health` before patch showed the last non-proof row as `do_nothing`; `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts`; `npx vitest run lib/cron/__tests__/duplicate-truth.test.ts`; `npx tsx scripts/run-brain-receipt-real-once.ts` persisted fresh action `0c8c7231-7ad0-4072-b6aa-9e8f0da2ff82` with `code=pending_approval_persisted`; `npm run health` after proof showed `✓ Last generation     send_message`; `npm run build` passed after clearing stale `.next` output.
 - Unresolved issues: none for this seam.
+
+## 2026-04-16 — server-side cooldown for repeated manual dry-run brief requests
+- MODE: COST CONTROL (single seam)
+- Files changed: `app/api/settings/run-brief/route.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `SESSION_HISTORY.md`
+- What changed: Added a persistent server-side cooldown for `pipelineDryRun` on `POST /api/settings/run-brief`. When a recent `settings_run_brief` dry run already exists in `pipeline_runs`, the route now short-circuits before manual sync and `runBriefLifecycle`, returns a successful dry-run cooldown receipt, and sets `Retry-After`. Real non-dry runs still bypass the cooldown and execute normally.
+- Verification: `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts`; `npm run health` (0 FAILING); `npm run build`.
+- Unresolved issues: none for this seam.
