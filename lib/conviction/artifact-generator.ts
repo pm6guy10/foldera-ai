@@ -197,9 +197,20 @@ function sentenceCaseTopic(topic: string): string {
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
 
-function buildInterviewWeekBattlePlanArtifact(cluster: InterviewWeekCluster): DocumentArtifact {
+function enumeratePtWindowDays(windowStart: string, windowEnd: string): string[] {
+  const days: string[] = [];
+  const cursor = new Date(`${windowStart}T12:00:00Z`);
+  const end = new Date(`${windowEnd}T12:00:00Z`);
+  while (cursor.getTime() <= end.getTime()) {
+    days.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return days;
+}
+
+function buildInterviewWeekPrepPackArtifact(cluster: InterviewWeekCluster): DocumentArtifact {
   const items = [...cluster.items].sort((a, b) => Date.parse(a.startIso) - Date.parse(b.startIso));
-  const title = `Interview Week Battle Plan \u2014 ${formatPtDateRange(cluster.windowStart, cluster.windowEnd)}`;
+  const title = `Interview Week Prep Pack \u2014 ${formatPtDateRange(cluster.windowStart, cluster.windowEnd)}`;
 
   const frequency = new Map<string, number>();
   for (const item of items) {
@@ -253,17 +264,46 @@ function buildInterviewWeekBattlePlanArtifact(cluster: InterviewWeekCluster): Do
     return `- ${item.title}: "What separates a strong first-90-days operator here on ${focus}?"`;
   });
 
-  const firstItem = items[0];
-  const prepTopics = storyTopics.slice(0, 2).map(sentenceCaseTopic).join(' and ');
-  const todaysPrepPlan = [
-    `- Rewrite your opening answer for ${firstItem.title} so it lands on ${prepTopics || 'the focus explicitly named in the signals'} in under 60 seconds.`,
-    `- Tighten one reusable story that can travel across ${items.slice(0, 2).map((item) => item.title).join(' and ')} without changing the facts.`,
-    `- Put the ${questionsToAsk.length > 0 ? 'role questions' : 'closing question'} in front of each slot now so you are not inventing them mid-week.`,
-  ];
+  const itemsByDay = new Map<string, InterviewWeekItem[]>();
+  for (const item of items) {
+    const key = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Los_Angeles',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(item.startIso));
+    const dayItems = itemsByDay.get(key) ?? [];
+    dayItems.push(item);
+    itemsByDay.set(key, dayItems);
+  }
+
+  const dayByDayFocus = enumeratePtWindowDays(cluster.windowStart, cluster.windowEnd).map((day) => {
+    const dayItems = itemsByDay.get(day) ?? [];
+    const dayLabel = formatPtDateOnly(`${day}T12:00:00.000Z`);
+    if (dayItems.length === 0) {
+      const carryTopics = storyTopics.slice(0, 2).map(sentenceCaseTopic).join(' and ')
+        || 'the repeated operating stories already named in the confirmed interviews';
+      return `- ${dayLabel}: keep the week centered on ${carryTopics}; do not open new prep lanes.`;
+    }
+
+    const roleLabel = dayItems
+      .map((item) => item.role !== 'unknown role' ? item.role : item.title)
+      .join(' and ');
+    const sameDayTopics = [...new Set(dayItems.flatMap((item) => item.focusNotes.map(sentenceCaseTopic)))];
+    const focus = sameDayTopics.length > 0
+      ? sameDayTopics.join(' and ')
+      : 'the exact scope already named in the confirmed signals';
+    return `- ${dayLabel}: ${roleLabel}. Reuse the same evidence on ${focus}; conserve energy for the next confirmed slot.`;
+  });
+
+  const personalExclusions = cluster.exclusions
+    .filter((item) => /personal event/i.test(item.reason))
+    .map((item) => `- ${formatPtDateOnly(item.startIso)}: ${item.title}.`);
 
   const redFlags = [
-    `- This week compresses ${items.length} interview signals into one artifact; treat it as one operating week, not isolated prep bursts.`,
-    ...cluster.exclusions.map((item) => `- Excluded as ${item.reason}: ${item.title} (${formatPtDateOnly(item.startIso)}).`),
+    `- ${items.length} confirmed interviews are sharing one operating week; reuse stories instead of rebuilding the prep stack from scratch each day.`,
+    `- Keep every answer anchored to the confirmed role signals already named here; extra research lanes add noise faster than value.`,
+    `- Personal calendar holds stay excluded from prep decisions unless they directly block travel, start time, or recovery.`,
   ];
 
   const content = [
@@ -282,11 +322,14 @@ function buildInterviewWeekBattlePlanArtifact(cluster: InterviewWeekCluster): Do
     'QUESTIONS TO ASK',
     ...questionsToAsk,
     '',
-    'TODAY’S PREP PLAN',
-    ...todaysPrepPlan,
+    'DAY-BY-DAY PREP FOCUS',
+    ...dayByDayFocus,
     '',
-    'RED FLAGS / CONFLICTS',
+    'RED FLAGS / LOAD MANAGEMENT',
     ...redFlags,
+    '',
+    'EXCLUDED PERSONAL EVENTS',
+    ...(personalExclusions.length > 0 ? personalExclusions : ['- None surfaced inside the confirmed interview window.']),
   ].join('\n');
 
   return {
@@ -396,7 +439,7 @@ function buildBehavioralPatternArtifact(directive: ConvictionDirective): Documen
     ].join('\n'),
   );
   if (cluster) {
-    return buildInterviewWeekBattlePlanArtifact(cluster);
+    return buildInterviewWeekPrepPackArtifact(cluster);
   }
 
   const rawContext =

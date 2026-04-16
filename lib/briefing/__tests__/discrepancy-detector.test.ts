@@ -1992,6 +1992,172 @@ describe('extractBehavioralPatterns — selfEmails filter in cross-entity theme'
 });
 
 describe('extractBehavioralPatterns — interview week cluster', () => {
+  it('suppresses stale MAS3 scheduling pressure once the interview is booked and routes the week into one confirmed prep cluster', () => {
+    const aprilNow = new Date('2026-04-16T18:00:00Z');
+    const structured = [
+      {
+        id: 'mas3-scheduling-email',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: '2026-04-15T18:00:00.000Z',
+        content: [
+          'From: HCA Recruiter <recruiting@hca.wa.gov>',
+          'Subject: MAS3 interview scheduling instructions',
+          'Body: Please follow the instructions below to schedule your interview.',
+          'Interview slots are reserved on a first come, first served basis.',
+          'Go to www.careers.wa.gov to confirm appointment.',
+        ].join('\n'),
+      },
+      {
+        id: 'mas3-calendar',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: '2026-04-15T19:00:00.000Z',
+        content: [
+          '[Calendar event: MACSC MAS3 Interview - Administrative Specialist 3 - HCA]',
+          'Start: 2026-04-20T20:15:00.000Z',
+          'End: 2026-04-20T21:15:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'mas3-confirmation-email',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: '2026-04-15T19:05:00.000Z',
+        content: [
+          'From: Yadira Clapper <yadira.clapper@hca.wa.gov>',
+          'Subject: MACSC MAS3 interview confirmation with HCA for April 20',
+          'Body: Your interview is scheduled for April 20 at 1:15 PM. Focus on appeals coordination, training handoffs, and policy interpretation.',
+        ].join('\n'),
+      },
+      {
+        id: 'shpc4-calendar',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: '2026-04-15T18:30:00.000Z',
+        content: [
+          '[Calendar event: SHPC4 Interview - Social and Health Program Consultant 4 - DSHS]',
+          'Start: 2026-04-22T17:00:00.000Z',
+          'End: 2026-04-22T18:00:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'shpc4-confirmation-email',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: '2026-04-15T18:35:00.000Z',
+        content: [
+          'From: Cheryl Anderson <cheryl.anderson1@dshs.wa.gov>',
+          'Subject: Social and Health Program Consultant 4 interview confirmation with DSHS for April 22',
+          'Body: Your interview is scheduled for April 22. Focus on program operations and stakeholder coordination.',
+        ].join('\n'),
+      },
+      {
+        id: 'wa-cares-calendar',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: '2026-04-15T18:45:00.000Z',
+        content: [
+          '[Calendar event: Training & Appeals Program Manager Interview - WA Cares]',
+          'Start: 2026-04-23T17:00:00.000Z',
+          'End: 2026-04-23T18:00:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'wa-cares-confirmation-email',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: '2026-04-15T18:50:00.000Z',
+        content: [
+          'From: Keri Nopens <keri.nopens@wacares.wa.gov>',
+          'Subject: Training & Appeals Program Manager interview confirmed with WA Cares for April 23',
+          'Body: We look forward to meeting April 23. Focus areas: training handoffs and program operations.',
+        ].join('\n'),
+      },
+      {
+        id: 'personal-dance',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: '2026-04-15T12:00:00.000Z',
+        content: [
+          '[Calendar event: Dance]',
+          'Start: 2026-04-21T02:15:00.000Z',
+          'End: 2026-04-21T03:15:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'personal-trash',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: '2026-04-15T12:05:00.000Z',
+        content: [
+          '[Calendar event: Put Trash Can Out]',
+          'Start: 2026-04-22T02:00:00.000Z',
+          'End: 2026-04-22T02:15:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'personal-bible',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: '2026-04-15T12:10:00.000Z',
+        content: [
+          '[Calendar event: Bible study at Brightside]',
+          'Start: 2026-04-23T02:00:00.000Z',
+          'End: 2026-04-23T04:00:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'personal-soccer',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: '2026-04-15T12:15:00.000Z',
+        content: [
+          '[Calendar event: soccer game]',
+          'Start: 2026-04-23T15:30:00.000Z',
+          'End: 2026-04-23T16:30:00.000Z',
+        ].join('\n'),
+      },
+      {
+        id: 'personal-shower',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: '2026-04-15T12:20:00.000Z',
+        content: [
+          '[Calendar event: baby shower]',
+          'Start: 2026-04-23T16:45:00.000Z',
+          'End: 2026-04-23T18:15:00.000Z',
+        ].join('\n'),
+      },
+    ];
+
+    const out = detectDiscrepancies({
+      entities: [],
+      commitments: [makeCommitment({
+        id: 'commit-mas3-schedule',
+        description: 'Schedule the MACSC MAS3 interview appointment with HCA',
+        due_at: '2026-04-20T20:15:00.000Z',
+      })],
+      goals: [{ goal_text: 'Land a state role in the next cycle', priority: 4, goal_category: 'career' }],
+      decryptedSignals: [],
+      structuredSignals: structured,
+      now: aprilNow,
+    });
+
+    expect(out.filter((d) => d.class === 'exposure')).toHaveLength(0);
+
+    const cluster = out.find((d) => d.id.includes('interview_week'));
+    expect(cluster).toBeDefined();
+    expect(cluster?.title).toContain('Interview week cluster detected: 3 interviews scheduled 2026-04-20 to 2026-04-23');
+    expect(cluster?.content).toContain('INTERVIEW_COUNT: 3');
+    expect(cluster?.content).toContain('MACSC MAS3 Interview - Administrative Specialist 3 - HCA');
+    expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-04-21T02:15:00.000Z || Dance || non-interview personal event');
+    expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-04-22T02:00:00.000Z || Put Trash Can Out || non-interview personal event');
+    expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-04-23T02:00:00.000Z || Bible study at Brightside || non-interview personal event');
+    expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-04-23T15:30:00.000Z || soccer game || non-interview personal event');
+    expect(cluster?.content).toContain('EXCLUDED_ITEM: 2026-04-23T16:45:00.000Z || baby shower || non-interview personal event');
+  });
+
   it('detects a next-7-days interview cluster and excludes personal calendar noise', () => {
     const structured = [
       {

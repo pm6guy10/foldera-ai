@@ -521,6 +521,9 @@ function extractExposure(
       Math.floor((new Date(dueAt).getTime() - now) / 86400000),
     );
     const schedulingEvidence = findSchedulingPressureEvidenceForCommitment(c, structured, now);
+    const alreadyScheduled = schedulingEvidence.length > 0
+      && commitmentHasConfirmedInterviewAnchor(c, structured, now);
+    if (alreadyScheduled) continue;
     const urgency =
       daysUntilDue === 0
         ? 0.95
@@ -639,6 +642,75 @@ function findSchedulingPressureEvidenceForCommitment(
   }
 
   return evidence;
+}
+
+function commitmentHasConfirmedInterviewAnchor(
+  commitment: CommitmentRow,
+  structured: StructuredSignalInput[],
+  nowMs: number,
+): boolean {
+  const tokens = commitmentKeywordTokens(commitment.description);
+  if (tokens.length === 0) return false;
+
+  const normalizedCommitment = normalizeInterviewToken(commitment.description);
+  const expectedRole = normalizeInterviewField(extractRoleFromInterviewText(commitment.description));
+  const expectedOrg = normalizeInterviewField(extractOrgFromInterviewText(commitment.description));
+  const sinceMs = nowMs - FOURTEEN_DAYS_MS;
+  const horizonMs = nowMs + FOURTEEN_DAYS_MS;
+
+  for (const signal of structured) {
+    const src = signal.source.toLowerCase();
+    const type = String(signal.type ?? '').toLowerCase();
+    if (!src.includes('calendar') && !type.includes('calendar')) continue;
+
+    const parsed = parseCalendarEventFromContent(signal.content);
+    if (!parsed) continue;
+    if (parsed.startMs < sinceMs || parsed.startMs > horizonMs) continue;
+    if (isInterviewNoiseTitle(parsed.title)) continue;
+    if (!looksLikeInterviewSignal(`${parsed.title}\n${signal.content}`)) continue;
+
+    const matchingEmails = matchingInterviewEmailSignals(structured, parsed.title, parsed.startMs);
+    const hasCalendarGrounding = calendarHasConfirmationQualityEvidence(
+      signal.content,
+      parsed.title,
+      parsed.startMs,
+    );
+    if (matchingEmails.length === 0 && !hasCalendarGrounding) continue;
+
+    const combinedText = [
+      parsed.title,
+      signal.content,
+      ...matchingEmails.map((email) => email.content),
+    ].join('\n');
+    const normalizedCombined = normalizeInterviewToken(combinedText);
+    const overlap = tokens.filter((token) => normalizedCombined.includes(token)).length;
+    const overlapThreshold = tokens.length <= 1 ? 1 : Math.min(2, tokens.length);
+
+    const parsedTitle = splitInterviewTitle(parsed.title);
+    const eventRole = normalizeInterviewField(parsedTitle.role ?? extractRoleFromInterviewText(combinedText));
+    const eventOrg = normalizeInterviewField(parsedTitle.org ?? extractOrgFromInterviewText(combinedText));
+    const roleMatch = expectedRole.length > 0 && eventRole === expectedRole;
+    const orgMatch = expectedOrg.length > 0 && eventOrg === expectedOrg;
+    const exactSourceMatch = Boolean(commitment.source_id && (
+      signal.id === commitment.source_id || signal.source_id === commitment.source_id
+    ));
+
+    if (exactSourceMatch || roleMatch || orgMatch || overlap >= overlapThreshold) {
+      return true;
+    }
+
+    if (
+      expectedRole.length === 0
+      && expectedOrg.length === 0
+      && tokens.length === 1
+      && normalizedCommitment.includes(tokens[0]!)
+      && normalizedCombined.includes(tokens[0]!)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ---------------------------------------------------------------------------

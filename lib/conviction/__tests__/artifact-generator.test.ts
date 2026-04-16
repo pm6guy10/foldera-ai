@@ -380,51 +380,55 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(firstCall?.system ?? '').not.toMatch(/Numbered steps, each completable/i);
   });
 
-  it('renders a single interview-week battle plan from clustered signals and exclusion notes', async () => {
+  it('renders a single interview-week prep pack from clustered signals and exclusion notes', async () => {
     const directive: any = {
       ...BASE_WRITE_DOCUMENT_DIRECTIVE,
       discrepancyClass: 'behavioral_pattern',
-      directive: 'Lock one operator-grade interview week battle plan.',
+      directive: 'Lock one integrated interview prep pack for the confirmed week.',
       reason: 'Several interview signals now share one Pacific-time workweek.',
       fullContext: [
         'INSIGHT: next week is interview-heavy.',
-        'Winning loop: Interview week cluster detected: 3 interviews scheduled 2026-04-20 to 2026-04-24',
+        'Winning loop: Interview week cluster detected: 3 interviews scheduled 2026-04-20 to 2026-04-23',
         'INTERVIEW_WEEK_CLUSTER',
-        'WINDOW_PT: 2026-04-20 || 2026-04-24',
+        'WINDOW_PT: 2026-04-20 || 2026-04-23',
         'INTERVIEW_COUNT: 3',
         'INTERVIEW_ITEM: 2026-04-20T16:00:00.000Z || 2026-04-20T17:00:00.000Z || SHPC4 Interview - Social and Health Program Consultant 4 - DSHS || Social and Health Program Consultant 4 || DSHS || program operations; stakeholder coordination; policy interpretation || Cheryl Anderson',
         'INTERVIEW_ITEM: 2026-04-22T18:30:00.000Z || 2026-04-22T19:30:00.000Z || MEDS/MAS3 Interview - Administrative Specialist 3 - HCA || Administrative Specialist 3 || HCA || appeals coordination; training handoffs; policy interpretation || Yadira Clapper',
-        'INTERVIEW_ITEM: 2026-04-24T17:00:00.000Z || 2026-04-24T18:00:00.000Z || Training & Appeals Program Manager Interview - WA Cares || Training and Appeals Program Manager || WA Cares || training handoffs; stakeholder coordination; program operations || Keri Nopens',
+        'INTERVIEW_ITEM: 2026-04-23T17:00:00.000Z || 2026-04-23T18:00:00.000Z || Training & Appeals Program Manager Interview - WA Cares || Training and Appeals Program Manager || WA Cares || training handoffs; stakeholder coordination; program operations || Keri Nopens',
         'EXCLUDED_ITEM: 2026-04-21T04:15:00.000Z || Dance || non-interview personal event',
         'EXCLUDED_ITEM: 2026-04-22T02:00:00.000Z || Put Trash Can Out || non-interview personal event',
         'EXCLUDED_ITEM: 2026-04-23T02:00:00.000Z || Bible study at Brightside || non-interview personal event',
-        'EXCLUDED_ITEM: 2026-04-24T00:00:00.000Z || Soccer practice || non-interview personal event',
-        'EXCLUDED_ITEM: 2026-04-24T23:00:00.000Z || Baby shower || non-interview personal event',
+        'EXCLUDED_ITEM: 2026-04-23T23:00:00.000Z || soccer game || non-interview personal event',
+        'EXCLUDED_ITEM: 2026-04-24T01:00:00.000Z || baby shower || non-interview personal event',
       ].join('\n'),
     };
 
     const result = await generateArtifact('user-1', directive);
 
     expect(result).not.toBeNull();
-    expect((result as any).title).toBe('Interview Week Battle Plan — April 20–24, 2026');
+    expect((result as any).title).toBe('Interview Week Prep Pack — April 20–23, 2026');
     const content = String((result as any).content ?? '');
     expect(content).toContain('MASTER SCHEDULE');
     expect(content).toContain('PRIORITY ORDER');
     expect(content).toContain('CORE STORIES TO REUSE');
     expect(content).toContain('ROLE-SPECIFIC ANGLES');
     expect(content).toContain('QUESTIONS TO ASK');
-    expect(content).toContain('TODAY’S PREP PLAN');
-    expect(content).toContain('RED FLAGS / CONFLICTS');
+    expect(content).toContain('DAY-BY-DAY PREP FOCUS');
+    expect(content).toContain('RED FLAGS / LOAD MANAGEMENT');
+    expect(content).toContain('EXCLUDED PERSONAL EVENTS');
     expect(content).toContain('SHPC4 Interview - Social and Health Program Consultant 4 - DSHS');
     expect(content).toContain('MEDS/MAS3 Interview - Administrative Specialist 3 - HCA');
     expect(content).toContain('Training & Appeals Program Manager Interview - WA Cares');
     expect(content).toContain('Program operations');
     expect(content).toContain('Appeals coordination');
-    expect(content).toContain('Excluded as non-interview personal event: Dance');
-    expect(content).toContain('Excluded as non-interview personal event: Put Trash Can Out');
-    expect(content).toContain('Excluded as non-interview personal event: Bible study at Brightside');
-    expect(content).toContain('Excluded as non-interview personal event: Soccer practice');
-    expect(content).toContain('Excluded as non-interview personal event: Baby shower');
+    expect(content).toContain('Tue, Apr 21');
+    expect(content).toContain('Wed, Apr 22');
+    expect(content).toContain('Thu, Apr 23');
+    expect(content).toContain('Dance');
+    expect(content).toContain('Put Trash Can Out');
+    expect(content).toContain('Bible study at Brightside');
+    expect(content).toContain('soccer game');
+    expect(content).toContain('baby shower');
     expect(content).not.toContain('research the company');
     expect(content).not.toContain('prepare examples');
   });
