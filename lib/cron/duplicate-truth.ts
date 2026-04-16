@@ -13,6 +13,7 @@ export interface RepeatedDirectiveHealthRow {
   generated_at?: MaybeString;
   reason?: MaybeString;
   protective_duplicate_block?: boolean | null | undefined;
+  verification_stub_persist?: boolean | null | undefined;
 }
 
 export interface RepeatedDirectiveHealthSummary {
@@ -77,11 +78,12 @@ export function summarizeRepeatedDirectiveHealth(
   rows: RepeatedDirectiveHealthRow[],
   now = Date.now(),
 ): RepeatedDirectiveHealthSummary {
+  const liveRows = rows.filter((row) => row.verification_stub_persist !== true);
   const counts = new Map<string, { count: number; latestMs: number; latestIso: string | null }>();
   let latestRow: RepeatedDirectiveHealthRow | null = null;
   let latestRowMs = Number.NEGATIVE_INFINITY;
 
-  for (const row of rows) {
+  for (const row of liveRows) {
     const key = shapeKeyFromDirectiveText(row.directive_text);
     const rowMs = safeMs(row.generated_at);
     if (rowMs > latestRowMs) {

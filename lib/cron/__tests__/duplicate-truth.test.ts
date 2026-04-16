@@ -47,6 +47,33 @@ describe('duplicate truth semantics', () => {
     expect(summary.maxCopies).toBe(3);
   });
 
+  it('ignores verification-stub duplicate rows when classifying live duplicate regression', () => {
+    const summary = summarizeRepeatedDirectiveHealth([
+      {
+        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        generated_at: '2026-04-16T15:15:00.000Z',
+        verification_stub_persist: true,
+      },
+      {
+        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        generated_at: '2026-04-16T16:15:00.000Z',
+        verification_stub_persist: true,
+      },
+      {
+        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        generated_at: '2026-04-16T17:45:00.000Z',
+        verification_stub_persist: true,
+      },
+      {
+        directive_text: 'A different real live directive',
+        generated_at: '2026-04-16T17:50:00.000Z',
+      },
+    ], now);
+
+    expect(summary.status).toBe('clear');
+    expect(summary.maxCopies).toBe(1);
+  });
+
   it('accepts no_send_persisted when duplicate guard blocked another persistence', () => {
     const assessment = assessProofOutcome({
       code: 'no_send_persisted',

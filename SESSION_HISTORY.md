@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-16 — health gate excludes verification-stub duplicate artifacts
+- MODE: BUGFIX (single seam)
+- Files changed: `lib/cron/duplicate-truth.ts`, `lib/cron/__tests__/duplicate-truth.test.ts`, `scripts/health.ts`, `SESSION_HISTORY.md`
+- What changed: Tightened repeated-directive health semantics so proof-only `verification_stub_persist` rows no longer count as live duplicate regression. Health now measures only live product rows for duplicate-shape regression, while proof semantics and protective duplicate no-send acceptance remain unchanged.
+- Verification: production Supabase query confirmed the failing duplicate cluster was `verification_stub_persist=true`; `npx vitest run lib/cron/__tests__/duplicate-truth.test.ts` (5 passed); `npm run health` (`0 FAILING`, `✓ No repeated directive`); `npm run build`.
+- Unresolved issues: remote GitHub/Vercel verification pending at log time.
+
 ## 2026-04-16 — duplicate observability and proof truth after suppression
 - MODE: BUGFIX (single seam)
 - Files changed: `lib/cron/duplicate-truth.ts`, `lib/cron/__tests__/duplicate-truth.test.ts`, `lib/cron/daily-brief-generate.ts`, `scripts/health.ts`, `scripts/run-verification-golden-path-once.ts`, `scripts/run-brain-receipt-real-once.ts`, `SESSION_HISTORY.md`

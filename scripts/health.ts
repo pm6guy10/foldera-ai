@@ -194,6 +194,12 @@ async function main() {
             typeof row.execution_result === 'object' &&
             (row.execution_result as Record<string, unknown>).protective_duplicate_block === true,
           ),
+        verification_stub_persist:
+          Boolean(
+            row.execution_result &&
+            typeof row.execution_result === 'object' &&
+            (row.execution_result as Record<string, unknown>).verification_stub_persist === true,
+          ),
       })),
       now,
     );
