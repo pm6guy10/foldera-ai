@@ -4478,6 +4478,13 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Verification: `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts`; `npm run health` (0 FAILING); `npm run build`.
 - Unresolved issues: none for this seam.
 
+## 2026-04-16 — interview write_document evidence gate for sharp owner-demo artifacts
+- MODE: PRODUCT QUALITY (single seam)
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/interview-fallback.test.ts`, `SESSION_HISTORY.md`
+- What changed: Interview-shaped `write_document` repairs no longer degrade into generic prep/memo sludge when the signals only contain logistics. The fallback now builds a role-specific answer architecture only when the supporting signals contain concrete role/process anchors, and otherwise returns `null` so the pipeline does not invent a safe prep artifact.
+- Verification: `npm run health` (0 FAILING); `npx vitest run lib/briefing/__tests__/interview-fallback.test.ts lib/conviction/__tests__/artifact-generator.test.ts`; live `npx tsx -` proof against Brandon’s real Alex Crisler recruiter thread produced `Care Coordinator role — role-specific answer architecture`; the same live proof against the DSHS HCLA interview logistics thread returned `null`; `npm run build`.
+- Unresolved issues: the broader interview-week cluster path in `lib/briefing/discrepancy-detector.ts` and `lib/conviction/artifact-generator.ts` still encodes `Interview Week Prep Pack`, but it was left untouched because this session patched only the narrower evidence gate seam requested.
+
 ## 2026-04-16 — pending-approval reuse guard before manual dry-run sync
 - MODE: COST CONTROL (single seam)
 - Files changed: `app/api/settings/run-brief/route.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `SESSION_HISTORY.md`

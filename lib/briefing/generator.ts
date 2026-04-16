@@ -7079,6 +7079,276 @@ function cleanDecisionTarget(value: string): string {
   return cleaned.slice(0, 110) || 'the active thread';
 }
 
+type InterviewRepairEvidence = {
+  roleTitle: string | null;
+  organization: string | null;
+  scheduledAt: string | null;
+  location: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  roleAnchors: string[];
+  processAnchors: string[];
+};
+
+function looksLikeInterviewWriteDocumentCandidate(
+  winner: ScoredLoop,
+  supportingSignals: CompressedSignal[],
+): boolean {
+  const blob = [
+    winner.title,
+    winner.content,
+    winner.trigger?.baseline_state ?? '',
+    winner.trigger?.current_state ?? '',
+    ...supportingSignals.map((signal) => signal.summary),
+  ]
+    .join('\n')
+    .toLowerCase();
+  return /\b(interview|phone screen|teams interview|microsoft teams)\b/.test(blob);
+}
+
+function dedupeInterviewLines(lines: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const line of lines) {
+    const cleaned = line.trim().replace(/\s+/g, ' ').replace(/[.;:]+$/g, '');
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(cleaned);
+  }
+  return out;
+}
+
+function extractInterviewRoleTitle(text: string): string | null {
+  const patterns = [
+    /\bJob:\s*([^\n]+?)(?:\s+Employer:|$)/i,
+    /\bposition at [^.\n]+? for the ([^.\n]+?)(?:\s+position|\.)/i,
+    /\bapplying to the ([^.\n]+?) at\b/i,
+    /\bfor the ([^.\n]+?) position\b/i,
+    /\b(Care Coordinator role)\b/i,
+    /\b(ES BENEFITS TECHNICIAN\/Telework)\b/i,
+    /\b(Health Benefits Specialist 3 \(MAS3\/AHSO\)\s*[–-]\s*Project)\b/i,
+    /\b(DSHS HCLA Benefits and Customer Care Specialist)\b/i,
+    /\b(DSHS HCLA Developmental Disabilities Case\/Resource Manager)\b/i,
+    /\b(Developmental Disabilities Case\/Resource Manager)\b/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const raw = match?.[1]?.trim();
+    if (raw) return raw.replace(/\s+/g, ' ');
+  }
+  return null;
+}
+
+function extractInterviewOrganization(text: string): string | null {
+  const patterns = [
+    /\bEmployer:\s*([^\n]+)$/im,
+    /\bposition at the ([^.\n]+?)(?:\.|$)/i,
+    /\brole at ([^.\n]+?)(?: in |!|\.|,|$)/i,
+    /\b(Comprehensive Healthcare)\b/i,
+    /\b(Health Care Authority)\b/i,
+    /\b(Employment Security Department)\b/i,
+    /\b(Dept\. of Social and Health Services)\b/i,
+    /\b(Department of Social and Health Services)\b/i,
+    /\b(State of Washington)\b/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const raw = match?.[1]?.trim();
+    if (raw) return raw.replace(/\s+/g, ' ');
+  }
+  return null;
+}
+
+function extractInterviewScheduleLine(text: string): string | null {
+  const patterns = [
+    /\bDate and Time:\s*([^\n]+?)(?:\s+Location:|$)/i,
+    /\bAppointment:\s*([^\n]+)$/im,
+    /\bInterview\s+(Thursday,\s+[A-Za-z]+\s+\d+\s*@\s*\d{1,2}:\d{2})\b/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const raw = match?.[1]?.trim();
+    if (raw) return raw.replace(/\s+/g, ' ');
+  }
+  return null;
+}
+
+function extractInterviewLocation(text: string): string | null {
+  const match = text.match(/\bLocation:\s*([^\n]+?)(?:\s+Job:|$)/i);
+  const raw = match?.[1]?.trim();
+  return raw ? raw.replace(/\s+/g, ' ') : null;
+}
+
+function extractInterviewContactName(text: string): string | null {
+  const patterns = [
+    /^From:\s*([^<\n]+?)(?:\s*<|$)/im,
+    /\bSincerely,\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b/i,
+    /\bThank you,\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const raw = match?.[1]?.trim();
+    if (raw) return raw.replace(/\s+/g, ' ');
+  }
+  return null;
+}
+
+function extractInterviewContactEmail(text: string): string | null {
+  const match = text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+  return match?.[0]?.toLowerCase() ?? null;
+}
+
+function collectInterviewAnchors(text: string): { roleAnchors: string[]; processAnchors: string[] } {
+  const roleAnchors: string[] = [];
+  const processAnchors: string[] = [];
+  const rolePatterns: Array<{ pattern: RegExp; label: string }> = [
+    { pattern: /\bcommunity-based\b/i, label: 'community-based' },
+    { pattern: /\bmeet(?:ing)? with clients at meetings and appointments\b/i, label: 'meeting clients at meetings and appointments' },
+    { pattern: /\btravel(?:ing)? to (?:their )?homes for check-?in\b/i, label: 'traveling to homes for check-in' },
+    { pattern: /\bmileage is reimbursed\b/i, label: 'mileage is reimbursed' },
+    { pattern: /\bpersonal vehicle\b/i, label: 'uses your personal vehicle' },
+    { pattern: /\bnot be responsible for transporting (?:and )?clients\b/i, label: 'not responsible for transporting clients' },
+    { pattern: /\bcommunity resources\b/i, label: 'finding community resources' },
+    { pattern: /\bsupport their recovery\b/i, label: 'supporting client recovery' },
+    { pattern: /\btelework\b/i, label: 'telework' },
+  ];
+  const processPatterns: Array<{ pattern: RegExp; label: string }> = [
+    { pattern: /\bMS Teams\b/i, label: 'MS Teams interview' },
+    { pattern: /\bMicrosoft Teams\b/i, label: 'Microsoft Teams interview' },
+    { pattern: /\bfirst-come,\s*first-served\b/i, label: 'first-come, first-served scheduling' },
+    { pattern: /\bBackground and Reference Check Authorization forms\b/i, label: 'background and reference authorization forms' },
+    { pattern: /\bRelease of Information \(ROI\) form\b/i, label: 'ROI form required' },
+    { pattern: /\bTeams link\b/i, label: 'Teams link confirmation' },
+    { pattern: /\bnext steps including the interview process\b/i, label: 'next steps in the interview process' },
+  ];
+
+  for (const { pattern, label } of rolePatterns) {
+    if (pattern.test(text)) roleAnchors.push(label);
+  }
+  for (const { pattern, label } of processPatterns) {
+    if (pattern.test(text)) processAnchors.push(label);
+  }
+
+  return {
+    roleAnchors: dedupeInterviewLines(roleAnchors),
+    processAnchors: dedupeInterviewLines(processAnchors),
+  };
+}
+
+function collectInterviewRepairEvidence(
+  winner: ScoredLoop,
+  supportingSignals: CompressedSignal[],
+): InterviewRepairEvidence {
+  const combined = [
+    winner.title,
+    winner.content,
+    winner.trigger?.baseline_state ?? '',
+    winner.trigger?.current_state ?? '',
+    winner.trigger?.why_now ?? '',
+    ...supportingSignals.map((signal) => `${signal.summary}\n${signal.entity ?? ''}`),
+  ].join('\n');
+  const { roleAnchors, processAnchors } = collectInterviewAnchors(combined);
+
+  return {
+    roleTitle: extractInterviewRoleTitle(combined),
+    organization: extractInterviewOrganization(combined),
+    scheduledAt: extractInterviewScheduleLine(combined),
+    location: extractInterviewLocation(combined),
+    contactName: extractInterviewContactName(combined),
+    contactEmail: extractInterviewContactEmail(combined),
+    roleAnchors,
+    processAnchors,
+  };
+}
+
+function buildInterviewAnswerScript(evidence: InterviewRepairEvidence): string {
+  const roleLabel = evidence.roleTitle ?? 'this role';
+  const orgLabel = evidence.organization ? ` at ${evidence.organization}` : '';
+  const strongestRoleAnchors = evidence.roleAnchors.slice(0, 4);
+  const anchorLead = strongestRoleAnchors.length > 0
+    ? strongestRoleAnchors.join(', ')
+    : 'the exact operating details already named in the thread';
+  const closingQuestion = evidence.contactName
+    ? `Is that the right way to frame the strongest fit for this ${roleLabel} with ${evidence.contactName.split(/\s+/)[0]}?`
+    : `Is that the right way to frame the strongest fit for this ${roleLabel}?`;
+
+  return [
+    `“What makes me a fit for ${roleLabel}${orgLabel} is that the role is already defined around ${anchorLead}.`,
+    `That matters to me because I do better in work that is concrete, field-facing, and tied to helping people move through real systems instead of staying stuck in abstraction.`,
+    `The thread already makes clear this is not a generic office role, so I would answer from that operating reality first and then show that I can stay steady, organized, and useful inside it.`,
+    closingQuestion + '”',
+  ].join(' ');
+}
+
+function buildInterviewWriteDocumentPayload(input: {
+  winner: ScoredLoop;
+  candidateDueDate: string | null;
+  causalDiagnosis: CausalDiagnosis;
+  supportingSignals: CompressedSignal[];
+}): GeneratedDirectivePayload | null | undefined {
+  if (!looksLikeInterviewWriteDocumentCandidate(input.winner, input.supportingSignals)) {
+    return undefined;
+  }
+
+  const evidence = collectInterviewRepairEvidence(input.winner, input.supportingSignals);
+  const hasRoleSpecificEvidence =
+    Boolean(evidence.roleTitle) &&
+    (evidence.roleAnchors.length >= 2 ||
+      (evidence.roleAnchors.length >= 1 && evidence.organization !== null && evidence.processAnchors.length >= 1));
+
+  if (!hasRoleSpecificEvidence) {
+    return null;
+  }
+
+  const deadline = resolveDecisionDeadline(input.candidateDueDate);
+  const roleLabel = evidence.roleTitle ?? cleanDecisionTarget(input.winner.title);
+  const scheduleLabel = evidence.scheduledAt ?? deadline;
+  const locationLabel = evidence.location ?? 'the interview slot already on your calendar';
+  const pressureLine =
+    evidence.roleAnchors.length > 0
+      ? `This is a real interview risk: if this answer stays generic, the panel only hears motivation. If you anchor to ${evidence.roleAnchors.slice(0, 3).join(', ')}, they hear direct fit before ${deadline}.`
+      : `This is a real interview risk: if this answer stays generic, the panel only hears interest instead of fit before ${deadline}.`;
+  const processLine = evidence.processAnchors.length > 0
+    ? `The thread also confirms ${evidence.processAnchors.slice(0, 2).join(' and ')}, so keep the answer tied to the real process already in motion.`
+    : '';
+  const contactLine = evidence.contactEmail
+    ? `Thread anchor: ${evidence.contactEmail}.`
+    : evidence.contactName
+      ? `Thread anchor: ${evidence.contactName}.`
+      : '';
+  const directive = `Write the role-specific answer architecture Brandon can use in the ${roleLabel} interview before ${scheduleLabel}.`.slice(0, 340);
+
+  return {
+    insight: `${roleLabel} already has enough role evidence in the thread to justify one anchored answer instead of another prep brief.`,
+    causal_diagnosis: input.causalDiagnosis,
+    decision: 'ACT',
+    directive,
+    artifact_type: 'write_document',
+    artifact: {
+      document_purpose: 'interview answer architecture',
+      target_reader: 'candidate',
+      title: `${roleLabel} — role-specific answer architecture`,
+      content: [
+        `Use this in ${locationLabel} on ${scheduleLabel} when they ask, “Why are you a fit for this role?”`,
+        '',
+        `You are responsible for landing one clear match before ${deadline}: ${roleLabel} is already grounded in ${evidence.roleAnchors.slice(0, 4).join(', ')}.`,
+        '',
+        `Deadline: ${deadline}.`,
+        '',
+        pressureLine,
+        processLine,
+        contactLine,
+        '',
+        'Answer script:',
+        buildInterviewAnswerScript(evidence),
+      ].filter(Boolean).join('\n'),
+    },
+    why_now: `${roleLabel} is already on the calendar for ${scheduleLabel}, and the evidence in the thread is specific enough to turn into one reusable answer before the window closes.`,
+  };
+}
+
 function buildCausalFallbackCopy(input: {
   diagnosis: CausalDiagnosis;
   target: string;
@@ -7126,6 +7396,7 @@ export function buildDecisionEnforcedFallbackPayload(input: {
   candidateDueDate: string | null;
   candidateGoal: string | null;
   causalDiagnosis: CausalDiagnosis;
+  supportingSignals: CompressedSignal[];
   huntRecipientAllowlist?: string[];
   userEmails?: Set<string>;
   userPromptNames: UserPromptNames;
@@ -7283,6 +7554,16 @@ export function buildDecisionEnforcedFallbackPayload(input: {
   }
 
   if (input.actionType === 'write_document') {
+    const interviewPayload = buildInterviewWriteDocumentPayload({
+      winner: input.winner,
+      candidateDueDate: input.candidateDueDate,
+      causalDiagnosis: input.causalDiagnosis,
+      supportingSignals: input.supportingSignals,
+    });
+    if (interviewPayload !== undefined) {
+      return interviewPayload;
+    }
+
     if (input.winner.discrepancyClass === 'behavioral_pattern') {
       const factText = `${input.winner.title}. ${input.winner.content}`;
       const parsedFacts = parseBehavioralPatternRepairFacts(factText);
@@ -8877,6 +9158,7 @@ export async function generateDirective(
           candidateDueDate: ctx.candidate_due_date,
           candidateGoal: ctx.candidate_goal,
           causalDiagnosis: ctx.required_causal_diagnosis,
+          supportingSignals: ctx.supporting_signals,
           huntRecipientAllowlist: ctx.hunt_send_message_recipient_allowlist,
           userEmails,
           userPromptNames: {
