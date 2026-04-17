@@ -68,6 +68,34 @@ describe('evaluateBottomGate', () => {
     expect(result.blocked_reasons).toEqual([]);
   });
 
+  it('passes an internal execution brief without an external target when it is finished and time-bound', () => {
+    const directive = makeDirective({
+      action_type: 'write_document',
+      directive: 'Write the answer architecture for the Care Coordinator interview before April 15.',
+      reason: 'The interview is on April 15 and a generic answer weakens fit before the window closes.',
+    });
+    const artifact = makeDocArtifact({
+      type: 'document',
+      document_purpose: 'interview answer architecture',
+      target_reader: 'candidate',
+      title: 'Care Coordinator — role-specific answer architecture',
+      content: [
+        'Use this in the April 15 phone screen when they ask why you are a fit for the Care Coordinator role.',
+        '',
+        'Deadline: April 15.',
+        '',
+        'This is a real interview risk: if this answer stays generic, you lose the clearest fit signal before April 15 and the panel only hears motivation.',
+        '',
+        'Answer script:',
+        'Open with the community-based client support, the reimbursed travel, and the resource coordination already named in the recruiter thread.',
+      ].join('\n'),
+    });
+
+    const result = evaluateBottomGate(directive, artifact);
+    expect(result.pass).toBe(true);
+    expect(result.blocked_reasons).toEqual([]);
+  });
+
   // --- BLOCK: self-referential document ---
   it('blocks a self-referential reflection memo', () => {
     const directive = makeDirective({
@@ -104,6 +132,31 @@ describe('evaluateBottomGate', () => {
     const result = evaluateBottomGate(directive, artifact);
     expect(result.pass).toBe(false);
     expect(result.blocked_reasons).toContain('NO_EXTERNAL_TARGET');
+  });
+
+  it('blocks an internal execution brief that is really a prep checklist', () => {
+    const directive = makeDirective({
+      action_type: 'write_document',
+      directive: 'Write the answer architecture for the Care Coordinator interview before April 15.',
+      reason: 'The interview is on April 15 and a generic answer weakens fit before the window closes.',
+    });
+    const artifact = makeDocArtifact({
+      type: 'document',
+      document_purpose: 'interview answer architecture',
+      target_reader: 'candidate',
+      title: 'Care Coordinator interview prep',
+      content: [
+        '1. Prepare two client stories for the panel.',
+        '2. Review the organization website before the interview.',
+        '3. Research the latest policy changes and gather examples.',
+        'Deadline: April 15.',
+      ].join('\n'),
+    });
+
+    const result = evaluateBottomGate(directive, artifact);
+    expect(result.pass).toBe(false);
+    expect(result.blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
+    expect(result.blocked_reasons).not.toContain('NO_EXTERNAL_TARGET');
   });
 
   // --- BLOCK: no concrete ask (write_document — send_message is exempt) ---

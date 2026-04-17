@@ -1335,6 +1335,32 @@ export function selectRankedCandidates(
     }
   }
 
+  const scorerPriorityCareerOutcome = topCandidates.find((candidate) =>
+    isPriorityCareerOutcomeArtifactCandidateForGenerator(candidate),
+  );
+  if (scorerPriorityCareerOutcome) {
+    const scorerPriorityEntry = rated.find(
+      (entry) =>
+        !entry.disqualified
+        && entry.candidate.id === scorerPriorityCareerOutcome.id,
+    );
+    if (scorerPriorityEntry && top.candidate.id !== scorerPriorityCareerOutcome.id) {
+      scorerPriorityEntry.viabilityScore = Math.max(
+        scorerPriorityEntry.viabilityScore,
+        top.viabilityScore + 0.001,
+      );
+      scorerPriorityEntry.note = [
+        scorerPriorityEntry.note,
+        'scorer-priority career outcome forced first',
+      ].filter(Boolean).join('; ');
+      rated.sort((a, b) => {
+        if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
+        return b.viabilityScore - a.viabilityScore;
+      });
+      top = rated[0];
+    }
+  }
+
   // Pathological fallback: all disqualified → still return ranked list so fallback loop can try
   if (top.disqualified) {
     return { ranked: rated.map(r => ({ candidate: r.candidate, note: r.note, disqualified: r.disqualified, disqualifyReason: r.disqualifyReason })), competitionContext: '' };
@@ -1369,6 +1395,44 @@ export function selectRankedCandidates(
     `This context proves why you are generating for this candidate today. Use it to write a specific, grounded artifact — not a generic follow-up.`;
 
   return { ranked: rated.map(r => ({ candidate: r.candidate, note: r.note, disqualified: r.disqualified, disqualifyReason: r.disqualifyReason })), competitionContext };
+}
+
+function scoredLoopSearchTextForGeneratorCareerPriority(candidate: import('./scorer').ScoredLoop): string {
+  const sourceText = (candidate.sourceSignals ?? [])
+    .map((signal) => [signal.summary, signal.source, signal.occurredAt].filter(Boolean).join(' '))
+    .join(' ');
+  const triggerText = candidate.trigger
+    ? [
+        candidate.trigger.baseline_state,
+        candidate.trigger.current_state,
+        candidate.trigger.delta,
+        candidate.trigger.timeframe,
+        candidate.trigger.why_now,
+        candidate.trigger.outcome_class,
+      ].join(' ')
+    : '';
+  return [
+    candidate.title,
+    candidate.content,
+    sourceText,
+    triggerText,
+    candidate.discrepancyEvidence ?? '',
+    candidate.matchedGoal?.text ?? '',
+  ].join(' ').toLowerCase();
+}
+
+function isPriorityCareerOutcomeArtifactCandidateForGenerator(
+  candidate: import('./scorer').ScoredLoop,
+): boolean {
+  if (candidate.suggestedActionType !== 'write_document') return false;
+
+  const text = scoredLoopSearchTextForGeneratorCareerPriority(candidate);
+  const hasInterviewOrHiringPressure =
+    /\binterview|phone screen|panel interview|screening interview|candidate interview|hiring decision|offer\b/i.test(text);
+  const isCareerGoalMatched = candidate.matchedGoal?.category === 'career';
+  const hasOutcomeValue = (candidate.breakdown.stakes ?? 0) >= 3 && (candidate.breakdown.urgency ?? 0) >= 0.7;
+
+  return hasOutcomeValue && (isCareerGoalMatched || hasInterviewOrHiringPressure);
 }
 
 /** Discrepancy classes that lock to `write_document` — verification mode tries these before other winners. */
@@ -4396,6 +4460,7 @@ const EXPLICIT_ASK_PATTERNS = [
   /\bcan you\b/i,
   /\bcould (?:we|you)\b/i,
   /\bwould you\b/i,
+  /(?:^|[\r\n])\s*ask\s*:/i,
   /\bplease confirm\b/i,
   /\bplease approve\b/i,
   /\bapprove or reject\b/i,
@@ -4654,6 +4719,129 @@ function getWriteDocumentTaskManagerLabelIssues(artifact: Record<string, unknown
   return out;
 }
 
+export type WriteDocumentMode = 'outbound_resolution_note' | 'internal_execution_brief';
+
+const INTERNAL_EXECUTION_PURPOSE_RE =
+  /\b(interview|answer architecture|answer script|close[_\s-]?the[_\s-]?loop|execution brief)\b/i;
+const INTERNAL_EXECUTION_CONTEXT_RE =
+  /\b(interview|phone screen|panel interview|role-specific answer|answer architecture|answer script)\b/i;
+const INTERNAL_EXECUTION_TARGET_RE = /\b(candidate|user|yourself|you)\b/i;
+const INTERNAL_EXECUTION_MOVE_RE =
+  /\b(use this|answer script|send this(?: email)?(?: (?:today|now|tonight|tomorrow))?|send the email above|copy(?:\/|-)?paste|open with|say:|draft email to send|execution\b)\b/i;
+const INTERNAL_EXECUTION_CHECKLIST_LINE_RE =
+  /^\s*(?:[-*]|\d+\.)\s*(?:prepare|review|research|gather|brainstorm|locate|find|list|outline|draft|confirm|write)\b/gim;
+const INTERNAL_EXECUTION_QUESTION_RE =
+  /\b(?:questions?\s+(?:to answer|for yourself)|ask yourself)\b|^\s*(?:[-*]|\d+\.)\s*(?:what|which|who|how|when|where|why)\b/gim;
+const INTERNAL_EXECUTION_FUTURE_ARTIFACT_RE =
+  /\b(?:starting point|outline for later|notes for later|future artifact|future brief|turn this into|build the full|draft for later|prep brief)\b/i;
+
+function collectWriteDocumentArtifactText(input: {
+  artifact?: Record<string, unknown> | null;
+}): string {
+  const artifact = input.artifact ?? null;
+  return [
+    typeof artifact?.document_purpose === 'string' ? artifact.document_purpose : '',
+    typeof artifact?.target_reader === 'string' ? artifact.target_reader : '',
+    typeof artifact?.title === 'string' ? artifact.title : '',
+    typeof artifact?.content === 'string' ? artifact.content : '',
+  ].join('\n');
+}
+
+function collectWriteDocumentModeText(input: {
+  artifact?: Record<string, unknown> | null;
+  candidateTitle?: string | null;
+  directiveText?: string | null;
+  reason?: string | null;
+}): string {
+  return [
+    collectWriteDocumentArtifactText({ artifact: input.artifact }),
+    input.candidateTitle ?? '',
+    input.directiveText ?? '',
+    input.reason ?? '',
+  ].join('\n');
+}
+
+export function getWriteDocumentMode(input: {
+  actionType?: string | null;
+  artifact?: Record<string, unknown> | null;
+  discrepancyClass?: string | null;
+  candidateTitle?: string | null;
+  directiveText?: string | null;
+  reason?: string | null;
+}): WriteDocumentMode | null {
+  if (normalizeDecisionActionType(input.actionType ?? '') !== 'write_document') {
+    return null;
+  }
+
+  if (input.discrepancyClass === 'behavioral_pattern') {
+    return 'internal_execution_brief';
+  }
+
+  const artifactText = collectWriteDocumentArtifactText({ artifact: input.artifact });
+  const targetReader = typeof input.artifact?.target_reader === 'string'
+    ? input.artifact.target_reader.trim()
+    : '';
+  if (!artifactText.trim()) {
+    const fallbackCombined = collectWriteDocumentModeText(input);
+    if (!fallbackCombined.trim()) {
+      return 'outbound_resolution_note';
+    }
+    if (INTERNAL_EXECUTION_PURPOSE_RE.test(fallbackCombined)) {
+      return 'internal_execution_brief';
+    }
+    if (
+      INTERNAL_EXECUTION_CONTEXT_RE.test(fallbackCombined) &&
+      INTERNAL_EXECUTION_MOVE_RE.test(fallbackCombined)
+    ) {
+      return 'internal_execution_brief';
+    }
+    return 'outbound_resolution_note';
+  }
+
+  if (INTERNAL_EXECUTION_PURPOSE_RE.test(artifactText)) {
+    return 'internal_execution_brief';
+  }
+
+  if (targetReader && !INTERNAL_EXECUTION_TARGET_RE.test(targetReader)) {
+    return 'outbound_resolution_note';
+  }
+
+  if (INTERNAL_EXECUTION_CONTEXT_RE.test(artifactText) && INTERNAL_EXECUTION_MOVE_RE.test(artifactText)) {
+    return 'internal_execution_brief';
+  }
+
+  return 'outbound_resolution_note';
+}
+
+export function getInternalExecutionBriefIssues(
+  artifact: Record<string, unknown> | null,
+): Array<'missing_execution_move' | 'owner_checklist' | 'user_questions' | 'future_artifact'> {
+  if (!artifact || typeof artifact !== 'object') return ['missing_execution_move'];
+  const title = isNonEmptyString(artifact.title) ? artifact.title.trim() : '';
+  const content = isNonEmptyString(artifact.content) ? artifact.content.trim() : '';
+  const combined = `${title}\n${content}`.trim();
+  const issues: Array<'missing_execution_move' | 'owner_checklist' | 'user_questions' | 'future_artifact'> = [];
+
+  if (!INTERNAL_EXECUTION_MOVE_RE.test(combined)) {
+    issues.push('missing_execution_move');
+  }
+
+  const checklistMatches = combined.match(INTERNAL_EXECUTION_CHECKLIST_LINE_RE) ?? [];
+  if (checklistMatches.length >= 2) {
+    issues.push('owner_checklist');
+  }
+
+  if (INTERNAL_EXECUTION_QUESTION_RE.test(combined)) {
+    issues.push('user_questions');
+  }
+
+  if (INTERNAL_EXECUTION_FUTURE_ARTIFACT_RE.test(combined)) {
+    issues.push('future_artifact');
+  }
+
+  return issues;
+}
+
 const BEHAVIORAL_PATTERN_GOAL_STOPWORDS = new Set([
   'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'your', 'about',
   'after', 'before', 'while', 'where', 'when', 'what', 'have', 'will', 'would',
@@ -4733,18 +4921,23 @@ function getBehavioralPatternFinishedWorkIssues(input: {
   }
   const hasSendReadyLead =
     /\bSend this (?:today|now|tonight|tomorrow)\b/i.test(content) ||
+    /\bSend this email\b/i.test(content) ||
     /\bSend (?:it|this) (?:today|now|tonight|tomorrow)\b/i.test(content) ||
-    /\bSend (?:today|now|tonight|tomorrow)\b/i.test(content);
+    /\bSend (?:today|now|tonight|tomorrow)\b/i.test(content) ||
+    /\bDRAFT EMAIL TO SEND\b/i.test(content) ||
+    /\bEXECUTION\b[\s\S]{0,220}\bSend this email\b/i.test(content);
   const hasQuotedCopyPasteBlock = /[“"][^"”\n]{20,}[”"]/.test(content);
   if (!hasSendReadyLead && !hasQuotedCopyPasteBlock) {
     issues.push('decision_enforcement:behavioral_pattern_missing_send_ready_move');
   }
   const hasNoReplyStopCondition =
     /\bif (?:there is )?no (?:reply|response|answer)\b/i.test(content) ||
+    /\bif no (?:reply|response|answer) (?:arrives?|comes?) by\b/i.test(content) ||
+    /\bif silence continues past\b/i.test(content) ||
     /\bif you (?:do not|don['’]t) hear back\b/i.test(content) ||
     /\bif (?:they|he|she|we)\s+(?:do not|don['’]t)\s+(?:reply|respond|get back)\b/i.test(content);
   const hasStopAction =
-    /\bmark (?:the )?(?:thread|conversation)\s+(?:as\s+)?stalled\b/i.test(content) ||
+    /\bmark (?:the |this )?(?:thread|conversation)\s+(?:as\s+)?stalled\b/i.test(content) ||
     /\bstop\b[^.\n]{0,40}\b(?:allocating attention|spending attention|following up|pursuing|chasing)\b/i.test(content) ||
     /\bclose the loop\b/i.test(content) ||
     /\barchive (?:the )?(?:thread|conversation)\b/i.test(content);
@@ -4784,11 +4977,23 @@ export function getDecisionEnforcementIssues(input: {
   const artifactText = getArtifactTextForDecisionEnforcement(normalizedType, artifactRecord);
   const combinedText = `${input.directiveText}\n${input.reason}\n${artifactText}`.trim();
   const issues: string[] = [];
+  const writeDocumentMode = getWriteDocumentMode({
+    actionType: input.actionType,
+    artifact: artifactRecord,
+    discrepancyClass: input.discrepancyClass ?? null,
+    directiveText: input.directiveText,
+    reason: input.reason,
+  });
+  const isInternalExecutionBrief = writeDocumentMode === 'internal_execution_brief';
 
   const sendMessageHasQuestion =
     normalizedType === 'send_message' && artifactText.length > 0 && /\?/.test(artifactText);
-
-  if (!textHasAny(combinedText, EXPLICIT_ASK_PATTERNS) && !sendMessageHasQuestion) {
+  const internalExecutionIssues =
+    normalizedType === 'write_document' && isInternalExecutionBrief
+      ? getInternalExecutionBriefIssues(artifactRecord)
+      : [];
+  const internalExecutionHasMove = !internalExecutionIssues.includes('missing_execution_move');
+  if (!textHasAny(combinedText, EXPLICIT_ASK_PATTERNS) && !sendMessageHasQuestion && !internalExecutionHasMove) {
     issues.push('decision_enforcement:missing_explicit_ask');
   }
   if (!textHasAny(combinedText, TIME_CONSTRAINT_PATTERNS)) {
@@ -4806,7 +5011,7 @@ export function getDecisionEnforcementIssues(input: {
   if (normalizedType === 'write_document' && textHasAny(combinedText, SUMMARY_ONLY_PATTERNS)) {
     issues.push('decision_enforcement:summary_without_decision');
   }
-  if (normalizedType === 'write_document' && !textHasAny(combinedText, OWNERSHIP_PATTERNS)) {
+  if (normalizedType === 'write_document' && !isInternalExecutionBrief && !textHasAny(combinedText, OWNERSHIP_PATTERNS)) {
     issues.push('decision_enforcement:missing_owner_assignment');
   }
   if (textHasAny(combinedText, REWRITE_REQUIRED_PATTERNS)) {
@@ -4814,6 +5019,17 @@ export function getDecisionEnforcementIssues(input: {
   }
   if (normalizedType === 'write_document') {
     issues.push(...getWriteDocumentTaskManagerLabelIssues(artifactRecord));
+    if (isInternalExecutionBrief) {
+      if (internalExecutionIssues.includes('owner_checklist')) {
+        issues.push('decision_enforcement:internal_execution_brief_owner_checklist');
+      }
+      if (internalExecutionIssues.includes('user_questions')) {
+        issues.push('decision_enforcement:internal_execution_brief_user_questions');
+      }
+      if (internalExecutionIssues.includes('future_artifact')) {
+        issues.push('decision_enforcement:internal_execution_brief_future_artifact');
+      }
+    }
   }
 
   let out = [...new Set(issues)];
@@ -5038,16 +5254,57 @@ function buildSelectedGenerationLog(
   };
 }
 
+function buildBlockedCandidateReasonMessage(input: {
+  title: string;
+  reasons: string[];
+}): string {
+  return `BLOCKED: "${input.title.slice(0, 120)}" — ${input.reasons.join('; ')}`;
+}
+
 function buildNoSendGenerationLog(
   reason: string,
   stage: GenerationRunLog['stage'],
   candidateDiscovery: GenerationCandidateDiscoveryLog | null,
+  blockedCandidate?: {
+    candidateId: string;
+    title: string;
+    reasons: string[];
+  },
 ): GenerationRunLog {
-  const normalizedDiscovery = candidateDiscovery
-    ? { ...candidateDiscovery, failureReason: candidateDiscovery.failureReason ?? reason }
+  const blockedCandidateReason = blockedCandidate
+    ? buildBlockedCandidateReasonMessage({
+        title: blockedCandidate.title,
+        reasons: blockedCandidate.reasons,
+      })
+    : null;
+  const normalizedDiscovery: GenerationCandidateDiscoveryLog | null = candidateDiscovery
+    ? {
+        ...candidateDiscovery,
+        selectionReason: blockedCandidateReason ?? candidateDiscovery.selectionReason,
+        failureReason: blockedCandidateReason ?? candidateDiscovery.failureReason ?? reason,
+        topCandidates: blockedCandidateReason
+          ? candidateDiscovery.topCandidates.map((candidate) =>
+              candidate.id === blockedCandidate?.candidateId
+                ? {
+                    ...candidate,
+                    decision: 'selected' as const,
+                    decisionReason: blockedCandidateReason,
+                  }
+                : candidate,
+            )
+          : candidateDiscovery.topCandidates,
+      }
     : null;
 
-  const candidateFailureReasons = normalizedDiscovery
+  const candidateFailureReasons = blockedCandidateReason
+    ? normalizedDiscovery
+      ? normalizedDiscovery.topCandidates.map((candidate) =>
+          candidate.id === blockedCandidate?.candidateId
+            ? blockedCandidateReason
+            : candidate.decisionReason,
+        )
+      : [blockedCandidateReason]
+    : normalizedDiscovery
     ? normalizedDiscovery.topCandidates.map((c) =>
       c.decision === 'selected'
         ? `Selected candidate blocked: ${reason}`
@@ -5057,7 +5314,7 @@ function buildNoSendGenerationLog(
   return {
     outcome: 'no_send',
     stage,
-    reason,
+    reason: blockedCandidateReason ?? reason,
     candidateFailureReasons,
     candidateDiscovery: normalizedDiscovery,
   };
@@ -6638,6 +6895,32 @@ function validateGeneratedArtifact(
   }
 
   if (!pipelineDry && canonicalArtifactType === 'write_document') {
+    const writeDocumentMode = getWriteDocumentMode({
+      actionType: canonicalArtifactType,
+      artifact: (payload.artifact as Record<string, unknown>) ?? null,
+      discrepancyClass: ctx.discrepancy_class ?? null,
+      candidateTitle: ctx.candidate_title,
+      directiveText: payload.directive ?? '',
+      reason: payload.why_now ?? '',
+    });
+    if (writeDocumentMode === 'internal_execution_brief') {
+      const internalExecutionIssues = getInternalExecutionBriefIssues(
+        (payload.artifact as Record<string, unknown>) ?? null,
+      );
+      if (internalExecutionIssues.includes('missing_execution_move')) {
+        issues.push('decision_enforcement:missing_explicit_ask');
+      }
+      if (internalExecutionIssues.includes('owner_checklist')) {
+        issues.push('decision_enforcement:internal_execution_brief_owner_checklist');
+      }
+      if (internalExecutionIssues.includes('user_questions')) {
+        issues.push('decision_enforcement:internal_execution_brief_user_questions');
+      }
+      if (internalExecutionIssues.includes('future_artifact')) {
+        issues.push('decision_enforcement:internal_execution_brief_future_artifact');
+      }
+    }
+
     const homeworkReason = findHomeworkHandoffReason(
       [
         payload.directive ?? '',
@@ -6931,6 +7214,35 @@ export function validateDirectiveForPersistence(input: {
             null,
         }),
       );
+    }
+  }
+
+  const writeDocumentMode = getWriteDocumentMode({
+    actionType: input.directive.action_type,
+    artifact: input.artifact as Record<string, unknown> | null,
+    discrepancyClass: effectiveDiscrepancyClassForGates(input.directive),
+    directiveText: input.directive.directive,
+    reason: input.directive.reason,
+  });
+  if (
+    normalizeDecisionActionType(String(input.directive.action_type)) === 'write_document' &&
+    writeDocumentMode === 'internal_execution_brief' &&
+    (input.candidateType === 'discrepancy' || input.candidateType === 'insight')
+  ) {
+    const internalExecutionIssues = getInternalExecutionBriefIssues(
+      input.artifact as Record<string, unknown> | null,
+    );
+    if (internalExecutionIssues.includes('missing_execution_move')) {
+      issues.push('decision_enforcement:missing_explicit_ask');
+    }
+    if (internalExecutionIssues.includes('owner_checklist')) {
+      issues.push('decision_enforcement:internal_execution_brief_owner_checklist');
+    }
+    if (internalExecutionIssues.includes('user_questions')) {
+      issues.push('decision_enforcement:internal_execution_brief_user_questions');
+    }
+    if (internalExecutionIssues.includes('future_artifact')) {
+      issues.push('decision_enforcement:internal_execution_brief_future_artifact');
     }
   }
 
@@ -7308,8 +7620,8 @@ function buildInterviewWriteDocumentPayload(input: {
   const locationLabel = evidence.location ?? 'the interview slot already on your calendar';
   const pressureLine =
     evidence.roleAnchors.length > 0
-      ? `This is a real interview risk: if this answer stays generic, the panel only hears motivation. If you anchor to ${evidence.roleAnchors.slice(0, 3).join(', ')}, they hear direct fit before ${deadline}.`
-      : `This is a real interview risk: if this answer stays generic, the panel only hears interest instead of fit before ${deadline}.`;
+      ? `This is a real interview risk: if this answer stays generic, you lose the clearest fit signal before ${deadline}. Anchor to ${evidence.roleAnchors.slice(0, 3).join(', ')}, or the panel only hears motivation.`
+      : `This is a real interview risk: if this answer stays generic, you lose the clearest fit signal before ${deadline}.`;
   const processLine = evidence.processAnchors.length > 0
     ? `The thread also confirms ${evidence.processAnchors.slice(0, 2).join(' and ')}, so keep the answer tied to the real process already in motion.`
     : '';

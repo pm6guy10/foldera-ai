@@ -12,7 +12,9 @@ import {
   buildDirectiveExecutionResult,
   fetchUserEmailAddresses,
   generateDirective,
+  getInternalExecutionBriefIssues,
   getDecisionEnforcementIssues,
+  getWriteDocumentMode,
   normalizeEmailArtifactContentField,
   validateDirectiveForPersistence,
 } from '@/lib/briefing/generator';
@@ -233,6 +235,17 @@ export function evaluateBottomGate(
 
   const topCandidateTypeForGate = directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType;
   const isDiscrepancyCandidate = topCandidateTypeForGate === 'discrepancy' || topCandidateTypeForGate === 'insight';
+  const writeDocumentMode = getWriteDocumentMode({
+    actionType: directive.action_type,
+    artifact: artifactRecord,
+    discrepancyClass: effectiveDiscrepancyClassForGates(directive),
+    directiveText,
+    reason,
+  });
+  const internalExecutionBrief = writeDocumentMode === 'internal_execution_brief';
+  const internalExecutionIssues = internalExecutionBrief
+    ? getInternalExecutionBriefIssues(artifactRecord)
+    : [];
 
   if (scheduleConflictWriteDoc) {
     if (scheduleConflictArtifactIsOwnerProcedure(artifactBody)) {
@@ -248,6 +261,7 @@ export function evaluateBottomGate(
 
   // 1. Self-referential document — check FIRST because this is the primary memo-sludge class
   if (
+    !internalExecutionBrief &&
     (directive.action_type === 'write_document' || directive.action_type === 'make_decision') &&
     SELF_REFERENTIAL_DOC_PATTERN.test(combined)
   ) {
@@ -264,7 +278,7 @@ export function evaluateBottomGate(
   } else {
     // write_document / make_decision — must mention a real external person,
     // except pure calendar trade-offs (double-booking) where the user resolves their own schedule.
-    if (!EXTERNAL_TARGET_PATTERN.test(combined) && !scheduleConflictWriteDoc) {
+    if (!internalExecutionBrief && !EXTERNAL_TARGET_PATTERN.test(combined) && !scheduleConflictWriteDoc) {
       blocked_reasons.push('NO_EXTERNAL_TARGET');
     }
   }
@@ -293,6 +307,19 @@ export function evaluateBottomGate(
       }
       if (!hasExecutableMotion) {
         blocked_reasons.push('NO_CONCRETE_ASK');
+      }
+    } else if (internalExecutionBrief) {
+      const hasAnchoredTime =
+        REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
+      const hasExecutionMove = !internalExecutionIssues.includes('missing_execution_move');
+      if (!hasAnchoredTime) {
+        blocked_reasons.push('NO_REAL_PRESSURE');
+      }
+      if (!hasExecutionMove) {
+        blocked_reasons.push('NO_CONCRETE_ASK');
+      }
+      if (internalExecutionIssues.some((issue) => issue !== 'missing_execution_move')) {
+        blocked_reasons.push('FINISHED_WORK_REQUIRED');
       }
     } else if (!isDiscrepancyCandidate) {
       // 3. Concrete ask — must ask someone to DO something

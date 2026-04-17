@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-16 — write_document finished-work seam for internal execution briefs
+- MODE: PRODUCT QUALITY (single seam)
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/artifact-decision-enforcement.test.ts`, `lib/briefing/__tests__/generator.test.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/__tests__/bottom-gate.test.ts`, `lib/cron/__tests__/evaluate-readiness.test.ts`, `SESSION_HISTORY.md`
+- What changed: `write_document` now distinguishes outbound resolution notes from internal execution briefs. Internal briefs can persist without an external recipient when they contain finished, grounded work, while checklist/research/question-shaped prep documents still fail. Behavioral-pattern and interview/prep validators now recognize embedded `DRAFT EMAIL TO SEND` / `EXECUTION` sections plus dated no-response stop rules as finished work, which let the MAS3 waiting-discrepancy path persist instead of collapsing to `no_send`.
+- Verification: `npm run health` (0 FAILING; warning-only `Last generation do_nothing` at session start); `npx vitest run lib/briefing/__tests__/generator.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/interview-fallback.test.ts lib/briefing/__tests__/usefulness-gate.test.ts lib/cron/__tests__/bottom-gate.test.ts lib/cron/__tests__/evaluate-readiness.test.ts`; `npm run build`; live-like seam proof `npx tsx scripts/run-brain-receipt-real-once.ts` persisted action `eca091ec-533f-429d-92dc-0fe6931ae246` with `code=pending_approval_persisted`, `action_type=write_document`, and message `A valid pending_approval action exists for 1 eligible user.`
+- Unresolved issues: outcome-receipt instrumentation still reported a stale-looking artifact snapshot in the proof log even though the persisted action for this run was `write_document`; the acceptance seam is closed, but that proof-surface mismatch may need a separate audit.
+
 ## 2026-04-16 — exclude dev force-fresh ghost rows from duplicate suppression
 - MODE: BUGFIX (single seam)
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `SESSION_HISTORY.md`

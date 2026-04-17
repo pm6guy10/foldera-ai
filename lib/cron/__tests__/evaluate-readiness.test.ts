@@ -281,6 +281,61 @@ describe('isSendWorthy', () => {
     expect(result.reason).toBe('placeholder_content');
   });
 
+  it('allows a finished internal execution brief with no external recipient', () => {
+    const result = isSendWorthy(
+      makeDirective({
+        action_type: 'write_document',
+        confidence: 80,
+        directive: 'Write the answer architecture for the Care Coordinator interview before April 15.',
+        reason: 'The interview is on April 15 and a generic answer weakens fit before the window closes.',
+      }),
+      {
+        type: 'document',
+        document_purpose: 'interview answer architecture',
+        target_reader: 'candidate',
+        title: 'Care Coordinator — role-specific answer architecture',
+        content: [
+          'Use this in the April 15 phone screen when they ask why you are a fit for the Care Coordinator role.',
+          '',
+          'Deadline: April 15.',
+          '',
+          'This is a real interview risk: if this answer stays generic, you lose the clearest fit signal before April 15 and the panel only hears motivation.',
+          '',
+          'Answer script:',
+          'Open with the community-based client support, the reimbursed travel, and the resource coordination already named in the recruiter thread.',
+        ].join('\n'),
+      } as unknown as import('@/lib/briefing/types').ConvictionArtifact,
+    );
+
+    expect(result.worthy).toBe(true);
+  });
+
+  it('blocks an internal execution brief that is only a prep checklist', () => {
+    const result = isSendWorthy(
+      makeDirective({
+        action_type: 'write_document',
+        confidence: 80,
+        directive: 'Write the answer architecture for the Care Coordinator interview before April 15.',
+        reason: 'The interview is on April 15 and a generic answer weakens fit before the window closes.',
+      }),
+      {
+        type: 'document',
+        document_purpose: 'interview answer architecture',
+        target_reader: 'candidate',
+        title: 'Care Coordinator interview prep',
+        content: [
+          '1. Prepare two client stories for the panel.',
+          '2. Review the organization website before the interview.',
+          '3. Research the latest policy changes and gather examples.',
+          'Deadline: April 15.',
+        ].join('\n'),
+      } as unknown as import('@/lib/briefing/types').ConvictionArtifact,
+    );
+
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('decision_enforcement_missing_explicit_ask');
+  });
+
   it('allows send_message at confidence 70 (above threshold)', () => {
     const result = isSendWorthy(makeDirective({ confidence: 70 }), makeArtifact());
     expect(result.worthy).toBe(true);

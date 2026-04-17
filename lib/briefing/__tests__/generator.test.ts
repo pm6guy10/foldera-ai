@@ -702,6 +702,71 @@ describe('validateDirectiveForPersistence — evidence array safety', () => {
     expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_send_ready_move');
     expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_stop_rule');
   });
+
+  it('accepts an embedded drafted email with a dated no-response stop rule', () => {
+    const directive = buildDirective({
+      directive: 'Waiting on the MAS3 hiring decision has stayed mentally open for a week.',
+      action_type: 'write_document',
+      reason: 'The interview happened on April 15 and the mid-May decision window is already tightening.',
+      discrepancyClass: 'behavioral_pattern' as import('../discrepancy-detector').DiscrepancyClass,
+      generationLog: {
+        outcome: 'selected',
+        stage: 'generation',
+        reason: 'Behavioral pattern winner.',
+        candidateFailureReasons: [],
+        candidateDiscovery: {
+          candidateCount: 1,
+          suppressedCandidateCount: 0,
+          selectionMargin: 1,
+          selectionReason: 'Behavioral pattern selected.',
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'bp-1',
+              rank: 1,
+              candidateType: 'discrepancy',
+              discrepancyClass: 'behavioral_pattern' as import('../discrepancy-detector').DiscrepancyClass,
+              actionType: 'write_document',
+              score: 9.1,
+              scoreBreakdown: {
+                stakes: 4.2,
+                urgency: 0.85,
+                tractability: 0.8,
+                freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
+              },
+              targetGoal: {
+                text: 'MAS3 hiring decision',
+                priority: 4,
+                category: 'work',
+              },
+              sourceSignals: [],
+              decision: 'selected',
+              decisionReason: 'Grounded goal + passive wait pattern.',
+            },
+          ],
+        },
+      },
+    });
+
+    const issues = validateDirectiveForPersistence({
+      userId: OWNER_USER_ID,
+      directive,
+      artifact: {
+        type: 'document',
+        title: 'MAS3 Interview Follow-Up — Secure Decision Timeline',
+        content:
+          'SITUATION\nYou interviewed for the MAS3 role on 2026-04-15.\n\nDRAFT EMAIL TO SEND:\n\nTo: jennifer.dunbar@hca.wa.gov\nSubject: MAS3 Interview Follow-Up — Timeline Confirmation\n\nJennifer,\n\nThank you for the interview opportunity on April 15th for the Health Benefits Specialist 3 position. I remain very interested in the role.\n\nTo help me plan appropriately, could you share the expected timeline for the hiring decision?\n\nIf I have not heard from you by April 24th, I will follow up again to confirm status.\n\nThank you,\nBrandon Kapp\n\nEXECUTION\nSend this email to jennifer.dunbar@hca.wa.gov by end of business 2026-04-18.\n\nIf no response arrives by 2026-04-24, send one follow-up. Do not send a third message. If silence continues past 2026-04-24, mark this thread stalled and activate the mid-May contingency decision.',
+      },
+      candidateType: 'discrepancy',
+      matchedGoalCategory: 'work',
+    });
+
+    expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_send_ready_move');
+    expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_stop_rule');
+    expect(issues).not.toContain('decision_enforcement:missing_explicit_ask');
+  });
 });
 
 describe('getFinancialPaymentToneValidationIssues', () => {

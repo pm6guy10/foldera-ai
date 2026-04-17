@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ConvictionDirective } from '../types';
-import { validateDirectiveForPersistence } from '../generator';
+import { getWriteDocumentMode, validateDirectiveForPersistence } from '../generator';
 
 function baseDirective(overrides: Partial<ConvictionDirective> = {}): ConvictionDirective {
   return {
@@ -35,7 +35,6 @@ describe('artifact decision enforcement', () => {
 
     expect(issues).toEqual(
       expect.arrayContaining([
-        expect.stringContaining('decision_enforcement:missing_explicit_ask'),
         expect.stringContaining('decision_enforcement:missing_time_constraint'),
         expect.stringContaining('decision_enforcement:missing_pressure_or_consequence'),
       ]),
@@ -126,8 +125,8 @@ describe('artifact decision enforcement', () => {
 
     expect(issues).toEqual(
       expect.arrayContaining([
-        expect.stringContaining('decision_enforcement:missing_explicit_ask'),
         expect.stringContaining('decision_enforcement:missing_time_constraint'),
+        expect.stringContaining('decision_enforcement:summary_without_decision'),
       ]),
     );
   });
@@ -155,5 +154,84 @@ describe('artifact decision enforcement', () => {
 
     expect(issues.filter((issue) => issue.includes('decision_enforcement:'))).toHaveLength(0);
   });
-});
 
+  it('accepts outbound write_document when the explicit ask is carried by an Ask label', () => {
+    const directive = baseDirective({
+      action_type: 'write_document',
+      directive: 'Draft the stakeholder status note that locks today\'s owner decision.',
+      reason: 'Go-live is still blocked until one owner is named today.',
+    });
+    const artifact = {
+      type: 'document',
+      document_purpose: 'stakeholder status note',
+      target_reader: 'Acme stakeholders',
+      title: 'Acme Integration — Status Report',
+      content: [
+        'Decision required: security sign-off still lacks one accountable owner for the April 27 go-live.',
+        'Ask: path A or path B by 4 PM PT today, with one named owner.',
+        'Consequence: if unresolved today, launch slips and onboarding stays blocked next week.',
+      ].join('\n\n'),
+    };
+
+    const issues = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+    });
+
+    expect(issues.filter((issue) => issue.includes('decision_enforcement:missing_explicit_ask'))).toHaveLength(0);
+  });
+
+  it('keeps external stakeholder write_document in outbound mode even when candidate context mentions an interview', () => {
+    const mode = getWriteDocumentMode({
+      actionType: 'write_document',
+      candidateTitle: 'Follow up with the MAS3 hiring manager before the interview window closes',
+      directiveText: 'Send the Acme integration status report to their stakeholders before Thursday.',
+      reason: 'Security sign-off is due within 48 hours and the accountable owner is still undefined.',
+      artifact: {
+        document_purpose: 'Update Acme stakeholders on integration scope, timeline, and open blockers',
+        target_reader: 'Acme stakeholders',
+        title: 'Acme Integration — Status Report',
+        content: [
+          'Decision required: confirm by 4 PM PT today whether we proceed with April 27 go-live.',
+          'Ask: path A or path B by 4 PM PT today, with one named owner.',
+          'Consequence: if unresolved today, launch slips and onboarding stays blocked next week.',
+        ].join('\n\n'),
+      },
+    });
+
+    expect(mode).toBe('outbound_resolution_note');
+  });
+
+  it('accepts an internal execution brief without external owner assignment when it is directly usable', () => {
+    const directive = baseDirective({
+      action_type: 'write_document',
+      directive: 'Write the role-specific answer architecture for the Care Coordinator interview before April 15.',
+      reason: 'The interview is already scheduled for April 15 and a generic answer will weaken fit.',
+    });
+    const artifact = {
+      type: 'document',
+      document_purpose: 'interview answer architecture',
+      target_reader: 'candidate',
+      title: 'Care Coordinator — role-specific answer architecture',
+      content: [
+        'Use this in the phone screen on April 15 when they ask why you are a fit for the Care Coordinator role.',
+        '',
+        'Deadline: April 15.',
+        '',
+        'This is a real interview risk: if this answer stays generic, you lose the clearest fit signal before April 15 and the panel only hears motivation.',
+        '',
+        'Answer script:',
+        'Lead with the community-based recovery work, the mileage-reimbursed home visits, and the client-resource coordination already named in the recruiter thread.',
+      ].join('\n'),
+    };
+
+    const issues = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+    });
+
+    expect(issues.filter((issue) => issue.includes('decision_enforcement:'))).toHaveLength(0);
+  });
+});
