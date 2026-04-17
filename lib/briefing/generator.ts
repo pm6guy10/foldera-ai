@@ -5645,6 +5645,10 @@ const LIFE_SNAPSHOT_SOURCE_BUCKETS: string[][] = [
   ['claude_conversation', 'chatgpt_conversation', 'conversation_ingest'],
 ];
 
+export const CROSS_SOURCE_LIFE_CONTEXT_SOURCES = Array.from(
+  new Set(LIFE_SNAPSHOT_SOURCE_BUCKETS.flat()),
+);
+
 async function ensureMinimumEvidenceSourceDiversity(
   userId: string,
   snippets: SignalSnippet[],
@@ -5708,7 +5712,7 @@ function signalSnippetDedupeKey(s: SignalSnippet): string {
  *
  * Never returns more than `opts.maxBundleCap` (default {@link CROSS_SOURCE_BUNDLE_MAX_SNIPPETS_DEFAULT}) snippets (existing + new).
  */
-async function appendCrossSourceLifeContextSnippets(
+export async function appendCrossSourceLifeContextSnippets(
   userId: string,
   existing: SignalSnippet[],
   opts?: CrossSourceLifeMergeOpts,
@@ -5716,6 +5720,18 @@ async function appendCrossSourceLifeContextSnippets(
   const maxBundleCap = opts?.maxBundleCap ?? CROSS_SOURCE_BUNDLE_MAX_SNIPPETS_DEFAULT;
   const MAX_PER_SOURCE = opts?.maxPerSource ?? 5;
   const scanLimit = opts?.scanLimit ?? 400;
+  /** Room for new snippets after winner-scoped rows — total bundle must stay ≤ cap. */
+  const maxNew = Math.max(0, maxBundleCap - existing.length);
+  if (maxNew === 0) return capCrossSourceSnippetBundle(existing, maxBundleCap);
+
+  /**
+   * This merge only needs a small cross-source slice, not a broad history scan.
+   * Keep a small cushion for dedupe / blocked senders while capping Supabase egress.
+   */
+  const queryLimit = Math.min(
+    scanLimit,
+    Math.max(maxNew * 3, CROSS_SOURCE_LIFE_CONTEXT_SOURCES.length * 2),
+  );
 
   const supabase = createServerClient();
   const lookbackIso = new Date(Date.now() - daysMs(90)).toISOString();
@@ -5725,8 +5741,9 @@ async function appendCrossSourceLifeContextSnippets(
     .eq('user_id', userId)
     .eq('processed', true)
     .gte('occurred_at', lookbackIso)
+    .in('source', CROSS_SOURCE_LIFE_CONTEXT_SOURCES)
     .order('occurred_at', { ascending: false })
-    .limit(scanLimit);
+    .limit(queryLimit);
 
   if (error || !rows?.length) {
     const out = capCrossSourceSnippetBundle(existing, maxBundleCap);
@@ -5745,6 +5762,7 @@ async function appendCrossSourceLifeContextSnippets(
         db_row_scan_count: 0,
         db_error: Boolean(error),
         max_bundle_cap: maxBundleCap,
+        db_query_limit: queryLimit,
       },
     });
     return out;
@@ -5752,8 +5770,6 @@ async function appendCrossSourceLifeContextSnippets(
 
   const used = new Set(existing.map(signalSnippetDedupeKey));
   const perSource = new Map<string, number>();
-  /** Room for new snippets after winner-scoped rows — total bundle must stay ≤ cap. */
-  const maxNew = Math.max(0, maxBundleCap - existing.length);
   const extra: SignalSnippet[] = [];
 
   for (const row of rows) {
@@ -5790,6 +5806,7 @@ async function appendCrossSourceLifeContextSnippets(
       merged_before_cap: merged.length,
       db_row_scan_count: rows.length,
       max_bundle_cap: maxBundleCap,
+      db_query_limit: queryLimit,
     },
   });
   return out;
