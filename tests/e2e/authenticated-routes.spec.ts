@@ -115,6 +115,17 @@ const STALE_EMAIL_DIRECTIVE = {
   id: 'stale-action-for-skip-test',
 };
 
+function findDocumentLine(body: string, prefix: string): string {
+  const line = body.split('\n').find((entry) => entry.startsWith(prefix));
+  if (!line) throw new Error(`Missing document line with prefix: ${prefix}`);
+  return line;
+}
+
+const DOCUMENT_DIRECTIVE_TITLE = DOCUMENT_DIRECTIVE_RESPONSE.directive.replace(/\.$/, '');
+const DOCUMENT_DIRECTIVE_BODY = DOCUMENT_DIRECTIVE_RESPONSE.artifact.body;
+const DOCUMENT_DIRECTIVE_ASK = findDocumentLine(DOCUMENT_DIRECTIVE_BODY, 'Ask:');
+const DOCUMENT_DIRECTIVE_CONSEQUENCE = findDocumentLine(DOCUMENT_DIRECTIVE_BODY, 'Consequence:');
+
 const INTEGRATIONS_RESPONSE = {
   integrations: [
     { provider: 'google', is_active: true, sync_email: 'test@gmail.com', last_synced_at: null, missing_scopes: [] },
@@ -507,12 +518,14 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       });
     });
     await page.goto('/dashboard');
+    const documentBody = page.getByTestId('dashboard-document-body');
     await expect(
-      page.locator('.text-xl.font-bold').filter({ hasText: /Finalize the MAS3 interview packet owner by 2026-04-02/i }),
+      page.locator('.text-xl.font-bold').filter({ hasText: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
     ).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('dashboard-document-body')).toBeVisible();
-    await expect(page.getByText(/## Situation/i)).toBeVisible();
-    await expect(page.getByText(/Ask: confirm the owner and send\/no-send decision by 2026-04-02 at 4 PM PT/i)).toBeVisible();
+    await expect(documentBody).toBeVisible();
+    await expect(documentBody).toContainText('## Situation');
+    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_ASK);
+    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_CONSEQUENCE);
     await expect(page.getByText(/Finished document/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Save document files/i);
     await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Skip keeps it out/i);
@@ -557,14 +570,16 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.goto(
       '/dashboard?action=skip&id=00000000-0000-0000-0000-000000000099',
     );
+    const documentBody = page.getByTestId('dashboard-document-body');
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 15000 });
     await expect.poll(() => latestCalls).toBe(2);
     await expect(
-      page.locator('.text-xl.font-bold').filter({ hasText: /Finalize the MAS3 interview packet owner by 2026-04-02/i }),
+      page.locator('.text-xl.font-bold').filter({ hasText: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
     ).toBeVisible();
-    await expect(page.getByTestId('dashboard-document-body')).toBeVisible();
-    await expect(page.getByText(/## Situation/i)).toBeVisible();
-    await expect(page.getByText(/Ask: confirm the final keep\/move decision by 2026-04-01/i)).toBeVisible();
+    await expect(documentBody).toBeVisible();
+    await expect(documentBody).toContainText('## Situation');
+    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_ASK);
+    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_CONSEQUENCE);
     await expect(page).toHaveURL(/\/dashboard$/);
   });
 
@@ -594,16 +609,18 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       });
     });
     await page.goto('/dashboard');
+    const documentBody = page.getByTestId('dashboard-document-body');
     await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
     await page.getByRole('button', { name: /skip/i }).click();
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 10000 });
     await expect.poll(() => latestCalls).toBe(2);
     await expect(
-      page.locator('.text-xl.font-bold').filter({ hasText: /Finalize the MAS3 interview packet owner by 2026-04-02/i }),
+      page.locator('.text-xl.font-bold').filter({ hasText: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
     ).toBeVisible();
-    await expect(page.getByTestId('dashboard-document-body')).toBeVisible();
-    await expect(page.getByText(/## Situation/i)).toBeVisible();
-    await expect(page.getByText(/Ask: confirm the final keep\/move decision by 2026-04-01/i)).toBeVisible();
+    await expect(documentBody).toBeVisible();
+    await expect(documentBody).toContainText('## Situation');
+    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_ASK);
+    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_CONSEQUENCE);
   });
 });
 

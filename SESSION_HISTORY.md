@@ -4569,6 +4569,13 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Verification: `npm run health` (0 FAILING; warning-only `Last generation write_document`); `npx playwright test tests/e2e/authenticated-routes.spec.ts -g "stale email deep-link skip reconciles after execute 404|skip on stale client action id reloads latest directive"`; `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts`; `npm run test:ci:e2e`.
 - Unresolved issues: No deploy/Vercel check was needed for this repo-local Playwright contract fix; unrelated dirty screenshot artifact remained untouched.
 
+## 2026-04-20 — stale dashboard document e2e assertions now follow the mocked payload instead of drift-prone copy
+- MODE: BUGFIX (single seam)
+- Files changed: `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`
+- What changed: Removed the repeat drift source in the dashboard stale-action Playwright seam by deriving the replacement directive title, `Ask:`, and `Consequence:` lines from `DOCUMENT_DIRECTIVE_RESPONSE` itself and asserting them via `data-testid="dashboard-document-body"`. This hardens both stale 404 reload tests and the adjacent `write_document journey` test against future fixture copy changes while still proving the same user-visible reload behavior.
+- Verification: `npm run health` (0 FAILING; warning-only `Last generation do_nothing`); `npx playwright test --config playwright.ci.config.ts tests/e2e/authenticated-routes.spec.ts -g "stale email deep-link skip reconciles after execute 404|skip on stale client action id reloads latest directive"`; `npm run build`; `npm run test:ci:e2e`.
+- Unresolved issues: No deploy/Vercel verification was needed for this repo-local CI e2e hardening seam; unrelated `.screenshots/write-document-journey-1280.png` remained untouched.
+
 ## 2026-04-20 — owner path now suppresses homework-grade schedule-conflict documents
 - MODE: BUGFIX (single seam)
 - Files changed: `lib/briefing/generator.ts`, `lib/cron/daily-brief-generate.ts`, `lib/conviction/artifact-generator-compat.ts`, `lib/briefing/__tests__/schedule-conflict-finished-work-gates.test.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/briefing/__tests__/verification-golden-path-order.test.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `lib/cron/__tests__/bottom-gate.test.ts`, `lib/cron/__tests__/evaluate-readiness.test.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`
