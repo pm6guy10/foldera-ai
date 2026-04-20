@@ -42,6 +42,10 @@ function productionAuthStateReady(): boolean {
 
 /** Skips authenticated suites when auth-state.json is missing or session cookies are expired. */
 const describeAuth = productionAuthStateReady() ? test.describe : test.describe.skip;
+/** Manual-only owner proof path — never part of scheduled/deploy production smoke. */
+const describeManualLiveBriefProof = process.env.FOLDERA_INCLUDE_LIVE_BRIEF_PROOF === 'true'
+  ? describeAuth
+  : test.describe.skip;
 
 // ── AUTHENTICATED ROUTES (use stored session) ──────────────────────────────
 
@@ -254,8 +258,8 @@ describeAuth('Authenticated: Settings interactions', () => {
   });
 });
 
-describeAuth('Authenticated: Path B Generation Loop', () => {
-  test('Generate Now triggers pipeline and renders action card', async ({ page }, testInfo) => {
+describeManualLiveBriefProof('Authenticated: Manual brief proof', () => {
+  test('Generate Now triggers the dry-run button only in explicit manual proof mode', async ({ page }, testInfo) => {
     test.setTimeout(180000);
     await page.goto('/dashboard/system');
     await page.waitForLoadState('networkidle');

@@ -692,6 +692,33 @@ export interface SignalSnippet {
   signal_id?: string;
 }
 
+function buildScorerMetadataSignalEvidence(winner: ScoredLoop): SignalSnippet[] {
+  const out: SignalSnippet[] = [];
+  const seen = new Set<string>();
+  for (const source of winner.sourceSignals ?? []) {
+    const snippet = typeof source.summary === 'string' && source.summary.trim()
+      ? source.summary.trim()
+      : winner.relatedSignals.find((line) => line.trim().length > 0)?.trim()
+        ?? winner.content.slice(0, 200);
+    const date = source.occurredAt ?? new Date().toISOString();
+    const key = `${source.kind}:${source.id ?? ''}:${date}:${snippet.slice(0, 80)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      source: source.source ?? source.kind ?? 'scorer',
+      date,
+      subject: null,
+      snippet,
+      author: null,
+      direction: 'unknown',
+      row_type: null,
+      signal_id: source.kind === 'signal' && typeof source.id === 'string' ? source.id : undefined,
+    });
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
 interface GenerateDirectiveOptions {
   dryRun?: boolean;
   /**
@@ -5816,6 +5843,9 @@ async function fetchWinnerSignalEvidence(
   userId: string,
   winner: ScoredLoop,
 ): Promise<SignalSnippet[]> {
+  const EVIDENCE_ROW_BUDGET = 30;
+  const DIRECT_SOURCE_ID_CAP = 30;
+  const SNIPPET_CAP = winner.type === 'discrepancy' && winner.discrepancyClass === 'decay' ? 18 : 12;
   const supabase = createServerClient();
   const isDecayDiscrepancy =
     winner.type === 'discrepancy' && winner.discrepancyClass === 'decay';
@@ -5824,206 +5854,94 @@ async function fetchWinnerSignalEvidence(
 
   let snippets: SignalSnippet[] = [];
   let senderBlockedCount = 0;
+  let scannedRows = 0;
+  const existingTexts = new Set<string>();
 
   if (sourceIds.length > 0) {
     const { data: sourceRows } = await supabase
       .from('tkg_signals')
       .select('id, content, source, occurred_at, author, type')
       .eq('user_id', userId)
-      .in('id', sourceIds);
+      .in('id', sourceIds.slice(0, DIRECT_SOURCE_ID_CAP));
+
+    scannedRows += sourceRows?.length ?? 0;
 
     for (const row of sourceRows ?? []) {
+      if (snippets.length >= SNIPPET_CAP) break;
       if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
       const decrypted = decryptWithStatus(row.content as string ?? '');
       if (decrypted.usedFallback) continue;
       const parsed = parseSignalSnippet(decrypted.plaintext, row);
-      if (parsed) snippets.push(parsed);
+      if (!parsed) continue;
+      const dedupeKey = parsed.snippet.slice(0, 60);
+      if (existingTexts.has(dedupeKey)) continue;
+      existingTexts.add(dedupeKey);
+      snippets.push(parsed);
     }
   }
 
-  const keywords = winner.title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '')
-    .split(/\s+/)
-    .filter((w) => w.length >= 5);
+  const remainingRowBudget = Math.max(0, EVIDENCE_ROW_BUDGET - scannedRows);
+  if (remainingRowBudget > 0 && snippets.length < SNIPPET_CAP) {
+    const lookbackIso = new Date(Date.now() - daysMs(isDecayDiscrepancy ? SIGNAL_RETENTION_DAYS : 90)).toISOString();
+    const keywords = winner.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(/\s+/)
+      .filter((w) => w.length >= 5);
+    const anchors = extractDecayEntityAnchors(winner);
+    const anchorEmails = new Set(
+      extractEligibleBracketEmailsFromRelationshipContext(winner.relationshipContext)
+        .concat(isDecayDiscrepancy ? anchors.emails : [])
+        .map((email) => email.toLowerCase()),
+    );
+    const relationshipEntities = extractRelationshipContextEntities(winner, new Set<string>())
+      .map((entity) => entity.toLowerCase())
+      .filter((entity) => entity.length >= 5);
 
-  // Decay: broad keyword scan pulls unrelated high-volume threads (e.g. benefits/finance).
-  if (!isDecayDiscrepancy && keywords.length > 0 && snippets.length < 12) {
-    const ninetyDaysAgoEvidence = new Date(Date.now() - daysMs(90)).toISOString();
-    const { data: contextRows } = await supabase
+    const { data: fallbackRows } = await supabase
       .from('tkg_signals')
       .select('id, content, source, occurred_at, author, type')
       .eq('user_id', userId)
       .eq('processed', true)
-      .gte('occurred_at', ninetyDaysAgoEvidence)
+      .gte('occurred_at', lookbackIso)
       .order('occurred_at', { ascending: false })
-      .limit(150);
+      .limit(remainingRowBudget);
 
-    const existingTexts = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
+    scannedRows += fallbackRows?.length ?? 0;
 
-    for (const row of contextRows ?? []) {
-      if (snippets.length >= 12) break;
+    for (const row of fallbackRows ?? []) {
+      if (snippets.length >= SNIPPET_CAP) break;
       if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
       const decrypted = decryptWithStatus(row.content as string ?? '');
       if (decrypted.usedFallback) continue;
-      const text = decrypted.plaintext.toLowerCase();
-      const matchCount = keywords.filter((kw) => text.includes(kw)).length;
-      if (matchCount < 2) continue;
-
       const parsed = parseSignalSnippet(decrypted.plaintext, row);
-      if (parsed && !existingTexts.has(parsed.snippet.slice(0, 60))) {
-        snippets.push(parsed);
-        existingTexts.add(parsed.snippet.slice(0, 60));
-      }
-    }
-  }
+      if (!parsed) continue;
+      const dedupeKey = parsed.snippet.slice(0, 60);
+      if (existingTexts.has(dedupeKey)) continue;
 
-  // Decay discrepancy: scorer attaches synthetic sourceSignals (no tkg_signals.id). Without a deep
-  // entity-targeted scan, evidence is empty and the 30-row fallback misses older threads in busy inboxes.
-  if (isDecayDiscrepancy) {
-    const anchors = extractDecayEntityAnchors(winner);
-    const entityEmailsSet = new Set(anchors.emails);
-    if (winner.relationshipContext) {
-      const entityEmailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-      let emailMatch: RegExpExecArray | null;
-      while ((emailMatch = entityEmailPattern.exec(winner.relationshipContext)) !== null) {
-        entityEmailsSet.add(emailMatch[0].toLowerCase());
-      }
-    }
-    const entityEmails = [...entityEmailsSet];
-    if (entityEmails.length > 0 || anchors.tokens.length > 0) {
-      const lookbackIso = new Date(Date.now() - daysMs(SIGNAL_RETENTION_DAYS)).toISOString();
-      const { data: decayRows } = await supabase
-        .from('tkg_signals')
-        .select('id, content, source, occurred_at, author, type')
-        .eq('user_id', userId)
-        .eq('processed', true)
-        .gte('occurred_at', lookbackIso)
-        .order('occurred_at', { ascending: false })
-        .limit(500);
-
-      const existingTexts = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
-      const DECAY_ENTITY_SNIPPET_CAP = 40;
-
-      for (const row of decayRows ?? []) {
-        if (snippets.length >= DECAY_ENTITY_SNIPPET_CAP) break;
-        if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
-        const decrypted = decryptWithStatus(row.content as string ?? '');
-        if (decrypted.usedFallback) continue;
-        const plain = decrypted.plaintext;
-        const hay = plain.toLowerCase();
-        let entityHit = entityEmails.some((email) => hay.includes(email));
-        if (!entityHit && anchors.tokens.length > 0) {
-          const hits = anchors.tokens.filter((t) => hay.includes(t));
-          entityHit =
-            anchors.tokens.length >= 2 ? hits.length >= 2 : hits.length >= 1;
+      const plainLower = decrypted.plaintext.toLowerCase();
+      const matchesFallback = (() => {
+        if (anchorEmails.size > 0 && [...anchorEmails].some((email) => plainLower.includes(email))) {
+          return true;
         }
-        if (!entityHit) continue;
-
-        const parsed = parseSignalSnippet(plain, row);
-        if (parsed && !existingTexts.has(parsed.snippet.slice(0, 60))) {
-          snippets.push(parsed);
-          existingTexts.add(parsed.snippet.slice(0, 60));
+        if (isDecayDiscrepancy) {
+          if (anchors.tokens.length === 0) return false;
+          const tokenHits = anchors.tokens.filter((token) => plainLower.includes(token));
+          return anchors.tokens.length >= 2 ? tokenHits.length >= 2 : tokenHits.length >= 1;
         }
-      }
-
-      // Derived reply-latency / unreplied-thread / RSVP lines (type response_pattern), entity-scoped.
-      // 1) Explicit DB filter: author matches known entity emails (when stored on the row).
-      // 2) Broad fetch + decrypt: content matches entity email/name (author may be a display name).
-      const RESPONSE_PATTERN_DECAY_CAP = 20;
-      const rpExisting = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
-      const ninetyRpIso = new Date(Date.now() - daysMs(90)).toISOString();
-      let rpAdded = 0;
-
-      if (entityEmails.length > 0) {
-        const { data: rpAuthorRows } = await supabase
-          .from('tkg_signals')
-          .select('id, content, source, occurred_at, author, type')
-          .eq('user_id', userId)
-          .eq('type', 'response_pattern')
-          .eq('processed', true)
-          .in('author', entityEmails)
-          .gte('occurred_at', ninetyRpIso)
-          .order('occurred_at', { ascending: false })
-          .limit(80);
-
-        for (const row of rpAuthorRows ?? []) {
-          if (rpAdded >= RESPONSE_PATTERN_DECAY_CAP) break;
-          const decrypted = decryptWithStatus(row.content as string ?? '');
-          if (decrypted.usedFallback) continue;
-          const parsed = parseSignalSnippet(decrypted.plaintext, row);
-          if (!parsed || rpExisting.has(parsed.snippet.slice(0, 60))) continue;
-          snippets.push(parsed);
-          rpExisting.add(parsed.snippet.slice(0, 60));
-          rpAdded++;
+        if (keywords.length > 0) {
+          const keywordHits = keywords.filter((kw) => plainLower.includes(kw)).length;
+          if (keywordHits >= Math.min(2, Math.max(1, keywords.length))) return true;
         }
-      }
-
-      const { data: rpRows } = await supabase
-        .from('tkg_signals')
-        .select('id, content, source, occurred_at, author, type')
-        .eq('user_id', userId)
-        .eq('type', 'response_pattern')
-        .eq('processed', true)
-        .gte('occurred_at', ninetyRpIso)
-        .order('occurred_at', { ascending: false })
-        .limit(150);
-
-      for (const row of rpRows ?? []) {
-        if (rpAdded >= RESPONSE_PATTERN_DECAY_CAP) break;
-        if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
-        const decrypted = decryptWithStatus(row.content as string ?? '');
-        if (decrypted.usedFallback) continue;
-        const parsed = parseSignalSnippet(decrypted.plaintext, row);
-        if (!parsed) continue;
-        if (!signalSnippetMatchesDecayEntity(parsed, anchors)) continue;
-        if (rpExisting.has(parsed.snippet.slice(0, 60))) continue;
-        snippets.push(parsed);
-        rpExisting.add(parsed.snippet.slice(0, 60));
-        rpAdded++;
-      }
-    }
-  }
-
-  // Entity-targeted 90-day fetch: pull signals that mention the winner entity by email address
-  // This gives the model a real relationship history beyond the 14-day window.
-  // Decay uses the deep scan above instead of this shallow 30-row pass.
-  if (!isDecayDiscrepancy && snippets.length < 8 && winner.relationshipContext) {
-    const entityEmailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-    const entityEmails: string[] = [];
-    let emailMatch: RegExpExecArray | null;
-    while ((emailMatch = entityEmailPattern.exec(winner.relationshipContext)) !== null) {
-      entityEmails.push(emailMatch[0].toLowerCase());
-    }
-
-    if (entityEmails.length > 0) {
-      const ninetyDaysAgo = new Date(Date.now() - daysMs(90)).toISOString();
-      const { data: entityRows } = await supabase
-        .from('tkg_signals')
-        .select('id, content, source, occurred_at, author, type')
-        .eq('user_id', userId)
-        .eq('processed', true)
-        .gte('occurred_at', ninetyDaysAgo)
-        .order('occurred_at', { ascending: false })
-        .limit(30);
-
-      const existingTexts = new Set(snippets.map((s) => s.snippet.slice(0, 60)));
-
-      for (const row of entityRows ?? []) {
-        if (snippets.length >= 12) break;
-        if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
-        const decrypted = decryptWithStatus(row.content as string ?? '');
-        if (decrypted.usedFallback) continue;
-        const textLower = decrypted.plaintext.toLowerCase();
-        const mentionsEntity = entityEmails.some((email) => textLower.includes(email));
-        if (!mentionsEntity) continue;
-
-        const parsed = parseSignalSnippet(decrypted.plaintext, row);
-        if (parsed && !existingTexts.has(parsed.snippet.slice(0, 60))) {
-          snippets.push(parsed);
-          existingTexts.add(parsed.snippet.slice(0, 60));
+        if (relationshipEntities.length > 0) {
+          return relationshipEntities.some((entity) => plainLower.includes(entity));
         }
-      }
+        return false;
+      })();
+      if (!matchesFallback) continue;
+
+      existingTexts.add(dedupeKey);
+      snippets.push(parsed);
     }
   }
 
@@ -6033,32 +5951,8 @@ async function fetchWinnerSignalEvidence(
       snippets = snippets.filter((s) => signalSnippetMatchesDecayEntity(s, anchors));
     }
   }
-
-  const preMergeSources = [...new Set(snippets.map((s) => s.source))];
-  const mergeOpts: CrossSourceLifeMergeOpts = shouldApplyFinancialSingleFocus(winner)
-    ? { maxBundleCap: 34, maxPerSource: 2, scanLimit: 600 }
-    : { maxBundleCap: 30, maxPerSource: 5, scanLimit: 700 };
-  try {
-    snippets = await appendCrossSourceLifeContextSnippets(userId, snippets, mergeOpts);
-  } catch (e) {
-    console.warn(
-      '[generator] appendCrossSourceLifeContextSnippets failed (non-fatal):',
-      e instanceof Error ? e.message : String(e),
-    );
-  }
-
-  if (!isDecayDiscrepancy) {
-    try {
-      snippets = await ensureMinimumEvidenceSourceDiversity(userId, snippets);
-    } catch (e) {
-      console.warn(
-        '[generator] ensureMinimumEvidenceSourceDiversity failed (non-fatal):',
-        e instanceof Error ? e.message : String(e),
-      );
-    }
-  }
-
-  const postMergeSources = [...new Set(snippets.map((s) => s.source))];
+  snippets = snippets.slice(0, SNIPPET_CAP);
+  const selectedSources = [...new Set(snippets.map((s) => s.source))];
 
   logStructuredEvent({
     event: 'winner_signal_evidence_sources',
@@ -6068,10 +5962,10 @@ async function fetchWinnerSignalEvidence(
     generationStatus: 'fetch_winner_evidence_complete',
     details: {
       scope: 'fetchWinnerSignalEvidence',
-      pre_merge_distinct_sources: [...preMergeSources].sort(),
-      post_merge_distinct_sources: [...postMergeSources].sort(),
+      distinct_sources: [...selectedSources].sort(),
       snippet_count: snippets.length,
-      financial_single_focus: shouldApplyFinancialSingleFocus(winner),
+      scanned_rows: scannedRows,
+      row_budget: EVIDENCE_ROW_BUDGET,
     },
   });
 
@@ -8451,24 +8345,27 @@ function buildVerificationStubPersistGeneratedPayload(
     'Owner verification stub: deterministic payload exercises downstream validation without Anthropic.';
   const whyNow =
     'Verification path uses the real scorer winner and gates; model output is replaced by canonical stub text.';
+  const overlapDate = new Date(Date.now() + daysMs(2)).toISOString().slice(0, 10);
+  const moveByDate = new Date(Date.now() + daysMs(3)).toISOString().slice(0, 10);
+  const deadlineDate = new Date(Date.now() + daysMs(4)).toISOString().slice(0, 10);
   const dirSend =
-    'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.';
+    `Please email partner@example.com by ${deadlineDate} to confirm the Q2 delivery plan and deadline.`;
   const bodySend =
-    'We need a written confirmation before COB Friday 2026-04-18 so Legal can file the renewal; ' +
+    `We need a written confirmation before COB ${deadlineDate} so Legal can file the renewal; ` +
     'please reply with approval or the specific blocker so we can escalate to the board before the window closes.';
   const dirDoc =
-    'Send Alex Morgan at alex@partner.example.com a concrete resolution for the 2026-04-16 overlap before Friday 2026-04-18.';
+    `Send Alex Morgan at alex@partner.example.com a concrete resolution for the ${overlapDate} overlap before ${deadlineDate}.`;
   const contentDoc =
     '## Situation\n' +
-    'Partner review and Customer Success renewal prep both sit on 2026-04-16; Alex Morgan (alex@partner.example.com) is on the partner thread.\n\n' +
+    `Partner review and Customer Success renewal prep both sit on ${overlapDate}; Alex Morgan (alex@partner.example.com) is on the partner thread.\n\n` +
     '## Conflicting commitments or risk\n' +
-    'Overlapping calendar blocks risk missing the renewal filing before Friday 2026-04-18.\n\n' +
+    `Overlapping calendar blocks risk missing the renewal filing before ${deadlineDate}.\n\n` +
     '## Recommendation / decision\n' +
-    'Move or delegate the partner review so Customer Success can protect the COB Friday 2026-04-18 deadline.\n\n' +
+    `Move or delegate the partner review so Customer Success can protect the COB ${deadlineDate} deadline.\n\n` +
     '## Owner / next step\n' +
-    'Please confirm whether you can move the partner review with Alex Morgan before 2026-04-17 so invites update.\n\n' +
+    `Please confirm whether you can move the partner review with Alex Morgan before ${moveByDate} so invites update.\n\n` +
     '## Timing / deadline\n' +
-    'Decide before Friday 2026-04-18; the hard overlap is 2026-04-16.';
+    `Decide before ${deadlineDate}; the hard overlap is ${overlapDate}.`;
 
   if (committed === 'send_message') {
     return {
@@ -9032,7 +8929,7 @@ export async function generateDirective(
 
     const supabase = createServerClient();
 
-    const [userGoalsResult, goalGapResult, alreadySentResult, behavioralHistoryResult, approvedActionsResult, voicePatternsResult] = await Promise.allSettled([
+    const [userGoalsResult, behavioralHistoryResult, approvedActionsResult, voicePatternsResult] = await Promise.allSettled([
       // Goals
       supabase
         .from('tkg_goals')
@@ -9041,32 +8938,6 @@ export async function generateDirective(
         .eq('status', 'active')
         .order('priority', { ascending: false })
         .limit(10),
-      // Goal-gap analysis
-      buildGoalGapAnalysis(userId),
-      // Sent mail 14d (from tkg_signals email_sent)
-      (async (): Promise<string[]> => {
-        const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
-        const { data: sentRows } = await supabase
-          .from('tkg_signals')
-          .select('content, occurred_at')
-          .eq('user_id', userId)
-          .eq('type', 'email_sent')
-          .gte('occurred_at', fourteenDaysAgo)
-          .order('occurred_at', { ascending: false })
-          .limit(15);
-        const lines: string[] = [];
-        for (const row of sentRows ?? []) {
-          const dec = decryptWithStatus(row.content as string ?? '');
-          if (dec.usedFallback) continue;
-          const text = dec.plaintext;
-          const rowLines = text.split('\n').filter((l) => l.trim());
-          const subj = rowLines.find((l) => /^Subject:/i.test(l))?.replace(/^Subject:\s*/i, '').slice(0, 80);
-          const to = rowLines.find((l) => /^To:/i.test(l))?.replace(/^To:\s*/i, '').slice(0, 60);
-          const date = new Date(row.occurred_at as string).toISOString().slice(0, 10);
-          if (subj || to) lines.push(`[${date}]${to ? ` To: ${to}` : ''}${subj ? ` — ${subj}` : ''}`);
-        }
-        return lines;
-      })(),
       // Weekly behavioral history
       (async (): Promise<string | null> => {
         const { data: summaries } = await supabase
@@ -9132,12 +9003,9 @@ export async function generateDirective(
     ) as Array<{ goal_text: string; priority: number; goal_category: string; source?: string }>)
       .filter((g) => !PLACEHOLDER_GOAL_SOURCES.has(g.source ?? ''))
       .slice(0, 5);
-    const goalGapAnalysis: GoalGapEntry[] = goalGapResult.status === 'fulfilled' ? goalGapResult.value : [];
+    const goalGapAnalysis: GoalGapEntry[] = [];
     const approvedActionLines: string[] = approvedActionsResult.status === 'fulfilled' ? approvedActionsResult.value : [];
-    // Merge approved tkg_actions lines into alreadySent (dedup by first 40 chars)
-    const alreadySentRaw = alreadySentResult.status === 'fulfilled' ? alreadySentResult.value : [];
-    const alreadySentKeys = new Set(alreadySentRaw.map((l) => l.slice(0, 40)));
-    const alreadySent = [...alreadySentRaw, ...approvedActionLines.filter((l) => !alreadySentKeys.has(l.slice(0, 40)))];
+    const alreadySent = approvedActionLines;
     const behavioralHistory = behavioralHistoryResult.status === 'fulfilled' ? behavioralHistoryResult.value : null;
     const userVoicePatterns = voicePatternsResult.status === 'fulfilled' ? voicePatternsResult.value : null;
     console.log(`[generator] goalsForContext: ${goalsForContext.length}, goalGapAnalysis: ${goalGapAnalysis.length}`);
@@ -9252,29 +9120,6 @@ export async function generateDirective(
       let hydratedWinner = await hydrateWinnerRelationshipContext(userId, currentCandidate);
       hydratedWinner = await enrichWinnerWithEntityBxStats(userId, hydratedWinner);
 
-      // --- Per-candidate: signal evidence ---
-      let signalEvidence: SignalSnippet[] = [];
-      try {
-        signalEvidence = await fetchWinnerSignalEvidence(userId, hydratedWinner);
-      } catch (ctxErr: unknown) {
-        logStructuredEvent({
-          event: 'generator_signal_evidence_failed', level: 'warn', userId,
-          artifactType: null, generationStatus: 'context_degraded',
-          details: { scope: 'generator', stage: 'fetchWinnerSignalEvidence', error: ctxErr instanceof Error ? ctxErr.message : String(ctxErr) },
-        });
-      }
-
-      // --- Per-candidate: conversation state (sent/received thread for this entity) ---
-      // Built from signal evidence + approved tkg_actions; non-blocking.
-      let entityConversationState: string | null = null;
-      if (hydratedWinner.entityName) {
-        try {
-          entityConversationState = await buildEntityConversationState(
-            userId, hydratedWinner.entityName, signalEvidence,
-          );
-        } catch { /* non-blocking — omit if unavailable */ }
-      }
-
       // --- Per-candidate: entity suppression ---
       // Entity suppression: only check confirmed relationship contacts (from relationshipContext),
       // never from narrative text. Email body greetings ("Dear Brandon") would otherwise
@@ -9318,12 +9163,6 @@ export async function generateDirective(
         }
       }
 
-      // --- Per-candidate: avoidance observations ---
-      let avoidanceObservations: Awaited<ReturnType<typeof buildAvoidanceObservations>> = [];
-      try {
-        avoidanceObservations = await buildAvoidanceObservations(userId, hydratedWinner, signalEvidence, userEmails);
-      } catch { /* non-blocking */ }
-
       // --- Per-candidate: conviction engine (only for first viable candidate) ---
       // Decay reconnection: skip conviction math — it keys off matchedGoal (often financial runway)
       // and would instruct the model to prioritize unrelated "bridge" actions over the reconnect.
@@ -9343,37 +9182,22 @@ export async function generateDirective(
         }
       }
 
-      // --- Build structured context ---
-      const ctx = buildStructuredContext(
-        hydratedWinner, guardrails, userId, signalEvidence, insight,
+      const scorerMetadataSignalEvidence = buildScorerMetadataSignalEvidence(hydratedWinner);
+      const preflightCtx = buildStructuredContext(
+        hydratedWinner, guardrails, userId, scorerMetadataSignalEvidence, insight,
         goalsForContext, goalGapAnalysis,
         scored.antiPatterns, scored.divergences,
         alreadySent, convictionDecision, behavioralHistory,
-        avoidanceObservations, competitionContext,
+        [], competitionContext,
         userEmails,
         userPromptNames,
-        entityConversationState,
+        null,
         userVoicePatterns,
         lockedContactPromptLines,
       );
 
-      const evidenceBundleReceipt = buildEvidenceBundleReceipt(ctx);
-      logStructuredEvent({
-        event: 'evidence_bundle_commit',
-        level: evidenceBundleReceipt.meets_three_source_bar ? 'info' : 'warn',
-        userId,
-        artifactType: null,
-        generationStatus: evidenceBundleReceipt.meets_three_source_bar
-          ? 'evidence_bundle_ok'
-          : 'evidence_bundle_under_3_sources',
-        details: {
-          scope: 'generator',
-          ...evidenceBundleReceipt,
-        },
-      });
-
       // --- DECISION PAYLOAD — the canonical binding contract ---
-      const decisionPayload = buildDecisionPayload(hydratedWinner, ctx, confidence, lockedContacts);
+      const decisionPayload = buildDecisionPayload(hydratedWinner, preflightCtx, confidence, lockedContacts);
       const payloadErrors = validateDecisionPayload(decisionPayload);
 
       if (payloadErrors.length > 0) {
@@ -9398,7 +9222,7 @@ export async function generateDirective(
         const proofPre = evaluateProofModeThreadBackedSendPreflight({
           proofModeEnabled: true,
           decisionRecommendedAction: decisionPayload.recommended_action,
-          ctx,
+          ctx: preflightCtx,
           hydratedWinner,
           userEmails,
         });
@@ -9435,6 +9259,67 @@ export async function generateDirective(
         });
         continue;
       }
+
+      let signalEvidence: SignalSnippet[] = [];
+      let entityConversationState: string | null = null;
+      let avoidanceObservations: Awaited<ReturnType<typeof buildAvoidanceObservations>> = [];
+      if (options.pipelineDryRun) {
+        signalEvidence = scorerMetadataSignalEvidence;
+      } else {
+        try {
+          signalEvidence = await fetchWinnerSignalEvidence(userId, hydratedWinner);
+        } catch (ctxErr: unknown) {
+          logStructuredEvent({
+            event: 'generator_signal_evidence_failed', level: 'warn', userId,
+            artifactType: null, generationStatus: 'context_degraded',
+            details: { scope: 'generator', stage: 'fetchWinnerSignalEvidence', error: ctxErr instanceof Error ? ctxErr.message : String(ctxErr) },
+          });
+        }
+
+        if (signalEvidence.length === 0) {
+          signalEvidence = scorerMetadataSignalEvidence;
+        }
+
+        if (hydratedWinner.entityName && signalEvidence.length > 0) {
+          try {
+            entityConversationState = await buildEntityConversationState(
+              userId, hydratedWinner.entityName, signalEvidence,
+            );
+          } catch { /* non-blocking — omit if unavailable */ }
+        }
+
+        try {
+          avoidanceObservations = await buildAvoidanceObservations(userId, hydratedWinner, signalEvidence, userEmails);
+        } catch { /* non-blocking */ }
+      }
+
+      const ctx = buildStructuredContext(
+        hydratedWinner, guardrails, userId, signalEvidence, insight,
+        goalsForContext, goalGapAnalysis,
+        scored.antiPatterns, scored.divergences,
+        alreadySent, convictionDecision, behavioralHistory,
+        avoidanceObservations, competitionContext,
+        userEmails,
+        userPromptNames,
+        entityConversationState,
+        userVoicePatterns,
+        lockedContactPromptLines,
+      );
+
+      const evidenceBundleReceipt = buildEvidenceBundleReceipt(ctx);
+      logStructuredEvent({
+        event: 'evidence_bundle_commit',
+        level: evidenceBundleReceipt.meets_three_source_bar ? 'info' : 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: evidenceBundleReceipt.meets_three_source_bar
+          ? 'evidence_bundle_ok'
+          : 'evidence_bundle_under_3_sources',
+        details: {
+          scope: 'generator',
+          ...evidenceBundleReceipt,
+        },
+      });
 
       // =====================================================================
       // THIS CANDIDATE PASSED — proceed with LLM generation.

@@ -5,6 +5,11 @@ on:
   schedule:
     - cron: '15 11 * * *' # 15 min after nightly-ops (11:00 UTC)
   workflow_dispatch:
+    inputs:
+      include_live_brief_proof:
+        description: 'Run the owner-only live brief proof suite'
+        required: false
+        default: 'false'
 
 jobs:
   e2e:
@@ -14,6 +19,8 @@ jobs:
       (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      FOLDERA_INCLUDE_LIVE_BRIEF_PROOF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.include_live_brief_proof == 'true' && 'true' || 'false' }}
     steps:
       # Use latest `main` test sources. `deployment_status` would otherwise checkout the deployed
       # commit, which can lag behind test fixes while production URL is already current.
@@ -36,7 +43,8 @@ jobs:
         run: npx tsx tests/production/refresh-auth.ts
         continue-on-error: true
 
-      - run: npm run test:prod
+      - name: Run cheap production smoke
+        run: npm run test:prod
 
       - uses: actions/upload-artifact@v4
         if: failure()

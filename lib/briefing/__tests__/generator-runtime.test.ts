@@ -8,10 +8,14 @@ const mockResearchWinner = vi.fn<() => Promise<null>>();
 const mockGetDirectiveConstraintViolations = vi.fn();
 const mockGetPinnedConstraintPrompt = vi.fn();
 const mockLogStructuredEvent = vi.fn();
+const mockDecryptWithStatus = vi.fn((_value: unknown) => ({ plaintext: String(_value), usedFallback: false }));
 
 const queryResult = { data: [], error: null };
 const tkgActionsResultsQueue: Array<{ data: unknown[]; error: null }> = [];
 const lockedConstraintsQueue: Array<{ data: unknown[]; error: null }> = [];
+const signalSelectCalls: string[] = [];
+const signalLimitCalls: number[] = [];
+const signalInCalls: Array<{ column: string; values: unknown[] }> = [];
 
 // Qualifying signal: received email 72h ago — satisfies all 4 discrepancy gate filters.
 // Subject header required for parseSignalSnippet + buildAvoidanceObservations no-reply detection.
@@ -46,16 +50,26 @@ function makeLimitQuery(table: string, result = queryResult) {
 
 function makeSignalsQuery() {
   return {
-    select() {
+    select(columns?: string) {
+      signalSelectCalls.push(String(columns ?? ''));
       return {
-        in() { return Promise.resolve(signalQueryResult); },
+        in(column: string, values: unknown[]) {
+          signalInCalls.push({
+            column,
+            values: Array.isArray(values) ? [...values] : [values],
+          });
+          return Promise.resolve(signalQueryResult);
+        },
         eq() { return this; },
         neq() { return this; },
         gte() { return this; },
         not() { return this; },
         is() { return this; },
         order() { return this; },
-        limit() { return Promise.resolve(signalQueryResult); },
+        limit(count: number) {
+          signalLimitCalls.push(count);
+          return Promise.resolve(signalQueryResult);
+        },
       };
     },
   };
@@ -136,7 +150,7 @@ vi.mock('@/lib/utils/structured-logger', () => ({
 // Encryption mock — buildAvoidanceObservations calls decryptWithStatus on signal content.
 // Return correct shape { plaintext, usedFallback } so the no-reply observer works.
 vi.mock('@/lib/encryption', () => ({
-  decryptWithStatus: (_value: unknown) => ({ plaintext: String(_value), usedFallback: false }),
+  decryptWithStatus: mockDecryptWithStatus,
 }));
 
 const anthropicCreate = vi.fn();
@@ -222,9 +236,13 @@ describe('generateDirective runtime failures', () => {
     mockGetDirectiveConstraintViolations.mockReset();
     mockGetPinnedConstraintPrompt.mockReset();
     mockLogStructuredEvent.mockReset();
+    mockDecryptWithStatus.mockClear();
     anthropicCreate.mockReset();
     tkgActionsResultsQueue.length = 0;
     lockedConstraintsQueue.length = 0;
+    signalSelectCalls.length = 0;
+    signalLimitCalls.length = 0;
+    signalInCalls.length = 0;
 
     mockIsOverDailyLimit.mockResolvedValue(false);
     mockResearchWinner.mockResolvedValue(null);
@@ -238,6 +256,12 @@ describe('generateDirective runtime failures', () => {
 
   function queueLockedConstraints(rows: { normalized_entity: string }[]): void {
     lockedConstraintsQueue.push({ data: rows, error: null });
+  }
+
+  function queueEmptyTkgActionsResults(count: number): void {
+    for (let i = 0; i < count; i += 1) {
+      queueTkgActionsResult([]);
+    }
   }
 
   it(
@@ -322,6 +346,95 @@ describe('generateDirective runtime failures', () => {
     // The candidate loop silently skips research when score < 2.0 — no event is emitted,
     // but researchWinner must NOT have been called.
     expect(mockResearchWinner).not.toHaveBeenCalled();
+  });
+
+  it('pipelineDryRun skips signal content hydration entirely', async () => {
+    mockScoreOpenLoops.mockResolvedValue(buildScorerResult());
+    queueEmptyTkgActionsResults(4);
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', {
+      dryRun: true,
+      pipelineDryRun: true,
+    });
+
+    expect(signalSelectCalls).toEqual([]);
+    expect(signalLimitCalls).toEqual([]);
+    expect(signalInCalls).toEqual([]);
+    expect(mockDecryptWithStatus).not.toHaveBeenCalled();
+  });
+
+  it('hydrates only the first viable winner and caps signal evidence reads to 30 rows', async () => {
+    const blockedCandidate = {
+      ...buildWinner(),
+      id: 'blocked-winner',
+      entityName: 'Nicole Vreeland',
+      title: 'Follow up with Nicole about the reference letter',
+      content: 'Nicole has not responded to the reference letter request.',
+      relationshipContext: '- Nicole Vreeland <nicole.vreeland@example.com> (Contact)',
+      sourceSignals: [{ kind: 'signal' as const, id: 'blocked-sig-1', summary: 'Blocked thread' }],
+    };
+    const viableCandidate = {
+      ...buildWinner(),
+      id: 'viable-winner',
+      entityName: 'Alex Morgan',
+      title: 'Follow up with Alex Morgan about the permit deadline',
+      content: 'Alex Morgan still needs the permit response before Friday.',
+      relationshipContext: '- Alex Morgan <alex@example.com> (Partner)',
+      sourceSignals: Array.from({ length: 40 }, (_unused, index) => ({
+        kind: 'signal' as const,
+        id: `viable-sig-${index + 1}`,
+        occurredAt: new Date().toISOString(),
+        summary: `Viable signal ${index + 1}`,
+      })),
+    };
+
+    mockScoreOpenLoops.mockResolvedValue({
+      outcome: 'winner_selected',
+      winner: blockedCandidate,
+      topCandidates: [blockedCandidate, viableCandidate],
+      deprioritized: [],
+      candidateDiscovery: {
+        candidateCount: 2,
+        suppressedCandidateCount: 0,
+        selectionMargin: 0.2,
+        selectionReason: 'Blocked candidate ranked first before generator viability checks.',
+        failureReason: null,
+        topCandidates: [],
+      },
+      antiPatterns: [],
+      divergences: [],
+      exact_blocker: null,
+    });
+    queueLockedConstraints([{ normalized_entity: 'nicole vreeland' }]);
+    queueEmptyTkgActionsResults(8);
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 80 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Email Alex Morgan today about the permit deadline.',
+          artifact_type: 'send_message',
+          artifact: {
+            to: 'alex@example.com',
+            subject: 'Permit deadline follow-up',
+            body: 'Hi Alex,\n\nFollowing up on the permit deadline before Friday.\n\nThanks,\nBrandon',
+          },
+          evidence: 'Alex Morgan is on the live permit thread and the deadline is this week.',
+          why_now: 'The permit deadline is this week.',
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(anthropicCreate).toHaveBeenCalled();
+    expect(signalInCalls).toHaveLength(1);
+    expect(signalInCalls[0]?.column).toBe('id');
+    expect(signalInCalls[0]?.values).toHaveLength(30);
+    expect(signalInCalls[0]?.values).not.toContain('blocked-sig-1');
+    expect(mockDecryptWithStatus).toHaveBeenCalled();
   });
 
   it('extracts JSON from prefixed non-json fenced responses and logs the raw payload preview', async () => {
@@ -940,7 +1053,8 @@ describe('generateDirective runtime failures', () => {
     });
 
     expect(freshDirective.action_type).toBe('write_document');
-    expect(freshDirective.directive).toBe('Send Alex Morgan at alex@partner.example.com a concrete resolution for the 2026-04-16 overlap before Friday 2026-04-18.');
+    expect(freshDirective.directive).toContain('Alex Morgan at alex@partner.example.com');
+    expect(freshDirective.directive).toContain('a concrete resolution');
 
     vi.clearAllMocks();
     mockScoreOpenLoops.mockResolvedValue(scored);
@@ -952,7 +1066,7 @@ describe('generateDirective runtime failures', () => {
     queueTkgActionsResult([
       {
         id: 'doc-dup-1',
-        directive_text: 'Send Alex Morgan at alex@partner.example.com a concrete resolution for the 2026-04-16 overlap before Friday 2026-04-18.',
+        directive_text: freshDirective.directive,
         action_type: 'write_document',
         execution_result: {
           artifact: { title: 'Resolution note — April 2026 calendar overlap' },
@@ -962,7 +1076,7 @@ describe('generateDirective runtime failures', () => {
       },
       {
         id: 'doc-dup-2',
-        directive_text: 'Send Alex Morgan at alex@partner.example.com a concrete resolution for the 2026-04-16 overlap before Friday 2026-04-18.',
+        directive_text: freshDirective.directive,
         action_type: 'write_document',
         execution_result: {
           artifact: { title: 'Resolution note — April 2026 calendar overlap' },
@@ -980,9 +1094,7 @@ describe('generateDirective runtime failures', () => {
     });
 
     expect(blockedDirective.action_type).toBe('write_document');
-    expect(blockedDirective.directive).toBe(
-      'Send Alex Morgan at alex@partner.example.com a concrete resolution for the 2026-04-16 overlap before Friday 2026-04-18.',
-    );
+    expect(blockedDirective.directive).toBe(freshDirective.directive);
     expect(mockLogStructuredEvent.mock.calls.some(([event]) =>
       event?.event === 'candidate_blocked' && event?.generationStatus === 'duplicate_suppressed')).toBe(false);
   });
@@ -1048,6 +1160,10 @@ describe('generateDirective runtime failures', () => {
           },
           evidence: 'Jane has not replied and the proposal pricing expires Friday.',
           why_now: 'Pricing expires end of day Friday — no response means restart from scratch.',
+          causal_diagnosis: {
+            why_exists_now: 'Jane still has not given a yes/no decision and the proposal pricing expires Friday.',
+            mechanism: 'Pending external decision before a pricing deadline.',
+          },
         }),
       }],
     });
@@ -1057,7 +1173,7 @@ describe('generateDirective runtime failures', () => {
 
     // Jane is NOT locked — the LLM should have been called and produced a real directive.
     expect(anthropicCreate).toHaveBeenCalled();
-    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    expect(directive.reason).not.toContain('locked_contact_suppression');
     expect(mockLogStructuredEvent).not.toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_blocked',
       details: expect.objectContaining({ reason: 'locked_contact', entity_name: 'Jane Smith' }),

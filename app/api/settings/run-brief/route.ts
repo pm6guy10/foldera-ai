@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
+import { getDeployRevision } from '@/lib/config/deploy-revision';
 import { resolveSettingsRunBriefPipelineDryRun } from '@/lib/config/prelaunch-spend';
 import { CONFIDENCE_PERSIST_THRESHOLD } from '@/lib/config/constants';
 import { runBriefLifecycle } from '@/lib/cron/brief-service';
@@ -35,6 +36,21 @@ interface ManualSyncStageResult {
 interface RecentDryRunRow {
   created_at: string | null;
   id: string;
+}
+
+interface LatestPipelineRunRow {
+  created_at: string | null;
+  id: string;
+  outcome: string | null;
+  phase: string | null;
+}
+
+interface LatestActionMetadataRow {
+  action_type: string | null;
+  confidence: number | null;
+  generated_at: string | null;
+  id: string;
+  status: string | null;
 }
 
 interface PendingApprovalReuseRow {
@@ -156,6 +172,118 @@ async function findRecentPipelineDryRun(userId: string): Promise<RecentDryRunRow
   }
 }
 
+async function findLatestPipelineRun(userId: string): Promise<LatestPipelineRunRow | null> {
+  try {
+    const supabase = createServerClient();
+    const { data, error } = await supabase
+      .from('pipeline_runs')
+      .select('id, created_at, outcome, phase')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[settings/run-brief] latest pipeline run lookup failed:', error.message);
+      return null;
+    }
+
+    return (data as LatestPipelineRunRow | null) ?? null;
+  } catch (error: unknown) {
+    console.warn(
+      '[settings/run-brief] latest pipeline run lookup threw:',
+      error instanceof Error ? error.message : String(error),
+    );
+    return null;
+  }
+}
+
+async function findLatestActionMetadata(userId: string): Promise<LatestActionMetadataRow | null> {
+  try {
+    const supabase = createServerClient();
+    const { data, error } = await supabase
+      .from('tkg_actions')
+      .select('id, generated_at, status, action_type, confidence')
+      .eq('user_id', userId)
+      .order('generated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[settings/run-brief] latest action lookup failed:', error.message);
+      return null;
+    }
+
+    return (data as LatestActionMetadataRow | null) ?? null;
+  } catch (error: unknown) {
+    console.warn(
+      '[settings/run-brief] latest action lookup threw:',
+      error instanceof Error ? error.message : String(error),
+    );
+    return null;
+  }
+}
+
+type CheapDryRunFacts = {
+  latest_action: LatestActionMetadataRow | null;
+  latest_pipeline_run: LatestPipelineRunRow | null;
+  pending_approval: {
+    id: string;
+    generated_at: string;
+  } | null;
+  recent_dry_run: {
+    id: string;
+    created_at: string | null;
+  } | null;
+};
+
+function buildCheapDryRunResponse(input: {
+  facts: CheapDryRunFacts;
+  paidLlmEffective: boolean;
+  paidLlmRequested: boolean;
+  pipelineDryRun: boolean;
+}) {
+  return NextResponse.json({
+    ok: true,
+    spend_policy: {
+      pipeline_dry_run: input.pipelineDryRun,
+      paid_llm_requested: input.paidLlmRequested,
+      paid_llm_effective: input.paidLlmEffective,
+    },
+    short_circuit: {
+      reason: 'cheap_dry_run',
+      mode: 'status_only',
+    },
+    revision: getDeployRevision(),
+    health: {
+      mode: 'cheap_dry_run',
+      live_generation_executed: false,
+      live_sync_executed: false,
+    },
+    facts: input.facts,
+    stages: {
+      sync_microsoft: {
+        ok: true,
+        provider: 'microsoft',
+        skipped: true,
+        error: 'cheap_dry_run',
+      },
+      sync_google: {
+        ok: true,
+        provider: 'google',
+        skipped: true,
+        error: 'cheap_dry_run',
+      },
+      daily_brief: {
+        ok: true,
+        status: 'short_circuited',
+        reason: 'cheap_dry_run',
+        manual_send_fallback_attempted: false,
+      },
+    },
+  }, { status: 200 });
+}
+
 export async function POST(request: Request) {
   const auth = await resolveUser(request);
   if (auth instanceof NextResponse) return auth;
@@ -171,90 +299,36 @@ export async function POST(request: Request) {
       useLlm,
     });
     const { pipelineDryRun, paidLlmRequested, paidLlmEffective } = spend;
-    const reusablePendingApproval = pipelineDryRun ? await findReusablePendingApproval(userId) : null;
+    const [reusablePendingApproval, recentPipelineDryRun, latestActionMetadata, latestPipelineRun] =
+      pipelineDryRun
+        ? await Promise.all([
+            findReusablePendingApproval(userId),
+            findRecentPipelineDryRun(userId),
+            findLatestActionMetadata(userId),
+            findLatestPipelineRun(userId),
+          ])
+        : [null, null, null, null];
 
-    if (reusablePendingApproval) {
-      return NextResponse.json({
-        ok: true,
-        spend_policy: {
-          pipeline_dry_run: pipelineDryRun,
-          paid_llm_requested: paidLlmRequested,
-          paid_llm_effective: paidLlmEffective,
-        },
-        short_circuit: {
-          reason: 'pending_approval_reused',
-          pending_action_id: reusablePendingApproval.id,
-          pending_action_generated_at: reusablePendingApproval.generated_at,
-          reuse_window_hours: DRY_RUN_PENDING_REUSE_WINDOW_HOURS,
-        },
-        stages: {
-          sync_microsoft: {
-            ok: true,
-            provider: 'microsoft',
-            skipped: true,
-            error: 'pending_approval_reused',
-          },
-          sync_google: {
-            ok: true,
-            provider: 'google',
-            skipped: true,
-            error: 'pending_approval_reused',
-          },
-          daily_brief: {
-            ok: true,
-            status: 'short_circuited',
-            reason: 'pending_approval_reused',
-            manual_send_fallback_attempted: false,
-          },
-        },
-      }, { status: 200 });
-    }
-
-    const recentPipelineDryRun = pipelineDryRun ? await findRecentPipelineDryRun(userId) : null;
-
-    if (recentPipelineDryRun) {
-      const retryAfterMs = Math.max(
-        0,
-        DRY_RUN_SERVER_COOLDOWN_MS - (Date.now() - new Date(recentPipelineDryRun.created_at ?? 0).getTime()),
-      );
-      return NextResponse.json({
-        ok: true,
-        spend_policy: {
-          pipeline_dry_run: pipelineDryRun,
-          paid_llm_requested: paidLlmRequested,
-          paid_llm_effective: paidLlmEffective,
-        },
-        short_circuit: {
-          reason: 'pipeline_dry_run_cooldown',
-          recent_pipeline_run_id: recentPipelineDryRun.id,
-          recent_pipeline_run_at: recentPipelineDryRun.created_at,
-          cooldown_window_ms: DRY_RUN_SERVER_COOLDOWN_MS,
-          retry_after_ms: retryAfterMs,
-        },
-        stages: {
-          sync_microsoft: {
-            ok: true,
-            provider: 'microsoft',
-            skipped: true,
-            error: 'pipeline_dry_run_cooldown',
-          },
-          sync_google: {
-            ok: true,
-            provider: 'google',
-            skipped: true,
-            error: 'pipeline_dry_run_cooldown',
-          },
-          daily_brief: {
-            ok: true,
-            status: 'short_circuited',
-            reason: 'pipeline_dry_run_cooldown',
-            manual_send_fallback_attempted: false,
-          },
-        },
-      }, {
-        status: 200,
-        headers: {
-          'Retry-After': String(Math.ceil(retryAfterMs / 1000)),
+    if (pipelineDryRun) {
+      return buildCheapDryRunResponse({
+        pipelineDryRun,
+        paidLlmRequested,
+        paidLlmEffective,
+        facts: {
+          latest_action: latestActionMetadata,
+          latest_pipeline_run: latestPipelineRun,
+          pending_approval: reusablePendingApproval
+            ? {
+                id: reusablePendingApproval.id,
+                generated_at: reusablePendingApproval.generated_at,
+              }
+            : null,
+          recent_dry_run: recentPipelineDryRun
+            ? {
+                id: recentPipelineDryRun.id,
+                created_at: recentPipelineDryRun.created_at,
+              }
+            : null,
         },
       });
     }

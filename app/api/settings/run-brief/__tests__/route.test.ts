@@ -10,6 +10,9 @@ const mockRunCommitmentCeilingDefense = vi.fn();
 const mockRecentDryRunMaybeSingle = vi.fn();
 const mockPendingApprovalSelect = vi.fn();
 const mockPendingApprovalLimit = vi.fn();
+const mockLatestActionMaybeSingle = vi.fn();
+const mockLatestPipelineMaybeSingle = vi.fn();
+let pipelineRunMaybeSingleCallCount = 0;
 
 vi.mock('@/lib/cron/self-heal', () => ({
   runCommitmentCeilingDefense: mockRunCommitmentCeilingDefense,
@@ -32,7 +35,14 @@ vi.mock('@/lib/db/client', () => ({
           eq: () => chain,
           gte: () => chain,
           order: () => chain,
-          limit: () => chain,
+          limit: () => ({
+            maybeSingle: (...args: unknown[]) => {
+              pipelineRunMaybeSingleCallCount += 1;
+              return pipelineRunMaybeSingleCallCount === 1
+                ? mockRecentDryRunMaybeSingle(...args)
+                : mockLatestPipelineMaybeSingle(...args);
+            },
+          }),
           maybeSingle: mockRecentDryRunMaybeSingle,
         };
         return chain;
@@ -48,7 +58,15 @@ vi.mock('@/lib/db/client', () => ({
           neq: () => chain,
           gte: () => chain,
           order: () => chain,
-          limit: mockPendingApprovalLimit,
+          limit: (...args: unknown[]) => {
+            const size = args[0];
+            if (size === 1) {
+              return {
+                maybeSingle: mockLatestActionMaybeSingle,
+              };
+            }
+            return mockPendingApprovalLimit(...args);
+          },
         };
         return chain;
       }
@@ -99,7 +117,10 @@ describe('POST /api/settings/run-brief', () => {
     vi.clearAllMocks();
     vi.unstubAllEnvs();
     mockRunCommitmentCeilingDefense.mockResolvedValue(undefined);
+    pipelineRunMaybeSingleCallCount = 0;
     mockRecentDryRunMaybeSingle.mockResolvedValue({ data: null, error: null });
+    mockLatestActionMaybeSingle.mockResolvedValue({ data: null, error: null });
+    mockLatestPipelineMaybeSingle.mockResolvedValue({ data: null, error: null });
     mockPendingApprovalSelect.mockReset();
     mockPendingApprovalLimit.mockResolvedValue({ data: [], error: null });
     mockApiError.mockImplementation((error: unknown) =>
@@ -118,7 +139,7 @@ describe('POST /api/settings/run-brief', () => {
     vi.unstubAllEnvs();
   });
 
-  it('short-circuits dry_run when a reusable pending approval already exists', async () => {
+  it('returns a cheap dry-run receipt and never runs sync or lifecycle work', async () => {
     const userId = '10101010-1010-1010-1010-101010101010';
     mockResolveUser.mockResolvedValue({ userId });
     mockPendingApprovalLimit.mockResolvedValue({
@@ -146,26 +167,48 @@ describe('POST /api/settings/run-brief', () => {
     expect(payload.ok).toBe(true);
     expect(payload.short_circuit).toEqual(
       expect.objectContaining({
-        reason: 'pending_approval_reused',
-        pending_action_id: 'pending-action-1',
-        reuse_window_hours: 18,
+        reason: 'cheap_dry_run',
+        mode: 'status_only',
       }),
     );
+    expect(payload.facts.pending_approval).toEqual({
+      id: 'pending-action-1',
+      generated_at: expect.any(String),
+    });
     expect(payload.stages.sync_microsoft).toEqual(
-      expect.objectContaining({ skipped: true, error: 'pending_approval_reused' }),
+      expect.objectContaining({ skipped: true, error: 'cheap_dry_run' }),
     );
     expect(payload.stages.daily_brief).toEqual(
-      expect.objectContaining({ status: 'short_circuited', reason: 'pending_approval_reused' }),
+      expect.objectContaining({ status: 'short_circuited', reason: 'cheap_dry_run' }),
     );
   });
 
-  it('short-circuits repeated dry_run clicks on the server before sync or lifecycle work', async () => {
+  it('includes recent dry-run and latest metadata in the cheap dry-run receipt', async () => {
     const userId = '11111111-1111-1111-1111-111111111111';
     mockResolveUser.mockResolvedValue({ userId });
     mockRecentDryRunMaybeSingle.mockResolvedValue({
       data: {
         id: 'recent-dry-run',
         created_at: new Date().toISOString(),
+      },
+      error: null,
+    });
+    mockLatestActionMaybeSingle.mockResolvedValue({
+      data: {
+        id: 'latest-action-1',
+        generated_at: new Date().toISOString(),
+        status: 'pending_approval',
+        action_type: 'write_document',
+        confidence: 74,
+      },
+      error: null,
+    });
+    mockLatestPipelineMaybeSingle.mockResolvedValue({
+      data: {
+        id: 'pipe-1',
+        created_at: new Date().toISOString(),
+        outcome: 'pipeline_dry_run_returned',
+        phase: 'user_run',
       },
       error: null,
     });
@@ -176,65 +219,28 @@ describe('POST /api/settings/run-brief', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('Retry-After')).toMatch(/^\d+$/);
     expect(mockSyncMicrosoft).not.toHaveBeenCalled();
     expect(mockSyncGoogle).not.toHaveBeenCalled();
     expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
 
     const payload = await response.json();
     expect(payload.ok).toBe(true);
-    expect(payload.short_circuit).toEqual(
+    expect(payload.short_circuit.reason).toBe('cheap_dry_run');
+    expect(payload.facts.recent_dry_run).toEqual({
+      id: 'recent-dry-run',
+      created_at: expect.any(String),
+    });
+    expect(payload.facts.latest_action).toEqual(
       expect.objectContaining({
-        reason: 'pipeline_dry_run_cooldown',
-        recent_pipeline_run_id: 'recent-dry-run',
-        cooldown_window_ms: 300000,
+        id: 'latest-action-1',
+        action_type: 'write_document',
+        status: 'pending_approval',
       }),
     );
-    expect(payload.stages.sync_microsoft).toEqual(
-      expect.objectContaining({ skipped: true, error: 'pipeline_dry_run_cooldown' }),
-    );
-    expect(payload.stages.daily_brief).toEqual(
-      expect.objectContaining({ status: 'short_circuited', reason: 'pipeline_dry_run_cooldown' }),
-    );
-  });
-
-  it('ignores stale or already-sent pending approvals and still runs the dry-run lifecycle', async () => {
-    const userId = '12121212-1212-1212-1212-121212121212';
-    mockResolveUser.mockResolvedValue({ userId });
-    mockPendingApprovalLimit.mockResolvedValue({
-      data: [
-        {
-          id: 'pending-action-stale',
-          generated_at: new Date().toISOString(),
-          confidence: 80,
-          action_type: 'send_message',
-          execution_result: { artifact: { summary: 'sent' }, daily_brief_sent_at: new Date().toISOString() },
-        },
-        {
-          id: 'pending-action-low-confidence',
-          generated_at: new Date().toISOString(),
-          confidence: 20,
-          action_type: 'send_message',
-          execution_result: { artifact: { summary: 'weak' } },
-        },
-      ],
-      error: null,
-    });
-    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
-    const { POST } = await import('../route');
-
-    const response = await POST(
-      new Request('http://localhost:3000/api/settings/run-brief?dry_run=true', { method: 'POST' }),
-    );
-
-    expect(response.status).toBe(200);
-    expect(mockSyncMicrosoft).toHaveBeenCalledTimes(1);
-    expect(mockSyncGoogle).toHaveBeenCalledTimes(1);
-    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
+    expect(payload.facts.latest_pipeline_run).toEqual(
       expect.objectContaining({
-        userIds: [userId],
-        ensureSend: false,
-        pipelineDryRun: true,
+        id: 'pipe-1',
+        outcome: 'pipeline_dry_run_returned',
       }),
     );
   });
@@ -281,60 +287,29 @@ describe('POST /api/settings/run-brief', () => {
     ]);
   });
 
-  it('passes pipelineDryRun and disables ensureSend when the URL has ?dry_run=true', async () => {
+  it('returns cheap dry-run in prod default dry-run mode even without explicit ?dry_run=true', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('PROD_DEFAULT_PIPELINE_DRY_RUN', 'true');
+
     const userId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
     mockResolveUser.mockResolvedValue({ userId });
-    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
     const { POST } = await import('../route');
 
     const response = await POST(
-      new Request('http://localhost:3000/api/settings/run-brief?dry_run=true', { method: 'POST' }),
+      new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }),
     );
 
     expect(response.status).toBe(200);
-    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userIds: [userId],
-        ensureSend: false,
-        briefInvocationSource: 'settings_run_brief',
-        pipelineDryRun: true,
-        skipStaleGate: true,
-        skipSpendCap: false,
-        skipManualCallLimit: false,
-      }),
-    );
+    expect(mockSyncMicrosoft).not.toHaveBeenCalled();
+    expect(mockSyncGoogle).not.toHaveBeenCalled();
+    expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
     const payload = await response.json();
+    expect(payload.short_circuit.reason).toBe('cheap_dry_run');
     expect(payload.spend_policy).toEqual({
       pipeline_dry_run: true,
       paid_llm_requested: false,
       paid_llm_effective: false,
     });
-  });
-
-  it('passes forceFreshRun and pipelineDryRun together for ?force=true&dry_run=true', async () => {
-    const userId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
-    mockResolveUser.mockResolvedValue({ userId });
-    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
-    const { POST } = await import('../route');
-
-    await POST(
-      new Request(
-        'http://localhost:3000/api/settings/run-brief?force=true&dry_run=true',
-        { method: 'POST' },
-      ),
-    );
-
-    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userIds: [userId],
-        forceFreshRun: true,
-        briefInvocationSource: 'settings_run_brief',
-        ensureSend: false,
-        pipelineDryRun: true,
-        skipSpendCap: false,
-        skipManualCallLimit: false,
-      }),
-    );
   });
 
   it('passes forceFreshRun when the URL has ?force=true', async () => {
@@ -405,17 +380,14 @@ describe('POST /api/settings/run-brief', () => {
 
     const userId = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
     mockResolveUser.mockResolvedValue({ userId });
-    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
     const { POST } = await import('../route');
 
-    await POST(new Request('http://localhost:3000/api/settings/run-brief?force=true', { method: 'POST' }));
+    const response = await POST(new Request('http://localhost:3000/api/settings/run-brief?force=true', { method: 'POST' }));
 
-    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pipelineDryRun: true,
-        ensureSend: false,
-      }),
-    );
+    expect(response.status).toBe(200);
+    expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
+    expect(mockSyncMicrosoft).not.toHaveBeenCalled();
+    expect(mockSyncGoogle).not.toHaveBeenCalled();
   });
 
   it('on prod default dry-run, use_llm without ALLOW_PROD_PAID_LLM stays dry', async () => {
@@ -424,19 +396,15 @@ describe('POST /api/settings/run-brief', () => {
 
     const userId = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
     mockResolveUser.mockResolvedValue({ userId });
-    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
     const { POST } = await import('../route');
 
     const response = await POST(
       new Request('http://localhost:3000/api/settings/run-brief?force=true&use_llm=true', { method: 'POST' }),
     );
 
-    expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pipelineDryRun: true,
-        ensureSend: false,
-      }),
-    );
+    expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
+    expect(mockSyncMicrosoft).not.toHaveBeenCalled();
+    expect(mockSyncGoogle).not.toHaveBeenCalled();
     const payload = await response.json();
     expect(payload.spend_policy).toEqual({
       pipeline_dry_run: true,
