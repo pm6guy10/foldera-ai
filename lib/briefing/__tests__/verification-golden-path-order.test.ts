@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { reorderRankedCandidatesForVerificationGoldenPathWriteDocument } from '@/lib/briefing/generator';
 
 describe('reorderRankedCandidatesForVerificationGoldenPathWriteDocument', () => {
-  it('moves schedule_conflict discrepancy candidates to the front', () => {
+  it('does not promote schedule_conflict discrepancy candidates ahead of the original order', () => {
     const a = {
       candidate: { id: 'a', type: 'signal', discrepancyClass: null },
       disqualified: false,
@@ -16,7 +16,7 @@ describe('reorderRankedCandidatesForVerificationGoldenPathWriteDocument', () => 
       disqualified: false,
     };
     const out = reorderRankedCandidatesForVerificationGoldenPathWriteDocument([a, b, c]);
-    expect(out.map((x) => x.candidate.id)).toEqual(['b', 'a', 'c']);
+    expect(out.map((x) => x.candidate.id)).toEqual(['a', 'b', 'c']);
   });
 
   it('returns the original order when no schedule_conflict or stale_document discrepancy exists', () => {
@@ -27,7 +27,7 @@ describe('reorderRankedCandidatesForVerificationGoldenPathWriteDocument', () => 
     expect(reorderRankedCandidatesForVerificationGoldenPathWriteDocument(ranked)).toEqual(ranked);
   });
 
-  it('moves stale_document discrepancy candidates after schedule_conflict when both exist', () => {
+  it('promotes stale_document while leaving schedule_conflict in place when both exist', () => {
     const decay = {
       candidate: { id: 'd', type: 'discrepancy', discrepancyClass: 'decay' },
       disqualified: false,
@@ -41,7 +41,7 @@ describe('reorderRankedCandidatesForVerificationGoldenPathWriteDocument', () => 
       disqualified: false,
     };
     const out = reorderRankedCandidatesForVerificationGoldenPathWriteDocument([decay, stale, sched]);
-    expect(out.map((x) => x.candidate.id)).toEqual(['c', 's', 'd']);
+    expect(out.map((x) => x.candidate.id)).toEqual(['s', 'd', 'c']);
   });
 
   it('promotes stale_document to the front when schedule_conflict is absent', () => {
