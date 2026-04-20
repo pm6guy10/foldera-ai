@@ -7,7 +7,7 @@
 
 import { createServerClient } from '@/lib/db/client';
 import {
-  getGoogleTokens,
+  getGoogleTokensWithRefreshOutcome,
   getMicrosoftTokensWithRefreshOutcome,
 } from '@/lib/auth/token-store';
 import { getAllUsersWithProvider } from '@/lib/auth/user-tokens';
@@ -43,12 +43,12 @@ export interface SelfHealResult {
 // surface through the existing in-app reconnect flow.
 // ---------------------------------------------------------------------------
 
-async function getMicrosoftWatchdogUserIds(): Promise<string[]> {
+async function getOAuthWatchdogUserIds(provider: 'google' | 'microsoft'): Promise<string[]> {
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from('user_tokens')
     .select('user_id')
-    .eq('provider', 'microsoft')
+    .eq('provider', provider)
     .or('disconnected_at.is.null,oauth_reauth_required_at.not.is.null');
 
   if (error) {
@@ -62,22 +62,48 @@ async function defense1TokenWatchdog(): Promise<DefenseResult> {
   const results: Array<Record<string, string | number | null>> = [];
 
   for (const provider of ['google', 'microsoft'] as const) {
-    const userIds =
-      provider === 'microsoft'
-        ? await getMicrosoftWatchdogUserIds()
-        : await getAllUsersWithProvider(provider);
+    const userIds = await getOAuthWatchdogUserIds(provider);
     for (const userId of userIds) {
       try {
         // getGoogleTokens/getMicrosoftTokens already refresh if within 5min
         // We trigger them proactively here to catch expiry within 6 hours
         if (provider === 'google') {
-          const tokens = await getGoogleTokens(userId);
-          if (!tokens) {
-            results.push({ userId, provider, status: 'refresh_failed' });
-            await sendReconnectAlert(userId, provider);
-          } else {
-            results.push({ userId, provider, status: 'valid' });
+          const outcome = await getGoogleTokensWithRefreshOutcome(userId);
+          if (outcome.status === 'ok') {
+            results.push({
+              userId,
+              provider,
+              status: outcome.refreshed ? 'refreshed' : 'valid',
+            });
+            continue;
           }
+
+          const failureRecord: Record<string, string | number | null> = {
+            userId,
+            provider,
+            status: outcome.status,
+            error_code: outcome.error_code,
+          };
+          if ('http_status' in outcome) {
+            failureRecord.http_status = outcome.http_status;
+          }
+          if ('reauth_required_at' in outcome) {
+            failureRecord.reauth_required_at = outcome.reauth_required_at;
+          }
+          results.push(failureRecord);
+
+          console.warn(
+            JSON.stringify({
+              event: 'token_watchdog_google_status',
+              userId,
+              status: outcome.status,
+              error_code: outcome.error_code,
+              error_description: outcome.error_description.slice(0, 200),
+              http_status: 'http_status' in outcome ? outcome.http_status : null,
+              reauth_required_at:
+                'reauth_required_at' in outcome ? outcome.reauth_required_at : null,
+            }),
+          );
         } else {
           const outcome = await getMicrosoftTokensWithRefreshOutcome(userId);
           if (outcome.status === 'ok') {
@@ -118,9 +144,6 @@ async function defense1TokenWatchdog(): Promise<DefenseResult> {
         }
       } catch (err: any) {
         results.push({ userId, provider, status: `error: ${err.message}` });
-        if (provider === 'google') {
-          await sendReconnectAlert(userId, provider);
-        }
       }
     }
   }
@@ -133,47 +156,6 @@ async function defense1TokenWatchdog(): Promise<DefenseResult> {
     ok: failures.length === 0,
     details: { checked: results.length, failures: failures.length, results },
   };
-}
-
-async function sendReconnectAlert(userId: string, provider: string): Promise<void> {
-  try {
-    const supabase = createServerClient();
-    // Try to get user email from user_tokens first, then auth.users
-    const { data: tokenRow } = await supabase
-      .from('user_tokens')
-      .select('email')
-      .eq('user_id', userId)
-      .eq('provider', provider)
-      .maybeSingle();
-
-    let email = tokenRow?.email;
-    if (!email) {
-      const { data: authData } = await supabase.auth.admin.getUserById(userId);
-      email = authData?.user?.email ?? null;
-    }
-
-    if (!email) {
-      console.log(JSON.stringify({ event: 'self_heal_reconnect_alert_skipped', userId, provider, reason: 'no_email' }));
-      return;
-    }
-
-    const { Resend } = await import('resend');
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL ?? DEFAULT_RESEND_FROM,
-      to: email,
-      subject: 'Foldera: reconnect needed',
-      html: `<p>Your ${provider === 'microsoft' ? 'Microsoft' : 'Google'} connection expired and auto-refresh failed.</p>
-<p><a href="https://foldera.ai/dashboard/settings">Reconnect at foldera.ai/dashboard/settings</a> to keep your morning brief running.</p>`,
-      tags: [
-        { name: 'email_type', value: 'reconnect_alert' },
-        { name: 'user_id', value: userId },
-      ],
-    });
-    console.log(JSON.stringify({ event: 'self_heal_reconnect_alert_sent', userId, provider, email }));
-  } catch (err: any) {
-    console.error(JSON.stringify({ event: 'self_heal_reconnect_alert_failed', userId, provider, error: err.message }));
-  }
 }
 
 // ---------------------------------------------------------------------------

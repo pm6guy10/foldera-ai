@@ -32,7 +32,7 @@ interface MicrosoftTokens {
   expires_at: number;
 }
 
-interface StoredMicrosoftTokenRow {
+interface StoredOAuthTokenRow {
   access_token: string | null;
   refresh_token: string | null;
   expires_at: number | null;
@@ -40,6 +40,32 @@ interface StoredMicrosoftTokenRow {
   disconnected_at: string | null;
   oauth_reauth_required_at: string | null;
 }
+
+export type GoogleRefreshOutcome =
+  | {
+      status: 'ok';
+      tokens: GoogleTokens;
+      refreshed: boolean;
+    }
+  | {
+      status: 'retryable_failure';
+      error_code: string;
+      error_description: string;
+      http_status: number | null;
+    }
+  | {
+      status: 'fatal_reauth_required';
+      error_code: string;
+      error_description: string;
+      http_status: number | null;
+      reauth_required_at: string | null;
+    }
+  | {
+      status: 'missing_refresh_token';
+      error_code: 'no_token_row' | 'missing_access_token' | 'no_refresh_token';
+      error_description: string;
+      reauth_required_at: string | null;
+    };
 
 export type MicrosoftRefreshOutcome =
   | {
@@ -72,7 +98,10 @@ function decryptStoredToken(value: string | null): string | null {
   return isEncrypted(value) ? decryptToken(value) : value;
 }
 
-async function getStoredMicrosoftTokenRow(userId: string): Promise<StoredMicrosoftTokenRow | null> {
+async function getStoredTokenRow(
+  userId: string,
+  provider: 'google' | 'microsoft',
+): Promise<StoredOAuthTokenRow | null> {
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from('user_tokens')
@@ -80,12 +109,12 @@ async function getStoredMicrosoftTokenRow(userId: string): Promise<StoredMicroso
       'access_token, refresh_token, expires_at, email, disconnected_at, oauth_reauth_required_at',
     )
     .eq('user_id', userId)
-    .eq('provider', 'microsoft')
+    .eq('provider', provider)
     .maybeSingle();
 
   if (error || !data) return null;
 
-  const row = data as StoredMicrosoftTokenRow;
+  const row = data as StoredOAuthTokenRow;
   return {
     access_token: decryptStoredToken(row.access_token),
     refresh_token: decryptStoredToken(row.refresh_token),
@@ -101,30 +130,36 @@ async function getStoredMicrosoftTokenRow(userId: string): Promise<StoredMicroso
  * Reads from user_tokens table.
  */
 export async function getGoogleTokens(userId: string): Promise<GoogleTokens | null> {
-  const row = await getUserToken(userId, 'google');
-  if (!row) return null;
-
-  const tokens: GoogleTokens = {
-    access_token: row.access_token,
-    refresh_token: row.refresh_token,
-    // expires_at is normalized to seconds in user_tokens; expiry_date is ms for googleapis
-    expiry_date: row.expires_at,
-  };
-
-  // Proactively refresh if token expires within 6 hours so background cron
-  // runs never hit an expired token mid-execution (LESSONS_LEARNED rule #2).
-  // expires_at is normalized to epoch SECONDS by saveUserToken.
-  if (tokens.expiry_date && tokens.expiry_date < Date.now() / 1000 + 6 * 3600) {
-    return await refreshGoogleTokens(userId, tokens, row.email ?? undefined);
-  }
-
-  return tokens;
+  const outcome = await getGoogleTokensWithRefreshOutcome(userId);
+  return outcome.status === 'ok' ? outcome.tokens : null;
 }
 
 /**
  * Refreshes Google tokens and persists to user_tokens.
  */
-async function refreshGoogleTokens(userId: string, tokens: GoogleTokens, email?: string): Promise<GoogleTokens | null> {
+async function refreshGoogleTokens(
+  userId: string,
+  tokens: GoogleTokens,
+  email?: string,
+): Promise<GoogleRefreshOutcome> {
+  if (!tokens.refresh_token) {
+    const error_code = 'no_refresh_token';
+    const error_description = 'User must re-authenticate to obtain refresh token';
+    console.error(JSON.stringify({
+      event: 'token_refresh_failed',
+      provider: 'google',
+      userId,
+      error_code,
+      error_description,
+    }));
+    return {
+      status: 'missing_refresh_token',
+      error_code,
+      error_description,
+      reauth_required_at: null,
+    };
+  }
+
   try {
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -153,26 +188,107 @@ async function refreshGoogleTokens(userId: string, tokens: GoogleTokens, email?:
       email,
     });
 
-    return newTokens;
+    return {
+      status: 'ok',
+      tokens: newTokens,
+      refreshed: true,
+    };
   } catch (error: any) {
-    const errorCode = error?.response?.data?.error ?? error?.code ?? 'unknown';
-    const errorDesc = error?.response?.data?.error_description ?? error?.message ?? '';
+    const errorCode = String(error?.response?.data?.error ?? error?.code ?? 'unknown');
+    const errorDesc = String(error?.response?.data?.error_description ?? error?.message ?? '');
+    const httpStatus =
+      typeof error?.response?.status === 'number' ? error.response.status : null;
     console.error(JSON.stringify({
       event: 'token_refresh_failed',
       provider: 'google',
       userId,
       error_code: errorCode,
       error_description: errorDesc.slice(0, 200),
+      http_status: httpStatus,
     }));
-    if (isGoogleRefreshFatalError(String(errorCode), String(errorDesc))) {
+    if (isGoogleRefreshFatalError(errorCode, errorDesc)) {
       await softDisconnectAfterFatalOAuthRefresh(userId, 'google', {
         source: 'token-store.refreshGoogleTokens',
-        error_code: String(errorCode),
+        error_code: errorCode,
         error_description: errorDesc,
       });
+      return {
+        status: 'fatal_reauth_required',
+        error_code: String(errorCode),
+        error_description: String(errorDesc),
+        http_status: httpStatus,
+        reauth_required_at: new Date().toISOString(),
+      };
     }
-    return null;
+    return {
+      status: 'retryable_failure',
+      error_code: errorCode,
+      error_description: errorDesc,
+      http_status: httpStatus,
+    };
   }
+}
+
+export async function getGoogleTokensWithRefreshOutcome(
+  userId: string,
+): Promise<GoogleRefreshOutcome> {
+  const row = await getStoredTokenRow(userId, 'google');
+  if (!row) {
+    return {
+      status: 'missing_refresh_token',
+      error_code: 'no_token_row',
+      error_description: 'No Google token row exists for this user.',
+      reauth_required_at: null,
+    };
+  }
+
+  if (row.oauth_reauth_required_at) {
+    return {
+      status: 'fatal_reauth_required',
+      error_code: 'reauth_required',
+      error_description: 'Google requires an interactive reconnect for this token.',
+      http_status: null,
+      reauth_required_at: row.oauth_reauth_required_at,
+    };
+  }
+
+  if (!row.access_token) {
+    return {
+      status: 'missing_refresh_token',
+      error_code: 'missing_access_token',
+      error_description: 'Google connector row is missing an access token.',
+      reauth_required_at: null,
+    };
+  }
+
+  if (!row.refresh_token) {
+    return {
+      status: 'missing_refresh_token',
+      error_code: 'no_refresh_token',
+      error_description: 'Google connector row is missing a refresh token.',
+      reauth_required_at: null,
+    };
+  }
+
+  const tokens: GoogleTokens = {
+    access_token: row.access_token,
+    refresh_token: row.refresh_token,
+    // expires_at is normalized to seconds in user_tokens; expiry_date is ms for googleapis
+    expiry_date: row.expires_at ?? 0,
+  };
+
+  // Proactively refresh if token expires within 6 hours so background cron
+  // runs never hit an expired token mid-execution (LESSONS_LEARNED rule #2).
+  // expires_at is normalized to epoch SECONDS by saveUserToken.
+  if (tokens.expiry_date && tokens.expiry_date < Date.now() / 1000 + 6 * 3600) {
+    return await refreshGoogleTokens(userId, tokens, row.email ?? undefined);
+  }
+
+  return {
+    status: 'ok',
+    tokens,
+    refreshed: false,
+  };
 }
 
 /**
@@ -307,7 +423,7 @@ async function refreshMicrosoftTokens(
 export async function getMicrosoftTokensWithRefreshOutcome(
   userId: string,
 ): Promise<MicrosoftRefreshOutcome> {
-  const row = await getStoredMicrosoftTokenRow(userId);
+  const row = await getStoredTokenRow(userId, 'microsoft');
   if (!row) {
     return {
       status: 'missing_refresh_token',
@@ -366,7 +482,7 @@ export async function getMicrosoftTokensWithRefreshOutcome(
  * Force Microsoft token refresh (e.g. after Graph 401) regardless of stored expiry skew.
  */
 export async function forceRefreshMicrosoftTokens(userId: string): Promise<MicrosoftTokens | null> {
-  const row = await getStoredMicrosoftTokenRow(userId);
+  const row = await getStoredTokenRow(userId, 'microsoft');
   if (!row?.access_token || !row.refresh_token) return null;
   const outcome = await refreshMicrosoftTokens(
     userId,

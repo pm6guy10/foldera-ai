@@ -378,7 +378,7 @@ export default function SettingsClient() {
                     </div>
                     {!google?.is_active && google?.needs_reauth && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
-                        Your Google sign-in expired. Tap Connect to keep Foldera reading your connected sources.
+                        Google needs a quick reconnect to resume background sync. Tap Connect and Foldera will pick back up.
                       </p>
                     )}
                     {google?.is_active && google.missing_scopes?.length ? (

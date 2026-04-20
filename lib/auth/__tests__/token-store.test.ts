@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const from = vi.fn();
 const saveUserToken = vi.fn();
 const softDisconnectAfterFatalOAuthRefresh = vi.fn();
+const googleRefreshAccessToken = vi.fn();
 
 let storedRow: Record<string, unknown> | null = null;
 
@@ -29,7 +30,7 @@ vi.mock('googleapis', () => ({
       OAuth2: class {
         setCredentials() {}
         async refreshAccessToken() {
-          throw new Error('not used in this test');
+          return googleRefreshAccessToken();
         }
       },
     },
@@ -55,6 +56,7 @@ describe('getMicrosoftTokensWithRefreshOutcome', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    googleRefreshAccessToken.mockReset();
     storedRow = null;
     from.mockImplementation((table: string) => {
       if (table !== 'user_tokens') {
@@ -148,6 +150,104 @@ describe('getMicrosoftTokensWithRefreshOutcome', () => {
       status: 'missing_refresh_token',
       error_code: 'no_refresh_token',
       error_description: 'Microsoft connector row is missing a refresh token.',
+      reauth_required_at: null,
+    });
+    expect(softDisconnectAfterFatalOAuthRefresh).not.toHaveBeenCalled();
+  });
+});
+
+describe('getGoogleTokensWithRefreshOutcome', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    googleRefreshAccessToken.mockReset();
+    storedRow = null;
+    from.mockImplementation((table: string) => {
+      if (table !== 'user_tokens') {
+        throw new Error(`Unexpected table ${table}`);
+      }
+      return userTokensChain();
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it('classifies retryable Google refresh failures without soft-disconnecting', async () => {
+    storedRow = {
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+      expires_at: Math.floor(Date.now() / 1000) + 60,
+      email: 'member@gmail.com',
+      disconnected_at: null,
+      oauth_reauth_required_at: null,
+    };
+    googleRefreshAccessToken.mockRejectedValue({
+      code: 'EAI_AGAIN',
+      message: 'Temporary DNS failure',
+    });
+
+    const { getGoogleTokensWithRefreshOutcome } = await import('../token-store');
+    const outcome = await getGoogleTokensWithRefreshOutcome('user-1');
+
+    expect(outcome).toMatchObject({
+      status: 'retryable_failure',
+      error_code: 'EAI_AGAIN',
+      http_status: null,
+    });
+    expect(softDisconnectAfterFatalOAuthRefresh).not.toHaveBeenCalled();
+    expect(saveUserToken).not.toHaveBeenCalled();
+  });
+
+  it('classifies fatal Google refresh failures and soft-disconnects', async () => {
+    storedRow = {
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+      expires_at: Math.floor(Date.now() / 1000) + 60,
+      email: 'member@gmail.com',
+      disconnected_at: null,
+      oauth_reauth_required_at: null,
+    };
+    googleRefreshAccessToken.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          error: 'invalid_grant',
+          error_description: 'Token has been expired or revoked.',
+        },
+      },
+      message: 'Token has been expired or revoked.',
+    });
+
+    const { getGoogleTokensWithRefreshOutcome } = await import('../token-store');
+    const outcome = await getGoogleTokensWithRefreshOutcome('user-1');
+
+    expect(outcome.status).toBe('fatal_reauth_required');
+    expect(softDisconnectAfterFatalOAuthRefresh).toHaveBeenCalledWith(
+      'user-1',
+      'google',
+      expect.objectContaining({
+        source: 'token-store.refreshGoogleTokens',
+        error_code: 'invalid_grant',
+      }),
+    );
+  });
+
+  it('classifies a missing Google refresh token distinctly', async () => {
+    storedRow = {
+      access_token: 'access-token',
+      refresh_token: null,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      email: 'member@gmail.com',
+      disconnected_at: null,
+      oauth_reauth_required_at: null,
+    };
+
+    const { getGoogleTokensWithRefreshOutcome } = await import('../token-store');
+    const outcome = await getGoogleTokensWithRefreshOutcome('user-1');
+
+    expect(outcome).toEqual({
+      status: 'missing_refresh_token',
+      error_code: 'no_refresh_token',
+      error_description: 'Google connector row is missing a refresh token.',
       reauth_required_at: null,
     });
     expect(softDisconnectAfterFatalOAuthRefresh).not.toHaveBeenCalled();

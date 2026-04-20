@@ -271,4 +271,50 @@ describe('GET /api/integrations/status', () => {
       }),
     ]);
   });
+
+  it('surfaces needs_reauth for a fatal Google reconnect state', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'user_tokens') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              or: vi.fn().mockResolvedValue({
+                data: [
+                  {
+                    provider: 'google',
+                    email: 'u@gmail.com',
+                    last_synced_at: '2026-04-07T10:00:00.000Z',
+                    scopes: 'openid email profile gmail.readonly',
+                    access_token: null,
+                    expires_at: null,
+                    refresh_token: null,
+                    disconnected_at: '2026-04-20T11:59:00.000Z',
+                    oauth_reauth_required_at: '2026-04-20T12:00:00.000Z',
+                  },
+                ],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'tkg_signals') return newestMailChain(null);
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const { GET } = await import('../route');
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      integrations: Array<{ provider: string; is_active: boolean; needs_reauth: boolean }>;
+    };
+    expect(body.integrations).toEqual([
+      expect.objectContaining({
+        provider: 'google',
+        is_active: false,
+        needs_reauth: true,
+      }),
+    ]);
+  });
 });

@@ -4520,6 +4520,13 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Verification: `npm run health` (0 FAILING; warning-only `Last generation do_nothing`); `npx vitest run lib/auth/__tests__/oauth-refresh-fatals.test.ts lib/auth/__tests__/user-tokens.test.ts lib/auth/__tests__/token-store.test.ts lib/cron/__tests__/self-heal-token-watchdog.test.ts app/api/integrations/status/__tests__/route.test.ts`; `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts -g "shows Microsoft reconnect state without auto-refresh failure blame"` (passed).
 - Unresolved issues: production runtime log proof for the next real watchdog cycle (`token_refresh_failed` / `oauth_refresh_fatal_soft_disconnect`) was not available in-session.
 
+## 2026-04-20 — Google refresh-failure classification aligned with Microsoft watchdog hardening
+- MODE: BUGFIX (single seam)
+- Files changed: `lib/auth/token-store.ts`, `lib/auth/__tests__/token-store.test.ts`, `lib/cron/self-heal.ts`, `lib/cron/__tests__/self-heal-token-watchdog.test.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `app/dashboard/settings/SettingsClient.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`
+- What changed: Google token refresh now uses the same typed classification model as Microsoft, retryable Google refresh failures stay internal, fatal Google revocations set `oauth_reauth_required_at`, and the watchdog no longer sends the generic reconnect email for Google. The existing `needs_reauth` settings surface is now the sole customer-facing reconnect path for both providers, with Google copy updated to the same quick-reconnect framing.
+- Verification: `npx vitest run lib/auth/__tests__/oauth-refresh-fatals.test.ts lib/auth/__tests__/user-tokens.test.ts lib/auth/__tests__/token-store.test.ts lib/cron/__tests__/self-heal-token-watchdog.test.ts app/api/integrations/status/__tests__/route.test.ts`; `Remove-Item -Recurse -Force .next; npm run build` (build passed after clearing stale generated output); `npx playwright test tests/e2e/authenticated-routes.spec.ts -g "reconnect state without auto-refresh failure blame"` (2 passed for Google + Microsoft).
+- Unresolved issues: production watchdog/runtime log proof for the next real Google or Microsoft refresh event was not available in-session.
+
 ## 2026-04-20 — cut Supabase egress from automated brief runs
 - MODE: COST CONTROL (single seam)
 - Files changed: `.github/workflows/production-e2e.yml`, `tests/production/smoke.spec.ts`, `app/api/settings/run-brief/route.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `SESSION_HISTORY.md`
