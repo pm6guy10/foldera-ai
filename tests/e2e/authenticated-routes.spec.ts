@@ -542,7 +542,11 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
     );
     await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
-    await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DOCUMENT_DIRECTIVE_RESPONSE));
+    let latestCalls = 0;
+    await page.route(matchApiPath('/api/conviction/latest'), async (route) => {
+      latestCalls += 1;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: json(DOCUMENT_DIRECTIVE_RESPONSE) });
+    });
     await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
       await route.fulfill({
         status: 404,
@@ -554,10 +558,13 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       '/dashboard?action=skip&id=00000000-0000-0000-0000-000000000099',
     );
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => latestCalls).toBe(2);
     await expect(
       page.locator('.text-xl.font-bold').filter({ hasText: /Overlapping events on 2026-04-02/i }),
     ).toBeVisible();
-    await expect(page.getByText(/Objective: Overlapping events/i)).toBeVisible();
+    await expect(page.getByTestId('dashboard-document-body')).toBeVisible();
+    await expect(page.getByText(/## Situation/i)).toBeVisible();
+    await expect(page.getByText(/Ask: confirm the final keep\/move decision by 2026-04-01/i)).toBeVisible();
     await expect(page).toHaveURL(/\/dashboard$/);
   });
 
@@ -590,7 +597,13 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
     await page.getByRole('button', { name: /skip/i }).click();
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/Objective: Overlapping events/i)).toBeVisible();
+    await expect.poll(() => latestCalls).toBe(2);
+    await expect(
+      page.locator('.text-xl.font-bold').filter({ hasText: /Overlapping events on 2026-04-02/i }),
+    ).toBeVisible();
+    await expect(page.getByTestId('dashboard-document-body')).toBeVisible();
+    await expect(page.getByText(/## Situation/i)).toBeVisible();
+    await expect(page.getByText(/Ask: confirm the final keep\/move decision by 2026-04-01/i)).toBeVisible();
   });
 });
 
