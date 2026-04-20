@@ -69,9 +69,6 @@ import { isVerificationStubPersistExecutionResult } from '@/lib/cron/duplicate-t
 import { looksLikeDiscrepancyTriageOrChoreList } from './discrepancy-finished-work';
 import {
   directiveLooksLikeScheduleConflict,
-  scheduleConflictArtifactHasResolutionShape,
-  scheduleConflictArtifactIsMessageShaped,
-  scheduleConflictArtifactIsOwnerProcedure,
 } from './schedule-conflict-guards';
 import {
   filterPastSupportingSignals,
@@ -1513,11 +1510,11 @@ function isPriorityCareerOutcomeArtifactCandidateForGenerator(
 }
 
 /** Discrepancy classes that lock to `write_document` — verification mode tries these before other winners. */
-const VERIFICATION_GOLDEN_PATH_WRITE_DOC_CLASSES = ['schedule_conflict', 'stale_document'] as const;
+const VERIFICATION_GOLDEN_PATH_WRITE_DOC_CLASSES = ['stale_document'] as const;
 
 /**
  * Owner verification: prefer discrepancy rows whose trigger maps to `write_document`
- * (`schedule_conflict` first, then `stale_document`) so the deterministic stub hits the same
+ * (`stale_document`) so the deterministic stub hits the same
  * payload branch when those candidates exist and are not disqualified.
  */
 export function reorderRankedCandidatesForVerificationGoldenPathWriteDocument<
@@ -6958,6 +6955,11 @@ function validateGeneratedArtifact(
     ctx.candidate_class === 'discrepancy' &&
     canonicalArtifactType === 'write_document'
   ) {
+    if (ctx.discrepancy_class === 'schedule_conflict') {
+      issues.push(
+        'schedule_conflict_finished_work:document_below_bar — require a real calendar mutation artifact or suppress the candidate',
+      );
+    }
     const content = String((payload.artifact as Record<string, unknown>).content ?? '');
     const combined = `${payload.directive ?? ''}\n${payload.why_now ?? ''}\n${content}`;
     if (looksLikeDiscrepancyTriageOrChoreList(combined)) {
@@ -7132,20 +7134,7 @@ export function validateDirectiveForPersistence(input: {
       directiveLooksLikeScheduleConflict(input.directive) &&
       normalizeDecisionActionType(String(input.directive.action_type)) === 'write_document'
     ) {
-      const t = typeof art.title === 'string' ? art.title : '';
-      const c = typeof art.content === 'string' ? art.content : '';
-      const blob = `${t}\n${c}`;
-      if (scheduleConflictArtifactIsOwnerProcedure(blob)) {
-        return ['schedule_conflict artifact must be a grounded resolution decision note, not owner chore instructions'];
-      }
-      if (scheduleConflictArtifactIsMessageShaped(blob)) {
-        return ['schedule_conflict artifact must be a grounded resolution decision note, not outbound message copy'];
-      }
-      if (!scheduleConflictArtifactHasResolutionShape(blob)) {
-        return [
-          'schedule_conflict artifact must include situation, conflict, recommendation, owner/next step, and timing',
-        ];
-      }
+      return ['schedule_conflict write_document below product bar; require a real calendar artifact or suppress'];
     }
     return [];
   }
@@ -7160,21 +7149,7 @@ export function validateDirectiveForPersistence(input: {
     issues.push('artifact is required before persistence');
   } else if (normalizeDecisionActionType(String(input.directive.action_type)) === 'write_document') {
     if (directiveLooksLikeScheduleConflict(input.directive)) {
-      const art = input.artifact as Record<string, unknown>;
-      const t = typeof art.title === 'string' ? art.title : '';
-      const c = typeof art.content === 'string' ? art.content : '';
-      const blob = `${t}\n${c}`;
-      if (scheduleConflictArtifactIsOwnerProcedure(blob)) {
-        issues.push('schedule_conflict artifact must be a grounded resolution decision note, not an owner checklist');
-      }
-      if (scheduleConflictArtifactIsMessageShaped(blob)) {
-        issues.push('schedule_conflict artifact must be a grounded resolution decision note, not outbound message copy');
-      }
-      if (!scheduleConflictArtifactHasResolutionShape(blob)) {
-        issues.push(
-          'schedule_conflict artifact must include situation, conflict, recommendation, owner/next step, and timing',
-        );
-      }
+      issues.push('schedule_conflict write_document below product bar; require a real calendar artifact or suppress');
     }
   }
 
@@ -7898,44 +7873,7 @@ export function buildDecisionEnforcedFallbackPayload(input: {
     }
 
     if (input.winner.discrepancyClass === 'schedule_conflict') {
-      const factText = `${input.winner.title}. ${input.winner.content}`;
-      const { dateLabel, eventA, eventB } = extractScheduleConflictRepairFacts(factText);
-      const dateText = dateLabel ?? 'the upcoming window';
-      const keepEventText = eventA ? `"${eventA}"` : 'the higher-priority commitment';
-      const moveEventText = eventB ? `"${eventB}"` : 'the conflicting commitment';
-      const decideBy = dateLabel ? subtractIsoDateLabel(dateLabel, 1) ?? dateLabel : deadline;
-
-      return {
-        insight: `The ${dateText} overlap still needs one keep/move decision before the calendar makes it for you.`,
-        causal_diagnosis: input.causalDiagnosis,
-        decision: 'ACT',
-        directive: `Resolve the ${dateText} overlap before ${decideBy}.`,
-        artifact_type: 'write_document',
-        artifact: {
-          document_purpose: 'calendar conflict resolution note',
-          target_reader: 'calendar owner',
-          title: dateLabel ? `Schedule conflict decision - ${dateLabel}` : 'Schedule conflict decision',
-          content: [
-            '## Situation',
-            `You have overlapping calendar commitments on ${dateText}. ${keepEventText} and ${moveEventText} are scheduled for the same window.`,
-            '',
-            '## Conflicting commitments or risk',
-            `If this stays unresolved through ${dateText}, you default into a live double-booking and one commitment gets dropped reactively.`,
-            '',
-            '## Recommendation / decision',
-            `Keep ${keepEventText} in the current slot and move ${moveEventText} unless a hard external dependency makes ${moveEventText} immovable.`,
-            `Ask: confirm the final keep/move decision by ${decideBy}.`,
-            `Consequence: if unresolved by ${decideBy}, the overlap is still blocking a clean calendar decision for ${dateText}.`,
-            '',
-            '## Owner / next step',
-            'Calendar owner confirms the final keep/move choice and updates the losing event immediately after the decision is made.',
-            '',
-            '## Timing / deadline',
-            `Decide by ${decideBy} so the calendar is settled before ${dateText}.`,
-          ].join('\n'),
-        },
-        why_now: `Leaving the ${dateText} overlap unresolved keeps the calendar conflict live until one commitment gets dropped under pressure.`,
-      };
+      return null;
     }
 
     if (input.winner.discrepancyClass === 'behavioral_pattern') {
@@ -9377,6 +9315,33 @@ export async function generateDirective(
         continue; // ← THE FIX: try next candidate instead of dying
       }
 
+      if (
+        currentCandidate.discrepancyClass === 'schedule_conflict' &&
+        decisionPayload.recommended_action === 'write_document'
+      ) {
+        const belowBarReason = 'schedule_conflict_document_below_bar';
+        candidateBlockLog.push({
+          title: currentCandidate.title.slice(0, 80),
+          reasons: [belowBarReason],
+        });
+        logStructuredEvent({
+          event: 'candidate_blocked',
+          level: 'info',
+          userId,
+          artifactType: null,
+          generationStatus: belowBarReason,
+          details: {
+            scope: 'generator',
+            candidate_title: currentCandidate.title.slice(0, 80),
+            candidate_index: rankedCandidates.indexOf(rankedCandidates.find(r => r.candidate === currentCandidate)!),
+            discrepancy_class: currentCandidate.discrepancyClass,
+            recommended_action: decisionPayload.recommended_action,
+            blocker: 'schedule_conflict write_document is memo-only and below product bar',
+          },
+        });
+        continue;
+      }
+
       if (proofModeThreadBackedSendEnforcementApplies(hydratedWinner, decisionPayload.recommended_action)) {
         const proofPre = evaluateProofModeThreadBackedSendPreflight({
           proofModeEnabled: true,
@@ -9686,48 +9651,6 @@ export async function generateDirective(
     }
 
     let payload = payloadResult.payload;
-    if (
-      currentCandidate.discrepancyClass === 'schedule_conflict' &&
-      decisionPayload.recommended_action === 'write_document'
-    ) {
-      const repairedScheduleConflictPayload = buildDecisionEnforcedFallbackPayload({
-        winner: hydratedWinner,
-        actionType: decisionPayload.recommended_action,
-        candidateDueDate: ctx.candidate_due_date,
-        candidateGoal: ctx.candidate_goal,
-        causalDiagnosis: ctx.required_causal_diagnosis,
-        supportingSignals: ctx.supporting_signals,
-        huntRecipientAllowlist: ctx.hunt_send_message_recipient_allowlist,
-        userEmails,
-        userPromptNames: {
-          user_full_name: ctx.user_full_name,
-          user_first_name: ctx.user_first_name,
-        },
-      });
-      if (repairedScheduleConflictPayload) {
-        const repairedIssues = validateGeneratedArtifact(
-          repairedScheduleConflictPayload,
-          ctx,
-          decisionPayload.recommended_action,
-          { userIdForLogs: userId },
-        );
-        if (repairedIssues.length === 0) {
-          payload = repairedScheduleConflictPayload;
-          logStructuredEvent({
-            event: 'candidate_repaired',
-            level: 'info',
-            userId,
-            artifactType: repairedScheduleConflictPayload.artifact_type ?? null,
-            generationStatus: 'schedule_conflict_repaired',
-            details: {
-              scope: 'generator',
-              candidate_title: currentCandidate.title.slice(0, 80),
-              repaired_from_issues: ['schedule_conflict_persistence_shape'],
-            },
-          });
-        }
-      }
-    }
     applyScheduleConflictCanonicalUserFacingCopy(payload, currentCandidate);
 
     const staleDateCheck = directiveHasStalePastDates(userFacingStaleDateScanText(payload));

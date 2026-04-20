@@ -789,6 +789,48 @@ describe('runDailyGenerate candidate logging', () => {
     expect(mockSupabase.insertedActions.some((row) => row.status === 'skipped')).toBe(true);
   });
 
+  it('persists no_send instead of pending_approval for schedule_conflict write_document memo artifacts', async () => {
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective({
+      directive: 'Overlapping events on 2026-04-25.',
+      action_type: 'write_document',
+      reason: 'Two calendar blocks overlap on 2026-04-25.',
+      discrepancyClass: 'schedule_conflict',
+    }));
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'document',
+      title: 'Schedule conflict decision - 2026-04-25',
+      content: `## Situation
+You have overlapping calendar commitments on 2026-04-25.
+
+## Conflicting commitments or risk
+If unresolved, you default into a live double-booking.
+
+## Recommendation / decision
+Keep one event and move the other.
+
+## Owner / next step
+Calendar owner decides what to move.
+
+## Timing / deadline
+Decide by 2026-04-24.`,
+    });
+    vi.mocked(getArtifactPersistenceIssues).mockReturnValue([
+      'schedule_conflict write_document below product bar; require a real calendar artifact or suppress',
+    ]);
+
+    const result = await runDailyGenerate();
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'no_send_persisted',
+        detail: expect.stringContaining('schedule_conflict write_document below product bar'),
+        success: true,
+      }),
+    ]);
+    expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
+    expect(mockSupabase.insertedActions.some((row) => row.status === 'skipped')).toBe(true);
+  });
+
   it('allows generation when only 2 candidates survive (single strong winner is sufficient)', async () => {
     vi.mocked(generateDirective).mockResolvedValue(buildDirective({
       generationLog: buildGenerationLog({
@@ -1119,6 +1161,62 @@ describe('runDailyGenerate candidate logging', () => {
             status: 'skipped',
             skip_reason: 'Auto-suppressed pending action for dev brain-receipt force-fresh run.',
           }),
+        }),
+      ]),
+    );
+  });
+
+  it('forceFreshRun does not recover same-day skipped actions back into pending_approval during dev brain-receipt proof runs', async () => {
+    mockSupabase.actionRows = [
+      {
+        id: 'recoverable-skipped-1',
+        user_id: USER_ID,
+        status: 'skipped',
+        skip_reason: null,
+        action_type: 'send_message',
+        directive_text: 'Older skipped action that would normally be recovered.',
+        confidence: 90,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          artifact: {
+            type: 'email',
+            to: 'owner@example.com',
+            subject: 'Recovered if not proof run',
+            body: 'Recovered if not proof run.',
+            draft_type: 'email_compose',
+          },
+        },
+      },
+    ];
+
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+
+    const result = await runDailyGenerate({
+      userIds: [USER_ID],
+      forceFreshRun: true,
+      briefInvocationSource: 'dev_brain_receipt',
+      skipManualCallLimit: true,
+    });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'pending_approval_persisted',
+        success: true,
+      }),
+    ]);
+    expect(generateDirective).toHaveBeenCalledTimes(1);
+    expect(mockSupabase.updatedActions).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'recoverable-skipped-1',
+          payload: expect.objectContaining({ status: 'pending_approval' }),
         }),
       ]),
     );

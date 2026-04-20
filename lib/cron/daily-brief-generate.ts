@@ -71,9 +71,6 @@ import { hasDuplicateSuppressionSignal } from './duplicate-truth';
 import { looksLikeDiscrepancyTriageOrChoreList } from '@/lib/briefing/discrepancy-finished-work';
 import {
   directiveLooksLikeScheduleConflict,
-  scheduleConflictArtifactHasResolutionShape,
-  scheduleConflictArtifactIsMessageShaped,
-  scheduleConflictArtifactIsOwnerProcedure,
 } from '@/lib/briefing/schedule-conflict-guards';
 import { effectiveDiscrepancyClassForGates } from '@/lib/briefing/effective-discrepancy-class';
 import { isAutomatedRoutingRecipient } from '@/lib/email/automated-routing-recipient';
@@ -259,15 +256,7 @@ export function evaluateBottomGate(
     : [];
 
   if (scheduleConflictWriteDoc) {
-    if (scheduleConflictArtifactIsOwnerProcedure(artifactBody)) {
-      blocked_reasons.push('FINISHED_WORK_REQUIRED');
-    }
-    if (scheduleConflictArtifactIsMessageShaped(artifactBody)) {
-      blocked_reasons.push('FINISHED_WORK_REQUIRED');
-    }
-    if (!scheduleConflictArtifactHasResolutionShape(artifactBody)) {
-      blocked_reasons.push('FINISHED_WORK_REQUIRED');
-    }
+    blocked_reasons.push('FINISHED_WORK_REQUIRED');
   }
 
   // 1. Self-referential document — check FIRST because this is the primary memo-sludge class
@@ -304,24 +293,7 @@ export function evaluateBottomGate(
   // These three checks are designed for documents and commitment artifacts, not personal email.
   if (directive.action_type !== 'send_message') {
     if (scheduleConflictWriteDoc) {
-      const hasAnchoredTime =
-        REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
-      const hasExecutableMotion =
-        CONCRETE_ASK_PATTERN.test(combined) ||
-        /\b(decide|decision|recommendation|resolve|choose|priority|trade[-‐‑–—]?\s*off|which (event|meeting|block|slot))\b/i.test(
-          artifactBody,
-        ) ||
-        /^#{1,3}\s+\S/m.test(artifactBody) ||
-        /\*\*(situation|issue|recommendation|decision|owner|timing|deadline|conflict)/i.test(
-          artifactBody,
-        ) ||
-        /\?/.test(artifactBody);
-      if (!hasAnchoredTime) {
-        blocked_reasons.push('NO_REAL_PRESSURE');
-      }
-      if (!hasExecutableMotion) {
-        blocked_reasons.push('NO_CONCRETE_ASK');
-      }
+      // No-op: schedule_conflict write_document is categorically below bar on this seam.
     } else if (internalExecutionBrief) {
       const hasAnchoredTime =
         REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
@@ -507,19 +479,7 @@ export function isSendWorthy(
   }
 
   if (directive.action_type === 'write_document' && directiveLooksLikeScheduleConflict(directive)) {
-    const scheduleBody =
-      (typeof artifactRecord.content === 'string' ? artifactRecord.content : '') +
-      (typeof artifactRecord.body === 'string' ? artifactRecord.body : '') +
-      (typeof artifactRecord.title === 'string' ? artifactRecord.title : '');
-    if (scheduleConflictArtifactIsOwnerProcedure(scheduleBody)) {
-      return { worthy: false, reason: 'schedule_conflict_not_finished_outbound' };
-    }
-    if (scheduleConflictArtifactIsMessageShaped(scheduleBody)) {
-      return { worthy: false, reason: 'schedule_conflict_not_finished_outbound' };
-    }
-    if (!scheduleConflictArtifactHasResolutionShape(scheduleBody)) {
-      return { worthy: false, reason: 'schedule_conflict_not_finished_outbound' };
-    }
+    return { worthy: false, reason: 'schedule_conflict_not_finished_outbound' };
   }
 
   // send_message: require a real email recipient and a substantive body
@@ -740,6 +700,9 @@ function buildPersistenceReceipt(
   const behavioralPatternWriteDoc =
     directive.action_type === 'write_document' &&
     effectiveDiscrepancyClassForGates(directive) === 'behavioral_pattern';
+  const scheduleConflictWriteDoc =
+    directive.action_type === 'write_document' &&
+    directiveLooksLikeScheduleConflict(directive);
   const hasExternalTarget =
     directive.action_type === 'send_message'
       ? typeof artifactRecord.to === 'string' && (artifactRecord.to as string).includes('@')
@@ -748,10 +711,10 @@ function buildPersistenceReceipt(
         : EXTERNAL_TARGET_PATTERN.test(combined);
 
   return {
-    external_target_present: hasExternalTarget,
-    concrete_ask_present: CONCRETE_ASK_PATTERN.test(combined),
-    real_pressure_present: REAL_PRESSURE_PATTERN.test(combined),
-    immediately_usable: !NON_EXECUTABLE_ARTIFACT_PATTERN.test(combined),
+    external_target_present: scheduleConflictWriteDoc ? false : hasExternalTarget,
+    concrete_ask_present: scheduleConflictWriteDoc ? false : CONCRETE_ASK_PATTERN.test(combined),
+    real_pressure_present: scheduleConflictWriteDoc ? false : REAL_PRESSURE_PATTERN.test(combined),
+    immediately_usable: scheduleConflictWriteDoc ? false : !NON_EXECUTABLE_ARTIFACT_PATTERN.test(combined),
     self_referential: SELF_REFERENTIAL_DOC_PATTERN.test(combined),
     generic_social_motion: SOCIAL_MOTION_PATTERN.test(combined),
     blocked_reason: bottomGate.pass ? null : bottomGate.blocked_reasons.join(', '),
@@ -1987,7 +1950,7 @@ export async function runDailyGenerate(
 
       // Recovery: if a high-confidence directive was user-skipped today (skip_reason IS NULL),
       // restore it to pending_approval rather than generating do_nothing.
-      {
+      if (!proofFreshRun) {
         const { data: recoverable } = await supabase
           .from('tkg_actions')
           .select('id, confidence, action_type, directive_text, execution_result')

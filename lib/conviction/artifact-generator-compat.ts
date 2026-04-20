@@ -11,9 +11,6 @@ import type {
 } from '@/lib/briefing/types';
 import {
   directiveLooksLikeScheduleConflict,
-  scheduleConflictArtifactHasResolutionShape,
-  scheduleConflictArtifactIsMessageShaped,
-  scheduleConflictArtifactIsOwnerProcedure,
 } from '@/lib/briefing/schedule-conflict-guards';
 
 const ARTIFACT_MODEL = 'claude-haiku-4-5-20251001';
@@ -396,18 +393,7 @@ function getArtifactPersistenceIssues(
   const record = artifact as Record<string, unknown>;
   if (record.emergency_fallback === true) {
     if (directive && actionType === 'write_document' && directiveLooksLikeScheduleConflict(directive)) {
-      const title = isNonEmptyString(record.title) ? record.title.trim() : '';
-      const content = isNonEmptyString(record.content) ? record.content.trim() : '';
-      const blob = `${title}\n${content}`;
-      if (scheduleConflictArtifactIsOwnerProcedure(blob)) {
-        return ['schedule_conflict finished-work required (emergency fallback is owner-facing)'];
-      }
-      if (scheduleConflictArtifactIsMessageShaped(blob)) {
-        return ['schedule_conflict finished-work required (emergency fallback is message-shaped)'];
-      }
-      if (!scheduleConflictArtifactHasResolutionShape(blob)) {
-        return ['schedule_conflict finished-work required (emergency fallback lacks resolution shape)'];
-      }
+      return ['schedule_conflict write_document below product bar; require a real calendar artifact or suppress'];
     }
     return [];
   }
@@ -417,22 +403,7 @@ function getArtifactPersistenceIssues(
     const content = isNonEmptyString(record.content) ? record.content.trim() : '';
     issues.push(...getFinishedDocumentIssues(title, content));
     if (directive && directiveLooksLikeScheduleConflict(directive)) {
-      const blob = `${title}\n${content}`;
-      if (scheduleConflictArtifactIsOwnerProcedure(blob)) {
-        issues.push(
-          'schedule_conflict artifact must be a resolution decision note, not a calendar-owner chore list',
-        );
-      }
-      if (scheduleConflictArtifactIsMessageShaped(blob)) {
-        issues.push(
-          'schedule_conflict artifact must be a resolution decision note, not outbound message copy',
-        );
-      }
-      if (!scheduleConflictArtifactHasResolutionShape(blob)) {
-        issues.push(
-          'schedule_conflict document must include situation, conflict, recommendation, owner/next step, and timing grounded in calendar facts',
-        );
-      }
+      issues.push('schedule_conflict write_document below product bar; require a real calendar artifact or suppress');
     }
   }
 
@@ -464,7 +435,7 @@ function buildDocumentSystemPrompt(directive: ConvictionDirective, rawContext: s
     'Do not include analysis scaffolding, generic filler, or placeholder text.',
   ];
   if (directiveLooksLikeScheduleConflict(directive)) {
-    parts.push('CALENDAR CONFLICT RESOLUTION NOTE: produce a grounded resolution note, not a checklist or message.');
+    parts.push('CALENDAR CONFLICTS ARE NOT VALID WRITE_DOCUMENT OUTPUTS ON THIS PATH: do not emit a schedule-conflict memo.');
   }
   if (directive.discrepancyClass === 'behavioral_pattern') {
     parts.push('Behavioral pattern case: write a finished note with a concrete next move, not raw analysis.');
@@ -554,16 +525,7 @@ function validateArtifact(
         throw new Error('Document artifact contains generic filler');
       }
       if (directive && directiveLooksLikeScheduleConflict(directive)) {
-        const blob = `${title}\n${content}`;
-        if (scheduleConflictArtifactIsOwnerProcedure(blob)) {
-          throw new Error('schedule_conflict document must be a resolution decision note, not a calendar-owner chore checklist');
-        }
-        if (scheduleConflictArtifactIsMessageShaped(blob)) {
-          throw new Error('schedule_conflict document must be a resolution decision note, not outbound message or chat copy');
-        }
-        if (!scheduleConflictArtifactHasResolutionShape(blob)) {
-          throw new Error('schedule_conflict document must include situation, conflict, recommendation, owner/next step, and timing');
-        }
+        throw new Error('schedule_conflict write_document below product bar; require a real calendar artifact or suppress');
       }
       if (isAnalysisDump(content)) {
         throw new Error('Document content contains internal analysis scaffolding');

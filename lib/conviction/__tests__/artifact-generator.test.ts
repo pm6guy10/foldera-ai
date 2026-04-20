@@ -361,7 +361,7 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(content).not.toContain('You were trying to get this thread to a real yes/no');
   });
 
-  it('schedule_conflict discrepancy uses deadline transform, not person outreach, even if reason mentions reconnect', async () => {
+  it('schedule_conflict discrepancy marks write_document output as invalid on this path', async () => {
     mockCreate.mockResolvedValue(
       anthropicResponse(
         '1. Decide which event keeps the 2026-04-02 slot.\n2. Decline or reschedule the other in your calendar app.\n3. Text anyone affected before end of day.',
@@ -380,7 +380,7 @@ describe('artifact-generator — analysis dump leak prevention', () => {
 
     expect(mockCreate).toHaveBeenCalled();
     const firstCall = mockCreate.mock.calls[0]?.[0] as { system?: string };
-    expect(firstCall?.system ?? '').toMatch(/CALENDAR CONFLICT RESOLUTION NOTE|## Situation/i);
+    expect(firstCall?.system ?? '').toMatch(/CALENDAR CONFLICTS ARE NOT VALID WRITE_DOCUMENT OUTPUTS ON THIS PATH/i);
     expect(firstCall?.system ?? '').not.toMatch(/Numbered steps, each completable/i);
   });
 

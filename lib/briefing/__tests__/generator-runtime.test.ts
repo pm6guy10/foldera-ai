@@ -460,6 +460,73 @@ describe('generateDirective runtime failures', () => {
     expect(mockDecryptWithStatus).toHaveBeenCalled();
   });
 
+  it('skips top-ranked schedule_conflict write_document winner and falls through to the next viable candidate', async () => {
+    const blockedCandidate = {
+      ...buildWinner(),
+      id: 'schedule-conflict-winner',
+      type: 'discrepancy' as const,
+      discrepancyClass: 'schedule_conflict' as import('../../briefing/discrepancy-detector').DiscrepancyClass,
+      suggestedActionType: 'write_document' as const,
+      title: 'Overlapping events on 2026-04-25',
+      content: '"Babe baby shower" and "N Soccer game" overlap on 2026-04-25.',
+      sourceSignals: [{ kind: 'signal' as const, id: 'schedule-conflict-sig', summary: 'Calendar overlap' }],
+    };
+    const viableCandidate = {
+      ...buildWinner(),
+      id: 'viable-send-message',
+      entityName: 'Alex Morgan',
+      title: 'Follow up with Alex Morgan about the permit deadline',
+      content: 'Alex Morgan still needs the permit response before Friday.',
+      relationshipContext: '- Alex Morgan <alex@example.com> (Partner)',
+    };
+
+    mockScoreOpenLoops.mockResolvedValue({
+      outcome: 'winner_selected',
+      winner: blockedCandidate,
+      topCandidates: [blockedCandidate, viableCandidate],
+      deprioritized: [],
+      candidateDiscovery: {
+        candidateCount: 2,
+        suppressedCandidateCount: 0,
+        selectionMargin: 0.2,
+        selectionReason: 'Schedule conflict scored first before generator product-bar checks.',
+        failureReason: null,
+        topCandidates: [],
+      },
+      antiPatterns: [],
+      divergences: [],
+      exact_blocker: null,
+    });
+    queueEmptyTkgActionsResults(8);
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 80 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Email Alex Morgan today about the permit deadline.',
+          artifact_type: 'send_message',
+          artifact: {
+            to: 'alex@example.com',
+            subject: 'Permit deadline follow-up',
+            body: 'Hi Alex,\n\nCan you confirm by Friday whether the permit response is still on track? If it slips, the filing window closes.\n\nThanks,\nBrandon',
+          },
+          evidence: 'Alex Morgan is on the live permit thread and the deadline is this week.',
+          why_now: 'The permit deadline is this week.',
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(directive.action_type).toBe('send_message');
+    expect(directive.directive).toContain('Alex Morgan');
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_blocked',
+      generationStatus: 'schedule_conflict_document_below_bar',
+    }));
+  });
+
   it('extracts JSON from prefixed non-json fenced responses and logs the raw payload preview', async () => {
     mockScoreOpenLoops.mockResolvedValue(buildScorerResult());
     anthropicCreate.mockResolvedValue({

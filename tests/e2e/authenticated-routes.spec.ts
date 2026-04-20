@@ -79,33 +79,33 @@ const DIRECTIVE_RESPONSE = {
 /** write_document-style pending row — dashboard must render document body (not an empty artifact panel). */
 const DOCUMENT_DIRECTIVE_RESPONSE = {
   id: 'action-doc-001',
-  directive: 'Overlapping events on 2026-04-02.',
+  directive: 'Finalize the MAS3 interview packet owner by 2026-04-02.',
   action_type: 'write_document',
   confidence: 74,
-  reason: 'Calendar conflict needs an explicit priority call.',
+  reason: 'The interview packet stalls unless one owner confirms the final reference bundle today.',
   status: 'pending_approval',
   is_subscribed: true,
   evidence: [],
   artifact: {
     type: 'document',
-    title: 'Schedule conflict decision - 2026-04-02',
+    title: 'MAS3 interview packet resolution - 2026-04-02',
     body: [
       '## Situation',
-      'You have overlapping calendar commitments on 2026-04-02. "Partner review" and "Customer renewal prep" are scheduled for the same window.',
+      'The MAS3 interview packet is still missing a committed owner for the final reference bundle on 2026-04-02.',
       '',
-      '## Conflicting commitments or risk',
-      'If this stays unresolved through 2026-04-02, you default into a live double-booking and one commitment gets dropped reactively.',
+      '## Blocking risk',
+      'If ownership stays unresolved through 2026-04-02, the packet slips and the interview loop loses momentum.',
       '',
       '## Recommendation / decision',
-      'Keep "Partner review" in the current slot and move "Customer renewal prep" unless a hard external dependency makes "Customer renewal prep" immovable.',
-      'Ask: confirm the final keep/move decision by 2026-04-01.',
-      'Consequence: if unresolved by 2026-04-01, the overlap is still blocking a clean calendar decision for 2026-04-02.',
+      'Assign Holly as final packet owner and have her confirm whether the two missing reference talking points will land today.',
+      'Ask: confirm the owner and send/no-send decision by 2026-04-02 at 4 PM PT.',
+      'Consequence: if unresolved by 4 PM PT, the packet misses the same-day handoff and the interview loop slips.',
       '',
       '## Owner / next step',
-      'Calendar owner confirms the final keep/move choice and updates the losing event immediately after the decision is made.',
+      'Holly replies with the named owner, confirms whether the reference bundle ships today, and updates the shared packet thread immediately.',
       '',
       '## Timing / deadline',
-      'Decide by 2026-04-01 so the calendar is settled before 2026-04-02.',
+      'Decide by 4 PM PT on 2026-04-02 so the packet can still go out the same day.',
     ].join('\n'),
   },
 };
@@ -508,11 +508,11 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     });
     await page.goto('/dashboard');
     await expect(
-      page.locator('.text-xl.font-bold').filter({ hasText: /Overlapping events on 2026-04-02/i }),
+      page.locator('.text-xl.font-bold').filter({ hasText: /Finalize the MAS3 interview packet owner by 2026-04-02/i }),
     ).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('dashboard-document-body')).toBeVisible();
     await expect(page.getByText(/## Situation/i)).toBeVisible();
-    await expect(page.getByText(/Ask: confirm the final keep\/move decision by 2026-04-01/i)).toBeVisible();
+    await expect(page.getByText(/Ask: confirm the owner and send\/no-send decision by 2026-04-02 at 4 PM PT/i)).toBeVisible();
     await expect(page.getByText(/Finished document/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Save document files/i);
     await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Skip keeps it out/i);
@@ -560,7 +560,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 15000 });
     await expect.poll(() => latestCalls).toBe(2);
     await expect(
-      page.locator('.text-xl.font-bold').filter({ hasText: /Overlapping events on 2026-04-02/i }),
+      page.locator('.text-xl.font-bold').filter({ hasText: /Finalize the MAS3 interview packet owner by 2026-04-02/i }),
     ).toBeVisible();
     await expect(page.getByTestId('dashboard-document-body')).toBeVisible();
     await expect(page.getByText(/## Situation/i)).toBeVisible();
@@ -599,7 +599,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 10000 });
     await expect.poll(() => latestCalls).toBe(2);
     await expect(
-      page.locator('.text-xl.font-bold').filter({ hasText: /Overlapping events on 2026-04-02/i }),
+      page.locator('.text-xl.font-bold').filter({ hasText: /Finalize the MAS3 interview packet owner by 2026-04-02/i }),
     ).toBeVisible();
     await expect(page.getByTestId('dashboard-document-body')).toBeVisible();
     await expect(page.getByText(/## Situation/i)).toBeVisible();

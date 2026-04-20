@@ -126,7 +126,7 @@ describe('schedule_conflict finished-work gates (aligned)', () => {
     } as unknown as ConvictionArtifact;
 
     const issues = getArtifactPersistenceIssues('write_document', artifact, directive);
-    expect(issues.some((m) => m.includes('message'))).toBe(true);
+    expect(issues).toContain('schedule_conflict write_document below product bar; require a real calendar artifact or suppress');
   });
 
   it('rejects unsectioned overlap notes even if they mention the conflict', () => {
@@ -139,10 +139,10 @@ describe('schedule_conflict finished-work gates (aligned)', () => {
     } as unknown as ConvictionArtifact;
 
     const issues = getArtifactPersistenceIssues('write_document', artifact, directive);
-    expect(issues.some((m) => m.includes('schedule_conflict document must include'))).toBe(true);
+    expect(issues).toContain('schedule_conflict write_document below product bar; require a real calendar artifact or suppress');
   });
 
-  it('allows grounded resolution note artifact consistently', () => {
+  it('rejects grounded resolution note artifact consistently because schedule-conflict documents are below bar', () => {
     const directive = baseDirective();
     const artifact = {
       type: 'document',
@@ -164,13 +164,16 @@ Decide by 2026-04-01 EOD; conflict is on 2026-04-02.`,
     } as unknown as ConvictionArtifact;
 
     const bottom = evaluateBottomGate(directive, artifact);
-    expect(bottom.pass).toBe(true);
-    expect(bottom.blocked_reasons).not.toContain('FINISHED_WORK_REQUIRED');
+    expect(bottom.pass).toBe(false);
+    expect(bottom.blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
 
     const send = isSendWorthy(directive, artifact);
-    expect(send.worthy).toBe(true);
+    expect(send.worthy).toBe(false);
+    expect(send.reason).toBe('schedule_conflict_not_finished_outbound');
 
-    expect(getArtifactPersistenceIssues('write_document', artifact, directive)).toEqual([]);
+    expect(getArtifactPersistenceIssues('write_document', artifact, directive)).toContain(
+      'schedule_conflict write_document below product bar; require a real calendar artifact or suppress',
+    );
 
     const persist = validateDirectiveForPersistence({
       userId: 'user-1',
@@ -178,7 +181,7 @@ Decide by 2026-04-01 EOD; conflict is on 2026-04-02.`,
       artifact,
       candidateType: 'discrepancy',
     });
-    expect(persist.filter((m) => m.includes('schedule_conflict'))).toEqual([]);
+    expect(persist).toContain('schedule_conflict write_document below product bar; require a real calendar artifact or suppress');
 
     const de = getDecisionEnforcementIssues({
       actionType: 'write_document',

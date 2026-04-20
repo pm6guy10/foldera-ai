@@ -365,7 +365,7 @@ describe('evaluateBottomGate', () => {
     expect(result.blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
   });
 
-  it('passes schedule_conflict write_document with resolution note sections and anchored date', () => {
+  it('blocks schedule_conflict write_document even when it looks like a complete resolution note', () => {
     const directive = makeDirective({
       action_type: 'write_document',
       discrepancyClass: 'schedule_conflict',
@@ -391,8 +391,8 @@ You confirm with the organizer before 2026-04-01 EOD which option holds.
 Decide by 2026-04-01 COB; the overlap on 2026-04-02 is not recoverable otherwise.`,
     });
     const result = evaluateBottomGate(directive, artifact);
-    expect(result.pass).toBe(true);
-    expect(result.blocked_reasons).toEqual([]);
+    expect(result.pass).toBe(false);
+    expect(result.blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
   });
 
   it('blocks schedule_conflict write_document with production leak shape: Objective + Execution Notes + user-directed questions', () => {

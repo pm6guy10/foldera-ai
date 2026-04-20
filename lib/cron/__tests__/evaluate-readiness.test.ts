@@ -643,7 +643,7 @@ describe('isSendWorthy', () => {
     expect(result.reason).toBe('schedule_conflict_not_finished_outbound');
   });
 
-  it('allows schedule_conflict write_document with grounded resolution note and ISO dates', () => {
+  it('rejects schedule_conflict write_document with grounded resolution note and ISO dates', () => {
     const discovery = {
       candidateCount: 5,
       suppressedCandidateCount: 0,
@@ -708,10 +708,11 @@ You confirm which event slides and notify Pat before 2026-04-01.
 Lock the call by 2026-04-01; conflict date is 2026-04-02.`,
       } as unknown as ConvictionArtifact,
     );
-    expect(result.worthy).toBe(true);
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('schedule_conflict_not_finished_outbound');
   });
 
-  it('allows schedule_conflict write_document when class is inferred from id and overlap language exists without numbered list', () => {
+  it('rejects schedule_conflict write_document when class is inferred from id and overlap language exists without numbered list', () => {
     const discovery = {
       candidateCount: 5,
       suppressedCandidateCount: 0,
@@ -774,6 +775,7 @@ You tell Chris today so invites update before 2026-04-02.
 Confirm by 2026-04-01 EOD.`,
       } as unknown as ConvictionArtifact,
     );
-    expect(result.worthy).toBe(true);
+    expect(result.worthy).toBe(false);
+    expect(result.reason).toBe('schedule_conflict_not_finished_outbound');
   });
 });
