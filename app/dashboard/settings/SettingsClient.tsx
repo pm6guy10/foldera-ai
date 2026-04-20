@@ -486,7 +486,7 @@ export default function SettingsClient() {
                     </div>
                     {!microsoft?.is_active && microsoft?.needs_reauth && (
                       <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
-                        Your Microsoft sign-in expired. Tap Connect to keep Foldera reading your connected sources.
+                        Microsoft needs a quick reconnect to resume background sync. Tap Connect and Foldera will pick back up.
                       </p>
                     )}
                     {microsoft?.is_active && microsoft.missing_scopes?.length ? (

@@ -7,6 +7,8 @@
  */
 
 import { google } from 'googleapis';
+import { createServerClient } from '@/lib/db/client';
+import { decryptToken, isEncrypted } from '@/lib/crypto/token-encryption';
 import {
   getUserToken,
   saveUserToken,
@@ -28,6 +30,70 @@ interface MicrosoftTokens {
   access_token: string;
   refresh_token: string;
   expires_at: number;
+}
+
+interface StoredMicrosoftTokenRow {
+  access_token: string | null;
+  refresh_token: string | null;
+  expires_at: number | null;
+  email: string | null;
+  disconnected_at: string | null;
+  oauth_reauth_required_at: string | null;
+}
+
+export type MicrosoftRefreshOutcome =
+  | {
+      status: 'ok';
+      tokens: MicrosoftTokens;
+      refreshed: boolean;
+    }
+  | {
+      status: 'retryable_failure';
+      error_code: string;
+      error_description: string;
+      http_status: number | null;
+    }
+  | {
+      status: 'fatal_reauth_required';
+      error_code: string;
+      error_description: string;
+      http_status: number | null;
+      reauth_required_at: string | null;
+    }
+  | {
+      status: 'missing_refresh_token';
+      error_code: 'no_token_row' | 'missing_access_token' | 'no_refresh_token';
+      error_description: string;
+      reauth_required_at: string | null;
+    };
+
+function decryptStoredToken(value: string | null): string | null {
+  if (typeof value !== 'string' || value.length === 0) return null;
+  return isEncrypted(value) ? decryptToken(value) : value;
+}
+
+async function getStoredMicrosoftTokenRow(userId: string): Promise<StoredMicrosoftTokenRow | null> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from('user_tokens')
+    .select(
+      'access_token, refresh_token, expires_at, email, disconnected_at, oauth_reauth_required_at',
+    )
+    .eq('user_id', userId)
+    .eq('provider', 'microsoft')
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const row = data as StoredMicrosoftTokenRow;
+  return {
+    access_token: decryptStoredToken(row.access_token),
+    refresh_token: decryptStoredToken(row.refresh_token),
+    expires_at: typeof row.expires_at === 'number' ? row.expires_at : null,
+    email: row.email ?? null,
+    disconnected_at: row.disconnected_at ?? null,
+    oauth_reauth_required_at: row.oauth_reauth_required_at ?? null,
+  };
 }
 
 /**
@@ -114,38 +180,34 @@ async function refreshGoogleTokens(userId: string, tokens: GoogleTokens, email?:
  * Reads from user_tokens table.
  */
 export async function getMicrosoftTokens(userId: string): Promise<MicrosoftTokens | null> {
-  const row = await getUserToken(userId, 'microsoft');
-  if (!row) return null;
-
-  const tokens: MicrosoftTokens = {
-    access_token: row.access_token,
-    refresh_token: row.refresh_token,
-    expires_at: row.expires_at,
-  };
-
-  // Proactively refresh if token expires within 6 hours so background cron
-  // runs never hit an expired token mid-execution (LESSONS_LEARNED rule #2).
-  // Microsoft expires_at is stored as epoch seconds.
-  if (tokens.expires_at && tokens.expires_at < Date.now() / 1000 + 6 * 3600) {
-    return await refreshMicrosoftTokens(userId, tokens, row.email ?? undefined);
-  }
-
-  return tokens;
+  const outcome = await getMicrosoftTokensWithRefreshOutcome(userId);
+  return outcome.status === 'ok' ? outcome.tokens : null;
 }
 
 /**
  * Refreshes Microsoft tokens and persists to user_tokens.
  */
-async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens, email?: string): Promise<MicrosoftTokens | null> {
+async function refreshMicrosoftTokens(
+  userId: string,
+  tokens: MicrosoftTokens,
+  email?: string,
+): Promise<MicrosoftRefreshOutcome> {
   if (!tokens.refresh_token) {
+    const error_code = 'no_refresh_token';
+    const error_description = 'User must re-authenticate to obtain refresh token';
     console.error(JSON.stringify({
       event: 'token_refresh_failed',
       provider: 'microsoft',
       userId,
-      error_code: 'no_refresh_token',
-      error_description: 'User must re-authenticate to obtain refresh token',
+      error_code,
+      error_description,
     }));
-    return null;
+    return {
+      status: 'missing_refresh_token',
+      error_code,
+      error_description,
+      reauth_required_at: null,
+    };
   }
 
   try {
@@ -184,8 +246,20 @@ async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens, e
           error_code: errorCode,
           error_description: errorDesc,
         });
+        return {
+          status: 'fatal_reauth_required',
+          error_code: String(errorCode),
+          error_description: String(errorDesc),
+          http_status: response.status,
+          reauth_required_at: new Date().toISOString(),
+        };
       }
-      return null;
+      return {
+        status: 'retryable_failure',
+        error_code: String(errorCode),
+        error_description: String(errorDesc),
+        http_status: response.status,
+      };
     }
 
     const data = await response.json();
@@ -206,34 +280,104 @@ async function refreshMicrosoftTokens(userId: string, tokens: MicrosoftTokens, e
     });
 
     console.log(`[token-store] Microsoft tokens refreshed for user ${userId}`);
-    return newTokens;
+    return {
+      status: 'ok',
+      tokens: newTokens,
+      refreshed: true,
+    };
   } catch (error: any) {
+    const error_code = String(error?.code ?? 'exception');
+    const error_description = String(error?.message ?? '');
     console.error(JSON.stringify({
       event: 'token_refresh_failed',
       provider: 'microsoft',
       userId,
-      error_code: error?.code ?? 'exception',
-      error_description: (error?.message ?? '').slice(0, 200),
+      error_code,
+      error_description: error_description.slice(0, 200),
     }));
-    return null;
+    return {
+      status: 'retryable_failure',
+      error_code,
+      error_description,
+      http_status: null,
+    };
   }
+}
+
+export async function getMicrosoftTokensWithRefreshOutcome(
+  userId: string,
+): Promise<MicrosoftRefreshOutcome> {
+  const row = await getStoredMicrosoftTokenRow(userId);
+  if (!row) {
+    return {
+      status: 'missing_refresh_token',
+      error_code: 'no_token_row',
+      error_description: 'No Microsoft token row exists for this user.',
+      reauth_required_at: null,
+    };
+  }
+
+  if (row.oauth_reauth_required_at) {
+    return {
+      status: 'fatal_reauth_required',
+      error_code: 'reauth_required',
+      error_description: 'Microsoft requires an interactive reconnect for this token.',
+      http_status: null,
+      reauth_required_at: row.oauth_reauth_required_at,
+    };
+  }
+
+  if (!row.access_token) {
+    return {
+      status: 'missing_refresh_token',
+      error_code: 'missing_access_token',
+      error_description: 'Microsoft connector row is missing an access token.',
+      reauth_required_at: null,
+    };
+  }
+
+  if (!row.refresh_token) {
+    return {
+      status: 'missing_refresh_token',
+      error_code: 'no_refresh_token',
+      error_description: 'Microsoft connector row is missing a refresh token.',
+      reauth_required_at: null,
+    };
+  }
+
+  const tokens: MicrosoftTokens = {
+    access_token: row.access_token,
+    refresh_token: row.refresh_token,
+    expires_at: row.expires_at ?? 0,
+  };
+
+  if (tokens.expires_at && tokens.expires_at < Date.now() / 1000 + 6 * 3600) {
+    return refreshMicrosoftTokens(userId, tokens, row.email ?? undefined);
+  }
+
+  return {
+    status: 'ok',
+    tokens,
+    refreshed: false,
+  };
 }
 
 /**
  * Force Microsoft token refresh (e.g. after Graph 401) regardless of stored expiry skew.
  */
 export async function forceRefreshMicrosoftTokens(userId: string): Promise<MicrosoftTokens | null> {
-  const row = await getUserToken(userId, 'microsoft');
-  if (!row?.refresh_token) return null;
-  return refreshMicrosoftTokens(
+  const row = await getStoredMicrosoftTokenRow(userId);
+  if (!row?.access_token || !row.refresh_token) return null;
+  const outcome = await refreshMicrosoftTokens(
     userId,
     {
       access_token: row.access_token,
       refresh_token: row.refresh_token,
-      expires_at: row.expires_at,
+      expires_at: row.expires_at ?? 0,
     },
     row.email ?? undefined,
   );
+  return outcome.status === 'ok' ? outcome.tokens : null;
 }
 
 /**

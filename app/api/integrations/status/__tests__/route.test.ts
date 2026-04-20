@@ -225,4 +225,50 @@ describe('GET /api/integrations/status', () => {
     const body = (await res.json()) as { mail_ingest_looks_stale: boolean };
     expect(body.mail_ingest_looks_stale).toBe(true);
   });
+
+  it('surfaces needs_reauth for a fatal Microsoft reconnect state', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'user_tokens') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              or: vi.fn().mockResolvedValue({
+                data: [
+                  {
+                    provider: 'microsoft',
+                    email: 'u@outlook.com',
+                    last_synced_at: '2026-04-07T10:00:00.000Z',
+                    scopes: 'offline_access Mail.Read',
+                    access_token: null,
+                    expires_at: null,
+                    refresh_token: null,
+                    disconnected_at: '2026-04-20T11:59:00.000Z',
+                    oauth_reauth_required_at: '2026-04-20T12:00:00.000Z',
+                  },
+                ],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'tkg_signals') return newestMailChain(null);
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const { GET } = await import('../route');
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      integrations: Array<{ provider: string; is_active: boolean; needs_reauth: boolean }>;
+    };
+    expect(body.integrations).toEqual([
+      expect.objectContaining({
+        provider: 'azure_ad',
+        is_active: false,
+        needs_reauth: true,
+      }),
+    ]);
+  });
 });

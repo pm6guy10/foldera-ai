@@ -123,6 +123,19 @@ const INTEGRATIONS_MISSING_SCOPES_RESPONSE = {
   ],
 };
 
+const INTEGRATIONS_MICROSOFT_REAUTH_RESPONSE = {
+  integrations: [
+    {
+      provider: 'azure_ad',
+      is_active: false,
+      sync_email: 'test@outlook.com',
+      last_synced_at: '2026-04-13T10:00:00.000Z',
+      needs_reauth: true,
+      missing_scopes: [],
+    },
+  ],
+};
+
 function json(data: unknown) {
   return JSON.stringify(data);
 }
@@ -290,6 +303,20 @@ async function setupSettingsMissingScopesMocks(page: Page) {
     fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
   );
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_MISSING_SCOPES_RESPONSE));
+  await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
+}
+
+async function setupSettingsMicrosoftReauthMocks(page: Page) {
+  await seedAuthenticatedSession(page);
+  await attachCheckoutGuards(page);
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/subscription/status'),
+    fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
+  );
+  await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_MICROSOFT_REAUTH_RESPONSE));
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
 }
 
@@ -567,6 +594,23 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     await expect(page.getByText(/one more consent step to keep reading/i)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/reconnect required/i).first()).toBeVisible();
     await expect(page.getByText(/Gmail read access/i).first()).toBeVisible();
+  });
+
+  test('shows Microsoft reconnect state without auto-refresh failure blame', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupSettingsMicrosoftReauthMocks(page);
+    await page.goto('/dashboard/settings');
+    const microsoftReconnectCopy = page.getByText(
+      /Microsoft needs a quick reconnect to resume background sync/i,
+    );
+    const microsoftReconnectCard = page
+      .locator('div.rounded-2xl')
+      .filter({ has: microsoftReconnectCopy })
+      .first();
+    await expect(microsoftReconnectCopy).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(microsoftReconnectCard.getByRole('button', { name: /^Connect$/i })).toBeVisible();
   });
 });
 

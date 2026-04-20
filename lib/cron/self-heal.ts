@@ -6,7 +6,10 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import { getGoogleTokens, getMicrosoftTokens } from '@/lib/auth/token-store';
+import {
+  getGoogleTokens,
+  getMicrosoftTokensWithRefreshOutcome,
+} from '@/lib/auth/token-store';
 import { getAllUsersWithProvider } from '@/lib/auth/user-tokens';
 import {
   countUnprocessedSignals,
@@ -36,14 +39,33 @@ export interface SelfHealResult {
 // ---------------------------------------------------------------------------
 // DEFENSE 1 — TOKEN WATCHDOG
 // If any user's token expires within 6 hours of next cron (11:00 UTC),
-// trigger refresh now. If refresh fails, send alert email.
+// trigger refresh now. Retryable failures stay internal; fatal reauth states
+// surface through the existing in-app reconnect flow.
 // ---------------------------------------------------------------------------
 
+async function getMicrosoftWatchdogUserIds(): Promise<string[]> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from('user_tokens')
+    .select('user_id')
+    .eq('provider', 'microsoft')
+    .or('disconnected_at.is.null,oauth_reauth_required_at.not.is.null');
+
+  if (error) {
+    throw error;
+  }
+
+  return [...new Set((data ?? []).map((row: { user_id: string }) => row.user_id).filter(Boolean))];
+}
+
 async function defense1TokenWatchdog(): Promise<DefenseResult> {
-  const results: Array<{ userId: string; provider: string; status: string }> = [];
+  const results: Array<Record<string, string | number | null>> = [];
 
   for (const provider of ['google', 'microsoft'] as const) {
-    const userIds = await getAllUsersWithProvider(provider);
+    const userIds =
+      provider === 'microsoft'
+        ? await getMicrosoftWatchdogUserIds()
+        : await getAllUsersWithProvider(provider);
     for (const userId of userIds) {
       try {
         // getGoogleTokens/getMicrosoftTokens already refresh if within 5min
@@ -57,22 +79,53 @@ async function defense1TokenWatchdog(): Promise<DefenseResult> {
             results.push({ userId, provider, status: 'valid' });
           }
         } else {
-          const tokens = await getMicrosoftTokens(userId);
-          if (!tokens) {
-            results.push({ userId, provider, status: 'refresh_failed' });
-            await sendReconnectAlert(userId, provider);
-          } else {
-            results.push({ userId, provider, status: 'valid' });
+          const outcome = await getMicrosoftTokensWithRefreshOutcome(userId);
+          if (outcome.status === 'ok') {
+            results.push({
+              userId,
+              provider,
+              status: outcome.refreshed ? 'refreshed' : 'valid',
+            });
+            continue;
           }
+
+          const failureRecord: Record<string, string | number | null> = {
+            userId,
+            provider,
+            status: outcome.status,
+            error_code: outcome.error_code,
+          };
+          if ('http_status' in outcome) {
+            failureRecord.http_status = outcome.http_status;
+          }
+          if ('reauth_required_at' in outcome) {
+            failureRecord.reauth_required_at = outcome.reauth_required_at;
+          }
+          results.push(failureRecord);
+
+          console.warn(
+            JSON.stringify({
+              event: 'token_watchdog_microsoft_status',
+              userId,
+              status: outcome.status,
+              error_code: outcome.error_code,
+              error_description: outcome.error_description.slice(0, 200),
+              http_status: 'http_status' in outcome ? outcome.http_status : null,
+              reauth_required_at:
+                'reauth_required_at' in outcome ? outcome.reauth_required_at : null,
+            }),
+          );
         }
       } catch (err: any) {
         results.push({ userId, provider, status: `error: ${err.message}` });
-        await sendReconnectAlert(userId, provider);
+        if (provider === 'google') {
+          await sendReconnectAlert(userId, provider);
+        }
       }
     }
   }
 
-  const failures = results.filter((r) => r.status !== 'valid');
+  const failures = results.filter((r) => r.status !== 'valid' && r.status !== 'refreshed');
   console.log(JSON.stringify({ event: 'self_heal_defense', defense: 'token_watchdog', results }));
 
   return {
