@@ -5,7 +5,9 @@ import { syncMicrosoft } from "@/lib/sync/microsoft-sync";
 import { rateLimit } from "@/lib/utils/rate-limit";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 60;
+
+const MANUAL_SYNC_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function POST() {
   const session = await getServerSession(getAuthOptions());
@@ -34,7 +36,9 @@ export async function POST() {
   }
 
   try {
-    const result = await syncMicrosoft(userId);
+    const result = await syncMicrosoft(userId, {
+      maxLookbackMs: MANUAL_SYNC_LOOKBACK_MS,
+    });
 
     if (result.error === "no_token") {
       return NextResponse.json(

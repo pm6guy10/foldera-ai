@@ -160,7 +160,6 @@ export default function SettingsClient() {
     if (!googleConnected && !microsoftConnected) return;
 
     const provider = googleConnected ? 'google' : 'microsoft';
-    const syncUrl = googleConnected ? '/api/google/sync-now' : '/api/microsoft/sync-now';
 
     void (async () => {
       await refreshIntegrationsStatus().catch((err: unknown) => {
@@ -170,33 +169,10 @@ export default function SettingsClient() {
         );
       });
 
-      setSyncStatus(`Syncing your ${provider === 'google' ? 'Google' : 'Microsoft'} data…`);
-
-      try {
-        const res = await fetch(syncUrl, { method: 'POST' });
-        if (res.ok) {
-          const data = await res.json().catch(() => ({ total: 0 }));
-          const count = data.total ?? 0;
-          setSyncStatus(`Synced ${count} signal${count !== 1 ? 's' : ''} from ${provider === 'google' ? 'Google' : 'Microsoft'}.`);
-        } else {
-          const payload = await res.json().catch(() => ({}));
-          const apiError =
-            payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string'
-              ? payload.error
-              : null;
-          setSyncStatus(apiError ?? `Could not sync ${provider === 'google' ? 'Google' : 'Microsoft'} right now.`);
-        }
-      } catch {
-        setSyncStatus(`Could not sync ${provider === 'google' ? 'Google' : 'Microsoft'} right now.`);
-      } finally {
-        await refreshIntegrationsStatus().catch((err: unknown) => {
-          console.error(
-            '[settings] failed to refresh integration status after OAuth sync:',
-            err instanceof Error ? err.message : err,
-          );
-        });
-        setTimeout(() => setSyncStatus(null), 6000);
-      }
+      setSyncStatus(
+        `${provider === 'google' ? 'Google' : 'Microsoft'} connected. Scheduled sync will pick this up shortly.`,
+      );
+      setTimeout(() => setSyncStatus(null), 6000);
     })();
   }, [status, refreshIntegrationsStatus]);
 

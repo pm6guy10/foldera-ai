@@ -120,7 +120,7 @@ export default function SystemClient() {
           <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
             <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-2">Generate</h2>
             <p className="text-xs text-zinc-600 leading-relaxed">
-              Sync connectors and run the brief pipeline. <span className="text-zinc-500">Dry run</span> exercises scoring and a mock directive without Anthropic.{' '}
+              Run the brief pipeline on demand. <span className="text-zinc-500">Dry run</span> exercises scoring and a mock directive without Anthropic.{' '}
               <span className="text-zinc-500">AI generate</span> uses your daily caps and API credits.
             </p>
           </div>
@@ -167,14 +167,8 @@ export default function SystemClient() {
                       window.location.href = '/dashboard?generated=true';
                       return;
                     }
-                    const parts: string[] = [];
-                    if (genRec?.status === 'failed') parts.push('Brief generation failed');
-                    const sm = stages.sync_microsoft as { ok?: boolean } | undefined;
-                    const sg = stages.sync_google as { ok?: boolean } | undefined;
-                    if (sm?.ok === false) parts.push('Microsoft sync issue');
-                    if (sg?.ok === false) parts.push('Google sync issue');
                     setGenerateState('error');
-                    setGenerateMessage(parts.length > 0 ? parts.join('. ') + '.' : 'Something went wrong.');
+                    setGenerateMessage(genRec?.status === 'failed' ? 'Brief generation failed.' : 'Something went wrong.');
                     return;
                   }
                   setGenerateState('error');
@@ -195,7 +189,7 @@ export default function SystemClient() {
               {generateState === 'loading' ? (
                 <>
                   <span className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
-                  Running sync + dry run…
+                  Running dry run…
                 </>
               ) : generateState === 'success' ? (
                 'Redirecting…'
@@ -262,14 +256,10 @@ export default function SystemClient() {
                       window.location.href = '/dashboard?generated=true';
                       return;
                     }
-                    const parts: string[] = [];
-                    if (genRec?.status === 'failed') parts.push('Brief generation failed');
-                    const sm = stages.sync_microsoft as { ok?: boolean } | undefined;
-                    const sg = stages.sync_google as { ok?: boolean } | undefined;
-                    if (sm?.ok === false) parts.push('Microsoft sync issue');
-                    if (sg?.ok === false) parts.push('Google sync issue');
                     setPaidGenerateState('error');
-                    setPaidGenerateMessage(parts.length > 0 ? parts.join('. ') + '.' : 'Something went wrong.');
+                    setPaidGenerateMessage(
+                      genRec?.status === 'failed' ? 'Brief generation failed.' : 'Something went wrong.',
+                    );
                     return;
                   }
                   setPaidGenerateState('error');
@@ -290,7 +280,7 @@ export default function SystemClient() {
               {paidGenerateState === 'loading' ? (
                 <>
                   <span className="w-3.5 h-3.5 border-2 border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
-                  Running sync + AI…
+                  Running AI generate…
                 </>
               ) : paidGenerateState === 'success' ? (
                 'Redirecting…'

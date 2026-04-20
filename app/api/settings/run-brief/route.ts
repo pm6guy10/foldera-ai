@@ -6,32 +6,13 @@ import { CONFIDENCE_PERSIST_THRESHOLD } from '@/lib/config/constants';
 import { runBriefLifecycle } from '@/lib/cron/brief-service';
 import { extractArtifact, extractSentAt } from '@/lib/cron/daily-brief-generate';
 import { createServerClient } from '@/lib/db/client';
-import { syncGoogle } from '@/lib/sync/google-sync';
-import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
+import { rateLimit } from '@/lib/utils/rate-limit';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 120;
-
-const SYNC_TIMEOUT_MS = 15_000; // 15s max — remainder goes to scoring + LLM
-const MANUAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000; // 7 days for manual runs
+export const maxDuration = 60;
 const DRY_RUN_SERVER_COOLDOWN_MS = 5 * 60 * 1000;
 const DRY_RUN_PENDING_REUSE_WINDOW_HOURS = 18;
-
-function withSyncTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), SYNC_TIMEOUT_MS)),
-  ]);
-}
-
-interface ManualSyncStageResult {
-  ok: boolean;
-  provider: 'google' | 'microsoft';
-  skipped?: boolean;
-  error?: string;
-  total?: number;
-}
 
 interface RecentDryRunRow {
   created_at: string | null;
@@ -59,45 +40,6 @@ interface PendingApprovalReuseRow {
   execution_result: unknown;
   generated_at: string;
   id: string;
-}
-
-async function runManualSync(
-  provider: 'google' | 'microsoft',
-  userId: string,
-): Promise<ManualSyncStageResult> {
-  try {
-    if (provider === 'google') {
-      const result = await syncGoogle(userId, { maxLookbackMs: MANUAL_LOOKBACK_MS });
-      if (result.error === 'no_token') {
-        return { ok: true, provider, skipped: true };
-      }
-
-      return {
-        ok: !result.error,
-        provider,
-        error: result.error,
-        total: result.gmail_signals + result.calendar_signals + result.drive_signals,
-      };
-    }
-
-    const result = await syncMicrosoft(userId, { maxLookbackMs: MANUAL_LOOKBACK_MS });
-    if (result.error === 'no_token') {
-      return { ok: true, provider, skipped: true };
-    }
-
-    return {
-      ok: !result.error,
-      provider,
-      error: result.error,
-      total: result.mail_signals + result.calendar_signals + result.file_signals + result.task_signals,
-    };
-  } catch (error: unknown) {
-    return {
-      ok: false,
-      provider,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
 }
 
 function isReusablePendingApproval(row: PendingApprovalReuseRow): boolean {
@@ -262,18 +204,6 @@ function buildCheapDryRunResponse(input: {
     },
     facts: input.facts,
     stages: {
-      sync_microsoft: {
-        ok: true,
-        provider: 'microsoft',
-        skipped: true,
-        error: 'cheap_dry_run',
-      },
-      sync_google: {
-        ok: true,
-        provider: 'google',
-        skipped: true,
-        error: 'cheap_dry_run',
-      },
       daily_brief: {
         ok: true,
         status: 'short_circuited',
@@ -299,6 +229,18 @@ export async function POST(request: Request) {
       useLlm,
     });
     const { pipelineDryRun, paidLlmRequested, paidLlmEffective } = spend;
+    const rl = await rateLimit(`run-brief:${userId}`, { limit: 2, window: 600 });
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: 'Run brief rate limit exceeded. Try again shortly.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000)),
+          },
+        },
+      );
+    }
     const [reusablePendingApproval, recentPipelineDryRun, latestActionMetadata, latestPipelineRun] =
       pipelineDryRun
         ? await Promise.all([
@@ -333,17 +275,6 @@ export async function POST(request: Request) {
       });
     }
 
-    const [syncMicrosoftResult, syncGoogleResult] = await Promise.all([
-      withSyncTimeout(
-        runManualSync('microsoft', userId),
-        { ok: true, provider: 'microsoft' as const, skipped: true, error: 'sync_timeout_15s' },
-      ),
-      withSyncTimeout(
-        runManualSync('google', userId),
-        { ok: true, provider: 'google' as const, skipped: true, error: 'sync_timeout_15s' },
-      ),
-    ]);
-
     // Ceiling defense is a nightly batch (all users). Running it here per-click
     // was adding 15-30s overhead and causing 504s. Nightly-ops handles it at 4am.
     const { result: dailyBrief, sendFallbackAttempted } = await runBriefLifecycle({
@@ -357,7 +288,7 @@ export async function POST(request: Request) {
       ...(pipelineDryRun ? { pipelineDryRun: true } : {}),
     });
 
-    const ok = dailyBrief.ok && syncMicrosoftResult.ok && syncGoogleResult.ok;
+    const ok = dailyBrief.ok;
 
     return NextResponse.json({
       ok,
@@ -367,8 +298,6 @@ export async function POST(request: Request) {
         paid_llm_effective: paidLlmEffective,
       },
       stages: {
-        sync_microsoft: syncMicrosoftResult,
-        sync_google: syncGoogleResult,
         daily_brief: {
           ...dailyBrief,
           manual_send_fallback_attempted: sendFallbackAttempted,
