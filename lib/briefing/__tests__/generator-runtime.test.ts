@@ -804,6 +804,7 @@ describe('generateDirective runtime failures', () => {
     expect(String(embeddedArtifact?.title)).toBe('Pat Lee going dark is now blocking the pilot decision');
     expect(String(embeddedArtifact?.content)).toContain('You were trying to get this thread to a real yes/no on the pilot decision.');
     expect(String(embeddedArtifact?.content)).toContain('Send this today:');
+    expect(String(embeddedArtifact?.content)).toContain('Consequence: if this stays open past today, the pilot decision stays blocked while attention keeps leaking into a thread that is no longer moving.');
     expect(String(embeddedArtifact?.content)).toContain('If there is no reply after this, mark the thread stalled and stop allocating attention to it.');
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',

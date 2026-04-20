@@ -6,12 +6,13 @@ import type { ConvictionDirective } from './types';
  */
 export function effectiveDiscrepancyClassForGates(directive: ConvictionDirective): string | null {
   if (directive.discrepancyClass) return directive.discrepancyClass;
-  const top = directive.generationLog?.candidateDiscovery?.topCandidates?.[0];
-  if (top?.discrepancyClass) return top.discrepancyClass;
+  const candidates = directive.generationLog?.candidateDiscovery?.topCandidates ?? [];
+  const selected = candidates.find((candidate) => candidate.decision === 'selected') ?? candidates[0];
+  if (selected?.discrepancyClass) return selected.discrepancyClass;
   if (
-    top?.candidateType === 'discrepancy' &&
-    typeof top.id === 'string' &&
-    top.id.startsWith('discrepancy_conflict_')
+    selected?.candidateType === 'discrepancy' &&
+    typeof selected.id === 'string' &&
+    selected.id.startsWith('discrepancy_conflict_')
   ) {
     return 'schedule_conflict';
   }

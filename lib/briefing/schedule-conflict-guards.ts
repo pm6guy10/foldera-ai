@@ -10,9 +10,12 @@ export function directiveLooksLikeScheduleConflict(directive: ConvictionDirectiv
   const haystack = `${directive.directive}\n${directive.reason ?? ''}`.toLowerCase();
   if (/\boverlapping events on \d{4}-\d{2}-\d{2}\b/.test(haystack)) return true;
   if (/\boverlapping calendar commitments\b/.test(haystack)) return true;
-  const top = directive.generationLog?.candidateDiscovery?.topCandidates?.[0];
-  const id = typeof top?.id === 'string' ? top.id : '';
-  if (id.startsWith('discrepancy_conflict_')) return true;
+  const topCandidates = directive.generationLog?.candidateDiscovery?.topCandidates ?? [];
+  if (topCandidates.length === 1) {
+    const top = topCandidates[0];
+    const id = typeof top?.id === 'string' ? top.id : '';
+    if (id.startsWith('discrepancy_conflict_')) return true;
+  }
   return false;
 }
 

@@ -134,6 +134,79 @@ describe('evaluateBottomGate', () => {
     expect(result.blocked_reasons).toContain('NO_EXTERNAL_TARGET');
   });
 
+  it('blocks behavioral-pattern close-loop docs that only refer to "This thread"', () => {
+    const directive = makeDirective({
+      action_type: 'write_document',
+      directive:
+        'This thread going dark is now blocking the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference.',
+      reason:
+        'The thread is mentally open, but there is still no named contact or directly approvable move attached to it.',
+      generationLog: {
+        outcome: 'selected',
+        stage: 'generation',
+        reason: 'Behavioral pattern winner.',
+        candidateFailureReasons: [],
+        candidateDiscovery: {
+          candidateCount: 1,
+          suppressedCandidateCount: 0,
+          selectionMargin: 1,
+          selectionReason: 'Behavioral pattern selected.',
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'bp-1',
+              rank: 1,
+              candidateType: 'discrepancy',
+              discrepancyClass: 'behavioral_pattern',
+              actionType: 'write_document',
+              score: 8.9,
+              scoreBreakdown: {
+                stakes: 4,
+                urgency: 0.8,
+                tractability: 0.7,
+                freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
+              },
+              targetGoal: {
+                text: 'Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+                priority: 4,
+                category: 'work',
+              },
+              sourceSignals: [],
+              decision: 'selected',
+              decisionReason: 'Repeated silence without a grounded close-loop move.',
+            },
+          ],
+        },
+      },
+    });
+    const artifact = makeDocArtifact({
+      type: 'document',
+      document_purpose: 'close_the_loop',
+      target_reader: 'user',
+      title:
+        'This thread going dark is now blocking the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+      content: [
+        'You were trying to get this thread to a real yes/no on the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference.',
+        '',
+        'Send this today:',
+        '',
+        '“I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”',
+        '',
+        'Consequence: if this stays open past today, the goal stays blocked while attention keeps leaking into a thread that is no longer moving.',
+        '',
+        'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
+        '',
+        'Deadline: today',
+      ].join('\n'),
+    });
+
+    const result = evaluateBottomGate(directive, artifact);
+    expect(result.pass).toBe(false);
+    expect(result.blocked_reasons).toContain('NO_EXTERNAL_TARGET');
+  });
+
   it('blocks an internal execution brief that is really a prep checklist', () => {
     const directive = makeDirective({
       action_type: 'write_document',

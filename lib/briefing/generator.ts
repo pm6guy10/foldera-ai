@@ -1222,6 +1222,24 @@ export function selectRankedCandidates(
       notes.push('real commitment');
     }
 
+    const hasGoalAnchor = Boolean(candidate.matchedGoal?.text?.trim());
+    if (
+      candidate.type === 'discrepancy' &&
+      hasGoalAnchor &&
+      candidate.discrepancyClass !== 'schedule_conflict'
+    ) {
+      mult *= 1.12;
+      notes.push('goal-anchored discrepancy');
+    }
+    if (
+      candidate.type === 'discrepancy' &&
+      candidate.discrepancyClass === 'schedule_conflict' &&
+      !hasGoalAnchor
+    ) {
+      mult *= 0.82;
+      notes.push('ungrounded schedule-conflict penalty');
+    }
+
     // Email presence in raw candidate data (pre-hydration scan).
     // extractAllEmailAddresses() needs a hydrated winner; at this stage we scan
     // the raw content, relatedSignals, and sourceSignal summaries directly.
@@ -1354,6 +1372,38 @@ export function selectRankedCandidates(
     if (!protectThreadBackedSendable) {
       topDiscrepancy.viabilityScore = top.viabilityScore + 0.001;
       topDiscrepancy.note = `${topDiscrepancy.note}; discrepancy forced above task`;
+      rated.sort((a, b) => {
+        if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
+        return b.viabilityScore - a.viabilityScore;
+      });
+      top = rated[0];
+    }
+  }
+
+  if (
+    !top.disqualified &&
+    top.candidate.type === 'discrepancy' &&
+    top.candidate.discrepancyClass === 'schedule_conflict' &&
+    !top.candidate.matchedGoal
+  ) {
+    const goalAnchoredBehavioralEntry = rated
+      .filter(
+        (entry) =>
+          !entry.disqualified &&
+          entry.candidate.type === 'discrepancy' &&
+          entry.candidate.discrepancyClass === 'behavioral_pattern' &&
+          Boolean(entry.candidate.matchedGoal?.text?.trim()),
+      )
+      .sort((a, b) => b.viabilityScore - a.viabilityScore)[0];
+    if (goalAnchoredBehavioralEntry) {
+      goalAnchoredBehavioralEntry.viabilityScore = Math.max(
+        goalAnchoredBehavioralEntry.viabilityScore,
+        top.viabilityScore + 0.001,
+      );
+      goalAnchoredBehavioralEntry.note = [
+        goalAnchoredBehavioralEntry.note,
+        'goal-anchored behavioral discrepancy preferred over ungrounded schedule conflict',
+      ].filter(Boolean).join('; ');
       rated.sort((a, b) => {
         if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
         return b.viabilityScore - a.viabilityScore;
@@ -4929,6 +4979,56 @@ function parseBehavioralPatternRepairFacts(text: string): {
   return {};
 }
 
+function extractScheduleConflictRepairFacts(text: string): {
+  dateLabel?: string;
+  eventA?: string;
+  eventB?: string;
+} {
+  const dateMatch = text.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  let eventA: string | undefined;
+  let eventB: string | undefined;
+  const patterns: RegExp[] = [
+    /overlap[^.\n]*?["“]([^"”\n]+)["”]\s+(?:vs|and)\s+["“]([^"”\n]+)["”]/i,
+    /overlapping.*?on\s+\d{4}-\d{2}-\d{2}:\s*["“]([^"”\n]+)["”]\s+and\s+["“]([^"”\n]+)["”]/i,
+    /Overlap:\s*([^"\n]+?)\s+and\s+([^"\n]+)/i,
+    /overlap:\s*["“]?([^"”\n]+?)["”]?\s+(?:vs|and)\s+["“]?([^"”\n]+?)["”]?/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    eventA = match[1]?.trim();
+    eventB = match[2]?.trim();
+    break;
+  }
+  return {
+    dateLabel: dateMatch?.[1],
+    eventA: eventA?.replace(/[.\s]+$/, ''),
+    eventB: eventB?.replace(/[.\s]+$/, ''),
+  };
+}
+
+function subtractIsoDateLabel(dateLabel: string, days: number): string | null {
+  const date = new Date(`${dateLabel}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString().slice(0, 10);
+}
+
+export function behavioralPatternArtifactHasGroundedTarget(
+  artifact: Record<string, unknown> | null,
+): boolean {
+  if (!artifact || typeof artifact !== 'object') return false;
+  const title = isNonEmptyString(artifact.title) ? artifact.title.trim() : '';
+  const content = isNonEmptyString(artifact.content) ? artifact.content.trim() : '';
+  const combined = `${title}\n${content}`;
+
+  if (/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(combined)) return true;
+  if (/[“"]?(?:Hey|Hi|Dear)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/.test(combined)) return true;
+  if (/\b(?:to|recipient):\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/im.test(combined)) return true;
+
+  return false;
+}
+
 function getBehavioralPatternFinishedWorkIssues(input: {
   directiveText: string;
   reason: string;
@@ -4970,6 +5070,13 @@ function getBehavioralPatternFinishedWorkIssues(input: {
     /\barchive (?:the )?(?:thread|conversation)\b/i.test(content);
   if (!hasNoReplyStopCondition || !hasStopAction) {
     issues.push('decision_enforcement:behavioral_pattern_missing_stop_rule');
+  }
+  const usesGenericThreadLabel =
+    /\bThis thread\b/i.test(title) ||
+    /\bThis thread\b/i.test(content) ||
+    /[“"]I['’]ve followed up a few times/i.test(content);
+  if (usesGenericThreadLabel && !behavioralPatternArtifactHasGroundedTarget(input.artifact)) {
+    issues.push('decision_enforcement:behavioral_pattern_missing_grounded_target');
   }
 
   return issues;
@@ -7115,14 +7222,16 @@ export function validateDirectiveForPersistence(input: {
   } else if (normalizeDecisionActionType(input.directive.action_type) === 'write_document') {
     issues.push(...getWriteDocumentTaskManagerLabelIssues(input.artifact as Record<string, unknown>));
     if (effectiveDiscrepancyClassForGates(input.directive) === 'behavioral_pattern') {
+      const selectedCandidate =
+        input.directive.generationLog?.candidateDiscovery?.topCandidates?.find((candidate) => candidate.decision === 'selected') ??
+        input.directive.generationLog?.candidateDiscovery?.topCandidates?.[0] ??
+        null;
       issues.push(
         ...getBehavioralPatternFinishedWorkIssues({
           directiveText: input.directive.directive,
           reason: input.directive.reason,
           artifact: input.artifact as Record<string, unknown>,
-          candidateGoal:
-            input.directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.targetGoal?.text ??
-            null,
+          candidateGoal: selectedCandidate?.targetGoal?.text ?? null,
         }),
       );
     }
@@ -7784,29 +7893,77 @@ export function buildDecisionEnforcedFallbackPayload(input: {
       causalDiagnosis: input.causalDiagnosis,
       supportingSignals,
     });
-    if (interviewPayload !== undefined) {
+    if (interviewPayload) {
       return interviewPayload;
+    }
+
+    if (input.winner.discrepancyClass === 'schedule_conflict') {
+      const factText = `${input.winner.title}. ${input.winner.content}`;
+      const { dateLabel, eventA, eventB } = extractScheduleConflictRepairFacts(factText);
+      const dateText = dateLabel ?? 'the upcoming window';
+      const keepEventText = eventA ? `"${eventA}"` : 'the higher-priority commitment';
+      const moveEventText = eventB ? `"${eventB}"` : 'the conflicting commitment';
+      const decideBy = dateLabel ? subtractIsoDateLabel(dateLabel, 1) ?? dateLabel : deadline;
+
+      return {
+        insight: `The ${dateText} overlap still needs one keep/move decision before the calendar makes it for you.`,
+        causal_diagnosis: input.causalDiagnosis,
+        decision: 'ACT',
+        directive: `Resolve the ${dateText} overlap before ${decideBy}.`,
+        artifact_type: 'write_document',
+        artifact: {
+          document_purpose: 'calendar conflict resolution note',
+          target_reader: 'calendar owner',
+          title: dateLabel ? `Schedule conflict decision - ${dateLabel}` : 'Schedule conflict decision',
+          content: [
+            '## Situation',
+            `You have overlapping calendar commitments on ${dateText}. ${keepEventText} and ${moveEventText} are scheduled for the same window.`,
+            '',
+            '## Conflicting commitments or risk',
+            `If this stays unresolved through ${dateText}, you default into a live double-booking and one commitment gets dropped reactively.`,
+            '',
+            '## Recommendation / decision',
+            `Keep ${keepEventText} in the current slot and move ${moveEventText} unless a hard external dependency makes ${moveEventText} immovable.`,
+            `Ask: confirm the final keep/move decision by ${decideBy}.`,
+            `Consequence: if unresolved by ${decideBy}, the overlap is still blocking a clean calendar decision for ${dateText}.`,
+            '',
+            '## Owner / next step',
+            'Calendar owner confirms the final keep/move choice and updates the losing event immediately after the decision is made.',
+            '',
+            '## Timing / deadline',
+            `Decide by ${decideBy} so the calendar is settled before ${dateText}.`,
+          ].join('\n'),
+        },
+        why_now: `Leaving the ${dateText} overlap unresolved keeps the calendar conflict live until one commitment gets dropped under pressure.`,
+      };
     }
 
     if (input.winner.discrepancyClass === 'behavioral_pattern') {
       const factText = `${input.winner.title}. ${input.winner.content}`;
       const parsedFacts = parseBehavioralPatternRepairFacts(factText);
-      const entityName = parsedFacts.entityName ?? input.winner.entityName ?? 'This thread';
+      const entityName = parsedFacts.entityName ?? input.winner.entityName ?? null;
+      const threadLabel = entityName ?? 'This thread';
       const count = parsedFacts.count ?? '1';
       const window = parsedFacts.window ?? '14 days';
-      const firstName = entityName.split(/\s+/)[0] || entityName;
+      const firstName = entityName?.split(/\s+/)[0] ?? null;
       const goalLabel = extractBehavioralPatternGoalLabel(input.candidateGoal);
       const title = goalLabel
-        ? `${entityName} going dark is now blocking the ${goalLabel}`
-        : `${entityName} going dark is now blocking the thread`;
+        ? `${threadLabel} going dark is now blocking the ${goalLabel}`
+        : `${threadLabel} going dark is now blocking the thread`;
       const intro = goalLabel
         ? `You were trying to get this thread to a real yes/no on the ${goalLabel}. ${count} follow-ups in ${window} without a reply means it is no longer active, just mentally open.`
         : `${count} follow-ups in ${window} without a reply means this thread is stalled, not active.`;
+      const sendCopy = firstName
+        ? `“Hey ${firstName} — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”`
+        : '“I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”';
+      const consequence = goalLabel
+        ? `Consequence: if this stays open past ${input.candidateDueDate ? deadline : 'today'}, the ${goalLabel} stays blocked while attention keeps leaking into a thread that is no longer moving.`
+        : `Consequence: if this stays open past ${input.candidateDueDate ? deadline : 'today'}, attention keeps leaking into a thread that is no longer moving.`;
 
       return {
         insight: goalLabel
-          ? `${entityName} going quiet is now blocking the ${goalLabel}.`
-          : `${entityName} going quiet is no longer a live thread; it is open attention with no movement.`,
+          ? `${threadLabel} going quiet is now blocking the ${goalLabel}.`
+          : `${threadLabel} going quiet is no longer a live thread; it is open attention with no movement.`,
         causal_diagnosis: input.causalDiagnosis,
         decision: 'ACT',
         directive: title.endsWith('.') ? title : `${title}.`,
@@ -7820,7 +7977,9 @@ export function buildDecisionEnforcedFallbackPayload(input: {
             '',
             'Send this today:',
             '',
-            `“Hey ${firstName} — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”`,
+            sendCopy,
+            '',
+            consequence,
             '',
             'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
             '',
@@ -9526,7 +9685,49 @@ export async function generateDirective(
       continue;
     }
 
-    const payload = payloadResult.payload;
+    let payload = payloadResult.payload;
+    if (
+      currentCandidate.discrepancyClass === 'schedule_conflict' &&
+      decisionPayload.recommended_action === 'write_document'
+    ) {
+      const repairedScheduleConflictPayload = buildDecisionEnforcedFallbackPayload({
+        winner: hydratedWinner,
+        actionType: decisionPayload.recommended_action,
+        candidateDueDate: ctx.candidate_due_date,
+        candidateGoal: ctx.candidate_goal,
+        causalDiagnosis: ctx.required_causal_diagnosis,
+        supportingSignals: ctx.supporting_signals,
+        huntRecipientAllowlist: ctx.hunt_send_message_recipient_allowlist,
+        userEmails,
+        userPromptNames: {
+          user_full_name: ctx.user_full_name,
+          user_first_name: ctx.user_first_name,
+        },
+      });
+      if (repairedScheduleConflictPayload) {
+        const repairedIssues = validateGeneratedArtifact(
+          repairedScheduleConflictPayload,
+          ctx,
+          decisionPayload.recommended_action,
+          { userIdForLogs: userId },
+        );
+        if (repairedIssues.length === 0) {
+          payload = repairedScheduleConflictPayload;
+          logStructuredEvent({
+            event: 'candidate_repaired',
+            level: 'info',
+            userId,
+            artifactType: repairedScheduleConflictPayload.artifact_type ?? null,
+            generationStatus: 'schedule_conflict_repaired',
+            details: {
+              scope: 'generator',
+              candidate_title: currentCandidate.title.slice(0, 80),
+              repaired_from_issues: ['schedule_conflict_persistence_shape'],
+            },
+          });
+        }
+      }
+    }
     applyScheduleConflictCanonicalUserFacingCopy(payload, currentCandidate);
 
     const staleDateCheck = directiveHasStalePastDates(userFacingStaleDateScanText(payload));

@@ -8,6 +8,7 @@ import * as Sentry from '@sentry/nextjs';
 import { randomUUID } from 'crypto';
 import { createServerClient } from '@/lib/db/client';
 import {
+  behavioralPatternArtifactHasGroundedTarget,
   BUDGET_CAP_DIRECTIVE_SENTINEL,
   buildDirectiveExecutionResult,
   fetchUserEmailAddresses,
@@ -158,7 +159,7 @@ const EXTERNAL_TARGET_PATTERN =
  * "please send", "reply by", "let's schedule".
  */
 const CONCRETE_ASK_PATTERN =
-  /\b(can you|could you|would you|will you|please\s+\w+|I need you to|confirm (by|whether|that|if)|reply (by|with|to)|send (me|us|the)|schedule (a |the )?|approve (the |this )?|decide (on |by |whether )|commit to|sign off on|let('s| us) (schedule|set|finalize|lock|confirm))\b|\?\s*$/im;
+  /\b(can you|could you|would you|will you|please\s+\w+|I need you to|confirm (by|whether|that|if)|reply (by|with|to)|send (me|us|the)|schedule (a |the )?|approve (the |this )?|decide (on |by |whether )|commit to|sign off on|let('s| us) (schedule|set|finalize|lock|confirm))\b|\?\s*[”"']?\s*$/im;
 
 /**
  * Real-world pressure: deadline, consequence, external forcing function.
@@ -233,8 +234,18 @@ export function evaluateBottomGate(
   const scheduleConflictWriteDoc =
     directive.action_type === 'write_document' && directiveLooksLikeScheduleConflict(directive);
 
-  const topCandidateTypeForGate = directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType;
+  const selectedCandidateForGate =
+    directive.generationLog?.candidateDiscovery?.topCandidates?.find((candidate) => candidate.decision === 'selected') ??
+    directive.generationLog?.candidateDiscovery?.topCandidates?.[0];
+  const topCandidateTypeForGate = selectedCandidateForGate?.candidateType;
   const isDiscrepancyCandidate = topCandidateTypeForGate === 'discrepancy' || topCandidateTypeForGate === 'insight';
+  const behavioralPatternWriteDoc =
+    directive.action_type === 'write_document' &&
+    effectiveDiscrepancyClassForGates(directive) === 'behavioral_pattern';
+  const behavioralPatternMissingGroundedTarget =
+    behavioralPatternWriteDoc &&
+    !behavioralPatternArtifactHasGroundedTarget(artifactRecord) &&
+    (/\bThis thread\b/i.test(combined) || /[“"]I['’]ve followed up a few times/i.test(combined));
   const writeDocumentMode = getWriteDocumentMode({
     actionType: directive.action_type,
     artifact: artifactRecord,
@@ -278,7 +289,10 @@ export function evaluateBottomGate(
   } else {
     // write_document / make_decision — must mention a real external person,
     // except pure calendar trade-offs (double-booking) where the user resolves their own schedule.
-    if (!internalExecutionBrief && !EXTERNAL_TARGET_PATTERN.test(combined) && !scheduleConflictWriteDoc) {
+    const hasExternalTarget = behavioralPatternWriteDoc
+      ? behavioralPatternArtifactHasGroundedTarget(artifactRecord)
+      : EXTERNAL_TARGET_PATTERN.test(combined);
+    if ((!internalExecutionBrief || behavioralPatternMissingGroundedTarget) && !hasExternalTarget && !scheduleConflictWriteDoc) {
       blocked_reasons.push('NO_EXTERNAL_TARGET');
     }
   }
@@ -696,7 +710,12 @@ function extractExternalTarget(directive: ConvictionDirective): string | null {
   }
   // Fallback: first capitalized proper noun in directive text
   const nameMatch = (directive.directive ?? '').match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
-  return nameMatch?.[1] ?? null;
+  const candidate = nameMatch?.[1] ?? null;
+  if (!candidate) return null;
+  if (['This', 'That', 'Today', 'Tomorrow', 'Deadline', 'Decision'].includes(candidate)) {
+    return null;
+  }
+  return candidate;
 }
 
 /**
@@ -718,10 +737,15 @@ function buildPersistenceReceipt(
     (typeof artifactRecord.title === 'string' ? artifactRecord.title : '');
   const combined = `${directiveText}\n${reason}\n${artifactBody}`;
 
+  const behavioralPatternWriteDoc =
+    directive.action_type === 'write_document' &&
+    effectiveDiscrepancyClassForGates(directive) === 'behavioral_pattern';
   const hasExternalTarget =
     directive.action_type === 'send_message'
       ? typeof artifactRecord.to === 'string' && (artifactRecord.to as string).includes('@')
-      : EXTERNAL_TARGET_PATTERN.test(combined);
+      : behavioralPatternWriteDoc
+        ? behavioralPatternArtifactHasGroundedTarget(artifactRecord)
+        : EXTERNAL_TARGET_PATTERN.test(combined);
 
   return {
     external_target_present: hasExternalTarget,

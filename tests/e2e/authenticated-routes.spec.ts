@@ -88,8 +88,25 @@ const DOCUMENT_DIRECTIVE_RESPONSE = {
   evidence: [],
   artifact: {
     type: 'document',
-    title: 'Calendar trade-off',
-    body: 'Objective: Overlapping events on 2026-04-02.\n\nPick one priority and communicate the trade-off.',
+    title: 'Schedule conflict decision - 2026-04-02',
+    body: [
+      '## Situation',
+      'You have overlapping calendar commitments on 2026-04-02. "Partner review" and "Customer renewal prep" are scheduled for the same window.',
+      '',
+      '## Conflicting commitments or risk',
+      'If this stays unresolved through 2026-04-02, you default into a live double-booking and one commitment gets dropped reactively.',
+      '',
+      '## Recommendation / decision',
+      'Keep "Partner review" in the current slot and move "Customer renewal prep" unless a hard external dependency makes "Customer renewal prep" immovable.',
+      'Ask: confirm the final keep/move decision by 2026-04-01.',
+      'Consequence: if unresolved by 2026-04-01, the overlap is still blocking a clean calendar decision for 2026-04-02.',
+      '',
+      '## Owner / next step',
+      'Calendar owner confirms the final keep/move choice and updates the losing event immediately after the decision is made.',
+      '',
+      '## Timing / deadline',
+      'Decide by 2026-04-01 so the calendar is settled before 2026-04-02.',
+    ].join('\n'),
   },
 };
 
@@ -494,7 +511,8 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       page.locator('.text-xl.font-bold').filter({ hasText: /Overlapping events on 2026-04-02/i }),
     ).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('dashboard-document-body')).toBeVisible();
-    await expect(page.getByText(/Objective: Overlapping events/i)).toBeVisible();
+    await expect(page.getByText(/## Situation/i)).toBeVisible();
+    await expect(page.getByText(/Ask: confirm the final keep\/move decision by 2026-04-01/i)).toBeVisible();
     await expect(page.getByText(/Finished document/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Save document files/i);
     await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Skip keeps it out/i);

@@ -247,6 +247,8 @@ describe('artifact-generator — analysis dump leak prevention', () => {
         '',
         '“Hey Pat — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”',
         '',
+        'Consequence: if this stays open past today, the pilot decision stays blocked while attention keeps leaking into a thread that is no longer moving.',
+        '',
         'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
         '',
         'Deadline: today',
@@ -254,6 +256,7 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     );
     expect(content).toContain('You were trying to get this thread to a real yes/no on the pilot decision.');
     expect(content).toContain('3 follow-ups in 14 days without a reply');
+    expect(content).toContain('Consequence: if this stays open past today, the pilot decision stays blocked while attention keeps leaking into a thread that is no longer moving.');
     expect(content).toContain('If there is no reply after this, mark the thread stalled and stop allocating attention to it.');
     expect(content).toContain('“Hey Pat — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”');
     expect(content).not.toContain('## Pattern observed');
@@ -318,6 +321,7 @@ describe('artifact-generator — analysis dump leak prevention', () => {
 
     expect(title).toBe('Pat Lee going dark is now blocking the thread');
     expect(content).toContain('3 follow-ups in 14 days without a reply means this thread is stalled, not active.');
+    expect(content).toContain('Consequence: if this stays open past today, attention keeps leaking into a thread that is no longer moving.');
     expect(content).toContain('If there is no reply after this, mark the thread stalled and stop allocating attention to it.');
     expect(content).toContain('“Hey Pat — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”');
     expect(content).not.toContain('pilot decision');

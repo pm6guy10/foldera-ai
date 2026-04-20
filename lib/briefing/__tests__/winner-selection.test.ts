@@ -326,4 +326,43 @@ describe('selectFinalWinner', () => {
     const { winner } = selectFinalWinner([obvious, decisionMoving], NO_GUARDRAILS);
     expect(winner.id).toBe('decision-moving');
   });
+
+  it('prefers a goal-anchored behavioral discrepancy over an unanchored schedule conflict', () => {
+    const scheduleConflict = makeCandidate({
+      id: 'schedule-conflict',
+      score: 1.4538,
+      type: 'discrepancy',
+      discrepancyClass: 'schedule_conflict',
+      suggestedActionType: 'write_document',
+      title: 'Overlapping events on 2026-04-25',
+      content: 'You have overlapping calendar commitments on 2026-04-25: "Babe baby shower" and "N Soccer game".',
+      matchedGoal: null,
+      relatedSignals: [],
+      sourceSignals: [
+        { kind: 'signal', summary: 'Babe baby shower overlap', occurredAt: new Date().toISOString() },
+        { kind: 'signal', summary: 'N Soccer game overlap', occurredAt: new Date().toISOString() },
+      ],
+    });
+    const behavioral = makeCandidate({
+      id: 'behavioral-mas3',
+      score: 1.3591,
+      type: 'discrepancy',
+      discrepancyClass: 'behavioral_pattern',
+      suggestedActionType: 'write_document',
+      title: "Committed to 'Waiting on MAS3 (HCA) hiring decision' 11 days ago — no activity since",
+      content: "Committed to 'Waiting on MAS3 (HCA) hiring decision' 11 days ago — no activity since",
+      matchedGoal: {
+        text: 'Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+        priority: 1,
+        category: 'career',
+      },
+      relatedSignals: [],
+      sourceSignals: [
+        { kind: 'signal', summary: 'MAS3 hiring decision thread stalled', occurredAt: new Date().toISOString() },
+      ],
+    });
+
+    const { winner } = selectFinalWinner([scheduleConflict, behavioral], NO_GUARDRAILS);
+    expect(winner.id).toBe('behavioral-mas3');
+  });
 });

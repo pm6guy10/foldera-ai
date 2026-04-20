@@ -462,12 +462,17 @@ function buildBehavioralPatternArtifact(directive: ConvictionDirective): Documen
   const intro = goalLabel
     ? `You were trying to get this thread to a real yes/no on the ${goalLabel}. ${count} follow-ups in ${window} without a reply means it is no longer active, just mentally open.`
     : `${count} follow-ups in ${window} without a reply means this thread is stalled, not active.`;
+  const consequence = goalLabel
+    ? `Consequence: if this stays open past ${deadlineAnchor}, the ${goalLabel} stays blocked while attention keeps leaking into a thread that is no longer moving.`
+    : `Consequence: if this stays open past ${deadlineAnchor}, attention keeps leaking into a thread that is no longer moving.`;
   const content = [
     intro,
     '',
     'Send this today:',
     '',
     `“Hey ${salutation} — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”`,
+    '',
+    consequence,
     '',
     'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
     '',

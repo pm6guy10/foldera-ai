@@ -100,4 +100,45 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
     });
     expect(issues.filter((issue) => issue.startsWith('decision_enforcement:'))).toEqual([]);
   });
+
+  it('repairs the MAS3 behavioral-pattern blocker into a finished note with consequence pressure', () => {
+    const payload = buildDecisionEnforcedFallbackPayload({
+      winner: baseWinner({
+        id: 'behavioral-mas3',
+        type: 'discrepancy',
+        suggestedActionType: 'write_document',
+        discrepancyClass: 'behavioral_pattern',
+        title: "Committed to 'Waiting on MAS3 (HCA) hiring decision' 11 days ago — no activity since",
+        content: "Committed to 'Waiting on MAS3 (HCA) hiring decision' 11 days ago — no activity since",
+        matchedGoal: {
+          text: 'Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+          priority: 1,
+          category: 'career',
+        },
+      }),
+      actionType: 'write_document' as ValidArtifactTypeCanonical,
+      candidateDueDate: null,
+      candidateGoal: 'Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+      causalDiagnosis: {
+        why_exists_now: 'Repeated follow-ups are not producing a real yes/no.',
+        mechanism: 'Thread stayed open without a closing move.',
+      },
+      userPromptNames: { user_full_name: 'Brandon Kapp', user_first_name: 'Brandon' },
+    });
+
+    expect(payload).not.toBeNull();
+    expect(payload!.artifact_type).toBe('write_document');
+    expect(String(payload!.artifact.content)).toContain('Consequence: if this stays open past today');
+    expect(String(payload!.artifact.content)).toContain('Send this today:');
+
+    const issues = getDecisionEnforcementIssues({
+      actionType: 'write_document',
+      directiveText: payload!.directive,
+      reason: payload!.why_now,
+      artifact: payload!.artifact,
+      discrepancyClass: 'behavioral_pattern',
+      matchedGoalCategory: 'career',
+    });
+    expect(issues.filter((issue) => issue.startsWith('decision_enforcement:'))).toEqual([]);
+  });
 });
