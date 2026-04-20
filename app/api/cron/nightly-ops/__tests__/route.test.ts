@@ -14,8 +14,6 @@ const resolveSignalBacklogMode = vi.fn((unprocessedCount: number) => (
 const autoSkipStaleApprovals = vi.fn();
 const runCommitmentCeilingDefense = vi.fn();
 const runTokenWatchdog = vi.fn();
-const runSelfHeal = vi.fn();
-const runAcceptanceGate = vi.fn();
 const checkConnectorHealth = vi.fn();
 const logStructuredEvent = vi.fn();
 const mockSupabase = {
@@ -205,11 +203,6 @@ vi.mock('@/lib/cron/daily-brief', () => ({
 vi.mock('@/lib/cron/self-heal', () => ({
   runCommitmentCeilingDefense,
   runTokenWatchdog,
-  runSelfHeal,
-}));
-
-vi.mock('@/lib/cron/acceptance-gate', () => ({
-  runAcceptanceGate,
 }));
 
 vi.mock('@/lib/cron/connector-health', () => ({
@@ -250,18 +243,6 @@ describe('nightly-ops route', () => {
     autoSkipStaleApprovals.mockResolvedValue({ skipped: 0 });
     runCommitmentCeilingDefense.mockResolvedValue({ ok: true, details: { suppressions: [] } });
     runTokenWatchdog.mockResolvedValue({ refreshed: 0, failed: 0, skipped: 0 });
-    runSelfHeal.mockResolvedValue({
-      ok: true,
-      alert_sent: false,
-      duration_ms: 1,
-      defenses: [],
-    });
-    runAcceptanceGate.mockResolvedValue({
-      ok: true,
-      alert_sent: false,
-      duration_ms: 1,
-      checks: [],
-    });
     checkConnectorHealth.mockResolvedValue({
       ok: true,
       checked_users: 0,
@@ -284,6 +265,7 @@ describe('nightly-ops route', () => {
 
   it('applies nightly 1.5x signal batch cap without deprecated post-pipeline stages', async () => {
     const { GET } = await import('../route');
+    const { NIGHTLY_OPS_INGEST_STAGE_ORDER } = await import('../contract');
     const response = await GET(new NextRequest('http://localhost/api/cron/nightly-ops'));
     const payload = await response.json();
 
@@ -311,8 +293,7 @@ describe('nightly-ops route', () => {
     }));
     expect(runCommitmentCeilingDefense).toHaveBeenCalledTimes(1);
     expect(checkConnectorHealth).toHaveBeenCalledTimes(1);
-    expect(runSelfHeal).not.toHaveBeenCalled();
-    expect(runAcceptanceGate).not.toHaveBeenCalled();
+    expect(Object.keys(payload.stages)).toEqual([...NIGHTLY_OPS_INGEST_STAGE_ORDER]);
     expect(payload.stages.passive_rejection).toEqual({ ok: true, skipped: 0 });
     expect(payload.stages.self_heal).toBeUndefined();
     expect(payload.stages.acceptance_gate).toBeUndefined();

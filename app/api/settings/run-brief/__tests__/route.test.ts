@@ -79,11 +79,11 @@ vi.mock('@/lib/utils/api-error', () => ({
   apiErrorForRoute: mockApiError,
 }));
 
-function makeBriefResult(userId: string, sendFallbackAttempted = false) {
+function makeBriefResult(userId: string, sendFallbackAttempted = false, ok = true) {
   return {
     result: {
       date: '2026-03-24',
-      ok: true,
+      ok,
       signal_processing: {
         attempted: 1, errors: [], failed: 0, status: 'ok', succeeded: 1, summary: 'ok',
         results: [{ code: 'no_unprocessed_signals', success: true, userId }],
@@ -139,6 +139,10 @@ describe('POST /api/settings/run-brief', () => {
       error: null,
     });
     const { POST } = await import('../route');
+    const {
+      RUN_BRIEF_CHEAP_DRY_RUN_STAGE,
+      RUN_BRIEF_CHEAP_DRY_RUN_STAGE_KEYS,
+    } = await import('../contract');
 
     const response = await POST(
       new Request('http://localhost:3000/api/settings/run-brief?force=true&dry_run=true', { method: 'POST' }),
@@ -159,12 +163,10 @@ describe('POST /api/settings/run-brief', () => {
       id: 'pending-action-1',
       generated_at: expect.any(String),
     });
-    expect(payload.stages.daily_brief).toEqual(
-      expect.objectContaining({ status: 'short_circuited', reason: 'cheap_dry_run' }),
-    );
+    expect(payload.stages.daily_brief).toEqual(expect.objectContaining(RUN_BRIEF_CHEAP_DRY_RUN_STAGE));
     expect(payload.stages.sync_microsoft).toBeUndefined();
     expect(payload.stages.sync_google).toBeUndefined();
-    expect(Object.keys(payload.stages)).toEqual(['daily_brief']);
+    expect(Object.keys(payload.stages)).toEqual([...RUN_BRIEF_CHEAP_DRY_RUN_STAGE_KEYS]);
     expect(mockRateLimit).toHaveBeenCalledWith(`run-brief:${userId}`, { limit: 2, window: 600 });
   });
 
@@ -231,6 +233,7 @@ describe('POST /api/settings/run-brief', () => {
   it('returns auth response when the session is missing', async () => {
     mockResolveUser.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const { POST } = await import('../route');
+    const { getRunBriefRouteStatus } = await import('../contract');
 
     const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
 
@@ -243,6 +246,7 @@ describe('POST /api/settings/run-brief', () => {
     mockResolveUser.mockResolvedValue({ userId });
     mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
     const { POST } = await import('../route');
+    const { getRunBriefRouteStatus } = await import('../contract');
 
     const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
 
@@ -257,7 +261,7 @@ describe('POST /api/settings/run-brief', () => {
       }),
     );
     expect(mockRunBriefLifecycle.mock.calls[0][0].forceFreshRun).toBeUndefined();
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(getRunBriefRouteStatus(true));
     const payload = await response.json();
     expect(payload.ok).toBe(true);
     expect(payload.spend_policy).toEqual({
@@ -279,12 +283,13 @@ describe('POST /api/settings/run-brief', () => {
     const userId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
     mockResolveUser.mockResolvedValue({ userId });
     const { POST } = await import('../route');
+    const { getRunBriefRouteStatus } = await import('../contract');
 
     const response = await POST(
       new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }),
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(getRunBriefRouteStatus(true));
     expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
     const payload = await response.json();
     expect(payload.short_circuit.reason).toBe('cheap_dry_run');
@@ -307,12 +312,13 @@ describe('POST /api/settings/run-brief', () => {
     });
     mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
     const { POST } = await import('../route');
+    const { getRunBriefRouteStatus } = await import('../contract');
 
     const response = await POST(
       new Request('http://localhost:3000/api/settings/run-brief?force=true', { method: 'POST' }),
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(getRunBriefRouteStatus(true));
     expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         userIds: [userId],
@@ -341,10 +347,11 @@ describe('POST /api/settings/run-brief', () => {
     });
     mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
     const { POST } = await import('../route');
+    const { getRunBriefRouteStatus } = await import('../contract');
 
     const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(getRunBriefRouteStatus(true));
     expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         userIds: [userId],
@@ -360,10 +367,11 @@ describe('POST /api/settings/run-brief', () => {
     const userId = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
     mockResolveUser.mockResolvedValue({ userId });
     const { POST } = await import('../route');
+    const { getRunBriefRouteStatus } = await import('../contract');
 
     const response = await POST(new Request('http://localhost:3000/api/settings/run-brief?force=true', { method: 'POST' }));
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(getRunBriefRouteStatus(true));
     expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
   });
 
@@ -374,6 +382,7 @@ describe('POST /api/settings/run-brief', () => {
     const userId = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
     mockResolveUser.mockResolvedValue({ userId });
     const { POST } = await import('../route');
+    const { getRunBriefRouteStatus } = await import('../contract');
 
     const response = await POST(
       new Request('http://localhost:3000/api/settings/run-brief?force=true&use_llm=true', { method: 'POST' }),
@@ -386,7 +395,7 @@ describe('POST /api/settings/run-brief', () => {
       paid_llm_requested: true,
       paid_llm_effective: false,
     });
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(getRunBriefRouteStatus(true));
   });
 
   it('on prod default dry-run, use_llm with ALLOW_PROD_PAID_LLM runs paid path', async () => {
@@ -398,6 +407,7 @@ describe('POST /api/settings/run-brief', () => {
     mockResolveUser.mockResolvedValue({ userId });
     mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false));
     const { POST } = await import('../route');
+    const { getRunBriefRouteStatus } = await import('../contract');
 
     const response = await POST(
       new Request('http://localhost:3000/api/settings/run-brief?force=true&use_llm=true', { method: 'POST' }),
@@ -412,7 +422,7 @@ describe('POST /api/settings/run-brief', () => {
       paid_llm_requested: true,
       paid_llm_effective: true,
     });
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(getRunBriefRouteStatus(true));
   });
 
   it('surfaces manual_send_fallback_attempted = true from the service when the send fallback ran', async () => {
@@ -442,6 +452,21 @@ describe('POST /api/settings/run-brief', () => {
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.stages.daily_brief.manual_send_fallback_attempted).toBe(false);
+  });
+
+  it('returns 207 when the lifecycle result is degraded even though the route returns JSON successfully', async () => {
+    const userId = '55555555-5555-5555-5555-555555555555';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockRunBriefLifecycle.mockResolvedValue(makeBriefResult(userId, false, false));
+    const { POST } = await import('../route');
+    const { getRunBriefRouteStatus } = await import('../contract');
+
+    const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
+
+    expect(response.status).toBe(getRunBriefRouteStatus(false));
+    const payload = await response.json();
+    expect(payload.ok).toBe(false);
+    expect(payload.stages.daily_brief.ok).toBe(false);
   });
 
   it('returns 429 when the server-side run-brief limiter is exhausted', async () => {

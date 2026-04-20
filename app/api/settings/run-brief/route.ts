@@ -8,6 +8,10 @@ import { extractArtifact, extractSentAt } from '@/lib/cron/daily-brief-generate'
 import { createServerClient } from '@/lib/db/client';
 import { rateLimit } from '@/lib/utils/rate-limit';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
+import {
+  getRunBriefRouteStatus,
+  RUN_BRIEF_CHEAP_DRY_RUN_STAGE,
+} from './contract';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -204,12 +208,7 @@ function buildCheapDryRunResponse(input: {
     },
     facts: input.facts,
     stages: {
-      daily_brief: {
-        ok: true,
-        status: 'short_circuited',
-        reason: 'cheap_dry_run',
-        manual_send_fallback_attempted: false,
-      },
+      daily_brief: { ...RUN_BRIEF_CHEAP_DRY_RUN_STAGE },
     },
   }, { status: 200 });
 }
@@ -303,7 +302,7 @@ export async function POST(request: Request) {
           manual_send_fallback_attempted: sendFallbackAttempted,
         },
       },
-    }, { status: ok ? 200 : 207 });
+    }, { status: getRunBriefRouteStatus(ok) });
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'settings/run-brief');
   }

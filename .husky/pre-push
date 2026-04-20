@@ -1,8 +1,8 @@
-echo "Running critical briefing runtime gate..."
-npm run test:briefing-runtime-gate
+echo "Running critical CI contract gate..."
+npm run test:critical-ci-contracts
 
 if [ $? -ne 0 ]; then
-  echo "CRITICAL BRIEFING RUNTIME GATE FAILED. Push rejected."
+  echo "CRITICAL CI CONTRACT GATE FAILED. Push rejected."
   exit 1
 fi
 

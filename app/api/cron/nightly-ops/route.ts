@@ -36,6 +36,7 @@ import { TEST_USER_ID, NIGHTLY_OPS_SIGNAL_BATCH_MULTIPLIER } from '@/lib/config/
 import { logApiBudgetStatusToSystemHealth } from '@/lib/cron/api-budget';
 import { computeAndPersistHealthVerdict } from '@/lib/cron/health-verdict';
 import { insertPipelineCronPhase } from '@/lib/observability/pipeline-run';
+import { NIGHTLY_OPS_INGEST_STAGE_ORDER } from './contract';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -422,8 +423,11 @@ async function handler(request: NextRequest) {
     }
 
     const durationMs = Date.now() - startTime;
-    const allOk = Object.values(stages).every(
-      (s) => s && typeof s === 'object' && (s as any).ok === true,
+    const allOk = NIGHTLY_OPS_INGEST_STAGE_ORDER.every(
+      (stage) => {
+        const stageResult = stages[stage] as { ok?: boolean } | undefined;
+        return stageResult?.ok === true;
+      },
     );
 
     const summary = { ok: allOk, duration_ms: durationMs, stages };
