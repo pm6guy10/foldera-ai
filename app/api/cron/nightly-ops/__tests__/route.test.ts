@@ -282,7 +282,7 @@ describe('nightly-ops route', () => {
     vi.useRealTimers();
   });
 
-  it('applies nightly 1.5x signal batch cap when the backlog is below 100', async () => {
+  it('applies nightly 1.5x signal batch cap without deprecated post-pipeline stages', async () => {
     const { GET } = await import('../route');
     const response = await GET(new NextRequest('http://localhost/api/cron/nightly-ops'));
     const payload = await response.json();
@@ -311,8 +311,11 @@ describe('nightly-ops route', () => {
     }));
     expect(runCommitmentCeilingDefense).toHaveBeenCalledTimes(1);
     expect(checkConnectorHealth).toHaveBeenCalledTimes(1);
-    expect(payload.stages.self_heal).toMatchObject({ ok: true });
-    expect(payload.stages.acceptance_gate).toMatchObject({ ok: true });
+    expect(runSelfHeal).not.toHaveBeenCalled();
+    expect(runAcceptanceGate).not.toHaveBeenCalled();
+    expect(payload.stages.passive_rejection).toEqual({ ok: true, skipped: 0 });
+    expect(payload.stages.self_heal).toBeUndefined();
+    expect(payload.stages.acceptance_gate).toBeUndefined();
   });
 
   it('switches to backfill mode when the backlog is at least 100 signals', async () => {
@@ -356,7 +359,7 @@ describe('nightly-ops route', () => {
     });
   });
 
-  it('resets stale processed signals and completes suppressed commitments before later stages', async () => {
+  it('resets stale processed signals without exposing a deprecated suppressed_commitments stage', async () => {
     mockSupabase.staleSignalIds = ['sig-1', 'sig-2'];
     mockSupabase.commitmentIds = ['commitment-1'];
     listUsersWithUnprocessedSignals.mockReset();
@@ -378,10 +381,11 @@ describe('nightly-ops route', () => {
     expect(response.status).toBe(200);
     expect(payload.stages.signal_processing.reset_stale_signals).toBe(2);
     expect(mockSupabase.signalResetUpdates).toHaveLength(1);
-    expect(payload.stages.suppressed_commitments).toEqual({ ok: true, updated: 1 });
+    expect(payload.stages.passive_rejection).toEqual({ ok: true, skipped: 0 });
+    expect(payload.stages.suppressed_commitments).toBeUndefined();
   });
 
-  it('runs signal retention cleanup at pipeline start for non-test users', async () => {
+  it('does not expose a deprecated signal_retention_cleanup stage in the route payload', async () => {
     mockSupabase.signalDeleteCountByUser = {
       'user-1': 3,
     };
@@ -391,7 +395,8 @@ describe('nightly-ops route', () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload.stages.signal_retention_cleanup).toEqual({ ok: true, deleted: 3 });
+    expect(payload.stages.signal_retention_cleanup).toBeUndefined();
+    expect(payload.stages.passive_rejection).toEqual({ ok: true, skipped: 0 });
   });
 
   it('still resets stale signals when the all-source backlog is already at least 200', async () => {

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "cross-env ESLINT_USE_FLAT_CONFIG=true eslint . --max-warnings 0",
     "test": "vitest",
+    "test:briefing-runtime-gate": "npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/scorer-failure-suppression.test.ts lib/briefing/__tests__/skipped-row-duplicate-cooldown.test.ts lib/cron/__tests__/duplicate-truth.test.ts",
     "test:e2e": "playwright test",
     "test:local:e2e": "playwright test",
     "audit:smoke": "npx playwright test --config=playwright.audit.config.ts",

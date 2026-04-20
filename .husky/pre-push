@@ -1,3 +1,11 @@
+echo "Running critical briefing runtime gate..."
+npm run test:briefing-runtime-gate
+
+if [ $? -ne 0 ]; then
+  echo "CRITICAL BRIEFING RUNTIME GATE FAILED. Push rejected."
+  exit 1
+fi
+
 echo "Running build check..."
 
 # On Windows, capturing large build output in a variable fails silently.

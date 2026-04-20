@@ -1,5 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScoredLoop, ScorerResult, ScorerResultWinnerSelected } from '../scorer';
+
+const FIXED_NOW = new Date('2026-04-20T15:00:00.000Z');
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function isoDateFromFixedNow(offsetDays: number): string {
+  return new Date(FIXED_NOW.getTime() + offsetDays * DAY_MS).toISOString().slice(0, 10);
+}
+
+function weekdayIsoDateFromFixedNow(offsetDays: number): string {
+  const date = new Date(FIXED_NOW.getTime() + offsetDays * DAY_MS);
+  const weekday = date.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+  return `${weekday} ${date.toISOString().slice(0, 10)}`;
+}
+
+function buildPartnerDirectiveText(offsetDays = 4): string {
+  return `Please email partner@example.com by ${weekdayIsoDateFromFixedNow(offsetDays)} to confirm the Q2 delivery plan and deadline.`;
+}
 
 const mockScoreOpenLoops = vi.fn<() => Promise<ScorerResult>>();
 const mockIsOverDailyLimit = vi.fn<() => Promise<boolean>>();
@@ -19,7 +36,7 @@ const signalInCalls: Array<{ column: string; values: unknown[] }> = [];
 
 // Qualifying signal: received email 72h ago — satisfies all 4 discrepancy gate filters.
 // Subject header required for parseSignalSnippet + buildAvoidanceObservations no-reply detection.
-const SIGNAL_72H_AGO = new Date(Date.now() - 72 * 3600000).toISOString();
+const SIGNAL_72H_AGO = new Date(FIXED_NOW.getTime() - 72 * 3600000).toISOString();
 const qualifyingSignal = {
   id: 'sig-db-1',
   content: 'From: Steven Goulden <sgoulden@nyc.gov>\nTo: brandon@example.com\nSubject: FOIL-2025-025-00440 Appeal Deadline April 10\n\nPlease respond to proceed with your FOIL appeal before the deadline.',
@@ -228,6 +245,8 @@ function buildScorerResult(): ScorerResult {
 
 describe('generateDirective runtime failures', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     vi.resetModules();
     mockScoreOpenLoops.mockReset();
     mockIsOverDailyLimit.mockReset();
@@ -248,6 +267,10 @@ describe('generateDirective runtime failures', () => {
     mockResearchWinner.mockResolvedValue(null);
     mockGetDirectiveConstraintViolations.mockReturnValue([]);
     mockGetPinnedConstraintPrompt.mockReturnValue(null);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   function queueTkgActionsResult(data: unknown[]): void {
@@ -677,7 +700,7 @@ describe('generateDirective runtime failures', () => {
     scored.winner.type = 'commitment';
     scored.winner.suggestedActionType = 'write_document';
     scored.winner.title = "Commitment due in 0d: Webinar 'Algoritmo Zero' launch decision";
-    scored.winner.content = 'Webinar launch ownership is unresolved and cutoff is 2026-03-30.';
+    scored.winner.content = `Webinar launch ownership is unresolved and cutoff is ${isoDateFromFixedNow(1)}.`;
     scored.winner.relationshipContext = '- Webinar Owner <owner@algoritmozero.com> (Partner)';
     mockScoreOpenLoops.mockResolvedValue(scored);
 
@@ -793,7 +816,7 @@ describe('generateDirective runtime failures', () => {
     scored.winner.type = 'commitment';
     scored.winner.suggestedActionType = 'send_message';
     scored.winner.title = 'Commitment due today: confirm launch approval owner';
-    scored.winner.content = 'Launch approval owner is unresolved and deadline is 2026-03-30.';
+    scored.winner.content = `Launch approval owner is unresolved and deadline is ${isoDateFromFixedNow(1)}.`;
     scored.winner.relationshipContext = '- Launch Approver <approver@launchco.com> (Approver)';
     mockScoreOpenLoops.mockResolvedValue(scored);
 
@@ -842,7 +865,7 @@ describe('generateDirective runtime failures', () => {
     scored.winner.type = 'commitment';
     scored.winner.suggestedActionType = 'write_document';
     scored.winner.title = 'Approval thread drift before legal cutoff';
-    scored.winner.content = 'Approval keeps moving without owner assignment and cutoff is 2026-03-30.';
+    scored.winner.content = `Approval keeps moving without owner assignment and cutoff is ${isoDateFromFixedNow(1)}.`;
     scored.winner.relationshipContext = '- Legal Approver (Approver)';
     mockScoreOpenLoops.mockResolvedValue(scored);
 
@@ -915,17 +938,18 @@ describe('generateDirective runtime failures', () => {
   });
 
   it('suppresses a repeated directive shape after two visible copies in 24h', async () => {
+    const duplicateDirectiveText = buildPartnerDirectiveText();
     queueTkgActionsResult([
       {
         id: 'dup-shape-1',
-        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        directive_text: duplicateDirectiveText,
         action_type: 'send_message',
         execution_result: { artifact: { to: 'partner@example.com' } },
         status: 'skipped',
       },
       {
         id: 'dup-shape-2',
-        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        directive_text: duplicateDirectiveText,
         action_type: 'send_message',
         execution_result: { artifact: { to: 'partner@example.com' } },
         status: 'pending_approval',
@@ -935,7 +959,7 @@ describe('generateDirective runtime failures', () => {
     const { checkConsecutiveDuplicate } = await import('../generator');
     const duplicate = await checkConsecutiveDuplicate(
       'user-1',
-      'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+      duplicateDirectiveText,
     );
 
     expect(duplicate).toEqual(expect.objectContaining({
@@ -945,10 +969,11 @@ describe('generateDirective runtime failures', () => {
   });
 
   it('keeps a single recent similar directive from blocking the next winner', async () => {
+    const duplicateDirectiveText = buildPartnerDirectiveText();
     queueTkgActionsResult([
       {
         id: 'dup-shape-1',
-        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        directive_text: duplicateDirectiveText,
         action_type: 'send_message',
         execution_result: { artifact: { to: 'partner@example.com' } },
         status: 'skipped',
@@ -958,17 +983,18 @@ describe('generateDirective runtime failures', () => {
     const { checkConsecutiveDuplicate } = await import('../generator');
     const duplicate = await checkConsecutiveDuplicate(
       'user-1',
-      'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+      duplicateDirectiveText,
     );
 
     expect(duplicate.isDuplicate).toBe(false);
   });
 
   it('ignores dev force-fresh auto-suppressed ghost rows when checking live duplicate suppression', async () => {
+    const duplicateDirectiveText = buildPartnerDirectiveText();
     queueTkgActionsResult([
       {
         id: 'force-fresh-ghost-1',
-        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        directive_text: duplicateDirectiveText,
         action_type: 'send_message',
         execution_result: {
           artifact: { to: 'partner@example.com' },
@@ -978,7 +1004,7 @@ describe('generateDirective runtime failures', () => {
       },
       {
         id: 'force-fresh-ghost-2',
-        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        directive_text: duplicateDirectiveText,
         action_type: 'send_message',
         execution_result: {
           artifact: { to: 'partner@example.com' },
@@ -991,17 +1017,18 @@ describe('generateDirective runtime failures', () => {
     const { checkConsecutiveDuplicate } = await import('../generator');
     const duplicate = await checkConsecutiveDuplicate(
       'user-1',
-      'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+      duplicateDirectiveText,
     );
 
     expect(duplicate.isDuplicate).toBe(false);
   });
 
   it('still blocks real user-visible prior directives after ghost rows are excluded', async () => {
+    const duplicateDirectiveText = buildPartnerDirectiveText();
     queueTkgActionsResult([
       {
         id: 'force-fresh-ghost-1',
-        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        directive_text: duplicateDirectiveText,
         action_type: 'send_message',
         execution_result: {
           artifact: { to: 'partner@example.com' },
@@ -1011,7 +1038,7 @@ describe('generateDirective runtime failures', () => {
       },
       {
         id: 'real-visible-1',
-        directive_text: 'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+        directive_text: duplicateDirectiveText,
         action_type: 'send_message',
         execution_result: { artifact: { to: 'partner@example.com' } },
         status: 'approved',
@@ -1021,7 +1048,7 @@ describe('generateDirective runtime failures', () => {
     const { checkConsecutiveDuplicate } = await import('../generator');
     const duplicate = await checkConsecutiveDuplicate(
       'user-1',
-      'Please email partner@example.com by Friday 2026-04-18 to confirm the Q2 delivery plan and deadline.',
+      duplicateDirectiveText,
     );
 
     expect(duplicate).toEqual(expect.objectContaining({
@@ -1035,7 +1062,7 @@ describe('generateDirective runtime failures', () => {
     scored.winner.type = 'commitment';
     scored.winner.suggestedActionType = 'write_document';
     scored.winner.title = "Commitment due in 0d: Webinar 'Algoritmo Zero' launch decision";
-    scored.winner.content = 'Webinar launch ownership is unresolved and cutoff is 2026-03-30.';
+    scored.winner.content = `Webinar launch ownership is unresolved and cutoff is ${isoDateFromFixedNow(1)}.`;
     scored.winner.relationshipContext = '- Webinar Owner <owner@algoritmozero.com> (Partner)';
     mockScoreOpenLoops.mockResolvedValue(scored);
 
