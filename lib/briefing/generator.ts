@@ -7893,7 +7893,7 @@ export function buildDecisionEnforcedFallbackPayload(input: {
       causalDiagnosis: input.causalDiagnosis,
       supportingSignals,
     });
-    if (interviewPayload) {
+    if (interviewPayload !== undefined) {
       return interviewPayload;
     }
 
