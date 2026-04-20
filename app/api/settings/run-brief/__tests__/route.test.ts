@@ -4,19 +4,13 @@ import { NextResponse } from 'next/server';
 const mockResolveUser = vi.fn();
 const mockApiError = vi.fn();
 const mockRunBriefLifecycle = vi.fn();
-const mockSyncGoogle = vi.fn();
-const mockSyncMicrosoft = vi.fn();
-const mockRunCommitmentCeilingDefense = vi.fn();
+const mockRateLimit = vi.fn();
 const mockRecentDryRunMaybeSingle = vi.fn();
 const mockPendingApprovalSelect = vi.fn();
 const mockPendingApprovalLimit = vi.fn();
 const mockLatestActionMaybeSingle = vi.fn();
 const mockLatestPipelineMaybeSingle = vi.fn();
 let pipelineRunMaybeSingleCallCount = 0;
-
-vi.mock('@/lib/cron/self-heal', () => ({
-  runCommitmentCeilingDefense: mockRunCommitmentCeilingDefense,
-}));
 
 vi.mock('@/lib/auth/resolve-user', () => ({
   resolveUser: mockResolveUser,
@@ -76,12 +70,8 @@ vi.mock('@/lib/db/client', () => ({
   }),
 }));
 
-vi.mock('@/lib/sync/google-sync', () => ({
-  syncGoogle: mockSyncGoogle,
-}));
-
-vi.mock('@/lib/sync/microsoft-sync', () => ({
-  syncMicrosoft: mockSyncMicrosoft,
+vi.mock('@/lib/utils/rate-limit', () => ({
+  rateLimit: mockRateLimit,
 }));
 
 vi.mock('@/lib/utils/api-error', () => ({
@@ -116,8 +106,12 @@ describe('POST /api/settings/run-brief', () => {
     vi.resetModules();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
-    mockRunCommitmentCeilingDefense.mockResolvedValue(undefined);
     pipelineRunMaybeSingleCallCount = 0;
+    mockRateLimit.mockResolvedValue({
+      success: true,
+      remaining: 1,
+      resetAt: new Date(Date.now() + 60_000),
+    });
     mockRecentDryRunMaybeSingle.mockResolvedValue({ data: null, error: null });
     mockLatestActionMaybeSingle.mockResolvedValue({ data: null, error: null });
     mockLatestPipelineMaybeSingle.mockResolvedValue({ data: null, error: null });
@@ -125,14 +119,6 @@ describe('POST /api/settings/run-brief', () => {
     mockPendingApprovalLimit.mockResolvedValue({ data: [], error: null });
     mockApiError.mockImplementation((error: unknown) =>
       NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 }));
-    mockSyncGoogle.mockResolvedValue({ gmail_signals: 0, calendar_signals: 0, drive_signals: 0, error: 'no_token' });
-    mockSyncMicrosoft.mockResolvedValue({
-      mail_signals: 0,
-      calendar_signals: 0,
-      file_signals: 0,
-      task_signals: 0,
-      error: 'no_token',
-    });
   });
 
   afterEach(() => {
@@ -159,8 +145,6 @@ describe('POST /api/settings/run-brief', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockSyncMicrosoft).not.toHaveBeenCalled();
-    expect(mockSyncGoogle).not.toHaveBeenCalled();
     expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
 
     const payload = await response.json();
@@ -175,12 +159,13 @@ describe('POST /api/settings/run-brief', () => {
       id: 'pending-action-1',
       generated_at: expect.any(String),
     });
-    expect(payload.stages.sync_microsoft).toEqual(
-      expect.objectContaining({ skipped: true, error: 'cheap_dry_run' }),
-    );
     expect(payload.stages.daily_brief).toEqual(
       expect.objectContaining({ status: 'short_circuited', reason: 'cheap_dry_run' }),
     );
+    expect(payload.stages.sync_microsoft).toBeUndefined();
+    expect(payload.stages.sync_google).toBeUndefined();
+    expect(Object.keys(payload.stages)).toEqual(['daily_brief']);
+    expect(mockRateLimit).toHaveBeenCalledWith(`run-brief:${userId}`, { limit: 2, window: 600 });
   });
 
   it('includes recent dry-run and latest metadata in the cheap dry-run receipt', async () => {
@@ -219,8 +204,6 @@ describe('POST /api/settings/run-brief', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockSyncMicrosoft).not.toHaveBeenCalled();
-    expect(mockSyncGoogle).not.toHaveBeenCalled();
     expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
 
     const payload = await response.json();
@@ -278,13 +261,15 @@ describe('POST /api/settings/run-brief', () => {
     const payload = await response.json();
     expect(payload.ok).toBe(true);
     expect(payload.spend_policy).toEqual({
-      pipeline_dry_run: false,
-      paid_llm_requested: false,
-      paid_llm_effective: true,
-    });
+        pipeline_dry_run: false,
+        paid_llm_requested: false,
+        paid_llm_effective: true,
+      });
     expect(payload.stages.daily_brief.send.results).toEqual([
       expect.objectContaining({ code: 'email_sent', userId }),
     ]);
+    expect(payload.stages.sync_microsoft).toBeUndefined();
+    expect(payload.stages.sync_google).toBeUndefined();
   });
 
   it('returns cheap dry-run in prod default dry-run mode even without explicit ?dry_run=true', async () => {
@@ -300,8 +285,6 @@ describe('POST /api/settings/run-brief', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockSyncMicrosoft).not.toHaveBeenCalled();
-    expect(mockSyncGoogle).not.toHaveBeenCalled();
     expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
     const payload = await response.json();
     expect(payload.short_circuit.reason).toBe('cheap_dry_run');
@@ -341,8 +324,6 @@ describe('POST /api/settings/run-brief', () => {
         skipManualCallLimit: false,
       }),
     );
-    expect(mockSyncMicrosoft).toHaveBeenCalledTimes(1);
-    expect(mockSyncGoogle).toHaveBeenCalledTimes(1);
   });
 
   it('does not apply the pending-approval dry-run guard to real non-dry runs', async () => {
@@ -364,8 +345,6 @@ describe('POST /api/settings/run-brief', () => {
     const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
 
     expect(response.status).toBe(200);
-    expect(mockSyncMicrosoft).toHaveBeenCalledTimes(1);
-    expect(mockSyncGoogle).toHaveBeenCalledTimes(1);
     expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         userIds: [userId],
@@ -386,8 +365,6 @@ describe('POST /api/settings/run-brief', () => {
 
     expect(response.status).toBe(200);
     expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
-    expect(mockSyncMicrosoft).not.toHaveBeenCalled();
-    expect(mockSyncGoogle).not.toHaveBeenCalled();
   });
 
   it('on prod default dry-run, use_llm without ALLOW_PROD_PAID_LLM stays dry', async () => {
@@ -403,8 +380,6 @@ describe('POST /api/settings/run-brief', () => {
     );
 
     expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
-    expect(mockSyncMicrosoft).not.toHaveBeenCalled();
-    expect(mockSyncGoogle).not.toHaveBeenCalled();
     const payload = await response.json();
     expect(payload.spend_policy).toEqual({
       pipeline_dry_run: true,
@@ -467,5 +442,22 @@ describe('POST /api/settings/run-brief', () => {
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.stages.daily_brief.manual_send_fallback_attempted).toBe(false);
+  });
+
+  it('returns 429 when the server-side run-brief limiter is exhausted', async () => {
+    const userId = '99999999-9999-9999-9999-999999999999';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockRateLimit.mockResolvedValue({
+      success: false,
+      remaining: 0,
+      resetAt: new Date(Date.now() + 120_000),
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(new Request('http://localhost:3000/api/settings/run-brief', { method: 'POST' }));
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('Retry-After')).toBeTruthy();
+    expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
   });
 });
