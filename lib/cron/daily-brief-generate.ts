@@ -35,6 +35,7 @@ import { summarizeSignals } from '@/lib/signals/summarizer';
 import type {
   ConvictionArtifact,
   ConvictionDirective,
+  GenerationCandidateLog,
   GenerationCandidateDiscoveryLog,
   GenerationRunLog,
 } from '@/lib/briefing/types';
@@ -231,9 +232,7 @@ export function evaluateBottomGate(
   const scheduleConflictWriteDoc =
     directive.action_type === 'write_document' && directiveLooksLikeScheduleConflict(directive);
 
-  const selectedCandidateForGate =
-    directive.generationLog?.candidateDiscovery?.topCandidates?.find((candidate) => candidate.decision === 'selected') ??
-    directive.generationLog?.candidateDiscovery?.topCandidates?.[0];
+  const selectedCandidateForGate = getFinalSelectedCandidateLog(directive);
   const topCandidateTypeForGate = selectedCandidateForGate?.candidateType;
   const isDiscrepancyCandidate = topCandidateTypeForGate === 'discrepancy' || topCandidateTypeForGate === 'insight';
   const behavioralPatternWriteDoc =
@@ -453,7 +452,7 @@ export function isSendWorthy(
 
   // Discrepancy candidates (relationship decay, risk, exposure) skip quality-gate checks
   // (generic opener, weak winner, decision enforcement) — their absence-of-signal IS the evidence.
-  const topCandidateType = directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType;
+  const topCandidateType = getFinalSelectedCandidateLog(directive)?.candidateType;
   const isDiscrepancyCandidate = topCandidateType === 'discrepancy' || topCandidateType === 'insight';
   const isDiscrepancyWithRecipient =
     isDiscrepancyCandidate &&
@@ -550,7 +549,7 @@ function extractThresholdValues(directive: ConvictionDirective | null): {
   generator_confidence: number | null;
 } {
   if (!directive) return { scorer_ev: null, generator_confidence: null };
-  const topCandidate = directive.generationLog?.candidateDiscovery?.topCandidates?.[0];
+  const topCandidate = getFinalSelectedCandidateLog(directive);
   return {
     scorer_ev: typeof topCandidate?.score === 'number' ? topCandidate.score : null,
     generator_confidence: typeof directive.confidence === 'number' ? directive.confidence : null,
@@ -619,6 +618,19 @@ export interface OutcomeReceipt {
   generated_at: string;
 }
 
+function getFinalSelectedCandidateLog(
+  directive: ConvictionDirective,
+): GenerationCandidateLog | null {
+  const discovery = directive.generationLog?.candidateDiscovery;
+  const topCandidates = discovery?.topCandidates ?? [];
+  const finalWinnerId = directive.winnerSelectionTrace?.finalWinnerId ?? null;
+  if (finalWinnerId) {
+    const tracedWinner = topCandidates.find((candidate) => candidate.id === finalWinnerId);
+    if (tracedWinner) return tracedWinner;
+  }
+  return topCandidates.find((candidate) => candidate.decision === 'selected') ?? topCandidates[0] ?? null;
+}
+
 /**
  * Build the winner receipt from the directive's generation log.
  * Extracts: who won, why, what goal it matches, and who lost.
@@ -628,7 +640,7 @@ function buildWinnerReceipt(
 ): WinnerReceipt {
   const discovery = directive.generationLog?.candidateDiscovery;
   const topCandidates = discovery?.topCandidates ?? [];
-  const winner = topCandidates.find((c) => c.decision === 'selected') ?? topCandidates[0] ?? null;
+  const winner = getFinalSelectedCandidateLog(directive);
 
   const runnerUps = topCandidates
     .filter((c) => c !== winner)
@@ -644,7 +656,7 @@ function buildWinnerReceipt(
   return {
     winner_candidate_id: winner?.id ?? null,
     winner_type: winner?.candidateType ?? null,
-    discrepancy_class: null, // populated below if available
+    discrepancy_class: winner?.discrepancyClass ?? directive.discrepancyClass ?? null,
     action_type: directive.action_type ?? null,
     artifact_type: artifactTypeForAction(directive.action_type) ?? null,
     matched_goal: winner?.targetGoal?.text ?? null,
@@ -655,7 +667,7 @@ function buildWinnerReceipt(
     pressure_signal: REAL_PRESSURE_PATTERN.test(
       `${directive.directive ?? ''}\n${directive.reason ?? ''}`,
     ),
-    why_now: discovery?.selectionReason ?? null,
+    why_now: directive.winnerSelectionTrace?.finalWinnerReason ?? discovery?.selectionReason ?? null,
     top_3_runner_ups: runnerUps,
   };
 }
@@ -672,7 +684,7 @@ function extractExternalTarget(directive: ConvictionDirective): string | null {
   const nameMatch = (directive.directive ?? '').match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
   const candidate = nameMatch?.[1] ?? null;
   if (!candidate) return null;
-  if (['This', 'That', 'Today', 'Tomorrow', 'Deadline', 'Decision'].includes(candidate)) {
+  if (['This', 'That', 'Today', 'Tomorrow', 'Deadline', 'Decision', 'Stop', 'Execution'].includes(candidate)) {
     return null;
   }
   return candidate;
@@ -744,11 +756,24 @@ function buildArtifactReceipt(
   const hasWeakWinner = WEAK_WINNER_PATTERN.test(JSON.stringify(artifact));
   const isSendable = !hasPlaceholder && !hasGenericLanguage && !hasWeakWinner && artifactBody.length >= 30;
 
-  // Does it change probability now? Must have a concrete ask + pressure
   const combined = `${directive.directive ?? ''}\n${directive.reason ?? ''}\n${artifactBody}`;
-  const changesProb = CONCRETE_ASK_PATTERN.test(combined) && REAL_PRESSURE_PATTERN.test(combined);
+  const writeDocumentMode = getWriteDocumentMode({
+    actionType: directive.action_type,
+    artifact: artifactRecord,
+    discrepancyClass: effectiveDiscrepancyClassForGates(directive),
+    directiveText: directive.directive ?? '',
+    reason: directive.reason ?? '',
+  });
+  const internalExecutionBrief = writeDocumentMode === 'internal_execution_brief';
+  const internalExecutionIssues = internalExecutionBrief
+    ? getInternalExecutionBriefIssues(artifactRecord)
+    : [];
+  const hasAnchoredTime =
+    REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
+  const changesProb = internalExecutionBrief
+    ? hasAnchoredTime && internalExecutionIssues.length === 0
+    : CONCRETE_ASK_PATTERN.test(combined) && REAL_PRESSURE_PATTERN.test(combined);
 
-  // Does it require more thinking? Non-executable patterns signal this
   const requiresMoreThinking = NON_EXECUTABLE_ARTIFACT_PATTERN.test(combined);
 
   return {

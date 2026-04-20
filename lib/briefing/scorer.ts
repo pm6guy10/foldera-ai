@@ -1868,6 +1868,39 @@ function isRelationshipMaintenanceOrAbstractRiskCandidate(candidate: ScoredLoop)
   );
 }
 
+function isShadowUrgencyCandidate(candidate: ScoredLoop): boolean {
+  return (
+    candidate.discrepancyClass === 'schedule_conflict' ||
+    isLowValueCalendarAdminDiscrepancy(candidate) ||
+    isGenericPrepStyleDocumentCandidate(candidate) ||
+    isRelationshipMaintenanceOrAbstractRiskCandidate(candidate)
+  );
+}
+
+function isTrueEmergencyOverrideCandidate(candidate: ScoredLoop): boolean {
+  const combined = scoredLoopSearchText(candidate);
+  return (
+    isDecisiveSchedulingPressureCandidate(candidate) ||
+    (
+      (candidate.breakdown.stakes ?? 0) >= 4 &&
+      (candidate.breakdown.urgency ?? 0) >= 0.92 &&
+      (candidate.breakdown.tractability ?? 0) >= 0.55 &&
+      /\bmust\b|\brequired\b|\bdeadline\b|\bexpires?\b|\btoday\b|\btomorrow\b|\b20\d{2}-\d{2}-\d{2}\b/.test(combined)
+    )
+  );
+}
+
+function isLongHorizonLeverageCandidate(candidate: ScoredLoop): boolean {
+  const goalPriority = typeof candidate.matchedGoal?.priority === 'number' ? candidate.matchedGoal.priority : 0;
+  return (
+    goalPriority >= 3 &&
+    computeEvidenceDensity(candidate) >= 3 &&
+    !isShadowUrgencyCandidate(candidate) &&
+    !isTrueEmergencyOverrideCandidate(candidate) &&
+    (candidate.type === 'discrepancy' || candidate.type === 'commitment' || candidate.type === 'relationship' || candidate.type === 'hunt')
+  );
+}
+
 export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantResult {
   const ranked = scored.map((candidate) => ({
     ...candidate,
@@ -2075,6 +2108,31 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
       );
       ensureDiagnostic(topRelationshipMaintenanceOrAbstractRisk).penaltyReasons.push(
         'relationship_maintenance_yielded_to_priority_career_outcome',
+      );
+    }
+  }
+
+  // Long-horizon invariant: a goal-anchored 30-90 day leverage move beats shadow urgency
+  // unless the shadow-urgent candidate is a true emergency override.
+  const topLongHorizonLeverage = ranked
+    .filter((c) => c.score > 0 && passesTop3RankingInvariants(c) && isLongHorizonLeverageCandidate(c))
+    .sort(compareScoredLoops)[0];
+  if (topLongHorizonLeverage) {
+    const topShadowUrgency = ranked
+      .filter((c) =>
+        c.score > 0 &&
+        c.id !== topLongHorizonLeverage.id &&
+        passesTop3RankingInvariants(c) &&
+        isShadowUrgencyCandidate(c) &&
+        !isTrueEmergencyOverrideCandidate(c))
+      .sort(compareScoredLoops)[0];
+    if (topShadowUrgency && topShadowUrgency.score >= topLongHorizonLeverage.score) {
+      topLongHorizonLeverage.score = topShadowUrgency.score + 0.001;
+      ensureDiagnostic(topLongHorizonLeverage).penaltyReasons.push(
+        'long_horizon_leverage_forced_over_shadow_urgency',
+      );
+      ensureDiagnostic(topShadowUrgency).penaltyReasons.push(
+        'shadow_urgency_yielded_to_long_horizon_leverage',
       );
     }
   }
@@ -3405,7 +3463,10 @@ function classifyKillReason(loop: ScoredLoop, winnerScore: number): Deprioritize
   let killReason: KillReason;
   let killExplanation: string;
 
-  if (stakes <= 1.5 && urgency >= 0.5) {
+  if (isShadowUrgencyCandidate(loop) && !isTrueEmergencyOverrideCandidate(loop)) {
+    killReason = 'noise';
+    killExplanation = `This candidate had visible urgency, but it was shadow urgency rather than the highest-leverage move. It was easier to notice than the stronger 30-90 day board change.`;
+  } else if (stakes <= 1.5 && urgency >= 0.5) {
     // High urgency, low stakes = noise
     killReason = 'noise';
     killExplanation = `Urgency ${urgency.toFixed(2)} but stakes only ${stakes} (no goal alignment). Feels pressing but doesn't move a priority forward.`;

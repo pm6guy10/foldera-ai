@@ -238,27 +238,30 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const title = String((result as any).title ?? '');
     const content = String((result as any).content ?? '');
 
-    expect(title).toBe('Pat Lee going dark is now blocking the pilot decision');
+    expect(title).toBe('Execution rule for the pilot decision');
     expect(content).toBe(
       [
-        'You were trying to get this thread to a real yes/no on the pilot decision. 3 follow-ups in 14 days without a reply means it is no longer active, just mentally open.',
+        'The pilot decision matters over the next 30-90 days. 3 follow-ups in 14 days without a reply means Pat Lee is no longer an active thread; it is an open loop consuming attention.',
         '',
-        'Send this today:',
+        'Execution move: stop holding live bandwidth open for Pat Lee today. Treat it as inactive until a concrete next-step signal arrives, and reallocate that time to the highest-probability work for the pilot decision.',
         '',
-        '“Hey Pat — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”',
+        'Why this beats the alternatives: 3 follow-ups in 14 days without a reply means another generic nudge is more likely to preserve ambiguity than improve the odds on the pilot decision, while reclaiming the time changes the next 30-90 days of real leverage.',
         '',
-        'Consequence: if this stays open past today, the pilot decision stays blocked while attention keeps leaking into a thread that is no longer moving.',
+        'Deprioritize: do not draft another status-check message, do not keep calendar or prep time reserved for Pat Lee, and do not treat the thread as an active commitment while silence continues.',
         '',
-        'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
+        'Consequence: if this stays mentally open past today, the pilot decision keeps losing real bandwidth to a thread that is not moving.',
+        '',
+        'Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by today.',
         '',
         'Deadline: today',
       ].join('\n'),
     );
-    expect(content).toContain('You were trying to get this thread to a real yes/no on the pilot decision.');
+    expect(content).toContain('The pilot decision matters over the next 30-90 days.');
     expect(content).toContain('3 follow-ups in 14 days without a reply');
-    expect(content).toContain('Consequence: if this stays open past today, the pilot decision stays blocked while attention keeps leaking into a thread that is no longer moving.');
-    expect(content).toContain('If there is no reply after this, mark the thread stalled and stop allocating attention to it.');
-    expect(content).toContain('“Hey Pat — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”');
+    expect(content).toContain('Execution move: stop holding live bandwidth open for Pat Lee today.');
+    expect(content).toContain('Why this beats the alternatives:');
+    expect(content).toContain('Deprioritize:');
+    expect(content).toContain('Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by today.');
     expect(content).not.toContain('## Pattern observed');
     expect(content).not.toContain('## Why it matters now');
     expect(content).not.toContain('## Concrete decision / next move');
@@ -319,11 +322,14 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const title = String((result as any).title ?? '');
     const content = String((result as any).content ?? '');
 
-    expect(title).toBe('Pat Lee going dark is now blocking the thread');
-    expect(content).toContain('3 follow-ups in 14 days without a reply means this thread is stalled, not active.');
-    expect(content).toContain('Consequence: if this stays open past today, attention keeps leaking into a thread that is no longer moving.');
-    expect(content).toContain('If there is no reply after this, mark the thread stalled and stop allocating attention to it.');
-    expect(content).toContain('“Hey Pat — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”');
+    expect(title).toBe('Execution rule for Pat Lee');
+    expect(content).toContain('3 follow-ups in 14 days without a reply means Pat Lee is no longer an active thread; it is an open loop consuming attention.');
+    expect(content).toContain('Execution move: stop holding live bandwidth open for Pat Lee today.');
+    expect(content).toContain('Why this beats the alternatives: 3 follow-ups in 14 days without a reply means another generic nudge is more likely to preserve ambiguity than create a real decision.');
+    expect(content).toContain('Deprioritize: do not draft another status-check message');
+    expect(content).toContain('Consequence: if this stays mentally open past today, attention keeps leaking into a thread that is not moving.');
+    expect(content).toContain('Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by today.');
+    expect(content).toContain('Deadline: today');
     expect(content).not.toContain('pilot decision');
     expect(content).not.toContain('You were trying to get this thread to a real yes/no');
     expect(content).not.toContain('## Pattern observed');
@@ -352,13 +358,49 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(result).not.toBeNull();
     expect((result as any).emergency_fallback).not.toBe(true);
     const content = String((result as any).content ?? '');
-    expect(content).toContain('4 follow-ups in 10 days without a reply means this thread is stalled, not active.');
-    expect(content).toContain('Send this today:');
-    expect(content).toContain('mark the thread stalled and stop allocating attention to it');
-    expect(content).toContain('I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted.');
+    expect(content).toContain('4 follow-ups in 10 days without a reply means Pat Lee is no longer an active thread; it is an open loop consuming attention.');
+    expect(content).toContain('Execution move: stop holding live bandwidth open');
+    expect(content).toContain('Why this beats the alternatives:');
+    expect(content).toContain('Deprioritize:');
+    expect(content).toContain('Reopen trigger:');
     expect(content).not.toContain('Weak analysis blob that would be sludge if returned verbatim.');
     expect(content).not.toContain('This should not be copied through.');
-    expect(content).not.toContain('You were trying to get this thread to a real yes/no');
+    expect(content).not.toContain('Send this today:');
+  });
+
+  it('preserves the clean embedded behavioral_pattern write_document artifact instead of regenerating from the directive sentence', async () => {
+    const directive: any = {
+      ...BASE_WRITE_DOCUMENT_DIRECTIVE,
+      discrepancyClass: 'behavioral_pattern',
+      directive: 'Stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision; reopen only if a concrete next-step signal arrives by 5:00 PM PT on 2026-04-21.',
+      reason: 'The MAS3 thread is no longer moving and is stealing bandwidth from the higher-leverage career path.',
+      embeddedArtifact: {
+        type: 'document',
+        title: 'Execution rule for the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+        content: [
+          'The Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference matters over the next 30-90 days. 1 follow-ups in 14 days without movement means Waiting on MAS3 (HCA) hiring decision is no longer an active thread; it is an open loop consuming attention.',
+          '',
+          'Execution move: stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision today. Treat it as inactive until a concrete next-step signal arrives, and reallocate that time to the highest-probability work for the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference.',
+          '',
+          'Why this beats the alternatives: 1 follow-ups in 14 days without a reply means another generic nudge is more likely to preserve ambiguity than improve the odds on the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference, while reclaiming the time changes the next 30-90 days of real leverage.',
+          '',
+          'Deprioritize: do not draft another status-check message, do not keep calendar or prep time reserved for Waiting on MAS3 (HCA) hiring decision, and do not treat the thread as an active commitment while silence continues.',
+          '',
+          'Consequence: if this stays mentally open past 5:00 PM PT on 2026-04-21, the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference keeps losing real bandwidth to a thread that is not moving.',
+          '',
+          'Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by 5:00 PM PT on 2026-04-21.',
+          '',
+          'Deadline: 5:00 PM PT on 2026-04-21',
+        ].join('\n'),
+      },
+    };
+
+    const result = await generateArtifact('user-1', directive);
+
+    expect(result).toEqual(directive.embeddedArtifact);
+    const content = String((result as any)?.content ?? '');
+    expect(content).not.toContain('means Stop holding live bandwidth open for');
+    expect(content).not.toContain('for Stop holding live bandwidth open for');
   });
 
   it('schedule_conflict discrepancy marks write_document output as invalid on this path', async () => {

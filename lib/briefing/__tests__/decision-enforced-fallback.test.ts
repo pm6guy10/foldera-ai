@@ -101,7 +101,7 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
     expect(issues.filter((issue) => issue.startsWith('decision_enforcement:'))).toEqual([]);
   });
 
-  it('repairs the MAS3 behavioral-pattern blocker into a finished note with consequence pressure', () => {
+  it('repairs the MAS3 behavioral-pattern blocker into a long-horizon internal execution brief', () => {
     const payload = buildDecisionEnforcedFallbackPayload({
       winner: baseWinner({
         id: 'behavioral-mas3',
@@ -128,8 +128,12 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
 
     expect(payload).not.toBeNull();
     expect(payload!.artifact_type).toBe('write_document');
-    expect(String(payload!.artifact.content)).toContain('Consequence: if this stays open past today');
-    expect(String(payload!.artifact.content)).toContain('Send this today:');
+    expect(String(payload!.directive)).toContain('reopen only if a concrete next-step signal arrives');
+    expect(String(payload!.artifact.title)).toContain('Execution rule');
+    expect(String(payload!.artifact.content)).toContain('Execution move: stop holding live bandwidth open');
+    expect(String(payload!.artifact.content)).toContain('Why this beats the alternatives:');
+    expect(String(payload!.artifact.content)).toContain('Deprioritize:');
+    expect(String(payload!.artifact.content)).toContain('Reopen trigger:');
 
     const issues = getDecisionEnforcementIssues({
       actionType: 'write_document',

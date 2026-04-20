@@ -571,11 +571,11 @@ describe('validateDirectiveForPersistence — evidence array safety', () => {
     });
 
     expect(issues).toContain('decision_enforcement:behavioral_pattern_missing_goal_anchor');
-    expect(issues).toContain('decision_enforcement:behavioral_pattern_missing_send_ready_move');
+    expect(issues).toContain('decision_enforcement:behavioral_pattern_missing_actual_move');
     expect(issues).toContain('decision_enforcement:behavioral_pattern_missing_stop_rule');
   });
 
-  it('does not flag send_ready when the draft leads with Send tonight (no long quoted block)', () => {
+  it('accepts a long-horizon behavioral-pattern execution artifact without requiring outbound send copy', () => {
     const directive = buildDirective({
       directive: 'Pat Lee keeps going quiet.',
       action_type: 'write_document',
@@ -627,16 +627,31 @@ describe('validateDirectiveForPersistence — evidence array safety', () => {
       directive,
       artifact: {
         type: 'document',
-        title: 'Pilot decision — Pat Lee',
-        content:
-          'The pilot decision is still open.\n\nSend tonight:\n\nShort line — no long quoted block here.',
+        title: 'Execution rule for the pilot decision',
+        content: [
+          'The pilot decision matters over the next 30-90 days. Pat Lee has stopped moving the thread.',
+          '',
+          'Execution move: stop holding live bandwidth open for Pat Lee today. Treat it as inactive until a concrete next-step signal arrives.',
+          '',
+          'Why this beats the alternatives: another generic nudge is more likely to preserve ambiguity than improve the odds on the pilot decision.',
+          '',
+          'Deprioritize: do not draft another status-check message.',
+          '',
+          'Consequence: if this stays mentally open past 2026-04-24, the pilot decision keeps losing real bandwidth.',
+          '',
+          'Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by 2026-04-24.',
+          '',
+          'Deadline: 2026-04-24',
+        ].join('\n'),
       },
       candidateType: 'discrepancy',
       matchedGoalCategory: 'work',
     });
 
-    expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_send_ready_move');
-    expect(issues).toContain('decision_enforcement:behavioral_pattern_missing_stop_rule');
+    expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_actual_move');
+    expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_long_horizon_rationale');
+    expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_deprioritization');
+    expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_reopen_trigger');
   });
 
   it('does not flag stop_rule when the draft uses a close-the-loop + stop-following-up rule', () => {
@@ -699,7 +714,7 @@ describe('validateDirectiveForPersistence — evidence array safety', () => {
       matchedGoalCategory: 'work',
     });
 
-    expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_send_ready_move');
+    expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_actual_move');
     expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_stop_rule');
   });
 
@@ -763,7 +778,7 @@ describe('validateDirectiveForPersistence — evidence array safety', () => {
       matchedGoalCategory: 'work',
     });
 
-    expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_send_ready_move');
+    expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_actual_move');
     expect(issues).not.toContain('decision_enforcement:behavioral_pattern_missing_stop_rule');
     expect(issues).not.toContain('decision_enforcement:missing_explicit_ask');
   });

@@ -812,13 +812,13 @@ describe('generateDirective runtime failures', () => {
     }));
   });
 
-  it('repairs weak behavioral_pattern write_document into a goal-anchored close-the-loop move', async () => {
+  it('repairs weak behavioral_pattern write_document into a long-horizon internal decision move', async () => {
     const scored = asWinnerScored(buildScorerResult());
     scored.winner.type = 'discrepancy';
     scored.winner.discrepancyClass = 'behavioral_pattern' as import('../../briefing/discrepancy-detector').DiscrepancyClass;
     scored.winner.suggestedActionType = 'write_document';
-    scored.winner.title = '3 inbound messages to Pat Lee in 14 days, 0 replies.';
-    scored.winner.content = 'The same follow-up gap keeps repeating across this thread.';
+    scored.winner.title = '3 inbound messages to Pat Lee in 14 days, 0 replies after the interview.';
+    scored.winner.content = 'The same follow-up gap keeps repeating across this hiring thread.';
     scored.winner.matchedGoal = {
       text: 'pilot decision',
       priority: 4,
@@ -866,13 +866,152 @@ describe('generateDirective runtime failures', () => {
 
     expect(anthropicCreate).toHaveBeenCalledTimes(2);
     expect(directive.action_type).toBe('write_document');
-    expect(directive.directive).toBe('Pat Lee going dark is now blocking the pilot decision.');
+    expect(directive.directive).toContain('reopen only if a concrete next-step signal arrives');
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
-    expect(String(embeddedArtifact?.title)).toBe('Pat Lee going dark is now blocking the pilot decision');
-    expect(String(embeddedArtifact?.content)).toContain('You were trying to get this thread to a real yes/no on the pilot decision.');
-    expect(String(embeddedArtifact?.content)).toContain('Send this today:');
-    expect(String(embeddedArtifact?.content)).toContain('Consequence: if this stays open past today, the pilot decision stays blocked while attention keeps leaking into a thread that is no longer moving.');
-    expect(String(embeddedArtifact?.content)).toContain('If there is no reply after this, mark the thread stalled and stop allocating attention to it.');
+    expect(String(embeddedArtifact?.title)).toBe('Execution rule for the pilot decision');
+    expect(String(embeddedArtifact?.content)).toContain('The pilot decision matters over the next 30-90 days.');
+    expect(String(embeddedArtifact?.content)).toContain('Execution move: stop holding live bandwidth open');
+    expect(String(embeddedArtifact?.content)).toContain('Why this beats the alternatives:');
+    expect(String(embeddedArtifact?.content)).toContain('Deprioritize:');
+    expect(String(embeddedArtifact?.content)).toContain('Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives');
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_repaired',
+      generationStatus: 'decision_enforcement_repaired',
+    }));
+  });
+
+  it('uses the grounded thread label for MAS3-style behavioral-pattern repairs instead of echoing the generated directive', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    scored.winner.type = 'discrepancy';
+    scored.winner.discrepancyClass = 'behavioral_pattern' as import('../../briefing/discrepancy-detector').DiscrepancyClass;
+    scored.winner.suggestedActionType = 'write_document';
+    scored.winner.title = "Committed to 'Waiting on MAS3 (HCA) hiring decision' 11 days ago — no activity since";
+    scored.winner.content = 'The thread has stayed mentally open even though no concrete next step has landed.';
+    scored.winner.matchedGoal = {
+      text: 'Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+      priority: 5,
+      category: 'career',
+    };
+    scored.winner.sourceSignals = [
+      {
+        kind: 'commitment',
+        id: 'commitment-mas3',
+        occurredAt: new Date().toISOString(),
+        summary: 'Waiting on MAS3 (HCA) hiring decision',
+      },
+    ];
+    scored.winner.trigger = {
+      baseline_state: 'The hiring-decision thread originally had a concrete outcome boundary.',
+      current_state: 'The thread is now mentally open without a grounded next step.',
+      delta: 'clear decision window → stale silent thread',
+      timeframe: '11 days',
+      outcome_class: 'risk',
+      why_now: 'The thread is quiet enough that continuing to hold bandwidth open is now more expensive than waiting for a real signal.',
+    };
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Write up the stalled hiring thread for later.',
+          artifact_type: 'write_document',
+          artifact: {
+            document_purpose: 'summary',
+            target_reader: 'user',
+            title: 'Stalled hiring thread',
+            content: 'The MAS3 thread looks stalled. Capture a short summary before deciding what to do next.',
+          },
+          evidence: 'The thread is still mentally open.',
+          why_now: 'The pattern is visible now.',
+          causal_diagnosis: {
+            why_exists_now: 'Repeated follow-ups are not producing a real yes/no.',
+            mechanism: 'The thread stayed open without a closing move.',
+          },
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(directive.directive).toContain('Waiting on MAS3 (HCA) hiring decision');
+    const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    expect(String(embeddedArtifact?.content)).toContain('Waiting on MAS3 (HCA) hiring decision is no longer an active thread');
+    expect(String(embeddedArtifact?.content)).not.toContain('means Stop holding live bandwidth open for');
+    expect(String(embeddedArtifact?.content)).not.toContain('for Stop holding live bandwidth open for');
+  });
+
+  it('rejects behavioral-pattern documents that echo the full directive into the artifact body and repairs them', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    scored.winner.type = 'discrepancy';
+    scored.winner.discrepancyClass = 'behavioral_pattern' as import('../../briefing/discrepancy-detector').DiscrepancyClass;
+    scored.winner.suggestedActionType = 'write_document';
+    scored.winner.title = "Committed to 'Waiting on MAS3 (HCA) hiring decision' 11 days ago — no activity since";
+    scored.winner.content = "Committed to 'Waiting on MAS3 (HCA) hiring decision' 11 days ago — no activity since";
+    scored.winner.matchedGoal = {
+      text: 'Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+      priority: 5,
+      category: 'career',
+    };
+    scored.winner.sourceSignals = [
+      {
+        kind: 'commitment',
+        id: 'commitment-mas3',
+        occurredAt: new Date().toISOString(),
+        summary: 'Waiting on MAS3 (HCA) hiring decision',
+      },
+    ];
+    scored.winner.trigger = {
+      baseline_state: 'The hiring-decision thread originally had a concrete outcome boundary.',
+      current_state: 'The thread is now mentally open without a grounded next step.',
+      delta: 'clear decision window → stale silent thread',
+      timeframe: '11 days',
+      outcome_class: 'risk',
+      why_now: 'The thread is quiet enough that continuing to hold bandwidth open is now more expensive than waiting for a real signal.',
+    };
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision; reopen only if a concrete next-step signal arrives by 5:00 PM PT on 2026-04-21.',
+          artifact_type: 'write_document',
+          artifact: {
+            document_purpose: 'brief',
+            target_reader: 'user',
+            title: 'Execution rule for the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+            content: 'The Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference matters over the next 30-90 days. 1 follow-ups in 14 days without a reply means Stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision; reopen only if a concrete next-step signal arrives by 5:00 PM PT on 2026-04-21 is no longer an active thread; it is an open loop consuming attention.\n\nExecution move: stop holding live bandwidth open for Stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision; reopen only if a concrete next-step signal arrives by 5:00 PM PT on 2026-04-21 today. Treat it as inactive until a concrete next-step signal arrives, and reallocate that time to the highest-probability work for the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference.',
+          },
+          evidence: 'The thread is still mentally open.',
+          why_now: 'The pattern is visible now.',
+          causal_diagnosis: {
+            why_exists_now: 'Repeated follow-ups are not producing a real yes/no.',
+            mechanism: 'The thread stayed open without a closing move.',
+          },
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(directive.directive).toContain('Waiting on MAS3 (HCA) hiring decision');
+    const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    expect(String(embeddedArtifact?.content)).toContain('Waiting on MAS3 (HCA) hiring decision is no longer an active thread');
+    expect(String(embeddedArtifact?.content)).not.toContain('means Stop holding live bandwidth open for');
+    expect(String(embeddedArtifact?.content)).not.toContain('for Stop holding live bandwidth open for');
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',
       generationStatus: 'decision_enforcement_repaired',

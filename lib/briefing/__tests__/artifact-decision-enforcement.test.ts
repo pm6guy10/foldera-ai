@@ -235,6 +235,27 @@ describe('artifact decision enforcement', () => {
     expect(issues.filter((issue) => issue.includes('decision_enforcement:'))).toHaveLength(0);
   });
 
+  it('classifies execution-rule artifacts as internal execution briefs even without discrepancy metadata', () => {
+    const mode = getWriteDocumentMode({
+      actionType: 'write_document',
+      artifact: {
+        document_purpose: 'brief',
+        target_reader: 'user',
+        title: 'Execution rule for the MAS3 Management Analyst Supervisor position',
+        content: [
+          'The MAS3 Management Analyst Supervisor position matters over the next 30-90 days.',
+          'Execution move: stop holding live bandwidth open for the MAS3 hiring thread today.',
+          'Why this beats the alternatives: reclaiming the time changes the next 30-90 days of real leverage.',
+          'Deprioritize: do not draft another status-check message.',
+          'Consequence: if this stays mentally open past 2026-04-24, the role keeps losing real bandwidth.',
+          'Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by 2026-04-24.',
+        ].join('\n\n'),
+      },
+    });
+
+    expect(mode).toBe('internal_execution_brief');
+  });
+
   it('rejects behavioral-pattern close-loop docs that never ground the recipient beyond "This thread"', () => {
     const directive = baseDirective({
       action_type: 'write_document',
@@ -284,20 +305,21 @@ describe('artifact decision enforcement', () => {
     });
     const artifact = {
       type: 'document',
-      document_purpose: 'close_the_loop',
+      document_purpose: 'brief',
       target_reader: 'user',
-      title:
-        'This thread going dark is now blocking the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+      title: 'Execution rule for the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
       content: [
-        'You were trying to get this thread to a real yes/no on the Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference.',
+        'The Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference matters over the next 30-90 days, but this thread is still mentally open.',
         '',
-        'Send this today:',
+        'Execution move: stop holding live bandwidth open for This thread today. Treat it as inactive until a concrete next-step signal arrives.',
         '',
-        '“I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”',
+        'Why this beats the alternatives: another generic nudge is more likely to preserve ambiguity than improve the odds on the goal.',
+        '',
+        'Deprioritize: do not draft another status-check message while silence continues.',
         '',
         'Consequence: if this stays open past today, the goal stays blocked while attention keeps leaking into a thread that is no longer moving.',
         '',
-        'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
+        'Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by today.',
         '',
         'Deadline: today',
       ].join('\n'),

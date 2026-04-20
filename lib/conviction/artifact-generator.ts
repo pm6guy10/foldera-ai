@@ -452,29 +452,30 @@ function buildBehavioralPatternArtifact(directive: ConvictionDirective): Documen
   const entityName = parsedFacts.entityName ?? (cleanText(directive.directive) || 'thread');
   const count = parsedFacts.count ?? '1';
   const window = parsedFacts.window ?? '14 days';
-  const salutation = entityName.split(/\s+/)[0] || entityName;
   const deadlineAnchor = extractDeadlineAnchor(signalText) ?? 'today';
   const inferredGoal = inferBehavioralPatternGoal(directive);
   const goalLabel = inferredGoal ? deriveGoalLabel(inferredGoal) : null;
-  const title = goalLabel
-    ? `${entityName} going dark is now blocking the ${goalLabel}`
-    : `${entityName} going dark is now blocking the thread`;
-  const intro = goalLabel
-    ? `You were trying to get this thread to a real yes/no on the ${goalLabel}. ${count} follow-ups in ${window} without a reply means it is no longer active, just mentally open.`
-    : `${count} follow-ups in ${window} without a reply means this thread is stalled, not active.`;
-  const consequence = goalLabel
-    ? `Consequence: if this stays open past ${deadlineAnchor}, the ${goalLabel} stays blocked while attention keeps leaking into a thread that is no longer moving.`
-    : `Consequence: if this stays open past ${deadlineAnchor}, attention keeps leaking into a thread that is no longer moving.`;
+  const title = goalLabel ? `Execution rule for the ${goalLabel}` : `Execution rule for ${entityName}`;
   const content = [
-    intro,
+    goalLabel
+      ? `The ${goalLabel} matters over the next 30-90 days. ${count} follow-ups in ${window} without a reply means ${entityName} is no longer an active thread; it is an open loop consuming attention.`
+      : `${count} follow-ups in ${window} without a reply means ${entityName} is no longer an active thread; it is an open loop consuming attention.`,
     '',
-    'Send this today:',
+    goalLabel
+      ? `Execution move: stop holding live bandwidth open for ${entityName} today. Treat it as inactive until a concrete next-step signal arrives, and reallocate that time to the highest-probability work for the ${goalLabel}.`
+      : `Execution move: stop holding live bandwidth open for ${entityName} today. Treat it as inactive until a concrete next-step signal arrives.`,
     '',
-    `“Hey ${salutation} — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”`,
+    goalLabel
+      ? `Why this beats the alternatives: ${count} follow-ups in ${window} without a reply means another generic nudge is more likely to preserve ambiguity than improve the odds on the ${goalLabel}, while reclaiming the time changes the next 30-90 days of real leverage.`
+      : `Why this beats the alternatives: ${count} follow-ups in ${window} without a reply means another generic nudge is more likely to preserve ambiguity than create a real decision.`,
     '',
-    consequence,
+    `Deprioritize: do not draft another status-check message, do not keep calendar or prep time reserved for ${entityName}, and do not treat the thread as an active commitment while silence continues.`,
     '',
-    'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
+    goalLabel
+      ? `Consequence: if this stays mentally open past ${deadlineAnchor}, the ${goalLabel} keeps losing real bandwidth to a thread that is not moving.`
+      : `Consequence: if this stays mentally open past ${deadlineAnchor}, attention keeps leaking into a thread that is not moving.`,
+    '',
+    `Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by ${deadlineAnchor}.`,
     '',
     `Deadline: ${deadlineAnchor}`,
   ].join('\n');
@@ -490,8 +491,11 @@ export async function generateArtifact(
   userId: string,
   directive: ConvictionDirective,
 ): Promise<ConvictionArtifact | null> {
-  if (directive.action_type === 'write_document' && directive.discrepancyClass === 'behavioral_pattern') {
-    return buildBehavioralPatternArtifact(directive);
+  if (directive.action_type === 'write_document') {
+    const embedded = (directive as ConvictionDirective & { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    if (!embedded && directive.discrepancyClass === 'behavioral_pattern') {
+      return buildBehavioralPatternArtifact(directive);
+    }
   }
 
   return generateArtifactCompat(userId, directive);

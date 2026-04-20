@@ -44,6 +44,16 @@ export interface ConvictionDirective {
 
   /** Pass-1 LLM: single-sentence anomaly, persisted in execution_result for quality checks. */
   anomaly_identification?: string;
+
+  /** When generator fallback displaces scorer-top, this records the actual final winner. */
+  winnerSelectionTrace?: {
+    finalWinnerId: string;
+    finalWinnerType: string;
+    finalWinnerReason: string | null;
+    scorerTopId: string;
+    scorerTopType: string;
+    scorerTopDisplacementReason: string | null;
+  };
 }
 
 // ---------------------------------------------------------------------------

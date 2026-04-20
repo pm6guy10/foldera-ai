@@ -365,4 +365,129 @@ describe('selectFinalWinner', () => {
     const { winner } = selectFinalWinner([scheduleConflict, behavioral], NO_GUARDRAILS);
     expect(winner.id).toBe('behavioral-mas3');
   });
+
+  it('long-horizon goal-anchored move beats shadow-urgent schedule churn', () => {
+    const shadowUrgent = makeCandidate({
+      id: 'shadow-urgent-calendar',
+      score: 12,
+      type: 'discrepancy',
+      discrepancyClass: 'schedule_conflict',
+      suggestedActionType: 'write_document',
+      title: 'Overlapping events on 2026-04-25',
+      content: 'Two calendar holds overlap on 2026-04-25.',
+      matchedGoal: null,
+      sourceSignals: [{ kind: 'signal', summary: 'calendar overlap detected', occurredAt: new Date().toISOString() }],
+    });
+    const longHorizon = makeCandidate({
+      id: 'career-bandwidth-rule',
+      score: 9.5,
+      type: 'discrepancy',
+      discrepancyClass: 'behavioral_pattern',
+      suggestedActionType: 'write_document',
+      title: 'Repeated silence is now blocking the supervisor-track search',
+      content: 'The same stalled thread keeps consuming bandwidth that should go to live career moves.',
+      matchedGoal: {
+        text: 'Land a supervisor-track role and stabilize 12-month career momentum',
+        priority: 4,
+        category: 'career',
+      },
+      entityName: 'MAS3 HCA hiring-decision thread',
+      relatedSignals: [
+        '11 days since last thread movement',
+        'Search time keeps getting held open for a stale role',
+      ],
+      sourceSignals: [{ kind: 'signal', summary: 'career search bandwidth is still tied to a stale thread', occurredAt: new Date().toISOString() }],
+    });
+
+    const { ranked } = selectRankedCandidates([shadowUrgent, longHorizon], NO_GUARDRAILS);
+    const { winner } = selectFinalWinner([shadowUrgent, longHorizon], NO_GUARDRAILS);
+    expect(winner.id).toBe('career-bandwidth-rule');
+    expect(ranked[0]?.candidate.id).toBe('career-bandwidth-rule');
+  });
+
+  it('generic career status-check outbound is disqualified unless the next step is grounded', () => {
+    const genericCareerFollowUp = makeCandidate({
+      id: 'generic-career-follow-up',
+      score: 14,
+      type: 'signal',
+      suggestedActionType: 'send_message',
+      title: 'MAS3 hiring timeline status check',
+      content: 'Checking in on the hiring timeline and current status.',
+      entityName: 'MAS3 recruiting team',
+      relationshipContext: '- MAS3 recruiting team <recruiting@mas3.example> (Hiring)',
+      matchedGoal: {
+        text: 'Land a supervisor-track role and stabilize 12-month career momentum',
+        priority: 4,
+        category: 'career',
+      },
+    });
+    const longHorizon = makeCandidate({
+      id: 'career-bandwidth-rule',
+      score: 9.5,
+      type: 'discrepancy',
+      discrepancyClass: 'behavioral_pattern',
+      suggestedActionType: 'write_document',
+      title: 'Stop holding bandwidth for the stale hiring thread',
+      content: 'The stale hiring thread is consuming time better spent on live roles.',
+      matchedGoal: {
+        text: 'Land a supervisor-track role and stabilize 12-month career momentum',
+        priority: 4,
+        category: 'career',
+      },
+      entityName: 'MAS3 HCA hiring-decision thread',
+      relatedSignals: ['No thread movement for 11 days', 'Live applications need the reclaimed time'],
+      sourceSignals: [{ kind: 'signal', summary: 'stale thread still consuming career bandwidth', occurredAt: new Date().toISOString() }],
+    });
+
+    const { ranked } = selectRankedCandidates([genericCareerFollowUp, longHorizon], NO_GUARDRAILS);
+    const { winner } = selectFinalWinner([genericCareerFollowUp, longHorizon], NO_GUARDRAILS);
+    expect(winner.id).toBe('career-bandwidth-rule');
+    const genericEntry = ranked.find((entry) => entry.candidate.id === 'generic-career-follow-up');
+    expect(genericEntry?.disqualified).toBe(true);
+    expect(genericEntry?.disqualifyReason).toBe('career_status_outbound_requires_grounded_recipient_and_next_step');
+  });
+
+  it('true emergency still outranks the long-horizon candidate', () => {
+    const emergency = makeCandidate({
+      id: 'interview-slot-emergency',
+      score: 12,
+      type: 'discrepancy',
+      discrepancyClass: 'exposure',
+      suggestedActionType: 'write_document',
+      title: 'Interview slot must be scheduled today',
+      content: 'The interview slot expires today if no time is selected.',
+      matchedGoal: {
+        text: 'Land a supervisor-track role and stabilize 12-month career momentum',
+        priority: 4,
+        category: 'career',
+      },
+      breakdown: {
+        ...BASE_BREAKDOWN,
+        stakes: 4.5,
+        urgency: 0.96,
+        tractability: 0.8,
+      },
+      sourceSignals: [{ kind: 'signal', summary: 'schedule your interview slot today before it expires', occurredAt: new Date().toISOString() }],
+    });
+    const longHorizon = makeCandidate({
+      id: 'career-bandwidth-rule',
+      score: 11,
+      type: 'discrepancy',
+      discrepancyClass: 'behavioral_pattern',
+      suggestedActionType: 'write_document',
+      title: 'Stop holding bandwidth for the stale hiring thread',
+      content: 'The stale hiring thread is consuming time better spent on live roles.',
+      matchedGoal: {
+        text: 'Land a supervisor-track role and stabilize 12-month career momentum',
+        priority: 4,
+        category: 'career',
+      },
+      entityName: 'MAS3 HCA hiring-decision thread',
+      relatedSignals: ['No thread movement for 11 days', 'Live applications need the reclaimed time'],
+      sourceSignals: [{ kind: 'signal', summary: 'stale thread still consuming career bandwidth', occurredAt: new Date().toISOString() }],
+    });
+
+    const { winner } = selectFinalWinner([emergency, longHorizon], NO_GUARDRAILS);
+    expect(winner.id).toBe('interview-slot-emergency');
+  });
 });

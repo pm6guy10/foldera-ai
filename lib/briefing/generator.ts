@@ -1087,6 +1087,127 @@ export function selectRankedCandidates(
   const OBVIOUS_FIRST_LAYER_RE = /^(?:follow\s+up|check\s+in|touch\s+base|circle\s+back|schedule\s+(?:a\s+)?(?:\d+.?minute\s+)?(?:block|time|session))\b/i;
   const SEND_WRITE_ACTIONS = new Set<ActionType>(['send_message', 'write_document', 'make_decision', 'research', 'schedule']);
   const hasDiscrepancy = topCandidates.some((candidate) => candidate.type === 'discrepancy');
+  const STATUS_CHECK_RE = /\b(follow\s+up|checking?\s+in|status\s+update|still under consideration|wanted to reach out|just checking in)\b/i;
+  const HIRING_THREAD_RE =
+    /\b(hiring|recruiter|recruiting|interview|application|applied|candidate|offer|role|job search|job hunt|under consideration)\b/i;
+  const GROUNDED_CAREER_NEXT_STEP_RE =
+    /\b(schedule|slot|availability|assessment|panel|phone screen|interview|reference|background check|offer|decision|next step|documents?)\b/i;
+  const BROAD_CLUSTER_RE =
+    /\bacross (?:\d+|multiple)\b|\btheme\b|\bcluster\b|\bpattern\b|\bseveral\b.*\bthreads?\b|\bdeadline appears\b/i;
+  const SCHEDULING_ADMIN_RE =
+    /\boverlap|double[-\s]?book|calendar|same window|conflict|slot|reschedul|\bschedule\b/i;
+
+  function getCandidateSearchText(candidate: import('./scorer').ScoredLoop): string {
+    return [
+      candidate.title,
+      candidate.content,
+      candidate.relationshipContext ?? '',
+      ...(candidate.relatedSignals ?? []),
+      ...(candidate.sourceSignals ?? []).map((signal) => `${signal.summary ?? ''} ${signal.source ?? ''}`),
+      candidate.trigger?.baseline_state ?? '',
+      candidate.trigger?.current_state ?? '',
+      candidate.trigger?.delta ?? '',
+      candidate.trigger?.why_now ?? '',
+    ].join(' ');
+  }
+
+  function getCandidateEvidenceDensity(candidate: import('./scorer').ScoredLoop): number {
+    let density = 0;
+    if (candidate.matchedGoal?.text?.trim()) density += 1;
+    if ((candidate.relatedSignals?.length ?? 0) > 0) density += 1;
+    if ((candidate.sourceSignals?.length ?? 0) > 0) density += 1;
+    if (candidate.entityName?.trim()) density += 1;
+    return density;
+  }
+
+  function isShadowUrgentCandidate(candidate: import('./scorer').ScoredLoop, searchText: string): boolean {
+    if (candidate.discrepancyClass === 'schedule_conflict') return true;
+    if (
+      candidate.suggestedActionType === 'schedule' &&
+      SCHEDULING_ADMIN_RE.test(searchText) &&
+      !candidate.matchedGoal?.text?.trim()
+    ) {
+      return true;
+    }
+    if (
+      candidate.suggestedActionType === 'write_document' &&
+      /\b(prep|brief|agenda|summary|memo)\b/i.test(searchText) &&
+      !candidate.entityName?.trim() &&
+      !candidate.matchedGoal?.text?.trim()
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  function isBroadClusterWithoutSingleMove(
+    candidate: import('./scorer').ScoredLoop,
+    searchText: string,
+  ): boolean {
+    return (
+      candidate.discrepancyClass === 'behavioral_pattern' &&
+      BROAD_CLUSTER_RE.test(searchText) &&
+      !candidate.entityName?.trim() &&
+      !candidate.relationshipContext?.trim()
+    );
+  }
+
+  function isTrueEmergencyOverrideCandidate(
+    candidate: import('./scorer').ScoredLoop,
+    searchText: string,
+  ): boolean {
+    return (
+      candidate.discrepancyClass === 'exposure' ||
+      ((candidate.breakdown.stakes ?? 0) >= 4 &&
+        (candidate.breakdown.urgency ?? 0) >= 0.92 &&
+        (candidate.breakdown.tractability ?? 0) >= 0.55 &&
+        (/\bmust\b|\brequired\b|\bdeadline\b|\bexpires?\b|\btoday\b|\btomorrow\b|\b20\d{2}-\d{2}-\d{2}\b/i.test(searchText)))
+    );
+  }
+
+  function isUngroundedCareerStatusOutbound(
+    candidate: import('./scorer').ScoredLoop,
+    searchText: string,
+    emailCount: number,
+  ): boolean {
+    const primaryThreadText = [
+      candidate.title,
+      candidate.content,
+      candidate.trigger?.baseline_state ?? '',
+      candidate.trigger?.current_state ?? '',
+      candidate.trigger?.delta ?? '',
+      candidate.trigger?.why_now ?? '',
+    ].join(' ');
+    const careerThread =
+      candidate.suggestedActionType === 'send_message' &&
+      HIRING_THREAD_RE.test(primaryThreadText);
+    if (!careerThread) return false;
+
+    const hasGroundedRecipient = Boolean(candidate.entityName?.trim()) || emailCount > 0;
+    const genericStatusCheck = STATUS_CHECK_RE.test(primaryThreadText);
+    const groundedNextStep = GROUNDED_CAREER_NEXT_STEP_RE.test(primaryThreadText);
+
+    return !hasGroundedRecipient || (genericStatusCheck && !groundedNextStep);
+  }
+
+  function isLongHorizonLeverageCandidate(
+    candidate: import('./scorer').ScoredLoop,
+    triangulationAxes: number,
+    evidenceDensity: number,
+    shadowUrgent: boolean,
+    emergencyOverride: boolean,
+  ): boolean {
+    const goalPriority = typeof candidate.matchedGoal?.priority === 'number' ? candidate.matchedGoal.priority : 0;
+    return (
+      goalPriority >= 3 &&
+      Boolean(candidate.matchedGoal?.text?.trim()) &&
+      triangulationAxes >= 2 &&
+      evidenceDensity >= 3 &&
+      !shadowUrgent &&
+      !emergencyOverride &&
+      (candidate.type === 'discrepancy' || candidate.type === 'commitment' || candidate.type === 'relationship' || candidate.type === 'hunt')
+    );
+  }
 
   interface Rated {
     candidate: import('./scorer').ScoredLoop;
@@ -1094,9 +1215,29 @@ export function selectRankedCandidates(
     note: string;
     disqualified: boolean;
     disqualifyReason: string | null;
+    shadowUrgent: boolean;
+    emergencyOverride: boolean;
+    longHorizonLeverage: boolean;
+    ungroundedCareerStatusOutbound: boolean;
   }
 
   const rated: Rated[] = topCandidates.map((candidate) => {
+    const rawText = [
+      candidate.content,
+      candidate.relationshipContext ?? '',
+      ...(candidate.relatedSignals ?? []),
+      ...(candidate.sourceSignals ?? []).map((s) => `${s.summary ?? ''} ${s.source ?? ''}`),
+    ].join(' ');
+    const searchText = getCandidateSearchText(candidate);
+    EMAIL_RE.lastIndex = 0;
+    const emailHits = rawText.match(EMAIL_RE)?.filter(
+      (e) => !e.includes('example') && !e.includes('placeholder') && !e.includes('noreply'),
+    ) ?? [];
+    const shadowUrgent = isShadowUrgentCandidate(candidate, searchText);
+    const broadClusterWithoutSingleMove = isBroadClusterWithoutSingleMove(candidate, searchText);
+    const emergencyOverride = isTrueEmergencyOverrideCandidate(candidate, searchText);
+    const ungroundedCareerStatusOutbound = isUngroundedCareerStatusOutbound(candidate, searchText, emailHits.length);
+
     // 0. Hard disqualifiers — top slots must be SEND/WRITE capable, non-generic finished-work candidates.
     if (!SEND_WRITE_ACTIONS.has(candidate.suggestedActionType)) {
       return {
@@ -1105,6 +1246,10 @@ export function selectRankedCandidates(
         note: '',
         disqualified: true,
         disqualifyReason: 'candidate is not send/write capable',
+        shadowUrgent,
+        emergencyOverride,
+        longHorizonLeverage: false,
+        ungroundedCareerStatusOutbound,
       };
     }
     if (OBVIOUS_FIRST_LAYER_RE.test(candidate.title.trim())) {
@@ -1117,6 +1262,10 @@ export function selectRankedCandidates(
           note: '',
           disqualified: true,
           disqualifyReason: 'obvious first-layer advice',
+          shadowUrgent,
+          emergencyOverride,
+          longHorizonLeverage: false,
+          ungroundedCareerStatusOutbound,
         };
       }
     }
@@ -1127,6 +1276,36 @@ export function selectRankedCandidates(
         note: '',
         disqualified: true,
         disqualifyReason: 'low_value_inbound_promotional_thread',
+        shadowUrgent,
+        emergencyOverride,
+        longHorizonLeverage: false,
+        ungroundedCareerStatusOutbound,
+      };
+    }
+    if (broadClusterWithoutSingleMove) {
+      return {
+        candidate,
+        viabilityScore: 0,
+        note: '',
+        disqualified: true,
+        disqualifyReason: 'broad_behavioral_cluster_without_single_move',
+        shadowUrgent,
+        emergencyOverride,
+        longHorizonLeverage: false,
+        ungroundedCareerStatusOutbound,
+      };
+    }
+    if (ungroundedCareerStatusOutbound) {
+      return {
+        candidate,
+        viabilityScore: 0,
+        note: '',
+        disqualified: true,
+        disqualifyReason: 'career_status_outbound_requires_grounded_recipient_and_next_step',
+        shadowUrgent,
+        emergencyOverride,
+        longHorizonLeverage: false,
+        ungroundedCareerStatusOutbound,
       };
     }
 
@@ -1159,6 +1338,10 @@ export function selectRankedCandidates(
         note: '',
         disqualified: true,
         disqualifyReason: 'already acted on this topic in the last 7 days',
+        shadowUrgent,
+        emergencyOverride,
+        longHorizonLeverage: false,
+        ungroundedCareerStatusOutbound,
       };
     }
 
@@ -1181,6 +1364,10 @@ export function selectRankedCandidates(
             note: '',
             disqualified: true,
             disqualifyReason: `repeated_not_relevant_skip: ${consecutiveNotRelevant} consecutive not_relevant skips for ${candidate.entityName}`,
+            shadowUrgent,
+            emergencyOverride,
+            longHorizonLeverage: false,
+            ungroundedCareerStatusOutbound,
           };
         }
       }
@@ -1237,19 +1424,6 @@ export function selectRankedCandidates(
       notes.push('ungrounded schedule-conflict penalty');
     }
 
-    // Email presence in raw candidate data (pre-hydration scan).
-    // extractAllEmailAddresses() needs a hydrated winner; at this stage we scan
-    // the raw content, relatedSignals, and sourceSignal summaries directly.
-    const rawText = [
-      candidate.content,
-      ...(candidate.relatedSignals ?? []),
-      ...(candidate.sourceSignals ?? []).map((s) => s.summary ?? ''),
-    ].join(' ');
-    EMAIL_RE.lastIndex = 0;
-    const emailHits = rawText.match(EMAIL_RE)?.filter(
-      (e) => !e.includes('example') && !e.includes('placeholder') && !e.includes('noreply'),
-    ) ?? [];
-
     if (candidate.suggestedActionType === 'send_message') {
       if (emailHits.length > 0) {
         notes.push('send_message with email in signals');
@@ -1302,12 +1476,28 @@ export function selectRankedCandidates(
       || (candidate.relatedSignals?.length ?? 0) >= 2;
 
     const triangulationAxes = [hasOutcomePressure, hasBehavioralDiscrepancy, hasExecutionAnchor].filter(Boolean).length;
+    const evidenceDensity = getCandidateEvidenceDensity(candidate);
+    const longHorizonLeverage = isLongHorizonLeverageCandidate(
+      candidate,
+      triangulationAxes,
+      evidenceDensity,
+      shadowUrgent,
+      emergencyOverride,
+    );
     if (triangulationAxes >= 3) {
       mult *= 1.35;
       notes.push('tier-2 triangulated (outcome+discrepancy+anchor)');
     } else if (triangulationAxes >= 2) {
       mult *= 1.10;
       notes.push(`tier-1+ (${triangulationAxes}/3 axes)`);
+    }
+    if (shadowUrgent && !emergencyOverride) {
+      mult *= 0.72;
+      notes.push('shadow-urgency penalty');
+    }
+    if (longHorizonLeverage) {
+      mult *= 1.22;
+      notes.push('long-horizon leverage (30-90d goal anchored)');
     }
 
     return {
@@ -1316,6 +1506,10 @@ export function selectRankedCandidates(
       note: notes.join('; ') || 'base score',
       disqualified: false,
       disqualifyReason: null,
+      shadowUrgent,
+      emergencyOverride,
+      longHorizonLeverage,
+      ungroundedCareerStatusOutbound,
     };
   });
 
@@ -1433,6 +1627,33 @@ export function selectRankedCandidates(
       });
       top = rated[0];
     }
+  }
+
+  const topLongHorizonEntry = rated
+    .filter((entry) => !entry.disqualified && entry.longHorizonLeverage)
+    .sort((a, b) => b.viabilityScore - a.viabilityScore)[0];
+  const topShadowUrgentEntry = rated
+    .filter((entry) => !entry.disqualified && entry.shadowUrgent && !entry.emergencyOverride)
+    .sort((a, b) => b.viabilityScore - a.viabilityScore)[0];
+  if (
+    topLongHorizonEntry &&
+    topShadowUrgentEntry &&
+    topShadowUrgentEntry.viabilityScore >= topLongHorizonEntry.viabilityScore
+  ) {
+    topLongHorizonEntry.viabilityScore = topShadowUrgentEntry.viabilityScore + 0.001;
+    topLongHorizonEntry.note = [
+      topLongHorizonEntry.note,
+      'long-horizon leverage forced above shadow urgency',
+    ].filter(Boolean).join('; ');
+    topShadowUrgentEntry.note = [
+      topShadowUrgentEntry.note,
+      'shadow urgency yielded to higher-leverage move',
+    ].filter(Boolean).join('; ');
+    rated.sort((a, b) => {
+      if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
+      return b.viabilityScore - a.viabilityScore;
+    });
+    top = rated[0];
   }
 
   // Pathological fallback: all disqualified → still return ranked list so fallback loop can try
@@ -4796,12 +5017,12 @@ function getWriteDocumentTaskManagerLabelIssues(artifact: Record<string, unknown
 export type WriteDocumentMode = 'outbound_resolution_note' | 'internal_execution_brief';
 
 const INTERNAL_EXECUTION_PURPOSE_RE =
-  /\b(interview|answer architecture|answer script|close[_\s-]?the[_\s-]?loop|execution brief)\b/i;
+  /\b(interview|answer architecture|answer script|close[_\s-]?the[_\s-]?loop|execution brief|execution rule)\b/i;
 const INTERNAL_EXECUTION_CONTEXT_RE =
-  /\b(interview|phone screen|panel interview|role-specific answer|answer architecture|answer script)\b/i;
+  /\b(interview|phone screen|panel interview|role-specific answer|answer architecture|answer script|execution rule|execution move)\b/i;
 const INTERNAL_EXECUTION_TARGET_RE = /\b(candidate|user|yourself|you)\b/i;
 const INTERNAL_EXECUTION_MOVE_RE =
-  /\b(use this|answer script|send this(?: email)?(?: (?:today|now|tonight|tomorrow))?|send the email above|copy(?:\/|-)?paste|open with|say:|draft email to send|execution\b)\b/i;
+  /\b(use this|answer script|send this(?: email)?(?: (?:today|now|tonight|tomorrow))?|send the email above|copy(?:\/|-)?paste|open with|say:|draft email to send|execution\b|execution move)\b/i;
 const INTERNAL_EXECUTION_CHECKLIST_LINE_RE =
   /^\s*(?:[-*]|\d+\.)\s*(?:prepare|review|research|gather|brainstorm|locate|find|list|outline|draft|confirm|write)\b/gim;
 const INTERNAL_EXECUTION_QUESTION_RE =
@@ -4976,6 +5197,14 @@ function parseBehavioralPatternRepairFacts(text: string): {
   return {};
 }
 
+function normalizeBehavioralPatternDirectiveEcho(value: string): string {
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/[.!?]+$/g, '')
+    .trim()
+    .toLowerCase();
+}
+
 function extractScheduleConflictRepairFacts(text: string): {
   dateLabel?: string;
   eventA?: string;
@@ -5039,6 +5268,25 @@ function getBehavioralPatternFinishedWorkIssues(input: {
   const combined = `${input.directiveText}\n${input.reason}\n${title}\n${content}`.trim();
   const issues: string[] = [];
   const goalLabel = extractBehavioralPatternGoalLabel(input.candidateGoal);
+  const normalizedDirective = normalizeBehavioralPatternDirectiveEcho(input.directiveText);
+  const normalizedContent = normalizeBehavioralPatternDirectiveEcho(content);
+  const hasDecisionArtifactMove =
+    /\b(?:Execution move|Actual move|Use this rule)\b/i.test(content) ||
+    /\bStop holding\b[\s\S]{0,120}\bbandwidth\b/i.test(content) ||
+    /\bTreat\b[\s\S]{0,120}\bas inactive\b/i.test(content);
+  const hasWhyWins =
+    /\bWhy this beats\b/i.test(content) ||
+    /\bbeats the alternatives\b/i.test(content) ||
+    /\bchanges the next 30-90 days\b/i.test(content) ||
+    /\bhigher[-\s]leverage\b/i.test(content);
+  const hasDeprioritize =
+    /\bDeprioritize:\b/i.test(content) ||
+    /\bDo not\b[\s\S]{0,120}\b(?:draft|hold|keep|treat)\b/i.test(content);
+  const hasReopenTrigger =
+    /\bReopen trigger:\b/i.test(content) ||
+    /\bReopen only if\b/i.test(content) ||
+    /\bNext trigger:\b/i.test(content) ||
+    /\buntil a concrete next-step signal arrives\b/i.test(content);
 
   if (goalLabel && !behavioralPatternGoalAppearsInText(combined, goalLabel)) {
     issues.push('decision_enforcement:behavioral_pattern_missing_goal_anchor');
@@ -5051,8 +5299,26 @@ function getBehavioralPatternFinishedWorkIssues(input: {
     /\bDRAFT EMAIL TO SEND\b/i.test(content) ||
     /\bEXECUTION\b[\s\S]{0,220}\bSend this email\b/i.test(content);
   const hasQuotedCopyPasteBlock = /[“"][^"”\n]{20,}[”"]/.test(content);
-  if (!hasSendReadyLead && !hasQuotedCopyPasteBlock) {
-    issues.push('decision_enforcement:behavioral_pattern_missing_send_ready_move');
+  if (!hasSendReadyLead && !hasQuotedCopyPasteBlock && !hasDecisionArtifactMove) {
+    issues.push('decision_enforcement:behavioral_pattern_missing_actual_move');
+  }
+  if (
+    normalizedDirective.startsWith('stop holding live bandwidth open for ') &&
+    normalizedContent.includes(normalizedDirective)
+  ) {
+    issues.push('decision_enforcement:behavioral_pattern_directive_echoed_into_artifact');
+  }
+  if (
+    /\bExecution move:\s*stop holding live bandwidth open for\s+Stop holding live bandwidth open for\b/i.test(content) ||
+    /\b(?:means|reserved for)\s+Stop holding live bandwidth open for\b/i.test(content)
+  ) {
+    issues.push('decision_enforcement:behavioral_pattern_directive_echoed_into_artifact');
+  }
+  if (hasDecisionArtifactMove && !hasWhyWins) {
+    issues.push('decision_enforcement:behavioral_pattern_missing_long_horizon_rationale');
+  }
+  if (hasDecisionArtifactMove && !hasDeprioritize) {
+    issues.push('decision_enforcement:behavioral_pattern_missing_deprioritization');
   }
   const hasNoReplyStopCondition =
     /\bif (?:there is )?no (?:reply|response|answer)\b/i.test(content) ||
@@ -5065,7 +5331,11 @@ function getBehavioralPatternFinishedWorkIssues(input: {
     /\bstop\b[^.\n]{0,40}\b(?:allocating attention|spending attention|following up|pursuing|chasing)\b/i.test(content) ||
     /\bclose the loop\b/i.test(content) ||
     /\barchive (?:the )?(?:thread|conversation)\b/i.test(content);
-  if (!hasNoReplyStopCondition || !hasStopAction) {
+  if (hasDecisionArtifactMove) {
+    if (!hasReopenTrigger) {
+      issues.push('decision_enforcement:behavioral_pattern_missing_reopen_trigger');
+    }
+  } else if (!hasNoReplyStopCondition || !hasStopAction) {
     issues.push('decision_enforcement:behavioral_pattern_missing_stop_rule');
   }
   const usesGenericThreadLabel =
@@ -7386,6 +7656,60 @@ function cleanDecisionTarget(value: string): string {
   return cleaned.slice(0, 110) || 'the active thread';
 }
 
+function cleanBehavioralPatternThreadLabel(value: string | null | undefined): string | null {
+  if (!isNonEmptyString(value)) return null;
+
+  let cleaned = value
+    .replace(/^\[[^\]]+\]\s*/g, '')
+    .replace(/^Stop holding live bandwidth open for\s+/i, '')
+    .replace(/;?\s*reopen only if[\s\S]*$/i, '')
+    .replace(/^Execution rule(?: for)?\s+/i, '')
+    .replace(/^Execution move:\s*/i, '')
+    .trim();
+
+  const committedQuotedMatch = cleaned.match(
+    /^Committed to\s+[“"'`]+([^"'`”“]+)[”"'`]+(?:\s+\d+\s+days?\s+ago[\s\S]*)?$/i,
+  );
+  if (committedQuotedMatch?.[1]) {
+    cleaned = committedQuotedMatch[1].trim();
+  } else {
+    cleaned = cleaned
+      .replace(/^Committed to\s+/i, '')
+      .replace(/\s+\d+\s+days?\s+ago[\s\S]*$/i, '')
+      .trim();
+  }
+
+  cleaned = cleanDecisionTarget(cleaned)
+    .replace(/^[“"'`]+|[”"'`]+$/g, '')
+    .replace(/[.!?]+$/g, '')
+    .trim();
+
+  if (!cleaned) return null;
+  if (/^(?:this thread|the active thread)$/i.test(cleaned)) return null;
+  if (/^stop holding live bandwidth open for\b/i.test(cleaned)) return null;
+  return cleaned;
+}
+
+function extractBehavioralPatternThreadLabel(input: {
+  winner: ScoredLoop;
+  parsedEntityName?: string | null;
+}): string {
+  const candidateValues = [
+    input.parsedEntityName,
+    ...(input.winner.sourceSignals ?? []).map((signal) => signal.summary ?? null),
+    input.winner.entityName ?? null,
+    input.winner.title,
+    input.winner.content,
+  ];
+
+  for (const candidate of candidateValues) {
+    const cleaned = cleanBehavioralPatternThreadLabel(candidate);
+    if (cleaned) return cleaned;
+  }
+
+  return 'this thread';
+}
+
 type InterviewRepairEvidence = {
   roleTitle: string | null;
   organization: string | null;
@@ -7862,6 +8186,69 @@ export function buildDecisionEnforcedFallbackPayload(input: {
   }
 
   if (input.actionType === 'write_document') {
+    if (input.winner.discrepancyClass === 'behavioral_pattern') {
+      const factText = `${input.winner.title}. ${input.winner.content}`;
+      const parsedFacts = parseBehavioralPatternRepairFacts(factText);
+      const threadLabel = extractBehavioralPatternThreadLabel({
+        winner: input.winner,
+        parsedEntityName: parsedFacts.entityName ?? input.winner.entityName ?? null,
+      });
+      const count = parsedFacts.count ?? '1';
+      const window = parsedFacts.window ?? '14 days';
+      const goalLabel =
+        extractBehavioralPatternGoalLabel(input.candidateGoal) ??
+        extractBehavioralPatternGoalLabel(input.winner.matchedGoal?.text ?? null);
+      const title = goalLabel
+        ? `Execution rule for the ${goalLabel}`
+        : `Execution rule for ${threadLabel}`;
+      const moveLine = goalLabel
+        ? `Execution move: stop holding live bandwidth open for ${threadLabel} today. Treat it as inactive until a concrete next-step signal arrives, and reallocate that time to the highest-probability work for the ${goalLabel}.`
+        : `Execution move: stop holding live bandwidth open for ${threadLabel} today. Treat it as inactive until a concrete next-step signal arrives.`;
+      const whyWinsLine = goalLabel
+        ? `Why this beats the alternatives: ${count} follow-ups in ${window} without a reply means another generic nudge is more likely to preserve ambiguity than improve the odds on the ${goalLabel}, while reclaiming the time changes the next 30-90 days of real leverage.`
+        : `Why this beats the alternatives: ${count} follow-ups in ${window} without a reply means another generic nudge is more likely to preserve ambiguity than create a real decision.`;
+      const deprioritizeLine = `Deprioritize: do not draft another status-check message, do not keep calendar or prep time reserved for ${threadLabel}, and do not treat the thread as an active commitment while silence continues.`;
+      const consequenceLine = goalLabel
+        ? `Consequence: if this stays mentally open past ${deadline}, the ${goalLabel} keeps losing real bandwidth to a thread that is not moving.`
+        : `Consequence: if this stays mentally open past ${deadline}, attention keeps leaking into a thread that is not moving.`;
+      const reopenTriggerLine = `Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by ${deadline}.`;
+
+      return {
+        insight: goalLabel
+          ? `${threadLabel} has gone quiet long enough that the real move is to reclaim bandwidth for the ${goalLabel}.`
+          : `${threadLabel} has gone quiet long enough that the real move is to reclaim bandwidth until a concrete signal lands.`,
+        causal_diagnosis: input.causalDiagnosis,
+        decision: 'ACT',
+        directive: `Stop holding live bandwidth open for ${threadLabel}; reopen only if a concrete next-step signal arrives by ${deadline}.`,
+        artifact_type: 'write_document',
+        artifact: {
+          document_purpose: 'brief',
+          target_reader: 'user',
+          title,
+          content: [
+            goalLabel
+              ? `The ${goalLabel} matters over the next 30-90 days. ${count} follow-ups in ${window} without movement means ${threadLabel} is no longer an active thread; it is an open loop consuming attention.`
+              : `${count} follow-ups in ${window} without movement means ${threadLabel} is no longer an active thread; it is an open loop consuming attention.`,
+            '',
+            moveLine,
+            '',
+            whyWinsLine,
+            '',
+            deprioritizeLine,
+            '',
+            consequenceLine,
+            '',
+            reopenTriggerLine,
+            '',
+            `Deadline: ${deadline}`,
+          ].join('\n'),
+        },
+        why_now: goalLabel
+          ? `The ${goalLabel} is still mentally open, but the thread has already stopped moving and is now stealing bandwidth from higher-value work.`
+          : 'Each extra follow-up keeps this mentally open without increasing the chance of a real answer.',
+      };
+    }
+
     const interviewPayload = buildInterviewWriteDocumentPayload({
       winner: input.winner,
       candidateDueDate: input.candidateDueDate,
@@ -7874,60 +8261,6 @@ export function buildDecisionEnforcedFallbackPayload(input: {
 
     if (input.winner.discrepancyClass === 'schedule_conflict') {
       return null;
-    }
-
-    if (input.winner.discrepancyClass === 'behavioral_pattern') {
-      const factText = `${input.winner.title}. ${input.winner.content}`;
-      const parsedFacts = parseBehavioralPatternRepairFacts(factText);
-      const entityName = parsedFacts.entityName ?? input.winner.entityName ?? null;
-      const threadLabel = entityName ?? 'This thread';
-      const count = parsedFacts.count ?? '1';
-      const window = parsedFacts.window ?? '14 days';
-      const firstName = entityName?.split(/\s+/)[0] ?? null;
-      const goalLabel = extractBehavioralPatternGoalLabel(input.candidateGoal);
-      const title = goalLabel
-        ? `${threadLabel} going dark is now blocking the ${goalLabel}`
-        : `${threadLabel} going dark is now blocking the thread`;
-      const intro = goalLabel
-        ? `You were trying to get this thread to a real yes/no on the ${goalLabel}. ${count} follow-ups in ${window} without a reply means it is no longer active, just mentally open.`
-        : `${count} follow-ups in ${window} without a reply means this thread is stalled, not active.`;
-      const sendCopy = firstName
-        ? `“Hey ${firstName} — I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”`
-        : '“I’ve followed up a few times and don’t want to keep this half-open if priorities have shifted. Is this something you still want to pursue, or should I close the loop on my side?”';
-      const consequence = goalLabel
-        ? `Consequence: if this stays open past ${input.candidateDueDate ? deadline : 'today'}, the ${goalLabel} stays blocked while attention keeps leaking into a thread that is no longer moving.`
-        : `Consequence: if this stays open past ${input.candidateDueDate ? deadline : 'today'}, attention keeps leaking into a thread that is no longer moving.`;
-
-      return {
-        insight: goalLabel
-          ? `${threadLabel} going quiet is now blocking the ${goalLabel}.`
-          : `${threadLabel} going quiet is no longer a live thread; it is open attention with no movement.`,
-        causal_diagnosis: input.causalDiagnosis,
-        decision: 'ACT',
-        directive: title.endsWith('.') ? title : `${title}.`,
-        artifact_type: 'write_document',
-        artifact: {
-          document_purpose: 'close_the_loop',
-          target_reader: 'user',
-          title,
-          content: [
-            intro,
-            '',
-            'Send this today:',
-            '',
-            sendCopy,
-            '',
-            consequence,
-            '',
-            'If there is no reply after this, mark the thread stalled and stop allocating attention to it.',
-            '',
-            `Deadline: ${input.candidateDueDate ? deadline : 'today'}`,
-          ].join('\n'),
-        },
-        why_now: goalLabel
-          ? `The ${goalLabel} is still mentally open, but the thread has already stopped moving.`
-          : 'Each extra follow-up keeps this mentally open without increasing the chance of a real answer.',
-      };
     }
 
     const memoAsk = copy.ask.replace(/^Ask:\s*/i, '').trim();

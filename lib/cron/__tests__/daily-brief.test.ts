@@ -673,6 +673,118 @@ describe('runDailyGenerate candidate logging', () => {
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[1].decisionReason).toContain('Rejected because');
   });
 
+  it('writes the actual fallback winner into the outcome receipt when winnerSelectionTrace displaces scorer-top', async () => {
+    const directive = buildDirective({
+      directive: 'Stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision; reopen only if a concrete next-step signal arrives by 5:00 PM PT tomorrow.',
+      action_type: 'write_document',
+      reason: 'The MAS3 thread has gone quiet long enough that reclaiming attention now beats another generic nudge.',
+      winnerSelectionTrace: {
+        finalWinnerId: 'discrepancy-behavioral-mas3',
+        finalWinnerType: 'discrepancy',
+        finalWinnerReason: 'goal-anchored discrepancy with stronger 30-90 day leverage than the shadow-urgent schedule conflict',
+        scorerTopId: 'discrepancy-schedule-conflict',
+        scorerTopType: 'discrepancy',
+        scorerTopDisplacementReason: 'shadow-urgency penalty',
+      },
+      generationLog: buildGenerationLog({
+        candidateDiscovery: {
+          candidateCount: 2,
+          suppressedCandidateCount: 0,
+          selectionMargin: 0.09,
+          selectionReason: 'Selected because score 1.45 beat the next-best candidate at 1.36 by 0.09.',
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'discrepancy-schedule-conflict',
+              rank: 1,
+              candidateType: 'discrepancy',
+              discrepancyClass: 'schedule_conflict',
+              actionType: 'write_document',
+              score: 1.45,
+              scoreBreakdown: {
+                stakes: 3,
+                urgency: 0.75,
+                tractability: 0.7,
+                freshness: 1,
+              },
+              targetGoal: null,
+              sourceSignals: [],
+              decision: 'selected',
+              decisionReason: 'Selected because score 1.45 beat the next-best candidate at 1.36 by 0.09.',
+            },
+            {
+              id: 'discrepancy-behavioral-mas3',
+              rank: 2,
+              candidateType: 'discrepancy',
+              discrepancyClass: 'behavioral_pattern',
+              actionType: 'write_document',
+              score: 1.36,
+              scoreBreakdown: {
+                stakes: 3,
+                urgency: 0.9,
+                tractability: 0.7,
+                freshness: 1,
+              },
+              targetGoal: {
+                text: 'Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+                priority: 1,
+                category: 'career',
+              },
+              sourceSignals: [
+                {
+                  kind: 'commitment',
+                  id: 'mas3-commitment',
+                  summary: 'Waiting on MAS3 (HCA) hiring decision',
+                },
+              ],
+              decision: 'rejected',
+              decisionReason: 'Rejected because the scorer-top schedule conflict was easier to notice than the stronger long-horizon move.',
+            },
+          ],
+        },
+      }),
+    });
+
+    vi.mocked(generateDirective).mockResolvedValue(directive);
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'document',
+      title: 'Execution rule for Waiting on MAS3 (HCA) hiring decision',
+      content: [
+        'Execution move: stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision today.',
+        'Why this beats the alternatives: reclaiming the bandwidth changes the next 30-90 days of real leverage.',
+        'Deprioritize: do not draft another status-check message.',
+        'Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by 2026-04-21.',
+        'Deadline: 2026-04-21',
+      ].join('\n\n'),
+    });
+
+    const result = await runDailyGenerate({ userIds: [USER_ID] });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({ code: 'pending_approval_persisted', success: true }),
+    ]);
+    const saved = mockSupabase.insertedActions.at(-1);
+    expect(saved.status).toBe('pending_approval');
+    expect((saved.execution_result as Record<string, any>).inspection.winner_selection_trace).toEqual(
+      directive.winnerSelectionTrace,
+    );
+    expect((saved.execution_result as Record<string, any>).outcome_receipt.winner).toEqual(
+      expect.objectContaining({
+        winner_candidate_id: 'discrepancy-behavioral-mas3',
+        discrepancy_class: 'behavioral_pattern',
+        matched_goal: 'Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+        why_now: 'goal-anchored discrepancy with stronger 30-90 day leverage than the shadow-urgent schedule conflict',
+      }),
+    );
+    expect((saved.execution_result as Record<string, any>).outcome_receipt.artifact).toEqual(
+      expect.objectContaining({
+        artifact_changes_probability_now: true,
+        artifact_requires_more_thinking: false,
+        artifact_pass_fail: 'PASS',
+      }),
+    );
+  });
+
   it('logs high nightly-ops signal mode during manual brief runs when all-source backlog is at least 100', async () => {
     vi.mocked(countUnprocessedSignals)
       .mockImplementation(async (_userId: string, options?: { includeAllSources?: boolean }) => (
