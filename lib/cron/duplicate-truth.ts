@@ -14,6 +14,7 @@ export interface RepeatedDirectiveHealthRow {
   reason?: MaybeString;
   protective_duplicate_block?: boolean | null | undefined;
   verification_stub_persist?: boolean | null | undefined;
+  dev_force_fresh_auto_suppressed?: boolean | null | undefined;
 }
 
 export interface RepeatedDirectiveHealthSummary {
@@ -62,6 +63,13 @@ export function isVerificationStubPersistExecutionResult(executionResult: unknow
   );
 }
 
+export function isDevForceFreshAutoSuppressedExecutionResult(executionResult: unknown): boolean {
+  if (!executionResult || typeof executionResult !== 'object') return false;
+  const reason = (executionResult as Record<string, unknown>).auto_suppression_reason;
+  if (typeof reason !== 'string') return false;
+  return /dev brain-receipt force-fresh run|forced fresh generation/i.test(reason);
+}
+
 export function selectLatestMeaningfulGenerationRow<T extends LastGenerationLikeRow>(
   rows: T[],
 ): T | null {
@@ -69,7 +77,9 @@ export function selectLatestMeaningfulGenerationRow<T extends LastGenerationLike
 
   const sortedRows = [...rows].sort((a, b) => safeMs(b.generated_at) - safeMs(a.generated_at));
   const liveRows = sortedRows.filter(
-    (row) => !isVerificationStubPersistExecutionResult(row.execution_result),
+    (row) =>
+      !isVerificationStubPersistExecutionResult(row.execution_result) &&
+      !isDevForceFreshAutoSuppressedExecutionResult(row.execution_result),
   );
 
   return liveRows[0] ?? sortedRows[0] ?? null;
@@ -104,7 +114,11 @@ export function summarizeRepeatedDirectiveHealth(
   rows: RepeatedDirectiveHealthRow[],
   now = Date.now(),
 ): RepeatedDirectiveHealthSummary {
-  const liveRows = rows.filter((row) => row.verification_stub_persist !== true);
+  const liveRows = rows.filter(
+    (row) =>
+      row.verification_stub_persist !== true &&
+      row.dev_force_fresh_auto_suppressed !== true,
+  );
   const counts = new Map<string, { count: number; latestMs: number; latestIso: string | null }>();
   let latestRow: RepeatedDirectiveHealthRow | null = null;
   let latestRowMs = Number.NEGATIVE_INFINITY;

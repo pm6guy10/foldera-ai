@@ -8,6 +8,7 @@ import { config } from 'dotenv';
 import { resolve } from 'path';
 import { STALE_PENDING_APPROVAL_MAX_AGE_HOURS } from '../lib/config/constants';
 import {
+  isDevForceFreshAutoSuppressedExecutionResult,
   selectLatestMeaningfulGenerationRow,
   summarizeRepeatedDirectiveHealth,
 } from '../lib/cron/duplicate-truth';
@@ -203,6 +204,8 @@ async function main() {
             typeof row.execution_result === 'object' &&
             (row.execution_result as Record<string, unknown>).verification_stub_persist === true,
           ),
+        dev_force_fresh_auto_suppressed:
+          isDevForceFreshAutoSuppressedExecutionResult(row.execution_result),
       })),
       now,
     );

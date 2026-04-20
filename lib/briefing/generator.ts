@@ -65,7 +65,10 @@ import { isLowValueHuntSendMessagePresentation } from './hunt-anomalies';
 import { isBlockedSender } from '@/lib/signals/sender-blocklist';
 import type { DiscrepancyClass } from './discrepancy-detector';
 import { effectiveDiscrepancyClassForGates } from './effective-discrepancy-class';
-import { isVerificationStubPersistExecutionResult } from '@/lib/cron/duplicate-truth';
+import {
+  isDevForceFreshAutoSuppressedExecutionResult,
+  isVerificationStubPersistExecutionResult,
+} from '@/lib/cron/duplicate-truth';
 import { looksLikeDiscrepancyTriageOrChoreList } from './discrepancy-finished-work';
 import {
   directiveLooksLikeScheduleConflict,
@@ -4702,13 +4705,6 @@ function containsBannedLanguage(value: string): boolean {
 function isInternalNoSendExecutionResult(executionResult: unknown): boolean {
   if (!executionResult || typeof executionResult !== 'object') return false;
   return (executionResult as Record<string, unknown>).outcome_type === 'no_send';
-}
-
-function isDevForceFreshAutoSuppressedExecutionResult(executionResult: unknown): boolean {
-  if (!executionResult || typeof executionResult !== 'object') return false;
-  const reason = (executionResult as Record<string, unknown>).auto_suppression_reason;
-  if (typeof reason !== 'string') return false;
-  return /dev brain-receipt force-fresh run|forced fresh generation/i.test(reason);
 }
 
 /**

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   assessProofOutcome,
+  isDevForceFreshAutoSuppressedExecutionResult,
   isVerificationStubPersistExecutionResult,
   selectLatestMeaningfulGenerationRow,
   summarizeRepeatedDirectiveHealth,
@@ -76,6 +77,32 @@ describe('duplicate truth semantics', () => {
     expect(summary.maxCopies).toBe(1);
   });
 
+  it('ignores dev force-fresh auto-suppressed ghost rows when classifying live duplicate regression', () => {
+    const summary = summarizeRepeatedDirectiveHealth([
+      {
+        directive_text: 'Stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision; reopen only if a concrete next-step signal arrives by 5:00 PM PT on 2026-04-21.',
+        generated_at: '2026-04-16T15:15:00.000Z',
+        dev_force_fresh_auto_suppressed: true,
+      },
+      {
+        directive_text: 'Stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision; reopen only if a concrete next-step signal arrives by 5:00 PM PT on 2026-04-21.',
+        generated_at: '2026-04-16T16:15:00.000Z',
+        dev_force_fresh_auto_suppressed: true,
+      },
+      {
+        directive_text: 'Stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision; reopen only if a concrete next-step signal arrives by 5:00 PM PT on 2026-04-21.',
+        generated_at: '2026-04-16T17:45:00.000Z',
+      },
+      {
+        directive_text: 'Stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision; reopen only if a concrete next-step signal arrives by 5:00 PM PT on 2026-04-21.',
+        generated_at: '2026-04-16T17:46:00.000Z',
+      },
+    ], now);
+
+    expect(summary.status).toBe('clear');
+    expect(summary.maxCopies).toBe(2);
+  });
+
   it('selects the latest non-verification row for last-generation truth', () => {
     const latest = selectLatestMeaningfulGenerationRow([
       {
@@ -92,6 +119,34 @@ describe('duplicate truth semantics', () => {
 
     expect(latest?.directive_text).toBe('Real last generation do_nothing');
     expect(isVerificationStubPersistExecutionResult(latest?.execution_result)).toBe(false);
+  });
+
+  it('selects the latest non-ghost row for last-generation truth', () => {
+    const latest = selectLatestMeaningfulGenerationRow([
+      {
+        directive_text: 'Dev force-fresh ghost row',
+        generated_at: '2026-04-16T17:55:00.000Z',
+        execution_result: {
+          auto_suppression_reason: 'Auto-suppressed pending action for dev brain-receipt force-fresh run.',
+        },
+      },
+      {
+        directive_text: 'Real last generation write_document',
+        generated_at: '2026-04-16T17:45:00.000Z',
+        execution_result: { outcome_type: 'selected' },
+      },
+    ]);
+
+    expect(latest?.directive_text).toBe('Real last generation write_document');
+  });
+
+  it('detects dev force-fresh auto-suppressed execution results', () => {
+    expect(isDevForceFreshAutoSuppressedExecutionResult({
+      auto_suppression_reason: 'Auto-suppressed pending action for dev brain-receipt force-fresh run.',
+    })).toBe(true);
+    expect(isDevForceFreshAutoSuppressedExecutionResult({
+      auto_suppression_reason: 'Auto-suppressed stale pending action before daily brief generation.',
+    })).toBe(false);
   });
 
   it('accepts no_send_persisted when duplicate guard blocked another persistence', () => {
