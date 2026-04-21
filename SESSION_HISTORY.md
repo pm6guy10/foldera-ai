@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-21 — compat artifact validation now shares generator decision-enforcement policy
+- MODE: BUGFIX (single seam)
+- Files changed: `lib/briefing/decision-enforcement.ts`, `lib/briefing/generator.ts`, `lib/conviction/artifact-generator-compat.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `SESSION_HISTORY.md`
+- What changed: Extracted the decision-enforcement contract used by `lib/briefing/generator.ts` into one shared helper module and wired `artifact-generator-compat.ts` to that same policy for `send_message` and `write_document`. Compat now rejects weak embedded/fallback artifacts with the same `decision_enforcement:*` classes already used upstream, instead of relying on its own thinner local checks.
+- Verification: `npm run health` (`0 FAILING`; warning-only duplicate backlog and last generation `do_nothing` at session start); `npx vitest run lib/conviction/__tests__/artifact-generator.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/briefing/__tests__/decision-enforced-fallback.test.ts` (33 passed); `npm run build`.
+- Unresolved issues: No live paid generation proof was run because this seam is deterministic validation hardening and the free proof path fully covered it.
+
 ## 2026-04-16 — write_document finished-work seam for internal execution briefs
 - MODE: PRODUCT QUALITY (single seam)
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/artifact-decision-enforcement.test.ts`, `lib/briefing/__tests__/generator.test.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/__tests__/bottom-gate.test.ts`, `lib/cron/__tests__/evaluate-readiness.test.ts`, `SESSION_HISTORY.md`

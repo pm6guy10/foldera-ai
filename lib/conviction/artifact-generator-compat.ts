@@ -12,6 +12,7 @@ import type {
 import {
   directiveLooksLikeScheduleConflict,
 } from '@/lib/briefing/schedule-conflict-guards';
+import { getDecisionEnforcementIssues } from '@/lib/briefing/decision-enforcement';
 
 const ARTIFACT_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -83,6 +84,33 @@ function containsPlaceholderText(value: string): boolean {
 
 function containsGenericFiller(value: string): boolean {
   return GENERIC_FILLER_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function getDirectiveMatchedGoalCategory(directive: ConvictionDirective | undefined): string | null {
+  const selectedCandidate =
+    directive?.generationLog?.candidateDiscovery?.topCandidates?.find((candidate) => candidate.decision === 'selected') ??
+    directive?.generationLog?.candidateDiscovery?.topCandidates?.[0] ??
+    null;
+  return selectedCandidate?.targetGoal?.category ?? null;
+}
+
+function getCompatDecisionEnforcementIssues(
+  actionType: ConvictionDirective['action_type'],
+  artifact: Record<string, unknown>,
+  directive?: ConvictionDirective,
+): string[] {
+  if (actionType !== 'send_message' && actionType !== 'write_document') {
+    return [];
+  }
+
+  return getDecisionEnforcementIssues({
+    actionType,
+    directiveText: directive?.directive ?? '',
+    reason: directive?.reason ?? '',
+    artifact,
+    discrepancyClass: directive?.discrepancyClass ?? null,
+    matchedGoalCategory: getDirectiveMatchedGoalCategory(directive),
+  });
 }
 
 function cleanTitle(value: string): string {
@@ -441,6 +469,7 @@ function getArtifactPersistenceIssues(
     }
   }
 
+  issues.push(...getCompatDecisionEnforcementIssues(actionType as ConvictionDirective['action_type'], record, directive));
   issues.push(...getSendMessageRecipientGroundingIssues(actionType, record, directive));
   return [...new Set(issues)];
 }
@@ -549,13 +578,7 @@ function validateArtifact(
       if (containsGenericFiller(body)) {
         throw new Error('Email artifact contains generic filler');
       }
-      if (!/\?/.test(body) && !/\b(can you|could you|would you|will you|please|reply|confirm|approve|schedule|let me know)\b/i.test(body)) {
-        throw new Error('Email artifact missing a concrete ask');
-      }
-      if (!/\b(by|before|today|tomorrow|this week|next week|if)\b/i.test(body)) {
-        throw new Error('Email artifact missing timing or consequence');
-      }
-      return {
+      const artifact = {
         type: 'email',
         to: recipient,
         subject,
@@ -564,7 +587,12 @@ function validateArtifact(
         ...(isNonEmptyString(record.gmail_thread_id) ? { gmail_thread_id: record.gmail_thread_id.trim() } : {}),
         ...(isNonEmptyString(record.in_reply_to) ? { in_reply_to: record.in_reply_to.trim() } : {}),
         ...(isNonEmptyString(record.references) ? { references: record.references.trim() } : {}),
-      };
+      } satisfies EmailArtifact;
+      const decisionIssues = getCompatDecisionEnforcementIssues('send_message', artifact as Record<string, unknown>, directive);
+      if (decisionIssues.length > 0) {
+        throw new Error(`Email artifact failed decision enforcement: ${decisionIssues.join('; ')}`);
+      }
+      return artifact;
     }
     case 'write_document': {
       const title = isNonEmptyString(record.title) ? record.title.trim() : '';
@@ -584,11 +612,16 @@ function validateArtifact(
       if (isAnalysisDump(content)) {
         throw new Error('Document content contains internal analysis scaffolding');
       }
-      return {
+      const artifact = {
         type: 'document',
         title,
         content,
-      };
+      } satisfies DocumentArtifact;
+      const decisionIssues = getCompatDecisionEnforcementIssues('write_document', artifact as Record<string, unknown>, directive);
+      if (decisionIssues.length > 0) {
+        throw new Error(`Document artifact failed decision enforcement: ${decisionIssues.join('; ')}`);
+      }
+      return artifact;
     }
     case 'schedule': {
       const title = isNonEmptyString(record.title) ? record.title.trim() : '';

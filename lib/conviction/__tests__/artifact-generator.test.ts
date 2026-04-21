@@ -12,7 +12,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { generateArtifact } from '../artifact-generator';
+import { generateArtifact, getArtifactPersistenceIssues } from '../artifact-generator';
+import { validateDirectiveForPersistence } from '@/lib/briefing/generator';
 import {
   expectDocumentArtifactShape,
   expectEmailArtifactShape,
@@ -105,7 +106,15 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     // condition, so the shortcut is skipped and the generator falls through to LLM
     // generation, which returns clean content.
     mockCreate.mockResolvedValue(
-      anthropicResponse('This is clean and actionable content.'),
+      anthropicResponse([
+        'FINAL RECOMMENDATION: close the approval thread by 2026-04-21.',
+        '',
+        'OWNER: the decision owner confirms the final path by 2026-04-21.',
+        '',
+        'NEXT PHYSICAL STEP: send the final approval decision before 2026-04-21.',
+        '',
+        'CONSEQUENCE IF NO MOVEMENT: otherwise the packet slips and the blocked work stays stalled.',
+      ].join('\n')),
     );
 
     const directive: any = {
@@ -207,6 +216,116 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(firstCall?.system ?? '').toContain('one hard deadline');
     expect(firstCall?.system ?? '').toContain('one explicit consequence of silence or non-response');
     expect(firstCall?.messages?.[0]?.content ?? '').toContain('finished decision email, not a recap');
+  });
+
+  it('compat rejects passive follow-up send_message artifacts with generator decision-enforcement issues', () => {
+    const directive: any = {
+      action_type: 'send_message',
+      directive: 'Follow up with the reviewer.',
+      reason: 'Status thread is quiet.',
+      confidence: 82,
+      evidence: [{ type: 'signal', description: 'Reviewer has not answered the latest thread.' }],
+      requires_search: false,
+    };
+    const artifact = {
+      type: 'email',
+      to: 'reviewer@example.com',
+      subject: 'Following up',
+      body: 'Just checking in on this thread. Wanted to follow up and see if you had any updates.',
+      draft_type: 'email_compose' as const,
+    };
+
+    const issues = getArtifactPersistenceIssues('send_message', artifact, directive);
+
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('decision_enforcement:missing_time_constraint'),
+        expect.stringContaining('decision_enforcement:missing_pressure_or_consequence'),
+      ]),
+    );
+  });
+
+  it('compat rejects summary-only write_document artifacts with generator decision-enforcement issues', () => {
+    const directive: any = {
+      action_type: 'write_document',
+      directive: 'Document the thread status.',
+      reason: 'Stakeholders still need a concrete path.',
+      confidence: 82,
+      evidence: [{ type: 'signal', description: 'Approval path is still unresolved.' }],
+      requires_search: false,
+    };
+    const artifact = {
+      type: 'document',
+      title: 'Status Summary',
+      content: 'This document summarizes the conversation so far and captures key context for reference.',
+    };
+
+    const issues = getArtifactPersistenceIssues('write_document', artifact, directive);
+
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('decision_enforcement:summary_without_decision'),
+        expect.stringContaining('decision_enforcement:missing_time_constraint'),
+      ]),
+    );
+  });
+
+  it('compat rejects outbound write_document artifacts that omit owner assignment', () => {
+    const directive: any = {
+      action_type: 'write_document',
+      directive: 'Draft the stakeholder status note that locks today\'s final path.',
+      reason: 'Go-live is still blocked until one path is confirmed today.',
+      confidence: 82,
+      evidence: [{ type: 'signal', description: 'Stakeholders asked for the final path before launch.' }],
+      requires_search: false,
+    };
+    const artifact = {
+      type: 'document',
+      document_purpose: 'stakeholder status note',
+      target_reader: 'Acme stakeholders',
+      title: 'Acme Integration - Status Report',
+      content: [
+        'Decision required: security sign-off still lacks a final path for the April 27 go-live.',
+        'Ask: path A or path B by 4 PM PT today.',
+        'Consequence: if unresolved today, launch slips and onboarding stays blocked next week.',
+      ].join('\n\n'),
+    };
+
+    const issues = getArtifactPersistenceIssues('write_document', artifact, directive);
+
+    expect(issues).toContain('decision_enforcement:missing_owner_assignment');
+  });
+
+  it('compat and persistence validation surface the same owner-assignment blocker for the same weak document', () => {
+    const directive: any = {
+      action_type: 'write_document',
+      directive: 'Draft the stakeholder status note that locks today\'s final path.',
+      reason: 'Go-live is still blocked until one path is confirmed today.',
+      confidence: 82,
+      evidence: [{ type: 'signal', description: 'Stakeholders asked for the final path before launch.' }],
+      requires_search: false,
+    };
+    const artifact = {
+      type: 'document',
+      document_purpose: 'stakeholder status note',
+      target_reader: 'Acme stakeholders',
+      title: 'Acme Integration - Status Report',
+      content: [
+        'Decision required: security sign-off still lacks a final path for the April 27 go-live.',
+        'Ask: path A or path B by 4 PM PT today.',
+        'Consequence: if unresolved today, launch slips and onboarding stays blocked next week.',
+      ].join('\n\n'),
+    };
+
+    const persistenceIssues = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+    });
+    const compatIssues = getArtifactPersistenceIssues('write_document', artifact, directive);
+
+    expect(persistenceIssues).toContain('decision_enforcement:missing_owner_assignment');
+    expect(compatIssues).toContain('decision_enforcement:missing_owner_assignment');
   });
 
   it('repairs weak send_message output into a grounded ask with timing and consequence', async () => {
