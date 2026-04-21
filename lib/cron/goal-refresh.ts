@@ -178,7 +178,11 @@ Rewrite the goal text to include specific entity names (people, organizations, j
       if (newPriority < goal.priority) {
         await supabase
           .from('tkg_goals')
-          .update({ priority: newPriority, updated_at: new Date().toISOString() })
+          .update({
+            priority: newPriority,
+            current_priority: false,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', goal.id);
         decayed++;
       }

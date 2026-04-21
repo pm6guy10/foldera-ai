@@ -871,6 +871,7 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
     .select('goal_text, priority, goal_category, source')
     .eq('user_id', userId)
     .eq('status', 'active')
+    .eq('current_priority', true)
     .order('priority', { ascending: true })
     .limit(20);
 
@@ -9212,6 +9213,7 @@ export async function generateDirective(
         .select('goal_text, priority, goal_category, source')
         .eq('user_id', userId)
         .eq('status', 'active')
+        .eq('current_priority', true)
         .order('priority', { ascending: false })
         .limit(10),
       // Weekly behavioral history

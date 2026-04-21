@@ -2250,6 +2250,8 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
       .from('tkg_goals')
       .select('goal_text, priority, goal_category, source')
       .eq('user_id', userId)
+      .eq('status', 'active')
+      .eq('current_priority', true)
       .gte('priority', 1)
       .order('priority', { ascending: false })
       .limit(20),
@@ -2416,6 +2418,8 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
         .from('tkg_goals')
         .select('goal_text, priority, goal_category, source')
         .eq('user_id', userId)
+        .eq('status', 'active')
+        .eq('current_priority', true)
         .gte('priority', 1)
         .order('priority', { ascending: false })
         .limit(20),
@@ -4328,11 +4332,13 @@ export async function scoreOpenLoops(
       .order('total_interactions', { ascending: false })
       .limit(30),
 
-    // Active goals — P1 = most important, load all priorities
+    // Active current-priority goals — P1 = most important
     supabase
       .from('tkg_goals')
       .select('goal_text, priority, goal_category, source')
       .eq('user_id', userId)
+      .eq('status', 'active')
+      .eq('current_priority', true)
       .order('priority', { ascending: true })
       .limit(20),
 
@@ -4675,6 +4681,7 @@ export async function scoreOpenLoops(
     .from('tkg_goals')
     .select('goal_text, priority, goal_category')
     .eq('user_id', userId)
+    .eq('status', 'active')
     .eq('current_priority', true)
     .lt('priority', 3);
 
