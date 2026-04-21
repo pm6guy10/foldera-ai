@@ -17,6 +17,15 @@ export interface EvidenceItem {
   date?: string;
 }
 
+export interface ArtifactQualityReceipt {
+  winner_viable_pre_generation: boolean;
+  repair_attempted: boolean;
+  repair_succeeded: boolean;
+  fallback_class: string | null;
+  final_artifact_bar_passed: boolean | null;
+  blocker_bucket: string | null;
+}
+
 /**
  * The single directive the conviction engine produces.
  * Everything else is secondary context.
@@ -54,6 +63,9 @@ export interface ConvictionDirective {
     scorerTopType: string;
     scorerTopDisplacementReason: string | null;
   };
+
+  /** Compact quality receipt carried into persistence/debugging surfaces. */
+  artifactQualityReceipt?: ArtifactQualityReceipt;
 }
 
 // ---------------------------------------------------------------------------

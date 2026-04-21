@@ -872,6 +872,12 @@ describe('runDailyGenerate candidate logging', () => {
     expect((saved.execution_result as Record<string, any>).generation_log.stage).toBe('artifact');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateFailureReasons[0]).toContain('Artifact generation failed.');
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[0].decision).toBe('selected');
+    expect((saved.execution_result as Record<string, any>).artifact_quality_receipt).toEqual(
+      expect.objectContaining({
+        final_artifact_bar_passed: false,
+        blocker_bucket: 'artifact_fallback_degradation',
+      }),
+    );
     expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
   });
 
@@ -897,6 +903,13 @@ describe('runDailyGenerate candidate logging', () => {
         success: true,
       }),
     ]);
+    const saved = mockSupabase.insertedActions[0];
+    expect((saved.execution_result as Record<string, any>).outcome_receipt.artifact_quality_receipt).toEqual(
+      expect.objectContaining({
+        final_artifact_bar_passed: false,
+        blocker_bucket: 'artifact_fallback_degradation',
+      }),
+    );
     expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
     expect(mockSupabase.insertedActions.some((row) => row.status === 'skipped')).toBe(true);
   });

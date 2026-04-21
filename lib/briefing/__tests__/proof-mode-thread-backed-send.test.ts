@@ -136,6 +136,17 @@ describe('proofModeThreadBackedSendEnforcementApplies', () => {
     ).toBe(true);
   });
 
+  it('when proof-mode is on, verification golden-path write_document is exempted explicitly', () => {
+    process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY = 'true';
+    expect(
+      proofModeThreadBackedSendEnforcementApplies(
+        { type: 'commitment' },
+        'write_document',
+        { allowWriteDocumentProof: true },
+      ),
+    ).toBe(false);
+  });
+
   it('when proof-mode is on, exempts discrepancy winners whose canonical action is not send_message', () => {
     process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY = 'true';
     expect(

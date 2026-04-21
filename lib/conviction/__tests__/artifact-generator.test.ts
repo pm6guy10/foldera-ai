@@ -122,18 +122,12 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(content).not.toMatch(/^WHY NOW:/m);
   });
 
-  it('uses emergency write_document when LLM returns a raw analysis dump (validateArtifact rejects; generator still returns artifact)', async () => {
-    // validateArtifact hard-rejects analysis-shaped document content; generateArtifact
-    // must still return an emergency_fallback document so the brief pipeline does not stop at null.
+  it('suppresses generic write_document output when LLM returns a raw analysis dump and no finished fallback exists', async () => {
     mockCreate.mockResolvedValue(anthropicResponse(ANALYSIS_DUMP));
 
     const result = await generateArtifact('user-1', { ...BASE_WRITE_DOCUMENT_DIRECTIVE });
 
-    expect(result).not.toBeNull();
-    expect((result as any).type).toBe('document');
-    expect((result as any).emergency_fallback).toBe(true);
-    // Emergency uses directive.fullContext when set; fixture has none — falls back to directive text.
-    expect((result as any).content).toBe('Address financial runway concern');
+    expect(result).toBeNull();
   });
 
   it('accepts a clean finished write_document artifact', async () => {
@@ -151,33 +145,63 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     });
   });
 
-  it('falls back to emergency document when LLM returns hostile meta commentary as content', async () => {
+  it('suppresses hostile meta commentary when no finished document fallback exists', async () => {
     mockCreate.mockResolvedValue(anthropicResponse(HOSTILE_META_DUMP));
 
     const result = await generateArtifact('user-1', { ...BASE_WRITE_DOCUMENT_DIRECTIVE });
 
-    expect(result).not.toBeNull();
-    expect((result as any).emergency_fallback).toBe(true);
-    expect((result as any).content.length).toBeGreaterThan(20);
+    expect(result).toBeNull();
   });
 
-  it('fallback repair path returns finished document text, not analysis scaffolding', async () => {
+  it('builds a finished decision memo fallback instead of generic execution notes when the directive is decision-shaped', async () => {
     mockCreate.mockResolvedValue(anthropicResponse(ANALYSIS_DUMP));
 
     const directive: any = {
       ...BASE_WRITE_DOCUMENT_DIRECTIVE,
-      fullContext: HOSTILE_META_DUMP,
+      directive: 'Lock the final approval owner for the runway packet by 2026-04-21.',
+      reason: 'If the owner is still missing after 2026-04-21, the runway packet slips.',
     };
 
     const result = await generateArtifact('user-1', directive);
 
     expect(result).not.toBeNull();
     const content = (result as any).content as string;
-    expect(content).not.toMatch(/insight/i);
-    expect(content).not.toMatch(/why now/i);
-    expect(content).not.toMatch(/runner[\s-]?ups?/i);
-    expect(content).not.toMatch(/rejected because/i);
-    expect(content).not.toMatch(/this candidate/i);
+    expect(content).toContain('Decision required: Lock the final approval owner for the runway packet by 2026-04-21');
+    expect(content).toContain('Move: confirm the path, name one owner, and close the decision by 2026-04-21');
+    expect(content).toContain('Owner:');
+    expect(content).toContain('Consequence:');
+    expect(content).not.toContain('Objective:');
+    expect(content).not.toContain('Execution Notes:');
+  });
+
+  it('repairs weak send_message output into a grounded ask with timing and consequence', async () => {
+    mockCreate.mockResolvedValue({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          type: 'email',
+          to: 'approver@example.com',
+          subject: 'Quick update',
+          body: 'Following up on this.',
+        }),
+      }],
+      usage: { input_tokens: 10, output_tokens: 20 },
+    });
+
+    const result = await generateArtifact('user-1', {
+      action_type: 'send_message',
+      directive: 'Confirm the final approval owner for the launch packet by 2026-04-21.',
+      reason: 'If no owner is named by 2026-04-21, the packet slips.',
+      evidence: [{ type: 'signal', description: 'approver@example.com asked who owns final packet delivery.' }],
+      requires_search: false,
+    } as any);
+
+    expect(result).not.toBeNull();
+    expect((result as any).to).toBe('approver@example.com');
+    expect(String((result as any).subject)).toContain('Decision needed by 2026-04-21');
+    expect(String((result as any).body)).toContain('Can you confirm by 2026-04-21');
+    expect(String((result as any).body)).toContain('who owns the next step');
+    expect(String((result as any).body)).toContain('remains blocked');
   });
 
   it('renders behavioral_pattern write_document with a grounded goal when one is available', async () => {

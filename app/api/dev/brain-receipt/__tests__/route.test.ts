@@ -183,6 +183,16 @@ describe('POST /api/dev/brain-receipt', () => {
                     evidence: [],
                     artifact: { body: 'Hi Cheryl — following up on the HCLA application…' },
                     execution_result: {
+                      outcome_receipt: {
+                        artifact_quality_receipt: {
+                          winner_viable_pre_generation: true,
+                          repair_attempted: true,
+                          repair_succeeded: true,
+                          fallback_class: 'decision_enforced_send_message',
+                          final_artifact_bar_passed: true,
+                          blocker_bucket: null,
+                        },
+                      },
                       generation_log: {
                         outcome: 'selected',
                         stage: 'generation',
@@ -222,6 +232,13 @@ describe('POST /api/dev/brain-receipt', () => {
     expect(body.generation_log?.brief_context_debug?.active_goals).toEqual(['[career, p1] DSHS applications']);
     expect(body.winner_selection_trace).toEqual(winnerTrace);
     expect(body.active_goals).toEqual(['[career, p1] DSHS applications']);
+    expect(body.artifact_quality_receipt).toEqual(
+      expect.objectContaining({
+        repair_attempted: true,
+        repair_succeeded: true,
+        fallback_class: 'decision_enforced_send_message',
+      }),
+    );
   });
 
   it('passes verification stub and golden-path flags to runDailyGenerate from JSON body', async () => {

@@ -33,6 +33,7 @@ import {
 } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
 import type {
+  ArtifactQualityReceipt,
   ConvictionArtifact,
   ConvictionDirective,
   GenerationCandidateLog,
@@ -615,7 +616,62 @@ export interface OutcomeReceipt {
   winner: WinnerReceipt;
   persistence: PersistenceReceipt;
   artifact: ArtifactReceipt;
+  artifact_quality_receipt: ArtifactQualityReceipt;
   generated_at: string;
+}
+
+function classifyArtifactQualityBlockerBucket(input: {
+  sendWorthinessReason?: string | null;
+  persistenceIssues?: string[];
+  bottomGateReasons?: BottomGateBlockReason[];
+  artifact: ConvictionArtifact | null;
+}): string | null {
+  const sendWorthinessReason = (input.sendWorthinessReason ?? '').trim();
+  const persistenceIssues = input.persistenceIssues ?? [];
+  const bottomGateReasons = input.bottomGateReasons ?? [];
+
+  if (!input.artifact) return 'artifact_fallback_degradation';
+  if (sendWorthinessReason.startsWith('decision_enforcement_')) return 'repair_failure';
+  if (persistenceIssues.some((issue) => issue.includes('decision_enforcement:'))) return 'repair_failure';
+  if (
+    persistenceIssues.some((issue) => issue.includes('artifact') || issue.includes('schedule_conflict')) ||
+    bottomGateReasons.some((reason) =>
+      ['NON_EXECUTABLE_ARTIFACT', 'SELF_REFERENTIAL_DOCUMENT', 'FINISHED_WORK_REQUIRED'].includes(reason),
+    )
+  ) {
+    return 'artifact_fallback_degradation';
+  }
+  if (
+    bottomGateReasons.some((reason) => ['NO_EXTERNAL_TARGET', 'NO_CONCRETE_ASK', 'NO_REAL_PRESSURE'].includes(reason))
+  ) {
+    return 'bad_winner_selection';
+  }
+  if (sendWorthinessReason.includes('email_surface')) return 'email_surface_mismatch';
+  return null;
+}
+
+function buildArtifactQualityReceipt(input: {
+  directive: ConvictionDirective;
+  artifact: ConvictionArtifact | null;
+  finalArtifactBarPassed: boolean | null;
+  sendWorthinessReason?: string | null;
+  persistenceIssues?: string[];
+  bottomGateReasons?: BottomGateBlockReason[];
+}): ArtifactQualityReceipt {
+  const existing = input.directive.artifactQualityReceipt;
+  return {
+    winner_viable_pre_generation: existing?.winner_viable_pre_generation ?? true,
+    repair_attempted: existing?.repair_attempted ?? false,
+    repair_succeeded: existing?.repair_succeeded ?? false,
+    fallback_class: existing?.fallback_class ?? null,
+    final_artifact_bar_passed: input.finalArtifactBarPassed,
+    blocker_bucket: classifyArtifactQualityBlockerBucket({
+      sendWorthinessReason: input.sendWorthinessReason,
+      persistenceIssues: input.persistenceIssues,
+      bottomGateReasons: input.bottomGateReasons,
+      artifact: input.artifact,
+    }) ?? existing?.blocker_bucket ?? null,
+  };
 }
 
 function getFinalSelectedCandidateLog(
@@ -797,6 +853,12 @@ export function buildOutcomeReceipt(
     winner: buildWinnerReceipt(directive),
     persistence: buildPersistenceReceipt(directive, artifact, bottomGate),
     artifact: buildArtifactReceipt(directive, artifact),
+    artifact_quality_receipt: buildArtifactQualityReceipt({
+      directive,
+      artifact,
+      finalArtifactBarPassed: bottomGate.pass,
+      bottomGateReasons: bottomGate.blocked_reasons,
+    }),
     generated_at: new Date().toISOString(),
   };
 }
@@ -808,10 +870,22 @@ export function buildBlockedOutcomeReceipt(
   directive: ConvictionDirective,
   artifact: ConvictionArtifact,
   bottomGate: BottomGateResult,
+  opts?: {
+    sendWorthinessReason?: string | null;
+    persistenceIssues?: string[];
+  },
 ): OutcomeReceipt {
   const receipt = buildOutcomeReceipt(directive, artifact, bottomGate);
   // Override artifact pass_fail — it was blocked regardless of artifact quality
   receipt.artifact.artifact_pass_fail = 'FAIL';
+  receipt.artifact_quality_receipt = buildArtifactQualityReceipt({
+    directive,
+    artifact,
+    finalArtifactBarPassed: false,
+    sendWorthinessReason: opts?.sendWorthinessReason,
+    persistenceIssues: opts?.persistenceIssues,
+    bottomGateReasons: bottomGate.blocked_reasons,
+  });
   return receipt;
 }
 
@@ -2445,7 +2519,19 @@ export async function runDailyGenerate(
       }
 
       if (!artifact) {
-        const savedNoSend = await persistNoSendOutcome(supabase, userId, directive, 'Artifact generation failed.', 'artifact');
+        const artifactQualityReceipt = buildArtifactQualityReceipt({
+          directive,
+          artifact: null,
+          finalArtifactBarPassed: false,
+        });
+        const savedNoSend = await persistNoSendOutcome(
+          supabase,
+          userId,
+          directive,
+          'Artifact generation failed.',
+          'artifact',
+          { artifact_quality_receipt: artifactQualityReceipt },
+        );
         if (!savedNoSend) {
           results.push({
             code: 'directive_persist_failed',
@@ -2490,6 +2576,14 @@ export async function runDailyGenerate(
           directive,
           `Directive rejected by persistence validation: ${persistenceIssues.join('; ')}`,
           'validation',
+          {
+            outcome_receipt: buildBlockedOutcomeReceipt(
+              directive,
+              artifact,
+              { pass: false, blocked_reasons: [] },
+              { persistenceIssues },
+            ),
+          },
         );
         if (!savedNoSend) {
           results.push({
@@ -2529,6 +2623,7 @@ export async function runDailyGenerate(
           directive,
           artifact,
           { pass: false, blocked_reasons: [] }, // no bottom-gate reasons — quality gate is separate
+          { sendWorthinessReason: sendWorthiness.reason },
         );
         qualityGateReceipt.persistence.blocked_reason = `quality_gate: ${sendWorthiness.reason}`;
         logStructuredEvent({
@@ -2549,6 +2644,10 @@ export async function runDailyGenerate(
           directive,
           `Output blocked by quality gate: ${sendWorthiness.reason}`,
           'validation',
+          {
+            outcome_receipt: qualityGateReceipt,
+            artifact_quality_receipt: qualityGateReceipt.artifact_quality_receipt,
+          },
         );
         if (!savedNoSend) {
           results.push({
@@ -2602,6 +2701,10 @@ export async function runDailyGenerate(
           directive,
           blockDetail,
           'validation',
+          {
+            outcome_receipt: blockedReceipt,
+            artifact_quality_receipt: blockedReceipt.artifact_quality_receipt,
+          },
         );
         if (!savedNoSend) {
           results.push({

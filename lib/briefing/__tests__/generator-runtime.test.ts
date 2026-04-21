@@ -598,10 +598,9 @@ describe('generateDirective runtime failures', () => {
 
     expect(directive.action_type).toBe('send_message');
     expect(directive.directive).toContain('Alex Morgan');
-    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
-      event: 'candidate_blocked',
-      generationStatus: 'schedule_conflict_document_below_bar',
-    }));
+    expect(directive.winnerSelectionTrace?.scorerTopDisplacementReason).toBe(
+      'artifact_viability:schedule_conflict_write_document_below_bar',
+    );
   });
 
   it('extracts JSON from prefixed non-json fenced responses and logs the raw payload preview', async () => {

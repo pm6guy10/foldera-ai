@@ -366,6 +366,35 @@ describe('selectFinalWinner', () => {
     expect(winner.id).toBe('behavioral-mas3');
   });
 
+  it('disqualifies schedule_conflict write_document candidates that cannot produce a finished artifact on this path', () => {
+    const scheduleConflict = makeCandidate({
+      id: 'schedule-conflict',
+      score: 9,
+      type: 'discrepancy',
+      discrepancyClass: 'schedule_conflict',
+      suggestedActionType: 'write_document',
+      title: 'Overlapping events on 2026-04-25',
+      content: 'Two calendar holds overlap on 2026-04-25.',
+    });
+    const fallback = makeCandidate({
+      id: 'fallback',
+      score: 4,
+      type: 'commitment',
+      suggestedActionType: 'write_document',
+      title: 'Reference packet owner unresolved before 2026-04-24',
+      content: 'Decision and owner must be confirmed before 2026-04-24.',
+      entityName: 'Reference packet owner',
+    });
+
+    const { ranked } = selectRankedCandidates([scheduleConflict, fallback], NO_GUARDRAILS);
+    const { winner } = selectFinalWinner([scheduleConflict, fallback], NO_GUARDRAILS);
+
+    expect(winner.id).toBe('fallback');
+    const blocked = ranked.find((entry) => entry.candidate.id === 'schedule-conflict');
+    expect(blocked?.disqualified).toBe(true);
+    expect(blocked?.disqualifyReason).toBe('artifact_viability:schedule_conflict_write_document_below_bar');
+  });
+
   it('long-horizon goal-anchored move beats shadow-urgent schedule churn', () => {
     const shadowUrgent = makeCandidate({
       id: 'shadow-urgent-calendar',

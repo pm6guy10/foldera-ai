@@ -103,6 +103,16 @@ export async function POST(request: Request) {
         executionResult.generation_log && typeof executionResult.generation_log === 'object'
           ? (executionResult.generation_log as GenerationRunLog)
           : undefined;
+      const outcomeReceipt =
+        executionResult.outcome_receipt && typeof executionResult.outcome_receipt === 'object'
+          ? (executionResult.outcome_receipt as Record<string, unknown>)
+          : null;
+      const artifactQualityReceipt =
+        outcomeReceipt?.artifact_quality_receipt && typeof outcomeReceipt.artifact_quality_receipt === 'object'
+          ? (outcomeReceipt.artifact_quality_receipt as Record<string, unknown>)
+          : executionResult.artifact_quality_receipt && typeof executionResult.artifact_quality_receipt === 'object'
+            ? (executionResult.artifact_quality_receipt as Record<string, unknown>)
+            : null;
 
       const directiveForGates = {
         directive: latestAction.directive_text ?? '',
@@ -212,6 +222,7 @@ export async function POST(request: Request) {
           passed: decisionIssues.length === 0,
           issues: decisionIssues,
         },
+        artifact_quality_receipt: artifactQualityReceipt,
         send_worthiness: sendWorthiness,
         bottom_gate: bottomGate,
         finished_work_gate: {

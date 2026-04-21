@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
 import type {
   ActionType,
+  ArtifactQualityReceipt,
   ChiefOfStaffBriefing,
   ConvictionArtifact,
   ConvictionDirective,
@@ -112,10 +113,17 @@ function getAnomalyPassModelAndPromptCap(): { model: string; maxPromptChars: num
 }
 const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
 const STALE_SIGNAL_THRESHOLD_DAYS = 21;
+const ARTIFACT_VIABILITY_DECISION_RE =
+  /\b(confirm|reply|approve|decision|decide|owner|deadline|due|slot|schedule|availability|interview|offer|packet|assessment|forms?|reference|pay|payment|invoice|renewal|sign off|yes\/no)\b/i;
+const ARTIFACT_VIABILITY_PRESSURE_RE =
+  /\b(today|tonight|tomorrow|this week|next week|deadline|due|before|by\s+\d|expires?|expiring|final|urgent|window clos|cutoff|overdue|at risk|slip|blocked|blocker)\b/i;
+const ARTIFACT_VIABILITY_ASK_RE =
+  /\b(can you|could you|would you|will you|please|reply|confirm|approve|decide|send|schedule|share|name the owner|yes\/no)\b/i;
 
 /**
  * Thread-backed external `send_message` proof path: no write_document / schedule_block /
- * wait_rationale / do_nothing wins when enabled.
+ * wait_rationale / do_nothing wins when enabled, except the owner verification stub's
+ * explicit `write_document` golden path.
  *
  * Defaults **on** in production; defaults **off** when `NODE_ENV=test` so Vitest integration
  * tests stay unchanged. Override anytime with `FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY=true|false`.
@@ -138,8 +146,12 @@ export function isProofModeThreadBackedSendOnly(): boolean {
 export function proofModeThreadBackedSendEnforcementApplies(
   winner: Pick<ScoredLoop, 'type'>,
   recommendedAction: ValidArtifactTypeCanonical,
+  options?: { allowWriteDocumentProof?: boolean },
 ): boolean {
   if (!isProofModeThreadBackedSendOnly()) return false;
+  if (options?.allowWriteDocumentProof && recommendedAction === 'write_document') {
+    return false;
+  }
   if (winner.type === 'discrepancy' && recommendedAction !== 'send_message') {
     return false;
   }
@@ -766,6 +778,9 @@ interface GeneratePayloadResult {
    * then build wait_rationale if still no payload.
    */
   pendingLowCrossSignalFallback?: boolean;
+  repairAttempted?: boolean;
+  repairSucceeded?: boolean;
+  fallbackClass?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1191,6 +1206,48 @@ export function selectRankedCandidates(
     return !hasGroundedRecipient || (genericStatusCheck && !groundedNextStep);
   }
 
+  function getArtifactViabilityGate(input: {
+    candidate: import('./scorer').ScoredLoop;
+    searchText: string;
+    emailHits: string[];
+  }): { viable: true } | { viable: false; reason: string } {
+    const { candidate, searchText, emailHits } = input;
+    const groundedRecipient =
+      emailHits.length > 0 ||
+      Boolean(candidate.relationshipContext?.includes('@')) ||
+      isThreadBackedSendableLoop(candidate);
+    const hasGoalAnchor = Boolean(candidate.matchedGoal?.text?.trim());
+    const hasNamedTarget = groundedRecipient || Boolean(candidate.entityName?.trim());
+    const hasDecisionPressure =
+      ARTIFACT_VIABILITY_DECISION_RE.test(searchText) || ARTIFACT_VIABILITY_PRESSURE_RE.test(searchText);
+
+    if (candidate.suggestedActionType === 'send_message') {
+      if (!groundedRecipient) {
+        return { viable: false, reason: 'artifact_viability:no_grounded_recipient_for_send_message' };
+      }
+      return { viable: true };
+    }
+
+    if (candidate.suggestedActionType === 'write_document') {
+      if (candidate.discrepancyClass === 'schedule_conflict') {
+        return { viable: false, reason: 'artifact_viability:schedule_conflict_write_document_below_bar' };
+      }
+      if (candidate.type !== 'hunt') {
+        return { viable: true };
+      }
+      if (isPriorityCareerOutcomeArtifactCandidateForGenerator(candidate)) {
+        return { viable: true };
+      }
+
+      const hasMemoShape = /execution brief|decision memo|decision lock|owner|approve|decision required|deadline|cutoff|window/i.test(searchText);
+      if (!(hasDecisionPressure && (hasGoalAnchor || hasNamedTarget || hasMemoShape))) {
+        return { viable: false, reason: 'artifact_viability:no_finished_write_document_path' };
+      }
+    }
+
+    return { viable: true };
+  }
+
   function isLongHorizonLeverageCandidate(
     candidate: import('./scorer').ScoredLoop,
     triangulationAxes: number,
@@ -1304,6 +1361,20 @@ export function selectRankedCandidates(
         note: '',
         disqualified: true,
         disqualifyReason: 'career_status_outbound_requires_grounded_recipient_and_next_step',
+        shadowUrgent,
+        emergencyOverride,
+        longHorizonLeverage: false,
+        ungroundedCareerStatusOutbound,
+      };
+    }
+    const artifactViability = getArtifactViabilityGate({ candidate, searchText, emailHits });
+    if (!artifactViability.viable) {
+      return {
+        candidate,
+        viabilityScore: 0,
+        note: '',
+        disqualified: true,
+        disqualifyReason: artifactViability.reason,
         shadowUrgent,
         emergencyOverride,
         longHorizonLeverage: false,
@@ -2575,6 +2646,12 @@ export function proofModeCanonicalCountsAsProofSuccess(
 ): boolean {
   if (!proofModeEnabled) return true;
   return canonicalAction === 'send_message';
+}
+
+function proofModeAllowsGoldenPathWriteDocument(
+  options: Pick<GenerateDirectiveOptions, 'verificationStubPersist' | 'verificationGoldenPathWriteDocument'>,
+): boolean {
+  return options.verificationStubPersist === true && options.verificationGoldenPathWriteDocument !== false;
 }
 
 /**
@@ -9759,7 +9836,12 @@ export async function generateDirective(
         continue;
       }
 
-      if (proofModeThreadBackedSendEnforcementApplies(hydratedWinner, decisionPayload.recommended_action)) {
+      const proofModeSendOnlyEnforcementApplies = proofModeThreadBackedSendEnforcementApplies(
+        hydratedWinner,
+        decisionPayload.recommended_action,
+        { allowWriteDocumentProof: proofModeAllowsGoldenPathWriteDocument(options) },
+      );
+      if (proofModeSendOnlyEnforcementApplies) {
         const proofPre = evaluateProofModeThreadBackedSendPreflight({
           proofModeEnabled: true,
           decisionRecommendedAction: decisionPayload.recommended_action,
@@ -9899,6 +9981,7 @@ export async function generateDirective(
       payloadResult = {
         issues: [`Generation request failed: ${errorMessage}`],
         payload: null,
+        fallbackClass: null,
       };
     }
 
@@ -9958,9 +10041,18 @@ export async function generateDirective(
                 issues: [...originalIssues, 'proof_mode: decision-enforcement repair produced non-send artifact'],
                 payload: null,
                 pendingLowCrossSignalFallback: pendingLowCross,
+                repairAttempted: true,
+                repairSucceeded: false,
+                fallbackClass: `decision_enforced_${decisionPayload.recommended_action}`,
               };
             } else {
-              payloadResult = { issues: [], payload: repairedPayload };
+              payloadResult = {
+                issues: [],
+                payload: repairedPayload,
+                repairAttempted: true,
+                repairSucceeded: true,
+                fallbackClass: `decision_enforced_${decisionPayload.recommended_action}`,
+              };
               logStructuredEvent({
                 event: 'candidate_repaired',
                 level: 'info',
@@ -9991,6 +10083,9 @@ export async function generateDirective(
               issues: repairedIssues,
               payload: null,
               pendingLowCrossSignalFallback: pendingLowCross,
+              repairAttempted: true,
+              repairSucceeded: false,
+              fallbackClass: `decision_enforced_${decisionPayload.recommended_action}`,
             };
           }
         } else if (pendingLowCross) {
@@ -10001,7 +10096,7 @@ export async function generateDirective(
       }
 
       if (
-        !proofModeThreadBackedSendEnforcementApplies(hydratedWinner, decisionPayload.recommended_action) &&
+        !proofModeSendOnlyEnforcementApplies &&
         !payloadResult.payload &&
         payloadResult.pendingLowCrossSignalFallback &&
         (decisionPayload.recommended_action === 'send_message' ||
@@ -10026,10 +10121,15 @@ export async function generateDirective(
               original_commitment: decisionPayload.recommended_action,
             },
           });
-          payloadResult = { issues: [], payload: fallback, lowCrossSignalWaitRationale: true };
+          payloadResult = {
+            issues: [],
+            payload: fallback,
+            lowCrossSignalWaitRationale: true,
+            fallbackClass: 'low_cross_wait_rationale',
+          };
         }
       } else if (
-        proofModeThreadBackedSendEnforcementApplies(hydratedWinner, decisionPayload.recommended_action) &&
+        proofModeSendOnlyEnforcementApplies &&
         !payloadResult.payload &&
         payloadResult.pendingLowCrossSignalFallback &&
         (decisionPayload.recommended_action === 'send_message' ||
@@ -10105,7 +10205,7 @@ export async function generateDirective(
     const llmAttemptedAction = payload.artifact_type;
 
     if (
-      proofModeThreadBackedSendEnforcementApplies(currentCandidate, decisionPayload.recommended_action) &&
+      proofModeSendOnlyEnforcementApplies &&
       !proofModeCanonicalCountsAsProofSuccess(true, canonicalAction)
     ) {
       candidateBlockLog.push({
@@ -10129,7 +10229,7 @@ export async function generateDirective(
     }
 
     if (
-      proofModeThreadBackedSendEnforcementApplies(currentCandidate, decisionPayload.recommended_action) &&
+      proofModeSendOnlyEnforcementApplies &&
       payload.artifact_type !== 'send_message'
     ) {
       candidateBlockLog.push({
@@ -10283,6 +10383,15 @@ export async function generateDirective(
       effectiveConfidence = Math.max(50, Math.min(95, Math.round(40 + (fbComposite * 55))));
     }
 
+    const artifactQualityReceipt: ArtifactQualityReceipt = {
+      winner_viable_pre_generation: !(selectedRatedCandidate?.disqualified ?? false),
+      repair_attempted: payloadResult.repairAttempted === true,
+      repair_succeeded: payloadResult.repairSucceeded === true,
+      fallback_class: payloadResult.fallbackClass ?? null,
+      final_artifact_bar_passed: null,
+      blocker_bucket: null,
+    };
+
     const directive = {
       directive: payload.directive.trim(),
       action_type: artifactTypeToActionType(canonicalAction),
@@ -10318,6 +10427,7 @@ export async function generateDirective(
             ? null
             : (scorerTopRatedCandidate?.disqualifyReason ?? scorerTopRatedCandidate?.note ?? 'lower_viability_than_selected_winner'),
       },
+      artifactQualityReceipt,
       generationLog: buildSelectedGenerationLog(scored.candidateDiscovery, {
         active_goals: ctx.active_goals,
         evidence_bundle: evidenceBundleReceipt,
@@ -10501,7 +10611,7 @@ export async function generateDirective(
       },
     });
 
-    if (proofModeThreadBackedSendEnforcementApplies(currentCandidate, decisionPayload.recommended_action)) {
+    if (proofModeSendOnlyEnforcementApplies) {
       logStructuredEvent({
         event: 'proof_mode_send_message_success',
         level: 'info',

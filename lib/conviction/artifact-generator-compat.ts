@@ -282,40 +282,75 @@ function buildScheduleConflictFallback(
   directive: ConvictionDirective,
   rawContext: string,
 ): DocumentArtifact | null {
+  void rawContext;
   if (!directiveLooksLikeScheduleConflict(directive)) return null;
-  const blob = [directive.directive, directive.reason ?? '', rawContext].filter(Boolean).join('\n');
-  const { dateLabel, eventA, eventB } = extractScheduleConflictFacts(blob);
+  return null;
+}
 
-  const dateText = dateLabel ?? 'the upcoming window';
-  const eventAText = eventA ? `"${eventA}"` : 'one event (title not present in signals)';
-  const eventBText = eventB ? `"${eventB}"` : 'another event (title not present in signals)';
-  const deadline = dateLabel ? subtractIsoDate(dateLabel, 1) : null;
-  const deadlineLine = dateLabel
-    ? `Decide by ${deadline ?? dateLabel} so the calendar is settled before ${dateLabel}.`
-    : 'Deadline: decide before the overlapping window so the calendar is settled in time.';
+function extractRecipientEmail(text: string): string | null {
+  const match = text.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i);
+  return match ? match[0].toLowerCase() : null;
+}
 
+function cleanDecisionTopic(value: string): string {
+  return value.replace(/\s+/g, ' ').replace(/[.!?]+$/, '').trim();
+}
+
+function buildDeterministicDecisionDocumentFallback(
+  directive: ConvictionDirective,
+  rawContext: string,
+): DocumentArtifact | null {
+  const combined = [directive.directive, directive.reason ?? '', rawContext].filter(Boolean).join('\n');
+  const deadline = extractDeadlineAnchor(combined);
+  const target = cleanDecisionTopic(directive.directive);
+  const hasDecisionShape =
+    /\b(decision|approve|approval|owner|deadline|due|confirm|commit|slip|blocked|blocker|cutoff|window|interview|offer|assessment|forms?|payment|invoice)\b/i
+      .test(combined);
+  if (!deadline && !hasDecisionShape) return null;
+
+  const title = cleanTitle(target);
+  const finalDeadline = deadline ?? 'today';
   const content = [
-    '## Situation',
-    `You have overlapping calendar commitments on ${dateText}. ${eventAText} and ${eventBText} are scheduled for the same window.`,
+    `Decision required: ${target}.`,
     '',
-    '## Conflicting commitments or risk',
-    'Double-booking forces a trade-off; if no decision is made, you default under pressure in the moment.',
+    `Move: confirm the path, name one owner, and close the decision by ${finalDeadline}.`,
     '',
-    '## Recommendation / decision',
-    `Keep ${eventAText} in the current slot and move ${eventBText} unless a hard external dependency makes ${eventBText} immovable.`,
-    `Ask: confirm the final keep/move decision by ${deadline ?? dateText}.`,
-    `Consequence: if unresolved by ${deadline ?? dateText}, the overlap is still blocking a clean calendar decision for ${dateText}.`,
+    `Owner: the decision owner on this thread confirms the final path and updates everyone affected by ${finalDeadline}.`,
     '',
-    '## Owner / next step',
-    'Calendar owner confirms the final keep/move choice and updates the losing event immediately after the decision is made.',
+    `Deadline: ${finalDeadline}.`,
     '',
-    '## Timing / deadline',
-    deadlineLine,
+    `Consequence: if this is still unresolved after ${finalDeadline}, dependent work stays blocked and the timeline slips for avoidable reasons.`,
   ].join('\n');
-  const title = dateLabel ? `Schedule conflict decision - ${dateLabel}` : 'Schedule conflict decision';
+
   const issues = getFinishedDocumentIssues(title, content);
   if (issues.length > 0) return null;
   return { type: 'document', title, content };
+}
+
+function buildDeterministicSendMessageFallback(
+  directive: ConvictionDirective,
+  rawContext: string,
+): EmailArtifact | null {
+  const combined = [buildSendMessageRecipientGroundingBlob(directive), rawContext].filter(Boolean).join('\n');
+  const to = extractRecipientEmail(combined);
+  if (!to) return null;
+
+  const deadline = extractDeadlineAnchor(combined) ?? 'today';
+  const topic = cleanDecisionTopic(directive.directive).slice(0, 72);
+  const subject = `Decision needed by ${deadline}: ${topic}`.slice(0, 120);
+  const body = [
+    `Can you confirm by ${deadline} what the final decision is on ${topic}, and who owns the next step?`,
+    '',
+    `If this stays unresolved after ${deadline}, the work behind it remains blocked and the timeline slips.`,
+  ].join('\n');
+
+  return {
+    type: 'email',
+    to,
+    subject,
+    body,
+    draft_type: 'email_compose',
+  };
 }
 
 function buildDeterministicDocumentFallback(
@@ -328,22 +363,7 @@ function buildDeterministicDocumentFallback(
   if (directive.discrepancyClass === 'behavioral_pattern') {
     return buildBehavioralPatternFallback(directive, rawContext);
   }
-
-  const uniqueSignals = stripScaffoldLines(rawContext).slice(0, 6);
-  if (uniqueSignals.length === 0) return null;
-
-  const title = cleanTitle(directive.directive);
-  const content = [
-    `Objective: ${directive.directive.trim()}`,
-    '',
-    'Execution Notes:',
-    ...uniqueSignals.map((signal) => `- ${signal}`),
-  ].join('\n');
-
-  const issues = getFinishedDocumentIssues(title, content);
-  if (issues.length > 0) return null;
-
-  return { type: 'document', title, content };
+  return buildDeterministicDecisionDocumentFallback(directive, rawContext);
 }
 
 function buildSendMessageRecipientGroundingBlob(directive: ConvictionDirective | undefined): string {
@@ -502,6 +522,12 @@ function validateArtifact(
       if (containsGenericFiller(body)) {
         throw new Error('Email artifact contains generic filler');
       }
+      if (!/\?/.test(body) && !/\b(can you|could you|would you|will you|please|reply|confirm|approve|schedule|let me know)\b/i.test(body)) {
+        throw new Error('Email artifact missing a concrete ask');
+      }
+      if (!/\b(by|before|today|tomorrow|this week|next week|if)\b/i.test(body)) {
+        throw new Error('Email artifact missing timing or consequence');
+      }
       return {
         type: 'email',
         to: recipient,
@@ -627,9 +653,10 @@ async function generateViaAnthropic(
     const textBlocks = (response.content ?? []).filter((block: any) => block?.type === 'text');
     const raw = textBlocks.map((block: any) => block.text).join('');
     if (!raw.trim()) {
-      return actionType === 'write_document'
-        ? emergencyDocumentFromContext(directive, rawContext)
-        : emergencyEmailArtifact(directive);
+      if (actionType === 'write_document') {
+        return buildDeterministicDocumentFallback(directive, rawContext);
+      }
+      return buildDeterministicSendMessageFallback(directive, rawContext) ?? emergencyEmailArtifact(directive);
     }
 
     const parsed = parseResponseText(raw);
@@ -644,14 +671,15 @@ async function generateViaAnthropic(
     if (actionType === 'write_document') {
       const repaired = buildDeterministicDocumentFallback(directive, rawContext);
       if (repaired) return repaired;
-      return emergencyDocumentFromContext(directive, rawContext);
+      return null;
     }
 
-    return emergencyEmailArtifact(directive);
+    return buildDeterministicSendMessageFallback(directive, rawContext) ?? emergencyEmailArtifact(directive);
   } catch {
-    return actionType === 'write_document'
-      ? emergencyDocumentFromContext(directive, rawContext)
-      : emergencyEmailArtifact(directive);
+    if (actionType === 'write_document') {
+      return buildDeterministicDocumentFallback(directive, rawContext);
+    }
+    return buildDeterministicSendMessageFallback(directive, rawContext) ?? emergencyEmailArtifact(directive);
   }
 }
 
