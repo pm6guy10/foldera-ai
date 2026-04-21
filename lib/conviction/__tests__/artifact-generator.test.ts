@@ -426,7 +426,7 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(firstCall?.system ?? '').not.toMatch(/Numbered steps, each completable/i);
   });
 
-  it('renders a single interview-week prep pack from clustered signals and exclusion notes', async () => {
+  it('renders a single interview-week execution brief from clustered signals and exclusion notes', async () => {
     const directive: any = {
       ...BASE_WRITE_DOCUMENT_DIRECTIVE,
       discrepancyClass: 'behavioral_pattern',
@@ -452,21 +452,25 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const result = await generateArtifact('user-1', directive);
 
     expect(result).not.toBeNull();
-    expect((result as any).title).toBe('Interview Week Prep Pack — April 20–23, 2026');
+    expect((result as any).title).toBe('Interview Week Execution Brief — April 20–23, 2026');
     const content = String((result as any).content ?? '');
-    expect(content).toContain('MASTER SCHEDULE');
-    expect(content).toContain('PRIORITY ORDER');
-    expect(content).toContain('CORE STORIES TO REUSE');
+    expect(content).toContain('EXECUTION MOVE');
+    expect(content).toContain('Why this beats the alternatives:');
+    expect(content).toContain('Consequence:');
+    expect(content).toContain('ACTUAL INTERVIEW SCHEDULE');
+    expect(content).toContain('CROSS-ROLE STORY REUSE');
     expect(content).toContain('ROLE-SPECIFIC ANGLES');
+    expect(content).toContain('COMPLETED MATERIALS / FORMS ALREADY EVIDENCED');
+    expect(content).toContain('MISSING PREP MOVES');
     expect(content).toContain('QUESTIONS TO ASK');
-    expect(content).toContain('DAY-BY-DAY PREP FOCUS');
-    expect(content).toContain('RED FLAGS / LOAD MANAGEMENT');
-    expect(content).toContain('EXCLUDED PERSONAL EVENTS');
+    expect(content).toContain('REOPEN TRIGGER');
+    expect(content).toContain('WHAT TO IGNORE');
     expect(content).toContain('SHPC4 Interview - Social and Health Program Consultant 4 - DSHS');
     expect(content).toContain('MEDS/MAS3 Interview - Administrative Specialist 3 - HCA');
     expect(content).toContain('Training & Appeals Program Manager Interview - WA Cares');
     expect(content).toContain('Program operations');
     expect(content).toContain('Appeals coordination');
+    expect(content).toContain('No sent forms or linked interview documents were evidenced in the confirmed signals yet.');
     expect(content).toContain('Tue, Apr 21');
     expect(content).toContain('Wed, Apr 22');
     expect(content).toContain('Thu, Apr 23');
@@ -475,6 +479,12 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(content).toContain('Bible study at Brightside');
     expect(content).toContain('soccer game');
     expect(content).toContain('baby shower');
+    expect(content).not.toContain('MASTER SCHEDULE');
+    expect(content).not.toContain('PRIORITY ORDER');
+    expect(content).not.toContain('CORE STORIES TO REUSE');
+    expect(content).not.toContain('DAY-BY-DAY PREP FOCUS');
+    expect(content).not.toContain('RED FLAGS / LOAD MANAGEMENT');
+    expect(content).not.toContain('EXCLUDED PERSONAL EVENTS');
     expect(content).not.toContain('research the company');
     expect(content).not.toContain('prepare examples');
   });
