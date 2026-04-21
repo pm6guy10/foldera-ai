@@ -29,6 +29,15 @@ const SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
 ];
 
+function getGoogleCallbackBaseUrl(baseUrl: string): string {
+  // Google only has https://www.foldera.ai/api/google/callback registered.
+  // Normalize apex production host to the registered www callback host.
+  return baseUrl.replace(
+    /^(https:\/\/)foldera\.ai/,
+    '$1www.foldera.ai',
+  );
+}
+
 export async function GET() {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
@@ -46,7 +55,7 @@ export async function GET() {
     );
   }
 
-  const redirectUri = `${baseUrl}/api/google/callback`;
+  const redirectUri = `${getGoogleCallbackBaseUrl(baseUrl)}/api/google/callback`;
 
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 

@@ -17,6 +17,15 @@ import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
+function getGoogleCallbackBaseUrl(baseUrl: string): string {
+  // Google only has https://www.foldera.ai/api/google/callback registered.
+  // Normalize apex production host to the registered www callback host.
+  return baseUrl.replace(
+    /^(https:\/\/)foldera\.ai/,
+    '$1www.foldera.ai',
+  );
+}
+
 export async function GET(request: NextRequest) {
   const baseUrl = process.env.NEXTAUTH_URL!;
   const settingsUrl = `${baseUrl}/dashboard/settings`;
@@ -59,7 +68,7 @@ export async function GET(request: NextRequest) {
 
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
-  const redirectUri = `${baseUrl}/api/google/callback`;
+  const redirectUri = `${getGoogleCallbackBaseUrl(baseUrl)}/api/google/callback`;
 
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
