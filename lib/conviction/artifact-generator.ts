@@ -280,6 +280,12 @@ function buildInterviewWeekPrepPackArtifact(cluster: InterviewWeekCluster): Docu
   ];
 
   const content = [
+    'EXECUTION BRIEF',
+    `FINAL RECOMMENDATION: run the confirmed interview week off one integrated prep pack for ${formatPtDateRange(cluster.windowStart, cluster.windowEnd)} instead of rebuilding the story stack slot by slot.`,
+    'OWNER: you own the prep pack and use it as the single source for every confirmed interview in this window.',
+    'NEXT PHYSICAL STEP: open this brief first, rehearse the shared stories once, then fill only the role-specific gaps listed below before the first interview.',
+    `CONSEQUENCE IF NO MOVEMENT: otherwise the later interviews inherit weaker openings, duplicated prep, and avoidable story drift inside ${formatPtDateRange(cluster.windowStart, cluster.windowEnd)}.`,
+    '',
     'EXECUTION MOVE',
     'Use this pack as the only prep surface for the confirmed interviews in this window. Reuse the same strongest stories across roles, then fill only the role-specific gaps called out below.',
     `Why this beats the alternatives: one integrated brief preserves the reusable stories already visible across ${items.length} confirmed interviews instead of fragmenting the week into separate prep notes.`,
@@ -437,6 +443,15 @@ function buildBehavioralPatternArtifact(directive: ConvictionDirective): Documen
   const goalLabel = inferredGoal ? deriveGoalLabel(inferredGoal) : null;
   const title = goalLabel ? `Execution rule for the ${goalLabel}` : `Execution rule for ${entityName}`;
   const content = [
+    'EXECUTION BRIEF',
+    goalLabel
+      ? `FINAL RECOMMENDATION: stop allocating live bandwidth to ${entityName} until a concrete reactivation signal supports the ${goalLabel}.`
+      : `FINAL RECOMMENDATION: stop allocating live bandwidth to ${entityName} until a concrete reactivation signal arrives.`,
+    `OWNER: you close this loop and keep it closed unless the reopen trigger below happens.`,
+    goalLabel
+      ? `NEXT PHYSICAL STEP: mark ${entityName} inactive today and reallocate that time to the highest-probability work for the ${goalLabel}.`
+      : `NEXT PHYSICAL STEP: mark ${entityName} inactive today and reallocate the recovered time immediately.`,
+    '',
     goalLabel
       ? `The ${goalLabel} matters over the next 30-90 days. ${count} follow-ups in ${window} without a reply means ${entityName} is no longer an active thread; it is an open loop consuming attention.`
       : `${count} follow-ups in ${window} without a reply means ${entityName} is no longer an active thread; it is an open loop consuming attention.`,

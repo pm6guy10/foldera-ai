@@ -23,6 +23,11 @@ describe('SYSTEM_PROMPT hygiene', () => {
     expect(SYSTEM_PROMPT).toContain('DOMAIN DIAGNOSTIC LENSES');
     expect(SYSTEM_PROMPT).toContain('NAMED FAILURE MODES');
     expect(SYSTEM_PROMPT).toContain('DIAGNOSTIC_LENS');
+    expect(SYSTEM_PROMPT).toContain('PASSIVE SUMMARY BAN');
+    expect(SYSTEM_PROMPT).toContain('SEND_MESSAGE CONTRACT');
+    expect(SYSTEM_PROMPT).toContain('WRITE_DOCUMENT CONTRACT');
+    expect(SYSTEM_PROMPT).toContain('GOAL DECAY / BANDWIDTH RULE');
+    expect(SYSTEM_PROMPT).toContain('consequence of silence');
     expect(SYSTEM_PROMPT).toContain('MISSING DETAILS — NEVER BRACKET FILL-INS');
     expect(SYSTEM_PROMPT).toContain('[INSERT DATE]');
     expect(SYSTEM_PROMPT).toContain('WRITE_DOCUMENT — SIGNAL-GROUNDED VALUES');

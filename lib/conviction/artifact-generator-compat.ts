@@ -257,6 +257,11 @@ function buildBehavioralPatternFallback(
   const deadlineAnchor =
     extractDeadlineAnchor(signalText) ?? 'today';
   const content = [
+    'EXECUTION BRIEF',
+    `FINAL RECOMMENDATION: stop allocating live bandwidth to ${entityName} until a concrete next-step signal arrives.`,
+    'OWNER: you close this loop and keep it closed unless the reopen trigger below happens.',
+    `NEXT PHYSICAL STEP: mark ${entityName} inactive today and reallocate the recovered time to the highest-probability work for the pilot decision.`,
+    '',
     `The pilot decision matters over the next 30-90 days. ${count} follow-ups in ${window} without a reply means ${entityName} is no longer an active thread; it is an open loop consuming attention.`,
     '',
     `Execution move: stop holding live bandwidth open for ${entityName} today. Treat it as inactive until a concrete next-step signal arrives, and reallocate that time to the highest-probability work for the pilot decision.`,
@@ -311,15 +316,17 @@ function buildDeterministicDecisionDocumentFallback(
   const title = cleanTitle(target);
   const finalDeadline = deadline ?? 'today';
   const content = [
-    `Decision required: ${target}.`,
+    `EXECUTION BRIEF`,
     '',
-    `Move: confirm the path, name one owner, and close the decision by ${finalDeadline}.`,
+    `FINAL RECOMMENDATION: close ${target} by ${finalDeadline}.`,
     '',
-    `Owner: the decision owner on this thread confirms the final path and updates everyone affected by ${finalDeadline}.`,
+    `OWNER: the decision owner on this thread confirms the final path and updates everyone affected by ${finalDeadline}.`,
     '',
-    `Deadline: ${finalDeadline}.`,
+    `NEXT PHYSICAL STEP: send the confirmation that names the final path and the owner before ${finalDeadline}.`,
     '',
-    `Consequence: if this is still unresolved after ${finalDeadline}, dependent work stays blocked and the timeline slips for avoidable reasons.`,
+    `DEADLINE: ${finalDeadline}.`,
+    '',
+    `CONSEQUENCE IF NO MOVEMENT: if this is still unresolved after ${finalDeadline}, dependent work stays blocked and the timeline slips for avoidable reasons.`,
   ].join('\n');
 
   const issues = getFinishedDocumentIssues(title, content);
@@ -341,7 +348,7 @@ function buildDeterministicSendMessageFallback(
   const body = [
     `Can you confirm by ${deadline} what the final decision is on ${topic}, and who owns the next step?`,
     '',
-    `If this stays unresolved after ${deadline}, the work behind it remains blocked and the timeline slips.`,
+    `If I do not hear back by ${deadline}, I will treat this thread as stalled, stop holding the dependent work open, and assume the blocked timeline slips until someone reopens it with a concrete answer.`,
   ].join('\n');
 
   return {
@@ -453,6 +460,11 @@ function buildDocumentSystemPrompt(directive: ConvictionDirective, rawContext: s
   const parts = [
     'Write one finished document artifact.',
     'Return JSON with type=document, title, and content.',
+    'The document must be an Execution Brief, not notes or a status update.',
+    'The content must explicitly include: FINAL RECOMMENDATION, OWNER, NEXT PHYSICAL STEP, and CONSEQUENCE IF NO MOVEMENT.',
+    'Use a decisive final recommendation. Do not present open options without choosing one.',
+    'Do not assign homework. No research agenda, no "things to think about", no generic "for your review", and no instructions to gather more context.',
+    'If the thread is stale, say so plainly and deprecate the bandwidth instead of preserving a zombie thread.',
     'Do not include analysis scaffolding, generic filler, or placeholder text.',
   ];
   if (directiveLooksLikeScheduleConflict(directive)) {
@@ -468,15 +480,30 @@ function buildDocumentSystemPrompt(directive: ConvictionDirective, rawContext: s
 }
 
 function buildDocumentUserPrompt(directive: ConvictionDirective, rawContext: string): string {
-  return [`DIRECTIVE: ${directive.directive}`, `REASON: ${directive.reason ?? ''}`, `CONTEXT: ${rawContext}`].join('\n');
+  return [
+    `DIRECTIVE: ${directive.directive}`,
+    `REASON: ${directive.reason ?? ''}`,
+    'CONTRACT: write an Execution Brief with FINAL RECOMMENDATION, OWNER, NEXT PHYSICAL STEP, and CONSEQUENCE IF NO MOVEMENT. Never ask the user to do more research.',
+    `CONTEXT: ${rawContext}`,
+  ].join('\n');
 }
 
 function buildSendMessagePrompt(directive: ConvictionDirective): { system: string; user: string } {
   return {
-    system: 'Write one grounded send_message artifact as JSON with type, to, subject, and body.',
+    system: [
+      'Write one grounded send_message artifact as JSON with type, to, subject, and body.',
+      'Foldera does not send status updates, passive follow-ups, or generic check-in sludge.',
+      'Use only a named, grounded recipient from the supplied directive and evidence.',
+      'The body must include one concrete yes/no ask OR one explicit owner assignment.',
+      'The body must include one hard deadline with a real date or explicit day boundary.',
+      'The body must include one explicit consequence of silence or non-response.',
+      'If the thread is stale, name the closure condition plainly instead of sending a vague follow-up.',
+      'No filler phrases, no placeholder text, and no hallucinated relationship context.',
+    ].join('\n'),
     user: [
       `DIRECTIVE: ${directive.directive}`,
       `REASON: ${directive.reason ?? ''}`,
+      'CONTRACT: send a finished decision email, not a recap. The recipient should know exactly what decision, owner, or reply is needed by when, and what happens if nobody answers.',
       `EVIDENCE: ${(directive.evidence ?? []).map((e) => e.description).join(' | ')}`,
     ].join('\n'),
   };

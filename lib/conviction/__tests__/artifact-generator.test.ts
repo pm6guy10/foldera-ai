@@ -178,10 +178,35 @@ describe('artifact-generator — analysis dump leak prevention', () => {
       minLength: 140,
       minParagraphs: 4,
       dateAnchors: ['2026-04-21'],
-      requiredRegexes: [/decision required:/i, /\bmove:/i, /\bowner:/i, /\bconsequence:/i],
+      requiredRegexes: [
+        /^EXECUTION BRIEF/m,
+        /^FINAL RECOMMENDATION:/m,
+        /^OWNER:/m,
+        /^NEXT PHYSICAL STEP:/m,
+        /^CONSEQUENCE IF NO MOVEMENT:/m,
+      ],
       forbiddenPatterns: ['Objective:', 'Execution Notes:'],
     }).content;
     expect(content).toContain('2026-04-21');
+  });
+
+  it('injects the high-operator send_message contract into the artifact prompt', async () => {
+    mockCreate.mockResolvedValue(anthropicResponse('This prompt inspection should not rely on the output.'));
+
+    await generateArtifact('user-1', {
+      action_type: 'send_message',
+      directive: 'Confirm the final approval owner for the launch packet by 2026-04-21.',
+      reason: 'If no owner is named by 2026-04-21, the packet slips.',
+      evidence: [{ type: 'signal', description: 'approver@example.com asked who owns final packet delivery.' }],
+      requires_search: false,
+    } as any);
+
+    const firstCall = mockCreate.mock.calls[0]?.[0] as { system?: string; messages?: Array<{ content?: string }> };
+    expect(firstCall?.system ?? '').toContain('Foldera does not send status updates');
+    expect(firstCall?.system ?? '').toContain('one concrete yes/no ask OR one explicit owner assignment');
+    expect(firstCall?.system ?? '').toContain('one hard deadline');
+    expect(firstCall?.system ?? '').toContain('one explicit consequence of silence or non-response');
+    expect(firstCall?.messages?.[0]?.content ?? '').toContain('finished decision email, not a recap');
   });
 
   it('repairs weak send_message output into a grounded ask with timing and consequence', async () => {
@@ -217,6 +242,22 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     });
     expect(body).toMatch(/owner|next step/i);
     expect(body).toMatch(/blocked|slips|cutoff/i);
+  });
+
+  it('injects the execution-brief contract into the write_document artifact prompt', async () => {
+    mockCreate.mockResolvedValue(anthropicResponse(ANALYSIS_DUMP));
+
+    await generateArtifact('user-1', {
+      ...BASE_WRITE_DOCUMENT_DIRECTIVE,
+      directive: 'Lock the final approval owner for the runway packet by 2026-04-21.',
+      reason: 'If the owner is still missing after 2026-04-21, the runway packet slips.',
+    });
+
+    const firstCall = mockCreate.mock.calls[0]?.[0] as { system?: string; messages?: Array<{ content?: string }> };
+    expect(firstCall?.system ?? '').toContain('Execution Brief');
+    expect(firstCall?.system ?? '').toContain('FINAL RECOMMENDATION, OWNER, NEXT PHYSICAL STEP, and CONSEQUENCE IF NO MOVEMENT');
+    expect(firstCall?.system ?? '').toContain('Do not assign homework');
+    expect(firstCall?.messages?.[0]?.content ?? '').toContain('Never ask the user to do more research');
   });
 
   it('renders behavioral_pattern write_document with a grounded goal when one is available', async () => {
