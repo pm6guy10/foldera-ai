@@ -375,6 +375,42 @@ async function setupSettingsGoogleReauthMocks(page: Page) {
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
 }
 
+async function setupSettingsManageBillingMocks(page: Page) {
+  await seedAuthenticatedSession(page);
+  await page.addInitScript(() => {
+    try {
+      sessionStorage.removeItem('foldera_pending_checkout');
+    } catch {
+      /* ignore */
+    }
+  });
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/subscription/status'),
+    fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
+  );
+  await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
+  await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
+  await page.route(matchApiPath('/api/stripe/portal'), (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: json({ url: 'https://billing.stripe.com/p/session_test_123' }),
+    });
+  });
+  await page.route(matchApiPath('/api/stripe/checkout'), (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: json({ error: 'mock_checkout_disabled' }),
+    });
+  });
+}
+
 /** Past directives list — mocks `GET /api/conviction/history`. */
 async function setupBriefingsMocks(page: Page) {
   await seedAuthenticatedSession(page);
@@ -703,6 +739,45 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
       timeout: 15000,
     });
     await expect(microsoftReconnectCard.getByRole('button', { name: /^Connect$/i })).toBeVisible();
+  });
+
+  test('Manage subscription redirects to the Stripe billing portal URL returned by the Settings API', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await setupSettingsManageBillingMocks(page);
+    await page.goto('/dashboard/settings');
+
+    await page.getByRole('button', { name: /Manage subscription/i }).click();
+    await page.waitForURL('https://billing.stripe.com/p/session_test_123', {
+      timeout: 15000,
+    });
+  });
+
+  test('Microsoft Connect redirects from Settings into the Microsoft OAuth authorize URL', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupSettingsMicrosoftReauthMocks(page);
+    await page.route(matchApiPath('/api/microsoft/connect'), (route) =>
+      route.fulfill({
+        status: 307,
+        headers: {
+          location:
+            'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=mock-client&redirect_uri=https%3A%2F%2Fwww.foldera.ai%2Fapi%2Fmicrosoft%2Fcallback',
+        },
+      }),
+    );
+    await page.goto('/dashboard/settings');
+
+    const microsoftReconnectCopy = page.getByText(
+      /Microsoft needs a quick reconnect to resume background sync/i,
+    );
+    const microsoftReconnectCard = page
+      .locator('div.rounded-2xl')
+      .filter({ has: microsoftReconnectCopy })
+      .first();
+
+    await microsoftReconnectCard.getByRole('button', { name: /^Connect$/i }).click();
+    await page.waitForURL(/https:\/\/login\.microsoftonline\.com\/common\/oauth2\/v2\.0\/authorize/i, {
+      timeout: 15000,
+    });
   });
 });
 
