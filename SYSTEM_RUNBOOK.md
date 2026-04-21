@@ -191,6 +191,7 @@ All of these are in source code but NOT yet applied to production:
 2. Missing tkg_signals indexes (no migration written yet)
 3. npm run test:prod 51/51 is Brandon-session coverage; true non-owner end-to-end loop still unverified
 4. Local omnibus `npx playwright test` still fails with pre-existing localhost authenticated-smoke harness mismatches; tracked as `NEEDS_REVIEW` in `FOLDERA_MASTER_AUDIT.md`
+5. Live Stripe AZ-16 proof is still unverified; as of 2026-04-21 the webhook now fails closed on subscription persistence errors and zero-row matches, but no real checkout/webhook row was exercised in this session.
 
 ---
 

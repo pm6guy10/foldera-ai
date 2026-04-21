@@ -46,9 +46,16 @@ export async function updateSubscriptionByCustomerId(
   customerId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {
-  const { error } = await supabase.from('user_subscriptions').update(patch).eq('stripe_customer_id', customerId);
+  const { data, error } = await supabase
+    .from('user_subscriptions')
+    .update(patch)
+    .eq('stripe_customer_id', customerId)
+    .select('id');
   if (error) {
-    console.error('[stripe] update by customer failed:', error.message);
+    throw new Error(`[stripe] update by customer failed: ${error.message}`);
+  }
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error(`[stripe] no subscription row matched customer ${customerId}`);
   }
 }
 
@@ -57,11 +64,15 @@ export async function updateSubscriptionBySubscriptionId(
   stripeSubscriptionId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('user_subscriptions')
     .update(patch)
-    .eq('stripe_subscription_id', stripeSubscriptionId);
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .select('id');
   if (error) {
-    console.error('[stripe] update by subscription id failed:', error.message);
+    throw new Error(`[stripe] update by subscription id failed: ${error.message}`);
+  }
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error(`[stripe] no subscription row matched subscription ${stripeSubscriptionId}`);
   }
 }

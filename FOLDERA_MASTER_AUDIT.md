@@ -1,3 +1,16 @@
+### NEEDS_REVIEW — 2026-04-21 — Stripe webhook no longer reports false success when subscription persistence fails
+This session fixed the exact S1 money-loop seam in `app/api/stripe/webhook/route.ts`: Stripe checkout and subscription webhook events were returning `200` even when `user_subscriptions` writes failed or matched no row. That behavior could leave a stranger with a successful charge but no active subscription row and no retry from Stripe because the webhook was falsely acknowledged.
+
+Mandatory QA gate results:
+- `npm run health` passed (`0 FAILING`, warnings only).
+- `npx vitest run app/api/stripe/webhook/__tests__/route.test.ts lib/stripe/__tests__/subscription-db.test.ts` passed.
+- `npm run lint` passed.
+- `npx vitest run --exclude ".claude/worktrees/**"` passed.
+- `npm run build` passed.
+- `npm run test:ci:e2e` passed (`51 passed`).
+
+Status: `NEEDS_REVIEW` — the fail-closed webhook repair is locally verified, but the live AZ-16 proof remains open until a real Stripe checkout/webhook updates `user_subscriptions` in production.
+
 ### NEEDS_REVIEW — 2026-04-15 — Fresh owner proof blocked after hunt repair because pending_approval reuse short-circuits generation
 This session fixed the exact hunt repair seam in `lib/briefing/generator.ts`: deterministic `send_message` repair for hunt winners can now use `ctx.hunt_send_message_recipient_allowlist` when scorer summaries omit the real email address. That addresses the Deako-style failure where the winning thread had `author: Deako <hello@deako.com>` on the source signals, but `buildDecisionEnforcedFallbackPayload` only searched summary text and returned `null`.
 

@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (!userId) {
-        console.warn('[stripe/webhook] checkout.session.completed missing user id');
+        throw new Error('[stripe/webhook] checkout.session.completed missing user id');
       } else {
         const { error } = await supabase.from('user_subscriptions').upsert(
           {
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
         );
 
         if (error) {
-          console.error('[stripe/webhook] upsert failed:', error.message);
+          throw new Error(`[stripe/webhook] upsert failed: ${error.message}`);
         } else {
           const to =
             expanded.customer_details?.email ??
@@ -167,6 +167,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (e) {
     console.error('[stripe/webhook] handler error:', e);
+    return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
