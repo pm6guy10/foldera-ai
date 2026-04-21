@@ -87,6 +87,7 @@ import {
 } from './locked-contact-scan';
 import { hasBracketTemplatePlaceholder } from './bracket-placeholder';
 import { resolveEvidenceSignalIdsForWinner } from './resolve-evidence-signal-ids';
+import { getGoalQuarantineReason, isUsableGoalRow } from './goal-hygiene';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -274,9 +275,6 @@ async function loadDirectiveConfidenceThreshold(userId: string): Promise<number>
     return DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD;
   }
 }
-
-/** Goal sources that are onboarding placeholders — excluded from scoring/generation. */
-const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker', 'system_config']);
 
 // ---------------------------------------------------------------------------
 // Part 1 — Artifact contract: valid user-facing types
@@ -812,8 +810,7 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
 
   const goals = (goalRows ?? []).filter(
     (g: { source?: string | null; goal_text?: string }) =>
-      !PLACEHOLDER_GOAL_SOURCES.has((g.source as string) ?? '') &&
-      !(g.goal_text ?? '').startsWith('__'),
+      isUsableGoalRow(g),
   ).slice(0, 8) as Array<{ goal_text: string; priority: number; goal_category: string }>;
 
   if (goals.length === 0) return [];
@@ -852,6 +849,7 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
   type DecryptedSignal = { text: string; occurred_at: string };
   const decryptedSignals: DecryptedSignal[] = [];
   for (const s of signalRows ?? []) {
+    if (String(s.source ?? '').trim() === 'user_feedback') continue;
     const dec = decryptWithStatus((s.content as string) ?? '');
     if (dec.usedFallback) continue;
     decryptedSignals.push({ text: dec.plaintext.toLowerCase(), occurred_at: s.occurred_at as string });
@@ -1202,7 +1200,8 @@ export function selectRankedCandidates(
   ): boolean {
     const goalPriority = typeof candidate.matchedGoal?.priority === 'number' ? candidate.matchedGoal.priority : 0;
     return (
-      goalPriority >= 3 &&
+      goalPriority > 0 &&
+      goalPriority <= 2 &&
       Boolean(candidate.matchedGoal?.text?.trim()) &&
       triangulationAxes >= 2 &&
       evidenceDensity >= 3 &&
@@ -1725,12 +1724,22 @@ function isPriorityCareerOutcomeArtifactCandidateForGenerator(
   if (candidate.suggestedActionType !== 'write_document') return false;
 
   const text = scoredLoopSearchTextForGeneratorCareerPriority(candidate);
-  const hasInterviewOrHiringPressure =
-    /\binterview|phone screen|panel interview|screening interview|candidate interview|hiring decision|offer\b/i.test(text);
+  const hasCareerOutcomePressure =
+    /\binterview|phone screen|panel interview|screening interview|candidate interview|offer\b/i.test(text);
+  const hasConcreteProcessAnchor =
+    /\bappointment scheduled|assessment|availability|background check|documents?|forms?|offer|packet|panel|phone screen|reference|schedule|slot\b/i.test(text);
   const isCareerGoalMatched = candidate.matchedGoal?.category === 'career';
   const hasOutcomeValue = (candidate.breakdown.stakes ?? 0) >= 3 && (candidate.breakdown.urgency ?? 0) >= 0.7;
+  const isStaleBandwidthRule =
+    candidate.discrepancyClass === 'behavioral_pattern' &&
+    /\bbandwidth|mentally open|reopen|stop holding|waiting on\b/i.test(text);
 
-  return hasOutcomeValue && (isCareerGoalMatched || hasInterviewOrHiringPressure);
+  return (
+    hasOutcomeValue &&
+    hasConcreteProcessAnchor &&
+    !isStaleBandwidthRule &&
+    (isCareerGoalMatched || hasCareerOutcomePressure)
+  );
 }
 
 /** Discrepancy classes that lock to `write_document` — verification mode tries these before other winners. */
@@ -2638,7 +2647,7 @@ export function buildStructuredContext(
   userId: string,
   signalEvidence: SignalSnippet[],
   insight: ResearchInsight | null,
-  userGoals?: Array<{ goal_text: string; priority: number; goal_category: string }>,
+  userGoals?: Array<{ goal_text: string; priority: number; goal_category: string; source?: string | null }>,
   goalGapAnalysis?: GoalGapEntry[],
   antiPatterns?: import('./scorer').AntiPattern[],
   divergences?: import('./scorer').RevealedGoalDivergence[],
@@ -2860,11 +2869,18 @@ export function buildStructuredContext(
     activeGoalSeen.add(key);
     out.push(line);
   };
+  const authorityGoalSupportTexts = signalEvidence
+    .filter((signal) =>
+      /gmail|outlook|calendar|drive|onedrive|uploaded/i.test(String(signal.source ?? '')),
+    )
+    .map((signal) => [signal.subject, signal.snippet, signal.author].filter(Boolean).join(' '));
   const active_goals: string[] = [];
   if (winner.matchedGoal) {
     pushActiveGoalUnique(winner.matchedGoal.category, winner.matchedGoal.priority, winner.matchedGoal.text, active_goals);
   }
   for (const g of userGoals ?? []) {
+    if (!isUsableGoalRow(g)) continue;
+    if (getGoalQuarantineReason(g, authorityGoalSupportTexts)) continue;
     pushActiveGoalUnique(g.goal_category, g.priority, g.goal_text, active_goals);
     if (active_goals.length >= 5) break;
   }
@@ -3028,7 +3044,11 @@ export function buildStructuredContext(
     conflicts_with_locked_constraints,
     constraint_violation_codes,
     researcher_insight: insight,
-    user_identity_context: buildUserIdentityContext(userGoals ?? []),
+    user_identity_context: buildUserIdentityContext(
+      (userGoals ?? []).filter((goal) =>
+        isUsableGoalRow(goal) && !getGoalQuarantineReason(goal, authorityGoalSupportTexts),
+      ),
+    ),
     user_full_name: names.user_full_name,
     user_first_name: names.user_first_name,
     goal_gap_analysis: goalGapAnalysis ?? [],
@@ -5261,6 +5281,15 @@ function getBehavioralPatternFinishedWorkIssues(input: {
 
   const title = isNonEmptyString(input.artifact.title) ? input.artifact.title.trim() : '';
   const content = isNonEmptyString(input.artifact.content) ? input.artifact.content.trim() : '';
+  const interviewWeekExecutionBrief =
+    /\binterview week (?:prep pack|execution brief)\b/i.test(`${title}\n${content}`) ||
+    /\bINTERVIEW_WEEK_CLUSTER\b/i.test(`${input.directiveText}\n${input.reason}`) ||
+    (
+      /\bACTUAL INTERVIEW SCHEDULE\b/i.test(content) &&
+      /\bCROSS-ROLE STORY REUSE\b/i.test(content) &&
+      /\bROLE-SPECIFIC ANGLES\b/i.test(content)
+    );
+  if (interviewWeekExecutionBrief) return [];
   const combined = `${input.directiveText}\n${input.reason}\n${title}\n${content}`.trim();
   const issues: string[] = [];
   const goalLabel = extractBehavioralPatternGoalLabel(input.candidateGoal);
@@ -5643,9 +5672,35 @@ function buildSelectedGenerationLog(
       .filter((c) => c.decision === 'rejected')
       .map((c) => c.decisionReason),
     candidateDiscovery,
-    ...(extras?.active_goals?.length
-      ? { brief_context_debug: { active_goals: extras.active_goals } }
-      : {}),
+    ...(
+      extras?.active_goals?.length ||
+      candidateDiscovery?.quarantinedGoals?.length ||
+      candidateDiscovery?.quarantinedCommitments?.length ||
+      candidateDiscovery?.droppedChatAuthority?.length ||
+      candidateDiscovery?.winnerSourceAuthority ||
+      candidateDiscovery?.interviewClusterInputs?.length
+        ? {
+            brief_context_debug: {
+              ...(extras?.active_goals?.length ? { active_goals: extras.active_goals } : {}),
+              ...(candidateDiscovery?.quarantinedGoals?.length
+                ? { quarantined_goals: candidateDiscovery.quarantinedGoals }
+                : {}),
+              ...(candidateDiscovery?.quarantinedCommitments?.length
+                ? { quarantined_commitments: candidateDiscovery.quarantinedCommitments }
+                : {}),
+              ...(candidateDiscovery?.droppedChatAuthority?.length
+                ? { dropped_chat_authority: candidateDiscovery.droppedChatAuthority }
+                : {}),
+              ...(candidateDiscovery?.winnerSourceAuthority
+                ? { winner_source_authority: candidateDiscovery.winnerSourceAuthority }
+                : {}),
+              ...(candidateDiscovery?.interviewClusterInputs?.length
+                ? { interview_cluster_inputs: candidateDiscovery.interviewClusterInputs }
+                : {}),
+            },
+          }
+        : {}
+    ),
     ...(extras?.pipeline_dry_run ? { pipeline_dry_run: extras.pipeline_dry_run } : {}),
     ...(extras?.evidence_bundle ? { evidence_bundle: extras.evidence_bundle } : {}),
   };
@@ -5714,6 +5769,33 @@ function buildNoSendGenerationLog(
     reason: blockedCandidateReason ?? reason,
     candidateFailureReasons,
     candidateDiscovery: normalizedDiscovery,
+    ...(
+      normalizedDiscovery?.quarantinedGoals?.length ||
+      normalizedDiscovery?.quarantinedCommitments?.length ||
+      normalizedDiscovery?.droppedChatAuthority?.length ||
+      normalizedDiscovery?.winnerSourceAuthority ||
+      normalizedDiscovery?.interviewClusterInputs?.length
+        ? {
+            brief_context_debug: {
+              ...(normalizedDiscovery?.quarantinedGoals?.length
+                ? { quarantined_goals: normalizedDiscovery.quarantinedGoals }
+                : {}),
+              ...(normalizedDiscovery?.quarantinedCommitments?.length
+                ? { quarantined_commitments: normalizedDiscovery.quarantinedCommitments }
+                : {}),
+              ...(normalizedDiscovery?.droppedChatAuthority?.length
+                ? { dropped_chat_authority: normalizedDiscovery.droppedChatAuthority }
+                : {}),
+              ...(normalizedDiscovery?.winnerSourceAuthority
+                ? { winner_source_authority: normalizedDiscovery.winnerSourceAuthority }
+                : {}),
+              ...(normalizedDiscovery?.interviewClusterInputs?.length
+                ? { interview_cluster_inputs: normalizedDiscovery.interviewClusterInputs }
+                : {}),
+            },
+          }
+        : {}
+    ),
   };
 }
 
@@ -6238,6 +6320,7 @@ async function fetchWinnerSignalEvidence(
 
     for (const row of sourceRows ?? []) {
       if (snippets.length >= SNIPPET_CAP) break;
+      if (String(row.source ?? '').trim() === 'user_feedback') continue;
       if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
       const decrypted = decryptWithStatus(row.content as string ?? '');
       if (decrypted.usedFallback) continue;
@@ -6268,6 +6351,10 @@ async function fetchWinnerSignalEvidence(
       .map((entity) => entity.toLowerCase())
       .filter((entity) => entity.length >= 5);
 
+    const fallbackScanBudget = isDecayDiscrepancy
+      ? Math.max(remainingRowBudget, 200)
+      : remainingRowBudget;
+
     const { data: fallbackRows } = await supabase
       .from('tkg_signals')
       .select('id, content, source, occurred_at, author, type')
@@ -6275,12 +6362,13 @@ async function fetchWinnerSignalEvidence(
       .eq('processed', true)
       .gte('occurred_at', lookbackIso)
       .order('occurred_at', { ascending: false })
-      .limit(remainingRowBudget);
+      .limit(fallbackScanBudget);
 
     scannedRows += fallbackRows?.length ?? 0;
 
     for (const row of fallbackRows ?? []) {
       if (snippets.length >= SNIPPET_CAP) break;
+      if (String(row.source ?? '').trim() === 'user_feedback') continue;
       if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
       const decrypted = decryptWithStatus(row.content as string ?? '');
       if (decrypted.usedFallback) continue;
@@ -9427,7 +9515,7 @@ export async function generateDirective(
     const goalsForContext = ((
       userGoalsResult.status === 'fulfilled' ? (userGoalsResult.value.data ?? []) : []
     ) as Array<{ goal_text: string; priority: number; goal_category: string; source?: string }>)
-      .filter((g) => !PLACEHOLDER_GOAL_SOURCES.has(g.source ?? ''))
+      .filter((g) => isUsableGoalRow(g))
       .slice(0, 5);
     const goalGapAnalysis: GoalGapEntry[] = [];
     const approvedActionLines: string[] = approvedActionsResult.status === 'fulfilled' ? approvedActionsResult.value : [];

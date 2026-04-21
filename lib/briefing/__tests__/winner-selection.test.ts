@@ -388,7 +388,7 @@ describe('selectFinalWinner', () => {
       content: 'The same stalled thread keeps consuming bandwidth that should go to live career moves.',
       matchedGoal: {
         text: 'Land a supervisor-track role and stabilize 12-month career momentum',
-        priority: 4,
+        priority: 1,
         category: 'career',
       },
       entityName: 'MAS3 HCA hiring-decision thread',
@@ -417,7 +417,7 @@ describe('selectFinalWinner', () => {
       relationshipContext: '- MAS3 recruiting team <recruiting@mas3.example> (Hiring)',
       matchedGoal: {
         text: 'Land a supervisor-track role and stabilize 12-month career momentum',
-        priority: 4,
+        priority: 1,
         category: 'career',
       },
     });
@@ -431,7 +431,7 @@ describe('selectFinalWinner', () => {
       content: 'The stale hiring thread is consuming time better spent on live roles.',
       matchedGoal: {
         text: 'Land a supervisor-track role and stabilize 12-month career momentum',
-        priority: 4,
+        priority: 1,
         category: 'career',
       },
       entityName: 'MAS3 HCA hiring-decision thread',
@@ -458,7 +458,7 @@ describe('selectFinalWinner', () => {
       content: 'The interview slot expires today if no time is selected.',
       matchedGoal: {
         text: 'Land a supervisor-track role and stabilize 12-month career momentum',
-        priority: 4,
+        priority: 1,
         category: 'career',
       },
       breakdown: {
@@ -479,7 +479,7 @@ describe('selectFinalWinner', () => {
       content: 'The stale hiring thread is consuming time better spent on live roles.',
       matchedGoal: {
         text: 'Land a supervisor-track role and stabilize 12-month career momentum',
-        priority: 4,
+        priority: 1,
         category: 'career',
       },
       entityName: 'MAS3 HCA hiring-decision thread',

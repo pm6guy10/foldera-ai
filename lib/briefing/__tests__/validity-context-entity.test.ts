@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   filterPersonNamesForValidityContext,
+  isValidPersonNameForValidityContext,
   VALIDITY_CONTEXT_ENTITY_STOPWORDS,
 } from '../validity-context-entity';
 
@@ -36,6 +37,32 @@ describe('filterPersonNamesForValidityContext', () => {
 
   it('removes Financial / Personal mis-extractions (rejection gate false positives)', () => {
     expect(filterPersonNamesForValidityContext(['Financial', 'Personal'])).toEqual([]);
+  });
+
+  it('drops live invalid-context junk from job titles and action verbs', () => {
+    expect(
+      filterPersonNamesForValidityContext([
+        'Phone',
+        'Interview',
+        'Waiting',
+        'Open',
+        'Hunt',
+        'Sent',
+        'Step',
+        'Call Alex',
+        'Care Coordinator',
+        'Developmental Disabilities',
+        'Case',
+        'Resource Manager',
+      ]),
+    ).toEqual([]);
+  });
+
+  it('keeps actual person names while dropping role-shaped phrases', () => {
+    expect(isValidPersonNameForValidityContext('Alex Crisler')).toBe(true);
+    expect(isValidPersonNameForValidityContext('Keri Nopens')).toBe(true);
+    expect(isValidPersonNameForValidityContext('Care Coordinator')).toBe(false);
+    expect(isValidPersonNameForValidityContext('Resource Manager')).toBe(false);
   });
 
   it('stopword set is lowercase for lookup', () => {

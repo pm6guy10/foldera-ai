@@ -262,6 +262,8 @@ describe('generateDirective runtime failures', () => {
     signalSelectCalls.length = 0;
     signalLimitCalls.length = 0;
     signalInCalls.length = 0;
+    signalQueryResult.data = [qualifyingSignal];
+    signalQueryResult.error = null;
 
     mockIsOverDailyLimit.mockResolvedValue(false);
     mockResearchWinner.mockResolvedValue(null);
@@ -458,6 +460,81 @@ describe('generateDirective runtime failures', () => {
     expect(signalInCalls[0]?.values).toHaveLength(30);
     expect(signalInCalls[0]?.values).not.toContain('blocked-sig-1');
     expect(mockDecryptWithStatus).toHaveBeenCalled();
+  });
+
+  it('uses a deeper fallback evidence scan for decay candidates so older thread rows stay reachable', async () => {
+    const decayCandidate: ScoredLoop = {
+      ...buildWinner(),
+      id: 'decay-alex',
+      type: 'discrepancy',
+      discrepancyClass: 'decay' as import('../../briefing/discrepancy-detector').DiscrepancyClass,
+      title: 'Fading connection: Alex Crisler',
+      content: 'Alex scheduled the phone screen and the thread cooled after that point.',
+      entityName: 'Alex Crisler',
+      relationshipContext: '- Alex Crisler <Alex.Crisler@comphc.org> (Recruiting)',
+      sourceSignals: [
+        {
+          kind: 'signal',
+          id: 'alex-calendar',
+          occurredAt: new Date().toISOString(),
+          summary: 'Phone screen scheduled on the calendar',
+        },
+      ],
+    };
+
+    mockScoreOpenLoops.mockResolvedValue({
+      outcome: 'winner_selected',
+      winner: decayCandidate,
+      topCandidates: [decayCandidate],
+      deprioritized: [],
+      candidateDiscovery: {
+        candidateCount: 1,
+        suppressedCandidateCount: 0,
+        selectionMargin: 0.2,
+        selectionReason: 'Decay candidate selected.',
+        failureReason: null,
+        topCandidates: [],
+      },
+      antiPatterns: [],
+      divergences: [],
+      exact_blocker: null,
+    });
+    queueEmptyTkgActionsResults(6);
+    signalQueryResult.data = [
+      qualifyingSignal,
+      {
+        id: 'alex-email-1',
+        content:
+          'From: Alex.Crisler@comphc.org\nTo: b-kapp@outlook.com\nSubject: Brandon Kapp - Phone Screen\n\nThis meeting was scheduled from the bookings page of Alex Crisler.',
+        source: 'outlook',
+        occurred_at: new Date(FIXED_NOW.getTime() - 6 * DAY_MS).toISOString(),
+        author: 'Alex.Crisler@comphc.org',
+        type: 'email_received',
+      },
+    ];
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 80 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Email Alex Crisler about the phone screen follow-up.',
+          artifact_type: 'send_message',
+          artifact: {
+            to: 'Alex.Crisler@comphc.org',
+            subject: 'Phone screen follow-up',
+            body: 'Hi Alex,\n\nAfter the April 15 phone screen, can you share the next-step timeline for Comprehensive Healthcare?\n\nThanks,\nBrandon',
+          },
+          evidence: 'Alex scheduled the phone screen and the thread cooled after that point.',
+          why_now: 'The thread went quiet after the phone screen.',
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    await generateDirective('user-1', { dryRun: true });
+
+    expect(signalInCalls).toHaveLength(1);
+    expect(signalLimitCalls).toContain(200);
   });
 
   it('skips top-ranked schedule_conflict write_document winner and falls through to the next viable candidate', async () => {

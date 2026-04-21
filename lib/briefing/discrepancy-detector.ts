@@ -42,6 +42,7 @@
  */
 
 import { isLikelyAutomatedTransactionalInbound } from './automated-inbound-signal';
+import { isChatConversationSignalSource } from './scorer-candidate-sources';
 import type { ActionType, GenerationCandidateSource } from './types';
 
 // ---------------------------------------------------------------------------
@@ -370,6 +371,30 @@ function textKeywords(text: string): string[] {
     .filter((w) => w.length >= 4 && !STOP_WORDS.has(w));
 }
 
+const GENERIC_SINGLE_GOAL_MATCH_TOKENS = new Set([
+  'career',
+  'decision',
+  'follow',
+  'hiring',
+  'interview',
+  'offer',
+  'position',
+  'project',
+  'reference',
+  'role',
+  'search',
+  'state',
+  'supervisor',
+  'thread',
+]);
+
+function allowsSingleTokenGoalMatch(token: string): boolean {
+  if (token.length < 6) return false;
+  if (GENERIC_SINGLE_GOAL_MATCH_TOKENS.has(token)) return false;
+  if (/^[a-z]*\d+[a-z0-9]*$/i.test(token)) return false;
+  return true;
+}
+
 /** Return the best matching goal for a text, or null if no keyword overlap. */
 function matchGoal(
   text: string,
@@ -378,11 +403,26 @@ function matchGoal(
   const textKws = new Set(textKeywords(text));
   let bestGoal: GoalRow | null = null;
   let bestOverlap = 0;
+  let bestRatio = 0;
   for (const g of goals) {
     const gkws = textKeywords(g.goal_text);
-    const overlap = gkws.filter((kw) => textKws.has(kw)).length;
-    if (overlap > bestOverlap || (overlap === bestOverlap && overlap > 0 && g.priority < (bestGoal?.priority ?? 999))) {
+    const matchedTokens = gkws.filter((kw) => textKws.has(kw));
+    const overlap = matchedTokens.length;
+    if (overlap === 0) continue;
+
+    const passes =
+      overlap >= 2 ||
+      (overlap === 1 && matchedTokens.some((token) => allowsSingleTokenGoalMatch(token)));
+    if (!passes) continue;
+
+    const ratio = overlap / Math.max(gkws.length, 1);
+    if (
+      overlap > bestOverlap ||
+      (overlap === bestOverlap && ratio > bestRatio) ||
+      (overlap === bestOverlap && ratio === bestRatio && overlap > 0 && g.priority < (bestGoal?.priority ?? 999))
+    ) {
       bestOverlap = overlap;
+      bestRatio = ratio;
       bestGoal = g;
     }
   }
@@ -1488,6 +1528,64 @@ function calendarHasConfirmationQualityEvidence(
   return roleMatch && orgMatch;
 }
 
+function matchingInterviewEvidenceArtifacts(
+  structured: StructuredSignalInput[],
+  itemTitle: string,
+  startMs: number,
+): string[] {
+  const labels = new Set<string>();
+  const titleTokens = interviewTokens(itemTitle);
+  const parsedTitle = splitInterviewTitle(itemTitle);
+  const expectedOrg = normalizeInterviewField(parsedTitle.org);
+  const expectedRole = normalizeInterviewField(parsedTitle.role);
+  const earliestMs = startMs - FOURTEEN_DAYS_MS;
+  const latestMs = startMs + 3 * 86400000;
+
+  for (const signal of structured) {
+    if (isChatConversationSignalSource(signal.source, signal.type)) continue;
+    const occurredMs = new Date(signal.occurred_at).getTime();
+    if (!Number.isFinite(occurredMs) || occurredMs < earliestMs || occurredMs > latestMs) continue;
+
+    const bucket = sourceBucket(signal.source, signal.type, signal.content);
+    let label = '';
+    let artifactText = '';
+
+    if (bucket === 'drive') {
+      const meta = parseDriveMeta(signal.content);
+      label = meta.title;
+      artifactText = `${meta.title}\n${signal.content}`;
+    } else if (isSentStructured(signal)) {
+      const subject = extractSubjectFromSignal(signal.content);
+      if (!subject) continue;
+      label = subject;
+      artifactText = `${subject}\n${signal.content}`;
+    } else {
+      continue;
+    }
+
+    if (!/\b(?:interview|form|forms|packet|questionnaire|resume|cover letter|accepted|availability|prep)\b/i.test(artifactText)) {
+      continue;
+    }
+
+    const normalized = normalizeInterviewToken(artifactText);
+    const overlap = titleTokens.filter((token) => normalized.includes(token)).length;
+    const artifactOrg = normalizeInterviewField(extractOrgFromInterviewText(artifactText));
+    const artifactRole = normalizeInterviewField(extractRoleFromInterviewText(artifactText));
+    const orgMatch = expectedOrg.length > 0 && artifactOrg === expectedOrg;
+    const roleMatch = expectedRole.length > 0 && artifactRole === expectedRole;
+    const dateMatch = textMentionsInterviewDate(artifactText, startMs);
+
+    if (!(roleMatch || orgMatch || overlap >= 2 || (dateMatch && (overlap >= 1 || roleMatch || orgMatch)))) {
+      continue;
+    }
+
+    const cleaned = label.replace(/\s+/g, ' ').trim();
+    if (cleaned) labels.add(cleaned);
+  }
+
+  return [...labels].slice(0, 4);
+}
+
 function buildInterviewWeekCluster(
   structured: StructuredSignalInput[],
   goals: GoalRow[],
@@ -1503,6 +1601,7 @@ function buildInterviewWeekCluster(
     org: string | null;
     focusNotes: string[];
     contacts: string[];
+    evidencedArtifacts: string[];
   }> = [];
   const excludedEvents: Array<{ startMs: number; title: string; reason: string }> = [];
 
@@ -1563,6 +1662,7 @@ function buildInterviewWeekCluster(
       org: parsedTitle.org ?? extractOrgFromInterviewText(combinedText),
       focusNotes: [...new Set(focusNotes)].slice(0, 3),
       contacts: [...new Set(contacts)].slice(0, 3),
+      evidencedArtifacts: matchingInterviewEvidenceArtifacts(structured, parsed.title, parsed.startMs),
     });
   }
 
@@ -1573,7 +1673,6 @@ function buildInterviewWeekCluster(
 
   const first = interviewEvents[0];
   const last = interviewEvents[interviewEvents.length - 1];
-  const matchedCareerGoal = goals.find((goal) => goal.goal_category === 'career') ?? null;
   const ptWindowStart = formatInterviewDateKeyPt(first.startMs);
   const ptWindowEnd = formatInterviewDateKeyPt(last.startMs);
 
@@ -1593,6 +1692,14 @@ function buildInterviewWeekCluster(
         event.contacts.join('; ') || 'no named contact in signals',
       ].join(' || ')}`,
     ),
+    ...interviewEvents
+      .filter((event) => event.evidencedArtifacts.length > 0)
+      .map((event) =>
+        `INTERVIEW_EVIDENCE: ${[
+          new Date(event.startMs).toISOString(),
+          event.evidencedArtifacts.join('; '),
+        ].join(' || ')}`,
+      ),
     ...excludedEvents.slice(0, 8).map((event) =>
       `EXCLUDED_ITEM: ${[
         new Date(event.startMs).toISOString(),
@@ -1601,6 +1708,14 @@ function buildInterviewWeekCluster(
       ].join(' || ')}`,
     ),
   ];
+  const matchedCareerGoal = matchGoal(
+    [
+      title,
+      ...contentLines,
+      ...interviewEvents.flatMap((event) => [event.role ?? '', event.org ?? '', event.title]),
+    ].join(' '),
+    goals.filter((goal) => goal.goal_category === 'career'),
+  );
 
   return [
     {
@@ -1626,9 +1741,9 @@ function buildInterviewWeekCluster(
       })),
       matchedGoal: matchedCareerGoal
         ? {
-            text: matchedCareerGoal.goal_text,
+            text: matchedCareerGoal.text,
             priority: matchedCareerGoal.priority,
-            category: matchedCareerGoal.goal_category,
+            category: matchedCareerGoal.category,
           }
         : null,
       trigger: {
@@ -2845,20 +2960,21 @@ export function detectDiscrepancies(args: {
   const entities = args.entities.filter((e) => (e.trust_class ?? 'unclassified') === 'trusted' || (e.trust_class ?? 'unclassified') === 'unclassified');
   const { goals, decryptedSignals } = args;
   const structured = args.structuredSignals ?? [];
+  const groundedStructured = structured.filter((signal) => !isChatConversationSignalSource(signal.source, signal.type));
   const recentDirectives = args.recentDirectives ?? [];
 
   const all: Discrepancy[] = [
-    ...extractScheduleConflicts(structured, nowMs),
-    ...extractStaleDocuments(structured, goals, nowMs),
-    ...extractCalendarEntityGaps(structured, entities, nowMs, args.selfEmails, selfNameTokens),
-    ...extractDocumentFollowupGaps(structured, nowMs),
-    ...extractConvergence(structured, entities, nowMs, args.selfEmails, selfNameTokens),
+    ...extractScheduleConflicts(groundedStructured, nowMs),
+    ...extractStaleDocuments(groundedStructured, goals, nowMs),
+    ...extractCalendarEntityGaps(groundedStructured, entities, nowMs, args.selfEmails, selfNameTokens),
+    ...extractDocumentFollowupGaps(groundedStructured, nowMs),
+    ...extractConvergence(groundedStructured, entities, nowMs, args.selfEmails, selfNameTokens),
     ...extractUnresolvedIntent(structured, entities, recentDirectives, nowMs),
     ...extractBehavioralPatterns(
       entities,
       goals,
       commitments,
-      structured,
+      groundedStructured,
       recentDirectives,
       decryptedSignals,
       nowMs,
@@ -2872,7 +2988,7 @@ export function detectDiscrepancies(args: {
     ...extractGoalVelocityMismatch(goals, decryptedSignals),
     // Absence-based (existing)
     ...extractRisk(entities, goals, decryptedSignals, nowMs),
-    ...extractExposure(commitments, goals, nowMs, structured),
+    ...extractExposure(commitments, goals, nowMs, groundedStructured),
     ...extractAvoidance(commitments, goals, nowMs),
     ...extractDrift(goals, commitments, decryptedSignals),
     ...extractDecay(entities, goals, decryptedSignals, nowMs),

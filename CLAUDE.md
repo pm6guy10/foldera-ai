@@ -149,9 +149,12 @@ If a session is still using paid calls to discover basic breakage, the session i
 ## Git / Shipping Rules
 
 - Push directly to `main`
+- A meaningful change is not complete until the push to `main` succeeds
+- Do not leave meaningful verified work local-only
 - Do not create branches unless the task explicitly requires it
 - `npm run build` must pass before every commit
 - **Always commit and push in the same session** once verified — never leave git work for the user unless blocked (credentials, conflict, or documented impossibility)
+- Default to the main worktree only. Do not use git worktrees unless the current worktree is unusable, the exact blocker is named, and no simpler path exists.
 - Do not say “done” unless the relevant proof exists
 - Commit receipts must be specific and factual
 

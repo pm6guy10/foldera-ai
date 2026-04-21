@@ -85,6 +85,19 @@ describe('runHuntAnomalies', () => {
     expect(findings.filter((f) => f.kind === 'repeated_ignored_sender')).toHaveLength(0);
   });
 
+  it('does not promote singular notification senders as repeated_ignored_sender hunt candidates', () => {
+    const base = Date.now() - 5 * 24 * 60 * 60 * 1000;
+    const iso = (d: number) => new Date(base - d * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived('s1', iso(0), 'Slack <notification@slack.com>', 'You have unread messages'),
+      mailReceived('s2', iso(10), 'Slack <notification@slack.com>', 'Henry sent you messages'),
+      mailReceived('s3', iso(20), 'Slack <notification@slack.com>', 'James mentioned everyone'),
+    ];
+    const { countsByKind, findings } = runHuntAnomalies({ signals, commitments: [] });
+    expect(countsByKind.repeated_ignored_sender).toBe(0);
+    expect(findings.filter((f) => f.kind === 'repeated_ignored_sender')).toHaveLength(0);
+  });
+
   it('does not flag repeated ignored sender when From is user mailbox', () => {
     const base = Date.now() - 5 * 24 * 60 * 60 * 1000;
     const iso = (d: number) => new Date(base - d * 60 * 60 * 1000).toISOString();
@@ -142,6 +155,44 @@ describe('runHuntAnomalies', () => {
       mailReceived('deep1', recvIso, 'Brand <hello@humanbrand.io>', 'FYI', deepBody),
     ];
     const trusted = new Set(['hello@humanbrand.io']);
+    const { countsByKind, findings } = runHuntAnomalies({
+      signals,
+      commitments: [],
+      trustedSenderEmails: trusted,
+    });
+    expect(countsByKind.unreplied_inbound).toBe(0);
+    expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
+  });
+
+  it('does not admit repeated ignored sender when sender is not in trustedSenderEmails', () => {
+    const base = Date.now() - 5 * 24 * 60 * 60 * 1000;
+    const iso = (d: number) => new Date(base - d * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived('u1', iso(0), 'Cold Sender <cold@unknown.com>', 'Thread A'),
+      mailReceived('u2', iso(10), 'Cold Sender <cold@unknown.com>', 'Thread B'),
+      mailReceived('u3', iso(20), 'Cold Sender <cold@unknown.com>', 'Thread C'),
+    ];
+    const { countsByKind, findings } = runHuntAnomalies({
+      signals,
+      commitments: [],
+      trustedSenderEmails: new Set(['known@trusted.com']),
+    });
+    expect(countsByKind.repeated_ignored_sender).toBe(0);
+    expect(findings.filter((f) => f.kind === 'repeated_ignored_sender')).toHaveLength(0);
+  });
+
+  it('does not admit Microsoft Bookings verification mail as unreplied_inbound even when sender is trusted', () => {
+    const recvIso = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const signals = [
+      mailReceived(
+        'book1',
+        recvIso,
+        'Alex Crisler <Alex.Crisler@comphc.org>',
+        'Verify your email address',
+        'Your Microsoft Bookings verification code is 123456. This is an automatically-generated message from the bookings page.',
+      ),
+    ];
+    const trusted = new Set(['alex.crisler@comphc.org']);
     const { countsByKind, findings } = runHuntAnomalies({
       signals,
       commitments: [],

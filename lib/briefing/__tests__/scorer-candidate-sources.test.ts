@@ -14,6 +14,10 @@ describe('isExcludedSignalSourceForScorerPool', () => {
     expect(isExcludedSignalSourceForScorerPool('claude_conversation')).toBe(true);
   });
 
+  it('excludes internal user feedback signals', () => {
+    expect(isExcludedSignalSourceForScorerPool('user_feedback')).toBe(true);
+  });
+
   it('keeps mail and other sources', () => {
     expect(isExcludedSignalSourceForScorerPool('outlook')).toBe(false);
     expect(isExcludedSignalSourceForScorerPool('gmail')).toBe(false);

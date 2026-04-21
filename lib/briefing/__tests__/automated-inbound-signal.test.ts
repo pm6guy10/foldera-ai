@@ -45,6 +45,22 @@ Body preview: x`;
     expect(isLikelyAutomatedTransactionalInbound(c)).toBe(true);
   });
 
+  it('detects Microsoft Bookings verification mail from a human-looking sender', () => {
+    const c = `[Email received: 2026-01-01]
+From: Alex Crisler <Alex.Crisler@comphc.org>
+Subject: Verify your email address
+Body preview: Your Microsoft Bookings verification code is 123456. This is an automatically-generated message from the bookings page.`;
+    expect(isLikelyAutomatedTransactionalInbound(c)).toBe(true);
+  });
+
+  it('detects singular notification sender local parts', () => {
+    const c = `[Email received: 2026-01-01]
+From: Slack <notification@slack.com>
+Subject: You have unread messages
+Body preview: x`;
+    expect(isLikelyAutomatedTransactionalInbound(c)).toBe(true);
+  });
+
   it('does not flag a normal human From', () => {
     const c = `[Email received: 2026-01-01]
 From: Holly Stenglein <holly.s@example.com>

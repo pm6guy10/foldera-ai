@@ -1694,6 +1694,36 @@ describe('extractBehavioralPatterns (class: behavioral_pattern)', () => {
     expect(hit.find((d) => d.title.includes('Pat Lee'))?.suggestedActionType).toBe('send_message');
   });
 
+  it('does not anchor a MAS3-only commitment to an unrelated detailed role goal', () => {
+    const out = extractBehavioralPatterns(
+      [],
+      [
+        {
+          goal_text:
+            'Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
+          priority: 1,
+          goal_category: 'career',
+        },
+      ],
+      [
+        makeCommitment({
+          id: 'commit-mas3-wait',
+          description: 'Waiting on MAS3 (HCA) hiring decision',
+          created_at: daysAgoISO(11),
+          updated_at: daysAgoISO(11),
+        }),
+      ],
+      [],
+      [],
+      [],
+      now,
+    );
+
+    const hit = out.find((d) => d.id === 'discrepancy_bp_commit_commit-mas3-wait');
+    expect(hit).toBeDefined();
+    expect(hit?.matchedGoal).toBeNull();
+  });
+
   it('PATTERN 2: does not count inbound where entity name only appears on To (sender is someone else)', () => {
     const ent = {
       id: 'ent-jordan',

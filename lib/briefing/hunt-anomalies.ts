@@ -106,6 +106,7 @@ const BULK_MARKETING_EMAIL_PREFIXES = [
   'no-reply@',
   'donotreply@',
   'do-not-reply@',
+  'notification@',
   'notifications@',
   'newsletter@',
   'community@',
@@ -366,8 +367,8 @@ export function runHuntAnomalies(args: {
   blockedSenderEmails?: Set<string>;
   /**
    * Email addresses of known human entities (from tkg_entities with ≥1 verified interaction).
-   * When provided, unreplied_inbound findings are restricted to senders in this set.
-   * Prevents cold-outreach and bulk emails from winning as "unreplied human threads".
+   * When provided, human-contact hunt findings are restricted to senders in this set.
+   * Prevents cold-outreach and bulk emails from winning as reply-worthy threads.
    */
   trustedSenderEmails?: Set<string>;
 }): { findings: HuntFinding[]; countsByKind: Record<HuntFindingKind, number> } {
@@ -640,6 +641,7 @@ export function runHuntAnomalies(args: {
     const ignoredRowContent = args.signals.find((x) => x.id === r.id)?.content ?? '';
     if (isLikelyAutomatedTransactionalInbound(ignoredRowContent)) continue;
     if (isLowValueInboundMailBlob(ignoredRowContent)) continue;
+    if (trustedSenderEmails && trustedSenderEmails.size > 0 && !trustedSenderEmails.has(k)) continue;
     if (!inboundBySender.has(k)) inboundBySender.set(k, []);
     inboundBySender.get(k)!.push(r);
   }

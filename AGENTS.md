@@ -193,8 +193,11 @@ Do not call a task complete with local-only reasoning when Playwright, Vercel, S
 ## Git Doctrine
 
 - Push directly to `main`
+- A meaningful change is not complete until the push to `main` succeeds
+- Do not leave meaningful verified work local-only in the worktree
 - Do not create branches unless explicitly required by the task
 - **Always commit and push yourself** as soon as the slice is verified (`npm run build` must pass first per repo policy). Never leave commit, push, or “please push this” follow-ups for the user unless blocked (no credentials, merge conflict, or an explicit documented blocker).
+- Default to the main worktree only. Do not create a git worktree unless the current worktree is unusable, the exact blocker is named, and no simpler path exists.
 - Do not leave partial, ambiguous work presented as complete
 
 ---

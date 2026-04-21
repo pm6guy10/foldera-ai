@@ -189,6 +189,11 @@ export interface GenerationCandidateDiscoveryLog {
   selectionReason: string | null;
   failureReason: string | null;
   topCandidates: GenerationCandidateLog[];
+  quarantinedGoals?: string[];
+  quarantinedCommitments?: string[];
+  droppedChatAuthority?: string[];
+  winnerSourceAuthority?: 'high' | 'low' | 'lowest' | null;
+  interviewClusterInputs?: string[];
 }
 
 /** Receipt when HTTP `dry_run=true` / `pipelineDryRun` skips all model calls (no Anthropic usage). */
@@ -222,7 +227,14 @@ export interface GenerationRunLog {
   /** Onboarding welcome path: skip hard bottom gate / quality heuristics that block goal-summary docs. */
   firstMorningBypass?: boolean;
   /** Dev/diagnostic: goals passed into the prompt (owner brain-receipt, debugging). */
-  brief_context_debug?: { active_goals?: string[] };
+  brief_context_debug?: {
+    active_goals?: string[];
+    quarantined_goals?: string[];
+    quarantined_commitments?: string[];
+    dropped_chat_authority?: string[];
+    winner_source_authority?: 'high' | 'low' | 'lowest' | null;
+    interview_cluster_inputs?: string[];
+  };
   /** Operator dry run: full assembled user prompt + winner snapshot; zero Anthropic. */
   pipeline_dry_run?: PipelineDryRunReceipt;
   /** Cross-source evidence audit: distinct signal sources in the generator bundle. */

@@ -21,6 +21,7 @@ const AUTOMATED_FROM_SUBSTRINGS = [
   'no-reply',
   'donotreply',
   'alerts',
+  'notification',
   'notifications',
   'welcome',
   'newsletter',
@@ -32,6 +33,15 @@ const AUTOMATED_FROM_SUBSTRINGS = [
 const AUTOMATED_SUBJECT_PATTERNS = [
   /\bdmarc\s+aggregate\s+report\b/i,
   /\breport domain:\b.*\bsubmitter:\b/i,
+] as const;
+
+/** Narrow booking / verification flows that look human but are machine-generated. */
+const AUTOMATED_BOOKING_VERIFICATION_PATTERNS = [
+  /\bverify\s+your\s+email\s+address\b/i,
+  /\bverification\s+code\b/i,
+  /\bmicrosoft\s+bookings\b/i,
+  /\bbookings\s+page\b/i,
+  /\bautomatically-generated\s+message\b/i,
 ] as const;
 
 function extractEmailFromFromLine(fromLine: string): string | null {
@@ -77,6 +87,12 @@ export function isLikelyAutomatedTransactionalInbound(content: string): boolean 
   const email = extractEmailFromFromLine(fromLine);
   const subjectLine = extractSubjectLineFromSignalContent(content) ?? '';
   if (AUTOMATED_SUBJECT_PATTERNS.some((pattern) => pattern.test(subjectLine))) {
+    return true;
+  }
+  if (
+    /\bverify\s+your\s+email\s+address\b/i.test(subjectLine) &&
+    AUTOMATED_BOOKING_VERIFICATION_PATTERNS.filter((pattern) => pattern.test(content)).length >= 2
+  ) {
     return true;
   }
 

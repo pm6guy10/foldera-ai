@@ -40,7 +40,10 @@ import {
 import type { DiscrepancyClass, RecentDirectiveInput, TriggerMetadata } from './discrepancy-detector';
 import { applyStakesGate } from './stakes-gate';
 import { applyEntityRealityGate } from './entity-reality-gate';
-import { filterPersonNamesForValidityContext } from './validity-context-entity';
+import {
+  filterPersonNamesForValidityContext,
+  isValidPersonNameForValidityContext,
+} from './validity-context-entity';
 import { runInsightScan } from './insight-scan';
 import {
   runHuntAnomalies,
@@ -59,8 +62,15 @@ import {
 } from '@/lib/signals/entity-attention';
 import {
   commitmentAnchoredToMailSignal,
+  getSignalSourceAuthorityTier,
   isExcludedSignalSourceForScorerPool,
+  isChatConversationSignalSource,
 } from './scorer-candidate-sources';
+import {
+  getCommitmentQuarantineReason,
+  getGoalQuarantineReason,
+  isUsableGoalRow,
+} from './goal-hygiene';
 
 // ---------------------------------------------------------------------------
 // Self-referential signal filter — excludes Foldera's own directive outputs
@@ -281,6 +291,19 @@ const COMMITMENT_NOISE_CATEGORIES = new Set([
   'consumer_purchase',     // Retail purchases, food orders, consumer goods
 ]);
 
+const CAREER_EXECUTION_COMMITMENT_PATTERNS = [
+  /\binterview\b/i,
+  /\bphone screen\b/i,
+  /\bpanel interview\b/i,
+  /\bscreening interview\b/i,
+  /\brecruitment\b/i,
+  /\brecruiter\b/i,
+  /\bhiring\b/i,
+  /\bcandidate\b/i,
+  /\boffer\b/i,
+  /\breference check\b/i,
+];
+
 /**
  * Commitment text patterns that indicate trivial personal transactions.
  * These are commitment-level rejections (distinct from signal-level noise).
@@ -313,6 +336,15 @@ export function isExecutableCommitment(
 ): boolean {
   // Noise patterns hard-reject regardless of category or goal match
   if (TRIVIAL_COMMITMENT_PATTERNS.some((p) => p.test(description))) return false;
+
+  // Interview / recruiting commitments are materially outcome-linked even when
+  // the goal table is dirty or underspecified.
+  if (
+    category === 'attend_participate'
+    && CAREER_EXECUTION_COMMITMENT_PATTERNS.some((pattern) => pattern.test(description))
+  ) {
+    return true;
+  }
 
   // High-noise categories require a goal match to survive
   if (COMMITMENT_NOISE_CATEGORIES.has(category) && !hasGoalMatch) return false;
@@ -536,11 +568,18 @@ export interface ScorerDiagnostics {
   sourceCounts: {
     commitments_raw: number;
     commitments_after_dedup: number;
+    commitments_after_quarantine?: number;
     signals_raw: number;
     signals_after_decrypt: number;
+    signals_after_authority_filter?: number;
     entities_raw: number;
     goals_raw: number;
     goals_after_filter: number;
+  };
+  quarantine: {
+    goals: Array<{ text: string; reason: string }>;
+    commitments: Array<{ text: string; reason: string }>;
+    droppedChatAuthority: string[];
   };
   candidatePool: {
     commitment: number;
@@ -605,6 +644,8 @@ export interface ScorerDiagnostics {
   earlyExitStage?: string;
   /** Pool size immediately before computeCandidateScore loop (after all pre-scoring filters). */
   candidatesEnteringScoreLoop?: number;
+  winnerSourceAuthority?: 'high' | 'low' | 'lowest' | null;
+  interviewClusterInputs?: string[];
 }
 
 let _lastDiagnostics: ScorerDiagnostics | null = null;
@@ -620,6 +661,11 @@ function initDiagnostics(): ScorerDiagnostics {
       signals_raw: 0, signals_after_decrypt: 0,
       entities_raw: 0, goals_raw: 0, goals_after_filter: 0,
     },
+    quarantine: {
+      goals: [],
+      commitments: [],
+      droppedChatAuthority: [],
+    },
     candidatePool: { commitment: 0, signal: 0, relationship: 0, relationship_skipped_no_thread: 0 },
     filterStages: [],
     discrepancies: [],
@@ -630,6 +676,8 @@ function initDiagnostics(): ScorerDiagnostics {
     survivors: [],
     finalWinner: null,
     finalOutcome: 'zero_candidates_early',
+    winnerSourceAuthority: null,
+    interviewClusterInputs: [],
   };
 }
 
@@ -1587,6 +1635,9 @@ export function inferActionType(text: string, loopType: 'commitment' | 'signal' 
   if (loopType === 'relationship') return 'send_message';
 
   const lower = text.toLowerCase();
+  if (/\b(interview|phone screen|panel interview|screening interview|answer architecture)\b/.test(lower)) {
+    return 'write_document';
+  }
   if (/\b(email|reply|respond|send|follow.?up|reach out|contact)\b/.test(lower)) return 'send_message';
   if (/\b(decide|decision|choose|option|weigh)\b/.test(lower)) return 'make_decision';
   if (/\b(schedule|calendar|meeting|call|appointment)\b/.test(lower)) return 'schedule';
@@ -1668,6 +1719,14 @@ function isOutcomeLinkedCandidate(candidate: ScoredLoop): boolean {
   if (candidate.matchedGoal) return true;
   const combined = `${candidate.title} ${candidate.content}`;
   return OUTCOME_SIGNAL_PATTERNS.some((pattern) => pattern.test(combined));
+}
+
+export function isGoalPrimacyExemptCareerCommitment(
+  candidate: Pick<ScoredLoop, 'type' | 'title' | 'content'>,
+): boolean {
+  if (candidate.type !== 'commitment') return false;
+  const combined = `${candidate.title} ${candidate.content}`;
+  return CAREER_EXECUTION_COMMITMENT_PATTERNS.some((pattern) => pattern.test(combined));
 }
 
 function isDecisionMovingCandidate(candidate: ScoredLoop): boolean {
@@ -1826,16 +1885,28 @@ function isGenericPrepStyleDocumentCandidate(candidate: ScoredLoop): boolean {
   if (candidate.suggestedActionType !== 'write_document') return false;
   if (isDecisiveSchedulingPressureCandidate(candidate)) return false;
   if (isThreadBackedSendableLoop(candidate)) return false;
+  if (isInterviewWeekExecutionCandidate(candidate)) return false;
 
   const text = scoredLoopSearchText(candidate);
   return (
     candidate.discrepancyClass === 'preparation_gap'
     || candidate.discrepancyClass === 'behavioral_pattern'
-    || /\bprep(?:aration)?\b|\binterview week\b|\bdeadline appears\b|\bgeneric\b|\bbrief\b|\bmemo\b|\bagenda\b/.test(text)
+    || /\bprep(?:aration)?\b|\bdeadline appears\b|\bgeneric\b|\bbrief\b|\bmemo\b|\bagenda\b/.test(text)
+  );
+}
+
+function isInterviewWeekExecutionCandidate(candidate: ScoredLoop): boolean {
+  if (candidate.suggestedActionType !== 'write_document') return false;
+  const text = scoredLoopSearchText(candidate);
+  return (
+    candidate.discrepancyClass === 'behavioral_pattern' &&
+    /\bINTERVIEW_WEEK_CLUSTER\b|\binterview week cluster detected\b/i.test(`${candidate.title}\n${candidate.content}`) &&
+    /\binterview\b/i.test(text)
   );
 }
 
 function isPriorityCareerOutcomeArtifactCandidate(candidate: ScoredLoop): boolean {
+  if (isInterviewWeekExecutionCandidate(candidate)) return true;
   if (candidate.suggestedActionType !== 'write_document') return false;
 
   const text = scoredLoopSearchText(candidate);
@@ -1869,6 +1940,7 @@ function isRelationshipMaintenanceOrAbstractRiskCandidate(candidate: ScoredLoop)
 }
 
 function isShadowUrgencyCandidate(candidate: ScoredLoop): boolean {
+  if (isInterviewWeekExecutionCandidate(candidate)) return false;
   return (
     candidate.discrepancyClass === 'schedule_conflict' ||
     isLowValueCalendarAdminDiscrepancy(candidate) ||
@@ -1891,6 +1963,7 @@ function isTrueEmergencyOverrideCandidate(candidate: ScoredLoop): boolean {
 }
 
 function isLongHorizonLeverageCandidate(candidate: ScoredLoop): boolean {
+  if (isInterviewWeekExecutionCandidate(candidate)) return true;
   const goalPriority = typeof candidate.matchedGoal?.priority === 'number' ? candidate.matchedGoal.priority : 0;
   return (
     goalPriority >= 3 &&
@@ -2212,9 +2285,8 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
   ]);
 
   const signals = signalsRes.data ?? [];
-  const PLACEHOLDER_SOURCES_RG = new Set(['onboarding_bucket', 'onboarding_marker']);
   const goals = ((goalsRes.data ?? []) as Array<GoalRow & { source?: string }>)
-    .filter((g) => !PLACEHOLDER_SOURCES_RG.has(g.source ?? '')) as GoalRow[];
+    .filter((g) => isUsableGoalRow(g)) as GoalRow[];
   const goalKeywordIndex = buildGoalKeywordIndex(goals);
 
   if (signals.length < 10 || goals.length === 0 || goalKeywordIndex.size === 0) return [];
@@ -2232,6 +2304,7 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
     }
     const content = decrypted.plaintext;
     if (content.length < 20) continue;
+    if (String(s.source ?? '').trim() === 'user_feedback') continue;
     if (isSelfReferentialSignal(content)) continue;
 
     const revealedDomain = inferGoalCategory(content, goalKeywordIndex);
@@ -2377,9 +2450,8 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
     const actions = actionsRes.data ?? [];
     const signals = signalsRes.data ?? [];
     const commitments = commitmentsRes.data ?? [];
-    const PLACEHOLDER_SOURCES_AP = new Set(['onboarding_bucket', 'onboarding_marker']);
     const goals = ((goalsRes.data ?? []) as Array<GoalRow & { source?: string }>)
-      .filter((g) => !PLACEHOLDER_SOURCES_AP.has(g.source ?? '')) as GoalRow[];
+      .filter((g) => isUsableGoalRow(g)) as GoalRow[];
     const goalKeywordIndex = buildGoalKeywordIndex(goals);
 
     // Need minimum data for meaningful detection
@@ -2405,6 +2477,7 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
         }
         const content = decrypted.plaintext;
         if (content.length < 20) continue;
+        if (String(s.source ?? '').trim() === 'user_feedback') continue;
         if (isSelfReferentialSignal(content)) continue;
 
         const domain = inferGoalCategory(content, goalKeywordIndex) ?? 'other';
@@ -3188,6 +3261,24 @@ function compareScoredLoops(a: ScoredLoop, b: ScoredLoop): number {
   return a.id.localeCompare(b.id);
 }
 
+function getCandidateSourceAuthority(candidate: ScoredLoop): 'high' | 'low' | 'lowest' {
+  if (isInterviewWeekExecutionCandidate(candidate)) return 'high';
+  const tiers = (candidate.sourceSignals ?? []).map((signal) =>
+    getSignalSourceAuthorityTier(signal.source ?? null, null),
+  );
+  if (tiers.includes('high')) return 'high';
+  if (tiers.includes('lowest')) return 'lowest';
+  return 'low';
+}
+
+function getInterviewClusterInputSummaries(candidate: ScoredLoop): string[] {
+  if (!isInterviewWeekExecutionCandidate(candidate)) return [];
+  return (candidate.sourceSignals ?? [])
+    .map((signal) => String(signal.summary ?? '').trim())
+    .filter((summary) => summary.length > 0)
+    .slice(0, 6);
+}
+
 function buildSelectionReason(
   winner: ScoredLoop,
   runnerUp?: ScoredLoop,
@@ -3241,6 +3332,7 @@ function buildCandidateDiscoveryLog(
   scored: ScoredLoop[],
   suppressedCandidateCount: number,
   failureReason: string | null,
+  diagnostics?: ScorerDiagnostics,
 ): GenerationCandidateDiscoveryLog {
   const topCandidates = scored.slice(0, 2);
   const selection = buildSelectionReason(winner, topCandidates[1]);
@@ -3285,6 +3377,15 @@ function buildCandidateDiscoveryLog(
     selectionReason: selection.reason,
     failureReason,
     topCandidates: rankedCandidates,
+    ...(diagnostics
+      ? {
+          quarantinedGoals: diagnostics.quarantine.goals.map((item) => `${item.reason}: ${item.text}`),
+          quarantinedCommitments: diagnostics.quarantine.commitments.map((item) => `${item.reason}: ${item.text}`),
+          droppedChatAuthority: diagnostics.quarantine.droppedChatAuthority,
+          winnerSourceAuthority: getCandidateSourceAuthority(winner),
+          interviewClusterInputs: getInterviewClusterInputSummaries(winner),
+        }
+      : {}),
   };
 }
 
@@ -3300,6 +3401,7 @@ function buildCandidateDiscoveryLogForNoWinner(
   scored: ScoredLoop[],
   suppressedCandidateCount: number,
   failureReason: string,
+  diagnostics?: ScorerDiagnostics,
 ): GenerationCandidateDiscoveryLog {
   const top = [...scored].sort(compareScoredLoops).slice(0, 3);
   const rankedCandidates: GenerationCandidateLog[] = top.map((candidate, index) => {
@@ -3344,6 +3446,15 @@ function buildCandidateDiscoveryLogForNoWinner(
     selectionReason: null,
     failureReason,
     topCandidates: rankedCandidates,
+    ...(diagnostics
+      ? {
+          quarantinedGoals: diagnostics.quarantine.goals.map((item) => `${item.reason}: ${item.text}`),
+          quarantinedCommitments: diagnostics.quarantine.commitments.map((item) => `${item.reason}: ${item.text}`),
+          droppedChatAuthority: diagnostics.quarantine.droppedChatAuthority,
+          winnerSourceAuthority: null,
+          interviewClusterInputs: [],
+        }
+      : {}),
   };
 }
 
@@ -3748,8 +3859,9 @@ interface ValidityRejection {
 
 async function filterInvalidContext(
   userId: string,
-  candidatePool: Array<{ id: string; type: string; title: string; content: string }>,
+  candidatePool: Array<{ id: string; type: string; title: string; content: string; entityName?: string | null }>,
   processedSignals: Array<{ content: string; type?: string; occurred_at?: string }>,
+  selfNameTokens: string[] = [],
 ): Promise<Map<string, ValidityRejection>> {
   const rejected = new Map<string, ValidityRejection>();
   if (candidatePool.length === 0) return rejected;
@@ -3758,6 +3870,7 @@ async function filterInvalidContext(
   const sixtyDaysAgo = new Date(Date.now() - daysMs(60)).toISOString();
   const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
   const sevenDaysAgo = new Date(Date.now() - daysMs(7)).toISOString();
+  const userNameStops = new Set(selfNameTokens.map((s) => s.toLowerCase()));
 
   let rejectionTexts: string[] = [];
   let recentAllActions: Array<{ directive_text: string; status: string; generated_at: string }> = [];
@@ -3812,10 +3925,31 @@ async function filterInvalidContext(
     // entity-level validity filtering.
     if (c.type === 'signal') continue;
 
-    const names = filterPersonNamesForValidityContext(
-      extractPersonNames(`${c.title} ${c.content}`),
-    );
+    let names: string[] = [];
+    const entityName = typeof c.entityName === 'string' ? c.entityName.trim() : '';
+    if (entityName.length > 0) {
+      if (isValidPersonNameForValidityContext(entityName)) {
+        names = [entityName];
+      } else if (c.type === 'relationship') {
+        // Relationship candidates already have a canonical entity label; if it is
+        // not person-like, do not scrape the body and invent fake "people" from
+        // email scaffolding or role text.
+        continue;
+      }
+    }
+    if (names.length === 0) {
+      names = filterPersonNamesForValidityContext(
+        extractPersonNames(`${c.title} ${c.content}`),
+      );
+    }
     if (names.length === 0) continue;
+    if (userNameStops.size > 0) {
+      names = names.filter((name) => {
+        const first = name.split(/\s+/)[0]?.toLowerCase();
+        return !first || !userNameStops.has(first);
+      });
+      if (names.length === 0) continue;
+    }
 
     for (const name of names) {
       const nameParts = name.split(' ');
@@ -4293,7 +4427,11 @@ export async function scoreOpenLoops(
         content: decrypted.plaintext,
       };
     })
-    .filter((signal: any) => signal && !isSelfReferentialSignal(signal.content));
+    .filter((signal: any) =>
+      signal &&
+      String(signal.source ?? '').trim() !== 'user_feedback' &&
+      !isSelfReferentialSignal(signal.content),
+    );
   diag.sourceCounts.signals_after_decrypt = signals.length;
 
   const signalSourceByRowId = new Map<string, string>();
@@ -4332,6 +4470,21 @@ export async function scoreOpenLoops(
       author: s.author ?? null,
     }),
   );
+
+  const authoritySignals = signals.filter(
+    (signal: { source?: string; type?: string | null }) =>
+      getSignalSourceAuthorityTier(signal.source, signal.type) === 'high',
+  );
+  const authoritySignalTexts = authoritySignals.map((signal: { content: string }) => signal.content);
+  diag.sourceCounts.signals_after_authority_filter = authoritySignals.length;
+  diag.quarantine.droppedChatAuthority = signals
+    .filter((signal: { source?: string; type?: string | null }) => isChatConversationSignalSource(signal.source, signal.type))
+    .map((signal: { source?: string; occurred_at?: string }) => {
+      const source = String(signal.source ?? 'conversation');
+      const date = String(signal.occurred_at ?? '').slice(0, 10);
+      return date ? `${source}:${date}` : source;
+    })
+    .slice(0, 12);
 
   const entities = entitiesRes.data ?? [];
 
@@ -4396,15 +4549,33 @@ export async function scoreOpenLoops(
       }
     }
   }
-  // Filter out onboarding placeholder goals — only extracted, manual, and onboarding_stated goals feed the scorer
-  const PLACEHOLDER_GOAL_SOURCES = new Set(['onboarding_bucket', 'onboarding_marker', 'system_config']);
-  // Also filter out any constraint-note rows that slipped into the scoring pool with priority >= 3.
-  // These should live at priority 1-2 as suppression goals; if miscategorized they corrupt scoring.
-  const CONSTRAINT_NOTE_PREFIX = /^(DO NOT|Check |Reference slate|Build Foldera in overflow)/i;
   const goals = ((goalsRes.data ?? []) as Array<GoalRow & { source?: string }>)
-    .filter((g) => !PLACEHOLDER_GOAL_SOURCES.has(g.source ?? ''))
-    .filter((g) => !CONSTRAINT_NOTE_PREFIX.test(g.goal_text)) as GoalRow[];
+    .filter((goal) => {
+      if (!isUsableGoalRow(goal)) return false;
+      const quarantineReason = getGoalQuarantineReason(goal, authoritySignalTexts);
+      if (quarantineReason) {
+        diag.quarantine.goals.push({
+          text: String(goal.goal_text ?? '').slice(0, 180),
+          reason: quarantineReason,
+        });
+        return false;
+      }
+      return true;
+    }) as GoalRow[];
   diag.sourceCounts.goals_after_filter = goals.length;
+  const filteredCommitments = commitments.filter((commitment) => {
+    const quarantineReason = getCommitmentQuarantineReason(commitment, authoritySignalTexts, Date.now());
+    if (quarantineReason) {
+      diag.quarantine.commitments.push({
+        text: String(commitment.description ?? '').slice(0, 180),
+        reason: quarantineReason,
+      });
+      return false;
+    }
+    return true;
+  });
+  commitments.splice(0, commitments.length, ...filteredCommitments);
+  diag.sourceCounts.commitments_after_quarantine = commitments.length;
   const goalKeywordIndex = buildGoalKeywordIndex(goals);
 
   // Now that goalKeywordIndex is ready, build today-focus domain set from today's
@@ -4480,6 +4651,9 @@ export async function scoreOpenLoops(
       const t = new Date(s.occurred_at as string ?? 0).getTime();
       return Number.isFinite(t) && t >= ninetyDaysAgoMs;
     })
+    .filter((s: { source?: string; type?: string | null }) =>
+      getSignalSourceAuthorityTier(s.source, s.type) !== 'lowest',
+    )
     .slice(0, 150)
     .map((s: { content: string }) => s.content as string);
 
@@ -5040,6 +5214,7 @@ export async function scoreOpenLoops(
     userId,
     candidates,
     signals as Array<{ content: string; type?: string; occurred_at?: string }>,
+    selfNameTokens,
   );
   const validityDrops: ScorerDropEntry[] = [];
   if (invalidContextRejections.size > 0) {
@@ -5258,6 +5433,7 @@ export async function scoreOpenLoops(
           [],
           0,
           'All candidates were filtered by recent duplicate or validation-failure memory.',
+          diag,
         ),
         exact_blocker: buildNoValidActionEarlyExitExactBlocker(
           diag,
@@ -5344,6 +5520,7 @@ export async function scoreOpenLoops(
           [],
           0,
           'All candidates were excluded by locked-contact constraints.',
+          diag,
         ),
         exact_blocker: buildNoValidActionEarlyExitExactBlocker(
           diag,
@@ -6523,7 +6700,13 @@ export async function scoreOpenLoops(
   const goalGateDrops: ScorerDropEntry[] = [];
   const goalGateKept: typeof scored = [];
   for (const s of scored) {
-    if (s.matchedGoal !== null || s.type === 'emergent' || s.type === 'discrepancy' || s.type === 'hunt') {
+    if (
+      s.matchedGoal !== null
+      || s.type === 'emergent'
+      || s.type === 'discrepancy'
+      || s.type === 'hunt'
+      || isGoalPrimacyExemptCareerCommitment(s)
+    ) {
       goalGateKept.push(s);
     } else {
       goalGateDrops.push({ candidateId: s.id, type: s.type, title: s.title.slice(0, 100), stage: 'goal_primacy_gate', reason: 'no_goal_match', score: s.score });
@@ -6783,6 +6966,7 @@ export async function scoreOpenLoops(
         scored,
         suppressedCandidates,
         exactBlocker.blocker_reason,
+        diag,
       ),
       exact_blocker: exactBlocker,
     });
@@ -6792,6 +6976,8 @@ export async function scoreOpenLoops(
 
   // Populate final winner diagnostic
   diag.finalOutcome = 'winner_selected';
+  diag.winnerSourceAuthority = getCandidateSourceAuthority(winner);
+  diag.interviewClusterInputs = getInterviewClusterInputSummaries(winner);
   diag.finalWinner = {
     candidateId: winner.id, type: winner.type, title: winner.title.slice(0, 120), score: winner.score,
     breakdown: winner.breakdown, matchedGoal: winner.matchedGoal?.text?.slice(0, 80) ?? null,
@@ -6821,7 +7007,7 @@ export async function scoreOpenLoops(
     winner,
     topCandidates: validScoredCandidates.slice(0, 3),
     deprioritized,
-    candidateDiscovery: buildCandidateDiscoveryLog(winner, scored, suppressedCandidates, null),
+    candidateDiscovery: buildCandidateDiscoveryLog(winner, scored, suppressedCandidates, null, diag),
     antiPatterns,
     divergences,
     exact_blocker: null,

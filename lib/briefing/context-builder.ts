@@ -8,6 +8,7 @@
 
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus } from '@/lib/encryption';
+import { isUsableGoalRow } from './goal-hygiene';
 
 type GreetingSnapshot = {
   dayName: string;
@@ -76,20 +77,23 @@ async function getGreetingSnapshot(userId: string): Promise<GreetingSnapshot> {
       .is('suppressed_at', null),
     supabase
       .from('tkg_goals')
-      .select('goal_text, priority, current_priority')
+      .select('goal_text, priority, current_priority, source')
       .eq('user_id', userId)
+      .eq('status', 'active')
       .order('current_priority', { ascending: false })
-      .order('priority', { ascending: false })
+      .order('priority', { ascending: true })
       .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle(),
+      .limit(10),
   ]);
+
+  const topGoal =
+    (goalsRes.data ?? []).find((goal) => isUsableGoalRow(goal)) ?? null;
 
   return {
     dayName: dayNames[now.getDay()],
     timeWord: getTimeWord(now.getHours()),
     activeCommitmentCount: commitmentsRes.count ?? 0,
-    topGoalText: goalsRes.data?.goal_text?.trim() || null,
+    topGoalText: topGoal?.goal_text?.trim() || null,
   };
 }
 
@@ -115,9 +119,7 @@ export async function buildContextBlock(userId: string): Promise<string> {
       .select('goal_text, priority, goal_category, source')
       .eq('user_id', userId)
       .eq('status', 'active')
-      .gte('priority', 3)
-      .not('source', 'in', '("onboarding_bucket","onboarding_marker","system_config")')
-      .order('priority', { ascending: false })
+      .order('priority', { ascending: true })
       .limit(3),
     supabase
       .from('tkg_commitments')
@@ -144,7 +146,7 @@ export async function buildContextBlock(userId: string): Promise<string> {
       .limit(5),
   ]);
 
-  const goals = goalsRes.data ?? [];
+  const goals = (goalsRes.data ?? []).filter((goal) => isUsableGoalRow(goal));
   const commitments = commitmentsRes.data ?? [];
   const lastAction = lastActionRes.data;
   const recentSignals = (recentSignalsRes.data ?? [])
@@ -153,7 +155,7 @@ export async function buildContextBlock(userId: string): Promise<string> {
       if (decrypted.usedFallback) return null;
 
       const plaintext = decrypted.plaintext.trim();
-      if (!plaintext || isSelfReferentialSignal(plaintext)) return null;
+      if (!plaintext || String(signal.source ?? '').trim() === 'user_feedback' || isSelfReferentialSignal(plaintext)) return null;
 
       return {
         source: (signal.source as string | null) ?? 'unknown',

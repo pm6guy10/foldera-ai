@@ -12,8 +12,10 @@ Achieve 3 consecutive successful runs for a non-Brandon user.
 - No scope expansion
 - No shipping without proof
 - Nothing is "done" until production verification passes
+- Nothing meaningful is done until the verified change is pushed to `main`
 - Free verification is the default locked protocol
 - Do not run a paid model-backed route, script, or full-run proof unless free proof is exhausted, the exact blocker is named, and the user explicitly approved that paid step
+- Default to the main worktree only; do not create or use git worktrees unless the current worktree is unusable and the exact blocker requires it
 - If code is pushed but not proven, mark it incomplete
 - If any source-of-truth file is stale, update it before closing the session
 
