@@ -1,5 +1,5 @@
 /**
- * Deterministic, zero-paid-API proof path for the owner/dev brain-receipt pipeline.
+ * Deterministic, zero-paid-API harness path for the owner/dev brain-receipt pipeline.
  *
  * Exercises the full scorer → validation → persistence path using a canonical stub
  * payload (buildVerificationStubPersistGeneratedPayload) instead of Anthropic calls.
@@ -17,9 +17,10 @@
  *   verificationGoldenPathWriteDocument: true → reorders candidates to prefer write_document
  *   skipStaleGate / skipSpendCap / skipManualCallLimit / forceFreshRun → owner bypass
  *
- * Success condition:
+ * Harness condition:
  *   A fresh tkg_actions row is persisted (pending_approval or do_nothing)
- *   and the script prints whether a real candidate survived stale-date validation.
+ *   and the script prints whether the deterministic stub path exercised the seam.
+ *   This does NOT count as product proof.
  */
 import { config } from 'dotenv';
 import { resolve } from 'path';
@@ -30,6 +31,7 @@ async function main() {
   const { runDailyGenerate } = await import('../lib/cron/daily-brief-generate');
   const { OWNER_USER_ID } = await import('../lib/auth/constants');
   const { createServerClient } = await import('../lib/db/client');
+  const { isVerificationStubProofResult } = await import('../lib/cron/duplicate-truth');
 
   console.log('[fixture] Starting deterministic proof run — no paid API calls.');
   console.log(`[fixture] OWNER_USER_ID: ${OWNER_USER_ID.slice(0, 8)}…`);
@@ -89,9 +91,12 @@ async function main() {
     console.log(`  candidate_survived: ${persisted || !doNothing}`);
     console.log(`  stale_date_blocked: ${staleDateBlocked}`);
     console.log(`  action_id         : ${latestAction.id}`);
+    console.log(`  product_proof     : false (verification stub harness)`);
 
-    if (persisted) {
-      console.log('\n[fixture] RESULT: WIN — fresh artifact persisted as pending_approval');
+    if (isVerificationStubProofResult(ownerResult)) {
+      console.log('\n[fixture] RESULT: HARNESS PASS — deterministic stub persisted, but this is not product proof');
+    } else if (persisted) {
+      console.log('\n[fixture] RESULT: PERSISTED — non-stub pending_approval row written');
     } else if (staleDateBlocked) {
       console.log('\n[fixture] RESULT: EXACT BLOCKER — stale-date validation still blocking');
       console.log('  file: lib/cron/daily-brief-generate.ts or lib/briefing/generator.ts');

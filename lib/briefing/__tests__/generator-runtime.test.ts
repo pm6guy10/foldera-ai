@@ -389,6 +389,91 @@ describe('generateDirective runtime failures', () => {
     expect(mockDecryptWithStatus).not.toHaveBeenCalled();
   });
 
+  it('excludes verification-stub rows from RECENT_ACTIONS_7D in the Anthropic prompt', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    scored.winner.entityName = 'Jane Smith';
+    scored.winner.title = 'Follow up with Jane about the proposal';
+    scored.winner.content = 'Jane has not responded to the proposal.';
+    scored.winner.relationshipContext = '- Jane Smith <jane@example.com> (Contact)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+    queueTkgActionsResult([
+      {
+        directive_text: 'REAL APPROVED ACTION stays in recent history',
+        action_type: 'send_message',
+        generated_at: new Date(FIXED_NOW.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        execution_result: {
+          outcome_type: 'pending_approval',
+        },
+      },
+      {
+        directive_text: 'FAKE STUB APPROVED ACTION should disappear',
+        action_type: 'write_document',
+        generated_at: new Date(FIXED_NOW.getTime() - 60 * 60 * 1000).toISOString(),
+        execution_result: {
+          verification_stub_persist: true,
+        },
+      },
+    ]);
+    queueTkgActionsResult([
+      {
+        directive_text: 'REAL SKIPPED ACTION stays in recent history',
+        action_type: 'send_message',
+        generated_at: new Date(FIXED_NOW.getTime() - 4 * 60 * 60 * 1000).toISOString(),
+        skip_reason: 'recipient_unavailable',
+        execution_result: {
+          outcome_type: 'skipped',
+        },
+      },
+      {
+        directive_text: 'FAKE STUB SKIPPED ACTION should disappear',
+        action_type: 'write_document',
+        generated_at: new Date(FIXED_NOW.getTime() - 3 * 60 * 60 * 1000).toISOString(),
+        skip_reason: 'verification_stub',
+        execution_result: {
+          verification_stub_persist: true,
+        },
+      },
+    ]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 80 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Request Jane\'s yes/no on the proposal by end of day Friday.',
+          artifact_type: 'send_message',
+          artifact: {
+            to: 'jane@example.com',
+            subject: 'Proposal decision needed by Friday EOD',
+            body: 'Hi Jane,\n\nCan you confirm by end of day Friday whether you\'d like to proceed with the proposal? If we miss this window, the pricing expires and we\'ll need to restart the evaluation.\n\nThanks,\nBrandon',
+          },
+          evidence: 'Jane has not replied and the proposal pricing expires Friday.',
+          why_now: 'Pricing expires end of day Friday — no response means restart from scratch.',
+          causal_diagnosis: {
+            why_exists_now: 'Jane still has not given a yes/no decision and the proposal pricing expires Friday.',
+            mechanism: 'Pending external decision before a pricing deadline.',
+          },
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    await generateDirective('user-1', { dryRun: true });
+
+    const anthropicRequest = anthropicCreate.mock.calls[0]?.[0] as {
+      messages?: Array<{ content?: string }>;
+    } | undefined;
+    const prompt = anthropicRequest?.messages?.[0]?.content ?? '';
+
+    expect(prompt).toContain('REAL APPROVED ACTION stays in recent history');
+    expect(prompt).toContain('REAL SKIPPED ACTION stays in recent history');
+    expect(prompt).not.toContain('FAKE STUB APPROVED ACTION should disappear');
+    expect(prompt).not.toContain('FAKE STUB SKIPPED ACTION should disappear');
+  });
+
   it('hydrates only the first viable winner and caps signal evidence reads to 30 rows', async () => {
     const blockedCandidate = {
       ...buildWinner(),
@@ -1363,8 +1448,9 @@ describe('generateDirective runtime failures', () => {
     });
 
     expect(freshDirective.action_type).toBe('write_document');
-    expect(freshDirective.directive).toContain('Alex Morgan at alex@partner.example.com');
-    expect(freshDirective.directive).toContain('a concrete resolution');
+    expect(freshDirective.directive).toContain("Commitment due in 0d: Webinar 'Algoritmo Zero' launch decision");
+    expect(freshDirective.directive).toContain('owner@algoritmozero.com');
+    expect(freshDirective.directive).toContain('2026-04-21');
 
     vi.clearAllMocks();
     mockScoreOpenLoops.mockResolvedValue(scored);

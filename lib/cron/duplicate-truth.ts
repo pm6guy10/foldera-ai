@@ -90,8 +90,18 @@ export function isProtectiveDuplicateNoSend(result: Pick<ProofLikeResult, 'detai
   return hasDuplicateSuppressionSignal(result.detail);
 }
 
+export function isVerificationStubProofResult(result: ProofLikeResult | null | undefined): boolean {
+  return result?.meta?.verification_stub_persist === true;
+}
+
 export function assessProofOutcome(result: ProofLikeResult | null | undefined): ProofOutcomeAssessment {
   const code = result?.code ?? null;
+  if (isVerificationStubProofResult(result)) {
+    return {
+      accepted: false,
+      reason: 'verification_stub_persist_is_harness_only',
+    };
+  }
   if (code === 'pending_approval_persisted') {
     return {
       accepted: true,

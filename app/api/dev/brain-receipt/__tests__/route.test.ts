@@ -229,6 +229,10 @@ describe('POST /api/dev/brain-receipt', () => {
     const body = await response.json();
     expect(body.ok).toBe(true);
     expect(body.final_action.action_id).toBe(actionId);
+    expect(body.proof_verdict).toEqual({
+      counts_as_product_proof: true,
+      reason: null,
+    });
     expect(body.generation_log?.brief_context_debug?.active_goals).toEqual(['[career, p1] DSHS applications']);
     expect(body.winner_selection_trace).toEqual(winnerTrace);
     expect(body.active_goals).toEqual(['[career, p1] DSHS applications']);
@@ -275,5 +279,63 @@ describe('POST /api/dev/brain-receipt', () => {
         briefInvocationSource: 'dev_brain_receipt_verification',
       }),
     );
+  });
+
+  it('marks verification-stub runs as harness-only proof on the response', async () => {
+    const ownerId = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+    mockResolveUser.mockResolvedValue({ userId: ownerId });
+    mockRunDailyGenerate.mockResolvedValue({
+      results: [{
+        userId: ownerId,
+        code: 'pending_approval_persisted',
+        success: true,
+        meta: {
+          verification_stub_persist: true,
+        },
+      }],
+    });
+    mockSupabase.from.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          gte: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: {
+                    id: 'stub-action',
+                    generated_at: '2099-01-01T00:00:00.000Z',
+                    action_type: 'write_document',
+                    directive_text: 'Verification stub directive',
+                    reason: 'Verification stub reason',
+                    confidence: 77,
+                    evidence: [],
+                    artifact: { content: 'Deterministic stub content' },
+                    execution_result: {
+                      verification_stub_persist: true,
+                    },
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/dev/brain-receipt', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ verification_stub_persist: true }),
+      }),
+    );
+    const body = await response.json();
+    expect(body.ok).toBe(true);
+    expect(body.proof_verdict).toEqual({
+      counts_as_product_proof: false,
+      reason: 'verification_stub_persist_uses_deterministic_artifact_stub',
+    });
   });
 });

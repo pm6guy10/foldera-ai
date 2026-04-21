@@ -675,6 +675,7 @@ interface RecentActionRow {
   directive_text: string | null;
   action_type: string | null;
   generated_at: string;
+  execution_result?: unknown;
 }
 
 interface RecentSkippedActionRow extends RecentActionRow {
@@ -4804,6 +4805,12 @@ function isInternalNoSendExecutionResult(executionResult: unknown): boolean {
   return (executionResult as Record<string, unknown>).outcome_type === 'no_send';
 }
 
+function shouldHideProofOnlyRecentAction(executionResult: unknown): boolean {
+  return isInternalNoSendExecutionResult(executionResult) ||
+    isVerificationStubPersistExecutionResult(executionResult) ||
+    isDevForceFreshAutoSuppressedExecutionResult(executionResult);
+}
+
 /**
  * Mask dots inside email addresses, then split on whitespace that follows true sentence
  * enders (. ! ?). Avoids splitting on dots inside emails and on year decimals like "2026."
@@ -8513,7 +8520,7 @@ async function loadRecentActionGuardrails(userId: string): Promise<{
   const [approvedRes, skippedRes] = await Promise.all([
     supabase
       .from('tkg_actions')
-      .select('directive_text, action_type, generated_at')
+      .select('directive_text, action_type, generated_at, execution_result')
       .eq('user_id', userId)
       .in('status', ['approved', 'executed'])
       .gte('generated_at', approvedSince)
@@ -8533,9 +8540,10 @@ async function loadRecentActionGuardrails(userId: string): Promise<{
   if (skippedRes.error) throw skippedRes.error;
 
   return {
-    approvedRecently: (approvedRes.data ?? []) as RecentActionRow[],
-    skippedRecently: ((skippedRes.data ?? []) as Array<RecentSkippedActionRow & { execution_result?: unknown }>)
-      .filter((row) => !isInternalNoSendExecutionResult(row.execution_result)),
+    approvedRecently: ((approvedRes.data ?? []) as RecentActionRow[])
+      .filter((row) => !shouldHideProofOnlyRecentAction(row.execution_result)),
+    skippedRecently: ((skippedRes.data ?? []) as RecentSkippedActionRow[])
+      .filter((row) => !shouldHideProofOnlyRecentAction(row.execution_result)),
   };
 }
 
@@ -8932,33 +8940,77 @@ function buildVerificationStubPersistGeneratedPayload(
   ctx: StructuredContext,
 ): GeneratedDirectivePayload {
   const cd = ctx.required_causal_diagnosis;
+  const normalize = (value: string | null | undefined, fallback: string): string => {
+    const cleaned = String(value ?? '')
+      .replace(/\s+/g, ' ')
+      .replace(/[`*_#>]/g, '')
+      .trim();
+    return cleaned || fallback;
+  };
+  const firstFactValue = (...prefixes: string[]): string | null => {
+    const lowerPrefixes = prefixes.map((prefix) => prefix.toLowerCase());
+    for (const rawFact of ctx.surgical_raw_facts) {
+      const fact = String(rawFact ?? '');
+      const lowerFact = fact.toLowerCase();
+      const matchedPrefix = lowerPrefixes.find((prefix) => lowerFact.startsWith(prefix));
+      if (!matchedPrefix) continue;
+      const value = fact.slice(matchedPrefix.length).trim();
+      if (value) return value;
+    }
+    return null;
+  };
+  const emailFromText = (value: string | null | undefined): string | null => {
+    const match = String(value ?? '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    return match?.[0]?.toLowerCase() ?? null;
+  };
+  const isoDateFromText = (value: string | null | undefined): string | null => {
+    const match = String(value ?? '').match(/\b20\d{2}-\d{2}-\d{2}\b/);
+    return match?.[0] ?? null;
+  };
+  const groundedEmail =
+    emailFromText(firstFactValue('recipient_email:', 'hunt_grounded_peer_email:', 'contact_email:')) ??
+    emailFromText(ctx.recipient_brief) ??
+    emailFromText(ctx.candidate_context_enrichment) ??
+    emailFromText(ctx.selected_candidate) ??
+    emailFromText(ctx.candidate_title);
+  const groundedDate =
+    isoDateFromText(ctx.candidate_due_date) ??
+    isoDateFromText(ctx.selected_candidate) ??
+    isoDateFromText(ctx.candidate_reason) ??
+    isoDateFromText(ctx.candidate_context_enrichment) ??
+    ctx.supporting_signals.map((signal) => isoDateFromText(`${signal.summary ?? ''} ${signal.occurred_at ?? ''}`)).find(Boolean) ??
+    null;
+  const winnerLabel = normalize(ctx.candidate_title, 'Current owner winner');
+  const reasonLabel = normalize(ctx.candidate_reason, 'The current winner still needs a concrete move.');
+  const targetReference = groundedEmail ?? normalize(ctx.recipient_brief, 'the grounded contact on the winning thread');
+  const duePhrase = groundedDate ? ` before ${groundedDate}` : '';
   const insight =
-    'Owner verification stub: deterministic payload exercises downstream validation without Anthropic.';
+    `Owner verification stub: deterministic payload for "${winnerLabel}" exercises downstream validation without Anthropic.`;
   const whyNow =
-    'Verification path uses the real scorer winner and gates; model output is replaced by canonical stub text.';
-  const overlapDate = new Date(Date.now() + daysMs(2)).toISOString().slice(0, 10);
-  const moveByDate = new Date(Date.now() + daysMs(3)).toISOString().slice(0, 10);
-  const deadlineDate = new Date(Date.now() + daysMs(4)).toISOString().slice(0, 10);
+    'Verification path uses the real scorer winner and gates; model output is replaced by deterministic context-grounded stub text.';
   const dirSend =
-    `Please email partner@example.com by ${deadlineDate} to confirm the Q2 delivery plan and deadline.`;
+    `Send the grounded reply to ${targetReference}${duePhrase} so the winning thread gets a concrete answer.`;
   const bodySend =
-    `We need a written confirmation before COB ${deadlineDate} so Legal can file the renewal; ` +
-    'please reply with approval or the specific blocker so we can escalate to the board before the window closes.';
+    `Please send the reply to ${targetReference}${duePhrase}. ` +
+    `Ask for one concrete yes-or-no answer or the blocker, because ${reasonLabel}`;
   const dirDoc =
-    `Send Alex Morgan at alex@partner.example.com a concrete resolution for the ${overlapDate} overlap before ${deadlineDate}.`;
+    `Resolve "${winnerLabel}" with one concrete move for ${targetReference}${duePhrase}.`;
   const contentDoc =
     '## Situation\n' +
-    `Partner review and Customer Success renewal prep both sit on ${overlapDate}; Alex Morgan (alex@partner.example.com) is on the partner thread.\n\n` +
+    `${winnerLabel}. ${reasonLabel}\n\n` +
     '## Conflicting commitments or risk\n' +
-    `Overlapping calendar blocks risk missing the renewal filing before ${deadlineDate}.\n\n` +
+    `${reasonLabel}\n\n` +
     '## Recommendation / decision\n' +
-    `Move or delegate the partner review so Customer Success can protect the COB ${deadlineDate} deadline.\n\n` +
+    `Choose the single move that unblocks the winner and state it plainly for ${targetReference}.\n\n` +
     '## Owner / next step\n' +
-    `Please confirm whether you can move the partner review with Alex Morgan before ${moveByDate} so invites update.\n\n` +
+    `Send or approve the concrete move for ${targetReference}${duePhrase}; if that cannot happen, name the blocker in one sentence.\n\n` +
     '## Timing / deadline\n' +
-    `Decide before ${deadlineDate}; the hard overlap is ${overlapDate}.`;
+    (groundedDate
+      ? `Act before ${groundedDate}; the current winner already carries a dated obligation.`
+      : 'Act on the current winner now so the open obligation does not drift another cycle.');
 
   if (committed === 'send_message') {
+    const subjectBase = normalize(ctx.candidate_title, 'Current winning thread');
     return {
       insight,
       causal_diagnosis: cd,
@@ -8967,8 +9019,10 @@ function buildVerificationStubPersistGeneratedPayload(
       directive: dirSend,
       artifact_type: 'send_message',
       artifact: {
-        to: 'partner@example.com',
-        subject: 'Q2 plan — confirmation needed before 2026-04-18 (action required)',
+        to: groundedEmail ?? '',
+        subject: groundedDate
+          ? `${subjectBase} - response needed before ${groundedDate}`
+          : `${subjectBase} - response needed now`,
         body: bodySend,
         draft_type: 'email_compose',
       },
@@ -8985,9 +9039,9 @@ function buildVerificationStubPersistGeneratedPayload(
       directive: dirDoc,
       artifact_type: 'write_document',
       artifact: {
-        document_purpose: 'Foldera owner verification — calendar conflict resolution draft',
-        target_reader: 'External partner contact',
-        title: 'Resolution note — April 2026 calendar overlap',
+        document_purpose: 'brief',
+        target_reader: groundedEmail ?? 'Grounded contact or owner',
+        title: `Verification brief: ${winnerLabel}`.slice(0, 120),
         content: contentDoc,
       },
       why_now: whyNow,
@@ -9001,11 +9055,15 @@ function buildVerificationStubPersistGeneratedPayload(
       causal_diagnosis_source: 'template_fallback',
       decision: 'ACT',
       directive:
-        'Block 45 minutes before Friday 2026-04-18 to finalize the partner escalation with the team.',
+        groundedDate
+          ? `Block 45 minutes before ${groundedDate} to finalize the next move for "${winnerLabel}".`
+          : `Block 45 minutes now to finalize the next move for "${winnerLabel}".`,
       artifact_type: 'schedule_block',
       artifact: {
-        title: 'Partner escalation — finalize plan',
-        reason: 'Verification stub: timeboxed working session before the 2026-04-18 deadline.',
+        title: `Finalize next move: ${winnerLabel}`.slice(0, 120),
+        reason: groundedDate
+          ? `Verification stub: timeboxed working session before ${groundedDate}.`
+          : 'Verification stub: timeboxed working session for the current winner.',
         start: new Date(Date.now() + 86400000).toISOString(),
         duration_minutes: 45,
       },

@@ -27,6 +27,24 @@ import { getDeployRevision } from '@/lib/config/deploy-revision';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
+function buildProofVerdict(input: {
+  requestVerificationStubPersist: boolean;
+  executionResult: Record<string, unknown> | null;
+  resultMeta: Record<string, unknown> | null;
+}) {
+  const verificationStubPersist =
+    input.requestVerificationStubPersist ||
+    input.executionResult?.verification_stub_persist === true ||
+    input.resultMeta?.verification_stub_persist === true;
+
+  return {
+    counts_as_product_proof: !verificationStubPersist,
+    reason: verificationStubPersist
+      ? 'verification_stub_persist_uses_deterministic_artifact_stub'
+      : null,
+  };
+}
+
 export async function POST(request: Request) {
   const auth = await resolveUser(request);
   if (auth instanceof NextResponse) return auth;
@@ -185,6 +203,11 @@ export async function POST(request: Request) {
         ownerResult?.meta && typeof ownerResult.meta === 'object'
           ? (ownerResult.meta as Record<string, unknown>)
           : null;
+      const proofVerdict = buildProofVerdict({
+        requestVerificationStubPersist: verificationStubPersist,
+        executionResult,
+        resultMeta: ownerMeta,
+      });
 
       return NextResponse.json({
         ok: true,
@@ -218,6 +241,7 @@ export async function POST(request: Request) {
           reason: latestAction.reason,
         },
         full_artifact_text: artifactText,
+        proof_verdict: proofVerdict,
         decision_enforcement: {
           passed: decisionIssues.length === 0,
           issues: decisionIssues,
@@ -242,6 +266,11 @@ export async function POST(request: Request) {
       ownerResult?.meta && typeof ownerResult.meta === 'object'
         ? (ownerResult.meta as Record<string, unknown>)
         : null;
+    const proofVerdict = buildProofVerdict({
+      requestVerificationStubPersist: verificationStubPersist,
+      executionResult: null,
+      resultMeta: failMeta,
+    });
     return NextResponse.json({
       ok: false,
       started_at: startedAt,
@@ -257,7 +286,8 @@ export async function POST(request: Request) {
               cron_invocation_id: failMeta.cron_invocation_id ?? null,
             },
           }
-        : {}),
+          : {}),
+      proof_verdict: proofVerdict,
       blocker: ownerResult?.code === 'proof_freshness_failed'
         ? 'proof_reuse_detected'
         : 'no_fresh_action_persisted',

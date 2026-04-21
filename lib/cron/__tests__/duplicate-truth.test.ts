@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assessProofOutcome,
   isDevForceFreshAutoSuppressedExecutionResult,
+  isVerificationStubProofResult,
   isVerificationStubPersistExecutionResult,
   selectLatestMeaningfulGenerationRow,
   summarizeRepeatedDirectiveHealth,
@@ -177,6 +178,21 @@ describe('duplicate truth semantics', () => {
     })).toEqual({
       accepted: false,
       reason: 'no_send_persisted',
+    });
+  });
+
+  it('rejects verification-stub persistence as harness-only, not product proof', () => {
+    const result = {
+      code: 'pending_approval_persisted',
+      meta: {
+        verification_stub_persist: true,
+      },
+    };
+
+    expect(isVerificationStubProofResult(result)).toBe(true);
+    expect(assessProofOutcome(result)).toEqual({
+      accepted: false,
+      reason: 'verification_stub_persist_is_harness_only',
     });
   });
 });

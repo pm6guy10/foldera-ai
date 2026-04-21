@@ -1,6 +1,7 @@
 /**
- * Owner golden path (no paid LLM): same options as POST /api/dev/brain-receipt with
- * verification_stub_persist — for local/operator verification without browser session.
+ * Owner harness path (no paid LLM): same options as POST /api/dev/brain-receipt with
+ * verification_stub_persist — useful for exercising scorer/gate/persistence plumbing
+ * without a browser session, but not valid product proof.
  *
  * Usage: npx tsx scripts/run-verification-golden-path-once.ts
  */
