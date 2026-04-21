@@ -7,10 +7,12 @@
  * C) Renderer-only contract: final directive action comes from canonical payload, not render
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScoredLoop, ScorerResult } from '../scorer';
 import type { DecisionPayload } from '../types';
 import { validateDecisionPayload } from '../types';
+
+const FIXED_NOW = new Date('2026-04-20T15:00:00.000Z');
 
 // ─── Mocks ───────────────────────────────────────────────────────────────
 
@@ -195,8 +197,14 @@ function setupDefaults() {
 
 describe('TEST A — Hostile action drift', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     vi.clearAllMocks();
     setupDefaults();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('scorer says send_message, LLM tries wait_rationale first → validation fails; compliant send_message on retry → persisted send_message', async () => {
@@ -289,8 +297,14 @@ describe('TEST A — Hostile action drift', () => {
 
 describe('TEST B — Hostile false-positive render (blocked payload)', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     vi.clearAllMocks();
     setupDefaults();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('stale evidence + polished LLM artifact → generation fails closed', async () => {
@@ -365,8 +379,14 @@ describe('TEST B — Hostile false-positive render (blocked payload)', () => {
 
 describe('TEST C — Renderer-only contract', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     vi.clearAllMocks();
     setupDefaults();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('final directive action_type is derived from canonicalAction; hostile schedule_block fails validation then send_message succeeds', async () => {

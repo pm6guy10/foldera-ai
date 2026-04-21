@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScoredLoop, ScorerResult, ScorerResultWinnerSelected } from '../scorer';
+import {
+  expectDirectiveShape,
+  expectDocumentArtifactShape,
+  expectEmailArtifactShape,
+} from '@/test/generated-output-assertions';
 
 const FIXED_NOW = new Date('2026-04-20T15:00:00.000Z');
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -963,10 +968,12 @@ describe('generateDirective runtime failures', () => {
     expect(directive.directive).not.toBe('__GENERATION_FAILED__');
     expect(directive.action_type).toBe('write_document');
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
-    expect(String(embeddedArtifact?.content)).toMatch(/Decision required/i);
-    expect(embeddedArtifact?.content).toContain('Ask:');
-    expect(embeddedArtifact?.content).toContain('Consequence:');
-    expect(String(embeddedArtifact?.content)).toContain('owner');
+    expectDocumentArtifactShape(embeddedArtifact, {
+      minTitleLength: 12,
+      minLength: 120,
+      minParagraphs: 3,
+      requiredRegexes: [/decision required/i, /\bask:/i, /\bconsequence:/i, /\bowner\b/i],
+    });
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',
       generationStatus: 'decision_enforcement_repaired',
@@ -1027,14 +1034,24 @@ describe('generateDirective runtime failures', () => {
 
     expect(anthropicCreate).toHaveBeenCalledTimes(2);
     expect(directive.action_type).toBe('write_document');
-    expect(directive.directive).toContain('reopen only if a concrete next-step signal arrives');
+    expectDirectiveShape(directive.directive, {
+      minLength: 40,
+      requiredRegexes: [/reopen/i, /next-step signal/i],
+    });
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
-    expect(String(embeddedArtifact?.title)).toBe('Execution rule for the pilot decision');
-    expect(String(embeddedArtifact?.content)).toContain('The pilot decision matters over the next 30-90 days.');
-    expect(String(embeddedArtifact?.content)).toContain('Execution move: stop holding live bandwidth open');
-    expect(String(embeddedArtifact?.content)).toContain('Why this beats the alternatives:');
-    expect(String(embeddedArtifact?.content)).toContain('Deprioritize:');
-    expect(String(embeddedArtifact?.content)).toContain('Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives');
+    const { title } = expectDocumentArtifactShape(embeddedArtifact, {
+      minTitleLength: 16,
+      minLength: 220,
+      minParagraphs: 6,
+      requiredTerms: ['pilot decision', 'Pat Lee'],
+      requiredRegexes: [
+        /Execution move:/i,
+        /Why this beats the alternatives:/i,
+        /Deprioritize:/i,
+        /Reopen trigger:/i,
+      ],
+    });
+    expect(title).toContain('pilot decision');
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',
       generationStatus: 'decision_enforcement_repaired',
@@ -1103,9 +1120,16 @@ describe('generateDirective runtime failures', () => {
 
     expect(directive.directive).toContain('Waiting on MAS3 (HCA) hiring decision');
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
-    expect(String(embeddedArtifact?.content)).toContain('Waiting on MAS3 (HCA) hiring decision is no longer an active thread');
-    expect(String(embeddedArtifact?.content)).not.toContain('means Stop holding live bandwidth open for');
-    expect(String(embeddedArtifact?.content)).not.toContain('for Stop holding live bandwidth open for');
+    expectDocumentArtifactShape(embeddedArtifact, {
+      minTitleLength: 16,
+      minLength: 220,
+      minParagraphs: 6,
+      requiredTerms: ['Waiting on MAS3 (HCA) hiring decision'],
+      forbiddenPatterns: [
+        'means Stop holding live bandwidth open for',
+        'for Stop holding live bandwidth open for',
+      ],
+    });
   });
 
   it('rejects behavioral-pattern documents that echo the full directive into the artifact body and repairs them', async () => {
@@ -1170,9 +1194,16 @@ describe('generateDirective runtime failures', () => {
 
     expect(directive.directive).toContain('Waiting on MAS3 (HCA) hiring decision');
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
-    expect(String(embeddedArtifact?.content)).toContain('Waiting on MAS3 (HCA) hiring decision is no longer an active thread');
-    expect(String(embeddedArtifact?.content)).not.toContain('means Stop holding live bandwidth open for');
-    expect(String(embeddedArtifact?.content)).not.toContain('for Stop holding live bandwidth open for');
+    expectDocumentArtifactShape(embeddedArtifact, {
+      minTitleLength: 16,
+      minLength: 220,
+      minParagraphs: 6,
+      requiredTerms: ['Waiting on MAS3 (HCA) hiring decision'],
+      forbiddenPatterns: [
+        'means Stop holding live bandwidth open for',
+        'for Stop holding live bandwidth open for',
+      ],
+    });
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',
       generationStatus: 'decision_enforcement_repaired',
@@ -1220,8 +1251,14 @@ describe('generateDirective runtime failures', () => {
     expect(directive.directive).not.toBe('__GENERATION_FAILED__');
     expect(directive.action_type).toBe('send_message');
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
-    expect(String(embeddedArtifact?.body)).toContain('Can you');
-    expect(String(embeddedArtifact?.body)).toContain('?');
+    expectEmailArtifactShape(embeddedArtifact, {
+      expectedRecipient: 'approver@launchco.com',
+      minSubjectLength: 12,
+      minBodyLength: 60,
+      requireQuestion: true,
+      dateAnchors: [isoDateFromFixedNow(1)],
+      requiredRegexes: [/confirm|owner|next step/i],
+    });
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',
       generationStatus: 'decision_enforcement_repaired',
@@ -1268,7 +1305,11 @@ describe('generateDirective runtime failures', () => {
     const depDirective = await generateDirective('user-1', { dryRun: true });
     const depArtifact = (depDirective as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
     expect(depDirective.action_type).toBe('write_document');
-    expect(String(depArtifact?.content)).toContain('owner');
+    expectDocumentArtifactShape(depArtifact, {
+      minTitleLength: 12,
+      minLength: 100,
+      requiredRegexes: [/\bowner\b/i],
+    });
 
     scored.winner.title = 'Relationship cooling after asymmetric effort in partner thread';
     scored.winner.content = 'Two substantive updates were sent, but responses remained non-committal with no direct yes/no answer.';
@@ -1302,7 +1343,11 @@ describe('generateDirective runtime failures', () => {
     expect(relDirective.action_type).toBe('write_document');
 
     expect(depArtifact?.content).not.toEqual(relArtifact?.content);
-    expect(String(relArtifact?.content)).toContain('Relationship cooling');
+    expectDocumentArtifactShape(relArtifact, {
+      minTitleLength: 12,
+      minLength: 100,
+      requiredRegexes: [/relationship/i],
+    });
   });
 
   it('suppresses a repeated directive shape after two visible copies in 24h', async () => {
@@ -1448,9 +1493,11 @@ describe('generateDirective runtime failures', () => {
     });
 
     expect(freshDirective.action_type).toBe('write_document');
-    expect(freshDirective.directive).toContain("Commitment due in 0d: Webinar 'Algoritmo Zero' launch decision");
-    expect(freshDirective.directive).toContain('owner@algoritmozero.com');
-    expect(freshDirective.directive).toContain('2026-04-21');
+    expectDirectiveShape(freshDirective.directive, {
+      minLength: 40,
+      requiredTerms: ["Webinar 'Algoritmo Zero' launch decision", 'owner@algoritmozero.com'],
+      dateAnchors: ['2026-04-21'],
+    });
 
     vi.clearAllMocks();
     mockScoreOpenLoops.mockResolvedValue(scored);

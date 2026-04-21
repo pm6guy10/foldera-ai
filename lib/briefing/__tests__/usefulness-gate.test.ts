@@ -13,8 +13,10 @@
  *    GENERATION_FAILED_SENTINEL the caller skips persistence and send.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScoredLoop, ScorerResult } from '../scorer';
+
+const FIXED_NOW = new Date('2026-04-20T15:00:00.000Z');
 
 // ─── Mocks (identical pattern to generator-runtime.test.ts) ───────────────
 
@@ -207,6 +209,8 @@ const SENTINEL = '__GENERATION_FAILED__';
 
 describe('usefulness gate — execution proof', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     vi.resetModules();
     mockScoreOpenLoops.mockReset();
     mockIsOverDailyLimit.mockReset();
@@ -223,6 +227,10 @@ describe('usefulness gate — execution proof', () => {
     mockGetDirectiveConstraintViolations.mockReturnValue([]);
     mockGetPinnedConstraintPrompt.mockReturnValue(null);
     mockScoreOpenLoops.mockResolvedValue(buildScorerResult());
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   // ── BAD CASE 1: no_output (artifact is null in JSON) ──────────────────

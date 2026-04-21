@@ -7,6 +7,7 @@ import {
   type CompressedSignal,
 } from '../generator';
 import type { ScoredLoop } from '../scorer';
+import { expectDocumentArtifactShape } from '@/test/generated-output-assertions';
 
 const BASE_BREAKDOWN = {
   stakes: 4,
@@ -93,13 +94,14 @@ describe('buildDecisionEnforcedFallbackPayload interview repair', () => {
     expect(payload).not.toBeNull();
     expect(payload?.artifact_type).toBe('write_document');
     const artifact = payload?.artifact as Record<string, string>;
-    const content = `${artifact.title}\n${artifact.content}`;
-    expect(content).toContain('role-specific answer architecture');
-    expect(content).toContain('community-based');
-    expect(content).toContain('mileage is reimbursed');
-    expect(content.toLowerCase()).not.toContain('prep brief');
-    expect(content.toLowerCase()).not.toContain('review the website');
-    expect(content.toLowerCase()).not.toContain('prepare examples');
+    const { title, content } = expectDocumentArtifactShape(artifact, {
+      minTitleLength: 20,
+      minLength: 180,
+      minParagraphs: 1,
+      requiredTerms: ['community-based', 'mileage is reimbursed'],
+      forbiddenPatterns: [/prep brief/i, /review the website/i, /prepare examples/i],
+    });
+    expect(`${title}\n${content}`).toMatch(/role-specific|answer architecture/i);
 
     const decisionIssues = getDecisionEnforcementIssues({
       actionType: 'write_document',

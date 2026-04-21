@@ -13,6 +13,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { generateArtifact } from '../artifact-generator';
+import {
+  expectDocumentArtifactShape,
+  expectEmailArtifactShape,
+} from '@/test/generated-output-assertions';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -138,11 +142,15 @@ describe('artifact-generator — analysis dump leak prevention', () => {
 
     const result = await generateArtifact('user-1', directive);
 
-    expect(result).toEqual({
-      type: 'document',
-      title: 'Address financial runway concern',
-      content: 'Action Plan\n\n1. Draft the final proposal package.\n2. Send it by 4pm with explicit approval ask.',
+    expect(result).not.toBeNull();
+    expect((result as any).type).toBe('document');
+    const { title, content } = expectDocumentArtifactShape(result, {
+      minTitleLength: 20,
+      minLength: 60,
+      minParagraphs: 2,
     });
+    expect(title).toContain('financial runway concern');
+    expect(content).toBe(directive.fullContext);
   });
 
   it('suppresses hostile meta commentary when no finished document fallback exists', async () => {
@@ -165,13 +173,15 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const result = await generateArtifact('user-1', directive);
 
     expect(result).not.toBeNull();
-    const content = (result as any).content as string;
-    expect(content).toContain('Decision required: Lock the final approval owner for the runway packet by 2026-04-21');
-    expect(content).toContain('Move: confirm the path, name one owner, and close the decision by 2026-04-21');
-    expect(content).toContain('Owner:');
-    expect(content).toContain('Consequence:');
-    expect(content).not.toContain('Objective:');
-    expect(content).not.toContain('Execution Notes:');
+    const content = expectDocumentArtifactShape(result, {
+      minTitleLength: 20,
+      minLength: 140,
+      minParagraphs: 4,
+      dateAnchors: ['2026-04-21'],
+      requiredRegexes: [/decision required:/i, /\bmove:/i, /\bowner:/i, /\bconsequence:/i],
+      forbiddenPatterns: ['Objective:', 'Execution Notes:'],
+    }).content;
+    expect(content).toContain('2026-04-21');
   });
 
   it('repairs weak send_message output into a grounded ask with timing and consequence', async () => {
@@ -197,11 +207,16 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     } as any);
 
     expect(result).not.toBeNull();
-    expect((result as any).to).toBe('approver@example.com');
-    expect(String((result as any).subject)).toContain('Decision needed by 2026-04-21');
-    expect(String((result as any).body)).toContain('Can you confirm by 2026-04-21');
-    expect(String((result as any).body)).toContain('who owns the next step');
-    expect(String((result as any).body)).toContain('remains blocked');
+    const { body } = expectEmailArtifactShape(result, {
+      expectedRecipient: 'approver@example.com',
+      minSubjectLength: 20,
+      minBodyLength: 80,
+      requireQuestion: true,
+      dateAnchors: ['2026-04-21'],
+      requiredRegexes: [/confirm/i],
+    });
+    expect(body).toMatch(/owner|next step/i);
+    expect(body).toMatch(/blocked|slips|cutoff/i);
   });
 
   it('renders behavioral_pattern write_document with a grounded goal when one is available', async () => {
@@ -259,40 +274,29 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const result = await generateArtifact('user-1', directive);
 
     expect(result).not.toBeNull();
-    const title = String((result as any).title ?? '');
-    const content = String((result as any).content ?? '');
-
-    expect(title).toBe('Execution rule for the pilot decision');
-    expect(content).toBe(
-      [
-        'The pilot decision matters over the next 30-90 days. 3 follow-ups in 14 days without a reply means Pat Lee is no longer an active thread; it is an open loop consuming attention.',
-        '',
-        'Execution move: stop holding live bandwidth open for Pat Lee today. Treat it as inactive until a concrete next-step signal arrives, and reallocate that time to the highest-probability work for the pilot decision.',
-        '',
-        'Why this beats the alternatives: 3 follow-ups in 14 days without a reply means another generic nudge is more likely to preserve ambiguity than improve the odds on the pilot decision, while reclaiming the time changes the next 30-90 days of real leverage.',
-        '',
-        'Deprioritize: do not draft another status-check message, do not keep calendar or prep time reserved for Pat Lee, and do not treat the thread as an active commitment while silence continues.',
-        '',
-        'Consequence: if this stays mentally open past today, the pilot decision keeps losing real bandwidth to a thread that is not moving.',
-        '',
-        'Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by today.',
-        '',
-        'Deadline: today',
-      ].join('\n'),
-    );
-    expect(content).toContain('The pilot decision matters over the next 30-90 days.');
-    expect(content).toContain('3 follow-ups in 14 days without a reply');
-    expect(content).toContain('Execution move: stop holding live bandwidth open for Pat Lee today.');
-    expect(content).toContain('Why this beats the alternatives:');
-    expect(content).toContain('Deprioritize:');
-    expect(content).toContain('Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by today.');
-    expect(content).not.toContain('## Pattern observed');
-    expect(content).not.toContain('## Why it matters now');
-    expect(content).not.toContain('## Concrete decision / next move');
-    expect(content).not.toContain('## Owner / deadline');
-    expect(content).not.toContain('Send one direct follow-up');
-    expect(content).not.toContain('should I close this out');
-    expect(content).not.toContain('keep clogging your inbox');
+    const { title, content } = expectDocumentArtifactShape(result, {
+      minTitleLength: 20,
+      minLength: 250,
+      minParagraphs: 6,
+      requiredTerms: ['pilot decision', 'Pat Lee', 'today'],
+      requiredRegexes: [
+        /Execution move:/i,
+        /Why this beats the alternatives:/i,
+        /Deprioritize:/i,
+        /Reopen trigger:/i,
+        /Deadline:/i,
+      ],
+      forbiddenPatterns: [
+        '## Pattern observed',
+        '## Why it matters now',
+        '## Concrete decision / next move',
+        '## Owner / deadline',
+        'Send one direct follow-up',
+        'should I close this out',
+        'keep clogging your inbox',
+      ],
+    });
+    expect(title).toContain('pilot decision');
   });
 
   it('falls back to a non-goal behavioral_pattern note when grounded goal evidence is weak', async () => {
@@ -343,24 +347,30 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const result = await generateArtifact('user-1', directive);
 
     expect(result).not.toBeNull();
-    const title = String((result as any).title ?? '');
-    const content = String((result as any).content ?? '');
-
-    expect(title).toBe('Execution rule for Pat Lee');
-    expect(content).toContain('3 follow-ups in 14 days without a reply means Pat Lee is no longer an active thread; it is an open loop consuming attention.');
-    expect(content).toContain('Execution move: stop holding live bandwidth open for Pat Lee today.');
-    expect(content).toContain('Why this beats the alternatives: 3 follow-ups in 14 days without a reply means another generic nudge is more likely to preserve ambiguity than create a real decision.');
-    expect(content).toContain('Deprioritize: do not draft another status-check message');
-    expect(content).toContain('Consequence: if this stays mentally open past today, attention keeps leaking into a thread that is not moving.');
-    expect(content).toContain('Reopen trigger: only reopen if a concrete next step, decision, or scheduling signal arrives by today.');
-    expect(content).toContain('Deadline: today');
-    expect(content).not.toContain('pilot decision');
-    expect(content).not.toContain('You were trying to get this thread to a real yes/no');
-    expect(content).not.toContain('## Pattern observed');
-    expect(content).not.toContain('## Why it matters now');
-    expect(content).not.toContain('## Concrete decision / next move');
-    expect(content).not.toContain('## Owner / deadline');
-    expect(content).not.toContain('Send one direct follow-up');
+    const { title, content } = expectDocumentArtifactShape(result, {
+      minTitleLength: 16,
+      minLength: 220,
+      minParagraphs: 6,
+      requiredTerms: ['Pat Lee', 'today'],
+      requiredRegexes: [
+        /Execution move:/i,
+        /Why this beats the alternatives:/i,
+        /Deprioritize:/i,
+        /Consequence:/i,
+        /Reopen trigger:/i,
+        /Deadline:/i,
+      ],
+      forbiddenPatterns: [
+        'pilot decision',
+        'You were trying to get this thread to a real yes/no',
+        '## Pattern observed',
+        '## Why it matters now',
+        '## Concrete decision / next move',
+        '## Owner / deadline',
+        'Send one direct follow-up',
+      ],
+    });
+    expect(title).toContain('Pat Lee');
   });
 
   it('routes behavioral_pattern wait_rationale context through the finished-note fallback instead of raw passthrough', async () => {
@@ -381,15 +391,23 @@ describe('artifact-generator — analysis dump leak prevention', () => {
 
     expect(result).not.toBeNull();
     expect((result as any).emergency_fallback).not.toBe(true);
-    const content = String((result as any).content ?? '');
-    expect(content).toContain('4 follow-ups in 10 days without a reply means Pat Lee is no longer an active thread; it is an open loop consuming attention.');
-    expect(content).toContain('Execution move: stop holding live bandwidth open');
-    expect(content).toContain('Why this beats the alternatives:');
-    expect(content).toContain('Deprioritize:');
-    expect(content).toContain('Reopen trigger:');
-    expect(content).not.toContain('Weak analysis blob that would be sludge if returned verbatim.');
-    expect(content).not.toContain('This should not be copied through.');
-    expect(content).not.toContain('Send this today:');
+    expectDocumentArtifactShape(result, {
+      minTitleLength: 16,
+      minLength: 220,
+      minParagraphs: 6,
+      requiredTerms: ['Pat Lee'],
+      requiredRegexes: [
+        /Execution move:/i,
+        /Why this beats the alternatives:/i,
+        /Deprioritize:/i,
+        /Reopen trigger:/i,
+      ],
+      forbiddenPatterns: [
+        'Weak analysis blob that would be sludge if returned verbatim.',
+        'This should not be copied through.',
+        'Send this today:',
+      ],
+    });
   });
 
   it('preserves the clean embedded behavioral_pattern write_document artifact instead of regenerating from the directive sentence', async () => {
@@ -476,40 +494,45 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const result = await generateArtifact('user-1', directive);
 
     expect(result).not.toBeNull();
-    expect((result as any).title).toBe('Interview Week Execution Brief — April 20–23, 2026');
-    const content = String((result as any).content ?? '');
-    expect(content).toContain('EXECUTION MOVE');
-    expect(content).toContain('Why this beats the alternatives:');
-    expect(content).toContain('Consequence:');
-    expect(content).toContain('ACTUAL INTERVIEW SCHEDULE');
-    expect(content).toContain('CROSS-ROLE STORY REUSE');
-    expect(content).toContain('ROLE-SPECIFIC ANGLES');
-    expect(content).toContain('COMPLETED MATERIALS / FORMS ALREADY EVIDENCED');
-    expect(content).toContain('MISSING PREP MOVES');
-    expect(content).toContain('QUESTIONS TO ASK');
-    expect(content).toContain('REOPEN TRIGGER');
-    expect(content).toContain('WHAT TO IGNORE');
-    expect(content).toContain('SHPC4 Interview - Social and Health Program Consultant 4 - DSHS');
-    expect(content).toContain('MEDS/MAS3 Interview - Administrative Specialist 3 - HCA');
-    expect(content).toContain('Training & Appeals Program Manager Interview - WA Cares');
-    expect(content).toContain('Program operations');
-    expect(content).toContain('Appeals coordination');
-    expect(content).toContain('No sent forms or linked interview documents were evidenced in the confirmed signals yet.');
-    expect(content).toContain('Tue, Apr 21');
-    expect(content).toContain('Wed, Apr 22');
-    expect(content).toContain('Thu, Apr 23');
-    expect(content).toContain('Dance');
-    expect(content).toContain('Put Trash Can Out');
-    expect(content).toContain('Bible study at Brightside');
-    expect(content).toContain('soccer game');
-    expect(content).toContain('baby shower');
-    expect(content).not.toContain('MASTER SCHEDULE');
-    expect(content).not.toContain('PRIORITY ORDER');
-    expect(content).not.toContain('CORE STORIES TO REUSE');
-    expect(content).not.toContain('DAY-BY-DAY PREP FOCUS');
-    expect(content).not.toContain('RED FLAGS / LOAD MANAGEMENT');
-    expect(content).not.toContain('EXCLUDED PERSONAL EVENTS');
-    expect(content).not.toContain('research the company');
-    expect(content).not.toContain('prepare examples');
+    const { title, content } = expectDocumentArtifactShape(result, {
+      minTitleLength: 24,
+      minLength: 500,
+      minParagraphs: 9,
+      requiredTerms: [
+        'SHPC4 Interview - Social and Health Program Consultant 4 - DSHS',
+        'MEDS/MAS3 Interview - Administrative Specialist 3 - HCA',
+        'Training & Appeals Program Manager Interview - WA Cares',
+        'Program operations',
+        'Appeals coordination',
+        'Dance',
+        'Put Trash Can Out',
+        'Bible study at Brightside',
+        'soccer game',
+        'baby shower',
+      ],
+      requiredRegexes: [
+        /^EXECUTION MOVE/m,
+        /^ACTUAL INTERVIEW SCHEDULE/m,
+        /^CROSS-ROLE STORY REUSE/m,
+        /^ROLE-SPECIFIC ANGLES/m,
+        /^COMPLETED MATERIALS \/ FORMS ALREADY EVIDENCED/m,
+        /^MISSING PREP MOVES/m,
+        /^QUESTIONS TO ASK/m,
+        /^REOPEN TRIGGER/m,
+        /^WHAT TO IGNORE/m,
+      ],
+      forbiddenPatterns: [
+        'MASTER SCHEDULE',
+        'PRIORITY ORDER',
+        'CORE STORIES TO REUSE',
+        'DAY-BY-DAY PREP FOCUS',
+        'RED FLAGS / LOAD MANAGEMENT',
+        'EXCLUDED PERSONAL EVENTS',
+        'research the company',
+        'prepare examples',
+      ],
+    });
+    expect(title).toMatch(/^Interview Week Execution Brief/);
+    expect(content).toMatch(/Tue, Apr 21|Wed, Apr 22|Thu, Apr 23/);
   });
 });

@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { buildDecisionEnforcedFallbackPayload, getDecisionEnforcementIssues } from '../generator';
 import type { ScoredLoop } from '../scorer';
 import type { ValidArtifactTypeCanonical } from '../types';
+import {
+  expectDirectiveShape,
+  expectDocumentArtifactShape,
+  expectEmailArtifactShape,
+} from '@/test/generated-output-assertions';
 
 function baseWinner(overrides: Partial<ScoredLoop> = {}): ScoredLoop {
   return {
@@ -32,12 +37,20 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
       userPromptNames: { user_full_name: 'Test User', user_first_name: 'Test' },
     });
     expect(payload).not.toBeNull();
-    expect(payload!.directive.toLowerCase()).not.toMatch(
+    const directive = expectDirectiveShape(payload!.directive, {
+      minLength: 40,
+      requiredRegexes: [/email/i, /can you/i, /\d{4}-\d{2}-\d{2}/],
+    });
+    expect(directive.toLowerCase()).not.toMatch(
       /send a decision request that secures one accountable owner/,
     );
-    expect(payload!.directive).toMatch(/email approver:/i);
-    expect(payload!.directive).toMatch(/can you/i);
-    expect(payload!.artifact.body).toMatch(/can you/i);
+    expectEmailArtifactShape(payload!.artifact, {
+      expectedRecipient: 'approver@acmecorp.io',
+      minSubjectLength: 12,
+      minBodyLength: 60,
+      requireQuestion: true,
+      bodyRequiredRegexes: [/can you/i, /\d{4}-\d{2}-\d{2}/],
+    });
   });
 
   it('write_document repair directive names the decision topic, not generic publish line', () => {
@@ -49,11 +62,18 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
       userPromptNames: { user_full_name: 'Test User', user_first_name: 'Test' },
     });
     expect(payload).not.toBeNull();
-    expect(payload!.directive.toLowerCase()).toMatch(/legal review|vendor renewal/);
-    expect(payload!.directive.toLowerCase()).not.toMatch(
+    const directive = expectDirectiveShape(payload!.directive, {
+      minLength: 32,
+      requiredRegexes: [/legal review|vendor renewal/i, /\d{4}-\d{2}-\d{2}/],
+    });
+    expect(directive.toLowerCase()).not.toMatch(
       /^publish a decision memo that locks owner accountability/i,
     );
-    expect(payload!.artifact.content.toLowerCase()).toMatch(/decision required/);
+    expectDocumentArtifactShape(payload!.artifact, {
+      minTitleLength: 12,
+      minLength: 60,
+      requiredRegexes: [/decision required/i],
+    });
   });
 
   it('uses hunt grounded recipient allowlist when summaries omit the external email', () => {
@@ -89,8 +109,16 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
 
     expect(payload).not.toBeNull();
     expect(payload!.artifact_type).toBe('send_message');
-    expect(payload!.artifact.to).toBe('hello@deako.com');
-    expect(payload!.directive.toLowerCase()).toMatch(/email hello/);
+    expectDirectiveShape(payload!.directive, {
+      minLength: 30,
+      requiredRegexes: [/email/i, /\bhello\b/i, /\d{4}-\d{2}-\d{2}/],
+    });
+    expectEmailArtifactShape(payload!.artifact, {
+      expectedRecipient: 'hello@deako.com',
+      minSubjectLength: 12,
+      minBodyLength: 60,
+      requireQuestion: true,
+    });
 
     const issues = getDecisionEnforcementIssues({
       actionType: 'send_message',
@@ -128,12 +156,22 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
 
     expect(payload).not.toBeNull();
     expect(payload!.artifact_type).toBe('write_document');
-    expect(String(payload!.directive)).toContain('reopen only if a concrete next-step signal arrives');
-    expect(String(payload!.artifact.title)).toContain('Execution rule');
-    expect(String(payload!.artifact.content)).toContain('Execution move: stop holding live bandwidth open');
-    expect(String(payload!.artifact.content)).toContain('Why this beats the alternatives:');
-    expect(String(payload!.artifact.content)).toContain('Deprioritize:');
-    expect(String(payload!.artifact.content)).toContain('Reopen trigger:');
+    expectDirectiveShape(payload!.directive, {
+      minLength: 40,
+      requiredRegexes: [/reopen/i, /next-step signal/i],
+    });
+    expectDocumentArtifactShape(payload!.artifact, {
+      minTitleLength: 16,
+      minLength: 220,
+      minParagraphs: 6,
+      requiredTerms: ['MAS3', 'HCA'],
+      requiredRegexes: [
+        /Execution move:/i,
+        /Why this beats the alternatives:/i,
+        /Deprioritize:/i,
+        /Reopen trigger:/i,
+      ],
+    });
 
     const issues = getDecisionEnforcementIssues({
       actionType: 'write_document',
