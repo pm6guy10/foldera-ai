@@ -1480,14 +1480,41 @@ export async function resolveDailyBriefUserIds(explicitUserIds?: string[]): Prom
 async function getEligibleDailyBriefUserIds(): Promise<string[]> {
   const supabase = createServerClient();
   const connected = await listConnectedUserIds(supabase);
-  const { data: entities, error } = await supabase
-    .from('tkg_entities')
-    .select('user_id')
-    .eq('name', 'self');
 
-  if (error) throw error;
+  // tkg_entities is an auxiliary source used to pick up users whose tokens
+  // were soft-disconnected but who still have a self-entity in the graph.
+  // Connected-tokens is the authoritative cron gate for fresh strangers, so
+  // a failure here must not crash the entire overnight cycle.
+  let fromGraph: string[] = [];
+  try {
+    const { data: entities, error } = await supabase
+      .from('tkg_entities')
+      .select('user_id')
+      .eq('name', 'self');
+    if (error) {
+      logStructuredEvent({
+        event: 'cron.daily_brief.eligibility.tkg_entities_failed',
+        level: 'warn',
+        generationStatus: 'degraded',
+        details: { error: error.message, fallback: 'connected_only' },
+      });
+    } else {
+      fromGraph = (entities ?? [])
+        .map((e: { user_id: string | null }) => e.user_id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0);
+    }
+  } catch (err) {
+    logStructuredEvent({
+      event: 'cron.daily_brief.eligibility.tkg_entities_threw',
+      level: 'warn',
+      generationStatus: 'degraded',
+      details: {
+        error: err instanceof Error ? err.message : String(err),
+        fallback: 'connected_only',
+      },
+    });
+  }
 
-  const fromGraph = (entities ?? []).map((e: { user_id: string }) => e.user_id);
   const userIds = [...new Set([...connected, ...fromGraph])];
   if (userIds.length === 0) return [];
   return filterDailyBriefEligibleUserIds(userIds, supabase);

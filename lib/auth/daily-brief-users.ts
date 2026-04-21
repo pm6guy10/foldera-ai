@@ -43,12 +43,26 @@ export async function filterDailyBriefEligibleUserIds(
 
   for (const userId of uniqueUserIds) {
     const sub = subByUser.get(userId);
-    if (sub && sub.status === 'active' && isActiveEligiblePlan(sub.plan)) {
+
+    // Free-forever semantics (locked pricing decision in .cursorrules):
+    // Any user with live OAuth tokens is cron-eligible regardless of
+    // subscription status. This mathematically guarantees:
+    //   - fresh strangers (connected, no user_subscriptions row)
+    //   - past_due users (still in Stripe grace period)
+    //   - expired-trial users (fall through to free tier)
+    //   - downgraded/cancelled users who still have connected tokens
+    // Hard opt-out cost control happens upstream: the cleanup-cancelled
+    // cron revokes tokens, which naturally drops the user from `connected`.
+    if (connected.has(userId)) {
       eligibleUserIds.add(userId);
       continue;
     }
-    // OAuth connected but no Stripe/subscription row yet (common right after signup).
-    if (!sub && connected.has(userId)) {
+
+    // Not OAuth-connected: only include if a paid/trial/free row explicitly
+    // marks them active. Cron has no signals to process without tokens, but
+    // we keep this branch so readiness failure is surfaced per user rather
+    // than silently dropping a paying customer.
+    if (sub && sub.status === 'active' && isActiveEligiblePlan(sub.plan)) {
       eligibleUserIds.add(userId);
     }
   }

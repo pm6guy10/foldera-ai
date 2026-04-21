@@ -169,7 +169,7 @@ describe('multi-user safety', () => {
     } as unknown as ReturnType<typeof dbClient.createServerClient>);
     const listSpy = vi
       .spyOn(userTokens, 'listConnectedUserIds')
-      .mockResolvedValue(new Set([OWNER_USER_ID]));
+      .mockResolvedValue([OWNER_USER_ID]);
     try {
       const out = await filterDailyBriefEligibleUserIds([OWNER_USER_ID, RANDOM_UUID]);
       expect(out).toEqual([OWNER_USER_ID]);
@@ -177,6 +177,149 @@ describe('multi-user safety', () => {
       fromSpy.mockRestore();
       listSpy.mockRestore();
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // AZ-11 Stranger Loop: OAuth-connected users are cron-eligible regardless of
+  // subscription status (free-forever semantics). These tests lock the contract
+  // so a regression in filterDailyBriefEligibleUserIds is caught immediately.
+  // ---------------------------------------------------------------------------
+  describe('AZ-11 free-forever cron eligibility', () => {
+    const STRANGER_UUID = 'cccccccc-cccc-4ccc-cccc-cccccccccccc';
+
+    function mockSupabaseWithSubscriptions(
+      subs: Array<{ user_id: string; plan: string | null; status: string | null }>,
+    ) {
+      return vi.spyOn(dbClient, 'createServerClient').mockReturnValue({
+        from: (table: string) => {
+          if (table === 'user_subscriptions') {
+            return {
+              select: () => ({
+                in: () => Promise.resolve({ data: subs, error: null }),
+              }),
+            };
+          }
+          return {
+            select: () => ({
+              in: () => Promise.resolve({ data: [], error: null }),
+            }),
+          };
+        },
+      } as unknown as ReturnType<typeof dbClient.createServerClient>);
+    }
+
+    it('fresh stranger (OAuth-connected, no subscription row) is eligible', async () => {
+      const fromSpy = mockSupabaseWithSubscriptions([]);
+      const listSpy = vi
+        .spyOn(userTokens, 'listConnectedUserIds')
+        .mockResolvedValue([STRANGER_UUID]);
+      try {
+        const out = await filterDailyBriefEligibleUserIds([STRANGER_UUID]);
+        expect(out).toEqual([STRANGER_UUID]);
+      } finally {
+        fromSpy.mockRestore();
+        listSpy.mockRestore();
+      }
+    });
+
+    it('stranger with past_due subscription is still eligible (Stripe grace period)', async () => {
+      const fromSpy = mockSupabaseWithSubscriptions([
+        { user_id: STRANGER_UUID, plan: 'pro', status: 'past_due' },
+      ]);
+      const listSpy = vi
+        .spyOn(userTokens, 'listConnectedUserIds')
+        .mockResolvedValue([STRANGER_UUID]);
+      try {
+        const out = await filterDailyBriefEligibleUserIds([STRANGER_UUID]);
+        expect(out).toEqual([STRANGER_UUID]);
+      } finally {
+        fromSpy.mockRestore();
+        listSpy.mockRestore();
+      }
+    });
+
+    it('stranger with expired trial subscription is still eligible (free-forever fallback)', async () => {
+      const fromSpy = mockSupabaseWithSubscriptions([
+        { user_id: STRANGER_UUID, plan: 'trial', status: 'expired' },
+      ]);
+      const listSpy = vi
+        .spyOn(userTokens, 'listConnectedUserIds')
+        .mockResolvedValue([STRANGER_UUID]);
+      try {
+        const out = await filterDailyBriefEligibleUserIds([STRANGER_UUID]);
+        expect(out).toEqual([STRANGER_UUID]);
+      } finally {
+        fromSpy.mockRestore();
+        listSpy.mockRestore();
+      }
+    });
+
+    it('cancelled user with live OAuth tokens stays eligible (free-forever promise)', async () => {
+      const fromSpy = mockSupabaseWithSubscriptions([
+        { user_id: STRANGER_UUID, plan: 'pro', status: 'cancelled' },
+      ]);
+      const listSpy = vi
+        .spyOn(userTokens, 'listConnectedUserIds')
+        .mockResolvedValue([STRANGER_UUID]);
+      try {
+        const out = await filterDailyBriefEligibleUserIds([STRANGER_UUID]);
+        expect(out).toEqual([STRANGER_UUID]);
+      } finally {
+        fromSpy.mockRestore();
+        listSpy.mockRestore();
+      }
+    });
+
+    it('not-connected user with no subscription is excluded', async () => {
+      const fromSpy = mockSupabaseWithSubscriptions([]);
+      const listSpy = vi
+        .spyOn(userTokens, 'listConnectedUserIds')
+        .mockResolvedValue([]);
+      try {
+        const out = await filterDailyBriefEligibleUserIds([STRANGER_UUID]);
+        expect(out).toEqual([]);
+      } finally {
+        fromSpy.mockRestore();
+        listSpy.mockRestore();
+      }
+    });
+
+    it('not-connected user with cancelled subscription is excluded', async () => {
+      const fromSpy = mockSupabaseWithSubscriptions([
+        { user_id: STRANGER_UUID, plan: 'pro', status: 'cancelled' },
+      ]);
+      const listSpy = vi
+        .spyOn(userTokens, 'listConnectedUserIds')
+        .mockResolvedValue([]);
+      try {
+        const out = await filterDailyBriefEligibleUserIds([STRANGER_UUID]);
+        expect(out).toEqual([]);
+      } finally {
+        fromSpy.mockRestore();
+        listSpy.mockRestore();
+      }
+    });
+
+    it('mixed cohort: preserves input ordering for eligible users', async () => {
+      const fromSpy = mockSupabaseWithSubscriptions([
+        { user_id: OWNER_USER_ID, plan: 'pro', status: 'active' },
+        { user_id: STRANGER_UUID, plan: 'pro', status: 'cancelled' },
+      ]);
+      const listSpy = vi
+        .spyOn(userTokens, 'listConnectedUserIds')
+        .mockResolvedValue([OWNER_USER_ID, STRANGER_UUID]);
+      try {
+        const out = await filterDailyBriefEligibleUserIds([
+          STRANGER_UUID,
+          RANDOM_UUID,
+          OWNER_USER_ID,
+        ]);
+        expect(out).toEqual([STRANGER_UUID, OWNER_USER_ID]);
+      } finally {
+        fromSpy.mockRestore();
+        listSpy.mockRestore();
+      }
+    });
   });
 
   it('buildUserIdentityContext with empty goals returns null', () => {
