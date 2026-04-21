@@ -89,6 +89,7 @@ import {
 import { hasBracketTemplatePlaceholder } from './bracket-placeholder';
 import { resolveEvidenceSignalIdsForWinner } from './resolve-evidence-signal-ids';
 import { getGoalQuarantineReason, isUsableGoalRow } from './goal-hygiene';
+import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -804,7 +805,8 @@ export interface GoalGapEntry {
 /**
  * For every active (non-placeholder) goal, count how many signals, actions,
  * and commitments relate to it across 14d / 30d / 90d windows.
- * Uses decrypted signal content for keyword matching.
+ * Uses metadata summaries only; full tkg_signals.content stays out of the
+ * pre-LLM scorer/generator path.
  * Computes behavioral divergence: stated priority vs. actual signal density.
  *
  * Returns up to 5 goals ordered by gap severity descending.
@@ -831,10 +833,10 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
 
   if (goals.length === 0) return [];
 
-  // 2. Signals last 90d — decrypt content for real keyword matching
+  // 2. Signals last 90d — metadata only for goal-gap density matching
   const { data: signalRows } = await supabase
     .from('tkg_signals')
-    .select('content, source, occurred_at')
+    .select('id, source, occurred_at, author, type, source_id')
     .eq('user_id', userId)
     .eq('processed', true)
     .gte('occurred_at', ninetyDaysAgo)
@@ -860,16 +862,20 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
     .gte('made_at', ninetyDaysAgo)
     .limit(200);
 
-  // Decrypt signals once — reused across all goals
   const thirtyDaysAgo = new Date(now - daysMs(30)).toISOString();
   type DecryptedSignal = { text: string; occurred_at: string };
-  const decryptedSignals: DecryptedSignal[] = [];
-  for (const s of signalRows ?? []) {
-    if (String(s.source ?? '').trim() === 'user_feedback') continue;
-    const dec = decryptWithStatus((s.content as string) ?? '');
-    if (dec.usedFallback) continue;
-    decryptedSignals.push({ text: dec.plaintext.toLowerCase(), occurred_at: s.occurred_at as string });
-  }
+  const decryptedSignals: DecryptedSignal[] = buildSignalMetadataSummaryRows(
+    (signalRows ?? []).map((signal: any) => ({
+      id: String(signal.id),
+      source: String(signal.source ?? ''),
+      occurred_at: String(signal.occurred_at ?? ''),
+      author: (signal.author as string | null) ?? null,
+      type: (signal.type as string | null) ?? null,
+      source_id: (signal.source_id as string | null) ?? null,
+    })),
+  )
+    .filter((signal) => String(signal.source ?? '').trim() !== 'user_feedback')
+    .map((signal) => ({ text: signal.content.toLowerCase(), occurred_at: signal.occurred_at as string }));
 
   const actions = actionRows ?? [];
   const commitments = (commitmentRows ?? []) as Array<{ description: string; category: string | null; made_at: string | null }>;
@@ -994,21 +1000,21 @@ async function buildAvoidanceObservations(
   // 1. Received emails with no reply sent in the last 14 days
   const fourteenDaysAgo = new Date(now - daysMs(14)).toISOString();
   const { data: sentRows } = await supabase
-    .from('tkg_signals')
-    .select('content, occurred_at')
+    .from('tkg_actions')
+    .select('directive_text, execution_result, generated_at')
     .eq('user_id', userId)
-    .eq('type', 'email_sent')
-    .gte('occurred_at', fourteenDaysAgo)
+    .eq('action_type', 'send_message')
+    .in('status', ['approved', 'executed'])
+    .gte('generated_at', fourteenDaysAgo)
     .limit(20);
 
   // Build set of addresses/names we have replied to
   const repliedToTokens = new Set<string>();
   for (const row of sentRows ?? []) {
-    const dec = decryptWithStatus((row.content as string) ?? '');
-    if (dec.usedFallback) continue;
-    const toMatch = dec.plaintext.match(/^To:\s*(.+?)(?:\n|$)/im);
-    if (!toMatch) continue;
-    const toStr = toMatch[1].toLowerCase();
+    const execResult = row.execution_result as Record<string, unknown> | null;
+    const artifact = execResult?.artifact as Record<string, unknown> | undefined;
+    const toStr = `${String(artifact?.to ?? '')} ${String(row.directive_text ?? '')}`.toLowerCase();
+    if (!toStr.trim()) continue;
     const emails = toStr.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/g) ?? [];
     for (const e of emails) repliedToTokens.add(e);
     // Also index name fragments for fuzzy matching (e.g. "yadira" matches "yadira.gonzalez@...")
@@ -4450,15 +4456,14 @@ async function fetchUserSelfNameTokens(userId: string): Promise<Set<string>> {
       try {
         const { data: signalRows } = await supabase
           .from('tkg_signals')
-          .select('content')
+          .select('author')
           .eq('user_id', userId)
           .eq('type', 'email_sent')
           .limit(3);
         for (const row of signalRows ?? []) {
-          const dec = (await import('@/lib/encryption')).decryptWithStatus(row.content as string ?? '');
-          if (dec.usedFallback) continue;
-          // Look for "From: Name <email>" pattern
-          const fromMatch = dec.plaintext.match(/^From:\s+([^<\n]+?)(?:\s*<|\s*$)/im);
+          const author = typeof row.author === 'string' ? row.author.trim() : '';
+          if (!author) continue;
+          const fromMatch = author.match(/^([^<\n]+?)(?:\s*<|\s*$)/);
           if (fromMatch) {
             const fromName = fromMatch[1].trim();
             for (const part of fromName.split(/[\s._\-]+/)) {
@@ -9793,24 +9798,8 @@ export async function generateDirective(
         }
       }
 
-      // --- Per-candidate: research ---
-      let insight: ResearchInsight | null = null;
       const isDecayDiscrepancy =
         hydratedWinner.type === 'discrepancy' && hydratedWinner.discrepancyClass === 'decay';
-      if (!isDecayDiscrepancy && currentCandidate.type !== 'hunt' && currentCandidate.score >= 2.0) {
-        try {
-          insight = await researchWinner(userId, hydratedWinner, {
-            dryRun: options.dryRun,
-            pipelineDryRun: options.pipelineDryRun,
-          });
-        } catch {
-          logStructuredEvent({
-            event: 'researcher_fallthrough', level: 'warn', userId,
-            artifactType: null, generationStatus: 'researcher_fallthrough',
-            details: { scope: 'generator' },
-          });
-        }
-      }
 
       // --- Per-candidate: conviction engine (only for first viable candidate) ---
       // Decay reconnection: skip conviction math — it keys off matchedGoal (often financial runway)
@@ -9833,7 +9822,7 @@ export async function generateDirective(
 
       const scorerMetadataSignalEvidence = buildScorerMetadataSignalEvidence(hydratedWinner);
       const preflightCtx = buildStructuredContext(
-        hydratedWinner, guardrails, userId, scorerMetadataSignalEvidence, insight,
+        hydratedWinner, guardrails, userId, scorerMetadataSignalEvidence, null,
         goalsForContext, goalGapAnalysis,
         scored.antiPatterns, scored.divergences,
         alreadySent, convictionDecision, behavioralHistory,
@@ -9944,6 +9933,7 @@ export async function generateDirective(
       let signalEvidence: SignalSnippet[] = [];
       let entityConversationState: string | null = null;
       let avoidanceObservations: Awaited<ReturnType<typeof buildAvoidanceObservations>> = [];
+      let insight: ResearchInsight | null = null;
       if (options.pipelineDryRun) {
         signalEvidence = scorerMetadataSignalEvidence;
       } else {
@@ -9972,6 +9962,21 @@ export async function generateDirective(
         try {
           avoidanceObservations = await buildAvoidanceObservations(userId, hydratedWinner, signalEvidence, userEmails);
         } catch { /* non-blocking */ }
+      }
+
+      if (!isDecayDiscrepancy && currentCandidate.type !== 'hunt' && currentCandidate.score >= 2.0) {
+        try {
+          insight = await researchWinner(userId, hydratedWinner, {
+            dryRun: options.dryRun,
+            pipelineDryRun: options.pipelineDryRun,
+          });
+        } catch {
+          logStructuredEvent({
+            event: 'researcher_fallthrough', level: 'warn', userId,
+            artifactType: null, generationStatus: 'researcher_fallthrough',
+            details: { scope: 'generator' },
+          });
+        }
       }
 
       const ctx = buildStructuredContext(
@@ -10210,7 +10215,7 @@ export async function generateDirective(
           title: currentCandidate.title.slice(0, 80),
           reasons: ['proof_mode:low_cross_wait_rationale_blocked'],
         });
-        continue;
+        break;
       }
     }
 
@@ -10222,7 +10227,7 @@ export async function generateDirective(
         artifactType: null, generationStatus: 'llm_generation_failed',
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), issues: payloadResult.issues },
       });
-      continue;
+      break;
     }
 
     let payload = payloadResult.payload;
@@ -10247,7 +10252,7 @@ export async function generateDirective(
           matches: staleDateCheck.matches.slice(0, 6),
         },
       });
-      continue;
+      break;
     }
 
     // =====================================================================
@@ -10283,7 +10288,7 @@ export async function generateDirective(
           candidate_title: currentCandidate.title.slice(0, 80),
         },
       });
-      continue;
+      break;
     }
 
     if (
@@ -10306,7 +10311,7 @@ export async function generateDirective(
           candidate_title: currentCandidate.title.slice(0, 80),
         },
       });
-      continue;
+      break;
     }
 
     if (llmAttemptedAction !== canonicalAction) {
@@ -10349,7 +10354,7 @@ export async function generateDirective(
         artifactType: canonicalAction, generationStatus: 'duplicate_suppressed',
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), matching_action_id: duplicateCheck.matchingActionId, similarity: duplicateCheck.similarity },
       });
-      continue;
+      break;
     }
 
     // Stale ISO / slash-ISO / month dates in brief-visible fields only (`directiveHasStalePastDates` above
@@ -10368,9 +10373,9 @@ export async function generateDirective(
         userId,
         artifactType: canonicalAction,
         generationStatus: 'noise_winner_excluded',
-        details: { scope: 'generator', candidate_id: currentCandidate.id, artifact_to: artTo.slice(0, 80) },
+          details: { scope: 'generator', candidate_id: currentCandidate.id, artifact_to: artTo.slice(0, 80) },
       });
-      continue;
+      break;
     }
 
     // Usefulness gate — candidate-specific, try next
@@ -10388,7 +10393,7 @@ export async function generateDirective(
         artifactType: canonicalAction, generationStatus: 'usefulness_gate_failed',
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), reason: usefulnessCheck.reason },
       });
-      continue;
+      break;
     }
 
     // Strip locked display names from directive + artifact strings before persistence
@@ -10539,7 +10544,7 @@ export async function generateDirective(
         artifactType: canonicalAction, generationStatus: 'persistence_validation_failed',
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), issues: persistenceIssues },
       });
-      continue;
+      break;
     }
 
     // Hard post-LLM locked contact check: if the artifact or directive text
@@ -10560,7 +10565,7 @@ export async function generateDirective(
           artifactType: canonicalAction, generationStatus: 'locked_contact_in_artifact',
           details: { scope: 'post_llm_validation', violating_contacts: violatingContacts },
         });
-        continue;
+        break;
       }
     }
 
@@ -10573,7 +10578,7 @@ export async function generateDirective(
         artifactType: canonicalAction, generationStatus: 'thin_entry_phrase_blocked',
         details: { scope: 'post_llm_validation', phrase: thinHit },
       });
-      continue;
+      break;
     }
 
     const artStr = JSON.stringify(payload.artifact);
@@ -10598,7 +10603,7 @@ export async function generateDirective(
         artifactType: canonicalAction, generationStatus: 'ungrounded_currency_blocked',
         details: { scope: 'post_llm_validation', amounts: badDollars.slice(0, 4) },
       });
-      continue;
+      break;
     }
 
     // Trigger action lock validation — discrepancy candidates only (skip when cross-signal degraded to wait_rationale
@@ -10639,7 +10644,7 @@ export async function generateDirective(
             violations: hardTriggerViolations,
           },
         });
-        continue;
+        break;
       }
       if (!triggerValidation.pass) {
         logStructuredEvent({

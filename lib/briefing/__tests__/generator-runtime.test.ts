@@ -27,6 +27,7 @@ const mockScoreOpenLoops = vi.fn<() => Promise<ScorerResult>>();
 const mockIsOverDailyLimit = vi.fn<() => Promise<boolean>>();
 const mockTrackApiCall = vi.fn<() => Promise<void>>();
 const mockResearchWinner = vi.fn<() => Promise<null>>();
+const mockRunConvictionEngine = vi.fn<() => Promise<null>>();
 const mockGetDirectiveConstraintViolations = vi.fn();
 const mockGetPinnedConstraintPrompt = vi.fn();
 const mockLogStructuredEvent = vi.fn();
@@ -160,6 +161,10 @@ vi.mock('@/lib/briefing/researcher', () => ({
   researchWinner: mockResearchWinner,
 }));
 
+vi.mock('../conviction-engine', () => ({
+  runConvictionEngine: mockRunConvictionEngine,
+}));
+
 vi.mock('@/lib/briefing/pinned-constraints', () => ({
   getDirectiveConstraintViolations: mockGetDirectiveConstraintViolations,
   getPinnedConstraintPrompt: mockGetPinnedConstraintPrompt,
@@ -257,6 +262,7 @@ describe('generateDirective runtime failures', () => {
     mockIsOverDailyLimit.mockReset();
     mockTrackApiCall.mockReset();
     mockResearchWinner.mockReset();
+    mockRunConvictionEngine.mockReset();
     mockGetDirectiveConstraintViolations.mockReset();
     mockGetPinnedConstraintPrompt.mockReset();
     mockLogStructuredEvent.mockReset();
@@ -272,6 +278,7 @@ describe('generateDirective runtime failures', () => {
 
     mockIsOverDailyLimit.mockResolvedValue(false);
     mockResearchWinner.mockResolvedValue(null);
+    mockRunConvictionEngine.mockResolvedValue(null);
     mockGetDirectiveConstraintViolations.mockReturnValue([]);
     mockGetPinnedConstraintPrompt.mockReturnValue(null);
   });
@@ -383,15 +390,57 @@ describe('generateDirective runtime failures', () => {
     queueEmptyTkgActionsResults(4);
 
     const { generateDirective } = await import('../generator');
-    const directive = await generateDirective('user-1', {
-      dryRun: true,
-      pipelineDryRun: true,
-    });
+    const directive = await generateDirective('user-1', { dryRun: true, pipelineDryRun: true });
 
     expect(signalSelectCalls).toEqual([]);
     expect(signalLimitCalls).toEqual([]);
     expect(signalInCalls).toEqual([]);
     expect(mockDecryptWithStatus).not.toHaveBeenCalled();
+  });
+
+  it('locks late hydration to the first viable winner instead of hydrating fallback candidates', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    const runner = buildWinner();
+    runner.id = 'loop-2';
+    runner.title = 'Reply to the backup hiring thread before the slot closes';
+    runner.content = 'The backup hiring thread still needs a direct reply before the slot closes.';
+    runner.relationshipContext = '- Backup Hiring Manager <backup@mas3corp.com> (Hiring)';
+    runner.sourceSignals = [
+      {
+        kind: 'signal',
+        id: 'sig-2',
+        occurredAt: new Date(FIXED_NOW.getTime() - DAY_MS).toISOString(),
+        summary: 'Backup hiring manager thread',
+      },
+    ];
+    scored.topCandidates = [scored.winner, runner];
+
+    mockScoreOpenLoops.mockResolvedValue(scored);
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 80 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Send a quick check-in to the MAS3 hiring manager today.',
+          artifact_type: 'send_message',
+          artifact: {
+            to: 'manager@mas3corp.com',
+            subject: 'Quick check-in',
+            body: 'Hi,\n\nJust checking in on the MAS3 process.\n\nBest,\nBrandon',
+          },
+          evidence: 'The manager has not replied yet.',
+          why_now: 'A response is still pending.',
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(signalSelectCalls.length).toBeGreaterThan(0);
+    expect(anthropicCreate).toHaveBeenCalledTimes(2);
+    expect(directive.action_type).toBe('do_nothing');
+    expect(directive.generationLog?.stage).toBe('validation');
   });
 
   it('excludes verification-stub rows from RECENT_ACTIONS_7D in the Anthropic prompt', async () => {
@@ -1559,9 +1608,14 @@ describe('generateDirective runtime failures', () => {
     queueLockedConstraints([{ normalized_entity: 'nicole vreeland' }]);
 
     const { generateDirective } = await import('../generator');
-    const directive = await generateDirective('user-1', { dryRun: true });
+    const directive = await generateDirective('user-1', {
+      dryRun: true,
+      pipelineDryRun: true,
+    });
 
     expect(anthropicCreate).not.toHaveBeenCalled();
+    expect(signalSelectCalls).toEqual([]);
+    expect(mockDecryptWithStatus).not.toHaveBeenCalled();
     expect(directive.directive).toBe('__GENERATION_FAILED__');
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_blocked',

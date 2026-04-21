@@ -8,6 +8,7 @@ type RuntimeState = {
   entities: Row[];
   commitments: Row[];
   signals: Row[];
+  signalSelectColumns: string[];
   goals: Row[];
   actions: Row[];
   userSubscriptions: Row[];
@@ -33,6 +34,7 @@ function createRuntime(): RuntimeState {
     entities: [],
     commitments: [],
     signals: [],
+    signalSelectColumns: [],
     goals: [],
     actions: [],
     userSubscriptions: [],
@@ -441,8 +443,10 @@ function createSupabaseMock() {
           };
         case 'tkg_signals':
           return {
-            select: (columns?: string, options?: { count?: string; head?: boolean }) =>
-              new SelectQuery(runtime.signals, columns, options),
+            select: (columns?: string, options?: { count?: string; head?: boolean }) => {
+              runtime.signalSelectColumns.push(columns ?? '*');
+              return new SelectQuery(runtime.signals, columns, options);
+            },
             insert: (payload: Row | Row[]) => new InsertQuery('signals', runtime.signals, payload),
             update: (payload: Row) => new UpdateQuery(runtime.signals, payload),
           };
@@ -602,9 +606,46 @@ function anthropicResponse(payload: unknown) {
   };
 }
 
+function isContentSelectingColumns(columns: string): boolean {
+  return /\bcontent\b/i.test(columns);
+}
+
+function flattenAnthropicPrompt(input: {
+  system?: string;
+  messages?: Array<{ content?: unknown }>;
+}): string {
+  const parts: string[] = [];
+  if (typeof input.system === 'string') {
+    parts.push(input.system);
+  }
+
+  for (const message of input.messages ?? []) {
+    const content = message.content;
+    if (typeof content === 'string') {
+      parts.push(content);
+      continue;
+    }
+
+    if (Array.isArray(content)) {
+      for (const part of content) {
+        if (part && typeof part === 'object' && 'text' in part && typeof (part as { text?: unknown }).text === 'string') {
+          parts.push((part as { text: string }).text);
+        }
+      }
+    }
+  }
+
+  return parts.join('\n');
+}
+
 function setAnthropicPipelineMocks() {
-  mockAnthropicCreate.mockImplementation(async (input: { system?: string }) => {
+  mockAnthropicCreate.mockImplementation(async (input: {
+    system?: string;
+    messages?: Array<{ content?: unknown }>;
+  }) => {
     const system = input.system ?? '';
+    const prompt = flattenAnthropicPrompt(input);
+    const promptBlob = `${system}\n${prompt}`;
 
     if (system.includes('You are extracting structured data from raw signals')) {
       return anthropicResponse([
@@ -644,6 +685,31 @@ function setAnthropicPipelineMocks() {
       system.includes('FOLDERA CONVICTION ENGINE') ||
       system.includes("You are Foldera's behavioral analyst")
     ) {
+      if (promptBlob.includes('locked artifact type: write_document')) {
+        return anthropicResponse({
+          action: 'write_document',
+          confidence: 82,
+          reason: 'Alex Morgan requested the signed permit appeal draft by Friday and you have not replied — thread is 72h old.',
+          causal_diagnosis: {
+            why_exists_now:
+              'Alex’s email set a Friday deadline for the signed permit appeal draft; the thread has gone unanswered.',
+            mechanism:
+              'A hard external deadline plus no outbound reply leaves approval and filing ownership undefined.',
+          },
+          directive: 'Lock the permit approval decision and final filing owner today.',
+          artifact_type: 'write_document',
+          artifact: {
+            document_purpose: 'approval brief',
+            target_reader: 'Brandon Kapp',
+            title: 'Permit appeal approval decision needed today',
+            content:
+              'Alex Morgan requested the signed permit appeal draft by Friday. Today the open issue is whether the draft is approved for filing and who owns final submission. Confirm that decision now so the filing window does not slip past the stated deadline.',
+          },
+          why_now:
+            'Alex Morgan requested the signed permit appeal draft by Friday and you have not replied — thread is 72h old.',
+        });
+      }
+
       return anthropicResponse({
         action: 'send_message',
         confidence: 82,
@@ -733,13 +799,25 @@ describe('briefing pipeline receipt', () => {
     expect(processedSignal?.extracted_entities).not.toBeNull();
     expect(processedSignal?.extracted_entities).not.toEqual([]);
 
+    runtime.signalSelectColumns = [];
     const scored = await scoreOpenLoops(TEST_USER_ID);
     expect(scored?.winner).toBeTruthy();
     expect(scored?.winner.score ?? 0).toBeGreaterThan(0);
+    expect(runtime.signalSelectColumns.every((columns) => !isContentSelectingColumns(columns))).toBe(true);
 
+    runtime.signalSelectColumns = [];
     const directive = await generateDirective(TEST_USER_ID);
     expect(directive.action_type).not.toBe('do_nothing');
     expect((directive as Row).embeddedArtifact).toBeTruthy();
+    const firstContentSelectIndex = runtime.signalSelectColumns.findIndex((columns) =>
+      isContentSelectingColumns(columns),
+    );
+    expect(firstContentSelectIndex).toBeGreaterThanOrEqual(0);
+    expect(
+      runtime.signalSelectColumns
+        .slice(0, firstContentSelectIndex)
+        .every((columns) => !isContentSelectingColumns(columns)),
+    ).toBe(true);
 
     const generateResult = await runDailyGenerate({ userIds: [TEST_USER_ID] });
     expect(generateResult.results).toEqual([

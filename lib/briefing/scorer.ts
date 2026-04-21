@@ -16,7 +16,6 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import { decryptWithStatus } from '@/lib/encryption';
 import {
   buildDirectiveMlBucketKey,
   mlBucketInputsFromBaseCandidate,
@@ -66,6 +65,7 @@ import {
   isExcludedSignalSourceForScorerPool,
   isChatConversationSignalSource,
 } from './scorer-candidate-sources';
+import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
 import {
   getCommitmentQuarantineReason,
   getGoalQuarantineReason,
@@ -1249,37 +1249,15 @@ async function getEntitySkipPenalty(
 ): Promise<number> {
   const supabase = createServerClient();
   const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
-  const fourteenDaysAgo = new Date(Date.now() - daysMs(14)).toISOString();
 
   const names = extractPersonNames(`${candidateTitle} ${candidateContent}`);
   if (names.length === 0) return 0;
 
   try {
-    // --- Check 1: Has user already sent an email to this entity? ---
-    const { data: sentSignals } = await supabase
-      .from('tkg_signals')
-      .select('content')
-      .eq('user_id', userId)
-      .eq('type', 'email_sent')
-      .gte('occurred_at', fourteenDaysAgo)
-      .limit(30);
-
-    if (sentSignals && sentSignals.length > 0) {
-      for (const name of names) {
-        const firstName = name.split(' ')[0].toLowerCase();
-        if (firstName.length < 3) continue;
-        for (const sig of sentSignals) {
-          const dec = decryptWithStatus(sig.content as string ?? '');
-          if (dec.usedFallback) continue;
-          if (dec.plaintext.toLowerCase().includes(firstName)) {
-            // User already emailed this person — this candidate is not novel
-            return -30;
-          }
-        }
-      }
-    }
-
-    // --- Check 2: 2+ consecutive skips = user already considered this ---
+    // 2+ consecutive skips = user already considered this.
+    // The prior sent-mail novelty check depended on full-body fetches from
+    // tkg_signals.content. Scoring is now metadata-first, so novelty is enforced
+    // via recent action history instead of thread-body hydration.
     const { data: recentActions } = await supabase
       .from('tkg_actions')
       .select('directive_text, status, execution_result')
@@ -1577,46 +1555,39 @@ export async function enrichRelationshipContext(
   // Find recent signals mentioning this person
   const thirtyDaysAgo = new Date(Date.now() - daysMs(30)).toISOString();
   try {
-    const { data: signals } = await supabase
+    const { data: signalRows } = await supabase
       .from('tkg_signals')
-      .select('content, source, occurred_at')
+      .select('id, source, occurred_at, author, type, source_id')
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', thirtyDaysAgo)
       .order('occurred_at', { ascending: false })
       .limit(100);
 
-    if (signals && signals.length > 0) {
+    if (signalRows && signalRows.length > 0) {
       const nameLower = entityName.toLowerCase();
       const firstName = nameLower.split(/\s+/)[0];
-      let skippedRows = 0;
-      const mentioning = signals
-        .map((signal: any) => {
-          const decrypted = decryptWithStatus(signal.content as string ?? '');
-          if (decrypted.usedFallback) {
-            skippedRows++;
-            return null;
-          }
-
-          if (isSelfReferentialSignal(decrypted.plaintext)) return null;
-          const lower = decrypted.plaintext.toLowerCase();
-          if (!lower.includes(nameLower) && !lower.includes(firstName)) return null;
-
-          return {
-            occurred_at: signal.occurred_at,
-            content: decrypted.plaintext,
-          };
+      const mentioning = buildSignalMetadataSummaryRows(
+        signalRows.map((signal: any) => ({
+          id: String(signal.id),
+          source: String(signal.source ?? ''),
+          occurred_at: String(signal.occurred_at ?? ''),
+          author: (signal.author as string | null) ?? null,
+          type: (signal.type as string | null) ?? null,
+          source_id: (signal.source_id as string | null) ?? null,
+        })),
+      )
+        .filter((signal) => {
+          const authorLower = (signal.author ?? '').toLowerCase();
+          return authorLower.includes(nameLower) || authorLower.includes(firstName);
         })
-        .filter((signal): signal is { occurred_at: string; content: string } => signal !== null)
         .slice(0, 3);
-
-      logDecryptSkip(userId, 'scorer:relationship_context', skippedRows);
 
       if (mentioning.length > 0) {
         parts.push('Recent mentions:');
         for (const signal of mentioning) {
-          const date = (signal.occurred_at ?? '').slice(0, 10);
-          parts.push(`  [${date}] ${signal.content.slice(0, 300)}`);
+          const date = signal.occurred_at.slice(0, 10);
+          parts.push(`  [${date}] ${signal.content.replace(/\s+/g, ' ').slice(0, 300)}`);
         }
       }
     }
@@ -2269,7 +2240,7 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
   const [signalsRes, goalsRes] = await Promise.all([
     supabase
       .from('tkg_signals')
-      .select('content, source, type, occurred_at')
+      .select('id, source, type, occurred_at, author, source_id')
       .eq('user_id', userId)
       .gte('occurred_at', fourteenDaysAgo)
       .eq('processed', true)
@@ -2295,14 +2266,19 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
   const domainSignalCounts: Record<string, { count: number; signals: string[] }> = {};
   let totalClassified = 0;
 
-  let skippedRows = 0;
-  for (const s of signals) {
-    const decrypted = decryptWithStatus(s.content as string ?? '');
-    if (decrypted.usedFallback) {
-      skippedRows++;
-      continue;
-    }
-    const content = decrypted.plaintext;
+  const metadataSignals = buildSignalMetadataSummaryRows(
+    signals.map((signal: any) => ({
+      id: String(signal.id),
+      source: String(signal.source ?? ''),
+      type: (signal.type as string | null) ?? null,
+      occurred_at: String(signal.occurred_at ?? ''),
+      author: (signal.author as string | null) ?? null,
+      source_id: (signal.source_id as string | null) ?? null,
+    })),
+  );
+
+  for (const s of metadataSignals) {
+    const content = s.content;
     if (content.length < 20) continue;
     if (String(s.source ?? '').trim() === 'user_feedback') continue;
     if (isSelfReferentialSignal(content)) continue;
@@ -2319,8 +2295,6 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
     }
     totalClassified++;
   }
-
-  logDecryptSkip(userId, 'scorer:revealed_goals', skippedRows);
 
   if (totalClassified < 5) return [];
 
@@ -2423,7 +2397,7 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
         .limit(300),
       supabase
         .from('tkg_signals')
-        .select('id, content, source, type, occurred_at')
+        .select('id, source, type, occurred_at, author, source_id')
         .eq('user_id', userId)
         .gte('occurred_at', thirtyDaysAgo)
         .eq('processed', true)
@@ -2467,15 +2441,19 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
     if (signals.length >= 15) {
       // Group signals by domain (keyword classification)
       const domainBuckets: Record<string, { count: number; signals: string[] }> = {};
-      let skippedRows = 0;
+      const metadataSignals = buildSignalMetadataSummaryRows(
+        signals.map((signal: any) => ({
+          id: String(signal.id),
+          source: String(signal.source ?? ''),
+          type: (signal.type as string | null) ?? null,
+          occurred_at: String(signal.occurred_at ?? ''),
+          author: (signal.author as string | null) ?? null,
+          source_id: (signal.source_id as string | null) ?? null,
+        })),
+      );
 
-      for (const s of signals) {
-        const decrypted = decryptWithStatus(s.content as string ?? '');
-        if (decrypted.usedFallback) {
-          skippedRows++;
-          continue;
-        }
-        const content = decrypted.plaintext;
+      for (const s of metadataSignals) {
+        const content = s.content;
         if (content.length < 20) continue;
         if (String(s.source ?? '').trim() === 'user_feedback') continue;
         if (isSelfReferentialSignal(content)) continue;
@@ -2489,8 +2467,6 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
           domainBuckets[domain].signals.push(content.slice(0, 150));
         }
       }
-
-      logDecryptSkip(userId, 'scorer:anti_patterns', skippedRows);
 
       const domainCounts = Object.values(domainBuckets).map(b => b.count);
       if (domainCounts.length >= 2) {
@@ -3879,7 +3855,7 @@ async function filterInvalidContext(
     const [rejectionRes, actionsRes] = await Promise.all([
       supabase
         .from('tkg_signals')
-        .select('content')
+        .select('id, source, occurred_at, author, type, source_id')
         .eq('user_id', userId)
         .in('type', ['rejection', 'user_feedback', 'outcome_feedback'])
         .gte('occurred_at', sixtyDaysAgo)
@@ -3896,11 +3872,16 @@ async function filterInvalidContext(
         .limit(150),
     ]);
 
-    rejectionTexts = (rejectionRes.data ?? []).flatMap((s) => {
-      const dec = decryptWithStatus(s.content as string ?? '');
-      if (dec.usedFallback) return [];
-      return [dec.plaintext.toLowerCase()];
-    });
+    rejectionTexts = buildSignalMetadataSummaryRows(
+      (rejectionRes.data ?? []).map((signal: any) => ({
+        id: String(signal.id),
+        source: String(signal.source ?? ''),
+        occurred_at: String(signal.occurred_at ?? ''),
+        author: (signal.author as string | null) ?? null,
+        type: (signal.type as string | null) ?? null,
+        source_id: (signal.source_id as string | null) ?? null,
+      })),
+    ).map((signal) => signal.content.toLowerCase());
 
     recentAllActions = (actionsRes.data ?? []).map((a) => ({
       directive_text: (a.directive_text as string) ?? '',
@@ -4329,7 +4310,7 @@ export async function scoreOpenLoops(
     // Load 200 to capture email + calendar + file + task signals
     supabase
       .from('tkg_signals')
-      .select('id, content, source, occurred_at, author, type, source_id')
+      .select('id, source, occurred_at, author, type, source_id')
       .eq('user_id', userId)
       .gte('occurred_at', oneHundredEightyDaysAgo)
       .eq('processed', true)
@@ -4413,25 +4394,19 @@ export async function scoreOpenLoops(
     diag.sourceCounts.commitments_after_dedup = commitments.length;
   }
 
-  let scoringDecryptSkips = 0;
-  const signals = (signalsRes.data ?? [])
-    .map((signal: any) => {
-      const decrypted = decryptWithStatus(signal.content as string ?? '');
-      if (decrypted.usedFallback) {
-        scoringDecryptSkips++;
-        return null;
-      }
-
-      return {
-        ...signal,
-        content: decrypted.plaintext,
-      };
-    })
-    .filter((signal: any) =>
-      signal &&
-      String(signal.source ?? '').trim() !== 'user_feedback' &&
-      !isSelfReferentialSignal(signal.content),
-    );
+  const signals = buildSignalMetadataSummaryRows(
+    (signalsRes.data ?? []).map((signal: any) => ({
+      id: String(signal.id),
+      source: String(signal.source ?? ''),
+      occurred_at: String(signal.occurred_at ?? ''),
+      author: (signal.author as string | null) ?? null,
+      type: (signal.type as string | null) ?? null,
+      source_id: (signal.source_id as string | null) ?? null,
+    })),
+  ).filter((signal: any) =>
+    String(signal.source ?? '').trim() !== 'user_feedback' &&
+    !isSelfReferentialSignal(signal.content),
+  );
   diag.sourceCounts.signals_after_decrypt = signals.length;
 
   const signalSourceByRowId = new Map<string, string>();
@@ -4451,16 +4426,7 @@ export async function scoreOpenLoops(
     directive_text: r.directive_text ?? '',
   }));
 
-  const structuredSignals = signals.map(
-    (s: {
-      id: string;
-      source?: string;
-      type?: string;
-      occurred_at?: string;
-      content: string;
-      source_id?: string | null;
-      author?: string | null;
-    }) => ({
+  const structuredSignals = signals.map((s) => ({
       id: String(s.id),
       source: String(s.source ?? ''),
       type: s.type ?? null,
@@ -4468,8 +4434,7 @@ export async function scoreOpenLoops(
       content: s.content,
       source_id: s.source_id ?? null,
       author: s.author ?? null,
-    }),
-  );
+    }));
 
   const authoritySignals = signals.filter(
     (signal: { source?: string; type?: string | null }) =>
@@ -4638,8 +4603,6 @@ export async function scoreOpenLoops(
     }
     return score * lg.multiplier;
   }
-
-  logDecryptSkip(userId, 'scorer:open_loops', scoringDecryptSkips);
 
   // Related-signal keyword overlap (scoring loop): same logical pool as the legacy
   // second query (≤90d, max 150 bodies) but derived from the already-decrypted
@@ -4972,14 +4935,23 @@ export async function scoreOpenLoops(
   for (const e of entities) {
     const nameLower = (e.name as string).toLowerCase();
     const nameTokens = nameLower.split(/\s+/).filter((t: string) => t.length >= 3);
+    const entityEmails = new Set<string>(
+      [e.primary_email as string | null | undefined, ...(((e.emails as string[] | undefined) ?? []))]
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .map((value) => value.toLowerCase()),
+    );
     if (nameTokens.length === 0) continue;
     const snippets: string[] = [];
     for (const sig of signals) {
       const sigAge = Date.now() - new Date(sig.occurred_at as string ?? 0).getTime();
       if (sigAge > fourteenDaysMs) continue;
+      const authorLower = (sig.author ?? '').toLowerCase();
       const sigLower = (sig.content as string).toLowerCase();
-      // Require all name tokens (first + last) to appear in the signal
-      if (nameTokens.every((t: string) => sigLower.includes(t))) {
+      const authorMatchesEmail = [...entityEmails].some((email) => authorLower.includes(email));
+      const authorMatchesName =
+        authorLower.length > 0 &&
+        (authorLower.includes(nameLower) || nameTokens.every((t: string) => authorLower.includes(t)));
+      if (authorMatchesEmail || authorMatchesName) {
         snippets.push((sig.content as string).slice(0, 200));
         if (snippets.length >= 3) break;
       }
@@ -6762,7 +6734,10 @@ export async function scoreOpenLoops(
   // -----------------------------------------------------------------------
   {
     const huntResult = runHuntAnomalies({
-      signals,
+      signals: signals.map((signal) => ({
+        ...signal,
+        type: signal.type ?? '',
+      })),
       commitments,
       selfEmails,
       blockedSenderEmails: gateBlockedSenderEmails,
