@@ -12,6 +12,8 @@ Achieve 3 consecutive successful runs for a non-Brandon user.
 - No scope expansion
 - No shipping without proof
 - Nothing is "done" until production verification passes
+- Free verification is the default locked protocol
+- Do not run a paid model-backed route, script, or full-run proof unless free proof is exhausted, the exact blocker is named, and the user explicitly approved that paid step
 - If code is pushed but not proven, mark it incomplete
 - If any source-of-truth file is stale, update it before closing the session
 
@@ -41,18 +43,24 @@ A valid loop requires:
 - works for non-owner user
 
 ## Required Verification After Every Meaningful Change
-1. npm run build
-2. npx playwright test
-3. npm run test:prod
-4. verify DB row exists
-5. verify email receipt exists
-6. verify expected status/result in database
+1. Exhaust the free proof path first: focused tests, fixtures/replays, `npm run build`, Playwright, and non-model truth tools
+2. If the seam is proven by free verification, stop there unless live proof is still explicitly required by the task
+3. If the only remaining proof path would trigger a paid model call, name the exact blocker and ask the user for permission before running it
+4. If permission is granted, run the smallest paid proof once
+5. verify DB row exists when the approved proof path requires persistence
+6. verify email receipt exists when the approved proof path requires send-stage proof
+7. verify expected status/result in database
 
 ## Failure Policy
 If any verification step fails:
 - task is not complete
 - do not say fixed
 - update FOLDERA_MASTER_AUDIT.md with exact unresolved issue
+
+If the remaining verification step is paid and permission was not granted:
+- task is not complete
+- do not run the paid test anyway
+- report the strongest free proof and the exact unproven live seam
 
 ## Session Closure Policy
 Before ending:

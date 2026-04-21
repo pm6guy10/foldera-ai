@@ -50,7 +50,9 @@ Do not stop to ask for permission after health.
 - One seam at a time
 - One proof path at a time
 - Free tests first
-- Paid/live proof only at the end
+- Paid/model-backed proof only at the end
+- Paid tests are forbidden for discovery, iteration, or comparison
+- Do not run a paid test unless free proof is exhausted, the exact blocker is named, and the user explicitly approves that paid step
 - Do not reopen closed seams without fresh evidence
 - Do not broad-audit when the blocker is already known
 - Do not stop at “improved”
@@ -85,6 +87,25 @@ Use:
 - build
 
 Local proof is sufficient until final live verification.
+
+### Paid Test Lock
+
+Free testing is the default locked protocol.
+
+Treat any route, script, or flow that triggers a billable model call as a paid test.
+
+That includes:
+- live `brain-receipt` / `run-brief` generation paths
+- verification scripts that invoke Anthropic or another paid model
+- repeated full-run proofs used to discover bugs
+
+Rules:
+- never use a paid test when a free test can prove or narrow the seam
+- never use a paid test to discover basic bugs
+- never repeat paid runs back-to-back while still debugging
+- before any paid test, name the exact blocker that free proof cannot resolve
+- ask the user for permission before running that paid step
+- if permission is not granted, stop at the strongest free proof and report the live seam as unproven
 
 ### Live-path / user-facing / pipeline behavior changes
 Require one real proof before calling the task complete:
@@ -245,6 +266,7 @@ prefer one polished completed journey over broad UI churn.
 - do not start with a broad repo audit
 - do not read giant docs by default
 - do not use paid model calls to discover basic bugs
+- do not run repeated paid proof calls while still iterating
 - do not stop after one fixed seam if the mission still has an obvious next move
 - do not confuse ritual with progress
 

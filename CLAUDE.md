@@ -133,6 +133,15 @@ That means:
 - do not burn paid model calls to discover obvious bugs
 - use paid generation only after the seam is already narrowed
 
+Paid test lock:
+- any route, script, or flow that triggers a billable model call counts as a paid test
+- never use a paid test when a free test can prove or narrow the seam
+- never use a paid test for discovery, iteration, or A/B comparison
+- never repeat paid full runs back-to-back while still debugging
+- before any paid test, name the exact blocker that free proof cannot resolve
+- ask the user for permission before running that paid step
+- if permission is not granted, stop at the strongest free proof and report the live seam as unproven
+
 If a session is still using paid calls to discover basic breakage, the session is being run wrong.
 
 ---
@@ -178,6 +187,9 @@ Require one real proof before calling the work complete:
 - real route or user-journey proof
 
 A build pass is necessary, not sufficient.
+
+If that proof would trigger a paid model call, it is not part of the default verification path.
+Run it only after free verification is exhausted and the user has explicitly approved the paid step.
 
 ### For shipped code changes
 
