@@ -4,6 +4,8 @@
  * Lane strategy (see .github/workflows/ci.yml):
  *   smoke       public-routes only, no auth, fast-fail
  *   flow        authenticated + flow routes, @quarantine excluded
+ *   payments    authenticated subset (only @payments), @quarantine excluded —
+ *               runs on stripe-only PRs so we don't pay full-flow cost
  *   quarantine  ONLY @quarantine-tagged tests, non-blocking reporter
  *   all         every spec in the CI bucket (local convenience)
  *
@@ -54,14 +56,30 @@ const testMatch =
     ? SMOKE_MATCH
     : LANE === "flow"
       ? FLOW_MATCH
-      : ALL_MATCH; // `quarantine` and `all` both scan every CI spec.
+      : LANE === "payments"
+        // All `@payments`-tagged tests live in authenticated-routes.spec.ts today.
+        // Restrict the match so Playwright does not spend time loading the other
+        // specs just to filter them out.
+        ? ["**/tests/e2e/authenticated-routes.spec.ts"]
+        : ALL_MATCH; // `quarantine` and `all` both scan every CI spec.
 
 /**
  * Tag filtering.
- *   main lanes  → grepInvert /@quarantine/  (skip flaky)
- *   quarantine  → grep /@quarantine/        (only flaky)
+ *   smoke / flow / all → grepInvert /@quarantine/ (skip flaky)
+ *   payments           → grep /@payments/ AND grepInvert /@quarantine/
+ *                        (only tagged payment tests, still skip flake)
+ *   quarantine         → grep /@quarantine/ (only flaky)
+ *
+ * Tag conventions are plain regex matches against the effective test title, so
+ * both `test('name @payments', ...)` and `test('name', { tag: '@payments' }, …)`
+ * are picked up.
  */
-const grep = LANE === "quarantine" ? /@quarantine/ : undefined;
+const grep =
+  LANE === "quarantine"
+    ? /@quarantine/
+    : LANE === "payments"
+      ? /@payments/
+      : undefined;
 const grepInvert = LANE === "quarantine" ? undefined : /@quarantine/;
 
 /**

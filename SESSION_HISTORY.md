@@ -2,6 +2,30 @@
 
 # Session History
 
+## 2026-04-22 — CI: targeted `e2e-payments` lane + `merge_group` trigger (final 10-point architecture)
+- MODE: INFRA HARDENING (architectural polish)
+- Files changed: `.github/workflows/ci.yml`, `playwright.ci.config.ts`, `package.json`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`
+- Context: The previous CI rewrite landed 8 of 10 points from the change-aware / single-owner-per-ref spec. Audit vs the spec identified two gaps — (a) stripe-only PRs were paying the full authenticated flow cost because `PAYMENTS` was OR'd into `needs_authenticated`, and (b) no `merge_group:` trigger for future merge-queue adoption.
+- What changed:
+  1. **Dedicated `e2e-payments` lane.** New job runs ONLY when stripe/paywall paths changed AND the full `e2e-authenticated` lane is NOT already running (so we never duplicate work). Uses `E2E_LANE=payments` which restricts `testMatch` to `authenticated-routes.spec.ts` and greps `/@payments/`. Three tests tagged with `@payments` suffix: the two non-Pro artifact gating tests and the Stripe billing-portal redirect test. Stripe-only PR goes from ~60–90s (full flow) to ~10–15s (3 targeted tests). Lane is BLOCKING (not `continue-on-error`) and appears in `ci-passed` aggregation.
+  2. **Decoupled `needs_authenticated` from `PAYMENTS`.** The derive step no longer flips `needs_authenticated=true` on `PAYMENTS` alone; it flips only on `DASHBOARD_ROUTES || DEPS || TESTS || E2E_CONFIG || CI_CHANGED`. If BOTH dashboard and stripe change, `needs_authenticated=true` wins and `needs_payments=false` — the full lane already covers `@payments`-tagged tests via grep inclusion.
+  3. **`merge_group:` trigger.** Added so enqueued PRs run full CI against the tentative merge commit before they actually land on main. Path filters don't apply to `merge_group` events (by GitHub design), but the `changes` classifier still runs so docs-only queue entries still skip Playwright. This unblocks future merge-queue adoption without a second rewrite.
+  4. **`playwright.ci.config.ts` extended.** `payments` lane added alongside `smoke`/`flow`/`quarantine`/`all`. Uses `grep: /@payments/` AND `grepInvert: /@quarantine/` so payment flakes don't block while we fix them.
+  5. **`package.json`.** Added `test:ci:e2e:payments` (`cross-env E2E_LANE=payments …`).
+- Verification:
+  - `npm run health` → `0 FAILING` (warning-only `Last generation do_nothing`).
+  - `npm run lint` → clean.
+  - `npm run test:ci:e2e:lint` → `OK`.
+  - `npm run build` → success.
+  - `E2E_LANE=payments playwright test --list` → **3 tests in 1 file** (exactly the tagged subset).
+  - `E2E_LANE=flow playwright test --list` → **27 tests in 2 files** (includes the 3 `@payments` tests — full lane still covers them when both changed).
+  - `E2E_LANE=smoke playwright test --list` → **28 tests in 1 file** (public-routes, `@quarantine` excluded as before).
+- Expected CI behavior on next push:
+  - This commit touches `.github/workflows/ci.yml` → `CI_CHANGED=true` → all lanes fire (bootstrap pass for the new architecture).
+  - Future stripe-only PR → classifier flips `payments=true`, `dashboard_routes=false`, `needs_payments=true`, `needs_authenticated=false`. Only verify-static + unit + build + smoke + payments run. Flow lane skipped.
+- Tools used: local Playwright `--list`, local build + lint + health. Real-world payments-lane gating will validate on the next stripe-touching PR.
+- Unresolved: Merge-queue itself is not enabled on the repo yet; the `merge_group:` trigger is scaffolded and inert until a repo admin enables the queue in branch-protection settings.
+
 ## 2026-04-22 — change-aware CI: path-filter classifier, build-once artifact, quarantine lane, deploy concurrency
 - MODE: INFRA HARDENING (architectural)
 - Files changed: `.github/workflows/ci.yml` (full rewrite), `.github/workflows/docs-fast.yml` (new), `.github/workflows/deploy.yml`, `.github/workflows/semgrep.yml`, `.github/workflows/production-e2e.yml`, `.husky/pre-push`, `playwright.ci.config.ts`, `package.json`, `scripts/run-quarantine-lane.mjs` (new), `SESSION_HISTORY.md`

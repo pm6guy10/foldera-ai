@@ -31,6 +31,7 @@
     "test:ci:e2e": "playwright test --config playwright.ci.config.ts",
     "test:ci:e2e:smoke": "cross-env E2E_LANE=smoke playwright test --config playwright.ci.config.ts",
     "test:ci:e2e:flow": "cross-env E2E_LANE=flow playwright test --config playwright.ci.config.ts",
+    "test:ci:e2e:payments": "cross-env E2E_LANE=payments playwright test --config playwright.ci.config.ts",
     "test:ci:e2e:quarantine": "node scripts/run-quarantine-lane.mjs",
     "test:ci:e2e:lint": "node scripts/lint-e2e-assertions.mjs",
     "test:ci:unit": "cross-env ENCRYPTION_KEY=${ENCRYPTION_KEY:-ci-test-key} vitest run --exclude .claude/worktrees/**",

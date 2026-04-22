@@ -74,6 +74,13 @@ on:
       - "tsconfig.json"
       - ".eslintrc*"
       - "eslint.config.*"
+  # Merge queue path: whenever a PR is enqueued, GitHub dispatches a
+  # merge_group event synthesizing the tentative merge commit. Run the full
+  # pipeline here so a queue entry that would break `main` is caught BEFORE
+  # it actually lands — not by the post-merge push. Path filters don't
+  # apply to merge_group events; the `changes` job still classifies the
+  # diff so docs-only queue entries still skip Playwright.
+  merge_group:
 
 # Single active CI run per ref/PR. Newer commits cancel older runs immediately.
 concurrency:
@@ -105,6 +112,7 @@ jobs:
       runtime: ${{ steps.derive.outputs.runtime }}
       needs_smoke: ${{ steps.derive.outputs.needs_smoke }}
       needs_authenticated: ${{ steps.derive.outputs.needs_authenticated }}
+      needs_payments: ${{ steps.derive.outputs.needs_payments }}
       needs_build: ${{ steps.derive.outputs.needs_build }}
       needs_unit: ${{ steps.derive.outputs.needs_unit }}
     steps:
@@ -224,13 +232,25 @@ jobs:
             needs_smoke=true
           fi
 
-          # Authenticated/flow runs when dashboard, payments, deps, tests, or
-          # test config changed — not for marketing-only diffs.
+          # Authenticated/flow runs when dashboard, deps, tests, or test config
+          # changed — not for marketing-only diffs and NOT for payments-only diffs
+          # (those get the targeted `e2e-payments` lane below). PAYMENTS was
+          # deliberately removed from this gate: stripe-only churn no longer pays
+          # the full 60–90s flow lane cost.
           needs_authenticated=false
-          if is_true "$DASHBOARD_ROUTES" || is_true "$PAYMENTS" \
+          if is_true "$DASHBOARD_ROUTES" \
              || is_true "$DEPS" || is_true "$TESTS" || is_true "$E2E_CONFIG" \
              || is_true "$CI_CHANGED"; then
             needs_authenticated=true
+          fi
+
+          # Targeted payments lane: fires when stripe/paywall touched AND the
+          # full authenticated lane is NOT already running. If both changed, the
+          # full lane already covers @payments-tagged tests via grep inclusion,
+          # so we skip the payments lane to avoid duplicate Playwright minutes.
+          needs_payments=false
+          if is_true "$PAYMENTS" && [ "$needs_authenticated" = "false" ]; then
+            needs_payments=true
           fi
 
           # Build only when something that affects the compiled artifact changed.
@@ -255,12 +275,13 @@ jobs:
             echo "runtime=$runtime"
             echo "needs_smoke=$needs_smoke"
             echo "needs_authenticated=$needs_authenticated"
+            echo "needs_payments=$needs_payments"
             echo "needs_build=$needs_build"
             echo "needs_unit=$needs_unit"
             echo "docs_only=$docs_only"
           } >> "$GITHUB_OUTPUT"
 
-          echo "::notice::runtime=$runtime needs_smoke=$needs_smoke needs_authenticated=$needs_authenticated needs_build=$needs_build needs_unit=$needs_unit docs_only=$docs_only"
+          echo "::notice::runtime=$runtime needs_smoke=$needs_smoke needs_authenticated=$needs_authenticated needs_payments=$needs_payments needs_build=$needs_build needs_unit=$needs_unit docs_only=$docs_only"
 
   # ───────────────────────────────────────────────────────────────────────────
   # 2. Verify-static: lint + e2e assertion linter. Cheapest truth.
@@ -449,7 +470,65 @@ jobs:
           retention-days: 7
 
   # ───────────────────────────────────────────────────────────────────────────
-  # 5c. E2E quarantine — flaky tests tagged `@quarantine`. NON-BLOCKING.
+  # 5c. E2E payments — targeted subset for stripe-only PRs. Runs ONLY tests
+  #     tagged `@payments`. Skipped entirely when the full `e2e-authenticated`
+  #     lane is already running (it covers @payments tests via grep inclusion).
+  #     Tag convention: either `test('… @payments', …)` or
+  #     `test('…', { tag: '@payments' }, …)`. Both are matched by /@payments/.
+  # ───────────────────────────────────────────────────────────────────────────
+  e2e-payments:
+    needs: [changes, build, e2e-smoke]
+    if: |
+      always() &&
+      needs.changes.outputs.needs_payments == 'true' &&
+      needs.build.result == 'success' &&
+      (needs.e2e-smoke.result == 'success' || needs.e2e-smoke.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download prebuilt app
+        uses: actions/download-artifact@v4
+        with:
+          name: next-build-${{ github.sha }}
+          path: .
+
+      - name: Install Playwright chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Generate CI test secret
+        run: echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
+
+      - name: E2E payments (@payments only, @quarantine excluded)
+        env:
+          CI: "true"
+          E2E_LANE: payments
+          NEXTAUTH_URL: http://localhost:3000
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run test:ci:e2e:payments
+
+      - name: Upload payments artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-payments-artifacts-${{ github.sha }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 5d. E2E quarantine — flaky tests tagged `@quarantine`. NON-BLOCKING.
   #     Report-only lane so mainline CI stays deterministic while we fix flake.
   #     Add/remove quarantine tags via the test title annotation:
   #         test('name', { tag: '@quarantine' }, async () => { ... })
@@ -520,6 +599,7 @@ jobs:
       - build
       - e2e-smoke
       - e2e-authenticated
+      - e2e-payments
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -531,6 +611,7 @@ jobs:
           R_BUILD: ${{ needs.build.result }}
           R_SMOKE: ${{ needs.e2e-smoke.result }}
           R_AUTH: ${{ needs.e2e-authenticated.result }}
+          R_PAY: ${{ needs.e2e-payments.result }}
         run: |
           ok() { [ "$1" = "success" ] || [ "$1" = "skipped" ]; }
 
@@ -540,7 +621,8 @@ jobs:
             "unit:$R_UNIT" \
             "build:$R_BUILD" \
             "e2e-smoke:$R_SMOKE" \
-            "e2e-authenticated:$R_AUTH"; do
+            "e2e-authenticated:$R_AUTH" \
+            "e2e-payments:$R_PAY"; do
             name="${pair%%:*}"
             result="${pair##*:}"
             if ok "$result"; then

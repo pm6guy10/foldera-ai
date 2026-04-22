@@ -573,7 +573,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     expect(errors).toHaveLength(0);
   });
 
-  test('non-Pro users still see the first 3 approved or pending artifacts', async ({ page }) => {
+  test('non-Pro users still see the first 3 approved or pending artifacts @payments', async ({ page }) => {
     await setupDashboardMocks(page, {
       latestResponse: {
         ...DIRECTIVE_RESPONSE,
@@ -590,7 +590,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     ).toHaveCount(0);
   });
 
-  test('non-Pro users see the blur starting with artifact 4', async ({ page }) => {
+  test('non-Pro users see the blur starting with artifact 4 @payments', async ({ page }) => {
     await setupDashboardMocks(page, {
       latestResponse: {
         ...DIRECTIVE_RESPONSE,
@@ -822,7 +822,7 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     await expect(microsoftReconnectCard.getByRole('button', { name: /^Connect$/i })).toBeVisible();
   });
 
-  test('Manage subscription redirects to the Stripe billing portal URL returned by the Settings API', async ({ page }) => {
+  test('Manage subscription redirects to the Stripe billing portal URL returned by the Settings API @payments', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupSettingsManageBillingMocks(page);
     await page.goto('/dashboard/settings');
