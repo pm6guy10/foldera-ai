@@ -101,7 +101,7 @@ describe('replay harness — hunt recipient allowlist / coercion', () => {
     expect(collectHuntSendMessageToValidationIssues(ctx, 'send_message', art.to)).toEqual([]);
   });
 
-  it('does not coerce with multiple allowlist entries; wrong address stays invalid', () => {
+  it('coerces to the first grounded allowlist entry when multiple hunt recipients are grounded', () => {
     const parsed = structuredClone(HUNT_FAKE_TO_BEFORE_COERCION) as Parameters<
       typeof applyHuntSendMessageRecipientCoercion
     >[0];
@@ -109,14 +109,15 @@ describe('replay harness — hunt recipient allowlist / coercion', () => {
       candidate_class: 'hunt' as const,
       hunt_send_message_recipient_allowlist: [...HUNT_MULTI_ALLOWLIST],
     };
-    expect(applyHuntSendMessageRecipientCoercion(parsed, ctx, 'send_message')).toBe(false);
+    expect(applyHuntSendMessageRecipientCoercion(parsed, ctx, 'send_message')).toBe(true);
+    const art = parsed.artifact as Record<string, unknown>;
+    expect(art.to).toBe(HUNT_MULTI_ALLOWLIST[0]);
     const issues = collectHuntSendMessageToValidationIssues(
       ctx,
       'send_message',
-      (parsed.artifact as Record<string, unknown>).to,
+      art.to,
     );
-    expect(issues.length).toBeGreaterThan(0);
-    expect(issues.some((x) => x.includes('hunt-grounded'))).toBe(true);
+    expect(issues).toEqual([]);
   });
 });
 
