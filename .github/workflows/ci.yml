@@ -395,35 +395,78 @@ jobs:
 
       # Diagnostic probe: Playwright's webServer surfaces boot failures as a
       # generic "Process … was not able to start. Exit code: 1" and hides the
-      # stderr. Run next start directly here, capture stderr, then kill — so
-      # any crash at boot is visible in the job log. Remove once boot is stable.
+      # stderr. This step boots next start directly, prints EVERYTHING it
+      # produces, and fails loudly if the server does not respond to /api/health
+      # within 30s — so the root cause is visible in the job log instead of
+      # masked behind Playwright's generic error. Remove once boot is stable.
       - name: Probe next start (diagnostic)
         env:
           NEXTAUTH_URL: http://127.0.0.1:3010
+          NEXTAUTH_SECRET: probe-secret-0123456789abcdef0123456789abcdef
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          set -x
+          set -e
+          echo "::group::Artifact contents"
           echo "--- .next/ top-level ---"
-          ls -la .next || echo "MISSING .next"
+          ls -la .next || { echo "::error::MISSING .next"; exit 1; }
           echo "--- .next/BUILD_ID ---"
-          cat .next/BUILD_ID 2>&1 || echo "MISSING .next/BUILD_ID"
-          echo "--- .next/required-server-files.json (head) ---"
-          head -c 400 .next/required-server-files.json 2>&1 || echo "MISSING required-server-files.json"
-          echo "--- probing next start ---"
+          cat .next/BUILD_ID
+          echo "--- .next/server/ top-level ---"
+          ls -la .next/server | head -30
+          echo "--- .next size ---"
+          du -sh .next
+          echo "::endgroup::"
+
+          echo "::group::Probe next start"
           node_modules/.bin/next start -p 3010 > next-probe.out 2> next-probe.err &
           PROBE_PID=$!
-          sleep 10
-          echo "--- curl http://127.0.0.1:3010/api/health ---"
-          curl -sSf -m 5 http://127.0.0.1:3010/api/health || echo "(curl failed)"
-          echo "--- server stdout ---"
+          echo "PID=$PROBE_PID"
+
+          # Poll /api/health for up to 30s
+          for i in $(seq 1 30); do
+            if curl -sSf -m 2 http://127.0.0.1:3010/api/health > probe-health.out 2> probe-health.err; then
+              echo "✓ next start responded at iteration $i"
+              cat probe-health.out
+              break
+            fi
+            sleep 1
+          done
+
+          # If still not responding, dump everything and fail hard
+          if ! curl -sSf -m 2 http://127.0.0.1:3010/api/health > /dev/null 2>&1; then
+            echo "::error::next start did not respond within 30s"
+            echo "--- next-probe.out ---"
+            cat next-probe.out || true
+            echo "--- next-probe.err ---"
+            cat next-probe.err || true
+            kill "$PROBE_PID" 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "--- next-probe.out (startup log) ---"
           cat next-probe.out || true
-          echo "--- server stderr ---"
+          echo "--- next-probe.err (startup stderr) ---"
           cat next-probe.err || true
+
           kill "$PROBE_PID" 2>/dev/null || true
           wait "$PROBE_PID" 2>/dev/null || true
+          echo "::endgroup::"
+
+      - name: Upload probe logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-probe-${{ github.sha }}
+          path: |
+            next-probe.out
+            next-probe.err
+            probe-health.out
+            probe-health.err
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: E2E smoke (public routes, @quarantine excluded)
         env:
@@ -437,6 +480,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # pw:webserver prints Playwright's captured stdout/stderr of the
+          # webServer command in-band with the test output, so any boot crash
+          # reason is visible even if our config's stdout/stderr pipes fail.
+          DEBUG: pw:webserver
         run: npm run test:ci:e2e:smoke
 
       - name: Upload smoke artifacts on failure
