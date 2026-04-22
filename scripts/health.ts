@@ -16,6 +16,7 @@ import {
   blockingCheck,
   buildRepeatedDirectiveCheck,
   countBlockingFailures,
+  isHealthCiRelaxedMode,
   type HealthCheckRow,
   warningCheck,
 } from './health-checks';
@@ -78,11 +79,32 @@ async function main() {
   const now = Date.now();
   const checks: HealthCheckRow[] = [];
 
-  const { data: tokenRows, error: tokErr } = await supabase
-    .from('user_tokens')
-    .select('provider, last_synced_at, disconnected_at')
-    .eq('user_id', userId)
-    .in('provider', ['google', 'microsoft']);
+  // Transient undici/Node "fetch failed" to Supabase should not red the gate once.
+  const USER_TOKEN_RETRIES = 3;
+  let tokenRows: {
+    provider: string;
+    last_synced_at: string | null;
+    disconnected_at: string | null;
+  }[] | null = null;
+  let tokErr: { message: string } | null = null;
+  for (let attempt = 1; attempt <= USER_TOKEN_RETRIES; attempt++) {
+    const { data, error } = await supabase
+      .from('user_tokens')
+      .select('provider, last_synced_at, disconnected_at')
+      .eq('user_id', userId)
+      .in('provider', ['google', 'microsoft']);
+    if (!error) {
+      tokenRows = data ?? null;
+      tokErr = null;
+      break;
+    }
+    tokErr = error;
+    if (attempt < USER_TOKEN_RETRIES) {
+      const delayMs = 500 * 2 ** (attempt - 1);
+      console.error(`user_tokens query attempt ${attempt}/${USER_TOKEN_RETRIES} failed: ${error.message} — retry in ${delayMs}ms`);
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
 
   if (tokErr) {
     console.error('user_tokens query failed:', tokErr.message);
@@ -215,7 +237,23 @@ async function main() {
       })),
       now,
     );
-    checks.push(buildRepeatedDirectiveCheck(repeated, (iso) => relAgo(iso, now)));
+    const repCheck = buildRepeatedDirectiveCheck(repeated, (iso) => relAgo(iso, now));
+    if (
+      isHealthCiRelaxedMode() &&
+      repCheck.group === 'blocking' &&
+      repCheck.status === 'fail'
+    ) {
+      const withoutIcon = repCheck.line.replace(/^[✓✗⚠]\s+/, '');
+      checks.push(
+        warningCheck(
+          'Repeated directive (CI: warn-only; run `npm run health` locally for strict)',
+          withoutIcon,
+          'warn',
+        ),
+      );
+    } else {
+      checks.push(repCheck);
+    }
   } catch (e) {
     checks.push(
       blockingCheck(

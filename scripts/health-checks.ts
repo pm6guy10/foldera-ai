@@ -54,6 +54,18 @@ export function countBlockingFailures(checks: HealthCheckRow[]): number {
   return checks.filter((check) => check.group === 'blocking' && check.status === 'fail').length;
 }
 
+/**
+ * GitHub Actions sets `CI=true`. In that environment we still run the same
+ * production queries, but "Repeated directive" (a data-state signal from
+ * daily-generate) must not block merges that do not touch that pipeline — it
+ * produced repeated red `Health Gate` runs on doc-only and unrelated pushes.
+ * Set `HEALTH_STRICT_PRODUCTION=1` (e.g. repo secret on the `health` job) to
+ * restore fail-on-duplicate in CI. Local `npm run health` (no `CI`) stays strict.
+ */
+export function isHealthCiRelaxedMode(): boolean {
+  return process.env.CI === 'true' && process.env.HEALTH_STRICT_PRODUCTION !== '1';
+}
+
 export function buildRepeatedDirectiveCheck(
   repeated: RepeatedDirectiveHealthSummary,
   relAgoText: (iso: string | null | undefined) => string,

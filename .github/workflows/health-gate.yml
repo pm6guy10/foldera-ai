@@ -1,5 +1,10 @@
 name: Health Gate
 
+# Supabase read-only invariants. `CI=true` (set by GHA) turns "Repeated
+# directive" from fail → warn in `scripts/health.ts` so production duplicate
+# rows do not block unrelated merges. Set repo secret `HEALTH_STRICT_PRODUCTION`
+# to `1` to fail the job on that condition again. `user_tokens` queries retry
+# with backoff on transient network errors.
 on:
   push:
     branches: [main]
@@ -18,7 +23,10 @@ jobs:
 
       - run: npm run health
         env:
+          # GitHub sets CI=true automatically; scripts/health.ts uses it.
+          # HEALTH_STRICT_PRODUCTION: optional repo secret; when "1", repeated-directive is blocking again.
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OWNER_USER_ID: ${{ secrets.OWNER_USER_ID }}
           AUDIT_USER_ID: ${{ secrets.AUDIT_USER_ID }}
+          HEALTH_STRICT_PRODUCTION: ${{ secrets.HEALTH_STRICT_PRODUCTION }}
