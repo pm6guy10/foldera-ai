@@ -21,6 +21,7 @@
 
 ## B. WHAT IS BROKEN (REAL)
 
+- **Interview write_document post-LLM gate** — With `hydrateInterviewWriteDocumentWinnerEvidence` (2026-04-22), owner paid runs show `evidence_bundle_ok` and valid JSON `write_document` from the model, but `validateGeneratedArtifact` / `decision_enforcement` can still reject the draft (`missing_explicit_ask`, `missing_pressure_or_consequence`, `passive_or_ignorable_tone`, `causal_diagnosis:surface_follow_up_mismatch`) before `pending_approval` persistence. Next seam is narrowly tuning enforcement or retry hints for interview-class documents, not scorer ranking.
 - **Post-deploy verification** — After `fix: autonomous brain quality loop`, run owner `POST /api/dev/brain-receipt` once deploy is READY to confirm `schedule_conflict` → `write_document` persists `pending_approval` (not `Artifact generation failed.`).
 - **Production-like proof blocked** — `scripts/run-brain-receipt-real-once.ts` is currently blocked by `paid_llm_disabled` during signal processing, so a fresh `schedule_conflict` → `write_document` artifact cannot be generated yet (no pending_approval persisted from that path).
 - **Convergence depends on name overlap** — `extractConvergence` requires the entity name to appear in signal bodies; calendar titles without names may under-match.

@@ -106,6 +106,7 @@ import {
 } from './locked-contact-scan';
 import { hasBracketTemplatePlaceholder } from './bracket-placeholder';
 import { resolveEvidenceSignalIdsForWinner } from './resolve-evidence-signal-ids';
+import { isTimeBoundInterviewExecutionCandidate } from './stakes-gate';
 import { getGoalQuarantineReason, isUsableGoalRow } from './goal-hygiene';
 import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
 
@@ -5979,6 +5980,198 @@ function parseSignalSnippet(
   };
 }
 
+/** Winner-only: full mail/upload plaintext for interview-class write_document (not the 1.5k parseSignalSnippet cap). */
+const WRITE_DOCUMENT_PRIMARY_SOURCE_MAX_CHARS = 12_000;
+const WRITE_DOCUMENT_UPLOADED_DOC_MAX_CHARS = 6_000;
+const WRITE_DOCUMENT_PRIMARY_FULLTEXT_ROW_CAP = 2;
+const WRITE_DOCUMENT_UPLOADED_DOC_ROW_CAP = 2;
+
+function scoredLoopToStakesCandidateForInterviewGate(loop: ScoredLoop): import('./stakes-gate').StakesCandidate {
+  const narrowType: import('./stakes-gate').StakesCandidate['type'] =
+    loop.type === 'commitment' || loop.type === 'signal' || loop.type === 'relationship'
+      ? loop.type
+      : 'signal';
+  return {
+    id: loop.id,
+    type: narrowType,
+    title: loop.title,
+    content: loop.content,
+    actionType: loop.suggestedActionType,
+    urgency: loop.breakdown?.urgency ?? 0,
+    matchedGoal: loop.matchedGoal,
+    domain: '',
+    sourceSignals: loop.sourceSignals ?? [],
+    entityName: loop.entityName,
+  };
+}
+
+/** Interview prep / role-specific write_document winners (same bar as stakes-gate time-bound interview). */
+export function isInterviewClassWriteDocumentWinner(loop: ScoredLoop): boolean {
+  if (loop.suggestedActionType !== 'write_document') return false;
+  return isTimeBoundInterviewExecutionCandidate(scoredLoopToStakesCandidateForInterviewGate(loop));
+}
+
+export function parseSignalSnippetWithFullBody(
+  plaintext: string,
+  row: Record<string, unknown>,
+  maxChars: number,
+): SignalSnippet | null {
+  const rowType = (row.type as string) ?? '';
+  if (!plaintext || (plaintext.length < 20 && rowType !== 'response_pattern')) return null;
+
+  let subject: string | null = null;
+  const subjectMatch = plaintext.match(/(?:Subject|Re|Fwd):\s*(.+?)(?:\n|$)/i);
+  if (subjectMatch) subject = subjectMatch[1].trim().slice(0, 120);
+
+  const trimmed = plaintext.replace(/\r\n/g, '\n').trim();
+  const body =
+    trimmed.length > maxChars
+      ? `${trimmed.slice(0, maxChars)}\n… [truncated ${trimmed.length - maxChars} chars]`
+      : trimmed;
+
+  const direction: 'sent' | 'received' | 'unknown' =
+    rowType === 'email_sent' ? 'sent' :
+    rowType === 'email_received' ? 'received' :
+    'unknown';
+
+  const idRaw = row.id;
+  const signal_id =
+    typeof idRaw === 'string' && idRaw.length > 0 ? idRaw : undefined;
+
+  return {
+    source: (row.source as string) ?? 'unknown',
+    date: row.occurred_at ? new Date(row.occurred_at as string).toISOString().slice(0, 10) : 'unknown',
+    subject,
+    snippet: body,
+    author: (row.author as string) ?? null,
+    direction,
+    row_type: rowType || null,
+    ...(signal_id ? { signal_id } : {}),
+  };
+}
+
+async function appendRecentUploadedDocumentsForInterviewEvidence(
+  userId: string,
+  snippets: SignalSnippet[],
+): Promise<SignalSnippet[]> {
+  const uploadedCount = snippets.filter((s) => s.source === 'uploaded_document').length;
+  if (uploadedCount >= WRITE_DOCUMENT_UPLOADED_DOC_ROW_CAP) return snippets;
+
+  const supabase = createServerClient();
+  const lookbackIso = new Date(Date.now() - daysMs(365)).toISOString();
+  const { data: rows } = await supabase
+    .from('tkg_signals')
+    .select('id, content, source, occurred_at, author, type')
+    .eq('user_id', userId)
+    .eq('source', 'uploaded_document')
+    .eq('processed', true)
+    .gte('occurred_at', lookbackIso)
+    .order('occurred_at', { ascending: false })
+    .limit(6);
+
+  const usedKeys = new Set(snippets.map(signalSnippetDedupeKey));
+  const usedIds = new Set(
+    snippets.map((s) => s.signal_id).filter((id): id is string => typeof id === 'string'),
+  );
+  const out = [...snippets];
+  let addedDocs = uploadedCount;
+
+  for (const row of rows ?? []) {
+    if (addedDocs >= WRITE_DOCUMENT_UPLOADED_DOC_ROW_CAP) break;
+    const id = String((row as { id?: string }).id ?? '');
+    if (!id || usedIds.has(id)) continue;
+    if (isBlockedSender((row as { author?: string }).author as string)) continue;
+    const decrypted = decryptWithStatus(String((row as { content?: string }).content ?? ''));
+    if (decrypted.usedFallback) continue;
+    const parsed = parseSignalSnippetWithFullBody(
+      decrypted.plaintext,
+      row as Record<string, unknown>,
+      WRITE_DOCUMENT_UPLOADED_DOC_MAX_CHARS,
+    );
+    if (!parsed) continue;
+    const key = signalSnippetDedupeKey(parsed);
+    if (usedKeys.has(key)) continue;
+    usedKeys.add(key);
+    usedIds.add(id);
+    out.push(parsed);
+    addedDocs++;
+  }
+
+  return out;
+}
+
+/**
+ * Interview-class write_document only: replace truncated winner snippets with full decrypted
+ * primary signal bodies, add cross-source rows when &lt;3 distinct sources, and attach recent
+ * uploaded_document text (resume/packet) when available.
+ */
+async function hydrateInterviewWriteDocumentWinnerEvidence(
+  userId: string,
+  winner: ScoredLoop,
+  existingSnippets: SignalSnippet[],
+): Promise<SignalSnippet[]> {
+  if (!isInterviewClassWriteDocumentWinner(winner)) return existingSnippets;
+
+  const supabase = createServerClient();
+  const sourceIds = await resolveEvidenceSignalIdsForWinner(supabase, userId, winner);
+  const primaryIds = sourceIds.slice(0, 8);
+
+  const primarySnippets: SignalSnippet[] = [];
+  if (primaryIds.length > 0) {
+    const { data: sourceRows } = await supabase
+      .from('tkg_signals')
+      .select('id, content, source, occurred_at, author, type')
+      .eq('user_id', userId)
+      .in('id', primaryIds);
+
+    const byId = new Map((sourceRows ?? []).map((r) => [String(r.id), r]));
+    for (const sid of primaryIds) {
+      if (primarySnippets.length >= WRITE_DOCUMENT_PRIMARY_FULLTEXT_ROW_CAP) break;
+      const row = byId.get(sid);
+      if (!row) continue;
+      if (String(row.source ?? '').trim() === 'user_feedback') continue;
+      if (isBlockedSender(row.author as string)) continue;
+      const decrypted = decryptWithStatus(row.content as string ?? '');
+      if (decrypted.usedFallback) continue;
+      const parsed = parseSignalSnippetWithFullBody(
+        decrypted.plaintext,
+        row as Record<string, unknown>,
+        WRITE_DOCUMENT_PRIMARY_SOURCE_MAX_CHARS,
+      );
+      if (parsed) primarySnippets.push(parsed);
+    }
+  }
+
+  const primaryIdSet = new Set(
+    primarySnippets.map((s) => s.signal_id).filter((id): id is string => typeof id === 'string'),
+  );
+  const rest = existingSnippets.filter(
+    (s) => !s.signal_id || !primaryIdSet.has(s.signal_id),
+  );
+
+  let merged = [...primarySnippets, ...rest];
+
+  merged = await ensureMinimumEvidenceSourceDiversity(userId, merged);
+  merged = await appendRecentUploadedDocumentsForInterviewEvidence(userId, merged);
+
+  const distinct = [...new Set(merged.map((s) => s.source).filter(Boolean))];
+  logStructuredEvent({
+    event: 'interview_write_document_source_hydration',
+    level: 'info',
+    userId,
+    artifactType: 'write_document',
+    generationStatus: 'evidence_hydrated',
+    details: {
+      scope: 'hydrateInterviewWriteDocumentWinnerEvidence',
+      primary_fulltext_signals: primarySnippets.length,
+      distinct_sources: distinct.sort(),
+      snippet_total: merged.length,
+    },
+  });
+
+  return merged;
+}
+
 // ---------------------------------------------------------------------------
 // Part 5 — Structural validation (after generation)
 // ---------------------------------------------------------------------------
@@ -9364,6 +9557,14 @@ export async function generateDirective(
 
         if (signalEvidence.length === 0) {
           signalEvidence = scorerMetadataSignalEvidence;
+        }
+
+        if (decisionPayload.recommended_action === 'write_document') {
+          signalEvidence = await hydrateInterviewWriteDocumentWinnerEvidence(
+            userId,
+            hydratedWinner,
+            signalEvidence,
+          );
         }
 
         if (hydratedWinner.entityName && signalEvidence.length > 0) {

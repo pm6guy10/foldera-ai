@@ -2,6 +2,14 @@
 
 # Session History
 
+## 2026-04-22 — interview-class write_document: winner-only full-source hydration (generator)
+- MODE: SHIP ONE SEAM (per-winner source-document grounding)
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/write-document-hydration.test.ts`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`
+- What changed: For winners that pass `isTimeBoundInterviewExecutionCandidate` with `suggestedActionType === write_document`, after `fetchWinnerSignalEvidence` the generator now (1) reloads up to two primary `tkg_signals` rows from `resolveEvidenceSignalIdsForWinner` and replaces truncated `parseSignalSnippet` (1.5k) evidence with **full decrypted plaintext** up to 12k chars per row via `parseSignalSnippetWithFullBody`, (2) runs existing `ensureMinimumEvidenceSourceDiversity` so the bundle can reach ≥3 distinct `source` values when DB rows exist, (3) appends up to two recent `uploaded_document` signals (6k each) for resume/packet grounding. Logs `interview_write_document_source_hydration`.
+- Code proof — what was missing before: `parseSignalSnippet` in `generator.ts` joined non-header lines and **`.slice(0, 1500)`**, stripping most of the mail body for long interview logistics; `resolveEvidenceSignalIdsForWinner` only returns IDs — the fetch path still capped content through that parser. Cross-source diversity (`ensureMinimumEvidenceSourceDiversity`) existed but was never called on the hot path, so `evidence_bundle_commit` often stayed `evidence_bundle_under_3_sources` on mail-only winners.
+- Verification: `npx vitest run lib/briefing/__tests__/write-document-hydration.test.ts lib/briefing/__tests__/evidence-bundle.test.ts`; `npm run build`; real owner `npx tsx scripts/run-paid-generate-once.ts` — hydration log shows `primary_fulltext_signals: 2`, `distinct_sources` including `uploaded_document`, `evidence_bundle_ok` / `meets_three_source_bar: true`; model returned parseable `write_document` JSON with grounded title/body; run still ended `all_candidates_blocked` due to **decision_enforcement** on that draft (not JSON refusal / not lack of grounding).
+- Unresolved: **NOT PROVEN** end-to-end pending_approval for that path until post-LLM enforcement passes or is narrowly adjusted for interview `write_document`.
+
 ## 2026-04-22 — stakes gate admits real interview write_document rows, but lifecycle/ranking still block native winner
 - MODE: SHIP ONE SEAM
 - Files changed: `lib/briefing/stakes-gate.ts`, `lib/briefing/__tests__/stakes-gate.test.ts`, `SESSION_HISTORY.md`
