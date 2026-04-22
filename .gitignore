@@ -24,3 +24,4 @@ conversation_signals.json
 
 # Local scratch (curl cookies, etc.)
 tmp-cookie.txt
+.codex-devserver.pid

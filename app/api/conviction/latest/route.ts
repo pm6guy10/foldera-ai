@@ -104,14 +104,14 @@ export async function GET(request: Request) {
       accountCreatedAt = null;
     }
 
-    // Count approved/executed actions for artifact blur gate
+    // Count the user's free artifact allowance: approved + pending_approval.
     let approvedCount = 0;
     try {
       const { count } = await supabase
         .from('tkg_actions')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .in('status', ['approved', 'executed', 'skipped']);
+        .in('status', ['approved', 'pending_approval']);
       approvedCount = count ?? 0;
     } catch {
       approvedCount = 0;

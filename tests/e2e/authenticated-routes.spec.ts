@@ -65,6 +65,7 @@ const DIRECTIVE_RESPONSE = {
   confidence: 85,
   reason: 'Last contact was 5 days ago and the hiring window closes next week.',
   status: 'pending_approval',
+  approved_count: 1,
   is_subscribed: true,
   evidence: [{ type: 'signal', description: 'Email from Keri on March 14' }],
   artifact: {
@@ -177,6 +178,20 @@ const INTEGRATIONS_MICROSOFT_REAUTH_RESPONSE = {
   ],
 };
 
+const PRO_SUBSCRIPTION_RESPONSE = {
+  plan: 'pro',
+  status: 'active',
+  current_period_end: null,
+  can_manage_billing: true,
+};
+
+const FREE_SUBSCRIPTION_RESPONSE = {
+  plan: 'free',
+  status: 'inactive',
+  current_period_end: null,
+  can_manage_billing: false,
+};
+
 function json(data: unknown) {
   return JSON.stringify(data);
 }
@@ -262,7 +277,13 @@ async function attachCheckoutGuards(page: Page) {
 }
 
 /** Set up all mocks for an authenticated dashboard with a directive. */
-async function setupDashboardMocks(page: Page) {
+async function setupDashboardMocks(
+  page: Page,
+  options: {
+    latestResponse?: Record<string, unknown>;
+    subscriptionResponse?: Record<string, unknown>;
+  } = {},
+) {
   await seedAuthenticatedSession(page);
   await attachCheckoutGuards(page);
   // NextAuth session + CSRF
@@ -271,11 +292,11 @@ async function setupDashboardMocks(page: Page) {
   await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
   await page.route(
     matchApiPath('/api/subscription/status'),
-    fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
+    fulfillJson(options.subscriptionResponse ?? PRO_SUBSCRIPTION_RESPONSE),
   );
   await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
-  await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DIRECTIVE_RESPONSE));
+  await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(options.latestResponse ?? DIRECTIVE_RESPONSE));
   await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
     let decision: string | undefined;
     try {
@@ -524,6 +545,40 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
+  });
+
+  test('non-Pro users still see the first 3 approved or pending artifacts', async ({ page }) => {
+    await setupDashboardMocks(page, {
+      latestResponse: {
+        ...DIRECTIVE_RESPONSE,
+        approved_count: 3,
+        is_subscribed: false,
+      },
+      subscriptionResponse: FREE_SUBSCRIPTION_RESPONSE,
+    });
+    await page.goto('/dashboard');
+    await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Hi Keri,/i)).toBeVisible();
+    await expect(
+      page.getByText('Upgrade to Pro to keep receiving finished work.'),
+    ).toHaveCount(0);
+  });
+
+  test('non-Pro users see the blur starting with artifact 4', async ({ page }) => {
+    await setupDashboardMocks(page, {
+      latestResponse: {
+        ...DIRECTIVE_RESPONSE,
+        approved_count: 4,
+        is_subscribed: false,
+      },
+      subscriptionResponse: FREE_SUBSCRIPTION_RESPONSE,
+    });
+    await page.goto('/dashboard');
+    await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByText('Upgrade to Pro to keep receiving finished work.'),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /upgrade to pro/i })).toBeVisible();
   });
 
   test('write_document journey: document preview, Save document, copy hint, saved status', async ({ page }) => {

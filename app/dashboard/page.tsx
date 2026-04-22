@@ -121,6 +121,7 @@ export default function DashboardPage() {
   const [flash, setFlash] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState(false);
   const [executing, setExecuting] = useState(false);
+  const [artifactVisibilityCount, setArtifactVisibilityCount] = useState(0);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subPlan, setSubPlan] = useState<string | null>(null);
   const [subStatus, setSubStatus] = useState<string | null>(null);
@@ -221,16 +222,19 @@ export default function DashboardPage() {
       if (!convRes.ok) {
         setFetchError(true);
         setAction(null);
+        setArtifactVisibilityCount(0);
         return;
       }
       const data = await convRes.json().catch(() => ({}));
       if (ac.signal.aborted) return;
       setIsSubscribed(data?.is_subscribed === true);
+      setArtifactVisibilityCount(typeof data?.approved_count === 'number' ? data.approved_count : 0);
       setAction(data?.id ? data : null);
     } catch (e: unknown) {
       if (ac.signal.aborted) return;
       setFetchError(true);
       setAction(null);
+      setArtifactVisibilityCount(0);
       setSubPlan(null);
       setSubStatus(null);
     } finally {
@@ -444,7 +448,8 @@ export default function DashboardPage() {
 
   const isProArtifactUnlocked =
     subPlan === 'pro' && (subStatus === 'active' || subStatus === 'past_due');
-  const showArtifactBlur = Boolean(artifact) && !isProArtifactUnlocked;
+  const showArtifactBlur =
+    Boolean(artifact) && !isProArtifactUnlocked && artifactVisibilityCount > 3;
 
   async function runFirstReadNow() {
     if (firstReadRunning) return;
@@ -806,7 +811,7 @@ export default function DashboardPage() {
                     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 sm:gap-4 bg-black/50 px-4 py-6 sm:px-5 sm:py-8 text-center backdrop-blur-md">
                       <Lock className="w-5 h-5 text-cyan-400 shrink-0" aria-hidden="true" />
                       <p className="text-sm font-semibold text-zinc-100 leading-snug max-w-[18rem] px-1">
-                        Upgrade to Pro to unlock finished work. $29/mo.
+                        Upgrade to Pro to keep receiving finished work.
                       </p>
                       <button
                         type="button"
