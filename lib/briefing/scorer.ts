@@ -38,7 +38,7 @@ import {
   parseCalendarEventFromContent as parseCalendarEventFromContentDiscrepancy,
 } from './discrepancy-detector';
 import type { DiscrepancyClass, RecentDirectiveInput, TriggerMetadata } from './discrepancy-detector';
-import { applyStakesGate } from './stakes-gate';
+import { applyStakesGate, isTimeBoundInterviewExecutionCandidate } from './stakes-gate';
 import { applyEntityRealityGate } from './entity-reality-gate';
 import {
   filterPersonNamesForValidityContext,
@@ -1701,6 +1701,33 @@ export function isGoalPrimacyExemptCareerCommitment(
   return CAREER_EXECUTION_COMMITMENT_PATTERNS.some((pattern) => pattern.test(combined));
 }
 
+/**
+ * Interview-class write_document candidates (signal, relationship, or commitment)
+ * are inherently goal-primacy exempt: a confirmed, dated, hiring-context interview
+ * prep artifact is a board-changing outcome even if it does not textually match a
+ * user-authored goal. This uses the same narrow test that stakes-gate.ts uses to
+ * admit these candidates into scoring.
+ */
+export function isGoalPrimacyExemptInterviewWriteDocument(
+  candidate: Pick<ScoredLoop, 'type' | 'title' | 'content' | 'suggestedActionType' | 'entityName' | 'matchedGoal' | 'sourceSignals' | 'id'>,
+): boolean {
+  if (candidate.suggestedActionType !== 'write_document') return false;
+  return isTimeBoundInterviewExecutionCandidate({
+    id: candidate.id,
+    type: candidate.type === 'commitment' || candidate.type === 'signal' || candidate.type === 'relationship'
+      ? candidate.type
+      : 'signal',
+    title: candidate.title,
+    content: candidate.content,
+    actionType: 'write_document',
+    urgency: 0,
+    matchedGoal: candidate.matchedGoal,
+    domain: '',
+    sourceSignals: candidate.sourceSignals ?? [],
+    entityName: candidate.entityName,
+  });
+}
+
 function isDecisionMovingCandidate(candidate: ScoredLoop): boolean {
   if (!isOutcomeLinkedCandidate(candidate)) return false;
   if (candidate.type === 'discrepancy' || candidate.type === 'hunt') return true;
@@ -2205,6 +2232,39 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
         ensureDiagnostic(topSendableAfterDiscrepancy).penaltyReasons.push('sendable_forced_over_emergent_make_decision');
         ensureDiagnostic(candidate).penaltyReasons.push('emergent_make_decision_yielded_to_thread_backed_sendable');
       }
+    }
+  }
+
+  // Interview-class write_document invariant: a confirmed, dated, hiring-context
+  // interview prep artifact beats abstract behavioral_pattern discrepancies
+  // (e.g. "9 received from micro1 team, 0 replies"). The concrete interview
+  // moves the board; the behavioral pattern is a mirror, not an action.
+  const topInterviewClassWriteDoc = ranked
+    .filter((c) =>
+      c.score > 0
+      && passesTop3RankingInvariants(c)
+      && isGoalPrimacyExemptInterviewWriteDocument(c))
+    .sort(compareScoredLoops)[0];
+  if (topInterviewClassWriteDoc) {
+    const topAbstractBehavioralPattern = ranked
+      .filter((c) =>
+        c.score > 0
+        && c.id !== topInterviewClassWriteDoc.id
+        && c.type === 'discrepancy'
+        && c.discrepancyClass === 'behavioral_pattern'
+        && passesTop3RankingInvariants(c))
+      .sort(compareScoredLoops)[0];
+    if (
+      topAbstractBehavioralPattern
+      && topAbstractBehavioralPattern.score >= topInterviewClassWriteDoc.score
+    ) {
+      topInterviewClassWriteDoc.score = topAbstractBehavioralPattern.score + 0.001;
+      ensureDiagnostic(topInterviewClassWriteDoc).penaltyReasons.push(
+        'interview_class_write_document_forced_over_behavioral_pattern',
+      );
+      ensureDiagnostic(topAbstractBehavioralPattern).penaltyReasons.push(
+        'behavioral_pattern_yielded_to_interview_class_write_document',
+      );
     }
   }
 
@@ -5629,9 +5689,42 @@ export async function scoreOpenLoops(
 
     // Priority 1 = most important → highest stakes. Invert: stakes = 6 - priority
     // P1 → 5.0, P2 → 4.0, P3 → 3.0, P4 → 2.0, P5 → 1.0
-    const stakes = c.matchedGoal ? (6 - c.matchedGoal.priority) : 1.0;
+    let stakes = c.matchedGoal ? (6 - c.matchedGoal.priority) : 1.0;
 
-    // Specificity multiplier: reward candidates with concrete details, penalize vague ones
+    // Interview-class write_document floor: a confirmed, dated, hiring-context
+    // interview prep artifact is inherently high-stakes regardless of goal match.
+    // Without this floor, unmatched interview prep candidates die in the lifecycle
+    // gate (stakes < 2 → archive_only). The test below is the same one
+    // `stakes-gate.ts` already uses to admit these candidates.
+    const interviewClass = isTimeBoundInterviewExecutionCandidate({
+      id: c.id,
+      type: c.type,
+      title: c.title,
+      content: c.content,
+      actionType: c.actionType,
+      urgency: c.urgency,
+      matchedGoal: c.matchedGoal,
+      domain: c.domain,
+      sourceSignals: c.sourceSignals,
+      entityName: c.entityName,
+    });
+    if (interviewClass && stakes < 3) {
+      logStructuredEvent({
+        event: 'interview_class_stakes_floor',
+        level: 'info',
+        userId,
+        artifactType: 'write_document',
+        generationStatus: 'scoring',
+        details: {
+          scope: 'scorer',
+          candidate_title: c.title.slice(0, 100),
+          raw_stakes: stakes,
+          floored_stakes: 3,
+        },
+      });
+      stakes = 3;
+    }
+
     let specificityAdjustedStakes = stakes;
     const words = c.content.split(/\s+/);
     const hasEntityReference = /[A-Z0-9]{4,}/.test(c.content);
@@ -6694,6 +6787,7 @@ export async function scoreOpenLoops(
       || s.type === 'discrepancy'
       || s.type === 'hunt'
       || isGoalPrimacyExemptCareerCommitment(s)
+      || isGoalPrimacyExemptInterviewWriteDocument(s)
     ) {
       goalGateKept.push(s);
     } else {

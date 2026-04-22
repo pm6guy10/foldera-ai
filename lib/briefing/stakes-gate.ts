@@ -157,7 +157,7 @@ const INTERVIEW_PRESSURE_PATTERNS = {
 // Urgency >= 0.4 means scorer already computed meaningful time pressure
 const URGENCY_THRESHOLD = 0.4;
 
-function isTimeBoundInterviewExecutionCandidate(c: StakesCandidate): boolean {
+export function isTimeBoundInterviewExecutionCandidate(c: StakesCandidate): boolean {
   if (c.actionType !== 'write_document') return false;
   const text = `${c.title} ${c.content}`;
   if (!INTERVIEW_PRESSURE_PATTERNS.interviewAnchor.test(text)) return false;
