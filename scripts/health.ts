@@ -12,14 +12,19 @@ import {
   selectLatestMeaningfulGenerationRow,
   summarizeRepeatedDirectiveHealth,
 } from '../lib/cron/duplicate-truth';
+import {
+  blockingCheck,
+  buildRepeatedDirectiveCheck,
+  countBlockingFailures,
+  type HealthCheckRow,
+  warningCheck,
+} from './health-checks';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 
 const TWENTY_FIVE_H_MS = 25 * 60 * 60 * 1000;
 const TWENTY_FOUR_H_MS = 24 * 60 * 60 * 1000;
 const MAIL_TYPES = ['email_received', 'email_sent'] as const;
-
-type CheckRow = { ok: boolean; line: string };
 
 function formatPtHeader(): string {
   const now = new Date();
@@ -71,7 +76,7 @@ async function main() {
 
   const supabase = createClient(url, key);
   const now = Date.now();
-  const checks: CheckRow[] = [];
+  const checks: HealthCheckRow[] = [];
 
   const { data: tokenRows, error: tokErr } = await supabase
     .from('user_tokens')
@@ -104,49 +109,45 @@ async function main() {
   // Gmail fresh
   try {
     if (!googleConnected) {
-      checks.push({
-        ok: true,
-        line: '✓ Gmail fresh         (no Google mailbox connected)',
-      });
+      checks.push(warningCheck('Gmail fresh', '(no Google mailbox connected)'));
     } else {
       const newest = await newestMailOccurred('gmail');
       const fresh = isFresh(newest, now);
-      checks.push({
-        ok: fresh,
-        line: fresh
-          ? `✓ Gmail fresh         ${relAgo(newest, now)}`
-          : `✗ Gmail stale         ${relAgo(newest, now)} — check sync / ingest`,
-      });
+      checks.push(
+        fresh
+          ? warningCheck('Gmail fresh', relAgo(newest, now), 'pass')
+          : warningCheck('Gmail stale', `${relAgo(newest, now)} — check sync / ingest`),
+      );
     }
   } catch (e) {
-    checks.push({
-      ok: false,
-      line: `✗ Gmail fresh         query error: ${e instanceof Error ? e.message : String(e)}`,
-    });
+    checks.push(
+      warningCheck(
+        'Gmail fresh',
+        `query error: ${e instanceof Error ? e.message : String(e)}`,
+      ),
+    );
   }
 
   // Outlook fresh
   try {
     if (!msConnected) {
-      checks.push({
-        ok: true,
-        line: '✓ Outlook fresh       (no Microsoft mailbox connected)',
-      });
+      checks.push(warningCheck('Outlook fresh', '(no Microsoft mailbox connected)'));
     } else {
       const newest = await newestMailOccurred('outlook');
       const fresh = isFresh(newest, now);
-      checks.push({
-        ok: fresh,
-        line: fresh
-          ? `✓ Outlook fresh       ${relAgo(newest, now)}`
-          : `✗ Outlook stale         ${relAgo(newest, now)} — check sync / ingest`,
-      });
+      checks.push(
+        fresh
+          ? warningCheck('Outlook fresh', relAgo(newest, now), 'pass')
+          : warningCheck('Outlook stale', `${relAgo(newest, now)} — check sync / ingest`),
+      );
     }
   } catch (e) {
-    checks.push({
-      ok: false,
-      line: `✗ Outlook fresh       query error: ${e instanceof Error ? e.message : String(e)}`,
-    });
+    checks.push(
+      warningCheck(
+        'Outlook fresh',
+        `query error: ${e instanceof Error ? e.message : String(e)}`,
+      ),
+    );
   }
 
   // No pending_approval older than STALE_PENDING_APPROVAL_MAX_AGE_HOURS (cron auto-drains on daily-generate)
@@ -163,18 +164,23 @@ async function main() {
 
     if (error) throw new Error(error.message);
     const n = staleCount ?? 0;
-    const ok = n === 0;
-    checks.push({
-      ok,
-      line: ok
-        ? `✓ No stale pending_approval (>${STALE_PENDING_APPROVAL_MAX_AGE_HOURS}h)`
-        : `✗ Stale pending_approval  ${n} row${n === 1 ? '' : 's'} older than ${STALE_PENDING_APPROVAL_MAX_AGE_HOURS}h — check daily-generate / cron`,
-    });
+    checks.push(
+      blockingCheck(
+        `No stale pending_approval (>${STALE_PENDING_APPROVAL_MAX_AGE_HOURS}h)`,
+        n === 0,
+        undefined,
+        `${n} row${n === 1 ? '' : 's'} older than ${STALE_PENDING_APPROVAL_MAX_AGE_HOURS}h — check daily-generate / cron`,
+      ),
+    );
   } catch (e) {
-    checks.push({
-      ok: false,
-      line: `✗ pending_approval      ${e instanceof Error ? e.message : String(e)}`,
-    });
+    checks.push(
+      blockingCheck(
+        'Stale pending_approval',
+        false,
+        undefined,
+        e instanceof Error ? e.message : String(e),
+      ),
+    );
   }
 
   // No directive repeated 3+ in 24h
@@ -209,32 +215,23 @@ async function main() {
       })),
       now,
     );
-    checks.push({
-      ok: repeated.status !== 'active_regression',
-      line:
-        repeated.status === 'clear'
-          ? '✓ No repeated directive'
-          : repeated.status === 'historical_backlog'
-            ? repeated.latestRowProtectedDuplicateBlock
-              ? `⚠ Duplicate backlog     max ${repeated.maxCopies} copies of one shape in 24h; latest run protected with no_send_persisted`
-              : `⚠ Duplicate backlog     max ${repeated.maxCopies} copies of one shape in 24h; latest persisted copy ${relAgo(repeated.dominantLatestGeneratedAt, now)}`
-            : `✗ Active duplicate regression  max ${repeated.maxCopies} copies of one shape in 24h; latest persisted copy ${relAgo(repeated.dominantLatestGeneratedAt, now)}`,
-    });
+    checks.push(buildRepeatedDirectiveCheck(repeated, (iso) => relAgo(iso, now)));
   } catch (e) {
-    checks.push({
-      ok: false,
-      line: `✗ Directive repeats     ${e instanceof Error ? e.message : String(e)}`,
-    });
+    checks.push(
+      blockingCheck(
+        'Repeated directive',
+        false,
+        undefined,
+        e instanceof Error ? e.message : String(e),
+      ),
+    );
   }
 
   // Mail cursors
   try {
     const mailTokens = active.filter((r) => r.provider === 'google' || r.provider === 'microsoft');
     if (mailTokens.length === 0) {
-      checks.push({
-        ok: true,
-        line: '✓ Mail cursors current  (no connected google/microsoft tokens)',
-      });
+      checks.push(warningCheck('Mail cursors current', '(no connected google/microsoft tokens)'));
     } else {
       const stale: string[] = [];
       for (const r of mailTokens) {
@@ -242,19 +239,19 @@ async function main() {
           stale.push(`${r.provider} ${relAgo(r.last_synced_at, now)}`);
         }
       }
-      const ok = stale.length === 0;
-      checks.push({
-        ok,
-        line: ok
-          ? '✓ Mail cursors current'
-          : `✗ Mail cursors stale    ${stale.join('; ')}`,
-      });
+      checks.push(
+        stale.length === 0
+          ? warningCheck('Mail cursors current', undefined, 'pass')
+          : warningCheck('Mail cursors stale', stale.join('; ')),
+      );
     }
   } catch (e) {
-    checks.push({
-      ok: false,
-      line: `✗ Mail cursors          ${e instanceof Error ? e.message : String(e)}`,
-    });
+    checks.push(
+      warningCheck(
+        'Mail cursors',
+        e instanceof Error ? e.message : String(e),
+      ),
+    );
   }
 
   // Last generation row
@@ -282,42 +279,37 @@ async function main() {
     }
 
     if (!latest) {
-      checks.push({
-        ok: false,
-        line: '✗ Last generation     no tkg_actions rows for user',
-      });
+      checks.push(warningCheck('Last generation', 'no tkg_actions rows for user'));
     } else {
       const dir = latest.directive_text ?? '';
       const genFailed = dir.includes('__GENERATION_FAILED__');
       const isDoNothing = latest.action_type === 'do_nothing';
 
       if (genFailed) {
-        checks.push({
-          ok: false,
-          line: '✗ Last generation     GENERATION_FAILED',
-        });
+        checks.push(warningCheck('Last generation', 'GENERATION_FAILED'));
       } else if (isDoNothing) {
-        checks.push({
-          ok: true,
-          line: '⚠ Last generation     do_nothing',
-        });
+        checks.push(warningCheck('Last generation', 'do_nothing'));
       } else {
-        checks.push({
-          ok: true,
-          line: `✓ Last generation     ${latest.action_type ?? 'unknown'}`,
-        });
+        checks.push(warningCheck('Last generation', latest.action_type ?? 'unknown', 'pass'));
       }
     }
   } catch (e) {
-    checks.push({
-      ok: false,
-      line: `✗ Last generation     ${e instanceof Error ? e.message : String(e)}`,
-    });
+    checks.push(
+      warningCheck(
+        'Last generation',
+        e instanceof Error ? e.message : String(e),
+      ),
+    );
   }
 
-  const failing = checks.filter((c) => !c.ok).length;
+  const failing = countBlockingFailures(checks);
   console.log(`FOLDERA HEALTH — ${formatPtHeader()}`);
-  for (const c of checks) console.log(c.line);
+  console.log('');
+  console.log('BLOCKING');
+  for (const check of checks.filter((c) => c.group === 'blocking')) console.log(check.line);
+  console.log('');
+  console.log('WARNING');
+  for (const check of checks.filter((c) => c.group === 'warning')) console.log(check.line);
   console.log('');
   console.log(`RESULT: ${failing} FAILING`);
 
