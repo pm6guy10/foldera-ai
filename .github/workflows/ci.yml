@@ -393,13 +393,49 @@ jobs:
       - name: Generate CI test secret
         run: echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
 
+      # Diagnostic probe: Playwright's webServer surfaces boot failures as a
+      # generic "Process … was not able to start. Exit code: 1" and hides the
+      # stderr. Run next start directly here, capture stderr, then kill — so
+      # any crash at boot is visible in the job log. Remove once boot is stable.
+      - name: Probe next start (diagnostic)
+        env:
+          NEXTAUTH_URL: http://127.0.0.1:3010
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -x
+          echo "--- .next/ top-level ---"
+          ls -la .next || echo "MISSING .next"
+          echo "--- .next/BUILD_ID ---"
+          cat .next/BUILD_ID 2>&1 || echo "MISSING .next/BUILD_ID"
+          echo "--- .next/required-server-files.json (head) ---"
+          head -c 400 .next/required-server-files.json 2>&1 || echo "MISSING required-server-files.json"
+          echo "--- probing next start ---"
+          node_modules/.bin/next start -p 3010 > next-probe.out 2> next-probe.err &
+          PROBE_PID=$!
+          sleep 10
+          echo "--- curl http://127.0.0.1:3010/api/health ---"
+          curl -sSf -m 5 http://127.0.0.1:3010/api/health || echo "(curl failed)"
+          echo "--- server stdout ---"
+          cat next-probe.out || true
+          echo "--- server stderr ---"
+          cat next-probe.err || true
+          kill "$PROBE_PID" 2>/dev/null || true
+          wait "$PROBE_PID" 2>/dev/null || true
+
       - name: E2E smoke (public routes, @quarantine excluded)
         env:
           CI: "true"
           E2E_LANE: smoke
-          NEXTAUTH_URL: http://localhost:3000
+          # Match Playwright's webServer origin exactly (127.0.0.1) so NextAuth
+          # callback validation and any host-checks see the same URL Playwright
+          # requests. `localhost` vs `127.0.0.1` drift was the classic silent-500 cause.
+          NEXTAUTH_URL: http://127.0.0.1:3000
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run test:ci:e2e:smoke
 
@@ -452,9 +488,10 @@ jobs:
         env:
           CI: "true"
           E2E_LANE: flow
-          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_URL: http://127.0.0.1:3000
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run test:ci:e2e:flow
 
@@ -511,9 +548,10 @@ jobs:
         env:
           CI: "true"
           E2E_LANE: payments
-          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_URL: http://127.0.0.1:3000
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run test:ci:e2e:payments
 
@@ -568,9 +606,10 @@ jobs:
         env:
           CI: "true"
           E2E_LANE: quarantine
-          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_URL: http://127.0.0.1:3000
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run test:ci:e2e:quarantine
 

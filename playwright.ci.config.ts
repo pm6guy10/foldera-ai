@@ -120,6 +120,11 @@ export default defineConfig({
     // Reusing a stale dev/prod server on :3000 serves HTML pointing at old chunk hashes → 400 on /_next/static and blank client pages.
     reuseExistingServer: false,
     timeout: 60000,
+    // Pipe server stdout/stderr into Playwright's own output so a crash during
+    // `next start` in CI produces a diagnosable log instead of the cryptic
+    // "Process from config.webServer was not able to start. Exit code: 1".
+    stdout: "pipe",
+    stderr: "pipe",
   },
   use: {
     baseURL: WEB_ORIGIN,
