@@ -74,6 +74,7 @@ import {
   getInternalExecutionBriefIssues,
   getWriteDocumentTaskManagerLabelIssues,
   getWriteDocumentMode,
+  isInterviewClassWriteDocumentEnforcementRelaxation,
   normalizeDecisionActionType,
   textHasAny,
 } from './decision-enforcement';
@@ -2059,6 +2060,10 @@ export interface StructuredContext {
   entity_conversation_state: string | null;
   /** Voice grounding — style extracted from approved emails. Null when insufficient data. */
   user_voice_patterns: string | null;
+  /**
+   * Interview-class write_document winner: full-body source hydration ran. Prompt must require JSON-only output.
+   */
+  interview_class_hydrated_write_document?: boolean;
 }
 
 /** Distinct `tkg_signals.source` in supporting + life snapshot (generator bundle audit). */
@@ -3042,6 +3047,8 @@ export function buildStructuredContext(
     entity_conversation_state: entityConversationState ?? null,
     user_voice_patterns: userVoicePatterns ?? null,
     hunt_send_message_recipient_allowlist,
+    interview_class_hydrated_write_document:
+      winner.suggestedActionType === 'write_document' && isInterviewClassWriteDocumentWinner(winner),
   };
 }
 
@@ -3521,9 +3528,16 @@ export function buildPromptFromStructuredContext(
   ctx: StructuredContext,
   committedArtifactType?: ValidArtifactTypeCanonical,
 ): string {
+  const interviewHydratedBlock =
+    committedArtifactType === 'write_document' && ctx.interview_class_hydrated_write_document
+      ? 'INTERVIEW_PREP_WRITE_DOCUMENT (system path — mandatory compliance):\n' +
+        '- Hydrated SOURCE excerpts in this prompt (email bodies, calendar, uploads, job materials) satisfy Rule 1 for this run.\n' +
+        '- Return ONLY a single JSON object per the schema. No refusal prose, no markdown code fences, no text before `{` or after `}`.\n' +
+        '- Produce a finished Shape B write_document from that material. Interview confirmations, invites, JD links, and recruiter mail are sufficient source material; you do not need a two-way email thread with every person on the calendar.\n\n'
+      : '';
   const preamble = committedArtifactType
-    ? `${buildCanonicalActionPreamble(committedArtifactType).trim()}\n\n`
-    : '';
+    ? `${buildCanonicalActionPreamble(committedArtifactType).trim()}\n\n${interviewHydratedBlock}`
+    : interviewHydratedBlock;
   const insightScanBanner = ctx.insight_scan_winner
     ? `INSIGHT_SCAN_WINNER:\nThe scorer elevated a candidate from the Insight Scan (unsupervised pattern read across raw signals — not a structural gap checklist). Follow INSIGHT_SCAN_WINNER rules in the system prompt.\n\n`
     : '';
@@ -5007,6 +5021,8 @@ export function getCausalDiagnosisIssues(input: {
   artifact: ConvictionArtifact | Record<string, unknown> | null;
   causalDiagnosis: CausalDiagnosis | null | undefined;
   candidateTitle: string;
+  /** Extra lines when candidateTitle is thin (persistence); interview-class relaxation only. */
+  supportingContext?: string | null;
   supportingSignals?: CompressedSignal[];
   mode?: 'full' | 'grounding_only';
   enforceGrounding?: boolean;
@@ -5102,7 +5118,19 @@ export function getCausalDiagnosisIssues(input: {
     issues.push('causal_diagnosis:artifact_not_mechanism_targeted');
   }
 
-  if (textHasAny(combinedText, PASSIVE_OR_IGNORABLE_PATTERNS) && mechanismClass !== 'general') {
+  const interviewClassRelax = isInterviewClassWriteDocumentEnforcementRelaxation({
+    actionType: input.actionType,
+    candidateTitle: input.candidateTitle,
+    supportingContext: input.supportingContext ?? null,
+    directiveText: input.directiveText,
+    reason: input.reason,
+    artifact: input.artifact as Record<string, unknown> | null,
+  });
+  if (
+    textHasAny(combinedText, PASSIVE_OR_IGNORABLE_PATTERNS) &&
+    mechanismClass !== 'general' &&
+    !interviewClassRelax
+  ) {
     issues.push('causal_diagnosis:surface_follow_up_mismatch');
   }
 
@@ -6968,7 +6996,14 @@ function validateGeneratedArtifact(
       directiveText: payload.directive ?? '',
       reason: payload.why_now ?? '',
     });
-    if (writeDocumentMode === 'internal_execution_brief') {
+    const interviewClassRelaxGen = isInterviewClassWriteDocumentEnforcementRelaxation({
+      actionType: canonicalArtifactType,
+      candidateTitle: ctx.candidate_title,
+      directiveText: payload.directive ?? '',
+      reason: payload.why_now ?? '',
+      artifact: (payload.artifact as Record<string, unknown>) ?? null,
+    });
+    if (writeDocumentMode === 'internal_execution_brief' && !interviewClassRelaxGen) {
       const internalExecutionIssues = getInternalExecutionBriefIssues(
         (payload.artifact as Record<string, unknown>) ?? null,
       );
@@ -7085,7 +7120,14 @@ function validateGeneratedArtifact(
     if (canonicalArtifactType === 'write_document') {
       const content = String((payload.artifact as Record<string, unknown>).content ?? '');
       const hasDecisionPoint = /\b(by\s+\w+day|\bby\s+\d{4}-\d{2}-\d{2}|\bdeadline\b|\bconfirm\b|\bdecide\b|\bchoose\b|\bapprove\b|\bschedule\b|\bcommit\b|\bnext\s+(?:step|action)\b)/i.test(content);
-      if (!hasDecisionPoint) {
+      const interviewClassRelax = isInterviewClassWriteDocumentEnforcementRelaxation({
+        actionType: canonicalArtifactType,
+        candidateTitle: ctx.candidate_title,
+        directiveText: payload.directive ?? '',
+        reason: payload.why_now ?? '',
+        artifact: payload.artifact as Record<string, unknown> | null,
+      });
+      if (!hasDecisionPoint && !interviewClassRelax) {
         issues.push('decision_enforcement:missing_forcing_function — write_document must contain a concrete deadline, decision point, or next action');
       }
     }
@@ -7098,6 +7140,7 @@ function validateGeneratedArtifact(
         artifact: payload.artifact ?? null,
         discrepancyClass: ctx.candidate_class === 'discrepancy' ? ctx.discrepancy_class : undefined,
         matchedGoalCategory: ctx.matched_goal_category,
+        candidateTitle: ctx.candidate_title,
       }),
     );
 
@@ -7151,6 +7194,33 @@ function validateGeneratedArtifact(
   }
 
   return issues;
+}
+
+/** Shared by persistence validation and daily-brief bottom gate for interview-class detection. */
+export function buildPersistenceDecisionEnforcementContext(directive: ConvictionDirective): {
+  candidateTitle: string | null;
+  supportingContext: string;
+} {
+  const log = directive.generationLog;
+  const dry = log?.pipeline_dry_run;
+  const selected =
+    log?.candidateDiscovery?.topCandidates?.find((c) => c.decision === 'selected') ??
+    log?.candidateDiscovery?.topCandidates?.[0] ??
+    null;
+  const candidateTitle =
+    (dry?.candidate_title?.trim() ? dry.candidate_title.trim() : null) ||
+    (selected?.targetGoal?.text?.trim() ? selected.targetGoal.text.trim() : null) ||
+    null;
+  const evidenceLines = (directive.evidence ?? [])
+    .map((e) => e.description)
+    .filter((d): d is string => typeof d === 'string' && d.trim().length > 0)
+    .slice(0, 12);
+  const clusterInputs =
+    log?.candidateDiscovery?.interviewClusterInputs ??
+    log?.brief_context_debug?.interview_cluster_inputs ??
+    [];
+  const supportingContext = [...evidenceLines, ...clusterInputs.slice(0, 8)].join('\n');
+  return { candidateTitle, supportingContext };
 }
 
 // ---------------------------------------------------------------------------
@@ -7234,6 +7304,7 @@ export function validateDirectiveForPersistence(input: {
   // relationship-maintenance artifacts. These naturally have no explicit asks, deadlines,
   // or consequence language — skip decision enforcement for them.
   if (input.candidateType !== 'discrepancy' && input.candidateType !== 'insight') {
+    const persistenceCtx = buildPersistenceDecisionEnforcementContext(input.directive);
     issues.push(
       ...getDecisionEnforcementIssues({
         actionType: input.directive.action_type,
@@ -7242,6 +7313,8 @@ export function validateDirectiveForPersistence(input: {
         artifact: input.artifact,
         discrepancyClass: effectiveDiscrepancyClassForGates(input.directive),
         matchedGoalCategory: input.matchedGoalCategory ?? null,
+        candidateTitle: persistenceCtx.candidateTitle,
+        supportingContext: persistenceCtx.supportingContext,
       }),
     );
   } else if (normalizeDecisionActionType(input.directive.action_type) === 'write_document') {

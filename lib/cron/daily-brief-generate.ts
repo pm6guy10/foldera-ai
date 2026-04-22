@@ -11,6 +11,7 @@ import {
   behavioralPatternArtifactHasGroundedTarget,
   BUDGET_CAP_DIRECTIVE_SENTINEL,
   buildDirectiveExecutionResult,
+  buildPersistenceDecisionEnforcementContext,
   fetchUserEmailAddresses,
   generateDirective,
   getInternalExecutionBriefIssues,
@@ -19,6 +20,7 @@ import {
   normalizeEmailArtifactContentField,
   validateDirectiveForPersistence,
 } from '@/lib/briefing/generator';
+import { isInterviewClassWriteDocumentEnforcementRelaxation } from '@/lib/briefing/decision-enforcement';
 import {
   evaluatePersistedDirectiveContentLoopFromRows,
   GENERATION_LOOP_DETECTION_WINDOW,
@@ -254,6 +256,15 @@ export function evaluateBottomGate(
   const internalExecutionIssues = internalExecutionBrief
     ? getInternalExecutionBriefIssues(artifactRecord)
     : [];
+  const persistenceEnforcementCtx = buildPersistenceDecisionEnforcementContext(directive);
+  const interviewClassBottomGateRelax = isInterviewClassWriteDocumentEnforcementRelaxation({
+    actionType: directive.action_type,
+    candidateTitle: persistenceEnforcementCtx.candidateTitle,
+    supportingContext: persistenceEnforcementCtx.supportingContext,
+    directiveText,
+    reason,
+    artifact: artifactRecord,
+  });
 
   if (scheduleConflictWriteDoc) {
     blocked_reasons.push('FINISHED_WORK_REQUIRED');
@@ -294,7 +305,7 @@ export function evaluateBottomGate(
   if (directive.action_type !== 'send_message') {
     if (scheduleConflictWriteDoc) {
       // No-op: schedule_conflict write_document is categorically below bar on this seam.
-    } else if (internalExecutionBrief) {
+    } else if (internalExecutionBrief && !interviewClassBottomGateRelax) {
       const hasAnchoredTime =
         REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
       const hasExecutionMove = !internalExecutionIssues.includes('missing_execution_move');
@@ -306,6 +317,16 @@ export function evaluateBottomGate(
       }
       if (internalExecutionIssues.some((issue) => issue !== 'missing_execution_move')) {
         blocked_reasons.push('FINISHED_WORK_REQUIRED');
+      }
+    } else if (
+      interviewClassBottomGateRelax &&
+      directive.action_type === 'write_document' &&
+      !scheduleConflictWriteDoc
+    ) {
+      const hasAnchoredTime =
+        REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
+      if (!hasAnchoredTime) {
+        blocked_reasons.push('NO_REAL_PRESSURE');
       }
     } else if (!isDiscrepancyCandidate) {
       // 3. Concrete ask — must ask someone to DO something

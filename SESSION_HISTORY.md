@@ -2,11 +2,17 @@
 
 # Session History
 
+## 2026-04-22 — interview-class write_document: enforcement + bottom gate + JSON preamble (native pending_approval)
+- MODE: END-TO-END (real owner `runDailyGenerate`; prior successful run `action_id` `6cd16f56-1d00-4e48-9602-62439b1c1858` before local commit rewind)
+- Files: `lib/briefing/decision-enforcement.ts` (`isInterviewClassWriteDocumentEnforcementRelaxation`, hiring haystack without internal `target_reader` labels; `getDecisionEnforcementIssues` optional `candidateTitle`/`supportingContext` + relax filter), `lib/briefing/generator.ts` (causal `surface_follow_up_mismatch` skip; `validateGeneratedArtifact` internal-brief/forcing-function guards; `INTERVIEW_PREP_WRITE_DOCUMENT` preamble; `StructuredContext.interview_class_hydrated_write_document`; `buildPersistenceDecisionEnforcementContext` export; persistence `getDecisionEnforcementIssues` wiring), `lib/cron/daily-brief-generate.ts` (`evaluateBottomGate` interview branch), `CURRENT_STATE.md`, `SESSION_HISTORY.md`
+- Verification: `npm run health` (0 FAILING); `npx vitest run` on `bottom-gate`, `artifact-decision-enforcement`, `causal-diagnosis`, `interview-fallback`; `npm run build`
+- Unproven this session after rewind: fresh paid rerun; authenticated `/api/conviction/latest`, dashboard paint, approve POST (Supabase row read matched generator artifact when run succeeded)
+
 ## 2026-04-22 — Vercel usage: `/api/health` lite by default, full probe via `?depth=full`
 - MODE: SHIP (edge + Fluid spend reduction; repo audit, no Vercel Observability top-paths in session)
-- Files changed: `app/api/health/route.ts`, `app/api/health/__tests__/route.test.ts`, `lib/cron/cron-health-alert.ts`, `app/providers.tsx`, `tests/production/smoke.spec.ts`, `SESSION_HISTORY.md`
+- Files changed: `app/api/health/route.ts`, `app/api/health/__tests__/route.test.ts`, `lib/cron/cron-health-alert.ts`, `app/providers.tsx`, `tests/production/smoke.spec.ts`, `lib/briefing/decision-enforcement.ts` (null guard in `writeDocumentArtifactTextForInterviewHiringCheck` so `next build` tsc passes on `main` after de07500), `SESSION_HISTORY.md`, `CURRENT_STATE.md`
 - What changed: **Audit:** `GET /api/health` was doing ~20 column probes + 3 RPC calls on every request — a major Fluid CPU driver when the URL is hit often (e.g. uptime, manual polls). **Fix:** default response is **lite** (one `tkg_goals` read + env + `checkApiCreditCanary` + deploy `revision`); `?depth=full` or `?full=1` runs the full schema contract. `runPlatformHealthAlert` and production schema smoke use `?depth=full`. NextAuth `SessionProvider` `refetchInterval` **5m → 10m** (seconds) to cut `/api/auth/session` volume.
-- Verification: `npx vitest run app/api/health/__tests__/route.test.ts lib/cron/__tests__/cron-health-alert.test.ts` (3 passed). Local `npm run build` in this session hit known Windows/Next prerender or trace flakes unrelated to the health route; CI is the build truth for push.
+- Verification: `npx vitest run app/api/health/__tests__/route.test.ts lib/cron/__tests__/cron-health-alert.test.ts` (3 passed). `npx rimraf .next && npm run build` (exit 0) after the null guard.
 - Unproven: Vercel dashboard split by path after deploy; recommend confirming Edge/Fluid drop after a billing period.
 
 ## 2026-04-22 — interview-class write_document: winner-only full-source hydration (generator)
