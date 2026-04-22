@@ -18,17 +18,56 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Single active deploy per branch. A newer main commit cancels the in-flight
+    # CLI deploy — Vercel's Git integration keeps the deploy flow intact, and
+    # the preflight below re-verifies the newer SHA.
     concurrency:
-      group: vercel-prod-cli-foldera
-      cancel-in-progress: false
+      group: deploy-${{ github.event.workflow_run.head_branch }}
+      cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          # Need previous commit to diff-detect runtime changes below.
+          fetch-depth: 2
+
+      # workflow_run doesn't support `paths` filtering, so we filter inside the
+      # job: if the triggering commit touched only docs/CI-only/session-history
+      # files, skip the deploy entirely (Vercel Git integration is a no-op for
+      # the same reason). Keeps the Hobby daily-deploy budget intact.
+      - name: Runtime change gate
+        id: runtime
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -e
+          base="$(git rev-parse HEAD^ 2>/dev/null || echo '')"
+          if [ -z "$base" ]; then
+            echo "No parent commit (shallow checkout edge case); defaulting to runtime=true."
+            echo "runtime=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed="$(git diff --name-only "$base" "$HEAD_SHA")"
+          printf '%s\n' "$changed" | sed 's/^/  /'
+
+          # Anything outside this allowlist forces a deploy.
+          runtime=true
+          if printf '%s\n' "$changed" | grep -qvE '^(.+\.mdx?$|docs/|audit-reports/|SESSION_HISTORY\.md$|CURRENT_STATE\.md$|LESSONS_LEARNED\.md$|AGENTS\.md$|CLAUDE\.md$|README\.md$|\.cursorrules$|\.github/workflows/docs-fast\.yml$)'; then
+            runtime=true
+          else
+            runtime=false
+          fi
+
+          echo "runtime=$runtime" >> "$GITHUB_OUTPUT"
+          if [ "$runtime" = "false" ]; then
+            echo "::notice::No runtime files changed in $HEAD_SHA — skipping Vercel CLI deploy. Vercel Git integration remains the source of truth."
+          fi
 
       - name: Preflight — skip CLI if Git integration already (or soon) READY at this SHA
         id: skip_check
+        if: ${{ steps.runtime.outputs.runtime == 'true' }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -37,40 +76,40 @@ jobs:
         run: python3 scripts/ci/vercel-deploy-preflight.py preflight
 
       - name: Skip CLI deploy (production already at this commit)
-        if: ${{ steps.skip_check.outputs.skip_cli == 'true' }}
+        if: ${{ steps.runtime.outputs.runtime == 'true' && steps.skip_check.outputs.skip_cli == 'true' }}
         run: |
           echo "::notice::Deploy workflow finished without CLI upload — www should already match ${{ github.event.workflow_run.head_sha }} (confirm GET /api/health revision)."
 
       - uses: actions/setup-node@v5
-        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
+        if: ${{ steps.runtime.outputs.runtime == 'true' && steps.skip_check.outputs.skip_cli != 'true' }}
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
-        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
+        if: ${{ steps.runtime.outputs.runtime == 'true' && steps.skip_check.outputs.skip_cli != 'true' }}
         run: npm ci
 
       - name: Install Vercel CLI
-        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
+        if: ${{ steps.runtime.outputs.runtime == 'true' && steps.skip_check.outputs.skip_cli != 'true' }}
         run: npm install --global vercel@latest
 
       - name: Pull Vercel project environment
-        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
+        if: ${{ steps.runtime.outputs.runtime == 'true' && steps.skip_check.outputs.skip_cli != 'true' }}
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Build project artifacts
-        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
+        if: ${{ steps.runtime.outputs.runtime == 'true' && steps.skip_check.outputs.skip_cli != 'true' }}
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Deploy prebuilt artifacts to production
-        if: ${{ steps.skip_check.outputs.skip_cli != 'true' }}
+        if: ${{ steps.runtime.outputs.runtime == 'true' && steps.skip_check.outputs.skip_cli != 'true' }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}

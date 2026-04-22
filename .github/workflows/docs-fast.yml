@@ -1,0 +1,78 @@
+name: CI
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Docs-fast lane.
+#
+# Fires only on markdown / docs-only changes. Completes in <15s. Emits the same
+# `ci-passed` job name as `.github/workflows/ci.yml` so branch protection does
+# not need a matrix of required checks — ONE required check covers every path.
+#
+# Triggered by:
+#   - any **/*.md, **/*.mdx change
+#   - anything under docs/ or audit-reports/
+#   - SESSION_HISTORY.md, README.md, LESSONS_LEARNED.md, CURRENT_STATE.md, AGENTS.md
+#
+# If a PR touches markdown AND code, the code paths match ci.yml's triggers so
+# the full lane runs there. This docs-fast workflow's own path filter excludes
+# code paths defensively so it never races the real CI.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/*.md"
+      - "**/*.mdx"
+      - "docs/**"
+      - "audit-reports/**"
+    paths-ignore:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "middleware.ts"
+      - "public/**"
+      - "scripts/**"
+      - "supabase/**"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/deploy.yml"
+      - "package.json"
+      - "package-lock.json"
+  pull_request:
+    branches: [main]
+    paths:
+      - "**/*.md"
+      - "**/*.mdx"
+      - "docs/**"
+      - "audit-reports/**"
+    paths-ignore:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "middleware.ts"
+      - "public/**"
+      - "scripts/**"
+      - "supabase/**"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/deploy.yml"
+      - "package.json"
+      - "package-lock.json"
+
+concurrency:
+  group: ci-docs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci-passed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+      - name: Docs-only PR — skip build + tests
+        run: |
+          echo "::notice::Docs-only change — no runtime, no Playwright, no deploy."
+          echo "Changed paths under this trigger are markdown/docs only."

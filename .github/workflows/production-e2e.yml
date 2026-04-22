@@ -11,6 +11,15 @@ on:
         required: false
         default: 'false'
 
+# One active post-deploy run per deployment environment / ref. Superseded
+# previews cancel their own validation runs instead of racing each other.
+concurrency:
+  group: production-e2e-${{ github.event.deployment_status.environment || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   e2e:
     if: >

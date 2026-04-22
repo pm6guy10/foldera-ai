@@ -2,6 +2,30 @@
 
 # Session History
 
+## 2026-04-22 — change-aware CI: path-filter classifier, build-once artifact, quarantine lane, deploy concurrency
+- MODE: INFRA HARDENING (architectural)
+- Files changed: `.github/workflows/ci.yml` (full rewrite), `.github/workflows/docs-fast.yml` (new), `.github/workflows/deploy.yml`, `.github/workflows/semgrep.yml`, `.github/workflows/production-e2e.yml`, `.husky/pre-push`, `playwright.ci.config.ts`, `package.json`, `scripts/run-quarantine-lane.mjs` (new), `SESSION_HISTORY.md`
+- What changed:
+  1. **Change-aware classifier.** First job in `ci.yml` is `changes`, which uses `dorny/paths-filter@v3` to bucket the diff into `app`, `backend`, `public_routes`, `dashboard_routes`, `payments`, `tests`, `e2e_config`, `ci`, `deps`. Derived outputs (`runtime`, `needs_smoke`, `needs_authenticated`, `needs_build`, `needs_unit`, `docs_only`) gate every downstream job. A marketing-copy PR never runs the authenticated e2e lane; a backend-only PR skips public-routes smoke; a pure docs PR skips the entire workflow (the sister `docs-fast.yml` fires instead and satisfies the same `ci-passed` status check in ~10s).
+  2. **Single-owner per ref.** Workflow-level `concurrency: ci-${{ workflow }}-${{ pr || ref }}` with `cancel-in-progress: true` on `ci.yml`, `docs-fast.yml`, `semgrep.yml`. Newer commits on a PR cancel stale runs immediately. Deploy workflow scoped to `deploy-${{ head_branch }}` with `cancel-in-progress: true` so a newer main commit supersedes an older CLI deploy. Production-e2e scoped to the deployment environment.
+  3. **Build once, reuse everywhere.** New `build` job uploads `.next` + `public` as artifact `next-build-${{ github.sha }}`. Both `e2e-smoke` and `e2e-authenticated` (and `e2e-quarantine`) download the exact same artifact instead of rebuilding. Removes "green on one build, deploy from another" drift and cuts ~3m of duplicated build time per run.
+  4. **Fail-fast promotion lanes.** Order is `changes → verify-static → (unit, build) → e2e-smoke → e2e-authenticated → e2e-quarantine → ci-passed`. `e2e-authenticated` refuses to start unless smoke passed (or was intentionally skipped). `ci-passed` is a single required status check that aggregates the required lanes, so branch protection needs only one rule.
+  5. **Quarantine lane (non-blocking).** Tests declared with `{ tag: '@quarantine' }` are excluded from `smoke`/`flow` via `grepInvert: /@quarantine/`. The `e2e-quarantine` job runs `continue-on-error: true`, retries 2× (vs. 1× on blocking lanes), and uploads its own report artifact. `scripts/run-quarantine-lane.mjs` exits 0 cleanly when nothing is quarantined so the "desired steady state" (zero flaky tests) doesn't red-light CI.
+  6. **Deploy runtime gate.** `deploy.yml` now git-diffs `HEAD^..HEAD` against the triggering SHA and skips the Vercel CLI path entirely when only markdown/docs files changed. The Vercel Git integration still handles the no-op on its side; this purely protects the Hobby `api-deployments-free-per-day` budget from being burnt on session-history commits.
+  7. **Pre-push trimmed.** Removed the vitest unit-test step from `.husky/pre-push` — that is now CI's job. Local gate is: e2e assertion linter (<1s) + `npm run build` (typecheck substitute) + public-routes smoke (~24s). `SKIP_E2E_SMOKE=1` skips smoke, `FULL_PREPUSH=1` re-enables the unit-test mirror, `HUSKY=0` is the emergency bypass. Local/remote policy never drifts because the assertion linter runs in both.
+- Verification:
+  - `npm run health` → `0 FAILING` (warning-only `Last generation do_nothing`).
+  - `npm run lint` → clean.
+  - `npm run test:ci:e2e:lint` → `OK`.
+  - `npm run test:ci:e2e:smoke` → **28/28 passed** in 21.9s (baseline, no quarantined tests).
+  - Temporarily tagged `'/api/health sets x-request-id when absent'` with `@quarantine`:
+    - `npm run test:ci:e2e:quarantine` → **1/1 passed** (Running 1 test using 1 worker). Confirms the lane picks up tagged tests.
+    - `npm run test:ci:e2e:smoke` → **27/27 passed**. Confirms main lane correctly excludes the tagged test (28 → 27 delta).
+  - Tag reverted; smoke back to 28/28.
+  - `npm run test:ci:e2e:quarantine` with no tags → `quarantine-lane: no @quarantine-tagged tests found` and exits 0.
+- Tools used: local Playwright + local git diff simulation. Full CI path validation fires on the next push — that's the whole point of the rewrite.
+- Unresolved: First post-push CI run on `main` will validate the artifact handoff between `build` → `e2e-smoke` → `e2e-authenticated`, the path-filter routing (this commit touches mostly `.github/workflows/**`, so the `ci` bucket is true and all blocking lanes will fire — desired for the bootstrap). Branch protection should be re-pointed to the single `ci-passed` status check (operator action, not a code change).
+
 ## 2026-04-22 — robust CI architecture: fix raw-markdown assertion bug class + lane split + traces
 - MODE: INFRA HARDENING (single seam + permanent defense)
 - Files changed: `tests/e2e/authenticated-routes.spec.ts`, `playwright.ci.config.ts`, `.github/workflows/ci.yml`, `.husky/pre-push`, `scripts/lint-e2e-assertions.mjs` (new), `package.json`, `SESSION_HISTORY.md`

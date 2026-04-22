@@ -1,20 +1,39 @@
-echo "Running critical CI contract gate..."
-npm run test:critical-ci-contracts
+# ─────────────────────────────────────────────────────────────────────────────
+# Pre-push — local guard. Deliberately short. Heavy verification lives in CI.
+#
+# Default gate (<30s when smoke is on):
+#   1. E2E assertion linter       (~<1s; locks out raw-markdown + .only leaks)
+#   2. Next build                 (~2m; doubles as a typecheck)
+#   3. Public-routes e2e smoke    (~24s; catches marketing/shell regressions)
+#
+# Unit tests, the authenticated e2e flow, and payments lanes are CI's job.
+# CI also gates on the same assertion linter, so there is zero local/remote
+# policy drift.
+#
+# Escape hatches (in order of scope):
+#   SKIP_E2E_SMOKE=1  git push   # skip only the public-routes smoke lane
+#   FULL_PREPUSH=1    git push   # also run unit tests locally (mirrors CI)
+#   HUSKY=0           git push   # emergency bypass; use sparingly
+#
+# If a push is blocked here, the failing lane names the exact next move.
+# ─────────────────────────────────────────────────────────────────────────────
 
+echo "Running e2e assertion linter..."
+npm run test:ci:e2e:lint
 if [ $? -ne 0 ]; then
-  echo "CRITICAL CI CONTRACT GATE FAILED. Push rejected."
+  echo "E2E ASSERTION LINT FAILED. Push rejected."
   exit 1
 fi
 
-echo "Running build check..."
-
+echo "Running build (Next.js full typecheck)..."
 # On Windows, capturing large build output in a variable fails silently.
 # Pipe directly so stdout is streamed. Use tee to a temp file to test for success.
 TMPFILE=$(mktemp)
 npm run build 2>&1 | tee "$TMPFILE"
 
-# On Windows, Next.js build traces fail with ENOENT on .next/server files even when
-# compilation succeeds. Pass if compilation succeeded regardless of trace errors.
+# On Windows, Next.js build traces occasionally fail with ENOENT on .next/server
+# files even when compilation succeeded. Pass if compilation succeeded regardless
+# of trace errors.
 if grep -q "Compiled successfully" "$TMPFILE"; then
   echo "Build compiled successfully."
   rm -f "$TMPFILE"
@@ -24,32 +43,20 @@ else
   exit 1
 fi
 
-echo "Running unit tests..."
-npx vitest run --exclude ".claude/worktrees/**"
-
-if [ $? -ne 0 ]; then
-  echo "UNIT TESTS FAILED. Push rejected."
-  exit 1
+if [ "${FULL_PREPUSH:-0}" = "1" ]; then
+  echo "FULL_PREPUSH=1 — running unit tests locally (mirrors CI)..."
+  npx vitest run --exclude ".claude/worktrees/**"
+  if [ $? -ne 0 ]; then
+    echo "UNIT TESTS FAILED. Push rejected."
+    exit 1
+  fi
 fi
 
-# Cheap structural guard against known e2e assertion bug classes
-# (raw-markdown assertions against ReactMarkdown containers, .only leaks).
-# Runs in <1s, zero network. See scripts/lint-e2e-assertions.mjs.
-echo "Linting e2e assertions..."
-npm run test:ci:e2e:lint
-
-if [ $? -ne 0 ]; then
-  echo "E2E ASSERTION LINT FAILED. Push rejected."
-  exit 1
-fi
-
-# Opt out with SKIP_E2E_SMOKE=1 git push when iterating on non-frontend code.
 if [ "${SKIP_E2E_SMOKE:-0}" = "1" ]; then
-  echo "SKIP_E2E_SMOKE=1 set — skipping public-routes smoke."
+  echo "SKIP_E2E_SMOKE=1 — skipping public-routes smoke lane."
 else
   echo "Running e2e smoke lane (public-routes only)..."
   npm run test:ci:e2e:smoke
-
   if [ $? -ne 0 ]; then
     echo "E2E SMOKE FAILED. Push rejected."
     echo "To push anyway (emergency only): SKIP_E2E_SMOKE=1 git push"
@@ -57,4 +64,7 @@ else
   fi
 fi
 
-echo "All gates passed. Full authenticated + flow e2e runs in GitHub Actions."
+echo "All local gates passed. Full CI runs in GitHub Actions:"
+echo "  - unit tests (every code change)"
+echo "  - authenticated + flow e2e (dashboard/payments/settings changes)"
+echo "  - quarantine lane (report-only)"

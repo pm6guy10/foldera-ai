@@ -1,5 +1,33 @@
 name: semgrep
-on: [pull_request, push]
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "middleware.ts"
+      - "scripts/**"
+      - "supabase/**"
+      - ".github/workflows/semgrep.yml"
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "middleware.ts"
+      - "scripts/**"
+      - "supabase/**"
+      - ".github/workflows/semgrep.yml"
+
+concurrency:
+  group: semgrep-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   semgrep:
     runs-on: ubuntu-latest

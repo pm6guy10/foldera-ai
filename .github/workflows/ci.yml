@@ -1,24 +1,296 @@
 name: CI
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Change-aware CI.
+#
+# Doctrine (see SESSION_HISTORY.md 2026-04-22 entries for history):
+#   1. Classify file changes first. Every downstream job is gated on the bucket
+#      it actually cares about. Docs-only PRs do not run Playwright.
+#   2. Single owner per ref — concurrency cancels any stale run on the same
+#      branch/PR as soon as a newer commit lands.
+#   3. Build once. `verify-build` produces the `.next` + `public` artifact that
+#      every e2e lane downloads. No rebuilds, no drift between "what unit
+#      tested" and "what e2e hit".
+#   4. Fail-fast ordering: cheapest truth first.
+#        changes → lint/assertion-lint → unit → build → e2e-smoke
+#                                                    → e2e-authenticated
+#                                                    → e2e-quarantine (non-blocking)
+#   5. Quarantine flaky tests with Playwright tag `@quarantine`. The main lanes
+#      exclude them via `--grep-invert @quarantine`; the quarantine lane runs
+#      them `continue-on-error: true` and uploads a report.
+#   6. Single required status check: `ci-passed`. Branch protection points here,
+#      so conditionally-skipped jobs still satisfy the gate for docs-only PRs.
+#
+# Path filters at trigger level (below) stop this entire workflow from waking
+# up on truly irrelevant changes (pure session-history markdown, etc.). The
+# sister workflow `.github/workflows/docs-fast.yml` satisfies required checks
+# for those paths in ~10 seconds.
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
   push:
     branches: [main]
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "middleware.ts"
+      - "public/**"
+      - "scripts/**"
+      - "supabase/**"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/deploy.yml"
+      - "next.config.*"
+      - "postcss.config.*"
+      - "tailwind.config.*"
+      - "playwright*.ts"
+      - "playwright*.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".eslintrc*"
+      - "eslint.config.*"
   pull_request:
     branches: [main]
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "middleware.ts"
+      - "public/**"
+      - "scripts/**"
+      - "supabase/**"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/deploy.yml"
+      - "next.config.*"
+      - "postcss.config.*"
+      - "tailwind.config.*"
+      - "playwright*.ts"
+      - "playwright*.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".eslintrc*"
+      - "eslint.config.*"
 
-# Cancel in-flight runs on the same ref when a new commit lands — prevents PR and
-# rapid-push runs from piling up and wasting minutes.
+# Single active CI run per ref/PR. Newer commits cancel older runs immediately.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   # ───────────────────────────────────────────────────────────────────────────
-  # Stage 1: lint, build, unit tests, e2e assertion linter.
-  # Everything below runs in parallel only after this is green — no point paying
-  # for Playwright minutes if `npm run build` fails.
+  # 1. Classify the diff into buckets that downstream jobs gate on.
   # ───────────────────────────────────────────────────────────────────────────
-  build-and-unit:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      backend: ${{ steps.filter.outputs.backend }}
+      public_routes: ${{ steps.filter.outputs.public_routes }}
+      dashboard_routes: ${{ steps.filter.outputs.dashboard_routes }}
+      payments: ${{ steps.filter.outputs.payments }}
+      tests: ${{ steps.filter.outputs.tests }}
+      e2e_config: ${{ steps.filter.outputs.e2e_config }}
+      ci: ${{ steps.filter.outputs.ci }}
+      deps: ${{ steps.filter.outputs.deps }}
+      docs_only: ${{ steps.filter.outputs.docs_only }}
+      # Derived:
+      runtime: ${{ steps.derive.outputs.runtime }}
+      needs_smoke: ${{ steps.derive.outputs.needs_smoke }}
+      needs_authenticated: ${{ steps.derive.outputs.needs_authenticated }}
+      needs_build: ${{ steps.derive.outputs.needs_build }}
+      needs_unit: ${{ steps.derive.outputs.needs_unit }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          # `docs_only` is computed as "docs matched AND nothing else". We detect
+          # "anything else" by having a catch-all `any_code` pattern and then XOR
+          # in the `derive` step below.
+          filters: |
+            app:
+              - 'app/**'
+              - 'components/**'
+              - 'middleware.ts'
+              - 'public/**'
+              - 'next.config.*'
+              - 'postcss.config.*'
+              - 'tailwind.config.*'
+            backend:
+              - 'app/api/**'
+              - 'lib/**'
+              - 'scripts/**'
+              - 'supabase/**'
+            public_routes:
+              - 'app/page.tsx'
+              - 'app/layout.tsx'
+              - 'app/login/**'
+              - 'app/start/**'
+              - 'app/try/**'
+              - 'app/pricing/**'
+              - 'app/terms/**'
+              - 'app/privacy/**'
+              - 'app/blog/**'
+              - 'app/api/health/**'
+              - 'middleware.ts'
+              - 'components/nav/**'
+              - 'components/marketing/**'
+            dashboard_routes:
+              - 'app/dashboard/**'
+              - 'app/onboard/**'
+              - 'app/api/conviction/**'
+              - 'app/api/integrations/**'
+              - 'app/api/auth/**'
+              - 'app/api/subscription/**'
+              - 'app/api/settings/**'
+              - 'app/api/onboard/**'
+              - 'components/dashboard/**'
+              - 'lib/briefing/**'
+              - 'lib/conviction/**'
+            payments:
+              - 'app/api/stripe/**'
+              - 'app/api/subscription/**'
+              - 'app/pricing/**'
+              - 'lib/stripe/**'
+            tests:
+              - 'tests/**'
+            e2e_config:
+              - 'playwright*.ts'
+              - 'playwright*.config.ts'
+            ci:
+              - '.github/workflows/**'
+              - '.husky/**'
+              - 'scripts/lint-e2e-assertions.mjs'
+            deps:
+              - 'package.json'
+              - 'package-lock.json'
+            # Any code path that should force the full pipeline.
+            any_code:
+              - 'app/**'
+              - 'components/**'
+              - 'lib/**'
+              - 'middleware.ts'
+              - 'public/**'
+              - 'scripts/**'
+              - 'supabase/**'
+              - 'tests/**'
+              - 'playwright*.ts'
+              - 'playwright*.config.ts'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig.json'
+              - 'next.config.*'
+              - 'postcss.config.*'
+              - 'tailwind.config.*'
+
+      - id: derive
+        env:
+          APP: ${{ steps.filter.outputs.app }}
+          BACKEND: ${{ steps.filter.outputs.backend }}
+          PUBLIC_ROUTES: ${{ steps.filter.outputs.public_routes }}
+          DASHBOARD_ROUTES: ${{ steps.filter.outputs.dashboard_routes }}
+          PAYMENTS: ${{ steps.filter.outputs.payments }}
+          TESTS: ${{ steps.filter.outputs.tests }}
+          E2E_CONFIG: ${{ steps.filter.outputs.e2e_config }}
+          CI_CHANGED: ${{ steps.filter.outputs.ci }}
+          DEPS: ${{ steps.filter.outputs.deps }}
+          ANY_CODE: ${{ steps.filter.outputs.any_code }}
+        run: |
+          is_true() { [ "$1" = "true" ]; }
+
+          runtime=false
+          if is_true "$APP" || is_true "$BACKEND" || is_true "$DEPS" \
+             || is_true "$TESTS" || is_true "$E2E_CONFIG" \
+             || is_true "$PUBLIC_ROUTES" || is_true "$DASHBOARD_ROUTES" \
+             || is_true "$PAYMENTS"; then
+            runtime=true
+          fi
+
+          # Smoke runs when anything public-facing / shell-level changed, or
+          # when CI itself changed (so we verify the workflow still green-lights
+          # a trivial change).
+          needs_smoke=false
+          if is_true "$PUBLIC_ROUTES" || is_true "$APP" || is_true "$DEPS" \
+             || is_true "$CI_CHANGED" || is_true "$E2E_CONFIG"; then
+            needs_smoke=true
+          fi
+
+          # Authenticated/flow runs when dashboard, payments, deps, tests, or
+          # test config changed — not for marketing-only diffs.
+          needs_authenticated=false
+          if is_true "$DASHBOARD_ROUTES" || is_true "$PAYMENTS" \
+             || is_true "$DEPS" || is_true "$TESTS" || is_true "$E2E_CONFIG" \
+             || is_true "$CI_CHANGED"; then
+            needs_authenticated=true
+          fi
+
+          # Build only when something that affects the compiled artifact changed.
+          needs_build=false
+          if is_true "$APP" || is_true "$BACKEND" || is_true "$DEPS" \
+             || is_true "$E2E_CONFIG" || is_true "$CI_CHANGED"; then
+            needs_build=true
+          fi
+
+          # Unit tests run on any code or test change.
+          needs_unit=false
+          if is_true "$ANY_CODE" || is_true "$CI_CHANGED"; then
+            needs_unit=true
+          fi
+
+          docs_only=true
+          if is_true "$ANY_CODE" || is_true "$CI_CHANGED"; then
+            docs_only=false
+          fi
+
+          {
+            echo "runtime=$runtime"
+            echo "needs_smoke=$needs_smoke"
+            echo "needs_authenticated=$needs_authenticated"
+            echo "needs_build=$needs_build"
+            echo "needs_unit=$needs_unit"
+            echo "docs_only=$docs_only"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "::notice::runtime=$runtime needs_smoke=$needs_smoke needs_authenticated=$needs_authenticated needs_build=$needs_build needs_unit=$needs_unit docs_only=$docs_only"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 2. Verify-static: lint + e2e assertion linter. Cheapest truth.
+  # ───────────────────────────────────────────────────────────────────────────
+  verify-static:
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: E2E assertion lint (locks out raw-markdown, .only)
+        run: npm run test:ci:e2e:lint
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 3. Unit tests (vitest). Runs on any code/test change.
+  # ───────────────────────────────────────────────────────────────────────────
+  unit:
+    needs: [changes, verify-static]
+    if: needs.changes.outputs.needs_unit == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -31,36 +303,51 @@ jobs:
 
       - run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
-      - name: E2E assertion lint (locks out raw-markdown, .only)
-        run: npm run test:ci:e2e:lint
-
-      - name: Build
-        run: npm run build
-
-      - name: Unit tests
+      - name: Vitest
         env:
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
         run: npx vitest run --exclude ".claude/worktrees/**"
 
-      # Cache the built .next so the e2e jobs don't rebuild from scratch.
-      - name: Cache .next build output
-        uses: actions/cache/save@v4
+  # ───────────────────────────────────────────────────────────────────────────
+  # 4. Build once. Upload .next + public as an artifact so every e2e lane uses
+  #    the exact same bits. This is our "build-once / verify-once" anchor.
+  # ───────────────────────────────────────────────────────────────────────────
+  build:
+    needs: [changes, verify-static]
+    if: needs.changes.outputs.needs_build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      artifact: next-build-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
         with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Next build
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-build-${{ github.sha }}
           path: |
             .next
             public
-          key: next-build-${{ github.sha }}
+          retention-days: 3
+          if-no-files-found: error
 
   # ───────────────────────────────────────────────────────────────────────────
-  # Stage 2a: fast unauthenticated smoke (public-routes only).
-  # Fails fast — if landing/login/pricing break, stop before running the heavy
-  # mocked-auth suite and save CI minutes.
+  # 5a. E2E smoke — public routes only. Fails fast on marketing / landing / auth shell.
   # ───────────────────────────────────────────────────────────────────────────
   e2e-smoke:
-    needs: build-and-unit
+    needs: [changes, build]
+    if: needs.changes.outputs.needs_smoke == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -73,14 +360,11 @@ jobs:
 
       - run: npm ci
 
-      - name: Restore .next build
-        uses: actions/cache/restore@v4
+      - name: Download prebuilt app
+        uses: actions/download-artifact@v4
         with:
-          path: |
-            .next
-            public
-          key: next-build-${{ github.sha }}
-          fail-on-cache-miss: true
+          name: next-build-${{ github.sha }}
+          path: .
 
       - name: Install Playwright chromium
         run: npx playwright install chromium --with-deps
@@ -88,7 +372,7 @@ jobs:
       - name: Generate CI test secret
         run: echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
 
-      - name: E2E smoke (public routes)
+      - name: E2E smoke (public routes, @quarantine excluded)
         env:
           CI: "true"
           E2E_LANE: smoke
@@ -98,22 +382,27 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run test:ci:e2e:smoke
 
-      - name: Upload smoke artifacts (traces + report)
+      - name: Upload smoke artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-smoke-artifacts
+          name: e2e-smoke-artifacts-${{ github.sha }}
           path: |
             playwright-report/
             test-results/
           retention-days: 7
 
   # ───────────────────────────────────────────────────────────────────────────
-  # Stage 2b: heavy authenticated + flow suite.
-  # Gated behind smoke so a broken landing page doesn't also fail here.
+  # 5b. E2E authenticated + flow — dashboard, payments, settings.
+  #     Gated behind smoke: if landing is broken, don't waste minutes here.
   # ───────────────────────────────────────────────────────────────────────────
-  e2e-flow:
-    needs: e2e-smoke
+  e2e-authenticated:
+    needs: [changes, build, e2e-smoke]
+    if: |
+      always() &&
+      needs.changes.outputs.needs_authenticated == 'true' &&
+      needs.build.result == 'success' &&
+      (needs.e2e-smoke.result == 'success' || needs.e2e-smoke.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -126,14 +415,11 @@ jobs:
 
       - run: npm ci
 
-      - name: Restore .next build
-        uses: actions/cache/restore@v4
+      - name: Download prebuilt app
+        uses: actions/download-artifact@v4
         with:
-          path: |
-            .next
-            public
-          key: next-build-${{ github.sha }}
-          fail-on-cache-miss: true
+          name: next-build-${{ github.sha }}
+          path: .
 
       - name: Install Playwright chromium
         run: npx playwright install chromium --with-deps
@@ -141,7 +427,7 @@ jobs:
       - name: Generate CI test secret
         run: echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
 
-      - name: E2E flow (authenticated + flow routes)
+      - name: E2E authenticated + flow (@quarantine excluded)
         env:
           CI: "true"
           E2E_LANE: flow
@@ -151,13 +437,122 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run test:ci:e2e:flow
 
-      - name: Upload flow artifacts (traces + report + screenshots)
+      - name: Upload flow artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-flow-artifacts
+          name: e2e-flow-artifacts-${{ github.sha }}
           path: |
             playwright-report/
             test-results/
             .screenshots/
           retention-days: 7
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 5c. E2E quarantine — flaky tests tagged `@quarantine`. NON-BLOCKING.
+  #     Report-only lane so mainline CI stays deterministic while we fix flake.
+  #     Add/remove quarantine tags via the test title annotation:
+  #         test('name', { tag: '@quarantine' }, async () => { ... })
+  # ───────────────────────────────────────────────────────────────────────────
+  e2e-quarantine:
+    needs: [changes, build]
+    if: |
+      always() &&
+      needs.changes.outputs.needs_authenticated == 'true' &&
+      needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download prebuilt app
+        uses: actions/download-artifact@v4
+        with:
+          name: next-build-${{ github.sha }}
+          path: .
+
+      - name: Install Playwright chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Generate CI test secret
+        run: echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
+
+      - name: E2E quarantine lane (report-only)
+        env:
+          CI: "true"
+          E2E_LANE: quarantine
+          NEXTAUTH_URL: http://localhost:3000
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run test:ci:e2e:quarantine
+
+      - name: Upload quarantine artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-quarantine-artifacts-${{ github.sha }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 6. Single required status check. Branch protection points at `ci-passed`.
+  #    Succeeds when every required job either passed or was intentionally
+  #    skipped via the path-based gating. Fails if any required job failed or
+  #    was cancelled. Quarantine is intentionally excluded (report-only).
+  # ───────────────────────────────────────────────────────────────────────────
+  ci-passed:
+    needs:
+      - changes
+      - verify-static
+      - unit
+      - build
+      - e2e-smoke
+      - e2e-authenticated
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Aggregate required jobs
+        env:
+          R_VERIFY: ${{ needs.verify-static.result }}
+          R_UNIT: ${{ needs.unit.result }}
+          R_BUILD: ${{ needs.build.result }}
+          R_SMOKE: ${{ needs.e2e-smoke.result }}
+          R_AUTH: ${{ needs.e2e-authenticated.result }}
+        run: |
+          ok() { [ "$1" = "success" ] || [ "$1" = "skipped" ]; }
+
+          failed=0
+          for pair in \
+            "verify-static:$R_VERIFY" \
+            "unit:$R_UNIT" \
+            "build:$R_BUILD" \
+            "e2e-smoke:$R_SMOKE" \
+            "e2e-authenticated:$R_AUTH"; do
+            name="${pair%%:*}"
+            result="${pair##*:}"
+            if ok "$result"; then
+              echo "✓ $name ($result)"
+            else
+              echo "✗ $name ($result)"
+              failed=1
+            fi
+          done
+
+          if [ "$failed" = "1" ]; then
+            echo "::error::One or more required CI jobs did not succeed."
+            exit 1
+          fi
+          echo "::notice::All required CI jobs succeeded or were intentionally skipped."
