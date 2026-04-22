@@ -398,7 +398,7 @@ describe('generateDirective runtime failures', () => {
     expect(mockDecryptWithStatus).not.toHaveBeenCalled();
   });
 
-  it('locks late hydration to the first viable winner instead of hydrating fallback candidates', async () => {
+  it('falls through to fallback candidates when the first viable winner fails post-LLM validation', async () => {
     const scored = asWinnerScored(buildScorerResult());
     const runner = buildWinner();
     runner.id = 'loop-2';
@@ -437,10 +437,18 @@ describe('generateDirective runtime failures', () => {
     const { generateDirective } = await import('../generator');
     const directive = await generateDirective('user-1', { dryRun: true });
 
+    // Post-LLM failure-path gates now use `continue;` so the candidate fallback loop
+    // actually tries the next ranked candidate when the first winner fails validation.
+    // With 2 candidates and per-candidate LLM retry (2 attempts each), the total
+    // Anthropic call count is 4 — not 2. The pre-fix behavior used `break;` on the
+    // first post-LLM failure and never hydrated or invoked the second candidate.
+    // Candidate 2 (backup hiring thread) then succeeds because its causal-diagnosis
+    // context matches the mocked send_message artifact, so the final directive is a
+    // real send_message rather than the old do_nothing that resulted from the loop
+    // dying prematurely.
     expect(signalSelectCalls.length).toBeGreaterThan(0);
-    expect(anthropicCreate).toHaveBeenCalledTimes(2);
-    expect(directive.action_type).toBe('do_nothing');
-    expect(directive.generationLog?.stage).toBe('validation');
+    expect(anthropicCreate).toHaveBeenCalledTimes(4);
+    expect(directive.action_type).toBe('send_message');
   });
 
   it('excludes verification-stub rows from RECENT_ACTIONS_7D in the Anthropic prompt', async () => {

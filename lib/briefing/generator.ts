@@ -9840,7 +9840,7 @@ export async function generateDirective(
           title: currentCandidate.title.slice(0, 80),
           reasons: ['proof_mode:low_cross_wait_rationale_blocked'],
         });
-        break;
+        continue;
       }
     }
 
@@ -9852,7 +9852,7 @@ export async function generateDirective(
         artifactType: null, generationStatus: 'llm_generation_failed',
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), issues: payloadResult.issues },
       });
-      break;
+      continue;
     }
 
     let payload = payloadResult.payload;
@@ -9877,7 +9877,7 @@ export async function generateDirective(
           matches: staleDateCheck.matches.slice(0, 6),
         },
       });
-      break;
+      continue;
     }
 
     // =====================================================================
@@ -9913,7 +9913,7 @@ export async function generateDirective(
           candidate_title: currentCandidate.title.slice(0, 80),
         },
       });
-      break;
+      continue;
     }
 
     if (
@@ -9936,7 +9936,7 @@ export async function generateDirective(
           candidate_title: currentCandidate.title.slice(0, 80),
         },
       });
-      break;
+      continue;
     }
 
     if (llmAttemptedAction !== canonicalAction) {
@@ -9979,7 +9979,7 @@ export async function generateDirective(
         artifactType: canonicalAction, generationStatus: 'duplicate_suppressed',
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), matching_action_id: duplicateCheck.matchingActionId, similarity: duplicateCheck.similarity },
       });
-      break;
+      continue;
     }
 
     // Stale ISO / slash-ISO / month dates in brief-visible fields only (`directiveHasStalePastDates` above
@@ -10000,7 +10000,7 @@ export async function generateDirective(
         generationStatus: 'noise_winner_excluded',
           details: { scope: 'generator', candidate_id: currentCandidate.id, artifact_to: artTo.slice(0, 80) },
       });
-      break;
+      continue;
     }
 
     // Usefulness gate — candidate-specific, try next
@@ -10018,7 +10018,7 @@ export async function generateDirective(
         artifactType: canonicalAction, generationStatus: 'usefulness_gate_failed',
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), reason: usefulnessCheck.reason },
       });
-      break;
+      continue;
     }
 
     // Strip locked display names from directive + artifact strings before persistence
@@ -10169,7 +10169,7 @@ export async function generateDirective(
         artifactType: canonicalAction, generationStatus: 'persistence_validation_failed',
         details: { scope: 'generator', candidate_title: currentCandidate.title.slice(0, 80), issues: persistenceIssues },
       });
-      break;
+      continue;
     }
 
     // Hard post-LLM locked contact check: if the artifact or directive text
@@ -10190,7 +10190,7 @@ export async function generateDirective(
           artifactType: canonicalAction, generationStatus: 'locked_contact_in_artifact',
           details: { scope: 'post_llm_validation', violating_contacts: violatingContacts },
         });
-        break;
+        continue;
       }
     }
 
@@ -10203,7 +10203,7 @@ export async function generateDirective(
         artifactType: canonicalAction, generationStatus: 'thin_entry_phrase_blocked',
         details: { scope: 'post_llm_validation', phrase: thinHit },
       });
-      break;
+      continue;
     }
 
     const artStr = JSON.stringify(payload.artifact);
@@ -10228,7 +10228,7 @@ export async function generateDirective(
         artifactType: canonicalAction, generationStatus: 'ungrounded_currency_blocked',
         details: { scope: 'post_llm_validation', amounts: badDollars.slice(0, 4) },
       });
-      break;
+      continue;
     }
 
     // Trigger action lock validation — discrepancy candidates only (skip when cross-signal degraded to wait_rationale
@@ -10269,7 +10269,7 @@ export async function generateDirective(
             violations: hardTriggerViolations,
           },
         });
-        break;
+        continue;
       }
       if (!triggerValidation.pass) {
         logStructuredEvent({
