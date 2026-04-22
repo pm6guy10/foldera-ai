@@ -18,6 +18,14 @@ name: CI
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
+  # NOTE: GitHub Actions forbids `paths` and `paths-ignore` on the same event.
+  # `paths:` is already an allow-list (only fires when at least one changed
+  # file matches), so the old `paths-ignore:` block was redundant AND made
+  # this workflow invalid — it was failing at startup on every push, before
+  # any job ran, which painted every commit on main with a spurious red X.
+  # Allow-list is sufficient: pushes that also touch code will trigger
+  # ci.yml's own `paths:` match, and the runtime check-name `ci-passed` is
+  # emitted from whichever workflow fires.
   push:
     branches: [main]
     paths:
@@ -25,19 +33,6 @@ on:
       - "**/*.mdx"
       - "docs/**"
       - "audit-reports/**"
-    paths-ignore:
-      - "app/**"
-      - "components/**"
-      - "lib/**"
-      - "middleware.ts"
-      - "public/**"
-      - "scripts/**"
-      - "supabase/**"
-      - "tests/**"
-      - ".github/workflows/ci.yml"
-      - ".github/workflows/deploy.yml"
-      - "package.json"
-      - "package-lock.json"
   pull_request:
     branches: [main]
     paths:
@@ -45,19 +40,6 @@ on:
       - "**/*.mdx"
       - "docs/**"
       - "audit-reports/**"
-    paths-ignore:
-      - "app/**"
-      - "components/**"
-      - "lib/**"
-      - "middleware.ts"
-      - "public/**"
-      - "scripts/**"
-      - "supabase/**"
-      - "tests/**"
-      - ".github/workflows/ci.yml"
-      - ".github/workflows/deploy.yml"
-      - "package.json"
-      - "package-lock.json"
 
 concurrency:
   group: ci-docs-${{ github.event.pull_request.number || github.ref }}
