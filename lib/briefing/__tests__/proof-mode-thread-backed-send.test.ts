@@ -96,7 +96,7 @@ describe('isProofModeThreadBackedSendOnly', () => {
     else process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY = prev;
   });
 
-  it('defaults off in Vitest (NODE_ENV=test) so integration tests stay unchanged', () => {
+  it('defaults off unless the proof-mode env var opts in', () => {
     delete process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY;
     expect(process.env.NODE_ENV).toBe('test');
     expect(isProofModeThreadBackedSendOnly()).toBe(false);

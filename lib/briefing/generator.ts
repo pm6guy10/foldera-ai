@@ -144,14 +144,14 @@ const ARTIFACT_VIABILITY_ASK_RE =
  * wait_rationale / do_nothing wins when enabled, except the owner verification stub's
  * explicit `write_document` golden path.
  *
- * Defaults **on** in production; defaults **off** when `NODE_ENV=test` so Vitest integration
- * tests stay unchanged. Override anytime with `FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY=true|false`.
+ * Defaults **off** unless explicitly enabled with
+ * `FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY=true|false`.
  */
 export function isProofModeThreadBackedSendOnly(): boolean {
   const o = process.env.FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY;
   if (o === 'true' || o === '1') return true;
   if (o === 'false' || o === '0') return false;
-  return process.env.NODE_ENV !== 'test';
+  return false;
 }
 
 /**

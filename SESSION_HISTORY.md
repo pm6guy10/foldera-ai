@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-21 — proof-mode thread-backed send now defaults off
+- MODE: BUGFIX (single seam)
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/proof-mode-thread-backed-send.test.ts`, `SESSION_HISTORY.md`
+- What changed: Changed `isProofModeThreadBackedSendOnly()` to fail closed by default. Proof-mode thread-backed send enforcement now only activates when `FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY` explicitly opts in, instead of silently turning on outside `NODE_ENV=test`.
+- Verification: `npm run health` (`0 FAILING`); `npx vitest run lib/briefing/__tests__/proof-mode-thread-backed-send.test.ts` (`17 passed`); `npm run build`.
+- Unresolved issues: None in this seam.
+
 ## 2026-04-21 — compat artifact validation now shares generator decision-enforcement policy
 - MODE: BUGFIX (single seam)
 - Files changed: `lib/briefing/decision-enforcement.ts`, `lib/briefing/generator.ts`, `lib/conviction/artifact-generator-compat.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `SESSION_HISTORY.md`
