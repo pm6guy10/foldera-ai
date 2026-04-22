@@ -22,9 +22,9 @@
 
 ## B. WHAT IS BROKEN (REAL)
 
-- **Interview write_document non-enforcement blockers** — Hydration + class-aware enforcement/bottom-gate relaxation allow recruiter-facing confirmation drafts to reach `pending_approval`. Owner runs can still fail on **LLM JSON refusal**, **low_cross_signal** when `send_message` sorts first, or other gates unrelated to explicit-ask/concrete-ask mismatch for interview docs.
-- **Post-deploy verification** — After `fix: autonomous brain quality loop`, run owner `POST /api/dev/brain-receipt` once deploy is READY to confirm `schedule_conflict` → `write_document` persists `pending_approval` (not `Artifact generation failed.`).
-- **Production-like proof blocked** — `scripts/run-brain-receipt-real-once.ts` is currently blocked by `paid_llm_disabled` during signal processing, so a fresh `schedule_conflict` → `write_document` artifact cannot be generated yet (no pending_approval persisted from that path).
+- **Repeated-directive health gate** — `npm run health` can FAIL on “Repeated directive” when the same directive shape persists multiple times in 24h (monitor after daily-generate cycles).
+- **Interview write_document quality vs bar** — Native interview-class documents can persist while still reading like prep homework (checklists, STAR prompts) or containing small typos; tightening is prompt/validator/product-judgment work, not persistence plumbing.
+- **Dashboard proof gap** — Conviction/latest JSON matches dashboard data, but capturing a **pending** `write_document` on `/dashboard` still requires a timed screenshot or Playwright step before approve/skip.
 - **Convergence depends on name overlap** — `extractConvergence` requires the entity name to appear in signal bodies; calendar titles without names may under-match.
 - **Confidence scores remain variable** — richer candidates help, but thin relationship context still pulls confidence down.
 

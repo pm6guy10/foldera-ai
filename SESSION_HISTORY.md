@@ -2,6 +2,16 @@
 
 # Session History
 
+## 2026-04-22 — schedule-conflict interview write_document: persistence + production conviction/latest + execute (a4a5bae)
+- MODE: END-TO-END PROOF (real owner pipeline; production `https://www.foldera.ai`)
+- Starting blocker (prior run): post-generation validation killed grounded interview-class `write_document` with `decision_enforcement:missing_explicit_ask`, `missing_pressure_or_consequence`, `passive_or_ignorable_tone`, and `causal_diagnosis:surface_follow_up_mismatch`; no `pending_approval` row.
+- Files shipped: `lib/briefing/schedule-conflict-guards.ts` (new), `lib/briefing/generator.ts`, `lib/briefing/decision-enforcement.ts`, `lib/briefing/scorer.ts` (topCandidates depth 10), `lib/cron/daily-brief-generate.ts`, `lib/conviction/artifact-generator-compat.ts`, plus tests under `lib/briefing/__tests__/` and `lib/cron/__tests__/bottom-gate.test.ts`.
+- Production proof (before this push, against deploy ≤ `10c966a`): native `write_document` `c30606f1-7407-4d67-9516-471000e109af` persisted `pending_approval` (Supabase). `GET /api/conviction/latest` with `tests/production/auth-state.json` returned HTTP 200 and the same `id`, `artifact.title`, and `artifact.content`. `POST /api/conviction/execute` with `decision: approve` returned HTTP 200, `status: executed`, `result.saved: true`, `document_ready_email.sent: true`.
+- Dashboard: after approve, `/dashboard` showed empty state (expected); **pending-state DOM screenshot of the document was not captured** in this session before approve.
+- Quality bar: artifact is grounded and specific but includes a typo (“CAREE”), heavy prep-checklist / homework framing, and templated STAR prompts — **does not meet the stated “excellent / no homework handoff” bar** without further prompt or validator tightening.
+- Verification: `npm run health` (1 FAIL: Repeated directive — env); `npm run build`; `npx vitest run` on six touched test files (123 tests); pre-push smoke e2e; `git push origin main` (`a4a5bae`).
+- Vercel: not re-polled after push in this session; confirm production SHA matches `a4a5bae` when deploy finishes.
+
 ## 2026-04-22 — interview-class write_document: enforcement + bottom gate + JSON preamble (native pending_approval)
 - MODE: END-TO-END (real owner `runDailyGenerate`; prior successful run `action_id` `6cd16f56-1d00-4e48-9602-62439b1c1858` before local commit rewind)
 - Files: `lib/briefing/decision-enforcement.ts` (`isInterviewClassWriteDocumentEnforcementRelaxation`, hiring haystack without internal `target_reader` labels; `getDecisionEnforcementIssues` optional `candidateTitle`/`supportingContext` + relax filter), `lib/briefing/generator.ts` (causal `surface_follow_up_mismatch` skip; `validateGeneratedArtifact` internal-brief/forcing-function guards; `INTERVIEW_PREP_WRITE_DOCUMENT` preamble; `StructuredContext.interview_class_hydrated_write_document`; `buildPersistenceDecisionEnforcementContext` export; persistence `getDecisionEnforcementIssues` wiring), `lib/cron/daily-brief-generate.ts` (`evaluateBottomGate` interview branch), `CURRENT_STATE.md`, `SESSION_HISTORY.md`
