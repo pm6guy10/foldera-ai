@@ -18,6 +18,8 @@
 # If a push is blocked here, the failing lane names the exact next move.
 # ─────────────────────────────────────────────────────────────────────────────
 
+set -o pipefail
+
 echo "Running e2e assertion linter..."
 npm run test:ci:e2e:lint
 if [ $? -ne 0 ]; then
@@ -26,20 +28,14 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Running build (Next.js full typecheck)..."
-# On Windows, capturing large build output in a variable fails silently.
-# Pipe directly so stdout is streamed. Use tee to a temp file to test for success.
+# Stream to the terminal; use pipefail + PIPESTATUS so a failing `next build`
+# rejects the push even though `tee` would otherwise mask the exit code.
 TMPFILE=$(mktemp)
 npm run build 2>&1 | tee "$TMPFILE"
-
-# On Windows, Next.js build traces occasionally fail with ENOENT on .next/server
-# files even when compilation succeeded. Pass if compilation succeeded regardless
-# of trace errors.
-if grep -q "Compiled successfully" "$TMPFILE"; then
-  echo "Build compiled successfully."
-  rm -f "$TMPFILE"
-else
+build_status=${PIPESTATUS[0]}
+rm -f "$TMPFILE"
+if [ "$build_status" -ne 0 ]; then
   echo "BUILD FAILED. Push rejected."
-  rm -f "$TMPFILE"
   exit 1
 fi
 
@@ -55,6 +51,10 @@ fi
 if [ "${SKIP_E2E_SMOKE:-0}" = "1" ]; then
   echo "SKIP_E2E_SMOKE=1 — skipping public-routes smoke lane."
 else
+  # Avoid EADDRINUSE when a dev server already owns :3000 (Playwright starts `next start`).
+  if [ "${CI:-}" != "true" ] && [ -z "${PLAYWRIGHT_WEB_PORT:-}" ]; then
+    export PLAYWRIGHT_WEB_PORT=3011
+  fi
   echo "Running e2e smoke lane (public-routes only)..."
   npm run test:ci:e2e:smoke
   if [ $? -ne 0 ]; then
