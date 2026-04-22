@@ -323,7 +323,7 @@ test.describe('Public: Pricing page', () => {
 // ── Schema health — catches migration drift before it reaches users ─────────
 test.describe('Schema health', () => {
   test('/api/health reports schema ok', async ({ request }) => {
-    const res = await request.get('https://foldera.ai/api/health');
+    const res = await request.get('https://foldera.ai/api/health?depth=full');
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.db).toBe(true);

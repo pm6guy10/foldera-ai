@@ -28,11 +28,13 @@ async function sleep(ms: number): Promise<void> {
 }
 
 /**
- * GET /api/health with small retries — transient "fetch failed" from the same
- * region as daily-brief is a known false positive; DB/env were never read.
+ * GET /api/health?depth=full with small retries — full probe is intentional (schema/ RPC).
+ * Transient "fetch failed" from the same region as daily-brief is a known false positive
+ * and did not read DB/env.
  */
 async function fetchHealthJson(baseUrl: string): Promise<Record<string, unknown>> {
-  const url = `${baseUrl}/api/health`;
+  // depth=full runs column/RPC contract — needed for real degradation signals (not lite).
+  const url = `${baseUrl}/api/health?depth=full`;
   let lastErr: unknown;
   for (let attempt = 1; attempt <= HEALTH_FETCH_RETRIES; attempt += 1) {
     try {
@@ -71,7 +73,7 @@ function formatHealthField(
 }
 
 /**
- * GET /api/health on the deployment; if not ok, email DAILY_BRIEF_TO_EMAIL when Resend is configured.
+ * GET /api/health?depth=full on the deployment; if not ok, email DAILY_BRIEF_TO_EMAIL when Resend is configured.
  */
 export async function runPlatformHealthAlert(): Promise<PlatformHealthAlertResult> {
   const baseUrl = resolveHealthBaseUrl();

@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-22 — Vercel usage: `/api/health` lite by default, full probe via `?depth=full`
+- MODE: SHIP (edge + Fluid spend reduction; repo audit, no Vercel Observability top-paths in session)
+- Files changed: `app/api/health/route.ts`, `app/api/health/__tests__/route.test.ts`, `lib/cron/cron-health-alert.ts`, `app/providers.tsx`, `tests/production/smoke.spec.ts`, `SESSION_HISTORY.md`
+- What changed: **Audit:** `GET /api/health` was doing ~20 column probes + 3 RPC calls on every request — a major Fluid CPU driver when the URL is hit often (e.g. uptime, manual polls). **Fix:** default response is **lite** (one `tkg_goals` read + env + `checkApiCreditCanary` + deploy `revision`); `?depth=full` or `?full=1` runs the full schema contract. `runPlatformHealthAlert` and production schema smoke use `?depth=full`. NextAuth `SessionProvider` `refetchInterval` **5m → 10m** (seconds) to cut `/api/auth/session` volume.
+- Verification: `npx vitest run app/api/health/__tests__/route.test.ts lib/cron/__tests__/cron-health-alert.test.ts` (3 passed). Local `npm run build` in this session hit known Windows/Next prerender or trace flakes unrelated to the health route; CI is the build truth for push.
+- Unproven: Vercel dashboard split by path after deploy; recommend confirming Edge/Fluid drop after a billing period.
+
 ## 2026-04-22 — interview-class write_document: winner-only full-source hydration (generator)
 - MODE: SHIP ONE SEAM (per-winner source-document grounding)
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/write-document-hydration.test.ts`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`

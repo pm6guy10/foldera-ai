@@ -1,4 +1,9 @@
+import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+function req(path = 'http://localhost/api/health') {
+  return new NextRequest(new URL(path));
+}
 
 describe('GET /api/health', () => {
   const envSnapshot = { ...process.env };
@@ -19,11 +24,13 @@ describe('GET /api/health', () => {
     delete process.env.RESEND_API_KEY;
 
     const { GET } = await import('../route');
-    const res = await GET();
+    const res = await GET(req());
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.db).toBe(false);
+    expect(body.depth).toBe('lite');
     expect(body.status).toBe('degraded');
+    expect(body.schema).toBe('not_checked');
     expect(body.build).toBe('local');
     expect(body.revision).toEqual({
       git_sha: null,

@@ -194,6 +194,75 @@ function collectWriteDocumentArtifactText(input: {
   ].join('\n');
 }
 
+/** Strip internal execution `target_reader` labels — they match HIRING `candidate` falsely. */
+function writeDocumentArtifactTextForInterviewHiringCheck(artifact: Record<string, unknown> | null): string {
+  if (!artifact) return '';
+  const a = artifact;
+  const rawTr = typeof a.target_reader === 'string' ? a.target_reader.trim() : '';
+  const trLower = rawTr.toLowerCase();
+  const internalOnlyTarget =
+    trLower === 'candidate' ||
+    trLower === 'yourself' ||
+    trLower === 'you' ||
+    trLower === 'user' ||
+    trLower === 'the user';
+  const targetReader = internalOnlyTarget ? '' : (typeof a.target_reader === 'string' ? a.target_reader : '');
+  return [
+    typeof a.document_purpose === 'string' ? a.document_purpose : '',
+    targetReader,
+    typeof a.title === 'string' ? a.title : '',
+    typeof a.content === 'string' ? a.content : '',
+  ].join('\n');
+}
+
+const ENFORCEMENT_INTERVIEW_ANCHOR_RE =
+  /\b(?:interview|phone screen|screening interview|panel interview|final round|hiring panel|candidate interview)\b/i;
+const ENFORCEMENT_HIRING_CONTEXT_RE =
+  /\b(?:role|position|job|recruit(?:er|ment)|candidate|hiring|employer|interviewer|manager)\b/i;
+const ENFORCEMENT_CONFIRMED_WINDOW_RE =
+  /\b(?:accepted?\s+interview|interview\s+accepted|confirm(?:ed|ation)?|scheduled|schedule(?:d)?|invite(?:d|s|ation)?|appointment scheduled|selected\s+to\s+interview|phone screen)\b/i;
+const ENFORCEMENT_DATED_WINDOW_RE =
+  /\b(?:20\d{2}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/(?:20)?\d{2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i;
+
+/**
+ * Interview-class write_document: finished prep, recap, or ready-to-send draft grounded in hiring signals.
+ * Do not apply outbound-email "explicit ask / pressure / anti-passive" rules — those are wrong for this class.
+ */
+export function isInterviewClassWriteDocumentEnforcementRelaxation(input: {
+  actionType: string;
+  candidateTitle?: string | null;
+  supportingContext?: string | null;
+  directiveText?: string | null;
+  reason?: string | null;
+  artifact?: Record<string, unknown> | null;
+}): boolean {
+  if (normalizeDecisionActionType(input.actionType) !== 'write_document') return false;
+  const artifactText = collectWriteDocumentArtifactText({ artifact: input.artifact ?? null });
+  const artifactHiringText = writeDocumentArtifactTextForInterviewHiringCheck(
+    input.artifact as Record<string, unknown> | null,
+  );
+  const fullText = [
+    input.candidateTitle ?? '',
+    input.supportingContext ?? '',
+    input.directiveText ?? '',
+    input.reason ?? '',
+    artifactText,
+  ].join('\n');
+  const hiringHaystack = [
+    input.candidateTitle ?? '',
+    input.supportingContext ?? '',
+    input.directiveText ?? '',
+    input.reason ?? '',
+    artifactHiringText,
+  ].join('\n');
+  if (!ENFORCEMENT_INTERVIEW_ANCHOR_RE.test(fullText)) return false;
+  if (!ENFORCEMENT_HIRING_CONTEXT_RE.test(hiringHaystack)) return false;
+  const hasConfirmed = ENFORCEMENT_CONFIRMED_WINDOW_RE.test(fullText);
+  const hasDated = ENFORCEMENT_DATED_WINDOW_RE.test(fullText);
+  if (!(hasConfirmed || hasDated)) return false;
+  return true;
+}
+
 function collectWriteDocumentModeText(input: {
   artifact?: Record<string, unknown> | null;
   candidateTitle?: string | null;
@@ -464,6 +533,8 @@ export function getDecisionEnforcementIssues(input: {
   artifact: ConvictionArtifact | Record<string, unknown> | null;
   discrepancyClass?: string | null;
   matchedGoalCategory?: string | null;
+  candidateTitle?: string | null;
+  supportingContext?: string | null;
 }): string[] {
   const normalizedType = normalizeDecisionActionType(input.actionType);
   if (normalizedType === 'other') return [];
@@ -483,6 +554,14 @@ export function getDecisionEnforcementIssues(input: {
     reason: input.reason,
   });
   const isInternalExecutionBrief = writeDocumentMode === 'internal_execution_brief';
+  const interviewClassRelax = isInterviewClassWriteDocumentEnforcementRelaxation({
+    actionType: input.actionType,
+    candidateTitle: input.candidateTitle ?? null,
+    supportingContext: input.supportingContext ?? null,
+    directiveText: input.directiveText,
+    reason: input.reason,
+    artifact: artifactRecord,
+  });
 
   const sendMessageHasQuestion =
     normalizedType === 'send_message' && artifactText.length > 0 && /\?/.test(artifactText);
@@ -558,6 +637,15 @@ export function getDecisionEnforcementIssues(input: {
         issue !== 'decision_enforcement:passive_or_ignorable_tone' &&
         issue !== 'decision_enforcement:obvious_first_layer_advice',
     );
+  }
+  if (interviewClassRelax) {
+    const drop = new Set<string>([
+      'decision_enforcement:missing_explicit_ask',
+      'decision_enforcement:missing_pressure_or_consequence',
+      'decision_enforcement:passive_or_ignorable_tone',
+      'decision_enforcement:missing_owner_assignment',
+    ]);
+    out = out.filter((issue) => !drop.has(issue));
   }
 
   return out;
