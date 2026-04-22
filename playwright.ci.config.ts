@@ -1,10 +1,12 @@
 /**
  * CI Playwright config — merge-blocking flow gate.
  *
- * Runs only the three deterministic, DB-free test files:
- *   public-routes   — unauthenticated, no DB required
- *   authenticated-routes — all APIs mocked via page.route()
- *   flow-routes     — URL-stability only (no redirect loops)
+ * Lane strategy (see .github/workflows/ci.yml):
+ *   smoke  (public-routes)          — fail fast, no mocks, unauthenticated only
+ *   flow   (authenticated + flow)   — heavy mocked journeys, gated behind smoke
+ *
+ * The lane is selected via E2E_LANE (smoke|flow|all). Default is `all` so that
+ * local dev + the legacy `npm run test:ci:e2e` script keep running the full suite.
  *
  * Excluded from this config (observational / production-coupled):
  *   safety-gates            — real DB calls (conviction/latest, integrations/status)
@@ -22,17 +24,46 @@ import { defineConfig } from "@playwright/test";
 
 const WEB_PORT = process.env.PLAYWRIGHT_WEB_PORT || "3000";
 const WEB_ORIGIN = `http://127.0.0.1:${WEB_PORT}`;
+const IS_CI = Boolean(process.env.CI);
+
+const LANE = (process.env.E2E_LANE || "all").toLowerCase();
+const SMOKE_MATCH = ["**/tests/e2e/public-routes.spec.ts"];
+const FLOW_MATCH = [
+  "**/tests/e2e/authenticated-routes.spec.ts",
+  "**/tests/e2e/flow-routes.spec.ts",
+];
+const ALL_MATCH = [...SMOKE_MATCH, ...FLOW_MATCH];
+const testMatch = LANE === "smoke" ? SMOKE_MATCH : LANE === "flow" ? FLOW_MATCH : ALL_MATCH;
+
+/**
+ * Reporter strategy:
+ *   - `list`      — human-readable log in the GitHub Actions step
+ *   - `html`      — uploaded as an artifact; full trace-viewer per failure
+ *   - `blob`      — machine-mergeable blob (future: merge sharded runs)
+ *   - `github`    — GitHub Actions annotations on the PR diff when applicable
+ * Local dev: keep only `list` so there's no surprise HTML report opening in the browser.
+ */
+const reporter = IS_CI
+  ? ([
+      ["list"],
+      ["html", { outputFolder: "playwright-report", open: "never" }],
+      ["blob", { outputDir: "blob-report" }],
+      ["github"],
+    ] as const)
+  : ([["list"]] as const);
 
 export default defineConfig({
-  testMatch: [
-    "**/tests/e2e/public-routes.spec.ts",
-    "**/tests/e2e/authenticated-routes.spec.ts",
-    "**/tests/e2e/flow-routes.spec.ts",
-  ],
+  testMatch,
   timeout: 30000,
   workers: 1,
-  retries: 0,
-  reporter: [["list"]],
+  /**
+   * Retry once in CI for genuine flake (network jitter, slow cold Next start).
+   * Assertion bugs fail on both attempts, so this does not hide real regressions —
+   * it only prevents a single-timeout blip from blocking a push to main.
+   */
+  retries: IS_CI ? 1 : 0,
+  forbidOnly: IS_CI,
+  reporter: reporter as unknown as import("@playwright/test").ReporterDescription[],
   webServer: {
     command: `npx next start -p ${WEB_PORT}`,
     url: WEB_ORIGIN,
@@ -42,6 +73,10 @@ export default defineConfig({
   },
   use: {
     baseURL: WEB_ORIGIN,
+    /** Keep a retry's trace; CI uploads it as an artifact for one-click debugging. */
     trace: "retain-on-failure",
+    /** Screenshot + video only on failure — cheap storage, massive diagnostic win. */
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
   },
 });

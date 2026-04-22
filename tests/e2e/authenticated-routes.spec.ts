@@ -127,6 +127,32 @@ const DOCUMENT_DIRECTIVE_BODY = DOCUMENT_DIRECTIVE_RESPONSE.artifact.body;
 const DOCUMENT_DIRECTIVE_ASK = findDocumentLine(DOCUMENT_DIRECTIVE_BODY, 'Ask:');
 const DOCUMENT_DIRECTIVE_CONSEQUENCE = findDocumentLine(DOCUMENT_DIRECTIVE_BODY, 'Consequence:');
 
+/**
+ * Assert the dashboard document body rendered Markdown (via ReactMarkdown), not raw text.
+ *
+ * Rationale: the dashboard passes artifact.body through ReactMarkdown, so `## Situation`
+ * becomes an <h2>Situation</h2> — asserting raw `##` syntax against the DOM is structurally
+ * broken and was the root cause of three CI failures on 2026-04-22. Always assert on
+ * rendered headings (role=heading) + visible body text; never on raw markdown syntax.
+ *
+ * NOTE: If this helper changes shape, update lessons-learned entry "Rendered Markdown vs Raw
+ * Markdown" in LESSONS_LEARNED.md so future agents don't reintroduce the bug.
+ */
+async function expectRenderedDocumentMarkdown(
+  body: import('@playwright/test').Locator,
+  opts: { headings: string[]; bodyLines: string[] },
+): Promise<void> {
+  await expect(body).toBeVisible();
+  for (const heading of opts.headings) {
+    await expect(
+      body.getByRole('heading', { name: new RegExp(`^${heading}$`, 'i') }),
+    ).toBeVisible();
+  }
+  for (const line of opts.bodyLines) {
+    await expect(body).toContainText(line);
+  }
+}
+
 const INTEGRATIONS_RESPONSE = {
   integrations: [
     { provider: 'google', is_active: true, sync_email: 'test@gmail.com', last_synced_at: null, missing_scopes: [] },
@@ -613,10 +639,10 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(
       page.locator('.text-xl.font-bold').filter({ hasText: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
     ).toBeVisible({ timeout: 15000 });
-    await expect(documentBody).toBeVisible();
-    await expect(documentBody).toContainText('## Situation');
-    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_ASK);
-    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_CONSEQUENCE);
+    await expectRenderedDocumentMarkdown(documentBody, {
+      headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
+      bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
+    });
     await expect(page.getByText(/Finished document/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Save document files/i);
     await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Skip keeps it out/i);
@@ -667,10 +693,10 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(
       page.locator('.text-xl.font-bold').filter({ hasText: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
     ).toBeVisible();
-    await expect(documentBody).toBeVisible();
-    await expect(documentBody).toContainText('## Situation');
-    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_ASK);
-    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_CONSEQUENCE);
+    await expectRenderedDocumentMarkdown(documentBody, {
+      headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
+      bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
+    });
     await expect(page).toHaveURL(/\/dashboard$/);
   });
 
@@ -708,10 +734,10 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(
       page.locator('.text-xl.font-bold').filter({ hasText: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
     ).toBeVisible();
-    await expect(documentBody).toBeVisible();
-    await expect(documentBody).toContainText('## Situation');
-    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_ASK);
-    await expect(documentBody).toContainText(DOCUMENT_DIRECTIVE_CONSEQUENCE);
+    await expectRenderedDocumentMarkdown(documentBody, {
+      headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
+      bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
+    });
   });
 });
 

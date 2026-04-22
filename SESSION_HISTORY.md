@@ -2,6 +2,24 @@
 
 # Session History
 
+## 2026-04-22 — robust CI architecture: fix raw-markdown assertion bug class + lane split + traces
+- MODE: INFRA HARDENING (single seam + permanent defense)
+- Files changed: `tests/e2e/authenticated-routes.spec.ts`, `playwright.ci.config.ts`, `.github/workflows/ci.yml`, `.husky/pre-push`, `scripts/lint-e2e-assertions.mjs` (new), `package.json`, `SESSION_HISTORY.md`
+- What changed:
+  1. Fixed three deterministically-failing e2e tests (`write_document journey`, `stale email deep-link skip…`, `skip on stale client action id reloads…`). Root cause: assertions expected raw markdown `## Situation` against the `dashboard-document-body` testid, but commit `ad8e83f` switched that container to `<ReactMarkdown>` — the `##` is stripped from the DOM. New `expectRenderedDocumentMarkdown()` helper asserts the semantic `<h2>` heading role plus rendered body lines, so the test proves markdown actually rendered instead of guessing at source syntax.
+  2. Added `scripts/lint-e2e-assertions.mjs`: a dependency-free static linter that flags (a) raw-markdown literals against ReactMarkdown-rendered testids and (b) `test.only` / `describe.only` leaks. Runs in <1s in pre-push and as a pre-Playwright gate in CI.
+  3. Split CI into `build-and-unit → e2e-smoke → e2e-flow` with `.next` caching between jobs, concurrency-cancel on ref, `retries: 1` in CI only, HTML+blob+github reporters, and trace/video/screenshot artifact upload on failure (7-day retention).
+  4. Added `E2E_LANE=smoke|flow|all` to `playwright.ci.config.ts`; new npm scripts `test:ci:e2e:smoke`, `test:ci:e2e:flow`, `test:ci:e2e:lint`. Pre-push now runs the assertion linter + the ~24s public-routes smoke lane (opt-out via `SKIP_E2E_SMOKE=1`).
+- Verification:
+  - `npm run health` → `0 FAILING` (warning-only `Last generation do_nothing`).
+  - `npm run lint` → clean.
+  - `npm run build` → Compiled successfully.
+  - `npm run test:ci:e2e:lint` → clean against the fixed spec, correctly fails against a reintroduced `'## Situation'` fixture (proof the guard works).
+  - `npm run test:ci:e2e:smoke` → 28/28 passed (23.8s).
+  - `npm run test:ci:e2e:flow` → 27/27 passed (49.8s), including the three previously-red tests.
+- Tools used: local Playwright (per repo doctrine, the failing CI run already gave us the truth — no need to re-invoke Vercel/Sentry/Supabase for a merged-to-main CI assertion bug).
+- Unresolved: Full CI workflow (both lanes + artifact upload + cache restore) will be validated by the next push-triggered run on `main`.
+
 ## 2026-04-22 — settings no longer falsely demands Microsoft reconnect after successful auth
 - MODE: BUGFIX (single seam)
 - Files changed: `app/api/integrations/status/route.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `SESSION_HISTORY.md`

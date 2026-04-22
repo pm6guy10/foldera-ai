@@ -32,4 +32,29 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "All gates passed. E2E runs in GitHub Actions on deploy."
+# Cheap structural guard against known e2e assertion bug classes
+# (raw-markdown assertions against ReactMarkdown containers, .only leaks).
+# Runs in <1s, zero network. See scripts/lint-e2e-assertions.mjs.
+echo "Linting e2e assertions..."
+npm run test:ci:e2e:lint
+
+if [ $? -ne 0 ]; then
+  echo "E2E ASSERTION LINT FAILED. Push rejected."
+  exit 1
+fi
+
+# Opt out with SKIP_E2E_SMOKE=1 git push when iterating on non-frontend code.
+if [ "${SKIP_E2E_SMOKE:-0}" = "1" ]; then
+  echo "SKIP_E2E_SMOKE=1 set — skipping public-routes smoke."
+else
+  echo "Running e2e smoke lane (public-routes only)..."
+  npm run test:ci:e2e:smoke
+
+  if [ $? -ne 0 ]; then
+    echo "E2E SMOKE FAILED. Push rejected."
+    echo "To push anyway (emergency only): SKIP_E2E_SMOKE=1 git push"
+    exit 1
+  fi
+fi
+
+echo "All gates passed. Full authenticated + flow e2e runs in GitHub Actions."

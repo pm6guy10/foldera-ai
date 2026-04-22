@@ -6,10 +6,21 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-flight runs on the same ref when a new commit lands — prevents PR and
+# rapid-push runs from piling up and wasting minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-and-test:
+  # ───────────────────────────────────────────────────────────────────────────
+  # Stage 1: lint, build, unit tests, e2e assertion linter.
+  # Everything below runs in parallel only after this is green — no point paying
+  # for Playwright minutes if `npm run build` fails.
+  # ───────────────────────────────────────────────────────────────────────────
+  build-and-unit:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -23,6 +34,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: E2E assertion lint (locks out raw-markdown, .only)
+        run: npm run test:ci:e2e:lint
+
       - name: Build
         run: npm run build
 
@@ -31,18 +45,119 @@ jobs:
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
         run: npx vitest run --exclude ".claude/worktrees/**"
 
-      - name: Install Playwright browsers
+      # Cache the built .next so the e2e jobs don't rebuild from scratch.
+      - name: Cache .next build output
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .next
+            public
+          key: next-build-${{ github.sha }}
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Stage 2a: fast unauthenticated smoke (public-routes only).
+  # Fails fast — if landing/login/pricing break, stop before running the heavy
+  # mocked-auth suite and save CI minutes.
+  # ───────────────────────────────────────────────────────────────────────────
+  e2e-smoke:
+    needs: build-and-unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Restore .next build
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .next
+            public
+          key: next-build-${{ github.sha }}
+          fail-on-cache-miss: true
+
+      - name: Install Playwright chromium
         run: npx playwright install chromium --with-deps
 
       - name: Generate CI test secret
         run: echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
 
-      # Playwright starts `next start`; pass Supabase so server matches production-like env when secrets are configured.
-      # GET /api/health still returns 200 + degraded JSON when URL/key unset — see app/api/health/route.ts
-      - name: E2E flow gate
+      - name: E2E smoke (public routes)
         env:
+          CI: "true"
+          E2E_LANE: smoke
           NEXTAUTH_URL: http://localhost:3000
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: npm run test:ci:e2e
+        run: npm run test:ci:e2e:smoke
+
+      - name: Upload smoke artifacts (traces + report)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Stage 2b: heavy authenticated + flow suite.
+  # Gated behind smoke so a broken landing page doesn't also fail here.
+  # ───────────────────────────────────────────────────────────────────────────
+  e2e-flow:
+    needs: e2e-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Restore .next build
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .next
+            public
+          key: next-build-${{ github.sha }}
+          fail-on-cache-miss: true
+
+      - name: Install Playwright chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Generate CI test secret
+        run: echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
+
+      - name: E2E flow (authenticated + flow routes)
+        env:
+          CI: "true"
+          E2E_LANE: flow
+          NEXTAUTH_URL: http://localhost:3000
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run test:ci:e2e:flow
+
+      - name: Upload flow artifacts (traces + report + screenshots)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-flow-artifacts
+          path: |
+            playwright-report/
+            test-results/
+            .screenshots/
+          retention-days: 7
