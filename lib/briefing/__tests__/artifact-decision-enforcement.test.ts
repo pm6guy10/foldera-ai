@@ -404,4 +404,74 @@ describe('artifact decision enforcement', () => {
 
     expect(issues.filter((i) => i.includes('missing_explicit_ask'))).toEqual([]);
   });
+
+  it('rejects interview-class write_document that is generic prep/STAR handoff (persistence gate)', () => {
+    const directive: ConvictionDirective = {
+      directive:
+        'Turn recruiter confirmation into a single finished brief before the April 29 Care Coordinator interview window.',
+      action_type: 'write_document',
+      confidence: 80,
+      reason: 'Interview is confirmed for 2026-04-29 and the thread is specific enough to lock language.',
+      evidence: [
+        { type: 'signal', description: 'Recruiter scheduled Care Coordinator phone screen 2026-04-29' },
+      ],
+      generationLog: {
+        outcome: 'selected',
+        stage: 'persistence',
+        reason: 'ok',
+        candidateFailureReasons: [],
+        candidateDiscovery: {
+          candidateCount: 1,
+          suppressedCandidateCount: 0,
+          selectionMargin: 0.1,
+          selectionReason: null,
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'c1',
+              rank: 1,
+              candidateType: 'discrepancy' as const,
+              discrepancyClass: 'exposure' as const,
+              actionType: 'write_document' as const,
+              score: 2,
+              scoreBreakdown: {
+                stakes: 2,
+                urgency: 0.5,
+                tractability: 0.7,
+                freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
+              },
+              targetGoal: {
+                text: 'Hire into Care Coordinator role with Washington State healthcare employer',
+                priority: 3,
+                category: 'work' as const,
+              },
+              sourceSignals: [],
+              decision: 'selected' as const,
+              decisionReason: '',
+            },
+          ],
+        },
+      },
+    };
+    const artifact = {
+      type: 'document',
+      document_purpose: 'hiring fit brief',
+      target_reader: 'user',
+      title: 'Care Coordinator — interview',
+      content: [
+        'PREP CHECKLIST',
+        '1. Review the job posting before April 29.',
+        '2. Prepare 2 examples using STAR method.',
+      ].join('\n'),
+    };
+    const issues = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+    });
+    const prepTrash = issues.filter((i) => i.startsWith('interview_artifact:generic_prep_trash:'));
+    expect(prepTrash.length).toBeGreaterThan(0);
+  });
 });

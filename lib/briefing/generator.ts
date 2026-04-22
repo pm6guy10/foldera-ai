@@ -274,6 +274,34 @@ function findHomeworkHandoffReason(value: string): string | null {
   return null;
 }
 
+/**
+ * Generic interview "prep pack" / homework shapes that are not finished work.
+ * interview-class only — triggers validation failure so the pipeline retries or repairs.
+ */
+const INTERVIEW_CLASS_GENERIC_PREP_TRASH_PATTERNS: Array<{ id: string; pattern: RegExp }> = [
+  { id: 'prep_checklist', pattern: /\bPREP(?:ARATION)?\s*CHECKLIST\b/i },
+  { id: 'star_method_block', pattern: /\b(?:^|\n)\s*STAR(?:\s+method|\s+format|\.?\s*[:—-])\b/im },
+  { id: 'prepare_n_examples', pattern: /\bprepare\s+(?:\d+|two|three|2|3)\s+examples?\b/i },
+  { id: 'review_the_posting', pattern: /\breview\s+the\s+(?:job\s+)?posting\b/i },
+  { id: 'reread_the_description', pattern: /\breread\s+the\s+(?:job\s+)?description\b/i },
+  { id: 'test_your_tech', pattern: /\btest\s+your\s+(?:webex|zoom|teams|camera|connection|mic|audio)\b/i },
+  { id: 'quiet_room_tip', pattern: /\bquiet\s+room\b/i },
+  { id: 'dress_business_casual', pattern: /\b(?:what to wear|dress code|business casual|dress for success)\b/i },
+  { id: 'action_items_user', pattern: /\b(?:YOUR\s+)?ACTION\s*ITEMS?\b/i },
+  { id: 'next_steps_for_you', pattern: /\bnext\s+steps?\s+for\s+you\b/i },
+  { id: 'typo_caree', pattern: /\bCAREE\b/ },
+  { id: 'day_of_interview_tips', pattern: /\bday[- ]of[- ]interview (?:checklist|tips)\b/i },
+  { id: 'research_sites_homework', pattern: /(?:research|review|look up|read up on)[\s\S]{0,120}(?:website|site|news|materials|documentation|policy changes|initiatives)/i },
+  { id: 'familiarize_homework', pattern: /familiarize yourself with/i },
+];
+
+function findInterviewClassGenericPrepTrashId(combined: string): string | null {
+  for (const { id, pattern } of INTERVIEW_CLASS_GENERIC_PREP_TRASH_PATTERNS) {
+    if (pattern.test(combined)) return id;
+  }
+  return null;
+}
+
 /** Dollar amounts in artifact JSON must appear verbatim in grounding blob (Check 4). */
 function ungroundedDollarAmounts(artifactJson: string, groundingBlob: string): string[] {
   const dollars = artifactJson.match(/\$\s*[\d,]+(?:\.\d{2})?/g) ?? [];
@@ -449,15 +477,15 @@ Schema:
                              // above the artifact. Names the
                              // sender, the deadline, and what
                              // you finished. Example:
-                             // "Darlene Craig sent you ESB
-                             //  Technician interview questions
-                             //  on April 21. Here is your
-                             //  prep sheet."
+                             // "Darlene Craig sent ESB
+                             //  Technician interview material
+                             //  April 21. Here is the finished
+                             //  role brief (talking points done)."
   "confidence": number,      // 0-100
   "reason": string,          // one sentence for the dashboard
                              // footer. Plain language. Example:
-                             // "Interview is in 4 days and you
-                             //  haven't prepped."
+                             // "Interview is scheduled; sources
+                             //  are specific enough to lock fit."
   "artifact": {              // Shape A:
     "type": "email",
     "to": string,
@@ -472,11 +500,14 @@ Schema:
 }
 
 One more thing: the user has seen 1065 directives they
-skipped. Most were advice. One of them — a hand-authored
-interview prep sheet built from the email, their resume, and
-the job posting — is what they actually want. Every output you
-produce should feel like that one. Finished. Specific.
-Earned. Not a reminder.`;
+skipped. Most were advice. What they want is the rare good one:
+a role-specific answer architecture or interview brief with
+synthesized talking points and the thinking already done —
+grounded in their email, the posting, and their materials —
+not a prep checklist, not STAR homework, not generic phone-screen
+tips. Every output you produce should feel like that. Finished.
+Specific. Earned. Not a reminder to "review the posting" or
+"prepare two examples."`;
 
 const DISCREPANCY_FINISHED_WORK_USER_BLOCK =
   `DISCREPANCY_WINNER_FINISHED_WORK (mandatory):
@@ -3591,10 +3622,13 @@ export function buildPromptFromStructuredContext(
 ): string {
   const interviewHydratedBlock =
     committedArtifactType === 'write_document' && ctx.interview_class_hydrated_write_document
-      ? 'INTERVIEW_PREP_WRITE_DOCUMENT (system path — mandatory compliance):\n' +
+      ? 'INTERVIEW_FINISHED_BRIEF_WRITE_DOCUMENT (system path — mandatory compliance):\n' +
         '- Hydrated SOURCE excerpts in this prompt (email bodies, calendar, uploads, job materials) satisfy Rule 1 for this run.\n' +
         '- Return ONLY a single JSON object per the schema. No refusal prose, no markdown code fences, no text before `{` or after `}`.\n' +
-        '- Produce a finished Shape B write_document from that material. Interview confirmations, invites, JD links, and recruiter mail are sufficient source material; you do not need a two-way email thread with every person on the calendar.\n\n'
+        '- Produce one finished Shape B write_document: a tight interview **brief the user can read once** and speak from — not a prep checklist, not STAR homework, not "action items" or "prepare examples."\n' +
+        '- After the SOURCE block, use short sections of **polished prose** (or one integrated narrative). Ground every claim in the cited sources. No confirmation-email template. No metacommentary ("here is a framework…").\n' +
+        '- Banned: numbered owner to-dos, "Prepare three stories," "your task," task-manager labels, or bulleted research assignments. Interview confirmations, invites, JD links, and recruiter mail are sufficient source material; you do not need a two-way email thread with every person on the calendar.\n' +
+        '- Proofread: company, role, and acronyms must match SOURCE exactly — no garbled or truncated words in titles (e.g. garbled "CAREE" for CAREER) or bodies.\n\n'
       : '';
   const preamble = committedArtifactType
     ? `${buildCanonicalActionPreamble(committedArtifactType).trim()}\n\n${interviewHydratedBlock}`
@@ -3852,7 +3886,7 @@ export function buildPromptFromStructuredContext(
     `PATH A: CANDIDATE_CLASS is "commitment"\n` +
     `This is work the user already committed to. Produce the finished artifact. ` +
     `MANDATORY: wait_rationale is FORBIDDEN for commitment candidates. ` +
-    `If send_message recipient email is not in the signals, produce write_document instead (a ready-to-use prep brief, draft, or research note). ` +
+    `If send_message recipient email is not in the signals, produce write_document instead (a one-page finished brief or draft — not a prep checklist or homework handoff). ` +
     `write_document must still be one decisive finished product — not an outline, not a plan with options, not notes. ` +
     `If a specific date or contact detail is missing from SUPPORTING_SIGNALS, write honest finished sentences (e.g. "No interview date appears in the signals — contact them to confirm") — never [INSERT DATE] or any bracket placeholder. ` +
     `Do the work.\n\n` +
@@ -7104,17 +7138,28 @@ function validateGeneratedArtifact(
       }
     }
 
-    if (!interviewClassRelaxGen) {
-      const homeworkReason = findHomeworkHandoffReason(
-        [
-          payload.directive ?? '',
-          payload.why_now ?? '',
-          JSON.stringify(payload.artifact ?? {}),
-        ].join('\n'),
+    const homeworkReason = findHomeworkHandoffReason(
+      [
+        payload.directive ?? '',
+        payload.why_now ?? '',
+        JSON.stringify(payload.artifact ?? {}),
+      ].join('\n'),
+    );
+    if (homeworkReason) {
+      issues.push(
+        `homework_handoff:${homeworkReason} — artifact hands unfinished prep or research back to the user`,
       );
-      if (homeworkReason) {
+    }
+    if (interviewClassRelaxGen) {
+      const art = (payload.artifact as Record<string, unknown>) ?? null;
+      const t = typeof art?.title === 'string' ? art.title : '';
+      const c = typeof art?.content === 'string' ? art.content : '';
+      const prepTrash = findInterviewClassGenericPrepTrashId(
+        `${payload.directive ?? ''}\n${payload.why_now ?? ''}\n${t}\n${c}`,
+      );
+      if (prepTrash) {
         issues.push(
-          `homework_handoff:${homeworkReason} — artifact hands unfinished prep or research back to the user`,
+          `interview_artifact:generic_prep_trash:${prepTrash} — not finished work; remove checklist/STAR/tips handoff phrasing`,
         );
       }
     }
@@ -7510,6 +7555,25 @@ export function validateDirectiveForPersistence(input: {
     );
   }
 
+  if (
+    input.artifact &&
+    typeof input.artifact === 'object' &&
+    normalizeDecisionActionType(String(input.directive.action_type)) === 'write_document' &&
+    interviewClassWriteDocumentRelax
+  ) {
+    const art = input.artifact as Record<string, unknown>;
+    const t = typeof art.title === 'string' ? art.title : '';
+    const c = typeof art.content === 'string' ? String(art.content) : '';
+    const prepTrash = findInterviewClassGenericPrepTrashId(
+      `${input.directive.directive}\n${input.directive.reason}\n${t}\n${c}`,
+    );
+    if (prepTrash) {
+      issues.push(
+        `interview_artifact:generic_prep_trash:${prepTrash} — not finished work; remove checklist/STAR/tips handoff phrasing`,
+      );
+    }
+  }
+
   return [...new Set(issues)];
 }
 
@@ -7545,7 +7609,8 @@ function shouldAttemptDecisionEnforcementRepair(
     (issue) =>
       isDecisionEnforcementIssue(issue) ||
       isCausalDiagnosisIssue(issue) ||
-      isDoNothingSchemaIssue(issue),
+      isDoNothingSchemaIssue(issue) ||
+      issue.startsWith('interview_artifact:generic_prep_trash:'),
   );
   if (!hasReparable) return false;
   const hardBlockers = issues.filter(
@@ -7553,6 +7618,7 @@ function shouldAttemptDecisionEnforcementRepair(
       !isDecisionEnforcementIssue(issue) &&
       !isCausalDiagnosisIssue(issue) &&
       !isDoNothingSchemaIssue(issue) &&
+      !issue.startsWith('interview_artifact:generic_prep_trash:') &&
       !isLowCrossSignalValidationIssue(issue),
   );
   return hardBlockers.length === 0;
@@ -7842,6 +7908,7 @@ function collectInterviewRepairEvidence(
   };
 }
 
+/** Short first-person monologue the candidate can say verbatim — no STAR blocks, no homework question at the end. */
 function buildInterviewAnswerScript(evidence: InterviewRepairEvidence): string {
   const roleLabel = evidence.roleTitle ?? 'this role';
   const orgLabel = evidence.organization ? ` at ${evidence.organization}` : '';
@@ -7849,15 +7916,10 @@ function buildInterviewAnswerScript(evidence: InterviewRepairEvidence): string {
   const anchorLead = strongestRoleAnchors.length > 0
     ? strongestRoleAnchors.join(', ')
     : 'the exact operating details already named in the thread';
-  const closingQuestion = evidence.contactName
-    ? `Is that the right way to frame the strongest fit for this ${roleLabel} with ${evidence.contactName.split(/\s+/)[0]}?`
-    : `Is that the right way to frame the strongest fit for this ${roleLabel}?`;
-
   return [
-    `“What makes me a fit for ${roleLabel}${orgLabel} is that the role is already defined around ${anchorLead}.`,
-    `That matters to me because I do better in work that is concrete, field-facing, and tied to helping people move through real systems instead of staying stuck in abstraction.`,
-    `The thread already makes clear this is not a generic office role, so I would answer from that operating reality first and then show that I can stay steady, organized, and useful inside it.`,
-    closingQuestion + '”',
+    `I am a strong match for ${roleLabel}${orgLabel} because the work is centered on ${anchorLead}, and that is the work I am already used to doing well.`,
+    `I stay most effective when the job stays field-facing and tied to real people navigating real systems, not when it drifts into abstraction.`,
+    `In this conversation I will keep the answer anchored to that operating reality and show steady, organized follow-through inside it.`,
   ].join(' ');
 }
 
@@ -7866,6 +7928,7 @@ function buildInterviewWriteDocumentPayload(input: {
   candidateDueDate: string | null;
   causalDiagnosis: CausalDiagnosis;
   supportingSignals: CompressedSignal[];
+  userPromptNames: UserPromptNames;
 }): GeneratedDirectivePayload | null | undefined {
   if (!looksLikeInterviewWriteDocumentCandidate(input.winner, input.supportingSignals)) {
     return undefined;
@@ -7884,47 +7947,55 @@ function buildInterviewWriteDocumentPayload(input: {
   const deadline = resolveDecisionDeadline(input.candidateDueDate);
   const roleLabel = evidence.roleTitle ?? cleanDecisionTarget(input.winner.title);
   const scheduleLabel = evidence.scheduledAt ?? deadline;
-  const locationLabel = evidence.location ?? 'the interview slot already on your calendar';
+  const locationLabel = evidence.location ?? 'the scheduled interview';
+  const ownerFirst = input.userPromptNames.user_first_name.trim() || 'You';
   const pressureLine =
     evidence.roleAnchors.length > 0
-      ? `This is a real interview risk: if this answer stays generic, you lose the clearest fit signal before ${deadline}. Anchor to ${evidence.roleAnchors.slice(0, 3).join(', ')}, or the panel only hears motivation.`
-      : `This is a real interview risk: if this answer stays generic, you lose the clearest fit signal before ${deadline}.`;
+      ? `If the answer stays generic before ${deadline}, interviewers only hear motivation. Keep it tied to ${evidence.roleAnchors.slice(0, 3).join(', ')} so fit reads as specific.`
+      : `If the answer stays generic before ${deadline}, the conversation stays on surface fit — lock it to what the thread already names.`;
   const processLine = evidence.processAnchors.length > 0
-    ? `The thread also confirms ${evidence.processAnchors.slice(0, 2).join(' and ')}, so keep the answer tied to the real process already in motion.`
+    ? `The process in flight already includes ${evidence.processAnchors.slice(0, 2).join(' and ')}; let the language mirror that, not a generic overview.`
     : '';
-  const contactLine = evidence.contactEmail
-    ? `Thread anchor: ${evidence.contactEmail}.`
+  const sourceContact = evidence.contactEmail
+    ? `${evidence.contactEmail}`
     : evidence.contactName
-      ? `Thread anchor: ${evidence.contactName}.`
-      : '';
-  const directive = `Write the role-specific answer architecture Brandon can use in the ${roleLabel} interview before ${scheduleLabel}.`.slice(0, 340);
+      ? evidence.contactName
+      : 'recruiter or scheduling mail in the signals above';
+  const sourceBlock = [
+    `Contact / thread: ${sourceContact}.`,
+    scheduleLabel ? `Time: ${scheduleLabel}.` : '',
+    evidence.location ? `Location: ${evidence.location}.` : '',
+  ].filter(Boolean).join(' ');
+  const directive =
+    `Deliver a one-page fit narrative for ${ownerFirst} for the ${roleLabel} interview (${scheduleLabel}) — speakable lines grounded in the thread.`.slice(0, 340);
 
   return {
-    insight: `${roleLabel} already has enough role evidence in the thread to justify one anchored answer instead of another prep brief.`,
+    insight: `${roleLabel} has enough concrete hooks in the thread to produce one strong fit narrative instead of another prep outline.`,
     causal_diagnosis: input.causalDiagnosis,
     decision: 'ACT',
     directive,
     artifact_type: 'write_document',
     artifact: {
-      document_purpose: 'interview answer architecture',
-      target_reader: 'candidate',
-      title: `${roleLabel} — role-specific answer architecture`,
+      document_purpose: 'hiring fit brief',
+      target_reader: 'private notes',
+      title: `${roleLabel} — fit narrative for ${scheduleLabel}`,
       content: [
-        `Use this in ${locationLabel} on ${scheduleLabel} when they ask, “Why are you a fit for this role?”`,
+        'SOURCE',
+        sourceBlock,
         '',
-        `You are responsible for landing one clear match before ${deadline}: ${roleLabel} is already grounded in ${evidence.roleAnchors.slice(0, 4).join(', ')}.`,
+        `What ${ownerFirst} can say in ${locationLabel} (${scheduleLabel}) when discussion turns to fit for ${roleLabel}:`,
         '',
-        `Deadline: ${deadline}.`,
+        `The role is already defined around ${evidence.roleAnchors.slice(0, 4).join(', ')}. Lead with that match in plain language before adding broader motivation.`,
         '',
         pressureLine,
         processLine,
-        contactLine,
         '',
-        'Answer script:',
+        `Commit to this line of reasoning before ${deadline}; it keeps the same substance when interviewers compare notes later.`,
+        '',
         buildInterviewAnswerScript(evidence),
       ].filter(Boolean).join('\n'),
     },
-    why_now: `${roleLabel} is already on the calendar for ${scheduleLabel}, and the evidence in the thread is specific enough to turn into one reusable answer before the window closes.`,
+    why_now: `${roleLabel} is on the calendar for ${scheduleLabel}, and the thread is specific enough to turn into a finished brief before the window closes.`,
   };
 }
 
@@ -8202,6 +8273,7 @@ export function buildDecisionEnforcedFallbackPayload(input: {
       candidateDueDate: input.candidateDueDate,
       causalDiagnosis: input.causalDiagnosis,
       supportingSignals,
+      userPromptNames: input.userPromptNames,
     });
     if (interviewPayload !== undefined) {
       return interviewPayload;
@@ -10170,15 +10242,6 @@ export async function generateDirective(
     }
 
     // Usefulness gate — candidate-specific, try next
-    const interviewRelaxUseful =
-      canonicalAction === 'write_document'
-      && isInterviewClassWriteDocumentEnforcementRelaxation({
-        actionType: 'write_document',
-        candidateTitle: currentCandidate.title,
-        directiveText: payload.directive ?? '',
-        reason: payload.why_now ?? '',
-        artifact: (payload.artifact as Record<string, unknown>) ?? null,
-      });
     const usefulnessCheck = options.pipelineDryRun
       ? { ok: true as const }
       : isUseful(
@@ -10187,7 +10250,7 @@ export async function generateDirective(
           evidence: payload.insight,
           action: payload.directive,
         },
-        { skipHomeworkHandoff: interviewRelaxUseful },
+        { skipHomeworkHandoff: false },
       );
     if (!usefulnessCheck.ok) {
       candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [`usefulness:${usefulnessCheck.reason}`] });

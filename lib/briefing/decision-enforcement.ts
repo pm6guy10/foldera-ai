@@ -168,8 +168,14 @@ export function getWriteDocumentTaskManagerLabelIssues(artifact: Record<string, 
 
 export type WriteDocumentMode = 'outbound_resolution_note' | 'internal_execution_brief';
 
+/**
+ * "Internal execution brief" mode expects answer-script / execution-move shapes. Matching plain
+ * `interview` here forced every hiring write_document (titles like "… Interview Prep") into that
+ * mode, which structurally rewards STAR-ish scripts and prep-checklist patterns. Only match *explicit*
+ * execution-doc labels — not the word interview alone.
+ */
 const INTERNAL_EXECUTION_PURPOSE_RE =
-  /\b(interview|answer architecture|answer script|close[_\s-]?the[_\s-]?loop|execution brief|execution rule)\b/i;
+  /\b(?:answer architecture|answer script|interview week (?:prep|pack|execution|brief)(?:\s+pack)?|execution brief|execution rule|close[_\s-]?the[_\s-]?loop|prep pack)\b/i;
 const INTERNAL_EXECUTION_CONTEXT_RE =
   /\b(interview|phone screen|panel interview|role-specific answer|answer architecture|answer script|execution rule|execution move)\b/i;
 const INTERNAL_EXECUTION_TARGET_RE = /\b(candidate|user|yourself|you)\b/i;

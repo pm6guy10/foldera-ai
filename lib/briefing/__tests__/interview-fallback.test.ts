@@ -53,7 +53,7 @@ function makeDiagnosis() {
 }
 
 describe('buildDecisionEnforcedFallbackPayload interview repair', () => {
-  it('builds a role-specific answer architecture when the signals contain real role evidence', () => {
+  it('builds a hiring fit brief when the signals contain real role evidence', () => {
     const winner = makeWinner({
       title: 'Commitment due in 1d: Care Coordinator role interview',
       content:
@@ -101,7 +101,7 @@ describe('buildDecisionEnforcedFallbackPayload interview repair', () => {
       requiredTerms: ['community-based', 'mileage is reimbursed'],
       forbiddenPatterns: [/prep brief/i, /review the website/i, /prepare examples/i],
     });
-    expect(`${title}\n${content}`).toMatch(/role-specific|answer architecture/i);
+    expect(`${title}\n${content}`).toMatch(/fit narrative|hiring fit brief/i);
 
     const decisionIssues = getDecisionEnforcementIssues({
       actionType: 'write_document',
