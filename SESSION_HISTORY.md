@@ -2,6 +2,26 @@
 
 # Session History
 
+## 2026-04-22 — CI: unblock every push on main (docs-fast workflow was invalid YAML)
+- MODE: INFRA BUGFIX
+- File changed: `.github/workflows/docs-fast.yml`
+- Context: Every push to `main` for the last several commits showed a failing check named `.github/workflows/docs-fast.yml` (note: the file path, not the declared `name: CI`). The main `CI`, `Health Gate`, `Production E2E`, and `Deploy to Vercel` workflows were all green on those same commits — only this one workflow was red, on every push.
+- Root cause: `docs-fast.yml` declared both `paths:` AND `paths-ignore:` on the same `push` and `pull_request` events. GitHub Actions rejects that combination at YAML-validation time, so the workflow triggered on every push but failed at startup with zero jobs. That is why the UI displayed the file path instead of the declared workflow name.
+- Evidence: `/actions/runs/24791651436` on `25f9c97` — `status: completed`, `conclusion: failure`, `jobs` array empty. Same pattern on `43df036` and `b4a4d8e`.
+- Fix: removed the redundant `paths-ignore:` blocks. `paths:` is already an allow-list (fires only when at least one changed file matches), so the exclusions weren't doing any useful work — they were only invalidating the workflow.
+- Lesson: when a workflow's displayed name in the Actions UI matches its file path instead of its declared `name:`, that is a startup-validation failure. Always inspect `/actions/runs/{id}` — an empty `jobs` array with `conclusion: failure` and no job annotations points straight at the YAML.
+- Tools used: GitHub Actions REST API (`/actions/runs`, `/actions/runs/{id}/jobs`, `/commits/{sha}/check-runs`).
+
+## 2026-04-22 — CI fix: `.next` was silently dropped from the build-once artifact (root cause of every e2e-smoke failure)
+- MODE: INFRA BUGFIX
+- File changed: `.github/workflows/ci.yml` (one input added to the upload step)
+- Root cause: `actions/upload-artifact@v4` excludes dot-prefixed paths by default. The `build` job uploaded `{ .next, public }`; `.next` is hidden, so v4 silently dropped the entire Next build output from the archive and uploaded only `public/`. `if-no-files-found: error` never tripped because `public/` kept the archive non-empty. Every downstream e2e job then downloaded an archive with no `.next/`, and `next start` crashed immediately — which Playwright reported as the generic `Process from config.webServer was not able to start. Exit code: 1` with no detail.
+- Proof: the diagnostic probe on `b4a4d8e` failed with `::error::MISSING .next` right after downloading the artifact. That annotation is what surfaced the truth.
+- Fix: `include-hidden-files: true` on the build upload (`43df036`). Every lane went green on the next push; the probe was removed in `25f9c97`.
+- Verification: `43df036` and `25f9c97` — `verify-static ✓`, `unit ✓`, `build ✓`, `e2e-smoke ✓`, `e2e-authenticated ✓`, `e2e-quarantine ✓`, `e2e-payments` skipped (correctly — no payment paths touched), `ci-passed ✓`, `deploy ✓`, `Production E2E ✓`.
+- Lesson: Playwright's "webServer was not able to start" is almost never about Playwright — it's whatever made `next start` exit. Always add a direct boot probe that reads `.next/BUILD_ID` and curls `/api/health` before blaming config.
+- Tools used: GitHub Actions REST API (`/check-runs/{id}/annotations`), local Playwright smoke via pre-push.
+
 ## 2026-04-22 — CI: targeted `e2e-payments` lane + `merge_group` trigger (final 10-point architecture)
 - MODE: INFRA HARDENING (architectural polish)
 - Files changed: `.github/workflows/ci.yml`, `playwright.ci.config.ts`, `package.json`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`
