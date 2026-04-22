@@ -17,26 +17,45 @@ const BANNED_LEGACY_MARKERS = [
   '800-318-6022',
 ];
 
+/** Scorer/engine meta-terms the new prompt explicitly forbids the LLM from echoing. */
+const BANNED_META_TERMS = [
+  'OBSERVATION VS DIAGNOSIS',
+  'DOMAIN DIAGNOSTIC LENSES',
+  'NAMED FAILURE MODES',
+  'DIAGNOSTIC_LENS',
+  'PASSIVE SUMMARY BAN',
+  'GOAL DECAY / BANDWIDTH RULE',
+  'SEND_MESSAGE CONTRACT',
+  'WRITE_DOCUMENT CONTRACT',
+];
+
 describe('SYSTEM_PROMPT hygiene', () => {
-  it('contains diagnostician framing', () => {
-    expect(SYSTEM_PROMPT).toContain('OBSERVATION VS DIAGNOSIS');
-    expect(SYSTEM_PROMPT).toContain('DOMAIN DIAGNOSTIC LENSES');
-    expect(SYSTEM_PROMPT).toContain('NAMED FAILURE MODES');
-    expect(SYSTEM_PROMPT).toContain('DIAGNOSTIC_LENS');
-    expect(SYSTEM_PROMPT).toContain('PASSIVE SUMMARY BAN');
-    expect(SYSTEM_PROMPT).toContain('SEND_MESSAGE CONTRACT');
-    expect(SYSTEM_PROMPT).toContain('WRITE_DOCUMENT CONTRACT');
-    expect(SYSTEM_PROMPT).toContain('GOAL DECAY / BANDWIDTH RULE');
-    expect(SYSTEM_PROMPT).toContain('consequence of silence');
-    expect(SYSTEM_PROMPT).toContain('MISSING DETAILS — NEVER BRACKET FILL-INS');
-    expect(SYSTEM_PROMPT).toContain('[INSERT DATE]');
-    expect(SYSTEM_PROMPT).toContain('WRITE_DOCUMENT — SIGNAL-GROUNDED VALUES');
-    expect(SYSTEM_PROMPT).toContain('You are not a task manager');
+  it('instructs the LLM to deliver finished work in one of two shapes', () => {
+    expect(SYSTEM_PROMPT).toContain('You are Foldera');
+    expect(SYSTEM_PROMPT).toContain('Finished work means');
+    expect(SYSTEM_PROMPT).toContain('SHAPE A — send_message');
+    expect(SYSTEM_PROMPT).toContain('SHAPE B — write_document');
+    expect(SYSTEM_PROMPT).toContain('Cite real sources');
+    expect(SYSTEM_PROMPT).toContain('No meta-commentary');
+    expect(SYSTEM_PROMPT).toContain('No suggestions');
+    expect(SYSTEM_PROMPT).toContain('No task lists addressed to the user');
+    expect(SYSTEM_PROMPT).toContain('No padding');
+    expect(SYSTEM_PROMPT).toContain("Match the user's voice");
+    expect(SYSTEM_PROMPT).toContain('Return ONLY a JSON object');
+    expect(SYSTEM_PROMPT).toContain('"action_type"');
+    expect(SYSTEM_PROMPT).toContain('"directive_text"');
+    expect(SYSTEM_PROMPT).toContain('"artifact"');
   });
 
   it('does not contain legacy real-style few-shot names or entities', () => {
     for (const marker of BANNED_LEGACY_MARKERS) {
       expect(SYSTEM_PROMPT, `banned marker leaked: ${marker}`).not.toContain(marker);
+    }
+  });
+
+  it('does not re-introduce scorer/engine meta-term sections the new prompt removes', () => {
+    for (const term of BANNED_META_TERMS) {
+      expect(SYSTEM_PROMPT, `meta-term leaked back in: ${term}`).not.toContain(term);
     }
   });
 });

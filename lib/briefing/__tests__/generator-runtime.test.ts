@@ -780,7 +780,7 @@ describe('generateDirective runtime failures', () => {
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('[generator] Raw LLM response (attempt 1):'));
     expect(anthropicCreate).toHaveBeenCalledWith(expect.objectContaining({
       max_tokens: 4096,
-      system: expect.stringContaining('CRITICAL: Return ONLY a JSON object.'),
+      system: expect.stringContaining('Return ONLY a JSON object.'),
     }));
 
     errorSpy.mockRestore();
