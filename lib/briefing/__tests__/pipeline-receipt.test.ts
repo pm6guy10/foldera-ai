@@ -678,12 +678,13 @@ function setAnthropicPipelineMocks() {
       ]);
     }
 
-    // Directive generation system prompt (artifact renderer / analyst / conviction engine).
+    // Directive generation system prompt (operator / artifact renderer / analyst / conviction engine).
     if (
       system.includes('FOLDERA ARTIFACT RENDERER') ||
       system.includes('FOLDERA DISCREPANCY ENGINE') ||
       system.includes('FOLDERA CONVICTION ENGINE') ||
-      system.includes("You are Foldera's behavioral analyst")
+      system.includes("You are Foldera's behavioral analyst") ||
+      system.includes("You are Foldera. You are the user's operator.")
     ) {
       if (promptBlob.includes('locked artifact type: write_document')) {
         return anthropicResponse({
