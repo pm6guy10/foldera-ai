@@ -785,6 +785,89 @@ describe('runDailyGenerate candidate logging', () => {
     );
   });
 
+  it('passes the traced final selected fallback winner into persistence validation instead of scorer-top', async () => {
+    const directive = buildDirective({
+      winnerSelectionTrace: {
+        finalWinnerId: 'hunt-final-winner',
+        finalWinnerType: 'hunt',
+        finalWinnerReason: 'grounded hunt thread survived fallback selection',
+        scorerTopId: 'sig-scorer-top',
+        scorerTopType: 'signal',
+        scorerTopDisplacementReason: 'signal candidate blocked after fallback selection',
+      },
+      generationLog: buildGenerationLog({
+        candidateDiscovery: {
+          candidateCount: 2,
+          suppressedCandidateCount: 0,
+          selectionMargin: 0.04,
+          selectionReason: 'Fallback hunt winner beat the blocked scorer-top candidate.',
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'sig-scorer-top',
+              rank: 1,
+              candidateType: 'signal',
+              actionType: 'send_message',
+              score: 3.4,
+              scoreBreakdown: {
+                stakes: 5,
+                urgency: 0.9,
+                tractability: 0.8,
+                freshness: 0.95,
+              },
+              targetGoal: null,
+              sourceSignals: [],
+              decision: 'selected',
+              decisionReason: 'Scorer-top before fallback.',
+            },
+            {
+              id: 'hunt-final-winner',
+              rank: 2,
+              candidateType: 'hunt',
+              actionType: 'send_message',
+              score: 3.1,
+              scoreBreakdown: {
+                stakes: 4,
+                urgency: 0.85,
+                tractability: 0.75,
+                freshness: 0.9,
+              },
+              targetGoal: {
+                text: 'Advance MAS3 hiring process',
+                priority: 1,
+                category: 'career',
+              },
+              sourceSignals: [],
+              decision: 'rejected',
+              decisionReason: 'Would have lost without fallback selection.',
+            },
+          ],
+        },
+      }),
+    });
+
+    vi.mocked(generateDirective).mockResolvedValue(directive);
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+
+    const result = await runDailyGenerate({ userIds: [USER_ID] });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({ code: 'pending_approval_persisted', success: true }),
+    ]);
+    expect(validateDirectiveForPersistence).toHaveBeenCalledWith(
+      expect.objectContaining({
+        candidateType: 'hunt',
+        matchedGoalCategory: 'career',
+      }),
+    );
+  });
+
   it('logs high nightly-ops signal mode during manual brief runs when all-source backlog is at least 100', async () => {
     vi.mocked(countUnprocessedSignals)
       .mockImplementation(async (_userId: string, options?: { includeAllSources?: boolean }) => (

@@ -6788,9 +6788,10 @@ export function collectHuntSendMessageToValidationIssues(
 }
 
 /**
- * When the winning hunt thread has exactly one eligible external peer, the model sometimes
- * invents a plausible address (e.g. name@example.com). Deterministically set To: to the
- * singleton allowlist entry before validation so a grounded hunt can persist.
+ * When hunt grounding is available, the model sometimes omits To: entirely or invents a
+ * plausible address (e.g. name@example.com). Deterministically set To: to the first
+ * winning-thread grounded recipient before validation so the hunt stays within the
+ * winning-thread allowlist and can persist.
  */
 export function applyHuntSendMessageRecipientCoercion(
   parsed: GeneratedDirectivePayload,
@@ -6800,7 +6801,7 @@ export function applyHuntSendMessageRecipientCoercion(
 ): boolean {
   if (ctx.candidate_class !== 'hunt' || canonicalArtifactType !== 'send_message') return false;
   const allow = ctx.hunt_send_message_recipient_allowlist;
-  if (allow.length !== 1) return false;
+  if (!allow.length) return false;
   if (!parsed.artifact || typeof parsed.artifact !== 'object') return false;
   const art = parsed.artifact as Record<string, unknown>;
   const raw = art.to ?? art.recipient;
@@ -6814,15 +6815,15 @@ export function applyHuntSendMessageRecipientCoercion(
       event: 'hunt_send_to_coerced',
       level: 'info',
       userId,
-      artifactType: 'send_message',
-      generationStatus: 'hunt_recipient_coerced',
-      details: {
-        scope: 'generator',
-        prior_to: norm || '(missing)',
-        coerced_to: canonical,
-        allowlist_size: 1,
-      },
-    });
+        artifactType: 'send_message',
+        generationStatus: 'hunt_recipient_coerced',
+        details: {
+          scope: 'generator',
+          prior_to: norm || '(missing)',
+          coerced_to: canonical,
+          allowlist_size: allow.length,
+        },
+      });
   }
   return true;
 }

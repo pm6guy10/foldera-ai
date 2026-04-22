@@ -2583,10 +2583,18 @@ export async function runDailyGenerate(
         continue;
       }
 
-      const candidateType = directive.generationLog?.candidateDiscovery?.topCandidates?.[0]?.candidateType;
+      const finalSelectedCandidate = getFinalSelectedCandidateLog(directive);
+      const candidateType = finalSelectedCandidate?.candidateType ?? null;
+      const matchedGoalCategory = finalSelectedCandidate?.targetGoal?.category ?? null;
       const persistenceIssues = [
         ...getArtifactPersistenceIssues(directive.action_type, artifact, directive),
-        ...validateDirectiveForPersistence({ userId, directive, artifact, candidateType }),
+        ...validateDirectiveForPersistence({
+          userId,
+          directive,
+          artifact,
+          candidateType: candidateType ?? undefined,
+          matchedGoalCategory,
+        }),
       ];
       if (persistenceIssues.length > 0) {
         logStructuredEvent({

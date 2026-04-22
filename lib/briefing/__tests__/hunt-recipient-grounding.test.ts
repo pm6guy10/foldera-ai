@@ -372,6 +372,83 @@ describe('hunt send_message artifact.to validation (collectHuntSendMessageToVali
       ).length,
     ).toBe(0);
   });
+
+  it('coerces missing To: to the first grounded hunt allowlist email deterministically when multiple peers are grounded', () => {
+    const winner = huntWinner(['sig-a', 'sig-b']);
+    const userEmails = new Set(['me@me.com']);
+    const evidence = [
+      {
+        source: 'gmail',
+        date: '2026-04-01',
+        subject: 'Re: Project',
+        snippet: 'Following up',
+        author: 'Alex Rivera <alex@clientco.com>',
+        direction: 'received' as const,
+        signal_id: 'sig-a',
+      },
+      {
+        source: 'gmail',
+        date: '2026-04-02',
+        subject: 'Re: Project',
+        snippet: 'Still waiting on a reply',
+        author: 'Zoe Patel <zoe@clientco.com>',
+        direction: 'received' as const,
+        signal_id: 'sig-b',
+      },
+    ];
+    const ctx = buildStructuredContext(
+      winner,
+      emptyGuard,
+      'user-test',
+      evidence,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      userEmails,
+    );
+
+    expect(ctx.hunt_send_message_recipient_allowlist).toEqual([
+      'alex@clientco.com',
+      'zoe@clientco.com',
+    ]);
+
+    const parsed = {
+      action: 'send_message' as const,
+      artifact_type: 'send_message' as const,
+      confidence: 80,
+      reason: 'test',
+      directive: 'Follow up on the winning hunt thread.',
+      insight: 'test',
+      why_now: 'test',
+      decision: 'ACT' as const,
+      artifact: {
+        subject: 'Hi',
+        body: 'Body',
+      },
+    };
+
+    expect(
+      collectHuntSendMessageToValidationIssues(ctx, 'send_message', undefined).length,
+    ).toBeGreaterThan(0);
+
+    const did = applyHuntSendMessageRecipientCoercion(parsed, ctx, 'send_message');
+    expect(did).toBe(true);
+    expect((parsed.artifact as { to: string }).to).toBe('alex@clientco.com');
+    expect(
+      collectHuntSendMessageToValidationIssues(
+        ctx,
+        'send_message',
+        (parsed.artifact as { to: string }).to,
+      ).length,
+    ).toBe(0);
+  });
 });
 
 describe('hunt recipient evidence bridge (appendHuntRecipientGroundingEvidence)', () => {
