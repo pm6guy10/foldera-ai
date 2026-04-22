@@ -317,4 +317,51 @@ describe('GET /api/integrations/status', () => {
       }),
     ]);
   });
+
+  it('does not flag Microsoft offline refresh access as missing when a refresh token exists', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'user_tokens') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              or: vi.fn().mockResolvedValue({
+                data: [
+                  {
+                    provider: 'microsoft',
+                    email: 'u@outlook.com',
+                    last_synced_at: '2026-04-21T10:00:00.000Z',
+                    scopes:
+                      'openid profile email User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read',
+                    access_token: 'encrypted-access',
+                    expires_at: 9999999999,
+                    refresh_token: 'encrypted-refresh',
+                    disconnected_at: null,
+                    oauth_reauth_required_at: null,
+                  },
+                ],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'tkg_signals') return newestMailChain('2026-04-21T10:00:00.000Z');
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const { GET } = await import('../route');
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      integrations: Array<{ provider: string; missing_scopes: string[]; needs_reconnect: boolean }>;
+    };
+    expect(body.integrations).toEqual([
+      expect.objectContaining({
+        provider: 'azure_ad',
+        missing_scopes: [],
+        needs_reconnect: false,
+      }),
+    ]);
+  });
 });

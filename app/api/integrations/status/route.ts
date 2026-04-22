@@ -42,11 +42,20 @@ function normalizeScopes(scopes: unknown): string[] {
     : [];
 }
 
-function missingScopeLabels(provider: string, scopes: unknown): string[] {
+function missingScopeLabels(
+  provider: string,
+  scopes: unknown,
+  options?: { hasRefreshToken?: boolean },
+): string[] {
   const granted = normalizeScopes(scopes);
   const hints = provider === 'microsoft' ? MICROSOFT_REQUIRED_SCOPE_HINTS : GOOGLE_REQUIRED_SCOPE_HINTS;
   return hints
-    .filter(({ needle }) => !granted.some((scope) => scope.includes(needle)))
+    .filter(({ needle }) => {
+      if (provider === 'microsoft' && needle === 'offline_access' && options?.hasRefreshToken) {
+        return false;
+      }
+      return !granted.some((scope) => scope.includes(needle));
+    })
     .map(({ label }) => label);
 }
 
@@ -155,7 +164,13 @@ export async function GET() {
         sync_email: row.email ?? null,
         last_synced_at: row.last_synced_at ?? null,
         scopes: row.scopes ?? null,
-        missing_scopes: hasToken ? missingScopeLabels(uiProvider === 'azure_ad' ? 'microsoft' : 'google', row.scopes) : [],
+        missing_scopes: hasToken
+          ? missingScopeLabels(
+              uiProvider === 'azure_ad' ? 'microsoft' : 'google',
+              row.scopes,
+              { hasRefreshToken: hasRefreshInDb },
+            )
+          : [],
         expires_at: expSec,
         needs_reconnect: needsReconnect,
         needs_reauth: reauthRequired,

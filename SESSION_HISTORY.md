@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-22 — settings no longer falsely demands Microsoft reconnect after successful auth
+- MODE: BUGFIX (single seam)
+- Files changed: `app/api/integrations/status/route.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `SESSION_HISTORY.md`
+- What changed: `GET /api/integrations/status` now treats Microsoft `offline_access` as satisfied when a refresh token is actually stored. This stops `/dashboard/settings` from showing the false “Reconnect required — missing offline refresh access” state after a successful Microsoft reconnect when Azure omits `offline_access` from the echoed scope string.
+- Verification: `npm run health` (`0 FAILING`, warnings-only Outlook/cursor staleness); production DB truth query against `user_tokens` for `b-kapp@outlook.com` and `b.kapp1010@gmail.com` confirmed both providers currently have `has_refresh_token=true` while Microsoft scope text omits `offline_access`; `npx vitest run app/api/integrations/status/__tests__/route.test.ts` (`8 passed`); `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "Settings /dashboard/settings"` (`10 passed`); `npm run build`.
+- Unresolved issues: Live production page still needs post-push verification on `https://www.foldera.ai/dashboard/settings` to confirm the false reconnect banner disappears after deploy.
+
 ## 2026-04-21 — proof-mode thread-backed send now defaults off
 - MODE: BUGFIX (single seam)
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/proof-mode-thread-backed-send.test.ts`, `SESSION_HISTORY.md`
