@@ -9,6 +9,7 @@
 
 import { Resend } from 'resend';
 import type { ConvictionArtifact } from '@/lib/briefing/types';
+import { markdownToEmailHtml } from '@/lib/email/markdown-to-html';
 
 /** Default From when `RESEND_FROM_EMAIL` is unset — must match a verified domain address in Resend. */
 export const DEFAULT_RESEND_FROM = 'Foldera <noreply@foldera.ai>';
@@ -80,10 +81,17 @@ function renderArtifactHtml(artifact: ConvictionArtifact | null | undefined): st
   }
 
   if (artifact.type === 'document') {
+    const content = artifact.content ? clipText(artifact.content, 4000) : '';
+    const contentHtml = content
+      ? `<tr><td style="padding:0 0 10px 0;">
+          <div style="font-family:${EMAIL_FONT_STACK};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a;margin-bottom:8px;">Content</div>
+          <div style="padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">${markdownToEmailHtml(content)}</div>
+        </td></tr>`
+      : '';
     return `
       ${renderField('Finished Artifact', 'Document')}
       ${artifact.title ? renderField('Title', artifact.title) : ''}
-      ${artifact.content ? renderField('Content', clipText(artifact.content, 2400)) : ''}
+      ${contentHtml}
     `;
   }
 
@@ -340,9 +348,9 @@ export function renderWriteDocumentReadyEmailHtml(opts: {
           <p style="margin:0 0 20px 0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">Here is the full text. Forward it, copy it, or save it — whatever gets the work done.</p>
           <p style="margin:0 0 8px 0;font-family:${EMAIL_FONT_STACK};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a;">Document title</p>
           <p style="margin:0 0 20px 0;font-family:${EMAIL_FONT_STACK};font-size:15px;font-weight:600;color:#e4e4e7;">${escapeHtml(title)}</p>
-          <div style="margin:0;padding:16px 18px;border-radius:${EMAIL_RADIUS_INNER};background:${EMAIL_BG_CYAN_TINT};border:1px solid ${EMAIL_BORDER_CYAN_SOFT};border-left:4px solid ${EMAIL_CYAN_BTN};">
-            <p style="margin:0 0 10px 0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:#71717a;">Full document</p>
-            <div style="font-family:${EMAIL_FONT_STACK};font-size:14px;color:#e4e4e7;line-height:1.65;white-space:pre-wrap;word-break:break-word;">${escapeHtml(body)}</div>
+          <div style="margin:0;padding:20px 22px;border-radius:${EMAIL_RADIUS_INNER};background:${EMAIL_BG_CYAN_TINT};border:1px solid ${EMAIL_BORDER_CYAN_SOFT};border-left:4px solid ${EMAIL_CYAN_BTN};">
+            <p style="margin:0 0 14px 0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:#71717a;">Full document</p>
+            <div style="font-family:${EMAIL_FONT_STACK};font-size:14px;color:#e4e4e7;line-height:1.65;word-break:break-word;">${markdownToEmailHtml(body)}</div>
           </div>
         </td></tr>
         <tr><td style="padding-top:28px;text-align:center;">

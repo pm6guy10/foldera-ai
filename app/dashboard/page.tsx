@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
 import { FolderaMark } from '@/components/nav/FolderaMark';
 import { useSession } from 'next-auth/react';
-import { Settings, Lock, History } from 'lucide-react';
+import { Settings, Lock, History, Download } from 'lucide-react';
 import type { ConvictionAction } from '@/lib/briefing/types';
 
 type ArtifactWithDraftedEmail = {
@@ -65,6 +66,47 @@ function approveSuccessFlash(actionType: string | undefined, result: unknown): s
 }
 
 type ActionWithDomain = ConvictionAction & { domain?: string; generatedAt?: string };
+
+/** Custom component map to render write_document markdown on the dashboard's dark card. */
+const DOCUMENT_MARKDOWN_COMPONENTS = {
+  h1: ({ children }: { children?: ReactNode }) => (
+    <h1 className="text-base font-bold text-white mt-4 mb-2 first:mt-0">{children}</h1>
+  ),
+  h2: ({ children }: { children?: ReactNode }) => (
+    <h2 className="text-sm font-bold text-white mt-3 mb-1.5 first:mt-0">{children}</h2>
+  ),
+  h3: ({ children }: { children?: ReactNode }) => (
+    <h3 className="text-[11px] font-black uppercase tracking-widest text-zinc-300 mt-3 mb-1 first:mt-0">{children}</h3>
+  ),
+  p: ({ children }: { children?: ReactNode }) => (
+    <p className="text-sm text-zinc-200 leading-relaxed mb-2 last:mb-0">{children}</p>
+  ),
+  ul: ({ children }: { children?: ReactNode }) => (
+    <ul className="list-disc pl-5 mb-2 space-y-1 text-sm text-zinc-200 marker:text-cyan-400/70">{children}</ul>
+  ),
+  ol: ({ children }: { children?: ReactNode }) => (
+    <ol className="list-decimal pl-5 mb-2 space-y-1 text-sm text-zinc-200 marker:text-cyan-400/70">{children}</ol>
+  ),
+  li: ({ children }: { children?: ReactNode }) => (
+    <li className="leading-relaxed">{children}</li>
+  ),
+  strong: ({ children }: { children?: ReactNode }) => (
+    <strong className="font-semibold text-white">{children}</strong>
+  ),
+  em: ({ children }: { children?: ReactNode }) => <em className="italic">{children}</em>,
+  a: ({ children, href }: { children?: ReactNode; href?: string }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-400 underline underline-offset-2 hover:text-cyan-300">
+      {children}
+    </a>
+  ),
+  code: ({ children }: { children?: ReactNode }) => (
+    <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[0.85em] text-zinc-100">{children}</code>
+  ),
+  blockquote: ({ children }: { children?: ReactNode }) => (
+    <blockquote className="border-l-2 border-cyan-500/40 pl-3 text-zinc-400 italic my-2">{children}</blockquote>
+  ),
+  hr: () => <hr className="my-3 border-white/10" />,
+};
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
@@ -698,9 +740,24 @@ export default function DashboardPage() {
 
                     {isDocument && (
                       <div className="rounded-2xl bg-zinc-950/60 border border-cyan-500/20 border-l-4 border-l-cyan-500 p-4 md:p-5 m-4 md:m-5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">
-                          Finished document
-                        </p>
+                        <div className="flex items-start justify-between gap-3 mb-1">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400">
+                            Finished document
+                          </p>
+                          {artifactBody && (
+                            <button
+                              type="button"
+                              disabled
+                              title="PDF export is coming soon"
+                              aria-label="Download PDF (coming soon)"
+                              data-testid="dashboard-document-download-pdf"
+                              className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-zinc-400 opacity-70 cursor-not-allowed"
+                            >
+                              <Download className="w-3 h-3" aria-hidden="true" />
+                              Download PDF
+                            </button>
+                          )}
+                        </div>
                         <p className="text-[11px] text-zinc-500 leading-snug mb-3">
                           Ready to file or share — save it to your Foldera record when you&apos;re happy with it.
                         </p>
@@ -709,10 +766,12 @@ export default function DashboardPage() {
                         )}
                         {artifactBody ? (
                           <div
-                            className="max-h-[min(50vh,24rem)] overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-3"
+                            className="max-h-[min(50vh,24rem)] overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
                             data-testid="dashboard-document-body"
                           >
-                            <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{artifactBody}</p>
+                            <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS}>
+                              {artifactBody}
+                            </ReactMarkdown>
                           </div>
                         ) : (
                           <p className="text-sm text-zinc-400 leading-relaxed">
