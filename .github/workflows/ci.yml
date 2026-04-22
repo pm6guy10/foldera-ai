@@ -362,6 +362,11 @@ jobs:
             public
           retention-days: 3
           if-no-files-found: error
+          # upload-artifact@v4 excludes dot-prefixed paths by default, which
+          # silently drops the entire `.next/` tree and leaves only `public/`
+          # in the archive. Downstream jobs then boot with no server bundle
+          # and next start crashes at startup. Keep hidden files included.
+          include-hidden-files: true
 
   # ───────────────────────────────────────────────────────────────────────────
   # 5a. E2E smoke — public routes only. Fails fast on marketing / landing / auth shell.
