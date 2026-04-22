@@ -2,6 +2,20 @@
 
 # Session History
 
+## 2026-04-22 — stakes gate admits real interview write_document rows, but lifecycle/ranking still block native winner
+- MODE: SHIP ONE SEAM
+- Files changed: `lib/briefing/stakes-gate.ts`, `lib/briefing/__tests__/stakes-gate.test.ts`, `SESSION_HISTORY.md`
+- What changed: Patched only the stakes gate so confirmed interview-prep `write_document` candidates count as time-bound stakes even when the language is mild. Added a matching forcing-function carveout for the same class so accepted interviews, scheduled phone screens, and dated hiring commitments are not killed inside `applyStakesGate()`.
+- Verification: `npx vitest run lib/briefing/__tests__/stakes-gate.test.ts lib/briefing/__tests__/interview-commitment-admission.test.ts`; free owner-data scorer replay with `.env.local`; `npm run build`; paid real owner run via `ALLOW_PAID_LLM=true npx tsx scripts/run-brain-receipt-real-once.ts`.
+- Unresolved issues: The target ESB interview candidate (`Accepted Interview - Recruitment 2026-02344 ESB Tech`) now survives `stakes_gate`, but the native path is still not proven because it is subsequently dropped by `lifecycle_gate` (`non_actionable(archive_only): Urgency 0.30, stakes 1.2, tractability 0.50`) and then zeroed by `ranking_invariants` (`non_actionable, not_decision_moving, already_known_pattern`). The live owner run still selected a decay `send_message` winner for Yadira Clapper and persisted that email as `pending_approval`.
+
+## 2026-04-22 — scorer restores decrypted signal content, but native write_document still does not win on owner data
+- MODE: SHIP ONE SEAM
+- Files changed: `lib/briefing/scorer.ts`, `lib/briefing/__tests__/scorer-metadata-egress.test.ts`, `lib/briefing/__tests__/pipeline-receipt.test.ts`, `SESSION_HISTORY.md`
+- What changed: Repaired the scorer selection seam so `scoreOpenLoops` now reads and decrypts real `tkg_signals.content` instead of labeling metadata summaries as decrypted signals. This restores plaintext signal content to discrepancy detection and winner selection while keeping the helper discovery functions metadata-only. Updated the two locked tests that previously enforced metadata-only scorer reads.
+- Verification: `npm run health` (`0 FAILING`; warning: last generation `do_nothing`); `npx vitest run lib/briefing/__tests__/scorer-metadata-egress.test.ts lib/briefing/__tests__/pipeline-receipt.test.ts`; free owner-data scorer replay with `.env.local` showed current winner still `discrepancy_decay_8eab1a74-468d-4d6f-bab8-12888117f0a0` (`send_message`, `Fading connection: alex crisler`) while native `write_document` rows entered the top set but remained weaker/non-excellent; targeted scorer diagnostics showed interview-class commitments and signals are still being dropped by `suppressed_candidate_cooldown`, `entity_reality_gate`, and especially `stakes_gate` (`no_time_pressure` / `no_real_external_entity`); `npm run build`.
+- Unresolved issues: One real native `write_document` artifact is still not proven on owner data. After this fix, the earliest remaining blocker is upstream filtering of live interview-class candidates before final ranking, so the real pipeline still does not reach `pending_approval` with an excellent native document.
+
 ## 2026-04-22 — CI: unblock every push on main (docs-fast workflow was invalid YAML)
 - MODE: INFRA BUGFIX
 - File changed: `.github/workflows/docs-fast.yml`

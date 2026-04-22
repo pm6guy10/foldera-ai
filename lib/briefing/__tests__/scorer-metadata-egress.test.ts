@@ -22,6 +22,7 @@ type SignalRow = {
   occurred_at: string;
   author: string;
   source_id: string;
+  content: string;
 };
 
 const nowIso = '2026-04-21T12:00:00.000Z';
@@ -130,10 +131,16 @@ describe('scorer metadata-first tkg_signals reads', () => {
         ? `Alex Rivera <alex${index}@clientco.com>`
         : 'Hiring Team <hiring@example.com>',
       source_id: `src-${index + 1}`,
+      content: [
+        `[Email received: ${new Date(Date.parse(nowIso) - index * 60 * 60 * 1000).toISOString()}]`,
+        `From: ${index % 2 === 0 ? `Alex Rivera <alex${index}@clientco.com>` : 'Hiring Team <hiring@example.com>'}`,
+        `Subject: ${index % 2 === 0 ? 'Client contract review' : 'Interview confirmation'}`,
+        `Body: ${index % 2 === 0 ? 'Need the contract packet by Friday.' : 'Your interview is confirmed for next week with the hiring panel.'}`,
+      ].join('\n'),
     }));
   });
 
-  it('keeps scorer-side tkg_signals selects metadata-only across discovery helpers', async () => {
+  it('keeps discovery helpers metadata-only but lets scoreOpenLoops read decrypted content', async () => {
     const {
       detectAntiPatterns,
       detectEmergentPatterns,
@@ -149,11 +156,20 @@ describe('scorer metadata-first tkg_signals reads', () => {
     await scoreOpenLoops('user-1', { pipelineDryRun: true });
 
     expect(signalSelectCalls.length).toBeGreaterThan(0);
-    expect(signalSelectCalls.every((columns) => !/\bcontent\b/.test(columns))).toBe(true);
+    const scoreOpenLoopsIndex = signalSelectCalls.findIndex((columns) =>
+      /\bcontent\b/.test(columns),
+    );
+    expect(scoreOpenLoopsIndex).toBeGreaterThanOrEqual(0);
+    expect(
+      signalSelectCalls
+        .slice(0, scoreOpenLoopsIndex)
+        .every((columns) => !/\bcontent\b/.test(columns)),
+    ).toBe(true);
     expect(signalSelectCalls).toEqual(expect.arrayContaining([
       'id, source, occurred_at, author, type, source_id',
       'id, source, type, occurred_at, author, source_id',
       'id, occurred_at, source, type',
+      'id, source, occurred_at, author, type, source_id, content',
     ]));
   });
 });

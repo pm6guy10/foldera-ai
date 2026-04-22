@@ -16,6 +16,7 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
+import { decryptWithStatus } from '@/lib/encryption';
 import {
   buildDirectiveMlBucketKey,
   mlBucketInputsFromBaseCandidate,
@@ -4314,7 +4315,7 @@ export async function scoreOpenLoops(
     // Load 200 to capture email + calendar + file + task signals
     supabase
       .from('tkg_signals')
-      .select('id, source, occurred_at, author, type, source_id')
+      .select('id, source, occurred_at, author, type, source_id, content')
       .eq('user_id', userId)
       .gte('occurred_at', oneHundredEightyDaysAgo)
       .eq('processed', true)
@@ -4400,19 +4401,27 @@ export async function scoreOpenLoops(
     diag.sourceCounts.commitments_after_dedup = commitments.length;
   }
 
-  const signals = buildSignalMetadataSummaryRows(
-    (signalsRes.data ?? []).map((signal: any) => ({
+  let skippedDecryptRows = 0;
+  const signals = (signalsRes.data ?? []).flatMap((signal: any) => {
+    if (String(signal.source ?? '').trim() === 'user_feedback') return [];
+    const decrypted = decryptWithStatus(String(signal.content ?? ''));
+    if (decrypted.usedFallback) {
+      skippedDecryptRows++;
+      return [];
+    }
+    const plaintext = decrypted.plaintext.trim();
+    if (!plaintext || isSelfReferentialSignal(plaintext)) return [];
+    return [{
       id: String(signal.id),
       source: String(signal.source ?? ''),
       occurred_at: String(signal.occurred_at ?? ''),
       author: (signal.author as string | null) ?? null,
       type: (signal.type as string | null) ?? null,
       source_id: (signal.source_id as string | null) ?? null,
-    })),
-  ).filter((signal: any) =>
-    String(signal.source ?? '').trim() !== 'user_feedback' &&
-    !isSelfReferentialSignal(signal.content),
-  );
+      content: plaintext,
+    }];
+  });
+  logDecryptSkip(userId, 'score_open_loops', skippedDecryptRows);
   diag.sourceCounts.signals_after_decrypt = signals.length;
 
   const signalSourceByRowId = new Map<string, string>();

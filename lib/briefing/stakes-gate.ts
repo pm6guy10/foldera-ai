@@ -144,14 +144,41 @@ const STALL_PATTERNS = [
   /\b(?:haven'?t\s+(?:heard|responded|replied)\s+(?:in|for|since))\b/i,
 ];
 
+const INTERVIEW_PRESSURE_PATTERNS = {
+  interviewAnchor: /\b(?:interview|phone screen|screening interview|panel interview|final round|hiring panel|candidate interview)\b/i,
+  confirmedWindow:
+    /\b(?:accepted?\s+interview|interview\s+accepted|confirm(?:ed|ation)?|scheduled|schedule(?:d)?|invite(?:d|s|ation)?|appointment scheduled|selected\s+to\s+interview|phone screen)\b/i,
+  hiringContext:
+    /\b(?:role|position|job|recruit(?:er|ment)|candidate|hiring|employer|interviewer|manager)\b/i,
+  datedWindow:
+    /\b(?:20\d{2}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/(?:20)?\d{2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i,
+};
+
 // Urgency >= 0.4 means scorer already computed meaningful time pressure
 const URGENCY_THRESHOLD = 0.4;
+
+function isTimeBoundInterviewExecutionCandidate(c: StakesCandidate): boolean {
+  if (c.actionType !== 'write_document') return false;
+  const text = `${c.title} ${c.content}`;
+  if (!INTERVIEW_PRESSURE_PATTERNS.interviewAnchor.test(text)) return false;
+  if (!hasRealExternalEntity(c)) return false;
+
+  const hasConfirmedWindow = INTERVIEW_PRESSURE_PATTERNS.confirmedWindow.test(text);
+  const hasHiringContext = INTERVIEW_PRESSURE_PATTERNS.hiringContext.test(text);
+  const hasDatedWindow = INTERVIEW_PRESSURE_PATTERNS.datedWindow.test(text);
+
+  return (hasConfirmedWindow && hasHiringContext) || (hasDatedWindow && hasHiringContext);
+}
 
 function hasTimePressureOrDecay(c: StakesCandidate): boolean {
   const text = `${c.title} ${c.content}`;
 
   // Scorer-computed urgency already encodes deadline proximity
   if (c.urgency >= URGENCY_THRESHOLD) return true;
+
+  // Accepted interviews, scheduled phone screens, and dated hiring commitments
+  // are time-bound even when the phrasing is mild and does not literally say "deadline".
+  if (isTimeBoundInterviewExecutionCandidate(c)) return true;
 
   // `signalUrgency()` often lands below 0.4 for 4–30d mail even when the thread is
   // still a live human loop. If the same signal passed the live-thread window, treat
@@ -263,6 +290,9 @@ function hasForcingFunction(c: StakesCandidate): boolean {
 
   // These action types inherently force a binary outcome
   if (FORCING_ACTION_TYPES.has(c.actionType)) return true;
+
+  // A confirmed interview-prep document is the execution artifact for a fixed hiring window.
+  if (isTimeBoundInterviewExecutionCandidate(c)) return true;
 
   // Check for forcing function language
   return FORCING_FUNCTION_PATTERNS.some(p => p.test(text));

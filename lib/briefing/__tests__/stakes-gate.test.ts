@@ -240,6 +240,45 @@ describe('Stakes Gate — Condition 3: Time Pressure or Decay', () => {
     const result = applyStakesGate([c]);
     expect(result.passed).toHaveLength(1);
   });
+
+  it('passes accepted interview write_document even when phrasing is mild', () => {
+    const c = boardChangingCandidate({
+      actionType: 'write_document',
+      urgency: 0.05,
+      title: 'Accepted Interview - Recruitment 2026-02344 ESB Tech',
+      content:
+        'ESD recruiter Darlene Craig confirmed the interview for the ES Benefits Technician role. Accepted interview for recruitment 2026-02344.',
+    });
+    const result = applyStakesGate([c]);
+    expect(result.passed).toHaveLength(1);
+    expect(result.dropped).toHaveLength(0);
+  });
+
+  it('passes scheduled phone screen write_document with external hiring context', () => {
+    const c = boardChangingCandidate({
+      actionType: 'write_document',
+      urgency: 0.08,
+      title: 'Phone screen for Care Coordinator role',
+      content:
+        'Alex Crisler (Recruiter at Comprehensive Healthcare) scheduled the phone screen for the Care Coordinator role next week.',
+    });
+    const result = applyStakesGate([c]);
+    expect(result.passed).toHaveLength(1);
+    expect(result.dropped).toHaveLength(0);
+  });
+
+  it('passes dated hiring commitment write_document with low urgency', () => {
+    const c = boardChangingCandidate({
+      actionType: 'write_document',
+      urgency: 0.06,
+      title: 'Interview; DSHS HCLA Developmental Disabilities Case/Resource Manager',
+      content:
+        'Nicholas Robertson (Hiring Manager at DSHS) scheduled the interview for 2026-04-20 for the Developmental Disabilities Case/Resource Manager position.',
+    });
+    const result = applyStakesGate([c]);
+    expect(result.passed).toHaveLength(1);
+    expect(result.dropped).toHaveLength(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
