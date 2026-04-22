@@ -142,6 +142,52 @@ describe('schedule_conflict finished-work gates (aligned)', () => {
     expect(issues).toContain('schedule_conflict write_document below product bar; require a real calendar artifact or suppress');
   });
 
+  it('does not apply schedule_conflict persistence bar to interview-class write_document on compound directive', () => {
+    const directive = baseDirective({
+      reason: 'Overlapping calendar same week as confirmed interview with candidate Alex Crisler.',
+      evidence: [
+        { type: 'signal', description: 'Phone screen interview confirmed for PM role on 2026-03-31' },
+      ],
+      generationLog: {
+        outcome: 'selected',
+        stage: 'persistence',
+        reason: 'ok',
+        candidateFailureReasons: [],
+        candidateDiscovery: {
+          ...discoveryWithScheduleConflictClass(),
+          topCandidates: [
+            {
+              ...discoveryWithScheduleConflictClass().topCandidates[0],
+              targetGoal: { text: 'Interview confirmation draft for Alex Crisler (PM candidate)' },
+            },
+          ],
+        },
+      },
+    });
+    const artifact = {
+      type: 'document',
+      title: 'Interview confirmation — Alex Crisler',
+      content:
+        'Confirmed interview with candidate Alex Crisler for the Product Manager role on March 31, 2026. Recruiter and hiring manager are aligned on the schedule.',
+    } as unknown as ConvictionArtifact;
+
+    expect(
+      getArtifactPersistenceIssues('write_document', artifact, directive).filter((m) =>
+        m.includes('schedule_conflict write_document below product bar'),
+      ),
+    ).toEqual([]);
+
+    const persist = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+      candidateType: 'discrepancy',
+    });
+    expect(
+      persist.some((m) => m.includes('schedule_conflict write_document below product bar')),
+    ).toBe(false);
+  });
+
   it('rejects grounded resolution note artifact consistently because schedule-conflict documents are below bar', () => {
     const directive = baseDirective();
     const artifact = {

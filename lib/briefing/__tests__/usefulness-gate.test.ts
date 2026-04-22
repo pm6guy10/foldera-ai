@@ -377,14 +377,15 @@ describe('usefulness gate — execution proof', () => {
       type: 'discrepancy' as const,
       discrepancyClass: 'exposure' as const,
       suggestedActionType: 'write_document' as const,
-      title: 'MAS3 Project interview is 4 days away with no prep artifact',
-      content: 'Interview is scheduled and authorization forms were sent, but no finished prep artifact exists.',
+      // Deliberately non-interview wording so interview-class enforcement relaxation does not apply.
+      title: 'MAS3 Project go-live review is 4 days away with no prep artifact',
+      content: 'Authorization forms were sent, but no finished prep packet exists.',
       matchedGoal: { text: 'Land the MAS3 role', priority: 5, category: 'career' },
       sourceSignals: [{
         kind: 'commitment' as const,
         id: 'commitment-mas3',
         occurredAt: new Date().toISOString(),
-        summary: 'MAS3 Project interview',
+        summary: 'MAS3 Project deadline',
       }],
     };
     mockScoreOpenLoops.mockResolvedValue({
@@ -394,14 +395,14 @@ describe('usefulness gate — execution proof', () => {
     });
 
     anthropicCreate.mockResolvedValue(anthropicResponse({
-      directive: 'Prepare the MAS3 interview artifact before the interview window closes.',
+      directive: 'Prepare the MAS3 compliance packet before the go-live window closes.',
       artifact_type: 'write_document',
       artifact: {
-        document_purpose: 'interview prep',
+        document_purpose: 'compliance prep',
         target_reader: 'user',
-        title: 'MAS3 Project Interview Prep',
+        title: 'MAS3 Project Prep',
         content: [
-          'INTERVIEW DETAILS',
+          'PROJECT DETAILS',
           'Position: Health Benefits Specialist 3 (MAS3/AHSO) - Project',
           'Scheduled: April 20, 2026',
           '',
@@ -410,14 +411,14 @@ describe('usefulness gate — execution proof', () => {
           '',
           'RESEARCH BEFORE APRIL 20',
           "Review HCA's website for current initiatives and recent healthcare policy changes.",
-          'Familiarize yourself with Washington State Medicaid before the interview.',
+          'Familiarize yourself with Washington State Medicaid before the review.',
         ].join('\n'),
       },
-      evidence: 'MAS3 interview is scheduled and authorization forms were sent, but no prep artifact exists.',
-      why_now: 'The interview window closes this week.',
+      evidence: 'MAS3 go-live review is scheduled and authorization forms were sent, but no prep artifact exists.',
+      why_now: 'The compliance window closes this week.',
       causal_diagnosis: {
-        why_exists_now: 'Interview prep is still unresolved while the date is fixed.',
-        mechanism: 'The calendar commitment exists but finished interview material has not been produced.',
+        why_exists_now: 'Prep work is still unresolved while the date is fixed.',
+        mechanism: 'The calendar commitment exists but finished prep material has not been produced.',
       },
     }));
 

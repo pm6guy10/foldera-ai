@@ -395,6 +395,60 @@ Decide by 2026-04-01 COB; the overlap on 2026-04-02 is not recoverable otherwise
     expect(result.blocked_reasons).toContain('FINISHED_WORK_REQUIRED');
   });
 
+  it('passes interview-class write_document when directive is schedule_conflict-shaped compound', () => {
+    const directive = makeDirective({
+      action_type: 'write_document',
+      discrepancyClass: 'schedule_conflict',
+      directive: 'Overlapping events on 2026-04-02.',
+      reason: 'Same afternoon as confirmed interview with candidate Alex Crisler for the PM role.',
+      evidence: [{ type: 'signal', description: 'Interview scheduled 2026-03-31 for hiring PM candidate Alex' }],
+      generationLog: {
+        outcome: 'selected',
+        stage: 'persistence',
+        reason: 'ok',
+        candidateFailureReasons: [],
+        candidateDiscovery: {
+          candidateCount: 1,
+          suppressedCandidateCount: 0,
+          selectionMargin: 0.1,
+          selectionReason: null,
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'loop_interview_alex',
+              rank: 1,
+              candidateType: 'loop',
+              discrepancyClass: 'schedule_conflict',
+              actionType: 'write_document',
+              score: 2,
+              scoreBreakdown: {
+                stakes: 2,
+                urgency: 0.5,
+                tractability: 0.7,
+                freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
+              },
+              targetGoal: { text: 'Interview confirmation for Alex Crisler (PM candidate) March 31' },
+              sourceSignals: [],
+              decision: 'selected',
+              decisionReason: '',
+            },
+          ],
+        },
+      },
+    });
+    const artifact = makeDocArtifact({
+      type: 'document',
+      title: 'Interview confirmation — Alex Crisler',
+      content:
+        'Confirmed phone interview with candidate Alex Crisler for the Product Manager role on March 31, 2026. Recruiter notified; hiring panel is aligned.',
+    });
+    const result = evaluateBottomGate(directive, artifact);
+    expect(result.blocked_reasons).not.toContain('FINISHED_WORK_REQUIRED');
+    expect(result.pass).toBe(true);
+  });
+
   it('blocks schedule_conflict write_document with production leak shape: Objective + Execution Notes + user-directed questions', () => {
     const directive = makeDirective({
       action_type: 'write_document',

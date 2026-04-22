@@ -1,5 +1,54 @@
 import type { ConvictionDirective } from './types';
 import { effectiveDiscrepancyClassForGates } from './effective-discrepancy-class';
+import { isInterviewClassWriteDocumentEnforcementRelaxation } from './decision-enforcement';
+
+function buildPersistenceContextForInterviewSchedule(directive: ConvictionDirective): {
+  candidateTitle: string | null;
+  supportingContext: string;
+} {
+  const log = directive.generationLog;
+  const dry = log?.pipeline_dry_run;
+  const selected =
+    log?.candidateDiscovery?.topCandidates?.find((c) => c.decision === 'selected') ??
+    log?.candidateDiscovery?.topCandidates?.[0] ??
+    null;
+  const candidateTitle =
+    (dry?.candidate_title?.trim() ? dry.candidate_title.trim() : null) ||
+    (selected?.targetGoal?.text?.trim() ? selected.targetGoal.text.trim() : null) ||
+    null;
+  const evidenceLines = (directive.evidence ?? [])
+    .map((e) => e.description)
+    .filter((d): d is string => typeof d === 'string' && d.trim().length > 0)
+    .slice(0, 12);
+  const clusterInputs =
+    log?.candidateDiscovery?.interviewClusterInputs ??
+    log?.brief_context_debug?.interview_cluster_inputs ??
+    [];
+  const supportingContext = [...evidenceLines, ...clusterInputs.slice(0, 8)].join('\n');
+  return { candidateTitle, supportingContext };
+}
+
+/**
+ * schedule_conflict + write_document is normally below bar (calendar memo / disguised outbound).
+ * Interview-class finished documents on a compound schedule_conflict directive may persist.
+ */
+export function shouldBlockScheduleConflictWriteDocumentPersistence(
+  directive: ConvictionDirective,
+  artifact: Record<string, unknown> | null,
+): boolean {
+  if (!artifact || typeof artifact !== 'object') return false;
+  if (!directiveLooksLikeScheduleConflict(directive)) return false;
+  const ctx = buildPersistenceContextForInterviewSchedule(directive);
+  const relax = isInterviewClassWriteDocumentEnforcementRelaxation({
+    actionType: 'write_document',
+    candidateTitle: ctx.candidateTitle,
+    supportingContext: ctx.supportingContext,
+    directiveText: directive.directive,
+    reason: directive.reason,
+    artifact,
+  });
+  return !relax;
+}
 
 /**
  * True when this directive is a calendar double-booking winner even if `discrepancyClass`

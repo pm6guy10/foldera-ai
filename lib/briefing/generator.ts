@@ -90,9 +90,7 @@ import {
   isVerificationStubPersistExecutionResult,
 } from '@/lib/cron/duplicate-truth';
 import { looksLikeDiscrepancyTriageOrChoreList } from './discrepancy-finished-work';
-import {
-  directiveLooksLikeScheduleConflict,
-} from './schedule-conflict-guards';
+import { shouldBlockScheduleConflictWriteDocumentPersistence } from './schedule-conflict-guards';
 import {
   filterPastSupportingSignals,
   getNewestEvidenceTimestampMs,
@@ -256,7 +254,8 @@ const HOMEWORK_HANDOFF_PATTERNS: Array<{ reason: string; pattern: RegExp }> = [
   },
   {
     reason: 'prepare_examples_handoff',
-    pattern: /prepare[\s\S]{0,80}(?:example|answer|story|talking point|brief|materials)/i,
+    // Word-boundary so "prepared materials" / past-tense grounding does not false-positive.
+    pattern: /\bprepare\b[\s\S]{0,80}(?:example|answer|story|talking point|brief|materials)/i,
   },
   {
     reason: 'conditional_homework_menu',
@@ -1541,6 +1540,68 @@ export function selectRankedCandidates(
       scorerPriorityEntry.note = [
         scorerPriorityEntry.note,
         'scorer-priority career outcome forced first',
+      ].filter(Boolean).join('; ');
+      rated.sort((a, b) => {
+        if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
+        return b.viabilityScore - a.viabilityScore;
+      });
+      top = rated[0];
+    }
+  }
+
+  // When the scorer's #1 is time-bound interview write_document, do not let viability
+  // reorder it below relationship decay send_message (often persistence-toxic: temporal
+  // mismatch) or other runners-up — same seam as scorerPriorityCareerOutcome.
+  const scorerWinner = topCandidates[0];
+  if (scorerWinner && isInterviewClassWriteDocumentWinner(scorerWinner)) {
+    const interviewWriteEntry = rated.find(
+      (entry) => !entry.disqualified && entry.candidate.id === scorerWinner.id,
+    );
+    if (interviewWriteEntry && top.candidate.id !== scorerWinner.id) {
+      interviewWriteEntry.viabilityScore = Math.max(
+        interviewWriteEntry.viabilityScore,
+        top.viabilityScore + 0.001,
+      );
+      interviewWriteEntry.note = [
+        interviewWriteEntry.note,
+        'scorer winner interview-class write_document forced first',
+      ].filter(Boolean).join('; ');
+      rated.sort((a, b) => {
+        if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
+        return b.viabilityScore - a.viabilityScore;
+      });
+      top = rated[0];
+    }
+  }
+
+  // Decay reconnect send_message often shares the same hiring thread as a time-bound interview
+  // write_document runner-up. Prefer the finished interview artifact over a generic decay email
+  // when the entity matches (persistence layer often rejects decay timing vs directive anyway).
+  const interviewWriteRated = rated.find(
+    (r) => !r.disqualified && isInterviewClassWriteDocumentWinner(r.candidate),
+  );
+  const decaySendOnTop =
+    !top.disqualified
+    && top.candidate.type === 'discrepancy'
+    && top.candidate.discrepancyClass === 'decay'
+    && top.candidate.suggestedActionType === 'send_message';
+  if (interviewWriteRated && decaySendOnTop) {
+    const decayEntity = (top.candidate.entityName ?? '').trim().toLowerCase();
+    const iwBlob =
+      `${interviewWriteRated.candidate.title}\n${interviewWriteRated.candidate.content}`.toLowerCase();
+    const firstTok = decayEntity.split(/\s+/).find((t) => t.length >= 3) ?? '';
+    const sameThread =
+      decayEntity.length === 0
+      || iwBlob.includes(decayEntity)
+      || (firstTok.length > 0 && iwBlob.includes(firstTok));
+    if (sameThread) {
+      interviewWriteRated.viabilityScore = Math.max(
+        interviewWriteRated.viabilityScore,
+        top.viabilityScore + 0.001,
+      );
+      interviewWriteRated.note = [
+        interviewWriteRated.note,
+        'interview-class write_document preferred over same-entity decay send_message',
       ].filter(Boolean).join('; ');
       rated.sort((a, b) => {
         if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
@@ -4618,7 +4679,10 @@ export async function checkConsecutiveDuplicate(
   }
 }
 
-function isUseful(output: { artifact: string; evidence: string; action: string }): { ok: boolean; reason?: string } {
+function isUseful(
+  output: { artifact: string; evidence: string; action: string },
+  opts?: { skipHomeworkHandoff?: boolean },
+): { ok: boolean; reason?: string } {
   if (!output) return { ok: false, reason: 'no_output' };
 
   if (!output.artifact || output.artifact.length < 50) {
@@ -4639,9 +4703,11 @@ function isUseful(output: { artifact: string; evidence: string; action: string }
     return { ok: false, reason: 'generic_language' };
   }
 
-  const homeworkReason = findHomeworkHandoffReason(`${output.action}\n${output.artifact}`);
-  if (homeworkReason) {
-    return { ok: false, reason: `homework_handoff_${homeworkReason}` };
+  if (!opts?.skipHomeworkHandoff) {
+    const homeworkReason = findHomeworkHandoffReason(`${output.action}\n${output.artifact}`);
+    if (homeworkReason) {
+      return { ok: false, reason: `homework_handoff_${homeworkReason}` };
+    }
   }
 
   if (!output.action || output.action.length < 5) {
@@ -6302,9 +6368,12 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
     const insight = typeof parsed.insight === 'string' ? parsed.insight.trim()
       : (typeof parsed.evidence === 'string' ? parsed.evidence.trim() : reason);
     const whyNow = typeof parsed.why_now === 'string' ? parsed.why_now.trim() : reason;
-    const directiveSource = typeof parsed.directive === 'string' && parsed.directive.trim().length > 0
-      ? parsed.directive.trim()
-      : (reason || insight || 'Deliver the requested artifact now.');
+    const directiveSource =
+      typeof parsed.directive === 'string' && parsed.directive.trim().length > 0
+        ? parsed.directive.trim()
+        : typeof parsed.directive_text === 'string' && parsed.directive_text.trim().length > 0
+          ? parsed.directive_text.trim()
+          : (reason || insight || 'Deliver the requested artifact now.');
     const sentenceParts = directiveSource
       .split(/(?<=[.!?])\s+/)
       .map((part) => part.trim())
@@ -6368,7 +6437,7 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
     ? (parsed.artifact as Record<string, unknown>)
     : null;
   const artifactType = normalizeArtifactType(
-    parsed.artifact_type ?? parsed.type ?? nestedArtifact?.type,
+    parsed.artifact_type ?? parsed.action_type ?? parsed.type ?? nestedArtifact?.type,
   );
   if (!artifactType) return null;
 
@@ -6401,12 +6470,26 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
     }
   }
 
+  const directiveRaw =
+    typeof parsed.directive === 'string' && parsed.directive.trim().length > 0
+      ? parsed.directive.trim()
+      : typeof parsed.directive_text === 'string' && parsed.directive_text.trim().length > 0
+        ? parsed.directive_text.trim()
+        : '';
+  const directiveOneSentence =
+    directiveRaw.length > 0
+      ? (directiveRaw
+          .split(/(?<=[.!?])\s+/)
+          .map((part) => part.trim())
+          .filter(Boolean)[0] ?? directiveRaw)
+      : '';
+
   return {
     insight: typeof parsed.insight === 'string' ? parsed.insight : (typeof parsed.evidence === 'string' ? parsed.evidence : ''),
     causal_diagnosis: parsedCausalDiagnosis ?? { why_exists_now: '', mechanism: '' },
     causal_diagnosis_from_model: causalDiagnosisFromModel,
     decision: parsed.decision === 'HOLD' ? 'HOLD' : 'ACT',
-    directive: typeof parsed.directive === 'string' ? parsed.directive : '',
+    directive: directiveOneSentence,
     artifact_type: artifactType,
     artifact,
     why_now: typeof parsed.why_now === 'string' ? parsed.why_now : '',
@@ -7021,17 +7104,19 @@ function validateGeneratedArtifact(
       }
     }
 
-    const homeworkReason = findHomeworkHandoffReason(
-      [
-        payload.directive ?? '',
-        payload.why_now ?? '',
-        JSON.stringify(payload.artifact ?? {}),
-      ].join('\n'),
-    );
-    if (homeworkReason) {
-      issues.push(
-        `homework_handoff:${homeworkReason} — artifact hands unfinished prep or research back to the user`,
+    if (!interviewClassRelaxGen) {
+      const homeworkReason = findHomeworkHandoffReason(
+        [
+          payload.directive ?? '',
+          payload.why_now ?? '',
+          JSON.stringify(payload.artifact ?? {}),
+        ].join('\n'),
       );
+      if (homeworkReason) {
+        issues.push(
+          `homework_handoff:${homeworkReason} — artifact hands unfinished prep or research back to the user`,
+        );
+      }
     }
   }
 
@@ -7251,8 +7336,8 @@ export function validateDirectiveForPersistence(input: {
   ) {
     const art = input.artifact as Record<string, unknown>;
     if (
-      directiveLooksLikeScheduleConflict(input.directive) &&
-      normalizeDecisionActionType(String(input.directive.action_type)) === 'write_document'
+      normalizeDecisionActionType(String(input.directive.action_type)) === 'write_document' &&
+      shouldBlockScheduleConflictWriteDocumentPersistence(input.directive, art)
     ) {
       return ['schedule_conflict write_document below product bar; require a real calendar artifact or suppress'];
     }
@@ -7268,7 +7353,7 @@ export function validateDirectiveForPersistence(input: {
   if (!input.artifact || typeof input.artifact !== 'object') {
     issues.push('artifact is required before persistence');
   } else if (normalizeDecisionActionType(String(input.directive.action_type)) === 'write_document') {
-    if (directiveLooksLikeScheduleConflict(input.directive)) {
+    if (shouldBlockScheduleConflictWriteDocumentPersistence(input.directive, input.artifact as Record<string, unknown>)) {
       issues.push('schedule_conflict write_document below product bar; require a real calendar artifact or suppress');
     }
   }
@@ -7300,11 +7385,20 @@ export function validateDirectiveForPersistence(input: {
     issues.push(v.message);
   }
 
+  const persistenceEnforcementCtx = buildPersistenceDecisionEnforcementContext(input.directive);
+  const interviewClassWriteDocumentRelax = isInterviewClassWriteDocumentEnforcementRelaxation({
+    actionType: input.directive.action_type,
+    candidateTitle: persistenceEnforcementCtx.candidateTitle,
+    supportingContext: persistenceEnforcementCtx.supportingContext,
+    directiveText: input.directive.directive,
+    reason: input.directive.reason,
+    artifact: input.artifact as Record<string, unknown>,
+  });
+
   // Discrepancy candidates (relationship decay, risk, etc.) produce warm reconnect or
   // relationship-maintenance artifacts. These naturally have no explicit asks, deadlines,
   // or consequence language — skip decision enforcement for them.
   if (input.candidateType !== 'discrepancy' && input.candidateType !== 'insight') {
-    const persistenceCtx = buildPersistenceDecisionEnforcementContext(input.directive);
     issues.push(
       ...getDecisionEnforcementIssues({
         actionType: input.directive.action_type,
@@ -7313,8 +7407,8 @@ export function validateDirectiveForPersistence(input: {
         artifact: input.artifact,
         discrepancyClass: effectiveDiscrepancyClassForGates(input.directive),
         matchedGoalCategory: input.matchedGoalCategory ?? null,
-        candidateTitle: persistenceCtx.candidateTitle,
-        supportingContext: persistenceCtx.supportingContext,
+        candidateTitle: persistenceEnforcementCtx.candidateTitle,
+        supportingContext: persistenceEnforcementCtx.supportingContext,
       }),
     );
   } else if (normalizeDecisionActionType(input.directive.action_type) === 'write_document') {
@@ -7345,7 +7439,8 @@ export function validateDirectiveForPersistence(input: {
   if (
     normalizeDecisionActionType(String(input.directive.action_type)) === 'write_document' &&
     writeDocumentMode === 'internal_execution_brief' &&
-    (input.candidateType === 'discrepancy' || input.candidateType === 'insight')
+    (input.candidateType === 'discrepancy' || input.candidateType === 'insight') &&
+    !interviewClassWriteDocumentRelax
   ) {
     const internalExecutionIssues = getInternalExecutionBriefIssues(
       input.artifact as Record<string, unknown> | null,
@@ -9922,7 +10017,14 @@ export async function generateDirective(
     let payload = payloadResult.payload;
     applyScheduleConflictCanonicalUserFacingCopy(payload, currentCandidate);
 
-    const staleDateCheck = directiveHasStalePastDates(userFacingStaleDateScanText(payload));
+    // Interview-class write_document legitimately cites historical email/calendar dates in directive/why_now;
+    // the stale-date gate targets forward deadlines, not grounded thread timestamps (e.g. March 31 runway + April 21 confirmation).
+    const skipStaleDateGate =
+      decisionPayload.recommended_action === 'write_document'
+      && isInterviewClassWriteDocumentWinner(currentCandidate);
+    const staleDateCheck = skipStaleDateGate
+      ? { stale: false as const, matches: [] as string[] }
+      : directiveHasStalePastDates(userFacingStaleDateScanText(payload));
     if (staleDateCheck.stale) {
       const staleReason = `stale_date_in_directive:${staleDateCheck.matches.slice(0, 4).join(',')}`;
       candidateBlockLog.push({
@@ -10068,13 +10170,25 @@ export async function generateDirective(
     }
 
     // Usefulness gate — candidate-specific, try next
+    const interviewRelaxUseful =
+      canonicalAction === 'write_document'
+      && isInterviewClassWriteDocumentEnforcementRelaxation({
+        actionType: 'write_document',
+        candidateTitle: currentCandidate.title,
+        directiveText: payload.directive ?? '',
+        reason: payload.why_now ?? '',
+        artifact: (payload.artifact as Record<string, unknown>) ?? null,
+      });
     const usefulnessCheck = options.pipelineDryRun
       ? { ok: true as const }
-      : isUseful({
-        artifact: JSON.stringify(payload.artifact),
-        evidence: payload.insight,
-        action: payload.directive,
-      });
+      : isUseful(
+        {
+          artifact: JSON.stringify(payload.artifact),
+          evidence: payload.insight,
+          action: payload.directive,
+        },
+        { skipHomeworkHandoff: interviewRelaxUseful },
+      );
     if (!usefulnessCheck.ok) {
       candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [`usefulness:${usefulnessCheck.reason}`] });
       logStructuredEvent({

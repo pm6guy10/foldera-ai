@@ -519,4 +519,88 @@ describe('selectFinalWinner', () => {
     const { winner } = selectFinalWinner([emergency, longHorizon], NO_GUARDRAILS);
     expect(winner.id).toBe('interview-slot-emergency');
   });
+
+  it('interview-class write_document beats same-entity decay send_message when both are viable', () => {
+    const scheduleNoise = makeCandidate({
+      id: 'sched-noise',
+      score: 99,
+      type: 'discrepancy',
+      discrepancyClass: 'schedule_conflict',
+      suggestedActionType: 'write_document',
+      title: 'Overlapping events on 2026-04-29',
+      content: 'Two calendar holds overlap.',
+    });
+    const decaySend = makeCandidate({
+      id: 'decay-send',
+      score: 14,
+      type: 'discrepancy',
+      discrepancyClass: 'decay',
+      suggestedActionType: 'send_message',
+      title: 'Fading connection: alex crisler',
+      content:
+        'Last contact 5 days ago. Open thread with Alex.Crisler@comphc.org about interview logistics.',
+      entityName: 'alex crisler',
+      relationshipContext: '- Alex Crisler <Alex.Crisler@comphc.org>',
+      sourceSignals: [
+        { kind: 'signal', summary: 'thread with recruiter', occurredAt: new Date().toISOString() },
+      ],
+    });
+    const interviewWrite = makeCandidate({
+      id: 'interview-write',
+      score: 8,
+      type: 'discrepancy',
+      discrepancyClass: 'exposure',
+      suggestedActionType: 'write_document',
+      title: 'Care Coordinator interview confirmed — April 29, 2026 with Alex Crisler',
+      content:
+        'Recruiter Alex Crisler (Alex.Crisler@comphc.org) confirmed the Care Coordinator interview for April 29, 2026.',
+      entityName: 'Alex Crisler',
+      matchedGoal: { text: 'Land a care coordinator role', priority: 2, category: 'career' },
+      sourceSignals: [
+        { kind: 'signal', summary: 'Interview confirmation email', occurredAt: new Date().toISOString() },
+      ],
+    });
+    const { ranked } = selectRankedCandidates([scheduleNoise, decaySend, interviewWrite], NO_GUARDRAILS);
+    expect(ranked[0]?.candidate.id).toBe('interview-write');
+    expect(ranked[0]?.note).toContain(
+      'interview-class write_document preferred over same-entity decay send_message',
+    );
+    const sched = ranked.find((r) => r.candidate.id === 'sched-noise');
+    expect(sched?.disqualified).toBe(true);
+  });
+
+  it('scorer #1 interview-class write_document stays first over higher-viability relationship send_message', () => {
+    const interviewWrite = makeCandidate({
+      id: 'interview-write',
+      score: 8,
+      type: 'discrepancy',
+      discrepancyClass: 'exposure',
+      suggestedActionType: 'write_document',
+      title: 'Care Coordinator interview confirmed — April 29, 2026 with Alex Crisler',
+      content:
+        'Recruiter Alex Crisler (Alex.Crisler@comphc.org) confirmed the Care Coordinator interview for April 29, 2026. Role and hiring panel scheduled via Webex.',
+      entityName: 'Alex Crisler',
+      matchedGoal: { text: 'Land a care coordinator role', priority: 2, category: 'career' },
+      sourceSignals: [
+        { kind: 'signal', summary: 'Interview confirmation email', occurredAt: new Date().toISOString() },
+      ],
+    });
+    const decaySend = makeCandidate({
+      id: 'decay-send',
+      score: 14,
+      type: 'relationship',
+      suggestedActionType: 'send_message',
+      title: 'Fading connection: alex crisler',
+      content:
+        'Last contact 5 days ago. Open thread with Alex.Crisler@comphc.org about interview logistics.',
+      entityName: 'alex crisler',
+      relationshipContext: '- Alex Crisler <Alex.Crisler@comphc.org>',
+      sourceSignals: [
+        { kind: 'signal', summary: 'thread with recruiter', occurredAt: new Date().toISOString() },
+      ],
+    });
+    const { ranked } = selectRankedCandidates([interviewWrite, decaySend], NO_GUARDRAILS);
+    expect(ranked[0]?.candidate.id).toBe('interview-write');
+    expect(ranked[0]?.note).toContain('scorer winner interview-class write_document forced first');
+  });
 });

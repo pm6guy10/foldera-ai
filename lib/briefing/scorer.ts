@@ -7090,7 +7090,9 @@ export async function scoreOpenLoops(
   return {
     outcome: 'winner_selected',
     winner,
-    topCandidates: validScoredCandidates.slice(0, 3),
+    // Generator viability can disqualify #1 (e.g. schedule_conflict write_document). Keep a deeper
+    // shortlist so goal-salient interview-class write_document runners-up still compete with decay sends.
+    topCandidates: validScoredCandidates.slice(0, 10),
     deprioritized,
     candidateDiscovery: buildCandidateDiscoveryLog(winner, scored, suppressedCandidates, null, diag),
     antiPatterns,

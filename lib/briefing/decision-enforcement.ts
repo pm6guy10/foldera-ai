@@ -644,6 +644,10 @@ export function getDecisionEnforcementIssues(input: {
       'decision_enforcement:missing_pressure_or_consequence',
       'decision_enforcement:passive_or_ignorable_tone',
       'decision_enforcement:missing_owner_assignment',
+      // Interview prep docs are finished user-facing work, not internal execution memos.
+      'decision_enforcement:internal_execution_brief_owner_checklist',
+      'decision_enforcement:internal_execution_brief_user_questions',
+      'decision_enforcement:internal_execution_brief_future_artifact',
     ]);
     out = out.filter((issue) => !drop.has(issue));
   }

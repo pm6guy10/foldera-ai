@@ -335,4 +335,73 @@ describe('artifact decision enforcement', () => {
 
     expect(issues).toContain('decision_enforcement:behavioral_pattern_missing_grounded_target');
   });
+
+  it('does not add missing_explicit_ask for interview-class write_document when discrepancy path treats doc as internal_execution_brief', () => {
+    const directive = {
+      directive: 'Interview is April 29; prep sheet consolidates confirmation and focus areas.',
+      action_type: 'write_document' as const,
+      confidence: 80,
+      reason: 'Interview is 7 days away; calendar and email times need alignment before the Webex.',
+      evidence: [{ type: 'signal', description: 'Alex Crisler interview confirmation April 21' }],
+      discrepancyClass: 'schedule_conflict' as const,
+      generationLog: {
+        outcome: 'selected',
+        stage: 'persistence',
+        reason: 'ok',
+        candidateFailureReasons: [],
+        candidateDiscovery: {
+          candidateCount: 1,
+          suppressedCandidateCount: 0,
+          selectionMargin: 0.1,
+          selectionReason: null,
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'discrepancy_conflict_test',
+              rank: 1,
+              candidateType: 'discrepancy' as const,
+              discrepancyClass: 'schedule_conflict' as const,
+              actionType: 'write_document' as const,
+              score: 1.2,
+              scoreBreakdown: {
+                stakes: 2,
+                urgency: 0.5,
+                tractability: 0.7,
+                freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
+              },
+              targetGoal: { text: 'Care Coordinator interview with Alex April 29' },
+              sourceSignals: [],
+              decision: 'selected' as const,
+              decisionReason: '',
+            },
+          ],
+        },
+      },
+    } satisfies ConvictionDirective;
+
+    const artifact = {
+      type: 'document',
+      document_purpose: 'Prep sheet with confirmed interview details for April 29, 2026.',
+      target_reader: 'Brandon Kapp',
+      title: 'Care Coordinator Interview Prep',
+      content: [
+        'INTERVIEW DETAILS',
+        'Date: Wednesday, April 29, 2026',
+        'Recruiter: Alex Crisler',
+        'Role: Care Coordinator at Comprehensive Healthcare',
+        'Format: Webex virtual interview',
+      ].join('\n'),
+    };
+
+    const issues = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+      candidateType: 'discrepancy',
+    });
+
+    expect(issues.filter((i) => i.includes('missing_explicit_ask'))).toEqual([]);
+  });
 });

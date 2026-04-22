@@ -11,6 +11,7 @@ import type {
 } from '@/lib/briefing/types';
 import {
   directiveLooksLikeScheduleConflict,
+  shouldBlockScheduleConflictWriteDocumentPersistence,
 } from '@/lib/briefing/schedule-conflict-guards';
 import { getDecisionEnforcementIssues } from '@/lib/briefing/decision-enforcement';
 
@@ -448,7 +449,7 @@ function getArtifactPersistenceIssues(
 
   const record = artifact as Record<string, unknown>;
   if (record.emergency_fallback === true) {
-    if (directive && actionType === 'write_document' && directiveLooksLikeScheduleConflict(directive)) {
+    if (directive && actionType === 'write_document' && shouldBlockScheduleConflictWriteDocumentPersistence(directive, record)) {
       return ['schedule_conflict write_document below product bar; require a real calendar artifact or suppress'];
     }
     return [];
@@ -458,7 +459,7 @@ function getArtifactPersistenceIssues(
     const title = isNonEmptyString(record.title) ? record.title.trim() : '';
     const content = isNonEmptyString(record.content) ? record.content.trim() : '';
     issues.push(...getFinishedDocumentIssues(title, content));
-    if (directive && directiveLooksLikeScheduleConflict(directive)) {
+    if (directive && shouldBlockScheduleConflictWriteDocumentPersistence(directive, record)) {
       issues.push('schedule_conflict write_document below product bar; require a real calendar artifact or suppress');
     }
   }
@@ -606,7 +607,7 @@ function validateArtifact(
       if (containsGenericFiller(content)) {
         throw new Error('Document artifact contains generic filler');
       }
-      if (directive && directiveLooksLikeScheduleConflict(directive)) {
+      if (directive && shouldBlockScheduleConflictWriteDocumentPersistence(directive, record)) {
         throw new Error('schedule_conflict write_document below product bar; require a real calendar artifact or suppress');
       }
       if (isAnalysisDump(content)) {

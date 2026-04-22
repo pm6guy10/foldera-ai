@@ -169,6 +169,10 @@ const CONCRETE_ASK_PATTERN =
 const REAL_PRESSURE_PATTERN =
   /\b(by\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|end of (day|week|month)|close of business|COB|EOD|EOW|\w+day\b|20\d{2}-\d{2}-\d{2})|\bdeadline\b|\bexpir(es?|ing|ation)\b|\boverdue\b|\blast chance\b|\bfinal\b|\burgent\b|\bbefore\s+(the|we|it|they)\b|\bwindow clos(es?|ing)\b|\bif (not|no|we don't)\b.*\b(lose|miss|fail|forfeit|expire|default)\b|\bconsequence\b|\bat risk\b|\btime.sensitive\b|\bdue\s+(date|by|on)\b)\b/i;
 
+/** ISO dates or written month/day (interview artifacts often omit YYYY-MM-DD). */
+const ANCHORED_CALENDAR_DATE_PATTERN =
+  /\b20\d{2}-\d{2}-\d{2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+\d{1,2}(?:,?\s*\d{4})?\b/i;
+
 /**
  * Self-referential document: the artifact is a memo/reflection/framework directed
  * at the user themselves, not at any external party.
@@ -266,7 +270,7 @@ export function evaluateBottomGate(
     artifact: artifactRecord,
   });
 
-  if (scheduleConflictWriteDoc) {
+  if (scheduleConflictWriteDoc && !interviewClassBottomGateRelax) {
     blocked_reasons.push('FINISHED_WORK_REQUIRED');
   }
 
@@ -292,7 +296,13 @@ export function evaluateBottomGate(
     const hasExternalTarget = behavioralPatternWriteDoc
       ? behavioralPatternArtifactHasGroundedTarget(artifactRecord)
       : EXTERNAL_TARGET_PATTERN.test(combined);
-    if ((!internalExecutionBrief || behavioralPatternMissingGroundedTarget) && !hasExternalTarget && !scheduleConflictWriteDoc) {
+    const scheduleMemoOnlySkipsExternal =
+      scheduleConflictWriteDoc && !interviewClassBottomGateRelax;
+    if (
+      (!internalExecutionBrief || behavioralPatternMissingGroundedTarget) &&
+      !hasExternalTarget &&
+      !scheduleMemoOnlySkipsExternal
+    ) {
       blocked_reasons.push('NO_EXTERNAL_TARGET');
     }
   }
@@ -303,40 +313,37 @@ export function evaluateBottomGate(
   // already enforced by isSendWorthy (real recipient, body length, banned phrases, etc.).
   // These three checks are designed for documents and commitment artifacts, not personal email.
   if (directive.action_type !== 'send_message') {
-    if (scheduleConflictWriteDoc) {
-      // No-op: schedule_conflict write_document is categorically below bar on this seam.
-    } else if (internalExecutionBrief && !interviewClassBottomGateRelax) {
-      const hasAnchoredTime =
-        REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
-      const hasExecutionMove = !internalExecutionIssues.includes('missing_execution_move');
-      if (!hasAnchoredTime) {
-        blocked_reasons.push('NO_REAL_PRESSURE');
-      }
-      if (!hasExecutionMove) {
-        blocked_reasons.push('NO_CONCRETE_ASK');
-      }
-      if (internalExecutionIssues.some((issue) => issue !== 'missing_execution_move')) {
-        blocked_reasons.push('FINISHED_WORK_REQUIRED');
-      }
-    } else if (
-      interviewClassBottomGateRelax &&
-      directive.action_type === 'write_document' &&
-      !scheduleConflictWriteDoc
-    ) {
-      const hasAnchoredTime =
-        REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
-      if (!hasAnchoredTime) {
-        blocked_reasons.push('NO_REAL_PRESSURE');
-      }
-    } else if (!isDiscrepancyCandidate) {
-      // 3. Concrete ask — must ask someone to DO something
-      if (!CONCRETE_ASK_PATTERN.test(combined)) {
-        blocked_reasons.push('NO_CONCRETE_ASK');
-      }
+    const scheduleMemoOnly = scheduleConflictWriteDoc && !interviewClassBottomGateRelax;
+    if (!scheduleMemoOnly) {
+      if (internalExecutionBrief && !interviewClassBottomGateRelax) {
+        const hasAnchoredTime =
+          REAL_PRESSURE_PATTERN.test(combined) || ANCHORED_CALENDAR_DATE_PATTERN.test(combined);
+        const hasExecutionMove = !internalExecutionIssues.includes('missing_execution_move');
+        if (!hasAnchoredTime) {
+          blocked_reasons.push('NO_REAL_PRESSURE');
+        }
+        if (!hasExecutionMove) {
+          blocked_reasons.push('NO_CONCRETE_ASK');
+        }
+        if (internalExecutionIssues.some((issue) => issue !== 'missing_execution_move')) {
+          blocked_reasons.push('FINISHED_WORK_REQUIRED');
+        }
+      } else if (interviewClassBottomGateRelax && directive.action_type === 'write_document') {
+        const hasAnchoredTime =
+          REAL_PRESSURE_PATTERN.test(combined) || ANCHORED_CALENDAR_DATE_PATTERN.test(combined);
+        if (!hasAnchoredTime) {
+          blocked_reasons.push('NO_REAL_PRESSURE');
+        }
+      } else if (!isDiscrepancyCandidate) {
+        // 3. Concrete ask — must ask someone to DO something
+        if (!CONCRETE_ASK_PATTERN.test(combined)) {
+          blocked_reasons.push('NO_CONCRETE_ASK');
+        }
 
-      // 4. Real-world pressure — deadline, consequence, or forcing function
-      if (!REAL_PRESSURE_PATTERN.test(combined)) {
-        blocked_reasons.push('NO_REAL_PRESSURE');
+        // 4. Real-world pressure — deadline, consequence, or forcing function
+        if (!REAL_PRESSURE_PATTERN.test(combined)) {
+          blocked_reasons.push('NO_REAL_PRESSURE');
+        }
       }
     }
 
@@ -500,7 +507,18 @@ export function isSendWorthy(
   }
 
   if (directive.action_type === 'write_document' && directiveLooksLikeScheduleConflict(directive)) {
-    return { worthy: false, reason: 'schedule_conflict_not_finished_outbound' };
+    const persistenceEnforcementCtx = buildPersistenceDecisionEnforcementContext(directive);
+    const interviewScheduleRelax = isInterviewClassWriteDocumentEnforcementRelaxation({
+      actionType: directive.action_type,
+      candidateTitle: persistenceEnforcementCtx.candidateTitle,
+      supportingContext: persistenceEnforcementCtx.supportingContext,
+      directiveText: directive.directive,
+      reason: directive.reason,
+      artifact: artifactRecord,
+    });
+    if (!interviewScheduleRelax) {
+      return { worthy: false, reason: 'schedule_conflict_not_finished_outbound' };
+    }
   }
 
   // send_message: require a real email recipient and a substantive body
@@ -792,6 +810,17 @@ function buildPersistenceReceipt(
   const scheduleConflictWriteDoc =
     directive.action_type === 'write_document' &&
     directiveLooksLikeScheduleConflict(directive);
+  const persistenceCtxReceipt = buildPersistenceDecisionEnforcementContext(directive);
+  const interviewClassScheduleReceiptRelax = isInterviewClassWriteDocumentEnforcementRelaxation({
+    actionType: directive.action_type,
+    candidateTitle: persistenceCtxReceipt.candidateTitle,
+    supportingContext: persistenceCtxReceipt.supportingContext,
+    directiveText,
+    reason,
+    artifact: artifactRecord,
+  });
+  const scheduleConflictMemoOnlyReceipt =
+    scheduleConflictWriteDoc && !interviewClassScheduleReceiptRelax;
   const hasExternalTarget =
     directive.action_type === 'send_message'
       ? typeof artifactRecord.to === 'string' && (artifactRecord.to as string).includes('@')
@@ -800,10 +829,12 @@ function buildPersistenceReceipt(
         : EXTERNAL_TARGET_PATTERN.test(combined);
 
   return {
-    external_target_present: scheduleConflictWriteDoc ? false : hasExternalTarget,
-    concrete_ask_present: scheduleConflictWriteDoc ? false : CONCRETE_ASK_PATTERN.test(combined),
-    real_pressure_present: scheduleConflictWriteDoc ? false : REAL_PRESSURE_PATTERN.test(combined),
-    immediately_usable: scheduleConflictWriteDoc ? false : !NON_EXECUTABLE_ARTIFACT_PATTERN.test(combined),
+    external_target_present: scheduleConflictMemoOnlyReceipt ? false : hasExternalTarget,
+    concrete_ask_present: scheduleConflictMemoOnlyReceipt ? false : CONCRETE_ASK_PATTERN.test(combined),
+    real_pressure_present: scheduleConflictMemoOnlyReceipt
+      ? false
+      : REAL_PRESSURE_PATTERN.test(combined) || ANCHORED_CALENDAR_DATE_PATTERN.test(combined),
+    immediately_usable: scheduleConflictMemoOnlyReceipt ? false : !NON_EXECUTABLE_ARTIFACT_PATTERN.test(combined),
     self_referential: SELF_REFERENTIAL_DOC_PATTERN.test(combined),
     generic_social_motion: SOCIAL_MOTION_PATTERN.test(combined),
     blocked_reason: bottomGate.pass ? null : bottomGate.blocked_reasons.join(', '),
@@ -846,9 +877,20 @@ function buildArtifactReceipt(
     ? getInternalExecutionBriefIssues(artifactRecord)
     : [];
   const hasAnchoredTime =
-    REAL_PRESSURE_PATTERN.test(combined) || /\b20\d{2}-\d{2}-\d{2}\b/.test(combined);
+    REAL_PRESSURE_PATTERN.test(combined) || ANCHORED_CALENDAR_DATE_PATTERN.test(combined);
+  const persistenceCtxArtifact = buildPersistenceDecisionEnforcementContext(directive);
+  const interviewClassArtifactRelax = isInterviewClassWriteDocumentEnforcementRelaxation({
+    actionType: directive.action_type,
+    candidateTitle: persistenceCtxArtifact.candidateTitle,
+    supportingContext: persistenceCtxArtifact.supportingContext,
+    directiveText: directive.directive ?? '',
+    reason: directive.reason ?? '',
+    artifact: artifactRecord,
+  });
   const changesProb = internalExecutionBrief
-    ? hasAnchoredTime && internalExecutionIssues.length === 0
+    ? interviewClassArtifactRelax
+      ? hasAnchoredTime
+      : hasAnchoredTime && internalExecutionIssues.length === 0
     : CONCRETE_ASK_PATTERN.test(combined) && REAL_PRESSURE_PATTERN.test(combined);
 
   const requiresMoreThinking = NON_EXECUTABLE_ARTIFACT_PATTERN.test(combined);

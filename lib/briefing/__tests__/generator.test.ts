@@ -219,6 +219,29 @@ describe('generator response parsing', () => {
       }),
     });
   });
+
+  it('maps directive_text and action_type in legacy-shaped LLM JSON (interview prep path)', () => {
+    const raw = JSON.stringify({
+      action_type: 'write_document',
+      directive_text: 'Alex sent interview confirmation April 21. Here is your prep sheet for April 29.',
+      confidence: 72,
+      reason: 'Interview is 7 days away; calendar time differs from email.',
+      artifact: {
+        type: 'document',
+        title: 'Interview prep',
+        content: 'Confirmed interview with candidate Alex for Care Coordinator role on April 29, 2026.',
+      },
+    });
+
+    expect(parseGeneratedPayload(raw)).toMatchObject({
+      artifact_type: 'write_document',
+      directive: 'Alex sent interview confirmation April 21.',
+      artifact: expect.objectContaining({
+        title: 'Interview prep',
+        content: expect.stringContaining('April 29, 2026'),
+      }),
+    });
+  });
 });
 
 describe('system_introspection constraint (global — all users)', () => {
