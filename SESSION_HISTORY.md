@@ -4957,3 +4957,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Root cause: `verify-static` runs `npm run lint`; commit `0c037a4` introduced unescaped `'` in JSX text at `app/HomePageClient.tsx:59`, causing `verify-static` to fail and cascade-skip all downstream CI jobs.
 - Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npm run lint` (pass); `npm run test:ci:e2e:lint` (pass); `npm run build` (pass).
 - Unresolved issues: Pre-existing unrelated local worktree noise remains untouched (`FOLDERA_SHIP_SPEC.md`, local screenshot/artifact directories).
+
+## 2026-04-23 — Landing hero genericized contact name (no real-person reference)
+- MODE: single-seam content hygiene fix
+- Files changed: `app/HomePageClient.tsx`, `SESSION_HISTORY.md`.
+- What changed: Replaced the hero artifact contact from `Darlene Craig` to generic `Casey Hunter` in both directive and draft lines while preserving layout and all other locked copy.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npm run build` (pass); `$env:CI='true'; $env:PLAYWRIGHT_WEB_PORT='3064'; npx playwright test tests/e2e/public-routes.spec.ts --grep "Landing page /" --config playwright.config.ts` (6 passed); landing route check via Playwright script confirmed `Casey Hunter` present and `Darlene Craig` absent.
+- Unresolved issues: Pre-existing unrelated local workspace noise remains untouched (`FOLDERA_SHIP_SPEC.md`, local screenshot/artifact folders).

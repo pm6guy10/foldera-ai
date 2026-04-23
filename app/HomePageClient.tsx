@@ -63,7 +63,7 @@ function HeroArtifactCard() {
         <div className="rounded-[20px] border border-border bg-panel-raised px-4 py-5 sm:px-6">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">DIRECTIVE</p>
           <p className="mt-3 text-base font-semibold leading-relaxed text-text-primary sm:text-[19px]">
-            Send the follow-up to Darlene Craig before noon.
+            Send the follow-up to Casey Hunter before noon.
           </p>
         </div>
 
@@ -78,7 +78,7 @@ function HeroArtifactCard() {
         <div className="rounded-[20px] border border-border-subtle bg-panel-raised px-4 py-5 sm:px-6">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">READY-TO-SEND DRAFT</p>
           <p className="mt-3 text-sm leading-relaxed text-text-primary">
-            Hi Darlene — following up on the MEDS item from yesterday. I pulled the current status and can send the
+            Hi Casey — following up on the MEDS item from yesterday. I pulled the current status and can send the
             finalized version by noon unless you want one adjustment first.
           </p>
         </div>
