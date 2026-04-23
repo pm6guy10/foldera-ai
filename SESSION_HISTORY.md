@@ -4860,6 +4860,13 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Verification: `npm run health` (`RESULT: 0 FAILING`); traced the execution path through `app/api/conviction/latest/route.ts` and `app/dashboard/page.tsx`; `npm run build` passed after clearing transient local Next.js build artifacts (`.next`, `tsconfig.tsbuildinfo`) that had caused the earlier ENOENT `/500` failure class in this workspace.
 - Unresolved issues: Targeted Playwright proof for the 3-visible / 4-blurred free-artifact threshold was not rerun in this publish session; the seam ships with the focused E2E coverage added in `tests/e2e/authenticated-routes.spec.ts` plus the passing build gate.
 
+## 2026-04-22 — Founder page `/brandon-kapp` shipped with canonical blog author link
+- MODE: SHIP ONE SEAM
+- Files changed: `app/(marketing)/brandon-kapp/page.tsx`, `app/(marketing)/blog/[slug]/page.tsx`, `lib/brandon-kapp-profile.ts`, `app/sitemap.ts`, `tests/e2e/public-routes.spec.ts`, `SESSION_HISTORY.md`
+- What changed: Added public founder route `/brandon-kapp` with required title/H1/subhead/body copy and visible links (LinkedIn, Foldera home, `support@foldera.ai`), added canonical + OG metadata, wired the canonical blog post author/byline block so `Brandon Kapp` links to `/brandon-kapp`, and added the route to sitemap.
+- Verification: `npm run health` (`1 FAILING`: repeated directive, out of seam); focused Playwright checks passed (`blog post author link points to the founder page`, `Founder page /brandon-kapp` desktop + mobile); `npm run build` passed; runtime proof via built server on port `3012` confirmed `<title>Brandon Kapp | Founder of Foldera</title>`, canonical `https://foldera.ai/brandon-kapp`, OG title/description, and blog HTML containing `href="/brandon-kapp"`.
+- Unresolved issues: None in this seam.
+
 ## 2026-04-22 — Founder page `/brandon-kapp` plus canonical blog author link
 - MODE: FEATURE (single seam)
 - Files changed: `app/(marketing)/brandon-kapp/page.tsx`, `app/(marketing)/blog/[slug]/page.tsx`, `app/sitemap.ts`, `lib/brandon-kapp-profile.ts`, `tests/e2e/public-routes.spec.ts`, `SESSION_HISTORY.md`

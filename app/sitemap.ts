@@ -4,6 +4,7 @@ import { resolveCanonicalSiteOrigin } from '@/lib/site-canonical';
 
 const STATIC_PATHS = [
   '/',
+  '/brandon-kapp',
   '/pricing',
   '/start',
   '/try',

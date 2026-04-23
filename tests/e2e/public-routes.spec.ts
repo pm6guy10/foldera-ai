@@ -285,4 +285,42 @@ test.describe('Blog routes', () => {
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(400);
   });
+
+  test('blog post author link points to the founder page', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/blog/ai-email-assistant');
+
+    await page.getByRole('link', { name: 'Brandon Kapp' }).click();
+    await expect(page).toHaveURL(/\/brandon-kapp$/);
+    await expect(page.getByRole('heading', { name: 'Brandon Kapp', exact: true })).toBeVisible();
+  });
+});
+
+test.describe('Founder page /brandon-kapp', () => {
+  test('renders the founder page with canonical metadata and profile links', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const res = await page.goto('/brandon-kapp');
+    expect(res?.status()).toBe(200);
+
+    await expect(page).toHaveTitle('Brandon Kapp | Founder of Foldera');
+    await expect(page.getByRole('heading', { name: 'Brandon Kapp', exact: true })).toBeVisible();
+    await expect(
+      page.getByText('Founder of Foldera | Program Operations | Healthcare & Public Sector Workflows'),
+    ).toBeVisible();
+    await expect(page.getByRole('link', { name: 'LinkedIn' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Foldera Home' })).toBeVisible();
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/brandon-kapp$/);
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      'content',
+      /Brandon Kapp is the founder of Foldera/i,
+    );
+  });
+
+  test('loads on mobile without overflow', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/brandon-kapp');
+    await expect(page.getByRole('heading', { name: 'Brandon Kapp', exact: true })).toBeVisible();
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(400);
+  });
 });

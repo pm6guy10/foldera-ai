@@ -4,6 +4,11 @@ import type { Metadata } from 'next';
 import { ChevronLeft } from 'lucide-react';
 import { getAllBlogPosts, getBlogPostBySlug } from '@/lib/blog';
 import { resolveCanonicalSiteOrigin } from '@/lib/site-canonical';
+import {
+  BRANDON_KAPP_AUTHOR_BLURB,
+  BRANDON_KAPP_NAME,
+  BRANDON_KAPP_PROFILE_PATH,
+} from '@/lib/brandon-kapp-profile';
 import { NavPublic } from '@/components/nav/NavPublic';
 import { BlogFooter } from '@/components/nav/BlogFooter';
 
@@ -97,6 +102,16 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">{dateFormatter.format(new Date(post.date))}</p>
             <h1 className="mt-3 text-4xl font-black tracking-tighter text-white leading-tight">{post.title}</h1>
             <p className="mt-4 text-base leading-relaxed text-zinc-400">{post.description}</p>
+            <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">Written by</p>
+              <Link
+                href={BRANDON_KAPP_PROFILE_PATH}
+                className="mt-2 inline-flex text-lg font-bold text-white transition-colors hover:text-cyan-300"
+              >
+                {BRANDON_KAPP_NAME}
+              </Link>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{BRANDON_KAPP_AUTHOR_BLURB}</p>
+            </div>
           </header>
 
           <div className="max-w-full overflow-x-auto">
