@@ -105,7 +105,10 @@ import {
 } from './locked-contact-scan';
 import { hasBracketTemplatePlaceholder } from './bracket-placeholder';
 import { resolveEvidenceSignalIdsForWinner } from './resolve-evidence-signal-ids';
-import { isTimeBoundInterviewExecutionCandidate } from './stakes-gate';
+import {
+  adaptInterviewSourceSignalsForGate,
+  isTimeBoundInterviewExecutionCandidate,
+} from './stakes-gate';
 import { getGoalQuarantineReason, isUsableGoalRow } from './goal-hygiene';
 import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
 
@@ -6136,7 +6139,10 @@ function scoredLoopToStakesCandidateForInterviewGate(loop: ScoredLoop): import('
 /** Interview prep / role-specific write_document winners (same bar as stakes-gate time-bound interview). */
 export function isInterviewClassWriteDocumentWinner(loop: ScoredLoop): boolean {
   if (loop.suggestedActionType !== 'write_document') return false;
-  return isTimeBoundInterviewExecutionCandidate(scoredLoopToStakesCandidateForInterviewGate(loop));
+  return isTimeBoundInterviewExecutionCandidate(
+    scoredLoopToStakesCandidateForInterviewGate(loop),
+    adaptInterviewSourceSignalsForGate(loop.sourceSignals),
+  );
 }
 
 export function parseSignalSnippetWithFullBody(

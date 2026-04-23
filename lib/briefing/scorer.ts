@@ -38,7 +38,11 @@ import {
   parseCalendarEventFromContent as parseCalendarEventFromContentDiscrepancy,
 } from './discrepancy-detector';
 import type { DiscrepancyClass, RecentDirectiveInput, TriggerMetadata } from './discrepancy-detector';
-import { applyStakesGate, isTimeBoundInterviewExecutionCandidate } from './stakes-gate';
+import {
+  adaptInterviewSourceSignalsForGate,
+  applyStakesGate,
+  isTimeBoundInterviewExecutionCandidate,
+} from './stakes-gate';
 import { applyEntityRealityGate } from './entity-reality-gate';
 import {
   filterPersonNamesForValidityContext,
@@ -1725,7 +1729,7 @@ export function isGoalPrimacyExemptInterviewWriteDocument(
     domain: '',
     sourceSignals: candidate.sourceSignals ?? [],
     entityName: candidate.entityName,
-  });
+  }, adaptInterviewSourceSignalsForGate(candidate.sourceSignals));
 }
 
 function isDecisionMovingCandidate(candidate: ScoredLoop): boolean {
@@ -5707,7 +5711,7 @@ export async function scoreOpenLoops(
       domain: c.domain,
       sourceSignals: c.sourceSignals,
       entityName: c.entityName,
-    });
+    }, adaptInterviewSourceSignalsForGate(c.sourceSignals));
     if (interviewClass && stakes < 3) {
       logStructuredEvent({
         event: 'interview_class_stakes_floor',

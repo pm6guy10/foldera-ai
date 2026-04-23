@@ -350,7 +350,12 @@ describe('applyRankingInvariants', () => {
           urgency: 0.7,
         },
         sourceSignals: [
-          { kind: 'commitment', summary: 'Interview; DSHS HCLA Developmental Disabilities Case/Resource Manager' },
+          {
+            kind: 'signal',
+            source: 'gmail',
+            summary:
+              'Nicholas Robertson confirmed the DSHS HCLA Developmental Disabilities Case/Resource Manager interview, shared the date, named the hiring panel, and linked the prep materials Brandon needs for the role.',
+          },
         ],
       }),
     ];

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { applyStakesGate, type StakesCandidate } from '../stakes-gate';
+import {
+  applyStakesGate,
+  isTimeBoundInterviewExecutionCandidate,
+  type StakesCandidate,
+} from '../stakes-gate';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -24,6 +28,10 @@ function makeCandidate(overrides: Partial<StakesCandidate> = {}): StakesCandidat
 function boardChangingCandidate(overrides: Partial<StakesCandidate> = {}): StakesCandidate {
   return makeCandidate(overrides);
 }
+
+const LONG_NON_CALENDAR_SNIPPET =
+  'Recruiter Alex Crisler confirmed the Care Coordinator interview, shared the hiring panel names, ' +
+  'linked the role packet, and asked Brandon to use this brief to answer the panel questions with role-specific evidence.';
 
 // ---------------------------------------------------------------------------
 // ALL 5 CONDITIONS PASS
@@ -278,6 +286,61 @@ describe('Stakes Gate — Condition 3: Time Pressure or Decay', () => {
     const result = applyStakesGate([c]);
     expect(result.passed).toHaveLength(1);
     expect(result.dropped).toHaveLength(0);
+  });
+
+  it('fails interview candidate when provided sources are calendar-only', () => {
+    const c = boardChangingCandidate({
+      actionType: 'write_document',
+      urgency: 0.05,
+      title: 'Accepted Interview - Recruitment 2026-02344 ESB Tech',
+      content:
+        'ESD recruiter Darlene Craig confirmed the interview for the ES Benefits Technician role. Accepted interview for recruitment 2026-02344.',
+    });
+
+    expect(isTimeBoundInterviewExecutionCandidate(c, [
+      { source: 'calendar', snippet: LONG_NON_CALENDAR_SNIPPET },
+    ])).toBe(false);
+  });
+
+  it('fails interview candidate when non-calendar sources are too thin', () => {
+    const c = boardChangingCandidate({
+      actionType: 'write_document',
+      urgency: 0.05,
+      title: 'Accepted Interview - Recruitment 2026-02344 ESB Tech',
+      content:
+        'ESD recruiter Darlene Craig confirmed the interview for the ES Benefits Technician role. Accepted interview for recruitment 2026-02344.',
+    });
+
+    expect(isTimeBoundInterviewExecutionCandidate(c, [
+      { source: 'gmail', snippet: 'Interview confirmed.' },
+    ])).toBe(false);
+  });
+
+  it('passes interview candidate when a substantive non-calendar source is present', () => {
+    const c = boardChangingCandidate({
+      actionType: 'write_document',
+      urgency: 0.05,
+      title: 'Accepted Interview - Recruitment 2026-02344 ESB Tech',
+      content:
+        'ESD recruiter Darlene Craig confirmed the interview for the ES Benefits Technician role. Accepted interview for recruitment 2026-02344.',
+    });
+
+    expect(isTimeBoundInterviewExecutionCandidate(c, [
+      { source: 'calendar', snippet: 'Accepted Interview - Recruitment 2026-02344 ESB Tech' },
+      { source: 'gmail', snippet: LONG_NON_CALENDAR_SNIPPET },
+    ])).toBe(true);
+  });
+
+  it('preserves existing behavior when sourceSignals are omitted', () => {
+    const c = boardChangingCandidate({
+      actionType: 'write_document',
+      urgency: 0.05,
+      title: 'Accepted Interview - Recruitment 2026-02344 ESB Tech',
+      content:
+        'ESD recruiter Darlene Craig confirmed the interview for the ES Benefits Technician role. Accepted interview for recruitment 2026-02344.',
+    });
+
+    expect(isTimeBoundInterviewExecutionCandidate(c)).toBe(true);
   });
 });
 

@@ -557,7 +557,13 @@ describe('selectFinalWinner', () => {
       entityName: 'Alex Crisler',
       matchedGoal: { text: 'Land a care coordinator role', priority: 2, category: 'career' },
       sourceSignals: [
-        { kind: 'signal', summary: 'Interview confirmation email', occurredAt: new Date().toISOString() },
+        {
+          kind: 'signal',
+          source: 'gmail',
+          summary:
+            'Recruiter Alex Crisler confirmed the Care Coordinator interview for April 29, 2026, shared the hiring panel, linked the role packet, and named the questions Brandon should answer in the interview brief.',
+          occurredAt: new Date().toISOString(),
+        },
       ],
     });
     const { ranked } = selectRankedCandidates([scheduleNoise, decaySend, interviewWrite], NO_GUARDRAILS);
@@ -582,7 +588,13 @@ describe('selectFinalWinner', () => {
       entityName: 'Alex Crisler',
       matchedGoal: { text: 'Land a care coordinator role', priority: 2, category: 'career' },
       sourceSignals: [
-        { kind: 'signal', summary: 'Interview confirmation email', occurredAt: new Date().toISOString() },
+        {
+          kind: 'signal',
+          source: 'gmail',
+          summary:
+            'Recruiter Alex Crisler confirmed the Care Coordinator interview for April 29, 2026, shared the Webex panel details, linked the role packet, and named the exact preparation prompts for Brandon.',
+          occurredAt: new Date().toISOString(),
+        },
       ],
     });
     const decaySend = makeCandidate({

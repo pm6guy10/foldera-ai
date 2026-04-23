@@ -35,6 +35,22 @@ export interface StakesGateResult {
   dropped: Array<{ candidate: StakesCandidate; failedCondition: number; reason: string }>;
 }
 
+export function adaptInterviewSourceSignalsForGate(
+  sourceSignals: ReadonlyArray<Pick<GenerationCandidateSource, 'source' | 'summary'>> | undefined,
+): Array<{ source: string; snippet?: string }> | undefined {
+  if (sourceSignals === undefined) return undefined;
+
+  return sourceSignals.flatMap((signal) => {
+    const source = typeof signal.source === 'string' ? signal.source.trim() : '';
+    if (!source) return [];
+
+    return [{
+      source,
+      snippet: typeof signal.summary === 'string' ? signal.summary : undefined,
+    }];
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Condition 1: Real External Entity
 // Must involve a real person, company, or decision owner.
@@ -157,7 +173,10 @@ const INTERVIEW_PRESSURE_PATTERNS = {
 // Urgency >= 0.4 means scorer already computed meaningful time pressure
 const URGENCY_THRESHOLD = 0.4;
 
-export function isTimeBoundInterviewExecutionCandidate(c: StakesCandidate): boolean {
+export function isTimeBoundInterviewExecutionCandidate(
+  c: StakesCandidate,
+  sourceSignals?: Array<{ source: string; snippet?: string }>,
+): boolean {
   if (c.actionType !== 'write_document') return false;
   const text = `${c.title} ${c.content}`;
   if (!INTERVIEW_PRESSURE_PATTERNS.interviewAnchor.test(text)) return false;
@@ -166,6 +185,13 @@ export function isTimeBoundInterviewExecutionCandidate(c: StakesCandidate): bool
   const hasConfirmedWindow = INTERVIEW_PRESSURE_PATTERNS.confirmedWindow.test(text);
   const hasHiringContext = INTERVIEW_PRESSURE_PATTERNS.hiringContext.test(text);
   const hasDatedWindow = INTERVIEW_PRESSURE_PATTERNS.datedWindow.test(text);
+
+  if (sourceSignals !== undefined) {
+    const hasSubstantiveSource = sourceSignals.some(
+      (s) => s.source !== 'calendar' && (s.snippet?.length ?? 0) >= 100,
+    );
+    if (!hasSubstantiveSource) return false;
+  }
 
   return (hasConfirmedWindow && hasHiringContext) || (hasDatedWindow && hasHiringContext);
 }
