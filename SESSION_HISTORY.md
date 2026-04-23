@@ -2,6 +2,12 @@
 
 # Session History
 
+## 2026-04-23 — Prod proof plan: Phase 0 + one paid local generate (no prod cron)
+- MODE: VERIFY
+- **Phase 0:** `npm run health` (0 FAILING). `npx vitest run --exclude .claude/worktrees/**` after fixing `app/api/settings/run-brief/__tests__/route.test.ts` — `findRecentPipelineDryRun` and `findLatestPipelineRun` run in parallel; mock must key off `outcome === 'pipeline_dry_run_returned'`, not sequential `maybeSingle` call order. Extended timeouts for cheap-dry-run + `onboard/set-goals` welcome email test. `npm run build` (clean `.next`, retry on Windows; exit 0). `npm run prod:dry-run-plain` — HTTP 200, `short_circuit.reason: cheap_dry_run`, no paid LLM.
+- **Phase 1 (paid, owner-scoped):** `npx tsx scripts/run-paid-generate-once.ts` — real Anthropic path; result `no_send_persisted` (all candidates blocked). Interview `write_document` attempt hit `interview_artifact:generic_prep_trash:dress_business_casual`, `homework_handoff:prepare_examples_handoff`, etc. — **no new `pending_approval` write_document** persisted. Meta `action_id` (explicit no-send path): `43a4adac-b50b-4cb6-9c8c-e6a9acabbc53`.
+- **Intentional:** Did not `POST` production `/api/cron/daily-generate` (multi-user); used local one-user script equivalent to `dev_brain_receipt` LLM path.
+
 ## 2026-04-22 — CI: usefulness-gate VALID1 scorer/LLM harness alignment
 - MODE: TEST
 - **Problem:** `lib/briefing/__tests__/usefulness-gate.test.ts` VALID1 returned `__GENERATION_FAILED__` in CI. The test mocked a Marcus / Q1 board `send_message` from Anthropic but left the default `buildScorerResult()` winner (MAS3 hiring manager). Bracket-salvage subject lines still contained “Follow up with the MAS3…”, which matches passive follow-up heuristics and triggered `causal_diagnosis:surface_follow_up_mismatch` against the Marcus email body.

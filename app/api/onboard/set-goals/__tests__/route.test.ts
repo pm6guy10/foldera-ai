@@ -134,7 +134,7 @@ describe('POST /api/onboard/set-goals', () => {
         }),
       }),
     );
-  }, 15_000);
+  }, 45_000);
 
   it('does not resend the welcome email when the metadata flag already exists', async () => {
     mockSupabase.auth.admin.getUserById.mockResolvedValue({

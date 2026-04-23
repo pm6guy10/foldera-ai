@@ -31,7 +31,9 @@
 ## C. CURRENT LAYER OF WORK
 
 - **CI unit harness** — `usefulness-gate` VALID1 mocks scorer + Anthropic in the same scenario (fixed 2026-04-22) so the execution-proof test does not false-fail on `surface_follow_up_mismatch`.
+- **`settings/run-brief` test mock** — `Promise.all` for dry-run DB reads; `pipeline_runs` mock must distinguish `findRecentPipelineDryRun` (filters `outcome = pipeline_dry_run_returned`) from `findLatestPipelineRun` (2026-04-23).
 - **Verify in production** — brain-receipt + one nightly-ops cycle; confirm scorer diagnostics list non-email discrepancy classes and larger pre-rank pool.
+- **Interview brief quality** — 2026-04-23 paid `run-paid-generate-once` run: model still produced prep-style / clothing tips; **validators blocked persistence** (`generic_prep_trash`, `prepare_examples_handoff`, etc.); next seam is **prompt/model** to reduce garbage-in, not just gates.
 - **Tune extraction thresholds** — burst/idle windows for stale documents, follow-up day counts, intent phrase regex if false positives appear.
 
 ## D. CONSTRAINTS

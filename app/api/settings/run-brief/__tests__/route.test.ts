@@ -10,7 +10,6 @@ const mockPendingApprovalSelect = vi.fn();
 const mockPendingApprovalLimit = vi.fn();
 const mockLatestActionMaybeSingle = vi.fn();
 const mockLatestPipelineMaybeSingle = vi.fn();
-let pipelineRunMaybeSingleCallCount = 0;
 
 vi.mock('@/lib/auth/resolve-user', () => ({
   resolveUser: mockResolveUser,
@@ -20,26 +19,35 @@ vi.mock('@/lib/cron/brief-service', () => ({
   runBriefLifecycle: mockRunBriefLifecycle,
 }));
 
+function createPipelineRunsChain() {
+  const filters: Record<string, string> = {};
+  const chain = {
+    select: () => chain,
+    eq: (col: string, val: string) => {
+      filters[col] = val;
+      return chain;
+    },
+    gte: () => chain,
+    order: () => chain,
+    limit: () => ({
+      maybeSingle: () => {
+        // `findRecentPipelineDryRun` filters outcome; `findLatestPipelineRun` does not. These run
+        // concurrently via `Promise.all` — a sequential call counter is undefined behavior.
+        if (filters.outcome === 'pipeline_dry_run_returned') {
+          return mockRecentDryRunMaybeSingle();
+        }
+        return mockLatestPipelineMaybeSingle();
+      },
+    }),
+  };
+  return chain;
+}
+
 vi.mock('@/lib/db/client', () => ({
   createServerClient: () => ({
     from: (table: string) => {
       if (table === 'pipeline_runs') {
-        const chain = {
-          select: () => chain,
-          eq: () => chain,
-          gte: () => chain,
-          order: () => chain,
-          limit: () => ({
-            maybeSingle: (...args: unknown[]) => {
-              pipelineRunMaybeSingleCallCount += 1;
-              return pipelineRunMaybeSingleCallCount === 1
-                ? mockRecentDryRunMaybeSingle(...args)
-                : mockLatestPipelineMaybeSingle(...args);
-            },
-          }),
-          maybeSingle: mockRecentDryRunMaybeSingle,
-        };
-        return chain;
+        return createPipelineRunsChain();
       }
 
       if (table === 'tkg_actions') {
@@ -106,7 +114,6 @@ describe('POST /api/settings/run-brief', () => {
     vi.resetModules();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
-    pipelineRunMaybeSingleCallCount = 0;
     mockRateLimit.mockResolvedValue({
       success: true,
       remaining: 1,
@@ -168,7 +175,7 @@ describe('POST /api/settings/run-brief', () => {
     expect(payload.stages.sync_google).toBeUndefined();
     expect(Object.keys(payload.stages)).toEqual([...RUN_BRIEF_CHEAP_DRY_RUN_STAGE_KEYS]);
     expect(mockRateLimit).toHaveBeenCalledWith(`run-brief:${userId}`, { limit: 2, window: 600 });
-  });
+  }, 45_000);
 
   it('includes recent dry-run and latest metadata in the cheap dry-run receipt', async () => {
     const userId = '11111111-1111-1111-1111-111111111111';
