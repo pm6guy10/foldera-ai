@@ -86,7 +86,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
                 : 'bg-panel text-transparent'
             }`}
           >
-            {isLoggedIn ? 'Dashboard' : 'Get started free'}
+            {isLoggedIn ? 'Dashboard' : 'Start free'}
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </a>
         </div>
@@ -158,7 +158,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
                 onClick={() => setMenuOpen(false)}
                 className="mt-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-button bg-accent px-4 text-sm font-black uppercase tracking-[0.12em] text-bg"
               >
-                {isLoggedIn ? 'Dashboard' : 'Get started free'}
+                {isLoggedIn ? 'Dashboard' : 'Start free'}
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </a>
             </nav>

@@ -4923,3 +4923,16 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Removed `Signals` from the active primary dashboard navs (`/dashboard` header + shared `ProductShell` tabs), collapsed Settings IA to four core sections (`Connected accounts`, `Subscription`, `Account`, `Danger zone`), merged source-status content into Settings (`Connected sources` + `Latest source signal` + legacy route handoff), demoted owner tooling to an owner-only aside, and converted provider display to a shared UI mapping so `azure_ad` renders as `Microsoft` with no raw slugs on visible surfaces.
 - Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "Dashboard /dashboard|Settings /dashboard/settings|Signals /dashboard/signals" --grep-invert "stale email deep-link|skip on stale client action id"` (21 passed); `npm run build` (pass); before/after screenshots captured via mocked Playwright flow at `.screenshots/dashboard-seam/before/{landing-header-nav.png,dashboard.png,dashboard-settings.png,dashboard-signals.png}` and `.screenshots/dashboard-seam/after/{landing-header-nav.png,dashboard.png,dashboard-settings.png,dashboard-signals.png}`.
 - Unresolved issues: Existing unrelated local change in `FOLDERA_SHIP_SPEC.md` remained untouched. Two pre-existing stale-action dashboard tests in `authenticated-routes.spec.ts` were excluded from the seam smoke run (`stale email deep-link...`, `skip on stale client action id...`) because they are outside this navigation/settings/source-information seam.
+
+## 2026-04-23 — Landing page money-shot seam (single commercial surface)
+- MODE: EXECUTE ONE COMMERCIAL SURFACE SEAM
+- Files changed: `app/HomePageClient.tsx`, `components/nav/NavPublic.tsx`, `SESSION_HISTORY.md`.
+- What changed: Replaced the landing page’s generic SaaS structure with the locked commercial narrative around one believable artifact card as the above-the-fold anchor: exact hero copy and CTAs, exact directive/why-now/draft/source-basis money-shot content, proof strip (3 items), 3-card "How Foldera works", stacked "What shows up in the brief" rows, and final CTA block. Removed the generic outcomes grid and landing-embedded pricing card block. Kept palette/fonts/routes intact and used existing token system only. Updated public-nav CTA label to `Start free` for landing hierarchy consistency.
+- Verification:
+  - `npm run health` -> `RESULT: 0 FAILING` (warnings only: duplicate backlog, last generation `do_nothing`).
+  - BEFORE screenshots: `.codex-artifacts/landing-before-desktop.png`, `.codex-artifacts/landing-before-mobile.png`.
+  - AFTER screenshots: `.codex-artifacts/landing-after-desktop.png`, `.codex-artifacts/landing-after-mobile.png`.
+  - `npm run build` -> pass.
+  - Landing/public-nav smoke: `$env:CI='true'; $env:PLAYWRIGHT_WEB_PORT='3015'; npx playwright test tests/e2e/public-routes.spec.ts --grep "Landing page /|blog renders public nav at 375px"` -> 6 passed.
+  - Mobile seam check: `$env:CI='true'; $env:PLAYWRIGHT_WEB_PORT='3015'; npx playwright test tests/e2e/mobile-visual-qa.spec.ts --grep "scrollWidth ≤ viewport: home|Mobile hamburger"` -> 2 passed.
+- Unresolved issues: pre-existing unrelated worktree changes remain in `FOLDERA_SHIP_SPEC.md` and `.screenshots/dashboard-seam/`; untouched in this seam.
