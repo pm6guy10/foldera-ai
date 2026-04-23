@@ -442,6 +442,35 @@ describe('usefulness gate — execution proof', () => {
 
   // ── VALID CASE 1: send_message ─────────────────────────────────────────
   it('VALID1 — send_message: well-formed payload → NOT GENERATION_FAILED_SENTINEL (passes all gates)', async () => {
+    // Align scorer winner with the mocked LLM (Marcus / Q1 board). Default buildWinner() is MAS3-only;
+    // a mismatched title flows into post_bracket_salvage subject lines containing "Follow up…", which
+    // then trips causal_diagnosis:surface_follow_up_mismatch (PASSIVE_OR_IGNORABLE / follow-up heuristics).
+    const marcusBudgetWinner: ScoredLoop = {
+      ...buildWinner(),
+      id: 'loop-budget-marcus',
+      title: 'Confirm Q1 infrastructure line with Marcus before the board packet freeze',
+      content:
+        'Marcus sent a Q1 update; the board book still shows an unconfirmed infrastructure figure and sign-off is unclear.',
+      relatedSignals: [
+        'Marcus (marcus@company.com) emailed a Q1 budget update; infrastructure line is not locked for the board packet.',
+      ],
+      sourceSignals: [
+        {
+          kind: 'signal',
+          id: 'sig-budget-marcus',
+          occurredAt: new Date().toISOString(),
+          summary: 'Q1 budget update thread with Marcus',
+        },
+      ],
+      relationshipContext: 'Marcus <marcus@company.com> (Finance)',
+      matchedGoal: { text: 'Board-ready Q1 close', priority: 4, category: 'financial' },
+    };
+    mockScoreOpenLoops.mockResolvedValue({
+      ...buildScorerResult(),
+      winner: marcusBudgetWinner,
+      topCandidates: [marcusBudgetWinner],
+    });
+
     anthropicCreate.mockResolvedValue(anthropicResponse({
       directive: 'Send the budget confirmation email to Marcus today.',
       artifact_type: 'send_message',

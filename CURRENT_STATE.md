@@ -30,6 +30,7 @@
 
 ## C. CURRENT LAYER OF WORK
 
+- **CI unit harness** — `usefulness-gate` VALID1 mocks scorer + Anthropic in the same scenario (fixed 2026-04-22) so the execution-proof test does not false-fail on `surface_follow_up_mismatch`.
 - **Verify in production** — brain-receipt + one nightly-ops cycle; confirm scorer diagnostics list non-email discrepancy classes and larger pre-rank pool.
 - **Tune extraction thresholds** — burst/idle windows for stale documents, follow-up day counts, intent phrase regex if false positives appear.
 

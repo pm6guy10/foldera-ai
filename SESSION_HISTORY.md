@@ -2,6 +2,12 @@
 
 # Session History
 
+## 2026-04-22 — CI: usefulness-gate VALID1 scorer/LLM harness alignment
+- MODE: TEST
+- **Problem:** `lib/briefing/__tests__/usefulness-gate.test.ts` VALID1 returned `__GENERATION_FAILED__` in CI. The test mocked a Marcus / Q1 board `send_message` from Anthropic but left the default `buildScorerResult()` winner (MAS3 hiring manager). Bracket-salvage subject lines still contained “Follow up with the MAS3…”, which matches passive follow-up heuristics and triggered `causal_diagnosis:surface_follow_up_mismatch` against the Marcus email body.
+- **Change:** VALID1 now sets `mockScoreOpenLoops` to a Marcus / board-packet `ScoredLoop` and `topCandidates` (same pattern as VALID2).
+- **Verification:** `npx vitest run lib/briefing/__tests__/usefulness-gate.test.ts`; `npm run build`. `npm run health` still reported 1 FAIL (Repeated directive — production data; unrelated to this test).
+
 ## 2026-04-22 — Health Gate: CI warn-only for repeated directive + `user_tokens` retry
 - MODE: INFRA
 - **Problem:** `Health Gate` on `main` failed on **Repeated directive** (production data: 3+ same-shape rows in 24h) and on transient `user_tokens` **fetch failed** — not merge-safety signals for arbitrary commits.
@@ -4853,3 +4859,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Changed the dashboard paywall seam so the blur gate now counts only `approved + pending_approval` actions, keeps the first 3 finished artifacts visible for every user, and only blurs artifact 4+ for non-Pro users. Updated the lock copy to `Upgrade to Pro to keep receiving finished work.` and added two focused dashboard Playwright checks for the threshold behavior.
 - Verification: `npm run health` (`RESULT: 0 FAILING`); traced the execution path through `app/api/conviction/latest/route.ts` and `app/dashboard/page.tsx`; `npm run build` passed after clearing transient local Next.js build artifacts (`.next`, `tsconfig.tsbuildinfo`) that had caused the earlier ENOENT `/500` failure class in this workspace.
 - Unresolved issues: Targeted Playwright proof for the 3-visible / 4-blurred free-artifact threshold was not rerun in this publish session; the seam ships with the focused E2E coverage added in `tests/e2e/authenticated-routes.spec.ts` plus the passing build gate.
+
+## 2026-04-22 — Founder page `/brandon-kapp` plus canonical blog author link
+- MODE: FEATURE (single seam)
+- Files changed: `app/(marketing)/brandon-kapp/page.tsx`, `app/(marketing)/blog/[slug]/page.tsx`, `app/sitemap.ts`, `lib/brandon-kapp-profile.ts`, `tests/e2e/public-routes.spec.ts`, `SESSION_HISTORY.md`
+- What changed: Added a public founder page at `/brandon-kapp` with exact requested page title/H1/subhead, Foldera-matched dark styling, canonical metadata, LinkedIn/home/support links, and a single shared Brandon profile source. Updated the canonical blog post author location so `Brandon Kapp` links internally to `/brandon-kapp`, and added the new route to the sitemap.
+- Verification: `npm run health` (`RESULT: 1 FAILING`; blocking row `Repeated directive` remains out of scope); `npx playwright test tests/e2e/public-routes.spec.ts` against a local dev server on port `3011` showed the founder seam green inside the full run: `blog post author link points to the founder page`, `Founder page /brandon-kapp › renders the founder page with canonical metadata and profile links`, and `Founder page /brandon-kapp › loads on mobile without overflow` all passed. Direct HTML receipt from `http://127.0.0.1:3011/brandon-kapp` confirmed `<title>Brandon Kapp | Founder of Foldera</title>`, the requested meta description, canonical `https://foldera.ai/brandon-kapp`, and visible `linkedin.com/in/brandon-kapp` / `support@foldera.ai`.
+- Unresolved issues: `npm run build` is still blocked in this Windows workspace by the pre-existing Next.js local artifact race, not by the founder-page seam. Latest exact failures were `.next/export/500.html` missing during rename and `.next/server/pages-manifest.json` / `.next/build-manifest.json` ENOENT after clean rebuild attempts. Because the repo-required build gate did not pass, this work was not committed or pushed in this session.
