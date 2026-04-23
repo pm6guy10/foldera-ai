@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { LogOut } from 'lucide-react';
 import { ProductShell } from '@/components/dashboard/ProductShell';
 import { OWNER_USER_ID, SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
+import { formatRelativeTime, providerDisplayName } from '@/lib/ui/provider-display';
 
 interface Integration {
   provider: string;
@@ -27,6 +28,11 @@ interface SubscriptionInfo {
   plan?: string;
   daysRemaining?: number;
   can_manage_billing?: boolean;
+}
+
+interface GraphStats {
+  lastSignalAt: string | null;
+  lastSignalSource: string | null;
 }
 
 export default function SettingsClient() {
@@ -50,6 +56,7 @@ export default function SettingsClient() {
   /** True when connected mail graph has no recent processed mail signals (ingest may be empty despite cron). */
   const [mailIngestLooksStale, setMailIngestLooksStale] = useState(false);
   const [newestMailSignalAt, setNewestMailSignalAt] = useState<string | null>(null);
+  const [graphStats, setGraphStats] = useState<GraphStats | null>(null);
 
   const isOwnerAccount = session?.user?.id === OWNER_USER_ID;
 
@@ -74,6 +81,18 @@ export default function SettingsClient() {
     );
   }, []);
 
+  const refreshGraphStats = useCallback(async () => {
+    const response = await fetch('/api/graph/stats', { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error('Could not refresh source status.');
+    }
+    const data = await response.json();
+    setGraphStats({
+      lastSignalAt: typeof data?.lastSignalAt === 'string' ? data.lastSignalAt : null,
+      lastSignalSource: typeof data?.lastSignalSource === 'string' ? data.lastSignalSource : null,
+    });
+  }, []);
+
   // On mount: check for connecting_provider localStorage flag (set before OAuth redirect)
   useEffect(() => {
     const provider = localStorage.getItem('connecting_provider');
@@ -90,7 +109,8 @@ export default function SettingsClient() {
     Promise.all([
       fetch('/api/integrations/status', { cache: 'no-store' }),
       fetch('/api/subscription/status'),
-    ]).then(async ([intRes, subRes]) => {
+      fetch('/api/graph/stats', { cache: 'no-store' }),
+    ]).then(async ([intRes, subRes, graphRes]) => {
       if (intRes.ok) {
         const d = await intRes.json();
         if (intGen === integrationsFetchGenRef.current) {
@@ -102,6 +122,15 @@ export default function SettingsClient() {
             typeof d.newest_mail_signal_at === 'string' ? d.newest_mail_signal_at : null,
           );
         }
+      }
+      if (graphRes.ok) {
+        const graph = await graphRes.json();
+        setGraphStats({
+          lastSignalAt: typeof graph?.lastSignalAt === 'string' ? graph.lastSignalAt : null,
+          lastSignalSource: typeof graph?.lastSignalSource === 'string' ? graph.lastSignalSource : null,
+        });
+      } else {
+        setGraphStats(null);
       }
       if (subRes.ok) {
         setSubscription(await subRes.json());
@@ -168,13 +197,14 @@ export default function SettingsClient() {
           err instanceof Error ? err.message : err,
         );
       });
+      await refreshGraphStats().catch(() => {});
 
       setSyncStatus(
         `${provider === 'google' ? 'Google' : 'Microsoft'} connected. Scheduled sync will pick this up shortly.`,
       );
       setTimeout(() => setSyncStatus(null), 6000);
     })();
-  }, [status, refreshIntegrationsStatus]);
+  }, [status, refreshIntegrationsStatus, refreshGraphStats]);
 
   // Auto-clear actionError after 5 seconds
   useEffect(() => {
@@ -192,9 +222,13 @@ export default function SettingsClient() {
 
   const google = integrations.find(i => i.provider === 'google');
   const microsoft = integrations.find(i => i.provider === 'azure_ad');
+  const activeIntegrationCount = integrations.filter((integration) => integration.is_active).length;
   const firstConnectedIntegration = integrations.find((integration) => integration.is_active);
   const firstRunIntegration = firstConnectedIntegration ?? integrations[0];
   const firstRunStatus = buildFirstRunStatus(firstRunIntegration);
+  const latestSignalLabel = graphStats?.lastSignalAt
+    ? `${providerDisplayName(graphStats.lastSignalSource)} · ${formatRelativeTime(graphStats.lastSignalAt)}`
+    : 'No signal yet';
 
   const startGoogleOAuth = () => {
     setProviderOAuthError((p) => ({ ...p, google: null }));
@@ -275,67 +309,77 @@ export default function SettingsClient() {
       )}
     >
 
-        {/* Sync status banner */}
-        {syncStatus && (
-          <div className="rounded-card border border-border bg-panel px-4 py-3">
-            <p className="text-sm text-text-primary">{syncStatus}</p>
-          </div>
-        )}
-
-        {integrations.length > 0 && (
-          <section className="rounded-card border border-border bg-panel overflow-hidden">
-            <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
-              <SectionHeading className="mb-2 text-accent">What happens next</SectionHeading>
-              <p className="text-sm text-text-primary leading-relaxed">
-                {firstRunStatus.headline}
-              </p>
-            </div>
-            <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 space-y-3">
-              <p className="text-xs text-text-primary leading-relaxed">
-                {firstRunStatus.detail}
-              </p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {firstRunStatus.steps.map((step) => (
-                  <div key={step.label} className="rounded-card border border-border bg-panel-raised p-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-accent">{step.label}</p>
-                    <p className="text-xs text-text-primary mt-1 leading-relaxed">{step.copy}</p>
-                  </div>
-                ))}
-              </div>
-              {firstRunStatus.missingScopes.length > 0 && (
-                <p className="text-[11px] text-text-secondary leading-relaxed">
-                  {firstRunStatus.missingScopesLabel}
-                </p>
-              )}
-            </div>
-          </section>
-        )}
-
-        {actionError && (
-          <p ref={errorRef} className="px-4 py-3 rounded-card bg-panel-raised border border-border-strong text-sm text-text-primary">{actionError}</p>
-        )}
-
-        {mailIngestLooksStale && (
-          <div className="px-4 py-3 rounded-card bg-panel-raised border border-border-strong">
-            <p className="text-sm text-text-secondary leading-relaxed">
-              Newest mail synced from your inboxes is dated{' '}
-              {newestMailSignalAt
-                ? new Date(newestMailSignalAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
-                : '— none on file yet'}
-              . If you have exchanged mail since then, use Sync now below or reconnect — new messages may not be reaching Foldera.
-            </p>
-          </div>
-        )}
-
-        {/* ── Data sources ── */}
-        <section className="rounded-card border border-border bg-panel overflow-hidden">
+      <div className="space-y-6">
+        {/* ── Connected accounts ── */}
+        <section id="connected-accounts" className="rounded-card border border-border bg-panel overflow-hidden">
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
-            <SectionHeading className="mb-2">Data sources</SectionHeading>
+            <SectionHeading className="mb-2">Connected accounts</SectionHeading>
             <p className="text-xs text-text-muted leading-relaxed">
               Connect Google and Microsoft mail so Foldera can read context for your morning brief.
             </p>
           </div>
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 space-y-4">
+            {syncStatus && (
+              <div className="rounded-card border border-border bg-panel-raised px-4 py-3">
+                <p className="text-sm text-text-primary">{syncStatus}</p>
+              </div>
+            )}
+
+            {actionError && (
+              <p
+                ref={errorRef}
+                className="rounded-card border border-border-strong bg-panel-raised px-4 py-3 text-sm text-text-primary"
+              >
+                {actionError}
+              </p>
+            )}
+
+            {integrations.length > 0 && (
+              <div className="rounded-card border border-border bg-panel-raised px-4 py-4 sm:px-5">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-accent">Connection status</p>
+                <p className="mt-2 text-sm leading-relaxed text-text-primary">{firstRunStatus.headline}</p>
+                <p className="mt-2 text-xs leading-relaxed text-text-secondary">{firstRunStatus.detail}</p>
+                {firstRunStatus.missingScopes.length > 0 && (
+                  <p className="mt-2 text-[11px] leading-relaxed text-text-secondary">
+                    {firstRunStatus.missingScopesLabel}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {mailIngestLooksStale && (
+              <div className="rounded-card border border-border-strong bg-panel-raised px-4 py-3">
+                <p className="text-sm text-text-secondary leading-relaxed">
+                  Newest mail synced from your inboxes is dated{' '}
+                  {newestMailSignalAt
+                    ? new Date(newestMailSignalAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
+                    : '— none on file yet'}
+                  . If you have exchanged mail since then, reconnect below so new messages reach Foldera.
+                </p>
+              </div>
+            )}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <article className="rounded-card border border-border bg-panel-raised p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Connected sources</p>
+                <p className="mt-2 text-2xl font-black tracking-tight text-text-primary">{activeIntegrationCount}</p>
+              </article>
+              <article className="rounded-card border border-border bg-panel-raised p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Latest source signal</p>
+                <p className="mt-2 text-sm leading-relaxed text-text-primary">{latestSignalLabel}</p>
+              </article>
+            </div>
+
+            <div className="flex flex-col gap-2 rounded-card border border-border-subtle bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-text-secondary">Legacy route: `/dashboard/signals` is still available if bookmarked.</p>
+              <Link
+                href="/dashboard/signals"
+                className="inline-flex min-h-[40px] items-center rounded-button border border-border px-3 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
+              >
+                Open legacy signals view
+              </Link>
+            </div>
+
             {/* Google card */}
             <div className={`rounded-2xl rounded-card border border-border overflow-hidden min-h-[5.75rem] ${google?.is_active ? 'border-l-2 border-l-success' : ''}`}>
               <div className="bg-panel-raised p-4 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 min-h-[5.75rem]">
@@ -409,6 +453,7 @@ export default function SettingsClient() {
                           setActionError('Network error disconnecting Google.');
                         } finally {
                           await refreshIntegrationsStatus().catch(() => {});
+                          await refreshGraphStats().catch(() => {});
                           setDisconnecting(null);
                         }
                       }}
@@ -519,6 +564,7 @@ export default function SettingsClient() {
                           setActionError('Network error disconnecting Microsoft.');
                         } finally {
                           await refreshIntegrationsStatus().catch(() => {});
+                          await refreshGraphStats().catch(() => {});
                           setDisconnecting(null);
                         }
                       }}
@@ -553,19 +599,6 @@ export default function SettingsClient() {
                 </div>
               )}
             </div>
-          </div>
-        </section>
-
-        {/* ── Preferences ── */}
-        <section className="rounded-card border border-border bg-panel overflow-hidden">
-          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
-            <SectionHeading className="mb-2">Preferences</SectionHeading>
-            <p className="text-xs text-text-muted leading-relaxed">How Foldera adapts to you over time.</p>
-          </div>
-          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6">
-            <p className="text-sm text-text-secondary leading-relaxed">
-              Approve and skip on your daily directive train Foldera. No extra sliders here yet.
-            </p>
           </div>
         </section>
 
@@ -653,25 +686,6 @@ export default function SettingsClient() {
           </div>
         </section>
 
-        {isOwnerAccount && (
-          <section className="rounded-card border border-border bg-panel-raised overflow-hidden">
-            <div className="px-4 py-4 sm:px-6 sm:py-6 md:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">Owner</p>
-                <p className="text-sm text-text-secondary mt-1 leading-snug">
-                  Pipeline runs, agent toggle, and system draft queue — not part of the normal product path.
-                </p>
-              </div>
-              <Link
-                href="/dashboard/system"
-                className="inline-flex justify-center min-h-[44px] items-center rounded-card bg-accent-dim/20 border border-accent-dim px-6 text-[10px] font-black uppercase tracking-[0.12em] text-accent hover:bg-accent-dim/30 transition-colors shrink-0"
-              >
-                System tools
-              </Link>
-            </div>
-          </section>
-        )}
-
         {/* ── Account ── */}
         <section className="rounded-card border border-border bg-panel overflow-hidden">
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
@@ -696,7 +710,7 @@ export default function SettingsClient() {
         </section>
 
         {/* ── Danger zone ── */}
-        <section className="rounded-card border border-border bg-panel-raised overflow-hidden">
+        <section className="rounded-card border border-border bg-panel overflow-hidden">
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
             <SectionHeading className="!mb-0 text-text-primary">Danger zone</SectionHeading>
           </div>
@@ -713,6 +727,22 @@ export default function SettingsClient() {
             )}
           </div>
         </section>
+
+        {isOwnerAccount && (
+          <aside className="rounded-card border border-border-subtle bg-panel-raised/70 px-4 py-4 sm:px-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Owner only</p>
+            <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+              Pipeline controls are intentionally separate from the customer settings flow.
+            </p>
+            <Link
+              href="/dashboard/system"
+              className="mt-3 inline-flex min-h-[40px] items-center rounded-button border border-border px-3 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
+            >
+              Open system tools
+            </Link>
+          </aside>
+        )}
+      </div>
 
     </ProductShell>
   );
@@ -771,7 +801,7 @@ function buildFirstRunStatus(integration: Integration | undefined): {
 
   const missingScopes = integration.missing_scopes ?? [];
   const isWarm = Boolean(integration.last_synced_at);
-  const providerName = integration.provider === 'azure_ad' ? 'Microsoft' : 'Google';
+  const providerName = providerDisplayName(integration.provider);
 
   if (missingScopes.length > 0) {
     return {

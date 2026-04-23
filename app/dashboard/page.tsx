@@ -520,9 +520,6 @@ export default function DashboardPage() {
             <Link href="/dashboard/briefings" className="inline-flex min-h-[40px] items-center rounded-button px-3 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary">
               Briefings
             </Link>
-            <Link href="/dashboard/signals" className="inline-flex min-h-[40px] items-center rounded-button px-3 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary">
-              Signals
-            </Link>
             <Link href="/dashboard/settings" className="inline-flex min-h-[40px] items-center rounded-button px-3 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary">
               Settings
             </Link>

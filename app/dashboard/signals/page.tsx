@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Mail, Radio } from 'lucide-react';
+import Link from 'next/link';
+import { Mail } from 'lucide-react';
 import { ProductShell } from '@/components/dashboard/ProductShell';
 import { SkeletonSignalsPage } from '@/components/ui/skeleton';
+import { formatRelativeTime, providerDisplayName } from '@/lib/ui/provider-display';
 
 interface GraphStats {
   lastSignalAt: string | null;
@@ -42,7 +44,7 @@ export default function SignalsPage() {
     return (
       <ProductShell
         title="Signals"
-        subtitle="Foldera reads connected sources in the background."
+        subtitle="Legacy route for source diagnostics."
       >
         <SkeletonSignalsPage />
       </ProductShell>
@@ -50,94 +52,69 @@ export default function SignalsPage() {
   }
 
   const activeIntegrations = integrations.filter((integration) => integration.is_active);
+  const latestSignalLabel = stats?.lastSignalAt
+    ? `${providerDisplayName(stats.lastSignalSource)} · ${formatRelativeTime(stats.lastSignalAt)}`
+    : 'No signal yet';
 
   return (
     <ProductShell
       title="Signals"
-      subtitle="Foldera reads connected sources in the background so the morning directive stays focused."
+      subtitle="Source status now lives in Settings. This route stays available for older links."
     >
-      <div className="rounded-card border border-border bg-panel p-6">
-        <h2 className="text-2xl font-bold tracking-tight text-text-primary">Sources</h2>
+      <section className="rounded-card border border-border bg-panel p-6">
+        <h2 className="text-2xl font-bold tracking-tight text-text-primary">Source status moved to Settings</h2>
         <p className="mt-3 text-sm leading-relaxed text-text-secondary">
-          Connected inboxes and calendars are monitored continuously. Finished work still appears in Today.
+          Connected account health and latest source activity now live under Settings so this information sits with account controls.
         </p>
-      </div>
+        <Link
+          href="/dashboard/settings#connected-accounts"
+          className="mt-5 inline-flex min-h-[44px] items-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
+        >
+          Open connected accounts
+        </Link>
+      </section>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <article className="rounded-card border border-border bg-panel p-6">
+      <section className="mt-4 grid gap-4 md:grid-cols-2">
+        <article className="rounded-card border border-border bg-panel p-5">
           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Connected sources</p>
-          <p className="mt-3 text-4xl font-black tracking-tight">{activeIntegrations.length}</p>
+          <p className="mt-2 text-3xl font-black tracking-tight text-text-primary">{activeIntegrations.length}</p>
         </article>
-        <article className="rounded-card border border-border bg-panel p-6">
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Last signal</p>
-          <p className="mt-3 text-sm text-text-primary">
-            {stats?.lastSignalAt
-              ? `${formatSource(stats.lastSignalSource)} · ${formatTimeAgo(stats.lastSignalAt)}`
-              : 'No signal yet'}
-          </p>
+        <article className="rounded-card border border-border bg-panel p-5">
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Latest source signal</p>
+          <p className="mt-2 text-sm leading-relaxed text-text-primary">{latestSignalLabel}</p>
         </article>
-      </div>
+      </section>
 
-      {activeIntegrations.length === 0 ? (
-        <article className="mt-4 rounded-card border border-border bg-panel p-8">
-          <h3 className="text-lg font-semibold text-text-primary">No sources connected yet</h3>
-          <p className="mt-2 text-sm leading-relaxed text-text-secondary">
-            Connect at least one provider in settings so Foldera can read context.
+      <section className="mt-4 rounded-card border border-border bg-panel p-6">
+        <h3 className="text-sm font-black uppercase tracking-[0.12em] text-text-secondary">Legacy connected list</h3>
+        {activeIntegrations.length === 0 ? (
+          <p className="mt-3 text-sm leading-relaxed text-text-secondary">
+            No active sources are connected yet.
           </p>
-          <a
-            href="/dashboard/settings"
-            className="mt-6 inline-flex min-h-[44px] items-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg"
-          >
-            Open settings
-          </a>
-        </article>
-      ) : (
-        <ul className="mt-4 space-y-3">
-          {activeIntegrations.map((integration) => (
-            <li key={integration.provider} className="rounded-card border border-border bg-panel p-6">
-              <div className="flex items-center gap-3">
-                <div className="inline-flex h-9 w-9 items-center justify-center rounded-badge border border-border bg-panel-raised">
-                  {integration.provider.includes('google') || integration.provider.includes('azure') ? (
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {activeIntegrations.map((integration) => (
+              <li key={integration.provider} className="rounded-card border border-border bg-panel-raised p-4">
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex h-9 w-9 items-center justify-center rounded-badge border border-border bg-panel">
                     <Mail className="h-4 w-4 text-accent" aria-hidden="true" />
-                  ) : (
-                    <Radio className="h-4 w-4 text-accent" aria-hidden="true" />
-                  )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-text-primary">
+                      {providerDisplayName(integration.provider)}
+                    </p>
+                    <p className="truncate text-sm text-text-secondary">
+                      {integration.sync_email || 'Connected'}
+                      {integration.last_synced_at ? ` · ${formatRelativeTime(integration.last_synced_at)}` : ''}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-text-primary">{formatSource(integration.provider)}</p>
-                  <p className="text-sm text-text-secondary">
-                    {integration.sync_email || 'Connected'}
-                    {integration.last_synced_at
-                      ? ` · ${formatTimeAgo(integration.last_synced_at)}`
-                      : ''}
-                  </p>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </ProductShell>
   );
-}
-
-function formatTimeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-function formatSource(source: string | null | undefined): string {
-  if (!source) return 'Unknown source';
-  return source
-    .split('_')
-    .filter(Boolean)
-    .map((part) => part[0].toUpperCase() + part.slice(1))
-    .join(' ');
 }
 

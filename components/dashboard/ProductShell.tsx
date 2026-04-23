@@ -8,7 +8,6 @@ import { cn } from '@/lib/design-system';
 const navItems = [
   { href: '/dashboard', label: 'Today' },
   { href: '/dashboard/briefings', label: 'Briefings' },
-  { href: '/dashboard/signals', label: 'Signals' },
   { href: '/dashboard/settings', label: 'Settings' },
 ];
 

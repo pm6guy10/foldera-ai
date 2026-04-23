@@ -218,6 +218,14 @@ const FREE_SUBSCRIPTION_RESPONSE = {
   can_manage_billing: false,
 };
 
+const GRAPH_STATS_RESPONSE = {
+  signalsTotal: 24,
+  commitmentsActive: 3,
+  patternsActive: 2,
+  lastSignalAt: '2026-04-20T08:30:00.000Z',
+  lastSignalSource: 'azure_ad',
+};
+
 function json(data: unknown) {
   return JSON.stringify(data);
 }
@@ -363,6 +371,7 @@ async function setupSettingsMocks(page: Page) {
     fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
   );
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
+  await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
 }
 
@@ -377,6 +386,7 @@ async function setupSettingsSyncingMocks(page: Page) {
     fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
   );
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_SYNCING_RESPONSE));
+  await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
 }
 
@@ -391,6 +401,7 @@ async function setupSettingsMissingScopesMocks(page: Page) {
     fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
   );
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_MISSING_SCOPES_RESPONSE));
+  await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
 }
 
@@ -405,6 +416,7 @@ async function setupSettingsMicrosoftReauthMocks(page: Page) {
     fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
   );
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_MICROSOFT_REAUTH_RESPONSE));
+  await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
 }
 
@@ -419,6 +431,7 @@ async function setupSettingsGoogleReauthMocks(page: Page) {
     fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
   );
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_GOOGLE_REAUTH_RESPONSE));
+  await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
 }
 
@@ -439,6 +452,7 @@ async function setupSettingsManageBillingMocks(page: Page) {
     fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
   );
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
+  await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
   await page.route(matchApiPath('/api/stripe/portal'), (route) => {
     if (route.request().method() !== 'POST') return route.continue();
@@ -748,6 +762,7 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupSettingsMocks(page);
     await page.goto('/dashboard/settings');
+    await expect(page.getByRole('heading', { name: /connected accounts/i })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/google/i).first()).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/microsoft/i).first()).toBeVisible();
   });
@@ -775,7 +790,8 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     await page.goto('/dashboard/settings');
     await expect(page.getByText(/Foldera is reading your connected sources and looking for the one thing silently blocking your real goal/i)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/No extra setup required/i)).toBeVisible();
-    await expect(page.getByText(/first value/i).first()).toBeVisible();
+    await expect(page.getByText(/Latest source signal/i)).toBeVisible();
+    await expect(page.getByText(/Open legacy signals view/i)).toBeVisible();
     await expect(page.getByText(/signed in as/i)).toBeVisible();
   });
 
@@ -884,12 +900,13 @@ describeAuthMocked('Briefings /dashboard/briefings — authenticated', () => {
 });
 
 describeAuthMocked('Signals /dashboard/signals — authenticated', () => {
-  test('loads Sources heading and connected copy — desktop', async ({ page }) => {
+  test('shows the legacy-source notice and settings handoff — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupSignalsPageMocks(page);
     await page.goto('/dashboard/signals');
-    await expect(page.getByRole('heading', { name: /^Sources$/i })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/connected inboxes and calendars/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /source status moved to settings/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/route stays available for older links/i)).toBeVisible();
+    await expect(page.getByText(/Open connected accounts/i)).toBeVisible();
   });
 });
 
