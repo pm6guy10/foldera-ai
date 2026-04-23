@@ -5,7 +5,7 @@ import { NavPublic } from '@/components/nav/NavPublic';
 import { BlogFooter } from '@/components/nav/BlogFooter';
 
 export const metadata: Metadata = {
-  title: 'Blog — Foldera',
+  title: 'Blog',
   description: 'Notes on AI workflows, email triage, and reducing busywork with Foldera.',
   openGraph: {
     title: 'Blog — Foldera',

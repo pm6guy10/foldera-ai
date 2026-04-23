@@ -4873,3 +4873,26 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Added a public founder page at `/brandon-kapp` with exact requested page title/H1/subhead, Foldera-matched dark styling, canonical metadata, LinkedIn/home/support links, and a single shared Brandon profile source. Updated the canonical blog post author location so `Brandon Kapp` links internally to `/brandon-kapp`, and added the new route to the sitemap.
 - Verification: `npm run health` (`RESULT: 1 FAILING`; blocking row `Repeated directive` remains out of scope); `npx playwright test tests/e2e/public-routes.spec.ts` against a local dev server on port `3011` showed the founder seam green inside the full run: `blog post author link points to the founder page`, `Founder page /brandon-kapp › renders the founder page with canonical metadata and profile links`, and `Founder page /brandon-kapp › loads on mobile without overflow` all passed. Direct HTML receipt from `http://127.0.0.1:3011/brandon-kapp` confirmed `<title>Brandon Kapp | Founder of Foldera</title>`, the requested meta description, canonical `https://foldera.ai/brandon-kapp`, and visible `linkedin.com/in/brandon-kapp` / `support@foldera.ai`.
 - Unresolved issues: `npm run build` is still blocked in this Windows workspace by the pre-existing Next.js local artifact race, not by the founder-page seam. Latest exact failures were `.next/export/500.html` missing during rename and `.next/server/pages-manifest.json` / `.next/build-manifest.json` ENOENT after clean rebuild attempts. Because the repo-required build gate did not pass, this work was not committed or pushed in this session.
+
+## 2026-04-23 — Frontend polish sweep (major paths) + blog title dedupe
+- MODE: FRONTEND QA (local + production read-only) with one minimal UI fix
+- Acceptance seam: every major public/authenticated path should load cleanly without visible UI breakage, dead-end navigation, stuck spinners, or mobile overflow.
+- Files changed: `app/(marketing)/blog/page.tsx`, `SESSION_HISTORY.md`.
+- What changed: updated blog index metadata title from `Blog — Foldera` to `Blog` so the rendered document title no longer duplicates the site suffix in audit snapshots (`Blog — Foldera — Foldera`).
+- Verification:
+  - `npm run health` → `RESULT: 0 FAILING` (warnings only).
+  - `git status --short --branch` and `git log --oneline -10` captured at preflight.
+  - `npm run build` passed (with verified `.next/BUILD_ID` present after clearing a stale local `next build` process and rebuilding).
+  - Local suites:
+    - `npm run test:ci:e2e:smoke` → 31 passed.
+    - `npm run test:ci:e2e:flow` → 27 passed.
+    - `npm run test:ci:e2e:payments` → 3 passed.
+    - `npx playwright test tests/e2e/mobile-visual-qa.spec.ts` → 11 passed.
+    - `npm run audit:smoke` → 21 passed (one transient localhost refusal on an earlier attempt; clean rerun passed).
+  - Production read-only suites:
+    - `npx playwright test --config playwright.prod.config.ts tests/production/smoke.spec.ts --grep-invert "can skip a pending action via API|/api/stripe/checkout returns checkout URL or 400|pricing page upgrade button is clickable|Generate Now triggers the dry-run button only in explicit manual proof mode"` → 23 passed.
+    - `npx playwright test --config playwright.prod.config.ts tests/production/mobile-prod-layout.spec.ts tests/production/mobile-journey.spec.ts` → 10 passed (after clearing stale screenshot folders that caused Windows file-handle write errors on first run).
+    - `npx playwright test --config playwright.prod.config.ts tests/production/audit.spec.ts --grep-invert "Section 5|Generate now button|click Generate now on /dashboard/system"` → 23 passed, audit summary `0 errors / 0 warnings / 31 info`.
+- Unresolved issues:
+  - Production audit Section 5 (`Generate now`) was intentionally excluded to keep this run read-only.
+  - Unrelated pre-existing worktree edits remained in `FOLDERA_SHIP_SPEC.md` and `next.config.mjs` (not modified in this seam).
