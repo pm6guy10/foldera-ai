@@ -42,22 +42,33 @@ const briefRows = [
 
 function HeroArtifactCard() {
   return (
-    <article id="example-brief" className="rounded-card border border-border-strong bg-panel">
-      <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-5 py-4 sm:px-6">
-        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">TODAY’S DIRECTIVE</p>
+    <article
+      id="example-brief"
+      className="relative overflow-hidden rounded-[30px] border border-border-strong bg-panel"
+    >
+      <div className="pointer-events-none absolute -right-20 -top-14 h-52 w-52 rounded-full bg-accent-dim/20 blur-3xl" />
+      <div className="pointer-events-none absolute left-10 top-16 h-40 w-40 rounded-full bg-panel-raised/80 blur-3xl" />
+
+      <div className="relative flex items-center justify-between gap-3 border-b border-border-subtle bg-panel-raised/60 px-5 py-3.5 sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-text-muted" />
+          <span className="h-1.5 w-1.5 rounded-full bg-text-muted" />
+          <span className="h-1.5 w-1.5 rounded-full bg-text-muted" />
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">TODAY’S DIRECTIVE</p>
+        </div>
         <span className="inline-flex items-center rounded-badge border border-accent-dim px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-accent">
           READY TO SEND
         </span>
       </div>
 
-      <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
-        <div>
-          <p className="text-sm font-semibold leading-relaxed text-text-primary">
+      <div className="relative space-y-6 px-5 py-6 sm:px-7 sm:py-7">
+        <div className="rounded-[18px] border border-border-subtle bg-panel-raised p-4 sm:p-5">
+          <p className="text-base font-semibold leading-relaxed text-text-primary sm:text-[17px]">
             Send the follow-up to Darlene Craig before noon.
           </p>
         </div>
 
-        <div>
+        <div className="border-t border-border-subtle pt-4">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">WHY THIS NOW</p>
           <p className="mt-2 text-sm leading-relaxed text-text-secondary">
             You have an open thread with no reply, the ask is time-bound, and the current hold on your calendar
@@ -65,7 +76,7 @@ function HeroArtifactCard() {
           </p>
         </div>
 
-        <div className="rounded-card border border-border-subtle bg-panel-raised p-4 sm:p-5">
+        <div className="rounded-[18px] border border-border-subtle bg-panel-raised p-4 sm:p-5">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">READY-TO-SEND DRAFT</p>
           <p className="mt-2 text-sm leading-relaxed text-text-primary">
             Hi Darlene — following up on the MEDS item from yesterday. I pulled the current status and can send the
@@ -73,7 +84,7 @@ function HeroArtifactCard() {
           </p>
         </div>
 
-        <div>
+        <div className="rounded-[18px] border border-border-subtle bg-panel-raised/60 p-4 sm:p-5">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">SOURCE BASIS</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <span className="rounded-badge border border-border px-2 py-1 text-xs text-text-secondary">Email thread</span>
@@ -84,7 +95,7 @@ function HeroArtifactCard() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-5 py-4 text-xs sm:px-6">
+      <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-5 py-3 text-xs sm:px-6">
         <p className="text-text-muted">Grounded in connected sources</p>
         <span className="font-semibold text-text-secondary">View full brief →</span>
       </div>
@@ -105,9 +116,15 @@ export default function HomePageClient() {
     <div className="bg-bg text-text-primary">
       <NavPublic scrolled={scrolled} platformHref="#product" />
       <main id="main">
-        <section id="product" className="border-b border-border-subtle pt-24 sm:pt-32">
-          <div className="mx-auto grid max-w-6xl gap-10 px-4 pb-16 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:items-start lg:gap-12 lg:pb-20">
-            <div>
+        <section id="product" className="relative overflow-hidden border-b border-border-subtle pt-24 sm:pt-32 lg:pt-36">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px]">
+            <div className="absolute left-1/2 top-10 h-[470px] w-[980px] -translate-x-1/2 rounded-[48px] border border-border-subtle" />
+            <div className="absolute right-[8%] top-16 h-72 w-72 rounded-full bg-accent-dim/20 blur-3xl" />
+            <div className="absolute left-[12%] top-28 h-56 w-56 rounded-full bg-panel-raised/80 blur-3xl" />
+          </div>
+          <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="grid gap-10 pb-20 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] lg:items-start lg:gap-14 lg:pb-24">
+              <div className="max-w-lg lg:pt-6">
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">FINISHED WORK, EVERY MORNING</p>
               <h1 className="mt-6 text-5xl font-black leading-[0.95] tracking-tight sm:text-6xl">
                 One finished move.
@@ -135,31 +152,38 @@ export default function HomePageClient() {
               <p className="mt-4 max-w-lg text-xs leading-relaxed text-text-muted">
                 Read-only source sync. No fake automation theater. Real artifacts you can use.
               </p>
-            </div>
-            <HeroArtifactCard />
-          </div>
-        </section>
-
-        <section className="border-b border-border-subtle py-8 sm:py-10">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="rounded-card border border-border bg-panel">
-              <div className="grid divide-y divide-border-subtle md:grid-cols-3 md:divide-x md:divide-y-0">
-                {proofStrip.map((item) => (
-                  <p key={item} className="px-4 py-4 text-sm leading-relaxed text-text-secondary sm:px-5">
-                    {item}
-                  </p>
-                ))}
+              </div>
+              <div className="relative lg:-mr-2">
+                <div className="pointer-events-none absolute -inset-4 hidden rounded-[34px] border border-border-subtle lg:block" />
+                <div className="relative">
+                  <HeroArtifactCard />
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="border-b border-border-subtle py-14 sm:py-16">
+        <section className="border-b border-border-subtle py-8 sm:py-9">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="grid border-y border-border-subtle md:grid-cols-3">
+              {proofStrip.map((item, index) => (
+                <p
+                  key={item}
+                  className={`px-4 py-4 text-sm leading-relaxed text-text-secondary sm:px-5 ${index > 0 ? 'border-t border-border-subtle md:border-l md:border-t-0' : ''}`}
+                >
+                  {item}
+                </p>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="border-b border-border-subtle py-16 sm:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <h2 className="text-3xl font-black tracking-tight sm:text-4xl">How Foldera works</h2>
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
+            <div className="mt-10 grid gap-5 md:grid-cols-3">
               {howItWorks.map((item) => (
-                <article key={item.title} className="flex h-full flex-col rounded-card border border-border bg-panel p-6">
+                <article key={item.title} className="flex h-full flex-col border-l border-border-subtle pl-4 pr-2">
                   <h3 className="text-base font-semibold tracking-tight text-text-primary">{item.title}</h3>
                   <p className="mt-3 text-sm leading-relaxed text-text-secondary">{item.body}</p>
                 </article>
@@ -171,11 +195,11 @@ export default function HomePageClient() {
         <section className="border-b border-border-subtle py-14 sm:py-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <h2 className="text-3xl font-black tracking-tight sm:text-4xl">What shows up in the brief</h2>
-            <div className="mt-8 overflow-hidden rounded-card border border-border bg-panel">
+            <div className="mt-10 overflow-hidden rounded-[24px] border border-border-subtle bg-panel-raised/60">
               {briefRows.map((row, index) => (
                 <article
                   key={row.title}
-                  className={`px-5 py-5 sm:px-6 ${index > 0 ? 'border-t border-border-subtle' : ''}`}
+                  className={`px-5 py-6 sm:px-6 ${index > 0 ? 'border-t border-border-subtle' : ''}`}
                 >
                   <h3 className="text-base font-semibold tracking-tight text-text-primary">{row.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-text-secondary">{row.body}</p>
@@ -187,7 +211,7 @@ export default function HomePageClient() {
 
         <section className="py-14 sm:py-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="rounded-card border border-border bg-panel p-6 sm:p-8">
+            <div className="rounded-[24px] border border-border-subtle bg-panel-raised/40 p-6 sm:p-8">
               <h2 className="text-3xl font-black leading-tight tracking-tight sm:text-4xl">
                 Stop staring at the work.
                 <br />
