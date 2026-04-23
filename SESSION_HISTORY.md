@@ -4949,3 +4949,11 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Re-staged the landing hero into one dominant framed hero field with a calmer/narrower left text rail and a stronger artifact-centered right stage; upgraded the artifact shell from standard card treatment to a premium brief object (header framing, directive emphasis, section rhythm, grouped source pills, quieter footer); and quieted lower sections (proof strip, how-it-works, brief rows, final CTA) into editorial separators so the hero clearly outranks the rest of the page.
 - Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); BEFORE screenshots at `.screenshots/landing-hero-redesign-pass2/before-desktop.png` + `.screenshots/landing-hero-redesign-pass2/before-mobile.png`; AFTER screenshots at `.screenshots/landing-hero-redesign-pass2/after-desktop.png` + `.screenshots/landing-hero-redesign-pass2/after-mobile.png`; `npm run build` (pass); `$env:CI='true'; $env:PLAYWRIGHT_WEB_PORT='3063'; npx playwright test tests/e2e/public-routes.spec.ts tests/e2e/mobile-visual-qa.spec.ts --config playwright.config.ts` (42 passed).
 - Unresolved issues: Pre-existing unrelated worktree changes (`FOLDERA_SHIP_SPEC.md`, `.screenshots/dashboard-seam/`) remain untouched.
+
+## 2026-04-23 — CI verify-static failure on main `0c037a4` (landing hero seam) fixed
+- MODE: CI root-cause fix (verify-static)
+- Files changed: `app/HomePageClient.tsx`, `SESSION_HISTORY.md`.
+- What changed: Fixed `react/no-unescaped-entities` in landing hero artifact header by escaping the apostrophe in `TODAY&apos;S DIRECTIVE` so ESLint passes in GitHub Actions `verify-static`.
+- Root cause: `verify-static` runs `npm run lint`; commit `0c037a4` introduced unescaped `'` in JSX text at `app/HomePageClient.tsx:59`, causing `verify-static` to fail and cascade-skip all downstream CI jobs.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npm run lint` (pass); `npm run test:ci:e2e:lint` (pass); `npm run build` (pass).
+- Unresolved issues: Pre-existing unrelated local worktree noise remains untouched (`FOLDERA_SHIP_SPEC.md`, local screenshot/artifact directories).

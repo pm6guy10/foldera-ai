@@ -56,7 +56,7 @@ function HeroArtifactCard() {
             READY TO SEND
           </span>
         </div>
-        <p className="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">TODAY'S DIRECTIVE</p>
+        <p className="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">TODAY&apos;S DIRECTIVE</p>
       </div>
 
       <div className="relative space-y-7 px-5 py-7 sm:px-7 sm:py-8">
